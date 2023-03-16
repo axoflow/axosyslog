@@ -1,5 +1,5 @@
 
-![Axoflow logo](FIXME)
+![Axoflow logo](AxoFlowBlueBlack.svg)
 
 # Cloud-ready syslog-ng images by Axoflow
 
