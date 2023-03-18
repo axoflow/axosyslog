@@ -56,7 +56,7 @@ In case you need help or want to contact us, open a [GitHub issue](https://githu
 
 ## Contribution
 
-https://github.com/axoflow/syslog-ng-docker/pulls
+If you have fixed a bug or would like to contribute your improvements to these images, [open a pull request](https://github.com/axoflow/syslog-ng-docker/pulls). We truly appreciate your help.
 
 ## About Axoflow
 
