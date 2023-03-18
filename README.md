@@ -1,6 +1,11 @@
 
-![Axoflow logo](AxoFlowBlueBlack.svg)
-
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="https://axoflow.com/wp-content/uploads/2023/03/axoflow-logging_unleashed-blue.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://axoflow.com/wp-content/uploads/2023/03/axoflow-logging_unleashed-grey.svg">
+    <img alt="Axoflow" src="https://github.com/axoflow/syslog-ng-docker/raw/master/docs/logo.svg" width="550">
+  </picture>
+</p>
 # Cloud-ready syslog-ng images by Axoflow
 
 This repository contains the cloud-ready syslog-ng images created and maintained by [Axoflow](https://axoflow.com). Our images are different from the [upstream syslog-ng images](https://hub.docker.com/r/balabit/syslog-ng/) in a number of ways:
