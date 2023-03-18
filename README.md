@@ -6,6 +6,7 @@
     <img alt="Axoflow" src="https://github.com/axoflow/syslog-ng-docker/raw/master/docs/logo.svg" width="550">
   </picture>
 </p>
+
 # Cloud-ready syslog-ng images by Axoflow
 
 This repository contains the cloud-ready syslog-ng images created and maintained by [Axoflow](https://axoflow.com). Our images are different from the [upstream syslog-ng images](https://hub.docker.com/r/balabit/syslog-ng/) in a number of ways:
