@@ -47,7 +47,7 @@ docker pull ghcr.io/axoflow/syslog-ng:nightly
 > Note: These named packages are automatically updated when a new syslog-ng package is released. To install a specific version, run `docker pull ghcr.io/axoflow/syslog-ng:<version-number>`, for example:
 >
 > ```shell
-> `docker pull ghcr.io/axoflow/syslog-ng:4.1.1`
+> docker pull ghcr.io/axoflow/syslog-ng:4.1.1
 > ```
 
 ## Contact and support
