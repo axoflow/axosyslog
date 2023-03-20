@@ -52,7 +52,7 @@ docker pull ghcr.io/axoflow/syslog-ng:nightly
 
 ## Contact and support
 
-In case you need help or want to contact us, open a [GitHub issue](https://github.com/axoflow/syslog-ng-docker/issues), or come chat with us on the [Axoflow Discord server](FIXME).
+In case you need help or want to contact us, open a [GitHub issue](https://github.com/axoflow/syslog-ng-docker/issues), or come chat with us in the [syslog-ng channel of the Axoflow Discord server](https://discord.gg/4Fzy7D66Qq).
 
 ## Contribution
 
