@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "syslog-ng-chart.fullname" . }}
+  labels:
+    {{- include "syslog-ng-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports: # TODO: We do not use these, but leaving this empty makes helm install fail.
+    - name: udp-port
+      port: 514
+      targetPort: 514
+      protocol: UDP
+    - name: tcp-port
+      port: 601
+      targetPort: 601
+      protocol: TCP
+  selector:
+    {{- include "syslog-ng-chart.selectorLabels" . | nindent 4 }}
