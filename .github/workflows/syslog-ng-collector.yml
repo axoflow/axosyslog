@@ -2,8 +2,12 @@ on:
   push:
   pull_request:
 
+defaults:
+  run:
+    working-directory: charts/syslog-ng-collector
+
 jobs:
-  CI:
+  syslog-ng-collector:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
