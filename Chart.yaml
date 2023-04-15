@@ -1,6 +1,6 @@
 apiVersion: v2
-name: syslog-ng-chart
-description: A Helm chart for the Axoflow packaged syslog-ng image
+name: syslog-ng-collector
+description: syslog-ng kubernetes log collector
 type: application
 version: 0.1.0
 appVersion: "4.1.1"

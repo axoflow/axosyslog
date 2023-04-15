@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
-    {{- include "syslog-ng-chart.labels" . | nindent 4 }}
-  name: {{ include "syslog-ng-chart.fullname" . }}
+    {{- include "syslog-ng-collector.labels" . | nindent 4 }}
+  name: {{ include "syslog-ng-collector.fullname" . }}
 data:
   syslog-ng.conf: {{  tpl (toYaml .Values.config) . | indent 4 }}
