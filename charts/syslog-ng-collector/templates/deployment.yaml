@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "syslog-ng-chart.fullname" . }}
+  name: {{ include "syslog-ng-collector.fullname" . }}
   labels:
-    {{- include "syslog-ng-chart.labels" . | nindent 4 }}
+    {{- include "syslog-ng-collector.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "syslog-ng-chart.selectorLabels" . | nindent 6 }}
+      {{- include "syslog-ng-collector.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,13 +18,13 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "syslog-ng-chart.selectorLabels" . | nindent 8 }}
+        {{- include "syslog-ng-collector.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "syslog-ng-chart.serviceAccountName" . }}
+      serviceAccountName: {{ include "syslog-ng-collector.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -48,7 +48,7 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "syslog-ng-chart.fullname" . }}
+            name: {{ include "syslog-ng-collector.fullname" . }}
         - name: var-log-containers
           hostPath:
             path: /var/log/containers

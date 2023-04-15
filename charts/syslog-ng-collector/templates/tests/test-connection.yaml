@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "syslog-ng-collector.fullname" . }}-test-connection"
+  labels:
+    {{- include "syslog-ng-collector.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers: {}
+    # ctl healtcheck
+    # - name: wget
+    #   image: busybox
+    #   command: ['wget']
+    #   args: ['{{ include "syslog-ng-collector.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never
