@@ -9,6 +9,21 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+daemonset:
+  enabled: true
+  labels: {}
+  annotations: {}
+  affinity: {}
+  nodeSelector: {}
+  resources: {}
+  tolerations: []
+  hostAliases: []
+  secretMounts: []
+  extraVolumes: []
+  securityContext: {}
+  maxUnavailable: 1
+  hostNetworking: false
+
 config: |
   @version: 4.1
   @include "scl.conf"
@@ -47,3 +62,10 @@ resources: {}
 nodeSelector: {}
 tolerations: []
 affinity: {}
+updateStrategy: RollingUpdate
+priorityClassName: ""
+dnsConfig: {}
+hostAliases: []
+secretMounts: []
+extraVolumes: []
+terminationGracePeriodSeconds: 30
