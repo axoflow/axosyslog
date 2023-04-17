@@ -4,6 +4,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: {{ template "syslog-ng-collector.fullname" . }}
+  namespace: {{ include "syslog-ng-collector.namespace" . }}
   labels:
     app: "{{ template "syslog-ng-collector.fullname" . }}"
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
