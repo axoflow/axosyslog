@@ -53,8 +53,9 @@ config: |
 serviceAccount:
   create: true
   annotations: {}
-  name: ""
+  extraRules: []
 
+namespace: ""
 podAnnotations: {}
 podSecurityContext: {}
 securityContext: {}
