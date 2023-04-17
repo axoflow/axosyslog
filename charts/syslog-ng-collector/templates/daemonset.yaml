@@ -1,0 +1,123 @@
+{{- if .Values.daemonset.enabled }}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ template "syslog-ng-collector.fullname" . }}
+  labels:
+    app: "{{ template "syslog-ng-collector.fullname" . }}"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    {{- if .Values.daemonset.labels }}
+    {{- range $key, $value := .Values.daemonset.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+  {{- if .Values.daemonset.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.daemonset.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ template "syslog-ng-collector.fullname" . }}"
+      release: {{ .Release.Name | quote }}
+  updateStrategy:
+    {{- if eq .Values.updateStrategy "RollingUpdate" }}
+    rollingUpdate:
+      maxUnavailable: {{ .Values.daemonset.maxUnavailable }}
+    {{- end }}
+    type: {{ .Values.updateStrategy }}
+  template:
+    metadata:
+      {{- if .Values.podAnnotation }}
+      annotations:
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      {{- end }}
+      name: "{{ template "syslog-ng-collector.fullname" . }}"
+      labels:
+        app: "{{ template "syslog-ng-collector.fullname" . }}"
+        chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+        heritage: {{ .Release.Service | quote }}
+        release: {{ .Release.Name | quote }}
+        {{- if .Values.daemonset.labels }}
+        {{- range $key, $value := .Values.daemonset.labels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+        {{- end }}
+    spec:
+      tolerations: {{ toYaml ( .Values.tolerations | default .Values.daemonset.tolerations ) | nindent 8 }}
+      nodeSelector: {{ toYaml ( .Values.nodeSelector | default .Values.daemonset.nodeSelector ) | nindent 8 }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      affinity: {{ toYaml ( .Values.affinity | default .Values.daemonset.affinity ) | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.daemonset.hostNetworking }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
+      {{- end }}
+      {{- if .Values.hostAliases | default .Values.daemonset.hostAliases }}
+      hostAliases: {{ toYaml ( .Values.hostAliases | default .Values.daemonset.hostAliases ) | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- range .Values.secretMounts | default .Values.daemonset.secretMounts }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ .secretName }}
+        {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "syslog-ng-collector.fullname" . }}
+        - name: var-log
+          hostPath:
+            path: /var/log
+        - name: var-lib-docker-containers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: var-run-docker-sock
+          hostPath:
+            path: /var/run/docker.sock
+      {{- if .Values.extraVolumes | default .Values.daemonset.extraVolumes }}
+{{ toYaml ( .Values.extraVolumes | default .Values.daemonset.extraVolumes ) | indent 8 }}
+      {{- end }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+      {{- end }}
+      containers:
+        - name: "syslog-ng-collector"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          resources:
+{{ toYaml ( .Values.resources | default .Values.daemonset.resources ) | indent 12 }}
+          securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.daemonset.securityContext ) | nindent 12 }}
+          volumeMounts:
+            {{- range .Values.secretMounts | default .Values.daemonset.secretMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .path }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+            {{- end }}
+            - name: config
+              mountPath: /etc/syslog-ng/syslog-ng.conf
+              subPath: syslog-ng.conf
+            - name: var-log
+              mountPath: /var/log
+            - name: var-lib-docker-containers
+              mountPath: /var/lib/docker/containers
+            - name: var-run-docker-sock
+              mountPath: /var/run/docker.sock
+          {{- if .Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts }}
+{{ toYaml (.Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts ) | indent 12 }}
+          {{- end }}
+{{- end }}
