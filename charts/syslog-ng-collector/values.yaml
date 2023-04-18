@@ -35,6 +35,18 @@ config:
 #     - transport: tcp
 #       address: localhost
 #       port: 12345
+    opensearch: []
+#   E.g.:
+#     - address: 10.104.232.94
+#       index: "test-axoflow-index"
+#       user: "admin"
+#       password: "admin"
+#       tls:
+#         CAFile: "/path/to/CAFile.pem"
+#         CADir: "/path/to/CADir/"
+#         Cert: "/path/to/Cert.pem"
+#         Key: "/path/to/Key.pem"
+#         peerVerify: false
 
 serviceAccount:
   create: true
