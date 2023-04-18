@@ -1,5 +1,3 @@
-replicaCount: 1
-
 image:
   repository: ghcr.io/axoflow/syslog-ng
   pullPolicy: IfNotPresent
@@ -50,16 +48,32 @@ config: |
 # TODO: kubernetes src should have a toggle
 # TODO: syslog-ng-ctl healthcheck should be called somewhere
 
+rbac:
+  create: true
+  extraRules: []
+
+openShift:
+  enabled: false
+  securityContextConstraints:
+    create: true
+    annotations: {}
+
 serviceAccount:
   create: true
   annotations: {}
-  extraRules: []
 
 namespace: ""
 podAnnotations: {}
 podSecurityContext: {}
+#   fsGroup: 2000
 securityContext: {}
 resources: {}
+#   limits:
+#     cpu: 100m
+#     memory: 128Mi
+#   requests:
+#     cpu: 100m
+#     memory: 128Mi
 nodeSelector: {}
 tolerations: []
 affinity: {}
@@ -69,4 +83,6 @@ dnsConfig: {}
 hostAliases: []
 secretMounts: []
 extraVolumes: []
+## How long (in seconds) a pod may take to exit (useful with lifecycle hooks to ensure lb deregistration is done)
+##
 terminationGracePeriodSeconds: 30
