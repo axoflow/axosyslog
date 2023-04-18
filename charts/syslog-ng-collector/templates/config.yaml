@@ -23,7 +23,16 @@ data:
       source { kubernetes(); };
 {{- end }}
 {{- range .Values.config.destinations.network }}
-      destination { network({{ .address | quote }} port({{ .port }}) transport({{ .transport }})); };
+      destination {
+        network(
+          {{ .address | quote }}
+          port({{ .port }})
+          transport({{ .transport }})
+  {{- if .template }}
+          template({{ .template | quote }})
+  {{- end }}
+        );
+      };
 {{- end }}
 {{- range .Values.config.destinations.opensearch }}
       destination {
@@ -31,6 +40,9 @@ data:
           url("https://{{ .address }}:9200/_bulk")
           index({{ .index | quote }})
           type("")
+  {{- if .template }}
+          template({{ .template | quote }})
+  {{- end }}
   {{- if .user }}
           user({{ .user | quote }})
   {{- end }}

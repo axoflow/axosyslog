@@ -35,6 +35,7 @@ config:
 #     - transport: tcp
 #       address: localhost
 #       port: 12345
+#       template: "$(format-json .*)"
     opensearch: []
 #   E.g.:
 #     - address: 10.104.232.94
@@ -47,6 +48,7 @@ config:
 #         Cert: "/path/to/Cert.pem"
 #         Key: "/path/to/Key.pem"
 #         peerVerify: false
+#         template: "$(format-json .*)"
 
 serviceAccount:
   create: true
