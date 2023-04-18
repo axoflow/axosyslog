@@ -5,4 +5,25 @@ metadata:
     {{- include "syslog-ng-collector.labels" . | nindent 4 }}
   name: {{ include "syslog-ng-collector.fullname" . }}
 data:
-  syslog-ng.conf: {{  tpl (toYaml .Values.config) . | indent 4 }}
+{{- if .Values.config.raw }}
+  syslog-ng.conf: {{ tpl (toYaml .Values.config.raw) . | indent 4 }}
+{{- else }}
+  syslog-ng.conf: |
+    @version: {{ regexFind "^[0-9]+\\.[0-9]+" .Chart.AppVersion }}
+    @include "scl.conf"
+
+    options {
+      stats(
+        level(1)
+      );
+    };
+
+    log {
+{{- if .Values.config.sources.kubernetes.enabled }}
+      source { kubernetes(); };
+{{- end }}
+{{- range .Values.config.destinations.network }}
+      destination { network({{ .address | quote }} port({{ .port }}) transport({{ .transport }})); };
+{{- end }}
+    };
+{{- end }}
