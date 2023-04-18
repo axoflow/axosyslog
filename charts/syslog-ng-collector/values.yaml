@@ -24,31 +24,17 @@ daemonset:
   maxUnavailable: 1
   hostNetworking: false
 
-config: |
-  @version: 4.1
-  @include "scl.conf"
-
-  options {
-    stats(
-      level(1)
-    );
-  };
-
-  source s_kubernetes {
-    kubernetes();
-  };
-
-  destination d_local { # TODO: where should we send our logs?
-    file("/tmp/out.log");
-  };
-
-  log {
-    source(s_kubernetes);
-    destination(d_local);
-  };
-
-# TODO: kubernetes src should have a toggle
-# TODO: syslog-ng-ctl healthcheck should be called somewhere
+config:
+  raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
+  sources:
+    kubernetes:
+      enabled: true
+  destinations:
+    network: []
+#   E.g.:
+#     - transport: tcp
+#       address: localhost
+#       port: 12345
 
 serviceAccount:
   create: true
