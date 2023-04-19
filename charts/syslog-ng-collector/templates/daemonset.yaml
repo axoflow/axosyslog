@@ -99,7 +99,7 @@ spec:
       {{- end }}
       containers:
         - name: "syslog-ng-collector"
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: "{{ .Values.image.pullPolicy }}"
           resources:
 {{ toYaml ( .Values.resources | default .Values.daemonset.resources ) | indent 12 }}
@@ -124,4 +124,7 @@ spec:
           {{- if .Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts }}
 {{ toYaml (.Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts ) | indent 12 }}
           {{- end }}
+          livenessProbe:
+            exec:
+              command: ["syslog-ng-ctl", "healthcheck", "--timeout", "1"]
 {{- end }}

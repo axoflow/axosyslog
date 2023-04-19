@@ -9,7 +9,7 @@ data:
   syslog-ng.conf: {{ tpl (toYaml .Values.config.raw) . | indent 4 }}
 {{- else }}
   syslog-ng.conf: |
-    @version: {{ regexFind "^[0-9]+\\.[0-9]+" .Chart.AppVersion }}
+    @version: {{ regexFind "^[0-9]+\\.[0-9]+" (.Values.config.version | default .Values.image.tag | default .Chart.AppVersion ) }}
     @include "scl.conf"
 
     options {

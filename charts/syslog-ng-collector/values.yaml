@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: ghcr.io/axoflow/syslog-ng
   pullPolicy: IfNotPresent
-  tag: "4.1.1"
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
@@ -26,6 +26,7 @@ daemonset:
 
 config:
   raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
+  version: ""
   sources:
     kubernetes:
       enabled: true
