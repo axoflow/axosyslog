@@ -1,6 +1,6 @@
 # Helm Charts
 
-Various Helm [charts](https://helm.sh/docs/topics/charts/) for syslog-ng.
+Various [Helm charts](https://helm.sh/docs/topics/charts/) for syslog-ng.
 
 
 ## Usage
@@ -12,15 +12,15 @@ Currently the charts are only available through this git repositoy.
 You can install charts using the following commands:
 
 ```bash
-$ git clone git@github.com:axoflow/syslog-ng-charts.git
-$ cd syslog-ng-charts
-$ helm install --generate-name charts/syslog-ng-collector
+git clone git@github.com:axoflow/syslog-ng-charts.git
+cd syslog-ng-charts
+helm install --generate-name charts/syslog-ng-collector
 ```
 
 > **Tip**: List all installed releases using `helm list`.
 
-To uninstall a chart release:
+To uninstall a chart release, run:
 
 ```bash
-$ helm delete my-release
+helm delete my-release
 ```
