@@ -14,7 +14,7 @@ The following table lists the configurable parameters of the Syslog-ng Collector
 
 | Parameter | Description | Default |
 | --------- | ----------- | ------- |
-|  image.repository  | The container image repository |  ghcr.io/axoflow/syslog-ng  |
+|  image.repository  | The container image repository |  ghcr.io/axoflow/axosyslog  |
 |  image.pullPolicy  | The container image pull policy |  IfNotPresent  |
 |  image.tag  | The container image tag |  4.1.1  |
 |  imagePullSecrets  | The names of secrets containing private registry credentials |  []  |

@@ -1,5 +1,5 @@
 image:
-  repository: ghcr.io/axoflow/syslog-ng
+  repository: ghcr.io/axoflow/axosyslog
   pullPolicy: IfNotPresent
   tag: ""
 
