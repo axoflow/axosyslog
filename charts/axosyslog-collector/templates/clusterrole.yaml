@@ -2,7 +2,7 @@
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ include "syslog-ng-collector.serviceAccountName" . }}
+  name: {{ include "axosyslog-collector.serviceAccountName" . }}
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -16,7 +16,7 @@ rules:
     resources:
       - securitycontextconstraints
     resourceNames:
-      - {{ template "syslog-ng-collector.fullname" . }}
+      - {{ template "axosyslog-collector.fullname" . }}
     verbs:
       - use
   {{- end }}

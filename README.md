@@ -21,7 +21,7 @@ You can install charts using the following commands:
 ```bash
 git clone git@github.com:axoflow/axosyslog-charts.git
 cd axosyslog-charts
-helm install --generate-name charts/syslog-ng-collector
+helm install --generate-name charts/axosyslog-collector
 ```
 
 > **Tip**: List all installed releases using `helm list`.

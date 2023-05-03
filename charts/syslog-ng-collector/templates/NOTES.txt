@@ -1,2 +1,0 @@
-1. Watch the {{ template "syslog-ng-collector.fullname" . }} container start.
-  $ kubectl get pods --namespace={{ .Release.Namespace }} -l app={{ template "syslog-ng-collector.fullname" . }} -w

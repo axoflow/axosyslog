@@ -2,7 +2,7 @@
 apiVersion: security.openshift.io/v1
 kind: SecurityContextConstraints
 metadata:
-  name: {{ template "syslog-ng-collector.fullname" . }}
+  name: {{ template "axosyslog-collector.fullname" . }}
 {{- if .Values.openShift.securityContextConstraints.annotations }}
   annotations:
     {{- toYaml .Values.openShift.securityContextConstraints.annotations | nindent 4 }}
