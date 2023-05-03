@@ -12,25 +12,24 @@ This repository contains various [Helm charts](https://helm.sh/docs/topics/chart
 
 ## How to use
 
-[Helm](https://helm.sh) must be installed to use these charts.
-Please refer to the [official documentation](https://helm.sh/docs/intro/install/) to get started.
+[Helm](https://helm.sh) must be installed to use the charts.  Please refer to
+Helm's [documentation](https://helm.sh/docs) to get started.
 
-Currently the charts are only available through this git repositoy.
-You can install charts using the following commands:
+Once Helm has been set up correctly, add the repo as follows:
 
-```bash
-git clone git@github.com:axoflow/axosyslog-charts.git
-cd axosyslog-charts
-helm install --generate-name charts/axosyslog-collector
-```
+    helm repo add axosyslog https://axoflow.github.io/axosyslog-charts
 
-> **Tip**: List all installed releases using `helm list`.
+If you had already added this repo earlier, run `helm repo update` to retrieve
+the latest versions of the packages.  You can then run `helm search repo
+axosyslog` to see the charts.
 
-To uninstall a chart release, run:
+To install the axosyslog-collector chart:
 
-```bash
-helm delete my-release
-```
+    helm install my-axosyslog-collector axosyslog/axosyslog-collector
+
+To uninstall the chart:
+
+    helm delete my-axosyslog-collector
 
 ## Contact and support
 
