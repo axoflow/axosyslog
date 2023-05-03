@@ -1,6 +1,6 @@
-# Syslog-ng Collector
+# AxoSyslog Collector
 
-Syslog-ng kubernetes log collector.
+AxoSyslog Kubernetes log collector.
 
 ## Prerequisites
 
@@ -9,7 +9,7 @@ Syslog-ng kubernetes log collector.
 
 
 ## Configuration
-The following table lists the configurable parameters of the Syslog-ng Collector chart and their default values:
+The following table lists the configurable parameters of the AxoSyslog Collector chart and their default values:
 
 
 | Parameter | Description | Default |
@@ -20,7 +20,7 @@ The following table lists the configurable parameters of the Syslog-ng Collector
 |  imagePullSecrets  | The names of secrets containing private registry credentials |  []  |
 |  nameOverride  | Override the chart name |  ""  |
 |  fullnameOverride  | Override the full chart name |  ""  |
-|  daemonset.enabled  | Deploy Syslog-ng as a DaemonSet |  true  |
+|  daemonset.enabled  | Deploy AxoSyslog as a DaemonSet |  true  |
 |  daemonset.labels  | Additional labels to apply to the DaemonSet |  {}  |
 |  daemonset.annotations  | Additional annotations to apply to the DaemonSet |  {}  |
 |  daemonset.affinity  | Pod affinity |  {}  |
