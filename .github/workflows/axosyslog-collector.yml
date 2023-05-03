@@ -1,13 +1,15 @@
+name: AxoSyslog Collector
+
 on:
   push:
   pull_request:
 
 defaults:
   run:
-    working-directory: charts/syslog-ng-collector
+    working-directory: charts/axosyslog-collector
 
 jobs:
-  syslog-ng-collector:
+  axosyslog-collector:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source

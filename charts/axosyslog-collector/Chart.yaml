@@ -1,0 +1,6 @@
+apiVersion: v2
+name: axosyslog-collector
+description: AxoSyslog kubernetes log collector
+type: application
+version: 0.1.0
+appVersion: "4.1.1"
