@@ -125,6 +125,10 @@ spec:
 {{ toYaml (.Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts ) | indent 12 }}
           {{- end }}
           livenessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
             exec:
-              command: ["syslog-ng-ctl", "healthcheck", "--timeout", "1"]
+              command: ["syslog-ng-ctl", "healthcheck", "--timeout", "5"]
 {{- end }}
