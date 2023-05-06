@@ -2,6 +2,7 @@ image:
   repository: ghcr.io/axoflow/axosyslog
   pullPolicy: IfNotPresent
   tag: "nightly" # until releasing v4.2
+  extraArgs: []
 
 imagePullSecrets: []
 nameOverride: ""

@@ -101,6 +101,10 @@ spec:
         - name: "axosyslog-collector"
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          {{- if .Values.image.extraArgs }}
+          args:
+{{ toYaml .Values.image.extraArgs | indent 12 }}
+          {{- end }}
           resources:
 {{ toYaml ( .Values.resources | default .Values.daemonset.resources ) | indent 12 }}
           securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.daemonset.securityContext ) | nindent 12 }}
