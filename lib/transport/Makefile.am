@@ -10,6 +10,7 @@ transportinclude_HEADERS = \
 	lib/transport/transport-file.h	\
 	lib/transport/transport-pipe.h	\
 	lib/transport/transport-socket.h \
+	lib/transport/transport-haproxy.h \
 	lib/transport/transport-udp-socket.h \
 	lib/transport/transport-stack.h \
 	lib/transport/transport-factory-tls.h \
@@ -25,6 +26,7 @@ transport_sources = \
 	lib/transport/transport-file.c	\
 	lib/transport/transport-pipe.c	\
 	lib/transport/transport-socket.c \
+	lib/transport/transport-haproxy.c \
 	lib/transport/transport-udp-socket.c \
 	lib/transport/transport-stack.c \
 	lib/transport/transport-factory-tls.c \
