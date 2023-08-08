@@ -23,6 +23,15 @@ daemonset:
   maxUnavailable: 1
   hostNetworking: false
 
+metricsExporter:
+  enabled: false  # deploy the axosyslog Deamonset with the axosyslog-metrics-exporter sidecar
+  image:
+    repository: ghcr.io/axoflow/axosyslog-metrics-exporter
+    tag: latest
+    pullPolicy: ~ # use k8s default behavior (Always for :latest, IfNotPresent otherwise)
+  resources: {}
+  securityContext: {}
+
 config:
   raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
   version: ""

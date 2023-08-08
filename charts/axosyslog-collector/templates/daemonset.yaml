@@ -90,6 +90,8 @@ spec:
         - name: var-run-docker-sock
           hostPath:
             path: /var/run/docker.sock
+        - name: var-lib-syslog-ng
+          emptyDir: {}
       {{- if .Values.extraVolumes | default .Values.daemonset.extraVolumes }}
 {{ toYaml ( .Values.extraVolumes | default .Values.daemonset.extraVolumes ) | indent 8 }}
       {{- end }}
@@ -125,6 +127,8 @@ spec:
               mountPath: /var/lib/docker/containers
             - name: var-run-docker-sock
               mountPath: /var/run/docker.sock
+            - name: var-lib-syslog-ng
+              mountPath: /var/lib/syslog-ng
           {{- if .Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts }}
 {{ toYaml (.Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts ) | indent 12 }}
           {{- end }}
@@ -135,4 +139,20 @@ spec:
             failureThreshold: 3
             exec:
               command: ["syslog-ng-ctl", "healthcheck", "--timeout", "5"]
+        {{- if .Values.metricsExporter.enabled }}
+        - name: "metrics-exporter"
+          image: "{{ .Values.metricsExporter.image.repository }}:{{ .Values.metricsExporter.image.tag }}"
+          imagePullPolicy: "{{ .Values.metricsExporter.image.pullPolicy }}"
+          args:
+            - --socket.path=/var/lib/syslog-ng/syslog-ng.ctl
+          volumeMounts:
+            - name: var-lib-syslog-ng
+              mountPath: /var/lib/syslog-ng
+          ports:
+            - containerPort: 9577
+              name: exporter
+              protocol: TCP
+          resources: {{ toYaml ( .Values.metricsExporter.resources ) | nindent 12 }}
+          securityContext: {{ toYaml ( .Values.metricsExporter.securityContext | default .Values.daemonset.securityContext ) | nindent 12 }}
+        {{- end }}
 {{- end }}
