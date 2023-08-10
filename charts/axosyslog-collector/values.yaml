@@ -66,6 +66,10 @@ openShift:
     create: true
     annotations: {}
 
+service:
+  create: false
+  extraPorts: []
+
 serviceAccount:
   create: true
   annotations: {}
