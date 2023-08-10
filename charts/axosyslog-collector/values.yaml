@@ -32,6 +32,11 @@ metricsExporter:
   resources: {}
   securityContext: {}
 
+podMonitor:
+  enabled: false  # deploy the PodMonitor CR for Prometheus Operator (requires metricsExporter.enabled)
+  labels: {}
+  annotations: {}
+
 config:
   raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
   version: ""

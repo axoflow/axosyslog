@@ -1,0 +1,30 @@
+{{- if .Values.podMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ template "axosyslog-collector.fullname" . }}
+  namespace: {{ include "axosyslog-collector.namespace" . }}
+  labels:
+    app: "{{ template "axosyslog-collector.fullname" . }}"
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    {{- with .Values.podMonitor.labels }}
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+  {{- with .Values.podMonitor.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ template "axosyslog-collector.fullname" . }}"
+      release: {{ .Release.Name | quote }}
+  podMetricsEndpoints:
+  - port: exporter
+{{- end }}
