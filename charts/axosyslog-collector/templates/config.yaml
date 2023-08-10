@@ -22,6 +22,15 @@ data:
 {{- if .Values.config.sources.kubernetes.enabled }}
       source { kubernetes(); };
 {{- end }}
+{{- range .Values.config.sources.opentelemetry }}
+      source {
+        opentelemetry(
+  {{- if .port }}
+            port({{ .port }})
+  {{- end }}
+        );
+      };
+{{- end }}
 {{- range .Values.config.destinations.network }}
       destination {
         network(
@@ -70,6 +79,13 @@ data:
     {{- end }}
           )
   {{- end }}
+        );
+      };
+{{- end }}
+{{- range .Values.config.destinations.opentelemetry }}
+      destination {
+        opentelemetry(
+          url({{ tpl .url $ | quote }})
         );
       };
 {{- end }}

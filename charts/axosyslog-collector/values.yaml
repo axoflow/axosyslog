@@ -29,6 +29,9 @@ config:
   sources:
     kubernetes:
       enabled: true
+    opentelemetry: []
+#   E.g.:
+#     - port: 4317
   destinations:
     network: []
 #   E.g.:
@@ -49,6 +52,9 @@ config:
 #         Key: "/path/to/Key.pem"
 #         peerVerify: false
 #         template: "$(format-json .*)"
+    opentelemetry: []
+#   E.g.:
+#     - url: "10.104.232.95:4317"
 
 rbac:
   create: true
