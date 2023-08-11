@@ -48,13 +48,22 @@ config:
     opentelemetry: []
 #   E.g.:
 #     - port: 4317
+  parsers:
+    opentelemetry:
+      enabled: false
   destinations:
+    file: []
+#   E.g.:
+#     - path: "/dev/stdout"
+#       template: "$(format-json .*)"
+#       extraOptionsRaw: "create-dirs(yes)"
     network: []
 #   E.g.:
 #     - transport: tcp
 #       address: localhost
 #       port: 12345
 #       template: "$(format-json .*)"
+#       extraOptionsRaw: "time-reopen(10)"
     opensearch: []
 #   E.g.:
 #     - address: 10.104.232.94
@@ -68,9 +77,11 @@ config:
 #         Key: "/path/to/Key.pem"
 #         peerVerify: false
 #         template: "$(format-json .*)"
+#       extraOptionsRaw: "time-reopen(10)"
     opentelemetry: []
 #   E.g.:
 #     - url: "10.104.232.95:4317"
+#       extraOptionsRaw: "time-reopen(10)"
 
 rbac:
   create: true

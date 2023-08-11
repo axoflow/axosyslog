@@ -31,6 +31,24 @@ data:
         );
       };
 {{- end }}
+{{- if .Values.config.parsers.opentelemetry.enabled }}
+      parser {
+        opentelemetry();
+      };
+{{- end }}
+{{- range .Values.config.destinations.file }}
+      destination {
+        file(
+          {{ .path | quote }}
+  {{- if .template }}
+          template({{ .template | quote }})
+  {{- end }}
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+  {{- end }}
+        );
+      };
+{{- end }}
 {{- range .Values.config.destinations.network }}
       destination {
         network(
@@ -39,6 +57,9 @@ data:
           transport({{ .transport }})
   {{- if .template }}
           template({{ .template | quote }})
+  {{- end }}
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
   {{- end }}
         );
       };
@@ -79,6 +100,9 @@ data:
     {{- end }}
           )
   {{- end }}
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+  {{- end }}
         );
       };
 {{- end }}
@@ -86,6 +110,9 @@ data:
       destination {
         opentelemetry(
           url({{ tpl .url $ | quote }})
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+  {{- end }}
         );
       };
 {{- end }}
