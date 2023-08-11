@@ -48,6 +48,9 @@ config:
     opentelemetry: []
 #   E.g.:
 #     - port: 4317
+  parsers:
+    opentelemetry:
+      enabled: false
   destinations:
     network: []
 #   E.g.:
