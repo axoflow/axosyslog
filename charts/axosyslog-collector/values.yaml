@@ -52,6 +52,10 @@ config:
     opentelemetry:
       enabled: false
   destinations:
+    file: []
+#   E.g.:
+#     - path: "/dev/stdout"
+#       template: "$(format-json .*)"
     network: []
 #   E.g.:
 #     - transport: tcp

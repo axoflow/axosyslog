@@ -36,6 +36,16 @@ data:
         opentelemetry();
       };
 {{- end }}
+{{- range .Values.config.destinations.file }}
+      destination {
+        file(
+          {{ .path | quote }}
+  {{- if .template }}
+          template({{ .template | quote }})
+  {{- end }}
+        );
+      };
+{{- end }}
 {{- range .Values.config.destinations.network }}
       destination {
         network(
