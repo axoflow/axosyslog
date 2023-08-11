@@ -43,6 +43,9 @@ data:
   {{- if .template }}
           template({{ .template | quote }})
   {{- end }}
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+  {{- end }}
         );
       };
 {{- end }}
@@ -54,6 +57,9 @@ data:
           transport({{ .transport }})
   {{- if .template }}
           template({{ .template | quote }})
+  {{- end }}
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
   {{- end }}
         );
       };
@@ -94,6 +100,9 @@ data:
     {{- end }}
           )
   {{- end }}
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+  {{- end }}
         );
       };
 {{- end }}
@@ -101,6 +110,9 @@ data:
       destination {
         opentelemetry(
           url({{ tpl .url $ | quote }})
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+  {{- end }}
         );
       };
 {{- end }}
