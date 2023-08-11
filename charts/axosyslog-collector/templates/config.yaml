@@ -14,7 +14,7 @@ data:
 
     options {
       stats(
-        level(1)
+        level({{ .Values.config.stats.level }})
       );
     };
 
