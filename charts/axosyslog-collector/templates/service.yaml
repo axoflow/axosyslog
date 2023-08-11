@@ -1,0 +1,19 @@
+{{- if .Values.service.create }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ template "axosyslog-collector.fullname" . }}"
+spec:
+  selector:
+    app: "{{ template "axosyslog-collector.fullname" . }}"
+    release: {{ .Release.Name | quote }}
+  ports:
+{{ if .Values.service.extraPorts }}
+{{ toYaml ( .Values.service.extraPorts ) | nindent 4 }}
+{{ end }}
+{{ range .Values.config.sources.opentelemetry }}
+    - protocol: TCP
+      port: {{ .port | default 4317 }}
+{{ end }}
+{{- end }}
