@@ -49,3 +49,7 @@ The following table lists the configurable parameters of the AxoSyslog Collector
 |  tolerations  | Tolerations for pod assignment |  []  |
 |  affinity  | Pod affinity |  {}  |
 |  updateStrategy  | Update strategy for the DaemonSet |  RollingUpdate  |
+|  kubernetes.enabled  | Enable kubernetes log collection  |  true  |
+|  kubernetes.prefix  | Set JSON prefix for logs collected from the k8s cluster  |  ""  |
+|  kubernetes.keyDelimiter  | Set JSON key delimiter for logs collected from the k8s cluster  |  ""  |
+
