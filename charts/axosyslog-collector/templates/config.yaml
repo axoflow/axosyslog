@@ -20,7 +20,14 @@ data:
 
     log {
 {{- if .Values.config.sources.kubernetes.enabled }}
-      source { kubernetes(); };
+      source { kubernetes(
+  {{- if .Values.config.sources.kubernetes.prefix }}
+        prefix({{ .Values.config.sources.kubernetes.prefix | quote }})
+  {{- end }}
+  {{- if .Values.config.sources.kubernetes.keyDelimiter }}
+        key-delimiter({{ .Values.config.sources.kubernetes.keyDelimiter | quote }})
+  {{- end }}
+      ); };
 {{- end }}
 {{- range .Values.config.sources.opentelemetry }}
       source {
