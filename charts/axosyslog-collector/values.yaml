@@ -45,6 +45,9 @@ config:
   sources:
     kubernetes:
       enabled: true
+#     E.g.:
+#     prefix: "k8s~"
+#     keyDelimiter: "~"
     opentelemetry: []
 #   E.g.:
 #     - port: 4317
