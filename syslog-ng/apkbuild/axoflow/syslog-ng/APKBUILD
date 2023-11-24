@@ -5,7 +5,7 @@
 # Contributor: jv <jens@eisfair.org>
 # Maintainer: László Várady <laszlo.varady@axoflow.com>
 pkgname=syslog-ng
-pkgver=4.4.0
+pkgver=4.5.0
 pkgrel=0
 pkgdesc="Next generation logging daemon"
 url="https://www.syslog-ng.com/products/open-source-log-management/"
@@ -57,6 +57,7 @@ builddir="$srcdir/$pkgname-$pkgver"
 _modules="
 	add-contextual-data
 	amqp:afamqp
+	cloud-auth:cloud_auth
 	ebpf
 	examples
 	geoip2:geoip2-plugin
@@ -172,5 +173,5 @@ _submv() {
 }
 
 sha512sums="
-1cf18c43321e523d0f49b25a4839fd10ec301b207da1b2c407df5167dba557ac0a7781b07f1c1e5d18241376966b8099d9e41dffa55030f6a8052388139c4107  syslog-ng-4.4.0.tar.gz
+b3b0968f00961427c8c810dfee9fb17c4e6fd8432f64aecbb648dd1f837f7f7417b2e55c240db8331b1bea4b228a09728f44d0392efd20d0bdcff7ea3ac8043d  syslog-ng-4.5.0.tar.gz
 "
