@@ -43,6 +43,13 @@ data:
         opentelemetry();
       };
 {{- end }}
+{{- with .Values.config.rewrites.set }}
+      rewrite {
+{{- range $k, $v := . }}
+        set({{ $v | quote }} value({{ $k | quote }}));
+{{- end }}
+      };
+{{- end }}
 {{- range .Values.config.destinations.file }}
       destination {
         file(
