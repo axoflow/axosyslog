@@ -1,0 +1,19 @@
+--- a/APKBUILD	2023-12-13 13:55:56.402001521 +0100
++++ b/APKBUILD	2023-12-13 13:55:23.725512362 +0100
+@@ -11,7 +11,7 @@ pkgdesc="Next generation logging daemon"
+ url="https://www.syslog-ng.com/products/open-source-log-management/"
+ arch="all"
+ license="GPL-2.0-or-later"
+-options="!check" # unit tests require https://github.com/Snaipe/Criterion with deps
++options="!check !strip" # unit tests require https://github.com/Snaipe/Criterion with deps
+ makedepends="
+ 	bison
+ 	bpftool
+@@ -84,6 +84,7 @@ done
+ build() {
+ 	CFLAGS="$CFLAGS -flto=auto" \
+ 	./configure \
++		--enable-debug \
+ 		--prefix=/usr \
+ 		--sysconfdir=/etc/syslog-ng \
+ 		--localstatedir=/var/lib/syslog-ng \

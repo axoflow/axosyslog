@@ -1,7 +1,10 @@
+ARG DEBUG=false
+
 FROM alpine:3.18 as apkbuilder
 
 ARG PKG_TYPE=stable
 ARG SNAPSHOT_VERSION
+ARG DEBUG
 
 RUN apk add --update-cache \
       alpine-conf \
@@ -14,6 +17,9 @@ RUN apk add --update-cache \
 USER builder
 WORKDIR /home/builder
 ADD --chown=builder:builder apkbuild .
+
+RUN [ $DEBUG = false ] || patch -d axoflow/syslog-ng -p1 -i APKBUILD-debug.patch
+
 RUN mkdir packages \
     && abuild-keygen -n -a \
     && printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> .abuild/abuild.conf \
@@ -30,6 +36,8 @@ RUN mkdir packages \
 
 
 FROM alpine:3.18
+
+ARG DEBUG
 
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md
 LABEL maintainer="axoflow.io"
@@ -74,6 +82,14 @@ RUN apk add --repository /axoflow -U --upgrade --no-cache \
     syslog-ng-stomp \
     syslog-ng-tags-parser \
     syslog-ng-xml
+
+RUN [ $DEBUG = false ] || apk add -U --upgrade --no-cache \
+    gdb \
+    valgrind \
+    strace \
+    perf \
+    vim \
+    musl-dbg
 
 RUN /var/lib/syslog-ng-venv/bin/pip install -U urllib3==1.26.18
 
