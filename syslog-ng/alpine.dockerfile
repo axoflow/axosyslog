@@ -91,8 +91,6 @@ RUN [ $DEBUG = false ] || apk add -U --upgrade --no-cache \
     vim \
     musl-dbg
 
-RUN /var/lib/syslog-ng-venv/bin/pip install -U urllib3==1.26.18
-
 EXPOSE 514/udp
 EXPOSE 601/tcp
 EXPOSE 6514/tcp
