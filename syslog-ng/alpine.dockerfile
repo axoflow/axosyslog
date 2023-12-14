@@ -48,6 +48,7 @@ COPY --from=apkbuilder /home/builder/.abuild/*.pub /etc/apk/keys/
 RUN apk add --repository /axoflow -U --upgrade --no-cache \
     jemalloc \
     libdbi-drivers \
+    tzdata \
     syslog-ng \
     syslog-ng-add-contextual-data \
     syslog-ng-amqp \
