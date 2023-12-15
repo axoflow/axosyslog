@@ -16,6 +16,7 @@ on:
 env:
   DOCKER_IMAGE_NAME: ghcr.io/axoflow/axosyslog
   PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
+  DEBUG_PLATFORM: linux/amd64
 
 jobs:
   docker:
@@ -58,15 +59,18 @@ jobs:
         run: |
           if [[ '${{ inputs.pkg-type }}' = 'stable' ]]; then
             TAGS='${{ steps.docker-metadata-tags.outputs.tags }}'
+            DEBUG_TAGS='${{ steps.docker-metadata-tags.outputs.tags }}-dbg'
           elif [[ '${{ inputs.pkg-type }}' = 'nightly' ]]; then
             TAGS="${DOCKER_IMAGE_NAME}:nightly,${DOCKER_IMAGE_NAME}:${{ inputs.snapshot-version }}"
+            DEBUG_TAGS="${DOCKER_IMAGE_NAME}:nightly-dbg,${DOCKER_IMAGE_NAME}:${{ inputs.snapshot-version }}-dbg"
           else
             echo Unexpected input: pkg-type=${{ inputs.pkg-type }}
             false
           fi
           echo "TAGS=$TAGS" >> $GITHUB_OUTPUT
+          echo "DEBUG_TAGS=$DEBUG_TAGS" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
+      - name: Build and push production Docker image
         uses: docker/build-push-action@v3
         with:
           context: syslog-ng
@@ -80,3 +84,16 @@ jobs:
           build-args: |
             PKG_TYPE=${{ inputs.pkg-type }}
             SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
+
+      - name: Build and push debug Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: syslog-ng
+          file: syslog-ng/alpine.dockerfile
+          platforms: ${{ env.DEBUG_PLATFORM }}
+          push: true
+          tags: ${{ steps.tags.outputs.DEBUG_TAGS }}
+          build-args: |
+            PKG_TYPE=${{ inputs.pkg-type }}
+            SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
+            DEBUG=true
