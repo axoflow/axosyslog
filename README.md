@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: light)" srcset="https://github.com/axoflow/axosyslog-docker/raw/main/docs/axosyslog.svg">
-    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/axoflow/axosyslog-docker/raw/main/docs/axosyslog-white.svg">
-    <img alt="Axoflow" src="https://github.com/axoflow/axosyslog-docker/raw/main/docs/axosyslog.svg" width="550">
+    <source media="(prefers-color-scheme: light)" srcset="https://github.com/axoflow/axosyslog/raw/main/docs/axosyslog.svg">
+    <source media="(prefers-color-scheme: dark)" srcset="https://github.com/axoflow/axosyslog/raw/main/docs/axosyslog-white.svg">
+    <img alt="Axoflow" src="https://github.com/axoflow/axosyslog/raw/main/docs/axosyslog.svg" width="550">
   </picture>
 </p>
 
@@ -30,9 +30,9 @@ Our images are available for the following architectures:
 
 ### How to use
 
-You can find the list of tagged versions at [https://github.com/axoflow/axosyslog-docker/pkgs/container/axosyslog](https://github.com/axoflow/axosyslog-docker/pkgs/container/axosyslog).
+You can find the list of tagged versions at [https://github.com/axoflow/axosyslog/pkgs/container/axosyslog](https://github.com/axoflow/axosyslog/pkgs/container/axosyslog).
 
-_NOTE: Images found at [https://github.com/axoflow/axosyslog-docker/pkgs/container/syslog-ng](https://github.com/axoflow/axosyslog-docker/pkgs/container/syslog-ng) are deprecated and will be removed in the future._
+_NOTE: Images found at [https://github.com/axoflow/axosyslog/pkgs/container/syslog-ng](https://github.com/axoflow/axosyslog/pkgs/container/syslog-ng) are deprecated and will be removed in the future._
 
 To install the latest stable version, run:
 
@@ -60,7 +60,7 @@ docker pull ghcr.io/axoflow/axosyslog:nightly
 
 ## Helm Charts
 
-This repository contains various [Helm charts](https://helm.sh/docs/topics/charts/) for syslog-ng. You can use these charts to install the [AxoSyslog - cloud-ready syslog-ng images](https://github.com/axoflow/axosyslog-docker) created and maintained by [Axoflow](https://axoflow.com).
+This repository contains various [Helm charts](https://helm.sh/docs/topics/charts/) for syslog-ng. You can use these charts to install the [AxoSyslog - cloud-ready syslog-ng images](https://github.com/axoflow/axosyslog) created and maintained by [Axoflow](https://axoflow.com).
 
 ### How to use
 
@@ -85,12 +85,12 @@ To uninstall the chart:
 
 ## Contact and support
 
-In case you need help or want to contact us, open a [GitHub issue](https://github.com/axoflow/axosyslog-docker/issues), or come chat with us in the [syslog-ng channel of the Axoflow Discord server](https://discord.gg/4Fzy7D66Qq).
+In case you need help or want to contact us, open a [GitHub issue](https://github.com/axoflow/axosyslog/issues), or come chat with us in the [syslog-ng channel of the Axoflow Discord server](https://discord.gg/4Fzy7D66Qq).
 
 ## Contribution
 
 If you have fixed a bug or would like to contribute your improvements to
-AxoSyslog, [open a pull request](https://github.com/axoflow/axosyslog-docker/pulls). We truly appreciate your help.
+AxoSyslog, [open a pull request](https://github.com/axoflow/axosyslog/pulls). We truly appreciate your help.
 
 ## About Axoflow
 
