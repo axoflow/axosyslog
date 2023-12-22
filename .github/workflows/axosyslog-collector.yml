@@ -1,0 +1,20 @@
+name: AxoSyslog Collector
+
+on:
+  push:
+  pull_request:
+
+defaults:
+  run:
+    working-directory: charts/axosyslog-collector
+
+jobs:
+  axosyslog-collector:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
+
+      - name: Linter
+        run: |
+          docker run -v${PWD}:${PWD} alpine/helm lint ${PWD}

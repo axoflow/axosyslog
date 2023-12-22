@@ -1,0 +1,23 @@
+{{- if .Values.rbac.create -}}
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ include "axosyslog-collector.serviceAccountName" . }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "watch", "list"]
+  {{- if .Values.rbac.extraRules }}
+{{ toYaml ( .Values.rbac.extraRules ) | indent 2 }}
+  {{- end }}
+  {{- if and .Values.openShift.enabled .Values.openShift.securityContextConstraints.create }}
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - {{ template "axosyslog-collector.fullname" . }}
+    verbs:
+      - use
+  {{- end }}
+{{- end -}}
