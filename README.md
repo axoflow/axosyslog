@@ -13,23 +13,6 @@ created and maintained by [Axoflow](https://axoflow.com).
 
 ## Container images
 
-Our images are
-different from the [upstream syslog-ng
-images](https://hub.docker.com/r/balabit/syslog-ng/) in a number of ways:
-
-- They are based on Alpine Linux, instead of Debian testing for reliability and smaller size (thus smaller attack surface).
-- They incorporate cloud-native features and settings (such as the Kubernetes source).
-- They incorporate container-level optimizations (like the use of an alternative malloc library) for better performance and improved security.
-- They support the ARM architecture.
-
-Our images are available for the following architectures:
-
-- amd64
-- arm/v7
-- arm64
-
-### How to use
-
 You can find the list of tagged versions at [https://github.com/axoflow/axosyslog/pkgs/container/axosyslog](https://github.com/axoflow/axosyslog/pkgs/container/axosyslog).
 
 _NOTE: Images found at [https://github.com/axoflow/axosyslog/pkgs/container/syslog-ng](https://github.com/axoflow/axosyslog/pkgs/container/syslog-ng) are deprecated and will be removed in the future._
@@ -58,18 +41,31 @@ docker pull ghcr.io/axoflow/axosyslog:nightly
 > docker pull ghcr.io/axoflow/axosyslog:4.5.0
 > ```
 
+### Difference from upstream images
+
+Our images are different from the [upstream syslog-ng images](https://hub.docker.com/r/balabit/syslog-ng/) in a number of ways:
+
+- They are based on Alpine Linux, instead of Debian testing for reliability and smaller size (thus smaller attack surface).
+- They incorporate cloud-native features and settings (such as the Kubernetes source).
+- They incorporate container-level optimizations (like the use of an alternative malloc library) for better performance and improved security.
+- They support the ARM architecture.
+
+Our images are available for the following architectures:
+
+- amd64
+- arm/v7
+- arm64
+
 ## Helm Charts
 
-This repository contains various [Helm charts](https://helm.sh/docs/topics/charts/) for syslog-ng. You can use these charts to install the [AxoSyslog - cloud-ready syslog-ng images](https://github.com/axoflow/axosyslog) created and maintained by [Axoflow](https://axoflow.com).
-
-### How to use
+AxoSyslog provides [Helm charts](https://helm.sh/docs/topics/charts/) to deploy syslog-ng on Kubernetes. 
 
 [Helm](https://helm.sh) must be installed to use the charts.  Please refer to
 Helm's [documentation](https://helm.sh/docs) to get started.
 
 Once Helm has been set up correctly, add the repo as follows:
 
-    helm repo add axosyslog https://axoflow.github.io/axosyslog-charts
+    helm repo add axosyslog https://axoflow.github.io/axosyslog
 
 If you had already added this repo earlier, run `helm repo update` to retrieve
 the latest versions of the packages.  You can then run `helm search repo
@@ -82,6 +78,15 @@ To install the axosyslog-collector chart:
 To uninstall the chart:
 
     helm delete my-axosyslog-collector
+
+## Documentation
+
+You can find [comprehensive documentation for AxoSyslog](https://axoflow.com/docs/axosyslog-core) 
+on the [Axoflow website](https://axoflow.com/).
+
+The documentation is a combination of the syslog-ng reference guide and the
+AxoSyslog reference guide.  The [syslog-ng documentation](https://axoflow.com/docs/axosyslog-core) 
+was included in there as the upstream documentation fell out of maintenance.
 
 ## Contact and support
 
