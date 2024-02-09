@@ -5,7 +5,7 @@
 # Contributor: jv <jens@eisfair.org>
 # Maintainer: László Várady <laszlo.varady@axoflow.com>
 pkgname=syslog-ng
-pkgver=4.5.0
+pkgver=4.6.0
 pkgrel=0
 pkgdesc="Next generation logging daemon"
 url="https://www.syslog-ng.com/products/open-source-log-management/"
@@ -51,7 +51,7 @@ subpackages="
 	$pkgname-python3:_python3
 	$pkgname-grpc:_grpc
 	"
-source="https://github.com/balabit/syslog-ng/releases/download/syslog-ng-$pkgver/syslog-ng-$pkgver.tar.gz"
+source="https://github.com/syslog-ng/syslog-ng/releases/download/syslog-ng-$pkgver/syslog-ng-$pkgver.tar.gz"
 builddir="$srcdir/$pkgname-$pkgver"
 
 _modules="
@@ -173,5 +173,5 @@ _submv() {
 }
 
 sha512sums="
-b3b0968f00961427c8c810dfee9fb17c4e6fd8432f64aecbb648dd1f837f7f7417b2e55c240db8331b1bea4b228a09728f44d0392efd20d0bdcff7ea3ac8043d  syslog-ng-4.5.0.tar.gz
+7c4fbf1ac5377240afa7a1db8d72772399d2c62657fffc3c59e82b2dea6f12031f02320c4f567f981311bd1d8bbfd98962aeb59720ca857867a51b6bf83afb4b  syslog-ng-4.6.0.tar.gz
 "
