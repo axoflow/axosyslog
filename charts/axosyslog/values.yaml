@@ -8,7 +8,8 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-daemonset:
+# collector daemonset to tail /var/log/pods
+collector:
   enabled: true
   labels: {}
   annotations: {}
