@@ -5,31 +5,31 @@ metadata:
     {{- include "axosyslog.labels" . | nindent 4 }}
   name: {{ include "axosyslog.fullname" . }}
 data:
-{{- if .Values.config.raw }}
-  syslog-ng.conf: {{ tpl (toYaml .Values.config.raw) . | indent 4 }}
+{{- if .Values.collector.config.raw }}
+  syslog-ng.conf: {{ tpl (toYaml .Values.collector.config.raw) . | indent 4 }}
 {{- else }}
   syslog-ng.conf: |
-    @version: {{ regexFind "^[0-9]+\\.[0-9]+" .Values.config.version | default "current" }}
+    @version: {{ regexFind "^[0-9]+\\.[0-9]+" .Values.collector.config.version | default "current" }}
     @include "scl.conf"
 
     options {
       stats(
-        level({{ .Values.config.stats.level }})
+        level({{ .Values.collector.config.stats.level }})
       );
     };
 
     log {
-{{- if .Values.config.sources.kubernetes.enabled }}
+{{- if .Values.collector.config.sources.kubernetes.enabled }}
       source { kubernetes(
-  {{- if .Values.config.sources.kubernetes.prefix }}
-        prefix({{ .Values.config.sources.kubernetes.prefix | quote }})
+  {{- if .Values.collector.config.sources.kubernetes.prefix }}
+        prefix({{ .Values.collector.config.sources.kubernetes.prefix | quote }})
   {{- end }}
-  {{- if .Values.config.sources.kubernetes.keyDelimiter }}
-        key-delimiter({{ .Values.config.sources.kubernetes.keyDelimiter | quote }})
+  {{- if .Values.collector.config.sources.kubernetes.keyDelimiter }}
+        key-delimiter({{ .Values.collector.config.sources.kubernetes.keyDelimiter | quote }})
   {{- end }}
       ); };
 {{- end }}
-{{- range .Values.config.sources.opentelemetry }}
+{{- range .Values.collector.config.sources.opentelemetry }}
       source {
         opentelemetry(
   {{- if .port }}
@@ -38,19 +38,19 @@ data:
         );
       };
 {{- end }}
-{{- if .Values.config.parsers.opentelemetry.enabled }}
+{{- if .Values.collector.config.parsers.opentelemetry.enabled }}
       parser {
         opentelemetry();
       };
 {{- end }}
-{{- with .Values.config.rewrites.set }}
+{{- with .Values.collector.config.rewrites.set }}
       rewrite {
 {{- range $k, $v := . }}
         set({{ $v | quote }} value({{ $k | quote }}));
 {{- end }}
       };
 {{- end }}
-{{- range .Values.config.destinations.file }}
+{{- range .Values.collector.config.destinations.file }}
       destination {
         file(
           {{ .path | quote }}
@@ -63,7 +63,7 @@ data:
         );
       };
 {{- end }}
-{{- range .Values.config.destinations.network }}
+{{- range .Values.collector.config.destinations.network }}
       destination {
         network(
           {{ .address | quote }}
@@ -78,7 +78,7 @@ data:
         );
       };
 {{- end }}
-{{- range .Values.config.destinations.opensearch }}
+{{- range .Values.collector.config.destinations.opensearch }}
       destination {
         elasticsearch-http(
           url("https://{{ .address }}:9200/_bulk")
@@ -120,7 +120,7 @@ data:
         );
       };
 {{- end }}
-{{- range .Values.config.destinations.opentelemetry }}
+{{- range .Values.collector.config.destinations.opentelemetry }}
       destination {
         opentelemetry(
           url({{ tpl .url $ | quote }})
