@@ -3,10 +3,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: "{{ template "axosyslog-collector.fullname" . }}"
+  name: "{{ template "axosyslog.fullname" . }}"
 spec:
   selector:
-    app: "{{ template "axosyslog-collector.fullname" . }}"
+    app: "{{ template "axosyslog.fullname" . }}"
     release: {{ .Release.Name | quote }}
   ports:
 {{ if .Values.service.extraPorts }}

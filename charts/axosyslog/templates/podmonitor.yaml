@@ -2,10 +2,10 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: {{ template "axosyslog-collector.fullname" . }}
-  namespace: {{ include "axosyslog-collector.namespace" . }}
+  name: {{ template "axosyslog.fullname" . }}
+  namespace: {{ include "axosyslog.namespace" . }}
   labels:
-    app: "{{ template "axosyslog-collector.fullname" . }}"
+    app: "{{ template "axosyslog.fullname" . }}"
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     heritage: {{ .Release.Service | quote }}
     release: {{ .Release.Name | quote }}
@@ -23,7 +23,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: "{{ template "axosyslog-collector.fullname" . }}"
+      app: "{{ template "axosyslog.fullname" . }}"
       release: {{ .Release.Name | quote }}
   podMetricsEndpoints:
   - port: exporter

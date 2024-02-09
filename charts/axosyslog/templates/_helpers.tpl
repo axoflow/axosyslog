@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "axosyslog-collector.name" -}}
+{{- define "axosyslog.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "axosyslog-collector.fullname" -}}
+{{- define "axosyslog.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "axosyslog-collector.chart" -}}
+{{- define "axosyslog.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "axosyslog-collector.labels" -}}
-helm.sh/chart: {{ include "axosyslog-collector.chart" . }}
-{{ include "axosyslog-collector.selectorLabels" . }}
+{{- define "axosyslog.labels" -}}
+helm.sh/chart: {{ include "axosyslog.chart" . }}
+{{ include "axosyslog.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,22 +45,22 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "axosyslog-collector.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "axosyslog-collector.name" . }}
+{{- define "axosyslog.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "axosyslog.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "axosyslog-collector.serviceAccountName" -}}
+{{- define "axosyslog.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "axosyslog-collector.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "axosyslog.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
 
-{{- define "axosyslog-collector.namespace" -}}
+{{- define "axosyslog.namespace" -}}
 {{ .Values.namespace | default .Release.Namespace }}
 {{- end -}}

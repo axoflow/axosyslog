@@ -3,10 +3,10 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ template "axosyslog-collector.fullname" . }}
-  namespace: {{ include "axosyslog-collector.namespace" . }}
+  name: {{ template "axosyslog.fullname" . }}
+  namespace: {{ include "axosyslog.namespace" . }}
   labels:
-    app: "{{ template "axosyslog-collector.fullname" . }}"
+    app: "{{ template "axosyslog.fullname" . }}"
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     heritage: {{ .Release.Service | quote }}
     release: {{ .Release.Name | quote }}
@@ -24,7 +24,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: "{{ template "axosyslog-collector.fullname" . }}"
+      app: "{{ template "axosyslog.fullname" . }}"
       release: {{ .Release.Name | quote }}
   updateStrategy:
     {{- if eq .Values.updateStrategy "RollingUpdate" }}
@@ -40,9 +40,9 @@ spec:
         {{ $key }}: {{ $value | quote }}
         {{- end }}
       {{- end }}
-      name: "{{ template "axosyslog-collector.fullname" . }}"
+      name: "{{ template "axosyslog.fullname" . }}"
       labels:
-        app: "{{ template "axosyslog-collector.fullname" . }}"
+        app: "{{ template "axosyslog.fullname" . }}"
         chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
         heritage: {{ .Release.Service | quote }}
         release: {{ .Release.Name | quote }}
@@ -53,7 +53,7 @@ spec:
         {{- end }}
     spec:
       {{- if .Values.serviceAccount.create }}
-      serviceAccountName: {{ template "axosyslog-collector.serviceAccountName" . }}
+      serviceAccountName: {{ template "axosyslog.serviceAccountName" . }}
       {{- end}}
       tolerations: {{ toYaml ( .Values.tolerations | default .Values.daemonset.tolerations ) | nindent 8 }}
       nodeSelector: {{ toYaml ( .Values.nodeSelector | default .Values.daemonset.nodeSelector ) | nindent 8 }}
@@ -80,7 +80,7 @@ spec:
         {{- end }}
         - name: config
           configMap:
-            name: {{ include "axosyslog-collector.fullname" . }}
+            name: {{ include "axosyslog.fullname" . }}
         - name: var-log
           hostPath:
             path: /var/log
@@ -100,7 +100,7 @@ spec:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{- end }}
       containers:
-        - name: "axosyslog-collector"
+        - name: "axosyslog"
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: "{{ .Values.image.pullPolicy }}"
           {{- if .Values.image.extraArgs }}

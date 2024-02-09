@@ -2,8 +2,8 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
-    {{- include "axosyslog-collector.labels" . | nindent 4 }}
-  name: {{ include "axosyslog-collector.fullname" . }}
+    {{- include "axosyslog.labels" . | nindent 4 }}
+  name: {{ include "axosyslog.fullname" . }}
 data:
 {{- if .Values.config.raw }}
   syslog-ng.conf: {{ tpl (toYaml .Values.config.raw) . | indent 4 }}
