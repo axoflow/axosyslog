@@ -1,19 +1,46 @@
 {{- if .Values.service.create }}
----
 apiVersion: v1
 kind: Service
 metadata:
-  name: "{{ template "axosyslog.fullname" . }}"
+  name: {{ template "axosyslog.fullname" . }}-syslog
 spec:
   selector:
-    app: "{{ template "axosyslog.fullname" . }}"
-    release: {{ .Release.Name | quote }}
+    app: {{ template "axosyslog.fullname" . }}-syslog
+  type: NodePort
   ports:
 {{ if .Values.service.extraPorts }}
 {{ toYaml ( .Values.service.extraPorts ) | nindent 4 }}
 {{ end }}
-{{ range .Values.config.sources.opentelemetry }}
-    - protocol: TCP
-      port: {{ .port | default 4317 }}
-{{ end }}
+
+{{- with .Values.syslog.config.sources }}
+{{- if .syslog.enabled }}
+    - name: rfc3164-udp
+      protocol: UDP
+      nodePort: {{ .syslog.rfc3164UdpPort | default 30514 }}
+      port: 514
+      targetPort: rfc3164-udp
+    - name: rfc3164-tcp
+      protocol: TCP
+      nodePort: {{ .syslog.rfc3164TcpPort | default 30514 }}
+      port: 514
+      targetPort: rfc3164-tcp
+    - name: rfc5424-tls
+      protocol: TCP
+      nodePort: {{ .syslog.rfc5424TlsPort | default 30614 }}
+      port: 6514
+      targetPort: rfc5424-tls
+    - name: rfc5424-tcp
+      protocol: TCP
+      nodePort: {{ .syslog.rfc5424TcpPort | default 30601 }}
+      port: 601
+      targetPort: rfc5424-tcp
+{{- end }}
+{{- if .syslogNgOtlp.enabled }}
+    - name: otlp
+      protocol: TCP
+      nodePort: {{ .syslogNgOtlp.port | default 30317 }}
+      port: 4317
+      targetPort: otlp
+{{- end }}
+{{- end }}
 {{- end }}
