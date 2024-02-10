@@ -130,5 +130,15 @@ data:
         );
       };
 {{- end }}
+{{- range .Values.collector.config.destinations.syslogNgOtlp }}
+      destination {
+        syslog-ng-otlp (
+          url({{ tpl .url $ | quote }})
+  {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+  {{- end }}
+        );
+      };
+{{- end }}
     };
 {{- end }}
