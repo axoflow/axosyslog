@@ -103,10 +103,12 @@ spec:
         - name: "axosyslog"
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: "{{ .Values.image.pullPolicy }}"
-          {{- if .Values.image.extraArgs }}
           args:
-{{ toYaml .Values.image.extraArgs | indent 12 }}
-          {{- end }}
+            - "--persist-file"
+            - "/var/log/syslog-ng.persist"
+            {{- range .Values.image.extraArgs }}
+            - {{ . }}
+            {{- end }}
           resources:
 {{ toYaml ( .Values.resources | default .Values.collector.resources ) | indent 12 }}
           securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.collector.securityContext ) | nindent 12 }}
