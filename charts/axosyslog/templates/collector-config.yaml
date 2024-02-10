@@ -18,31 +18,24 @@ data:
       );
     };
 
+{{- with .Values.collector.config.sources.kubernetes }}
+{{- if .enabled }}
+    source s_pod_logfiles {
+      kubernetes(
+  {{- if .prefix }}
+        prefix({{ .prefix | quote }})
+  {{- end }}
+  {{- if .keyDelimiter }}
+        key-delimiter({{ .keyDelimiter | quote }})
+  {{- end }}
+      ); 
+    };
+{{- end }}
+{{- end }}
+
+
     log {
-{{- if .Values.collector.config.sources.kubernetes.enabled }}
-      source { kubernetes(
-  {{- if .Values.collector.config.sources.kubernetes.prefix }}
-        prefix({{ .Values.collector.config.sources.kubernetes.prefix | quote }})
-  {{- end }}
-  {{- if .Values.collector.config.sources.kubernetes.keyDelimiter }}
-        key-delimiter({{ .Values.collector.config.sources.kubernetes.keyDelimiter | quote }})
-  {{- end }}
-      ); };
-{{- end }}
-{{- range .Values.collector.config.sources.opentelemetry }}
-      source {
-        opentelemetry(
-  {{- if .port }}
-            port({{ .port }})
-  {{- end }}
-        );
-      };
-{{- end }}
-{{- if .Values.collector.config.parsers.opentelemetry.enabled }}
-      parser {
-        opentelemetry();
-      };
-{{- end }}
+      source(s_pod_logfiles);
 {{- with .Values.collector.config.rewrites.set }}
       rewrite {
 {{- range $k, $v := . }}
@@ -50,95 +43,78 @@ data:
 {{- end }}
       };
 {{- end }}
-{{- range .Values.collector.config.destinations.file }}
-      destination {
-        file(
-          {{ .path | quote }}
-  {{- if .template }}
-          template({{ .template | quote }})
-  {{- end }}
-  {{- if .extraOptionsRaw }}
-          {{ .extraOptionsRaw }}
-  {{- end }}
-        );
-      };
-{{- end }}
-{{- range .Values.collector.config.destinations.network }}
+{{- with .Values.collector.config.destinations.syslog }}
+  {{- if .enabled }}
       destination {
         network(
           {{ .address | quote }}
           port({{ .port }})
           transport({{ .transport }})
-  {{- if .template }}
+    {{- if .template }}
           template({{ .template | quote }})
-  {{- end }}
-  {{- if .extraOptionsRaw }}
+    {{- end }}
+    {{- if .extraOptionsRaw }}
           {{ .extraOptionsRaw }}
-  {{- end }}
+    {{- end }}
         );
       };
+  {{- end }}
 {{- end }}
-{{- range .Values.collector.config.destinations.opensearch }}
+{{- with .Values.collector.config.destinations.opensearch }}
+  {{- if .enabled }}
       destination {
         elasticsearch-http(
           url("https://{{ .address }}:9200/_bulk")
           index({{ .index | quote }})
           type("")
-  {{- if .template }}
+    {{- if .template }}
           template({{ .template | quote }})
-  {{- end }}
-  {{- if .user }}
+    {{- end }}
+    {{- if .user }}
           user({{ .user | quote }})
-  {{- end }}
-  {{- if .password }}
+    {{- end }}
+    {{- if .password }}
           password({{ .password | quote }})
-  {{- end }}
-  {{- if .tls }}
+    {{- end }}
+    {{- if .tls }}
           tls(
-    {{- if .tls.CAFile }}
+      {{- if .tls.CAFile }}
             ca-file({{ .tls.CAFile }})
-    {{- end }}
-    {{- if .tls.CADir }}
+      {{- end }}
+      {{- if .tls.CADir }}
             ca-dir({{ .tls.CADir }})
-    {{- end }}
-    {{- if .tls.Cert }}
+      {{- end }}
+      {{- if .tls.Cert }}
             cert-file({{ .tls.Cert }})
-    {{- end }}
-    {{- if .tls.Key }}
+      {{- end }}
+      {{- if .tls.Key }}
             key-file({{ .tls.Key }})
-    {{- end }}
-    {{- if .tls.peerVerify }}
+      {{- end }}
+      {{- if .tls.peerVerify }}
             peer-verify(yes)
-    {{- else }}
+      {{- else }}
             peer-verify(no)
-    {{- end }}
+      {{- end }}
           )
-  {{- end }}
-  {{- if .extraOptionsRaw }}
+    {{- end }}
+    {{- if .extraOptionsRaw }}
           {{ .extraOptionsRaw }}
-  {{- end }}
+    {{- end }}
         );
       };
+    {{- end }}
 {{- end }}
-{{- range .Values.collector.config.destinations.opentelemetry }}
-      destination {
-        opentelemetry(
-          url({{ tpl .url $ | quote }})
-  {{- if .extraOptionsRaw }}
-          {{ .extraOptionsRaw }}
-  {{- end }}
-        );
-      };
-{{- end }}
-{{- range .Values.collector.config.destinations.syslogNgOtlp }}
+{{- with .Values.collector.config.destinations.syslogNgOtlp }}
+  {{- if .enabled }}
       destination {
         syslog-ng-otlp (
           url({{ tpl .url $ | quote }})
-  {{- if .extraOptionsRaw }}
+    {{- if .extraOptionsRaw }}
           {{ .extraOptionsRaw }}
-  {{- end }}
+    {{- end }}
         );
       };
+  {{- end }}
 {{- end }}
       flags(flow-control);
     };

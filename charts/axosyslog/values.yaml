@@ -20,45 +20,36 @@ collector:
         enabled: true
         #prefix: "k8s~"
         #keyDelimiter: "~"
-      opentelemetry: []
-        #- port: 4317
-    parsers:
-      opentelemetry:
-        enabled: false
     rewrites:
       set: {}
       #  foo: "${foovalue}"
       #  bar: "${barvalue}"
     destinations:
-      file: []
-      #- path: "/dev/stdout"
-      #  template: "$(format-json .*)"
-      #  extraOptionsRaw: "create-dirs(yes)"
-      network: []
-      #- transport: tcp
-      #  address: localhost
-      #  port: 12345
-      #  template: "$(format-json .*)"
-      #  extraOptionsRaw: "time-reopen(10)"
-      opensearch: []
-      #- address: 10.104.232.94
-      #  index: "test-axoflow-index"
-      #  user: "admin"
-      #  password: "admin"
-      #  tls:
-      #    CAFile: "/path/to/CAFile.pem"
-      #    CADir: "/path/to/CADir/"
-      #    Cert: "/path/to/Cert.pem"
-      #    Key: "/path/to/Key.pem"
-      #    peerVerify: false
-      #  template: "$(format-json .*)"
-      #  extraOptionsRaw: "time-reopen(10)"
-      opentelemetry: []
-      #- url: "192.168.77.133:4317"
-      #  extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
-      syslogNgOtlp: []
-      #- url: "192.168.77.133:4317"
-      #  extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
+      syslog:
+        enabled: false
+        transport: tcp
+        address: localhost
+        port: 12345
+        template: "$(format-json .*)"
+        extraOptionsRaw: "time-reopen(10)"
+      opensearch:
+        enabled: false
+        address: 10.104.232.94
+        index: "test-axoflow-index"
+        user: "admin"
+        password: "admin"
+        tls:
+          CAFile: "/path/to/CAFile.pem"
+          CADir: "/path/to/CADir/"
+          Cert: "/path/to/Cert.pem"
+          Key: "/path/to/Key.pem"
+          peerVerify: false
+        template: "$(format-json .*)"
+        extraOptionsRaw: "time-reopen(10)"
+      syslogNgOtlp:
+        enabled: false
+        url: "192.168.77.133:4317"
+        extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
   labels: {}
   annotations: {}
   affinity: {}
