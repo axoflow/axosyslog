@@ -54,6 +54,9 @@ collector:
       #    peerVerify: false
       #  template: "$(format-json .*)"
       #  extraOptionsRaw: "time-reopen(10)"
+      opentelemetry: []
+      #- url: "192.168.77.133:4317"
+      #  extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
       syslogNgOtlp: []
       #- url: "192.168.77.133:4317"
       #  extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
