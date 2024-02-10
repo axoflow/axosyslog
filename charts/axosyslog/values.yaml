@@ -13,7 +13,6 @@ collector:
   enabled: true
   config:
     raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
-    version: ""
     stats:
       level: 2
     sources:
