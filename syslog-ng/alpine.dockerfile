@@ -50,10 +50,10 @@ LABEL org.opencontainers.image.source="https://github.com/axoflow/axosyslog"
 LABEL org.opencontainers.image.documentation="https://axoflow.com/docs/axosyslog/docs/"
 LABEL org.opencontainers.image.url="https://axoflow.io/"
 
-COPY --from=apkbuilder /home/builder/packages/ /
+COPY --from=apkbuilder /home/builder/packages/ /tmp/
 COPY --from=apkbuilder /home/builder/.abuild/*.pub /etc/apk/keys/
 
-RUN apk add --repository /axoflow -U --upgrade --no-cache \
+RUN apk add --repository /tmp/axoflow -U --upgrade --no-cache \
     jemalloc \
     libdbi-drivers \
     tzdata \
@@ -81,7 +81,8 @@ RUN apk add --repository /axoflow -U --upgrade --no-cache \
     syslog-ng-stardate \
     syslog-ng-stomp \
     syslog-ng-tags-parser \
-    syslog-ng-xml
+    syslog-ng-xml && \
+    rm -rf /tmp/axoflow
 
 RUN [ $DEBUG = false ] || apk add -U --upgrade --no-cache \
     gdb \
