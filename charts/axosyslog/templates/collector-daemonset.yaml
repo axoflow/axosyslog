@@ -3,10 +3,10 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ template "axosyslog.fullname" . }}
+  name: {{ template "axosyslog.fullname" . }}-collector
   namespace: {{ include "axosyslog.namespace" . }}
   labels:
-    app: "{{ template "axosyslog.fullname" . }}"
+    app: {{ template "axosyslog.fullname" . }}-collector
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     heritage: {{ .Release.Service | quote }}
     release: {{ .Release.Name | quote }}
@@ -80,7 +80,7 @@ spec:
         {{- end }}
         - name: config
           configMap:
-            name: {{ include "axosyslog.fullname" . }}
+            name: {{ include "axosyslog.fullname" . }}-collector
         - name: var-log
           hostPath:
             path: /var/log
