@@ -140,5 +140,6 @@ data:
         );
       };
 {{- end }}
+      flags(flow-control);
     };
 {{- end }}
