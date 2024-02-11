@@ -64,7 +64,7 @@ data:
   {{- if .enabled }}
       destination {
         elasticsearch-http(
-          url("https://{{ .address }}:9200/_bulk")
+          url("{{ .url }}/_bulk")
           index({{ .index | quote }})
           type("")
     {{- if .template }}

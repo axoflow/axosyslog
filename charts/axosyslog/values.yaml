@@ -34,7 +34,7 @@ collector:
         extraOptionsRaw: "time-reopen(10)"
       opensearch:
         enabled: false
-        address: 10.104.232.94
+        url: http://my-release-opensearch.default.svc.cluster.local:9200
         index: "test-axoflow-index"
         user: "admin"
         password: "admin"
