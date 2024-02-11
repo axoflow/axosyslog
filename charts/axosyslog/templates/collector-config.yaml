@@ -16,6 +16,8 @@ data:
       stats(
         level({{ .Values.collector.config.stats.level }})
       );
+      ts-format(iso);
+      frac-digits(6);
     };
 
 {{- with .Values.collector.config.sources.kubernetes }}
