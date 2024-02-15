@@ -1,0 +1,119 @@
+{{- if .Values.syslog.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "axosyslog.fullname" . }}-syslog
+  namespace: {{ include "axosyslog.namespace" . }}
+  labels:
+    app: {{ template "axosyslog.fullname" . }}-syslog
+    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    {{- if .Values.syslog.labels }}
+    {{- range $key, $value := .Values.syslog.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+  {{- if .Values.syslog.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.syslog.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+
+
+spec:
+  replicas: 1
+  serviceName: {{ template "axosyslog.fullname" . }}-syslog
+  selector:
+    matchLabels:
+      {{- include "axosyslog.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ tpl (toYaml .Values.syslog.config) . | sha256sum }}
+    {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        app: {{ template "axosyslog.fullname" . }}-syslog
+        {{- include "axosyslog.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+          - containerPort: 1514
+            name: rfc3164-tcp
+          - containerPort: 1514
+            protocol: UDP
+            name: rfc3164-udp
+          - containerPort: 6514
+            name: rfc5424-tls
+          - containerPort: 1601
+            name: rfc5424-tcp
+          - containerPort: 4317
+            name: otlp
+          volumeMounts:
+          - mountPath: /etc/syslog-ng/syslog-ng.conf
+            name: config
+            subPath: syslog-ng.conf
+        {{- if .Values.syslog.logFileStorage.enabled }}
+          - mountPath: /var/log
+            name: logs
+        {{- end }}
+        {{- if .Values.syslog.bufferStorage.enabled }}
+          - mountPath: /var/lib/syslog-ng
+            name: buffers
+        {{- end }}
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "axosyslog.fullname" . }}-syslog
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+{{- with .Values.syslog.logFileStorage }}
+{{- if .enabled }}
+  - metadata:
+      name: logs
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage:  {{ .size }}
+      storageClassName: {{ .storageClass }}
+{{- end }}
+{{- end }}
+{{- with .Values.syslog.bufferStorage }}
+{{- if .enabled }}
+  - metadata:
+      name: buffers
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage:  {{ .size }}
+      storageClassName: {{ .storageClass }}
+{{- end }}
+{{- end }}
+
+{{- end }}

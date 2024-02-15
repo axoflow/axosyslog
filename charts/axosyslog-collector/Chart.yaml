@@ -1,6 +1,0 @@
-apiVersion: v2
-name: axosyslog-collector
-description: AxoSyslog Kubernetes log collector
-type: application
-version: 0.8.1
-appVersion: "4.5.0"

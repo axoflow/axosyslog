@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{- include "axosyslog.labels" . | nindent 4 }}
+  name: {{ include "axosyslog.fullname" . }}-syslog
+data:
+{{- if .Values.syslog.config.raw }}
+  syslog-ng.conf: {{ tpl (toYaml .Values.syslog.config.raw) . | indent 2 }}
+{{- else }}
+  syslog-ng.conf: |
+    @version: {{ regexFind "^[0-9]+\\.[0-9]+" .Chart.AppVersion | default "current" }}
+    @include "scl.conf"
+
+    options {
+      stats(
+        level({{ .Values.syslog.config.stats.level }})
+      );
+      ts-format(iso);
+      frac-digits(6);
+    };
+
+{{- with .Values.syslog.config.sources.syslog }}
+  {{- if .enabled }}
+    source s_syslog {
+      default-network-drivers(
+        udp-port(1514)
+        tcp-port(1514)
+        rfc5424-tls-port(6514)
+        rfc5424-tcp-port(1601)
+        max-connections({{ .maxConnections | default 1000 }})
+        log-iw-size({{ .initWindowSize | default 100000 }})
+    {{- if .tls }}
+        tls(
+      {{- if .tls.CAFile }}
+          ca-file({{ .tls.CAFile }})
+      {{- end }}
+      {{- if .tls.CADir }}
+          ca-dir({{ .tls.CADir }})
+      {{- end }}
+      {{- if .tls.Cert }}
+          cert-file({{ .tls.Cert }})
+      {{- end }}
+      {{- if .tls.Key }}
+          key-file({{ .tls.Key }})
+      {{- end }}
+      {{- if .tls.peerVerify }}
+          peer-verify(yes)
+      {{- else }}
+          peer-verify(no)
+      {{- end }}
+        )
+    {{- end }}
+      );
+    };
+  {{- end }}
+{{- end }}
+
+{{- with .Values.syslog.config.sources.syslogNgOtlp }}
+  {{- if .enabled }}
+    source s_syslogng_otlp {
+      syslog-ng-otlp();
+    };
+  {{- end }}
+{{- end }}
+
+    log {
+{{- if .Values.syslog.config.sources.syslog.enabled }}
+      source (s_syslog);
+{{- end }}
+{{- if .Values.syslog.config.sources.syslogNgOtlp.enabled }}
+      source (s_syslogng_otlp);
+{{- end }}
+
+{{- with .Values.syslog.config.destinations.syslog }}
+  {{- if .enabled }}
+      destination {
+        network(
+          {{ .address | quote }}
+          port({{ .port }})
+          transport({{ .transport }})
+    {{- if .template }}
+          template({{ .template | quote }})
+    {{- end }}
+    {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+    {{- end }}
+        );
+      };
+  {{- end }}
+{{- end }}
+{{- with .Values.syslog.config.destinations.opensearch }}
+  {{- if .enabled }}
+      destination {
+        elasticsearch-http(
+          url("{{ .url }}/_bulk")
+          index({{ .index | quote }})
+          type("")
+    {{- if .template }}
+          template({{ .template | quote }})
+    {{- end }}
+    {{- if .user }}
+          user({{ .user | quote }})
+    {{- end }}
+    {{- if .password }}
+          password({{ .password | quote }})
+    {{- end }}
+    {{- if .tls }}
+          tls(
+      {{- if .tls.CAFile }}
+            ca-file({{ .tls.CAFile }})
+      {{- end }}
+      {{- if .tls.CADir }}
+            ca-dir({{ .tls.CADir }})
+      {{- end }}
+      {{- if .tls.Cert }}
+            cert-file({{ .tls.Cert }})
+      {{- end }}
+      {{- if .tls.Key }}
+            key-file({{ .tls.Key }})
+      {{- end }}
+      {{- if .tls.peerVerify }}
+            peer-verify(yes)
+      {{- else }}
+            peer-verify(no)
+      {{- end }}
+          )
+    {{- end }}
+    {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+    {{- end }}
+        );
+      };
+    {{- end }}
+{{- end }}
+{{- with .Values.syslog.config.destinations.syslogNgOtlp }}
+  {{- if .enabled }}
+      destination {
+        syslog-ng-otlp (
+          url({{ tpl .url $ | quote }})
+    {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+    {{- end }}
+        );
+      };
+  {{- end }}
+{{- end }}
+{{- with .Values.syslog.config.destinations.file }}
+  {{- if .enabled }}
+      destination {
+        file ({{ tpl .path $ | quote }}
+    {{- if .template }}
+          template({{ .template }})
+    {{- end }}
+    {{- if .extraOptionsRaw }}
+          {{ .extraOptionsRaw }}
+    {{- end }}
+        );
+      };
+  {{- end }}
+{{- end }}
+      flags(flow-control);
+    };
+{{- end }}

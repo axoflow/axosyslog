@@ -1,4 +1,4 @@
-name: AxoSyslog Collector
+name: AxoSyslog Chart
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
 
 defaults:
   run:
-    working-directory: charts/axosyslog-collector
+    working-directory: charts/axosyslog
 
 jobs:
-  axosyslog-collector:
+  axosyslog:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source

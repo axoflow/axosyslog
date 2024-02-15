@@ -1,0 +1,202 @@
+image:
+  repository: ghcr.io/axoflow/axosyslog
+  pullPolicy: IfNotPresent
+  tag: ""
+  extraArgs: []
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# collector daemonset to tail /var/log/pods
+collector:
+  enabled: true
+  config:
+    raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
+    stats:
+      level: 2
+    sources:
+      kubernetes:
+        enabled: true
+        #prefix: "k8s~"
+        #keyDelimiter: "~"
+    rewrites:
+      set: {}
+      #  foo: "${foovalue}"
+      #  bar: "${barvalue}"
+    destinations:
+      syslog:
+        enabled: false
+        transport: tcp
+        address: localhost
+        port: 12345
+        template: "$(format-json .*)"
+        extraOptionsRaw: "time-reopen(10)"
+      opensearch:
+        enabled: false
+        url: http://my-release-opensearch.default.svc.cluster.local:9200
+        index: "test-axoflow-index"
+        user: "admin"
+        password: "admin"
+        tls:
+          CAFile: "/path/to/CAFile.pem"
+          CADir: "/path/to/CADir/"
+          Cert: "/path/to/Cert.pem"
+          Key: "/path/to/Key.pem"
+          peerVerify: false
+        template: "$(format-json .*)"
+        extraOptionsRaw: "time-reopen(10)"
+      syslogNgOtlp:
+        enabled: false
+        url: "192.168.77.133:4317"
+        extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
+  labels: {}
+  annotations: {}
+  affinity: {}
+  nodeSelector: {}
+  resources: {}
+  tolerations: []
+  hostAliases: []
+  secretMounts: []
+  extraVolumes: []
+  securityContext: {}
+  maxUnavailable: 1
+  hostNetworking: false
+
+# deployment to consume "syslog" traffic route it somewhere
+syslog:
+  enabled: true
+  logFileStorage:
+    enabled: false
+    storageClass: standard
+    size: 500Gi
+  bufferStorage:
+    enabled: false
+    storageClass: standard
+    size: 10Gi
+  config: 
+    raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
+    stats:
+      level: 2
+    sources:
+      syslog:
+        enabled: true
+        # node ports for the syslog service
+        rfc3164UdpPort: 30514
+        rfc3164TcpPort: 30514
+        rfc5424TlsPort: 30614
+        rfc5424TcpPort: 30601
+        #maxConnections: 1000
+        #initWindowSize: 150000
+        #tls:
+        #  CAFile: "/path/to/CAFile.pem"
+        #  CADir: "/path/to/CADir/"
+        #  Cert: "/path/to/Cert.pem"
+        #  Key: "/path/to/Key.pem"
+        #  peerVerify: false
+      syslogNgOtlp:
+        enabled: true
+        # nodePort
+        port: 30317
+        extraOptionsRaw: ""
+        
+    rewrites:
+      set: {}
+      #  foo: "${foovalue}"
+      #  bar: "${barvalue}"
+    destinations:
+      file:
+        enabled: true
+        path: "/var/log/syslog"
+        #template: "$ISODATE $HOST $MSGHDR$MSG\n"
+        extraOptionsRaw: "create-dirs(yes)"
+      syslog:
+        enabled: true
+        transport: tcp
+        address: 192.168.77.133
+        port: 12345
+        # convert incoming data to JSON
+        #template: "$(format-json .*)\n"
+        # use standard syslog logfile
+        #template: "$ISODATE $HOST $MSGHDR$MSG\n"
+        extraOptionsRaw: "time-reopen(10)"
+      opensearch:
+        enabled: true
+        url: http://my-release-opensearch.default.svc.cluster.local:9200
+        index: "test-axoflow-index"
+        user: "admin"
+        password: "admin"
+        #tls:
+        #  CAFile: "/path/to/CAFile.pem"
+        #  CADir: "/path/to/CADir/"
+        #  Cert: "/path/to/Cert.pem"
+        #  Key: "/path/to/Key.pem"
+        #  peerVerify: false
+        #template: "$(format-json --scope rfc5424 --exclude DATE --key ISODATE @timestamp=${ISODATE})"
+        extraOptionsRaw: "time-reopen(10)"
+      syslogNgOtlp:
+        enabled: false
+        url: "192.168.77.133:4317"
+        extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
+    
+metricsExporter:
+  enabled: false  # deploy the axosyslog Deamonset with the axosyslog-metrics-exporter sidecar
+  image:
+    repository: ghcr.io/axoflow/axosyslog-metrics-exporter
+    tag: latest
+    pullPolicy: ~ # use k8s default behavior (Always for :latest, IfNotPresent otherwise)
+  resources: {}
+  securityContext: {}
+
+podMonitor:
+  enabled: false  # deploy the PodMonitor CR for Prometheus Operator (requires metricsExporter.enabled)
+  labels: {}
+  annotations: {}
+
+
+rbac:
+  create: true
+  extraRules: []
+
+openShift:
+  enabled: false
+  securityContextConstraints:
+    create: true
+    annotations: {}
+
+service:
+  create: true
+  extraPorts: []
+  #  - protocol: TCP
+  #    port: 514
+  #  - protocol: TCP
+  #    port: 601
+
+serviceAccount:
+  create: true
+  annotations: {}
+
+namespace: ""
+podAnnotations: {}
+podSecurityContext: {}
+#   fsGroup: 2000
+securityContext: {}
+resources: {}
+#   limits:
+#     cpu: 100m
+#     memory: 128Mi
+#   requests:
+#     cpu: 100m
+#     memory: 128Mi
+nodeSelector: {}
+tolerations: []
+affinity: {}
+updateStrategy: RollingUpdate
+priorityClassName: ""
+dnsConfig: {}
+hostAliases: []
+secretMounts: []
+extraVolumes: []
+## How long (in seconds) a pod may take to exit (useful with lifecycle hooks to ensure lb deregistration is done)
+##
+terminationGracePeriodSeconds: 30

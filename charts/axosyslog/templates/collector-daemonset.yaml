@@ -1,35 +1,35 @@
-{{- if .Values.daemonset.enabled }}
+{{- if .Values.collector.enabled }}
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ template "axosyslog-collector.fullname" . }}
-  namespace: {{ include "axosyslog-collector.namespace" . }}
+  name: {{ template "axosyslog.fullname" . }}-collector
+  namespace: {{ include "axosyslog.namespace" . }}
   labels:
-    app: "{{ template "axosyslog-collector.fullname" . }}"
+    app: {{ template "axosyslog.fullname" . }}-collector
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
     heritage: {{ .Release.Service | quote }}
     release: {{ .Release.Name | quote }}
-    {{- if .Values.daemonset.labels }}
-    {{- range $key, $value := .Values.daemonset.labels }}
+    {{- if .Values.collector.labels }}
+    {{- range $key, $value := .Values.collector.labels }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
     {{- end }}
-  {{- if .Values.daemonset.annotations }}
+  {{- if .Values.collector.annotations }}
   annotations:
-    {{- range $key, $value := .Values.daemonset.annotations }}
+    {{- range $key, $value := .Values.collector.annotations }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
   {{- end }}
 spec:
   selector:
     matchLabels:
-      app: "{{ template "axosyslog-collector.fullname" . }}"
+      app: "{{ template "axosyslog.fullname" . }}"
       release: {{ .Release.Name | quote }}
   updateStrategy:
     {{- if eq .Values.updateStrategy "RollingUpdate" }}
     rollingUpdate:
-      maxUnavailable: {{ .Values.daemonset.maxUnavailable }}
+      maxUnavailable: {{ .Values.collector.maxUnavailable }}
     {{- end }}
     type: {{ .Values.updateStrategy }}
   template:
@@ -40,47 +40,47 @@ spec:
         {{ $key }}: {{ $value | quote }}
         {{- end }}
       {{- end }}
-      name: "{{ template "axosyslog-collector.fullname" . }}"
+      name: "{{ template "axosyslog.fullname" . }}"
       labels:
-        app: "{{ template "axosyslog-collector.fullname" . }}"
+        app: "{{ template "axosyslog.fullname" . }}"
         chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
         heritage: {{ .Release.Service | quote }}
         release: {{ .Release.Name | quote }}
-        {{- if .Values.daemonset.labels }}
-        {{- range $key, $value := .Values.daemonset.labels }}
+        {{- if .Values.collector.labels }}
+        {{- range $key, $value := .Values.collector.labels }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
         {{- end }}
     spec:
       {{- if .Values.serviceAccount.create }}
-      serviceAccountName: {{ template "axosyslog-collector.serviceAccountName" . }}
+      serviceAccountName: {{ template "axosyslog.serviceAccountName" . }}
       {{- end}}
-      tolerations: {{ toYaml ( .Values.tolerations | default .Values.daemonset.tolerations ) | nindent 8 }}
-      nodeSelector: {{ toYaml ( .Values.nodeSelector | default .Values.daemonset.nodeSelector ) | nindent 8 }}
+      tolerations: {{ toYaml ( .Values.tolerations | default .Values.collector.tolerations ) | nindent 8 }}
+      nodeSelector: {{ toYaml ( .Values.nodeSelector | default .Values.collector.nodeSelector ) | nindent 8 }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
-      affinity: {{ toYaml ( .Values.affinity | default .Values.daemonset.affinity ) | nindent 8 }}
+      affinity: {{ toYaml ( .Values.affinity | default .Values.collector.affinity ) | nindent 8 }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
-      {{- if .Values.daemonset.hostNetworking }}
+      {{- if .Values.collector.hostNetworking }}
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       {{- end }}
       {{- if .Values.dnsConfig }}
       dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
       {{- end }}
-      {{- if .Values.hostAliases | default .Values.daemonset.hostAliases }}
-      hostAliases: {{ toYaml ( .Values.hostAliases | default .Values.daemonset.hostAliases ) | nindent 8 }}
+      {{- if .Values.hostAliases | default .Values.collector.hostAliases }}
+      hostAliases: {{ toYaml ( .Values.hostAliases | default .Values.collector.hostAliases ) | nindent 8 }}
       {{- end }}
       volumes:
-      {{- range .Values.secretMounts | default .Values.daemonset.secretMounts }}
+      {{- range .Values.secretMounts | default .Values.collector.secretMounts }}
         - name: {{ .name }}
           secret:
             secretName: {{ .secretName }}
         {{- end }}
         - name: config
           configMap:
-            name: {{ include "axosyslog-collector.fullname" . }}
+            name: {{ include "axosyslog.fullname" . }}-collector
         - name: var-log
           hostPath:
             path: /var/log
@@ -92,26 +92,28 @@ spec:
             path: /var/run/docker.sock
         - name: var-lib-syslog-ng
           emptyDir: {}
-      {{- if .Values.extraVolumes | default .Values.daemonset.extraVolumes }}
-{{ toYaml ( .Values.extraVolumes | default .Values.daemonset.extraVolumes ) | indent 8 }}
+      {{- if .Values.extraVolumes | default .Values.collector.extraVolumes }}
+{{ toYaml ( .Values.extraVolumes | default .Values.collector.extraVolumes ) | indent 8 }}
       {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{- end }}
       containers:
-        - name: "axosyslog-collector"
+        - name: "axosyslog"
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: "{{ .Values.image.pullPolicy }}"
-          {{- if .Values.image.extraArgs }}
           args:
-{{ toYaml .Values.image.extraArgs | indent 12 }}
-          {{- end }}
+            - "--persist-file"
+            - "/var/log/syslog-ng.persist"
+            {{- range .Values.image.extraArgs }}
+            - {{ . }}
+            {{- end }}
           resources:
-{{ toYaml ( .Values.resources | default .Values.daemonset.resources ) | indent 12 }}
-          securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.daemonset.securityContext ) | nindent 12 }}
+{{ toYaml ( .Values.resources | default .Values.collector.resources ) | indent 12 }}
+          securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.collector.securityContext ) | nindent 12 }}
           volumeMounts:
-            {{- range .Values.secretMounts | default .Values.daemonset.secretMounts }}
+            {{- range .Values.secretMounts | default .Values.collector.secretMounts }}
             - name: {{ .name }}
               mountPath: {{ .path }}
               {{- if .subPath }}
@@ -129,8 +131,8 @@ spec:
               mountPath: /var/run/docker.sock
             - name: var-lib-syslog-ng
               mountPath: /var/lib/syslog-ng
-          {{- if .Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts }}
-{{ toYaml (.Values.extraVolumeMounts | default .Values.daemonset.extraVolumeMounts ) | indent 12 }}
+          {{- if .Values.extraVolumeMounts | default .Values.collector.extraVolumeMounts }}
+{{ toYaml (.Values.extraVolumeMounts | default .Values.collector.extraVolumeMounts ) | indent 12 }}
           {{- end }}
           livenessProbe:
             initialDelaySeconds: 5
@@ -153,6 +155,6 @@ spec:
               name: exporter
               protocol: TCP
           resources: {{ toYaml ( .Values.metricsExporter.resources ) | nindent 12 }}
-          securityContext: {{ toYaml ( .Values.metricsExporter.securityContext | default .Values.daemonset.securityContext ) | nindent 12 }}
+          securityContext: {{ toYaml ( .Values.metricsExporter.securityContext | default .Values.collector.securityContext ) | nindent 12 }}
         {{- end }}
 {{- end }}
