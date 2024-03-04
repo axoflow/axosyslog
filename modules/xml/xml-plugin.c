@@ -20,6 +20,9 @@
  *
  */
 
+#include "filterx-parse-xml.h"
+#include "filterx/expr-function.h"
+
 #include "cfg-parser.h"
 #include "plugin.h"
 #include "plugin-types.h"
@@ -38,6 +41,7 @@ static Plugin xml_plugins[] =
     .name = "windows-eventlog-xml-parser",
     .parser = &xml_parser,
   },
+  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_xml),
 };
 
 gboolean
