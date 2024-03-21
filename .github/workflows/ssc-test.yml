@@ -65,7 +65,7 @@ jobs:
     steps:
       - name: Detect SC4S version
         id: version
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const input_ref = '${{ inputs.ref }}';
@@ -106,10 +106,10 @@ jobs:
           SPLUNK_APPS_URL: https://github.com/splunk/splunk-configurations-base-indexes/releases/download/v1.0.0/splunk_configurations_base_indexes-1.0.0.tar.gz
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Checkout SC4S source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ env.SC4S_OWNER }}/${{ env.SC4S_REPO }}
           ref: ${{ needs.version.outputs.version }}

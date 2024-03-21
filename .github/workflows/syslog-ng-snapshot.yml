@@ -32,7 +32,7 @@ jobs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
     steps:
       - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repo || 'syslog-ng/syslog-ng' }}
           ref: ${{ inputs.ref || 'master' }}
@@ -54,7 +54,7 @@ jobs:
           echo "SNAPSHOT_VERSION=${pkg_version}" >> $GITHUB_OUTPUT
 
       - name: Store source tarball as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: source-tarball
           path: dbld/build/*.tar.*
@@ -64,10 +64,10 @@ jobs:
     needs: tarball
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download source tarball artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: source-tarball
           path: syslog-ng/apkbuild/axoflow/syslog-ng
