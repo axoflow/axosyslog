@@ -54,7 +54,7 @@ jobs:
           echo "SNAPSHOT_VERSION=${pkg_version}" >> $GITHUB_OUTPUT
 
       - name: Store source tarball as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: source-tarball
           path: dbld/build/*.tar.*
@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download source tarball artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: source-tarball
           path: syslog-ng/apkbuild/axoflow/syslog-ng

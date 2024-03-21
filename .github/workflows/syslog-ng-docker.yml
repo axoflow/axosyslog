@@ -29,7 +29,7 @@ jobs:
 
       - name: Download source tarball artifact
         if: inputs.tarball-artifact != ''
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.tarball-artifact }}
           path: syslog-ng/apkbuild/axoflow/syslog-ng
