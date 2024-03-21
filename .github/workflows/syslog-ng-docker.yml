@@ -59,16 +59,15 @@ jobs:
         run: |
           if [[ '${{ inputs.pkg-type }}' = 'stable' ]]; then
             TAGS='${{ steps.docker-metadata-tags.outputs.tags }}'
-            DEBUG_TAGS='${{ steps.docker-metadata-tags.outputs.tags }}-dbg'
           elif [[ '${{ inputs.pkg-type }}' = 'nightly' ]]; then
             TAGS="${DOCKER_IMAGE_NAME}:nightly,${DOCKER_IMAGE_NAME}:${{ inputs.snapshot-version }}"
-            DEBUG_TAGS="${DOCKER_IMAGE_NAME}:nightly-dbg,${DOCKER_IMAGE_NAME}:${{ inputs.snapshot-version }}-dbg"
           else
             echo Unexpected input: pkg-type=${{ inputs.pkg-type }}
             false
           fi
+
           echo "TAGS=$TAGS" >> $GITHUB_OUTPUT
-          echo "DEBUG_TAGS=$DEBUG_TAGS" >> $GITHUB_OUTPUT
+          echo "DEBUG_TAGS=${TAGS//,/-dbg,}-dbg" >> $GITHUB_OUTPUT
 
       - name: Build and push production Docker image
         uses: docker/build-push-action@v3
