@@ -73,7 +73,7 @@ jobs:
           path: syslog-ng/apkbuild/axoflow/syslog-ng
 
       - name: Build and export Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: syslog-ng
           file: syslog-ng/alpine.dockerfile
