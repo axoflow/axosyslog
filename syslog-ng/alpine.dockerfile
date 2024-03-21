@@ -1,6 +1,6 @@
 ARG DEBUG=false
 
-FROM alpine:3.18 as apkbuilder
+FROM alpine:3.19 as apkbuilder
 
 ARG PKG_TYPE=stable
 ARG SNAPSHOT_VERSION
@@ -35,7 +35,7 @@ RUN mkdir packages \
     && abuild -r
 
 
-FROM alpine:3.18
+FROM alpine:3.19
 
 ARG DEBUG
 

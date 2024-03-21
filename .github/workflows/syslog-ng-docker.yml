@@ -35,12 +35,12 @@ jobs:
           path: syslog-ng/apkbuild/axoflow/syslog-ng
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -48,7 +48,7 @@ jobs:
 
       - name: Extract metadata (syslog-ng version) for Docker
         id: docker-metadata-tags
-        uses: docker/metadata-action@v3
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.DOCKER_IMAGE_NAME }}
           tags: type=match,pattern=syslog-ng-(.*),group=1
@@ -59,19 +59,18 @@ jobs:
         run: |
           if [[ '${{ inputs.pkg-type }}' = 'stable' ]]; then
             TAGS='${{ steps.docker-metadata-tags.outputs.tags }}'
-            DEBUG_TAGS='${{ steps.docker-metadata-tags.outputs.tags }}-dbg'
           elif [[ '${{ inputs.pkg-type }}' = 'nightly' ]]; then
             TAGS="${DOCKER_IMAGE_NAME}:nightly,${DOCKER_IMAGE_NAME}:${{ inputs.snapshot-version }}"
-            DEBUG_TAGS="${DOCKER_IMAGE_NAME}:nightly-dbg,${DOCKER_IMAGE_NAME}:${{ inputs.snapshot-version }}-dbg"
           else
             echo Unexpected input: pkg-type=${{ inputs.pkg-type }}
             false
           fi
+
           echo "TAGS=$TAGS" >> $GITHUB_OUTPUT
-          echo "DEBUG_TAGS=$DEBUG_TAGS" >> $GITHUB_OUTPUT
+          echo "DEBUG_TAGS=${TAGS//,/-dbg,}-dbg" >> $GITHUB_OUTPUT
 
       - name: Build and push production Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: syslog-ng
           file: syslog-ng/alpine.dockerfile
@@ -86,7 +85,7 @@ jobs:
             SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
 
       - name: Build and push debug Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: syslog-ng
           file: syslog-ng/alpine.dockerfile

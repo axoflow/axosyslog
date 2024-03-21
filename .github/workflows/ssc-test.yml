@@ -116,7 +116,7 @@ jobs:
           path: ssc/splunk-connect-for-syslog
 
       - name: Build and export Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v5
         with:
           context: ssc/splunk-connect-for-syslog
           file: ssc/splunk-connect-for-syslog/package/Dockerfile
