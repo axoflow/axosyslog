@@ -64,7 +64,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Report test issue
         if: contains(needs.test.result, 'failure')
         run: |
