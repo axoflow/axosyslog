@@ -98,3 +98,74 @@ jobs:
       pkg-type: nightly
       tarball-artifact: source-tarball
       snapshot-version: ${{ needs.tarball.outputs.snapshot-version }}
+
+  # https://github.com/actions/delete-package-versions/issues/90
+  cleanup-old-images:
+    if: github.ref == 'refs/heads/main'
+    needs: publish-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean up old images
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const daysToKeep = 30
+            const snapshotTagPattern = /_git[0-9]+/
+
+            const package_name = "axosyslog"
+            const org = "axoflow"
+            const image = `${org}/${package_name}`
+
+            const allPackageVersions = await github.paginate(
+                github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg,
+                { package_type: "container", package_name: package_name, org: org }
+            )
+
+            const oldPackageDate = new Date()
+            oldPackageDate.setDate(oldPackageDate.getDate() - daysToKeep)
+
+            const oldSnapshotVersions = allPackageVersions.filter((p) => {
+                return new Date(p.updated_at) < oldPackageDate && p.metadata.container && p.metadata.container.tags.length != 0 && p.metadata.container.tags.every((t) => snapshotTagPattern.test(t))
+            })
+
+            if (oldSnapshotVersions.length === 0) {
+                console.log("Nothing to remove")
+                return
+            }
+
+            const oldSnapshotTags = oldSnapshotVersions.flatMap(({ metadata }) => metadata.container.tags)
+
+            console.log(`Removing the following images: ${oldSnapshotTags}`)
+
+            const manifestsRequests = oldSnapshotTags.map((t) => {
+                const manifest = fetch(`https://ghcr.io/v2/${image}/manifests/${t}`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer ${{ secrets.GITHUB_TOKEN }}",
+                        "Accept": "application/vnd.docker.distribution.manifest.list.v2+json",
+                        "Accept": "application/vnd.docker.distribution.manifest.v2+json",
+                        "Accept": "application/vnd.oci.image.manifest.v1+json",
+                        "Accept": "application/vnd.oci.image.index.v1+json",
+                    },
+                }).then((d) => d.json())
+
+                return manifest
+            })
+
+            const manifestsResponse = await Promise.all(manifestsRequests)
+
+            const manifestsToDelete = manifestsResponse.filter((m) => m.manifests).flatMap((m) => m.manifests)
+
+            await Promise.all(manifestsToDelete.map((m) => {
+                const version = allPackageVersions.find((p) => p.name === m.digest)
+                if (!version) {
+                    return;
+                }
+
+                return github.rest.packages.deletePackageVersionForOrg({ package_type: "container", package_name: package_name, org: org, package_version_id: version.id})
+            }))
+
+
+            await Promise.all(oldSnapshotVersions.map((v) => {
+                return github.rest.packages.deletePackageVersionForOrg({ package_type: "container", package_name: package_name, org: org, package_version_id: v.id})
+            }))
