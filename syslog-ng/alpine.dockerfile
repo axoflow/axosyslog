@@ -12,7 +12,8 @@ RUN apk add --update-cache \
       sudo \
     && apk upgrade -a \
     && adduser -D builder \
-    && addgroup builder abuild
+    && addgroup builder abuild \
+    && echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 USER builder
 WORKDIR /home/builder
@@ -21,7 +22,7 @@ ADD --chown=builder:builder apkbuild .
 RUN [ $DEBUG = false ] || patch -d axoflow/syslog-ng -p1 -i APKBUILD-debug.patch
 
 RUN mkdir packages \
-    && abuild-keygen -n -a \
+    && abuild-keygen -n -a -i \
     && printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> .abuild/abuild.conf \
     && cd axoflow/syslog-ng \
     && if [ "$PKG_TYPE" = "nightly" ]; then \
