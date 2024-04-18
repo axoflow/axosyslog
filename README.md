@@ -9,7 +9,7 @@
 # AxoSyslog - a cloud-native distribution of syslog-ng by Axoflow
 
 This repository contains the cloud-ready syslog-ng images and Helm charts
-created and maintained by [Axoflow](https://axoflow.com).  
+created and maintained by [Axoflow](https://axoflow.com).
 
 ## Container images
 
@@ -38,7 +38,7 @@ docker pull ghcr.io/axoflow/axosyslog:nightly
 > Note: These named packages are automatically updated when a new syslog-ng package is released. To install a specific version, run `docker pull ghcr.io/axoflow/axosyslog:<version-number>`, for example:
 >
 > ```shell
-> docker pull ghcr.io/axoflow/axosyslog:4.6.0
+> docker pull ghcr.io/axoflow/axosyslog:4.7.0
 > ```
 
 ### Difference from upstream images
@@ -58,7 +58,7 @@ Our images are available for the following architectures:
 
 ## Helm Charts
 
-AxoSyslog provides [Helm charts](https://helm.sh/docs/topics/charts/) to deploy syslog-ng on Kubernetes. 
+AxoSyslog provides [Helm charts](https://helm.sh/docs/topics/charts/) to deploy syslog-ng on Kubernetes.
 
 [Helm](https://helm.sh) must be installed to use the charts.  Please refer to
 Helm's [documentation](https://helm.sh/docs) to get started.
@@ -81,11 +81,11 @@ To uninstall the chart:
 
 ## Documentation
 
-You can find [comprehensive documentation for AxoSyslog](https://axoflow.com/docs/axosyslog-core) 
+You can find [comprehensive documentation for AxoSyslog](https://axoflow.com/docs/axosyslog-core)
 on the [Axoflow website](https://axoflow.com/).
 
 The documentation is a combination of the syslog-ng reference guide and the
-AxoSyslog reference guide.  The [syslog-ng documentation](https://axoflow.com/docs/axosyslog-core) 
+AxoSyslog reference guide.  The [syslog-ng documentation](https://axoflow.com/docs/axosyslog-core)
 was included in there as the upstream documentation fell out of maintenance.
 
 ## Contact and support
