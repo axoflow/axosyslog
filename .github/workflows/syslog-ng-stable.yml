@@ -7,6 +7,30 @@ on:
       - 'syslog-ng-*'
 
 jobs:
+  prepare:
+    name: Prepare Workflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Regex matching
+        uses: kaisugi/action-regex-match@v1.0.0
+        id: unpack_tag
+        with:
+          text: ${{ github.ref }}
+          regex: 'refs/tags/syslog-ng-(.*)'
+    outputs:
+      version: ${{ steps.unpack_tag.outputs.group1 }}
+
+  publish-packages:
+    uses: ./.github/workflows/syslog-ng-packages.yml
+    needs:
+      - prepare
+    with:
+      repo: syslog-ng/syslog-ng
+      version: ${{ needs.prepare.outputs.version }}
+
   publish-image:
     uses: ./.github/workflows/syslog-ng-docker.yml
     with:

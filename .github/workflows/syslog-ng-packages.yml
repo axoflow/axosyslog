@@ -1,0 +1,84 @@
+name: Packages
+on:
+  workflow_call:
+    inputs:
+      repo:
+        description: 'syslog-ng repository'
+        required: true
+        default: 'syslog-ng/syslog-ng'
+        type: string
+      version:
+        description: 'syslog-ng version'
+        required: true
+        type: string
+    
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'syslog-ng repository'
+        required: true
+        default: 'syslog-ng/syslog-ng'
+        type: string
+      version:
+        description: 'syslog-ng version'
+        required: true
+        type: string
+
+jobs:
+  create-source-tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get syslog-ng tarball
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download --repo '${{ inputs.repo }}' -p 'syslog-ng-${{ inputs.version }}.tar.gz' 'syslog-ng-${{ inputs.version }}'
+
+      - name: Extract source tarball
+        run: |
+          mkdir syslog-ng
+          tar --strip-components=1 -xvf syslog-ng*.tar.gz -C syslog-ng
+          rm syslog-ng*.tar.gz
+
+      - name: AxoSyslog patches
+        working-directory: syslog-ng
+        run: |
+          sed -i 's/Name: syslog-ng/Name: axosyslog/' packaging/rhel/syslog-ng.spec
+          sed -i 's|%{name}-%{version}.tar.gz|syslog-ng-%{version}.tar.gz|' packaging/rhel/syslog-ng.spec
+          sed -i 's|URL.*|URL: https://axoflow.com/docs/axosyslog-core/|' packaging/rhel/syslog-ng.spec
+          sed -i 's|Provides: syslog|&\n\nConflicts: syslog-ng\nConflicts: syslog-ng-premium-edition|' packaging/rhel/syslog-ng.spec
+          sed -i 's|%setup -q|%setup -q -n syslog-ng-%{version}|' packaging/rhel/syslog-ng.spec
+          sed -i 's|/%{name}|/syslog-ng|g' packaging/rhel/syslog-ng.spec
+          sed -i 's|/lib%{name}|/libsyslog-ng|g' packaging/rhel/syslog-ng.spec
+          sed -i 's|^.*czanik/syslog-ng-githead.*$||' dbld/builddeps
+
+          # Remove extra dependencies
+          sed -i 's|almalinux.*|&,nocriterion,noriemann,nokafka,nomqtt,nojava|' dbld/build.manifest
+
+          cat packaging/rhel/syslog-ng.spec
+
+      - name: Prepare docker image
+        working-directory: syslog-ng
+        run: ./dbld/rules cache-image-tarball
+     
+      - name: Create source tarball
+        working-directory: syslog-ng
+        run: ./dbld/rules pkg-tarball
+      
+      - name: Store source tarball as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-tarball
+          path: syslog-ng/dbld/build/*.tar.*
+          if-no-files-found: error
+
+  create-packages:
+    needs: create-source-tarball
+    uses: ./.github/workflows/syslog-ng-create-packages.yml
+    with:
+      source-tarball-artifact-name: source-tarball
+      dbld-image-mode: cache
+      distros: | 
+        [
+          "almalinux-8"
+        ]
