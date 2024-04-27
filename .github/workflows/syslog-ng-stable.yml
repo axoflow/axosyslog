@@ -23,6 +23,24 @@ jobs:
     outputs:
       version: ${{ steps.unpack_tag.outputs.group1 }}
 
+  axosyslog-modules:
+    name: axosyslog-modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Create AxoSyslog modules tarball
+        working-directory: syslog-ng
+        run: |
+          tar -czvf python-modules.tar.gz python-modules/
+
+      - name: Store axosyslog-modules tarball as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: axosyslog-modules-tarball
+          path: syslog-ng/python-modules.tar.gz
+
   publish-packages:
     uses: ./.github/workflows/syslog-ng-packages.yml
     needs:
@@ -33,5 +51,9 @@ jobs:
 
   publish-image:
     uses: ./.github/workflows/syslog-ng-docker.yml
+    needs:
+      - prepare
+      - axosyslog-modules
     with:
       pkg-type: stable
+      axosyslog-modules-artifact: axosyslog-modules-tarball

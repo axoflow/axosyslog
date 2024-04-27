@@ -26,11 +26,11 @@ RUN mkdir packages \
     && printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> .abuild/abuild.conf \
     && cd axoflow/syslog-ng \
     && if [ "$PKG_TYPE" = "nightly" ]; then \
-        tarball_filename="$(ls *.tar.*)"; \
+        tarball_filename="$(ls syslog-ng-*.tar.*)"; \
         [ -z "$tarball_filename" ] && echo "Tarball for nightly can not be found" && exit 1; \
         tarball_name="${tarball_filename/\.tar.*}"; \
         sed -i -e "s|^pkgver=.*|pkgver=$SNAPSHOT_VERSION|" -e "s|^builddir=.*|builddir=\"\$srcdir/$tarball_name\"|" APKBUILD; \
-        sed -i -e "s|^source=.*|source=\"$tarball_filename\"|" APKBUILD; \
+        sed -i -e "s|^source=.*|source=\"$tarball_filename|" APKBUILD; \
        fi \
     && abuild checksum \
     && abuild -r
