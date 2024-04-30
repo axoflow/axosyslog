@@ -57,6 +57,7 @@ class Handler(tornado.web.RequestHandler):
 
         token = self.request.headers.get("Authorization", "").split(" ")
         if len(token) != 2:
+            self.source.logger.debug("Auth failed, missing Authorization header or auth-scheme")
             return False
 
         token = token[1]
@@ -72,15 +73,13 @@ class HTTPSource(LogSource):
         if not self.init_options(options):
             return False
 
-        self.ssl_ctx = None
-        if self.tls_key_file:
-            self.ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-            self.ssl_ctx.load_cert_chain(self.tls_cert_file, self.tls_key_file)
-
         if not self.port:
             self.port = 443 if self.tls_key_file else 80
-
         self.port = int(self.port)
+
+        self.ssl_ctx = None
+        if self.tls_key_file:
+            self.setup_tls()
 
         self.suspended = threading.Event()
         self.event_loop = asyncio.new_event_loop()
@@ -124,8 +123,28 @@ class HTTPSource(LogSource):
         asyncio.run_coroutine_threadsafe(self.stopServer(), self.event_loop)
         pass
 
-    def log_access(self, req: tornado.web.RequestHandler):
+    def log_access(self, req: tornado.web.RequestHandler) -> None:
         self.logger.debug(f"{req.get_status()} {req._request_summary()}")
+
+    def setup_tls(self) -> None:
+        self.ssl_ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+        self.ssl_ctx.load_cert_chain(certfile=self.tls_cert_file, keyfile=self.tls_key_file)
+
+        if self.tls_peer_verify:
+            self.logger.debug("Enabling client cert verification")
+            self.ssl_ctx.verify_mode = ssl.CERT_REQUIRED
+        else:
+            self.ssl_ctx.verify_mode = ssl.CERT_NONE
+
+        if self.tls_use_system_cert_store:
+            self.logger.debug("Using system cert store for client auth")
+            self.ssl_ctx.load_default_certs(ssl.Purpose.CLIENT_AUTH)
+
+        self.tls_ca_dir = self.tls_ca_dir if self.tls_ca_dir else None
+        self.tls_ca_file = self.tls_ca_file if self.tls_ca_file else None
+
+        if self.tls_ca_dir or self.tls_ca_file:
+            self.ssl_ctx.load_verify_locations(cafile=self.tls_ca_file, capath=self.tls_ca_dir)
 
     def init_options(self, options: dict[str, Any]) -> bool:
         try:
@@ -133,6 +152,11 @@ class HTTPSource(LogSource):
             self.auth_token = options.get("auth_token")
             self.tls_key_file = options.get("tls_key_file")
             self.tls_cert_file = options.get("tls_cert_file")
+
+            self.tls_peer_verify = bool(options.get("tls_peer_verify", False))
+            self.tls_use_system_cert_store = bool(options.get("tls_use_system_cert_store", False))
+            self.tls_ca_file = options.get("tls_ca_file")
+            self.tls_ca_dir = options.get("tls_ca_dir")
             return True
         except KeyError as e:
             self.logger.error(f"Missing option '{e.args[0]}'")
