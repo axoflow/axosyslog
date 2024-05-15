@@ -10,7 +10,7 @@
 Please refer to the [official documentation](https://helm.sh/docs/intro/install/) to get started.
 
 ```bash
-helm repo add axosyslog https://axoflow.github.io/axosyslog-charts
+helm repo add axosyslog https://axoflow.github.io/axosyslog
 ```
 
 You can then see the charts by running:
@@ -22,9 +22,9 @@ helm search repo axosyslog
 You can install charts using the following command:
 
 ```bash
-helm install --generate-name axosyslog/axosyslog-collector
+helm install --generate-name axosyslog/axosyslog
 # OR
-helm install --name my-axosyslog-collector axosyslog/axosyslog-collector
+helm install my-axosyslog axosyslog/axosyslog
 ```
 
 > **Tip**: List all installed releases using `helm list`.
@@ -32,5 +32,5 @@ helm install --name my-axosyslog-collector axosyslog/axosyslog-collector
 To uninstall a chart release:
 
 ```bash
-helm delete my-release
+helm delete my-axosyslog
 ```
