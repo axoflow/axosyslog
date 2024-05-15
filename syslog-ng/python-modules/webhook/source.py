@@ -32,21 +32,38 @@ from typing import Any
 
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 signal.signal(signal.SIGTERM, signal.SIG_IGN)
+WEBHOOK_QUERY_NV_PREFIX = "webhook.query."
 
 class Handler(tornado.web.RequestHandler):
     def initialize(self, source) -> None:
         self.source = source
 
     @tornado.web.authenticated
-    async def post(self) -> None:
+    async def post(self, **path_arguments) -> None:
         # racy, but the client should retry
         if self.source.suspended.is_set():
             self.set_status(503)
             await self.finish({"status": "flow-controlled"})
             return
 
-        self.source.post_message(LogMessage(self.request.body))
+        msg = self._construct_msg(self.request, path_arguments)
+        self.source.post_message(msg)
+
         await self.finish({"status": "received"})
+
+    def _construct_msg(self, request, path_arguments) -> LogMessage:
+        msg = LogMessage(self.request.body)
+
+        for key, value in request.query_arguments.items():
+            value = value[0] if len(value) == 1 else value
+            msg[WEBHOOK_QUERY_NV_PREFIX + key] = value
+
+        for key, value in path_arguments.items():
+            msg[key] = value
+
+        msg.set_source_ipaddress(self.request.remote_ip)
+
+        return msg
 
     def set_default_headers(self) -> None:
         self.set_header("Server", "syslog-ng");
@@ -84,10 +101,13 @@ class HTTPSource(LogSource):
         self.suspended = threading.Event()
         self.event_loop = asyncio.new_event_loop()
         self.request_exit = asyncio.Event()
+
+        handlers = list(map(lambda p: (p, Handler, {"source": self}), self.paths))
+        if len(handlers) == 0:
+            handlers = [(r"/.*", Handler, {"source": self})]
+
         self.app = tornado.web.Application(
-            [
-                (r"/.*", Handler, {"source": self}),
-            ],
+            handlers,
             log_function=self.log_access,
             autoreload=False,
             compress_response=False,
@@ -150,6 +170,10 @@ class HTTPSource(LogSource):
         try:
             self.port = options.get("port")
             self.auth_token = options.get("auth_token")
+            self.paths = options.get("paths", [])
+            if isinstance(self.paths, str):
+                self.paths = [self.paths]
+
             self.tls_key_file = options.get("tls_key_file")
             self.tls_cert_file = options.get("tls_cert_file")
 
