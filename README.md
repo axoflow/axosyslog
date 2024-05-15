@@ -71,13 +71,13 @@ If you had already added this repo earlier, run `helm repo update` to retrieve
 the latest versions of the packages.  You can then run `helm search repo
 axosyslog` to see the charts.
 
-To install the axosyslog-collector chart:
+To install the axosyslog chart:
 
-    helm install my-axosyslog-collector axosyslog/axosyslog-collector
+    helm install my-axosyslog axosyslog/axosyslog
 
 To uninstall the chart:
 
-    helm delete my-axosyslog-collector
+    helm delete my-axosyslog
 
 ## Documentation
 
