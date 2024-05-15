@@ -1,4 +1,4 @@
-name: syslog-ng snapshot
+name: AxoSyslog snapshot image
 
 on:
   workflow_dispatch:
@@ -15,11 +15,11 @@ on:
         type: string
   pull_request:
     paths:
-      - 'syslog-ng/**'
+      - 'docker/**'
       - '.github/workflows/**'
   push:
     paths:
-      - 'syslog-ng/**'
+      - 'docker/**'
       - '.github/workflows/**'
   schedule:
     - cron: '00 23 * * *'
@@ -67,7 +67,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create AxoSyslog modules tarball
-        working-directory: syslog-ng
+        working-directory: docker
         run: |
           tar -czvf python-modules.tar.gz python-modules/
 
@@ -75,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: axosyslog-modules-tarball
-          path: syslog-ng/python-modules.tar.gz
+          path: docker/python-modules.tar.gz
 
   build-and-test:
     runs-on: ubuntu-latest
@@ -90,35 +90,35 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: source-tarball
-          path: syslog-ng/apkbuild/axoflow/syslog-ng
+          path: docker/apkbuild/axoflow/axosyslog
 
       - name: Download axosyslog-modules tarball artifact
         uses: actions/download-artifact@v4
         with:
           name: axosyslog-modules-tarball
-          path: syslog-ng/apkbuild/axoflow/syslog-ng
+          path: docker/apkbuild/axoflow/axosyslog
 
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: syslog-ng
-          file: syslog-ng/alpine.dockerfile
+          context: docker
+          file: docker/alpine.dockerfile
           load: true
-          tags: syslog-ng:test
+          tags: axosyslog:test
           build-args: |
             PKG_TYPE=nightly
             SNAPSHOT_VERSION=${{ needs.tarball.outputs.snapshot-version }}
 
       - name: Smoke test
         run: |
-          export SYSLOG_NG_IMAGE="syslog-ng:test"
+          export SYSLOG_NG_IMAGE="axosyslog:test"
           export SYSLOG_NG_VERSION="${{ needs.tarball.outputs.snapshot-version }}"
-          syslog-ng/tests/smoke.sh
+          docker/tests/smoke.sh
 
 
   publish-image:
     if: github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/syslog-ng-docker.yml
+    uses: ./.github/workflows/axosyslog-docker.yml
     needs: [tarball, build-and-test, axosyslog-modules]
     with:
       pkg-type: nightly

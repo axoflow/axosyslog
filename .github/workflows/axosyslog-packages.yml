@@ -1,4 +1,4 @@
-name: Packages
+name: AxoSyslog packages
 on:
   workflow_call:
     inputs:
@@ -11,7 +11,7 @@ on:
         description: 'syslog-ng version'
         required: true
         type: string
-    
+
   workflow_dispatch:
     inputs:
       repo:
@@ -60,11 +60,11 @@ jobs:
       - name: Prepare docker image
         working-directory: syslog-ng
         run: ./dbld/rules cache-image-tarball
-     
+
       - name: Create source tarball
         working-directory: syslog-ng
         run: ./dbld/rules pkg-tarball
-      
+
       - name: Store source tarball as artifact
         uses: actions/upload-artifact@v4
         with:
@@ -74,11 +74,11 @@ jobs:
 
   create-packages:
     needs: create-source-tarball
-    uses: ./.github/workflows/syslog-ng-create-packages.yml
+    uses: ./.github/workflows/axosyslog-create-packages.yml
     with:
       source-tarball-artifact-name: source-tarball
       dbld-image-mode: cache
-      distros: | 
+      distros: |
         [
           "almalinux-8"
         ]

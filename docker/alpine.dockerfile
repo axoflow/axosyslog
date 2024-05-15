@@ -19,12 +19,12 @@ USER builder
 WORKDIR /home/builder
 ADD --chown=builder:builder apkbuild .
 
-RUN [ $DEBUG = false ] || patch -d axoflow/syslog-ng -p1 -i APKBUILD-debug.patch
+RUN [ $DEBUG = false ] || patch -d axoflow/axosyslog -p1 -i APKBUILD-debug.patch
 
 RUN mkdir packages \
     && abuild-keygen -n -a -i \
     && printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> .abuild/abuild.conf \
-    && cd axoflow/syslog-ng \
+    && cd axoflow/axosyslog \
     && if [ "$PKG_TYPE" = "nightly" ]; then \
         tarball_filename="$(ls syslog-ng-*.tar.*)"; \
         [ -z "$tarball_filename" ] && echo "Tarball for nightly can not be found" && exit 1; \
@@ -58,31 +58,31 @@ RUN apk add --repository /tmp/axoflow -U --upgrade --no-cache \
     jemalloc \
     libdbi-drivers \
     tzdata \
-    syslog-ng \
-    syslog-ng-add-contextual-data \
-    syslog-ng-amqp \
-    syslog-ng-cloud-auth \
-    syslog-ng-ebpf \
-    syslog-ng-examples \
-    syslog-ng-geoip2 \
-    syslog-ng-graphite \
-    syslog-ng-grpc \
-    syslog-ng-http \
-    syslog-ng-json \
-    syslog-ng-kafka \
-    syslog-ng-map-value-pairs \
-    syslog-ng-mongodb \
-    syslog-ng-mqtt \
-    syslog-ng-python3 \
-    syslog-ng-redis \
-    syslog-ng-riemann \
-    syslog-ng-scl \
-    syslog-ng-snmp \
-    syslog-ng-sql \
-    syslog-ng-stardate \
-    syslog-ng-stomp \
-    syslog-ng-tags-parser \
-    syslog-ng-xml && \
+    axosyslog \
+    axosyslog-add-contextual-data \
+    axosyslog-amqp \
+    axosyslog-cloud-auth \
+    axosyslog-ebpf \
+    axosyslog-examples \
+    axosyslog-geoip2 \
+    axosyslog-graphite \
+    axosyslog-grpc \
+    axosyslog-http \
+    axosyslog-json \
+    axosyslog-kafka \
+    axosyslog-map-value-pairs \
+    axosyslog-mongodb \
+    axosyslog-mqtt \
+    axosyslog-python3 \
+    axosyslog-redis \
+    axosyslog-riemann \
+    axosyslog-scl \
+    axosyslog-snmp \
+    axosyslog-sql \
+    axosyslog-stardate \
+    axosyslog-stomp \
+    axosyslog-tags-parser \
+    axosyslog-xml && \
     rm -rf /tmp/axoflow
 
 RUN [ $DEBUG = false ] || apk add -U --upgrade --no-cache \

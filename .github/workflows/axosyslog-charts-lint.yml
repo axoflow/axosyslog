@@ -1,4 +1,4 @@
-name: AxoSyslog Chart
+name: AxoSyslog charts linter
 
 on:
   push:

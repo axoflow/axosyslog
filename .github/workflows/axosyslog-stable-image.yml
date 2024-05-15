@@ -1,10 +1,10 @@
-name: syslog-ng stable
+name: AxoSyslog stable image
 
 on:
   workflow_dispatch:
   push:
     tags:
-      - 'syslog-ng-*'
+      - 'axosyslog-[0-9]+*'
 
 jobs:
   prepare:
@@ -19,7 +19,7 @@ jobs:
         id: unpack_tag
         with:
           text: ${{ github.ref }}
-          regex: 'refs/tags/syslog-ng-(.*)'
+          regex: 'refs/tags/axosyslog-(.*)'
     outputs:
       version: ${{ steps.unpack_tag.outputs.group1 }}
 
@@ -31,7 +31,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Create AxoSyslog modules tarball
-        working-directory: syslog-ng
+        working-directory: docker
         run: |
           tar -czvf python-modules.tar.gz python-modules/
 
@@ -39,10 +39,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: axosyslog-modules-tarball
-          path: syslog-ng/python-modules.tar.gz
+          path: docker/python-modules.tar.gz
 
   publish-packages:
-    uses: ./.github/workflows/syslog-ng-packages.yml
+    uses: ./.github/workflows/axosyslog-packages.yml
     needs:
       - prepare
     with:
@@ -50,7 +50,7 @@ jobs:
       version: ${{ needs.prepare.outputs.version }}
 
   publish-image:
-    uses: ./.github/workflows/syslog-ng-docker.yml
+    uses: ./.github/workflows/axosyslog-docker.yml
     needs:
       - prepare
       - axosyslog-modules

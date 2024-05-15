@@ -1,7 +1,7 @@
---- a/APKBUILD	2023-12-13 13:55:56.402001521 +0100
-+++ b/APKBUILD	2023-12-13 13:55:23.725512362 +0100
-@@ -11,7 +11,7 @@ pkgdesc="Next generation logging daemon"
- url="https://www.syslog-ng.com/products/open-source-log-management/"
+--- a/APKBUILD	2024-05-15 18:32:45
++++ b/APKBUILD	2024-05-15 18:32:30
+@@ -11,7 +11,7 @@
+ url="https://axoflow.com/docs/axosyslog/"
  arch="all"
  license="GPL-2.0-or-later"
 -options="!check" # unit tests require https://github.com/Snaipe/Criterion with deps
@@ -9,7 +9,7 @@
  makedepends="
  	bison
  	bpftool
-@@ -84,6 +84,7 @@ done
+@@ -86,6 +86,7 @@
  build() {
  	CFLAGS="$CFLAGS -flto=auto" \
  	./configure \

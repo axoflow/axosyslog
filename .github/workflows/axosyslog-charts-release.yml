@@ -1,4 +1,4 @@
-name: Release Charts
+name: AxoSyslog charts release
 
 on:
   push:
@@ -19,7 +19,15 @@ jobs:
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
+      - name: Setup chart-releaser config
+        run: |
+          echo 'release-name-template: "{{ .Name }}-charts-{{ .Version }}"' > chart-releaser-config.yml
+
       - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.5.0
+        uses: helm/chart-releaser-action@v1.6.0
+        with:
+          config: chart-releaser-config.yml
+          charts_dir: charts
+          mark_as_latest: false
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

@@ -4,11 +4,11 @@
 # Contributor: Jakub Jirutka <jakub@jirutka.cz>
 # Contributor: jv <jens@eisfair.org>
 # Maintainer: László Várady <laszlo.varady@axoflow.com>
-pkgname=syslog-ng
+pkgname=axosyslog
 pkgver=4.7.1
 pkgrel=0
 pkgdesc="Next generation logging daemon"
-url="https://www.syslog-ng.com/products/open-source-log-management/"
+url="https://axoflow.com/docs/axosyslog/"
 arch="all"
 license="GPL-2.0-or-later"
 options="!check" # unit tests require https://github.com/Snaipe/Criterion with deps
@@ -54,7 +54,7 @@ subpackages="
 source="https://github.com/syslog-ng/syslog-ng/releases/download/syslog-ng-$pkgver/syslog-ng-$pkgver.tar.gz
 	python-modules.tar.gz
 	"
-builddir="$srcdir/$pkgname-$pkgver"
+builddir="$srcdir/syslog-ng-$pkgver"
 
 _modules="
 	add-contextual-data
@@ -111,12 +111,12 @@ package() {
 
 	cd "$pkgdir"
 
-	rm -rf run usr/lib/$pkgname/libtest
+	rm -rf run usr/lib/syslog-ng/libtest
 
 	# getent module doesn't build properly as musl doesn't support reentrant
 	# getprotoby[number|name] funcs. The provided compat lib only patches
 	# solaris, which does provide reentrant versions under a different sig
-	rm -f usr/lib/$pkgname/libtfgetent.so
+	rm -f usr/lib/syslog-ng/libtfgetent.so
 
 	# Remove static file
 	rm -f usr/lib/libsyslog-ng-native-connector.a

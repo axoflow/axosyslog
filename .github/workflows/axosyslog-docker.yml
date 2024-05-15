@@ -1,4 +1,4 @@
-name: syslog-ng Docker
+name: AxoSyslog Docker image
 
 on:
   workflow_call:
@@ -23,7 +23,7 @@ env:
 
 jobs:
   docker:
-    name: syslog-ng Docker
+    name: AxoSyslog Docker image
     if: github.repository_owner == 'axoflow'
     runs-on: ubuntu-latest
     steps:
@@ -35,13 +35,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.tarball-artifact }}
-          path: syslog-ng/apkbuild/axoflow/syslog-ng
+          path: docker/apkbuild/axoflow/axosyslog
 
       - name: Download axosyslog-modules tarball artifact
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.axosyslog-modules-artifact }}
-          path: syslog-ng/apkbuild/axoflow/syslog-ng
+          path: docker/apkbuild/axoflow/axosyslog
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -55,7 +55,7 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (syslog-ng version) for Docker
+      - name: Extract metadata (AxoSyslog version) for Docker
         id: docker-metadata-tags
         uses: docker/metadata-action@v5
         with:
@@ -81,8 +81,8 @@ jobs:
       - name: Build and push production Docker image
         uses: docker/build-push-action@v5
         with:
-          context: syslog-ng
-          file: syslog-ng/alpine.dockerfile
+          context: docker
+          file: docker/alpine.dockerfile
           platforms: ${{ env.PLATFORMS }}
           push: true
           tags: ${{ steps.tags.outputs.TAGS }}
@@ -96,8 +96,8 @@ jobs:
       - name: Build and push debug Docker image
         uses: docker/build-push-action@v5
         with:
-          context: syslog-ng
-          file: syslog-ng/alpine.dockerfile
+          context: docker
+          file: docker/alpine.dockerfile
           platforms: ${{ env.DEBUG_PLATFORM }}
           push: true
           tags: ${{ steps.tags.outputs.DEBUG_TAGS }}
