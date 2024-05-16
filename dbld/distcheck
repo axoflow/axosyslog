@@ -3,7 +3,7 @@
 . /dbld/functions.sh
 
 cd /source
-SYSLOGNG_DIR=syslog-ng-${VERSION}
+SYSLOGNG_DIR=axosyslog-${VERSION}
 SYSLOGNG_TARBALL=${SYSLOGNG_DIR}.tar.gz
 
 ./autogen.sh
