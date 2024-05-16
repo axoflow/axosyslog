@@ -46,7 +46,7 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set container registry
         run: |
@@ -63,8 +63,8 @@ jobs:
         run: |
           if [ "${{ github.event.inputs.testing_image_upload }}" = "true" ] || \
              ( \
-              [ "${{ github.repository_owner }}" = "syslog-ng" ] && \
-              [ "${{ github.ref }}" = "refs/heads/master" ] && \
+              [ "${{ github.repository_owner }}" = "axoflow" ] && \
+              [ "${{ github.ref }}" = "refs/heads/main" ] && \
               [[ "${{ github.event_name }}" =~ ^(push|workflow_dispatch|schedule)$ ]] \
             )
           then
