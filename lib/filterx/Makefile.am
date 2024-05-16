@@ -41,6 +41,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-istype.h		\
 	lib/filterx/func-len.h		\
 	lib/filterx/func-vars.h		\
+	lib/filterx/func-unset-empties.h		\
 	lib/filterx/filterx-private.h
 
 
@@ -86,6 +87,7 @@ filterx_sources = 				\
 	lib/filterx/func-istype.c		\
 	lib/filterx/func-len.c		\
 	lib/filterx/func-vars.c		\
+	lib/filterx/func-unset-empties.c		\
 	lib/filterx/filterx-private.c	\
 	lib/filterx/filterx-grammar.y
 
