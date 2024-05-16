@@ -1,25 +1,25 @@
-# Please note that the syslog-ng git repository is not available in this workflow.
+# Please note that the AxoSyslog git repository is not available in this workflow.
 # It means that certain convenience/helper functions are not available (e.g. gh_output).
-# This is intentional as syslog-ng will be acquired from the tarball.
+# This is intentional as AxoSyslog will be acquired from the tarball.
 
-name: Stable release
+name: AxoSyslog stable
 
 on:
   workflow_dispatch:
   push:
     tags:
-      - 'syslog-ng-*'
+      - 'axosyslog-[0-9]+*'
 
 
 jobs:
   pre-check:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'syslog-ng'
+    if: github.repository_owner == 'axoflow'
     steps:
       - name: Validate tag
         run: |
-          if [[ "${{ github.ref }}" != refs/tags/syslog-ng-* ]]; then
-            echo "Please start the workflow on a 'syslog-ng-*' tag"
+          if [[ "${{ github.ref }}" != refs/tags/axosyslog-[0-9]+* ]]; then
+            echo "Please start the workflow on a 'axosyslog-[0-9]+*' tag"
             false
           fi
 
@@ -35,7 +35,7 @@ jobs:
         id: find-and-export-run-id
         run: |
           DRAFT_RELEASE_RUN_ID=$(gh run list \
-            --repo "${{ github.repository_owner }}/syslog-ng" \
+            --repo "${{ github.repository_owner }}/axosyslog" \
             --workflow "Draft release" \
             --json "status,conclusion,updatedAt,databaseId" \
             --jq '[ .[] | select(.status=="completed") | select(.conclusion=="success") ] | max_by(.updatedAt) | .databaseId')
@@ -47,28 +47,62 @@ jobs:
 
           echo "DRAFT_RELEASE_RUN_ID=${DRAFT_RELEASE_RUN_ID}" >> $GITHUB_OUTPUT
 
-  index-packages:
+  # index-packages:
+  #   needs: find-draft-release-run
+  #   uses: ./.github/workflows/index-packages.yml
+  #   with:
+  #     pkg-type: stable
+  #     run-id: ${{ needs.find-draft-release-run.outputs.DRAFT_RELEASE_RUN_ID }}
+  #   secrets:
+  #     config-base64: ${{ secrets.PACKAGE_INDEXER_CONFIG_BASE64 }}
+  #     gpg-key-base64: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_BASE64 }}
+  #     gpg-key-passphrase: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_PASSPHRASE }}
+
+  # test-packages:
+  #   needs: index-packages
+  #   uses: ./.github/workflows/test-apt-packages.yml
+  #   with:
+  #     pkg-type: stable
+
+  # TODO integrate axosyslog-modules with the source tree and remove this
+  axosyslog-modules:
+    name: axosyslog-modules
     needs: find-draft-release-run
-    uses: ./.github/workflows/index-packages.yml
-    with:
-      pkg-type: stable
-      run-id: ${{ needs.find-draft-release-run.outputs.DRAFT_RELEASE_RUN_ID }}
-    secrets:
-      config-base64: ${{ secrets.PACKAGE_INDEXER_CONFIG_BASE64 }}
-      gpg-key-base64: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_BASE64 }}
-      gpg-key-passphrase: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_PASSPHRASE }}
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.unpack_tag.outputs.group1 }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-  test-packages:
-    needs: index-packages
-    uses: ./.github/workflows/test-apt-packages.yml
-    with:
-      pkg-type: stable
+      - name: Regex matching
+        uses: kaisugi/action-regex-match@v1.0.0
+        id: unpack_tag
+        with:
+          text: ${{ github.ref }}
+          regex: 'refs/tags/axosyslog-(.*)'
 
-  publish-docker-image:
-    needs: test-packages
-    uses: ./.github/workflows/publish-docker-image.yml
+      - name: Create AxoSyslog modules tarball
+        working-directory: docker
+        run: |
+          tar -czvf python-modules.tar.gz python-modules/
+
+      - name: Store axosyslog-modules tarball as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: axosyslog-modules-tarball
+          path: docker/python-modules.tar.gz
+
+  publish-packages:
+    uses: ./.github/workflows/axosyslog-packages.yml
+    needs: axosyslog-modules
+    with:
+      repo: axoflow/axosyslog
+      version: ${{ needs.axosyslog-modules.outputs.version }}
+
+  publish-image:
+    uses: ./.github/workflows/axosyslog-docker.yml
+    needs: axosyslog-modules
     with:
       pkg-type: stable
-    secrets:
-      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
-      dockerhub-password: ${{ secrets.DOCKERHUB_PASSWORD }}
+      axosyslog-modules-artifact: axosyslog-modules-tarball

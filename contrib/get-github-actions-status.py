@@ -8,7 +8,7 @@ from time import sleep
 
 
 def get_workflow_runs(workflow):
-    url = "https://api.github.com/repos/syslog-ng/syslog-ng/actions/workflows/{}.yml/runs?branch=master".format(workflow)
+    url = "https://api.github.com/repos/axoflow/axosyslog/actions/workflows/{}.yml/runs?branch=main".format(workflow)
     request = urllib.request.Request(url, None, {})
     try:
         with urllib.request.urlopen(request) as response:

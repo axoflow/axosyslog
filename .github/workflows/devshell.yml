@@ -10,7 +10,7 @@ jobs:
   general:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/syslog-ng/dbld-devshell:latest
+      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
       options: --privileged --ulimit core=-1
 
     strategy:
@@ -20,8 +20,8 @@ jobs:
       fail-fast: false
 
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -118,8 +118,8 @@ jobs:
         run: |
           REPORTS_DIR=tests/light/reports
           cp -r ${REPORTS_DIR} /tmp/light-reports
-          find /tmp/light-reports -type p,s -print0 | xargs -0 rm -f 
-          tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports 
+          find /tmp/light-reports -type p,s -print0 | xargs -0 rm -f
+          tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports
 
       - name: "Artifact: light-reports"
         uses: actions/upload-artifact@v3
@@ -145,12 +145,12 @@ jobs:
   distcheck:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/syslog-ng/dbld-devshell:latest
+      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
       options: --security-opt seccomp=unconfined --ulimit core=-1
 
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -190,11 +190,11 @@ jobs:
   style-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/syslog-ng/dbld-devshell:latest
+      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
 
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -244,13 +244,13 @@ jobs:
   copyright-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/syslog-ng/dbld-devshell:latest
+      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
       env:
         COPYRIGHTVERBOSITY: 1
 
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -268,11 +268,11 @@ jobs:
   commits-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/syslog-ng/dbld-devshell:latest
+      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
 
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
