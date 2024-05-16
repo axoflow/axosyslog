@@ -1,7 +1,7 @@
-# Contributing to syslog-ng
+# Contributing to AxoSyslog
 
-syslog-ng is developed as a community project, and relies on
-volunteers to produce syslog-ng. Reporting bugs, testing changes,
+AxoSyslog is developed as a community project, and relies on
+volunteers to produce AxoSyslog. Reporting bugs, testing changes,
 writing code, or simply providing feedback are all important
 contributions. This guide provides guidelines to make contributing
 easier.
@@ -17,7 +17,7 @@ easier.
 
 ## Issues
 
-One of the easiest ways to contribute to the development of syslog-ng
+One of the easiest ways to contribute to the development of AxoSyslog
 is to participate in the discussions about features, bugs and design.
 Some of these discussions started on the
 [mailing list][ar:mailing-list], some in the
@@ -29,7 +29,7 @@ feedback - but pretty much any open issue can be a good start!
 
 When you report a bug, it is important to share as much relevant
 information as you can, including:
- * version number of syslog-ng used;
+ * version number of AxoSyslog used;
  * the platform (operating system and its version, architecture, etc);
  * a backtrace from the core file if the issue is a crash (this can be
 invaluable);
@@ -45,7 +45,7 @@ around them.
 
 We use the same [issue tracker][ar:issue-tracker] to handle features
 requests (they're all tagged with the
-[`enhancement`](https://github.com/syslog-ng/syslog-ng/labels/enhancement)
+[`enhancement`](https://github.com/axoflow/axosyslog/labels/enhancement)
 label. You are welcome to share your ideas on existing requests, or to
 submit your own.
 
@@ -62,10 +62,10 @@ If you plan to open a pull request, please follow the guideline below.
 
 ### Branch
 
-You need to fork syslog-ng in github, and create a working branch from master in your fork.
+You need to fork AxoSyslog on GitHub, and create a working branch from main in your fork.
 
 After writing the code, just before opening the pull request,
-make sure your working branch is rebased against master.
+make sure your working branch is rebased against main.
 
 ### PR description
 In the description, please explain (if applicable):
@@ -105,14 +105,14 @@ you can use `some-id+yourgithubusername@users.noreply.github.com`,
 which is automatically generated and tracked by github. You can check the exact
 address in your github settings->email->primary email address, if you enabled email privacy.
 
-`module` refers to the part of syslog-ng that the patch intends to change. For example
+`module` refers to the part of AxoSyslog that the patch intends to change. For example
 python, redis, persist, scratch-buffers, etc.
 
 #### Patches
 
 We are using a coding style very similar to
 [GNU Coding Standards](https://www.gnu.org/prep/standards/standards.html#Writing-C)
-for syslog-ng.
+for AxoSyslog.
 
 You can use `make style-check` or `make style-format` to check or format automatically your code.
 These commands are executed by our CI as well.
@@ -152,7 +152,7 @@ See news/README.md for more information.
 
 ### Testing
 
-If possible please add tests for your change. You can add unit tests in c (tests directory in most of syslog-ng modules),
+If possible please add tests for your change. You can add unit tests in c (tests directory in most of AxoSyslog modules),
 or there is an initiative so that contributors write tests in python (for now the feature set is limited).
 You can check `tests/light/functional_tests/source_drivers/generator_source/` as an example.
 
@@ -193,22 +193,15 @@ You should observe some of the existing files for reference.
 
 ## Additional resources
 
-For additional information, have a look at the
-[syslog-ng.org](http://www.syslog-ng.org/) website, which is a
-recommended starting point for finding out more about syslog-ng.
-
-To contact us, visit the [mailing list][ar:mailing-list] where you can
+To contact us, visit our [Discord server][ar:discord] where you can
 ask questions, and discuss your feature requests with a wider
 audience.
-
-We also have a [Gitter channel][ar:gitter], where developers hang out.
 
 We use [GitHub issues][ar:issue-tracker] to track issues, feature requests
 and patches. We are also using [GitHub Actions][ar:github-actions] for automatic
 testing.
 
- [ar:gitter]: https://gitter.im/syslog-ng/syslog-ng
- [ar:mailing-list]: http://lists.balabit.com/mailman/listinfo/syslog-ng
- [ar:issue-tracker]: https://github.com/syslog-ng/syslog-ng/issues
- [ar:issues:good-first-issue]: https://github.com/syslog-ng/syslog-ng/labels/good%20first%20issue
- [ar:github-actions]: https://github.com/syslog-ng/syslog-ng/actions
+ [ar:discord]: https://discord.gg/E65kP9aZGm
+ [ar:issue-tracker]: https://github.com/axoflow/axosyslog/issues
+ [ar:issues:good-first-issue]: https://github.com/axoflow/axosyslog/labels/good%20first%20issue
+ [ar:github-actions]: https://github.com/axoflow/axosyslog/actions

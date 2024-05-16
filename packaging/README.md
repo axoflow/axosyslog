@@ -12,7 +12,7 @@ syslog-ng is part of a number of distributions, either in the main archive
 or supplemental/semi-official archives.
 
 We find it beneficial that people may find syslog-ng in those repositories,
-however in a number of cases those syslog-ng versions lag behind our master
+however in a number of cases those syslog-ng versions lag behind our main
 with several releases.
 
 In order to have best of both worlds, we are attempting to

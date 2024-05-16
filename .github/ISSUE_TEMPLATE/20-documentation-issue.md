@@ -8,7 +8,7 @@ assignees: ''
 ---
 
 ## Documentation version
-<!-- In which version of syslog-ng's documentation did you see the issue? -->
+<!-- In which version of AxoSyslog's documentation did you see the issue? -->
 
 ## Incorrect section
 <!-- Which section of the documentation is wrong? Please include a link to it, if that is possible. -->

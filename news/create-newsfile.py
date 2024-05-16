@@ -69,7 +69,7 @@ def create_block(block_name, files):
 
         pr_id = match_pr_id.group(1)
 
-        entry += '  * {}\n([#{}](https://github.com/syslog-ng/syslog-ng/pull/{}))'.format(f.read_text().rstrip(), pr_id, pr_id)
+        entry += '  * {}\n([#{}](https://github.com/axoflow/axosyslog/pull/{}))'.format(f.read_text().rstrip(), pr_id, pr_id)
         entry = entry.replace('\n', '\n    ')
         entry = entry.replace('\n    \n', '\n\n')
         block += entry + '\n\n'
@@ -113,7 +113,7 @@ def create_credits_block():
         concated = ", ".join([c.replace(" ", "\0") for c in contributors])
         return textwrap.fill(concated, width=70).replace("\0", " ")
 
-    stdout = _exec(r'git rev-list --no-merges --format=format:%aN syslog-ng-' + get_last_version() + r'..HEAD | '
+    stdout = _exec(r'git rev-list --no-merges --format=format:%aN axosyslog-' + get_last_version() + r'..HEAD | '
                    r'grep -Ev "^commit [a-z0-9]{40}$" | sort | uniq')
     contributors = stdout.rstrip().split('\n')
     contributors = filter(lambda x : x not in exclude_contributor_list, contributors)
@@ -121,12 +121,12 @@ def create_credits_block():
 
     return '## Credits\n' \
            '\n' \
-           'syslog-ng is developed as a community project, and as such it relies\n' \
-           'on volunteers, to do the work necessarily to produce syslog-ng.\n' \
+           'AxoSyslog is developed as a community project, and as such it relies\n' \
+           'on volunteers, to do the work necessary to produce AxoSyslog.\n' \
            '\n' \
            'Reporting bugs, testing changes, writing code or simply providing\n' \
-           'feedback are all important contributions, so please if you are a user\n' \
-           'of syslog-ng, contribute.\n' \
+           'feedback is an important contribution, so please if you are a user\n' \
+           'of AxoSyslog, contribute.\n' \
            '\n' \
            'We would like to thank the following people for their contribution:\n' \
            '\n' \
