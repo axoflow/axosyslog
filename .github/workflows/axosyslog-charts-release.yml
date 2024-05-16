@@ -2,6 +2,9 @@ name: AxoSyslog charts release
 
 on:
   push:
+    paths:
+      - 'charts/**'
+      - '.github/workflows/**'
     branches:
       - main
 

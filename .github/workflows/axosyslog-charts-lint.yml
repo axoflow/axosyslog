@@ -2,7 +2,13 @@ name: AxoSyslog charts linter
 
 on:
   push:
+    paths:
+      - 'charts/**'
+      - '.github/workflows/**'
   pull_request:
+    paths:
+      - 'charts/**'
+      - '.github/workflows/**'
 
 defaults:
   run:
