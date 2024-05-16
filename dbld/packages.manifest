@@ -121,28 +121,6 @@ libmongoc-dev               [debian]
 
 
 #############################################################################
-# Tools required to run @kira-syslogng, our testbot.
-#############################################################################
-
-gdb                             [kira]
-faketime                        [kira]
-libdbd-mysql                    [kira]
-lsb-release                     [kira]
-lsof                            [kira]
-netbase                         [kira]
-netcat-openbsd                  [kira]
-openssh-client                  [kira]
-python-numpy                    [kira]
-python3-numpy                   [kira]
-python-yaml                     [kira]
-python3-yaml                    [kira]
-systemd-sysv                    [kira]
-python-is-python2               [kira]
-python2-dev                     [kira]
-python2-dbg                     [kira]
-
-
-#############################################################################
 # Development tools in our devshell.
 #############################################################################
 

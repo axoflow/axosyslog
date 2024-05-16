@@ -41,7 +41,6 @@ jobs:
           - ubuntu-lunar
           - ubuntu-mantic
           - devshell
-          - kira
           - tarball
       fail-fast: false
     steps:

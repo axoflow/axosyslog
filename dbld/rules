@@ -13,7 +13,6 @@ BUILDER_IMAGES=		\
 	ubuntu-noble \
 	ubuntu-lunar	\
 	ubuntu-mantic	\
-	kira		\
 	tarball
 
 IMAGES=${BUILDER_IMAGES} devshell
@@ -211,7 +210,6 @@ shell-%: setup
 
 images: $(foreach image,$(IMAGES), image-$(image))
 image: image-$(DEFAULT_IMAGE)
-image-kira: image-ubuntu-focal
 image-devshell: image-tarball
 image-tarball: image-debian-testing
 image-%:
