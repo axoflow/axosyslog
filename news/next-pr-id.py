@@ -27,7 +27,7 @@ from argparse import ArgumentParser
 
 
 def get_last_issue_or_pr_id():
-    ISSUES_API = "https://api.github.com/repos/syslog-ng/syslog-ng/issues?state=all&sort=created&direction=desc"
+    ISSUES_API = "https://api.github.com/repos/axoflow/axosyslog/issues?state=all&sort=created&direction=desc"
 
     raw_response = urlopen(ISSUES_API).read().decode("utf-8")
     json_response = loads(raw_response)
@@ -37,7 +37,7 @@ def get_last_issue_or_pr_id():
 
 
 def is_a_discussion(id):
-    DISCUSSIONS_URL = "https://github.com/syslog-ng/syslog-ng/discussions/"
+    DISCUSSIONS_URL = "https://github.com/axoflow/axosyslog/discussions/"
 
     try:
         urlopen(DISCUSSIONS_URL + str(id))

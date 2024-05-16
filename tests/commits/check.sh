@@ -21,7 +21,7 @@
 #
 #############################################################################
 
-commit_range=origin/master..HEAD
+commit_range=origin/main..HEAD
 
 if [ $# -gt 0 ]; then
   commit_range=$1
