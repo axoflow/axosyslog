@@ -14,7 +14,7 @@ set(CMAKE_MACOSX_RPATH 1)
 # which point to directories outside the build tree to the install RPATH
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-project(syslog-ng C)
+project(axosyslog C)
 
 option(ENABLE_CPP "Enable C++" ON)
 
