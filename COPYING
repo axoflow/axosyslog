@@ -34,10 +34,9 @@ syslog-ng/
 syslog-ng-ctl/
 persist-tool/
 tests/loggen/
-docker/
 
-The syslog-ng modules (modules/, charts/, and scl/ subdirectories, except
-the ones that declare LGPL-2.1-or-later in their license notices)
+The syslog-ng modules (modules/, docker/, charts/, and scl/ subdirectories,
+except the ones that declare LGPL-2.1-or-later in their license notices)
 is free software; you can redistribute it and/or modify it under the terms of
 the GNU General Public License version 2 as published by the
 Free Software Foundation, or (at your option) any later version

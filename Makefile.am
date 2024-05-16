@@ -251,6 +251,7 @@ include libtest/Makefile.am
 endif
 include lib/Makefile.am
 include charts/Makefile.am
+include docker/Makefile.am
 include modules/Makefile.am
 include syslog-ng/Makefile.am
 include syslog-ng-ctl/Makefile.am
