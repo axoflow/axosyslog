@@ -88,21 +88,7 @@ EXTRA_DIST += \
 	\
 	contrib/scripts/config-graph-json-to-dot.py \
 	\
-	contrib/valgrind/syslog-ng.supp \
-	\
-	contrib/syslog-ng-helm-chart/.helmignore \
-	contrib/syslog-ng-helm-chart/values.yaml \
-	contrib/syslog-ng-helm-chart/Chart.yaml \
-	contrib/syslog-ng-helm-chart/templates/NOTES.txt \
-	contrib/syslog-ng-helm-chart/templates/_helpers.tpl \
-	contrib/syslog-ng-helm-chart/templates/compress-job.yaml \
-	contrib/syslog-ng-helm-chart/templates/config.yaml \
-	contrib/syslog-ng-helm-chart/templates/deployment.yaml \
-	contrib/syslog-ng-helm-chart/templates/hpa.yaml \
-	contrib/syslog-ng-helm-chart/templates/pvc.yaml \
-	contrib/syslog-ng-helm-chart/templates/service.yaml \
-	contrib/syslog-ng-helm-chart/templates/serviceaccount.yaml \
-	contrib/syslog-ng-helm-chart/templates/tests/test-connection.yaml
+	contrib/valgrind/syslog-ng.supp
 
 if ENABLE_SYSTEMD_UNIT_INSTALL
 systemdsystemunit_DATA = contrib/systemd/syslog-ng@.service
