@@ -1,0 +1,13 @@
+name: Check config grammar changes (PR)
+
+on:
+  pull_request:
+
+jobs:
+  check-cfg-grammar-changes:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: syslog-ng/syslog-ng-cfg-diff-pr@v2
+        continue-on-error: true

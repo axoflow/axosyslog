@@ -1,0 +1,173 @@
+##################################################
+# packages required to build the docker image
+##################################################
+
+gnupg                           [centos, almalinux, fedora]
+
+# download various stuff over https
+wget                            [centos, almalinux, fedora, debian, ubuntu]
+ca-certificates       	        [centos, almalinux, fedora, debian, ubuntu]
+
+# criterion compilation
+cmake                           [centos, almalinux, fedora, debian, ubuntu]
+gcc-c++				[centos, almalinux, fedora]
+
+# to unpack gradle binary package (zip file)
+unzip                           [centos, almalinux, fedora, debian, ubuntu]
+
+# I dont know why this is needed.
+bzip2                           [centos, almalinux, fedora, debian, ubuntu]
+
+# Basic interactive tools
+less                            [centos, almalinux, fedora, debian, ubuntu]
+vim                             [centos, almalinux, fedora, debian, ubuntu]
+sudo				[centos, almalinux, fedora, debian, ubuntu]
+
+#############################################################################
+# Essential build tools not explicitly referenced from
+# Build-Depends/BuildRequires
+#############################################################################
+build-essential                 [debian, ubuntu]
+debhelper                       [debian, ubuntu]
+devscripts                      [debian, ubuntu]
+dh-autoreconf                   [debian, ubuntu]
+dh-exec                         [debian, ubuntu]
+dpkg-dev                        [debian, ubuntu]
+equivs                          [debian, ubuntu]
+libdistro-info-perl		[debian, ubuntu]
+make                            [centos, almalinux, fedora]
+rpm-build                       [centos, almalinux, fedora]
+which				[fedora]
+
+#############################################################################
+# eBPF related tools
+#############################################################################
+clang				[tarball]
+libbpf-dev			[tarball]
+bpftool				[tarball]
+
+#############################################################################
+# Tarball related tools
+#############################################################################
+
+# docbook to generate man pages
+docbook-xsl                     [tarball]
+docbook-style-xsl               [fedora]
+
+#############################################################################
+# Build environment dependencies that are not strictly required by syslog-ng
+# but are needed by our dbld functionality.
+#############################################################################
+git                             [centos, almalinux, fedora, debian, ubuntu]
+ccache                          [centos, almalinux, fedora, debian, ubuntu]
+
+#############################################################################
+# packages to run successful autogen.sh
+#
+# NOTE: the versions installed may or may not be enough to regenerate
+# configure scripts, especially on older distros).  We only guarantee that
+# autogen.sh successfully runs within TARBALL_IMAGE (debian-testing at this
+# point).  All the other platforms are best-effort.
+#
+# NOTE/2: debian based platforms always regenerate configure script in their
+# debian/rules, so they will depend on these tools in their Build-Depends
+# lines, so we don't need to list them here.
+#############################################################################
+
+autoconf                    [centos, almalinux, fedora]
+autoconf-archive            [centos, fedora]
+automake                    [centos, almalinux, fedora]
+
+#############################################################################
+# syslog-ng core dependencies
+#############################################################################
+
+# Python on various platforms
+
+# Python is needed for two reasons:
+#   - build itself (test scripts, merge-grammar.py, etc)
+#   - python support (e.g. the version used for building modules/python/)
+#
+# We are now using the same version for both.
+
+python3-dev                 [debian-sid]
+python3-devel               [fedora]
+python3-dev                 [ubuntu-focal]
+python3-pip                     [debian, ubuntu]
+python3-venv			[debian, ubuntu, devshell]
+
+# python 3.10 has issues on Debian Testing
+# Nevertheless we should only downgrade for Light style-check tests, which uses pre-commit
+python3.11                   [devshell]
+python3.11-dev               [devshell]
+python3.11-venv              [devshell]
+
+# libmongoc and libbson packages on various platforms
+# Because we are using fixed version of libmongoc on Bionic, we need to
+# specify non versioned packages on other platforms to continiously support
+
+libbson-dev                 [debian]
+libmongoc-dev               [debian]
+
+
+#############################################################################
+# syslog-ng module dependencies
+#
+# This section should preferably be empty. The only reason it is not empty
+# as some things cannot be resolved using the Build-Depends/Requires
+# mechanism. Exact reasoning to add anything to this section needs to be
+# added as comments.
+#############################################################################
+
+
+#############################################################################
+# Tools required to run @kira-syslogng, our testbot.
+#############################################################################
+
+gdb                             [kira]
+faketime                        [kira]
+libdbd-mysql                    [kira]
+lsb-release                     [kira]
+lsof                            [kira]
+netbase                         [kira]
+netcat-openbsd                  [kira]
+openssh-client                  [kira]
+python-numpy                    [kira]
+python3-numpy                   [kira]
+python-yaml                     [kira]
+python3-yaml                    [kira]
+systemd-sysv                    [kira]
+python-is-python2               [kira]
+python2-dev                     [kira]
+python2-dbg                     [kira]
+
+
+#############################################################################
+# Development tools in our devshell.
+#############################################################################
+
+clang                           [devshell]
+dirmngr                         [devshell]
+gdb                             [devshell]
+gdbserver                       [devshell]
+joe                             [devshell]
+lcov                            [devshell]
+libc6-dbg                       [devshell]
+libglib2.0-0t64-dbgsym          [devshell]
+libjemalloc-dev                 [devshell]
+libjemalloc2-dbgsym             [devshell]
+libssl3t64-dbgsym               [devshell]
+linux-perf                      [devshell]
+locales                         [devshell]
+lsof                            [devshell]
+netcat-openbsd                  [devshell]
+python3-dev                     [devshell]
+python3-dbg                     [devshell]
+python3-dbg                     [devshell]
+strace                          [devshell]
+valgrind                        [devshell]
+openssh-client                  [devshell]
+astyle                          [devshell]
+snmptrapd                       [devshell]
+dwarves                         [devshell]
+jq	                        [devshell]

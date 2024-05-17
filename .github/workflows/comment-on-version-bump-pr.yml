@@ -1,0 +1,42 @@
+###########################################################################
+#
+# If there are new commits on master, while we have a version bump PR open,
+# this job automatically comments on the PR, mentioning the new commits,
+# so we will not forget to follow-up the changes.
+#
+###########################################################################
+
+name: Comment on version bump PR
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  comment-on-version-bump-pr:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      COMMIT_URL: https://github.com/${{ github.repository_owner }}/syslog-ng/commit/${{ github.sha }}
+    steps:
+      - name: Checkout syslog-ng source
+        uses: actions/checkout@v3
+
+      - name: Check if version bump PR is open
+        run: |
+          . .github/workflows/gh-tools.sh
+
+          PR_NUMBER=$(gh pr list --state "open" --label "version-bump" --json "number" --jq ".[0].number")
+
+          [ -z ${PR_NUMBER} ] && echo "No version bump PR is open. Skipping."
+          gh_export PR_NUMBER
+
+      - name: Comment
+        if: env.PR_NUMBER != ''
+        run: |
+          COMMENT="There are new commits (${COMMIT_URL}) on master. Please follow-up any necessary changes."
+
+          gh pr comment \
+            "${PR_NUMBER}" \
+            --body "${COMMENT}"

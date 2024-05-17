@@ -1,0 +1,68 @@
+name: Nightly release
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '00 23 * * *'
+
+
+jobs:
+  create-source-tarball:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout syslog-ng source
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Prepare docker image
+        run: ./dbld/rules cache-image-tarball
+
+      - name: Create source tarball
+        run: ./dbld/rules pkg-tarball
+
+      - name: Store source tarball as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: source-tarball
+          path: dbld/build/*.tar.gz
+
+  create-packages:
+    needs: create-source-tarball
+    uses: ./.github/workflows/create-packages.yml
+    with:
+      source-tarball-artifact-name: source-tarball
+      dbld-image-mode: cache
+
+  upload-packages:
+    needs: create-packages
+    uses: ./.github/workflows/upload-packages.yml
+    with:
+      pkg-type: nightly
+    secrets:
+      azure-sas-token: ${{ secrets.AZURE_SAS_TOKEN }}
+
+  index-packages:
+    needs: upload-packages
+    uses: ./.github/workflows/index-packages.yml
+    with:
+      pkg-type: nightly
+    secrets:
+      config-base64: ${{ secrets.PACKAGE_INDEXER_CONFIG_BASE64 }}
+      gpg-key-base64: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_BASE64 }}
+      gpg-key-passphrase: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_PASSPHRASE }}
+
+  test-packages:
+    needs: index-packages
+    uses: ./.github/workflows/test-apt-packages.yml
+    with:
+      pkg-type: nightly
+
+  publish-docker-image:
+    needs: test-packages
+    uses: ./.github/workflows/publish-docker-image.yml
+    with:
+      pkg-type: nightly
+    secrets:
+      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub-password: ${{ secrets.DOCKERHUB_PASSWORD }}

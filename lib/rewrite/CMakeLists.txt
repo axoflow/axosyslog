@@ -1,0 +1,35 @@
+set(REWRITE_HEADERS
+    rewrite/rewrite-expr.h
+    rewrite/rewrite-set-tag.h
+    rewrite/rewrite-set.h
+    rewrite/rewrite-subst.h
+    rewrite/rewrite-expr-parser.h
+    rewrite/rewrite-groupset.h
+    rewrite/rewrite-unset.h
+    rewrite/rewrite-rename.h
+    rewrite/rewrite-set-matches.h
+    rewrite/rewrite-unset-matches.h
+    rewrite/rewrite-set-pri.h
+    rewrite/rewrite-set-severity.h
+    rewrite/rewrite-set-facility.h
+    PARENT_SCOPE
+    )
+
+set(REWRITE_SOURCES
+    rewrite/rewrite-expr.c
+    rewrite/rewrite-set-tag.c
+    rewrite/rewrite-set.c
+    rewrite/rewrite-subst.c
+    rewrite/rewrite-expr-parser.c
+    rewrite/rewrite-groupset.c
+    rewrite/rewrite-unset.c
+    rewrite/rewrite-rename.c
+    rewrite/rewrite-set-matches.c
+    rewrite/rewrite-unset-matches.c
+    rewrite/rewrite-set-pri.c
+    rewrite/rewrite-set-severity.c
+    rewrite/rewrite-set-facility.c
+    PARENT_SCOPE
+    )
+
+add_test_subdirectory(tests)

@@ -1,0 +1,40 @@
+#!/bin/bash
+
+. /dbld/functions.sh
+
+function setup_dirs() {
+    rm -rf /build/${IMAGE_PLATFORM} && mkdir -p /build/${IMAGE_PLATFORM}
+}
+
+function prepare_source() {
+    cd /build
+    rm -rf syslog-ng-${VERSION}
+    tar xf syslog-ng-${VERSION}.tar.gz
+
+    # save the tarball as .orig.tar.gz so that dpkg-buildpackage finds it as the original source
+    cp syslog-ng-${VERSION}.tar.gz syslog-ng_${VERSION}.orig.tar.gz
+}
+
+function capture_debs() {
+    mv /build/*.deb /build/${IMAGE_PLATFORM}
+    echo "Your debs are in /build/${IMAGE_PLATFORM}, also available on the host in \$(top_srcdir)/dbld/build/${IMAGE_PLATFORM}"
+
+    capture_artifacts /build/${IMAGE_PLATFORM}/*.deb
+}
+
+cd /build
+
+validate_container
+setup_dirs
+prepare_source
+
+cd syslog-ng-${VERSION}
+
+if [ ! -d debian ]; then
+	echo "You have no Debian packaging in debian/, this should already by in the tarball at this point"
+	exit 1
+fi
+
+deb_run_build_command dpkg-buildpackage -rfakeroot -d
+
+capture_debs

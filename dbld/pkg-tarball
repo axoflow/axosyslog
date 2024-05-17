@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# MODE is passed via the environment
+
+. /dbld/functions.sh
+
+cd /source
+
+SYSLOGNG_DIR=syslog-ng-${VERSION}
+SYSLOGNG_TARBALL=${SYSLOGNG_DIR}.tar.gz
+
+cd /build
+rm -rf $SYSLOGNG_DIR
+tar xfz $SYSLOGNG_TARBALL
+cd $SYSLOGNG_DIR
+
+echo ${VERSION} > VERSION
+
+/dbld/generate-debian-directory $MODE
+/dbld/generate-rpm-specfile $MODE
+
+cd ..
+tar cfz $SYSLOGNG_TARBALL $SYSLOGNG_DIR
+
+capture_artifacts $SYSLOGNG_TARBALL

@@ -1,0 +1,32 @@
+set(LOGPROTO_HEADERS
+    logproto/logproto-buffered-server.h
+    logproto/logproto-builtins.h
+    logproto/logproto-client.h
+    logproto/logproto-dgram-server.h
+    logproto/logproto-framed-client.h
+    logproto/logproto-framed-server.h
+    logproto/logproto.h
+    logproto/logproto-multiline-server.h
+    logproto/logproto-record-server.h
+    logproto/logproto-server.h
+    logproto/logproto-text-client.h
+    logproto/logproto-text-server.h
+    logproto/logproto-proxied-text-server.h
+    PARENT_SCOPE)
+
+set(LOGPROTO_SOURCES
+    logproto/logproto-buffered-server.c
+    logproto/logproto-builtins.c
+    logproto/logproto-client.c
+    logproto/logproto-dgram-server.c
+    logproto/logproto-framed-client.c
+    logproto/logproto-framed-server.c
+    logproto/logproto-multiline-server.c
+    logproto/logproto-record-server.c
+    logproto/logproto-server.c
+    logproto/logproto-text-client.c
+    logproto/logproto-text-server.c
+    logproto/logproto-proxied-text-server.c
+    PARENT_SCOPE)
+
+add_test_subdirectory(tests)

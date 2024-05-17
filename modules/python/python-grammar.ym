@@ -1,0 +1,283 @@
+/*
+ * Copyright (c) 2014 Balabit
+ * Copyright (c) 2014 Gergely Nagy <algernon@balabit.hu>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published
+ * by the Free Software Foundation, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code requires {
+
+#include "python-parser.h"
+#include "python-dest.h"
+#include "python-source.h"
+#include "python-fetcher.h"
+#include "python-logparser.h"
+#include "python-http-header.h"
+#include "python-global.h"
+#include "value-pairs/value-pairs.h"
+#include "string-list.h"
+#include "logthrsource/logthrsourcedrv.h"
+
+}
+
+%code {
+
+#include "cfg-grammar-internal.h"
+#include "cfg-parser.h"
+#include "plugin.h"
+#include "syslog-names.h"
+
+PythonHttpHeaderPlugin *last_header;
+PythonOptions *last_python_options;
+PythonBinding *last_python_binding;
+
+static inline void
+_warn_if_config_version_is_old(CfgLexer *lexer, const CFG_LTYPE *yylloc, const gchar *type, const gchar *option_name)
+{
+  if (!cfg_is_config_version_older(configuration, VERSION_VALUE_4_2))
+    return;
+
+  msg_warning("WARNING: The parsing of python options has been changed with " VERSION_4_2 ". "
+              "Previously values were converted to strings if possible, now they are passed "
+              "to the python class with their real type. Make sure to follow up these changes "
+              "in your python code",
+              cfg_lexer_format_location_tag(lexer, yylloc),
+              evt_tag_str("type", type),
+              evt_tag_str("option_name", option_name));
+};
+
+}
+
+%define api.prefix {python_}
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {void **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_PYTHON
+%token KW_PYTHON_FETCHER
+%token KW_PYTHON_HTTP_HEADER
+%token KW_CLASS
+%token KW_IMPORTS
+%token KW_LOADERS
+%token KW_MARK_ERRORS_AS_CRITICAL
+%token KW_TRUE
+%token KW_FALSE
+%token KW_LOG_TEMPLATE
+
+%type <ptr> python_options_block
+%type <ptr> python_option
+%type	<num> python_yesno
+
+%%
+
+start
+        : LL_CONTEXT_DESTINATION KW_PYTHON
+          {
+            last_driver = *instance = python_dd_new(configuration);
+	    last_python_binding = python_dd_get_binding(last_driver);
+          }
+          '(' _inner_dest_context_push python_dd_options _inner_dest_context_pop ')'         { YYACCEPT; }
+        | LL_CONTEXT_PARSER KW_PYTHON
+	  {
+	    last_parser = *instance = python_parser_new(configuration);
+	    last_python_binding = python_parser_get_binding(last_parser);
+          }
+          '(' python_parser_options ')'                                                      { YYACCEPT; }
+        | LL_CONTEXT_SOURCE KW_PYTHON
+          {
+            last_driver = *instance = python_sd_new(configuration);
+	    last_python_binding = python_sd_get_binding(last_driver);
+          }
+          '(' _inner_src_context_push python_sd_options _inner_src_context_pop ')'           { YYACCEPT; }
+        | LL_CONTEXT_SOURCE KW_PYTHON_FETCHER
+          {
+            last_driver = *instance = python_fetcher_new(configuration);
+	    last_python_binding = python_fetcher_get_binding(last_driver);
+          }
+          '(' _inner_src_context_push python_fetcher_options _inner_src_context_pop ')'      { YYACCEPT; }
+        | LL_CONTEXT_INNER_DEST KW_PYTHON_HTTP_HEADER
+          {
+            last_header = *instance = python_http_header_new();
+	    last_python_binding = python_http_header_get_binding(last_header);
+          }
+          '(' python_http_header_options ')'                                                 { YYACCEPT; }
+        | LL_CONTEXT_ROOT KW_PYTHON _block_content_context_push LL_BLOCK _block_content_context_pop
+          {
+            gboolean result;
+
+            result = python_evaluate_global_code(configuration, $4, &@2);
+            free($4);
+            CHECK_ERROR(result, @1, "Error processing global python block");
+            *instance = (void *) 1;
+            YYACCEPT;
+          }
+        ;
+
+python_dd_options
+        : python_dd_option python_dd_options
+        |
+        ;
+
+python_dd_option
+        : python_binding_option
+        | threaded_dest_driver_general_option
+        | threaded_dest_driver_batch_option
+        | value_pair_option
+          {
+            python_dd_set_value_pairs(last_driver, $1);
+          }
+        | { last_template_options = python_dd_get_template_options(last_driver); } template_option
+        ;
+
+
+python_sd_options
+        : python_sd_option python_sd_options
+        |
+        ;
+
+python_sd_option
+        : python_binding_option
+        | threaded_source_driver_option
+        ;
+
+
+python_fetcher_options
+        : python_fetcher_option python_fetcher_options
+        |
+        ;
+
+python_fetcher_option
+	: python_binding_option
+        | threaded_source_driver_option
+        | threaded_fetcher_driver_option
+        ;
+
+
+python_parser_options
+        : python_parser_option python_parser_options
+        |
+        ;
+
+python_parser_option
+        : python_binding_option
+        | parser_opt
+        ;
+
+
+python_http_header_options
+        : python_http_header_option python_http_header_options
+        |
+        ;
+
+python_http_header_option
+	: python_binding_option
+        | KW_MARK_ERRORS_AS_CRITICAL '(' yesno ')'
+          {
+            python_http_header_set_mark_errors_as_critical(last_header, $3);
+          }
+        ;
+
+optional_arrow
+          : LL_ARROW
+          |
+          ;
+
+python_yesno
+          : yesno_strict
+          | KW_TRUE  { $$ = 1; }
+          | KW_FALSE { $$ = 0; }
+          ;
+
+python_binding_option
+          : KW_CLASS '(' string ')'
+            {
+              python_binding_set_class(last_python_binding, $3);
+              free($3);
+            }
+          | KW_LOADERS '(' string_list ')'
+            {
+              python_binding_set_loaders(last_python_binding, $3);
+            }
+          | KW_IMPORTS '(' string_list ')'
+            {
+              python_binding_set_loaders(last_python_binding, $3);
+            }
+          | { last_python_options = last_python_binding->options; } python_options_block
+          ;
+
+python_option
+          : string optional_arrow string
+            {
+              $$ = python_option_string_new($1, $3);
+              free($1);
+              free($3);
+            }
+          | string optional_arrow LL_NUMBER
+            {
+              $$ = python_option_long_new($1, $3);
+              _warn_if_config_version_is_old(lexer, &@3, "int", $1);
+              free($1);
+            }
+          | string optional_arrow LL_FLOAT
+            {
+              $$ = python_option_double_new($1, $3);
+              _warn_if_config_version_is_old(lexer, &@3, "float", $1);
+              free($1);
+            }
+          | string optional_arrow python_yesno
+            {
+              $$ = python_option_boolean_new($1, $3);
+              _warn_if_config_version_is_old(lexer, &@3, "bool", $1);
+              free($1);
+            }
+          | string optional_arrow '[' string_list ']'
+            {
+              $$ = python_option_string_list_new($1, $4);
+              free($1);
+              string_list_free($4);
+            }
+          | string optional_arrow KW_LOG_TEMPLATE '(' optional_string ')'
+            {
+              $$ = python_option_template_new($1, $5 ? $5 : "");
+              free($1);
+              if ($5)
+                free($5);
+            }
+          ;
+
+python_options
+          : python_option
+            {
+              python_options_add_option(last_python_options, $1);
+              python_option_unref($1);
+            }
+            python_options
+          |
+          ;
+
+python_options_block
+          : KW_OPTIONS '(' python_options ')'
+          ;
+
+/* INCLUDE_RULES */
+
+%%

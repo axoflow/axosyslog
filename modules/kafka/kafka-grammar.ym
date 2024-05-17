@@ -1,0 +1,160 @@
+/*
+ * Copyright (c) 2019 Balabit
+ * Copyright (c) 2018 Kokan <kokaipeter@gmail.com>
+ * Copyright (c) 2013 Tihamer Petrovics <tihameri@gmail.com>
+ * Copyright (c) 2014 Pierre-Yves Ritschard <pyr@spootnik.org>
+ * Copyright (c) 2019 Balazs Scheidler
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published
+ * by the Free Software Foundation, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code requires {
+
+#include "kafka-parser.h"
+
+}
+
+%code {
+
+#include "cfg-grammar-internal.h"
+#include "plugin.h"
+#include "kafka-dest-driver.h"
+#include "kafka-props.h"
+
+}
+
+%define api.prefix {kafka_}
+
+/* this parameter is needed in order to instruct bison to use a complete
+ * argument list for yylex/yyerror */
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogDriver **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%type <ptr> kafka_properties
+%type <ptr> kafka_properties_list
+%type <ptr> kafka_property
+
+%token KW_KAFKA
+%token KW_TOPIC
+%token KW_FALLBACK_TOPIC
+%token KW_CONFIG
+%token KW_FLUSH_TIMEOUT_ON_SHUTDOWN
+%token KW_FLUSH_TIMEOUT_ON_RELOAD
+%token KW_POLL_TIMEOUT
+%token KW_BOOTSTRAP_SERVERS
+%token KW_SYNC_SEND
+
+%%
+
+start
+        : LL_CONTEXT_DESTINATION KW_KAFKA
+          {
+            last_driver = *instance = kafka_dd_new(configuration);
+          }
+          '(' _inner_dest_context_push kafka_options _inner_dest_context_pop ')' { YYACCEPT; }
+        ;
+
+kafka_options
+        : kafka_option kafka_options
+        |
+        ;
+
+kafka_option
+        : KW_TOPIC '(' template_content ')'
+        {
+            kafka_dd_set_topic(last_driver, $3);
+        }
+        | KW_FALLBACK_TOPIC '(' string ')'
+        {
+            kafka_dd_set_fallback_topic(last_driver, $3);
+            free($3);
+        } 
+        | KW_CONFIG '(' kafka_properties ')'
+        {
+            kafka_dd_merge_config(last_driver, $3);
+        }
+        | KW_KEY '(' template_content ')'
+        {
+            kafka_dd_set_key_ref(last_driver, $3);
+        }
+        | KW_MESSAGE '(' template_name_or_content ')'
+        {
+            kafka_dd_set_message_ref(last_driver, $3);
+        }
+	| KW_FLUSH_TIMEOUT_ON_SHUTDOWN '(' nonnegative_integer ')'    { kafka_dd_set_flush_timeout_on_shutdown(last_driver, $3); }
+	| KW_FLUSH_TIMEOUT_ON_RELOAD '(' nonnegative_integer ')'      { kafka_dd_set_flush_timeout_on_reload(last_driver, $3); }
+        | KW_POLL_TIMEOUT '(' nonnegative_integer ')'                 { kafka_dd_set_poll_timeout(last_driver, $3); }
+	| KW_BOOTSTRAP_SERVERS '(' string ')'                         { kafka_dd_set_bootstrap_servers(last_driver, $3); free($3); }
+	| KW_SYNC_SEND '(' yesno ')'                                  { kafka_dd_set_transaction_commit(last_driver, $3); }
+        | threaded_dest_driver_general_option
+        | threaded_dest_driver_batch_option
+        | threaded_dest_driver_workers_option
+        | { last_template_options = kafka_dd_get_template_options(last_driver); } template_option
+        ;
+
+kafka_properties
+	:
+	{
+		static CfgLexerKeyword empty_keywords[] = {{ CFG_KEYWORD_STOP }};
+		cfg_lexer_push_context(lexer, LL_CONTEXT_CONFIG, empty_keywords, "kafka_config_block");
+	}
+	kafka_properties_list
+	{
+		cfg_lexer_pop_context(lexer);
+		$$ = $2;
+	}
+	;
+
+kafka_properties_list
+        : kafka_property kafka_properties_list			{ $$ = g_list_prepend($2, $1); }
+        |							{ $$ = NULL; }
+        ;
+
+kafka_property
+        : string '(' string_or_number ')'
+        {
+            KafkaProperty *prop = kafka_property_new($1, $3);
+            free($1);
+            free($3);
+	    $$ = prop;
+        }
+        | string LL_ARROW string_or_number
+        {
+            KafkaProperty *prop = kafka_property_new($1, $3);
+            free($1);
+            free($3);
+	    $$ = prop;
+        }
+        | string string_or_number
+        {
+            KafkaProperty *prop = kafka_property_new($1, $2);
+            free($1);
+            free($2);
+	    $$ = prop;
+        }
+        ;
+
+/* INCLUDE_RULES */
+
+%%

@@ -1,0 +1,38 @@
+#!/bin/bash
+
+. /dbld/functions.sh
+
+RPMBUILD=${HOME}/rpmbuild
+RPMBUILD_SOURCES=${RPMBUILD}/SOURCES
+
+function setup_dirs() {
+	mkdir -p $RPMBUILD_SOURCES
+	rm -rf /build/${IMAGE_PLATFORM} && mkdir -p /build/${IMAGE_PLATFORM}
+}
+
+function copy_rpm_packaging_src_files_to_build_folder() {
+    # CzP's spec file expect these files in the pwd
+    # where the build was initiated
+    rm -rf syslog-ng-${VERSION} && tar xvf syslog-ng-${VERSION}.tar.gz
+    find /build/syslog-ng-${VERSION}/packaging/rhel/ -type f | grep --invert-match '\.spec$' | xargs -i cp {} /build/
+}
+
+function prepare_source() {
+    copy_rpm_packaging_src_files_to_build_folder
+    cp syslog-ng-${VERSION}.tar.gz $RPMBUILD_SOURCES
+}
+
+function capture_rpms() {
+    mv $RPMBUILD/RPMS/*/*${VERSION}*.rpm /build/${IMAGE_PLATFORM}
+    mv $RPMBUILD/SRPMS/*${VERSION}*.rpm /build/${IMAGE_PLATFORM}
+    echo "Your rpms are in /build/${IMAGE_PLATFORM}, also available on the host in \$(top_srcdir)/dbld/build/${IMAGE_PLATFORM}"
+    capture_artifacts /build/${IMAGE_PLATFORM}/*.rpm
+
+}
+
+cd /build
+
+setup_dirs
+prepare_source
+rpm_run_build_command rpmbuild --define '_dbld 1' -ta syslog-ng-${VERSION}.tar.gz
+capture_rpms

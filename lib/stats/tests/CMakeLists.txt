@@ -1,0 +1,7 @@
+add_unit_test(CRITERION TARGET test_stats_cluster)
+add_unit_test(CRITERION TARGET test_stats_query)
+add_unit_test(CRITERION TARGET test_dynamic_ctr_reg)
+add_unit_test(CRITERION TARGET test_external_ctr_reg)
+add_unit_test(CRITERION TARGET test_alias_ctr_reg)
+add_unit_test(LIBTEST CRITERION TARGET test_stats_prometheus)
+add_unit_test(CRITERION TARGET test_stats_cluster_key_builder)
