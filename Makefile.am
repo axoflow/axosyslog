@@ -48,6 +48,11 @@ EXTRA_DIST		= $(filter-out ${NODIST_BUILT_SOURCES},${BUILT_SOURCES}) VERSION.txt
 			  .astylerc
 
 
+pkgdatadir = $(datadir)/syslog-ng
+pkgincludedir = $(includedir)/syslog-ng
+pkglibdir = $(libdir)/syslog-ng
+pkglibexecdir = $(libexecdir)/syslog-ng
+
 pkgconfigdir		= $(libdir)/pkgconfig
 pkgconfig_DATA		= syslog-ng.pc
 
