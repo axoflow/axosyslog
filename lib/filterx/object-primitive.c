@@ -106,9 +106,10 @@ _double_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject
 gboolean
 double_repr(double val, GString *repr)
 {
-  gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
-  g_ascii_dtostr(buf, sizeof(buf), val);
-  g_string_append(repr, buf);
+  gsize init_len = repr->len;
+  g_string_set_size(repr, init_len + G_ASCII_DTOSTR_BUF_SIZE);
+  g_ascii_dtostr(repr->str + init_len, G_ASCII_DTOSTR_BUF_SIZE, val);
+  g_string_set_size(repr, init_len + strlen(repr->str + init_len));
   return TRUE;
 }
 
