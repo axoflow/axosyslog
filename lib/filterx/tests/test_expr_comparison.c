@@ -533,10 +533,17 @@ Test(expr_comparison, test_string_to_datetime_string_based_comparison)
                      FCMPX_NE | FCMPX_STRING_BASED, TRUE);
 }
 
-// FCMPX_TYPE_AWARE tests
-// in case of LHS type is one of: [string, bytes, json, protobuf, message_value], uses FCMPX_STRING_BASED comparsion
-// in case of any of LHS or RHS is filterx null, compares filterx types (null less than any)
-// uses FCMPX_NUM_BASED in any other cases
+/*
+ * Type aware tests.
+ *
+ * In case of both side's types are the same and they are one of: [string, bytes, json, protobuf, message_value],
+ * we do a string based comparison.
+ *
+ * If the one of the sides is null, and we check for eq or ne, they are equal if the other is null,
+ * and not equal if the other is not null.
+ *
+ * In any other scenario we do a number based comparison, which includes NaN logic.
+ */
 
 Test(expr_comparison, test_null_cases_type_aware_comparison)
 {
@@ -552,14 +559,13 @@ Test(expr_comparison, test_null_cases_type_aware_comparison)
 
   _assert_comparison(filterx_string_new("foobar", 6), filterx_null_new(), FCMPX_EQ | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_string_new("foobar", 6), filterx_null_new(), FCMPX_LT | FCMPX_TYPE_AWARE, FALSE);
-  _assert_comparison(filterx_string_new("foobar", 6), filterx_null_new(), FCMPX_GT | FCMPX_TYPE_AWARE, TRUE);
+  _assert_comparison(filterx_string_new("foobar", 6), filterx_null_new(), FCMPX_GT | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_string_new("foobar", 6), filterx_null_new(), FCMPX_NE | FCMPX_TYPE_AWARE, TRUE);
 }
 
 Test(expr_comparison, test_string_cases_type_aware_comparison)
 {
-  // TODO: fix float precision error in g_ascii_dtostr 3.14 -> "3.1400000000000000000000001"
-  // _assert_comparison(filterx_string_new("3.14", 4), filterx_double_new(3.14), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);
+  _assert_comparison(filterx_string_new("3.14", 4), filterx_double_new(3.14), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);
 
   // string - integer
   _assert_comparison(filterx_string_new("443", 3), filterx_integer_new(443), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);
@@ -570,29 +576,29 @@ Test(expr_comparison, test_string_cases_type_aware_comparison)
   // check if compared as string
   _assert_comparison(filterx_string_new("a443", 4), filterx_integer_new(443), FCMPX_EQ | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_string_new("a443", 4), filterx_integer_new(443), FCMPX_LT | FCMPX_TYPE_AWARE, FALSE);
-  _assert_comparison(filterx_string_new("a443", 4), filterx_integer_new(443), FCMPX_GT | FCMPX_TYPE_AWARE, TRUE);
+  _assert_comparison(filterx_string_new("a443", 4), filterx_integer_new(443), FCMPX_GT | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_string_new("a443", 4), filterx_integer_new(443), FCMPX_NE  | FCMPX_TYPE_AWARE, TRUE);
 
   // bytes - boolean
-  _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(true), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);
+  _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(true), FCMPX_EQ | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(true), FCMPX_LT | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(true), FCMPX_GT | FCMPX_TYPE_AWARE, FALSE);
-  _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(true), FCMPX_NE | FCMPX_TYPE_AWARE, FALSE);
+  _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(true), FCMPX_NE | FCMPX_TYPE_AWARE, TRUE);
 
   _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(false), FCMPX_EQ | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(false), FCMPX_LT | FCMPX_TYPE_AWARE, FALSE);
-  _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(false), FCMPX_GT | FCMPX_TYPE_AWARE, TRUE);
+  _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(false), FCMPX_GT | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_bytes_new("true", 4), filterx_boolean_new(false), FCMPX_NE | FCMPX_TYPE_AWARE, TRUE);
 
   // protobuf - double
-  _assert_comparison(filterx_protobuf_new("472", 3), filterx_double_new(472.0), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);
+  _assert_comparison(filterx_protobuf_new("472", 3), filterx_double_new(472.0), FCMPX_EQ | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_protobuf_new("472", 3), filterx_double_new(472.0), FCMPX_LT | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_protobuf_new("472", 3), filterx_double_new(472.0), FCMPX_GT | FCMPX_TYPE_AWARE, FALSE);
-  _assert_comparison(filterx_protobuf_new("472", 3), filterx_double_new(472.0), FCMPX_NE | FCMPX_TYPE_AWARE, FALSE);
+  _assert_comparison(filterx_protobuf_new("472", 3), filterx_double_new(472.0), FCMPX_NE | FCMPX_TYPE_AWARE, TRUE);
 
   _assert_comparison(filterx_protobuf_new("a472", 4), filterx_double_new(472.0), FCMPX_EQ | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_protobuf_new("a472", 4), filterx_double_new(472.0), FCMPX_LT | FCMPX_TYPE_AWARE, FALSE);
-  _assert_comparison(filterx_protobuf_new("a472", 4), filterx_double_new(472.0), FCMPX_GT | FCMPX_TYPE_AWARE, TRUE);
+  _assert_comparison(filterx_protobuf_new("a472", 4), filterx_double_new(472.0), FCMPX_GT | FCMPX_TYPE_AWARE, FALSE);
   _assert_comparison(filterx_protobuf_new("a472", 4), filterx_double_new(472.0), FCMPX_NE | FCMPX_TYPE_AWARE, TRUE);
 }
 

@@ -139,12 +139,13 @@ _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
-  if (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
-      filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(bytes)) ||
-      filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(protobuf)) ||
-      filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(message_value)) ||
-      filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_object)) || // TODO: we should have generic map and array cmp
-      filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_array)))
+  if (lhs->type == rhs->type &&
+      (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
+       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(bytes)) ||
+       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(protobuf)) ||
+       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(message_value)) ||
+       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_object)) || // TODO: we should have generic map and array cmp
+       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_array))))
     return _evaluate_as_string(lhs, rhs, operator);
 
   if (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(null)) ||
