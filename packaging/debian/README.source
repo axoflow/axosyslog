@@ -1,7 +1,7 @@
-syslog-ng Debian sources
+AxoSyslog Debian sources
 ========================
 
-This is the Debian packaging of syslog-ng. It is a non-trivial
+This is the Debian packaging of AxoSyslog. It is a non-trivial
 packaging, not for the faint of heart, but rest assured, every quirk,
 every strange solution is there for a reason, and this document is
 here to explain the details.
@@ -15,25 +15,25 @@ documented there. If there is conflict between this document and
 
 ### Maintainer scripts
 
-Both syslog-ng-core, and a few of the older modules have maintainer
+Both axosyslog-core, and a few of the older modules have maintainer
 scripts, for various purposes.
 
-In the case of **syslog-ng-core**, the `postrm` takes care of
+In the case of **axosyslog-core**, the `postrm` takes care of
 disabling (on remove) or removing (on purge) the logrotate
 configuration files, and also removes the control socket and the
 persist file, along with the `/var/lib/syslog-ng` directory, if it is
 empty.
 
-The `preinst` for **syslog-ng-core** restores any disabled logrotate
+The `preinst` for **axosyslog-core** restores any disabled logrotate
 configs, and if upgrading from a version that had symlinked conffiles,
 removes those too, before unpacking the upgrade.
 
-And the last maintainer script of **syslog-ng-core**, the `prerm`
+And the last maintainer script of **axosyslog-core**, the `prerm`
 stops the `syslog.socket` if using systemd, so that we do not get
 re-enabled by socket activation during remove.
 
-Some module packages, namely **syslog-ng-mod-json**,
-**syslog-ng-mod-sql**, and **syslog-ng-mod-mongodb** also have a
+Some module packages, namely **axosyslog-mod-json**,
+**axosyslog-mod-sql**, and **axosyslog-mod-mongodb** also have a
 `postinst`, which removes the old activation conffile that shipped
 with syslog-ng versions prior to 3.4
 
@@ -46,7 +46,7 @@ configuration snippet, that declares a syslog-ng variable with the
 appropriate value.
 
 On kFreeBSD, we install one version, on Linux, another. This is done
-from debian/syslog-ng-core.install, via `dh-exec`.
+from debian/axosyslog-core.install, via `dh-exec`.
 
 This way, the main configuration file remains the same on all
 architectures, only this little snippet changes, which makes it easier
@@ -55,7 +55,7 @@ to maintain the whole.
 ### Shared library ABI versions
 
 Upstream builds a `libsyslog-ng-$MAJOR.so.$N` shared library, which we
-ship in `syslog-ng-core`, because it is not a general purpose library.
+ship in `axosyslog-core`, because it is not a general purpose library.
 
 ### Control variables
 
@@ -63,8 +63,8 @@ We have three custom control variables, which are referenced by
 `debian/control`: **${sng:CoreModules}**, and **${sng:Modules}**. They will be
 used for dependencies.
 
-The `syslog-ng` meta package has to depend on core modules, because at
-some point in the past, they were part of the monolithic `syslog-ng`
+The `axosyslog` meta package has to depend on core modules, because at
+some point in the past, they were part of the monolithic `axosyslog`
 package, and for smooth upgrades, we need to keep all formerly
 installed modules installed. Being a meta package, it also recommends
 the other modules.
@@ -72,7 +72,7 @@ the other modules.
 The list of Core modules is a hard-coded list (**sql**, **mongodb**,
 **json**), but the optional modules are generated at build time, by
 looking at `debian/control` and finding all packages with names
-starting with `syslog-ng-mod-`.
+starting with `axosyslog-mod-`.
 
 We use the `debian/tools/list-modules.sh` script to construct these
 lists for us, and in `debian/rules`, we override `dh_gencontrol` to

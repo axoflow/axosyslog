@@ -1,7 +1,7 @@
 #! /bin/sh
 
-CORE_MODULES="syslog-ng-mod-sql syslog-ng-mod-mongodb"
-ALL_MODULES=$(echo $(grep "^Package: syslog-ng-mod-" debian/control | cut -d: -f 2))
+CORE_MODULES="axosyslog-mod-sql axosyslog-mod-mongodb"
+ALL_MODULES=$(echo $(grep "^Package: axosyslog-mod-" debian/control | cut -d: -f 2))
 
 case "$1" in
         "core")

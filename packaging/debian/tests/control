@@ -1,9 +1,9 @@
 Tests: basic
-Depends: syslog-ng-core
+Depends: axosyslog-core
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng
+Depends: axosyslog
 Restrictions: allow-stderr
 
 Tests: basic
@@ -11,79 +11,79 @@ Depends: @
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core
+Depends: axosyslog-core
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-mongodb
+Depends: axosyslog-core, axosyslog-mod-mongodb
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-sql
+Depends: axosyslog-core, axosyslog-mod-sql
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-smtp
+Depends: axosyslog-core, axosyslog-mod-smtp
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-amqp
+Depends: axosyslog-core, axosyslog-mod-amqp
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-geoip2
+Depends: axosyslog-core, axosyslog-mod-geoip2
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-redis
+Depends: axosyslog-core, axosyslog-mod-redis
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-stomp
+Depends: axosyslog-core, axosyslog-mod-stomp
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-riemann
+Depends: axosyslog-core, axosyslog-mod-riemann
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-graphite
+Depends: axosyslog-core, axosyslog-mod-graphite
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-python
+Depends: axosyslog-core, axosyslog-mod-python
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-add-contextual-data
+Depends: axosyslog-core, axosyslog-mod-add-contextual-data
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-getent
+Depends: axosyslog-core, axosyslog-mod-getent
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-stardate
+Depends: axosyslog-core, axosyslog-mod-stardate
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-map-value-pairs
+Depends: axosyslog-core, axosyslog-mod-map-value-pairs
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-snmptrapd-parser
+Depends: axosyslog-core, axosyslog-mod-snmptrapd-parser
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-xml-parser
+Depends: axosyslog-core, axosyslog-mod-xml-parser
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-extra
+Depends: axosyslog-core, axosyslog-mod-extra
 Restrictions: allow-stderr
 
 Tests: basic
-Depends: syslog-ng-core, syslog-ng-mod-tag-parser
+Depends: axosyslog-core, axosyslog-mod-tag-parser
 Restrictions: allow-stderr
 
 #Tests: upgrade
@@ -98,4 +98,4 @@ Depends: @, sysvinit-core
 Restrictions: needs-root, allow-stderr
 
 #Tests: compile-incubator
-#Depends: build-essential, syslog-ng-dev, fakeroot, debhelper, dh-autoreconf, automake, liblua5.2-dev, libperl-dev, python-dev, libgrok-dev, libtokyocabinet-dev, librdkafka-dev, libzmq3-dev, libmongo-client-dev
+#Depends: build-essential, axosyslog-dev, fakeroot, debhelper, dh-autoreconf, automake, liblua5.2-dev, libperl-dev, python-dev, libgrok-dev, libtokyocabinet-dev, librdkafka-dev, libzmq3-dev, libmongo-client-dev
