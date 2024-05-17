@@ -234,6 +234,9 @@ _extract_source_from_buffer_location(GString *result, const gchar *buffer_conten
   if (num_lines <= yylloc->first_line)
     goto exit;
 
+  if (yylloc->first_column < 1)
+    goto exit;
+
   for (gint lineno = yylloc->first_line; lineno <= yylloc->last_line; lineno++)
     {
       gchar *line = lines[lineno - 1];
@@ -242,9 +245,9 @@ _extract_source_from_buffer_location(GString *result, const gchar *buffer_conten
       if (lineno == yylloc->first_line)
         {
           if (yylloc->first_line == yylloc->last_line)
-            g_string_append_len(result, &line[MIN(linelen, yylloc->first_column)], yylloc->last_column - yylloc->first_column);
+            g_string_append_len(result, &line[MIN(linelen, yylloc->first_column-1)], yylloc->last_column - yylloc->first_column);
           else
-            g_string_append(result, &line[MIN(linelen, yylloc->first_column)]);
+            g_string_append(result, &line[MIN(linelen, yylloc->first_column-1)]);
         }
       else if (lineno < yylloc->last_line)
         {
