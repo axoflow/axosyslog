@@ -72,7 +72,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_null_object_arg)
 Test(filterx_protobuf, test_filterx_protobuf_typecast_from_bytes)
 {
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_bytes_new("not valid protobuf!", -1);
+  FilterXObject *in = filterx_bytes_new("not valid \0protobuf!", 20);
   g_ptr_array_add(args, in);
 
   FilterXObject *obj = filterx_typecast_protobuf(args);
@@ -82,7 +82,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_from_bytes)
   gsize size;
   const gchar *bytes = filterx_protobuf_get_value(obj, &size);
 
-  cr_assert(memcmp("not valid protobuf!", bytes, size) == 0);
+  cr_assert(memcmp("not valid \0protobuf!", bytes, size) == 0);
 
   g_ptr_array_free(args, TRUE);
   filterx_object_unref(obj);
@@ -91,7 +91,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_from_bytes)
 Test(filterx_protobuf, test_filterx_protobuf_typecast_from_protobuf)
 {
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_protobuf_new("not valid protobuf!", -1);
+  FilterXObject *in = filterx_protobuf_new("not valid \0protobuf!", 20);
   g_ptr_array_add(args, in);
 
   FilterXObject *obj = filterx_typecast_protobuf(args);
