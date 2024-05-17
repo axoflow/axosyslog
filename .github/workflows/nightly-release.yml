@@ -7,7 +7,7 @@ on:
 
 
 jobs:
-  create-source-tarball:
+  tarball:
     runs-on: ubuntu-latest
     outputs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
@@ -39,7 +39,7 @@ jobs:
           path: dbld/build/*.tar.*
 
   # create-packages:
-  #   needs: create-source-tarball
+  #   needs: tarball
   #   uses: ./.github/workflows/create-packages.yml
   #   with:
   #     source-tarball-artifact-name: source-tarball
@@ -90,7 +90,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     needs:
-      - create-source-tarball
+      - tarball
       - axosyslog-modules
     steps:
       - name: Checkout source
@@ -129,7 +129,7 @@ jobs:
   publish-image:
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/axosyslog-docker.yml
-    needs: [create-source-tarball, build-and-test, axosyslog-modules]
+    needs: [tarball, build-and-test, axosyslog-modules]
     with:
       pkg-type: nightly
       tarball-artifact: source-tarball
