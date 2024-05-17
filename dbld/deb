@@ -8,11 +8,11 @@ function setup_dirs() {
 
 function prepare_source() {
     cd /build
-    rm -rf syslog-ng-${VERSION}
-    tar xf syslog-ng-${VERSION}.tar.gz
+    rm -rf axosyslog-${VERSION}
+    tar xf axosyslog-${VERSION}.tar.gz
 
     # save the tarball as .orig.tar.gz so that dpkg-buildpackage finds it as the original source
-    cp syslog-ng-${VERSION}.tar.gz syslog-ng_${VERSION}.orig.tar.gz
+    cp axosyslog-${VERSION}.tar.gz axosyslog_${VERSION}.orig.tar.gz
 }
 
 function capture_debs() {
@@ -28,7 +28,7 @@ validate_container
 setup_dirs
 prepare_source
 
-cd syslog-ng-${VERSION}
+cd axosyslog-${VERSION}
 
 if [ ! -d debian ]; then
 	echo "You have no Debian packaging in debian/, this should already by in the tarball at this point"

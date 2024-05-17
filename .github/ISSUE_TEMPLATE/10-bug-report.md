@@ -6,8 +6,8 @@ labels: bug
 assignees: ''
 
 ---
-# syslog-ng
-## Version of syslog-ng
+# AxoSyslog
+## Version of AxoSyslog
 <!-- $ syslog-ng --version -->
 
 ## Platform

@@ -17,8 +17,8 @@ jobs:
     runs-on: macOS-${{ matrix.version }}
 
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
 
       - name: Set xcode version
         if: matrix.version == 14

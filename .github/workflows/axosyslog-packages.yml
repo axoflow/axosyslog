@@ -1,26 +1,27 @@
+# TODO rewrite rpm and deb packaging for AxoSyslog and remove this job (use "create-packages" instead)
 name: AxoSyslog packages
 on:
   workflow_call:
     inputs:
       repo:
-        description: 'syslog-ng repository'
+        description: 'AxoSyslog repository'
         required: true
-        default: 'syslog-ng/syslog-ng'
+        default: 'axoflow/axosyslog'
         type: string
       version:
-        description: 'syslog-ng version'
+        description: 'AxoSyslog version'
         required: true
         type: string
 
   workflow_dispatch:
     inputs:
       repo:
-        description: 'syslog-ng repository'
+        description: 'AxoSyslog repository'
         required: true
-        default: 'syslog-ng/syslog-ng'
+        default: 'axoflow/axosyslog'
         type: string
       version:
-        description: 'syslog-ng version'
+        description: 'AxoSyslog version'
         required: true
         type: string
 
@@ -28,20 +29,20 @@ jobs:
   create-source-tarball:
     runs-on: ubuntu-latest
     steps:
-      - name: Get syslog-ng tarball
+      - name: Get AxoSyslog tarball
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release download --repo '${{ inputs.repo }}' -p 'syslog-ng-${{ inputs.version }}.tar.gz' 'syslog-ng-${{ inputs.version }}'
+          gh release download --repo '${{ inputs.repo }}' -p 'axosyslog-${{ inputs.version }}.tar.gz' 'axosyslog-${{ inputs.version }}'
 
       - name: Extract source tarball
         run: |
-          mkdir syslog-ng
-          tar --strip-components=1 -xvf syslog-ng*.tar.gz -C syslog-ng
-          rm syslog-ng*.tar.gz
+          mkdir axosyslog
+          tar --strip-components=1 -xvf axosyslog*.tar.gz -C axosyslog
+          rm axosyslog*.tar.gz
 
       - name: AxoSyslog patches
-        working-directory: syslog-ng
+        working-directory: axosyslog
         run: |
           sed -i 's/Name: syslog-ng/Name: axosyslog/' packaging/rhel/syslog-ng.spec
           sed -i 's|%{name}-%{version}.tar.gz|syslog-ng-%{version}.tar.gz|' packaging/rhel/syslog-ng.spec
@@ -58,18 +59,18 @@ jobs:
           cat packaging/rhel/syslog-ng.spec
 
       - name: Prepare docker image
-        working-directory: syslog-ng
+        working-directory: axosyslog
         run: ./dbld/rules cache-image-tarball
 
       - name: Create source tarball
-        working-directory: syslog-ng
+        working-directory: axosyslog
         run: ./dbld/rules pkg-tarball
 
       - name: Store source tarball as artifact
         uses: actions/upload-artifact@v4
         with:
           name: source-tarball
-          path: syslog-ng/dbld/build/*.tar.*
+          path: axosyslog/dbld/build/*.tar.*
           if-no-files-found: error
 
   create-packages:

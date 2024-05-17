@@ -1,5 +1,6 @@
 Copyright (c) 2002-2015 Balabit
 Copyright (c) 1996-2015 Balázs Scheidler
+Copyright (c) 2023-2024 Axoflow
 
 syslog-ng is licensed under the combination of the GPL and LGPL licenses.
 
@@ -33,13 +34,12 @@ syslog-ng/
 syslog-ng-ctl/
 persist-tool/
 tests/loggen/
-docker/
 
-The syslog-ng modules (modules/ and scl/ subdirectories, except the ones that
-declare LGPL-2.1-or-later in their license notices) is free software; you can
-redistribute it and/or modify it under the terms of the GNU General Public
-License version 2 as published by the Free Software Foundation,
-or (at your option) any later version
+The syslog-ng modules (modules/, docker/, charts/, and scl/ subdirectories,
+except the ones that declare LGPL-2.1-or-later in their license notices)
+is free software; you can redistribute it and/or modify it under the terms of
+the GNU General Public License version 2 as published by the
+Free Software Foundation, or (at your option) any later version
 (please refer to the file GPL.txt for more details).
 
 FAQ:

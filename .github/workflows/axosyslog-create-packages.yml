@@ -37,7 +37,7 @@ jobs:
       - name: Extract source tarball
         run: |
           mkdir axosyslog
-          tar --strip-components=1 -xvf syslog-ng*.tar.gz -C axosyslog
+          tar --strip-components=1 -xvf axosyslog*.tar.gz -C axosyslog
 
       - name: Prepare docker image
         working-directory: axosyslog

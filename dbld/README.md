@@ -1,6 +1,6 @@
-## Syslog-ng development/release environment powered by Docker
+## AxoSyslog development/release environment powered by Docker
 With the help of the following tool you can
-- compile syslog-ng from source code
+- compile AxoSyslog from source code
 - generate tarball (snapshot / release)
 - create OS specific packages
 
@@ -8,7 +8,7 @@ in an isolated Docker container based environment.
 
 ## Usage information
 ```bash
-whoami@host:~/syslog-ng$ dbld/rules [help]
+whoami@host:~/axosyslog$ dbld/rules [help]
 ```
 
 dbld/rules is the general entrypoint for the tool, specifying multiple
@@ -17,25 +17,25 @@ command (without parameters it will run without any side effect), or read
 the source code on [GitHub](rules).
 
 Almost every `dbld/rules` command runs in a Docker container.  You can use
-the pre-built containers from [GitHub](https://github.com/syslog-ng?tab=packages&repo_name=syslog-ng)
+the pre-built containers from [GitHub](https://github.com/orgs/axoflow/packages)
 or build your own images with the `dbld/rules image-<os>` command.
 
 The source code and build products are mounted externally in the following locations:
-- **/source** -> syslog-ng/*
-- **/dbld** -> syslog-ng/dbld
-- **/build** -> syslog-ng/dbld/build
-- **/install** -> syslog-ng/dbld/install
+- **/source** -> axosyslog/*
+- **/dbld** -> axosyslog/dbld
+- **/build** -> axosyslog/dbld/build
+- **/install** -> axosyslog/dbld/install
 
 ## Examples
 
-### Building syslog-ng from tarball using the 'tarball' image
+### Building AxoSyslog from tarball using the 'tarball' image
 
 ```bash
 $ dbld/rules tarball
 $ Your tarball is in /build, also available on the host in $(top_srcdir)/dbld/build
 $ cd dbld/build
-$ tar -xzvf syslog-ng*.tar.gz
-$ ./syslog-ng-*/configure
+$ tar -xzvf axosyslog*.tar.gz
+$ ./axosyslog-*/configure
 $ make
 ```
 
@@ -45,11 +45,11 @@ You can also build a DEB using:
 $ dbld/rules deb-ubuntu-focal
 ```
 
-You can find the resulting debs in `$HOME/syslog-ng/dbld/build`.
+You can find the resulting debs in `$HOME/axosyslog/dbld/build`.
 
-### Hacking on syslog-ng itself
+### Hacking on AxoSyslog itself
 
-You can also use the docker based shell to hack on syslog-ng by configuring
+You can also use the docker based shell to hack on AxoSyslog by configuring
 and building manually. You can use any of the supported OSes as shells (e.g.
 shell-ubuntu-noble or shell-almalinux-8) and there's "devshell" that contains
 a few extra tools, often needed during development.
@@ -73,29 +73,29 @@ $ make check
 $ make install
 ```
 
-If the compilation and installation was successful you can run syslog-ng with the following command:
+If the compilation and installation was successful you can run AxoSyslog with the following command:
 
 ```bash
-$ /install/syslog-ng/sbin/syslog-ng -Fedv
+$ /install/sbin/syslog-ng -Fedv
 ```
 
 ### Preparing a release
 
-The dbld tools also allow to prepare for a syslog-ng release. By default,
+The dbld tools also allow to prepare for an AxoSyslog release. By default,
 when you generate a tarball/deb/rpm, dbld would generate a "snapshot"
 version (including a git commit id) to avoid mismatching it with a "real"
 release.
 
 If you instead want to do an "official-looking" release (e.g.  3.28.1
 instead of 3.27.1.34.g83096fa.dirty), this is the procedure you have to
-follow.  The syslog-ng team is using this to perform releases.
+follow.  The AxoSyslog team is using this to perform releases.
 
 ### Version bumps
 
 First of all, you will need to commit a patch that bumps the version number
 in a couple of places (e.g. the VERSION file in the root directory).
 
-Start with a git commit that you want to release (e.g the master branch),
+Start with a git commit that you want to release (e.g the main branch),
 with no local changes.
 
 Version bumps are automated using the "prepare-release" target of

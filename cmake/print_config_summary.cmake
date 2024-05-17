@@ -135,7 +135,7 @@ function(print_config_summary)
   list (REMOVE_DUPLICATES _variableNames)
 
   _print_separator()
-  message(NOTICE "syslog-ng Open Source Edition ${SYSLOG_NG_VERSION} configured")
+  message(NOTICE "AxoSyslog ${SYSLOG_NG_VERSION} configured")
   _print_separator()
 
   if(SUMMARY_FULL)

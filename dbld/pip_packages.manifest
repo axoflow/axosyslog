@@ -1,5 +1,0 @@
-# pip packages for kira tests
-distro                  [kira]                                                 [python2, python3]
-hy                      [kira]                                                 [python3]
-hyrule                  [kira]                                                 [python3]
-requests                [kira]                                                 [python2, python3]

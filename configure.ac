@@ -32,7 +32,7 @@ dnl BINARY_BRANCH      - the value is added to all source/binary packages
 dnl SOURCE_REVISION    - Revision of the source-tree, will added to the version string
 dnl
 
-AC_INIT([syslog-ng], m4_esyscmd_s([scripts/version.sh]))
+AC_INIT([axosyslog], m4_esyscmd_s([scripts/version.sh]))
 AC_CONFIG_SRCDIR([syslog-ng/main.c])
 AC_CONFIG_MACRO_DIR([m4])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -2375,7 +2375,7 @@ AC_OUTPUT(dist.conf
           )
 
 echo
-echo "syslog-ng Open Source Edition $PACKAGE_VERSION configured"
+echo "AxoSyslog $PACKAGE_VERSION configured"
 echo " Edition settings:"
 echo "  Release type                : $RELEASE_TYPE"
 echo "  Pretty version              : $BROCHURE_VERSION"

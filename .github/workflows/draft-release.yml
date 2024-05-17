@@ -7,7 +7,7 @@
 #
 # The workflow can also be started manually, if necessary.
 #
-# When the workflow is finished, one must visit https://github.com/syslog-ng/syslog-ng/releases,
+# When the workflow is finished, one must visit https://github.com/axoflow/axosyslog/releases,
 # double check the generated draft release, and manually release it.
 #
 ###########################################################################################################
@@ -24,8 +24,8 @@ on:
 env:
   GITHUB_TOKEN: ${{ secrets.PAT_FOR_ACTIONS }}
   WORKFLOW_NAME: "**Draft release** workflow"
-  CURRENT_WORKFLOW_RUN_URL: https://github.com/${{ github.repository_owner }}/syslog-ng/actions/runs/${{ github.run_id }}
-  RELEASES_URL: https://github.com/${{ github.repository_owner }}/syslog-ng/releases
+  CURRENT_WORKFLOW_RUN_URL: https://github.com/${{ github.repository_owner }}/axosyslog/actions/runs/${{ github.run_id }}
+  RELEASES_URL: https://github.com/${{ github.repository_owner }}/axosyslog/releases
 
 
 jobs:
@@ -38,8 +38,8 @@ jobs:
       RELEASE_NAME: ${{ steps.setup-environment.outputs.RELEASE_NAME }}
       TARBALL_NAME: ${{ steps.setup-environment.outputs.TARBALL_NAME }}
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
 
       - name: "Comment: job started"
         if: github.event_name == 'pull_request'
@@ -56,7 +56,7 @@ jobs:
           . .github/workflows/gh-tools.sh
 
           VERSION=`cat VERSION.txt`
-          RELEASE_TAG=syslog-ng-$VERSION
+          RELEASE_TAG=axosyslog-$VERSION
           RELEASE_NAME=${RELEASE_TAG}
           TARBALL_NAME=${RELEASE_NAME}.tar.gz
           TARBALL_PATH=dbld/release/${VERSION}/${TARBALL_NAME}
@@ -75,27 +75,27 @@ jobs:
           path: ${{ env.TARBALL_PATH }}
           if-no-files-found: error
 
-  create-packages:
-    needs: create-release-tarball
-    uses: ./.github/workflows/create-packages.yml
-    with:
-      source-tarball-artifact-name: release-tarball
-      dbld-image-mode: build
+  # create-packages:
+  #   needs: create-release-tarball
+  #   uses: ./.github/workflows/create-packages.yml
+  #   with:
+  #     source-tarball-artifact-name: release-tarball
+  #     dbld-image-mode: build
 
-  upload-packages:
-    needs: create-packages
-    uses: ./.github/workflows/upload-packages.yml
-    with:
-      pkg-type: stable
-    secrets:
-      azure-sas-token: ${{ secrets.AZURE_SAS_TOKEN }}
+  # upload-packages:
+  #   needs: create-packages
+  #   uses: ./.github/workflows/upload-packages.yml
+  #   with:
+  #     pkg-type: stable
+  #   secrets:
+  #     azure-sas-token: ${{ secrets.AZURE_SAS_TOKEN }}
 
   create-draft-release:
     runs-on: ubuntu-latest
-    needs: [create-release-tarball, upload-packages]
+    needs: [create-release-tarball]
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
 
       - name: Download release tarball artifact
         uses: actions/download-artifact@v3

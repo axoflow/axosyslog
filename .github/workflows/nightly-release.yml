@@ -9,9 +9,11 @@ on:
 jobs:
   create-source-tarball:
     runs-on: ubuntu-latest
+    outputs:
+      snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -21,48 +23,186 @@ jobs:
       - name: Create source tarball
         run: ./dbld/rules pkg-tarball
 
+      - name: Determine snapshot version
+        id: snapshot-version
+        run: |
+          tarball_filename="$(find dbld/build -name '*.tar.*' -printf '%f\n')"
+          tarball_name="${tarball_filename/\.tar.*}"
+          tarball_version="${tarball_name/axosyslog-}"
+          pkg_version="$(echo $tarball_version | sed -E 's|(([0-9]+\.){2}[0-9]+).*|\1|')_git$(date +%Y%m%d)"
+          echo "SNAPSHOT_VERSION=${pkg_version}" >> $GITHUB_OUTPUT
+
       - name: Store source tarball as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: source-tarball
-          path: dbld/build/*.tar.gz
+          path: dbld/build/*.tar.*
 
-  create-packages:
-    needs: create-source-tarball
-    uses: ./.github/workflows/create-packages.yml
-    with:
-      source-tarball-artifact-name: source-tarball
-      dbld-image-mode: cache
+  # create-packages:
+  #   needs: create-source-tarball
+  #   uses: ./.github/workflows/create-packages.yml
+  #   with:
+  #     source-tarball-artifact-name: source-tarball
+  #     dbld-image-mode: cache
 
-  upload-packages:
-    needs: create-packages
-    uses: ./.github/workflows/upload-packages.yml
+  # upload-packages:
+  #   needs: create-packages
+  #   uses: ./.github/workflows/upload-packages.yml
+  #   with:
+  #     pkg-type: nightly
+  #   secrets:
+  #     azure-sas-token: ${{ secrets.AZURE_SAS_TOKEN }}
+
+  # index-packages:
+  #   needs: upload-packages
+  #   uses: ./.github/workflows/index-packages.yml
+  #   with:
+  #     pkg-type: nightly
+  #   secrets:
+  #     config-base64: ${{ secrets.PACKAGE_INDEXER_CONFIG_BASE64 }}
+  #     gpg-key-base64: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_BASE64 }}
+  #     gpg-key-passphrase: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_PASSPHRASE }}
+
+  # test-packages:
+  #   needs: index-packages
+  #   uses: ./.github/workflows/test-apt-packages.yml
+  #   with:
+  #     pkg-type: nightly
+
+  axosyslog-modules:
+    name: axosyslog-modules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Create AxoSyslog modules tarball
+        working-directory: docker
+        run: |
+          tar -czvf python-modules.tar.gz python-modules/
+
+      - name: Store axosyslog-modules tarball as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: axosyslog-modules-tarball
+          path: docker/python-modules.tar.gz
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    needs:
+      - create-source-tarball
+      - axosyslog-modules
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download source tarball artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: source-tarball
+          path: docker/apkbuild/axoflow/axosyslog
+
+      - name: Download axosyslog-modules tarball artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: axosyslog-modules-tarball
+          path: docker/apkbuild/axoflow/axosyslog
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: docker
+          file: docker/alpine.dockerfile
+          load: true
+          tags: axosyslog:test
+          build-args: |
+            PKG_TYPE=nightly
+            SNAPSHOT_VERSION=${{ needs.tarball.outputs.snapshot-version }}
+
+      - name: Smoke test
+        run: |
+          export SYSLOG_NG_IMAGE="axosyslog:test"
+          export SYSLOG_NG_VERSION="${{ needs.tarball.outputs.snapshot-version }}"
+          docker/tests/smoke.sh
+
+
+  publish-image:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/axosyslog-docker.yml
+    needs: [create-source-tarball, build-and-test, axosyslog-modules]
     with:
       pkg-type: nightly
-    secrets:
-      azure-sas-token: ${{ secrets.AZURE_SAS_TOKEN }}
+      tarball-artifact: source-tarball
+      axosyslog-modules-artifact: axosyslog-modules-tarball
+      snapshot-version: ${{ needs.tarball.outputs.snapshot-version }}
 
-  index-packages:
-    needs: upload-packages
-    uses: ./.github/workflows/index-packages.yml
-    with:
-      pkg-type: nightly
-    secrets:
-      config-base64: ${{ secrets.PACKAGE_INDEXER_CONFIG_BASE64 }}
-      gpg-key-base64: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_BASE64 }}
-      gpg-key-passphrase: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_PASSPHRASE }}
+  # https://github.com/actions/delete-package-versions/issues/90
+  cleanup-old-images:
+    if: github.ref == 'refs/heads/main'
+    needs: publish-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clean up old images
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const daysToKeep = 30
+            const snapshotTagPattern = /_git[0-9]+/
 
-  test-packages:
-    needs: index-packages
-    uses: ./.github/workflows/test-apt-packages.yml
-    with:
-      pkg-type: nightly
+            const package_name = "axosyslog"
+            const org = "axoflow"
+            const image = `${org}/${package_name}`
 
-  publish-docker-image:
-    needs: test-packages
-    uses: ./.github/workflows/publish-docker-image.yml
-    with:
-      pkg-type: nightly
-    secrets:
-      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
-      dockerhub-password: ${{ secrets.DOCKERHUB_PASSWORD }}
+            const allPackageVersions = await github.paginate(
+                github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg,
+                { package_type: "container", package_name: package_name, org: org }
+            )
+
+            const oldPackageDate = new Date()
+            oldPackageDate.setDate(oldPackageDate.getDate() - daysToKeep)
+
+            const oldSnapshotVersions = allPackageVersions.filter((p) => {
+                return new Date(p.updated_at) < oldPackageDate && p.metadata.container && p.metadata.container.tags.length != 0 && p.metadata.container.tags.every((t) => snapshotTagPattern.test(t))
+            })
+
+            if (oldSnapshotVersions.length === 0) {
+                console.log("Nothing to remove")
+                return
+            }
+
+            const oldSnapshotTags = oldSnapshotVersions.flatMap(({ metadata }) => metadata.container.tags)
+
+            console.log(`Removing the following images: ${oldSnapshotTags}`)
+
+            const manifestsRequests = oldSnapshotTags.map((t) => {
+                const manifest = fetch(`https://ghcr.io/v2/${image}/manifests/${t}`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": "Bearer ${{ secrets.GITHUB_TOKEN }}",
+                        "Accept": "application/vnd.docker.distribution.manifest.list.v2+json",
+                        "Accept": "application/vnd.docker.distribution.manifest.v2+json",
+                        "Accept": "application/vnd.oci.image.manifest.v1+json",
+                        "Accept": "application/vnd.oci.image.index.v1+json",
+                    },
+                }).then((d) => d.json())
+
+                return manifest
+            })
+
+            const manifestsResponse = await Promise.all(manifestsRequests)
+
+            const manifestsToDelete = manifestsResponse.filter((m) => m.manifests).flatMap((m) => m.manifests)
+
+            await Promise.all(manifestsToDelete.map((m) => {
+                const version = allPackageVersions.find((p) => p.name === m.digest)
+                if (!version) {
+                    return;
+                }
+
+                return github.rest.packages.deletePackageVersionForOrg({ package_type: "container", package_name: package_name, org: org, package_version_id: version.id})
+            }))
+
+
+            await Promise.all(oldSnapshotVersions.map((v) => {
+                return github.rest.packages.deletePackageVersionForOrg({ package_type: "container", package_name: package_name, org: org, package_version_id: v.id})
+            }))

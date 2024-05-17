@@ -1,6 +1,6 @@
 ###########################################################################################################
 #
-# This job creates a version bump branch based on master, and opens a PR from it.
+# This job creates a version bump branch based on main, and opens a PR from it.
 #
 # The branch will have the version bumped in all necessary parts of the code,
 # and it will generate the NEWS.md content from the NEWS snippets.
@@ -12,7 +12,7 @@
 # The job cannot be started, if there is an open PR with the version given.
 #
 # Manual steps:
-#  1. Navigate to https://github.com/syslog-ng/syslog-ng/actions.
+#  1. Navigate to https://github.com/axoflow/axosyslog/actions.
 #  2. Choose the "Version bump" job.
 #  3. Click "Run workflow".
 #  4. Fill the new release version, and click "Run workflow".
@@ -37,10 +37,10 @@ jobs:
       GITHUB_TOKEN: ${{ secrets.PAT_FOR_ACTIONS }}
       RELEASE_VERSION: ${{ github.event.inputs.release_version }}
       VERSION_BUMP_BRANCH: version/${{ github.event.inputs.release_version }}
-      CURRENT_RUN_URL: https://github.com/${{ github.repository_owner }}/syslog-ng/actions/runs/${{ github.run_id }}
+      CURRENT_RUN_URL: https://github.com/${{ github.repository_owner }}/axosyslog/actions/runs/${{ github.run_id }}
     steps:
-      - name: Checkout syslog-ng source
-        uses: actions/checkout@v3
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -80,8 +80,8 @@ jobs:
       - name: Upload tarball
         uses: actions/upload-artifact@v3
         with:
-          name: syslog-ng-${{ env.RELEASE_VERSION }}
-          path: dbld/release/${{ env.RELEASE_VERSION }}/syslog-ng-${{ env.RELEASE_VERSION }}.tar.gz
+          name: axosyslog-${{ env.RELEASE_VERSION }}
+          path: dbld/release/${{ env.RELEASE_VERSION }}/axosyslog-${{ env.RELEASE_VERSION }}.tar.gz
 
       - name: Open Pull Request
         run: |

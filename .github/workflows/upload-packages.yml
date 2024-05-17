@@ -32,7 +32,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    if: github.repository_owner == 'syslog-ng'
+    if: github.repository_owner == 'axoflow'
 
     strategy:
       matrix:

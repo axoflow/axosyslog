@@ -51,10 +51,10 @@ subpackages="
 	$pkgname-python3:_python3
 	$pkgname-grpc:_grpc
 	"
-source="https://github.com/syslog-ng/syslog-ng/releases/download/syslog-ng-$pkgver/syslog-ng-$pkgver.tar.gz
+source="https://github.com/axoflow/axosyslog/releases/download/axosyslog-$pkgver/axosyslog-$pkgver.tar.gz
 	python-modules.tar.gz
 	"
-builddir="$srcdir/syslog-ng-$pkgver"
+builddir="$srcdir/axosyslog-$pkgver"
 
 _modules="
 	add-contextual-data
@@ -178,6 +178,6 @@ _submv() {
 }
 
 sha512sums="
-2f1e0dea4c0ecfc3c77df7e6ac231ee8436c9c78fcb4df8ccdc417fea7d56791fdeb0844ac35f0342ce7c2bea5618d8723b6b54319c556120099eb809873082e  syslog-ng-4.7.1.tar.gz
+2f1e0dea4c0ecfc3c77df7e6ac231ee8436c9c78fcb4df8ccdc417fea7d56791fdeb0844ac35f0342ce7c2bea5618d8723b6b54319c556120099eb809873082e  axosyslog-4.7.1.tar.gz
 SKIP  python-modules.tar.gz
 "

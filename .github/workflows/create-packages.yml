@@ -47,11 +47,11 @@ jobs:
 
       - name: Extract source tarball
         run: |
-          mkdir syslog-ng
-          tar --strip-components=1 -xvf syslog-ng*.tar.gz -C syslog-ng
+          mkdir axosyslog
+          tar --strip-components=1 -xvf axosyslog*.tar.gz -C axosyslog
 
       - name: Prepare docker image
-        working-directory: syslog-ng
+        working-directory: axosyslog
         run: |
           if [[ "${{ inputs.dbld-image-mode }}" = "build" ]]
           then
@@ -65,7 +65,7 @@ jobs:
           fi
 
       - name: Create package
-        working-directory: syslog-ng
+        working-directory: axosyslog
         run: |
           ./dbld/rules package-${{ matrix.distro }}
 
@@ -76,7 +76,7 @@ jobs:
         # so let's make a temporary directory and move the ${{ matrix.distro }} directory there.
         run: |
           mkdir package
-          cp -r syslog-ng/dbld/build/${{ matrix.distro }} package/
+          cp -r axosyslog/dbld/build/${{ matrix.distro }} package/
 
       - name: Store package as artifact
         uses: actions/upload-artifact@v3

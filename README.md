@@ -8,7 +8,13 @@
 
 # AxoSyslog - a cloud-native distribution of syslog-ng by Axoflow
 
-This repository contains the cloud-ready syslog-ng images and Helm charts
+
+[![Discord](https://img.shields.io/discord/1082023686028148877?label=Discord&logo=discord&logoColor=white)](https://discord.gg/qmq53uBm2c)
+[![Build Status](https://github.com/axoflow/axosyslog/actions/workflows/devshell.yml/badge.svg)](https://github.com/axoflow/axosyslog/actions/workflows/devshell.yml)
+[![Nightly](https://github.com/axoflow/axosyslog/actions/workflows/nightly-release.yml/badge.svg)](https://github.com/axoflow/axosyslog/actions/workflows/nightly-release.yml)
+[![Binary packages](https://github.com/axoflow/axosyslog/actions/workflows/packages.yml/badge.svg)](https://github.com/axoflow/axosyslog/actions/workflows/packages.yml)
+
+This repository contains the AxoSyslog source tree, cloud-ready syslog-ng images, and Helm charts
 created and maintained by [Axoflow](https://axoflow.com).
 
 ## Container images
