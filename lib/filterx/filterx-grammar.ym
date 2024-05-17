@@ -52,6 +52,7 @@
 #include "filterx/expr-literal-generator.h"
 #include "filterx/expr-shorthand.h"
 #include "filterx/expr-regexp.h"
+#include "filterx/expr-plus.h"
 
 #include "template/templates.h"
 
@@ -299,6 +300,7 @@ expr
         | expr KW_STR_GT expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_GT); }
         | expr KW_TAV_EQ expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ); }
         | expr KW_TAV_NE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_NE ); }
+	| expr '+' expr				{ $$ = filterx_operator_plus_new($1, $3); }
 	| '(' expr ')'				{ $$ = $2; }
 	| ternary				{ $$ = $1; }
 	| KW_ISSET '(' expr ')'			{ $$ = filterx_isset_new($3); }
