@@ -29,7 +29,7 @@ cd $BASEDIR/../
 
 if [ "$VERSION" != "" ]; then
   echo $VERSION | tr -d '\n'
-elif [ -d .git ] && GIT_VERSION=$(git describe --tags --dirty --abbrev=7); then
+elif [ -d .git ] && GIT_VERSION=$(git describe --match 'axosyslog-[0-9]*' --tags --dirty --abbrev=7); then
   echo $GIT_VERSION | sed 's/^axosyslog-//' | tr '-' '.' | tr -d '\n'
 else
   cat VERSION.txt | tr -d '\n'
