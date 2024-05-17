@@ -39,6 +39,10 @@ function update_packaging_rhel() {
 
 function update_version_refs_in_source() {
 	echo Updating version references in source files
+	ESCAPED_OLD_MAJOR_AND_MINOR_AND_PATCH=$(echo $OLD_MAJOR.$OLD_MINOR.$OLD_PATCH | sed -e 's/[]\/$*.^[]/\\&/g') &&
+	ESCAPED_NEW_MAJOR_AND_MINOR_AND_PATCH=$(echo $NEW_MAJOR.$NEW_MINOR.$NEW_PATCH | sed -e 's/[\/&]/\\&/g') &&
+	git ls-files README.md docker/apkbuild/axoflow/axosyslog/APKBUILD | xargs sed -i "s/$ESCAPED_OLD_MAJOR_AND_MINOR_AND_PATCH/$ESCAPED_NEW_MAJOR_AND_MINOR_AND_PATCH/g"
+
 	ESCAPED_OLD_MAJOR_AND_MINOR=$(echo $OLD_MAJOR.$OLD_MINOR | sed -e 's/[]\/$*.^[]/\\&/g') &&
 	ESCAPED_NEW_MAJOR_AND_MINOR=$(echo $NEW_MAJOR.$NEW_MINOR | sed -e 's/[\/&]/\\&/g') &&
 	git ls-files $VERSION_FILE_LIST | xargs sed -i "s/$ESCAPED_OLD_MAJOR_AND_MINOR/$ESCAPED_NEW_MAJOR_AND_MINOR/g"
