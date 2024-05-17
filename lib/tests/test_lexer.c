@@ -188,57 +188,62 @@ Test(lexer, block_token_is_taken_literally_between_a_pair_of_enclosing_character
   _input(" { hello }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" hello ");
-  assert_location_range(1, 1, 1, 11);
+  assert_location_range(1, 2, 1, 11);
 
   _input(" { hello\nworld }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" hello\nworld ");
-  assert_location_range(1, 1, 2, 8);
+  assert_location_range(1, 2, 2, 8);
 
   _input(" { hello\\\nworld }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" hello\\\nworld ");
-  assert_location_range(1, 1, 2, 8);
+  assert_location_range(1, 2, 2, 8);
 
   _input(" { 'hello' }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" 'hello' ");
-  assert_location_range(1, 1, 1, 13);
+  assert_location_range(1, 2, 1, 13);
 
   _input(" { 'hello\nworld' }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" 'hello\nworld' ");
-  assert_location_range(1, 1, 2, 9);
+  assert_location_range(1, 2, 2, 9);
 
   _input(" { 'hello\\\nworld' }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" 'hello\\\nworld' ");
-  assert_location_range(1, 1, 2, 9);
+  assert_location_range(1, 2, 2, 9);
 
   _input(" { \"hello\" }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" \"hello\" ");
-  assert_location_range(1, 1, 1, 13);
+  assert_location_range(1, 2, 1, 13);
 
   _input(" { \"hello\nworld\" }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" \"hello\nworld\" ");
-  assert_location_range(1, 1, 2, 9);
+  assert_location_range(1, 2, 2, 9);
 
   _input(" { \"hello\\\nworld\" }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" \"hello\\\nworld\" ");
-  assert_location_range(1, 1, 2, 9);
+  assert_location_range(1, 2, 2, 9);
 
   _input(" { \"hello \\a\\n\\r\\t\\v\\x40\\o100 world\" }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" \"hello \\a\\n\\r\\t\\v\\x40\\o100 world\" ");
-  assert_location_range(1, 1, 1, 39);
+  assert_location_range(1, 2, 1, 39);
 
   _input(" { \"hello \\\" world\" }");
   cfg_lexer_start_block_state(parser->lexer, "{}");
   assert_parser_block(" \"hello \\\" world\" ");
-  assert_location_range(1, 1, 1, 22);
+  assert_location_range(1, 2, 1, 22);
+
+  _input("\n{\n \"hello \\\" world\" }");
+  cfg_lexer_start_block_state(parser->lexer, "{}");
+  assert_parser_block("\n \"hello \\\" world\" ");
+  assert_location_range(2, 1, 3, 20);
 }
 
 Test(lexer, block_new_lines_in_text_leading_to_the_opening_bracket_are_tracked_properly)
