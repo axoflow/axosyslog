@@ -206,8 +206,11 @@ Test(filterx_integer, test_filterx_integer_repr)
 {
   FilterXObject *obj = filterx_integer_new(65566);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(obj, repr));
   cr_assert_str_eq("65566", repr->str);
+  cr_assert(filterx_object_repr_append(obj, repr));
+  cr_assert_str_eq("6556665566", repr->str);
   filterx_object_unref(obj);
 }
 

@@ -77,52 +77,59 @@ Test(filterx_message, test_filterx_message_type_null_repr)
 {
   FilterXObject *fobj = filterx_message_value_new(NULL, 0, LM_VT_NULL);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
   cr_assert_str_eq("null", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("nullnull", repr->str);
   filterx_object_unref(fobj);
 }
 
 Test(filterx_message, test_filterx_message_type_string_repr)
 {
-  gchar *test_str = "any string";
-
-  FilterXObject *fobj = filterx_message_value_new(test_str, -1, LM_VT_STRING);
+  FilterXObject *fobj = filterx_message_value_new("any string", -1, LM_VT_STRING);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
-  cr_assert_str_eq(test_str, repr->str);
+  cr_assert_str_eq("any string", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("any stringany string", repr->str);
   filterx_object_unref(fobj);
 }
 
 Test(filterx_message, test_filterx_message_type_bytes_repr)
 {
-  gchar *test_str = "any bytes";
-
-  FilterXObject *fobj = filterx_message_value_new(test_str, -1, LM_VT_BYTES);
+  FilterXObject *fobj = filterx_message_value_new("any bytes", -1, LM_VT_BYTES);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
-  cr_assert_str_eq(test_str, repr->str);
+  cr_assert_str_eq("any bytes", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("any bytesany bytes", repr->str);
   filterx_object_unref(fobj);
 }
 
 Test(filterx_message, test_filterx_message_type_protobuf_repr)
 {
-  gchar *test_str = "not a valid protobuf!";
-
-  FilterXObject *fobj = filterx_message_value_new(test_str, -1, LM_VT_PROTOBUF);
+  FilterXObject *fobj = filterx_message_value_new("not a valid protobuf!", -1, LM_VT_PROTOBUF);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
-  cr_assert_str_eq(test_str, repr->str);
+  cr_assert_str_eq("not a valid protobuf!", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("not a valid protobuf!not a valid protobuf!", repr->str);
   filterx_object_unref(fobj);
 }
 
 Test(filterx_message, test_filterx_message_type_json_repr)
 {
-  gchar *test_str = "{\"test\":\"json\"}";
-
-  FilterXObject *fobj = filterx_message_value_new(test_str, -1, LM_VT_JSON);
+  FilterXObject *fobj = filterx_message_value_new("{\"test\": \"json\"}", -1, LM_VT_JSON);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
-  cr_assert_str_eq(test_str, repr->str);
+  cr_assert_str_eq("{\"test\": \"json\"}", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("{\"test\": \"json\"}{\"test\": \"json\"}", repr->str);
   filterx_object_unref(fobj);
 }
 
@@ -131,8 +138,11 @@ Test(filterx_message, test_filterx_message_type_boolean_repr)
   gchar *val = "T";
   FilterXObject *fobj = filterx_message_value_new(val, -1, LM_VT_BOOLEAN);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
   cr_assert_str_eq("true", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("truetrue", repr->str);
   filterx_object_unref(fobj);
 }
 
@@ -141,8 +151,11 @@ Test(filterx_message, test_filterx_message_type_int_repr)
   gchar *val = "443";
   FilterXObject *fobj = filterx_message_value_new(val, -1, LM_VT_INTEGER);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
   cr_assert_str_eq("443", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("443443", repr->str);
   filterx_object_unref(fobj);
 }
 
@@ -151,8 +164,11 @@ Test(filterx_message, test_filterx_message_type_double_repr)
   gchar *val = "17.756";
   FilterXObject *fobj = filterx_message_value_new(val, -1, LM_VT_DOUBLE);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
   cr_assert_str_eq("17.756", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("17.75617.756", repr->str);
   filterx_object_unref(fobj);
 }
 
@@ -161,8 +177,11 @@ Test(filterx_message, test_filterx_message_type_datetime_repr)
   gchar *val = "1713520972.000000+02:00";
   FilterXObject *fobj = filterx_message_value_new(val, -1, LM_VT_DATETIME);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
   cr_assert_str_eq("2024-04-19T12:02:52.000+02:00", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("2024-04-19T12:02:52.000+02:002024-04-19T12:02:52.000+02:00", repr->str);
   filterx_object_unref(fobj);
 }
 

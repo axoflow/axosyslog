@@ -124,8 +124,11 @@ Test(filterx_boolean, test_filterx_boolean_repr)
 {
   FilterXObject *obj = filterx_boolean_new(TRUE);
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(obj, repr));
   cr_assert_str_eq("true", repr->str);
+  cr_assert(filterx_object_repr_append(obj, repr));
+  cr_assert_str_eq("truetrue", repr->str);
   filterx_object_unref(obj);
 }
 

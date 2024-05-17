@@ -122,6 +122,18 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_protobuf)
   filterx_object_unref(obj);
 }
 
+Test(filterx_bytes, filterx_bytes_repr)
+{
+  FilterXObject *obj = filterx_bytes_new("\0\1\2\3", 4);
+  GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
+  cr_assert(filterx_object_repr(obj, repr));
+  cr_assert_str_eq("00010203", repr->str);
+  cr_assert(filterx_object_repr_append(obj, repr));
+  cr_assert_str_eq("0001020300010203", repr->str);
+  filterx_object_unref(obj);
+}
+
 static void
 setup(void)
 {
