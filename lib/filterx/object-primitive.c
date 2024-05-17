@@ -317,7 +317,7 @@ static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
   LogMessageValueType t;
-  return filterx_object_marshal(s, repr, &t);
+  return filterx_object_marshal_append(s, repr, &t);
 }
 
 FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(object),
