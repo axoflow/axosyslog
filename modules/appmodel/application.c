@@ -24,24 +24,30 @@
 #include "application.h"
 
 void
-application_set_filter(Application *self, const gchar *filter_expr)
+application_set_filter(Application *self, const gchar *filter_expr, CFG_LTYPE *lloc)
 {
   g_free(self->filter_expr);
   self->filter_expr = g_strdup(filter_expr);
+  if (lloc)
+    self->filter_lloc = *lloc;
 }
 
 void
-application_set_parser(Application *self, const gchar *parser_expr)
+application_set_parser(Application *self, const gchar *parser_expr, CFG_LTYPE *lloc)
 {
   g_free(self->parser_expr);
   self->parser_expr = g_strdup(parser_expr);
+  if (lloc)
+    self->parser_lloc = *lloc;
 }
 
 void
-application_set_filterx(Application *self, const gchar *filterx_expr)
+application_set_filterx(Application *self, const gchar *filterx_expr, CFG_LTYPE *lloc)
 {
   g_free(self->filterx_expr);
   self->filterx_expr = g_strdup(filterx_expr);
+  if (lloc)
+    self->filterx_lloc = *lloc;
 }
 
 static void

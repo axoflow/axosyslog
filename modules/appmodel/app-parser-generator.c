@@ -79,33 +79,58 @@ app_parser_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, const
 }
 
 static void
-_generate_filter(AppParserGenerator *self, const gchar *filter_expr)
+_generate_at_line(GString *block, const CFG_LTYPE *lloc)
 {
-  if (filter_expr)
-    g_string_append_printf(self->block,
-                           "            filter {\n"
-                           "                %s\n"
-                           "            };\n", filter_expr);
+  if (lloc->first_column && lloc->first_line)
+    g_string_append_printf(block,
+                           "@line \"%s\" %d %d\n",
+                           lloc->name, lloc->first_line, lloc->first_column);
+
 }
 
 static void
-_generate_parser(AppParserGenerator *self, const gchar *parser_expr)
+_generate_filter(AppParserGenerator *self, const Application *app)
 {
-  if (parser_expr)
-    g_string_append_printf(self->block,
-                           "            parser {\n"
-                           "                %s\n"
-                           "            };\n", parser_expr);
+  if (app->filter_expr)
+    {
+      g_string_append(self->block,
+                      "            filter {\n");
+      _generate_at_line(self->block, &app->filter_lloc);
+      g_string_append_printf(self->block,
+                             "%s\n"
+                             "@line\n"
+                             "            };\n", app->filter_expr);
+    }
 }
 
 static void
-_generate_filterx(AppParserGenerator *self, const gchar *filterx_expr)
+_generate_parser(AppParserGenerator *self, const Application *app)
 {
-  if (filterx_expr)
-    g_string_append_printf(self->block,
-                           "            filterx {\n"
-                           "                %s\n"
-                           "            };\n", filterx_expr);
+  if (app->parser_expr)
+    {
+      g_string_append(self->block,
+                      "            parser {\n");
+      _generate_at_line(self->block, &app->parser_lloc);
+      g_string_append_printf(self->block,
+                             "%s\n"
+                             "@line\n"
+                             "            };\n", app->parser_expr);
+    }
+}
+
+static void
+_generate_filterx(AppParserGenerator *self, const Application *app)
+{
+  if (app->filterx_expr)
+    {
+      g_string_append(self->block,
+                      "            filterx {\n");
+      _generate_at_line(self->block, &app->filterx_lloc);
+      g_string_append_printf(self->block,
+                             "%s\n"
+                             "@line\n"
+                             "            };\n", app->filterx_expr);
+    }
 }
 
 static void
@@ -163,9 +188,9 @@ _generate_application(Application *app, gpointer user_data)
   g_string_append_printf(self->block,
                          "            #Start Application %s\n", app->super.name);
 
-  _generate_filter(self, app->filter_expr);
-  _generate_parser(self, app->parser_expr);
-  _generate_filterx(self, app->filterx_expr);
+  _generate_filter(self, app);
+  _generate_parser(self, app);
+  _generate_filterx(self, app);
   _generate_action(self, app);
   g_string_append_printf(self->block,
                          "            #End Application %s\n", app->super.name);

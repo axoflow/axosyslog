@@ -40,10 +40,10 @@ Test(application, filter_can_be_set_and_queried)
   const gchar *filter_expr2 = "'2' eq '2'";
 
   app = application_new("foobar", "*");
-  application_set_filter(app, filter_expr);
+  application_set_filter(app, filter_expr, NULL);
   cr_assert_str_eq(app->filter_expr, filter_expr);
 
-  application_set_filter(app, filter_expr2);
+  application_set_filter(app, filter_expr2, NULL);
   cr_assert_str_eq(app->filter_expr, filter_expr2);
   appmodel_object_free(&app->super);
 }
@@ -55,10 +55,10 @@ Test(application, parser_can_be_set_and_queried)
   const gchar *parser_expr2 = "csv-parser();";
 
   app = application_new("foobar", "*");
-  application_set_parser(app, parser_expr);
+  application_set_parser(app, parser_expr, NULL);
   cr_assert_str_eq(app->parser_expr, parser_expr);
 
-  application_set_parser(app, parser_expr2);
+  application_set_parser(app, parser_expr2, NULL);
   cr_assert_str_eq(app->parser_expr, parser_expr2);
   appmodel_object_free(&app->super);
 }
