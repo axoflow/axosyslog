@@ -33,8 +33,8 @@ function update_packaging_debian() {
 
 function update_packaging_rhel() {
 	echo Updating RHEL packaging
-	sed -i -e "s/^Version: [0-9.]*$/Version: $VERSION/g" packaging/rhel/syslog-ng.spec
-	sed -i -e "/^%changelog/ a * `date '+%a %b %e %Y'` $USER_NAME <$USER_EMAIL> - $VERSION-1\n- updated to $VERSION\n" packaging/rhel/syslog-ng.spec
+	sed -i -e "s/^Version: [0-9.]*$/Version: $VERSION/g" packaging/rhel/axosyslog.spec
+	sed -i -e "/^%changelog/ a * `date '+%a %b %e %Y'` $USER_NAME <$USER_EMAIL> - $VERSION-1\n- updated to $VERSION\n" packaging/rhel/axosyslog.spec
 }
 
 function update_version_refs_in_source() {
