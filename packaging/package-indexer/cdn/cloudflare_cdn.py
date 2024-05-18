@@ -57,15 +57,11 @@ class CloudflareCDN(CDN):
             api_token=cfg["api-token"],
         )
 
-    def refresh_cache(self, path: Path) -> None:
-        self._log_info("Refreshing CDN cache.")
-
+    def _refresh_cache(self, path: Path) -> None:
         url = f"https://api.cloudflare.com/client/v4/zones/{self.__zone_id}/purge_cache"
         headers = {"Authorization": f"Bearer {self.__api_token}"}
         data = {"purge_everything": True}
 
         response = requests.post(url, headers=headers, json=data).json()
-        if response.get("success", False):
-            self._log_info("Successfully refreshed CDN cache.")
-        else:
-            self._log_info("Failed to refresh CDN cache.", response=response)
+        if not response.get("success", False):
+            raise Exception("Failed to refresh CDN cache. response: {}".format(response))
