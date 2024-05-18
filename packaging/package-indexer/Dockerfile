@@ -10,4 +10,5 @@ RUN pip install \
   azure-mgmt-cdn \
   azure-identity \
   pyyaml \
-  types-PyYAML
+  types-PyYAML \
+  boto3

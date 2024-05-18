@@ -8,3 +8,13 @@ disallow_untyped_defs = true
 module = "azure.*"
 follow_imports = "skip"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "boto3.*"
+follow_imports = "skip"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "botocore.*"
+follow_imports = "skip"
+ignore_missing_imports = true
