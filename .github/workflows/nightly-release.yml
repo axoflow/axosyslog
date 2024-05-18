@@ -38,12 +38,12 @@ jobs:
           name: source-tarball
           path: dbld/build/*.tar.*
 
-  # create-packages:
-  #   needs: tarball
-  #   uses: ./.github/workflows/create-packages.yml
-  #   with:
-  #     source-tarball-artifact-name: source-tarball
-  #     dbld-image-mode: cache
+  create-packages:
+    needs: tarball
+    uses: ./.github/workflows/create-packages.yml
+    with:
+      source-tarball-artifact-name: source-tarball
+      dbld-image-mode: cache
 
   # upload-packages:
   #   needs: create-packages
