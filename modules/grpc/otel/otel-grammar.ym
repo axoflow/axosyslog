@@ -69,7 +69,7 @@ GrpcClientCredentialsBuilderW *last_grpc_client_credentials_builder;
 %token KW_URL
 %token KW_TARGET_SERVICE_ACCOUNTS
 %token KW_ADC
-%token KW_SYSLOG_NG_OTLP
+%token KW_AXOSYSLOG_OTLP
 %token KW_COMPRESSION
 %token KW_BATCH_BYTES
 %token KW_CONCURRENT_REQUESTS
@@ -93,7 +93,7 @@ start
 
 kw_opentelemetry_or_syslog_ng_otlp
   : KW_OPENTELEMETRY
-  | KW_SYSLOG_NG_OTLP
+  | KW_AXOSYSLOG_OTLP
   ;
 
 source_otel
@@ -182,7 +182,7 @@ destination_otel_channel_arg
   ;
 
 destination_syslog_ng_otlp
-  : KW_SYSLOG_NG_OTLP
+  : KW_AXOSYSLOG_OTLP
     {
       last_driver = *instance = syslog_ng_otlp_dd_new(configuration);
     }
