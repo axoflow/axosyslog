@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo -e "\n\nWelcome to the syslog-ng developer's shell... ($IMAGE_PLATFORM)\n"
+echo -e "\n\nWelcome to the AxoSyslog developer's shell... ($IMAGE_PLATFORM)\n"
 
 echo -e "You can find the source in /source, you can build the source using:\n"
 echo -e "\t\$ cd /build"

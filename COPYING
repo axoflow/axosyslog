@@ -2,7 +2,7 @@ Copyright (c) 2002-2015 Balabit
 Copyright (c) 1996-2015 Balázs Scheidler
 Copyright (c) 2023-2024 Axoflow
 
-syslog-ng is licensed under the combination of the GPL and LGPL licenses.
+AxoSyslog is licensed under the combination of the GPL and LGPL licenses.
 
 Our intention with the choice of our licenses is to:
  1) license reusable/extendable code under the LGPL,
@@ -21,7 +21,7 @@ Alternatively, you can also use the contents of the `tests/copyright/policy`
 file, this is an input to our automated test suite that checks licenses
 against our intents.
 
-The syslog-ng core contained in the following subdirectories
+The AxoSyslog core contained in the following subdirectories
 is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
 License as published by the Free Software Foundation; either
@@ -35,7 +35,7 @@ syslog-ng-ctl/
 persist-tool/
 tests/loggen/
 
-The syslog-ng modules (modules/, docker/, charts/, and scl/ subdirectories,
+The AxoSyslog modules (modules/, docker/, charts/, and scl/ subdirectories,
 except the ones that declare LGPL-2.1-or-later in their license notices)
 is free software; you can redistribute it and/or modify it under the terms of
 the GNU General Public License version 2 as published by the
@@ -48,8 +48,8 @@ FAQ:
 The questions and answers below try to summarize the intentions behind this
 licensing scheme.
 
-Q: Is it possible to create derived works of syslog-ng under the GPL/LGPL
-licenses?
+Q: Is it possible to create derived works of AxoSyslog/syslog-ng under the
+GPL/LGPL licenses?
 
 A: Yes, that's exactly the point of open source. Works derived from the
 plugins will have to use the GPL license, but you can choose to use LGPL for
@@ -61,16 +61,16 @@ contribution to be accepted?
 A: No, starting with syslog-ng 3.2, you don't need to sign a CLA in order to
 have your contributions accepted.
 
-Q: Is it possible to create non-free plugins for syslog-ng?
+Q: Is it possible to create non-free plugins for AxoSyslog/syslog-ng?
 
 A: Yes. It is our understanding that plugins are derived works of the
-syslog-ng core but not derived works of other plugins.  Thus, non-free
+AxoSyslog core but not derived works of other plugins.  Thus, non-free
 plugins are possible, provided they do not link to any of the GPLd plugins
-explicitly and the only connection between two plugins is via the syslog-ng
+explicitly and the only connection between two plugins is via the AxoSyslog
 core.
 
-Q: Who is permitted to create non-free plugins for syslog-ng? Is it just
-BalaBit (the current copyright holder as of the initial 3.2 release)?
+Q: Who is permitted to create non-free plugins for AxoSyslog/syslog-ng?
+Is it just BalaBit (the current copyright holder as of the initial 3.2 release)?
 
 A: No, everyone including BalaBit.
 
