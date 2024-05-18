@@ -90,7 +90,7 @@ jobs:
           load: true
           tags: axosyslog:test
           build-args: |
-            PKG_TYPE=nightly
+            PKG_TYPE=snapshot
             SNAPSHOT_VERSION=${{ needs.tarball.outputs.snapshot-version }}
 
       - name: Smoke test
@@ -104,9 +104,10 @@ jobs:
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: [tarball, build-and-test]
     with:
-      pkg-type: nightly
-      tarball-artifact: source-tarball
+      type: snapshot
+      snapshot-tarball-artifact: source-tarball
       snapshot-version: ${{ needs.tarball.outputs.snapshot-version }}
+      snapshot-tags: nightly,${{ needs.tarball.outputs.snapshot-version }}
 
   # https://github.com/actions/delete-package-versions/issues/90
   cleanup-old-images:
