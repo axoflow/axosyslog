@@ -1,4 +1,4 @@
-name: Upload package to Azure/incoming
+name: Upload package to R2/incoming
 
 
 on:
@@ -22,7 +22,11 @@ on:
           "ubuntu-mantic"
         ]'
     secrets:
-      azure-sas-token:
+      r2-access-key:
+        required: true
+      r2-secret-key:
+        required: true
+      r2-account-id:
         required: true
 
 
@@ -46,23 +50,15 @@ jobs:
           name: package-${{ matrix.distro }}
           path: package
 
-      - name: Calculate Azure path
+      - name: Upload packages to R2 incoming
+        working-directory: package
         run: |
-          if [[ ! "${{ inputs.pkg-type }}" =~ ^(stable|nightly)$ ]]; then
-            echo Unexpected input: pkg-type=${{ inputs.pkg-type }}
-            false
-          fi
-
-          AZURE_PATH="incoming/${{ inputs.pkg-type }}/${{ github.run_id }}"
-
-          echo "AZURE_PATH=${AZURE_PATH}" >> ${GITHUB_ENV}
-
-      - name: Upload packages to Azure incoming
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
-            az storage blob upload-batch \
-              --sas-token '${{ secrets.azure-sas-token }}' \
-              --account-name 'syslogngose' \
-              --source 'package' \
-              --destination '${{ env.AZURE_PATH }}'
+          export AWS_ACCESS_KEY_ID='${{ secrets.r2-access-key }}'
+          export AWS_SECRET_ACCESS_KEY='${{ secrets.r2-secret-key }}'
+          export AWS_DEFAULT_REGION='auto'
+          find * -type f -exec \
+            aws s3api put-object \
+              --endpoint-url https://${{ secrets.r2-account-id }}.r2.cloudflarestorage.com \
+              --bucket axosyslog-apt-incoming \
+              --key ${{ inputs.pkg-type }}/${{ github.run_id }}/{} \
+              --body {} \;

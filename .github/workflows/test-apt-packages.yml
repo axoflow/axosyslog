@@ -1,6 +1,6 @@
-# Please note that the syslog-ng git repository is not available in this workflow.
+# Please note that the axosyslog git repository is not available in this workflow.
 # It means that certain convenience/helper functions are not available (e.g. gh_output).
-# This is intentional as syslog-ng will be acquired from the APT repository.
+# This is intentional as axosyslog will be acquired from the APT repository.
 
 name: Run smoke tests on APT packages
 on:
@@ -27,7 +27,7 @@ jobs:
           - "ubuntu:mantic"
         upgrade-from:
           - "debian-official"
-          - "syslog-ng-last"
+          - "axosyslog-last"
         exclude:
           # The official syslog-ng got removed from debian:testing because of pcre:
           # https://tracker.debian.org/news/1445295/syslog-ng-removed-from-testing/
@@ -49,18 +49,18 @@ jobs:
 
       - name: Add OSE repository
         run: |
-          wget -qO - https://ose-repo.syslog-ng.com/apt/syslog-ng-ose-pub.asc | gpg --dearmor > /usr/share/keyrings/ose-repo-archive-keyring.gpg
-          echo "deb [signed-by=/usr/share/keyrings/ose-repo-archive-keyring.gpg] https://ose-repo.syslog-ng.com/apt/ ${{ inputs.pkg-type }} $(echo ${{ matrix.distro }} | sed 's/:/-/g')" | tee --append /etc/apt/sources.list.d/syslog-ng-ose.list
+          wget -qO - https://pkg.axoflow.io/axoflow-code-signing-pub.asc | gpg --dearmor > /usr/share/keyrings/axoflow-code-signing-pub.gpg
+          echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt ${{ inputs.pkg-type }} $(echo ${{ matrix.distro }} | sed 's/:/-/g')" | tee --append /etc/apt/sources.list.d/axosyslog.list
           apt-get update -qq
 
-      - name: Install the last but one syslog-ng OSE package
-        if: matrix.upgrade-from == 'syslog-ng-last'
+      - name: Install the last but one AxoSyslog package
+        if: matrix.upgrade-from == 'axosyslog-last'
         run: |
-          DEBIAN_FRONTEND=noninteractive apt-get install --yes syslog-ng=$(apt-cache madison syslog-ng | sed -n 2p | awk -F"|" '{print $2}' | sed 's/ //g')
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes axosyslog=$(apt-cache madison axosyslog | sed -n 2p | awk -F"|" '{print $2}' | sed 's/ //g')
 
-      - name: Upgrade to the latest syslog-ng OSE package
+      - name: Upgrade to the latest AxoSyslog package
         run: |
-          DEBIAN_FRONTEND=noninteractive apt-get install --yes syslog-ng
+          DEBIAN_FRONTEND=noninteractive apt-get install --yes axosyslog
 
       - name: Get syslog-ng revision
         run: |
@@ -79,8 +79,8 @@ jobs:
       - name: Check if installed package version matches with install revision
         run: |
           echo "Installed revision value: ${{ steps.syslog_ng_revision.outputs.REVISION }}"
-          dpkg-query --show syslog-ng\*
-          dpkg-query -f='${db:Status-Status}\t${package}\t${version}\t\n' --show syslog-ng\* | grep ^installed | while read installed_syslog_ng_package ; do echo $installed_syslog_ng_package | grep ${{ steps.syslog_ng_revision.outputs.REVISION }} ; done
+          dpkg-query --show axosyslog\*
+          dpkg-query -f='${db:Status-Status}\t${package}\t${version}\t\n' --show axosyslog\* | grep ^installed | while read installed_axosyslog_package ; do echo $installed_axosyslog_package | grep ${{ steps.syslog_ng_revision.outputs.REVISION }} ; done
 
       - name: Check if syslog-ng can start with default config
         run: |
