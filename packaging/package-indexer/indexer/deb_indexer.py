@@ -88,6 +88,7 @@ class DebIndexer(Indexer):
             command = base_command + [str(relative_pkg_dir)]
 
             packages_file_path = Path(pkg_dir, "Packages")
+            packages_file_path.parent.mkdir(parents=True, exist_ok=True)
             with packages_file_path.open("w") as packages_file:
                 self._log_info("Creating `Packages` file.", packages_file_path=str(packages_file_path))
                 utils.execute_command(command, dir=dir, stdout=packages_file)
@@ -111,6 +112,7 @@ class DebIndexer(Indexer):
         command = ["apt-ftparchive", "release", "."]
 
         release_file_path = Path(indexed_dir, "Release")
+        release_file_path.parent.mkdir(parents=True, exist_ok=True)
         with release_file_path.open("w") as release_file:
             self._log_info("Creating `Release` file.", release_file_path=str(release_file_path))
             utils.execute_command(
