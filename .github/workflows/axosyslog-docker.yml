@@ -88,7 +88,7 @@ jobs:
           tags: ${{ steps.tags.outputs.TAGS }}
           # description should be here because it is a multi-arch image
           # see docs: https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#adding-a-description-to-multi-arch-images
-          outputs: type=image,name=target,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata-tags.outputs.json).labels['org.opencontainers.image.description'] }}
+          outputs: type=image,name=${{ env.DOCKER_IMAGE_NAME }},annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata-tags.outputs.json).labels['org.opencontainers.image.description'] }}
           build-args: |
             PKG_TYPE=${{ inputs.pkg-type }}
             SNAPSHOT_VERSION=${{ inputs.snapshot-version }}

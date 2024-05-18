@@ -1,4 +1,4 @@
-Source: syslog-ng
+Source: axosyslog
 Section: admin
 Priority: optional
 Maintainer: syslog-ng maintainers <syslog-ng-maintainers@alioth-lists.debian.net>
@@ -49,17 +49,18 @@ Build-Depends: debhelper (>= 10~),
                libgrpc++-dev <!sng-nogrpc>
 Build-Conflicts: autoconf2.13
 Standards-Version: 4.4.1
-Homepage: https://www.syslog-ng.com/
+Homepage: https://axoflow.com/docs/axosyslog-core/
 Vcs-Git: https://github.com/gcsideal/syslog-ng-debian.git
 Vcs-Browser: https://github.com/gcsideal/syslog-ng-debian
 
-Package: syslog-ng
+Package: axosyslog
 Architecture: all
 Multi-Arch: foreign
-Depends: ${misc:Depends}, syslog-ng-core (>= ${source:Upstream-Version}), syslog-ng-scl (>= ${source:Upstream-Version}), ${sng:CoreModules}
+Depends: ${misc:Depends}, axosyslog-core (>= ${source:Upstream-Version}), axosyslog-scl (>= ${source:Upstream-Version}), ${sng:CoreModules}
+Conflicts: syslog-ng
 Recommends: ${sng:Modules}
 Description: Enhanced system logging daemon (metapackage)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -74,17 +75,18 @@ Description: Enhanced system logging daemon (metapackage)
   * hand on messages for further processing using message queues (like
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
- This package is a metapackage, depending on the rest of syslog-ng,
+ This package is a metapackage, depending on the rest of AxoSyslog,
  including all available plugins. It can be safely removed, if only
- parts of syslog-ng need to be installed.
+ parts of AxoSyslog need to be installed.
 
-Package: syslog-ng-dbg
+Package: axosyslog-dbg
 Architecture: any
 Multi-Arch: same
 Section: debug
-Depends: syslog-ng-core (= ${binary:Version}), ${misc:Depends}
+Depends: axosyslog-core (= ${binary:Version}), ${misc:Depends}
+Conflicts: syslog-ng-dbg
 Description: Enhanced system logging daemon (debug symbols)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -99,18 +101,19 @@ Description: Enhanced system logging daemon (debug symbols)
   * hand on messages for further processing using message queues (like
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
- This package contains debug symbols for the whole of syslog-ng,
+ This package contains debug symbols for the whole of AxoSyslog,
  including the modules.
 
-Package: syslog-ng-dev
+Package: axosyslog-dev
 Section: libdevel
 Architecture: any
-Depends: syslog-ng-core (= ${binary:Version}),
+Depends: axosyslog-core (= ${binary:Version}),
  ${misc:Depends}, ${perl:Depends},
  pkg-config, perl, flex, bison, python3,
  libglib2.0-dev, libivykis-dev (>= 0.30)
+Conflicts: syslog-ng-dev
 Description: Enhanced system logging daemon (development files)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -126,20 +129,20 @@ Description: Enhanced system logging daemon (development files)
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
  This package contains the headers and tools needed to build
- third-party plugins against syslog-ng, the next generation system
+ third-party plugins against AxoSyslog, the next generation system
  logging daemon.
 
-Package: syslog-ng-core
+Package: axosyslog-core
 Architecture: any
 Multi-Arch: foreign
 Depends: ${shlibs:Depends}, ${misc:Depends}, util-linux (>= 2.12-10), lsb-base (>= 3.0-6)
 Suggests: ${sng:CoreModules}, ${sng:Modules}, logrotate
-Provides: system-log-daemon, linux-kernel-log-daemon, libsyslog-ng-dev, syslog-ng-mod-journal, syslog-ng-mod-pacctformat, syslog-ng-mod-tag-parser, syslog-ng-mod-extra
-Conflicts: system-log-daemon, linux-kernel-log-daemon
-Replaces: syslog-ng (<< 3.3.0~), libsyslog-ng-dev, syslog-ng-mod-json (<< 3.19.1~), syslog-ng-mod-journal (<< 3.25.1~), syslog-ng-mod-pacctformat (<< 3.26.1~), syslog-ng-mod-tag-parser (<< 3.26.1~), syslog-ng-mod-extra (<< 3.26.1-2~)
-Breaks: syslog-ng (<< 3.3.0~), libsyslog-ng-dev, syslog-ng-mod-json (<< 3.19.1~), syslog-ng-mod-journal (<< 3.25.1~), syslog-ng-mod-pacctformat (<< 3.26.1~), syslog-ng-mod-tag-parser (<< 3.26.1~), syslog-ng-mod-extra (<< 3.26.1-2~)
+Provides: system-log-daemon, linux-kernel-log-daemon
+Conflicts: system-log-daemon, linux-kernel-log-daemon, syslog-ng-core
+Replaces: syslog-ng (<< 3.3.0~), syslog-ng-mod-json (<< 3.19.1~), syslog-ng-mod-journal (<< 3.25.1~), syslog-ng-mod-pacctformat (<< 3.26.1~), syslog-ng-mod-tag-parser (<< 3.26.1~), syslog-ng-mod-extra (<< 3.26.1-2~)
+Breaks: syslog-ng (<< 3.3.0~), syslog-ng-mod-json (<< 3.19.1~), syslog-ng-mod-journal (<< 3.25.1~), syslog-ng-mod-pacctformat (<< 3.26.1~), syslog-ng-mod-tag-parser (<< 3.26.1~), syslog-ng-mod-extra (<< 3.26.1-2~)
 Description: Enhanced system logging daemon (core)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -154,16 +157,17 @@ Description: Enhanced system logging daemon (core)
   * hand on messages for further processing using message queues (like
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
- This package provides the core syslog-ng, with all the plugins
+ This package provides the core AxoSyslog, with all the plugins
  required for a standard installation.
 
-Package: syslog-ng-mod-mongodb
+Package: axosyslog-mod-mongodb
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-mongodb
 Suggests: mongodb-server
 Description: Enhanced system logging daemon (MongoDB plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -181,13 +185,14 @@ Description: Enhanced system logging daemon (MongoDB plugin)
  This package provides the MongoDB destination plugin, which allows
  one to log system messages to MongoDB.
 
-Package: syslog-ng-mod-sql
+Package: axosyslog-mod-sql
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-sql
 Suggests: libdbd-mysql, libdbd-pgsql, libdbd-sqlite3
 Description: Enhanced system logging daemon (SQL plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -206,12 +211,13 @@ Description: Enhanced system logging daemon (SQL plugin)
  log system messages to a multitude of SQL databases (including, but
  not limited to MySQL, PostgreSQL and SQLite).
 
-Package: syslog-ng-mod-smtp
+Package: axosyslog-mod-smtp
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-smtp
 Description: Enhanced system logging daemon (SMTP plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -227,15 +233,16 @@ Description: Enhanced system logging daemon (SMTP plugin)
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
  This package provides the SMTP destination plugin, which allows one
- to send email messages from within syslog-ng itself.
+ to send email messages from within AxoSyslog itself.
 
-Package: syslog-ng-mod-amqp
+Package: axosyslog-mod-amqp
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-amqp
 Suggests: rabbitmq-server
 Description: Enhanced system logging daemon (AMQP plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -253,15 +260,15 @@ Description: Enhanced system logging daemon (AMQP plugin)
  This package provides the AMQP destination plugin, which allows one
  to publish log messages through the AMQP protocol.
 
-Package: syslog-ng-mod-geoip2
+Package: axosyslog-mod-geoip2
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
-Provides: syslog-ng-mod-geoip
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-geoip2
 Replaces: syslog-ng-mod-geoip (<< 3.25.1~)
 Breaks: syslog-ng-mod-geoip (<< 3.25.1~)
 Description: Enhanced system logging daemon (GeoIP2 plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -277,15 +284,16 @@ Description: Enhanced system logging daemon (GeoIP2 plugin)
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
  This package provides the GeoIP2 template function plugin, which
- allows one to do non-DNS IP-to-country resolving from syslog-ng
+ allows one to do non-DNS IP-to-country resolving from AxoSyslog
  templates. GeoIP2 uses MaxMind DB.
 
-Package: syslog-ng-mod-redis
+Package: axosyslog-mod-redis
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-redis
 Description: Enhanced system logging daemon (Redis plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -301,15 +309,16 @@ Description: Enhanced system logging daemon (Redis plugin)
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
  This package provides the Redis destination plugin, which allows one
- to issue Redis commands from within syslog-ng.
+ to issue Redis commands from within AxoSyslog.
 
-Package: syslog-ng-mod-stomp
+Package: axosyslog-mod-stomp
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-stomp
 Suggests: activemq
 Description: Enhanced system logging daemon (STOMP plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -327,12 +336,13 @@ Description: Enhanced system logging daemon (STOMP plugin)
  This package provides the STOMP destination plugin, which allows one
  to publish log messages through the STOMP protocol.
 
-Package: syslog-ng-mod-riemann
+Package: axosyslog-mod-riemann
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-riemann
 Description: Enhanced system logging daemon (Riemann destination)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -348,15 +358,16 @@ Description: Enhanced system logging daemon (Riemann destination)
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
  This package provides the Riemann destination, allowing one to push
- events to a Riemann server from within syslog-ng.
+ events to a Riemann server from within AxoSyslog.
 
-Package: syslog-ng-mod-graphite
+Package: axosyslog-mod-graphite
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-graphite
 Suggests: graphite-web
 Description: Enhanced system logging daemon (graphite plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -373,15 +384,16 @@ Description: Enhanced system logging daemon (graphite plugin)
  .
  This package provides the graphite plugin, that adds a new template
  function, $(graphite-output), which makes it possible to easily send
- metrics to Graphite from within syslog-ng.
+ metrics to Graphite from within AxoSyslog.
 
-Package: syslog-ng-mod-python
+Package: axosyslog-mod-python
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python3:Depends}, python3-venv, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python3:Depends}, python3-venv, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-python
 XB-Python-Version: ${python:Versions}
 Description: Enhanced system logging daemon (Python plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -397,14 +409,15 @@ Description: Enhanced system logging daemon (Python plugin)
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
  This package provides the Python plugin, that allows one to write
- syslog-ng plugins in Python.
+ AxoSyslog plugins in Python.
 
-Package: syslog-ng-mod-add-contextual-data
+Package: axosyslog-mod-add-contextual-data
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-add-contextual-data
 Description: Enhanced system logging daemon (add-contextual-data plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -419,21 +432,21 @@ Description: Enhanced system logging daemon (add-contextual-data plugin)
   * hand on messages for further processing using message queues (like
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
- This package provides the add-contextual-data module for syslog-ng.
- With this module syslog-ng can use an external database file to
+ This package provides the add-contextual-data module for AxoSyslog.
+ With this module AxoSyslog can use an external database file to
  append custom name-value pairs on incoming logs (to enrich messages).
  The database is a file that containing `<selector, name, value>` records.
  Currently only `CSV` format is supported. It is like `geoip parser`
  where the selector is `$HOST`, but the user can define
  the selector, and also the database contents.
 
-Package: syslog-ng-mod-getent
+Package: axosyslog-mod-getent
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
-Conflicts: syslog-ng-mod-basicfuncs-plus ( << 0.6.0)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-basicfuncs-plus ( << 0.6.0), syslog-ng-mod-getent
 Description: Enhanced system logging daemon (getent plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -452,12 +465,13 @@ Description: Enhanced system logging daemon (getent plugin)
  Switch library to convert UIDs to names, protocol names to port number and
  much more.
 
-Package: syslog-ng-mod-stardate
+Package: axosyslog-mod-stardate
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-stardate
 Description: Enhanced system logging daemon (stardate plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -476,12 +490,13 @@ Description: Enhanced system logging daemon (stardate plugin)
  the date with months and days as fragments of the year.  For example, it
  formats 2017.06.15 as something like 2017.500.
 
-Package: syslog-ng-mod-map-value-pairs
+Package: axosyslog-mod-map-value-pairs
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-value-pairs
 Description: Enhanced system logging daemon (map-value-pairs plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -499,12 +514,13 @@ Description: Enhanced system logging daemon (map-value-pairs plugin)
  With this package, it is possible to copy key-value pairs and do some other
  conversion and alteration in key-value pairs.
 
-Package: syslog-ng-mod-snmp
+Package: axosyslog-mod-snmp
 Architecture: linux-any hurd-i386
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-snmp
 Description: Enhanced system logging daemon (SNMP plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -522,12 +538,13 @@ Description: Enhanced system logging daemon (SNMP plugin)
  This package provides the SNMP source/destination plugins, which allows one
  to send/receive SNMP traps.
 
-Package: syslog-ng-mod-xml-parser
+Package: axosyslog-mod-xml-parser
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-xml-parser
 Description: Enhanced system logging daemon (xml parser plugin)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -545,14 +562,15 @@ Description: Enhanced system logging daemon (xml parser plugin)
  The xml parser can process input in xml format, and adds the parsed data
  to the message object.
 
-Package: syslog-ng-mod-http
+Package: axosyslog-mod-http
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-http
 Replaces: syslog-ng-core (<< 3.26.1~)
 Breaks: syslog-ng-core (<< 3.26.1~)
 Description: Enhanced system logging daemon (HTTP destination)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -570,12 +588,13 @@ Description: Enhanced system logging daemon (HTTP destination)
  This package provides an HTTP destination, allowing one to send syslog
  messages as HTTP PUT messages to an http server.
 
-Package: syslog-ng-mod-rdkafka
+Package: axosyslog-mod-rdkafka
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-rdkafka
 Description: Enhanced system logging daemon (Kafka destination, based on librdkafka)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -593,14 +612,15 @@ Description: Enhanced system logging daemon (Kafka destination, based on librdka
  This package provides a native Kafka destination, written entirely in the
  C programming language, based on the librdkafka client library.
 
-Package: syslog-ng-scl
+Package: axosyslog-scl
 Architecture: all
 Multi-Arch: foreign
-Depends: ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-scl
 Replaces: syslog-ng-mod-extra (<< 3.38.1~), syslog-ng-core (<< 3.38.1~), syslog-ng-mod-graphite (<< 3.38.1~), syslog-ng-mod-rdkafka (<< 3.38.1~), syslog-ng-mod-snmp (<< 3.38.1~)
 Breaks: syslog-ng-mod-extra (<< 3.38.1~), syslog-ng-core (<< 3.38.1~), syslog-ng-mod-graphite (<< 3.38.1~), syslog-ng-mod-rdkafka (<< 3.38.1~), syslog-ng-mod-snmp (<< 3.38.1~)
 Description: Enhanced system logging daemon (scl files)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -618,12 +638,13 @@ Description: Enhanced system logging daemon (scl files)
  This package collects scl files, scripts and config sniplets focusing on
  specific areas, providing help creating more readable configurations.
 
-Package: syslog-ng-mod-examples
+Package: axosyslog-mod-examples
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-examples
 Description: Enhanced system logging daemon (example plugins)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -640,12 +661,13 @@ Description: Enhanced system logging daemon (example plugins)
  .
  This package provides a collection of example plugins.
 
-Package: syslog-ng-mod-slog
+Package: axosyslog-mod-slog
 Architecture: any
 Multi-Arch: foreign
 Depends: ${shlibs:Depends}, ${misc:Depends}
+Conflicts: syslog-ng-mod-slog
 Description: Enhanced system logging daemon (slog)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -663,13 +685,14 @@ Description: Enhanced system logging daemon (slog)
  This package provides the $(slog) template functions and command
  line utilities (slogencrypt, slogverify, slogkey).
 
-Package: syslog-ng-mod-java
+Package: axosyslog-mod-java
 Architecture: any
 Multi-Arch: foreign
-Depends: syslog-ng-core (= ${binary:Version}), default-jre-headless
-Recommends: syslog-ng-mod-java-common-lib
+Depends: axosyslog-core (= ${binary:Version}), default-jre-headless
+Conflicts: syslog-ng-mod-java
+Recommends: axosyslog-mod-java-common-lib
 Description: Enhanced system logging daemon (Java destination)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -687,12 +710,13 @@ Description: Enhanced system logging daemon (Java destination)
  This package provides the Java destination, allowing one to write
  destination drivers without having to touch C, in Java.
 
-Package: syslog-ng-mod-java-common-lib
+Package: axosyslog-mod-java-common-lib
 Architecture: any
 Multi-Arch: foreign
-Depends: syslog-ng-core (= ${binary:Version}), syslog-ng-mod-java
+Depends: axosyslog-core (= ${binary:Version}), axosyslog-mod-java
+Conflicts: syslog-ng-mod-java-common-lib
 Description: Enhanced system logging daemon (Java module common library)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -710,12 +734,13 @@ Description: Enhanced system logging daemon (Java module common library)
  This package provides common libraries for simplifying the creation
  of Java destinations.
 
-Package: syslog-ng-mod-elastic
+Package: axosyslog-mod-elastic
 Architecture: any
 Multi-Arch: foreign
-Depends: syslog-ng-core (= ${binary:Version}), syslog-ng-mod-java-common-lib, syslog-ng-mod-java
+Depends: axosyslog-core (= ${binary:Version}), axosyslog-mod-java-common-lib, axosyslog-mod-java
+Conflicts: syslog-ng-mod-elastic
 Description: Enhanced system logging daemon (Elasticsearch destination)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -733,12 +758,13 @@ Description: Enhanced system logging daemon (Elasticsearch destination)
  This package provides the Elasticsearch destination, allowing one to
  send syslog messages to Elasticsearch.
 
-Package: syslog-ng-mod-hdfs
+Package: axosyslog-mod-hdfs
 Architecture: any
 Multi-Arch: foreign
-Depends: syslog-ng-core (= ${binary:Version}), syslog-ng-mod-java-common-lib, syslog-ng-mod-java
+Depends: axosyslog-core (= ${binary:Version}), axosyslog-mod-java-common-lib, axosyslog-mod-java
+Conflicts: syslog-ng-mod-hdfs
 Description: Enhanced system logging daemon (HDFS destination)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -756,12 +782,13 @@ Description: Enhanced system logging daemon (HDFS destination)
  This package provides the HDFS destination, allowing one to send
  messages to HDFS.
 
-Package: syslog-ng-mod-kafka
+Package: axosyslog-mod-kafka
 Architecture: any
 Multi-Arch: foreign
-Depends: syslog-ng-core (= ${binary:Version}), syslog-ng-mod-java-common-lib, syslog-ng-mod-java
+Depends: axosyslog-core (= ${binary:Version}), axosyslog-mod-java-common-lib, axosyslog-mod-java
+Conflicts: syslog-ng-mod-kafka
 Description: Enhanced system logging daemon (Kafka destination)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -779,12 +806,13 @@ Description: Enhanced system logging daemon (Kafka destination)
  This package provides the Apache Kafka destination, allowing one to send
  messages to Kafka.
 
-Package: syslog-ng-mod-java-http
+Package: axosyslog-mod-java-http
 Architecture: any
 Multi-Arch: foreign
-Depends: syslog-ng-core (= ${binary:Version}), syslog-ng-mod-java-common-lib, syslog-ng-mod-java
+Depends: axosyslog-core (= ${binary:Version}), axosyslog-mod-java-common-lib, axosyslog-mod-java
+Conflicts: syslog-ng-mod-java-http
 Description: Enhanced system logging daemon (HTTP destination implemented in Java)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -802,12 +830,13 @@ Description: Enhanced system logging daemon (HTTP destination implemented in Jav
  This package provides an HTTP destination, allowing one to send syslog messages as HTTP
  PUT messages to an http server.
 
-Package: syslog-ng-mod-mqtt
+Package: axosyslog-mod-mqtt
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-mqtt
 Description: Enhanced system logging daemon (MQTT plugins)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -825,12 +854,13 @@ Description: Enhanced system logging daemon (MQTT plugins)
  This package provides the MQTT plugin, that allows receiving and sending
  MQTT messages.
 
-Package: syslog-ng-mod-grpc
+Package: axosyslog-mod-grpc
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-grpc
 Description: Enhanced system logging daemon (GRPC plugins)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .
@@ -849,12 +879,13 @@ Description: Enhanced system logging daemon (GRPC plugins)
  .
   * OpenTelemetry logs, traces and metrics
 
-Package: syslog-ng-mod-cloud-auth
+Package: axosyslog-mod-cloud-auth
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~)
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-cloud-auth
 Description: Enhanced system logging daemon (Cloud Auth plugins)
- syslog-ng is an enhanced log daemon, supporting a wide range of input
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
  and output methods: syslog, unstructured text, message queues,
  databases (SQL and NoSQL alike) and more.
  .

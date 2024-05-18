@@ -108,7 +108,7 @@ build dependency.  This term would be mapped into a Debian profile named
 ### RHEL
 
 To add a new build dependency in case of RPM based distros (centos, fedora),
-you need to change the file `packaging/rhel/syslog-ng.spec`. You need to add
+you need to change the file `packaging/rhel/axosyslog.spec`. You need to add
 a BuildRequires line like this:
 
 ```
@@ -202,7 +202,7 @@ created at build time.
 
 ### RHEL
 
-With rpm packaging you will need to change `packaging/rhel/syslog-ng.spec`
+With rpm packaging you will need to change `packaging/rhel/axosyslog.spec`
 file and add a `%package` stanza somewhere around the other similar packages:
 
 

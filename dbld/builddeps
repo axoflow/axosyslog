@@ -114,12 +114,10 @@ function add_copr_repo {
     case "${OS_DISTRIBUTION}" in
         centos|almalinux)
             $YUM_INSTALL yum-plugin-copr
-            yum copr enable -y czanik/syslog-ng-githead
             yum config-manager --set-enabled powertools
             ;;
         fedora)
             $DNF_INSTALL -y dnf-plugins-core
-            dnf copr enable -y czanik/syslog-ng-githead
             ;;
     esac
 }
@@ -143,9 +141,9 @@ function install_debian_build_deps {
 }
 
 function install_rpm_build_deps {
-    RPM_SPEC_FILE="${DBLD_DIR}/extra-files/${IMAGE_PLATFORM}/syslog-ng.spec"
+    RPM_SPEC_FILE="${DBLD_DIR}/extra-files/${IMAGE_PLATFORM}/axosyslog.spec"
     if ! [ -f ${RPM_SPEC_FILE} ]; then
-        echo "install_rpm_build_deps() called from dockerfile but without a syslog-ng.spec file, make sure that control file is copied over to ${RPM_SPEC_FILE} by the prepare step"
+        echo "install_rpm_build_deps() called from dockerfile but without an axosyslog.spec file, make sure that control file is copied over to ${RPM_SPEC_FILE} by the prepare step"
         exit 1
     fi
 

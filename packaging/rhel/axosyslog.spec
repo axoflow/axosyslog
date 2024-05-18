@@ -1,12 +1,12 @@
-Name: syslog-ng
+Name: axosyslog
 Version: 4.7.1
 Release: 2%{?dist}
 Summary: Next-generation syslog server
 
 Group: System Environment/Daemons
 License: GPLv2+
-URL: http://www.balabit.com/network-security/syslog-ng
-Source0: https://github.com/syslog-ng/syslog-ng/releases/download/syslog-ng-%{version}/%{name}-%{version}.tar.gz
+URL: https://axoflow.com/docs/axosyslog-core/
+Source0: https://github.com/axoflow/axosyslog/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
 Source1: syslog-ng.conf
 Source2: syslog-ng.logrotate
 Source3: syslog-ng.service
@@ -129,16 +129,18 @@ Requires: logrotate
 Requires: ivykis >= %{ivykis_ver}
 
 Provides: syslog
+Conflicts: syslog-ng
+Conflicts: syslog-ng-premium-edition
 
 # Fedora 17’s unified filesystem (/usr-move)
 Conflicts: filesystem < 3
 
 %if 0%{?rhel} != 7
-Recommends: syslog-ng-logrotate
+Recommends: axosyslog-logrotate
 %endif
 
 %description
-syslog-ng is an enhanced log daemon, supporting a wide range of input and
+AxoSyslog is an enhanced log daemon, supporting a wide range of input and
 output methods: syslog, unstructured text, message queues, databases (SQL
 and NoSQL alike) and more.
 
@@ -218,12 +220,12 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 This module supports authentication to cloud providers.
 
 %package java
-Summary:        Java destination support for syslog-ng
+Summary:        Java destination support for axosyslog
 Group:          System/Libraries
 Requires:       %{name} = %{version}
 
 %description java
-This package provides java destination support for syslog-ng. It
+This package provides java destination support for axosyslog. It
 only contains the java bindings, no drivers.
 
 
@@ -233,7 +235,7 @@ Group: Development/Libraries
 Requires: %{name}%{?_isa} = %{version}-%{release}
 
 %description geoip
-This package provides GeoIP support for syslog-ng
+This package provides GeoIP support for axosyslog
 
 
 %package redis
@@ -269,12 +271,12 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 This module adds support for the $(slog) template function plus command line utilities.
 
 %package python
-Summary:        Python destination support for syslog-ng
+Summary:        Python destination support for axosyslog
 Group:          System/Libraries
 Requires:       %{name} = %{version}
 
 %description python
-This package provides python destination support for syslog-ng.
+This package provides python destination support for axosyslog.
 
 %package devel
 Summary: Development files for %{name}
@@ -292,7 +294,7 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 Conflicts: rsyslog
 
 %description logrotate
-This package provides a logrotate script for syslog-ng. It is only installed if
+This package provides a logrotate script for axosyslog. It is only installed if
 ryslog is not on the system.
 
 %prep
@@ -311,10 +313,10 @@ ryslog is not on the system.
 
 %configure \
     --prefix=%{_prefix} \
-    --sysconfdir=%{_sysconfdir}/%{name} \
-    --localstatedir=%{_sharedstatedir}/%{name} \
+    --sysconfdir=%{_sysconfdir}/syslog-ng \
+    --localstatedir=%{_sharedstatedir}/syslog-ng \
     --datadir=%{_datadir} \
-    --with-module-dir=%{_libdir}/%{name} \
+    --with-module-dir=%{_libdir}/syslog-ng \
     --with-systemdsystemunitdir=%{_unitdir} \
     --with-ivykis=system \
 %if 0%{?rhel} == 7
@@ -359,8 +361,8 @@ make %{_smp_mflags}
 %install
 make DESTDIR=%{buildroot} install
 
-%{__install} -d -m 755 %{buildroot}%{_sysconfdir}/%{name}/conf.d
-%{__install} -p -m 644 %{SOURCE1} %{buildroot}%{_sysconfdir}/%{name}/syslog-ng.conf
+%{__install} -d -m 755 %{buildroot}%{_sysconfdir}/syslog-ng/conf.d
+%{__install} -p -m 644 %{SOURCE1} %{buildroot}%{_sysconfdir}/syslog-ng/syslog-ng.conf
 
 %{__install} -d -m 755 %{buildroot}%{_sysconfdir}/logrotate.d
 %if 0%{?rhel} == 7
@@ -374,19 +376,19 @@ make DESTDIR=%{buildroot} install
 %endif
 
 %if %{with systemd}
-%{__install} -p -m 644 %{SOURCE3} %{buildroot}%{_unitdir}/%{name}.service
+%{__install} -p -m 644 %{SOURCE3} %{buildroot}%{_unitdir}/syslog-ng.service
 # remove unused service file
 rm %{buildroot}/usr/lib/systemd/system/syslog-ng@.service
 %endif
 
 
 # create the local state dir
-%{__install} -d -m 755 %{buildroot}/%{_sharedstatedir}/%{name}
+%{__install} -d -m 755 %{buildroot}/%{_sharedstatedir}/syslog-ng
 
 # install the main library header files
-%{__install} -d -m 755 %{buildroot}%{_includedir}/%{name}
-%{__install} -p -m 644 config.h %{buildroot}%{_includedir}/%{name}
-%{__install} -p -m 644 lib/*.h %{buildroot}%{_includedir}/%{name}
+%{__install} -d -m 755 %{buildroot}%{_includedir}/syslog-ng
+%{__install} -p -m 644 config.h %{buildroot}%{_includedir}/syslog-ng
+%{__install} -p -m 644 lib/*.h %{buildroot}%{_includedir}/syslog-ng
 
 
 find %{buildroot} -name "*.la" -exec rm -f {} \;
@@ -405,8 +407,8 @@ ldconfig
 
 
 %triggerun -- syslog-ng < 3.2.3
-if /sbin/chkconfig --level 3 %{name} ; then
-    /bin/systemctl enable %{name}.service >/dev/null 2>&1 || :
+if /sbin/chkconfig --level 3 syslog-ng ; then
+    /bin/systemctl enable syslog-ng.service >/dev/null 2>&1 || :
 fi
 
 
@@ -415,76 +417,76 @@ fi
 # %doc doc/security/*.txt
 %doc contrib/{relogger.pl,syslog2ng,syslog-ng.conf.doc}
 
-%dir %{_sysconfdir}/%{name}
-%dir %{_sysconfdir}/%{name}/conf.d
-%dir %{_sysconfdir}/%{name}/patterndb.d
-%config(noreplace) %{_sysconfdir}/%{name}/%{name}.conf
-%config(noreplace) %{_datadir}/%{name}/include/scl.conf
+%dir %{_sysconfdir}/syslog-ng
+%dir %{_sysconfdir}/syslog-ng/conf.d
+%dir %{_sysconfdir}/syslog-ng/patterndb.d
+%config(noreplace) %{_sysconfdir}/syslog-ng/syslog-ng.conf
+%config(noreplace) %{_datadir}/syslog-ng/include/scl.conf
 %if 0%{?rhel} == 7
 %config(noreplace) %{_sysconfdir}/logrotate.d/syslog
 %endif
-%dir %{_sharedstatedir}/%{name}
-%{_sbindir}/%{name}
-%{_sbindir}/%{name}-debun
+%dir %{_sharedstatedir}/syslog-ng
+%{_sbindir}/syslog-ng
+%{_sbindir}/syslog-ng-debun
 %{_sbindir}/syslog-ng-ctl
 %{_bindir}/loggen
 %{_bindir}/pdbtool
 %{_bindir}/dqtool
 %{_bindir}/update-patterndb
 %{_bindir}/persist-tool
-%{_libdir}/lib%{name}-*.so.*
+%{_libdir}/libsyslog-ng-*.so.*
 %{_libdir}/libevtlog-*.so.*
 %{_libdir}/libsecret-storage.so.*
 %{_libdir}/libloggen_helper-*.so.*
 %{_libdir}/libloggen_plugin-*.so.*
-%{_libdir}/%{name}/libadd-contextual-data.so
-%{_libdir}/%{name}/libaffile.so
-%{_libdir}/%{name}/libafprog.so
-%{_libdir}/%{name}/libafsocket.so
-%{_libdir}/%{name}/libafstomp.so
-%{_libdir}/%{name}/libafuser.so
-%{_libdir}/%{name}/libappmodel.so
-%{_libdir}/%{name}/libbasicfuncs.so
-%{_libdir}/%{name}/libcef.so
-%{_libdir}/%{name}/libconfgen.so
-%{_libdir}/%{name}/libcryptofuncs.so
-%{_libdir}/%{name}/libcsvparser.so
-%{_libdir}/%{name}/libtimestamp.so
-%{_libdir}/%{name}/libcorrelation.so
-%{_libdir}/%{name}/libdisk-buffer.so
-%{_libdir}/%{name}/libexamples.so
-%{_libdir}/%{name}/libgraphite.so
-%{_libdir}/%{name}/libhook-commands.so
-%{_libdir}/%{name}/libjson-plugin.so
-%{_libdir}/%{name}/libkvformat.so
-%{_libdir}/%{name}/liblinux-kmsg-format.so
-%{_libdir}/%{name}/libmap-value-pairs.so
-%{_libdir}/%{name}/libpseudofile.so
-%{_libdir}/%{name}/libregexp-parser.so
-%{_libdir}/%{name}/librate-limit-filter.so
-%{_libdir}/%{name}/libstardate.so
-%{_libdir}/%{name}/libsyslogformat.so
-%{_libdir}/%{name}/libsystem-source.so
-%{_libdir}/%{name}/libtags-parser.so
-%{_libdir}/%{name}/libtfgetent.so
-%{_libdir}/%{name}/libxml.so
-%{_libdir}/%{name}/libpacctformat.so
-%{_libdir}/%{name}/libmetrics-probe.so
+%{_libdir}/syslog-ng/libadd-contextual-data.so
+%{_libdir}/syslog-ng/libaffile.so
+%{_libdir}/syslog-ng/libafprog.so
+%{_libdir}/syslog-ng/libafsocket.so
+%{_libdir}/syslog-ng/libafstomp.so
+%{_libdir}/syslog-ng/libafuser.so
+%{_libdir}/syslog-ng/libappmodel.so
+%{_libdir}/syslog-ng/libbasicfuncs.so
+%{_libdir}/syslog-ng/libcef.so
+%{_libdir}/syslog-ng/libconfgen.so
+%{_libdir}/syslog-ng/libcryptofuncs.so
+%{_libdir}/syslog-ng/libcsvparser.so
+%{_libdir}/syslog-ng/libtimestamp.so
+%{_libdir}/syslog-ng/libcorrelation.so
+%{_libdir}/syslog-ng/libdisk-buffer.so
+%{_libdir}/syslog-ng/libexamples.so
+%{_libdir}/syslog-ng/libgraphite.so
+%{_libdir}/syslog-ng/libhook-commands.so
+%{_libdir}/syslog-ng/libjson-plugin.so
+%{_libdir}/syslog-ng/libkvformat.so
+%{_libdir}/syslog-ng/liblinux-kmsg-format.so
+%{_libdir}/syslog-ng/libmap-value-pairs.so
+%{_libdir}/syslog-ng/libpseudofile.so
+%{_libdir}/syslog-ng/libregexp-parser.so
+%{_libdir}/syslog-ng/librate-limit-filter.so
+%{_libdir}/syslog-ng/libstardate.so
+%{_libdir}/syslog-ng/libsyslogformat.so
+%{_libdir}/syslog-ng/libsystem-source.so
+%{_libdir}/syslog-ng/libtags-parser.so
+%{_libdir}/syslog-ng/libtfgetent.so
+%{_libdir}/syslog-ng/libxml.so
+%{_libdir}/syslog-ng/libpacctformat.so
+%{_libdir}/syslog-ng/libmetrics-probe.so
 
 %if %{with systemd}
-%{_unitdir}/%{name}.service
-%{_libdir}/%{name}/libsdjournal.so
+%{_unitdir}/syslog-ng.service
+%{_libdir}/syslog-ng/libsdjournal.so
 %endif
 
-%dir %{_libdir}/%{name}/loggen
-%{_libdir}/%{name}/loggen/libloggen*
+%dir %{_libdir}/syslog-ng/loggen
+%{_libdir}/syslog-ng/loggen/libloggen*
 
 # scl files
-%{_datadir}/%{name}/include/
+%{_datadir}/syslog-ng/include/
 
 # uhm, some better places for those?
-%{_datadir}/%{name}/xsd/
-%{_datadir}/%{name}/smart-multi-line.fsm
+%{_datadir}/syslog-ng/xsd/
+%{_datadir}/syslog-ng/smart-multi-line.fsm
 
 %{_mandir}/man1/loggen.1*
 %{_mandir}/man1/pdbtool.1*
@@ -497,70 +499,70 @@ fi
 
 %if %{with sql}
 %files sql
-%{_libdir}/%{name}/libafsql.so
+%{_libdir}/syslog-ng/libafsql.so
 %endif
 
 %if %{with amqp}
 %files amqp
-%{_libdir}/%{name}/libafamqp.so
+%{_libdir}/syslog-ng/libafamqp.so
 %endif
 
 %if %{with mongodb}
 %files mongodb
-%{_libdir}/%{name}/libafmongodb.so
+%{_libdir}/syslog-ng/libafmongodb.so
 %endif
 
 %if %{with redis}
 %files redis
-%{_libdir}/%{name}/libredis.so
+%{_libdir}/syslog-ng/libredis.so
 %endif
 
 %if %{with kafka}
 %files kafka
-%{_libdir}/%{name}/libkafka.so
+%{_libdir}/syslog-ng/libkafka.so
 %endif
 
 %if %{with afsnmp}
 %files afsnmp
-%{_libdir}/%{name}/libafsnmp.so
+%{_libdir}/syslog-ng/libafsnmp.so
 %endif
 
 %if %{with mqtt}
 %files mqtt
-%{_libdir}/%{name}/libmqtt.so
+%{_libdir}/syslog-ng/libmqtt.so
 %endif
 
 %if %{with cloud_auth}
 %files cloud-auth
-%{_libdir}/%{name}/libcloud_auth.so
+%{_libdir}/syslog-ng/libcloud_auth.so
 %endif
 
 %files smtp
-%{_libdir}/%{name}/libafsmtp.so
+%{_libdir}/syslog-ng/libafsmtp.so
 
 %if %{with java}
 %files java
 %attr(755,root,root) %{_libdir}/syslog-ng/libmod-java.so
-%dir %{_libdir}/%{name}/java-modules/
-%{_libdir}/%{name}/java-modules/*
+%dir %{_libdir}/syslog-ng/java-modules/
+%{_libdir}/syslog-ng/java-modules/*
 %endif
 
 %if %{with maxminddb}
 %files geoip
-%{_libdir}/%{name}/libgeoip2-plugin.so
+%{_libdir}/syslog-ng/libgeoip2-plugin.so
 %endif
 
 %if %{with riemann}
 %files riemann
-%{_libdir}/%{name}/libriemann.so
+%{_libdir}/syslog-ng/libriemann.so
 %endif
 
 %files http
-%{_libdir}/%{name}/libhttp.so
-%{_libdir}/%{name}/libazure-auth-header.so
+%{_libdir}/syslog-ng/libhttp.so
+%{_libdir}/syslog-ng/libazure-auth-header.so
 
 %files slog
-%{_libdir}/%{name}/libsecure-logging.so
+%{_libdir}/syslog-ng/libsecure-logging.so
 %{_bindir}/slogkey
 %{_bindir}/slogencrypt
 %{_bindir}/slogverify
@@ -570,12 +572,12 @@ fi
 %{_mandir}/man7/secure-logging.7*
 
 %files python
-%{_libdir}/%{name}/python/syslogng-1.0-py%{py_ver}.egg-info
-%{_libdir}/%{name}/python/syslogng/*
-%{_libdir}/%{name}/python/requirements.txt
-%{_libdir}/%{name}/libmod-python.so
-%dir %{_sysconfdir}/%{name}/python
-%{_sysconfdir}/%{name}/python/README.md
+%{_libdir}/syslog-ng/python/syslogng-1.0-py%{py_ver}.egg-info
+%{_libdir}/syslog-ng/python/syslogng/*
+%{_libdir}/syslog-ng/python/requirements.txt
+%{_libdir}/syslog-ng/libmod-python.so
+%dir %{_sysconfdir}/syslog-ng/python
+%{_sysconfdir}/syslog-ng/python/README.md
 %{_bindir}/syslog-ng-update-virtualenv
 
 %post python
@@ -594,14 +596,14 @@ fi
 # without criterion we don't have the test lib.  On dbld we do have it, on
 # upstream CentOS/Fedora we don't.
 
-%{_libdir}/%{name}/libtest/libsyslog-ng-test.a
+%{_libdir}/syslog-ng/libtest/libsyslog-ng-test.a
 %{_libdir}/pkgconfig/syslog-ng-test.pc
 %endif
 
-%{_includedir}/%{name}/
+%{_includedir}/syslog-ng/
 %{_libdir}/pkgconfig/syslog-ng.pc
 %{_libdir}/pkgconfig/syslog-ng-native-connector.pc
-%{_datadir}/%{name}/tools/
+%{_datadir}/syslog-ng/tools/
 
 %if 0%{?rhel} != 7
 %files logrotate

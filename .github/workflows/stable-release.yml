@@ -69,18 +69,9 @@ jobs:
     name: axosyslog-modules
     needs: find-draft-release-run
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.unpack_tag.outputs.group1 }}
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
-
-      - name: Regex matching
-        uses: kaisugi/action-regex-match@v1.0.0
-        id: unpack_tag
-        with:
-          text: ${{ github.ref }}
-          regex: 'refs/tags/axosyslog-(.*)'
 
       - name: Create AxoSyslog modules tarball
         working-directory: docker
@@ -92,13 +83,6 @@ jobs:
         with:
           name: axosyslog-modules-tarball
           path: docker/python-modules.tar.gz
-
-  publish-packages:
-    uses: ./.github/workflows/axosyslog-packages.yml
-    needs: axosyslog-modules
-    with:
-      repo: axoflow/axosyslog
-      version: ${{ needs.axosyslog-modules.outputs.version }}
 
   publish-image:
     uses: ./.github/workflows/axosyslog-docker.yml

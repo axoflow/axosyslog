@@ -1,21 +1,21 @@
 #!/bin/sh -e
 
-orig_version=$(apt-cache policy syslog-ng | grep "500$" | awk '{print $1}')
+orig_version=$(apt-cache policy axosyslog | grep "500$" | awk '{print $1}')
 
 apt_line=""
-for pkg in syslog-ng \
-                syslog-ng-core \
-                syslog-ng-mod-mongodb \
-                syslog-ng-mod-sql \
-                syslog-ng-mod-smtp \
-                syslog-ng-mod-amqp \
-                syslog-ng-mod-geoip2 \
-                syslog-ng-mod-redis \
-                syslog-ng-mod-stomp \
-                syslog-ng-mod-riemann \
-                syslog-ng-mod-graphite \
-                syslog-ng-mod-python \
-                syslog-ng-mod-add-contextual-data
+for pkg in axosyslog \
+                axosyslog-core \
+                axosyslog-mod-mongodb \
+                axosyslog-mod-sql \
+                axosyslog-mod-smtp \
+                axosyslog-mod-amqp \
+                axosyslog-mod-geoip2 \
+                axosyslog-mod-redis \
+                axosyslog-mod-stomp \
+                axosyslog-mod-riemann \
+                axosyslog-mod-graphite \
+                axosyslog-mod-python \
+                axosyslog-mod-add-contextual-data
 do
     apt_line="$apt_line $pkg=$orig_version"
 done

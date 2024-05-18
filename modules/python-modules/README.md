@@ -658,5 +658,5 @@ captures all Python modules in the `syslog-ng-python` package without having
 to list them explicitly.
 
 If you need to customize installation, you can find our spec file in
-`packaging/rhel/syslog-ng.spec` which is populated and copied to the root at
+`packaging/rhel/axosyslog.spec` which is populated and copied to the root at
 tarball creation.

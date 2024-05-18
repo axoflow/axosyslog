@@ -78,7 +78,7 @@ jobs:
           ./dbld/rules release VERSION=${RELEASE_VERSION}
 
       - name: Upload tarball
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: axosyslog-${{ env.RELEASE_VERSION }}
           path: dbld/release/${{ env.RELEASE_VERSION }}/axosyslog-${{ env.RELEASE_VERSION }}.tar.gz

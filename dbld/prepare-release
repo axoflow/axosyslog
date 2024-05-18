@@ -33,12 +33,16 @@ function update_packaging_debian() {
 
 function update_packaging_rhel() {
 	echo Updating RHEL packaging
-	sed -i -e "s/^Version: [0-9.]*$/Version: $VERSION/g" packaging/rhel/syslog-ng.spec
-	sed -i -e "/^%changelog/ a * `date '+%a %b %e %Y'` $USER_NAME <$USER_EMAIL> - $VERSION-1\n- updated to $VERSION\n" packaging/rhel/syslog-ng.spec
+	sed -i -e "s/^Version: [0-9.]*$/Version: $VERSION/g" packaging/rhel/axosyslog.spec
+	sed -i -e "/^%changelog/ a * `date '+%a %b %e %Y'` $USER_NAME <$USER_EMAIL> - $VERSION-1\n- updated to $VERSION\n" packaging/rhel/axosyslog.spec
 }
 
 function update_version_refs_in_source() {
 	echo Updating version references in source files
+	ESCAPED_OLD_MAJOR_AND_MINOR_AND_PATCH=$(echo $OLD_MAJOR.$OLD_MINOR.$OLD_PATCH | sed -e 's/[]\/$*.^[]/\\&/g') &&
+	ESCAPED_NEW_MAJOR_AND_MINOR_AND_PATCH=$(echo $NEW_MAJOR.$NEW_MINOR.$NEW_PATCH | sed -e 's/[\/&]/\\&/g') &&
+	git ls-files README.md docker/apkbuild/axoflow/axosyslog/APKBUILD | xargs sed -i "s/$ESCAPED_OLD_MAJOR_AND_MINOR_AND_PATCH/$ESCAPED_NEW_MAJOR_AND_MINOR_AND_PATCH/g"
+
 	ESCAPED_OLD_MAJOR_AND_MINOR=$(echo $OLD_MAJOR.$OLD_MINOR | sed -e 's/[]\/$*.^[]/\\&/g') &&
 	ESCAPED_NEW_MAJOR_AND_MINOR=$(echo $NEW_MAJOR.$NEW_MINOR | sed -e 's/[\/&]/\\&/g') &&
 	git ls-files $VERSION_FILE_LIST | xargs sed -i "s/$ESCAPED_OLD_MAJOR_AND_MINOR/$ESCAPED_NEW_MAJOR_AND_MINOR/g"

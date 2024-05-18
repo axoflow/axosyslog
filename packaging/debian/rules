@@ -33,13 +33,13 @@ ifneq (,$(filter debug,$(DEB_BUILD_OPTIONS)))
 EXTRA_CONFIGURE_OPTS += --enable-debug
 endif
 
-# We want to support building from a git tree, where the syslog-ng
-# sources are in a submodule, in syslog-ng-*. Since we do not wish to
+# We want to support building from a git tree, where the axosyslog
+# sources are in a submodule, in axosyslog-*. Since we do not wish to
 # update the rules for every major version if it can be helped, figure
 # it out from the changelog instead.
 UMAJOR		   = $(shell dpkg-parsechangelog | sed -n '/^Version:/s/^Version: //p' | cut -d. -f1,2)
 
-export DH_OPTIONS += -O-Bdebian/build-tree --dbg-package=syslog-ng-dbg
+export DH_OPTIONS += -O-Bdebian/build-tree --dbg-package=axosyslog-dbg
 
 CFLAGS		?= $(shell dpkg-buildflags --get CFLAGS)
 LDFLAGS		?= $(shell dpkg-buildflags --get LDFLAGS)
@@ -57,7 +57,7 @@ PACCT_CONFIGURE_OPTS   = --disable-pacct
 endif
 
 ifneq ($(filter nojava,$(DEB_BUILD_PROFILES)),)
-DH_OPTIONS += -Nsyslog-ng-mod-java -Nsyslog-ng-mod-kafka -Nsyslog-ng-mod-java-common-lib -Nsyslog-ng-mod-elastic -Nsyslog-ng-mod-java-http -Nsyslog-ng-mod-hdfs
+DH_OPTIONS += -Naxosyslog-mod-java -Naxosyslog-mod-kafka -Naxosyslog-mod-java-common-lib -Naxosyslog-mod-elastic -Naxosyslog-mod-java-http -Naxosyslog-mod-hdfs
 else
 export GRADLE_USER_HOME = /tmp/gradle
 endif
@@ -65,15 +65,15 @@ endif
 PYTHON_VERSION = 3
 
 ifneq ($(filter sng-nokafka,$(DEB_BUILD_PROFILES)),)
-DH_OPTIONS += -Nsyslog-ng-mod-rdkafka
+DH_OPTIONS += -Naxosyslog-mod-rdkafka
 endif
 
 ifneq ($(filter sng-nomqtt,$(DEB_BUILD_PROFILES)),)
-DH_OPTIONS += -Nsyslog-ng-mod-mqtt
+DH_OPTIONS += -Naxosyslog-mod-mqtt
 endif
 
 ifneq ($(filter sng-nogrpc,$(DEB_BUILD_PROFILES)),)
-DH_OPTIONS += -Nsyslog-ng-mod-grpc
+DH_OPTIONS += -Naxosyslog-mod-grpc
 endif
 
 # If DH_QUIET is set, then we want silent mode.
@@ -175,36 +175,36 @@ override_dh_auto_test:
 override_dh_installchangelogs:
 	dh_installchangelogs NEWS.md
 
-# Init files and whatnot were moved to syslog-ng-core, but we want to
+# Init files and whatnot were moved to axosyslog-core, but we want to
 # retain the old filenames.
 override_dh_installinit:
-	dh_installinit --name syslog-ng --restart-after-upgrade
+	dh_installinit --name axosyslog --restart-after-upgrade
 
-# Logrotate and Logcheck files were moved from syslog-ng to
-# syslog-ng-core too, and like in init's case, we want to keep the old
+# Logrotate and Logcheck files were moved from axosyslog to
+# axosyslog-core too, and like in init's case, we want to keep the old
 # name.
 override_dh_installlogrotate:
-	dh_installlogrotate --name syslog-ng
+	dh_installlogrotate --name axosyslog
 
 override_dh_installlogcheck:
-	dh_installlogcheck --name syslog-ng
+	dh_installlogcheck --name axosyslog
 
 # dh_makeshlibs wants to be clever and treat plugins as shared libs.
 # Slap it in the face, and tell it not to. We also do not need any
 # script modifications, as our single shared lib is in a private
 # directory. On the other hand, we do want correct dependencies on
-# anything that build-depends on syslog-ng-dev, so lets make a correct
+# anything that build-depends on axosyslog-dev, so lets make a correct
 # shlibs file for that, shall we?
 #
 override_dh_makeshlibs:
 	dh_makeshlibs -n -Xusr/lib/syslog-ng/${UMAJOR}
 
-# Since syslog-ng depends on all the modules, and syslog-ng-core
+# Since axosyslog depends on all the modules, and axosyslog-core
 # suggests the same set, and modules can come and go as new versions
-# of syslog-ng come out, lets make our life easy, and provide a custom
+# of axosyslog come out, lets make our life easy, and provide a custom
 # sng:Modules substvar, which has all the module packages listed. We
 # also provide sng:CoreModules, which lists core modules that were
-# part of syslog-ng (or it depended on them) previously, in 3.3.
+# part of axosyslog (or it depended on them) previously, in 3.3.
 override_dh_gencontrol:
 	dh_gencontrol -- -Vsng:Modules=$(shell debian/tools/list-modules.sh optional) \
 			 -Vsng:CoreModules=$(shell debian/tools/list-modules.sh core)
@@ -221,7 +221,7 @@ override_dh_python3:
 override_dh_missing:
 	dh_missing --fail-missing
 
-# By default, the arch:all syslog-ng package does not need anything
+# By default, the arch:all axosyslog package does not need anything
 # built, so build-indep shall be empty. This avoids triggering another
 # build attempt, which would fail due to autoreconf being run
 # twice. It would also fail if no build-deps were installed (since the
