@@ -1,4 +1,4 @@
-name: Nightly release
+name: AxoSyslog nightly
 
 on:
   workflow_dispatch:
