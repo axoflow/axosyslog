@@ -11,4 +11,5 @@ RUN pip install \
   azure-identity \
   pyyaml \
   types-PyYAML \
-  boto3
+  boto3 \
+  types-requests

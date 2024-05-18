@@ -25,10 +25,12 @@ from typing import Dict, Type
 
 from .cdn import CDN
 from .azure_cdn import AzureCDN
+from .cloudflare_cdn import CloudflareCDN
 
 __all__ = [
     "CDN",
     "AzureCDN",
+    "CloudflareCDN",
     "get_implementations",
 ]
 
