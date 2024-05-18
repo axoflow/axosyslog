@@ -96,6 +96,10 @@ class RemoteStorageSynchronizer(ABC):
             message += "\t{}".format(kwargs)
         return message
 
+    def _log_error(self, message: str, **kwargs: str) -> None:
+        log = self._prepare_log(message, **kwargs)
+        self.__logger.error(log)
+
     def _log_info(self, message: str, **kwargs: str) -> None:
         log = self._prepare_log(message, **kwargs)
         self.__logger.info(log)
