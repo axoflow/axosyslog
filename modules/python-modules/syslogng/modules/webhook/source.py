@@ -34,6 +34,7 @@ signal.signal(signal.SIGINT, signal.SIG_IGN)
 signal.signal(signal.SIGTERM, signal.SIG_IGN)
 WEBHOOK_QUERY_NV_PREFIX = "webhook.query."
 
+
 class Handler(tornado.web.RequestHandler):
     def initialize(self, source) -> None:
         self.source = source
@@ -66,7 +67,7 @@ class Handler(tornado.web.RequestHandler):
         return msg
 
     def set_default_headers(self) -> None:
-        self.set_header("Server", "axosyslog");
+        self.set_header("Server", "axosyslog")
 
     def get_current_user(self):
         if not self.source.auth_token:
@@ -82,6 +83,7 @@ class Handler(tornado.web.RequestHandler):
 
     def write_error(self, status_code: int, **kwargs: Any) -> None:
         self.set_status(status_code)
+
 
 class HTTPSource(LogSource):
     def init(self, options: dict[str, Any]) -> bool:
@@ -139,7 +141,7 @@ class HTTPSource(LogSource):
     def wakeup(self) -> None:
         self.suspended.clear()
 
-    def request_exit(self) -> None :
+    def request_exit(self) -> None:
         asyncio.run_coroutine_threadsafe(self.stopServer(), self.event_loop)
         pass
 

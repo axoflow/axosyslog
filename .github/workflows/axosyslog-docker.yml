@@ -9,9 +9,6 @@ on:
       tarball-artifact:
         required: false
         type: string
-      axosyslog-modules-artifact:
-        required: true
-        type: string
       snapshot-version:
         required: false
         type: string
@@ -35,12 +32,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.tarball-artifact }}
-          path: docker/apkbuild/axoflow/axosyslog
-
-      - name: Download axosyslog-modules tarball artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.axosyslog-modules-artifact }}
           path: docker/apkbuild/axoflow/axosyslog
 
       - name: Set up QEMU

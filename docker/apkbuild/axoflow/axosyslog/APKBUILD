@@ -52,7 +52,6 @@ subpackages="
 	$pkgname-grpc:_grpc
 	"
 source="https://github.com/axoflow/axosyslog/releases/download/axosyslog-$pkgver/axosyslog-$pkgver.tar.gz
-	python-modules.tar.gz
 	"
 builddir="$srcdir/axosyslog-$pkgver"
 
@@ -147,9 +146,6 @@ _python3() {
 	depends="$pkgname=$pkgver-r$pkgrel python3"
 	install="$subpkgname.post-install"
 
-	cat $srcdir/python-modules/requirements.txt >> $pkgdir/usr/lib/syslog-ng/python/requirements.txt
-	rm $srcdir/python-modules/requirements.txt
-	mv $srcdir/python-modules/* $pkgdir/usr/lib/syslog-ng/python/syslogng/modules
 	_submv usr/lib/syslog-ng/libmod-python.so usr/lib/syslog-ng/python usr/bin/syslog-ng-update-virtualenv
 }
 
@@ -179,5 +175,4 @@ _submv() {
 
 sha512sums="
 SKIP  axosyslog-4.7.1.tar.gz
-SKIP  python-modules.tar.gz
 "
