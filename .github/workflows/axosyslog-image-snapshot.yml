@@ -1,0 +1,52 @@
+name: AxoSyslog snapshot image
+
+on:
+  workflow_dispatch:
+    inputs:
+      platforms:
+        default: "linux/amd64,linux/arm64,linux/arm/v7"
+  push:
+    branches:
+      - main
+
+jobs:
+  tarball:
+    runs-on: ubuntu-latest
+    outputs:
+      snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
+    steps:
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare docker image
+        run: ./dbld/rules cache-image-tarball
+
+      - name: Create source tarball
+        run: ./dbld/rules pkg-tarball
+
+      - name: Determine snapshot version
+        id: snapshot-version
+        run: |
+          tarball_filename="$(find dbld/build -name '*.tar.*' -printf '%f\n')"
+          tarball_name="${tarball_filename/\.tar.*}"
+          tarball_version="${tarball_name/axosyslog-}"
+          pkg_version="$(echo $tarball_version | sed -E 's|(([0-9]+\.){2}[0-9]+).*|\1|')_git$(date +%Y%m%d)"
+          echo "SNAPSHOT_VERSION=${pkg_version}" >> $GITHUB_OUTPUT
+
+      - name: Store source tarball as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-tarball
+          path: dbld/build/*.tar.*
+
+  publish-image:
+    uses: ./.github/workflows/axosyslog-docker.yml
+    needs: tarball
+    with:
+      type: snapshot
+      platforms: ${{ inputs.platforms || 'linux/amd64' }}
+      snapshot-tarball-artifact: source-tarball
+      snapshot-version: ${{ needs.tarball.outputs.snapshot-version }}
+      snapshot-tags: dev-${{ github.ref_name }}

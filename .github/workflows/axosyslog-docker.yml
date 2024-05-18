@@ -6,6 +6,10 @@ on:
       type:
         required: true
         type: string  # stable / snapshot
+      platforms:
+        required: false
+        type: string
+        default: linux/amd64,linux/arm64,linux/arm/v7
       snapshot-tarball-artifact:
         required: false
         type: string
@@ -21,17 +25,27 @@ env:
   DEBUG_PLATFORM: linux/amd64
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      platform-matrix: ${{ steps.platforms.outputs.platform-matrix }}
+    steps:
+      - id: platforms
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          PLATFORM_MATRIX="$(echo "$PLATFORMS" | jq 'split(",")' -Rc)"
+          echo "platform-matrix=$PLATFORM_MATRIX" >> $GITHUB_OUTPUT
+
   image-build:
     if: github.repository_owner == 'axoflow'
     runs-on: ubuntu-latest
+    needs: prepare
 
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - linux/amd64
-          - linux/arm64
-          - linux/arm/v7
+        platform: ${{ fromJSON(needs.prepare.outputs.platform-matrix) }}
 
     steps:
       - name: Prepare
