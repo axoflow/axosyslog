@@ -11,7 +11,8 @@ on:
         type: string
 
 jobs:
-  TestPackagesWith:
+  test-apt-packages:
+    name: ${{ matrix.distro }}
     strategy:
       matrix:
         distro:
