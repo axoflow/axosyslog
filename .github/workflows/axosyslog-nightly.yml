@@ -1,4 +1,4 @@
-name: Nightly release
+name: AxoSyslog nightly
 
 on:
   workflow_dispatch:
@@ -69,44 +69,15 @@ jobs:
   #   with:
   #     pkg-type: nightly
 
-  build-and-test:
-    runs-on: ubuntu-latest
-    needs: tarball
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Download source tarball artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: source-tarball
-          path: docker/apkbuild/axoflow/axosyslog
-
-      - name: Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: docker
-          file: docker/alpine.dockerfile
-          load: true
-          tags: axosyslog:test
-          build-args: |
-            PKG_TYPE=nightly
-            SNAPSHOT_VERSION=${{ needs.tarball.outputs.snapshot-version }}
-
-      - name: Smoke test
-        run: |
-          export SYSLOG_NG_IMAGE="axosyslog:test"
-          export SYSLOG_NG_VERSION="${{ needs.tarball.outputs.snapshot-version }}"
-          docker/tests/smoke.sh
-
   publish-image:
     if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/axosyslog-docker.yml
-    needs: [tarball, build-and-test]
+    needs: tarball
     with:
-      pkg-type: nightly
-      tarball-artifact: source-tarball
+      type: snapshot
+      snapshot-tarball-artifact: source-tarball
       snapshot-version: ${{ needs.tarball.outputs.snapshot-version }}
+      snapshot-tags: nightly,${{ needs.tarball.outputs.snapshot-version }}
 
   # https://github.com/actions/delete-package-versions/issues/90
   cleanup-old-images:

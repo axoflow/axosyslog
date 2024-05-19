@@ -1,37 +1,69 @@
-name: AxoSyslog Docker image
+name: AxoSyslog Docker image builder
 
 on:
   workflow_call:
     inputs:
-      pkg-type:
+      type:
         required: true
-        type: string  # stable / nightly
-      tarball-artifact:
+        type: string  # stable / snapshot
+      platforms:
+        required: false
+        type: string
+        default: linux/amd64,linux/arm64,linux/arm/v7
+      snapshot-tarball-artifact:
         required: false
         type: string
       snapshot-version:
         required: false
         type: string
+      snapshot-tags: # comma-separated
+        required: false
+        type: string
 
 env:
   DOCKER_IMAGE_NAME: ghcr.io/axoflow/axosyslog
-  PLATFORMS: linux/amd64,linux/arm64,linux/arm/v7
   DEBUG_PLATFORM: linux/amd64
 
 jobs:
-  docker:
-    name: AxoSyslog Docker image
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      platform-matrix: ${{ steps.platforms.outputs.platform-matrix }}
+    steps:
+      - id: platforms
+        env:
+          PLATFORMS: ${{ inputs.platforms }}
+        run: |
+          PLATFORM_MATRIX="$(echo "$PLATFORMS" | jq 'split(",")' -Rc)"
+          echo "platform-matrix=$PLATFORM_MATRIX" >> $GITHUB_OUTPUT
+
+  image-build:
     if: github.repository_owner == 'axoflow'
     runs-on: ubuntu-latest
+    needs: prepare
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJSON(needs.prepare.outputs.platform-matrix) }}
+
     steps:
+      - name: Prepare
+        env:
+          PLATFORM: ${{ matrix.platform }}
+          TYPE: ${{ inputs.type }}
+        run: |
+          [ "$TYPE" = "stable" ] || [ "$TYPE" = "snapshot" ]
+          echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
+
       - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Download source tarball artifact
-        if: inputs.tarball-artifact != ''
+        if: inputs.snapshot-tarball-artifact != ''
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.tarball-artifact }}
+          name: ${{ inputs.snapshot-tarball-artifact }}
           path: docker/apkbuild/axoflow/axosyslog
 
       - name: Set up QEMU
@@ -47,42 +79,103 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata (AxoSyslog version) for Docker
+        id: docker-metadata
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_IMAGE_NAME }}
+
+      - name: Build and push production Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: docker
+          file: docker/alpine.dockerfile
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.docker-metadata.outputs.labels }}
+          outputs: type=image,name=${{ env.DOCKER_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata.outputs.json).labels['org.opencontainers.image.description'] }}
+          build-args: |
+            PKG_TYPE=${{ inputs.type }}
+            SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
+
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-and-push:
+    runs-on: ubuntu-latest
+    needs: image-build
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata (AxoSyslog version) for Docker
         id: docker-metadata-tags
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.DOCKER_IMAGE_NAME }}
-          tags: type=match,pattern=axosyslog-(.*),group=1
+          tags: type=match,pattern=axosyslog-([0-9].*),group=1
           sep-tags: ','
 
       - name: Compose Docker image tags
         id: tags
+        env:
+          TYPE: ${{ inputs.type }}
+          SNAPSHOT_TAGS: ${{ inputs.snapshot-tags }}
         run: |
-          if [[ '${{ inputs.pkg-type }}' = 'stable' ]]; then
+          if [[ "$TYPE" = "stable" ]]; then
             TAGS='${{ steps.docker-metadata-tags.outputs.tags }}'
-          elif [[ '${{ inputs.pkg-type }}' = 'nightly' ]]; then
-            TAGS="${DOCKER_IMAGE_NAME}:nightly,${DOCKER_IMAGE_NAME}:${{ inputs.snapshot-version }}"
+          elif [[ "$TYPE" = "snapshot" ]]; then
+            TAGS="$(echo "$SNAPSHOT_TAGS" | sed "s|[^,]*|$DOCKER_IMAGE_NAME:&|g")"
           else
-            echo Unexpected input: pkg-type=${{ inputs.pkg-type }}
+            echo "Unexpected input: type=$TYPE"
             false
           fi
 
           echo "TAGS=$TAGS" >> $GITHUB_OUTPUT
           echo "DEBUG_TAGS=${TAGS//,/-dbg,}-dbg" >> $GITHUB_OUTPUT
 
-      - name: Build and push production Docker image
-        uses: docker/build-push-action@v5
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          context: docker
-          file: docker/alpine.dockerfile
-          platforms: ${{ env.PLATFORMS }}
-          push: true
-          tags: ${{ steps.tags.outputs.TAGS }}
-          # description should be here because it is a multi-arch image
-          # see docs: https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#adding-a-description-to-multi-arch-images
-          outputs: type=image,name=${{ env.DOCKER_IMAGE_NAME }},annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata-tags.outputs.json).labels['org.opencontainers.image.description'] }}
-          build-args: |
-            PKG_TYPE=${{ inputs.pkg-type }}
-            SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        env:
+          TAGS: ${{ steps.tags.outputs.TAGS }}
+        run: |
+          TAG_FLAGS="$(echo "$TAGS" | sed "s|[^,]*|-t &|g" | tr ',' ' ')"
+          docker buildx imagetools create $TAG_FLAGS $(printf "$DOCKER_IMAGE_NAME@sha256:%s " *)
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Download source tarball artifact
+        if: inputs.snapshot-tarball-artifact != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.snapshot-tarball-artifact }}
+          path: docker/apkbuild/axoflow/axosyslog
 
       - name: Build and push debug Docker image
         uses: docker/build-push-action@v5
@@ -93,6 +186,6 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.DEBUG_TAGS }}
           build-args: |
-            PKG_TYPE=${{ inputs.pkg-type }}
+            PKG_TYPE=${{ inputs.type }}
             SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
             DEBUG=true
