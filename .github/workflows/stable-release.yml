@@ -64,29 +64,8 @@ jobs:
   #   with:
   #     pkg-type: stable
 
-  # TODO integrate axosyslog-modules with the source tree and remove this
-  axosyslog-modules:
-    name: axosyslog-modules
-    needs: find-draft-release-run
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Create AxoSyslog modules tarball
-        working-directory: docker
-        run: |
-          tar -czvf python-modules.tar.gz python-modules/
-
-      - name: Store axosyslog-modules tarball as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: axosyslog-modules-tarball
-          path: docker/python-modules.tar.gz
-
   publish-image:
     uses: ./.github/workflows/axosyslog-docker.yml
-    needs: axosyslog-modules
+    needs: find-draft-release-run
     with:
       pkg-type: stable
-      axosyslog-modules-artifact: axosyslog-modules-tarball
