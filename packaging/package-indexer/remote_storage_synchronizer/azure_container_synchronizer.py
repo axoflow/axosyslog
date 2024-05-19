@@ -20,7 +20,6 @@
 #
 #############################################################################
 
-from hashlib import md5
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -99,12 +98,6 @@ class AzureContainerSynchronizer(RemoteStorageSynchronizer):
                 remote_path=self._get_relative_file_path_for_remote_file(file),
                 snapshot_properties=str(snapshot_properties),
             )
-
-    def _get_md5_of_remote_file(self, relative_file_path: str) -> bytes:
-        for file in self._remote_files:
-            if file["name"] == relative_file_path:
-                return file["content_settings"]["content_md5"]
-        raise FileNotFoundError
 
     def _get_relative_file_path_for_remote_file(self, file: Dict[str, Any]) -> str:
         return file["name"]

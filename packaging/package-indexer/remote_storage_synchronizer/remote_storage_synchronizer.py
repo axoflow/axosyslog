@@ -172,6 +172,11 @@ class RemoteStorageSynchronizer(ABC):
         self._download_file(relative_file_path)
         self._log_info("Successfully downloaded file.", remote_path=relative_file_path, local_path=str(download_path))
 
+        md5sum = md5(download_path.read_bytes()).digest()
+        md5sum_file_path = self.__get_remote_md5sum_file_path(relative_file_path)
+        md5sum_file_path.parent.mkdir(exist_ok=True, parents=True)
+        md5sum_file_path.write_bytes(md5sum)
+
     @abstractmethod
     def _upload_file(self, relative_file_path: str) -> None:
         pass
@@ -212,9 +217,13 @@ class RemoteStorageSynchronizer(ABC):
         file = Path(self.local_dir.root_dir, relative_file_path)
         return md5(file.read_bytes()).digest()
 
-    @abstractmethod
-    def _get_md5_of_remote_file(self, relative_file_path: str) -> bytes:
-        pass
+    def __get_remote_md5sum_file_path(self, relative_file_path: str) -> Path:
+        path = Path(self.local_dir.root_dir, "package-indexer-md5sums", relative_file_path).resolve()
+        return Path(path.parent, path.name + ".package-indexer-md5sum")
+
+    def __get_md5_of_remote_file(self, relative_file_path: str) -> bytes:
+        md5sum_file_path = self.__get_remote_md5sum_file_path(relative_file_path)
+        return md5sum_file_path.read_bytes()
 
     def __get_file_sync_state(self, relative_file_path: str) -> FileSyncState:
         try:
@@ -228,7 +237,7 @@ class RemoteStorageSynchronizer(ABC):
             return FileSyncState.NOT_IN_LOCAL
 
         try:
-            remote_md5 = self._get_md5_of_remote_file(relative_file_path)
+            remote_md5 = self.__get_md5_of_remote_file(relative_file_path)
         except FileNotFoundError:
             self._log_debug(
                 "Local file is not available remotely.",

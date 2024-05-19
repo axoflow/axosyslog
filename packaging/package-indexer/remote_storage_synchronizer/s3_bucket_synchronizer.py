@@ -20,7 +20,6 @@
 #
 #############################################################################
 
-from hashlib import md5
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -116,20 +115,11 @@ class S3BucketSynchronizer(RemoteStorageSynchronizer):
 
         return objects
 
-    def __get_remote_md5sum_file_path(self, relative_file_path: str) -> Path:
-        path = Path(self.local_dir.root_dir, "package-indexer-md5sums", relative_file_path).resolve()
-        return Path(path.parent, path.name + ".package-indexer-md5sum")
-
     def _download_file(self, relative_file_path: str) -> None:
         download_path = self._get_local_file_path_for_relative_file(relative_file_path)
         download_path.parent.mkdir(parents=True, exist_ok=True)
         with download_path.open("wb") as downloaded_object:
             self.__client.download_fileobj(self.__bucket, relative_file_path, downloaded_object)
-
-        md5sum = md5(download_path.read_bytes()).digest()
-        md5sum_file_path = self.__get_remote_md5sum_file_path(relative_file_path)
-        md5sum_file_path.parent.mkdir(exist_ok=True, parents=True)
-        md5sum_file_path.write_bytes(md5sum)
 
     def _upload_file(self, relative_file_path: str) -> None:
         local_path = self._get_local_file_path_for_relative_file(relative_file_path)
@@ -141,10 +131,6 @@ class S3BucketSynchronizer(RemoteStorageSynchronizer):
 
     def _create_snapshot_of_remote(self) -> None:
         self._log_info("Cannot create snapshot, not implemented, skipping...")
-
-    def _get_md5_of_remote_file(self, relative_file_path: str) -> bytes:
-        md5sum_file_path = self.__get_remote_md5sum_file_path(relative_file_path)
-        return md5sum_file_path.read_bytes()
 
     def _get_relative_file_path_for_remote_file(self, file: Dict[str, Any]) -> str:
         return file["Key"]
