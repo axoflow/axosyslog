@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Validate tag
         run: |
-          if [[ "${{ github.ref }}" != refs/tags/axosyslog-[0-9]+* ]]; then
+          if [[ ! "${{ github.ref }}" =~ ^refs/tags/axosyslog-[0-9]+ ]]; then
             echo "Please start the workflow on a 'axosyslog-[0-9]+*' tag"
             false
           fi
