@@ -1,13 +1,13 @@
-# syslog-ng Python modules
+# AxoSyslog Python modules
 
-syslog-ng has a quite comprehensive support for implementing various logging
+AxoSyslog has a quite comprehensive support for implementing various logging
 components in Python. The goal of this file is to document how to use this
 functionality.
 
 ## When to use Python
 
 These Python bindinds are useful if the facilities provided by the
-syslog-ng configuration language is not sufficient, that is:
+AxoSyslog configuration language is not sufficient, that is:
 
   * if there's no native functionality that would implement the integration with
     a specific service (e.g. API based log sources or information sources that
@@ -20,7 +20,7 @@ syslog-ng configuration language is not sufficient, that is:
 
 While Python is very powerful and you can produce clean and production ready
 solutions using it, the drawback is usually performance. Python code tends
-to be slower than the native functionality that syslog-ng provides.
+to be slower than the native functionality that AxoSyslog provides.
 
 To offset this impact of performance degradation, it's a good strategy to
 only process a subset of the incoming log stream via Python code and to use
@@ -30,10 +30,10 @@ Python code.
 
 ## Creating and Storing the Python code
 
-syslog-ng is able to work with both Python code directly embedded into its
+AxoSyslog is able to work with both Python code directly embedded into its
 main configuration file or to work with Python modules.
 
-### Embedding Python into syslog-ng configuration
+### Embedding Python into AxoSyslog configuration
 
 
 You can simply use a top-level `python {}` block to embed your Python code,
@@ -58,7 +58,7 @@ log {
 ### Using Python modules
 
 You can also put your code into a proper Python module and then use it
-from there. syslog-ng automatically adds `${sysconfdir}/python` to your
+from there. AxoSyslog automatically adds `${sysconfdir}/python` to your
 PYTHONPATH (normally `/etc/syslog-ng/python`), with that in mind
 add the following code to `/etc/syslog-ng/python/mytemplate.py`:
 
@@ -68,8 +68,8 @@ def template_function(msg):
     return b"Hello World from Python! Original message: " + msg['MSGHDR'] + msg['MESSAGE']
 ```
 
-The Python glue in syslog-ng will automatically import modules when it
-encounters an identifier in dotted notation, so if you use this syslog-ng
+The Python glue in AxoSyslog will automatically import modules when it
+encounters an identifier in dotted notation, so if you use this AxoSyslog
 config:
 
 ```
@@ -81,16 +81,16 @@ log {
 };
 ```
 
-syslog-ng would recognize that `mytemplate.template_function` is a qualified
+AxoSyslog would recognize that `mytemplate.template_function` is a qualified
 name and would attempt to import `mytemplate` as a module and then look up
 `template_function` within that module.
 
 Please note that modules are only imported once, e.g.  you will need to
-restart syslog-ng for a change to take effect.
+restart AxoSyslog for a change to take effect.
 
-### syslog-ng reload and Python
+### AxoSyslog reload and Python
 
-When you reload syslog-ng (with syslog-ng-ctl reload or systemctl reload
+When you reload AxoSyslog (with syslog-ng-ctl reload or systemctl reload
 syslog-ng) then the `python` block in your configuration is reloaded along
 with the rest of the configuration file.
 
@@ -101,12 +101,12 @@ reloads in your `python {}` block.
 
 The same behaviour is however not the case with code you import from modules.
 Modules are only imported once and kept across reloads, even if the
-syslog-ng configuration is reloaded in the meanwhile.
+AxoSyslog configuration is reloaded in the meanwhile.
 
 This means that global state can be stored in modules and they will be kept,
-even as syslog-ng reinitializes the configuration.
+even as AxoSyslog reinitializes the configuration.
 
-In case you want to reload a module every time syslog-ng config is
+In case you want to reload a module every time AxoSyslog config is
 reinitialized, you need to do this explicitly with a code similar to this:
 
 ```python
@@ -115,7 +115,7 @@ python {
 import mymodule
 import importlib
 
-# reload mymodule every time syslog-ng reloads
+# reload mymodule every time AxoSyslog reloads
 importlib.reload(mymodule)
 
 };
@@ -143,7 +143,7 @@ The interface of the `LogDestination` class is documented in the
 `modules/python/pylib/syslogng/dest.py` of the source tree.
 
 Once all required methods are implemented, you can use this using the
-"python" destination in the syslog-ng configuration language.
+"python" destination in the AxoSyslog configuration language.
 
 ```
 destination whatever {
@@ -159,11 +159,11 @@ production deployment.
 
 ### Template Function plugin
 
-Template functions extend the syslog-ng template language. They get a
+Template functions extend the AxoSyslog template language. They get a
 `LogMessage` object and return a string which gets embedded into the
 output of the template.
 
-You can have syslog-ng call a Python function from the template language
+You can have AxoSyslog call a Python function from the template language
 using the `$(python)` template function, as you have seen in the previous
 chapter.
 
@@ -217,7 +217,7 @@ There are two kinds of source plugins that can be implemented in Python: (a)
 `syslogng.source` module.
 
 The main entry point that you will need to implement for a `LogFetcher`
-class is the `fetch()` method, which is automatically invoked by syslog-ng,
+class is the `fetch()` method, which is automatically invoked by AxoSyslog,
 whenever it is able to consume incoming messages.
 
 ```
@@ -254,7 +254,7 @@ method.  As you can see we were sleeping 1 second between invocations of our
 method, thereby limiting the rate the source is producing messages.  If that
 sleep wasn't there, we would be producing somewhere between 100-110k
 messages per second, depending on the speed of your CPU, the performance of
-the Python interpreter and the syslog-ng core.
+the Python interpreter and the AxoSyslog core.
 
 Usually, when our fetcher would be connecting to an external API, the sleep
 would not be needed and the response times of the API would be the limiting
@@ -264,14 +264,14 @@ factor.
 
 Usually, if we are fetching messages from an API, we will need to keep track
 where we are in fetching messages. If we were to store the position in a
-variable, that value would be lost when syslog-ng is reloaded or restarted
+variable, that value would be lost when AxoSyslog is reloaded or restarted
 (depending on where we store that variable, in our `python {}` block or in a
 module).
 
-A better option is to use the `Persist()` class that ties into syslog-ng's
+A better option is to use the `Persist()` class that ties into AxoSyslog's
 own persistent state handling functionality.  This allows you to store
 variables persisted in a file that gets stored in
-`${localstatedir}/syslog-ng.persist` along with the rest of syslog-ng's
+`${localstatedir}/syslog-ng.persist` along with the rest of AxoSyslog's
 states.
 
 ```python
@@ -301,13 +301,13 @@ them (using an `mmap()`-ped file), so no need to care about committing them to
 disk explicitly.
 
 Albeit you can store position information in a `Persist()` entry, it's not
-always the best choice.  In syslog-ng, producing of messages and their
+always the best choice.  In AxoSyslog, producing of messages and their
 delivery is decoupled: sometimes a message is still in-flight for a while
 before being delivered.  This time can be significant, if a destination
 consumes messages at a slow rate.  In this case, if you store the position
 once fetched, the message would still be sitting in a queue waiting to be
 delivered. If the queue is not backed by disk (e.g. disk-buffer), then these
-messages would be lost, once syslog-ng is restarted.
+messages would be lost, once AxoSyslog is restarted.
 
 To anticipate this case, you will need to use bookmarks, as described in the
 next section.
@@ -327,18 +327,18 @@ indicating the position of each journal record. The cursor can then be used
 to restart the reading of the log stream.
 
 Once you identified what mechanism the source offers that would map to the
-bookmark concept, you can decide how you want syslog-ng to track these
+bookmark concept, you can decide how you want AxoSyslog to track these
 bookmarks.
 
-Which one you will need from syslog-ng's selection of bookmark
+Which one you will need from AxoSyslog's selection of bookmark
 tracking strategies is again up to the API specifics.
 
 Sometimes an API is sequential in nature, thus you can only acknowledge the
 "last fetch position" in that sequence.  In other cases the API allows you
-to acknowledge messages individually. These are both supported by syslog-ng.
+to acknowledge messages individually. These are both supported by AxoSyslog.
 
 But first, here's a Python example that only updates the current position in
-a source stream when the messages in sequence were acknowledged by syslog-ng
+a source stream when the messages in sequence were acknowledged by AxoSyslog
 destinations (e.g.  they were properly sent).
 
 ```python
@@ -355,7 +355,7 @@ class MyFetcher(LogFetcher):
         return True
 
     def message_acked(self, acked_message_bookmark):
-	# update current persisted position when syslog-ng delivered the
+	# update current persisted position when AxoSyslog delivered the
 	# message, but only then.
         self.persist['position'] = acked_message_bookmark
 
@@ -378,7 +378,7 @@ class MyFetcher(LogFetcher):
 
 As mentioned some APIs will provide simple others somewhat more complex ways
 to track messages that are processed. There are three strategies within
-syslog-ng to cope with them.
+AxoSyslog to cope with them.
 
   * instant tracking (`InstantAckTracker`): messages are considered delivered
     as soon as our destination driver (or the disk based queue) acknowledges
@@ -498,12 +498,12 @@ a `Dict[str, bool]`, for example:
 }
 ```
 
-### Creating a syslog-ng LogSource based Source plugin
+### Creating a AxoSyslog LogSource based Source plugin
 
 While `LogFetcher` gives us a convinient interface for fetching messages from
 backend services via blocking APIs, it is limited to performing the fetching
 operation in a sequential manner: you fetch a batch of messages, feed the
-syslog-ng pipeline with those messages and then repeat.
+AxoSyslog pipeline with those messages and then repeat.
 
 `LogSource` is more low-level but allows the use of an asynchronous framework
 (`asyncio`, etc) to perform message fetching along multiple threads of
@@ -514,7 +514,7 @@ one is generated every second, the other is every 1.5 seconds, running
 concurrently via an `asyncio` event loop.
 
 It is also pretty easy to create a source that implements a HTTP server,
-and which injects messages coming via HTTP to the syslog-ng pipeline.
+and which injects messages coming via HTTP to the AxoSyslog pipeline.
 
 ```python
 
@@ -562,7 +562,7 @@ destination whatever {
 };
 ```
 
-while this works, this syntax is a bit foreign from a syslog-ng perspective
+while this works, this syntax is a bit foreign from a AxoSyslog perspective
 and somewhat hard to read. The usual syntax for referencing regular drivers
 is something like this:
 
@@ -572,7 +572,7 @@ destination whatever {
 };
 ```
 
-To make the syntax more native, you can use syslog-ng's block functionality
+To make the syntax more native, you can use AxoSyslog's block functionality
 to wrap your Python driver, hide that it's actually Python and provide a
 syntax to users of your code that is more convinient to use.
 
@@ -590,17 +590,17 @@ fact that the implementation is Python based, concentrating on
 functionality.
 
 You should add this wrapper to your Python module in an "scl" subdirectory
-as a file with a .conf extension. syslog-ng will automatically include these
+as a file with a .conf extension. AxoSyslog will automatically include these
 files along the rest of the SCL.
 
-## Adding the code to syslog-ng
+## Adding the code to AxoSyslog
 
-To add Python based modules to syslog-ng, create a Python package (e.g.  a
+To add Python based modules to AxoSyslog, create a Python package (e.g.  a
 directory with `__init__.py` and anything that file references).  Add these
 files to `modules/python-modules/<subdirectory>` and open a pull request.
 
 With that a "make install" command should install your module along the
-rest of the syslog-ng binaries.
+rest of the AxoSyslog binaries.
 
 You will also need to add your files to the source tarball by listing them
 in the EXTRA_DIST variable of the `modules/python-modules/Makefile.am` file.
@@ -619,13 +619,13 @@ In rpm this means adding the right package as a Requires line in the .spec
 file.
 
 If you would like to use pip/requirements.txt to deploy dependencies, you
-can choose to: invoke pip at "make install" time so that syslog-ng's private
+can choose to: invoke pip at "make install" time so that AxoSyslog's private
 Python directory would contain all the dependencies that you require.
 
-## Adding Python code to syslog-ng deb package
+## Adding Python code to AxoSyslog deb package
 
-To add your module to the syslog-ng deb package, create a new file in
-`packaging/debian/` with a name like `syslog-ng-mod-<yourmodule>.install`.
+To add your module to the AxoSyslog deb package, create a new file in
+`packaging/debian/` with a name like `axosyslog-mod-<yourmodule>.install`.
 Populate this file with wildcard patterns that capture the files of your
 package after installation.
 
@@ -638,10 +638,10 @@ usr/lib/syslog-ng/python/syslogng/modules/<yourmodule>/*
 You will also need to add an entry to `packaging/debian/control`:
 
 ```
-Package: syslog-ng-mod-<yourmodule>
+Package: axosyslog-mod-<yourmodule>
 Architecture: any
 Multi-Arch: foreign
-Depends: ${shlibs:Depends}, ${misc:Depends}, syslog-ng-core (>= ${source:Version}), syslog-ng-core (<< ${source:Version}.1~), syslog-ng-mod-python
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~), axosyslog-mod-python
 Description: The short description of the package
  This is a longer description with dots separating paragraphs.
  .
@@ -651,10 +651,10 @@ Description: The short description of the package
 Make sure that your .install file is included in the tarball by adding it to
 EXTRA_DIST in the Makefile.am
 
-## Adding Python code to syslog-ng RPM package
+## Adding Python code to AxoSyslog RPM package
 
 The RPM package is less modular than the Debian one and it automatically
-captures all Python modules in the `syslog-ng-python` package without having
+captures all Python modules in the `axosyslog-python` package without having
 to list them explicitly.
 
 If you need to customize installation, you can find our spec file in

@@ -66,7 +66,7 @@ class Handler(tornado.web.RequestHandler):
         return msg
 
     def set_default_headers(self) -> None:
-        self.set_header("Server", "syslog-ng");
+        self.set_header("Server", "axosyslog");
 
     def get_current_user(self):
         if not self.source.auth_token:

@@ -219,7 +219,7 @@ style-format:
 	$(top_srcdir)/scripts/style-checker.sh format $(top_srcdir)
 
 help:
-	@echo "Welcome to the syslog-ng build system!"
+	@echo "Welcome to the AxoSyslog build system!"
 	@echo
 	@echo "All of the standard targets are available:"
 	@echo "  all, check, install, dist, distcheck, and clean"
