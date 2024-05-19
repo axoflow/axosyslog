@@ -27,7 +27,7 @@ from __future__ import annotations
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from hashlib import md5
+from hashlib import sha512
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -172,10 +172,10 @@ class RemoteStorageSynchronizer(ABC):
         self._download_file(relative_file_path)
         self._log_info("Successfully downloaded file.", remote_path=relative_file_path, local_path=str(download_path))
 
-        md5sum = md5(download_path.read_bytes()).digest()
-        md5sum_file_path = self.__get_remote_md5sum_file_path(relative_file_path)
-        md5sum_file_path.parent.mkdir(exist_ok=True, parents=True)
-        md5sum_file_path.write_bytes(md5sum)
+        sha512sum = sha512(download_path.read_bytes()).digest()
+        sha512sum_file_path = self.__get_remote_sha512sum_file_path(relative_file_path)
+        sha512sum_file_path.parent.mkdir(exist_ok=True, parents=True)
+        sha512sum_file_path.write_bytes(sha512sum)
 
     @abstractmethod
     def _upload_file(self, relative_file_path: str) -> None:
@@ -213,21 +213,21 @@ class RemoteStorageSynchronizer(ABC):
     def _get_local_file_path_for_relative_file(self, relative_file_path: str) -> Path:
         return Path(self.local_dir.root_dir, relative_file_path).resolve()
 
-    def __get_md5_of_local_file(self, relative_file_path: str) -> bytes:
+    def __get_sha512_of_local_file(self, relative_file_path: str) -> bytes:
         file = Path(self.local_dir.root_dir, relative_file_path)
-        return md5(file.read_bytes()).digest()
+        return sha512(file.read_bytes()).digest()
 
-    def __get_remote_md5sum_file_path(self, relative_file_path: str) -> Path:
-        path = Path(self.local_dir.root_dir, "package-indexer-md5sums", relative_file_path).resolve()
-        return Path(path.parent, path.name + ".package-indexer-md5sum")
+    def __get_remote_sha512sum_file_path(self, relative_file_path: str) -> Path:
+        path = Path(self.local_dir.root_dir, "package-indexer-sha512sums", relative_file_path).resolve()
+        return Path(path.parent, path.name + ".package-indexer-sha512sum")
 
-    def __get_md5_of_remote_file(self, relative_file_path: str) -> bytes:
-        md5sum_file_path = self.__get_remote_md5sum_file_path(relative_file_path)
-        return md5sum_file_path.read_bytes()
+    def __get_sha512_of_remote_file(self, relative_file_path: str) -> bytes:
+        sha512sum_file_path = self.__get_remote_sha512sum_file_path(relative_file_path)
+        return sha512sum_file_path.read_bytes()
 
     def __get_file_sync_state(self, relative_file_path: str) -> FileSyncState:
         try:
-            local_md5 = self.__get_md5_of_local_file(relative_file_path)
+            local_sha512 = self.__get_sha512_of_local_file(relative_file_path)
         except FileNotFoundError:
             self._log_debug(
                 "Remote file is not available locally.",
@@ -237,7 +237,7 @@ class RemoteStorageSynchronizer(ABC):
             return FileSyncState.NOT_IN_LOCAL
 
         try:
-            remote_md5 = self.__get_md5_of_remote_file(relative_file_path)
+            remote_sha512 = self.__get_sha512_of_remote_file(relative_file_path)
         except FileNotFoundError:
             self._log_debug(
                 "Local file is not available remotely.",
@@ -246,13 +246,13 @@ class RemoteStorageSynchronizer(ABC):
             )
             return FileSyncState.NOT_IN_REMOTE
 
-        if remote_md5 != local_md5:
+        if remote_sha512 != local_sha512:
             self._log_debug(
                 "File differs locally and remotely.",
                 remote_path=str(Path(self.remote_dir.root_dir, relative_file_path)),
                 local_path=str(Path(self.local_dir.root_dir, relative_file_path)),
-                remote_md5sum=remote_md5.hex(),
-                local_md5sum=local_md5.hex(),
+                remote_sha512sum=remote_sha512.hex(),
+                local_sha512sum=local_sha512.hex(),
             )
             return FileSyncState.DIFFERENT
 
@@ -260,7 +260,7 @@ class RemoteStorageSynchronizer(ABC):
             "File is in sync.",
             remote_path=str(Path(self.remote_dir.root_dir, relative_file_path)),
             local_path=str(Path(self.local_dir.root_dir, relative_file_path)),
-            md5sum=remote_md5.hex(),
+            sha512sum=remote_sha512.hex(),
         )
         return FileSyncState.IN_SYNC
 
