@@ -91,11 +91,8 @@ class AzureCDN(CDN):
             client_secret=cfg["client-secret"],
         )
 
-    def refresh_cache(self, path: Path) -> None:
+    def _refresh_cache(self, path: Path) -> None:
         path_str = str(Path("/", path))
-
-        self._log_info("Refreshing CDN cache.", path=path_str)
-
         poller: LROPoller = self.__cdn.endpoints.begin_purge_content(
             resource_group_name=self.__resource_group_name,
             profile_name=self.__profile_name,
@@ -107,5 +104,3 @@ class AzureCDN(CDN):
         status = poller.status()
         if not status == "Succeeded":
             raise Exception("Failed to refresh CDN cache. status: {}".format(status))
-
-        self._log_info("Successfully refreshed CDN cache.", path=path_str)

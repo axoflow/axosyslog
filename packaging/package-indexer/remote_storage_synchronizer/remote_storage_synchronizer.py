@@ -1,5 +1,6 @@
 #############################################################################
 # Copyright (c) 2022 One Identity
+# Copyright (c) 2024 Attila Szakacs
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published
@@ -22,10 +23,13 @@
 
 from __future__ import annotations
 
+
 import logging
 from abc import ABC, abstractmethod
 from enum import Enum, auto
+from hashlib import sha512
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 class WorkingDir:
@@ -57,7 +61,12 @@ class RemoteStorageSynchronizer(ABC):
         self.remote_dir = WorkingDir(remote_root_dir)
         self.local_dir = WorkingDir(local_root_dir)
 
+        self.__remote_files_cache: Optional[List[dict]] = None
         self.__logger = RemoteStorageSynchronizer.__create_logger()
+
+    def set_sub_dir(self, sub_dir: Path) -> None:
+        self.remote_dir.set_sub_dir(sub_dir)
+        self.local_dir.set_sub_dir(sub_dir)
 
     @staticmethod
     @abstractmethod
@@ -69,21 +78,191 @@ class RemoteStorageSynchronizer(ABC):
     def from_config(cfg: dict) -> RemoteStorageSynchronizer:
         pass
 
-    @abstractmethod
     def sync_from_remote(self) -> None:
-        pass
+        self._log_info(
+            "Syncing content from remote.",
+            remote_workdir=str(self.remote_dir.working_dir),
+            local_workdir=str(self.local_dir.working_dir),
+        )
+        for file in self._all_files:
+            sync_state = self.__get_file_sync_state(file)
+            if sync_state == FileSyncState.IN_SYNC:
+                continue
+            if sync_state == FileSyncState.DIFFERENT or sync_state == FileSyncState.NOT_IN_LOCAL:
+                self.__download_file(file)
+                continue
+            if sync_state == FileSyncState.NOT_IN_REMOTE:
+                self.__delete_local_file(file)
+                continue
+            raise NotImplementedError("Unexpected FileSyncState: {}".format(sync_state))
+        self._log_info(
+            "Successfully synced remote content.",
+            remote_workdir=str(self.remote_dir.working_dir),
+            local_workdir=str(self.local_dir.working_dir),
+        )
 
-    @abstractmethod
     def sync_to_remote(self) -> None:
-        pass
+        self._log_info(
+            "Syncing content to remote.",
+            local_workdir=str(self.local_dir.working_dir),
+            remote_workdir=str(self.remote_dir.working_dir),
+        )
+        for file in self._all_files:
+            sync_state = self.__get_file_sync_state(file)
+            if sync_state == FileSyncState.IN_SYNC:
+                continue
+            if sync_state == FileSyncState.DIFFERENT or sync_state == FileSyncState.NOT_IN_REMOTE:
+                self.__upload_file(file)
+                continue
+            if sync_state == FileSyncState.NOT_IN_LOCAL:
+                self.__delete_remote_file(file)
+                continue
+            raise NotImplementedError("Unexpected FileSyncState: {}".format(sync_state))
+        self._log_info(
+            "Successfully synced local content.",
+            remote_workdir=str(self.remote_dir.working_dir),
+            local_workdir=str(self.local_dir.working_dir),
+        )
+        self.__invalidate_remote_files_cache()
 
     @abstractmethod
-    def create_snapshot_of_remote(self) -> None:
+    def _create_snapshot_of_remote(self) -> None:
         pass
 
-    def set_sub_dir(self, sub_dir: Path) -> None:
-        self.remote_dir.set_sub_dir(sub_dir)
-        self.local_dir.set_sub_dir(sub_dir)
+    def create_snapshot_of_remote(self) -> None:
+        self._log_info("Creating snapshot of remote")
+        self._create_snapshot_of_remote()
+
+    @property
+    def _local_files(self) -> List[Path]:
+        dirs_and_files = list(self.local_dir.working_dir.rglob("*"))
+        return list(filter(lambda path: path.is_file(), dirs_and_files))
+
+    @abstractmethod
+    def _list_remote_files(self) -> List[Dict[str, Any]]:
+        pass
+
+    @property
+    def _remote_files(self) -> List[Dict[str, Any]]:
+        if self.__remote_files_cache is not None:
+            return self.__remote_files_cache
+
+        self.__remote_files_cache = self._list_remote_files()
+        return self.__remote_files_cache
+
+    def __invalidate_remote_files_cache(self) -> None:
+        self.__remote_files_cache = None
+
+    @property
+    def _all_files(self) -> List[str]:
+        files = set()
+        for local_file in self._local_files:
+            files.add(self.__get_relative_file_path_for_local_file(local_file))
+        for remote_file in self._remote_files:
+            files.add(self._get_relative_file_path_for_remote_file(remote_file))
+        return sorted(files)
+
+    @abstractmethod
+    def _download_file(self, relative_file_path: str) -> None:
+        pass
+
+    def __download_file(self, relative_file_path: str) -> None:
+        download_path = self._get_local_file_path_for_relative_file(relative_file_path)
+        self._log_info("Downloading file.", remote_path=relative_file_path, local_path=str(download_path))
+        self._download_file(relative_file_path)
+        self._log_info("Successfully downloaded file.", remote_path=relative_file_path, local_path=str(download_path))
+
+        sha512sum = sha512(download_path.read_bytes()).digest()
+        sha512sum_file_path = self.__get_remote_sha512sum_file_path(relative_file_path)
+        sha512sum_file_path.parent.mkdir(exist_ok=True, parents=True)
+        sha512sum_file_path.write_bytes(sha512sum)
+
+    @abstractmethod
+    def _upload_file(self, relative_file_path: str) -> None:
+        pass
+
+    def __upload_file(self, relative_file_path: str) -> None:
+        local_path = self._get_local_file_path_for_relative_file(relative_file_path)
+
+        self._log_info("Uploading file.", local_path=str(local_path), remote_path=relative_file_path)
+        self._upload_file(relative_file_path)
+        self._log_info("Successfully uploaded file.", remote_path=relative_file_path, local_path=str(local_path))
+
+    def __delete_local_file(self, relative_file_path: str) -> None:
+        local_file_path = Path(self.local_dir.root_dir, relative_file_path).resolve()
+        self._log_info("Deleting local file.", local_path=str(local_file_path))
+        local_file_path.unlink()
+        self._log_info("Successfully deleted local file.", local_path=str(local_file_path))
+
+    @abstractmethod
+    def _delete_remote_file(self, relative_file_path: str) -> None:
+        pass
+
+    def __delete_remote_file(self, relative_file_path: str) -> None:
+        self._log_info("Deleting remote file.", remote_path=relative_file_path)
+        self._delete_remote_file(relative_file_path)
+        self._log_info("Successfully deleted remote file.", remote_path=relative_file_path)
+
+    def __get_relative_file_path_for_local_file(self, file: Path) -> str:
+        return str(file.relative_to(self.local_dir.root_dir))
+
+    @abstractmethod
+    def _get_relative_file_path_for_remote_file(self, file: Dict[str, Any]) -> str:
+        pass
+
+    def _get_local_file_path_for_relative_file(self, relative_file_path: str) -> Path:
+        return Path(self.local_dir.root_dir, relative_file_path).resolve()
+
+    def __get_sha512_of_local_file(self, relative_file_path: str) -> bytes:
+        file = Path(self.local_dir.root_dir, relative_file_path)
+        return sha512(file.read_bytes()).digest()
+
+    def __get_remote_sha512sum_file_path(self, relative_file_path: str) -> Path:
+        path = Path(self.local_dir.root_dir, "package-indexer-sha512sums", relative_file_path).resolve()
+        return Path(path.parent, path.name + ".package-indexer-sha512sum")
+
+    def __get_sha512_of_remote_file(self, relative_file_path: str) -> bytes:
+        sha512sum_file_path = self.__get_remote_sha512sum_file_path(relative_file_path)
+        return sha512sum_file_path.read_bytes()
+
+    def __get_file_sync_state(self, relative_file_path: str) -> FileSyncState:
+        try:
+            local_sha512 = self.__get_sha512_of_local_file(relative_file_path)
+        except FileNotFoundError:
+            self._log_debug(
+                "Remote file is not available locally.",
+                remote_path=str(Path(self.remote_dir.root_dir, relative_file_path)),
+                unavailable_local_path=str(Path(self.local_dir.root_dir, relative_file_path)),
+            )
+            return FileSyncState.NOT_IN_LOCAL
+
+        try:
+            remote_sha512 = self.__get_sha512_of_remote_file(relative_file_path)
+        except FileNotFoundError:
+            self._log_debug(
+                "Local file is not available remotely.",
+                local_path=str(Path(self.local_dir.root_dir, relative_file_path)),
+                unavailable_remote_path=str(Path(self.remote_dir.root_dir, relative_file_path)),
+            )
+            return FileSyncState.NOT_IN_REMOTE
+
+        if remote_sha512 != local_sha512:
+            self._log_debug(
+                "File differs locally and remotely.",
+                remote_path=str(Path(self.remote_dir.root_dir, relative_file_path)),
+                local_path=str(Path(self.local_dir.root_dir, relative_file_path)),
+                remote_sha512sum=remote_sha512.hex(),
+                local_sha512sum=local_sha512.hex(),
+            )
+            return FileSyncState.DIFFERENT
+
+        self._log_debug(
+            "File is in sync.",
+            remote_path=str(Path(self.remote_dir.root_dir, relative_file_path)),
+            local_path=str(Path(self.local_dir.root_dir, relative_file_path)),
+            sha512sum=remote_sha512.hex(),
+        )
+        return FileSyncState.IN_SYNC
 
     @staticmethod
     def __create_logger() -> logging.Logger:
@@ -95,6 +274,10 @@ class RemoteStorageSynchronizer(ABC):
         if len(kwargs) > 0:
             message += "\t{}".format(kwargs)
         return message
+
+    def _log_error(self, message: str, **kwargs: str) -> None:
+        log = self._prepare_log(message, **kwargs)
+        self.__logger.error(log)
 
     def _log_info(self, message: str, **kwargs: str) -> None:
         log = self._prepare_log(message, **kwargs)

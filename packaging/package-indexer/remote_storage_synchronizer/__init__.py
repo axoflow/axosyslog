@@ -25,10 +25,12 @@ from typing import Dict, Type
 
 from .remote_storage_synchronizer import RemoteStorageSynchronizer
 from .azure_container_synchronizer import AzureContainerSynchronizer
+from .s3_bucket_synchronizer import S3BucketSynchronizer
 
 __all__ = [
     "RemoteStorageSynchronizer",
     "AzureContainerSynchronizer",
+    "S3BucketSynchronizer",
     "get_implementations",
 ]
 

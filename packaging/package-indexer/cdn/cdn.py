@@ -42,8 +42,13 @@ class CDN(ABC):
         pass
 
     @abstractmethod
-    def refresh_cache(self, path: Path) -> None:
+    def _refresh_cache(self, path: Path) -> None:
         pass
+
+    def refresh_cache(self, path: Path) -> None:
+        self._log_info("Refreshing CDN cache.", path=str(path))
+        self._refresh_cache(path)
+        self._log_info("Successfully refreshed CDN cache.", path=str(path))
 
     @staticmethod
     def __create_logger() -> logging.Logger:
