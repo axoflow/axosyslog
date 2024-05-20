@@ -129,22 +129,22 @@ exit:
 }
 
 static void
-_report_buffer_location(const gchar *buffer_content, const CFG_LTYPE *yylloc)
+_report_buffer_location(const gchar *buffer_content, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
 {
-  gchar **lines = g_strsplit(buffer_content, "\n", yylloc->first_line + CONTEXT + 1);
+  gchar **lines = g_strsplit(buffer_content, "\n", buf_lloc->first_line + CONTEXT + 1);
   gint num_lines = g_strv_length(lines);
 
-  if (num_lines <= yylloc->first_line)
+  if (num_lines <= buf_lloc->first_line)
     goto exit;
 
-  gint start = yylloc->first_line - 1 - CONTEXT;
+  gint start = buf_lloc->first_line - 1 - CONTEXT;
   gint error_index = CONTEXT;
   if (start < 0)
     {
       error_index += start;
       start = 0;
     }
-  _print_underlined_source_block(yylloc, &lines[start], error_index);
+  _print_underlined_source_block(file_lloc, &lines[start], error_index);
 
 exit:
   g_strfreev(lines);
@@ -159,10 +159,10 @@ cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const C
     }
   else if (level->include_type == CFGI_BUFFER)
     {
-      if (level->lloc_changed_by_at_line)
-        _report_file_location(yylloc->name, yylloc);
-      else
-        _report_buffer_location(level->buffer.original_content, yylloc);
+      CFG_LTYPE buf_lloc = *yylloc;
+      cfg_lexer_undo_set_file_location(lexer, &buf_lloc);
+
+      _report_buffer_location(level->buffer.original_content, yylloc, &buf_lloc);
     }
   return TRUE;
 }
@@ -276,10 +276,10 @@ cfg_source_extract_source_text(CfgLexer *lexer, const CFG_LTYPE *yylloc, GString
     return _extract_source_from_file_location(result, yylloc->name, yylloc);
   else if (level->include_type == CFGI_BUFFER)
     {
-      if (level->lloc_changed_by_at_line)
-        return _extract_source_from_file_location(result, yylloc->name, yylloc);
-      else
-        return _extract_source_from_buffer_location(result, level->buffer.original_content, yylloc);
+      CFG_LTYPE buf_lloc = *yylloc;
+      cfg_lexer_undo_set_file_location(lexer, &buf_lloc);
+
+      return _extract_source_from_buffer_location(result, level->buffer.original_content, &buf_lloc);
     }
   else
     g_assert_not_reached();
