@@ -167,14 +167,70 @@ cfg_lexer_format_location_tag(CfgLexer *self, const CFG_LTYPE *yylloc)
 }
 
 void
+cfg_lexer_undo_set_file_location(CfgLexer *self, CFG_LTYPE *yylloc)
+{
+  if (!yylloc->at_line.present)
+    return;
+
+  gboolean lloc_is_oneline = yylloc->first_line == yylloc->last_line;
+
+  /* calculate how much we moved, relative to the @line setting */
+  gint ofs_lines = yylloc->first_line - yylloc->at_line.line;
+  gint ofs_columns = yylloc->first_column - yylloc->at_line.column;
+
+  gint range_lines = yylloc->last_line - yylloc->first_line;
+
+  /* the line number moves the same amount as we've processed with the alternative location */
+  yylloc->first_line = yylloc->at_line.captured_first_line + ofs_lines;
+  yylloc->last_line = yylloc->first_line + range_lines;
+
+  if (ofs_lines == 0)
+    {
+      /* we remained on the same line (e.g.  the one that follows @line),
+       * starting column is moved to where @line told us to */
+
+      g_assert(lloc_is_oneline);
+
+      /* save the length of the token within the same line */
+      gint range_columns = yylloc->last_column - yylloc->first_column;
+
+      /* adjust the first_column */
+      yylloc->first_column = yylloc->at_line.captured_first_column + ofs_columns;
+
+      /* yylloc pointed to a single line and we moved the starting
+       * column, so let's adjust last_column as well */
+
+      yylloc->last_column = yylloc->first_column + range_columns;
+    }
+  yylloc->name = yylloc->at_line.captured_name;
+  yylloc->at_line.present = FALSE;
+}
+
+void
 cfg_lexer_set_file_location(CfgLexer *self, const gchar *filename, gint line, gint column)
 {
   CfgIncludeLevel *level = &self->include_stack[self->include_depth];
+  CFG_LTYPE *yylloc = &level->lloc;
 
-  level->lloc.name = g_intern_string(filename);
-  level->lloc.first_line = level->lloc.last_line = line;
-  level->lloc.first_column = level->lloc.last_column = column;
-  level->lloc_changed_by_at_line = TRUE;
+  /* we already had a previous @line, let's go back as if it didn't exist */
+  cfg_lexer_undo_set_file_location(self, yylloc);
+
+  if (!filename)
+    {
+      /* reset to previous state but don't establish a new location */
+      return;
+    }
+
+  yylloc->at_line.captured_first_line = yylloc->first_line;
+  yylloc->at_line.captured_first_column = yylloc->first_column;
+  yylloc->at_line.captured_name = yylloc->name;
+  yylloc->at_line.line = line;
+  yylloc->at_line.column = column;
+  yylloc->at_line.present = TRUE;
+
+  yylloc->name = g_intern_string(filename);
+  yylloc->first_line = yylloc->last_line = line;
+  yylloc->first_column = yylloc->last_column = column;
 }
 
 static int
@@ -361,6 +417,7 @@ cfg_lexer_include_level_open_buffer(CfgLexer *self, CfgIncludeLevel *level)
 
   level->lloc.first_line = level->lloc.last_line = 1;
   level->lloc.first_column = level->lloc.last_column = 1;
+  level->lloc.at_line.present = FALSE;
   return TRUE;
 }
 
