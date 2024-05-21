@@ -21,35 +21,29 @@
  * COPYING for details.
  *
  */
-#include "appmodel.h"
-#include "cfg.h"
-#include "appmodel-context.h"
 
-#define MODULE_CONFIG_KEY "appmodel"
+#ifndef APPMODEL_APP_OBJECT_GENERATOR_H_INCLUDED
+#define APPMODEL_APP_OBJECT_GENERATOR_H_INCLUDED
 
-AppModelContext *
-appmodel_get_context(GlobalConfig *cfg)
+#include "plugin.h"
+
+typedef struct _AppObjectGenerator AppObjectGenerator;
+
+struct _AppObjectGenerator
 {
-  AppModelContext *ac = g_hash_table_lookup(cfg->module_config, MODULE_CONFIG_KEY);
-  if (!ac)
-    {
-      ac = appmodel_context_new();
-      g_hash_table_insert(cfg->module_config, g_strdup(MODULE_CONFIG_KEY), ac);
-    }
-  return ac;
-}
+  CfgBlockGenerator super;
+  gboolean (*parse_arguments)(AppObjectGenerator *self, CfgArgs *args, const gchar *reference);
+  void (*generate_config)(AppObjectGenerator *self, GlobalConfig *cfg, GString *result);
+  const gchar *included_apps;
+  const gchar *excluded_apps;
+  gboolean is_parsing_enabled;
+};
 
-void
-appmodel_register_application(GlobalConfig *cfg, Application *application)
-{
-  AppModelContext *ac = appmodel_get_context(cfg);
+gboolean app_object_generator_is_application_included(AppObjectGenerator *self, const gchar *app_name);
+gboolean app_object_generator_is_application_excluded(AppObjectGenerator *self, const gchar *app_name);
 
-  appmodel_context_register_object(ac, &application->super);
-}
+gboolean app_object_generator_parse_arguments_method(AppObjectGenerator *self, CfgArgs *args, const gchar *reference);
+void app_object_generator_init_instance(AppObjectGenerator *self, gint context, const gchar *name);
 
-void
-appmodel_iter_applications(GlobalConfig *cfg, void (*foreach)(Application *app, gpointer user_data), gpointer user_data)
-{
-  AppModelContext *appmodel = appmodel_get_context(cfg);
-  appmodel_context_iter_objects(appmodel, APPLICATION_TYPE_NAME, (AppModelContextIterFunc) foreach, user_data);
-}
+
+#endif
