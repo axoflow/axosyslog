@@ -25,6 +25,7 @@
 #include "compat/cpp-start.h"
 
 #include "filterx/object-string.h"
+#include "filterx/object-message-value.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
 #include "scratch-buffers.h"
@@ -364,4 +365,28 @@ ProtobufField *syslogng::grpc::otel::protobuf_converter_by_type(google::protobuf
 {
   g_assert(fieldType <= google::protobuf::FieldDescriptor::MAX_TYPE && fieldType > 0);
   return all_protobuf_converters()[fieldType - 1].get();
+}
+
+std::string
+syslogng::grpc::otel::extract_string_from_object(FilterXObject *object)
+{
+  gsize len;
+  const gchar *key_c_str = filterx_string_get_value(object, &len);
+
+  if (!key_c_str)
+    key_c_str = filterx_message_value_get_value(object, &len);
+
+  if (!key_c_str)
+    throw std::runtime_error("not a string instance");
+
+  return std::string{key_c_str, len};
+}
+
+uint64_t
+syslogng::grpc::otel::get_protobuf_message_set_field_count(const google::protobuf::Message &message)
+{
+  const google::protobuf::Reflection *reflection = message.GetReflection();
+  std::vector<const google::protobuf::FieldDescriptor *> fields;
+  reflection->ListFields(message, &fields);
+  return fields.size();
 }

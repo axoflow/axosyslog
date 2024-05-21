@@ -26,7 +26,7 @@
 #include "syslog-ng.h"
 
 #include "compat/cpp-start.h"
-#include "filterx/filterx-object.h"
+#include "filterx/object-dict-interface.h"
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
@@ -48,10 +48,14 @@ public:
   LogRecord(FilterXOtelLogRecord *super, FilterXObject *protobuf_object);
   LogRecord(LogRecord &o) = delete;
   LogRecord(LogRecord &&o) = delete;
-  bool SetField(const gchar *attribute, FilterXObject **value);
-  std::string Marshal(void);
-  FilterXObject *GetField(const gchar *attribute);
-  const opentelemetry::proto::logs::v1::LogRecord &GetValue() const;
+  std::string marshal(void);
+  FilterXObject *get_subscript(FilterXObject *key);
+  bool set_subscript(FilterXObject *key, FilterXObject **value);
+  bool unset_key(FilterXObject *key);
+  bool is_key_set(FilterXObject *key);
+  uint64_t len() const;
+  bool iter(FilterXDictIterFunc func, void *user_data);
+  const opentelemetry::proto::logs::v1::LogRecord &get_value() const;
 private:
   FilterXOtelLogRecord *super;
   opentelemetry::proto::logs::v1::LogRecord logRecord;
@@ -66,7 +70,7 @@ private:
 
 struct FilterXOtelLogRecord_
 {
-  FilterXObject super;
+  FilterXDict super;
   syslogng::grpc::otel::filterx::LogRecord *cpp;
 };
 

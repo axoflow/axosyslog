@@ -43,7 +43,7 @@ struct ProtoReflectors
   const google::protobuf::Descriptor *descriptor;
   const google::protobuf::FieldDescriptor *fieldDescriptor;
   google::protobuf::FieldDescriptor::Type fieldType;
-  ProtoReflectors(const google::protobuf::Message &message, std::string fieldName)
+  ProtoReflectors(const google::protobuf::Message &message, const std::string &fieldName)
   {
     this->reflection = message.GetReflection();
     this->descriptor = message.GetDescriptor();
@@ -71,7 +71,7 @@ struct ProtoReflectors
 class ProtobufField
 {
 public:
-  FilterXObject *Get(google::protobuf::Message *message, std::string fieldName)
+  FilterXObject *Get(google::protobuf::Message *message, const std::string &fieldName)
   {
     try
       {
@@ -84,7 +84,8 @@ public:
         return nullptr;
       }
   };
-  bool Set(google::protobuf::Message *message, std::string fieldName, FilterXObject *object, FilterXObject **assoc_object)
+  bool Set(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+           FilterXObject **assoc_object)
   {
     try
       {
@@ -103,6 +104,33 @@ public:
         return false;
       }
   }
+  bool Unset(google::protobuf::Message *message, const std::string &fieldName)
+  {
+    try
+      {
+        ProtoReflectors reflectors(*message, fieldName);
+        reflectors.reflection->ClearField(message, reflectors.fieldDescriptor);
+        return true;
+      }
+    catch(const std::exception &ex)
+      {
+        msg_error("protobuf-field: Failed to unset field:", evt_tag_str("message", ex.what()));
+        return false;
+      }
+  }
+  bool IsSet(google::protobuf::Message *message, const std::string &fieldName)
+  {
+    try
+      {
+        ProtoReflectors reflectors(*message, fieldName);
+        return reflectors.reflection->HasField(*message, reflectors.fieldDescriptor);
+      }
+    catch(const std::exception &ex)
+      {
+        msg_error("protobuf-field: Failed to check field:", evt_tag_str("message", ex.what()));
+        return false;
+      }
+  }
 
   virtual ~ProtobufField() {}
 protected:
@@ -113,6 +141,10 @@ protected:
 
 std::unique_ptr<ProtobufField> *all_protobuf_converters();
 ProtobufField *protobuf_converter_by_type(google::protobuf::FieldDescriptor::Type fieldType);
+
+std::string extract_string_from_object(FilterXObject *object);
+
+uint64_t get_protobuf_message_set_field_count(const google::protobuf::Message &message);
 
 }
 }

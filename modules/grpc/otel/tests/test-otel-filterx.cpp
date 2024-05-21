@@ -155,9 +155,9 @@ Test(otel_filterx, logrecord_empty)
   FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL);
   cr_assert(filterx_otel_logrecord);
 
-  cr_assert(MessageDifferencer::Equals(LogRecord(), filterx_otel_logrecord->cpp->GetValue()));
+  cr_assert(MessageDifferencer::Equals(LogRecord(), filterx_otel_logrecord->cpp->get_value()));
 
-  filterx_object_unref(&filterx_otel_logrecord->super);
+  filterx_object_unref(&filterx_otel_logrecord->super.super);
 }
 
 Test(otel_filterx, logrecord_from_protobuf)
@@ -176,10 +176,10 @@ Test(otel_filterx, logrecord_from_protobuf)
   FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(args);
   cr_assert(filterx_otel_logrecord);
 
-  const LogRecord &log_record_from_filterx = filterx_otel_logrecord->cpp->GetValue();
+  const LogRecord &log_record_from_filterx = filterx_otel_logrecord->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(log_record, log_record_from_filterx));
 
-  filterx_object_unref(&filterx_otel_logrecord->super);
+  filterx_object_unref(&filterx_otel_logrecord->super.super);
   g_ptr_array_free(args, TRUE);
 }
 
@@ -217,6 +217,85 @@ Test(otel_filterx, logrecord_too_many_args)
   g_ptr_array_free(args, TRUE);
 }
 
+Test(otel_filterx, logrecord_len_and_unset_and_is_key_set)
+{
+  FilterXObject *logrecord = filterx_otel_logrecord_new_from_args(NULL);
+  FilterXObject *body = filterx_string_new("body", -1);
+  FilterXObject *body_val = filterx_string_new("body_val", -1);
+  FilterXObject *time_unix_nano = filterx_string_new("time_unix_nano", -1);
+  FilterXObject *time_unix_nano_val = filterx_integer_new(123);
+
+  guint64 len;
+  cr_assert(filterx_object_len(logrecord, &len));
+  cr_assert_eq(len, 0);
+
+  cr_assert_not(filterx_object_is_key_set(logrecord, body));
+  cr_assert(filterx_object_set_subscript(logrecord, body, &body_val));
+  cr_assert(filterx_object_len(logrecord, &len));
+  cr_assert_eq(len, 1);
+  cr_assert(filterx_object_is_key_set(logrecord, body));
+
+  cr_assert_not(filterx_object_is_key_set(logrecord, time_unix_nano));
+  cr_assert(filterx_object_set_subscript(logrecord, time_unix_nano, &time_unix_nano_val));
+  cr_assert(filterx_object_len(logrecord, &len));
+  cr_assert_eq(len, 2);
+  cr_assert(filterx_object_is_key_set(logrecord, time_unix_nano));
+
+  cr_assert(filterx_object_unset_key(logrecord, body));
+  cr_assert(filterx_object_len(logrecord, &len));
+  cr_assert_eq(len, 1);
+  cr_assert_not(filterx_object_is_key_set(logrecord, body));
+
+  cr_assert(filterx_object_unset_key(logrecord, time_unix_nano));
+  cr_assert(filterx_object_len(logrecord, &len));
+  cr_assert_eq(len, 0);
+  cr_assert_not(filterx_object_is_key_set(logrecord, time_unix_nano));
+
+  filterx_object_unref(time_unix_nano);
+  filterx_object_unref(time_unix_nano_val);
+  filterx_object_unref(body);
+  filterx_object_unref(body_val);
+  filterx_object_unref(logrecord);
+}
+
+static gboolean
+_append_to_str(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  GString *output = (GString *) user_data;
+
+  LogMessageValueType type;
+  filterx_object_marshal_append(key, output, &type);
+  g_string_append_c(output, '\n');
+  filterx_object_marshal_append(value, output, &type);
+  g_string_append_c(output, '\n');
+
+  return TRUE;
+}
+
+Test(otel_filterx, logrecord_iter)
+{
+  FilterXObject *logrecord = filterx_otel_logrecord_new_from_args(NULL);
+  FilterXObject *body = filterx_string_new("body", -1);
+  FilterXObject *body_val = filterx_string_new("body_val", -1);
+  FilterXObject *time_unix_nano = filterx_string_new("time_unix_nano", -1);
+  FilterXObject *time_unix_nano_val = filterx_integer_new(123);
+
+  cr_assert(filterx_object_set_subscript(logrecord, body, &body_val));
+  cr_assert(filterx_object_set_subscript(logrecord, time_unix_nano, &time_unix_nano_val));
+
+  GString *output = g_string_new(NULL);
+  cr_assert(filterx_dict_iter(logrecord, _append_to_str, output));
+
+  cr_assert_str_eq(output->str, "time_unix_nano\n0.000123+00:00\nbody\nbody_val\n");
+
+  g_string_free(output, TRUE);
+  filterx_object_unref(time_unix_nano);
+  filterx_object_unref(time_unix_nano_val);
+  filterx_object_unref(body);
+  filterx_object_unref(body_val);
+  filterx_object_unref(logrecord);
+}
+
 
 /* Resource */
 
@@ -228,7 +307,7 @@ Test(otel_filterx, resource_empty)
   cr_assert(MessageDifferencer::Equals(opentelemetry::proto::resource::v1::Resource(),
                                        filterx_otel_resource->cpp->get_value()));
 
-  filterx_object_unref(&filterx_otel_resource->super);
+  filterx_object_unref(&filterx_otel_resource->super.super);
 }
 
 Test(otel_filterx, resource_from_protobuf)
@@ -249,7 +328,7 @@ Test(otel_filterx, resource_from_protobuf)
   const opentelemetry::proto::resource::v1::Resource &resource_from_filterx = filterx_otel_resource->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(resource, resource_from_filterx));
 
-  filterx_object_unref(&filterx_otel_resource->super);
+  filterx_object_unref(&filterx_otel_resource->super.super);
   g_ptr_array_free(args, TRUE);
 }
 
@@ -350,6 +429,51 @@ Test(otel_filterx, resource_set_field)
   filterx_object_unref(filterx_otel_resource);
 }
 
+Test(otel_filterx, resource_len_and_unset_and_is_key_set)
+{
+  FilterXObject *resource = filterx_otel_resource_new_from_args(NULL);
+  FilterXObject *dropped_attributes_count = filterx_string_new("dropped_attributes_count", -1);
+  FilterXObject *dropped_attributes_count_val = filterx_integer_new(42);
+
+  guint64 len;
+  cr_assert(filterx_object_len(resource, &len));
+  cr_assert_eq(len, 0);
+
+  cr_assert_not(filterx_object_is_key_set(resource, dropped_attributes_count));
+  cr_assert(filterx_object_set_subscript(resource, dropped_attributes_count, &dropped_attributes_count_val));
+  cr_assert(filterx_object_len(resource, &len));
+  cr_assert_eq(len, 1);
+  cr_assert(filterx_object_is_key_set(resource, dropped_attributes_count));
+
+  cr_assert(filterx_object_unset_key(resource, dropped_attributes_count));
+  cr_assert(filterx_object_len(resource, &len));
+  cr_assert_eq(len, 0);
+  cr_assert_not(filterx_object_is_key_set(resource, dropped_attributes_count));
+
+  filterx_object_unref(dropped_attributes_count);
+  filterx_object_unref(dropped_attributes_count_val);
+  filterx_object_unref(resource);
+}
+
+Test(otel_filterx, resource_iter)
+{
+  FilterXObject *resource = filterx_otel_resource_new_from_args(NULL);
+  FilterXObject *dropped_attributes_count = filterx_string_new("dropped_attributes_count", -1);
+  FilterXObject *dropped_attributes_count_val = filterx_integer_new(42);
+
+  cr_assert(filterx_object_set_subscript(resource, dropped_attributes_count, &dropped_attributes_count_val));
+
+  GString *output = g_string_new(NULL);
+  cr_assert(filterx_dict_iter(resource, _append_to_str, output));
+
+  cr_assert_str_eq(output->str, "dropped_attributes_count\n42\n");
+
+  g_string_free(output, TRUE);
+  filterx_object_unref(dropped_attributes_count);
+  filterx_object_unref(dropped_attributes_count_val);
+  filterx_object_unref(resource);
+}
+
 
 /* Scope */
 
@@ -361,7 +485,7 @@ Test(otel_filterx, scope_empty)
   cr_assert(MessageDifferencer::Equals(opentelemetry::proto::common::v1::InstrumentationScope(),
                                        filterx_otel_scope->cpp->get_value()));
 
-  filterx_object_unref(&filterx_otel_scope->super);
+  filterx_object_unref(&filterx_otel_scope->super.super);
 }
 
 Test(otel_filterx, scope_from_protobuf)
@@ -384,7 +508,7 @@ Test(otel_filterx, scope_from_protobuf)
   const opentelemetry::proto::common::v1::InstrumentationScope &scope_from_filterx = filterx_otel_scope->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(scope, scope_from_filterx));
 
-  filterx_object_unref(&filterx_otel_scope->super);
+  filterx_object_unref(&filterx_otel_scope->super.super);
   g_ptr_array_free(args, TRUE);
 }
 
@@ -726,7 +850,7 @@ Test(otel_filterx, kvlist_through_logrecord)
   KeyValue *expected_logrecord_inner_attr_2 = expected_logrecord_inner_kvlist->add_values();
   expected_logrecord_inner_attr_2->set_key("key_2");
   expected_logrecord_inner_attr_2->mutable_value()->set_string_value("baz");
-  cr_assert(MessageDifferencer::Equals(expected_logrecord, ((FilterXOtelLogRecord *) fx_logrecord)->cpp->GetValue()));
+  cr_assert(MessageDifferencer::Equals(expected_logrecord, ((FilterXOtelLogRecord *) fx_logrecord)->cpp->get_value()));
 
   KeyValueList expected_kvlist;
   KeyValue *expected_kvlist_value_0 = expected_kvlist.add_values();
@@ -756,6 +880,72 @@ Test(otel_filterx, kvlist_through_logrecord)
   filterx_object_unref(fx_kvlist);
   filterx_object_unref(fx_logrecord);
 }
+
+Test(otel_filterx, scope_len_and_unset_and_is_key_set)
+{
+  FilterXObject *scope = filterx_otel_scope_new_from_args(NULL);
+  FilterXObject *name = filterx_string_new("name", -1);
+  FilterXObject *name_val = filterx_string_new("name_val", -1);
+  FilterXObject *version = filterx_string_new("version", -1);
+  FilterXObject *version_val = filterx_string_new("version_val", -1);
+
+  guint64 len;
+  cr_assert(filterx_object_len(scope, &len));
+  cr_assert_eq(len, 0);
+
+  cr_assert_not(filterx_object_is_key_set(scope, name));
+  cr_assert(filterx_object_set_subscript(scope, name, &name_val));
+  cr_assert(filterx_object_len(scope, &len));
+  cr_assert_eq(len, 1);
+  cr_assert(filterx_object_is_key_set(scope, name));
+
+  cr_assert_not(filterx_object_is_key_set(scope, version));
+  cr_assert(filterx_object_set_subscript(scope, version, &version_val));
+  cr_assert(filterx_object_len(scope, &len));
+  cr_assert_eq(len, 2);
+  cr_assert(filterx_object_is_key_set(scope, version));
+
+  cr_assert(filterx_object_unset_key(scope, name));
+  cr_assert(filterx_object_len(scope, &len));
+  cr_assert_eq(len, 1);
+  cr_assert_not(filterx_object_is_key_set(scope, name));
+
+  cr_assert(filterx_object_unset_key(scope, version));
+  cr_assert(filterx_object_len(scope, &len));
+  cr_assert_eq(len, 0);
+  cr_assert_not(filterx_object_is_key_set(scope, version));
+
+  filterx_object_unref(version);
+  filterx_object_unref(version_val);
+  filterx_object_unref(name);
+  filterx_object_unref(name_val);
+  filterx_object_unref(scope);
+}
+
+Test(otel_filterx, scope_iter)
+{
+  FilterXObject *scope = filterx_otel_scope_new_from_args(NULL);
+  FilterXObject *name = filterx_string_new("name", -1);
+  FilterXObject *name_val = filterx_string_new("name_val", -1);
+  FilterXObject *version = filterx_string_new("version", -1);
+  FilterXObject *version_val = filterx_string_new("version_val", -1);
+
+  cr_assert(filterx_object_set_subscript(scope, name, &name_val));
+  cr_assert(filterx_object_set_subscript(scope, version, &version_val));
+
+  GString *output = g_string_new(NULL);
+  cr_assert(filterx_dict_iter(scope, _append_to_str, output));
+
+  cr_assert_str_eq(output->str, "name\nname_val\nversion\nversion_val\n");
+
+  g_string_free(output, TRUE);
+  filterx_object_unref(version);
+  filterx_object_unref(version_val);
+  filterx_object_unref(name);
+  filterx_object_unref(name_val);
+  filterx_object_unref(scope);
+}
+
 
 /* Array */
 
@@ -973,7 +1163,7 @@ Test(otel_filterx, array_through_logrecord)
   expected_logrecord_array->add_values()->set_string_value("bar");
   ArrayValue *inner_array = expected_logrecord_array->add_values()->mutable_array_value();
   inner_array->add_values()->set_string_value("baz");
-  cr_assert(MessageDifferencer::Equals(expected_logrecord, ((FilterXOtelLogRecord *) fx_logrecord)->cpp->GetValue()));
+  cr_assert(MessageDifferencer::Equals(expected_logrecord, ((FilterXOtelLogRecord *) fx_logrecord)->cpp->get_value()));
 
   ArrayValue expected_array;
   expected_array.add_values()->set_string_value("foo");
