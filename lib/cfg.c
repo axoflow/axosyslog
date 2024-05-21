@@ -700,8 +700,6 @@ cfg_free(GlobalConfig *self)
   if (self->bad_hostname_compiled)
     regfree(&self->bad_hostname);
   g_free(self->recv_time_zone);
-  if (self->source_mangle_callback_list)
-    g_list_free(self->source_mangle_callback_list);
   g_free(self->bad_hostname_re);
   dns_cache_options_destroy(&self->dns_cache_options);
   g_free(self->custom_domain);
@@ -764,22 +762,6 @@ gint
 cfg_get_user_version(const GlobalConfig *cfg)
 {
   return cfg->user_version;
-}
-
-void register_source_mangle_callback(GlobalConfig *src, mangle_callback cb)
-{
-  src->source_mangle_callback_list = g_list_append(src->source_mangle_callback_list, cb);
-}
-
-gboolean
-is_source_mangle_callback_registered(GlobalConfig *src, mangle_callback cb)
-{
-  return !!g_list_find(src->source_mangle_callback_list, cb);
-}
-
-void uregister_source_mangle_callback(GlobalConfig *src, mangle_callback cb)
-{
-  src->source_mangle_callback_list = g_list_remove(src->source_mangle_callback_list, cb);
 }
 
 const gchar *
