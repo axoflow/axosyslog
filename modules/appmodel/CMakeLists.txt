@@ -13,6 +13,7 @@ set (APPMODEL_SOURCES
     app-parser-generator.c
     app-transform-generator.c
     application.c
+    transformation.c
 )
 
 add_module(
