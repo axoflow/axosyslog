@@ -69,7 +69,6 @@ struct _GlobalConfig
   const gchar *filename;
   PluginContext plugin_context;
   gboolean use_plugin_discovery;
-  gboolean enable_forced_modules;
   CfgLexer *lexer;
   CfgArgs *globals;
 
@@ -163,7 +162,6 @@ gboolean cfg_run_parser(GlobalConfig *self, CfgLexer *lexer, CfgParser *parser, 
 gboolean cfg_run_parser_with_main_context(GlobalConfig *self, CfgLexer *lexer, CfgParser *parser, gpointer *result,
                                           gpointer arg, const gchar *desc);
 gboolean cfg_read_config(GlobalConfig *cfg, const gchar *fname, gchar *preprocess_into);
-void cfg_load_forced_modules(GlobalConfig *self);
 void cfg_shutdown(GlobalConfig *self);
 gboolean cfg_is_shutting_down(GlobalConfig *cfg);
 void cfg_free(GlobalConfig *self);

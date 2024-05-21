@@ -193,9 +193,6 @@ AC_ARG_WITH(package_name,
    [  --with-package-name=package name Package name is printed out when syslog-ng started with --version],
    PACKAGE_NAME=$with_package_name)
 
-AC_ARG_ENABLE(forced_server_mode,
-              [  --enable-forced-server-mode   Enable forced server mode.],, enable_forced_server_mode="yes")
-
 AC_ARG_ENABLE(debug,
               [  --enable-debug      Enable debugging code.],, enable_debug="no")
 
@@ -2236,7 +2233,6 @@ AC_DEFINE_UNQUOTED(PACKAGE_NAME, "$PACKAGE_NAME", [package name])
 
 
 AC_DEFINE_UNQUOTED(WITH_COMPILE_DATE, $wcmp_date, [Include the compile date in the binary])
-AC_DEFINE_UNQUOTED(ENABLE_FORCED_SERVER_MODE, `enable_value $enable_forced_server_mode`, [Enable forced server mode])
 AC_DEFINE_UNQUOTED(ENABLE_DEBUG, `enable_value $enable_debug`, [Enable debugging])
 AC_DEFINE_UNQUOTED(ENABLE_GPROF, `enable_value $enable_gprof`, [Enable gcc profiling])
 AC_DEFINE_UNQUOTED(ENABLE_MEMTRACE, `enable_value $enable_memtrace`, [Enable memtrace])
@@ -2404,7 +2400,6 @@ echo "  Unit tests                  : ${enable_tests:=no}"
 echo " Submodules:"
 echo "  ivykis                      : $with_ivykis"
 echo " Features:"
-echo "  Forced server mode          : ${enable_forced_server_mode:=yes}"
 echo "  Debug symbols               : ${enable_debug:=no}"
 echo "  GCC profiling               : ${enable_gprof:=no}"
 echo "  Memtrace                    : ${enable_memtrace:=no}"
