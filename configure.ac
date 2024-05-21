@@ -34,7 +34,7 @@ dnl
 
 AC_INIT([axosyslog], m4_esyscmd_s([scripts/version.sh]))
 AC_CONFIG_SRCDIR([syslog-ng/main.c])
-AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_MACRO_DIR([autotools/m4])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 dnl ***************************************************************************
@@ -68,10 +68,10 @@ dnl Initial setup
 
 ostype=`uname -s`
 
-if test -r $srcdir/dist.conf; then
+if test -r $srcdir/autotools/dist.conf; then
         # read defaults, dist.conf does not change
         # values for parameters that are already set
-        . $srcdir/dist.conf
+        . $srcdir/autotools/dist.conf
 fi
 
 if test -z "$RELEASE_TAG"; then
@@ -1709,7 +1709,7 @@ CFLAGS=$old_CFLAGS
 
 
 if test "x$enable_native" = "xyes" -o "x$enable_native" = "xauto"; then
-    AC_CONFIG_FILES([syslog-ng-native-connector.pc])
+    AC_CONFIG_FILES([autotools/syslog-ng-native-connector.pc])
 fi
 
 dnl ***************************************************************************
@@ -2366,9 +2366,9 @@ AC_SUBST(XSL_STYLESHEET)
 AX_PREFIX_CONFIG_H(syslog-ng-config.h, "SYSLOG_NG")
 AX_VALGRIND_CHECK
 
-AC_OUTPUT(dist.conf
+AC_OUTPUT(autotools/dist.conf
           Makefile
-	  syslog-ng.pc
+	  autotools/syslog-ng.pc
           libtest/syslog-ng-test.pc
 	  scripts/update-patterndb
 	  scripts/syslog-ng-update-virtualenv

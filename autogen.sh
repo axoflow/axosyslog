@@ -78,7 +78,7 @@ autogen_submodules()
 
 		CONFIGURE_OPTS="--disable-shared --enable-static --with-pic"
 
-		$SED -e "s/@__CONFIGURE_OPTS__@/${CONFIGURE_OPTS}/g" ${origdir}/sub-configure.sh >configure.gnu
+		$SED -e "s/@__CONFIGURE_OPTS__@/${CONFIGURE_OPTS}/g" ${origdir}/autotools/sub-configure.sh >configure.gnu
 		cd "$origdir"
 	done
 }
@@ -94,7 +94,7 @@ case `uname -s` in
 esac
 
 $LIBTOOLIZE --force --copy
-aclocal -I m4 --install
+aclocal -I autotools/m4 --install
 $SED -i -e 's/PKG_PROG_PKG_CONFIG(\[0\.16\])/PKG_PROG_PKG_CONFIG([0.14])/g' aclocal.m4
 
 include_automake_from_dir_if_exists debian

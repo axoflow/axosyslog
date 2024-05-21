@@ -30,8 +30,7 @@ tests/copyright/policy$
 lib/cfg-lex\.[ch]$
 tgz2build
 autom4te\.cache
-m4
-Mk
+autotools
 .*\.(a|bin|class|css|dirstamp|html|idx|jar|js|o|la|lai|lo|MF|persist|Plo|Po|pc|pyc|so|so\.0\.0\.0|soT|spec|trs)$
 (.*/)?Makefile$
 doc/man
@@ -154,7 +153,7 @@ lib/tests/test_zone\.c
 ###########################################################################
                                                  LGPLv2.1+_SSL
 autogen\.sh$
-sub-configure\.sh$
+autotools/sub-configure\.sh$
 configure\.ac$
 Makefile\.am$
 lib/(compat|str-repr|timeutils|control|debugger|filter|logproto|multi-line|parser|rewrite|stats|template|tests|transport|logmsg|value-pairs|secret-storage|logthrdest|logthrsource|ack-tracker|signal-slot-connector|[^/]*$)

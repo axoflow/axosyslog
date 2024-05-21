@@ -1,5 +1,5 @@
 top_srcdir	= $(dir $(shell readlink ${MAKEFILE_LIST}))../
-top_builddir	= $(shell ${top_srcdir}/Mk/find-top-builddir.sh)
+top_builddir	= $(shell ${top_srcdir}/autotools/Mk/find-top-builddir.sh)
 
 self		= $(subst ${top_builddir}/,,${CURDIR})
 self_sub	= $(subst -,_,$(subst /,_,${self}))

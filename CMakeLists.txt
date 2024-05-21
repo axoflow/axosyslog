@@ -467,7 +467,7 @@ endif()
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-add_subdirectory(Mk)
+add_subdirectory(autotools/Mk)
 add_subdirectory(scl)
 add_subdirectory(lib)
 add_subdirectory(modules)
@@ -478,7 +478,7 @@ add_subdirectory(persist-tool)
 add_subdirectory(tests)
 add_subdirectory(libtest)
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/syslog-ng-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/syslog-ng-config.h)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/syslog-ng-config.h.in ${CMAKE_CURRENT_BINARY_DIR}/syslog-ng-config.h)
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/syslog-ng-config.h DESTINATION include/syslog-ng)
 
@@ -500,7 +500,7 @@ set(PKG_CONFIG_INTERNAL_IVYKIS_CFLAGS ${IVYKIS_INCLUDE_DIRS})
 set(libdir "\${libdir}")
 set(includedir "\${includedir}")
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/syslog-ng.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/syslog-ng.pc)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/cmake/syslog-ng.pc.cmake ${CMAKE_CURRENT_BINARY_DIR}/syslog-ng.pc)
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/syslog-ng.pc DESTINATION lib/pkgconfig)
 
 include(print_config_summary)
