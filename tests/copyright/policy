@@ -19,7 +19,7 @@ modules/grpc/protos/opentelemetry-proto
 modules/grpc/protos/grafana-loki
 modules/grpc/protos/googleapis-proto
 modules/cloud-auth/jwt-cpp
-dev-utils/plugin_skeleton_creator/plugin_template.*
+scripts/plugin-skeleton-creator/plugin_template.*
 (lib|modules)/.*\.conf$
 dist\.conf$
 .*/\.gradle
@@ -283,7 +283,7 @@ packaging/package-indexer/cdn/cloudflare_cdn.py
 
 news/create-newsfile.py
 news/next-pr-id.py
-dev-utils/plugin_skeleton_creator/create_plugin.sh
+scripts/plugin-skeleton-creator/create_plugin.sh
 tests/functional
 tests/unit
 tests/valgrind

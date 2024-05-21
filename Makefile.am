@@ -268,7 +268,6 @@ include scl/Makefile.am
 include packaging/Makefile.am
 include dbld/Makefile.am
 include cmake/Makefile.am
-include dev-utils/plugin_skeleton_creator/Makefile.am
 include persist-tool/Makefile.am
 
 TEST_EXTENSIONS = .sh
