@@ -116,18 +116,18 @@ _generate_action(AppParserGenerator *self, Application *app)
 
   if (app->filterx_expr)
     g_string_append_printf(self->block,
-                             "            filterx {\n"
-                             "                meta.app_name = '%s';\n"
-                             "            };\n",
-                             app->super.name);
+                           "            filterx {\n"
+                           "                meta.app_name = '%s';\n"
+                           "            };\n",
+                           app->super.name);
 
   else
     g_string_append_printf(self->block,
-                             "            rewrite {\n"
-                             "                set-tag('.app.%s');\n"
-                             "                set('%s' value('.app.name'));\n"
-                             "            };\n",
-                             app->super.name, app->super.name);
+                           "            rewrite {\n"
+                           "                set-tag('.app.%s');\n"
+                           "                set('%s' value('.app.name'));\n"
+                           "            };\n",
+                           app->super.name, app->super.name);
 }
 
 static void

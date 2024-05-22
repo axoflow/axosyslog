@@ -34,6 +34,7 @@ void appmodel_iter_applications(GlobalConfig *cfg,
                                 gpointer user_data);
 
 void appmodel_register_transformation(GlobalConfig *cfg, Transformation *transformation);
-void appmodel_iter_transformations(GlobalConfig *cfg, void (*foreach)(Transformation *transformation, gpointer user_data), gpointer user_data);
+void appmodel_iter_transformations(GlobalConfig *cfg, void (*foreach)(Transformation *transformation,
+                                   gpointer user_data), gpointer user_data);
 
 #endif

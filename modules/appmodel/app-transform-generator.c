@@ -101,11 +101,11 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
 
   self->block = result;
   g_string_append_printf(result, "## app-transform(flavour(%s))\n"
-                                 "channel {\n"
-                                 "    filterx {\n", self->flavour);
+                         "channel {\n"
+                         "    filterx {\n", self->flavour);
   appmodel_iter_transformations(cfg, _generate_app_transform, self);
   g_string_append(result,        "    };\n"
-                                 "}");
+                  "}");
   self->block = NULL;
 }
 

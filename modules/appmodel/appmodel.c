@@ -63,7 +63,8 @@ appmodel_register_transformation(GlobalConfig *cfg, Transformation *transformati
 }
 
 void
-appmodel_iter_transformations(GlobalConfig *cfg, void (*foreach)(Transformation *transformation, gpointer user_data), gpointer user_data)
+appmodel_iter_transformations(GlobalConfig *cfg, void (*foreach)(Transformation *transformation, gpointer user_data),
+                              gpointer user_data)
 {
   AppModelContext *appmodel = appmodel_get_context(cfg);
   appmodel_context_iter_objects(appmodel, TRANSFORMATION_TYPE_NAME, (AppModelContextIterFunc) foreach, user_data);
