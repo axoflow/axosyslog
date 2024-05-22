@@ -1,19 +1,19 @@
 /*
  * Copyright (c) 2017 Balabit
  * Copyright (c) 2017 Balazs Scheidler <balazs.scheidler@balabit.com>
+ * Copyright (c) 2024 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published
+ * by the Free Software Foundation, or (at your option) any later version.
  *
- * This library is distributed in the hope that it will be useful,
+ * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  * As an additional exemption you are allowed to compile & link against the
@@ -99,17 +99,35 @@ _generate_parser(AppParserGenerator *self, const gchar *parser_expr)
 }
 
 static void
+_generate_filterx(AppParserGenerator *self, const gchar *filterx_expr)
+{
+  if (filterx_expr)
+    g_string_append_printf(self->block,
+                           "            filterx {\n"
+                           "                %s\n"
+                           "            };\n", filterx_expr);
+}
+
+static void
 _generate_action(AppParserGenerator *self, Application *app)
 {
-  if (!self->allow_overlaps)
-    {
-      g_string_append_printf(self->block,
-                             "            rewrite {\n"
-                             "                set-tag('.app.%s');\n"
-                             "                set('%s' value('.app.name'));\n"
-                             "            };\n",
-                             app->super.name, app->super.name);
-    }
+  if (self->allow_overlaps)
+    return;
+
+  if (app->filterx_expr)
+    g_string_append_printf(self->block,
+                           "            filterx {\n"
+                           "                meta.app_name = '%s';\n"
+                           "            };\n",
+                           app->super.name);
+
+  else
+    g_string_append_printf(self->block,
+                           "            rewrite {\n"
+                           "                set-tag('.app.%s');\n"
+                           "                set('%s' value('.app.name'));\n"
+                           "            };\n",
+                           app->super.name, app->super.name);
 }
 
 static void
@@ -147,6 +165,7 @@ _generate_application(Application *app, gpointer user_data)
 
   _generate_filter(self, app->filter_expr);
   _generate_parser(self, app->parser_expr);
+  _generate_filterx(self, app->filterx_expr);
   _generate_action(self, app);
   g_string_append_printf(self->block,
                          "            #End Application %s\n", app->super.name);
@@ -175,7 +194,7 @@ _generate_framing(AppParserGenerator *self, GlobalConfig *cfg)
         g_string_append(self->block, "        channel {\n");
 
       g_string_append(self->block,
-                      "            filter { tags('.app.doesnotexist'); };\n"
+                      "            filterx { false; };\n"
                       "        };\n");
     }
   else
@@ -190,7 +209,7 @@ _generate_framing(AppParserGenerator *self, GlobalConfig *cfg)
 static void
 _generate_empty_frame(AppParserGenerator *self)
 {
-  g_string_append(self->block, "channel { filter { tags('.app.doesnotexist'); }; };");
+  g_string_append(self->block, "channel { filterx { false; }; };");
 }
 
 void

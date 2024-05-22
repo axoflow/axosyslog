@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2017 Balabit
- * Copyright (c) 1998-2017 Balázs Scheidler
+ * Copyright (c) 2024 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -21,32 +20,11 @@
  *
  */
 
-#include "appmodel.h"
-#include "cfg-parser.h"
-#include "appmodel-grammar.h"
+#ifndef APPMODEL_APP_TRANSFORM_GENERATOR_H_INCLUDED
+#define APPMODEL_APP_TRANSFORM_GENERATOR_H_INCLUDED
 
-extern int appmodel_debug;
+#include "plugin.h"
 
-int appmodel_parse(CfgLexer *lexer, gpointer *instance, gpointer arg);
+CfgBlockGenerator *app_transform_generator_new(gint context, const gchar *name);
 
-static CfgLexerKeyword appmodel_keywords[] =
-{
-  { "application",     KW_APPLICATION },
-  { "transformation",  KW_TRANSFORMATION },
-  { "transform",       KW_TRANSFORM },
-  { "step",            KW_STEP },
-  { NULL }
-};
-
-CfgParser appmodel_parser =
-{
-#if SYSLOG_NG_ENABLE_DEBUG
-  .debug_flag = &appmodel_debug,
 #endif
-  .name = "appmodel",
-  .keywords = appmodel_keywords,
-  .parse = (gint (*)(CfgLexer *, gpointer *, gpointer)) appmodel_parse,
-  .cleanup = NULL,
-};
-
-CFG_PARSER_IMPLEMENT_LEXER_BINDING(appmodel_, APPMODEL_, gpointer *)

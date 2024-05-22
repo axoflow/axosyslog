@@ -271,6 +271,8 @@ modules/kvformat/filterx-func-parse-kv\.[ch]
 modules/kvformat/filterx-func-format-kv\.[ch]
 modules/kvformat/tests/test_filterx_func_parse_kv.c
 modules/kvformat/tests/test_filterx_func_format_kv.c
+modules/appmodel/app-transform-generator\.[ch]$
+modules/appmodel/transformation\.[ch]$
 docker/python-modules/webhook/scl/webhook.conf
 docker/python-modules/webhook/source.py
 packaging/package-indexer/remote_storage_synchronizer/s3_bucket_synchronizer.py
