@@ -1,6 +1,5 @@
 set(AFFILE_SOURCES
     "affile-dest.h"
-    "affile-dest-internal-queue-filter.h"
     "affile-parser.h"
     "affile-source.h"
     "collection-comparator.h"
