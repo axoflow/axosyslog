@@ -13,3 +13,6 @@ EXTRA_DIST	+= scripts/update-patterndb.in \
 
 install-exec-local:
 	$(mkinstalldirs) $(DESTDIR)/$(sysconfdir)/patterndb.d
+
+
+include scripts/plugin-skeleton-creator/Makefile.am

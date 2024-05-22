@@ -31,15 +31,15 @@ if ENABLE_SANITIZER
 LOG_COMPILER            = $(top_srcdir)/scripts/test-grep.sh
 endif
 
-ACLOCAL_AMFLAGS		= -I m4 --install
+ACLOCAL_AMFLAGS		= -I autotools/m4 --install
 
 EXTRA_DIST		= $(filter-out ${NODIST_BUILT_SOURCES},${BUILT_SOURCES}) VERSION.txt NEWS.md autogen.sh \
-			  dist.conf dist.conf.in syslog-ng.pc.in \
-			  syslog-ng-config.h.in	\
+			  autotools/dist.conf autotools/dist.conf.in autotools/syslog-ng.pc.in \
+			  cmake/syslog-ng-config.h.in	\
 			  CONTRIBUTING.md	\
-			  sub-configure.sh	\
-			  syslog-ng.pc.cmake	\
-			  syslog-ng-native-connector.pc.cmake	\
+			  autotools/sub-configure.sh	\
+			  cmake/syslog-ng.pc.cmake	\
+			  cmake/syslog-ng-native-connector.pc.cmake	\
 			  syslog-ng-ctl/CMakeLists.txt	\
 			  requirements.txt	\
 			  dev-requirements.txt  \
@@ -54,7 +54,7 @@ pkglibdir = $(libdir)/syslog-ng
 pkglibexecdir = $(libexecdir)/syslog-ng
 
 pkgconfigdir		= $(libdir)/pkgconfig
-pkgconfig_DATA		= syslog-ng.pc
+pkgconfig_DATA		= autotools/syslog-ng.pc
 
 AM_CPPFLAGS		= -I$(top_srcdir)/lib -I$(top_srcdir)/modules -I$(top_builddir)/lib -I$(top_builddir)/modules
 
@@ -210,7 +210,7 @@ install-exec-hook: ${INSTALL_EXEC_HOOKS}
 uninstall-hook: ${UNINSTALL_HOOKS}
 
 populate-makefiles:
-	$(top_srcdir)/Mk/populate-makefiles.sh
+	$(top_srcdir)/autotools/Mk/populate-makefiles.sh
 
 style-check:
 	$(top_srcdir)/scripts/style-checker.sh check $(top_srcdir)
@@ -248,9 +248,9 @@ $(install_moduleLTLIBRARIES): install-libLTLIBRARIES
 install_loggenpluginLTLIBRARIES	= install-loggenpluginLTLIBRARIES
 $(install_loggenpluginLTLIBRARIES): install-libLTLIBRARIES
 
-include Mk/lex-rules.am
-include Mk/python-venv.am
-include Mk/Makefile.am
+include autotools/Mk/lex-rules.am
+include autotools/Mk/python-venv.am
+include autotools/Mk/Makefile.am
 if ENABLE_TESTING
 include libtest/Makefile.am
 endif
@@ -268,14 +268,13 @@ include scl/Makefile.am
 include packaging/Makefile.am
 include dbld/Makefile.am
 include cmake/Makefile.am
-include dev-utils/plugin_skeleton_creator/Makefile.am
 include persist-tool/Makefile.am
 
 TEST_EXTENSIONS = .sh
 @VALGRIND_CHECK_RULES@
 
 VALGRIND_SUPPRESSIONS_FILES = $(top_srcdir)/tests/valgrind/unit-test-leak.supp
-EXTRA_DIST += syslog-ng.supp	\
+EXTRA_DIST += \
 	.github/ISSUE_TEMPLATE/10-bug-report.md	\
 	.github/ISSUE_TEMPLATE/20-documentation-issue.md	\
 	.github/ISSUE_TEMPLATE/30-feature-request.md	\

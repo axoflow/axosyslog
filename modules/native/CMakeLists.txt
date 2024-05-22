@@ -28,7 +28,7 @@ if (ENABLE_NATIVE)
   set(PKG_CONFIG_LIBDIR "\${exec_prefix}/lib")
   set(PKG_CONFIG_LIBS "-L\${libdir} -lsyslog-ng-native-connector")
 
-  configure_file (${PROJECT_SOURCE_DIR}/syslog-ng-native-connector.pc.cmake ${PROJECT_BINARY_DIR}/syslog-ng-native-connector.pc)
+  configure_file (${PROJECT_SOURCE_DIR}/cmake/syslog-ng-native-connector.pc.cmake ${PROJECT_BINARY_DIR}/syslog-ng-native-connector.pc)
   install(FILES ${PROJECT_BINARY_DIR}/syslog-ng-native-connector.pc
           DESTINATION lib/pkgconfig
           COMPONENT native-connector)
