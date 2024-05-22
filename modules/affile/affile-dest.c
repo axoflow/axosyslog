@@ -33,7 +33,6 @@
 #include "transport/transport-file.h"
 #include "transport/transport-pipe.h"
 #include "logwriter.h"
-#include "affile-dest-internal-queue-filter.h"
 #include "file-specializations.h"
 #include "apphook.h"
 #include "timeutils/cache.h"
@@ -282,12 +281,6 @@ affile_dw_deinit(LogPipe *s)
 static void
 affile_dw_queue(LogPipe *s, LogMessage *lm, const LogPathOptions *path_options)
 {
-  if (!affile_dw_queue_enabled_for_msg(lm))
-    {
-      log_msg_drop(lm, path_options, AT_PROCESSED);
-      return;
-    }
-
   AFFileDestWriter *self = (AFFileDestWriter *) s;
 
   g_mutex_lock(&self->lock);

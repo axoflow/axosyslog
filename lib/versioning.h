@@ -218,5 +218,4 @@
 #define FEATURE_TYPING_MIN_VERSION       0
 #define FEATURE_TYPING_VERSION           "syslog-ng 4.0"
 
-#include "pe-versioning.h"
 #endif

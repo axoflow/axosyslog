@@ -150,32 +150,6 @@ cfg_load_module(GlobalConfig *cfg, const gchar *module_name)
 }
 
 void
-cfg_load_forced_modules(GlobalConfig *self)
-{
-  static const gchar *module_list[] =
-  {
-#if (!SYSLOG_NG_ENABLE_FORCED_SERVER_MODE)
-    "license"
-#endif
-  };
-
-  if (!self->enable_forced_modules)
-    return;
-
-  int i;
-  for (i=0; i<sizeof(module_list)/sizeof(gchar *); ++i)
-    {
-      const gchar *name = module_list[i];
-
-      if (!cfg_load_module(self, name))
-        {
-          msg_error("Error loading module, forcing exit", evt_tag_str("module", name));
-          exit(1);
-        }
-    }
-}
-
-void
 cfg_discover_candidate_modules(GlobalConfig *self)
 {
   if (self->use_plugin_discovery)
@@ -498,7 +472,6 @@ cfg_new(gint version)
   cfg_tree_init_instance(&self->tree, self);
   plugin_context_init_instance(&self->plugin_context);
   self->use_plugin_discovery = TRUE;
-  self->enable_forced_modules = TRUE;
 
   cfg_register_builtin_plugins(self);
   return self;
@@ -510,7 +483,6 @@ cfg_new_snippet(void)
   GlobalConfig *self = cfg_new(VERSION_VALUE_CURRENT);
 
   self->use_plugin_discovery = FALSE;
-  self->enable_forced_modules = FALSE;
   return self;
 }
 
@@ -670,7 +642,6 @@ cfg_read_config(GlobalConfig *self, const gchar *fname, gchar *preprocess_into)
   gint res;
 
   cfg_discover_candidate_modules(self);
-  cfg_load_forced_modules(self);
 
   self->filename = fname;
 
@@ -729,8 +700,6 @@ cfg_free(GlobalConfig *self)
   if (self->bad_hostname_compiled)
     regfree(&self->bad_hostname);
   g_free(self->recv_time_zone);
-  if (self->source_mangle_callback_list)
-    g_list_free(self->source_mangle_callback_list);
   g_free(self->bad_hostname_re);
   dns_cache_options_destroy(&self->dns_cache_options);
   g_free(self->custom_domain);
@@ -793,22 +762,6 @@ gint
 cfg_get_user_version(const GlobalConfig *cfg)
 {
   return cfg->user_version;
-}
-
-void register_source_mangle_callback(GlobalConfig *src, mangle_callback cb)
-{
-  src->source_mangle_callback_list = g_list_append(src->source_mangle_callback_list, cb);
-}
-
-gboolean
-is_source_mangle_callback_registered(GlobalConfig *src, mangle_callback cb)
-{
-  return !!g_list_find(src->source_mangle_callback_list, cb);
-}
-
-void uregister_source_mangle_callback(GlobalConfig *src, mangle_callback cb)
-{
-  src->source_mangle_callback_list = g_list_remove(src->source_mangle_callback_list, cb);
 }
 
 const gchar *

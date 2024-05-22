@@ -186,18 +186,6 @@ main_loop_get_instance(void)
   return &main_loop;
 }
 
-void
-main_loop_set_server_mode(MainLoop *self, gboolean server_mode)
-{
-  self->options->server_mode = server_mode;
-}
-
-gboolean
-main_loop_is_server_mode(MainLoop *self)
-{
-  return self->options->server_mode;
-}
-
 /* called when syslog-ng first starts up */
 gboolean
 main_loop_initialize_state(GlobalConfig *cfg, const gchar *persist_filename)

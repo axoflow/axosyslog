@@ -27,18 +27,12 @@
 
 #include "cfg-parser.h"
 
-typedef struct _PluginFailureInfo
-{
-  gconstpointer aux_data;
-} PluginFailureInfo;
-
 typedef struct _PluginBase
 {
   /* NOTE: the start of this structure must match the Plugin struct,
      thus it has to be changed together with Plugin */
   gint type;
   gchar *name;
-  PluginFailureInfo failure_info;
 } PluginBase;
 
 typedef struct _PluginCandidate
@@ -65,7 +59,6 @@ struct _Plugin
 
   gint type;
   const gchar *name;
-  PluginFailureInfo failure_info;
   CfgParser *parser;
   gpointer (*construct)(Plugin *self);
   void (*free_fn)(Plugin *s);

@@ -69,7 +69,6 @@ struct _GlobalConfig
   const gchar *filename;
   PluginContext plugin_context;
   gboolean use_plugin_discovery;
-  gboolean enable_forced_modules;
   CfgLexer *lexer;
   CfgArgs *globals;
 
@@ -100,7 +99,6 @@ struct _GlobalConfig
 
   gboolean create_dirs;
   FilePermOptions file_perm_options;
-  GList *source_mangle_callback_list;
   gboolean use_uniqid;
 
   gboolean keep_timestamp;
@@ -163,7 +161,6 @@ gboolean cfg_run_parser(GlobalConfig *self, CfgLexer *lexer, CfgParser *parser, 
 gboolean cfg_run_parser_with_main_context(GlobalConfig *self, CfgLexer *lexer, CfgParser *parser, gpointer *result,
                                           gpointer arg, const gchar *desc);
 gboolean cfg_read_config(GlobalConfig *cfg, const gchar *fname, gchar *preprocess_into);
-void cfg_load_forced_modules(GlobalConfig *self);
 void cfg_shutdown(GlobalConfig *self);
 gboolean cfg_is_shutting_down(GlobalConfig *cfg);
 void cfg_free(GlobalConfig *self);
@@ -175,12 +172,6 @@ void persist_config_free(PersistConfig *self);
 void cfg_persist_config_move(GlobalConfig *src, GlobalConfig *dest);
 void cfg_persist_config_add(GlobalConfig *cfg, const gchar *name, gpointer value, GDestroyNotify destroy);
 gpointer cfg_persist_config_fetch(GlobalConfig *cfg, const gchar *name);
-
-typedef gboolean(* mangle_callback)(GlobalConfig *cfg, LogMessage *msg, gpointer user_data);
-
-void register_source_mangle_callback(GlobalConfig *src, mangle_callback cb);
-gboolean is_source_mangle_callback_registered(GlobalConfig *src, mangle_callback cb);
-void uregister_source_mangle_callback(GlobalConfig *src, mangle_callback cb);
 
 static inline gboolean
 __cfg_is_config_version_older(GlobalConfig *cfg, gint req)

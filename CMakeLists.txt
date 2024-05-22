@@ -95,7 +95,6 @@ set(SYSLOG_NG_PATH_TOPSRC_DIR "${PROJECT_SOURCE_DIR}")
 set(LIBDIR "\${exec_prefix}/lib")
 set(INCLUDEDIR "\${prefix}/include")
 set(TOOLSDIR "\${datadir}/syslog-ng/tools")
-set(SYSLOG_NG_ENABLE_FORCED_SERVER_MODE 1)
 
 set (LOGGEN_PLUGIN_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib/syslog-ng/loggen")
 

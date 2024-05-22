@@ -48,7 +48,6 @@ typedef struct _LogSourceOptions
   gboolean read_old_records;
   gboolean use_syslogng_pid;
   GArray *tags;
-  GList *source_queue_callbacks;
   gint stats_level;
   gint stats_source;
 } LogSourceOptions;

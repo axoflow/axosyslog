@@ -38,7 +38,6 @@ typedef struct _MainLoopOptions
   gboolean check_startup;
   gboolean config_id;
   gboolean interactive_mode;
-  gboolean server_mode;
   gboolean disable_module_discovery;
 } MainLoopOptions;
 
@@ -80,8 +79,6 @@ void main_loop_init(MainLoop *self, MainLoopOptions *options);
 void main_loop_deinit(MainLoop *self);
 
 void main_loop_add_options(GOptionContext *ctx);
-gboolean main_loop_is_server_mode(MainLoop *self);
-void main_loop_set_server_mode(MainLoop *self, gboolean server_mode);
 
 gboolean main_loop_initialize_state(GlobalConfig *cfg, const gchar *persist_filename);
 

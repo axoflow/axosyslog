@@ -594,27 +594,6 @@ log_source_post(LogSource *self, LogMessage *msg)
   scratch_buffers_reclaim_marked(mark);
 }
 
-static gboolean
-_invoke_mangle_callbacks(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
-{
-  LogSource *self = (LogSource *) s;
-  GList *next_item = g_list_first(self->options->source_queue_callbacks);
-
-  while(next_item)
-    {
-      if(next_item->data)
-        {
-          if(!((mangle_callback) (next_item->data))(log_pipe_get_config(s), msg, self))
-            {
-              log_msg_drop(msg, path_options, AT_PROCESSED);
-              return FALSE;
-            }
-        }
-      next_item = next_item->next;
-    }
-  return TRUE;
-}
-
 static void
 log_source_override_host(LogSource *self, LogMessage *msg)
 {
@@ -678,10 +657,6 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
     }
 
   log_msg_set_tag_by_id(msg, self->options->source_group_tag);
-
-
-  if (!_invoke_mangle_callbacks(s, msg, path_options))
-    return;
 
   if (self->options->host_override)
     log_source_override_host(self, msg);
@@ -861,8 +836,6 @@ void
 log_source_options_init(LogSourceOptions *options, GlobalConfig *cfg, const gchar *group_name)
 {
   gchar *source_group_name;
-
-  options->source_queue_callbacks = cfg->source_mangle_callback_list;
 
   if (options->init_window_size == -1)
     options->init_window_size = 100;
