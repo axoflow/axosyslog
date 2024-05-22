@@ -172,9 +172,8 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_datetime)
 
 Test(filterx_datetime, test_filterx_datetime_repr)
 {
-  const gchar *test_time_str = "2024-03-18T12:34:13+234";
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_string_new(test_time_str, -1);
+  FilterXObject *in = filterx_string_new("2024-03-18T12:34:13+0900", -1);
   g_ptr_array_add(args, in);
 
   FilterXObject *obj = filterx_typecast_datetime(args);
@@ -182,9 +181,11 @@ Test(filterx_datetime, test_filterx_datetime_repr)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
   GString *repr = scratch_buffers_alloc();
-
-  cr_assert(filterx_object_repr(in, repr));
-  cr_assert_str_eq(test_time_str, repr->str);
+  g_string_assign(repr, "foo");
+  cr_assert(filterx_object_repr(obj, repr));
+  cr_assert_str_eq("2024-03-18T12:34:13.000+09:00", repr->str);
+  cr_assert(filterx_object_repr_append(obj, repr));
+  cr_assert_str_eq("2024-03-18T12:34:13.000+09:002024-03-18T12:34:13.000+09:00", repr->str);
 
   g_ptr_array_free(args, TRUE);
   filterx_object_unref(obj);

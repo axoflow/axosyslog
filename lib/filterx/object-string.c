@@ -186,13 +186,14 @@ _bytes_repr(FilterXObject *s, GString *repr)
   gsize target_len = self->str_len * 2;
   gsize repr_len = repr->len;
   g_string_set_size(repr, target_len + repr_len);
-  format_hex_string_with_delimiter(self->str, self->str_len, repr->str + repr_len, target_len, 0);
+  format_hex_string_with_delimiter(self->str, self->str_len, repr->str + repr_len, target_len + 1, 0);
   return TRUE;
 }
 
 FilterXObject *
 filterx_bytes_new(const gchar *mem, gssize mem_len)
 {
+  g_assert(mem_len != -1);
   FilterXString *self = (FilterXString *) filterx_string_new(mem, mem_len);
   self->super.type = &FILTERX_TYPE_NAME(bytes);
   return &self->super;
@@ -201,6 +202,7 @@ filterx_bytes_new(const gchar *mem, gssize mem_len)
 FilterXObject *
 filterx_protobuf_new(const gchar *mem, gssize mem_len)
 {
+  g_assert(mem_len != -1);
   FilterXString *self = (FilterXString *) filterx_bytes_new(mem, mem_len);
   self->super.type = &FILTERX_TYPE_NAME(protobuf);
   return &self->super;

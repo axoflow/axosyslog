@@ -28,6 +28,7 @@
 #include "filterx/object-message-value.h"
 #include "filterx/expr-function.h"
 #include "apphook.h"
+#include "scratch-buffers.h"
 
 Test(filterx_json, test_filterx_object_json_from_repr)
 {
@@ -162,6 +163,30 @@ Test(filterx_json, test_json_array_function)
   cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(json_array)));
   assert_object_json_equals(fobj, "[1,2]");
   filterx_object_unref(fobj);
+}
+
+Test(filterx_json, filterx_json_object_repr)
+{
+  FilterXObject *obj = filterx_json_object_new_from_repr("{\"foo\": \"foovalue\"}", -1);
+  GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
+  cr_assert(filterx_object_repr(obj, repr));
+  cr_assert_str_eq("{\"foo\":\"foovalue\"}", repr->str);
+  cr_assert(filterx_object_repr_append(obj, repr));
+  cr_assert_str_eq("{\"foo\":\"foovalue\"}{\"foo\":\"foovalue\"}", repr->str);
+  filterx_object_unref(obj);
+}
+
+Test(filterx_json, filterx_json_array_repr)
+{
+  FilterXObject *obj = filterx_json_array_new_from_repr("[\"foo\", \"bar\"]", -1);
+  GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
+  cr_assert(filterx_object_repr(obj, repr));
+  cr_assert_str_eq("[\"foo\",\"bar\"]", repr->str);
+  cr_assert(filterx_object_repr_append(obj, repr));
+  cr_assert_str_eq("[\"foo\",\"bar\"][\"foo\",\"bar\"]", repr->str);
+  filterx_object_unref(obj);
 }
 
 static void

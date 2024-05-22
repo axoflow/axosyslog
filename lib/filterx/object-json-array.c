@@ -79,6 +79,17 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 static gboolean
+_repr(FilterXObject *s, GString *repr)
+{
+  FilterXJsonArray *self = (FilterXJsonArray *) s;
+
+  const gchar *json_repr = json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
+  g_string_append(repr, json_repr);
+
+  return TRUE;
+}
+
+static gboolean
 _map_to_json(FilterXObject *s, struct json_object **jso, FilterXObject **assoc_object)
 {
   FilterXJsonArray *self = (FilterXJsonArray *) s;
@@ -106,7 +117,11 @@ _get_subscript(FilterXList *s, guint64 index)
 
   struct json_object *jso = json_object_array_get_idx(self->jso, index);
   if (!jso)
-    return NULL;
+    {
+      /* NULL is returned if the stored value is null. */
+      if (json_object_array_length(self->jso) > index + 1)
+        return NULL;
+    }
 
   return filterx_json_convert_json_to_object_cached(&s->super, &self->root_container, jso);
 }
@@ -351,6 +366,7 @@ FILTERX_DEFINE_TYPE(json_array, FILTERX_TYPE_NAME(list),
                     .truthy = _truthy,
                     .free_fn = _free,
                     .marshal = _marshal,
+                    .repr = _repr,
                     .map_to_json = _map_to_json,
                     .clone = _clone,
                     .list_factory = filterx_json_array_new_empty,

@@ -106,9 +106,10 @@ _double_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject
 gboolean
 double_repr(double val, GString *repr)
 {
-  gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
-  g_ascii_dtostr(buf, sizeof(buf), val);
-  g_string_append(repr, buf);
+  gsize init_len = repr->len;
+  g_string_set_size(repr, init_len + G_ASCII_DTOSTR_BUF_SIZE);
+  g_ascii_dtostr(repr->str + init_len, G_ASCII_DTOSTR_BUF_SIZE, val);
+  g_string_set_size(repr, init_len + strlen(repr->str + init_len));
   return TRUE;
 }
 
@@ -317,7 +318,7 @@ static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
   LogMessageValueType t;
-  return filterx_object_marshal(s, repr, &t);
+  return filterx_object_marshal_append(s, repr, &t);
 }
 
 FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(object),

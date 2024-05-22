@@ -45,8 +45,12 @@ Test(filterx_null, test_filterx_object_null_repr)
 {
   FilterXObject *fobj = filterx_null_new();
   GString *repr = scratch_buffers_alloc();
+  g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(fobj, repr));
   cr_assert_str_eq("null", repr->str);
+  cr_assert(filterx_object_repr_append(fobj, repr));
+  cr_assert_str_eq("nullnull", repr->str);
+  filterx_object_unref(fobj);
 }
 
 static void
