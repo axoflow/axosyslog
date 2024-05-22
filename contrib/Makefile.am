@@ -78,10 +78,6 @@ EXTRA_DIST += \
 	\
 	contrib/apparmor/opt.syslog-ng.sbin.syslog-ng \
 	\
-	contrib/balabit-initscripts/init.d \
-	contrib/balabit-initscripts/init.d.freebsd \
-	contrib/balabit-initscripts/init-functions \
-	\
 	contrib/upstart/syslog-ng.conf.upstart	\
 	contrib/systemd/syslog-ng@.service \
 	contrib/systemd/syslog-ng@default \
