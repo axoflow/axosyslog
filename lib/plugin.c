@@ -57,7 +57,6 @@ plugin_candidate_new(gint plugin_type, const gchar *name, const gchar *module_na
   self->super.type = plugin_type;
   self->super.name = g_strdup(name);
   self->module_name = g_strdup(module_name);
-  self->super.failure_info.aux_data = NULL;
 
   return self;
 }
@@ -119,8 +118,6 @@ plugin_construct_from_config(Plugin *self, CfgLexer *lexer, gpointer arg)
     {
       LogPipe *p = (LogPipe *)instance;
       p->plugin_name = g_strdup(self->name);
-      if (self->failure_info.aux_data != NULL)
-        p->init = self->failure_info.aux_data;
     }
 
   return instance;
@@ -340,7 +337,6 @@ plugin_find(PluginContext *context, gint plugin_type, const gchar *plugin_name)
   p = _find_plugin_in_list(context->plugins, plugin_type, plugin_name);
   if (p)
     {
-      p->failure_info.aux_data = candidate->super.failure_info.aux_data;
       return p;
     }
   else
