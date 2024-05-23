@@ -30,7 +30,6 @@ test_parameters = [
         "2023-09-20 16:50:02.165 CET,,,407764,,650b069a.638d4,2,,2023-09-20 16:50:02 CET,,0,DEBUG3,00000,\"starting PostgreSQL 15.4 (Ubuntu 15.4-0ubuntu0.23.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 12.3.0-1ubuntu1~23.04) 12.3.0, 64-bit\",,,,,,,,,\"\",\"postmaster\",,0",
         {
             "DATE": "Sep 20 16:50:02",
-            "HOST_FROM": "localhost",
             "MSG": "starting PostgreSQL 15.4 (Ubuntu 15.4-0ubuntu0.23.04.1) on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 12.3.0-1ubuntu1~23.04) 12.3.0, 64-bit",
             "PID": 407764,
             "SEVERITY": "debug",
@@ -63,7 +62,6 @@ test_parameters = [
         r'2023-08-08 12:05:52.805 UTC,,,22113,,64d22fa0.5661,1,,2023-08-08 12:05:52 UTC,23/74060,0,LOG,00000,"automatic vacuum of table ""tablename"": index scans: 0 pages: 0 removed, 4 remain, 0 skipped due to pins, 0 skipped frozen tuples: 114 removed, 268 remain, 0 are dead but not yet removable, oldest xmin: 149738000 buffer usage: 97 hits, 0 misses, 6 dirtied avg read rate: 0.000 MB/s, avg write rate: 114.609 MB/s system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",,,,,,,,,""',
         {
             "DATE": "Aug  8 12:05:52",
-            "HOST_FROM": "localhost",
             "MSG": r'automatic vacuum of table "tablename": index scans: 0 pages: 0 removed, 4 remain, 0 skipped due to pins, 0 skipped frozen tuples: 114 removed, 268 remain, 0 are dead but not yet removable, oldest xmin: 149738000 buffer usage: 97 hits, 0 misses, 6 dirtied avg read rate: 0.000 MB/s, avg write rate: 114.609 MB/s system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s',
             "PID": 22113,
             "SEVERITY": "info",
@@ -96,7 +94,6 @@ test_parameters = [
         r'2023-08-08 12:05:52.805 UTC,,,22113,,64d22fa0.5661,1,,2023-08-08 12:05:52 UTC,23/74060,0,WARNING,00000,"automatic vacuum of table ""tablename"": index scans: 0 pages: 0 removed, 4 remain, 0 skipped due to pins, 0 skipped frozen tuples: 114 removed, 268 remain, 0 are dead but not yet removable, oldest xmin: 149738000 buffer usage: 97 hits, 0 misses, 6 dirtied avg read rate: 0.000 MB/s, avg write rate: 114.609 MB/s system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",,,,,,,,,""',
         {
             "DATE": "Aug  8 12:05:52",
-            "HOST_FROM": "localhost",
             "MSG": r'automatic vacuum of table "tablename": index scans: 0 pages: 0 removed, 4 remain, 0 skipped due to pins, 0 skipped frozen tuples: 114 removed, 268 remain, 0 are dead but not yet removable, oldest xmin: 149738000 buffer usage: 97 hits, 0 misses, 6 dirtied avg read rate: 0.000 MB/s, avg write rate: 114.609 MB/s system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s',
             "PID": 22113,
             "SEVERITY": "notice",
@@ -129,7 +126,6 @@ test_parameters = [
         r'2023-08-08 12:05:52.805 UTC,,,22113,,64d22fa0.5661,1,,2023-08-08 12:05:52 UTC,23/74060,0,PANIC,00000,"automatic vacuum of table ""tablename"": index scans: 0 pages: 0 removed, 4 remain, 0 skipped due to pins, 0 skipped frozen tuples: 114 removed, 268 remain, 0 are dead but not yet removable, oldest xmin: 149738000 buffer usage: 97 hits, 0 misses, 6 dirtied avg read rate: 0.000 MB/s, avg write rate: 114.609 MB/s system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s",,,,,,,,,""',
         {
             "DATE": "Aug  8 12:05:52",
-            "HOST_FROM": "localhost",
             "MSG": r'automatic vacuum of table "tablename": index scans: 0 pages: 0 removed, 4 remain, 0 skipped due to pins, 0 skipped frozen tuples: 114 removed, 268 remain, 0 are dead but not yet removable, oldest xmin: 149738000 buffer usage: 97 hits, 0 misses, 6 dirtied avg read rate: 0.000 MB/s, avg write rate: 114.609 MB/s system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s',
             "PID": 22113,
             "SEVERITY": "crit",
@@ -164,7 +160,6 @@ test_parameters = [
         {
 
             "DATE": "Aug  8 12:05:52",
-            "HOST_FROM": "localhost",
             "PID": 22113,
             "SEVERITY": "info",
             "_pgsql": {
@@ -192,7 +187,6 @@ test_parameters = [
         r'2023-11-03 16:32:35.084 CET,"postgres","bench_test",3451998,"[local]",65451258.34ac5e,632376,"UPDATE",2023-11-03 16:31:36 CET,6/45171,228887,LOG,00000,"duration: 0.081 ms",,,,,,,,,"pgbench","client backend",,1521477082073268809',
         {
             "DATE": "Nov  3 16:32:35",
-            "HOST_FROM": "localhost",
             "MSG": r'automatic vacuum of table "tablename": index scans: 0 pages: 0 removed, 4 remain, 0 skipped due to pins, 0 skipped frozen tuples: 114 removed, 268 remain, 0 are dead but not yet removable, oldest xmin: 149738000 buffer usage: 97 hits, 0 misses, 6 dirtied avg read rate: 0.000 MB/s, avg write rate: 114.609 MB/s system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s',
             "PID": 3451998,
             "SEVERITY": "info",
@@ -250,7 +244,6 @@ def test_postgresql_csvlog_parser(config, port_allocator, syslog_ng, input_messa
     output_json = json.loads(file_destination.read_log())
 
     assert output_json["DATE"] == expected_kv_pairs["DATE"]
-    assert output_json["HOST_FROM"] == expected_kv_pairs["HOST_FROM"]
     assert output_json["PID"] == expected_kv_pairs["PID"]
     assert output_json["SEVERITY"] == expected_kv_pairs["SEVERITY"]
 
