@@ -21,7 +21,6 @@ on:
         type: string
 
 env:
-  DOCKER_IMAGE_NAME: ghcr.io/axoflow/axosyslog
   DEBUG_PLATFORM: linux/amd64
 
 jobs:
@@ -29,16 +28,25 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       platform-matrix: ${{ steps.platforms.outputs.platform-matrix }}
+      image-name: ${{ steps.registry.outputs.image-name }}
     steps:
       - id: platforms
+        name: platform
         env:
           PLATFORMS: ${{ inputs.platforms }}
         run: |
           PLATFORM_MATRIX="$(echo "$PLATFORMS" | jq 'split(",")' -Rc)"
           echo "platform-matrix=$PLATFORM_MATRIX" >> $GITHUB_OUTPUT
+      - id: registry
+        name: registry
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/axosyslog"
+          IMAGE_NAME="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          echo "image-name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+
 
   image-build:
-    if: github.repository_owner == 'axoflow'
+    if: github.repository_owner == 'axoflow' || github.event_name != 'schedule'
     runs-on: ubuntu-latest
     needs: prepare
 
@@ -82,7 +90,7 @@ jobs:
         id: docker-metadata
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_IMAGE_NAME }}
+          images: ${{ needs.prepare.outputs.image-name }}
 
       - name: Build and push production Docker image
         id: build
@@ -92,7 +100,7 @@ jobs:
           file: docker/alpine.dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
-          outputs: type=image,name=${{ env.DOCKER_IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=true,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata.outputs.json).labels['org.opencontainers.image.description'] }}
+          outputs: type=image,name=${{ needs.prepare.outputs.image-name }},push-by-digest=true,name-canonical=true,push=true,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata.outputs.json).labels['org.opencontainers.image.description'] }}
           build-args: |
             PKG_TYPE=${{ inputs.type }}
             SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
@@ -114,7 +122,7 @@ jobs:
 
   merge-and-push:
     runs-on: ubuntu-latest
-    needs: image-build
+    needs: [prepare, image-build]
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -130,7 +138,7 @@ jobs:
         id: docker-metadata-tags
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.DOCKER_IMAGE_NAME }}
+          images: ${{ needs.prepare.outputs.image-name }}
           tags: type=match,pattern=axosyslog-([0-9].*),group=1
           sep-tags: ','
 
@@ -139,11 +147,12 @@ jobs:
         env:
           TYPE: ${{ inputs.type }}
           SNAPSHOT_TAGS: ${{ inputs.snapshot-tags }}
+          IMAGE_NAME: ${{ needs.prepare.outputs.image-name }}
         run: |
           if [[ "$TYPE" = "stable" ]]; then
             TAGS='${{ steps.docker-metadata-tags.outputs.tags }}'
           elif [[ "$TYPE" = "snapshot" ]]; then
-            TAGS="$(echo "$SNAPSHOT_TAGS" | sed "s|[^,]*|$DOCKER_IMAGE_NAME:&|g")"
+            TAGS="$(echo "$SNAPSHOT_TAGS" | sed "s|[^,]*|$IMAGE_NAME:&|g")"
           else
             echo "Unexpected input: type=$TYPE"
             false
@@ -163,9 +172,10 @@ jobs:
         working-directory: /tmp/digests
         env:
           TAGS: ${{ steps.tags.outputs.TAGS }}
+          IMAGE_NAME: ${{ needs.prepare.outputs.image-name }}
         run: |
           TAG_FLAGS="$(echo "$TAGS" | sed "s|[^,]*|-t &|g" | tr ',' ' ')"
-          docker buildx imagetools create $TAG_FLAGS $(printf "$DOCKER_IMAGE_NAME@sha256:%s " *)
+          docker buildx imagetools create $TAG_FLAGS $(printf "$IMAGE_NAME@sha256:%s " *)
 
       - name: Checkout source
         uses: actions/checkout@v4
