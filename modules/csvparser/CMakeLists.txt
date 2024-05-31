@@ -6,6 +6,8 @@ set(CSVPARSER_SOURCES
     csvparser-plugin.c
     filterx-func-parse-csv.h
     filterx-func-parse-csv.c
+    filterx-func-format-csv.h
+    filterx-func-format-csv.c
 )
 
 add_module(

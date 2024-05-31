@@ -26,6 +26,7 @@
 #include "plugin.h"
 #include "plugin-types.h"
 #include "filterx-func-parse-csv.h"
+#include "filterx-func-format-csv.h"
 
 extern CfgParser csvparser_parser;
 
@@ -40,6 +41,11 @@ static Plugin csvparser_plugins[] =
     .type =  LL_CONTEXT_FILTERX_FUNC,
     .name = "parse_csv",
     .construct = filterx_function_construct_parse_csv,
+  },
+  {
+    .type =  LL_CONTEXT_FILTERX_FUNC,
+    .name = "format_csv",
+    .construct = filterx_function_construct_format_csv,
   },
 };
 
