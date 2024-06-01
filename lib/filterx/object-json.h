@@ -54,4 +54,7 @@ FilterXObject *filterx_json_convert_json_to_object(FilterXObject *root_obj, Filt
                                                    struct json_object *jso);
 void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
 
+struct json_object *filterx_json_object_get_value(FilterXObject *s);
+struct json_object *filterx_json_array_get_value(FilterXObject *s);
+
 #endif
