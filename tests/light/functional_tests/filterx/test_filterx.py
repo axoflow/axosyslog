@@ -1071,6 +1071,7 @@ def test_isset(config, syslog_ng):
     isset(${values.int});
     not isset($almafa);
     isset($MSG["inner_key"]);
+    isset($MSG.inner_key);
     not isset($MSG["almafa"]);
 """,
     )
