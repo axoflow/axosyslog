@@ -27,7 +27,6 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-message-value.h"
-#include "filterx/filterx-weakrefs.h"
 #include "filterx/filterx-eval.h"
 
 #include "scanner/list-scanner/list-scanner.h"
@@ -73,8 +72,8 @@ filterx_json_deep_copy(struct json_object *jso)
   return clone;
 }
 
-static FilterXObject *
-_convert_json_to_object(FilterXObject *self, FilterXWeakRef *root_container, struct json_object *jso)
+FilterXObject *
+filterx_json_convert_json_to_object(FilterXObject *root_obj, FilterXWeakRef *root_container, struct json_object *jso)
 {
   switch (json_object_get_type(jso))
     {
@@ -90,10 +89,10 @@ _convert_json_to_object(FilterXObject *self, FilterXWeakRef *root_container, str
       return filterx_string_new(json_object_get_string(jso), -1);
     case json_type_array:
       return filterx_json_array_new_sub(json_object_get(jso),
-                                        filterx_weakref_get(root_container) ? : filterx_object_ref(self));
+                                        filterx_weakref_get(root_container) ? : filterx_object_ref(root_obj));
     case json_type_object:
       return filterx_json_object_new_sub(json_object_get(jso),
-                                         filterx_weakref_get(root_container) ? : filterx_object_ref(self));
+                                         filterx_weakref_get(root_container) ? : filterx_object_ref(root_obj));
     default:
       g_assert_not_reached();
     }
@@ -124,7 +123,7 @@ filterx_json_convert_json_to_object_cached(FilterXObject *self, FilterXWeakRef *
        */
 
       if (JSON_C_MAJOR_VERSION == 0 && JSON_C_MINOR_VERSION < 14)
-        return _convert_json_to_object(self, root_container, jso);
+        return filterx_json_convert_json_to_object(self, root_container, jso);
 
       json_object_set_double(jso, json_object_get_double(jso));
     }
@@ -134,7 +133,7 @@ filterx_json_convert_json_to_object_cached(FilterXObject *self, FilterXWeakRef *
   if (filterx_obj)
     return filterx_object_ref(filterx_obj);
 
-  filterx_obj = _convert_json_to_object(self, root_container, jso);
+  filterx_obj = filterx_json_convert_json_to_object(self, root_container, jso);
   if (!filterx_object_is_frozen(self))
     filterx_json_associate_cached_object(jso, filterx_obj);
   return filterx_obj;

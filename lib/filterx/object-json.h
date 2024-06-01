@@ -24,6 +24,7 @@
 #define OBJECT_JSON_H_INCLUDED
 
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-weakrefs.h"
 #include "compat/json.h"
 
 typedef struct FilterXJsonObject_ FilterXJsonObject;
@@ -49,6 +50,8 @@ const gchar *filterx_json_to_json_literal(FilterXObject *s);
 const gchar *filterx_json_object_to_json_literal(FilterXObject *s);
 const gchar *filterx_json_array_to_json_literal(FilterXObject *s);
 
+FilterXObject *filterx_json_convert_json_to_object(FilterXObject *root_obj, FilterXWeakRef *root_container,
+                                                   struct json_object *jso);
 void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
 
 #endif
