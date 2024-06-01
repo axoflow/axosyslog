@@ -23,6 +23,8 @@
 #include "filterx-cache-json-file.h"
 #include "filterx/object-json.h"
 #include "filterx/object-string.h"
+#include "filterx/object-list-interface.h"
+#include "filterx/object-dict-interface.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
@@ -54,6 +56,7 @@ typedef struct FilterXFunctionCacheJsonFile_
   FilterXFunction super;
   gchar *filepath;
   FilterXObject *cached_json;
+  GPtrArray *frozen_objects;
 } FilterXFuntionCacheJsonFile;
 
 static gchar *
@@ -143,9 +146,54 @@ _free(FilterXExpr *s)
   FilterXFuntionCacheJsonFile *self = (FilterXFuntionCacheJsonFile *) s;
 
   g_free(self->filepath);
-  if (self->cached_json)
-    filterx_object_unfreeze_and_free(self->cached_json);
+  g_ptr_array_unref(self->frozen_objects);
   filterx_function_free_method(&self->super);
+}
+
+static void _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object);
+
+static void
+_deep_freeze_dict(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
+{
+  struct json_object_iter itr;
+  json_object_object_foreachC(filterx_json_object_get_value(object), itr)
+  {
+    struct json_object *elem_jso = itr.val;
+    FilterXObject *elem_object = filterx_json_convert_json_to_object(self->cached_json, NULL, elem_jso);
+    _deep_freeze(self, elem_object);
+    filterx_json_associate_cached_object(elem_jso, elem_object);
+  }
+}
+
+static void
+_deep_freeze_list(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
+{
+  struct json_object *jso = filterx_json_object_get_value(object);
+  guint64 len = json_object_array_length(jso);
+
+  for (guint64 i = 0; i < len; i++)
+    {
+      struct json_object *elem_jso = json_object_array_get_idx(jso, i);
+      FilterXObject *elem_object = filterx_json_convert_json_to_object(self->cached_json, NULL, elem_jso);
+      _deep_freeze(self, elem_object);
+      filterx_json_associate_cached_object(elem_jso, elem_object);
+    }
+}
+
+static void
+_deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
+{
+  if (!object)
+    return;
+
+  if (filterx_object_freeze(object))
+    g_ptr_array_add(self->frozen_objects, object);
+
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)))
+    _deep_freeze_dict(self, object);
+
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
+    _deep_freeze_list(self, object);
 }
 
 FilterXFunction *
@@ -157,6 +205,8 @@ filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunction
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
 
+  self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unfreeze_and_free);
+
   self->filepath = _extract_filepath(args, error);
   if (!self->filepath)
     goto error;
@@ -165,7 +215,8 @@ filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunction
   if (!self->cached_json)
     goto error;
 
-  filterx_object_freeze(self->cached_json);
+  _deep_freeze(self, self->cached_json);
+
   filterx_function_args_free(args);
   return &self->super;
 

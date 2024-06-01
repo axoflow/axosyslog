@@ -129,6 +129,10 @@ filterx_format_last_error(void)
 void
 filterx_eval_store_weak_ref(FilterXObject *object)
 {
+  /* Frozen objects do not need weak refs. */
+  if (object && filterx_object_is_frozen(object))
+    return;
+
   FilterXEvalContext *context = filterx_eval_get_context();
 
   if (object && !object->weak_referenced)

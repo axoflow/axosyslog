@@ -259,6 +259,17 @@ filterx_json_object_to_json_literal(FilterXObject *s)
   return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
 }
 
+struct json_object *
+filterx_json_object_get_value(FilterXObject *s)
+{
+  if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
+    return NULL;
+
+  FilterXJsonObject *self = (FilterXJsonObject *) s;
+
+  return self->jso;
+}
+
 FILTERX_DEFINE_TYPE(json_object, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,
                     .truthy = _truthy,
