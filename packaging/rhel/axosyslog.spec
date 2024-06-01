@@ -69,7 +69,9 @@ BuildRequires: glib2-devel
 BuildRequires: ivykis-devel
 BuildRequires: json-c-devel
 BuildRequires: libcap-devel
+%if 0%{?rhel} <= 8
 BuildRequires: libdbi-devel
+%endif
 BuildRequires: libnet-devel
 BuildRequires: openssl-devel
 BuildRequires: pcre2-devel
