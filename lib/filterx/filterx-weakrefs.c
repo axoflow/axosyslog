@@ -73,5 +73,8 @@ filterx_weakref_get(FilterXWeakRef *self)
    * validate if it's valid, we just assume it is until our Scope  has not
    * been terminated yet */
 
+  if (!self)
+    return NULL;
+
   return filterx_object_ref(self->object);
 }
