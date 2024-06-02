@@ -76,6 +76,21 @@ exit:
   return result;
 }
 
+static gboolean
+_isset(FilterXExpr *s)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
+  if (!variable)
+    return FALSE;
+
+  gboolean result = filterx_object_is_key_set(variable, self->attr);
+
+  filterx_object_unref(variable);
+  return result;
+}
+
+
 static void
 _free(FilterXExpr *s)
 {
@@ -94,6 +109,7 @@ filterx_getattr_new(FilterXExpr *operand, const gchar *attr_name)
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
   self->super.unset = _unset;
+  self->super.is_set = _isset;
   self->super.free_fn = _free;
   self->operand = operand;
   self->attr = filterx_string_new(attr_name, -1);
