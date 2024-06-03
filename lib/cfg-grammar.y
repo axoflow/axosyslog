@@ -124,6 +124,48 @@
 
 #define YYMAXDEPTH 20000
 
+#if YYBISON >= 30802
+
+/* adding custom location reporting into yydebug output requires bison 3.8.
+ * I've tested it with 3.8.2
+ */
+
+static int
+main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
+{
+  int res = 0;
+  int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
+  const char *last_slash = yylocp->name ? strrchr(yylocp->name, '/') : NULL;
+
+  if (last_slash)
+    fprintf(yyo, ".../%s:", last_slash + 1);
+  else
+    fprintf(yyo, "%s:", yylocp->name);
+  if (0 <= yylocp->first_line)
+    {
+      res += fprintf(yyo, "%d", yylocp->first_line);
+      if (0 <= yylocp->first_column)
+        res += fprintf(yyo, ".%d", yylocp->first_column);
+    }
+  if (0 <= yylocp->last_line)
+    {
+      if (yylocp->first_line < yylocp->last_line)
+        {
+          res += fprintf(yyo, "-%d", yylocp->last_line);
+          if (0 <= end_col)
+            res += fprintf(yyo, ".%d", end_col);
+        }
+      else if (0 <= end_col && yylocp->first_column < end_col)
+        res += fprintf(yyo, "-%d", end_col);
+    }
+  return res;
+}
+
+#undef YYLOCATION_PRINT
+#define YYLOCATION_PRINT(File, Loc) main_location_print(File, Loc)
+
+#endif
+
 
 }
 
