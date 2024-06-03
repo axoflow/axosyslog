@@ -46,7 +46,7 @@ jobs:
     needs: tarball
     with:
       type: snapshot
-      platforms: ${{ inputs.platforms || 'linux/amd64' }}
+      platforms: ${{ inputs.platforms || 'linux/amd64,linux/arm64' }}
       snapshot-tarball-artifact: source-tarball
       snapshot-version: ${{ needs.tarball.outputs.snapshot-version }}
       snapshot-tags: dev-${{ github.ref_name }}
