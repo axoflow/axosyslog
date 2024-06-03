@@ -168,7 +168,7 @@ _deep_freeze_dict(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
 static void
 _deep_freeze_list(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
 {
-  struct json_object *jso = filterx_json_object_get_value(object);
+  struct json_object *jso = filterx_json_array_get_value(object);
   guint64 len = json_object_array_length(jso);
 
   for (guint64 i = 0; i < len; i++)
