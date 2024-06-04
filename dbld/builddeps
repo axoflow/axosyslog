@@ -113,8 +113,15 @@ function add_copr_repo {
     # PIP installation later.
     case "${OS_DISTRIBUTION}" in
         centos|almalinux)
-            $YUM_INSTALL yum-plugin-copr
-            yum config-manager --set-enabled powertools
+            case "${OS_DISTRIBUTION_CODE_NAME}" in
+                8)
+                    $YUM_INSTALL yum-plugin-copr
+                    yum config-manager --set-enabled powertools
+                ;;
+                9)
+                    dnf config-manager --set-enabled crb
+                ;;
+            esac
             ;;
         fedora)
             $DNF_INSTALL -y dnf-plugins-core

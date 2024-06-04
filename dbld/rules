@@ -2,6 +2,7 @@
 
 BUILDER_IMAGES=		\
 	almalinux-8	\
+	almalinux-9	\
 	fedora-39	\
 	fedora-40	\
 	debian-stretch	\

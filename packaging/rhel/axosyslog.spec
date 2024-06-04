@@ -27,6 +27,10 @@ Source4: syslog-ng.logrotate7
 %bcond_without mqtt
 
 
+%if 0%{?rhel} == 9
+%global		python_devel python3.11-devel
+%global         py_ver  3.11
+%else
 %if 0%{?rhel} == 8
 %global		python_devel python39-devel
 %global         py_ver  3.9
@@ -37,6 +41,7 @@ Source4: syslog-ng.logrotate7
 %else
 %global		python_devel python3-devel
 %global         py_ver  %{python3_version}
+%endif
 %endif
 %endif
 
@@ -64,7 +69,9 @@ BuildRequires: glib2-devel
 BuildRequires: ivykis-devel
 BuildRequires: json-c-devel
 BuildRequires: libcap-devel
+%if 0%{?rhel} <= 8
 BuildRequires: libdbi-devel
+%endif
 BuildRequires: libnet-devel
 BuildRequires: openssl-devel
 BuildRequires: pcre2-devel
@@ -370,6 +377,9 @@ make DESTDIR=%{buildroot} install
 %endif
 %if 0%{?rhel} == 8
 %{__install} -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/logrotate.d/syslog
+%endif
+%if 0%{?rhel} >= 9
+%{__install} -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/logrotate.d/syslog-ng
 %endif
 %if 0%{?fedora} >= 28
 %{__install} -p -m 644 %{SOURCE2} %{buildroot}%{_sysconfdir}/logrotate.d/syslog-ng
