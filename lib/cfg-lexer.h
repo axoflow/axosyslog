@@ -86,10 +86,24 @@ typedef struct _CfgTokenBlock CfgTokenBlock;
 
 typedef struct CFG_LTYPE
 {
-  int first_line;
-  int first_column;
-  int last_line;
-  int last_column;
+  gint first_line;
+  gint first_column;
+  gint last_line;
+  gint last_column;
+
+  /* this value indicates that @line was used which changed lloc relative to
+   * an actual file */
+  struct
+  {
+    gboolean present;
+    /* the first line/column at the point of the @line directive */
+    gint captured_first_line;
+    gint captured_first_column;
+    const gchar *captured_name;
+    /* line/column specified by @line */
+    gint line;
+    gint column;
+  } at_line;
 
   const gchar *name;
 } CFG_LTYPE;
@@ -152,9 +166,8 @@ struct _CfgIncludeLevel
     } buffer;
   };
 
-  /* this value indicates that @line was used which changed lloc relative to
-   * an actual file */
-  gboolean lloc_changed_by_at_line;
+
+
   CFG_LTYPE lloc;
   struct yy_buffer_state *yybuf;
 };
@@ -207,6 +220,7 @@ gboolean cfg_lexer_include_buffer(CfgLexer *self, const gchar *name, const gchar
 gboolean cfg_lexer_include_buffer_without_backtick_substitution(CfgLexer *self,
     const gchar *name, const gchar *buffer, gsize length);
 const gchar *cfg_lexer_format_location(CfgLexer *self, const CFG_LTYPE *yylloc, gchar *buf, gsize buf_len);
+void cfg_lexer_undo_set_file_location(CfgLexer *self, CFG_LTYPE *yylloc);
 void cfg_lexer_set_file_location(CfgLexer *self, const gchar *filename, gint line, gint column);
 EVTTAG *cfg_lexer_format_location_tag(CfgLexer *self, const CFG_LTYPE *yylloc);
 

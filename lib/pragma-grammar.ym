@@ -215,7 +215,12 @@ line_stmt
             cfg_lexer_set_file_location(lexer, $2, $3, $4);
             free($2);
           }
+	| KW_LINE LL_EOL
+          {
+            cfg_lexer_set_file_location(lexer, NULL, 0, 0);
+          }
 
+	;
 /* INCLUDE_RULES */
 
 %%

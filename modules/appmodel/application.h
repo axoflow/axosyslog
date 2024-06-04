@@ -25,6 +25,7 @@
 #define APPMODEL_APPLICATION_H_INCLUDED
 
 #include "appmodel-context.h"
+#include "cfg-lexer.h"
 
 #define APPLICATION_TYPE_NAME "application"
 
@@ -34,11 +35,14 @@ typedef struct _Application
   gchar *filter_expr;
   gchar *parser_expr;
   gchar *filterx_expr;
+  CFG_LTYPE filter_lloc;
+  CFG_LTYPE parser_lloc;
+  CFG_LTYPE filterx_lloc;
 } Application;
 
-void application_set_filter(Application *self, const gchar *filter_expr);
-void application_set_parser(Application *self, const gchar *parser_expr);
-void application_set_filterx(Application *self, const gchar *parser_expr);
+void application_set_filter(Application *self, const gchar *filter_expr, CFG_LTYPE *lloc);
+void application_set_parser(Application *self, const gchar *parser_expr, CFG_LTYPE *lloc);
+void application_set_filterx(Application *self, const gchar *parser_expr, CFG_LTYPE *lloc);
 
 Application *application_new(const gchar *name, const gchar *topic);
 
