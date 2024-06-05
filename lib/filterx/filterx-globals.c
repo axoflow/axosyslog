@@ -32,6 +32,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/func-istype.h"
 #include "filterx/func-len.h"
+#include "filterx/func-vars.h"
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
 static GHashTable *filterx_builtin_function_ctors = NULL;
@@ -81,6 +82,7 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("int", filterx_typecast_integer));
   g_assert(filterx_builtin_simple_function_register("double", filterx_typecast_double));
   g_assert(filterx_builtin_simple_function_register("len", filterx_simple_function_len));
+  g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
 
 }
 
