@@ -27,7 +27,7 @@ import pytest
 from src.syslog_ng_config.renderer import render_statement
 
 
-def create_config(config, filterx_expr, msg="foobar"):
+def create_config(config, filterx_expr_1, filterx_expr_2=None, msg="foobar"):
     file_true = config.create_file_destination(file_name="dest-true.log", template="'$MSG\n'")
     file_false = config.create_file_destination(file_name="dest-false.log", template="'$MSG\n'")
 
@@ -68,7 +68,8 @@ destination dest_false {{
 log {{
     source(genmsg);
     if {{
-        filterx {{ {filterx_expr} \n}};
+        filterx {{ {filterx_expr_1} \n}};
+        {"filterx { " + filterx_expr_2 + " };" if filterx_expr_2 is not None else ""}
         destination(dest_true);
     }} else {{
         destination(dest_false);
@@ -1487,3 +1488,24 @@ def test_parse_csv_dialect(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '["PTHREAD \\"support initialized"]\n'
+
+
+def test_vars(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            $logmsg_variable = "foo";
+            scope_local_variable = "bar";
+            declare pipeline_level_variable = "baz";
+        """,
+        filterx_expr_2=r"""
+            log = otel_logrecord({"body": "foobar", "attributes": {"attribute": 42}});
+            js_array = json_array([1, 2, 3, [4, 5, 6]]);
+            $MSG = vars();
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
