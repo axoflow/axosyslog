@@ -7,7 +7,9 @@ modules_csvparser_libcsvparser_la_SOURCES	=	\
 	modules/csvparser/csvparser-parser.h		\
 	modules/csvparser/csvparser-plugin.c		\
 	modules/csvparser/filterx-func-parse-csv.h  \
-	modules/csvparser/filterx-func-parse-csv.c
+	modules/csvparser/filterx-func-parse-csv.c	\
+	modules/csvparser/filterx-func-format-csv.h  \
+	modules/csvparser/filterx-func-format-csv.c
 
 modules_csvparser_libcsvparser_la_CPPFLAGS	=	\
 	$(AM_CPPFLAGS)					\
