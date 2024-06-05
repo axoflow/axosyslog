@@ -37,6 +37,7 @@ typedef enum
 
 gboolean filterx_variable_is_floating(FilterXVariable *v);
 gboolean filterx_variable_handle_is_floating(FilterXVariableHandle handle);
+const gchar *filterx_variable_get_name(FilterXVariable *v, gssize *len);
 FilterXObject *filterx_variable_get_value(FilterXVariable *v);
 void filterx_variable_set_value(FilterXVariable *v, FilterXObject *new_value);
 void filterx_variable_unset_value(FilterXVariable *v);

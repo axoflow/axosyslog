@@ -59,6 +59,12 @@ filterx_variable_get_nv_handle(FilterXVariable *v)
   return v->handle & ~FILTERX_HANDLE_FLOATING_BIT;
 }
 
+const gchar *
+filterx_variable_get_name(FilterXVariable *v, gssize *len)
+{
+  return log_msg_get_handle_name(filterx_variable_get_nv_handle(v), len);
+}
+
 FilterXObject *
 filterx_variable_get_value(FilterXVariable *v)
 {
