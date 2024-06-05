@@ -239,6 +239,24 @@ filterx_scope_register_declared_variable(FilterXScope *self,
   return v;
 }
 
+gboolean
+filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data)
+{
+  for (gsize i = 0; i < self->variables->len; i++)
+    {
+      FilterXVariable *variable = &g_array_index(self->variables, FilterXVariable, i);
+
+      if (filterx_variable_handle_is_floating(variable->handle) &&
+          !variable->declared && variable->generation != self->generation)
+        continue;
+
+      if (!func(variable, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /*
  * 1) sync objects to message
  * 2) drop undeclared objects
