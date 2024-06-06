@@ -59,6 +59,12 @@ filterx_variable_get_nv_handle(FilterXVariable *v)
   return v->handle & ~FILTERX_HANDLE_FLOATING_BIT;
 }
 
+const gchar *
+filterx_variable_get_name(FilterXVariable *v, gssize *len)
+{
+  return log_msg_get_handle_name(filterx_variable_get_nv_handle(v), len);
+}
+
 FilterXObject *
 filterx_variable_get_value(FilterXVariable *v)
 {
@@ -231,6 +237,24 @@ filterx_scope_register_declared_variable(FilterXScope *self,
   FilterXVariable *v = _register_variable(self, handle, initial_value);
   v->declared = TRUE;
   return v;
+}
+
+gboolean
+filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data)
+{
+  for (gsize i = 0; i < self->variables->len; i++)
+    {
+      FilterXVariable *variable = &g_array_index(self->variables, FilterXVariable, i);
+
+      if (filterx_variable_handle_is_floating(variable->handle) &&
+          !variable->declared && variable->generation != self->generation)
+        continue;
+
+      if (!func(variable, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 /*
