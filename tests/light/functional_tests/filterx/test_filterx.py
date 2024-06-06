@@ -1422,7 +1422,7 @@ def test_parse_csv_optional_arg_delimiters(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
     custom_message = "foo bar,baz.tik;tak!toe";
-    $MSG = parse_csv(custom_message, delimiters=" ,.");
+    $MSG = parse_csv(custom_message, delimiter=" ,.");
     """,
     )
     syslog_ng.start(config)
@@ -1466,7 +1466,7 @@ def test_parse_csv_optional_arg_strip_whitespace(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
     custom_message = " foo   ,  bar  ,  baz, tik,   tak,    toe   ";
-    $MSG = parse_csv(custom_message, delimiters=",", strip_whitespace=true);
+    $MSG = parse_csv(custom_message, delimiter=",", strip_whitespace=true);
     """,
     )
     syslog_ng.start(config)

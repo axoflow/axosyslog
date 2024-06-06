@@ -203,7 +203,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiters)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
                                                       filterx_literal_new(filterx_string_new("foo bar+baz;tik|tak:toe", -1))));
-  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITERS,
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
                                                       filterx_literal_new(filterx_string_new(" +;", -1))));
 
   GError *err = NULL;
@@ -329,7 +329,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
                                                       filterx_literal_new(filterx_string_new("  foo ,    bar  , baz   ,    tik tak toe", -1))));
-  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITERS,
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
                                                       filterx_literal_new(filterx_string_new(",",
                                                           -1)))); // delimiter
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
@@ -362,7 +362,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
                                                       filterx_literal_new(filterx_string_new("  foo ,    bar  , baz   ,    tik tak toe", -1))));
-  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITERS,
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
                                                       filterx_literal_new(filterx_string_new(",",
                                                           -1)))); // delimiter
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
