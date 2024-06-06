@@ -102,7 +102,7 @@ Test(filterx_func_format_csv, test_array_mode_with_default_delimiter)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
 
-  _assert_format_csv(args, "foo bar baz");
+  _assert_format_csv(args, "foo,bar,baz");
 }
 
 Test(filterx_func_format_csv, test_array_mode_with_custom_delimiter)
@@ -124,7 +124,7 @@ Test(filterx_func_format_csv, test_array_mode_skip_column_names)
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
                                                       filterx_non_literal_new(filterx_json_array_new_from_repr("[\"col1\",\"col2\"]", -1))));
 
-  _assert_format_csv(args, "foo bar baz");
+  _assert_format_csv(args, "foo,bar,baz");
 }
 
 Test(filterx_func_format_csv, test_dict_mode_without_column_names_with_default_delimiter)
@@ -134,7 +134,7 @@ Test(filterx_func_format_csv, test_dict_mode_without_column_names_with_default_d
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
 
-  _assert_format_csv(args, "foo bar baz");
+  _assert_format_csv(args, "foo,bar,baz");
 }
 
 Test(filterx_func_format_csv, test_dict_mode_without_column_names_with_custom_delimiter)
@@ -158,7 +158,7 @@ Test(filterx_func_format_csv, test_dict_mode_with_column_names_with_default_deli
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
                                                       filterx_non_literal_new(filterx_json_array_new_from_repr("[\"col2\",\"col1\"]", -1))));
 
-  _assert_format_csv(args, "bar foo");
+  _assert_format_csv(args, "bar,foo");
 }
 
 Test(filterx_func_format_csv, test_dict_mode_with_column_names_with_custom_delimiter)

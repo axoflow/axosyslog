@@ -113,7 +113,7 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_string_new("foo bar baz tik tak toe", -1))));
+                                                      filterx_literal_new(filterx_string_new("foo,bar,baz,tik,tak,toe", -1))));
 
   GError *err = NULL;
   GError *args_err = NULL;
@@ -140,7 +140,7 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
 Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("foo bar baz", -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("foo,bar,baz", -1))));
   FilterXObject *col_names = _generate_column_list("1st", "2nd", "3rd", NULL);
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(col_names)));
@@ -171,7 +171,7 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_string_new("foo bar baz more columns we did not expect", -1))));
+                                                      filterx_literal_new(filterx_string_new("foo,bar,baz,more,columns,we,did,not,expect", -1))));
   FilterXObject *col_names = _generate_column_list("1st", "2nd", "3rd", NULL); // sets expected column size 3
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(col_names)));
@@ -262,7 +262,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_string_new("foo bar baz tik tak toe", -1))));
+                                                      filterx_literal_new(filterx_string_new("foo,bar,baz,tik,tak,toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(_generate_column_list("1st", "2nd",
                                                           "3rd", "rest", NULL)))); // columns
@@ -285,7 +285,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
   LogMessageValueType lmvt;
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
 
-  cr_assert_str_eq(repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\",\"rest\":\"tik tak toe\"}");
+  cr_assert_str_eq(repr->str, "{\"1st\":\"foo\",\"2nd\":\"bar\",\"3rd\":\"baz\",\"rest\":\"tik,tak,toe\"}");
   filterx_expr_unref(func);
   filterx_object_unref(obj);
   g_error_free(err);
@@ -295,7 +295,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_string_new("foo bar baz tik tak toe", -1))));
+                                                      filterx_literal_new(filterx_string_new("foo,bar,baz,tik,tak,toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(_generate_column_list("1st", "2nd",
                                                           "3rd", "rest", NULL)))); // columns
