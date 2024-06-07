@@ -261,7 +261,8 @@ filterx_function_parse_kv_new(const gchar *function_name, FilterXFunctionArgs *a
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");
 
-  if (!_extract_args(self, args, error))
+  if (!_extract_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);

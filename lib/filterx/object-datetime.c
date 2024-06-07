@@ -368,7 +368,8 @@ filterx_function_strptime_new(const gchar *function_name, FilterXFunctionArgs *a
   self->super.super.eval = _strptime_eval;
   self->super.super.free_fn = _strptime_free;
 
-  if (!_extract_args(self, args, error))
+  if (!_extract_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);

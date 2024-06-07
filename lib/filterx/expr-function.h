@@ -40,6 +40,7 @@ typedef struct _FilterXFunctionArg
 {
   gchar *name;
   FilterXExpr *value;
+  gboolean retrieved;
 } FilterXFunctionArg;
 
 typedef FilterXFunction *(*FilterXFunctionCtor)(const gchar *, FilterXFunctionArgs *, GError **);
@@ -51,6 +52,7 @@ enum FilterXFunctionError
 {
   FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND,
   FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+  FILTERX_FUNCTION_ERROR_UNEXPECTED_ARGS,
 };
 
 void filterx_function_init_instance(FilterXFunction *s, const gchar *function_name);
@@ -70,6 +72,7 @@ const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs 
                                                             gsize *len, gboolean *exists);
 gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
                                                          gboolean *exists, gboolean *error);
+gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
 void filterx_function_args_free(FilterXFunctionArgs *self);
 
 FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args, GError **error);

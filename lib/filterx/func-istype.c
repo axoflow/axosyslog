@@ -128,7 +128,8 @@ filterx_function_istype_new(const gchar *function_name, FilterXFunctionArgs *arg
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
 
-  if (!_extract_args(self, args, error))
+  if (!_extract_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);

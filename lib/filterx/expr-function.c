@@ -218,6 +218,7 @@ filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
     return NULL;
 
   FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, index);
+  arg->retrieved = TRUE;
   return filterx_expr_ref((FilterXExpr *) arg->value);
 }
 
@@ -301,6 +302,7 @@ filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *nam
   FilterXFunctionArg *arg = g_hash_table_lookup(self->named_args, name);
   if (!arg)
     return NULL;
+  arg->retrieved = TRUE;
   return filterx_expr_ref(arg->value);
 }
 
@@ -366,9 +368,46 @@ success:
   return value;
 }
 
+gboolean
+filterx_function_args_check(FilterXFunctionArgs *self, GError **error)
+{
+  for (gint i = 0; i < self->positional_args->len; i++)
+    {
+      FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, i);
+
+      /* The function must retrieve all positional arguments and indicate an
+       * error if there are too many or too few of them.  If the function
+       * did not touch all such arguments, that's a programming error
+       */
+      g_assert(arg->retrieved);
+    }
+  GHashTableIter iter;
+  g_hash_table_iter_init(&iter, self->named_args);
+
+  gpointer k, v;
+  while (g_hash_table_iter_next(&iter, &k, &v))
+    {
+      const gchar *name = k;
+      FilterXFunctionArg *arg = v;
+
+      if (!arg->retrieved)
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_UNEXPECTED_ARGS,
+                      "unexpected argument \"%s\"", name);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+
 void
 filterx_function_args_free(FilterXFunctionArgs *self)
 {
+  /* I had an assert here that aborted if filterx_function_args_check() was
+   * not called.  Unfortunately that needs further work, so I removed it:
+   * simple functions may not be evaluated at all, and in those cases their
+   * arguments will never be checked. */
+
   g_ptr_array_free(self->positional_args, TRUE);
   g_hash_table_unref(self->named_args);
   g_free(self);

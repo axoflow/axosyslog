@@ -215,6 +215,9 @@ filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunction
   if (!self->cached_json)
     goto error;
 
+  if (!filterx_function_args_check(args, error))
+    goto error;
+
   _deep_freeze(self, self->cached_json);
 
   filterx_function_args_free(args);

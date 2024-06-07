@@ -331,7 +331,8 @@ filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *
   csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE);
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_NONE);
 
-  if (!_extract_args(self, args, error))
+  if (!_extract_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);
