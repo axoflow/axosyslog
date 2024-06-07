@@ -132,7 +132,7 @@ void
 filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
 {
   filterx_expr_init_instance(&s->super);
-  s->function_name = g_strdup(function_name);
+  s->function_name = g_strdup_printf("%s()", function_name);
   s->super.free_fn = _function_free;
 }
 
