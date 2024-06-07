@@ -68,11 +68,14 @@ filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  filterx_eval_clear_error(&context->error);
-  context->error.message = message;
-  context->error.expr = expr;
-  context->error.object = filterx_object_ref(object);
-  context->error.info = NULL;
+  if (context)
+    {
+      filterx_eval_clear_error(&context->error);
+      context->error.message = message;
+      context->error.expr = expr;
+      context->error.object = filterx_object_ref(object);
+      context->error.info = NULL;
+    }
 }
 
 /* takes ownership of info */
@@ -81,12 +84,20 @@ filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *inf
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  filterx_eval_clear_error(&context->error);
-  context->error.message = message;
-  context->error.expr = expr;
-  context->error.object = NULL;
-  context->error.info = info;
-  context->error.free_info = free_info;
+  if (context)
+    {
+      filterx_eval_clear_error(&context->error);
+      context->error.message = message;
+      context->error.expr = expr;
+      context->error.object = NULL;
+      context->error.info = info;
+      context->error.free_info = free_info;
+    }
+  else
+    {
+      if (free_info)
+        g_free(info);
+    }
 }
 
 void
