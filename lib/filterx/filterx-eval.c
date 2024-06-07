@@ -54,15 +54,47 @@ filterx_eval_set_context(FilterXEvalContext *context)
   eval_context = context;
 }
 
+static void
+filterx_eval_clear_error(FilterXError *error)
+{
+  filterx_object_unref(error->object);
+  if (error->free_info)
+    g_free(error->info);
+  memset(error, 0, sizeof(*error));
+}
+
 void
 filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  filterx_object_unref(context->error.object);
+  filterx_eval_clear_error(&context->error);
   context->error.message = message;
   context->error.expr = expr;
   context->error.object = filterx_object_ref(object);
+  context->error.info = NULL;
+}
+
+/* takes ownership of info */
+void
+filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  filterx_eval_clear_error(&context->error);
+  context->error.message = message;
+  context->error.expr = expr;
+  context->error.object = NULL;
+  context->error.info = info;
+  context->error.free_info = free_info;
+}
+
+void
+filterx_eval_clear_errors(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  filterx_eval_clear_error(&context->error);
 }
 
 const gchar *
@@ -73,18 +105,6 @@ filterx_eval_get_last_error(void)
   return context->error.message;
 }
 
-void
-filterx_eval_clear_errors(void)
-{
-  FilterXEvalContext *context = filterx_eval_get_context();
-
-  filterx_object_unref(context->error.object);
-  context->error = ((FilterXError )
-  {
-    0
-  });
-}
-
 EVTTAG *
 filterx_format_last_error(void)
 {
@@ -93,11 +113,15 @@ filterx_format_last_error(void)
   if (!context->error.message)
     return evt_tag_str("error", "Error information unset");
 
-  GString *buf = NULL;
+  const gchar *extra_info = NULL;
 
-  if (context->error.object)
+  if (context->error.info)
     {
-      buf = scratch_buffers_alloc();
+      extra_info = context->error.info;
+    }
+  else if (context->error.object)
+    {
+      GString *buf = scratch_buffers_alloc();
 
       if (!filterx_object_repr(context->error.object, buf))
         {
@@ -105,12 +129,13 @@ filterx_format_last_error(void)
           if (!filterx_object_marshal(context->error.object, buf, &t))
             g_assert_not_reached();
         }
+      extra_info = buf->str;
     }
 
-  return evt_tag_printf("error", "%s: %.*s",
+  return evt_tag_printf("error", "%s%s%s",
                         context->error.message,
-                        buf ? (gint) buf->len : 0,
-                        buf ? buf->str : "");
+                        extra_info ? ": " : "",
+                        extra_info ? : "");
 }
 
 

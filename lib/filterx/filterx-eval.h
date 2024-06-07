@@ -32,6 +32,8 @@ typedef struct _FilterXError
   const gchar *message;
   FilterXExpr *expr;
   FilterXObject *object;
+  gchar *info;
+  gboolean free_info;
 } FilterXError;
 
 typedef struct _FilterXEvalContext FilterXEvalContext;
@@ -49,6 +51,7 @@ struct _FilterXEvalContext
 FilterXEvalContext *filterx_eval_get_context(void);
 FilterXScope *filterx_eval_get_scope(void);
 void filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
+void filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info);
 void filterx_eval_set_context(FilterXEvalContext *context);
 gboolean filterx_eval_exec_statements(FilterXEvalContext *context, GList *statements, LogMessage *msg);
 void filterx_eval_sync_scope_and_message(FilterXScope *scope, LogMessage *msg);
