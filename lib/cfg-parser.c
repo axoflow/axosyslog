@@ -257,9 +257,8 @@ report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, 
            * location.  */
 
           from_lloc = yylloc;
-          fprintf(stderr, "Error parsing %s, %s in %s:%d:%d-%d:%d:\n",
-                  what,
-                  msg,
+          fprintf(stderr, "\nError parsing %s: %s\n\nIn %s:%d:%d-%d:%d:\n",
+                  what, msg,
                   from_lloc->name,
                   from_lloc->first_line,
                   from_lloc->first_column,
