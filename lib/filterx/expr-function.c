@@ -138,7 +138,7 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
 
 struct _FilterXFunctionArgs
 {
-  GList *positional_args;
+  GPtrArray *positional_args;
   GHashTable *named_args;
 };
 
@@ -169,6 +169,7 @@ filterx_function_args_new(GList *args, GError **error)
   FilterXFunctionArgs *self = g_new0(FilterXFunctionArgs, 1);
 
   self->named_args = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_function_arg_free);
+  self->positional_args = g_ptr_array_new_full(8, (GDestroyNotify) filterx_function_arg_free);
 
   gboolean has_named = FALSE;
   for (GList *elem = args; elem; elem = elem->next)
@@ -184,7 +185,7 @@ filterx_function_args_new(GList *args, GError **error)
               self = NULL;
               goto exit;
             }
-          self->positional_args = g_list_append(self->positional_args, arg);
+          g_ptr_array_add(self->positional_args, arg);
         }
       else
         {
@@ -201,16 +202,16 @@ exit:
 guint64
 filterx_function_args_len(FilterXFunctionArgs *self)
 {
-  return g_list_length(self->positional_args);
+  return self->positional_args->len;
 }
 
 FilterXExpr *
 filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
 {
-  if (g_list_length(self->positional_args) <= index)
+  if (self->positional_args->len <= index)
     return NULL;
 
-  FilterXFunctionArg *arg = g_list_nth_data(self->positional_args, index);
+  FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, index);
   return filterx_expr_ref((FilterXExpr *) arg->value);
 }
 
@@ -362,7 +363,7 @@ success:
 void
 filterx_function_args_free(FilterXFunctionArgs *self)
 {
-  g_list_free_full(self->positional_args, (GDestroyNotify) filterx_function_arg_free);
+  g_ptr_array_free(self->positional_args, TRUE);
   g_hash_table_unref(self->named_args);
   g_free(self);
 }
