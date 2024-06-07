@@ -168,7 +168,7 @@ filterx_function_args_new(GList *args, GError **error)
 {
   FilterXFunctionArgs *self = g_new0(FilterXFunctionArgs, 1);
 
-  self->named_args = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_expr_unref);
+  self->named_args = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_function_arg_free);
 
   gboolean has_named = FALSE;
   for (GList *elem = args; elem; elem = elem->next)
@@ -184,17 +184,17 @@ filterx_function_args_new(GList *args, GError **error)
               self = NULL;
               goto exit;
             }
-          self->positional_args = g_list_append(self->positional_args, filterx_expr_ref(arg->value));
+          self->positional_args = g_list_append(self->positional_args, arg);
         }
       else
         {
-          g_hash_table_insert(self->named_args, g_strdup(arg->name), filterx_expr_ref(arg->value));
+          g_hash_table_insert(self->named_args, g_strdup(arg->name), arg);
           has_named = TRUE;
         }
     }
 
 exit:
-  g_list_free_full(args, (GDestroyNotify) filterx_function_arg_free);
+  g_list_free(args);
   return self;
 }
 
@@ -210,7 +210,8 @@ filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
   if (g_list_length(self->positional_args) <= index)
     return NULL;
 
-  return filterx_expr_ref((FilterXExpr *) g_list_nth_data(self->positional_args, index));
+  FilterXFunctionArg *arg = g_list_nth_data(self->positional_args, index);
+  return filterx_expr_ref((FilterXExpr *) arg->value);
 }
 
 FilterXObject *
@@ -290,7 +291,10 @@ error:
 FilterXExpr *
 filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name)
 {
-  return filterx_expr_ref((FilterXExpr *) g_hash_table_lookup(self->named_args, name));
+  FilterXFunctionArg *arg = g_hash_table_lookup(self->named_args, name);
+  if (!arg)
+    return NULL;
+  return filterx_expr_ref(arg->value);
 }
 
 FilterXObject *
@@ -358,7 +362,7 @@ success:
 void
 filterx_function_args_free(FilterXFunctionArgs *self)
 {
-  g_list_free_full(self->positional_args, (GDestroyNotify) filterx_expr_unref);
+  g_list_free_full(self->positional_args, (GDestroyNotify) filterx_function_arg_free);
   g_hash_table_unref(self->named_args);
   g_free(self);
 }
