@@ -143,7 +143,6 @@ _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
       (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
        filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(bytes)) ||
        filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(protobuf)) ||
-       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(message_value)) ||
        filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_object)) || // TODO: we should have generic map and array cmp
        filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_array))))
     return _evaluate_as_string(lhs, rhs, operator);
@@ -184,11 +183,11 @@ _eval(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
 
-  FilterXObject *lhs_object = filterx_expr_eval(self->super.lhs);
+  FilterXObject *lhs_object = filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
     return NULL;
 
-  FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
+  FilterXObject *rhs_object = filterx_expr_eval_typed(self->super.rhs);
   if (!rhs_object)
     {
       filterx_object_unref(lhs_object);
