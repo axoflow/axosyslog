@@ -47,21 +47,28 @@ typedef struct _FilterXSimpleFunction
 } FilterXSimpleFunction;
 
 static GPtrArray *
-_simple_function_eval_args(FilterXFunctionArgs *args)
+_simple_function_eval_args(FilterXSimpleFunction *self)
 {
-  guint64 len = filterx_function_args_len(args);
-  if (len == 0)
-    return NULL;
+  guint64 len = filterx_function_args_len(self->args);
 
   GPtrArray *res = g_ptr_array_new_full(len, (GDestroyNotify) filterx_object_unref);
 
   for (guint64 i = 0; i < len; i++)
     {
-      FilterXObject *obj = filterx_function_args_get_object(args, i);
+      FilterXObject *obj = filterx_function_args_get_object(self->args, i);
       if (obj == NULL)
         goto error;
 
       g_ptr_array_add(res, obj);
+    }
+
+  GError *error = NULL;
+  if (!filterx_function_args_check(self->args, &error))
+    {
+      filterx_eval_push_error_info(self->super.function_name, &self->super.super, error->message);
+      error->message = NULL;
+      g_clear_error(&error);
+      goto error;
     }
 
   return res;
@@ -76,7 +83,14 @@ _simple_eval(FilterXExpr *s)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
 
-  GPtrArray *args = _simple_function_eval_args(self->args);
+  GPtrArray *args = NULL;
+
+  if (!filterx_function_args_empty(self->args))
+    {
+      args = _simple_function_eval_args(self);
+      if (!args)
+        return NULL;
+    }
 
   FilterXSimpleFunctionProto f = self->function_proto;
 
@@ -85,8 +99,6 @@ _simple_eval(FilterXExpr *s)
 
   if (args != NULL)
     g_ptr_array_free(args, TRUE);
-  if (!res)
-    filterx_eval_push_error("Function call failed", s, NULL);
 
   return res;
 }
