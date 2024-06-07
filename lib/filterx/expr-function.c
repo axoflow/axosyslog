@@ -46,6 +46,14 @@ typedef struct _FilterXSimpleFunction
   FilterXSimpleFunctionProto function_proto;
 } FilterXSimpleFunction;
 
+void
+filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info)
+{
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+
+  filterx_eval_push_error_info(self ? self->super.function_name : "n/a", s, error_info, free_info);
+}
+
 static GPtrArray *
 _simple_function_eval_args(FilterXSimpleFunction *self)
 {
@@ -65,7 +73,7 @@ _simple_function_eval_args(FilterXSimpleFunction *self)
   GError *error = NULL;
   if (!filterx_function_args_check(self->args, &error))
     {
-      filterx_eval_push_error_info(self->super.function_name, &self->super.super, error->message);
+      filterx_simple_function_argument_error(&self->super.super, error->message, TRUE);
       error->message = NULL;
       g_clear_error(&error);
       goto error;

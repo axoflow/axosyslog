@@ -29,6 +29,8 @@
 
 typedef FilterXObject *(*FilterXSimpleFunctionProto)(GPtrArray *);
 
+void filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info);
+
 typedef struct _FilterXFunction
 {
   FilterXExpr super;
