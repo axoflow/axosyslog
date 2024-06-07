@@ -104,6 +104,7 @@ construct_template_expr(LogTemplate *template)
 %type <node> expr
 %type <node> expr_value
 %type <node> expr_generator
+%type <node> expr_generator_unchecked
 %type <node> function_call
 %type <ptr> arguments
 %type <ptr> argument
@@ -315,6 +316,13 @@ expr_value
 	;
 
 expr_generator
+	: expr_generator_unchecked		{
+                                                  $$ = $1;
+                                                  CHECK_ERROR($1, @1, "error initializing generator expression");
+                                                }
+        ;
+
+expr_generator_unchecked
 	: dict_generator
 	| list_generator
 	| regexp_search
