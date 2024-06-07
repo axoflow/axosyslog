@@ -205,6 +205,12 @@ filterx_function_args_len(FilterXFunctionArgs *self)
   return self->positional_args->len;
 }
 
+gboolean
+filterx_function_args_empty(FilterXFunctionArgs *self)
+{
+  return self->positional_args->len == 0 && g_hash_table_size(self->named_args) == 0;
+}
+
 FilterXExpr *
 filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
 {
