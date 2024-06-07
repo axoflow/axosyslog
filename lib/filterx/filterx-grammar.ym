@@ -76,6 +76,18 @@ construct_template_expr(LogTemplate *template)
   return result;
 }
 
+#define CHECK_FUNCTION_ERROR(val, token, function, error) do {       \
+    if (!(val))                                                         \
+      {                                                                 \
+        gchar __buf[256];                                               \
+        g_snprintf(__buf, sizeof(__buf), "%s(): %s", function, error->message); \
+        yyerror(& (token), lexer, NULL, NULL, __buf);                   \
+        g_clear_error(&error);						\
+        YYERROR;                                                        \
+      }                                                                 \
+  } while (0)
+
+
 }
 
 %define api.prefix {filterx_}
@@ -211,7 +223,7 @@ generator_casted_assignment
 						{
 						  GError *error = NULL;
 						  FilterXExpr *func = filterx_function_lookup(configuration, $3, NULL, &error);
-						  CHECK_ERROR_GERROR(func, @3, error, "function lookup failed: %s()", $3);
+						  CHECK_FUNCTION_ERROR(func, @3, $3, error);
 
 						  FilterXExpr *assign = filterx_assign_new($1, func);
 						  filterx_generator_set_fillable($5, filterx_expr_ref($1));
@@ -227,7 +239,7 @@ generator_casted_assignment
 						{
 						  GError *error = NULL;
 						  FilterXExpr *func = filterx_function_lookup(configuration, $5, NULL, &error);
-						  CHECK_ERROR_GERROR(func, @5, error, "function lookup failed: %s()", $5);
+						  CHECK_FUNCTION_ERROR(func, @5, $5, error);
 
 						  FilterXExpr *setattr = filterx_setattr_new($1, $3, func);
 						  filterx_generator_set_fillable($7, filterx_getattr_new(filterx_expr_ref($1), $3));
@@ -243,7 +255,7 @@ generator_casted_assignment
 						{
 						  GError *error = NULL;
 						  FilterXExpr *func = filterx_function_lookup(configuration, $6, NULL, &error);
-						  CHECK_ERROR_GERROR(func, @6, error, "function lookup failed: %s()", $6);
+						  CHECK_FUNCTION_ERROR(func, @6, $6, error);
 
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, $3, func);
 						  filterx_generator_set_fillable($8, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
@@ -259,7 +271,7 @@ generator_casted_assignment
 						{
 						  GError *error = NULL;
 						  FilterXExpr *func = filterx_function_lookup(configuration, $5, NULL, &error);
-						  CHECK_ERROR_GERROR(func, @5, error, "function lookup failed: %s()", $5);
+						  CHECK_FUNCTION_ERROR(func, @5, $5, error);
 
 						  FilterXExpr *minus_one = filterx_literal_new(filterx_config_freeze_object(configuration, filterx_integer_new(-1)));
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, NULL, func);
@@ -333,7 +345,7 @@ function_call
 	: LL_IDENTIFIER '(' arguments ')'	{
 						  GError *error = NULL;
 						  FilterXExpr *res = filterx_function_lookup(configuration, $1, $3, &error);
-						  CHECK_ERROR_GERROR(res, @$, error, "function lookup failed: %s()", $1);
+						  CHECK_FUNCTION_ERROR(res, @$, $1, error);
 						  free($1);
 						  $$ = res;
 						}
