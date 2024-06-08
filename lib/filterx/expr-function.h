@@ -28,7 +28,7 @@
 #include "filterx/filterx-object.h"
 #include "plugin.h"
 
-typedef FilterXObject *(*FilterXSimpleFunctionProto)(GPtrArray *);
+typedef FilterXObject *(*FilterXSimpleFunctionProto)(FilterXExpr *s, GPtrArray *);
 
 void filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info);
 

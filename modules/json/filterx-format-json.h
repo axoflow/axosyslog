@@ -24,7 +24,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/expr-function.h"
 
-FilterXObject *filterx_format_json_new(GPtrArray *args);
+FilterXObject *filterx_format_json_call(FilterXExpr *s, GPtrArray *args);
 
 FILTERX_SIMPLE_FUNCTION_DECLARE(format_json);
 

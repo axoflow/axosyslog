@@ -47,7 +47,7 @@ Test(filterx_string, test_filterx_string_typecast_null_args)
 {
   GPtrArray *args = NULL;
 
-  FilterXObject *obj = filterx_typecast_string(args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args);
   cr_assert_null(obj);
 }
 
@@ -55,7 +55,7 @@ Test(filterx_string, test_filterx_string_typecast_empty_args)
 {
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
 
-  FilterXObject *obj = filterx_typecast_string(args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -67,7 +67,7 @@ Test(filterx_string, test_filterx_string_typecast_null_arg)
 
   g_ptr_array_add(args, NULL);
 
-  FilterXObject *obj = filterx_typecast_string(args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -79,7 +79,7 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
   FilterXObject *in = filterx_null_new();
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_string(args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
@@ -98,7 +98,7 @@ Test(filterx_string, test_filterx_string_typecast_from_string)
   FilterXObject *in = filterx_string_new("foobar", -1);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_string(args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args);
 
   cr_assert_eq(in, obj);
 
@@ -112,7 +112,7 @@ Test(filterx_string, test_filterx_string_typecast_from_bytes)
   FilterXObject *in = filterx_bytes_new("\x00\x1f byte \\sequence \x7f \xff", 21);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_string(args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
@@ -131,7 +131,7 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
   FilterXObject *in = filterx_protobuf_new("\xffnot a valid protobuf! \xd9", 23);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_string(args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 

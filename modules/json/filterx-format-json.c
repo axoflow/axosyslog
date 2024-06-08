@@ -316,7 +316,7 @@ exit:
 }
 
 FilterXObject *
-filterx_format_json_new(GPtrArray *args)
+filterx_format_json_call(FilterXExpr *s, GPtrArray *args)
 {
   if (!args || args->len != 1)
     {
@@ -329,4 +329,4 @@ filterx_format_json_new(GPtrArray *args)
   return _format_json(arg);
 }
 
-FILTERX_SIMPLE_FUNCTION(format_json, filterx_format_json_new);
+FILTERX_SIMPLE_FUNCTION(format_json, filterx_format_json_call);

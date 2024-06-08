@@ -43,7 +43,7 @@
 #include "apphook.h"
 #include "scratch-buffers.h"
 
-FilterXObject *test_dummy_function(GPtrArray *args)
+FilterXObject *test_dummy_function(FilterXExpr *s, GPtrArray *args)
 {
   GString *repr = scratch_buffers_alloc();
   GString *out = scratch_buffers_alloc();

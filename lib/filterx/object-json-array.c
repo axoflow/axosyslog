@@ -27,6 +27,8 @@
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-weakrefs.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/expr-function.h"
+#include "filterx/filterx-eval.h"
 
 #include "scanner/list-scanner/list-scanner.h"
 #include "str-repr/encode.h"
@@ -304,15 +306,14 @@ filterx_json_array_new_from_syslog_ng_list(const gchar *repr, gssize repr_len)
 }
 
 FilterXObject *
-filterx_json_array_new_from_args(GPtrArray *args)
+filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
   if (!args || args->len == 0)
     return filterx_json_array_new_empty();
 
   if (args->len != 1)
     {
-      msg_error("FilterX: Failed to create JSON array: invalid number of arguments. "
-                "Usage: json_array() or json_array($raw_json_string) or json_array($existing_json_array)");
+      filterx_simple_function_argument_error(s, "Requires zero or one argument", FALSE);
       return NULL;
     }
 
@@ -338,10 +339,8 @@ filterx_json_array_new_from_args(GPtrArray *args)
     return filterx_json_array_new_from_repr(repr, repr_len);
 
 error:
-  msg_error("FilterX: Failed to create JSON object: invalid argument type. "
-            "Usage: json_array() or json_array($raw_json_string) or json_array($syslog_ng_list) or "
-            "json_array($existing_json_array)",
-            evt_tag_str("type", arg->type->name));
+  filterx_eval_push_error_info("Argument must be a json array, a string or a syslog-ng list", s,
+                               g_strdup_printf("got \"%s\" instead", arg->type->name), TRUE);
   return NULL;
 }
 

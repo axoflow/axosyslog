@@ -33,6 +33,7 @@
 #include "filterx/func-istype.h"
 #include "filterx/func-len.h"
 #include "filterx/func-vars.h"
+#include "filterx/filterx-eval.h"
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
 static GHashTable *filterx_builtin_function_ctors = NULL;
@@ -197,11 +198,12 @@ filterx_global_deinit(void)
   filterx_types_deinit();
 }
 
-FilterXObject *filterx_typecast_get_arg(GPtrArray *args, gchar *alt_msg)
+FilterXObject *
+filterx_typecast_get_arg(FilterXExpr *s, GPtrArray *args)
 {
   if (args == NULL || args->len != 1)
     {
-      msg_error(alt_msg ? alt_msg : "filterx: typecast functions must have exactly 1 argument");
+      filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
       return NULL;
     }
 

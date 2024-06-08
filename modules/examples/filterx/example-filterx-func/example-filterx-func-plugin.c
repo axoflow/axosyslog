@@ -29,7 +29,7 @@
 #include "filterx/object-primitive.h"
 
 static FilterXObject *
-echo(GPtrArray *args)
+echo(FilterXExpr *s, GPtrArray *args)
 {
   GString *buf = scratch_buffers_alloc();
   LogMessageValueType t;

@@ -263,7 +263,7 @@ _filterx_otel_resource_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_resource_new_from_args(GPtrArray *args)
+filterx_otel_resource_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
   FilterXOtelResource *self = g_new0(FilterXOtelResource, 1);
   _init_instance(self);

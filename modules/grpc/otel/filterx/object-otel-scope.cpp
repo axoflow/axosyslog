@@ -263,7 +263,7 @@ _filterx_otel_scope_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_scope_new_from_args(GPtrArray *args)
+filterx_otel_scope_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
   FilterXOtelScope *self = g_new0(FilterXOtelScope, 1);
   _init_instance(self);

@@ -244,7 +244,7 @@ _filterx_otel_array_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_array_new_from_args(GPtrArray *args)
+filterx_otel_array_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
   FilterXOtelArray *self = g_new0(FilterXOtelArray, 1);
   _init_instance(self);

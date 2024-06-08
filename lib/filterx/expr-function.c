@@ -103,7 +103,7 @@ _simple_eval(FilterXExpr *s)
   FilterXSimpleFunctionProto f = self->function_proto;
 
   g_assert(f != NULL);
-  FilterXObject *res = f(args);
+  FilterXObject *res = f(s, args);
 
   if (args != NULL)
     g_ptr_array_free(args, TRUE);

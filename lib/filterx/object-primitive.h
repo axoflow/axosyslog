@@ -48,9 +48,9 @@ FilterXObject *filterx_boolean_new(gboolean value);
 FilterXObject *filterx_enum_new(GlobalConfig *cfg, const gchar *namespace_name, const gchar *enum_name);
 GenericNumber filterx_primitive_get_value(FilterXObject *s);
 
-FilterXObject *filterx_typecast_boolean(GPtrArray *args);
-FilterXObject *filterx_typecast_integer(GPtrArray *args);
-FilterXObject *filterx_typecast_double(GPtrArray *args);
+FilterXObject *filterx_typecast_boolean(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_typecast_integer(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_typecast_double(FilterXExpr *s, GPtrArray *args);
 
 gboolean bool_repr(gboolean bool_val, GString *repr);
 gboolean double_repr(double val, GString *repr);

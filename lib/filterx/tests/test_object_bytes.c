@@ -31,7 +31,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_null_args)
 {
   GPtrArray *args = NULL;
 
-  FilterXObject *obj = filterx_typecast_bytes(args);
+  FilterXObject *obj = filterx_typecast_bytes(NULL, args);
   cr_assert_null(obj);
 }
 
@@ -39,7 +39,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_empty_args)
 {
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
 
-  FilterXObject *obj = filterx_typecast_bytes(args);
+  FilterXObject *obj = filterx_typecast_bytes(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -51,7 +51,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_null_arg)
 
   g_ptr_array_add(args, NULL);
 
-  FilterXObject *obj = filterx_typecast_bytes(args);
+  FilterXObject *obj = filterx_typecast_bytes(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -63,7 +63,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_null_object_arg)
   FilterXObject *in = filterx_null_new();
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_bytes(args);
+  FilterXObject *obj = filterx_typecast_bytes(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -76,7 +76,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_bytes)
   FilterXObject *in = filterx_bytes_new("byte \0sequence", 14);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_bytes(args);
+  FilterXObject *obj = filterx_typecast_bytes(NULL, args);
 
   cr_assert_eq(in, obj);
 
@@ -90,7 +90,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_string)
   FilterXObject *in = filterx_string_new("string whatever", -1);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_bytes(args);
+  FilterXObject *obj = filterx_typecast_bytes(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(bytes)));
 
@@ -109,7 +109,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_protobuf)
   FilterXObject *in = filterx_protobuf_new("not a valid \0protobuf!", 22);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_bytes(args);
+  FilterXObject *obj = filterx_typecast_bytes(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(bytes)));
 

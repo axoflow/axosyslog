@@ -57,7 +57,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_null_args)
 {
   GPtrArray *args = NULL;
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_null(obj);
 }
 
@@ -65,7 +65,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_empty_args)
 {
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -76,7 +76,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_null_arg)
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   g_ptr_array_add(args, NULL);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -88,7 +88,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_null_object_arg)
   FilterXObject *in = filterx_null_new();
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_null(obj);
 
   g_ptr_array_free(args, TRUE);
@@ -101,7 +101,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_int)
   FilterXObject *in = filterx_integer_new(1710762325395194);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -121,7 +121,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_double)
   FilterXObject *in = filterx_double_new(1710762325.395194);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -141,7 +141,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_string)
   FilterXObject *in = filterx_string_new("2024-03-18T12:34:00Z", -1);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -162,7 +162,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_datetime)
   FilterXObject *in = filterx_datetime_new(&ut);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
 
   cr_assert_eq(in, obj);
 
@@ -176,7 +176,7 @@ Test(filterx_datetime, test_filterx_datetime_repr)
   FilterXObject *in = filterx_string_new("2024-03-18T12:34:13+0900", -1);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -198,7 +198,7 @@ Test(filterx_datetime, test_filterx_datetime_repr_isodate_Z)
   FilterXObject *in = filterx_string_new(test_time_str, -1);
   g_ptr_array_add(args, in);
 
-  FilterXObject *obj = filterx_typecast_datetime(args);
+  FilterXObject *obj = filterx_typecast_datetime(NULL, args);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 

@@ -343,7 +343,7 @@ _filterx_otel_kvlist_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_kvlist_new_from_args(GPtrArray *args)
+filterx_otel_kvlist_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
   FilterXOtelKVList *self = g_new0(FilterXOtelKVList, 1);
   _init_instance(self);
