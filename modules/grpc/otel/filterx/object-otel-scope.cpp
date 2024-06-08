@@ -303,11 +303,8 @@ filterx_otel_scope_new_from_args(GPtrArray *args)
   return &self->super.super;
 }
 
-gpointer
-grpc_otel_filterx_scope_construct_new(Plugin *self)
-{
-  return (gpointer) &filterx_otel_scope_new_from_args;
-}
+FILTERX_SIMPLE_FUNCTION(otel_scope, filterx_otel_scope_new_from_args);
+
 
 FILTERX_DEFINE_TYPE(otel_scope, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,

@@ -166,11 +166,6 @@ LogRecord::get_value() const
 
 /* C Wrappers */
 
-gpointer
-grpc_otel_filterx_logrecord_contruct_new(Plugin *self)
-{
-  return (gpointer) &filterx_otel_logrecord_new_from_args;
-}
 
 static void
 _free(FilterXObject *s)
@@ -321,6 +316,8 @@ filterx_otel_logrecord_new_from_args(GPtrArray *args)
 
   return &self->super.super;
 }
+
+FILTERX_SIMPLE_FUNCTION(otel_logrecord, filterx_otel_logrecord_new_from_args);
 
 FILTERX_DEFINE_TYPE(otel_logrecord, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,

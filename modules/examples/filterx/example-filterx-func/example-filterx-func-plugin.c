@@ -54,8 +54,4 @@ exit:
   return filterx_boolean_new(FALSE);
 }
 
-gpointer
-example_filterx_simple_func_construct_echo(Plugin *self)
-{
-  return (gpointer) &echo;
-}
+FILTERX_SIMPLE_FUNCTION(example_echo, echo);

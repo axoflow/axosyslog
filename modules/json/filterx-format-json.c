@@ -329,8 +329,4 @@ filterx_format_json_new(GPtrArray *args)
   return _format_json(arg);
 }
 
-gpointer
-filterx_format_json_new_construct(Plugin *self)
-{
-  return (gpointer) &filterx_format_json_new;
-}
+FILTERX_SIMPLE_FUNCTION(format_json, filterx_format_json_new);

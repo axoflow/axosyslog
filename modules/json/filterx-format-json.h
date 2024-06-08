@@ -22,9 +22,10 @@
 #define FILTERX_FORMAT_JSON_H_INCLUDED
 
 #include "filterx/filterx-object.h"
-#include "plugin.h"
+#include "filterx/expr-function.h"
 
 FilterXObject *filterx_format_json_new(GPtrArray *args);
-gpointer filterx_format_json_new_construct(Plugin *self);
+
+FILTERX_SIMPLE_FUNCTION_DECLARE(format_json);
 
 #endif

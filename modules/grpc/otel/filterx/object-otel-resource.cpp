@@ -303,11 +303,8 @@ filterx_otel_resource_new_from_args(GPtrArray *args)
   return &self->super.super;
 }
 
-gpointer
-grpc_otel_filterx_resource_construct_new(Plugin *self)
-{
-  return (gpointer) &filterx_otel_resource_new_from_args;
-}
+FILTERX_SIMPLE_FUNCTION(otel_resource, filterx_otel_resource_new_from_args);
+
 
 FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,

@@ -23,6 +23,8 @@
 #ifndef EXAMPLE_FILTERX_FUNC_PLUGIN_H_INCLUDED
 #define EXAMPLE_FILTERX_FUNC_PLUGIN_H_INCLUDED
 
-gpointer example_filterx_simple_func_construct_echo(Plugin *self);
+#include "filterx/expr-function.h"
+
+FILTERX_SIMPLE_FUNCTION_DECLARE(example_echo);
 
 #endif

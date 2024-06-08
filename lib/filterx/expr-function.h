@@ -25,7 +25,8 @@
 #define FILTERX_EXPR_FUNCTION_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
-#include "filterx-object.h"
+#include "filterx/filterx-object.h"
+#include "plugin.h"
 
 typedef FilterXObject *(*FilterXSimpleFunctionProto)(GPtrArray *);
 
@@ -78,5 +79,28 @@ gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
 void filterx_function_args_free(FilterXFunctionArgs *self);
 
 FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args, GError **error);
+
+
+#define FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name) \
+  gpointer                                                              \
+  filterx_ ## func_name ## _construct(Plugin *self)
+
+#define FILTERX_SIMPLE_FUNCTION_DECLARE(func_name) \
+  FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name);
+
+/* helper macros for template function plugins */
+#define FILTERX_SIMPLE_FUNCTION(func_name, call) \
+  FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name)   \
+  {                                              \
+    FilterXSimpleFunctionProto f = call;         \
+    return (gpointer) f;                         \
+  }
+
+#define FILTERX_SIMPLE_FUNCTION_PLUGIN(func_name)      \
+  {                                                    \
+    .type = LL_CONTEXT_FILTERX_SIMPLE_FUNC,            \
+    .name = # func_name,                                 \
+    .construct = filterx_ ## func_name ## _construct,  \
+  }
 
 #endif
