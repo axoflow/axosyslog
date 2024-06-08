@@ -206,11 +206,5 @@ FilterXObject *filterx_typecast_get_arg(GPtrArray *args, gchar *alt_msg)
     }
 
   FilterXObject *object = g_ptr_array_index(args, 0);
-  if (!object)
-    {
-      msg_error(alt_msg ? alt_msg : "filterx: invalid typecast argument, object can not be null" );
-      return NULL;
-    }
-
   return object;
 }

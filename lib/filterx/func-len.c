@@ -36,11 +36,6 @@ filterx_simple_function_len(GPtrArray *args)
     }
 
   FilterXObject *object = g_ptr_array_index(args, 0);
-  if (!object)
-    {
-      msg_error("FilterX: len: invalid argument: object." FILTERX_FUNC_LEN_USAGE);
-      return NULL;
-    }
 
   guint64 len;
   gboolean success = filterx_object_len(object, &len);
