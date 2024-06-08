@@ -34,21 +34,36 @@ FILTERX_SIMPLE_FUNCTION_DECLARE(otel_resource);
 FILTERX_SIMPLE_FUNCTION_DECLARE(otel_scope);
 FILTERX_SIMPLE_FUNCTION_DECLARE(otel_kvlist);
 FILTERX_SIMPLE_FUNCTION_DECLARE(otel_array);
+
 FilterXObject *filterx_otel_logrecord_new_from_args(GPtrArray *args);
-
 FilterXObject *filterx_otel_resource_new_from_args(GPtrArray *args);
-
 FilterXObject *filterx_otel_scope_new_from_args(GPtrArray *args);
-
 FilterXObject *filterx_otel_kvlist_new_from_args(GPtrArray *args);
+FilterXObject *filterx_otel_array_new_from_args(GPtrArray *args);
+
+static inline FilterXObject *
+filterx_otel_logrecord_new(void)
+{
+  return filterx_otel_logrecord_new_from_args(NULL);
+}
+
+static inline FilterXObject *
+filterx_otel_resource_new(void)
+{
+  return filterx_otel_resource_new_from_args(NULL);
+}
+
+static inline FilterXObject *
+filterx_otel_scope_new(void)
+{
+  return filterx_otel_scope_new_from_args(NULL);
+}
 
 static inline FilterXObject *
 filterx_otel_kvlist_new(void)
 {
   return filterx_otel_kvlist_new_from_args(NULL);
 }
-
-FilterXObject *filterx_otel_array_new_from_args(GPtrArray *args);
 
 static inline FilterXObject *
 filterx_otel_array_new(void)
