@@ -219,7 +219,8 @@ filterx_json_new_from_args(FilterXExpr *s, GPtrArray *args)
     return filterx_json_new_from_repr(repr, repr_len);
 
 error:
-  filterx_eval_push_error_info("Argument must be a json, a string or a syslog-ng list", s, g_strdup_printf("got \"%s\" instead", arg->type->name), TRUE);
+  filterx_eval_push_error_info("Argument must be a json, a string or a syslog-ng list", s,
+                               g_strdup_printf("got \"%s\" instead", arg->type->name), TRUE);
   return NULL;
 }
 

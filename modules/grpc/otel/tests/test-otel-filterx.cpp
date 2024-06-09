@@ -173,7 +173,8 @@ Test(otel_filterx, logrecord_from_protobuf)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_log_record.c_str(), serialized_log_record.length()));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert(filterx_otel_logrecord);
 
   const LogRecord &log_record_from_filterx = filterx_otel_logrecord->cpp->get_value();
@@ -188,7 +189,8 @@ Test(otel_filterx, logrecord_from_protobuf_invalid_arg)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_string_new("", 0));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert_not(filterx_otel_logrecord);
 
   g_ptr_array_free(args, TRUE);
@@ -199,7 +201,8 @@ Test(otel_filterx, logrecord_from_protobuf_malformed_data)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert_not(filterx_otel_logrecord);
 
   g_ptr_array_free(args, TRUE);
@@ -211,7 +214,8 @@ Test(otel_filterx, logrecord_too_many_args)
   g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
   g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert_not(filterx_otel_logrecord);
 
   g_ptr_array_free(args, TRUE);

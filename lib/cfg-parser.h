@@ -99,7 +99,7 @@ extern CfgParser main_parser;
     void                                                                      \
     parser_prefix ## error(const CFG_LTYPE *yylloc, CfgLexer *lexer, root_type instance, gpointer arg, const char *msg) \
     {                                                                 \
-      report_syntax_error(lexer, yylloc, cfg_lexer_get_context_description(lexer), msg); 				\
+      report_syntax_error(lexer, yylloc, cfg_lexer_get_context_description(lexer), msg);        \
     }
 
 void report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, const char *msg);
