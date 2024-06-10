@@ -123,15 +123,19 @@ tls_session_verify_fingerprint(X509_STORE_CTX *ctx)
   if (!cert)
     return match;
 
+
   hash = g_string_sized_new(EVP_MAX_MD_SIZE * 3);
 
   if (tls_get_x509_digest(cert, hash))
     {
+      msg_debug("Validating certificate against trusted-keys()",
+                evt_tag_str("x509-digest", hash->str));
       do
         {
           if (strcmp((const gchar *)(current_fingerprint->data), hash->str) == 0)
             {
               match = TRUE;
+              g_strlcpy(self->peer_info.fingerprint, hash->str, sizeof(self->peer_info.fingerprint));
               break;
             }
         }
@@ -194,11 +198,30 @@ tls_session_verify(TLSSession *self, int ok, X509_STORE_CTX *ctx)
 
   int ctx_error_depth = X509_STORE_CTX_get_error_depth(ctx);
   /* accept certificate if its fingerprint matches, again regardless whether x509 certificate validation was successful */
-  if (ok && ctx_error_depth == 0 && !tls_session_verify_fingerprint(ctx))
+
+  if (ctx_error_depth == 0 && self->ctx->trusted_fingerprint_list)
     {
-      msg_notice("Certificate valid, but fingerprint constraints were not met, rejecting",
-                 tls_context_format_location_tag(self->ctx));
-      return 0;
+      /* trusted-keys() is present */
+      if (ok)
+        {
+          /* this is an extra constraint */
+          if (!tls_session_verify_fingerprint(ctx))
+            {
+              msg_notice("Certificate valid, but fingerprint constraints were not met, rejecting",
+                         tls_context_format_location_tag(self->ctx));
+              return 0;
+            }
+        }
+      else
+        {
+          /* this is a trust anchor that forces the key to be valid */
+          if (tls_session_verify_fingerprint(ctx))
+            {
+              msg_notice("Certificate accepted due to being present on trusted-keys()",
+                         tls_context_format_location_tag(self->ctx));
+              return 1;
+            }
+        }
     }
 
   X509 *current_cert = X509_STORE_CTX_get_current_cert(ctx);
@@ -523,7 +546,7 @@ void
 tls_session_info_callback(const SSL *ssl, int where, int ret)
 {
   TLSSession *self = (TLSSession *)SSL_get_app_data(ssl);
-  if( !self->peer_info.found && where == (SSL_ST_ACCEPT|SSL_CB_LOOP) )
+  if (!self->peer_info.found && where == (SSL_ST_ACCEPT|SSL_CB_LOOP))
     {
       X509 *cert = SSL_get_peer_certificate(ssl);
 
@@ -532,9 +555,9 @@ tls_session_info_callback(const SSL *ssl, int where, int ret)
           self->peer_info.found = 1; /* mark this found so we don't keep checking on every callback */
           X509_NAME *name = X509_get_subject_name(cert);
 
-          X509_NAME_get_text_by_NID( name, NID_commonName, self->peer_info.cn, X509_MAX_CN_LEN );
-          X509_NAME_get_text_by_NID( name, NID_organizationName, self->peer_info.o, X509_MAX_O_LEN );
-          X509_NAME_get_text_by_NID( name, NID_organizationalUnitName, self->peer_info.ou, X509_MAX_OU_LEN );
+          X509_NAME_get_text_by_NID(name, NID_commonName, self->peer_info.cn, X509_MAX_CN_LEN);
+          X509_NAME_get_text_by_NID(name, NID_organizationName, self->peer_info.o, X509_MAX_O_LEN);
+          X509_NAME_get_text_by_NID(name, NID_organizationalUnitName, self->peer_info.ou, X509_MAX_OU_LEN);
 
           X509_free(cert);
         }
