@@ -31,7 +31,10 @@
 #include "scratch-buffers.h"
 #include "utf8utils.h"
 
-#define FILTERX_FUNC_FORMAT_CSV_USAGE "Usage: format_csv($input(list or dict), delimiter=\",\", columns=$columns(list))"
+#define FILTERX_FUNC_FORMAT_CSV_USAGE "Usage: format_csv({list or dict}, [" \
+  FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS"={list}," \
+  FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DELIMITER"={string literal}," \
+  FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DEFAULT_VALUE"={string literal}])"
 
 typedef struct FilterXFunctionFormatCSV_
 {
@@ -39,16 +42,17 @@ typedef struct FilterXFunctionFormatCSV_
   FilterXExpr *input;
   gchar delimiter;
   FilterXExpr *columns;
+  FilterXObject *default_value;
 } FilterXFunctionFormatCSV;
 
 static gboolean
 _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
-  if (!value)
-    return FALSE;
-
   FilterXFunctionFormatCSV *self = ((gpointer *) user_data)[0];
   GString *buffer = ((gpointer *) user_data)[1];
+
+  if (!value)
+    value = self->default_value;
 
   if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)) ||
       filterx_object_is_type(value, &FILTERX_TYPE_NAME(list)))
@@ -160,6 +164,7 @@ _free(FilterXExpr *s)
 {
   FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
 
+  filterx_object_unref(self->default_value);
   filterx_expr_unref(self->input);
   filterx_expr_unref(self->columns);
   filterx_function_free_method(&self->super);
@@ -201,6 +206,30 @@ _extract_delimiter_arg(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args
 }
 
 static gboolean
+_extract_default_value_arg(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GError **error)
+{
+  gboolean exists;
+  FilterXObject *default_value = filterx_function_args_get_named_literal_object(args,
+                                 FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DEFAULT_VALUE, &exists);
+
+  if (!exists)
+    return TRUE;
+
+  if (!default_value || !filterx_object_is_type(default_value, &FILTERX_TYPE_NAME(string)))
+    {
+      filterx_object_unref(default_value);
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "default_value must be a string literal. " FILTERX_FUNC_FORMAT_CSV_USAGE);
+      return FALSE;
+    }
+
+  filterx_object_unref(self->default_value);
+  self->default_value = default_value;
+
+  return TRUE;
+}
+
+static gboolean
 _extract_arguments(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GError **error)
 {
   gsize args_len = filterx_function_args_len(args);
@@ -222,6 +251,9 @@ _extract_arguments(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GE
   if (!_extract_delimiter_arg(self, args, error))
     return FALSE;
 
+  if (!_extract_default_value_arg(self, args, error))
+    return FALSE;
+
   self->columns = _extract_columns_expr(args, error);
 
   return TRUE;
@@ -236,6 +268,7 @@ filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
   self->delimiter = ',';
+  self->default_value = filterx_string_new("", -1);
 
   if (!_extract_arguments(self, args, error))
     goto error;
