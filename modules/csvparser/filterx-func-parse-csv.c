@@ -209,17 +209,17 @@ _extract_opts(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
   gboolean flag_err = FALSE;
   gboolean flag_val = FALSE;
 
-  value = filterx_function_args_get_named_literal_string(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITERS, &len, &exists);
+  value = filterx_function_args_get_named_literal_string(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER, &len, &exists);
   if (exists)
     {
       if (len < 1)
         {
-          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITERS " can not be empty";
+          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER " can not be empty";
           goto error;
         }
       if (!value)
         {
-          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITERS " must be a string literal";
+          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER " must be a string literal";
           goto error;
         }
       csv_scanner_options_set_delimiters(&self->options, value);
@@ -326,7 +326,7 @@ filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *
   filterx_function_init_instance(&self->super, function_name);
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
-  csv_scanner_options_set_delimiters(&self->options, " ");
+  csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
   csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE);
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_NONE);

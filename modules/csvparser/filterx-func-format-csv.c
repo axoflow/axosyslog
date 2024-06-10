@@ -235,7 +235,7 @@ filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs 
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
-  self->delimiter = ' ';
+  self->delimiter = ',';
 
   if (!_extract_arguments(self, args, error))
     goto error;
