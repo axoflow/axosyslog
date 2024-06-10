@@ -306,6 +306,25 @@ filterx_function_args_get_named_object(FilterXFunctionArgs *self, const gchar *n
   return obj;
 }
 
+FilterXObject *
+filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const gchar *name, gboolean *exists)
+{
+  FilterXObject *obj = NULL;
+  FilterXExpr *expr = filterx_function_args_get_named_expr(self, name);
+  *exists = !!expr;
+  if (!expr)
+    return NULL;
+
+  if (!filterx_expr_is_literal(expr))
+    goto error;
+
+  obj = filterx_expr_eval(expr);
+error:
+  filterx_expr_unref(expr);
+  return obj;
+}
+
+
 const gchar *
 filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name, gsize *len,
                                                gboolean *exists)

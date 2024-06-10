@@ -65,6 +65,8 @@ const gchar *filterx_function_args_get_literal_string(FilterXFunctionArgs *self,
 gboolean filterx_function_args_is_literal_null(FilterXFunctionArgs *self, guint64 index);
 FilterXExpr *filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name);
 FilterXObject *filterx_function_args_get_named_object(FilterXFunctionArgs *self, const gchar *name, gboolean *exists);
+FilterXObject *filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const gchar *name,
+    gboolean *exists);
 const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name,
                                                             gsize *len, gboolean *exists);
 gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
