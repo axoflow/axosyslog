@@ -1,5 +1,7 @@
 /*
  * Copyright (c) 2018 Balabit
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 László Várady
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -28,6 +30,7 @@
 #include "iv.h"
 #include <glib/gstdio.h>
 #include <unistd.h>
+#include "poll-file-changes.h"
 
 #define TEST_FILE_NAME "TEST_FILE"
 
@@ -35,7 +38,6 @@
 typedef struct _TestFileStateEvent
 {
   gboolean deleted_eof_called;
-  gboolean finished_called;
 } TestFileStateEvent;
 
 static void
@@ -97,6 +99,8 @@ void file_reader_init_instance(FileReader *self, const gchar *filename,
                                LogSrcDriver *owner, GlobalConfig *cfg)
 {
   log_pipe_init_instance(&self->super, cfg);
+  self->reader = log_reader_new(cfg);
+  self->reader->poll_events = poll_file_changes_new(-1, "", 1, &self->super);
   return;
 }
 
@@ -124,15 +128,8 @@ TestSuite(test_wildcard_file_reader, .init = _init, .fini = _teardown);
 
 Test(test_wildcard_file_reader, constructor)
 {
-  cr_assert_eq(reader->file_state.eof, FALSE);
+  cr_assert_eq(reader->file_state.last_eof, FALSE);
   cr_assert_eq(reader->file_state.deleted, FALSE);
-}
-
-Test(test_wildcard_file_reader, msg_read)
-{
-  reader->file_state.eof = TRUE;
-  log_pipe_queue(&reader->super.super, NULL, &path_options);
-  cr_assert_eq(reader->file_state.eof, FALSE);
 }
 
 Test(test_wildcard_file_reader, notif_deleted)
@@ -143,11 +140,11 @@ Test(test_wildcard_file_reader, notif_deleted)
 }
 
 
-Test(test_wildcard_file_reader, notif_eof)
+Test(test_wildcard_file_reader, eof_without_deletion_should_not_change_last_eof_state)
 {
   log_pipe_queue(&reader->super.super, NULL, &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
-  cr_assert_eq(reader->file_state.eof, TRUE);
+  cr_assert_eq(reader->file_state.last_eof, FALSE);
 }
 
 Test(test_wildcard_file_reader, status_change_deleted_not_eof)
@@ -159,18 +156,13 @@ Test(test_wildcard_file_reader, status_change_deleted_not_eof)
 
 Test(test_wildcard_file_reader, status_change_deleted_eof)
 {
-  log_pipe_queue(&reader->super.super, NULL, &path_options);
-  log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
-  log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
-  cr_assert_eq(test_event->deleted_eof_called, TRUE);
-}
-
-Test(test_wildcard_file_reader, status_finished_then_delete)
-{
-  log_pipe_queue(&reader->super.super, NULL, &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
   cr_assert_eq(test_event->deleted_eof_called, FALSE);
 
   log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
+  cr_assert_eq(test_event->deleted_eof_called, FALSE);
+
+  /* AxoSyslog waits for a last EOF check before deleting the file */
+  log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
   cr_assert_eq(test_event->deleted_eof_called, TRUE);
 }
