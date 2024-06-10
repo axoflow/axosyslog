@@ -38,11 +38,7 @@ static Plugin json_plugins[] =
   },
   TEMPLATE_FUNCTION_PLUGIN(tf_json, "format_json"),
   TEMPLATE_FUNCTION_PLUGIN(tf_flat_json, "format_flat_json"),
-  {
-    .type = LL_CONTEXT_FILTERX_SIMPLE_FUNC,
-    .name = "format_json",
-    .construct = filterx_format_json_new_construct,
-  },
+  FILTERX_SIMPLE_FUNCTION_PLUGIN(format_json),
   {
     .type = LL_CONTEXT_FILTERX_FUNC,
     .name = "cache_json_file",

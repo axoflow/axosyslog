@@ -152,7 +152,7 @@ _assert_filterx_otel_array_element(FilterXObject *obj, FilterXObject *key,
 
 Test(otel_filterx, logrecord_empty)
 {
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new();
   cr_assert(filterx_otel_logrecord);
 
   cr_assert(MessageDifferencer::Equals(LogRecord(), filterx_otel_logrecord->cpp->get_value()));
@@ -173,7 +173,8 @@ Test(otel_filterx, logrecord_from_protobuf)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_log_record.c_str(), serialized_log_record.length()));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert(filterx_otel_logrecord);
 
   const LogRecord &log_record_from_filterx = filterx_otel_logrecord->cpp->get_value();
@@ -188,7 +189,8 @@ Test(otel_filterx, logrecord_from_protobuf_invalid_arg)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_string_new("", 0));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert_not(filterx_otel_logrecord);
 
   g_ptr_array_free(args, TRUE);
@@ -199,7 +201,8 @@ Test(otel_filterx, logrecord_from_protobuf_malformed_data)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert_not(filterx_otel_logrecord);
 
   g_ptr_array_free(args, TRUE);
@@ -211,7 +214,8 @@ Test(otel_filterx, logrecord_too_many_args)
   g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
   g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(args);
+  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
+                                                 args);
   cr_assert_not(filterx_otel_logrecord);
 
   g_ptr_array_free(args, TRUE);
@@ -219,7 +223,7 @@ Test(otel_filterx, logrecord_too_many_args)
 
 Test(otel_filterx, logrecord_len_and_unset_and_is_key_set)
 {
-  FilterXObject *logrecord = filterx_otel_logrecord_new_from_args(NULL);
+  FilterXObject *logrecord = filterx_otel_logrecord_new();
   FilterXObject *body = filterx_string_new("body", -1);
   FilterXObject *body_val = filterx_string_new("body_val", -1);
   FilterXObject *time_unix_nano = filterx_string_new("time_unix_nano", -1);
@@ -274,7 +278,7 @@ _append_to_str(FilterXObject *key, FilterXObject *value, gpointer user_data)
 
 Test(otel_filterx, logrecord_iter)
 {
-  FilterXObject *logrecord = filterx_otel_logrecord_new_from_args(NULL);
+  FilterXObject *logrecord = filterx_otel_logrecord_new();
   FilterXObject *body = filterx_string_new("body", -1);
   FilterXObject *body_val = filterx_string_new("body_val", -1);
   FilterXObject *time_unix_nano = filterx_string_new("time_unix_nano", -1);
@@ -301,7 +305,7 @@ Test(otel_filterx, logrecord_iter)
 
 Test(otel_filterx, resource_empty)
 {
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL);
+  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new();
   cr_assert(filterx_otel_resource);
 
   cr_assert(MessageDifferencer::Equals(opentelemetry::proto::resource::v1::Resource(),
@@ -322,7 +326,7 @@ Test(otel_filterx, resource_from_protobuf)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_resource.c_str(), serialized_resource.length()));
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(args);
+  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
   cr_assert(filterx_otel_resource);
 
   const opentelemetry::proto::resource::v1::Resource &resource_from_filterx = filterx_otel_resource->cpp->get_value();
@@ -337,7 +341,7 @@ Test(otel_filterx, resource_from_protobuf_invalid_arg)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_string_new("", 0));
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(args);
+  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_resource);
 
   g_ptr_array_free(args, TRUE);
@@ -348,7 +352,7 @@ Test(otel_filterx, resource_from_protobuf_malformed_data)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(args);
+  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_resource);
 
   g_ptr_array_free(args, TRUE);
@@ -360,7 +364,7 @@ Test(otel_filterx, resource_too_many_args)
   g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
   g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(args);
+  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_resource);
 
   g_ptr_array_free(args, TRUE);
@@ -378,7 +382,7 @@ Test(otel_filterx, resource_get_field)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_resource.c_str(), serialized_resource.length()));
 
-  FilterXObject *filterx_otel_resource = (FilterXObject *) filterx_otel_resource_new_from_args(args);
+  FilterXObject *filterx_otel_resource = (FilterXObject *) filterx_otel_resource_new_from_args(NULL, args);
   cr_assert(filterx_otel_resource);
 
   _assert_filterx_integer_attribute(filterx_otel_resource, "dropped_attributes_count", 42);
@@ -393,7 +397,7 @@ Test(otel_filterx, resource_get_field)
 
 Test(otel_filterx, resource_set_field)
 {
-  FilterXObject *filterx_otel_resource = (FilterXObject *) filterx_otel_resource_new_from_args(NULL);
+  FilterXObject *filterx_otel_resource = (FilterXObject *) filterx_otel_resource_new();
   cr_assert(filterx_otel_resource);
 
   FilterXObject *filterx_integer = filterx_integer_new(42);
@@ -407,7 +411,7 @@ Test(otel_filterx, resource_set_field)
   GPtrArray *attributes_kvlist_args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(attributes_kvlist_args, 0, filterx_protobuf_new(serialized_attributes.c_str(),
                      serialized_attributes.length()));
-  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(attributes_kvlist_args);
+  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(NULL, attributes_kvlist_args);
   cr_assert(filterx_object_setattr_string(filterx_otel_resource, "attributes", &filterx_kvlist));
 
   cr_assert_not(filterx_object_setattr_string(filterx_otel_resource, "invalid_attr", &filterx_integer));
@@ -431,7 +435,7 @@ Test(otel_filterx, resource_set_field)
 
 Test(otel_filterx, resource_len_and_unset_and_is_key_set)
 {
-  FilterXObject *resource = filterx_otel_resource_new_from_args(NULL);
+  FilterXObject *resource = filterx_otel_resource_new();
   FilterXObject *dropped_attributes_count = filterx_string_new("dropped_attributes_count", -1);
   FilterXObject *dropped_attributes_count_val = filterx_integer_new(42);
 
@@ -457,7 +461,7 @@ Test(otel_filterx, resource_len_and_unset_and_is_key_set)
 
 Test(otel_filterx, resource_iter)
 {
-  FilterXObject *resource = filterx_otel_resource_new_from_args(NULL);
+  FilterXObject *resource = filterx_otel_resource_new();
   FilterXObject *dropped_attributes_count = filterx_string_new("dropped_attributes_count", -1);
   FilterXObject *dropped_attributes_count_val = filterx_integer_new(42);
 
@@ -479,7 +483,7 @@ Test(otel_filterx, resource_iter)
 
 Test(otel_filterx, scope_empty)
 {
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL);
+  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new();
   cr_assert(filterx_otel_scope);
 
   cr_assert(MessageDifferencer::Equals(opentelemetry::proto::common::v1::InstrumentationScope(),
@@ -502,7 +506,7 @@ Test(otel_filterx, scope_from_protobuf)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_scope.c_str(), serialized_scope.length()));
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(args);
+  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
   cr_assert(filterx_otel_scope);
 
   const opentelemetry::proto::common::v1::InstrumentationScope &scope_from_filterx = filterx_otel_scope->cpp->get_value();
@@ -517,7 +521,7 @@ Test(otel_filterx, scope_from_protobuf_invalid_arg)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_string_new("", 0));
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(args);
+  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_scope);
 
   g_ptr_array_free(args, TRUE);
@@ -528,7 +532,7 @@ Test(otel_filterx, scope_from_protobuf_malformed_data)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(args);
+  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_scope);
 
   g_ptr_array_free(args, TRUE);
@@ -540,7 +544,7 @@ Test(otel_filterx, scope_too_many_args)
   g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
   g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(args);
+  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_scope);
 
   g_ptr_array_free(args, TRUE);
@@ -559,7 +563,7 @@ Test(otel_filterx, scope_get_field)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_scope.c_str(), serialized_scope.length()));
 
-  FilterXObject *filterx_otel_scope = (FilterXObject *) filterx_otel_scope_new_from_args(args);
+  FilterXObject *filterx_otel_scope = (FilterXObject *) filterx_otel_scope_new_from_args(NULL, args);
   cr_assert(filterx_otel_scope);
 
   _assert_filterx_integer_attribute(filterx_otel_scope, "dropped_attributes_count", 42);
@@ -575,7 +579,7 @@ Test(otel_filterx, scope_get_field)
 
 Test(otel_filterx, scope_set_field)
 {
-  FilterXObject *filterx_otel_scope = (FilterXObject *) filterx_otel_scope_new_from_args(NULL);
+  FilterXObject *filterx_otel_scope = (FilterXObject *) filterx_otel_scope_new();
   cr_assert(filterx_otel_scope);
 
   FilterXObject *filterx_integer = filterx_integer_new(42);
@@ -592,7 +596,7 @@ Test(otel_filterx, scope_set_field)
   GPtrArray *attributes_kvlist_args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(attributes_kvlist_args, 0, filterx_protobuf_new(serialized_attributes.c_str(),
                      serialized_attributes.length()));
-  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(attributes_kvlist_args);
+  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(NULL, attributes_kvlist_args);
   cr_assert(filterx_object_setattr_string(filterx_otel_scope, "attributes", &filterx_kvlist));
 
   cr_assert_not(filterx_object_setattr_string(filterx_otel_scope, "invalid_attr", &filterx_integer));
@@ -621,7 +625,7 @@ Test(otel_filterx, scope_set_field)
 
 Test(otel_filterx, kvlist_empty)
 {
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL);
+  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new();
   cr_assert(filterx_otel_kvlist);
 
   cr_assert_eq(filterx_otel_kvlist->cpp->get_value().size(), 0);
@@ -643,7 +647,7 @@ Test(otel_filterx, kvlist_from_protobuf)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_kvlist.c_str(), serialized_kvlist.length()));
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(args);
+  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
   cr_assert(filterx_otel_kvlist);
 
   _assert_repeated_kvs(filterx_otel_kvlist->cpp->get_value(), kvlist.values());
@@ -657,7 +661,7 @@ Test(otel_filterx, kvlist_from_protobuf_invalid_arg)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_string_new("", 0));
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(args);
+  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_kvlist);
 
   g_ptr_array_free(args, TRUE);
@@ -668,7 +672,7 @@ Test(otel_filterx, kvlist_from_protobuf_malformed_data)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(args);
+  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_kvlist);
 
   g_ptr_array_free(args, TRUE);
@@ -680,7 +684,7 @@ Test(otel_filterx, kvlist_too_many_args)
   g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
   g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(args);
+  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_kvlist);
 
   g_ptr_array_free(args, TRUE);
@@ -711,7 +715,7 @@ Test(otel_filterx, kvlist_get_subscript)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_kvlist.c_str(), serialized_kvlist.length()));
 
-  FilterXObject *filterx_otel_kvlist = (FilterXObject *) filterx_otel_kvlist_new_from_args(args);
+  FilterXObject *filterx_otel_kvlist = (FilterXObject *) filterx_otel_kvlist_new_from_args(NULL, args);
   cr_assert(filterx_otel_kvlist);
 
   FilterXObject *element_1_key = filterx_string_new("element_1_key", -1);
@@ -733,7 +737,7 @@ Test(otel_filterx, kvlist_get_subscript)
 
 Test(otel_filterx, kvlist_set_subscript)
 {
-  FilterXObject *filterx_otel_kvlist = (FilterXObject *) filterx_otel_kvlist_new_from_args(NULL);
+  FilterXObject *filterx_otel_kvlist = (FilterXObject *) filterx_otel_kvlist_new();
   cr_assert(filterx_otel_kvlist);
 
   FilterXObject *element_1_key = filterx_string_new("element_1_key", -1);
@@ -741,9 +745,9 @@ Test(otel_filterx, kvlist_set_subscript)
   FilterXObject *element_2_key = filterx_string_new("element_2_key", -1);
   FilterXObject *element_2_value = filterx_string_new("foobar", -1);
   FilterXObject *element_3_key = filterx_string_new("element_3_key", -1);
-  FilterXObject *element_3_value = filterx_otel_kvlist_new_from_args(NULL);
+  FilterXObject *element_3_value = filterx_otel_kvlist_new();
   FilterXObject *element_4_key = filterx_string_new("element_4_key", -1);
-  FilterXObject *element_4_value = filterx_otel_array_new_from_args(NULL);
+  FilterXObject *element_4_value = filterx_otel_array_new();
   cr_assert(filterx_object_set_subscript(filterx_otel_kvlist, element_1_key, &element_1_value));
   cr_assert(filterx_object_set_subscript(filterx_otel_kvlist, element_2_key, &element_2_value));
   cr_assert(filterx_object_set_subscript(filterx_otel_kvlist, element_3_key, &element_3_value));
@@ -783,8 +787,8 @@ Test(otel_filterx, kvlist_set_subscript)
 
 Test(otel_filterx, kvlist_through_logrecord)
 {
-  FilterXObject *fx_logrecord = filterx_otel_logrecord_new_from_args(NULL);
-  FilterXObject *fx_kvlist = filterx_otel_kvlist_new_from_args(NULL);
+  FilterXObject *fx_logrecord = filterx_otel_logrecord_new();
+  FilterXObject *fx_kvlist = filterx_otel_kvlist_new();
 
   FilterXObject *fx_key_0 = filterx_string_new("key_0", -1);
   FilterXObject *fx_key_1 = filterx_string_new("key_1", -1);
@@ -795,7 +799,7 @@ Test(otel_filterx, kvlist_through_logrecord)
   FilterXObject *fx_bar = filterx_string_new("bar", -1);
   FilterXObject *fx_baz = filterx_string_new("baz", -1);
 
-  FilterXObject *fx_inner_kvlist = filterx_otel_kvlist_new_from_args(NULL);
+  FilterXObject *fx_inner_kvlist = filterx_otel_kvlist_new();
 
   /* objects for storing the result of getattr() and get_subscript() */
   FilterXObject *fx_get_1 = nullptr;
@@ -883,7 +887,7 @@ Test(otel_filterx, kvlist_through_logrecord)
 
 Test(otel_filterx, scope_len_and_unset_and_is_key_set)
 {
-  FilterXObject *scope = filterx_otel_scope_new_from_args(NULL);
+  FilterXObject *scope = filterx_otel_scope_new();
   FilterXObject *name = filterx_string_new("name", -1);
   FilterXObject *name_val = filterx_string_new("name_val", -1);
   FilterXObject *version = filterx_string_new("version", -1);
@@ -924,7 +928,7 @@ Test(otel_filterx, scope_len_and_unset_and_is_key_set)
 
 Test(otel_filterx, scope_iter)
 {
-  FilterXObject *scope = filterx_otel_scope_new_from_args(NULL);
+  FilterXObject *scope = filterx_otel_scope_new();
   FilterXObject *name = filterx_string_new("name", -1);
   FilterXObject *name_val = filterx_string_new("name_val", -1);
   FilterXObject *version = filterx_string_new("version", -1);
@@ -951,7 +955,7 @@ Test(otel_filterx, scope_iter)
 
 Test(otel_filterx, array_empty)
 {
-  FilterXOtelArray *filterx_otel_kvlist = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL);
+  FilterXOtelArray *filterx_otel_kvlist = (FilterXOtelArray *) filterx_otel_array_new();
   cr_assert(filterx_otel_kvlist);
 
   cr_assert(MessageDifferencer::Equals(opentelemetry::proto::common::v1::ArrayValue(),
@@ -972,7 +976,7 @@ Test(otel_filterx, array_from_protobuf)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_array.c_str(), serialized_array.length()));
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(args);
+  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
   cr_assert(filterx_otel_array);
 
   const opentelemetry::proto::common::v1::ArrayValue &array_from_filterx = filterx_otel_array->cpp->get_value();
@@ -987,7 +991,7 @@ Test(otel_filterx, array_from_protobuf_invalid_arg)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_string_new("", 0));
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(args);
+  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_array);
 
   g_ptr_array_free(args, TRUE);
@@ -998,7 +1002,7 @@ Test(otel_filterx, array_from_protobuf_malformed_data)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(args);
+  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_array);
 
   g_ptr_array_free(args, TRUE);
@@ -1010,7 +1014,7 @@ Test(otel_filterx, array_too_many_args)
   g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
   g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(args);
+  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
   cr_assert_not(filterx_otel_array);
 
   g_ptr_array_free(args, TRUE);
@@ -1037,7 +1041,7 @@ Test(otel_filterx, array_get_subscript)
   GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
   g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_array.c_str(), serialized_array.length()));
 
-  FilterXObject *filterx_otel_array = (FilterXObject *) filterx_otel_array_new_from_args(args);
+  FilterXObject *filterx_otel_array = (FilterXObject *) filterx_otel_array_new_from_args(NULL, args);
   cr_assert(filterx_otel_array);
 
   FilterXObject *element_1_index = filterx_integer_new(0);
@@ -1064,13 +1068,13 @@ Test(otel_filterx, array_get_subscript)
 
 Test(otel_filterx, array_set_subscript)
 {
-  FilterXObject *filterx_otel_array = (FilterXObject *) filterx_otel_array_new_from_args(NULL);
+  FilterXObject *filterx_otel_array = (FilterXObject *) filterx_otel_array_new();
   cr_assert(filterx_otel_array);
 
   FilterXObject *element_1_value = filterx_integer_new(42);
   FilterXObject *element_2_value = filterx_string_new("foobar", -1);
-  FilterXObject *element_3_value = filterx_otel_kvlist_new_from_args(NULL);
-  FilterXObject *element_4_value = filterx_otel_array_new_from_args(NULL);
+  FilterXObject *element_3_value = filterx_otel_kvlist_new();
+  FilterXObject *element_4_value = filterx_otel_array_new();
   cr_assert(filterx_object_set_subscript(filterx_otel_array, NULL, &element_1_value));
   cr_assert(filterx_object_set_subscript(filterx_otel_array, NULL, &element_2_value));
   cr_assert(filterx_object_set_subscript(filterx_otel_array, NULL, &element_3_value));
@@ -1106,8 +1110,8 @@ Test(otel_filterx, array_set_subscript)
 
 Test(otel_filterx, array_through_logrecord)
 {
-  FilterXObject *fx_logrecord = filterx_otel_logrecord_new_from_args(NULL);
-  FilterXObject *fx_array = filterx_otel_array_new_from_args(NULL);
+  FilterXObject *fx_logrecord = filterx_otel_logrecord_new();
+  FilterXObject *fx_array = filterx_otel_array_new();
 
   FilterXObject *fx_2 = filterx_integer_new(2);
 
@@ -1115,7 +1119,7 @@ Test(otel_filterx, array_through_logrecord)
   FilterXObject *fx_bar = filterx_string_new("bar", -1);
   FilterXObject *fx_baz = filterx_string_new("baz", -1);
 
-  FilterXObject *fx_inner_array = filterx_otel_array_new_from_args(NULL);
+  FilterXObject *fx_inner_array = filterx_otel_array_new();
 
   /* objects for storing the result of getattr() and get_subscript() */
   FilterXObject *fx_get_1 = nullptr;

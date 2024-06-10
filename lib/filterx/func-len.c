@@ -23,31 +23,26 @@
 
 #include "filterx/func-len.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-eval.h"
 
 #define FILTERX_FUNC_LEN_USAGE "Usage: len(object)"
 
 FilterXObject *
-filterx_simple_function_len(GPtrArray *args)
+filterx_simple_function_len(FilterXExpr *s, GPtrArray *args)
 {
   if (args == NULL || args->len != 1)
     {
-      msg_error("FilterX: len: invalid number of arguments. " FILTERX_FUNC_LEN_USAGE);
+      filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
       return NULL;
     }
 
   FilterXObject *object = g_ptr_array_index(args, 0);
-  if (!object)
-    {
-      msg_error("FilterX: len: invalid argument: object." FILTERX_FUNC_LEN_USAGE);
-      return NULL;
-    }
 
   guint64 len;
   gboolean success = filterx_object_len(object, &len);
   if (!success)
     {
-      msg_error("FilterX: len: object type is not supported",
-                evt_tag_str("type", object->type->name));
+      filterx_eval_push_error("Object does not support len()", s, object);
       return NULL;
     }
 

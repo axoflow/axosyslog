@@ -244,7 +244,7 @@ _filterx_otel_array_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_array_new_from_args(GPtrArray *args)
+filterx_otel_array_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
   FilterXOtelArray *self = g_new0(FilterXOtelArray, 1);
   _init_instance(self);
@@ -295,11 +295,7 @@ _new_borrowed(ArrayValue *array)
   return &self->super.super;
 }
 
-gpointer
-grpc_otel_filterx_array_construct_new(Plugin *self)
-{
-  return (gpointer) &filterx_otel_array_new_from_args;
-}
+FILTERX_SIMPLE_FUNCTION(otel_array, filterx_otel_array_new_from_args);
 
 FilterXObject *
 OtelArrayField::FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)

@@ -231,9 +231,9 @@ filterx_primitive_get_value(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_typecast_boolean(GPtrArray *args)
+filterx_typecast_boolean(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args, NULL);
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 
@@ -247,9 +247,9 @@ filterx_typecast_boolean(GPtrArray *args)
 }
 
 FilterXObject *
-filterx_typecast_integer(GPtrArray *args)
+filterx_typecast_integer(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args, NULL);
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 
@@ -281,9 +281,9 @@ filterx_typecast_integer(GPtrArray *args)
 }
 
 FilterXObject *
-filterx_typecast_double(GPtrArray *args)
+filterx_typecast_double(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args, NULL);
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 

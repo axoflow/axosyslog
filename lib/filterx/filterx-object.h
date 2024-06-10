@@ -28,6 +28,7 @@
 
 typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
+typedef struct _FilterXExpr FilterXExpr;
 
 struct _FilterXType
 {

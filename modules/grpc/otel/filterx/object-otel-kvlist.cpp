@@ -343,7 +343,7 @@ _filterx_otel_kvlist_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_kvlist_new_from_args(GPtrArray *args)
+filterx_otel_kvlist_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
   FilterXOtelKVList *self = g_new0(FilterXOtelKVList, 1);
   _init_instance(self);
@@ -394,11 +394,7 @@ _new_borrowed(RepeatedPtrField<KeyValue> *kvlist)
   return &self->super.super;
 }
 
-gpointer
-grpc_otel_filterx_kvlist_construct_new(Plugin *self)
-{
-  return (gpointer) &filterx_otel_kvlist_new_from_args;
-}
+FILTERX_SIMPLE_FUNCTION(otel_kvlist, filterx_otel_kvlist_new_from_args);
 
 FilterXObject *
 OtelKVListField::FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)

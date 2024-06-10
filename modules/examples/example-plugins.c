@@ -85,11 +85,7 @@ static Plugin example_plugins[] =
     .name = "example_destination",
     .parser = &example_destination_parser
   },
-  {
-    .type = LL_CONTEXT_FILTERX_SIMPLE_FUNC,
-    .name = "example_echo",
-    .construct = example_filterx_simple_func_construct_echo,
-  },
+  FILTERX_SIMPLE_FUNCTION_PLUGIN(example_echo),
 };
 
 gboolean

@@ -209,9 +209,9 @@ filterx_protobuf_new(const gchar *mem, gssize mem_len)
 }
 
 FilterXObject *
-filterx_typecast_string(GPtrArray *args)
+filterx_typecast_string(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args, NULL);
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 
@@ -235,9 +235,9 @@ filterx_typecast_string(GPtrArray *args)
 }
 
 FilterXObject *
-filterx_typecast_bytes(GPtrArray *args)
+filterx_typecast_bytes(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args, NULL);
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 
@@ -268,9 +268,9 @@ filterx_typecast_bytes(GPtrArray *args)
 }
 
 FilterXObject *
-filterx_typecast_protobuf(GPtrArray *args)
+filterx_typecast_protobuf(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args, NULL);
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 

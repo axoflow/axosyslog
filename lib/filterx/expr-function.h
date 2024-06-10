@@ -25,9 +25,12 @@
 #define FILTERX_EXPR_FUNCTION_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
-#include "filterx-object.h"
+#include "filterx/filterx-object.h"
+#include "plugin.h"
 
-typedef FilterXObject *(*FilterXSimpleFunctionProto)(GPtrArray *);
+typedef FilterXObject *(*FilterXSimpleFunctionProto)(FilterXExpr *s, GPtrArray *);
+
+void filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info);
 
 typedef struct _FilterXFunction
 {
@@ -40,6 +43,7 @@ typedef struct _FilterXFunctionArg
 {
   gchar *name;
   FilterXExpr *value;
+  gboolean retrieved;
 } FilterXFunctionArg;
 
 typedef FilterXFunction *(*FilterXFunctionCtor)(const gchar *, FilterXFunctionArgs *, GError **);
@@ -51,6 +55,7 @@ enum FilterXFunctionError
 {
   FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND,
   FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+  FILTERX_FUNCTION_ERROR_UNEXPECTED_ARGS,
 };
 
 void filterx_function_init_instance(FilterXFunction *s, const gchar *function_name);
@@ -59,6 +64,7 @@ void filterx_function_free_method(FilterXFunction *s);
 FilterXFunctionArg *filterx_function_arg_new(const gchar *name, FilterXExpr *value);
 FilterXFunctionArgs *filterx_function_args_new(GList *args, GError **error);
 guint64 filterx_function_args_len(FilterXFunctionArgs *self);
+gboolean filterx_function_args_empty(FilterXFunctionArgs *self);
 FilterXExpr *filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index);
 FilterXObject *filterx_function_args_get_object(FilterXFunctionArgs *self, guint64 index);
 const gchar *filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 index, gsize *len);
@@ -69,8 +75,32 @@ const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs 
                                                             gsize *len, gboolean *exists);
 gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
                                                          gboolean *exists, gboolean *error);
+gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
 void filterx_function_args_free(FilterXFunctionArgs *self);
 
 FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args, GError **error);
+
+
+#define FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name) \
+  gpointer                                                              \
+  filterx_ ## func_name ## _construct(Plugin *self)
+
+#define FILTERX_SIMPLE_FUNCTION_DECLARE(func_name) \
+  FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name);
+
+/* helper macros for template function plugins */
+#define FILTERX_SIMPLE_FUNCTION(func_name, call) \
+  FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name)   \
+  {                                              \
+    FilterXSimpleFunctionProto f = call;         \
+    return (gpointer) f;                         \
+  }
+
+#define FILTERX_SIMPLE_FUNCTION_PLUGIN(func_name)      \
+  {                                                    \
+    .type = LL_CONTEXT_FILTERX_SIMPLE_FUNC,            \
+    .name = # func_name,                                 \
+    .construct = filterx_ ## func_name ## _construct,  \
+  }
 
 #endif

@@ -346,7 +346,7 @@ Test(expr_condition, test_condition_do_not_allow_to_add_else_into_else, .signal=
 }
 
 FilterXObject *
-_fail_func(GPtrArray *args)
+_fail_func(FilterXExpr *s, GPtrArray *args)
 {
   return NULL;
 }
@@ -365,7 +365,7 @@ Test(expr_condition, test_condition_return_null_on_illegal_expr)
 }
 
 FilterXObject *
-_dummy_func(GPtrArray *args)
+_dummy_func(FilterXExpr *s, GPtrArray *args)
 {
   return filterx_string_new("foobar", -1);
 }

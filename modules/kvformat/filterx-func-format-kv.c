@@ -218,7 +218,8 @@ filterx_function_format_kv_new(const gchar *function_name, FilterXFunctionArgs *
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");
 
-  if (!_extract_arguments(self, args, error))
+  if (!_extract_arguments(self, args, error) ||
+      !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);

@@ -115,11 +115,9 @@ filterx_datetime_get_value(FilterXObject *s)
 
 
 FilterXObject *
-filterx_typecast_datetime(GPtrArray *args)
+filterx_typecast_datetime(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args,
-                                                   "FilterX: Failed to create datetime object: invalid number of arguments. "
-                                                   "Usage: datetime($isodate_str), datetime($unix_int_ms) or datetime($unix_float_s)");
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 
@@ -144,7 +142,7 @@ filterx_typecast_datetime(GPtrArray *args)
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
     {
-      return filterx_typecast_datetime_isodate(args);
+      return filterx_typecast_datetime_isodate(s, args);
     }
   msg_error("filterx: invalid typecast",
             evt_tag_str("from", object->type->name),
@@ -153,11 +151,9 @@ filterx_typecast_datetime(GPtrArray *args)
 }
 
 FilterXObject *
-filterx_typecast_datetime_isodate(GPtrArray *args)
+filterx_typecast_datetime_isodate(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXObject *object = filterx_typecast_get_arg(args,
-                                                   "FilterX: Failed to create datetime object: invalid number of arguments. "
-                                                   "Usage: datetime($isodate_str), datetime($unix_int_ms) or datetime($unix_float_s)");
+  FilterXObject *object = filterx_typecast_get_arg(s, args);
   if (!object)
     return NULL;
 
@@ -368,7 +364,8 @@ filterx_function_strptime_new(const gchar *function_name, FilterXFunctionArgs *a
   self->super.super.eval = _strptime_eval;
   self->super.super.free_fn = _strptime_free;
 
-  if (!_extract_args(self, args, error))
+  if (!_extract_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);

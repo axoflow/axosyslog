@@ -232,10 +232,15 @@ CfgParser main_parser =
 
 CFG_PARSER_IMPLEMENT_LEXER_BINDING(main_, MAIN_, gpointer *)
 
+void
+syntax_error_footer(void)
+{
+  fprintf(stderr, "\nsyslog-ng documentation: %s\n"
+          "contact: %s\n", PRODUCT_DOCUMENTATION, PRODUCT_CONTACT);
+}
 
 void
-report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, const char *msg,
-                    gboolean in_main_grammar)
+report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, const char *msg)
 {
   CfgIncludeLevel *level = &lexer->include_stack[lexer->include_depth], *from;
 
@@ -252,9 +257,8 @@ report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, 
            * location.  */
 
           from_lloc = yylloc;
-          fprintf(stderr, "Error parsing %s, %s in %s:%d:%d-%d:%d:\n",
-                  what,
-                  msg,
+          fprintf(stderr, "\nError parsing %s: %s\n\nIn %s:%d:%d-%d:%d:\n",
+                  what, msg,
                   from_lloc->name,
                   from_lloc->first_line,
                   from_lloc->first_column,
@@ -273,11 +277,6 @@ report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, 
       cfg_source_print_source_context(lexer, from, from_lloc);
       fprintf(stderr, "\n");
     }
-
-  if (in_main_grammar)
-    fprintf(stderr, "\nsyslog-ng documentation: %s\n"
-            "contact: %s\n", PRODUCT_DOCUMENTATION, PRODUCT_CONTACT);
-
 }
 
 /* the debug flag for the main parser will be used for all parsers */
@@ -309,6 +308,8 @@ cfg_parser_parse(CfgParser *self, CfgLexer *lexer, gpointer *instance, gpointer 
       fprintf(stderr,
               "\nToo many tokens found during parsing, consider increasing YYMAXDEPTH in lib/cfg-grammar.y and recompiling.\n");
     }
+  if (!success && strcmp(self->name, "config") == 0)
+    syntax_error_footer();
   return success;
 }
 

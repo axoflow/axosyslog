@@ -27,8 +27,6 @@
 #include "filterx-object.h"
 #include "cfg-lexer.h"
 
-typedef struct _FilterXExpr FilterXExpr;
-
 struct _FilterXExpr
 {
   guint32 ref_cnt;

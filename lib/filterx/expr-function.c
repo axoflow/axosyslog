@@ -46,22 +46,37 @@ typedef struct _FilterXSimpleFunction
   FilterXSimpleFunctionProto function_proto;
 } FilterXSimpleFunction;
 
-static GPtrArray *
-_simple_function_eval_args(FilterXFunctionArgs *args)
+void
+filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info)
 {
-  guint64 len = filterx_function_args_len(args);
-  if (len == 0)
-    return NULL;
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+
+  filterx_eval_push_error_info(self ? self->super.function_name : "n/a", s, error_info, free_info);
+}
+
+static GPtrArray *
+_simple_function_eval_args(FilterXSimpleFunction *self)
+{
+  guint64 len = filterx_function_args_len(self->args);
 
   GPtrArray *res = g_ptr_array_new_full(len, (GDestroyNotify) filterx_object_unref);
 
   for (guint64 i = 0; i < len; i++)
     {
-      FilterXObject *obj = filterx_function_args_get_object(args, i);
+      FilterXObject *obj = filterx_function_args_get_object(self->args, i);
       if (obj == NULL)
         goto error;
 
       g_ptr_array_add(res, obj);
+    }
+
+  GError *error = NULL;
+  if (!filterx_function_args_check(self->args, &error))
+    {
+      filterx_simple_function_argument_error(&self->super.super, error->message, TRUE);
+      error->message = NULL;
+      g_clear_error(&error);
+      goto error;
     }
 
   return res;
@@ -76,17 +91,22 @@ _simple_eval(FilterXExpr *s)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
 
-  GPtrArray *args = _simple_function_eval_args(self->args);
+  GPtrArray *args = NULL;
+
+  if (!filterx_function_args_empty(self->args))
+    {
+      args = _simple_function_eval_args(self);
+      if (!args)
+        return NULL;
+    }
 
   FilterXSimpleFunctionProto f = self->function_proto;
 
   g_assert(f != NULL);
-  FilterXObject *res = f(args);
+  FilterXObject *res = f(s, args);
 
   if (args != NULL)
     g_ptr_array_free(args, TRUE);
-  if (!res)
-    filterx_eval_push_error("Function call failed", s, NULL);
 
   return res;
 }
@@ -132,13 +152,13 @@ void
 filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
 {
   filterx_expr_init_instance(&s->super);
-  s->function_name = g_strdup(function_name);
+  s->function_name = g_strdup_printf("%s()", function_name);
   s->super.free_fn = _function_free;
 }
 
 struct _FilterXFunctionArgs
 {
-  GList *positional_args;
+  GPtrArray *positional_args;
   GHashTable *named_args;
 };
 
@@ -168,7 +188,8 @@ filterx_function_args_new(GList *args, GError **error)
 {
   FilterXFunctionArgs *self = g_new0(FilterXFunctionArgs, 1);
 
-  self->named_args = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_expr_unref);
+  self->named_args = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_function_arg_free);
+  self->positional_args = g_ptr_array_new_full(8, (GDestroyNotify) filterx_function_arg_free);
 
   gboolean has_named = FALSE;
   for (GList *elem = args; elem; elem = elem->next)
@@ -184,33 +205,41 @@ filterx_function_args_new(GList *args, GError **error)
               self = NULL;
               goto exit;
             }
-          self->positional_args = g_list_append(self->positional_args, filterx_expr_ref(arg->value));
+          g_ptr_array_add(self->positional_args, arg);
         }
       else
         {
-          g_hash_table_insert(self->named_args, g_strdup(arg->name), filterx_expr_ref(arg->value));
+          g_hash_table_insert(self->named_args, g_strdup(arg->name), arg);
           has_named = TRUE;
         }
     }
 
 exit:
-  g_list_free_full(args, (GDestroyNotify) filterx_function_arg_free);
+  g_list_free(args);
   return self;
 }
 
 guint64
 filterx_function_args_len(FilterXFunctionArgs *self)
 {
-  return g_list_length(self->positional_args);
+  return self->positional_args->len;
+}
+
+gboolean
+filterx_function_args_empty(FilterXFunctionArgs *self)
+{
+  return self->positional_args->len == 0 && g_hash_table_size(self->named_args) == 0;
 }
 
 FilterXExpr *
 filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
 {
-  if (g_list_length(self->positional_args) <= index)
+  if (self->positional_args->len <= index)
     return NULL;
 
-  return filterx_expr_ref((FilterXExpr *) g_list_nth_data(self->positional_args, index));
+  FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, index);
+  arg->retrieved = TRUE;
+  return filterx_expr_ref((FilterXExpr *) arg->value);
 }
 
 FilterXObject *
@@ -290,7 +319,11 @@ error:
 FilterXExpr *
 filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name)
 {
-  return filterx_expr_ref((FilterXExpr *) g_hash_table_lookup(self->named_args, name));
+  FilterXFunctionArg *arg = g_hash_table_lookup(self->named_args, name);
+  if (!arg)
+    return NULL;
+  arg->retrieved = TRUE;
+  return filterx_expr_ref(arg->value);
 }
 
 FilterXObject *
@@ -355,10 +388,47 @@ success:
   return value;
 }
 
+gboolean
+filterx_function_args_check(FilterXFunctionArgs *self, GError **error)
+{
+  for (gint i = 0; i < self->positional_args->len; i++)
+    {
+      FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, i);
+
+      /* The function must retrieve all positional arguments and indicate an
+       * error if there are too many or too few of them.  If the function
+       * did not touch all such arguments, that's a programming error
+       */
+      g_assert(arg->retrieved);
+    }
+  GHashTableIter iter;
+  g_hash_table_iter_init(&iter, self->named_args);
+
+  gpointer k, v;
+  while (g_hash_table_iter_next(&iter, &k, &v))
+    {
+      const gchar *name = k;
+      FilterXFunctionArg *arg = v;
+
+      if (!arg->retrieved)
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_UNEXPECTED_ARGS,
+                      "unexpected argument \"%s\"", name);
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
+
 void
 filterx_function_args_free(FilterXFunctionArgs *self)
 {
-  g_list_free_full(self->positional_args, (GDestroyNotify) filterx_expr_unref);
+  /* I had an assert here that aborted if filterx_function_args_check() was
+   * not called.  Unfortunately that needs further work, so I removed it:
+   * simple functions may not be evaluated at all, and in those cases their
+   * arguments will never be checked. */
+
+  g_ptr_array_free(self->positional_args, TRUE);
   g_hash_table_unref(self->named_args);
   g_free(self);
 }

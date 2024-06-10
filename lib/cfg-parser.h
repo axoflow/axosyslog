@@ -99,13 +99,10 @@ extern CfgParser main_parser;
     void                                                                      \
     parser_prefix ## error(const CFG_LTYPE *yylloc, CfgLexer *lexer, root_type instance, gpointer arg, const char *msg) \
     {                                                                 \
-      gboolean in_main_grammar = __builtin_strcmp( # parser_prefix, "main_") == 0;              \
-      report_syntax_error(lexer, yylloc, cfg_lexer_get_context_description(lexer), msg,   \
-                          in_main_grammar);                                                     \
+      report_syntax_error(lexer, yylloc, cfg_lexer_get_context_description(lexer), msg);        \
     }
 
-void report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, const char *msg,
-                         gboolean in_main_grammar);
+void report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, const char *msg);
 
 CFG_PARSER_DECLARE_LEXER_BINDING(main_, MAIN_, gpointer *)
 

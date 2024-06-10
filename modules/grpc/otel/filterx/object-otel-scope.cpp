@@ -263,29 +263,29 @@ _filterx_otel_scope_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_scope_new_from_args(GPtrArray *args)
+filterx_otel_scope_new_from_args(FilterXExpr *s, GPtrArray *args)
 {
-  FilterXOtelScope *s = g_new0(FilterXOtelScope, 1);
-  _init_instance(s);
+  FilterXOtelScope *self = g_new0(FilterXOtelScope, 1);
+  _init_instance(self);
 
   try
     {
       if (!args || args->len == 0)
         {
-          s->cpp = new Scope(s);
+          self->cpp = new Scope(self);
         }
       else if (args->len == 1)
         {
           FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
           if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(dict)))
             {
-              s->cpp = new Scope(s);
-              if (!filterx_dict_merge(&s->super.super, arg))
+              self->cpp = new Scope(self);
+              if (!filterx_dict_merge(&self->super.super, arg))
                 throw std::runtime_error("Failed to merge dict");
             }
           else
             {
-              s->cpp = new Scope(s, arg);
+              self->cpp = new Scope(self, arg);
             }
         }
       else
@@ -296,18 +296,15 @@ filterx_otel_scope_new_from_args(GPtrArray *args)
   catch (const std::runtime_error &e)
     {
       msg_error("FilterX: Failed to create OTel Scope object", evt_tag_str("error", e.what()));
-      filterx_object_unref(&s->super.super);
+      filterx_object_unref(&self->super.super);
       return NULL;
     }
 
-  return &s->super.super;
+  return &self->super.super;
 }
 
-gpointer
-grpc_otel_filterx_scope_construct_new(Plugin *self)
-{
-  return (gpointer) &filterx_otel_scope_new_from_args;
-}
+FILTERX_SIMPLE_FUNCTION(otel_scope, filterx_otel_scope_new_from_args);
+
 
 FILTERX_DEFINE_TYPE(otel_scope, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,

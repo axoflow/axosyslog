@@ -29,7 +29,7 @@
 #include "filterx/object-primitive.h"
 
 static FilterXObject *
-echo(GPtrArray *args)
+echo(FilterXExpr *s, GPtrArray *args)
 {
   GString *buf = scratch_buffers_alloc();
   LogMessageValueType t;
@@ -54,8 +54,4 @@ exit:
   return filterx_boolean_new(FALSE);
 }
 
-gpointer
-example_filterx_simple_func_construct_echo(Plugin *self)
-{
-  return (gpointer) &echo;
-}
+FILTERX_SIMPLE_FUNCTION(example_echo, echo);
