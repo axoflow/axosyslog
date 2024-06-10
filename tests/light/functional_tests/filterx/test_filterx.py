@@ -1509,3 +1509,28 @@ def test_vars(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
+
+
+def test_unset_empties(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            dict = json({"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]});
+            defaults_dict = dict;
+            explicit_dict = dict;
+            unset_empties(defaults_dict);
+            unset_empties(explicit_dict, recursive=true);
+
+            list = json_array(["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]]);
+            defaults_list = list;
+            explicit_list = list;
+            unset_empties(defaults_list);
+            unset_empties(explicit_list, recursive=true);
+
+            $MSG = json_array([defaults_dict, explicit_dict, defaults_list, explicit_list]);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "[{},{},[],[]]\n"
