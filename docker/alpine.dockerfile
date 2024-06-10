@@ -66,7 +66,7 @@ ARG DEBUG
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md
 LABEL maintainer="axoflow.io"
 LABEL org.opencontainers.image.title="AxoSyslog"
-LABEL org.opencontainers.image.description="A cloud-native distribution of syslog-ng by Axoflow"
+LABEL org.opencontainers.image.description="The scalable security data processor by Axoflow"
 LABEL org.opencontainers.image.authors="Axoflow"
 LABEL org.opencontainers.image.vendor="Axoflow"
 LABEL org.opencontainers.image.licenses="GPL-3.0-only"
