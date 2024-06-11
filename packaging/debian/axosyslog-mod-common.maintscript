@@ -1,5 +1,5 @@
 #! /bin/sh
-## Common preinst, postinst and postrm script for syslog-ng-mod-*
+## Common preinst, postinst and postrm script for axosyslog-mod-*
 ## packages. Some of the modules in syslog-ng-3.3 came with a
 ## 00load-$mod config file, which are being removed in 3.4. This file
 ## does the necessary dpkg-maintscript-helper voodoo to get rid of
@@ -11,8 +11,8 @@
 set -e
 
 case "${DPKG_MAINTSCRIPT_PACKAGE}" in
-        syslog-ng-mod-sql|syslog-ng-mod-mongodb)
-                modname="${DPKG_MAINTSCRIPT_PACKAGE#syslog-ng-mod-}"
+        axosyslog-mod-sql|axosyslog-mod-mongodb)
+                modname="${DPKG_MAINTSCRIPT_PACKAGE#axosyslog-mod-}"
                 ;;
         *)
                 echo "rm_conffile voodoo unsupported for package ${DPKG_MAINTSCRIPT_PACKAGE}!" >&2
