@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2002-2013 Balabit
+ * Copyright (c) 2024 Axoflow
  * Copyright (c) 1998-2013 Balázs Scheidler
+ * Copyright (c) 2024 László Várady
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -61,6 +63,10 @@ poll_file_changes_on_eof(PollFileChanges *self)
   if (self->on_eof)
     result = self->on_eof(self);
   log_pipe_notify(self->control, NC_FILE_EOF, self);
+
+  if (self->stop_on_eof)
+    return FALSE;
+
   return result;
 }
 
@@ -212,6 +218,14 @@ poll_file_changes_update_watches(PollEvents *s, GIOCondition cond)
 
   if (check_again)
     poll_file_changes_rearm_timer(self);
+}
+
+void
+poll_file_changes_stop_on_eof(PollEvents *s)
+{
+  PollFileChanges *self = (PollFileChanges *) s;
+
+  self->stop_on_eof = TRUE;
 }
 
 void

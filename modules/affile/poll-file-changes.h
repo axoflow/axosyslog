@@ -1,6 +1,8 @@
 /*
  * Copyright (c) 2002-2013 Balabit
+ * Copyright (c) 2024 Axoflow
  * Copyright (c) 1998-2013 Balázs Scheidler
+ * Copyright (c) 2024 László Várady
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -39,6 +41,7 @@ struct _PollFileChanges
   struct iv_timer follow_timer;
   LogPipe *control;
 
+  gboolean stop_on_eof;
   void (*on_read)(PollFileChanges *);
   gboolean (*on_eof)(PollFileChanges *);
   void (*on_file_moved)(PollFileChanges *);
@@ -50,6 +53,7 @@ void poll_file_changes_init_instance(PollFileChanges *self, gint fd, const gchar
                                      LogPipe *control);
 void poll_file_changes_update_watches(PollEvents *s, GIOCondition cond);
 void poll_file_changes_stop_watches(PollEvents *s);
+void poll_file_changes_stop_on_eof(PollEvents *s);
 void poll_file_changes_free(PollEvents *s);
 
 #endif

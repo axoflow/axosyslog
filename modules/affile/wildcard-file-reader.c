@@ -1,5 +1,7 @@
 /*
  * Copyright (c) 2018 Balabit
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 László Várady
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -22,13 +24,14 @@
 
 #include "wildcard-file-reader.h"
 #include "mainloop.h"
+#include "poll-file-changes.h"
 
 static gboolean
 _init(LogPipe *s)
 {
   WildcardFileReader *self = (WildcardFileReader *)s;
   self->file_state.deleted = FALSE;
-  self->file_state.eof = FALSE;
+  self->file_state.last_eof = FALSE;
   return file_reader_init_method(s);
 }
 
@@ -41,14 +44,6 @@ _deinit(LogPipe *s)
       iv_task_unregister(&self->file_state_event_handler);
     }
   return file_reader_deinit_method(s);
-}
-
-static void
-_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
-{
-  WildcardFileReader *self = (WildcardFileReader *)s;
-  self->file_state.eof = FALSE;
-  file_reader_queue_method(s, msg, path_options);
 }
 
 static void
@@ -71,24 +66,32 @@ _schedule_state_change_handling(WildcardFileReader *self)
 }
 
 static void
-_set_eof(WildcardFileReader *self)
+_on_eof(WildcardFileReader *self)
 {
-  self->file_state.eof = TRUE;
   if (self->file_state.deleted)
     {
+      self->file_state.last_eof = TRUE;
       _schedule_state_change_handling(self);
     }
 }
 
 static void
-_set_deleted(WildcardFileReader *self)
+_on_deleted(WildcardFileReader *self)
 {
   /* File can be deleted only once,
    * so there is no need for checking the state
    * before we set it
    */
   self->file_state.deleted = TRUE;
-  _schedule_state_change_handling(self);
+
+  if (!self->super.reader || !self->super.reader->poll_events)
+    {
+      self->file_state.last_eof = TRUE;
+      _schedule_state_change_handling(self);
+      return;
+    }
+
+  poll_file_changes_stop_on_eof(self->super.reader->poll_events);
 }
 
 static void
@@ -98,10 +101,10 @@ _notify(LogPipe *s, gint notify_code, gpointer user_data)
   switch(notify_code)
     {
     case NC_FILE_DELETED:
-      _set_deleted(self);
+      _on_deleted(self);
       break;
     case NC_FILE_EOF:
-      _set_eof(self);
+      _on_eof(self);
       break;
     default:
       file_reader_notify_method(s, notify_code, user_data);
@@ -114,10 +117,10 @@ _handle_file_state_event(gpointer s)
 {
   WildcardFileReader *self = (WildcardFileReader *)s;
   msg_debug("File status changed",
-            evt_tag_int("EOF", self->file_state.eof),
+            evt_tag_int("EOF", self->file_state.last_eof),
             evt_tag_int("DELETED", self->file_state.deleted),
             evt_tag_str("Filename", self->super.filename->str));
-  if (self->file_state.deleted && self->file_state.eof)
+  if (self->file_state.deleted && self->file_state.last_eof)
     _deleted_file_eof(&self->file_state_event, &self->super);
 }
 
@@ -143,7 +146,6 @@ wildcard_file_reader_new(const gchar *filename, FileReaderOptions *options, File
   WildcardFileReader *self = g_new0(WildcardFileReader, 1);
   file_reader_init_instance(&self->super, filename, options, opener, owner, cfg);
   self->super.super.init = _init;
-  self->super.super.queue = _queue;
   self->super.super.notify = _notify;
   self->super.super.deinit = _deinit;
   IV_TASK_INIT(&self->file_state_event_handler);
