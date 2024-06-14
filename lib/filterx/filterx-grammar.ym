@@ -124,6 +124,8 @@ construct_template_expr(LogTemplate *template)
 %type <node> function_call
 %type <ptr> arguments
 %type <ptr> argument
+%type <ptr> list_argument
+%type <ptr> dict_argument
 %type <node> literal
 %type <ptr> literal_object
 %type <node> variable
@@ -391,6 +393,30 @@ arguments
 argument
 	: expr					{ $$ = filterx_function_arg_new(NULL, $1); }
 	| string KW_ASSIGN expr			{ $$ = filterx_function_arg_new($1, $3); free($1); }
+	| string KW_ASSIGN list_argument	{ $$ = filterx_function_arg_new($1, $3); free($1); }
+	| string KW_ASSIGN dict_argument	{ $$ = filterx_function_arg_new($1, $3); free($1); }
+	;
+
+list_argument
+	: list_generator			{
+						  GError *error = NULL;
+						  FilterXExpr *func = filterx_function_lookup(configuration, "json_array", NULL, &error);
+						  CHECK_FUNCTION_ERROR(func, @1, "json_array", error);
+
+						  filterx_generator_set_fillable($1, func);
+						  $$ = $1;
+						}
+	;
+
+dict_argument
+	: dict_generator			{
+						  GError *error = NULL;
+						  FilterXExpr *func = filterx_function_lookup(configuration, "json", NULL, &error);
+						  CHECK_FUNCTION_ERROR(func, @1, "json", error);
+
+						  filterx_generator_set_fillable($1, func);
+						  $$ = $1;
+						}
 	;
 
 literal: literal_object				{ $$ = filterx_literal_new(filterx_config_freeze_object(configuration, $1)); }
