@@ -12,4 +12,7 @@ add_module(
   SOURCES ${METRICS_PROBE_SOURCES}
 )
 
+add_subdirectory(filterx)
+target_link_libraries(metrics-probe PRIVATE metrics-probe-filterx)
+
 add_test_subdirectory(tests)

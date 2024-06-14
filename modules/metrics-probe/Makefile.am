@@ -12,11 +12,13 @@ modules_metrics_probe_libmetrics_probe_la_CPPFLAGS	=	\
 	-I$(top_srcdir)/modules/metrics-probe		\
 	-I$(top_builddir)/modules/metrics-probe
 modules_metrics_probe_libmetrics_probe_la_LIBADD	=	\
-	$(MODULE_DEPS_LIBS)
+	$(MODULE_DEPS_LIBS) \
+	$(top_builddir)/modules/metrics-probe/filterx/libmetrics-probe-filterx.la
 modules_metrics_probe_libmetrics_probe_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
 EXTRA_modules_metrics_probe_libmetrics_probe_la_DEPENDENCIES	=	\
-	$(MODULE_DEPS_LIBS)
+	$(MODULE_DEPS_LIBS) \
+	$(top_builddir)/modules/metrics-probe/filterx/libmetrics-probe-filterx.la
 
 BUILT_SOURCES					+=	\
 	modules/metrics-probe/metrics-probe-grammar.y		\
@@ -29,4 +31,5 @@ EXTRA_DIST					+=	\
 modules/metrics-probe modules/metrics-probe/ mod-metrics-probe: modules/metrics-probe/libmetrics-probe.la
 .PHONY: modules/metrics-probe/ mod-metrics-probe
 
+include modules/metrics-probe/filterx/Makefile.am
 include modules/metrics-probe/tests/Makefile.am
