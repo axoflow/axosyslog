@@ -38,6 +38,7 @@ typedef struct _WildcardSourceDriver
   gchar *filename_pattern;
   gchar *exclude_pattern;
   MonitorMethod monitor_method;
+  gint monitor_freq;
   guint32 max_files;
 
   gboolean window_size_initialized;
@@ -62,6 +63,7 @@ void wildcard_sd_set_filename_pattern(LogDriver *s, const gchar *filename_patter
 void wildcard_sd_set_exclude_pattern(LogDriver *s, const gchar *exclude_pattern);
 void wildcard_sd_set_recursive(LogDriver *s, gboolean recursive);
 gboolean wildcard_sd_set_monitor_method(LogDriver *s, const gchar *method);
+void wildcard_sd_set_monitor_freq(LogDriver *s, gint monitor_freq);
 void wildcard_sd_set_max_files(LogDriver *s, guint32 max_files);
 
 gboolean affile_is_legacy_wildcard_source(const gchar *filename);
