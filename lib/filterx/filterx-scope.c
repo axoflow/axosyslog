@@ -246,6 +246,9 @@ filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func,
     {
       FilterXVariable *variable = &g_array_index(self->variables, FilterXVariable, i);
 
+      if (!variable->value)
+        continue;
+
       if (filterx_variable_handle_is_floating(variable->handle) &&
           !variable->declared && variable->generation != self->generation)
         continue;
