@@ -1,5 +1,7 @@
 name: AxoSyslog Docker image builder
 
+permissions: write-all
+
 on:
   workflow_call:
     inputs:

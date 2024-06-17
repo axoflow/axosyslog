@@ -4,6 +4,8 @@
 
 name: AxoSyslog stable
 
+permissions: write-all
+
 on:
   workflow_dispatch:
   push:

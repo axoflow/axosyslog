@@ -1,5 +1,7 @@
 name: Compile dbld-images
 
+permissions: write-all
+
 on:
   pull_request:
     paths:
