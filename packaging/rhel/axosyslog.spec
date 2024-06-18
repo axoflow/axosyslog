@@ -336,7 +336,7 @@ Conflicts: rsyslog
 
 %description logrotate
 This package provides a logrotate script for axosyslog. It is only installed if
-ryslog is not on the system.
+rsyslog is not on the system.
 
 %prep
 %setup -q
