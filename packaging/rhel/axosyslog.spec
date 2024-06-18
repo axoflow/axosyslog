@@ -26,6 +26,7 @@ Source4: syslog-ng.logrotate7
 %bcond_without afsnmp
 %bcond_without mqtt
 %bcond_without grpc
+%bcond_without bpf
 
 
 %if 0%{?rhel} == 9
@@ -134,6 +135,12 @@ BuildRequires: protobuf-devel
 BuildRequires: protobuf-compiler
 BuildRequires: abseil-cpp-devel
 BuildRequires: grpc-devel
+%endif
+
+%if %{with bpf}
+BuildRequires: clang
+BuildRequires: libbpf-devel
+BuildRequires: bpftool
 %endif
 
 %if 0%{?rhel} == 7
@@ -303,6 +310,15 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 This module provides gRPC plugins that allows receiving and sending logs from/to
 OpenTelemetry, Google BigQuery, and Grafana Loki.
 
+%package bpf
+Summary: BPF support for %{name}
+Group: Development/Libraries
+Requires: %{name}%{?_isa} = %{version}-%{release}
+
+%description bpf
+This package provides the ebpf() plugin which leverages the kernel's eBPF
+infrastructure to improve performance and scalability of axosyslog.
+
 %package devel
 Summary: Development files for %{name}
 Group: Development/Libraries
@@ -364,6 +380,7 @@ ryslog is not on the system.
     --enable-python \
     --disable-java-modules \
     --with-python=%{py_ver} \
+    %{?with_bpf:--enable-ebpf} \
     %{?with_kafka:--enable-kafka} \
     %{?with_mqtt:--enable-mqtt} \
     %{?with_cloud_auth:--enable-cloud-auth} %{!?with_cloud_auth:--disable-cloud-auth} \
@@ -573,6 +590,11 @@ fi
 %{_libdir}/syslog-ng/libotel.so
 %{_libdir}/syslog-ng/libloki.so
 %{_libdir}/syslog-ng/libbigquery.so
+%endif
+
+%if %{with bpf}
+%files bpf
+%{_libdir}/syslog-ng/libebpf.so
 %endif
 
 %files smtp
