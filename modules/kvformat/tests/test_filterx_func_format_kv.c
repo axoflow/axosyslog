@@ -99,7 +99,7 @@ Test(filterx_func_format_kv, test_invalid_args)
 
   /* error value_separator */
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
-  args = g_list_append(args, filterx_function_arg_new("value_separator", filterx_error_expr_new()));
+  args = g_list_append(args, filterx_function_arg_new("value_separator", filterx_dummy_error_new("")));
   _assert_format_kv_init_fail(args);
   args = NULL;
 
@@ -124,7 +124,7 @@ Test(filterx_func_format_kv, test_invalid_args)
 
   /* error pair_separator */
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
-  args = g_list_append(args, filterx_function_arg_new("pair_separator", filterx_error_expr_new()));
+  args = g_list_append(args, filterx_function_arg_new("pair_separator", filterx_dummy_error_new("")));
   _assert_format_kv_init_fail(args);
   args = NULL;
 
