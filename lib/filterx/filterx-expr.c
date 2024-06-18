@@ -124,6 +124,8 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterX
 {
   filterx_expr_init_instance(&self->super);
   self->super.free_fn = filterx_binary_op_free_method;
+  g_assert(lhs);
+  g_assert(rhs);
   self->lhs = lhs;
   self->rhs = rhs;
 }
