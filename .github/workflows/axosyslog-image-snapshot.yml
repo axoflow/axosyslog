@@ -42,6 +42,7 @@ jobs:
           path: dbld/build/*.tar.*
 
   publish-image:
+    permissions: write-all
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: tarball
     with:

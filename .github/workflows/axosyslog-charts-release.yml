@@ -1,5 +1,7 @@
 name: AxoSyslog charts release
 
+permissions: write-all
+
 on:
   push:
     paths:

@@ -23,6 +23,8 @@
 
 name: Version bump
 
+permissions: write-all
+
 on:
   workflow_dispatch:
     inputs:

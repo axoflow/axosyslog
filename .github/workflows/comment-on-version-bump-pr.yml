@@ -8,6 +8,8 @@
 
 name: Comment on version bump PR
 
+permissions: write-all
+
 on:
   push:
     branches:
