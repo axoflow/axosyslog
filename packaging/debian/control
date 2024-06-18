@@ -875,9 +875,11 @@ Description: Enhanced system logging daemon (GRPC plugins)
   * hand on messages for further processing using message queues (like
     AMQP), files or databases (like PostgreSQL or MongoDB).
  .
- This package provides the GRPC plugin, that allows receiving and sending:
+ This package provides the GRPC plugins, that allows receiving and sending:
  .
   * OpenTelemetry logs, traces and metrics
+  * Google BigQuery
+  * Grafana Loki
 
 Package: axosyslog-mod-cloud-auth
 Architecture: any
