@@ -139,10 +139,39 @@ filterx_non_literal_new(FilterXObject *object)
   return shorthand;
 }
 
-FilterXExpr *
-filterx_error_expr_new(void)
+typedef struct _FilterXDummyError FilterXDummyError;
+
+struct _FilterXDummyError
 {
-  return filterx_literal_new(NULL);
+  FilterXExpr super;
+  gchar *msg;
+};
+
+static FilterXObject *
+_eval(FilterXExpr *s)
+{
+  FilterXDummyError *self = (FilterXDummyError *)s;
+  filterx_eval_push_error(self->msg, s, NULL);
+  return NULL;
+}
+
+static void
+_free(FilterXExpr *s)
+{
+  FilterXDummyError *self = (FilterXDummyError *)s;
+  g_free(self->msg);
+  filterx_expr_free_method(s);
+}
+
+FilterXExpr *
+filterx_dummy_error_new(const gchar *msg)
+{
+  FilterXDummyError *self = g_new0(FilterXDummyError, 1);
+  self->msg = g_strdup(msg);
+  filterx_expr_init_instance(&self->super);
+  self->super.eval = _eval;
+  self->super.free_fn = _free;
+  return &self->super;
 }
 
 static struct
