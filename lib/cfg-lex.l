@@ -319,6 +319,7 @@ filterx_word	[^ \#'"/\(\)\{\}\[\]\\;\r\n\t,|\.@:]
 <INITIAL,filterx>!==       { return KW_TAV_NE; }
 <filterx>\+=               { return KW_PLUS_ASSIGN; }
 <filterx>=~                { return KW_REGEXP_MATCH; }
+<filterx>\?\?              { return KW_NULL_COALESCING; }
 
 <INITIAL,filterx>(-|\+)?{digit}+\.{digit}+  { yylval->fnum = strtod(yytext, NULL); return LL_FLOAT; }
 <INITIAL,filterx>0x{xdigit}+ {

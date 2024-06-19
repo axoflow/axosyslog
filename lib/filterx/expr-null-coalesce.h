@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 shifter <shifter@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,30 +22,11 @@
  *
  */
 
-#ifndef LIBTEST_FILTERX_LIB_H_INCLUDED
-#define LIBTEST_FILTERX_LIB_H_INCLUDED
+#ifndef FILTERX_NULL_COALESCE_H_INCLUDED
+#define FILTERX_NULL_COALESCE_H_INCLUDED
 
-#include "filterx/filterx-object.h"
 #include "filterx/filterx-expr.h"
 
-void assert_marshaled_object(FilterXObject *obj, const gchar *repr, LogMessageValueType type);
-void assert_object_json_equals(FilterXObject *obj, const gchar *expected_json_repr);
-
-FILTERX_DECLARE_TYPE(test_dict);
-FILTERX_DECLARE_TYPE(test_list);
-FILTERX_DECLARE_TYPE(test_unknown_object);
-
-FilterXObject *filterx_test_dict_new(void);
-FilterXObject *filterx_test_list_new(void);
-FilterXObject *filterx_test_unknown_object_new(void);
-
-const gchar *filterx_test_unknown_object_marshaled_repr(gssize *len);
-const gchar *filterx_test_unknown_object_repr(gssize *len);
-
-FilterXExpr *filterx_non_literal_new(FilterXObject *object);
-FilterXExpr *filterx_dummy_error_new(const gchar *msg);
-
-void init_libtest_filterx(void);
-void deinit_libtest_filterx(void);
+FilterXExpr *filterx_null_coalesce_new(FilterXExpr *lhs, FilterXExpr *rhs);
 
 #endif

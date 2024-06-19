@@ -18,4 +18,4 @@ add_unit_test(LIBTEST CRITERION TARGET test_func_istype DEPENDS json-plugin ${JS
 add_unit_test(LIBTEST CRITERION TARGET test_func_unset_empties DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_expr_function DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_expr_regexp DEPENDS json-plugin ${JSONC_LIBRARY})
-
+add_unit_test(LIBTEST CRITERION TARGET test_expr_null_coalesce DEPENDS json-plugin ${JSONC_LIBRARY})

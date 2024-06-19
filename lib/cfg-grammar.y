@@ -207,6 +207,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 /* operators in the filter language, the order of this determines precedence */
 %right KW_ASSIGN 9000
 %right '?' ':'
+%right KW_NULL_COALESCING
 %left  KW_OR 9010
 %left  KW_AND 9020
 %left  KW_STR_EQ 9030 KW_STR_NE 9031, KW_TA_EQ 9032, KW_TA_NE 9033, KW_TAV_EQ 9034, KW_TAV_NE 9035

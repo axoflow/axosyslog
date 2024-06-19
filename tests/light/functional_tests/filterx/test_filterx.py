@@ -1534,3 +1534,149 @@ def test_unset_empties(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "[{},{},[],[]]\n"
+
+
+def test_null_coalesce_use_default_on_null(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        x = null;
+        y = "bar";
+        $MSG = x ?? y;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "bar\n"
+
+
+def test_null_coalesce_use_default_on_error_and_supress_error(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        y = "bar";
+        $MSG = len(3.14) ?? y; # in-line expression evaluation is mandatory. the error would be propagated other way
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "bar\n"
+
+
+def test_null_coalesce_get_happy_paths(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        def = "default";
+        key = "bar";
+        $MSG = json();
+
+        $MSG.a = data[key] ?? def;
+        $MSG.b = key ?? def;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"a":"2","b":"bar"}\n'
+
+
+def test_null_coalesce_get_subscript_error(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        def = "default";
+        key = "missing_key";
+        $MSG = data[key] ?? def;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "default\n"
+
+
+def test_null_coalesce_use_nested_coalesce(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        def = "default";
+        key1 = "missing_key1";
+        key2 = "missing_key2";
+        $MSG = data[key1] ?? data[key2] ?? def;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "default\n"
+
+
+def test_null_coalesce_use_nested_coalesce_return_mid_match(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        def = "default";
+        key1 = "missing_key1";
+        key2 = "baz";
+        $MSG = data[key1] ?? data[key2] ?? def;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "3\n"
+
+
+def test_null_coalesce_do_not_supress_last_error(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        def = "default";
+        key1 = "missing_key1";
+        key2 = "missing_key2";
+        key3 = "missing_key3";
+        $MSG = data[key1] ?? data[key2] ?? data[key3];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_null_coalesce_precedence_versus_ternary(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        def = "default";
+        $MSG = json();
+
+        # according to c# and python null coalesce have higher precedence
+
+        # a = ( false ?? isset(data["foo"]) ) ? data["foo"] : def;
+        $MSG.a = false ?? isset(data["foo"]) ? data["foo"] : def;
+
+        # b = true ? ( data["wrong"] ?? data["bar"] ) : def;
+        $MSG.b = true ? data["wrong"] ?? data["bar"] : def;
+
+        $MSG.c = data["foo"] ? data["bar"] ?? data["baz"] : def;
+
+        # $MSG.d = false ? ( data["foo"] ?? data["bar"] ) : ( data["wrong"] ?? data["baz"] ) ;
+        $MSG.d = false ? data["foo"] ?? data["bar"] : data["wrong"] ?? data["baz"];
+
+        # ternary default match value
+        $MSG.e = data["wrong"] ?? data["foo"] ? : def;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"a":"default","b":"2","c":"2","d":"3","e":"1"}\n'
