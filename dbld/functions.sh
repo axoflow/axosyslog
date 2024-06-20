@@ -78,6 +78,8 @@ function _map_feature_flags_to_deb_build_profiles()
             ;;
         esac
     done
+
+    echo -n "sng-${OS_DISTRIBUTION} "
     echo
 }
 
