@@ -121,11 +121,10 @@ _load_json_file(const gchar *filepath, GError **error)
     }
 
   FilterXObject *result = NULL;
-  if (object)
-    {
-      result = filterx_json_new_from_object(object);
-      filterx_object_make_readonly(result);
-    }
+  if (object && (result = filterx_json_new_from_object(object)))
+    filterx_object_make_readonly(result);
+  else
+    json_object_put(object);
 
   json_tokener_free(tokener);
   fclose(file);
