@@ -42,6 +42,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-len.h		\
 	lib/filterx/func-vars.h		\
 	lib/filterx/func-unset-empties.h		\
+	lib/filterx/func-str-transform.h		\
 	lib/filterx/filterx-private.h			\
 	lib/filterx/expr-null-coalesce.h
 
@@ -89,6 +90,7 @@ filterx_sources = 				\
 	lib/filterx/func-len.c		\
 	lib/filterx/func-vars.c		\
 	lib/filterx/func-unset-empties.c		\
+	lib/filterx/func-str-transform.c		\
 	lib/filterx/filterx-private.c	\
 	lib/filterx/expr-null-coalesce.c	\
 	lib/filterx/filterx-grammar.y

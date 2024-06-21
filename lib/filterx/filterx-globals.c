@@ -34,6 +34,7 @@
 #include "filterx/func-len.h"
 #include "filterx/func-vars.h"
 #include "filterx/func-unset-empties.h"
+#include "filterx/func-str-transform.h"
 #include "filterx/filterx-eval.h"
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
@@ -85,7 +86,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("double", filterx_typecast_double));
   g_assert(filterx_builtin_simple_function_register("len", filterx_simple_function_len));
   g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
-
+  g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
+  g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
 }
 
 static void
