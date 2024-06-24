@@ -91,6 +91,10 @@
 
 #ifdef __cplusplus
 
+#ifndef __STDC_VERSION__
+#define __STDC_VERSION__ 0
+#endif
+
 #define this this_
 
 extern "C" {
