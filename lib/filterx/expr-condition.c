@@ -65,11 +65,7 @@ _eval_condition(FilterXConditional *c)
       goto exit;
     }
 
-  if (!filterx_expr_list_eval(c->statements, &result))
-    {
-      filterx_object_unref(result);
-      return filterx_boolean_new(FALSE);
-    }
+  filterx_expr_list_eval(c->statements, &result);
 exit:
   filterx_object_unref(condition_value);
   return result;

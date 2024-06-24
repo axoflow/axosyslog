@@ -308,7 +308,7 @@ Test(expr_condition, test_condition_must_return_last_expression_from_evaluated_c
 }
 
 
-Test(expr_condition, test_condition_falsey_expression_must_interrupt_sequential_code_execution)
+Test(expr_condition, test_condition_falsey_statement_must_interrupt_sequential_code_execution)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   stmts = g_list_append(stmts, filterx_literal_new(filterx_boolean_new(false)));
@@ -318,7 +318,7 @@ Test(expr_condition, test_condition_falsey_expression_must_interrupt_sequential_
                       stmts);
 
   FilterXObject *cond_eval = filterx_expr_eval(cond);
-  cr_assert(cond_eval != NULL);
+  cr_assert_not_null(cond_eval);
   cr_assert(filterx_object_truthy(cond_eval) == FALSE);
 
   FilterXObject *control_value = _assert_get_test_variable("$control-value");
@@ -332,6 +332,28 @@ Test(expr_condition, test_condition_falsey_expression_must_interrupt_sequential_
   filterx_object_unref(cond_eval);
 }
 
+Test(expr_condition, test_condition_error_statement_must_return_null)
+{
+  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
+  stmts = g_list_append(stmts, filterx_dummy_error_new(""));
+  stmts = g_list_append(stmts, _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")));
+
+  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(true)),
+                      stmts);
+
+  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  cr_assert_null(cond_eval);
+
+  FilterXObject *control_value = _assert_get_test_variable("$control-value");
+  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching", control_value));
+  filterx_object_unref(control_value);
+  control_value = _assert_get_test_variable("$control-value3");
+  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("default3", control_value));
+  filterx_object_unref(control_value);
+
+  filterx_expr_unref(cond);
+  filterx_object_unref(cond_eval);
+}
 
 Test(expr_condition, test_condition_do_not_allow_to_add_else_into_else, .signal=SIGABRT)
 {
