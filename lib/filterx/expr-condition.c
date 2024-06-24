@@ -35,20 +35,22 @@ _tail_condition(FilterXConditional *c)
 }
 
 static FilterXObject *
-_eval_condition(FilterXConditional *c)
+_eval(FilterXExpr *s)
 {
+  FilterXConditional *self = (FilterXConditional *) s;
+
   FilterXObject *result = NULL;
   FilterXObject *condition_value = NULL;
-  if (c->condition != FILTERX_CONDITIONAL_NO_CONDITION)
+  if (self->condition != FILTERX_CONDITIONAL_NO_CONDITION)
     {
-      condition_value = filterx_expr_eval(c->condition);
+      condition_value = filterx_expr_eval(self->condition);
       if (!condition_value)
         return NULL;
       if (filterx_object_falsy(condition_value))
         {
           // no condition-expression match, no elif or else case
           // returning true to avoid filterx failure on non matching if's
-          if (c->false_branch == NULL)
+          if (self->false_branch == NULL)
             result = filterx_boolean_new(TRUE);
           else
             result = filterx_expr_eval(&self->false_branch->super);
@@ -56,16 +58,16 @@ _eval_condition(FilterXConditional *c)
         }
     }
 
-  if (!c->statements)
+  if (!self->statements)
     {
-      if (c->condition)
+      if (self->condition)
         return condition_value;
       // returning true to avoid filterx failure on empty else block
       result = filterx_boolean_new(TRUE);
       goto exit;
     }
 
-  filterx_expr_list_eval(c->statements, &result);
+  filterx_expr_list_eval(self->statements, &result);
 exit:
   filterx_object_unref(condition_value);
   return result;
@@ -81,13 +83,6 @@ _free (FilterXExpr *s)
   if (self->false_branch != NULL)
     filterx_expr_unref(&self->false_branch->super);
   filterx_expr_free_method(s);
-}
-
-static FilterXObject *
-_eval(FilterXExpr *s)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-  return _eval_condition(self);
 }
 
 FilterXExpr *
