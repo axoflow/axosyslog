@@ -203,6 +203,14 @@ filterx_json_new_from_args(FilterXExpr *s, GPtrArray *args)
 
   if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(message_value)))
     {
+      if (filterx_message_value_get_type(arg) == LM_VT_STRING)
+        {
+          gsize repr_len;
+          const gchar *repr = filterx_message_value_get_value(arg, &repr_len);
+          g_assert(repr);
+          return filterx_json_new_from_repr(repr, repr_len);
+        }
+
       FilterXObject *unmarshalled = filterx_object_unmarshal(arg);
       if (!filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(json_array)) &&
           !filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(json_object)))
