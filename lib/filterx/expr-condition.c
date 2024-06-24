@@ -51,7 +51,7 @@ _eval_condition(FilterXConditional *c)
           if (c->false_branch == NULL)
             result = filterx_boolean_new(TRUE);
           else
-            result = _eval_condition(c->false_branch);
+            result = filterx_expr_eval(&self->false_branch->super);
           goto exit;
         }
     }
