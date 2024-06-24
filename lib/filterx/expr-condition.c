@@ -1,5 +1,7 @@
 /*
  * Copyright (c) 2023 shifter <shifter@axoflow.com>
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,43 +36,81 @@ _tail_condition(FilterXConditional *c)
     return c;
 }
 
+static gboolean
+_has_condition(FilterXConditional *self)
+{
+  return self->condition != FILTERX_CONDITIONAL_NO_CONDITION;
+}
+
+static FilterXObject *
+_eval_statements(FilterXConditional *self)
+{
+  g_assert(self->statements);
+
+  /*
+   * We propagate both the valid and error results
+   * from filterx_expr_list_eval().
+   */
+  FilterXObject *result;
+  filterx_expr_list_eval(self->statements, &result);
+  return result;
+}
+
+static FilterXObject *
+_eval_with_condition(FilterXConditional *self)
+{
+  FilterXObject *condition_value = filterx_expr_eval(self->condition);
+  if (!condition_value)
+    return NULL;
+
+  if (filterx_object_truthy(condition_value))
+    {
+      if (self->statements)
+        {
+          filterx_object_unref(condition_value);
+          return _eval_statements(self);
+        }
+
+      /*
+       * Return the condition's value to make it work
+       * with ternary expressions without a true value.
+       * E.g.: foo ? : bar;
+       */
+      return condition_value;
+    }
+
+  filterx_object_unref(condition_value);
+
+  if (self->false_branch)
+    return filterx_expr_eval(&self->false_branch->super);
+
+  /*
+   * The condition is falsy, and we don't have a false branch.
+   * This implies we are not in a ternary expression.
+   * Return true so we don't block the flow.
+   */
+  return filterx_boolean_new(TRUE);
+}
+
+/* else branch */
+static FilterXObject *
+_eval_without_condition(FilterXConditional *self)
+{
+  if (self->statements)
+    return _eval_statements(self);
+
+  /* No statements is an implicit true. */
+  return filterx_boolean_new(TRUE);
+}
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
   FilterXConditional *self = (FilterXConditional *) s;
 
-  FilterXObject *result = NULL;
-  FilterXObject *condition_value = NULL;
-  if (self->condition != FILTERX_CONDITIONAL_NO_CONDITION)
-    {
-      condition_value = filterx_expr_eval(self->condition);
-      if (!condition_value)
-        return NULL;
-      if (filterx_object_falsy(condition_value))
-        {
-          // no condition-expression match, no elif or else case
-          // returning true to avoid filterx failure on non matching if's
-          if (self->false_branch == NULL)
-            result = filterx_boolean_new(TRUE);
-          else
-            result = filterx_expr_eval(&self->false_branch->super);
-          goto exit;
-        }
-    }
-
-  if (!self->statements)
-    {
-      if (self->condition)
-        return condition_value;
-      // returning true to avoid filterx failure on empty else block
-      result = filterx_boolean_new(TRUE);
-      goto exit;
-    }
-
-  filterx_expr_list_eval(self->statements, &result);
-exit:
-  filterx_object_unref(condition_value);
-  return result;
+  if (_has_condition(self))
+    return _eval_with_condition(self);
+  return _eval_without_condition(self);
 }
 
 static void
