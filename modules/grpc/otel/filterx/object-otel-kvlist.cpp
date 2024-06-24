@@ -31,6 +31,9 @@
 #include <google/protobuf/reflection.h>
 #include <stdexcept>
 
+/* The deprecated MutableRepeatedPtrField() does not have a proper alternative. */
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+
 using namespace syslogng::grpc::otel::filterx;
 using opentelemetry::proto::common::v1::KeyValueList;
 using opentelemetry::proto::common::v1::AnyValue;
