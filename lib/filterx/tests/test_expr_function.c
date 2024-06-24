@@ -27,7 +27,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-comparison.h"
-#include "filterx/expr-condition.h"
+#include "filterx/expr-conditional.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-string.h"

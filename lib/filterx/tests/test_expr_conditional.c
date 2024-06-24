@@ -27,7 +27,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-comparison.h"
-#include "filterx/expr-condition.h"
+#include "filterx/expr-conditional.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-string.h"
@@ -94,7 +94,7 @@ _assert_get_test_variable(const char *var_name)
 
 //// Actual tests
 
-Test(expr_condition, test_control_variable_set_get)
+Test(expr_conditional, test_control_variable_set_get)
 {
   FilterXObject *control_value = _assert_get_test_variable("$control-value");
 
@@ -104,7 +104,7 @@ Test(expr_condition, test_control_variable_set_get)
 }
 
 
-Test(expr_condition, test_condition_with_null_expr_must_evaluated)
+Test(expr_conditional, test_condition_with_null_expr_must_evaluated)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
 
@@ -121,7 +121,7 @@ Test(expr_condition, test_condition_with_null_expr_must_evaluated)
   filterx_object_unref(cond_eval);
 }
 
-Test(expr_condition, test_condition_matching_expression)
+Test(expr_conditional, test_condition_matching_expression)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
 
@@ -140,7 +140,7 @@ Test(expr_condition, test_condition_matching_expression)
 }
 
 
-Test(expr_condition, test_condition_non_matching_expression)
+Test(expr_conditional, test_condition_non_matching_expression)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
 
@@ -159,7 +159,7 @@ Test(expr_condition, test_condition_non_matching_expression)
 }
 
 
-Test(expr_condition, test_condition_matching_elif_expression)
+Test(expr_conditional, test_condition_matching_elif_expression)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
@@ -183,7 +183,7 @@ Test(expr_condition, test_condition_matching_elif_expression)
 }
 
 
-Test(expr_condition, test_condition_non_matching_elif_expression)
+Test(expr_conditional, test_condition_non_matching_elif_expression)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
@@ -206,7 +206,7 @@ Test(expr_condition, test_condition_non_matching_elif_expression)
   filterx_object_unref(cond_eval);
 }
 
-Test(expr_condition, test_condition_matching_else_expression)
+Test(expr_conditional, test_condition_matching_else_expression)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
@@ -233,7 +233,7 @@ Test(expr_condition, test_condition_matching_else_expression)
   filterx_object_unref(cond_eval);
 }
 
-Test(expr_condition, test_condition_subsequent_conditions_must_create_nested_condition)
+Test(expr_conditional, test_condition_subsequent_conditions_must_create_nested_condition)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
@@ -262,7 +262,7 @@ Test(expr_condition, test_condition_subsequent_conditions_must_create_nested_con
   filterx_expr_unref(cond);
 }
 
-Test(expr_condition, test_condition_all_the_statements_must_executed)
+Test(expr_conditional, test_condition_all_the_statements_must_executed)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   stmts = g_list_append(stmts, _assert_assign_var("$control-value2", _string_to_filterXExpr("matching2")));
@@ -290,7 +290,7 @@ Test(expr_condition, test_condition_all_the_statements_must_executed)
 }
 
 
-Test(expr_condition, test_condition_must_return_last_expression_from_evaluated_codeblock)
+Test(expr_conditional, test_condition_must_return_last_expression_from_evaluated_codeblock)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   stmts = g_list_append(stmts, _assert_assign_var("$control-value2", _string_to_filterXExpr("matching2")));
@@ -308,7 +308,7 @@ Test(expr_condition, test_condition_must_return_last_expression_from_evaluated_c
 }
 
 
-Test(expr_condition, test_condition_falsey_statement_must_interrupt_sequential_code_execution)
+Test(expr_conditional, test_condition_falsey_statement_must_interrupt_sequential_code_execution)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   stmts = g_list_append(stmts, filterx_literal_new(filterx_boolean_new(false)));
@@ -332,7 +332,7 @@ Test(expr_condition, test_condition_falsey_statement_must_interrupt_sequential_c
   filterx_object_unref(cond_eval);
 }
 
-Test(expr_condition, test_condition_error_statement_must_return_null)
+Test(expr_conditional, test_condition_error_statement_must_return_null)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   stmts = g_list_append(stmts, filterx_dummy_error_new(""));
@@ -355,7 +355,7 @@ Test(expr_condition, test_condition_error_statement_must_return_null)
   filterx_object_unref(cond_eval);
 }
 
-Test(expr_condition, test_condition_do_not_allow_to_add_else_into_else, .signal=SIGABRT)
+Test(expr_conditional, test_condition_do_not_allow_to_add_else_into_else, .signal=SIGABRT)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
   GList *stmts2 = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
@@ -373,7 +373,7 @@ _fail_func(FilterXExpr *s, GPtrArray *args)
   return NULL;
 }
 
-Test(expr_condition, test_condition_return_null_on_illegal_expr)
+Test(expr_conditional, test_condition_return_null_on_illegal_expr)
 {
   GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
 
@@ -392,7 +392,7 @@ _dummy_func(FilterXExpr *s, GPtrArray *args)
   return filterx_string_new("foobar", -1);
 }
 
-Test(expr_condition, test_condition_return_expr_result_on_missing_stmts)
+Test(expr_conditional, test_condition_return_expr_result_on_missing_stmts)
 {
   FilterXExpr *func = filterx_simple_function_new("test_fn", filterx_function_args_new(NULL, NULL), _dummy_func);
 
@@ -407,7 +407,7 @@ Test(expr_condition, test_condition_return_expr_result_on_missing_stmts)
   filterx_object_unref(res);
 }
 
-Test(expr_condition, test_condition_must_not_fail_on_empty_else_block)
+Test(expr_conditional, test_condition_must_not_fail_on_empty_else_block)
 {
   FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(FALSE)),
                       NULL);
@@ -422,7 +422,7 @@ Test(expr_condition, test_condition_must_not_fail_on_empty_else_block)
   filterx_object_unref(res);
 }
 
-Test(expr_condition, test_condition_with_complex_expression_to_check_memory_leaks)
+Test(expr_conditional, test_condition_with_complex_expression_to_check_memory_leaks)
 {
   GList *stmts = NULL;
   stmts = g_list_append(stmts, filterx_literal_new(filterx_string_new("foobar", -1)));
@@ -457,4 +457,4 @@ teardown(void)
   app_shutdown();
 }
 
-TestSuite(expr_condition, .init = setup, .fini = teardown);
+TestSuite(expr_conditional, .init = setup, .fini = teardown);

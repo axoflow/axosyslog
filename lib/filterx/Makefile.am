@@ -31,7 +31,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-config.h		\
 	lib/filterx/filterx-pipe.h		\
 	lib/filterx/expr-function.h	\
-	lib/filterx/expr-condition.h \
+	lib/filterx/expr-conditional.h \
 	lib/filterx/expr-isset.h \
 	lib/filterx/expr-unset.h		\
 	lib/filterx/expr-shorthand.h		\
@@ -79,7 +79,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-config.c		\
 	lib/filterx/filterx-pipe.c		\
 	lib/filterx/expr-function.c		\
-	lib/filterx/expr-condition.c		\
+	lib/filterx/expr-conditional.c		\
 	lib/filterx/expr-isset.c		\
 	lib/filterx/expr-unset.c		\
 	lib/filterx/expr-shorthand.c		\

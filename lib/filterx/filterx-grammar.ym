@@ -46,7 +46,7 @@
 #include "filterx/object-string.h"
 #include "filterx/filterx-config.h"
 #include "filterx/expr-function.h"
-#include "filterx/expr-condition.h"
+#include "filterx/expr-conditional.h"
 #include "filterx/expr-isset.h"
 #include "filterx/expr-unset.h"
 #include "filterx/expr-literal-generator.h"

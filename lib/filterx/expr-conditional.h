@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef FILTERX_CONDITION_H_INCLUDED
-#define FILTERX_CONDITION_H_INCLUDED
+#ifndef FILTERX_CONDITIONAL_H_INCLUDED
+#define FILTERX_CONDITIONAL_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
 

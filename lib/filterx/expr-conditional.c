@@ -23,7 +23,7 @@
  *
  */
 
-#include "filterx/expr-condition.h"
+#include "filterx/expr-conditional.h"
 #include "filterx/object-primitive.h"
 
 static FilterXConditional *

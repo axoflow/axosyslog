@@ -28,7 +28,7 @@ set(FILTERX_HEADERS
     filterx/object-string.h
     filterx/object-list-interface.h
     filterx/object-dict-interface.h
-    filterx/expr-condition.h
+    filterx/expr-conditional.h
     filterx/expr-isset.h
     filterx/expr-unset.h
     filterx/expr-shorthand.h
@@ -77,7 +77,7 @@ set(FILTERX_SOURCES
     filterx/object-string.c
     filterx/object-list-interface.c
     filterx/object-dict-interface.c
-    filterx/expr-condition.c
+    filterx/expr-conditional.c
     filterx/expr-isset.c
     filterx/expr-unset.c
     filterx/expr-shorthand.c
