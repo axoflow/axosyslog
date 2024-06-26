@@ -388,7 +388,7 @@ def test_otel_resource_scope_log_to_json(config, syslog_ng):
                 "version": "ceta",
             },
             "log": {
-                "time_unix_nano": "123.456789+00:00",
+                "time_unix_nano": "123.456789",
                 "body": "fit",
                 "attributes": {
                     "answer": 42,
@@ -407,7 +407,7 @@ def test_otel_resource_scope_log_to_json(config, syslog_ng):
                 "version": "ceta",
             },
             "log": {
-                "time_unix_nano": "123.456789+00:00",
+                "time_unix_nano": "123.456789",
                 "body": "fit",
                 "attributes": {
                     "answer": 42,
@@ -468,7 +468,7 @@ def test_json_to_otel_resource_scope_log(config, syslog_ng):
             "version": "ceta",
         },
         "log": {
-            "time_unix_nano": "123.456789+00:00",
+            "time_unix_nano": "123.456789",
             "body": "fit",
             "attributes": {
                 "answer": 42,

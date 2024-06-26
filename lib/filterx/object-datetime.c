@@ -54,13 +54,12 @@ _truthy(FilterXObject *s)
 
 /* FIXME: delegate formatting and parsing to UnixTime */
 static void
-_convert_unix_time_to_string(const UnixTime *ut, GString *result)
+_convert_unix_time_to_string(const UnixTime *ut, GString *result, gboolean include_tzofs)
 {
-
   format_int64_padded(result, -1, ' ', 10, ut->ut_sec);
   g_string_append_c(result, '.');
   format_uint64_padded(result, 6, '0', 10, ut->ut_usec);
-  if (ut->ut_gmtoff != -1)
+  if (include_tzofs && ut->ut_gmtoff != -1)
     {
       if (ut->ut_gmtoff >= 0)
         g_string_append_c(result, '+');
@@ -79,7 +78,7 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
   FilterXDateTime *self = (FilterXDateTime *) s;
 
   *t = LM_VT_DATETIME;
-  _convert_unix_time_to_string(&self->ut, repr);
+  _convert_unix_time_to_string(&self->ut, repr, TRUE);
   return TRUE;
 }
 
@@ -89,7 +88,7 @@ _map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **asso
   FilterXDateTime *self = (FilterXDateTime *) s;
   GString *time_stamp = scratch_buffers_alloc();
 
-  _convert_unix_time_to_string(&self->ut, time_stamp);
+  _convert_unix_time_to_string(&self->ut, time_stamp, FALSE);
 
   *object = json_object_new_string_len(time_stamp->str, time_stamp->len);
   return TRUE;

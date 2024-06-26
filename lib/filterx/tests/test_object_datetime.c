@@ -49,7 +49,7 @@ Test(filterx_datetime, test_filterx_object_datetime_maps_to_the_right_json_value
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
   FilterXObject *fobj = filterx_datetime_new(&ut);
-  assert_object_json_equals(fobj, "\"1701350398.123000+01:00\"");
+  assert_object_json_equals(fobj, "\"1701350398.123000\"");
   filterx_object_unref(fobj);
 }
 
