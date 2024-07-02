@@ -51,7 +51,7 @@ class DebIndexer(Indexer):
         gpg_key_passphrase: Optional[str],
     ) -> None:
         self.__apt_conf_file_path = apt_conf_file_path
-        self.__gpg_key_path = gpg_key_path.expanduser()
+        self.__gpg_key_path = gpg_key_path
         self.__gpg_key_passphrase = gpg_key_passphrase
         super().__init__(
             incoming_remote_storage_synchronizer=incoming_remote_storage_synchronizer,

@@ -47,29 +47,31 @@ jobs:
       source-tarball-artifact-name: source-tarball
       dbld-image-mode: cache
 
-  # upload-packages:
-  #   needs: create-packages
-  #   uses: ./.github/workflows/upload-packages.yml
-  #   with:
-  #     pkg-type: nightly
-  #   secrets:
-  #     azure-sas-token: ${{ secrets.AZURE_SAS_TOKEN }}
+  upload-packages:
+    needs: create-packages
+    uses: ./.github/workflows/upload-packages.yml
+    with:
+      pkg-type: nightly
+    secrets:
+      r2-access-key: ${{ secrets.R2_ACCESS_KEY }}
+      r2-secret-key: ${{ secrets.R2_SECRET_KEY }}
+      r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
 
-  # index-packages:
-  #   needs: upload-packages
-  #   uses: ./.github/workflows/index-packages.yml
-  #   with:
-  #     pkg-type: nightly
-  #   secrets:
-  #     config-base64: ${{ secrets.PACKAGE_INDEXER_CONFIG_BASE64 }}
-  #     gpg-key-base64: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_BASE64 }}
-  #     gpg-key-passphrase: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_PASSPHRASE }}
+  index-packages:
+    needs: upload-packages
+    uses: ./.github/workflows/index-packages.yml
+    with:
+      pkg-type: nightly
+    secrets:
+      config-base64: ${{ secrets.PACKAGE_INDEXER_CONFIG_BASE64 }}
+      gpg-key-base64: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_BASE64 }}
+      gpg-key-passphrase: ${{ secrets.PACKAGE_INDEXER_GPG_KEY_PASSPHRASE }}
 
-  # test-packages:
-  #   needs: index-packages
-  #   uses: ./.github/workflows/test-apt-packages.yml
-  #   with:
-  #     pkg-type: nightly
+  test-packages:
+    needs: index-packages
+    uses: ./.github/workflows/test-apt-packages.yml
+    with:
+      pkg-type: nightly
 
   publish-image:
     if: github.ref == 'refs/heads/main'
