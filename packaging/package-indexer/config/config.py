@@ -138,7 +138,7 @@ class Config:
         return cls.from_config(options)
 
     def get_gpg_key_path(self) -> Path:
-        return self.__cfg["gpg-key-path"]
+        return Path(self.__cfg["gpg-key-path"]).expanduser().absolute()
 
     @staticmethod
     def __get_storage_implementation(vendor: str) -> Type[remote_storage_synchronizer.RemoteStorageSynchronizer]:

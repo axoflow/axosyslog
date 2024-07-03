@@ -83,13 +83,15 @@ jobs:
       source-tarball-artifact-name: release-tarball
       dbld-image-mode: build
 
-  # upload-packages:
-  #   needs: create-packages
-  #   uses: ./.github/workflows/upload-packages.yml
-  #   with:
-  #     pkg-type: stable
-  #   secrets:
-  #     azure-sas-token: ${{ secrets.AZURE_SAS_TOKEN }}
+  upload-packages:
+    needs: create-packages
+    uses: ./.github/workflows/upload-packages.yml
+    with:
+      pkg-type: stable
+    secrets:
+      r2-access-key: ${{ secrets.R2_ACCESS_KEY }}
+      r2-secret-key: ${{ secrets.R2_SECRET_KEY }}
+      r2-account-id: ${{ secrets.R2_ACCOUNT_ID }}
 
   create-draft-release:
     runs-on: ubuntu-latest

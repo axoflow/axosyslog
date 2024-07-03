@@ -1,4 +1,4 @@
-name: Index packages in Azure/incoming
+name: Index packages in R2/incoming
 
 
 on:
@@ -34,7 +34,7 @@ jobs:
       DOCKER_IMAGE: package-indexer
       DOCKER_CONTAINER_NAME: package_indexer_container
       VERBOSE_LOG_PATH: index-packages-verbose.log
-      GPG_KEY_PATH: syslog_ng_ose_signing_key.sub.priv.asc
+      GPG_KEY_PATH: axosyslog_signing_key.sub.priv.asc
 
     if: github.repository_owner == 'axoflow'
 
