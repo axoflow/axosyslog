@@ -386,7 +386,7 @@ filterx_word	[^ \#'"/\(\)\{\}\[\]\\;\r\n\t,|\.@:]
 <slash_string>\\f		        { g_string_append_c(yyextra->string_buffer, 12); }
 <slash_string>\\\\	                { g_string_append_c(yyextra->string_buffer, '\\'); }
 <slash_string>\\\/	                { g_string_append_c(yyextra->string_buffer, '/'); }
-<slash_string>\\[^anrtvbfox]	        { g_string_append_c(yyextra->string_buffer, yytext[1]); }
+<slash_string>\\[^anrtvbfox]	        { g_string_append(yyextra->string_buffer, yytext); }
 <slash_string>[^\/\\\r\n]+              { g_string_append(yyextra->string_buffer, yytext); }
 <slash_string>\/	                {
 			                        yy_pop_state(yyscanner);
