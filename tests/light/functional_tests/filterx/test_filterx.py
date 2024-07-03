@@ -1695,6 +1695,7 @@ bar/;
             $MSG.escaped_slash = /foo\/bar/;
             $MSG.non_escaped_single_quotes = /foo'bar/;
             $MSG.non_escaped_double_quotes = /foo"bar/;
+            $MSG.escaped_non_special = /foo\dbar/;
 
             ## special characters
             $MSG.new_line = /foo\nbar/;
@@ -1725,6 +1726,7 @@ bar/;
         r""""escaped_slash":"foo\/bar","""
         r""""non_escaped_single_quotes":"foo'bar","""
         r""""non_escaped_double_quotes":"foo\"bar","""
+        r""""escaped_non_special":"foo\\dbar","""
         r""""new_line":"foo\nbar","""
         r""""tab":"foo\tbar","""
         r""""carrige_return":"foo\rbar","""
