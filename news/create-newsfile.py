@@ -86,9 +86,11 @@ def get_next_version():
     next_version = (root_dir / 'VERSION.txt').read_text().rstrip()
     return next_version
 
+
 def create_version():
     next_version = get_next_version()
     return '{}\n{}\n\n'.format(next_version, len(next_version) * '=')
+
 
 def create_highlights_block():
     return '## Highlights\n' \
@@ -105,8 +107,10 @@ def create_standard_blocks():
             standard_blocks += create_block(block_name, entries)
     return standard_blocks
 
+
 def check_if_news_entries_are_present():
     return any(news_dir.glob("*-*.md"))
+
 
 def create_credits_block():
     def wrap(contributors):
@@ -152,6 +156,7 @@ def create_news_content():
 
 def check_if_news_is_already_uptodate():
     return get_last_version() == get_next_version()
+
 
 def main():
     print_usage_if_needed()
