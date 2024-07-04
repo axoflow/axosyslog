@@ -63,3 +63,11 @@ jobs:
           export SYSLOG_NG_IMAGE="axosyslog:test"
           export SYSLOG_NG_VERSION="${{ needs.tarball.outputs.snapshot-version }}"
           docker/tests/smoke.sh
+
+      - name: Scan docker image on CVEs
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'axosyslog:test'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH,MEDIUM,LOW'
