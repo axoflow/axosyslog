@@ -112,6 +112,15 @@ def check_if_news_entries_are_present():
     return any(news_dir.glob("*-*.md"))
 
 
+def create_discord_block():
+    return '## Discord\n' \
+           '\n' \
+           'For a bit more interactive discussion, join our Discord server:\n' \
+           '\n' \
+           '[![Axoflow Discord Server](https://discordapp.com/api/guilds/1082023686028148877/widget.png?style=banner2)](https://discord.gg/E65kP9aZGm)\n' \
+           '\n'
+
+
 def create_credits_block():
     def wrap(contributors):
         concated = ", ".join([c.replace(" ", "\0") for c in contributors])
@@ -151,6 +160,7 @@ def create_news_content():
     news = create_version()
     news += create_highlights_block()
     news += create_standard_blocks()
+    news += create_discord_block()
     news += create_credits_block()
     return news
 
