@@ -82,7 +82,7 @@ If you want to test a development version, you can use the nightly builds:
 docker pull ghcr.io/axoflow/axosyslog:nightly
 ```
 
-> Note: These named packages are automatically updated when a new syslog-ng package is released. To install a specific version, run `docker pull ghcr.io/axoflow/axosyslog:<version-number>`, for example:
+> Note: These named packages are automatically updated when a new AxoSyslog package is released. To install a specific version, run `docker pull ghcr.io/axoflow/axosyslog:<version-number>`, for example:
 >
 > ```shell
 > docker pull ghcr.io/axoflow/axosyslog:4.7.1
@@ -124,6 +124,37 @@ To uninstall the chart:
 Helm charts would use the latest images by default, but you can customize
 that via the values file.
 For details, see [Install AxoSyslog with Helm](https://axoflow.com/docs/axosyslog-core/install/helm/).
+
+## DEB packages
+
+You can install AxoSyslog on your Debian-based system from Axoflow's APT repository.
+AxoSyslog is a drop in replacement for the syslog-ng debian package, all the binaries
+and configuration files are stored at the same place on your system.
+
+The following x86-64 distros are supported:
+
+| Distro          | sources.list component |
+|-----------------|------------------------|
+| Debian 12       | debian-bookworm        |
+| Debian 11       | debian-bullseye        |
+| Debian Unstable | debian-sid             |
+| Debian Testing  | debian-testing         |
+| Ubuntu 24.04    | ubuntu-noble           |
+| Ubuntu 23.10    | ubuntu-mantic          |
+| Ubuntu 23.04    | ubuntu-lunar           |
+| Ubuntu 22.04    | ubuntu-jammy           |
+| Ubuntu 20.04    | ubuntu-focal           |
+
+To add the APT repo (e.g. Ubuntu 24.04):
+
+    wget -qO - https://pkg.axoflow.io/axoflow-code-signing-pub.asc | gpg --dearmor > /usr/share/keyrings/axoflow-code-signing-pub.gpg
+    echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt stable ubuntu-noble | tee --append /etc/apt/sources.list.d/axoflow.list
+    apt update
+
+Nightly builds are also available:
+
+    echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt nightly ubuntu-noble | tee --append /etc/apt/sources.list.d/axoflow.list
+
 ## Documentation
 
 You can find [comprehensive documentation for AxoSyslog](https://axoflow.com/docs/axosyslog-core)
