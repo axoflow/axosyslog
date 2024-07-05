@@ -29,6 +29,8 @@
 #include "filterx/object-dict-interface.h"
 #include "compat/pcre.h"
 
+#define FILTERX_FUNC_REGEXP_SUBST_USAGE "regexp_subst(string, pattern, replacement)"
+
 typedef struct FilterXReMatchState_
 {
   pcre2_match_data *match_data;
@@ -416,4 +418,142 @@ filterx_expr_regexp_search_generator_new(FilterXExpr *lhs, const gchar *pattern)
     }
 
   return &self->super.super;
+}
+
+
+typedef struct FilterXFuncRegexpSubst_
+{
+  FilterXFunction super;
+  FilterXExpr *string_expr;
+  pcre2_code_8 *pattern;
+  gchar *replacement;
+} FilterXFuncRegexpSubst;
+
+static FilterXObject *
+_replace_matches(const FilterXReMatchState *state)
+{
+  // TODO: implement, hint: log_matcher_pcre_re_replace()
+  return NULL;
+}
+
+static FilterXObject *
+_subst_eval(FilterXExpr *s)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+
+  FilterXObject *result;
+  FilterXReMatchState state;
+  _state_init(&state);
+
+  gboolean matched = _match(self->string_expr, self->pattern, &state);
+  if (!matched)
+    {
+      result = filterx_object_ref(state.lhs_obj);
+      goto exit;
+    }
+
+  if (!state.match_data)
+    {
+      /* Error happened during matching. */
+      result = NULL;
+      goto exit;
+    }
+
+  result = _replace_matches(&state);
+
+exit:
+  _state_cleanup(&state);
+  return result;
+}
+
+static FilterXExpr *
+_extract_subst_string_expr_arg(FilterXFunctionArgs *args, GError **error)
+{
+  return filterx_function_args_get_expr(args, 0);
+}
+
+static pcre2_code_8 *
+_extract_subst_pattern_arg(FilterXFunctionArgs *args, GError **error)
+{
+  const gchar *pattern = filterx_function_args_get_literal_string(args, 1, NULL);
+  if (!pattern)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be a string literal: pattern. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      return NULL;
+    }
+
+  return _compile_pattern(pattern);
+}
+
+static gchar *
+_extract_subst_replacement_arg(FilterXFunctionArgs *args, GError **error)
+{
+  const gchar *replacement = filterx_function_args_get_literal_string(args, 2, NULL);
+  if (!replacement)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be a string literal: replacement. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      return NULL;
+    }
+
+  return g_strdup(replacement);
+}
+
+static gboolean
+_extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
+{
+  if (filterx_function_args_len(args) != 3)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      return FALSE;
+    }
+
+  self->string_expr = _extract_subst_string_expr_arg(args, error);
+  if (!self->string_expr)
+    return FALSE;
+
+  self->pattern = _extract_subst_pattern_arg(args, error);
+  if (!self->pattern)
+    return FALSE;
+
+  self->replacement = _extract_subst_replacement_arg(args, error);
+  if (!self->replacement)
+    return FALSE;
+
+  return TRUE;
+}
+
+static void
+_subst_free(FilterXExpr *s)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+  filterx_expr_unref(self->string_expr);
+  if (self->pattern)
+    pcre2_code_free(self->pattern);
+  g_free(self->replacement);
+  filterx_function_free_method(&self->super);
+}
+
+FilterXFunction *
+filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
+  filterx_function_init_instance(&self->super, function_name);
+
+  self->super.super.eval = _subst_eval;
+  self->super.super.free_fn = _subst_free;
+
+  if (!_extract_subst_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
+  return &self->super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
 }
