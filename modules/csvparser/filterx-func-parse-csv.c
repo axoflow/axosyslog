@@ -45,6 +45,7 @@ typedef struct FilterXFunctionParseCSV_
   FilterXExpr *msg;
   CSVScannerOptions options;
   FilterXExpr *columns;
+  FilterXExpr *string_delimiters;
 } FilterXFunctionParseCSV;
 
 static gboolean
@@ -99,6 +100,7 @@ _eval(FilterXExpr *s)
   gboolean ok = FALSE;
   FilterXObject *result = NULL;
   GList *cols = NULL;
+  GList *string_delimiters = NULL;
 
   gsize len;
   const gchar *input;
@@ -111,6 +113,13 @@ _eval(FilterXExpr *s)
     goto exit;
 
   APPEND_ZERO(input, input, len);
+
+  if (!_parse_list_argument(self, self->string_delimiters, &string_delimiters,
+                            FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS))
+    goto exit;
+
+  if (string_delimiters)
+    csv_scanner_options_set_string_delimiters(&self->options, string_delimiters);
 
   if (!_parse_list_argument(self, self->columns, &cols, FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS))
     goto exit;
@@ -174,6 +183,7 @@ _free(FilterXExpr *s)
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
   filterx_expr_unref(self->msg);
   filterx_expr_unref(self->columns);
+  filterx_expr_unref(self->string_delimiters);
   csv_scanner_options_clean(&self->options);
   filterx_function_free_method(&self->super);
 }
@@ -196,6 +206,12 @@ static FilterXExpr *
 _extract_columns_expr(FilterXFunctionArgs *args, GError **error)
 {
   return filterx_function_args_get_named_expr(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS);
+}
+
+static FilterXExpr *
+_extract_stringdelimiters_expr(FilterXFunctionArgs *args, GError **error)
+{
+  return filterx_function_args_get_named_expr(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS);
 }
 
 static gboolean
@@ -312,6 +328,8 @@ _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
     return FALSE;
 
   self->columns = _extract_columns_expr(args, error);
+
+  self->string_delimiters = _extract_stringdelimiters_expr(args, error);
 
   if (!_extract_opts(self, args, error))
     return FALSE;
