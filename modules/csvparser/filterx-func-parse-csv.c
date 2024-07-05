@@ -48,40 +48,41 @@ typedef struct FilterXFunctionParseCSV_
 } FilterXFunctionParseCSV;
 
 static gboolean
-_parse_columns(FilterXFunctionParseCSV *self, GList **col_names)
+_parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GList **list, const gchar *arg_name)
 {
   gboolean result = FALSE;
-  if (!self->columns)
+  if (!list_expr)
     return TRUE;
-  FilterXObject *cols_obj = filterx_expr_eval(self->columns);
-  if (!cols_obj)
+  FilterXObject *list_obj = filterx_expr_eval(list_expr);
+  if (!list_obj)
     return FALSE;
 
-  if (!filterx_object_is_type(cols_obj, &FILTERX_TYPE_NAME(json_array)))
+  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(json_array)))
     {
-      msg_error("columns argument must be a type of json array.",
-                evt_tag_str("current_type", cols_obj->type->name ) );
+      msg_error("list object argument must be a type of json array.",
+                evt_tag_str("current_type", list_obj->type->name ),
+                evt_tag_str("argument_name", arg_name));
       goto exit;
     }
 
   guint64 size;
-  if (!filterx_object_len(cols_obj, &size))
+  if (!filterx_object_len(list_obj, &size))
     return FALSE;
 
   for (guint64 i = 0; i < size; i++)
     {
-      FilterXObject *col = filterx_list_get_subscript(cols_obj, i);
-      if (filterx_object_is_type(col, &FILTERX_TYPE_NAME(string)))
+      FilterXObject *elt = filterx_list_get_subscript(list_obj, i);
+      if (filterx_object_is_type(elt, &FILTERX_TYPE_NAME(string)))
         {
-          const gchar *col_name = filterx_string_get_value(col, NULL);
-          *col_names = g_list_append(*col_names, g_strdup(col_name));
+          const gchar *val = filterx_string_get_value(elt, NULL);
+          *list = g_list_append(*list, g_strdup(val));
         }
-      filterx_object_unref(col);
+      filterx_object_unref(elt);
     }
 
   result = TRUE;
 exit:
-  filterx_object_unref(cols_obj);
+  filterx_object_unref(list_obj);
   return result;
 }
 
@@ -111,7 +112,7 @@ _eval(FilterXExpr *s)
 
   APPEND_ZERO(input, input, len);
 
-  if (!_parse_columns(self, &cols))
+  if (!_parse_list_argument(self, self->columns, &cols, FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS))
     goto exit;
 
   if (cols)
