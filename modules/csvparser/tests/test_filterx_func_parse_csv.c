@@ -35,31 +35,31 @@
 #include "filterx/object-primitive.h"
 
 static FilterXObject *
-_generate_column_list(const gchar *column_name, ...)
+_generate_string_list(const gchar *elts, ...)
 {
   FilterXObject *result = filterx_json_array_new_empty();
 
   va_list args;
-  va_start(args, column_name);
+  va_start(args, elts);
 
-  const gchar *next_column = column_name;
-  while (next_column != NULL)
+  const gchar *elt = elts;
+  while (elt != NULL)
     {
-      FilterXObject *col_name = filterx_string_new(next_column, -1);
-      cr_assert(filterx_list_append(result, &col_name));
-      filterx_object_unref(col_name);
-      next_column = va_arg(args, const gchar *);
+      FilterXObject *str = filterx_string_new(elt, -1);
+      cr_assert(filterx_list_append(result, &str));
+      filterx_object_unref(str);
+      elt = va_arg(args, const gchar *);
     }
 
   va_end(args);
-  va_start(args, column_name);
+  va_start(args, elts);
 
   return result;
 }
 
-Test(filterx_func_parse_csv, test_helper_generate_column_list_empty)
+Test(filterx_func_parse_csv, test_helper_generate_string_list_empty)
 {
-  FilterXObject *col_names = _generate_column_list(NULL);
+  FilterXObject *col_names = _generate_string_list(NULL);
   cr_assert_not_null(col_names);
 
   GString *repr = scratch_buffers_alloc();
@@ -70,9 +70,9 @@ Test(filterx_func_parse_csv, test_helper_generate_column_list_empty)
   filterx_object_unref(col_names);
 }
 
-Test(filterx_func_parse_csv, test_helper_generate_column_list)
+Test(filterx_func_parse_csv, test_helper_generate_string_list)
 {
-  FilterXObject *col_names = _generate_column_list("1st", NULL);
+  FilterXObject *col_names = _generate_string_list("1st", NULL);
   cr_assert_not_null(col_names);
 
   GString *repr = scratch_buffers_alloc();
@@ -83,9 +83,9 @@ Test(filterx_func_parse_csv, test_helper_generate_column_list)
   filterx_object_unref(col_names);
 }
 
-Test(filterx_func_parse_csv, test_helper_generate_column_list_multiple_elts)
+Test(filterx_func_parse_csv, test_helper_generate_string_list_multiple_elts)
 {
-  FilterXObject *col_names = _generate_column_list("1st", "2nd", "3rd", NULL);
+  FilterXObject *col_names = _generate_string_list("1st", "2nd", "3rd", NULL);
   cr_assert_not_null(col_names);
 
   GString *repr = scratch_buffers_alloc();
@@ -141,7 +141,7 @@ Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("foo,bar,baz", -1))));
-  FilterXObject *col_names = _generate_column_list("1st", "2nd", "3rd", NULL);
+  FilterXObject *col_names = _generate_string_list("1st", "2nd", "3rd", NULL);
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(col_names)));
 
@@ -172,7 +172,7 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
                                                       filterx_literal_new(filterx_string_new("foo,bar,baz,more,columns,we,did,not,expect", -1))));
-  FilterXObject *col_names = _generate_column_list("1st", "2nd", "3rd", NULL); // sets expected column size 3
+  FilterXObject *col_names = _generate_string_list("1st", "2nd", "3rd", NULL); // sets expected column size 3
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(col_names)));
 
@@ -264,7 +264,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
   args = g_list_append(args, filterx_function_arg_new(NULL,
                                                       filterx_literal_new(filterx_string_new("foo,bar,baz,tik,tak,toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_literal_new(_generate_column_list("1st", "2nd",
+                                                      filterx_literal_new(_generate_string_list("1st", "2nd",
                                                           "3rd", "rest", NULL)))); // columns
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_GREEDY,
                                                       filterx_literal_new(filterx_boolean_new(TRUE)))); // greedy
@@ -297,7 +297,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
   args = g_list_append(args, filterx_function_arg_new(NULL,
                                                       filterx_literal_new(filterx_string_new("foo,bar,baz,tik,tak,toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_literal_new(_generate_column_list("1st", "2nd",
+                                                      filterx_literal_new(_generate_string_list("1st", "2nd",
                                                           "3rd", "rest", NULL)))); // columns
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_GREEDY,
                                                       filterx_literal_new(filterx_boolean_new(FALSE)))); // greedy
@@ -389,6 +389,71 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
   filterx_object_unref(obj);
   g_error_free(err);
 }
+
+Test(filterx_func_parse_csv, test_optional_argument_string_delimiters)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL,
+                                                      filterx_literal_new(filterx_string_new("testingfoostringbardelimitersbazthisfooway", -1))));
+  FilterXObject *string_delimiters = _generate_string_list("foo", "bar", "baz", NULL);
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS,
+                                                      filterx_literal_new(string_delimiters)));
+
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  cr_assert_null(args_err);
+  cr_assert_null(err);
+
+  FilterXObject *obj = filterx_expr_eval(func);
+
+  cr_assert_not_null(obj);
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+
+  GString *repr = scratch_buffers_alloc();
+
+  LogMessageValueType lmvt;
+  cr_assert(filterx_object_marshal(obj, repr, &lmvt));
+
+  cr_assert_str_eq(repr->str, "testing,string,delimiters,this,way");
+  filterx_expr_unref(func);
+  filterx_object_unref(obj);
+  g_error_free(err);
+}
+
+Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimiters)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL,
+                                                      filterx_literal_new(filterx_string_new("testing;delimiterfoochaos,withbarthis.longbazstring", -1))));
+  FilterXObject *string_delimiters = _generate_string_list("foo", "bar", "baz", NULL);
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS,
+                                                      filterx_literal_new(string_delimiters)));
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
+                                                      filterx_literal_new(filterx_string_new(".,;", -1))));
+
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  cr_assert_null(args_err);
+  cr_assert_null(err);
+
+  FilterXObject *obj = filterx_expr_eval(func);
+
+  cr_assert_not_null(obj);
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+
+  GString *repr = scratch_buffers_alloc();
+
+  LogMessageValueType lmvt;
+  cr_assert(filterx_object_marshal(obj, repr, &lmvt));
+
+  cr_assert_str_eq(repr->str, "testing,delimiter,chaos,with,this,long,string");
+  filterx_expr_unref(func);
+  filterx_object_unref(obj);
+  g_error_free(err);
+}
+
 
 static void
 setup(void)
