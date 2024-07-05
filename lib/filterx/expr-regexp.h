@@ -26,8 +26,11 @@
 
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-generator.h"
+#include "filterx/expr-function.h"
 
 FilterXExpr *filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern);
 FilterXExpr *filterx_expr_regexp_search_generator_new(FilterXExpr *lhs, const gchar *pattern);
+FilterXFunction *filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args,
+                                                   GError **error);
 
 #endif
