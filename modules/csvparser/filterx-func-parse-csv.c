@@ -229,9 +229,9 @@ _extract_opts(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
   value = filterx_function_args_get_named_literal_string(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER, &len, &exists);
   if (exists)
     {
-      if (len < 1)
+      if (len < 1 && !self->string_delimiters)
         {
-          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER " can not be empty";
+          error_str = FILTERX_FUNC_PARSE_ERR_EMPTY_DELIMITER;
           goto error;
         }
       if (!value)

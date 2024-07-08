@@ -39,6 +39,11 @@
     FILTERX_FUNC_PARSE_CSV_ARG_NAME_DIALECT"=string, " \
     FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES"=boolean, " \
     FILTERX_FUNC_PARSE_CSV_ARG_NAME_GREEDY"=boolean])"
+#define FILTERX_FUNC_PARSE_ERR_EMPTY_DELIMITER "Either '" \
+    FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER"' or '" \
+    FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS"' must be set, and '" \
+    FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER"' cannot be empty if '" \
+    FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS"' is unset"
 
 FilterXExpr *filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
 gpointer filterx_function_construct_parse_csv(Plugin *self);
