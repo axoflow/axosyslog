@@ -46,7 +46,12 @@ Build-Depends: debhelper (>= 10~),
                libprotoc-dev <!sng-nogrpc>,
                libabsl-dev <!sng-nogrpc>,
                libprotobuf-dev <!sng-nogrpc>,
-               libgrpc++-dev <!sng-nogrpc>
+               libgrpc++-dev <!sng-nogrpc>,
+               clang <!sng-nobpf>,
+               libbpf-dev <!sng-nobpf>,
+               linux-tools-common <!sng-nobpf sng-ubuntu>,
+               linux-tools-generic <!sng-nobpf sng-ubuntu>,
+               bpftool <!sng-nobpf sng-debian>
 Build-Conflicts: autoconf2.13
 Standards-Version: 4.4.1
 Homepage: https://axoflow.com/docs/axosyslog-core/
@@ -880,6 +885,30 @@ Description: Enhanced system logging daemon (GRPC plugins)
   * OpenTelemetry logs, traces and metrics
   * Google BigQuery
   * Grafana Loki
+
+Package: axosyslog-mod-bpf
+Architecture: any
+Multi-Arch: foreign
+Depends: ${shlibs:Depends}, ${misc:Depends}, axosyslog-core (>= ${source:Version}), axosyslog-core (<< ${source:Version}.1~)
+Conflicts: syslog-ng-mod-grpc
+Description: Enhanced system logging daemon (eBPF plugins)
+ AxoSyslog is an enhanced log daemon, supporting a wide range of input
+ and output methods: syslog, unstructured text, message queues,
+ databases (SQL and NoSQL alike) and more.
+ .
+ Key features:
+ .
+  * receive and send RFC3164 and RFC5424 style syslog messages
+  * work with any kind of unstructured data
+  * receive and send JSON formatted messages
+  * classify and structure logs with builtin parsers (csv-parser(),
+    db-parser(), etc.)
+  * normalize, crunch and process logs as they flow through the system
+  * hand on messages for further processing using message queues (like
+    AMQP), files or databases (like PostgreSQL or MongoDB).
+ .
+ This package provides the ebpf() plugin which leverages the kernel's eBPF
+ infrastructure to improve performance and scalability of AxoSyslog.
 
 Package: axosyslog-mod-cloud-auth
 Architecture: any

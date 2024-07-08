@@ -78,12 +78,26 @@ function _map_feature_flags_to_deb_build_profiles()
             ;;
         esac
     done
+
+    echo -n "sng-${OS_DISTRIBUTION} "
     echo
 }
 
 function deb_run_build_command()
 {
     run_build_command_with_build_manifest_parameters _map_feature_flags_to_deb_build_profiles _map_cmdline_null "$@"
+}
+
+function ubuntu_patch_container_host_linux_tools {
+    if [ "${OS_DISTRIBUTION}" != "ubuntu" ]; then
+        return
+    fi
+
+    linux_tools_path="/usr/lib/linux-tools"
+    host_full_version="$(uname -r)"
+    installed_full_version="$(find $linux_tools_path -mindepth 1 -maxdepth 1 -type d -printf '%f' | head -n1)"
+
+    sudo ln -s "$linux_tools_path/$installed_full_version" "$linux_tools_path/$host_full_version" 2>/dev/null || true
 }
 
 function _map_feature_flags_to_rpmbuild_with_and_without_options()
