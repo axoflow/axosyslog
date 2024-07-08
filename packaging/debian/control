@@ -50,7 +50,7 @@ Build-Depends: debhelper (>= 10~),
                clang <!sng-nobpf>,
                libbpf-dev <!sng-nobpf>,
                linux-tools-common <!sng-nobpf sng-ubuntu>,
-               linux-tools <!sng-nobpf sng-ubuntu>,
+               linux-tools-generic <!sng-nobpf sng-ubuntu>,
                bpftool <!sng-nobpf sng-debian>
 Build-Conflicts: autoconf2.13
 Standards-Version: 4.4.1

@@ -35,6 +35,7 @@ if [ ! -d debian ]; then
 	exit 1
 fi
 
+ubuntu_patch_container_host_linux_tools
 deb_run_build_command dpkg-buildpackage -rfakeroot -d
 
 capture_debs
