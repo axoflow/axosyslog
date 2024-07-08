@@ -454,6 +454,58 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimi
   g_error_free(err);
 }
 
+Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when_string_delimiters_set)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL,
+                                                      filterx_literal_new(filterx_string_new("testfoobar,baz", -1))));
+  FilterXObject *string_delimiters = _generate_string_list("foo", NULL);
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS,
+                                                      filterx_literal_new(string_delimiters)));
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
+                                                      filterx_literal_new(filterx_string_new("", -1))));
+
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  cr_assert_null(args_err);
+  cr_assert_null(err);
+
+  FilterXObject *obj = filterx_expr_eval(func);
+
+  cr_assert_not_null(obj);
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+
+  FilterXObject *elt = filterx_list_get_subscript(obj, 1);
+
+  GString *repr = scratch_buffers_alloc();
+  cr_assert(filterx_object_repr(elt, repr));
+
+  cr_assert_str_eq(repr->str, "bar,baz");
+  filterx_object_unref(elt);
+  filterx_expr_unref(func);
+  filterx_object_unref(obj);
+  g_error_free(err);
+}
+
+Test(filterx_func_parse_csv, test_optional_argument_delimiter_unable_to_set_with_empty_string_delimiters)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL,
+                                                      filterx_literal_new(filterx_string_new("testfoobar,baz", -1))));
+  args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
+                                                      filterx_literal_new(filterx_string_new("", -1))));
+
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  cr_assert_null(args_err);
+  cr_assert_not_null(err);
+  cr_assert(strcmp(err->message, FILTERX_FUNC_PARSE_ERR_EMPTY_DELIMITER));
+
+  filterx_expr_unref(func);
+  g_error_free(err);
+}
 
 static void
 setup(void)
