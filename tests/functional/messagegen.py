@@ -90,7 +90,7 @@ class SocketSender(MessageSender):
         if sys.platform == 'linux2':
                 self.sock.setsockopt(SOL_SOCKET, SO_SNDTIMEO, struct.pack('ll', 3, 0))
         if not self.dgram and self.ssl:
-                self.sock = ssl.wrap_socket(self.sock)
+                self.sock = ssl.SSLContext().wrap_socket(self.sock)
 
 
     def sendMessage(self, msg):
@@ -204,4 +204,3 @@ class FileSender(MessageSender):
                 return 'pipe(%s)' % (self.file_name,)
         else:
             return 'file(%s)' % (self.file_name,)
-
