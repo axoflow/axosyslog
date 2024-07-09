@@ -31,6 +31,7 @@ from src.executors.process_executor import ProcessExecutor
 class Loggen(object):
 
     instanceIndex = -1
+
     @staticmethod
     def __get_new_instance_index():
         Loggen.instanceIndex += 1
