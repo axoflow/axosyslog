@@ -28,15 +28,15 @@
 # kafka support needs librdkafka >= 1.0.0, which is only available on ubuntu-bionic
 # on Debian we don't build java and use Python3 _after_ buster
 # libcriterion-dev is available starting with bullseye
-debian-bullseye		python3,nojava,notzdatalegacy
+debian-bullseye		python3,nojava,notzdatalegacy,nobpf
 debian-bookworm		python3,nojava,notzdatalegacy
 debian-testing		python3,nojava
 debian-sid		python3,nojava
 
 # on ubuntu, we start using Python3 at focal onwards.
 # libcriterion-dev is available starting with 21.04
-ubuntu-focal		python3,nocriterion,nomqtt,nogrpc,notzdatalegacy
-ubuntu-jammy		python3,notzdatalegacy
+ubuntu-focal		python3,nocriterion,nomqtt,nogrpc,notzdatalegacy,nobpf
+ubuntu-jammy		python3,notzdatalegacy,nobpf
 ubuntu-noble		python3,notzdatalegacy
 ubuntu-lunar		python3
 ubuntu-mantic		python3
