@@ -86,9 +86,11 @@ def get_next_version():
     next_version = (root_dir / 'VERSION.txt').read_text().rstrip()
     return next_version
 
+
 def create_version():
     next_version = get_next_version()
     return '{}\n{}\n\n'.format(next_version, len(next_version) * '=')
+
 
 def create_highlights_block():
     return '## Highlights\n' \
@@ -105,8 +107,19 @@ def create_standard_blocks():
             standard_blocks += create_block(block_name, entries)
     return standard_blocks
 
+
 def check_if_news_entries_are_present():
     return any(news_dir.glob("*-*.md"))
+
+
+def create_discord_block():
+    return '## Discord\n' \
+           '\n' \
+           'For a bit more interactive discussion, join our Discord server:\n' \
+           '\n' \
+           '[![Axoflow Discord Server](https://discordapp.com/api/guilds/1082023686028148877/widget.png?style=banner2)](https://discord.gg/E65kP9aZGm)\n' \
+           '\n'
+
 
 def create_credits_block():
     def wrap(contributors):
@@ -147,11 +160,13 @@ def create_news_content():
     news = create_version()
     news += create_highlights_block()
     news += create_standard_blocks()
+    news += create_discord_block()
     news += create_credits_block()
     return news
 
 def check_if_news_is_already_uptodate():
     return get_last_version() == get_next_version()
+
 
 def main():
     print_usage_if_needed()

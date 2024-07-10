@@ -15,7 +15,7 @@
 [![Binary packages](https://github.com/axoflow/axosyslog/actions/workflows/packages.yml/badge.svg)](https://github.com/axoflow/axosyslog/actions/workflows/packages.yml)
 
 AxoSyslog started as a syslog-ng [[1]](#r1) fork, branched right after
-syslog-ng v4.7.1 with the following focus:
+syslog-ng v4.8.0 with the following focus:
   * cloud native (containers, helm charts, kubernetes integration),
   * security data tailored parsing and transformation (filterx, app-parser, app-transform, etc)
   * performance (eBPF, memory allocator, etc),
@@ -45,7 +45,7 @@ A simple example is to ingest syslog traffic on tcp/514 and write it to a
 file:
 
 ```
-@version: 4.7
+@version: 4.8
 @include "scl.conf"
 
 log {
@@ -85,7 +85,7 @@ docker pull ghcr.io/axoflow/axosyslog:nightly
 > Note: These named packages are automatically updated when a new AxoSyslog package is released. To install a specific version, run `docker pull ghcr.io/axoflow/axosyslog:<version-number>`, for example:
 >
 > ```shell
-> docker pull ghcr.io/axoflow/axosyslog:4.7.1
+> docker pull ghcr.io/axoflow/axosyslog:4.8.0
 > ```
 
 The container images contain a default configuration file which you probably
@@ -163,7 +163,7 @@ on the [Axoflow website](https://axoflow.com/).
 ## Difference from syslog-ng
 
 The original founder of syslog-ng forked off AxoSyslog from the original
-syslog-ng after the 4.7.1 release. AxoSyslog is a drop in replacement, retaining
+syslog-ng after the 4.8.0 release. AxoSyslog is a drop in replacement, retaining
 the original license, release schedule and processes.
 
 ## Contact and support
