@@ -20,12 +20,12 @@
  * COPYING for details.
  *
  */
-#ifndef FILTERX_SHORTHAND_H_INCLUDED
-#define FILTERX_SHORTHAND_H_INCLUDED
+#ifndef FILTERX_COMPOUND_H_INCLUDED
+#define FILTERX_COMPOUND_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
 
-FilterXExpr *filterx_shorthand_new(void);
-void filterx_shorthand_add(FilterXExpr *s, FilterXExpr *expr);
+FilterXExpr *filterx_compound_expr_new(void);
+void filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr);
 
 #endif

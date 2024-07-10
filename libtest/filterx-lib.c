@@ -26,7 +26,7 @@
 #include "cr_template.h"
 #include "filterx/object-json.h"
 #include "filterx/object-string.h"
-#include "filterx/expr-shorthand.h"
+#include "filterx/expr-compound.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 
@@ -134,9 +134,9 @@ filterx_test_unknown_object_new(void)
 FilterXExpr *
 filterx_non_literal_new(FilterXObject *object)
 {
-  FilterXExpr *shorthand = filterx_shorthand_new();
-  filterx_shorthand_add(shorthand, filterx_literal_new(object));
-  return shorthand;
+  FilterXExpr *block = filterx_compound_expr_new();
+  filterx_compound_expr_add(block, filterx_literal_new(object));
+  return block;
 }
 
 typedef struct _FilterXDummyError FilterXDummyError;

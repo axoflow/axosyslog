@@ -50,7 +50,7 @@
 #include "filterx/expr-isset.h"
 #include "filterx/expr-unset.h"
 #include "filterx/expr-literal-generator.h"
-#include "filterx/expr-shorthand.h"
+#include "filterx/expr-compound.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-plus.h"
 #include "filterx/expr-null-coalesce.h"
@@ -186,23 +186,23 @@ generator_assignment
 						  FilterXExpr *setattr = filterx_setattr_new($1, $3, filterx_generator_create_container_new($5, $1));
 						  filterx_generator_set_fillable($5, filterx_getattr_new(filterx_expr_ref($1), $3));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, setattr);
-						  filterx_shorthand_add(shorthand, $5);
+						  FilterXExpr *block = filterx_compound_expr_new();
+						  filterx_compound_expr_add(block, setattr);
+						  filterx_compound_expr_add(block, $5);
 
 						  free($3);
-						  $$ = shorthand;
+						  $$ = block;
 						}
 	| expr '[' expr ']' KW_ASSIGN expr_generator
 						{
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, $3, filterx_generator_create_container_new($6, $1));
 						  filterx_generator_set_fillable($6, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $6);
+						  FilterXExpr *block = filterx_compound_expr_new();
+						  filterx_compound_expr_add(block, set_subscript);
+						  filterx_compound_expr_add(block, $6);
 
-						  $$ = shorthand;
+						  $$ = block;
 						}
 	| expr '[' ']' KW_ASSIGN expr_generator
 						{
@@ -210,11 +210,11 @@ generator_assignment
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, NULL, filterx_generator_create_container_new($5, $1));
 						  filterx_generator_set_fillable($5, filterx_get_subscript_new(filterx_expr_ref($1), minus_one));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $5);
+						  FilterXExpr *block = filterx_compound_expr_new();
+						  filterx_compound_expr_add(block, set_subscript);
+						  filterx_compound_expr_add(block, $5);
 
-						  $$ = shorthand;
+						  $$ = block;
 						}
 	| expr KW_PLUS_ASSIGN expr_generator	{ $$ = $3; filterx_generator_set_fillable($3, $1); }
 	| generator_casted_assignment
@@ -230,12 +230,12 @@ generator_casted_assignment
 						  FilterXExpr *assign = filterx_assign_new($1, func);
 						  filterx_generator_set_fillable($5, filterx_expr_ref($1));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, assign);
-						  filterx_shorthand_add(shorthand, $5);
+						  FilterXExpr *block = filterx_compound_expr_new();
+						  filterx_compound_expr_add(block, assign);
+						  filterx_compound_expr_add(block, $5);
 						  free($3);
 
-						  $$ = shorthand;
+						  $$ = block;
 						}
 	| expr '.' LL_IDENTIFIER KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
 						{
@@ -246,12 +246,12 @@ generator_casted_assignment
 						  FilterXExpr *setattr = filterx_setattr_new($1, $3, func);
 						  filterx_generator_set_fillable($7, filterx_getattr_new(filterx_expr_ref($1), $3));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, setattr);
-						  filterx_shorthand_add(shorthand, $7);
+						  FilterXExpr *block = filterx_compound_expr_new();
+						  filterx_compound_expr_add(block, setattr);
+						  filterx_compound_expr_add(block, $7);
 						  free($3);
 
-						  $$ = shorthand;
+						  $$ = block;
 						}
 	| expr '[' expr ']' KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
 						{
@@ -262,12 +262,12 @@ generator_casted_assignment
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, $3, func);
 						  filterx_generator_set_fillable($8, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $8);
+						  FilterXExpr *block = filterx_compound_expr_new();
+						  filterx_compound_expr_add(block, set_subscript);
+						  filterx_compound_expr_add(block, $8);
 						  free($6);
 
-						  $$ = shorthand;
+						  $$ = block;
 						}
 	| expr '[' ']' KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
 						{
@@ -279,12 +279,12 @@ generator_casted_assignment
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, NULL, func);
 						  filterx_generator_set_fillable($7, filterx_get_subscript_new(filterx_expr_ref($1), minus_one));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $7);
+						  FilterXExpr *block = filterx_compound_expr_new();
+						  filterx_compound_expr_add(block, set_subscript);
+						  filterx_compound_expr_add(block, $7);
 						  free($5);
 
-						  $$ = shorthand;
+						  $$ = block;
 						}
 	;
 

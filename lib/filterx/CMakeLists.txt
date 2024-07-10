@@ -31,7 +31,7 @@ set(FILTERX_HEADERS
     filterx/expr-condition.h
     filterx/expr-isset.h
     filterx/expr-unset.h
-    filterx/expr-shorthand.h
+    filterx/expr-compound.h
     filterx/expr-generator.h
     filterx/expr-literal-generator.h
     filterx/expr-regexp.h
@@ -80,7 +80,7 @@ set(FILTERX_SOURCES
     filterx/expr-condition.c
     filterx/expr-isset.c
     filterx/expr-unset.c
-    filterx/expr-shorthand.c
+    filterx/expr-compound.c
     filterx/expr-generator.c
     filterx/expr-literal-generator.c
     filterx/expr-regexp.c

@@ -188,7 +188,6 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
-
 static gboolean
 _evaluate_statement(FilterXExpr *expr)
 {
