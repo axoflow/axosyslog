@@ -709,11 +709,11 @@ filter_content
 
 filterx_content
         : _filterx_context_push <ptr>{
-            GList *filterx_stmts = NULL;
+            FilterXExpr *filterx_block = NULL;
 
-	    CHECK_ERROR_WITHOUT_MESSAGE(cfg_parser_parse(&filterx_parser, lexer, (gpointer *) &filterx_stmts, NULL), @$);
+	    CHECK_ERROR_WITHOUT_MESSAGE(cfg_parser_parse(&filterx_parser, lexer, (gpointer *) &filterx_block, NULL), @$);
 
-            $$ = log_expr_node_new_pipe(log_filterx_pipe_new(filterx_stmts, configuration), &@$);
+            $$ = log_expr_node_new_pipe(log_filterx_pipe_new(filterx_block, configuration), &@$);
 	  } _filterx_context_pop			{ $$ = $2; }
 	;
 

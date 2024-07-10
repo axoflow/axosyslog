@@ -94,7 +94,7 @@ construct_template_expr(LogTemplate *template)
 %define api.prefix {filterx_}
 %lex-param {CfgLexer *lexer}
 %parse-param {CfgLexer *lexer}
-%parse-param {GList **result}
+%parse-param {FilterXExpr **result}
 %parse-param {gpointer arg}
 
 /* INCLUDE_DECLS */
@@ -107,6 +107,7 @@ construct_template_expr(LogTemplate *template)
 %token KW_DECLARE
 %token KW_REGEXP_SEARCH
 
+%type <ptr> block
 %type <ptr> stmts
 %type <node> stmt
 %type <node> stmt_expr
@@ -147,7 +148,16 @@ construct_template_expr(LogTemplate *template)
 %%
 
 start
-        : stmts					{ *result = $1; if (yychar != FILTERX_EMPTY) { cfg_lexer_unput_token(lexer, &yylval); } YYACCEPT; }
+        : block					{ *result = $1; if (yychar != FILTERX_EMPTY) { cfg_lexer_unput_token(lexer, &yylval); } YYACCEPT; }
+	;
+
+block
+	: stmts					{
+                                                  FilterXExpr *block = filterx_compound_expr_new(FALSE);
+                                                  filterx_compound_expr_add_list(block, $1);
+						  filterx_expr_set_location_with_text(block, lexer, &@1, "{ ... }");
+                                                  $$ = block;
+                                                }
 	;
 
 stmts
