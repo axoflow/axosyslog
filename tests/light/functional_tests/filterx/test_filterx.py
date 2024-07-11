@@ -487,6 +487,15 @@ def test_simple_true_condition(config, syslog_ng):
     assert file_true.read_log() == "foobar\n"
 
 
+def test_empty_block(config, syslog_ng):
+    (file_true, file_false) = create_config(config, """ """)
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "foobar\n"
+
+
 def test_simple_false_condition(config, syslog_ng):
     (file_true, file_false) = create_config(config, """ false; """)
     syslog_ng.start(config)
