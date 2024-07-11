@@ -15,7 +15,7 @@
 [![Binary packages](https://github.com/axoflow/axosyslog/actions/workflows/packages.yml/badge.svg)](https://github.com/axoflow/axosyslog/actions/workflows/packages.yml)
 
 AxoSyslog started as a syslog-ng [[1]](#r1) fork, branched right after
-syslog-ng v4.8.0 with the following focus:
+syslog-ng v4.7.1 with the following focus:
   * cloud native (containers, helm charts, kubernetes integration),
   * security data tailored parsing and transformation (filterx, app-parser, app-transform, etc)
   * performance (eBPF, memory allocator, etc),
@@ -37,7 +37,7 @@ deployment mechanisms:
   - Helm charts (Kubernetes)
   - packages (deb, rpm, etc)
 
-Once the binaries are deployed, create a configuration file called 
+Once the binaries are deployed, create a configuration file called
 `/etc/syslog-ng/syslog-ng.conf`, which will then be processed by
 the `syslog-ng` process.
 
