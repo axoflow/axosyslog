@@ -3,6 +3,8 @@
 
 We are excited to announce the first [independent release](https://axoflow.com/axosyslog-syslog-ng-fork/) of AxoSyslog.
 
+AxoSyslog is binary-compatible with syslog-ng [[1]](#r1) and serves as a drop-in replacement.
+
 Explore and learn more about the new features in our [release announcement blog post](https://axoflow.com/axosyslog-release-4-8/).
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
@@ -131,6 +133,9 @@ elasticsearch-datastream(
 
   * `s3()`: new metric `syslogng_output_event_bytes_total`
     ([#4958](https://github.com/syslog-ng/syslog-ng/pull/4958))
+
+
+<a id="r1">[1]</a> syslog-ng is a trademark of One Identity.
 
 ## Discord
 
