@@ -473,36 +473,49 @@ conditional
 	: if					{ $$ = $1; }
 	| if KW_ELSE codeblock
 	  {
-	    $$ = filterx_conditional_add_false_branch((FilterXConditional*)$1, (FilterXConditional*)filterx_conditional_new_codeblock($3));
+            FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
+	    filterx_conditional_set_false_branch(tailing_if, $3);
+	    $$ = $1;
 	  }
 	;
 
 if
 	: KW_IF '(' expr ')' codeblock
 	  {
-	    $$ = filterx_conditional_new_conditional_codeblock($3, $5);
+	    $$ = filterx_conditional_new($3);
+            filterx_conditional_set_true_branch($$, $5);
 	  }
 	| if KW_ELIF '(' expr ')' codeblock
 	  {
-	    $$ = filterx_conditional_add_false_branch((FilterXConditional*)$1, (FilterXConditional*)filterx_conditional_new_conditional_codeblock($4, $6));
+            FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
+
+	    /* create new conditional */
+	    FilterXExpr *elif_expr = filterx_conditional_new($4);
+            filterx_conditional_set_true_branch(elif_expr, $6);
+
+	    /* link it into the else branch of the last if */
+	    filterx_conditional_set_false_branch(tailing_if, elif_expr);
+	
+	    $$ = $1;
 	  }
 	;
 
 
 codeblock
-	: '{' stmts '}'				{ $$ = $2; }
+	: '{' block '}'				{ $$ = $2; }
 	;
 
 ternary
 	: expr '?' expr ':' expr
 	  {
-	    FilterXConditional *cond = (FilterXConditional*)filterx_conditional_new_conditional_codeblock($1, g_list_append(NULL, $3));
-	    $$ = filterx_conditional_add_false_branch(cond, (FilterXConditional*)filterx_conditional_new_codeblock(g_list_append(NULL, $5)));
+	    $$ = filterx_conditional_new($1);
+            filterx_conditional_set_true_branch($$, $3);
+            filterx_conditional_set_false_branch($$, $5);
 	  }
 	| expr '?' ':' expr
 	  {
-	    FilterXConditional *cond = (FilterXConditional*)filterx_conditional_new_conditional_codeblock($1, NULL);
-	    $$ = filterx_conditional_add_false_branch(cond, (FilterXConditional*)filterx_conditional_new_codeblock(g_list_append(NULL, $4)));
+	    $$ = filterx_conditional_new($1);
+	    filterx_conditional_set_false_branch($$, $4);
 	  }
 	;
 

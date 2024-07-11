@@ -953,6 +953,8 @@ def test_if_condition_matching_elif_condition(config, syslog_ng):
         $out = "matched";
     } elif (true) {
         $out = "elif-matched";
+    } elif (true) {
+        $out = "elif2-matched";
     } else {
         $out = "else-matched";
     };

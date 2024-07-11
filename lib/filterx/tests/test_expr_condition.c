@@ -28,16 +28,16 @@
 #include "filterx/object-primitive.h"
 #include "filterx/expr-comparison.h"
 #include "filterx/expr-condition.h"
-#include "filterx/filterx-expr.h"
+#include "filterx/expr-compound.h"
 #include "filterx/expr-literal.h"
-#include "filterx/object-string.h"
-#include "filterx/object-null.h"
-#include "filterx/object-datetime.h"
-#include "filterx/object-message-value.h"
 #include "filterx/expr-assign.h"
 #include "filterx/expr-template.h"
 #include "filterx/expr-variable.h"
 #include "filterx/expr-function.h"
+#include "filterx/object-string.h"
+#include "filterx/object-null.h"
+#include "filterx/object-datetime.h"
+#include "filterx/object-message-value.h"
 #include "filterx/filterx-private.h"
 
 #include "apphook.h"
@@ -103,30 +103,13 @@ Test(expr_condition, test_control_variable_set_get)
   filterx_object_unref(control_value);
 }
 
-
-Test(expr_condition, test_condition_with_null_expr_must_evaluated)
-{
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-
-  FilterXExpr *cond = filterx_conditional_new_codeblock(stmts);
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
-  cr_assert(cond_eval != NULL);
-  cr_assert(filterx_object_truthy(cond_eval) == TRUE);
-
-  FilterXObject *control_value = _assert_get_test_variable("$control-value");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching", control_value));
-
-  filterx_expr_unref(cond);
-  filterx_object_unref(control_value);
-  filterx_object_unref(cond_eval);
-}
-
 Test(expr_condition, test_condition_matching_expression)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
+  /* if (true) {} */
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(true)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(true)),
-                      stmts);
   FilterXObject *cond_eval = filterx_expr_eval(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
@@ -142,10 +125,10 @@ Test(expr_condition, test_condition_matching_expression)
 
 Test(expr_condition, test_condition_non_matching_expression)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(false)),
-                      stmts);
+  /* if (false) {} */
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
   FilterXObject *cond_eval = filterx_expr_eval(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
@@ -161,14 +144,22 @@ Test(expr_condition, test_condition_non_matching_expression)
 
 Test(expr_condition, test_condition_matching_elif_expression)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(false)),
-                      stmts);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond,
-                                              (FilterXConditional *)filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(true)),
-                                                  elif_stmts));
+  /* we are building:
+   *    if (false) {} elif (true) {}
+   */
+
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
+
+
+  FilterXExpr *elif_cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(true)));
+  filterx_conditional_set_true_branch(elif_cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")),
+                                          NULL));
+
+  filterx_conditional_set_false_branch(cond, elif_cond);
 
   FilterXObject *cond_eval = filterx_expr_eval(cond);
   cr_assert(cond_eval != NULL);
@@ -185,14 +176,21 @@ Test(expr_condition, test_condition_matching_elif_expression)
 
 Test(expr_condition, test_condition_non_matching_elif_expression)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
+  /* we are building:
+   *    if (false) {} elif (false) {}
+   */
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(false)),
-                      stmts);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond,
-                                              (FilterXConditional *)filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(false)),
-                                                  elif_stmts));
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
+
+
+  FilterXExpr *elif_cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(elif_cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")),
+                                          NULL));
+
+  filterx_conditional_set_false_branch(cond, elif_cond);
 
   FilterXObject *cond_eval = filterx_expr_eval(cond);
   cr_assert(cond_eval != NULL);
@@ -208,18 +206,30 @@ Test(expr_condition, test_condition_non_matching_elif_expression)
 
 Test(expr_condition, test_condition_matching_else_expression)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
-  GList *else_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("else-matching")));
+  /* we are building:
+   *    if (false) {} elif (false) {} else {}
+   */
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(false)),
-                      stmts);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond,
-                                              (FilterXConditional *)filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(false)),
-                                                  elif_stmts));
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond,
-                                              (FilterXConditional *)filterx_conditional_new_conditional_codeblock(NULL, else_stmts));
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
 
+
+  FilterXExpr *elif_cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(elif_cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")),
+                                          NULL));
+
+  filterx_conditional_set_false_branch(cond, elif_cond);
+
+  /* attach the last else */
+
+  FilterXExpr *tail_cond = filterx_conditional_find_tail(cond);
+  cr_assert(tail_cond != NULL);
+
+  filterx_conditional_set_false_branch(tail_cond,
+                                       filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("else-matching")),
+                                           NULL));
 
   FilterXObject *cond_eval = filterx_expr_eval(cond);
   cr_assert(cond_eval != NULL);
@@ -235,91 +245,68 @@ Test(expr_condition, test_condition_matching_else_expression)
 
 Test(expr_condition, test_condition_subsequent_conditions_must_create_nested_condition)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  GList *elif_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")));
-  GList *elif2_stmts = g_list_append(NULL, _assert_assign_var("$control-value",
-                                                              _string_to_filterXExpr("elif2-matching")));
-  GList *else_stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("else-matching")));
+  /* we are building:
+   *    if (false) {} elif (false) {} elif (true) {} else {}
+   */
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(false)),
-                      stmts);
-  FilterXConditional *cond2 = (FilterXConditional *)filterx_conditional_new_conditional_codeblock(filterx_literal_new(
-                                filterx_boolean_new(false)),
-                              elif_stmts);
-  FilterXConditional *cond3 = (FilterXConditional *)filterx_conditional_new_conditional_codeblock(filterx_literal_new(
-                                filterx_boolean_new(true)),
-                              elif2_stmts);
-  FilterXConditional *cond4 = (FilterXConditional *)filterx_conditional_new_conditional_codeblock(NULL, else_stmts);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond, cond2);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond, cond3);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond, cond4);
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
 
-  cr_assert(((FilterXConditional *)cond)->false_branch == cond2);
-  cr_assert(((FilterXConditional *)cond2)->false_branch == cond3);
-  cr_assert(((FilterXConditional *)cond3)->false_branch == cond4);
-  cr_assert(((FilterXConditional *)cond4)->false_branch == NULL);
+  /* cond has no false branch yet, so it is our tail to attach the next else to */
+  cr_assert(filterx_conditional_find_tail(cond) == cond);
 
-  filterx_expr_unref(cond);
-}
+  FilterXExpr *elif_cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
+  filterx_conditional_set_true_branch(elif_cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("elif-matching")),
+                                          NULL));
 
-Test(expr_condition, test_condition_all_the_statements_must_executed)
-{
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  stmts = g_list_append(stmts, _assert_assign_var("$control-value2", _string_to_filterXExpr("matching2")));
-  stmts = g_list_append(stmts, _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")));
+  filterx_conditional_set_false_branch(cond, elif_cond);
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(true)),
-                      stmts);
+  /* cond now has a false branch, the tail is elif_cond */
+  cr_assert(filterx_conditional_find_tail(cond) == elif_cond);
+
+  FilterXExpr *elif2_cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(true)));
+  filterx_conditional_set_true_branch(elif2_cond,
+                                      filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("elif2-matching")),
+                                          NULL));
+
+  filterx_conditional_set_false_branch(elif_cond, elif2_cond);
+
+  /* elif_cond now has a false branch, the tail is elif2_cond */
+  cr_assert(filterx_conditional_find_tail(cond) == elif2_cond);
+
+  filterx_conditional_set_false_branch(elif2_cond,
+                                       filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("else-matching")),
+                                           NULL));
 
   FilterXObject *cond_eval = filterx_expr_eval(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
 
   FilterXObject *control_value = _assert_get_test_variable("$control-value");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching", control_value));
+  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("elif2-matching", control_value));
+
   filterx_object_unref(control_value);
-  control_value = _assert_get_test_variable("$control-value2");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching2", control_value));
-  filterx_object_unref(control_value);
-  control_value = _assert_get_test_variable("$control-value3");
-  cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching3", control_value));
-  filterx_object_unref(control_value);
+  filterx_object_unref(cond_eval);
 
   filterx_expr_unref(cond);
-  filterx_object_unref(cond_eval);
-}
-
-
-Test(expr_condition, test_condition_must_return_last_expression_from_evaluated_codeblock)
-{
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  stmts = g_list_append(stmts, _assert_assign_var("$control-value2", _string_to_filterXExpr("matching2")));
-  stmts = g_list_append(stmts, _string_to_filterXExpr("must be returned"));
-
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(true)),
-                      stmts);
-
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
-  cr_assert(cond_eval != NULL);
-  _assert_cmp_string_to_filterx_object("must be returned", cond_eval);
-
-  filterx_expr_unref(cond);
-  filterx_object_unref(cond_eval);
 }
 
 
 Test(expr_condition, test_condition_falsey_statement_must_interrupt_sequential_code_execution)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  stmts = g_list_append(stmts, filterx_literal_new(filterx_boolean_new(false)));
-  stmts = g_list_append(stmts, _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")));
-
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(true)),
-                      stmts);
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(true)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE,
+                                          _assert_assign_var("$control-value", _string_to_filterXExpr("matching")),
+                                          filterx_literal_new(filterx_boolean_new(false)),
+                                          _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")),
+                                          NULL));
 
   FilterXObject *cond_eval = filterx_expr_eval(cond);
-  cr_assert_not_null(cond_eval);
-  cr_assert(filterx_object_truthy(cond_eval) == FALSE);
+  /* a false statement is converted into an error return */
+  cr_assert_null(cond_eval);
 
   FilterXObject *control_value = _assert_get_test_variable("$control-value");
   cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching", control_value));
@@ -334,12 +321,14 @@ Test(expr_condition, test_condition_falsey_statement_must_interrupt_sequential_c
 
 Test(expr_condition, test_condition_error_statement_must_return_null)
 {
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  stmts = g_list_append(stmts, filterx_dummy_error_new(""));
-  stmts = g_list_append(stmts, _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")));
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(true)));
+  filterx_conditional_set_true_branch(cond,
+                                      filterx_compound_expr_new_va(FALSE,
+                                          _assert_assign_var("$control-value", _string_to_filterXExpr("matching")),
+                                          filterx_dummy_error_new(""),
+                                          _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")),
+                                          NULL));
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(true)),
-                      stmts);
 
   FilterXObject *cond_eval = filterx_expr_eval(cond);
   cr_assert_null(cond_eval);
@@ -355,37 +344,6 @@ Test(expr_condition, test_condition_error_statement_must_return_null)
   filterx_object_unref(cond_eval);
 }
 
-Test(expr_condition, test_condition_do_not_allow_to_add_else_into_else, .signal=SIGABRT)
-{
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-  GList *stmts2 = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-
-  FilterXExpr *cond = filterx_conditional_new_codeblock(stmts);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *) cond,
-                                              (FilterXConditional *) filterx_conditional_new_codeblock(stmts2));
-
-  filterx_expr_unref(cond);
-}
-
-FilterXObject *
-_fail_func(FilterXExpr *s, GPtrArray *args)
-{
-  return NULL;
-}
-
-Test(expr_condition, test_condition_return_null_on_illegal_expr)
-{
-  GList *stmts = g_list_append(NULL, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")));
-
-  FilterXExpr *func = filterx_simple_function_new("test_fn", filterx_function_args_new(NULL, NULL), _fail_func);
-
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(func, stmts);
-  FilterXObject *res = filterx_expr_eval(cond);
-  cr_assert_null(res);
-
-  filterx_expr_unref(cond);
-}
-
 FilterXObject *
 _dummy_func(FilterXExpr *s, GPtrArray *args)
 {
@@ -396,7 +354,7 @@ Test(expr_condition, test_condition_return_expr_result_on_missing_stmts)
 {
   FilterXExpr *func = filterx_simple_function_new("test_fn", filterx_function_args_new(NULL, NULL), _dummy_func);
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(func, NULL);
+  FilterXExpr *cond = filterx_conditional_new(func);
   FilterXObject *res = filterx_expr_eval(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
@@ -407,12 +365,13 @@ Test(expr_condition, test_condition_return_expr_result_on_missing_stmts)
   filterx_object_unref(res);
 }
 
+
 Test(expr_condition, test_condition_must_not_fail_on_empty_else_block)
 {
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_boolean_new(FALSE)),
-                      NULL);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond,
-                                              (FilterXConditional *)filterx_conditional_new_codeblock(NULL));
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(FALSE)));
+
+  filterx_conditional_set_false_branch(cond,
+                                       filterx_compound_expr_new(FALSE));
   FilterXObject *res = filterx_expr_eval(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(boolean)));
@@ -427,9 +386,11 @@ Test(expr_condition, test_condition_with_complex_expression_to_check_memory_leak
   GList *stmts = NULL;
   stmts = g_list_append(stmts, filterx_literal_new(filterx_string_new("foobar", -1)));
 
-  FilterXExpr *cond = filterx_conditional_new_conditional_codeblock(filterx_literal_new(filterx_integer_new(0)), NULL);
-  cond = filterx_conditional_add_false_branch((FilterXConditional *)cond,
-                                              (FilterXConditional *)filterx_conditional_new_codeblock(stmts));
+  FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_integer_new(0)));
+  filterx_conditional_set_false_branch(cond,
+                                       filterx_compound_expr_new_va(TRUE,
+                                           filterx_literal_new(filterx_string_new("foobar", -1)),
+                                           NULL));
   FilterXObject *res = filterx_expr_eval(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
