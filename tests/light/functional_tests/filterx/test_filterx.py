@@ -1711,3 +1711,38 @@ bar/;
     )
     res = file_true.read_log()
     assert res == exp
+
+
+def test_regexp_subst(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = json();
+        $MSG.single = regexp_subst("foobarbaz","o","");
+        $MSG.empty_string = regexp_subst("","a","!");
+        $MSG.empty_pattern = regexp_subst("foobarbaz","","!");
+        $MSG.zero_length_match = regexp_subst("foobarbaz","u*","!");
+        $MSG.orgrp = regexp_subst("foobarbaz", "(fo|az)", "!");
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"single":"fbarbaz","""
+        r""""empty_string":"","""
+        r""""empty_pattern":"!f!o!o!b!a!r!b!a!z!","""
+        r""""zero_length_match":"!f!o!o!b!a!r!b!a!z!","""
+        r""""orgrp":"!obarb!"}""" + "\n"
+    )
+    assert file_true.read_log() == exp
+
+
+def test_regexp_subst_all_args_are_mandatory(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = regexp_subst("foobarbaz", "(fo|az)");
+    """,
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
