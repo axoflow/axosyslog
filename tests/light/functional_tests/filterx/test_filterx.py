@@ -79,19 +79,6 @@ log {{
     config.set_raw_config(preamble)
     return (file_true, file_false)
 
-# TODO: take care of _evaluate_statement methods result, to fix this test
-# def test_filterx_falsey_value_assign(config, syslog_ng):
-#     (file_true, file_false) = create_config(
-#         config, """
-#                     $myvar = 0;
-#                     $MSG = $myvar; """,
-#     )
-#     syslog_ng.start(config)
-
-#     assert file_true.get_stats()["processed"] == 1
-#     assert "processed" not in file_false.get_stats()
-#     assert file_true.read_log() == "0\n"
-
 
 def test_otel_logrecord_int32_setter_getter(config, syslog_ng):
     (file_true, file_false) = create_config(
@@ -219,21 +206,6 @@ def test_otel_logrecord_body_datetime_setter_getter(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "1701353998123000\n"
-
-
-# TODO: figure out null type's proper behaviour
-# def test_otel_logrecord_body_null_setter_getter(config, syslog_ng):
-#     (file_true, file_false) = create_config(
-#         config, """
-#                                             $olr = otel_logrecord();
-#                                             $olr.body = ${values.null};
-#                                             $MSG = $olr.body; """,
-#     )
-#     syslog_ng.start(config)
-
-#     assert file_true.get_stats()["processed"] == 1
-#     assert "processed" not in file_false.get_stats()
-#     assert file_true.read_log() == "\n"
 
 
 def test_otel_logrecord_body_bytes_setter_getter(config, syslog_ng):
