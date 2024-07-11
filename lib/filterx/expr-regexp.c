@@ -28,6 +28,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "compat/pcre.h"
+#include "scratch-buffers.h"
 
 #define FILTERX_FUNC_REGEXP_SUBST_USAGE "regexp_subst(string, pattern, replacement)"
 
@@ -439,11 +440,62 @@ typedef struct FilterXFuncRegexpSubst_
   gchar *replacement;
 } FilterXFuncRegexpSubst;
 
-static FilterXObject *
-_replace_matches(const FilterXReMatchState *state)
+
+static inline gint
+_start_offset(PCRE2_SIZE *ovector)
 {
-  // TODO: implement, hint: log_matcher_pcre_re_replace()
-  return NULL;
+  return ovector[0];
+}
+
+static inline gint
+_end_offset(PCRE2_SIZE *ovector)
+{
+  return ovector[1];
+}
+
+static inline gboolean
+_is_zero_length_match(PCRE2_SIZE *ovector)
+{
+  return ovector[0] == ovector[1];
+}
+
+static FilterXObject *
+_replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
+{
+  GString *new_value = scratch_buffers_alloc();
+  PCRE2_SIZE *ovector = NULL;
+  gint pos = 0;
+
+  do
+    {
+      ovector = pcre2_get_ovector_pointer(state->match_data);
+
+      g_string_append_len(new_value, state->lhs_str + pos, _start_offset(ovector) - pos);
+      g_string_append(new_value, self->replacement);
+
+      if (_is_zero_length_match(ovector))
+        {
+          g_string_append_len(new_value, state->lhs_str + pos, 1);
+          pos++;
+        }
+      else
+        {
+          pos = _end_offset(ovector);
+        }
+
+      if (!_match_inner(state, self->pattern, pos))
+        break;
+    }
+  while (pos < state->lhs_str_len);
+
+  // add the rest of the string
+  g_string_append_len(new_value, state->lhs_str + pos, state->lhs_str_len - pos);
+
+  // handle the very last of zero lenght matches
+  if (_is_zero_length_match(ovector))
+    g_string_append(new_value, self->replacement);
+
+  return filterx_string_new(new_value->str, -1);
 }
 
 static FilterXObject *
@@ -451,7 +503,7 @@ _subst_eval(FilterXExpr *s)
 {
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
 
-  FilterXObject *result;
+  FilterXObject *result = NULL;
   FilterXReMatchState state;
   _state_init(&state);
 
@@ -469,7 +521,7 @@ _subst_eval(FilterXExpr *s)
       goto exit;
     }
 
-  result = _replace_matches(&state);
+  result = _replace_matches(self, &state);
 
 exit:
   _state_cleanup(&state);
