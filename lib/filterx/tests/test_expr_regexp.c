@@ -31,6 +31,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
 #include "apphook.h"
+#include "scratch-buffers.h"
 
 static gboolean
 _check_match(const gchar *lhs, const gchar *pattern)
@@ -235,6 +236,95 @@ Test(filterx_expr_regexp, regexp_search_init_error)
   _assert_search_init_error("foobarbaz", "(");
 }
 
+static FilterXObject *
+_sub(const gchar *pattern, const gchar *repr, const gchar *str)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(str, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(repr, -1))));
+
+  GError *err = NULL;
+  FilterXFunction *func = filterx_function_regexp_subst_new("test", filterx_function_args_new(args, NULL), &err);
+  cr_assert_null(err);
+
+  FilterXObject *res = filterx_expr_eval(&func->super);
+  filterx_expr_unref(&func->super);
+  return res;
+}
+
+Test(filterx_expr_regexp, regexp_subst_single_replace)
+{
+  FilterXObject *result = _sub("oo", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "fXbarbaz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_subst_zero_length_matches)
+{
+  FilterXObject *result = _sub("u*", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "XfXoXoXbXaXrXbXaXzX");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_subst_zero_length_matches_with_char_matches)
+{
+  FilterXObject *result = _sub("a*", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "XfXoXoXbXXrXbXXzX");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_subst_at_beginning)
+{
+  FilterXObject *result = _sub("fo", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "Xobarbaz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_subst_at_the_end)
+{
+  FilterXObject *result = _sub("az", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "foobarbX");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_subst_multi_replace)
+{
+  FilterXObject *result = _sub("(a|o)", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "fXXbXrbXz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_subst_accept_end_literal)
+{
+  FilterXObject *result = _sub("ba.$", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "foobarX");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_subst_accept_groups)
+{
+  FilterXObject *result = _sub("(o)*(ba)", "X", "foobarbaz");
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value(result, NULL);
+  cr_assert_str_eq(res, "fXrXz");
+  filterx_object_unref(result);
+}
+
 static void
 setup(void)
 {
@@ -245,6 +335,7 @@ setup(void)
 static void
 teardown(void)
 {
+  scratch_buffers_explicit_gc();
   deinit_libtest_filterx();
   app_shutdown();
 }
