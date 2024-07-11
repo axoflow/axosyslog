@@ -57,6 +57,7 @@ gboolean filterx_eval_exec_statements(FilterXEvalContext *context, GList *statem
 void filterx_eval_sync_scope_and_message(FilterXScope *scope, LogMessage *msg);
 const gchar *filterx_eval_get_last_error(void);
 EVTTAG *filterx_format_last_error(void);
+EVTTAG *filterx_format_last_error_location(void);
 void filterx_eval_clear_errors(void);
 
 void filterx_eval_store_weak_ref(FilterXObject *object);

@@ -149,6 +149,14 @@ filterx_format_last_error(void)
                         extra_info ? : "");
 }
 
+EVTTAG *
+filterx_format_last_error_location(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  return filterx_expr_format_location_tag(context->error.expr);
+}
+
 
 /*
  * This is not a real weakref implementation as we will never get rid off
