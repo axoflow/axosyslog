@@ -87,6 +87,37 @@ _compile_pattern(const gchar *pattern)
   return compiled;
 }
 
+static gboolean
+_match_inner(FilterXReMatchState *state, pcre2_code_8 *pattern, gint start_offset)
+{
+  gint rc = pcre2_match(pattern, (PCRE2_SPTR) state->lhs_str, (PCRE2_SIZE) state->lhs_str_len, (PCRE2_SIZE) start_offset,
+                        0,
+                        state->match_data, NULL);
+  if (rc < 0)
+    {
+      switch (rc)
+        {
+        case PCRE2_ERROR_NOMATCH:
+          return FALSE;
+        default:
+          /* Handle other special cases */
+          msg_error("FilterX: Error while matching regexp", evt_tag_int("error_code", rc));
+          goto error;
+        }
+    }
+  else if (rc == 0)
+    {
+      msg_error("FilterX: Error while storing matching substrings, more than 256 capture groups encountered");
+      goto error;
+    }
+
+  return TRUE;
+
+error:
+  _state_cleanup(state);
+  return FALSE;
+}
+
 /*
  * Returns whether lhs matched the pattern.
  * Populates state if no error happened.
@@ -120,28 +151,7 @@ _match(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXReMatchState *state)
     }
 
   state->match_data = pcre2_match_data_create_from_pattern(pattern, NULL);
-  gint rc = pcre2_match(pattern, (PCRE2_SPTR) state->lhs_str, (PCRE2_SIZE) state->lhs_str_len, (PCRE2_SIZE) 0, 0,
-                        state->match_data, NULL);
-  if (rc < 0)
-    {
-      switch (rc)
-        {
-        case PCRE2_ERROR_NOMATCH:
-          return FALSE;
-        default:
-          /* Handle other special cases */
-          msg_error("FilterX: Error while matching regexp", evt_tag_int("error_code", rc));
-          goto error;
-        }
-    }
-  else if (rc == 0)
-    {
-      msg_error("FilterX: Error while storing matching substrings, more than 256 capture groups encountered");
-      goto error;
-    }
-
-  return TRUE;
-
+  return _match_inner(state, pattern, 0);
 error:
   _state_cleanup(state);
   return FALSE;
