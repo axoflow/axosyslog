@@ -26,6 +26,14 @@
 #include "messages.h"
 
 void
+filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text)
+{
+  self->lloc = *lloc;
+  if (debug_flag)
+    self->expr_text = g_strdup(text);
+}
+
+void
 filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
 {
   self->lloc = *lloc;
