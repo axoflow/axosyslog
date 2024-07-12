@@ -128,7 +128,7 @@ For details, see [Install AxoSyslog with Helm](https://axoflow.com/docs/axosyslo
 ## DEB packages
 
 You can install AxoSyslog on your Debian-based system from Axoflow's APT repository.
-AxoSyslog is a drop in replacement for the syslog-ng debian package, all the binaries
+AxoSyslog is a drop in replacement for the syslog-ng Debian package, all the binaries
 and configuration files are stored at the same place on your system.
 
 The following x86-64 distros are supported:
@@ -147,13 +147,23 @@ The following x86-64 distros are supported:
 
 To add the APT repo (e.g. Ubuntu 24.04):
 
-    wget -qO - https://pkg.axoflow.io/axoflow-code-signing-pub.asc | gpg --dearmor > /usr/share/keyrings/axoflow-code-signing-pub.gpg
-    echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt stable ubuntu-noble | tee --append /etc/apt/sources.list.d/axoflow.list
-    apt update
+```
+wget -qO - https://pkg.axoflow.io/axoflow-code-signing-pub.asc | gpg --dearmor > /usr/share/keyrings/axoflow-code-signing-pub.gpg
+echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt stable ubuntu-noble" | tee --append /etc/apt/sources.list.d/axoflow.list
+
+apt update
+```
 
 Nightly builds are also available:
 
-    echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt nightly ubuntu-noble | tee --append /etc/apt/sources.list.d/axoflow.list
+```
+echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt nightly ubuntu-noble" | tee --append /etc/apt/sources.list.d/axoflow.list
+```
+
+To install AxoSyslog:
+```
+apt install axosyslog
+```
 
 ## Documentation
 
