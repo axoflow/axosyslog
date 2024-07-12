@@ -186,7 +186,7 @@ generator_assignment
 						  FilterXExpr *setattr = filterx_setattr_new($1, $3, filterx_generator_create_container_new($5, $1));
 						  filterx_generator_set_fillable($5, filterx_getattr_new(filterx_expr_ref($1), $3));
 
-						  FilterXExpr *block = filterx_compound_expr_new();
+						  FilterXExpr *block = filterx_compound_expr_new(TRUE);
 						  filterx_compound_expr_add(block, setattr);
 						  filterx_compound_expr_add(block, $5);
 
@@ -198,7 +198,7 @@ generator_assignment
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, $3, filterx_generator_create_container_new($6, $1));
 						  filterx_generator_set_fillable($6, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
 
-						  FilterXExpr *block = filterx_compound_expr_new();
+						  FilterXExpr *block = filterx_compound_expr_new(TRUE);
 						  filterx_compound_expr_add(block, set_subscript);
 						  filterx_compound_expr_add(block, $6);
 
@@ -210,7 +210,7 @@ generator_assignment
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, NULL, filterx_generator_create_container_new($5, $1));
 						  filterx_generator_set_fillable($5, filterx_get_subscript_new(filterx_expr_ref($1), minus_one));
 
-						  FilterXExpr *block = filterx_compound_expr_new();
+						  FilterXExpr *block = filterx_compound_expr_new(TRUE);
 						  filterx_compound_expr_add(block, set_subscript);
 						  filterx_compound_expr_add(block, $5);
 
@@ -230,7 +230,7 @@ generator_casted_assignment
 						  FilterXExpr *assign = filterx_assign_new($1, func);
 						  filterx_generator_set_fillable($5, filterx_expr_ref($1));
 
-						  FilterXExpr *block = filterx_compound_expr_new();
+						  FilterXExpr *block = filterx_compound_expr_new(TRUE);
 						  filterx_compound_expr_add(block, assign);
 						  filterx_compound_expr_add(block, $5);
 						  free($3);
@@ -246,7 +246,7 @@ generator_casted_assignment
 						  FilterXExpr *setattr = filterx_setattr_new($1, $3, func);
 						  filterx_generator_set_fillable($7, filterx_getattr_new(filterx_expr_ref($1), $3));
 
-						  FilterXExpr *block = filterx_compound_expr_new();
+						  FilterXExpr *block = filterx_compound_expr_new(TRUE);
 						  filterx_compound_expr_add(block, setattr);
 						  filterx_compound_expr_add(block, $7);
 						  free($3);
@@ -262,7 +262,7 @@ generator_casted_assignment
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, $3, func);
 						  filterx_generator_set_fillable($8, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
 
-						  FilterXExpr *block = filterx_compound_expr_new();
+						  FilterXExpr *block = filterx_compound_expr_new(TRUE);
 						  filterx_compound_expr_add(block, set_subscript);
 						  filterx_compound_expr_add(block, $8);
 						  free($6);
@@ -279,7 +279,7 @@ generator_casted_assignment
 						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, NULL, func);
 						  filterx_generator_set_fillable($7, filterx_get_subscript_new(filterx_expr_ref($1), minus_one));
 
-						  FilterXExpr *block = filterx_compound_expr_new();
+						  FilterXExpr *block = filterx_compound_expr_new(TRUE);
 						  filterx_compound_expr_add(block, set_subscript);
 						  filterx_compound_expr_add(block, $7);
 						  free($5);

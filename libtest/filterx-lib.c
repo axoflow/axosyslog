@@ -134,7 +134,7 @@ filterx_test_unknown_object_new(void)
 FilterXExpr *
 filterx_non_literal_new(FilterXObject *object)
 {
-  FilterXExpr *block = filterx_compound_expr_new();
+  FilterXExpr *block = filterx_compound_expr_new(TRUE);
   filterx_compound_expr_add(block, filterx_literal_new(object));
   return block;
 }

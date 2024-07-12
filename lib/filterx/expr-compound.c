@@ -28,6 +28,8 @@
 typedef struct _FilterXCompoundExpr
 {
   FilterXExpr super;
+  /* whether this is a statement expression */
+  gboolean return_value_of_last_expr;
   GList *exprs;
 } FilterXCompoundExpr;
 
@@ -48,9 +50,12 @@ _eval(FilterXExpr *s)
     }
   else
     {
-      if (!result)
+      if (!result || !self->return_value_of_last_expr)
         {
-          /* result NULL means an empty block, implicitly TRUE */
+          filterx_object_unref(result);
+
+          /* an empty list of statements, or a compound statement where the
+           * result is ignored.  implicitly TRUE */
           result = filterx_boolean_new(TRUE);
         }
     }
@@ -85,13 +90,14 @@ filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list)
 }
 
 FilterXExpr *
-filterx_compound_expr_new(void)
+filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
   FilterXCompoundExpr *self = g_new0(FilterXCompoundExpr, 1);
 
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
   self->super.free_fn = _free;
+  self->return_value_of_last_expr = return_value_of_last_expr;
 
   return &self->super;
 }
