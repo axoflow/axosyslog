@@ -57,6 +57,14 @@ filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr)
   self->exprs = g_list_append(self->exprs, expr);
 }
 
+void
+filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  self->exprs = g_list_concat(self->exprs, expr_list);
+}
+
 FilterXExpr *
 filterx_compound_expr_new(void)
 {

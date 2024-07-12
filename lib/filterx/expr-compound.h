@@ -25,7 +25,8 @@
 
 #include "filterx/filterx-expr.h"
 
-FilterXExpr *filterx_compound_expr_new(void);
 void filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr);
+void filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list);
+FilterXExpr *filterx_compound_expr_new(void);
 
 #endif
