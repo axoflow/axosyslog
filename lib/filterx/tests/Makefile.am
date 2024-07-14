@@ -14,6 +14,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_expr_function	\
 		lib/filterx/tests/test_expr_comparison \
 		lib/filterx/tests/test_expr_condition \
+		lib/filterx/tests/test_expr_compound \
 		lib/filterx/tests/test_expr_function \
 		lib/filterx/tests/test_builtin_functions \
 		lib/filterx/tests/test_type_registry \
@@ -52,6 +53,9 @@ lib_filterx_tests_test_expr_comparison_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_expr_condition_CFLAGS = $(TEST_CFLAGS)
 lib_filterx_tests_test_expr_condition_LDADD	 = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_expr_compound_CFLAGS = $(TEST_CFLAGS)
+lib_filterx_tests_test_expr_compound_LDADD	 = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_builtin_functions_CFLAGS = $(TEST_CFLAGS)
 lib_filterx_tests_test_builtin_functions_LDADD = $(TEST_LDADD) $(JSON_LIBS)

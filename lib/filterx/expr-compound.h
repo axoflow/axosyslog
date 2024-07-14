@@ -28,5 +28,6 @@
 void filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr);
 void filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list);
 FilterXExpr *filterx_compound_expr_new(gboolean return_value_of_last_expr);
+FilterXExpr *filterx_compound_expr_new_va(gboolean return_value_of_last_expr, FilterXExpr *first, ...);
 
 #endif

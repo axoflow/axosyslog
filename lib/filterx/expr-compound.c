@@ -24,6 +24,7 @@
 #include "filterx/expr-compound.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
+#include <stdarg.h>
 
 typedef struct _FilterXCompoundExpr
 {
@@ -100,4 +101,21 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->return_value_of_last_expr = return_value_of_last_expr;
 
   return &self->super;
+}
+
+FilterXExpr *
+filterx_compound_expr_new_va(gboolean return_value_of_last_expr, FilterXExpr *first, ...)
+{
+  FilterXExpr *s = filterx_compound_expr_new(return_value_of_last_expr);
+  va_list va;
+
+  va_start(va, first);
+  FilterXExpr *arg = first;
+  while (arg)
+    {
+      filterx_compound_expr_add(s, arg);
+      arg = va_arg(va, FilterXExpr *);
+    }
+  va_end(va);
+  return s;
 }
