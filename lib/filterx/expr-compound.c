@@ -36,6 +36,19 @@ typedef struct _FilterXCompoundExpr
   GList *exprs;
 } FilterXCompoundExpr;
 
+static gboolean
+_expr_eval(FilterXExpr *expr, FilterXObject **result)
+{
+  *result = filterx_expr_eval(expr);
+
+  if (!(*result))
+    return FALSE;
+
+  if (!expr->ignore_falsy_result && filterx_object_falsy(*result))
+    return FALSE;
+  return TRUE;
+}
+
 gboolean
 filterx_expr_list_eval(GList *expressions, FilterXObject **result)
 {
@@ -45,10 +58,7 @@ filterx_expr_list_eval(GList *expressions, FilterXObject **result)
       filterx_object_unref(*result);
 
       FilterXExpr *expr = elem->data;
-      *result = filterx_expr_eval(expr);
-
-      if (!(*result) ||
-          (!expr->ignore_falsy_result && filterx_object_falsy(*result)))
+      if (!_expr_eval(expr, result))
         return FALSE;
     }
 
