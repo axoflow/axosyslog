@@ -1722,6 +1722,13 @@ def test_regexp_subst(config, syslog_ng):
         $MSG.empty_pattern = regexp_subst("foobarbaz","","!");
         $MSG.zero_length_match = regexp_subst("foobarbaz","u*","!");
         $MSG.orgrp = regexp_subst("foobarbaz", "(fo|az)", "!");
+        $MSG.single_global = regexp_subst("foobarbaz","o","", global=true);
+        $MSG.empty_string_global = regexp_subst("","a","!", global=true);
+        $MSG.empty_pattern_global = regexp_subst("foobarbaz","","!", global=true);
+        $MSG.zero_length_match_global = regexp_subst("foobarbaz","u*","!", global=true);
+        $MSG.orgrp_global = regexp_subst("foobarbaz", "(fo|az)", "!", global=true);
+        $MSG.ignore_case_control = regexp_subst("FoObArBaz", "(o|a)", "!", global=true);
+        $MSG.ignore_case = regexp_subst("FoObArBaz", "(o|a)", "!", ignorecase=true, global=true);
     """,
     )
     syslog_ng.start(config)
@@ -1729,11 +1736,18 @@ def test_regexp_subst(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = (
-        r"""{"single":"fbarbaz","""
+        r"""{"single":"fobarbaz","""
         r""""empty_string":"","""
-        r""""empty_pattern":"!f!o!o!b!a!r!b!a!z!","""
-        r""""zero_length_match":"!f!o!o!b!a!r!b!a!z!","""
-        r""""orgrp":"!obarb!"}""" + "\n"
+        r""""empty_pattern":"!foobarbaz!","""
+        r""""zero_length_match":"!foobarbaz!","""
+        r""""orgrp":"!obarbaz","""
+        r""""single_global":"fbarbaz","""
+        r""""empty_string_global":"","""
+        r""""empty_pattern_global":"!f!o!o!b!a!r!b!a!z!","""
+        r""""zero_length_match_global":"!f!o!o!b!a!r!b!a!z!","""
+        r""""orgrp_global":"!obarb!","""
+        r""""ignore_case_control":"F!ObArB!z","""
+        r""""ignore_case":"F!!b!rB!z"}""" + "\n"
     )
     assert file_true.read_log() == exp
 
