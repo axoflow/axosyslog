@@ -33,11 +33,11 @@ typedef struct _FilterXCompoundExpr
   FilterXExpr super;
   /* whether this is a statement expression */
   gboolean return_value_of_last_expr;
-  GList *exprs;
+  GPtrArray *exprs;
 } FilterXCompoundExpr;
 
 static gboolean
-_expr_eval(FilterXExpr *expr, FilterXObject **result)
+_eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
   FilterXObject *res = NULL;
   *result = res = filterx_expr_eval(expr);
@@ -77,16 +77,16 @@ _expr_eval(FilterXExpr *expr, FilterXObject **result)
 
 /* return value indicates if the list of expessions ran through.  *result
  * contains the value of the last expression (even if we bailed out) */
-gboolean
-filterx_expr_list_eval(GList *expressions, FilterXObject **result)
+static gboolean
+_eval_exprs(FilterXCompoundExpr *self, FilterXObject **result)
 {
   *result = NULL;
-  for (GList *elem = expressions; elem; elem = elem->next)
+  for (gint i = 0; i < self->exprs->len; i++)
     {
       filterx_object_unref(*result);
 
-      FilterXExpr *expr = elem->data;
-      if (!_expr_eval(expr, result))
+      FilterXExpr *expr = g_ptr_array_index(self->exprs, i);
+      if (!_eval_expr(expr, result))
         return FALSE;
     }
 
@@ -99,7 +99,7 @@ _eval(FilterXExpr *s)
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
   FilterXObject *result = NULL;
 
-  if (!filterx_expr_list_eval(self->exprs, &result))
+  if (!_eval_exprs(self, &result))
     {
       if (result)
         {
@@ -128,7 +128,7 @@ _free(FilterXExpr *s)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  g_list_free_full(self->exprs, (GDestroyNotify) filterx_expr_unref);
+  g_ptr_array_free(self->exprs, TRUE);
   filterx_expr_free_method(s);
 }
 
@@ -138,15 +138,16 @@ filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  self->exprs = g_list_append(self->exprs, expr);
+  g_ptr_array_add(self->exprs, expr);
 }
 
 void
 filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list)
 {
-  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-
-  self->exprs = g_list_concat(self->exprs, expr_list);
+  for (GList *elem = expr_list; elem; elem = elem->next)
+    {
+      filterx_compound_expr_add(s, elem->data);
+    }
 }
 
 FilterXExpr *
@@ -157,6 +158,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
   self->super.free_fn = _free;
+  self->exprs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->return_value_of_last_expr = return_value_of_last_expr;
 
   return &self->super;
