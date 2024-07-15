@@ -24,6 +24,8 @@
 #include "filterx/expr-compound.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
+#include "scratch-buffers.h"
+
 #include <stdarg.h>
 
 typedef struct _FilterXCompoundExpr
@@ -33,6 +35,25 @@ typedef struct _FilterXCompoundExpr
   gboolean return_value_of_last_expr;
   GList *exprs;
 } FilterXCompoundExpr;
+
+gboolean
+filterx_expr_list_eval(GList *expressions, FilterXObject **result)
+{
+  *result = NULL;
+  for (GList *elem = expressions; elem; elem = elem->next)
+    {
+      filterx_object_unref(*result);
+
+      FilterXExpr *expr = elem->data;
+      *result = filterx_expr_eval(expr);
+
+      if (!(*result) ||
+          (!expr->ignore_falsy_result && filterx_object_falsy(*result)))
+        return FALSE;
+    }
+
+  return TRUE;
+}
 
 static FilterXObject *
 _eval(FilterXExpr *s)
