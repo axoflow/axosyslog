@@ -198,6 +198,9 @@ filterx_eval_expr(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *ms
   FilterXObject *res = filterx_expr_eval(expr);
   if (!res)
     {
+      msg_debug("FILTERX ERROR",
+                filterx_format_last_error_location(),
+                filterx_format_last_error());
       filterx_eval_clear_errors();
       goto fail;
     }

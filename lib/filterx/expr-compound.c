@@ -39,16 +39,44 @@ typedef struct _FilterXCompoundExpr
 static gboolean
 _expr_eval(FilterXExpr *expr, FilterXObject **result)
 {
-  *result = filterx_expr_eval(expr);
+  FilterXObject *res = NULL;
+  *result = res = filterx_expr_eval(expr);
 
-  if (!(*result))
+  if (!res)
     return FALSE;
 
-  if (!expr->ignore_falsy_result && filterx_object_falsy(*result))
-    return FALSE;
-  return TRUE;
+  gboolean success = expr->ignore_falsy_result || filterx_object_truthy(res);
+
+  if (!success || trace_flag)
+    {
+      ScratchBuffersMarker mark;
+      GString *buf = scratch_buffers_alloc_and_mark(&mark);
+
+      if (!filterx_object_repr(res, buf))
+        {
+          LogMessageValueType t;
+          if (!filterx_object_marshal(res, buf, &t))
+            g_assert_not_reached();
+        }
+
+      if (!success)
+        msg_debug("FILTERX FALSY",
+                  filterx_expr_format_location_tag(expr),
+                  evt_tag_mem("value", buf->str, buf->len),
+                  evt_tag_str("type", res->type->name));
+      else
+        msg_trace("FILTERX ESTEP",
+                  filterx_expr_format_location_tag(expr),
+                  evt_tag_mem("value", buf->str, buf->len),
+                  evt_tag_int("truthy", filterx_object_truthy(res)),
+                  evt_tag_str("type", res->type->name));
+      scratch_buffers_reclaim_marked(mark);
+    }
+  return success;
 }
 
+/* return value indicates if the list of expessions ran through.  *result
+ * contains the value of the last expression (even if we bailed out) */
 gboolean
 filterx_expr_list_eval(GList *expressions, FilterXObject **result)
 {
