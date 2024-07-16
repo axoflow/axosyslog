@@ -856,11 +856,11 @@ tls_option
           }
         | KW_TRUSTED_KEYS '(' string_list ')'
           {
-            tls_session_set_trusted_fingerprints(last_tls_context, $3);
+            tls_context_set_trusted_fingerprints(last_tls_context, $3);
           }
         | KW_TRUSTED_DN '(' string_list ')'
           {
-            tls_session_set_trusted_dn(last_tls_context, $3);
+            tls_context_set_trusted_dn(last_tls_context, $3);
           }
         | KW_CIPHER_SUITE '(' tls_cipher_suites ')'
         | KW_CIPHER_SUITE '(' string ')'
