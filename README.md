@@ -173,7 +173,7 @@ on the [Axoflow website](https://axoflow.com/).
 ## Difference from syslog-ng
 
 The original founder of syslog-ng forked off AxoSyslog from the original
-syslog-ng after the 4.8.0 release. AxoSyslog is a drop in replacement, retaining
+syslog-ng after the 4.7.1 release. AxoSyslog is a drop in replacement, retaining
 the original license, release schedule and processes.
 
 ## Contact and support
