@@ -49,7 +49,7 @@ EVTTAG *
 filterx_expr_format_location_tag(FilterXExpr *self)
 {
   if (self)
-    return evt_tag_printf("expr", "%s:%d:%d| %s",
+    return evt_tag_printf("expr", "%s:%d:%d|\t%s",
                           self->lloc.name, self->lloc.first_line, self->lloc.first_column,
                           self->expr_text ? : "n/a");
   else
