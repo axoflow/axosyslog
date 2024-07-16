@@ -483,24 +483,6 @@ err:
 }
 
 void
-tls_session_set_trusted_fingerprints(TLSContext *self, GList *fingerprints)
-{
-  g_assert(fingerprints);
-
-  g_list_foreach(self->trusted_fingerprint_list, (GFunc) g_free, NULL);
-  self->trusted_fingerprint_list = fingerprints;
-}
-
-void
-tls_session_set_trusted_dn(TLSContext *self, GList *dn)
-{
-  g_assert(dn);
-
-  g_list_foreach(self->trusted_dn_list, (GFunc) g_free, NULL);
-  self->trusted_dn_list = dn;
-}
-
-void
 tls_session_set_verifier(TLSSession *self, TLSVerifier *verifier)
 {
   self->verifier = verifier ? tls_verifier_ref(verifier) : NULL;

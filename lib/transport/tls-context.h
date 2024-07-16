@@ -127,6 +127,8 @@ void tls_context_set_crl_dir(TLSContext *self, const gchar *crl_dir);
 void tls_context_set_ca_file(TLSContext *self, const gchar *ca_file);
 void tls_context_set_cipher_suite(TLSContext *self, const gchar *cipher_suite);
 void tls_context_set_allow_compress(TLSContext *self, gboolean allow);
+void tls_context_set_trusted_fingerprints(TLSContext *self, GList *fingerprints);
+void tls_context_set_trusted_dn(TLSContext *self, GList *dns);
 gboolean tls_context_set_tls13_cipher_suite(TLSContext *self, const gchar *tls13_cipher_suite, GError **error);
 gboolean tls_context_set_sigalgs(TLSContext *self, const gchar *sigalgs, GError **error);
 gboolean tls_context_set_client_sigalgs(TLSContext *self, const gchar *sigalgs, GError **error);
