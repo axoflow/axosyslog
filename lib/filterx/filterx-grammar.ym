@@ -141,7 +141,6 @@ construct_template_expr(LogTemplate *template)
 %type <ptr> conditional
 %type <ptr> condition
 %type <ptr> if
-%type <ptr> codeblock
 %type <ptr> ternary
 %type <ptr> default
 
@@ -152,10 +151,10 @@ start
 	;
 
 block
-	: stmts					{
+	: '{' stmts '}'				{
                                                   FilterXExpr *block = filterx_compound_expr_new(FALSE);
-                                                  filterx_compound_expr_add_list(block, $1);
-						  filterx_expr_set_location_with_text(block, lexer, &@1, "{ ... }");
+                                                  filterx_compound_expr_add_list(block, $2);
+						  filterx_expr_set_location_with_text(block, lexer, &@$, "{ ... }");
                                                   $$ = block;
                                                 }
 	;
@@ -471,7 +470,7 @@ regexp_match
 
 conditional
 	: if					{ $$ = $1; }
-	| if KW_ELSE codeblock
+	| if KW_ELSE block
 	  {
             FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
 	    filterx_conditional_set_false_branch(tailing_if, $3);
@@ -480,13 +479,13 @@ conditional
 	;
 
 if
-	: KW_IF '(' expr ')' codeblock
+	: KW_IF '(' expr ')' block
 	  {
             filterx_expr_set_location($3, lexer, &@3);
 	    $$ = filterx_conditional_new($3);
             filterx_conditional_set_true_branch($$, $5);
 	  }
-	| if KW_ELIF '(' expr ')' codeblock
+	| if KW_ELIF '(' expr ')' block
 	  {
             FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
 
@@ -502,10 +501,6 @@ if
 	  }
 	;
 
-
-codeblock
-	: '{' block '}'				{ $$ = $2; }
-	;
 
 ternary
 	: expr '?' expr ':' expr

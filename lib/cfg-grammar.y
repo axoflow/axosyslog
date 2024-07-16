@@ -782,7 +782,7 @@ log_item
         | KW_SOURCE '{' source_content '}'      { $$ = log_expr_node_new_source(NULL, $3, &@$); }
         | KW_FILTER '(' string ')'		{ $$ = log_expr_node_new_filter_reference($3, &@$); free($3); }
         | KW_FILTER '{' filter_content '}'      { $$ = log_expr_node_new_filter(NULL, $3, &@$); }
-        | KW_FILTERX '{' filterx_content '}'    { $$ = log_expr_node_new_filter(NULL, $3, &@$); }
+        | KW_FILTERX filterx_content            { $$ = log_expr_node_new_filter(NULL, $2, &@$); }
         | KW_PARSER '(' string ')'              { $$ = log_expr_node_new_parser_reference($3, &@$); free($3); }
         | KW_PARSER '{' parser_content '}'      { $$ = log_expr_node_new_parser(NULL, $3, &@$); }
         | KW_REWRITE '(' string ')'             { $$ = log_expr_node_new_rewrite_reference($3, &@$); free($3); }
