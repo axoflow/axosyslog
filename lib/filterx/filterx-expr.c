@@ -26,6 +26,14 @@
 #include "messages.h"
 
 void
+filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text)
+{
+  self->lloc = *lloc;
+  if (debug_flag)
+    self->expr_text = g_strdup(text);
+}
+
+void
 filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
 {
   self->lloc = *lloc;
@@ -41,7 +49,7 @@ EVTTAG *
 filterx_expr_format_location_tag(FilterXExpr *self)
 {
   if (self)
-    return evt_tag_printf("expr", "%s:%d:%d| %s",
+    return evt_tag_printf("expr", "%s:%d:%d|\t%s",
                           self->lloc.name, self->lloc.first_line, self->lloc.first_column,
                           self->expr_text ? : "n/a");
   else
@@ -128,23 +136,4 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterX
   g_assert(rhs);
   self->lhs = lhs;
   self->rhs = rhs;
-}
-
-gboolean
-filterx_expr_list_eval(GList *expressions, FilterXObject **result)
-{
-  *result = NULL;
-  for (GList *elem = expressions; elem; elem = elem->next)
-    {
-      filterx_object_unref(*result);
-
-      FilterXExpr *expr = elem->data;
-      *result = filterx_expr_eval(expr);
-
-      if (!(*result) ||
-          (!expr->ignore_falsy_result && filterx_object_falsy(*result)))
-        return FALSE;
-    }
-
-  return TRUE;
 }

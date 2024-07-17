@@ -26,20 +26,9 @@
 
 #include "filterx/filterx-expr.h"
 
-typedef struct _FilterXConditional FilterXConditional;
-
-struct _FilterXConditional
-{
-  FilterXExpr super;
-  FilterXExpr *condition;
-  GList *statements;
-  FilterXConditional *false_branch;
-};
-
-#define FILTERX_CONDITIONAL_NO_CONDITION NULL
-
-FilterXExpr *filterx_conditional_new_conditional_codeblock(FilterXExpr *condition, GList *stmts);
-FilterXExpr *filterx_conditional_new_codeblock(GList *stmts);
-FilterXExpr *filterx_conditional_add_false_branch(FilterXConditional *s, FilterXConditional *fail_branch);
+void filterx_conditional_set_true_branch(FilterXExpr *s, FilterXExpr *true_branch);
+void filterx_conditional_set_false_branch(FilterXExpr *s, FilterXExpr *false_branch);
+FilterXExpr *filterx_conditional_find_tail(FilterXExpr *s);
+FilterXExpr *filterx_conditional_new(FilterXExpr *condition);
 
 #endif

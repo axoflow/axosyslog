@@ -709,11 +709,11 @@ filter_content
 
 filterx_content
         : _filterx_context_push <ptr>{
-            GList *filterx_stmts = NULL;
+            FilterXExpr *filterx_block = NULL;
 
-	    CHECK_ERROR_WITHOUT_MESSAGE(cfg_parser_parse(&filterx_parser, lexer, (gpointer *) &filterx_stmts, NULL), @$);
+	    CHECK_ERROR_WITHOUT_MESSAGE(cfg_parser_parse(&filterx_parser, lexer, (gpointer *) &filterx_block, NULL), @$);
 
-            $$ = log_expr_node_new_pipe(log_filterx_pipe_new(filterx_stmts, configuration), &@$);
+            $$ = log_expr_node_new_pipe(log_filterx_pipe_new(filterx_block, configuration), &@$);
 	  } _filterx_context_pop			{ $$ = $2; }
 	;
 
@@ -782,7 +782,7 @@ log_item
         | KW_SOURCE '{' source_content '}'      { $$ = log_expr_node_new_source(NULL, $3, &@$); }
         | KW_FILTER '(' string ')'		{ $$ = log_expr_node_new_filter_reference($3, &@$); free($3); }
         | KW_FILTER '{' filter_content '}'      { $$ = log_expr_node_new_filter(NULL, $3, &@$); }
-        | KW_FILTERX '{' filterx_content '}'    { $$ = log_expr_node_new_filter(NULL, $3, &@$); }
+        | KW_FILTERX filterx_content            { $$ = log_expr_node_new_filter(NULL, $2, &@$); }
         | KW_PARSER '(' string ')'              { $$ = log_expr_node_new_parser_reference($3, &@$); free($3); }
         | KW_PARSER '{' parser_content '}'      { $$ = log_expr_node_new_parser(NULL, $3, &@$); }
         | KW_REWRITE '(' string ')'             { $$ = log_expr_node_new_rewrite_reference($3, &@$); free($3); }

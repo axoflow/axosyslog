@@ -27,6 +27,6 @@
 #include "filterx/filterx-expr.h"
 #include "logpipe.h"
 
-LogPipe *log_filterx_pipe_new(GList *stmts, GlobalConfig *cfg);
+LogPipe *log_filterx_pipe_new(FilterXExpr *expr, GlobalConfig *cfg);
 
 #endif

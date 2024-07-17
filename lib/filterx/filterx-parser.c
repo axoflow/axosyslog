@@ -25,7 +25,7 @@
 #include "filterx/filterx-grammar.h"
 
 extern int filterx_debug;
-int filterx_parse(CfgLexer *lexer, GList **node, gpointer arg);
+int filterx_parse(CfgLexer *lexer, FilterXExpr **expr, gpointer arg);
 
 static CfgLexerKeyword filterx_keywords[] =
 {
@@ -69,4 +69,4 @@ CfgParser filterx_parser =
   .parse = (gint (*)(CfgLexer *, gpointer *, gpointer)) filterx_parse,
 };
 
-CFG_PARSER_IMPLEMENT_LEXER_BINDING(filterx_, FILTERX_, GList **)
+CFG_PARSER_IMPLEMENT_LEXER_BINDING(filterx_, FILTERX_, FilterXExpr **)

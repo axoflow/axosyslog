@@ -50,7 +50,7 @@
 #include "filterx/expr-isset.h"
 #include "filterx/expr-unset.h"
 #include "filterx/expr-literal-generator.h"
-#include "filterx/expr-shorthand.h"
+#include "filterx/expr-compound.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-plus.h"
 #include "filterx/expr-null-coalesce.h"
@@ -94,7 +94,7 @@ construct_template_expr(LogTemplate *template)
 %define api.prefix {filterx_}
 %lex-param {CfgLexer *lexer}
 %parse-param {CfgLexer *lexer}
-%parse-param {GList **result}
+%parse-param {FilterXExpr **result}
 %parse-param {gpointer arg}
 
 /* INCLUDE_DECLS */
@@ -107,6 +107,7 @@ construct_template_expr(LogTemplate *template)
 %token KW_DECLARE
 %token KW_REGEXP_SEARCH
 
+%type <ptr> block
 %type <ptr> stmts
 %type <node> stmt
 %type <node> stmt_expr
@@ -140,14 +141,22 @@ construct_template_expr(LogTemplate *template)
 %type <ptr> conditional
 %type <ptr> condition
 %type <ptr> if
-%type <ptr> codeblock
 %type <ptr> ternary
 %type <ptr> default
 
 %%
 
 start
-        : stmts					{ *result = $1; if (yychar != FILTERX_EMPTY) { cfg_lexer_unput_token(lexer, &yylval); } YYACCEPT; }
+        : block					{ *result = $1; if (yychar != FILTERX_EMPTY) { cfg_lexer_unput_token(lexer, &yylval); } YYACCEPT; }
+	;
+
+block
+	: '{' stmts '}'				{
+                                                  FilterXExpr *block = filterx_compound_expr_new(FALSE);
+                                                  filterx_compound_expr_add_list(block, $2);
+						  filterx_expr_set_location_with_text(block, lexer, &@$, "{ ... }");
+                                                  $$ = block;
+                                                }
 	;
 
 stmts
@@ -183,38 +192,35 @@ assignment
 generator_assignment
 	: expr '.' LL_IDENTIFIER KW_ASSIGN expr_generator
 						{
-						  FilterXExpr *setattr = filterx_setattr_new($1, $3, filterx_generator_create_container_new($5, $1));
 						  filterx_generator_set_fillable($5, filterx_getattr_new(filterx_expr_ref($1), $3));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, setattr);
-						  filterx_shorthand_add(shorthand, $5);
-
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_setattr_new($1, $3, filterx_generator_create_container_new($5, $1)),
+						    $5,
+						    NULL
+                                                  );
 						  free($3);
-						  $$ = shorthand;
 						}
 	| expr '[' expr ']' KW_ASSIGN expr_generator
 						{
-						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, $3, filterx_generator_create_container_new($6, $1));
 						  filterx_generator_set_fillable($6, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $6);
-
-						  $$ = shorthand;
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_set_subscript_new($1, $3, filterx_generator_create_container_new($6, $1)),
+						    $6,
+						    NULL
+						  );
 						}
 	| expr '[' ']' KW_ASSIGN expr_generator
 						{
 						  FilterXExpr *minus_one = filterx_literal_new(filterx_config_freeze_object(configuration, filterx_integer_new(-1)));
-						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, NULL, filterx_generator_create_container_new($5, $1));
 						  filterx_generator_set_fillable($5, filterx_get_subscript_new(filterx_expr_ref($1), minus_one));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $5);
-
-						  $$ = shorthand;
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_set_subscript_new($1, NULL, filterx_generator_create_container_new($5, $1)),
+						    $5,
+						    NULL
+						  );
 						}
 	| expr KW_PLUS_ASSIGN expr_generator	{ $$ = $3; filterx_generator_set_fillable($3, $1); }
 	| generator_casted_assignment
@@ -227,15 +233,14 @@ generator_casted_assignment
 						  FilterXExpr *func = filterx_function_lookup(configuration, $3, NULL, &error);
 						  CHECK_FUNCTION_ERROR(func, @3, $3, error);
 
-						  FilterXExpr *assign = filterx_assign_new($1, func);
 						  filterx_generator_set_fillable($5, filterx_expr_ref($1));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, assign);
-						  filterx_shorthand_add(shorthand, $5);
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_assign_new($1, func),
+						    $5,
+						    NULL
+						  );
 						  free($3);
-
-						  $$ = shorthand;
 						}
 	| expr '.' LL_IDENTIFIER KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
 						{
@@ -243,15 +248,14 @@ generator_casted_assignment
 						  FilterXExpr *func = filterx_function_lookup(configuration, $5, NULL, &error);
 						  CHECK_FUNCTION_ERROR(func, @5, $5, error);
 
-						  FilterXExpr *setattr = filterx_setattr_new($1, $3, func);
 						  filterx_generator_set_fillable($7, filterx_getattr_new(filterx_expr_ref($1), $3));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, setattr);
-						  filterx_shorthand_add(shorthand, $7);
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_setattr_new($1, $3, func),
+						    $7,
+						    NULL
+						  );
 						  free($3);
-
-						  $$ = shorthand;
 						}
 	| expr '[' expr ']' KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
 						{
@@ -259,15 +263,14 @@ generator_casted_assignment
 						  FilterXExpr *func = filterx_function_lookup(configuration, $6, NULL, &error);
 						  CHECK_FUNCTION_ERROR(func, @6, $6, error);
 
-						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, $3, func);
 						  filterx_generator_set_fillable($8, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $8);
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_set_subscript_new($1, $3, func),
+						    $8,
+						    NULL
+						  );
 						  free($6);
-
-						  $$ = shorthand;
 						}
 	| expr '[' ']' KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
 						{
@@ -276,15 +279,14 @@ generator_casted_assignment
 						  CHECK_FUNCTION_ERROR(func, @5, $5, error);
 
 						  FilterXExpr *minus_one = filterx_literal_new(filterx_config_freeze_object(configuration, filterx_integer_new(-1)));
-						  FilterXExpr *set_subscript = filterx_set_subscript_new($1, NULL, func);
 						  filterx_generator_set_fillable($7, filterx_get_subscript_new(filterx_expr_ref($1), minus_one));
 
-						  FilterXExpr *shorthand = filterx_shorthand_new();
-						  filterx_shorthand_add(shorthand, set_subscript);
-						  filterx_shorthand_add(shorthand, $7);
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_set_subscript_new($1, NULL, func),
+						    $7,
+						    NULL
+						  );
 						  free($5);
-
-						  $$ = shorthand;
 						}
 	;
 
@@ -461,38 +463,51 @@ regexp_match
 
 conditional
 	: if					{ $$ = $1; }
-	| if KW_ELSE codeblock
+	| if KW_ELSE block
 	  {
-	    $$ = filterx_conditional_add_false_branch((FilterXConditional*)$1, (FilterXConditional*)filterx_conditional_new_codeblock($3));
+            FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
+	    filterx_conditional_set_false_branch(tailing_if, $3);
+	    $$ = $1;
 	  }
 	;
 
 if
-	: KW_IF '(' expr ')' codeblock
+	: KW_IF '(' expr ')' block
 	  {
-	    $$ = filterx_conditional_new_conditional_codeblock($3, $5);
+            filterx_expr_set_location($3, lexer, &@3);
+	    $$ = filterx_conditional_new($3);
+            filterx_conditional_set_true_branch($$, $5);
 	  }
-	| if KW_ELIF '(' expr ')' codeblock
+	| if KW_ELIF '(' expr ')' block
 	  {
-	    $$ = filterx_conditional_add_false_branch((FilterXConditional*)$1, (FilterXConditional*)filterx_conditional_new_conditional_codeblock($4, $6));
+            FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
+
+            filterx_expr_set_location($4, lexer, &@4);
+	    /* create new conditional */
+	    FilterXExpr *elif_expr = filterx_conditional_new($4);
+            filterx_conditional_set_true_branch(elif_expr, $6);
+
+	    /* link it into the else branch of the last if */
+	    filterx_conditional_set_false_branch(tailing_if, elif_expr);
+	
+	    $$ = $1;
 	  }
 	;
 
-
-codeblock
-	: '{' stmts '}'				{ $$ = $2; }
-	;
 
 ternary
 	: expr '?' expr ':' expr
 	  {
-	    FilterXConditional *cond = (FilterXConditional*)filterx_conditional_new_conditional_codeblock($1, g_list_append(NULL, $3));
-	    $$ = filterx_conditional_add_false_branch(cond, (FilterXConditional*)filterx_conditional_new_codeblock(g_list_append(NULL, $5)));
+            filterx_expr_set_location($1, lexer, &@1);
+	    $$ = filterx_conditional_new($1);
+            filterx_conditional_set_true_branch($$, $3);
+            filterx_conditional_set_false_branch($$, $5);
 	  }
 	| expr '?' ':' expr
 	  {
-	    FilterXConditional *cond = (FilterXConditional*)filterx_conditional_new_conditional_codeblock($1, NULL);
-	    $$ = filterx_conditional_add_false_branch(cond, (FilterXConditional*)filterx_conditional_new_codeblock(g_list_append(NULL, $4)));
+            filterx_expr_set_location($1, lexer, &@1);
+	    $$ = filterx_conditional_new($1);
+	    filterx_conditional_set_false_branch($$, $4);
 	  }
 	;
 

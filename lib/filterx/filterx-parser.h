@@ -25,9 +25,10 @@
 #define FILTERX_EXPR_PARSER_H_INCLUDED
 
 #include "cfg-parser.h"
+#include "filterx/filterx-expr.h"
 
 extern CfgParser filterx_parser;
 
-CFG_PARSER_DECLARE_LEXER_BINDING(filterx_, FILTERX_, GList **)
+CFG_PARSER_DECLARE_LEXER_BINDING(filterx_, FILTERX_, FilterXExpr **)
 
 #endif

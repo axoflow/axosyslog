@@ -31,7 +31,7 @@ struct _FilterXExpr
 {
   guint32 ref_cnt;
   const gchar *type;
-  guint32 ignore_falsy_result:1;
+  guint32 ignore_falsy_result:1, suppress_from_trace:1;
 
   /* evaluate expression */
   FilterXObject *(*eval)(FilterXExpr *self);
@@ -131,6 +131,7 @@ filterx_expr_unset(FilterXExpr *self)
 }
 
 void filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc);
+void filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text);
 EVTTAG *filterx_expr_format_location_tag(FilterXExpr *self);
 void filterx_expr_init_instance(FilterXExpr *self);
 FilterXExpr *filterx_expr_new(void);
@@ -155,7 +156,5 @@ typedef struct _FilterXBinaryOp
 
 void filterx_binary_op_free_method(FilterXExpr *s);
 void filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterXExpr *rhs);
-
-gboolean filterx_expr_list_eval(GList *expressions, FilterXObject **result);
 
 #endif

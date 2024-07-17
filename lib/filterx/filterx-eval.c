@@ -149,6 +149,14 @@ filterx_format_last_error(void)
                         extra_info ? : "");
 }
 
+EVTTAG *
+filterx_format_last_error_location(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  return filterx_expr_format_location_tag(context->error.expr);
+}
+
 
 /*
  * This is not a real weakref implementation as we will never get rid off
@@ -180,67 +188,25 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
-
-static gboolean
-_evaluate_statement(FilterXExpr *expr)
-{
-  FilterXObject *res = filterx_expr_eval(expr);
-  gboolean success = FALSE;
-
-  if (!res)
-    {
-      msg_debug("FILTERX ERROR",
-                filterx_expr_format_location_tag(expr),
-                filterx_format_last_error());
-      return FALSE;
-    }
-  filterx_eval_clear_errors();
-
-  success = expr->ignore_falsy_result || filterx_object_truthy(res);
-  if (!success || trace_flag)
-    {
-      GString *buf = scratch_buffers_alloc();
-
-      if (!filterx_object_repr(res, buf))
-        {
-          LogMessageValueType t;
-          if (!filterx_object_marshal(res, buf, &t))
-            g_assert_not_reached();
-        }
-
-      if (!success)
-        msg_debug("FILTERX FALSY",
-                  filterx_expr_format_location_tag(expr),
-                  evt_tag_mem("value", buf->str, buf->len),
-                  evt_tag_str("type", res->type->name));
-      else
-        msg_trace("FILTERX ESTEP",
-                  filterx_expr_format_location_tag(expr),
-                  evt_tag_mem("value", buf->str, buf->len),
-                  evt_tag_int("truthy", filterx_object_truthy(res)),
-                  evt_tag_str("type", res->type->name));
-    }
-
-  filterx_object_unref(res);
-  return success;
-}
-
 gboolean
-filterx_eval_exec_statements(FilterXEvalContext *context, GList *statements, LogMessage *msg)
+filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *msg)
 {
   context->msgs = &msg;
   context->num_msg = 1;
   gboolean success = FALSE;
-  for (GList *l = statements; l; l = l->next)
+
+  FilterXObject *res = filterx_expr_eval(expr);
+  if (!res)
     {
-      FilterXExpr *expr = l->data;
-      if (!_evaluate_statement(expr))
-        {
-          goto fail;
-        }
+      msg_debug("FILTERX ERROR",
+                filterx_format_last_error_location(),
+                filterx_format_last_error());
+      filterx_eval_clear_errors();
+      goto fail;
     }
+  success = filterx_object_truthy(res);
+  filterx_object_unref(res);
   /* NOTE: we only store the results into the message if the entire evaluation was successful */
-  success = TRUE;
 fail:
   filterx_scope_set_dirty(context->scope);
   return success;

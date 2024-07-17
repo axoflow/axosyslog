@@ -29,7 +29,7 @@ typedef struct _LogFilterXPipe
 {
   LogPipe super;
   gchar *name;
-  GList *stmts;
+  FilterXExpr *block;
 } LogFilterXPipe;
 
 static gboolean
@@ -62,7 +62,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
             evt_tag_msg_reference(msg));
 
   NVTable *payload = nv_table_ref(msg->payload);
-  res = filterx_eval_exec_statements(&eval_context, self->stmts, msg);
+  res = filterx_eval_exec(&eval_context, self->block, msg);
 
   msg_trace("<<<<<< filterx rule evaluation result",
             evt_tag_str("result", res ? "matched" : "unmatched"),
@@ -91,9 +91,9 @@ static LogPipe *
 log_filterx_pipe_clone(LogPipe *s)
 {
   LogFilterXPipe *self = (LogFilterXPipe *) s;
-  GList *cloned_stmts = g_list_copy_deep(self->stmts, (GCopyFunc) filterx_expr_ref, NULL);
+  FilterXExpr *cloned_block = filterx_expr_ref(self->block);
 
-  LogPipe *cloned = log_filterx_pipe_new(cloned_stmts, s->cfg);
+  LogPipe *cloned = log_filterx_pipe_new(cloned_block, s->cfg);
   ((LogFilterXPipe *)cloned)->name = g_strdup(self->name);
   return cloned;
 }
@@ -104,12 +104,12 @@ log_filterx_pipe_free(LogPipe *s)
   LogFilterXPipe *self = (LogFilterXPipe *) s;
 
   g_free(self->name);
-  g_list_free_full(self->stmts, (GDestroyNotify) filterx_expr_unref);
+  filterx_expr_unref(self->block);
   log_pipe_free_method(s);
 }
 
 LogPipe *
-log_filterx_pipe_new(GList *stmts, GlobalConfig *cfg)
+log_filterx_pipe_new(FilterXExpr *block, GlobalConfig *cfg)
 {
   LogFilterXPipe *self = g_new0(LogFilterXPipe, 1);
 
@@ -119,6 +119,6 @@ log_filterx_pipe_new(GList *stmts, GlobalConfig *cfg)
   self->super.queue = log_filterx_pipe_queue;
   self->super.free_fn = log_filterx_pipe_free;
   self->super.clone = log_filterx_pipe_clone;
-  self->stmts = stmts;
+  self->block = block;
   return &self->super;
 }

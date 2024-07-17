@@ -20,52 +20,14 @@
  * COPYING for details.
  *
  */
+#ifndef FILTERX_COMPOUND_H_INCLUDED
+#define FILTERX_COMPOUND_H_INCLUDED
 
-#include "filterx/expr-shorthand.h"
+#include "filterx/filterx-expr.h"
 
-typedef struct _FilterXShorthand
-{
-  FilterXExpr super;
-  GList *exprs;
-} FilterXShorthand;
+void filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr);
+void filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list);
+FilterXExpr *filterx_compound_expr_new(gboolean return_value_of_last_expr);
+FilterXExpr *filterx_compound_expr_new_va(gboolean return_value_of_last_expr, FilterXExpr *first, ...);
 
-static FilterXObject *
-_eval(FilterXExpr *s)
-{
-  FilterXShorthand *self = (FilterXShorthand *) s;
-  FilterXObject *result = NULL;
-
-  filterx_expr_list_eval(self->exprs, &result);
-  return result;
-}
-
-static void
-_free(FilterXExpr *s)
-{
-  FilterXShorthand *self = (FilterXShorthand *) s;
-
-  g_list_free_full(self->exprs, (GDestroyNotify) filterx_expr_unref);
-  filterx_expr_free_method(s);
-}
-
-/* Takes reference of expr */
-void
-filterx_shorthand_add(FilterXExpr *s, FilterXExpr *expr)
-{
-  FilterXShorthand *self = (FilterXShorthand *) s;
-
-  self->exprs = g_list_append(self->exprs, expr);
-}
-
-FilterXExpr *
-filterx_shorthand_new(void)
-{
-  FilterXShorthand *self = g_new0(FilterXShorthand, 1);
-
-  filterx_expr_init_instance(&self->super);
-  self->super.eval = _eval;
-  self->super.free_fn = _free;
-
-  return &self->super;
-}
-
+#endif

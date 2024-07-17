@@ -23,63 +23,26 @@
 
 #include "filterx/expr-condition.h"
 #include "filterx/object-primitive.h"
+#include "scratch-buffers.h"
 
-static FilterXConditional *
-_tail_condition(FilterXConditional *c)
+typedef struct _FilterXConditional FilterXConditional;
+
+struct _FilterXConditional
 {
-  g_assert(c != NULL);
-  if (c->false_branch != NULL)
-    return _tail_condition(c->false_branch);
-  else
-    return c;
-}
-
-static FilterXObject *
-_eval_condition(FilterXConditional *c)
-{
-  FilterXObject *result = NULL;
-  FilterXObject *condition_value = NULL;
-  if (c->condition != FILTERX_CONDITIONAL_NO_CONDITION)
-    {
-      condition_value = filterx_expr_eval(c->condition);
-      if (!condition_value)
-        return NULL;
-      if (filterx_object_falsy(condition_value))
-        {
-          // no condition-expression match, no elif or else case
-          // returning true to avoid filterx failure on non matching if's
-          if (c->false_branch == NULL)
-            result = filterx_boolean_new(TRUE);
-          else
-            result = _eval_condition(c->false_branch);
-          goto exit;
-        }
-    }
-
-  if (!c->statements)
-    {
-      if (c->condition)
-        return condition_value;
-      // returning true to avoid filterx failure on empty else block
-      result = filterx_boolean_new(TRUE);
-      goto exit;
-    }
-
-  filterx_expr_list_eval(c->statements, &result);
-exit:
-  filterx_object_unref(condition_value);
-  return result;
-}
+  FilterXExpr super;
+  FilterXExpr *condition;
+  FilterXExpr *true_branch;
+  FilterXExpr *false_branch;
+};
 
 static void
-_free (FilterXExpr *s)
+_free(FilterXExpr *s)
 {
   FilterXConditional *self = (FilterXConditional *) s;
 
   filterx_expr_unref(self->condition);
-  g_list_free_full(self->statements, (GDestroyNotify) filterx_expr_unref);
-  if (self->false_branch != NULL)
-    filterx_expr_unref(&self->false_branch->super);
+  filterx_expr_unref(self->true_branch);
+  filterx_expr_unref(self->false_branch);
   filterx_expr_free_method(s);
 }
 
@@ -87,37 +50,97 @@ static FilterXObject *
 _eval(FilterXExpr *s)
 {
   FilterXConditional *self = (FilterXConditional *) s;
-  return _eval_condition(self);
+  FilterXObject *condition_value = filterx_expr_eval(self->condition);
+  FilterXObject *result = NULL;
+
+  if (!condition_value)
+    return NULL;
+
+  if (trace_flag)
+    {
+      ScratchBuffersMarker mark;
+      GString *buf = scratch_buffers_alloc_and_mark(&mark);
+
+      if (!filterx_object_repr(condition_value, buf))
+        {
+          LogMessageValueType t;
+          if (!filterx_object_marshal(condition_value, buf, &t))
+            g_assert_not_reached();
+        }
+
+      msg_trace(filterx_object_truthy(condition_value) ? "FILTERX CONDT" : "FILTERX CONDF",
+                filterx_expr_format_location_tag(self->condition),
+                evt_tag_mem("value", buf->str, buf->len),
+                evt_tag_int("truthy", filterx_object_truthy(condition_value)),
+                evt_tag_str("type", condition_value->type->name));
+      scratch_buffers_reclaim_marked(mark);
+    }
+
+  if (filterx_object_truthy(condition_value))
+    {
+      if (self->true_branch)
+        result = filterx_expr_eval(self->true_branch);
+      else
+        result = filterx_object_ref(condition_value);
+    }
+  else
+    {
+      if (self->false_branch)
+        result = filterx_expr_eval(self->false_branch);
+      else
+        result = filterx_boolean_new(TRUE);
+    }
+
+  filterx_object_unref(condition_value);
+  return result;
+}
+
+void
+filterx_conditional_set_true_branch(FilterXExpr *s, FilterXExpr *true_branch)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  filterx_expr_unref(self->true_branch);
+  self->true_branch = true_branch;
+}
+
+void
+filterx_conditional_set_false_branch(FilterXExpr *s, FilterXExpr *false_branch)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  filterx_expr_unref(self->false_branch);
+  self->false_branch = false_branch;
 }
 
 FilterXExpr *
-filterx_conditional_new_conditional_codeblock(FilterXExpr *condition, GList *stmts)
+filterx_conditional_new(FilterXExpr *condition)
 {
   FilterXConditional *self = g_new0(FilterXConditional, 1);
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
   self->super.free_fn = _free;
+  self->super.suppress_from_trace = TRUE;
   self->condition = condition;
-  self->statements = stmts;
   return &self->super;
 }
 
 FilterXExpr *
-filterx_conditional_new_codeblock(GList *stmts)
+filterx_conditional_find_tail(FilterXExpr *s)
 {
-  return filterx_conditional_new_conditional_codeblock(FILTERX_CONDITIONAL_NO_CONDITION, stmts);
-}
+  /* check if this is a FilterXConditional instance */
+  if (s->eval != _eval)
+    return NULL;
 
-
-FilterXExpr *
-filterx_conditional_add_false_branch(FilterXConditional *s, FilterXConditional *false_branch)
-{
-  g_assert(s != NULL);
-  FilterXConditional *last_condition = _tail_condition(s);
-
-  // avoid to create nested elses (if () {} else {} else {} else {})
-  g_assert(last_condition->condition);
-
-  last_condition->false_branch = false_branch;
-  return &s->super;
+  FilterXConditional *self = (FilterXConditional *) s;
+  if (self->false_branch)
+    {
+      FilterXConditional *tail = (FilterXConditional *) filterx_conditional_find_tail(self->false_branch);
+      if (tail)
+        {
+          g_assert(tail->false_branch == NULL);
+          return &tail->super;
+        }
+    }
+  return s;
 }
