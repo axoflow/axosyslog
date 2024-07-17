@@ -31,6 +31,7 @@ typedef struct _AppParserGenerator
 {
   AppObjectGenerator super;
   const gchar *topic;
+  const gchar *filterx_app_variable;
   GString *block;
   gboolean first_app_generated;
   gboolean allow_overlaps;
@@ -61,6 +62,13 @@ _parse_allow_overlaps(AppParserGenerator *self, CfgArgs *args, const gchar *refe
 }
 
 static gboolean
+_parse_filterx_app_variable(AppParserGenerator *self, CfgArgs *args, const gchar *reference)
+{
+  self->filterx_app_variable = cfg_args_get(args, "filterx-app-variable");
+  return TRUE;
+}
+
+static gboolean
 app_parser_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, const gchar *reference)
 {
   AppParserGenerator *self = (AppParserGenerator *) s;
@@ -70,6 +78,9 @@ app_parser_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, const
     return FALSE;
 
   if (!_parse_allow_overlaps(self, args, reference))
+    return FALSE;
+
+  if (!_parse_filterx_app_variable(self, args, reference))
     return FALSE;
 
   if (!app_object_generator_parse_arguments_method(&self->super, args, reference))
@@ -139,20 +150,23 @@ _generate_action(AppParserGenerator *self, Application *app)
   if (self->allow_overlaps)
     return;
 
-  if (app->filterx_expr)
-    g_string_append_printf(self->block,
-                           "            filterx {\n"
-                           "                meta.app_name = '%s';\n"
-                           "            };\n",
-                           app->super.name);
-
+  if (self->filterx_app_variable)
+    {
+      g_string_append_printf(self->block,
+                             "            filterx {\n"
+                             "                %s = '%s';\n"
+                             "            };\n",
+                             self->filterx_app_variable, app->super.name);
+    }
   else
-    g_string_append_printf(self->block,
-                           "            rewrite {\n"
-                           "                set-tag('.app.%s');\n"
-                           "                set('%s' value('.app.name'));\n"
-                           "            };\n",
-                           app->super.name, app->super.name);
+    {
+      g_string_append_printf(self->block,
+                             "            rewrite {\n"
+                             "                set-tag('.app.%s');\n"
+                             "                set('%s' value('.app.name'));\n"
+                             "            };\n",
+                             app->super.name, app->super.name);
+    }
 }
 
 static void
