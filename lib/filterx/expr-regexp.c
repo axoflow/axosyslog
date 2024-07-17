@@ -28,6 +28,14 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "compat/pcre.h"
+#include "scratch-buffers.h"
+
+#define FILTERX_FUNC_REGEXP_SUBST_USAGE "regexp_subst(string, pattern, replacement, " \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME"=(boolean) " \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME"=(boolean) " \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME"=(boolean) " \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME"=(boolean) " \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME"=(boolean))" \
 
 typedef struct FilterXReMatchState_
 {
@@ -52,13 +60,12 @@ _state_cleanup(FilterXReMatchState *state)
   memset(state, 0, sizeof(FilterXReMatchState));
 }
 
-
 static pcre2_code_8 *
-_compile_pattern(const gchar *pattern)
+_compile_pattern(const gchar *pattern, gboolean jit_enabled, gint opts)
 {
   gint rc;
   PCRE2_SIZE error_offset;
-  gint flags = PCRE2_DUPNAMES;
+  gint flags = opts | PCRE2_DUPNAMES;
 
   pcre2_code_8 *compiled = pcre2_compile((PCRE2_SPTR) pattern, PCRE2_ZERO_TERMINATED, flags, &rc, &error_offset, NULL);
   if (!compiled)
@@ -72,17 +79,56 @@ _compile_pattern(const gchar *pattern)
       return NULL;
     }
 
-  rc = pcre2_jit_compile(compiled, PCRE2_JIT_COMPLETE);
-  if (rc < 0)
+  if (jit_enabled)
     {
-      PCRE2_UCHAR error_message[128];
-      pcre2_get_error_message(rc, error_message, sizeof(error_message));
-      msg_debug("FilterX: Failed to JIT compile regular expression",
-                evt_tag_str("pattern", pattern),
-                evt_tag_str("error", (const gchar *) error_message));
+      rc = pcre2_jit_compile(compiled, PCRE2_JIT_COMPLETE);
+      if (rc < 0)
+        {
+          PCRE2_UCHAR error_message[128];
+          pcre2_get_error_message(rc, error_message, sizeof(error_message));
+          msg_debug("FilterX: Failed to JIT compile regular expression",
+                    evt_tag_str("pattern", pattern),
+                    evt_tag_str("error", (const gchar *) error_message));
+        }
     }
 
   return compiled;
+}
+
+static pcre2_code_8 *
+_compile_pattern_defaults(const gchar *pattern)
+{
+  return _compile_pattern(pattern, TRUE, 0);
+}
+
+static gboolean
+_match_inner(FilterXReMatchState *state, pcre2_code_8 *pattern, gint start_offset)
+{
+  gint rc = pcre2_match(pattern, (PCRE2_SPTR) state->lhs_str, (PCRE2_SIZE) state->lhs_str_len, (PCRE2_SIZE) start_offset,
+                        0,
+                        state->match_data, NULL);
+  if (rc < 0)
+    {
+      switch (rc)
+        {
+        case PCRE2_ERROR_NOMATCH:
+          return FALSE;
+        default:
+          /* Handle other special cases */
+          msg_error("FilterX: Error while matching regexp", evt_tag_int("error_code", rc));
+          goto error;
+        }
+    }
+  else if (rc == 0)
+    {
+      msg_error("FilterX: Error while storing matching substrings, more than 256 capture groups encountered");
+      goto error;
+    }
+
+  return TRUE;
+
+error:
+  return FALSE;
 }
 
 /*
@@ -118,28 +164,7 @@ _match(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXReMatchState *state)
     }
 
   state->match_data = pcre2_match_data_create_from_pattern(pattern, NULL);
-  gint rc = pcre2_match(pattern, (PCRE2_SPTR) state->lhs_str, (PCRE2_SIZE) state->lhs_str_len, (PCRE2_SIZE) 0, 0,
-                        state->match_data, NULL);
-  if (rc < 0)
-    {
-      switch (rc)
-        {
-        case PCRE2_ERROR_NOMATCH:
-          return FALSE;
-        default:
-          /* Handle other special cases */
-          msg_error("FilterX: Error while matching regexp", evt_tag_int("error_code", rc));
-          goto error;
-        }
-    }
-  else if (rc == 0)
-    {
-      msg_error("FilterX: Error while storing matching substrings, more than 256 capture groups encountered");
-      goto error;
-    }
-
-  return TRUE;
-
+  return _match_inner(state, pattern, 0);
 error:
   _state_cleanup(state);
   return FALSE;
@@ -318,7 +343,7 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
   self->super.free_fn = _regexp_match_free;
 
   self->lhs = lhs;
-  self->pattern = _compile_pattern(pattern);
+  self->pattern = _compile_pattern_defaults(pattern);
   if (!self->pattern)
     {
       filterx_expr_unref(&self->super);
@@ -408,7 +433,7 @@ filterx_expr_regexp_search_generator_new(FilterXExpr *lhs, const gchar *pattern)
   self->super.create_container = _regexp_search_generator_create_container;
 
   self->lhs = lhs;
-  self->pattern = _compile_pattern(pattern);
+  self->pattern = _compile_pattern_defaults(pattern);
   if (!self->pattern)
     {
       filterx_expr_unref(&self->super.super);
@@ -416,4 +441,261 @@ filterx_expr_regexp_search_generator_new(FilterXExpr *lhs, const gchar *pattern)
     }
 
   return &self->super.super;
+}
+
+typedef struct FilterXFuncRegexpSubst_
+{
+  FilterXFunction super;
+  FilterXExpr *string_expr;
+  pcre2_code_8 *pattern;
+  gchar *replacement;
+  FilterXFuncRegexpSubstOpts opts;
+} FilterXFuncRegexpSubst;
+
+
+static inline gint
+_start_offset(PCRE2_SIZE *ovector)
+{
+  return ovector[0];
+}
+
+static inline gint
+_end_offset(PCRE2_SIZE *ovector)
+{
+  return ovector[1];
+}
+
+static inline gboolean
+_is_zero_length_match(PCRE2_SIZE *ovector)
+{
+  return ovector[0] == ovector[1];
+}
+
+static FilterXObject *
+_replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
+{
+  GString *new_value = scratch_buffers_alloc();
+  PCRE2_SIZE *ovector = NULL;
+  gint pos = 0;
+  do
+    {
+      ovector = pcre2_get_ovector_pointer(state->match_data);
+
+      g_string_append_len(new_value, state->lhs_str + pos, _start_offset(ovector) - pos);
+      g_string_append(new_value, self->replacement);
+
+      if (_is_zero_length_match(ovector))
+        {
+          g_string_append_len(new_value, state->lhs_str + pos, 1);
+          pos++;
+        }
+      else
+        pos = _end_offset(ovector);
+
+      if (!_match_inner(state, self->pattern, pos))
+        break;
+    }
+  while ((pos < state->lhs_str_len) && self->opts.global);
+
+  // add the rest of the string
+  g_string_append_len(new_value, state->lhs_str + pos, state->lhs_str_len - pos);
+
+  // handle the very last of zero lenght matches
+  if (_is_zero_length_match(ovector))
+    g_string_append(new_value, self->replacement);
+
+  return filterx_string_new(new_value->str, new_value->len);
+}
+
+static FilterXObject *
+_subst_eval(FilterXExpr *s)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+
+  FilterXObject *result = NULL;
+  FilterXReMatchState state;
+  _state_init(&state);
+
+  gboolean matched = _match(self->string_expr, self->pattern, &state);
+  if (!matched)
+    {
+      result = filterx_object_ref(state.lhs_obj);
+      goto exit;
+    }
+
+  if (!state.match_data)
+    {
+      /* Error happened during matching. */
+      result = NULL;
+      goto exit;
+    }
+
+  result = _replace_matches(self, &state);
+
+exit:
+  _state_cleanup(&state);
+  return result;
+}
+
+static FilterXExpr *
+_extract_subst_string_expr_arg(FilterXFunctionArgs *args, GError **error)
+{
+  return filterx_function_args_get_expr(args, 0);
+}
+
+static gint
+_create_compile_opts(FilterXFuncRegexpSubstOpts opts)
+{
+  gint res = 0;
+  res ^= (-opts.utf8 ^ res) & PCRE2_NO_UTF_CHECK;
+  res ^= (-opts.ignorecase ^ res) & PCRE2_CASELESS;
+  res ^= (-opts.newline ^ res) & PCRE2_NEWLINE_ANYCRLF;
+  return res;
+}
+
+static pcre2_code_8 *
+_extract_subst_pattern_arg(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
+{
+  const gchar *pattern = filterx_function_args_get_literal_string(args, 1, NULL);
+  if (!pattern)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be a string literal: pattern. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      return NULL;
+    }
+
+  return _compile_pattern(pattern, self->opts.jit, _create_compile_opts(self->opts));
+}
+
+static gchar *
+_extract_subst_replacement_arg(FilterXFunctionArgs *args, GError **error)
+{
+  const gchar *replacement = filterx_function_args_get_literal_string(args, 2, NULL);
+  if (!replacement)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be a string literal: replacement. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      return NULL;
+    }
+
+  return g_strdup(replacement);
+}
+
+static gboolean
+_extract_literal_bool(FilterXFunctionArgs *args, const gchar *option_name, gboolean *value, GError **error)
+{
+  gboolean exists, eval_error;
+  gboolean val = filterx_function_args_get_named_literal_boolean(args, option_name, &exists, &eval_error);
+  if (exists)
+    {
+      if (eval_error)
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                      "%s argument must be boolean literal. ", option_name);
+          return FALSE;
+        };
+      *value = val;
+    }
+  return TRUE;
+}
+
+static gboolean
+_extract_optional_flags(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
+{
+  if (!_extract_literal_bool(args, FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME,
+                             &self->opts.global, error))
+    return FALSE;
+  if (!_extract_literal_bool(args, FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME, &self->opts.jit,
+                             error))
+    return FALSE;
+  if (!_extract_literal_bool(args, FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME,
+                             &self->opts.ignorecase, error))
+    return FALSE;
+  if (!_extract_literal_bool(args, FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME,
+                             &self->opts.newline, error))
+    return FALSE;
+  if (!_extract_literal_bool(args, FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME, &self->opts.utf8,
+                             error))
+    return FALSE;
+  return TRUE;
+}
+
+static gboolean
+_extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
+{
+  if (filterx_function_args_len(args) != 3)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      return FALSE;
+    }
+
+  self->string_expr = _extract_subst_string_expr_arg(args, error);
+  if (!self->string_expr)
+    return FALSE;
+
+  if (!_extract_optional_flags(self, args, error))
+    return FALSE;
+
+  self->pattern = _extract_subst_pattern_arg(self, args, error);
+  if (!self->pattern)
+    return FALSE;
+
+  self->replacement = _extract_subst_replacement_arg(args, error);
+  if (!self->replacement)
+    return FALSE;
+
+
+  return TRUE;
+}
+
+static void
+_subst_free(FilterXExpr *s)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+  filterx_expr_unref(self->string_expr);
+  if (self->pattern)
+    pcre2_code_free(self->pattern);
+  g_free(self->replacement);
+  filterx_function_free_method(&self->super);
+}
+
+static void
+_opts_init(FilterXFuncRegexpSubstOpts *opts)
+{
+  memset(opts, 0, sizeof(FilterXFuncRegexpSubstOpts));
+  opts->jit = TRUE;
+}
+
+FilterXFunction *
+filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
+  filterx_function_init_instance(&self->super, function_name);
+  self->super.super.eval = _subst_eval;
+  self->super.super.free_fn = _subst_free;
+
+  _opts_init(&self->opts);
+
+  if (!_extract_subst_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
+  return &self->super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+gboolean
+filterx_regexp_subst_is_jit_enabled(FilterXFunction *s)
+{
+  g_assert(s);
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *)s;
+  PCRE2_SIZE jit_size;
+  int info_result = pcre2_pattern_info(self->pattern, PCRE2_INFO_JITSIZE, &jit_size);
+  return info_result == 0 && jit_size > 0;
 }

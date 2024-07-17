@@ -79,19 +79,6 @@ log {{
     config.set_raw_config(preamble)
     return (file_true, file_false)
 
-# TODO: take care of _evaluate_statement methods result, to fix this test
-# def test_filterx_falsey_value_assign(config, syslog_ng):
-#     (file_true, file_false) = create_config(
-#         config, """
-#                     $myvar = 0;
-#                     $MSG = $myvar; """,
-#     )
-#     syslog_ng.start(config)
-
-#     assert file_true.get_stats()["processed"] == 1
-#     assert "processed" not in file_false.get_stats()
-#     assert file_true.read_log() == "0\n"
-
 
 def test_otel_logrecord_int32_setter_getter(config, syslog_ng):
     (file_true, file_false) = create_config(
@@ -219,21 +206,6 @@ def test_otel_logrecord_body_datetime_setter_getter(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "1701353998123000\n"
-
-
-# TODO: figure out null type's proper behaviour
-# def test_otel_logrecord_body_null_setter_getter(config, syslog_ng):
-#     (file_true, file_false) = create_config(
-#         config, """
-#                                             $olr = otel_logrecord();
-#                                             $olr.body = ${values.null};
-#                                             $MSG = $olr.body; """,
-#     )
-#     syslog_ng.start(config)
-
-#     assert file_true.get_stats()["processed"] == 1
-#     assert "processed" not in file_false.get_stats()
-#     assert file_true.read_log() == "\n"
 
 
 def test_otel_logrecord_body_bytes_setter_getter(config, syslog_ng):
@@ -1750,3 +1722,52 @@ bar/;
     )
     res = file_true.read_log()
     assert res == exp
+
+
+def test_regexp_subst(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = json();
+        $MSG.single = regexp_subst("foobarbaz","o","");
+        $MSG.empty_string = regexp_subst("","a","!");
+        $MSG.empty_pattern = regexp_subst("foobarbaz","","!");
+        $MSG.zero_length_match = regexp_subst("foobarbaz","u*","!");
+        $MSG.orgrp = regexp_subst("foobarbaz", "(fo|az)", "!");
+        $MSG.single_global = regexp_subst("foobarbaz","o","", global=true);
+        $MSG.empty_string_global = regexp_subst("","a","!", global=true);
+        $MSG.empty_pattern_global = regexp_subst("foobarbaz","","!", global=true);
+        $MSG.zero_length_match_global = regexp_subst("foobarbaz","u*","!", global=true);
+        $MSG.orgrp_global = regexp_subst("foobarbaz", "(fo|az)", "!", global=true);
+        $MSG.ignore_case_control = regexp_subst("FoObArBaz", "(o|a)", "!", global=true);
+        $MSG.ignore_case = regexp_subst("FoObArBaz", "(o|a)", "!", ignorecase=true, global=true);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"single":"fobarbaz","""
+        r""""empty_string":"","""
+        r""""empty_pattern":"!foobarbaz!","""
+        r""""zero_length_match":"!foobarbaz!","""
+        r""""orgrp":"!obarbaz","""
+        r""""single_global":"fbarbaz","""
+        r""""empty_string_global":"","""
+        r""""empty_pattern_global":"!f!o!o!b!a!r!b!a!z!","""
+        r""""zero_length_match_global":"!f!o!o!b!a!r!b!a!z!","""
+        r""""orgrp_global":"!obarb!","""
+        r""""ignore_case_control":"F!ObArB!z","""
+        r""""ignore_case":"F!!b!rB!z"}""" + "\n"
+    )
+    assert file_true.read_log() == exp
+
+
+def test_regexp_subst_all_args_are_mandatory(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = regexp_subst("foobarbaz", "(fo|az)");
+    """,
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)

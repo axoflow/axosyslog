@@ -26,8 +26,27 @@
 
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-generator.h"
+#include "filterx/expr-function.h"
+
+#define FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME "jit"
+#define FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME "global"
+#define FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME "utf8"
+#define FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME "ignorecase"
+#define FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME "newline"
+
+typedef struct FilterXFuncRegexpSubstOpts_
+{
+  gboolean global;
+  gboolean jit;
+  gboolean utf8;
+  gboolean ignorecase;
+  gboolean newline;
+} FilterXFuncRegexpSubstOpts;
 
 FilterXExpr *filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern);
 FilterXExpr *filterx_expr_regexp_search_generator_new(FilterXExpr *lhs, const gchar *pattern);
+FilterXFunction *filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args,
+                                                   GError **error);
+gboolean filterx_regexp_subst_is_jit_enabled(FilterXFunction *s);
 
 #endif

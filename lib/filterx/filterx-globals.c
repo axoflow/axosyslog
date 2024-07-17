@@ -35,6 +35,7 @@
 #include "filterx/func-vars.h"
 #include "filterx/func-unset-empties.h"
 #include "filterx/func-str-transform.h"
+#include "filterx/expr-regexp.h"
 #include "filterx/filterx-eval.h"
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
@@ -115,6 +116,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("strptime", filterx_function_strptime_new));
   g_assert(filterx_builtin_function_ctor_register("istype", filterx_function_istype_new));
   g_assert(filterx_builtin_function_ctor_register("unset_empties", filterx_function_unset_empties_new));
+  g_assert(filterx_builtin_function_ctor_register("regexp_subst", filterx_function_regexp_subst_new));
 }
 
 static void
