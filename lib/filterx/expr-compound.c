@@ -47,7 +47,7 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
 
   gboolean success = expr->ignore_falsy_result || filterx_object_truthy(res);
 
-  if (!success || trace_flag)
+  if ((!success || trace_flag) && !expr->suppress_from_trace)
     {
       ScratchBuffersMarker mark;
       GString *buf = scratch_buffers_alloc_and_mark(&mark);

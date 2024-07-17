@@ -482,6 +482,7 @@ conditional
 if
 	: KW_IF '(' expr ')' codeblock
 	  {
+            filterx_expr_set_location($3, lexer, &@3);
 	    $$ = filterx_conditional_new($3);
             filterx_conditional_set_true_branch($$, $5);
 	  }
@@ -489,6 +490,7 @@ if
 	  {
             FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
 
+            filterx_expr_set_location($4, lexer, &@4);
 	    /* create new conditional */
 	    FilterXExpr *elif_expr = filterx_conditional_new($4);
             filterx_conditional_set_true_branch(elif_expr, $6);
@@ -508,12 +510,14 @@ codeblock
 ternary
 	: expr '?' expr ':' expr
 	  {
+            filterx_expr_set_location($1, lexer, &@1);
 	    $$ = filterx_conditional_new($1);
             filterx_conditional_set_true_branch($$, $3);
             filterx_conditional_set_false_branch($$, $5);
 	  }
 	| expr '?' ':' expr
 	  {
+            filterx_expr_set_location($1, lexer, &@1);
 	    $$ = filterx_conditional_new($1);
 	    filterx_conditional_set_false_branch($$, $4);
 	  }

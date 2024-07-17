@@ -31,7 +31,7 @@ struct _FilterXExpr
 {
   guint32 ref_cnt;
   const gchar *type;
-  guint32 ignore_falsy_result:1;
+  guint32 ignore_falsy_result:1, suppress_from_trace:1;
 
   /* evaluate expression */
   FilterXObject *(*eval)(FilterXExpr *self);

@@ -23,6 +23,7 @@
 
 #include "filterx/expr-condition.h"
 #include "filterx/object-primitive.h"
+#include "scratch-buffers.h"
 
 typedef struct _FilterXConditional FilterXConditional;
 
@@ -54,6 +55,26 @@ _eval(FilterXExpr *s)
 
   if (!condition_value)
     return NULL;
+
+  if (trace_flag)
+    {
+      ScratchBuffersMarker mark;
+      GString *buf = scratch_buffers_alloc_and_mark(&mark);
+
+      if (!filterx_object_repr(condition_value, buf))
+        {
+          LogMessageValueType t;
+          if (!filterx_object_marshal(condition_value, buf, &t))
+            g_assert_not_reached();
+        }
+
+      msg_trace(filterx_object_truthy(condition_value) ? "FILTERX CONDT" : "FILTERX CONDF",
+                filterx_expr_format_location_tag(self->condition),
+                evt_tag_mem("value", buf->str, buf->len),
+                evt_tag_int("truthy", filterx_object_truthy(condition_value)),
+                evt_tag_str("type", condition_value->type->name));
+      scratch_buffers_reclaim_marked(mark);
+    }
 
   if (filterx_object_truthy(condition_value))
     {
@@ -99,6 +120,7 @@ filterx_conditional_new(FilterXExpr *condition)
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
   self->super.free_fn = _free;
+  self->super.suppress_from_trace = TRUE;
   self->condition = condition;
   return &self->super;
 }
