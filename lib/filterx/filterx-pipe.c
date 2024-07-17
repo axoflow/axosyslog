@@ -62,7 +62,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
             evt_tag_msg_reference(msg));
 
   NVTable *payload = nv_table_ref(msg->payload);
-  res = filterx_eval_expr(&eval_context, self->block, msg);
+  res = filterx_eval_exec(&eval_context, self->block, msg);
 
   msg_trace("<<<<<< filterx rule evaluation result",
             evt_tag_str("result", res ? "matched" : "unmatched"),

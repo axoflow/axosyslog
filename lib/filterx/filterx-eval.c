@@ -189,7 +189,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
 }
 
 gboolean
-filterx_eval_expr(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *msg)
+filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *msg)
 {
   context->msgs = &msg;
   context->num_msg = 1;
