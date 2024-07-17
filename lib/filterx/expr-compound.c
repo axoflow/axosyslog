@@ -22,6 +22,8 @@
  */
 
 #include "filterx/expr-compound.h"
+#include "filterx/filterx-eval.h"
+#include "filterx/object-primitive.h"
 
 typedef struct _FilterXCompoundExpr
 {
@@ -35,7 +37,24 @@ _eval(FilterXExpr *s)
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
   FilterXObject *result = NULL;
 
-  filterx_expr_list_eval(self->exprs, &result);
+  if (!filterx_expr_list_eval(self->exprs, &result))
+    {
+      if (result)
+        {
+          filterx_eval_push_error("bailing out due to a falsy expr", s, result);
+          filterx_object_unref(result);
+          result = NULL;
+        }
+    }
+  else
+    {
+      if (!result)
+        {
+          /* result NULL means an empty block, implicitly TRUE */
+          result = filterx_boolean_new(TRUE);
+        }
+    }
+
   return result;
 }
 
