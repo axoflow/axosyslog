@@ -158,6 +158,22 @@ _literal_generator_init_instance(FilterXExprLiteralGenerator *self)
   self->super.super.free_fn = _literal_generator_free;
 }
 
+gboolean
+filterx_literal_dict_generator_foreach(FilterXExpr *s, FilterXLiteralDictGeneratorForeachFunc func, gpointer user_data)
+{
+  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
+
+  for (GList *link = self->elements; link; link = link->next)
+    {
+      FilterXLiteralGeneratorElem *elem = (FilterXLiteralGeneratorElem *) link->data;
+
+      if (!func(elem->key, elem->value, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_literal_dict_generator_new(void)
 {
