@@ -355,27 +355,26 @@ _repr(FilterXObject *s, GString *repr)
   return filterx_object_marshal_append(s, repr, &t);
 }
 
-FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(object),
+FILTERX_DEFINE_TYPE(primitive, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
+                    .repr = _repr,
+                   );
+
+FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(primitive),
                     .marshal = _integer_marshal,
                     .map_to_json = _integer_map_to_json,
-                    .repr = _repr,
                     .add = _integer_add,
                    );
 
-FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(object),
-                    .truthy = _truthy,
+FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(primitive),
                     .marshal = _double_marshal,
                     .map_to_json = _double_map_to_json,
-                    .repr = _repr,
                     .add = _double_add,
                    );
 
-FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(object),
-                    .truthy = _truthy,
+FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(primitive),
                     .marshal = _bool_marshal,
                     .map_to_json = _bool_map_to_json,
-                    .repr = _repr,
                    );
 
 void
