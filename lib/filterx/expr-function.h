@@ -28,6 +28,7 @@
 
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-object.h"
+#include "generic-number.h"
 #include "plugin.h"
 
 typedef FilterXObject *(*FilterXSimpleFunctionProto)(FilterXExpr *s, GPtrArray *);
@@ -79,6 +80,12 @@ const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs 
                                                             gsize *len, gboolean *exists);
 gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
                                                          gboolean *exists, gboolean *error);
+gint64 filterx_function_args_get_named_literal_integer(FilterXFunctionArgs *self, const gchar *name,
+                                                       gboolean *exists, gboolean *error);
+gdouble filterx_function_args_get_named_literal_double(FilterXFunctionArgs *self, const gchar *name,
+                                                       gboolean *exists, gboolean *error);
+GenericNumber filterx_function_args_get_named_literal_generic_number(FilterXFunctionArgs *self, const gchar *name,
+    gboolean *exists, gboolean *error);
 gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
 void filterx_function_args_free(FilterXFunctionArgs *self);
 
