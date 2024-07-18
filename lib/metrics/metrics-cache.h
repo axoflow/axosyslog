@@ -59,5 +59,6 @@ void metrics_cache_reset_labels(MetricsCache *self);
 StatsClusterLabel *metrics_cache_alloc_label(MetricsCache *self);
 StatsClusterLabel *metrics_cache_get_labels(MetricsCache *self);
 guint metrics_cache_get_labels_len(MetricsCache *self);
+void metrics_cache_sort_labels(MetricsCache *self);
 
 #endif
