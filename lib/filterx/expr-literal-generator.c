@@ -277,3 +277,17 @@ filterx_literal_inner_list_generator_new(FilterXExpr *root_literal_generator, GL
 
   return &self->super;
 }
+
+gboolean
+filterx_expr_is_literal_dict_generator(FilterXExpr *s)
+{
+  FilterXExprGenerator *generator = (FilterXExprGenerator *) s;
+  return filterx_expr_is_generator(s) && generator->create_container == _dict_generator_create_container;
+}
+
+gboolean
+filterx_expr_is_literal_list_generator(FilterXExpr *s)
+{
+  FilterXExprGenerator *generator = (FilterXExprGenerator *) s;
+  return filterx_expr_is_generator(s) && generator->create_container == _list_generator_create_container;
+}
