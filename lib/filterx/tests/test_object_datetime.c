@@ -170,6 +170,18 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_datetime)
   filterx_object_unref(obj);
 }
 
+Test(filterx_datetime, test_filterx_datetime_repr_method)
+{
+  UnixTime ut = unix_time_from_unix_epoch(3600000000);
+  cr_assert(ut.ut_gmtoff == 0);
+  cr_assert(ut.ut_usec == 0);
+  cr_assert(ut.ut_sec == 3600);
+  GString *repr = scratch_buffers_alloc();
+  cr_assert(datetime_repr(&ut, repr));
+  cr_assert_str_eq(repr->str, "1970-01-01T01:00:00.000+00:00");
+}
+
+
 Test(filterx_datetime, test_filterx_datetime_repr)
 {
   GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
