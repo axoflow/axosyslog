@@ -298,6 +298,24 @@ filterx_list_init_instance(FilterXList *self, FilterXType *type)
   filterx_object_init_instance(&self->super, type);
 }
 
+static FilterXObject *
+_add(FilterXObject *lhs_object, FilterXObject *rhs_object)
+{
+  if (!filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(list)) ||
+      !filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(list)))
+    return NULL;
+
+  FilterXObject *cloned = filterx_object_clone(lhs_object);
+
+  if(!filterx_list_merge(cloned, rhs_object))
+    goto error;
+
+  return cloned;
+error:
+  filterx_object_unref(cloned);
+  return NULL;
+}
+
 FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .len = _len,
@@ -306,4 +324,5 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(object),
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
                     .map_to_json = _map_to_json,
+                    .add = _add,
                    );

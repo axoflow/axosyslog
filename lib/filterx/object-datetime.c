@@ -205,6 +205,28 @@ _repr(FilterXObject *s, GString *repr)
   return datetime_repr(&ut, repr);
 }
 
+static FilterXObject *
+_add(FilterXObject *self, FilterXObject *object)
+{
+  UnixTime result;
+  UnixTime base = filterx_datetime_get_value(self);
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+    {
+      GenericNumber gn = filterx_primitive_get_value(object);
+      result = unix_time_add_duration(base, gn_as_int64(&gn));
+    }
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
+    {
+      GenericNumber gn = filterx_primitive_get_value(object);
+      result = unix_time_add_duration(base, (gint64)(gn_as_double(&gn) * USEC_PER_SEC));
+    }
+  else
+    return NULL;
+
+
+  return filterx_datetime_new(&result);
+}
+
 const gchar *
 _strptime_get_time_str_from_object(FilterXObject *obj, gsize *len)
 {
@@ -381,4 +403,5 @@ FILTERX_DEFINE_TYPE(datetime, FILTERX_TYPE_NAME(object),
                     .map_to_json = _map_to_json,
                     .marshal = _marshal,
                     .repr = _repr,
+                    .add = _add,
                    );

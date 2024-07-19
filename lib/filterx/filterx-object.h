@@ -51,6 +51,7 @@ struct _FilterXType
   FilterXObject *(*dict_factory)(void);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*len)(FilterXObject *self, guint64 *len);
+  FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -291,6 +292,19 @@ filterx_object_create_dict(FilterXObject *self)
     return NULL;
 
   return self->type->dict_factory();
+}
+
+static inline FilterXObject *
+filterx_object_add_object(FilterXObject *self, FilterXObject *object)
+{
+  if (!self->type->add)
+    {
+      msg_error("The add method is not supported for the given type",
+                evt_tag_str("type", self->type->name));
+      return NULL;
+    }
+
+  return self->type->add(self, object);
 }
 
 #endif

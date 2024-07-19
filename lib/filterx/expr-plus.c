@@ -35,37 +35,21 @@ _eval(FilterXExpr *s)
 {
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
 
-  FilterXObject *lhs_object = filterx_expr_eval(self->super.lhs);
+  FilterXObject *lhs_object = filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
-    {
-      return NULL;
-    }
+    return NULL;
 
-  FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
+  FilterXObject *rhs_object = filterx_expr_eval_typed(self->super.rhs);
   if (!rhs_object)
     {
       filterx_object_unref(lhs_object);
       return NULL;
     }
 
-  if (filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(string)) &&
-      filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(string)))
-    {
-      gsize lhs_len, rhs_len;
-      const gchar *lhs_value = filterx_string_get_value(lhs_object, &lhs_len);
-      const gchar *rhs_value = filterx_string_get_value(rhs_object, &rhs_len);
-      GString *buffer = scratch_buffers_alloc();
-
-      g_string_append_len(buffer, lhs_value, lhs_len);
-      g_string_append_len(buffer, rhs_value, rhs_len);
-      /* FIXME: support taking over the already allocated space */
-      return filterx_string_new(buffer->str, buffer->len);
-    }
-
-  filterx_eval_push_error("operator+ only works on strings", s, NULL);
+  FilterXObject *res = filterx_object_add_object(lhs_object, rhs_object);
   filterx_object_unref(lhs_object);
   filterx_object_unref(rhs_object);
-  return NULL;
+  return res;
 }
 
 FilterXExpr *

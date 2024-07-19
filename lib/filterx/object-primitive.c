@@ -63,6 +63,23 @@ _integer_map_to_json(FilterXObject *s, struct json_object **object, FilterXObjec
   return TRUE;
 }
 
+static FilterXObject *
+_integer_add(FilterXObject *self, FilterXObject *object)
+{
+  GenericNumber base = filterx_primitive_get_value(self);
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+    {
+      GenericNumber add = filterx_primitive_get_value(object);
+      return filterx_integer_new(gn_as_int64(&base) + gn_as_int64(&add));
+    }
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
+    {
+      GenericNumber add = filterx_primitive_get_value(object);
+      return filterx_double_new(gn_as_int64(&base) + gn_as_double(&add));
+    }
+  return NULL;
+}
+
 gboolean
 integer_repr(gint64 val, GString *repr)
 {
@@ -101,6 +118,23 @@ _double_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject
 
   *object = json_object_new_double(gn_as_double(&self->value));
   return TRUE;
+}
+
+static FilterXObject *
+_double_add(FilterXObject *self, FilterXObject *object)
+{
+  GenericNumber base = filterx_primitive_get_value(self);
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+    {
+      GenericNumber add = filterx_primitive_get_value(object);
+      return filterx_double_new(gn_as_double(&base) + gn_as_int64(&add));
+    }
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
+    {
+      GenericNumber add = filterx_primitive_get_value(object);
+      return filterx_double_new(gn_as_double(&base) + gn_as_double(&add));
+    }
+  return NULL;
 }
 
 gboolean
@@ -326,6 +360,7 @@ FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(object),
                     .marshal = _integer_marshal,
                     .map_to_json = _integer_map_to_json,
                     .repr = _repr,
+                    .add = _integer_add,
                    );
 
 FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(object),
@@ -333,6 +368,7 @@ FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(object),
                     .marshal = _double_marshal,
                     .map_to_json = _double_map_to_json,
                     .repr = _repr,
+                    .add = _double_add,
                    );
 
 FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(object),
