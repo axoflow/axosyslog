@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -24,21 +25,57 @@
 #include "filterx/expr-unset.h"
 #include "filterx/object-primitive.h"
 
+typedef struct FilterXExprUnset_
+{
+  FilterXFunction super;
+  GPtrArray *exprs;
+} FilterXExprUnset;
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+  FilterXExprUnset *self = (FilterXExprUnset *) s;
 
-  if (!filterx_expr_unset(self->operand))
-    return NULL;
+  for (guint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
+      if (!filterx_expr_unset(expr))
+        return NULL;
+    }
+
   return filterx_boolean_new(TRUE);
 }
 
-FilterXExpr *
-filterx_unset_new(FilterXExpr *expr)
+static void
+_free(FilterXExpr *s)
 {
-  FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
-  filterx_unary_op_init_instance(self, expr);
-  self->super.eval = _eval;
+  FilterXExprUnset *self = (FilterXExprUnset *) s;
+
+  g_ptr_array_unref(self->exprs);
+  filterx_function_free_method(&self->super);
+}
+
+FilterXFunction *
+filterx_function_unset_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExprUnset *self = g_new0(FilterXExprUnset, 1);
+  filterx_function_init_instance(&self->super, function_name);
+
+  self->super.super.eval = _eval;
+  self->super.super.free_fn = _free;
+
+  self->exprs = g_ptr_array_new_full(filterx_function_args_len(args), (GDestroyNotify) filterx_expr_unref);
+  for (guint64 i = 0; i < filterx_function_args_len(args); i++)
+    g_ptr_array_add(self->exprs, filterx_function_args_get_expr(args, i));
+
+  if (!filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
   return &self->super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
 }

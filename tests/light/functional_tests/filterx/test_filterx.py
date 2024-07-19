@@ -1149,11 +1149,7 @@ def test_unset(config, syslog_ng):
     $arr[] = "first";
     $arr[] = "second";
 
-    unset(${values.int});
-    unset($almafa);
-    unset($MSG["inner_key"]);
-    unset($MSG["almafa"]);
-    unset($arr[0]);
+    unset(${values.int}, $almafa, $MSG["inner_key"], $MSG["almafa"], $arr[0]);
 
     not isset(${values.int});
     not isset($almafa);
