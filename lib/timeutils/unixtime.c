@@ -351,15 +351,19 @@ timeval_from_unix_time(UnixTime *ut)
   return tv;
 }
 
+void
+_unix_time_parts_from_unix_epoch(guint64 unix_epoch, gint64 *secs, guint32 *usecs)
+{
+  *secs = (gint64)(unix_epoch / USEC_PER_SEC);
+  *usecs = (guint32)(unix_epoch % USEC_PER_SEC);
+}
+
 UnixTime
 unix_time_from_unix_epoch(guint64 unix_epoch)
 {
-  UnixTime ut =
-  {
-    .ut_sec = (int64_t)(unix_epoch / USEC_PER_SEC),
-    .ut_usec = (guint32)(unix_epoch % USEC_PER_SEC),
-    .ut_gmtoff = 0,
-  };
+  UnixTime ut = UNIX_TIME_INIT;
+  ut.ut_gmtoff = 0;
+  _unix_time_parts_from_unix_epoch(unix_epoch, &ut.ut_sec, &ut.ut_usec);
   return ut;
 }
 
@@ -367,4 +371,20 @@ guint64
 unix_time_to_unix_epoch(const UnixTime ut)
 {
   return (guint64)((ut.ut_sec + ut.ut_gmtoff) * USEC_PER_SEC + ut.ut_usec);
+}
+
+UnixTime
+unix_time_add_duration(UnixTime time, guint64 duration)
+{
+  gint64 secs;
+  guint32 usecs;
+  _unix_time_parts_from_unix_epoch(duration, &secs, &usecs);
+  UnixTime ut =
+  {
+    .ut_sec = time.ut_sec + secs + ((time.ut_usec + usecs) / USEC_PER_SEC),
+    .ut_usec = (time.ut_usec + usecs) % USEC_PER_SEC,
+    .ut_gmtoff = time.ut_gmtoff,
+  };
+  return ut;
+
 }
