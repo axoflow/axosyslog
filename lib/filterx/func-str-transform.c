@@ -24,6 +24,7 @@
 
 #include "filterx/func-str-transform.h"
 #include "filterx/object-string.h"
+#include "filterx/object-message-value.h"
 #include "filterx/filterx-eval.h"
 
 static const gchar *
@@ -35,13 +36,27 @@ _extract_str_arg(FilterXExpr *s, GPtrArray *args, gssize *len)
       return NULL;
     }
 
-  gsize inner_len;
   FilterXObject *object = g_ptr_array_index(args, 0);
-  const gchar *str = filterx_string_get_value(object, &inner_len);
-  if (!str)
+  gsize inner_len = 0;
+  const gchar *str = NULL;
+
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
     {
-      filterx_simple_function_argument_error(s, "Object must be string", FALSE);
-      return NULL;
+      if (filterx_message_value_get_type(object) != LM_VT_STRING)
+        {
+          filterx_simple_function_argument_error(s, "Object must be string", FALSE);
+          return NULL;
+        }
+      str = filterx_message_value_get_value(object, &inner_len);
+    }
+  else
+    {
+      str = filterx_string_get_value(object, &inner_len);
+      if (!str)
+        {
+          filterx_simple_function_argument_error(s, "Object must be string", FALSE);
+          return NULL;
+        }
     }
 
   *len = (gssize) MIN(inner_len, G_MAXINT64);
