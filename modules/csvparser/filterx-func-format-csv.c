@@ -63,7 +63,7 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
 
   if (buffer->len)
-    g_string_append(buffer, &self->delimiter);
+    g_string_append_c(buffer, self->delimiter);
 
   gsize len_before_value = buffer->len;
   if (!filterx_object_repr_append(value, buffer))
