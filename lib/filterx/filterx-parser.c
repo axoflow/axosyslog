@@ -49,7 +49,6 @@ static CfgLexerKeyword filterx_keywords[] =
   { "elif",               KW_ELIF },
 
   { "isset",              KW_ISSET },
-  { "unset",              KW_UNSET },
   { "declare",            KW_DECLARE },
 
   /* TODO: This should be done via generator function. */

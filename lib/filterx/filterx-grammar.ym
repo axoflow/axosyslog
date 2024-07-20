@@ -103,7 +103,6 @@ construct_template_expr(LogTemplate *template)
 %token KW_NULL
 %token KW_ENUM
 %token KW_ISSET
-%token KW_UNSET
 %token KW_DECLARE
 %token KW_REGEXP_SEARCH
 
@@ -322,7 +321,6 @@ expr
 	| ternary				{ $$ = $1; }
 	| default				{ $$ = $1; }
 	| KW_ISSET '(' expr ')'			{ $$ = filterx_isset_new($3); }
-	| KW_UNSET '(' expr ')'			{ $$ = filterx_unset_new($3); }
 	| regexp_match				{ $$ = $1; }
 	;
 

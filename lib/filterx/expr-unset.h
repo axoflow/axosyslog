@@ -23,8 +23,8 @@
 #ifndef FILTERX_UNSET_KEY_H_INCLUDED
 #define FILTERX_UNSET_KEY_H_INCLUDED
 
-#include "filterx/filterx-expr.h"
+#include "filterx/expr-function.h"
 
-FilterXExpr *filterx_unset_new(FilterXExpr *expr);
+FilterXFunction *filterx_function_unset_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
 
 #endif
