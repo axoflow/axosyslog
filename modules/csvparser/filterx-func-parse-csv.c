@@ -285,15 +285,19 @@ _extract_opts(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
         opt_flags &= ~CSV_SCANNER_GREEDY;
     }
 
-  flag_val = filterx_function_args_get_named_literal_boolean(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
+  flag_val = filterx_function_args_get_named_literal_boolean(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACE,
                                                              &exists,
                                                              &flag_err);
+  if (!exists)
+    flag_val = filterx_function_args_get_named_literal_boolean(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
+                                                               &exists,
+                                                               &flag_err);
   if (exists)
     {
 
       if (flag_err)
         {
-          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES " argument evaluation error";
+          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACE " argument evaluation error";
           goto error;
         }
 
