@@ -178,6 +178,85 @@ Test(csv_scanner, partial_input)
   csv_scanner_deinit(&scanner);
 }
 
+Test(csv_scanner, strip_whitespace_will_not_strip_delimiter_characters)
+{
+  csv_scanner_init(&scanner, _default_options_with_flags(3, CSV_SCANNER_STRIP_WHITESPACE), "foo\t\tbaz");
+  csv_scanner_options_set_delimiters(&options, "\t");
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "foo"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, ""));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(2, "baz"));
+  cr_expect(!_scan_complete());
+
+  /* go past the last column */
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
+Test(csv_scanner, strip_whitespace_will_strips_spaces_while_not_stripping_delimiter_characters)
+{
+  csv_scanner_init(&scanner, _default_options_with_flags(3, CSV_SCANNER_STRIP_WHITESPACE),
+                   "'\t\t  foo  \t\t'\t  \t  baz  ");
+  csv_scanner_options_set_delimiters(&options, "\t");
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "foo"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, ""));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(2, "baz"));
+  cr_expect(!_scan_complete());
+
+  /* go past the last column */
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
+Test(csv_scanner, strip_whitespace_and_quoted_values_will_strip_embedded_whitespace)
+{
+  csv_scanner_init(&scanner, _default_options_with_flags(3, CSV_SCANNER_STRIP_WHITESPACE), "  foo  \t  \t  baz  ");
+  csv_scanner_options_set_delimiters(&options, "\t");
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "foo"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, ""));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(2, "baz"));
+  cr_expect(!_scan_complete());
+
+  /* go past the last column */
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
 Test(csv_scanner, greedy_column)
 {
   csv_scanner_init(&scanner, _default_options_with_flags(2, CSV_SCANNER_GREEDY), "foo,bar,baz");
