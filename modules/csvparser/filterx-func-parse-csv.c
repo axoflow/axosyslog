@@ -347,7 +347,6 @@ filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *
   self->super.super.free_fn = _free;
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
-  csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE);
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_NONE);
 
   if (!_extract_args(self, args, error) ||
