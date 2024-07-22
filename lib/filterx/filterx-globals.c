@@ -35,6 +35,7 @@
 #include "filterx/func-vars.h"
 #include "filterx/func-unset-empties.h"
 #include "filterx/func-str-transform.h"
+#include "filterx/func-flatten.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-unset.h"
 #include "filterx/filterx-eval.h"
@@ -119,6 +120,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("unset_empties", filterx_function_unset_empties_new));
   g_assert(filterx_builtin_function_ctor_register("regexp_subst", filterx_function_regexp_subst_new));
   g_assert(filterx_builtin_function_ctor_register("unset", filterx_function_unset_new));
+  g_assert(filterx_builtin_function_ctor_register("flatten", filterx_function_flatten_new));
 }
 
 static void
