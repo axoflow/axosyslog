@@ -29,6 +29,7 @@ typedef struct _AppTransformGenerator
 {
   AppObjectGenerator super;
   const gchar *flavour;
+  const gchar *filterx_app_variable;
   GString *block;
 } AppTransformGenerator;
 
@@ -42,12 +43,28 @@ _parse_transforms_arg(AppTransformGenerator *self, CfgArgs *args, const gchar *r
 }
 
 static gboolean
+_parse_filterx_app_variable(AppTransformGenerator *self, CfgArgs *args, const gchar *reference)
+{
+  self->filterx_app_variable = cfg_args_get(args, "filterx-app-variable");
+  if (!self->filterx_app_variable)
+    {
+      msg_error("app-transform() requires a filterx-app-variable() argument",
+                evt_tag_str("reference", reference));
+      return FALSE;
+    }
+  return TRUE;
+}
+
+static gboolean
 app_transform_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, const gchar *reference)
 {
   AppTransformGenerator *self = (AppTransformGenerator *) s;
   g_assert(args != NULL);
 
   if (!_parse_transforms_arg(self, args, reference))
+    return FALSE;
+
+  if (!_parse_filterx_app_variable(self, args, reference))
     return FALSE;
 
   if (!app_object_generator_parse_arguments_method(&self->super, args, reference))
@@ -82,7 +99,8 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
     return;
 
   g_string_append_printf(self->block, "\n#Start Application %s\n", transformation->super.name);
-  g_string_append_printf(self->block,     "    if (meta.app_name == '%s') {\n", transformation->super.name);
+  g_string_append_printf(self->block,     "    if (%s == '%s') {\n", self->filterx_app_variable,
+                         transformation->super.name);
   for (GList *l = transformation->blocks; l; l = l->next)
     {
       TransformationBlock *block = l->data;
