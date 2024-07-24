@@ -23,7 +23,8 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_func_flatten \
 		lib/filterx/tests/test_expr_regexp	\
 		lib/filterx/tests/test_expr_null_coalesce	\
-		lib/filterx/tests/test_expr_plus
+		lib/filterx/tests/test_expr_plus	\
+		lib/filterx/tests/test_expr_plus_generator
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
 
@@ -100,3 +101,6 @@ lib_filterx_tests_test_expr_null_coalesce_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_expr_plus_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_expr_plus_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_expr_plus_generator_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_expr_plus_generator_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
