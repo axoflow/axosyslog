@@ -1830,3 +1830,34 @@ def test_flatten(config, syslog_ng):
         '{"top_level_field":42,"top_level_dict.inner_dict.inner_inner_field":1,"top_level_dict.inner_field":1337},' \
         '{"top_level_field":42,"top_level_dict->inner_dict->inner_inner_field":1,"top_level_dict->inner_field":1337}' \
         ']\n'
+
+
+def test_add_operator_for_generators(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = json();
+            js1 = json_array(["foo","bar"]);
+            js2 = json_array(["baz","other"]);
+            $MSG.list_var_gen = js1 + ["baz1","other1"];
+            $MSG.list_gen_var = ["foo2", "bar2"] + js2;
+            $MSG.list_gen_gen = ["foo3", "bar3"] + ["baz3", "other3"];
+            dict1 = json({"foo":{"bar":"baz"}});
+            dict2 = json({"tik":{"tak":"toe"}});
+            $MSG.dict_var_gen = dict1 + {"tik1":{"tak1":"toe1"}};
+            $MSG.dict_gen_var = {"foo2":{"bar2":"baz2"}} + dict2;
+            $MSG.dict_gen_gen = {"foo3":{"bar3":"baz3"}} + {"tik3":{"tak3":"toe3"}};
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"list_var_gen":["foo","bar","baz1","other1"],"""
+        r""""list_gen_var":["foo2","bar2","baz","other"],"""
+        r""""list_gen_gen":["foo3","bar3","baz3","other3"],"""
+        r""""dict_var_gen":{"foo":{"bar":"baz"},"tik1":{"tak1":"toe1"}},"""
+        r""""dict_gen_var":{"foo2":{"bar2":"baz2"},"tik":{"tak":"toe"}},"""
+        r""""dict_gen_gen":{"foo3":{"bar3":"baz3"},"tik3":{"tak3":"toe3"}}}""" + "\n"
+    )
+    assert file_true.read_log() == exp
