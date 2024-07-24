@@ -44,6 +44,7 @@ set(FILTERX_HEADERS
     filterx/func-flatten.h
     filterx/expr-plus.h
     filterx/expr-null-coalesce.h
+    filterx/expr-plus-generator.h
     PARENT_SCOPE
     )
 
@@ -94,6 +95,7 @@ set(FILTERX_SOURCES
     filterx/expr-plus.c
     filterx/filterx-private.c
     filterx/expr-null-coalesce.c
+    filterx/expr-plus-generator.c
     PARENT_SCOPE
     )
 
