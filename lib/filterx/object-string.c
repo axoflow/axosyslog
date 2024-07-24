@@ -120,6 +120,26 @@ _string_repr(FilterXObject *s, GString *repr)
   return TRUE;
 }
 
+static FilterXObject *
+_string_add(FilterXObject *self, FilterXObject *object)
+{
+
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+    {
+      gsize lhs_len, rhs_len;
+      const gchar *lhs_value = filterx_string_get_value(self, &lhs_len);
+      const gchar *rhs_value = filterx_string_get_value(object, &rhs_len);
+      GString *buffer = scratch_buffers_alloc();
+
+      g_string_append_len(buffer, lhs_value, lhs_len);
+      g_string_append_len(buffer, rhs_value, rhs_len);
+      /* FIXME: support taking over the already allocated space */
+      return filterx_string_new(buffer->str, buffer->len);
+    }
+
+  return NULL;
+}
+
 FilterXObject *
 filterx_string_new(const gchar *str, gssize str_len)
 {
@@ -188,6 +208,26 @@ _bytes_repr(FilterXObject *s, GString *repr)
   g_string_set_size(repr, target_len + repr_len);
   format_hex_string_with_delimiter(self->str, self->str_len, repr->str + repr_len, target_len + 1, 0);
   return TRUE;
+}
+
+static FilterXObject *
+_bytes_add(FilterXObject *self, FilterXObject *object)
+{
+
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
+    {
+      gsize lhs_len, rhs_len;
+      const gchar *lhs_value = filterx_bytes_get_value(self, &lhs_len);
+      const gchar *rhs_value = filterx_bytes_get_value(object, &rhs_len);
+      GString *buffer = scratch_buffers_alloc();
+
+      g_string_append_len(buffer, lhs_value, lhs_len);
+      g_string_append_len(buffer, rhs_value, rhs_len);
+      /* FIXME: support taking over the already allocated space */
+      return filterx_bytes_new(buffer->str, buffer->len);
+    }
+
+  return NULL;
 }
 
 FilterXObject *
@@ -294,7 +334,6 @@ filterx_typecast_protobuf(FilterXExpr *s, GPtrArray *args)
   return NULL;
 }
 
-
 /* these types are independent type-wise but share a lot of the details */
 
 FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
@@ -303,6 +342,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .map_to_json = _map_to_json,
                     .truthy = _truthy,
                     .repr = _string_repr,
+                    .add = _string_add,
                    );
 
 FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
@@ -311,6 +351,7 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                     .map_to_json = _bytes_map_to_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,
+                    .add = _bytes_add,
                    );
 
 FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),

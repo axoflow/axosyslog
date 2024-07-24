@@ -207,6 +207,24 @@ filterx_dict_init_instance(FilterXDict *self, FilterXType *type)
   self->support_attr = TRUE;
 }
 
+static FilterXObject *
+_add(FilterXObject *lhs_object, FilterXObject *rhs_object)
+{
+  if (!filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(dict)) ||
+      !filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(dict)))
+    return NULL;
+
+  FilterXObject *cloned = filterx_object_clone(lhs_object);
+
+  if (!filterx_dict_merge(cloned, rhs_object))
+    goto error;
+
+  return cloned;
+error:
+  filterx_object_unref(cloned);
+  return NULL;
+}
+
 FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .len = _len,
@@ -217,4 +235,5 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(object),
                     .getattr = _getattr,
                     .setattr = _setattr,
                     .map_to_json = _map_to_json,
+                    .add = _add,
                    );

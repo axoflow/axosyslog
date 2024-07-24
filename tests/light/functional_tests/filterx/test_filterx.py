@@ -1767,3 +1767,42 @@ def test_regexp_subst_all_args_are_mandatory(config, syslog_ng):
     )
     with pytest.raises(Exception):
         syslog_ng.start(config)
+
+
+def test_add_operator_for_base_types(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = json();
+            $MSG.string = "foo" + "bar" + "baz";
+            $MSG.bytes = string(bytes("\xCA") + bytes("\xFE"));
+            $MSG.datetime_integer = string(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600000000);
+            $MSG.datetime_double = string(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600.0);
+            $MSG.integer_integer = 3 + 4 + 5;
+            $MSG.integer_double = 3 + 0.5;
+            $MSG.double_integer = 3.5 + 2;
+            $MSG.double_double = 3.14 + 0.86;
+            js1 = json_array(["foo","bar"]);
+            js2 = json_array(["baz","other"]);
+            $MSG.list_list = js1 + js2;
+            dict1 = json({"foo":"bar"});
+            dict2 = json({"baz":"other"});
+            $MSG.dict_dict = dict1 + dict2;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"string":"foobarbaz","""
+        r""""bytes":"cafe","""
+        r""""datetime_integer":"2000-01-01T01:00:00.000+00:00","""
+        r""""datetime_double":"2000-01-01T01:00:00.000+00:00","""
+        r""""integer_integer":12,"""
+        r""""integer_double":3.5,"""
+        r""""double_integer":5.5,"""
+        r""""double_double":4.0,"""
+        r""""list_list":["foo","bar","baz","other"],"""
+        r""""dict_dict":{"foo":"bar","baz":"other"}}""" + "\n"
+    )
+    assert file_true.read_log() == exp
