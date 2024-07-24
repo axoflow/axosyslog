@@ -48,6 +48,12 @@ _eval(FilterXExpr *s)
   return NULL;
 }
 
+gboolean
+filterx_expr_is_generator(FilterXExpr *s)
+{
+  return s->eval == _eval;
+}
+
 void
 filterx_generator_init_instance(FilterXExpr *s)
 {

@@ -38,6 +38,7 @@ struct FilterXExprGenerator_
 void filterx_generator_set_fillable(FilterXExpr *s, FilterXExpr *fillable);
 void filterx_generator_init_instance(FilterXExpr *s);
 void filterx_generator_free_method(FilterXExpr *s);
+gboolean filterx_expr_is_generator(FilterXExpr *s);
 
 FilterXExpr *filterx_generator_create_container_new(FilterXExpr *g, FilterXExpr *fillable_parent);
 
