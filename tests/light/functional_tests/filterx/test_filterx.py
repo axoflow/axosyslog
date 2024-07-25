@@ -1861,3 +1861,64 @@ def test_add_operator_for_generators(config, syslog_ng):
         r""""dict_gen_gen":{"foo3":{"bar3":"baz3"},"tik3":{"tak3":"toe3"}}}""" + "\n"
     )
     assert file_true.read_log() == exp
+
+
+def test_plus_equal_grammar_rules(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = json();
+            js1 = json_array(["foo","bar"]);
+            js2 = json_array(["baz","other"]);
+
+            a = 3;
+            a += 2;
+            $MSG.var_int = a;
+
+            b = "foo";
+            b += "bar";
+            $MSG.var_string = b;
+
+            c = 0.44;
+            c += 0.58;
+            $MSG.var_double = c;
+
+            d = strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z");
+            d += 3600000000;
+            $MSG.var_datetime_integer = string(d);
+
+            e = strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z");
+            e += 3600.000000;
+            $MSG.var_datetime_double = string(e);
+
+            $MSG.attr = "tik";
+            $MSG.attr += "tak";
+
+            $MSG["subs"] = "bar";
+            $MSG["subs"] += "baz";
+
+            $MSG["sub_gen_var"] = ["control"];
+            $MSG["sub_gen_var"] += js2;
+            $MSG["sub_gen_var"] += ["wtf", "happened"];
+
+            $MSG.attr_gen_var = ["some", "basic"];
+            $MSG.attr_gen_var += js1;
+            $MSG.attr_gen_var += ["and"];
+            $MSG.attr_gen_var += ["add", "to", "plus"];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"var_int":5,"""
+        r""""var_string":"foobar","""
+        r""""var_double":1.02,"""
+        r""""var_datetime_integer":"2000-01-01T01:00:00.000+00:00","""
+        r""""var_datetime_double":"2000-01-01T01:00:00.000+00:00","""
+        r""""attr":"tiktak","""
+        r""""subs":"barbaz","""
+        r""""sub_gen_var":["control","baz","other","wtf","happened"],"""
+        r""""attr_gen_var":["some","basic","foo","bar","and","add","to","plus"]}""" + "\n"
+    )
+    assert file_true.read_log() == exp
