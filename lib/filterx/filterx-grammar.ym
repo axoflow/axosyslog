@@ -112,6 +112,8 @@ construct_template_expr(LogTemplate *template)
 %type <node> stmt
 %type <node> stmt_expr
 %type <node> assignment
+%type <node> plus_assignment
+%type <node> generator_plus_assignment
 %type <node> generator_assignment
 %type <node> generator_casted_assignment
 %type <node> declaration
@@ -181,6 +183,17 @@ stmt_expr
 	| declaration 				{ $$ = $1; }
 	;
 
+plus_assignment
+	: variable KW_PLUS_ASSIGN expr		{ $$ = filterx_assign_new(filterx_expr_ref($1), filterx_operator_plus_new($1, $3)); }
+	| expr '[' expr ']' KW_PLUS_ASSIGN expr	{ $$ = filterx_set_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3), filterx_operator_plus_new(filterx_get_subscript_new($1, $3), $6)); }
+	| expr '.' LL_IDENTIFIER KW_PLUS_ASSIGN expr
+						{
+							$$ = filterx_setattr_new(filterx_expr_ref($1), $3, filterx_operator_plus_new(filterx_getattr_new($1, $3), $5));
+							free($3);
+						}
+	;
+
+
 assignment
 	/* TODO extract lvalues */
 	: variable KW_ASSIGN expr			{ $$ = filterx_assign_new($1, $3); }
@@ -188,7 +201,10 @@ assignment
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
 	| generator_assignment
+	| plus_assignment			{ $$ = $1; }
 	;
+
+
 
 generator_assignment
 	/* TODO extract lvalues */
@@ -224,9 +240,14 @@ generator_assignment
 						    NULL
 						  );
 						}
-	| expr KW_PLUS_ASSIGN expr_generator	{ $$ = $3; filterx_generator_set_fillable($3, $1); }
+	| generator_plus_assignment
 	| generator_casted_assignment
 	;
+
+generator_plus_assignment
+	: variable KW_PLUS_ASSIGN expr_generator			{ $$ = $3; filterx_generator_set_fillable($3, $1); }
+	| expr '[' expr ']' KW_PLUS_ASSIGN expr_generator	{ $$ = $6; filterx_generator_set_fillable($6, filterx_get_subscript_new($1, $3)); }
+	| expr '.' LL_IDENTIFIER KW_PLUS_ASSIGN expr_generator	{ $$ = $5; filterx_generator_set_fillable($5, filterx_getattr_new($1, $3)); free($3);}
 
 generator_casted_assignment
 	/* TODO extract lvalues */
