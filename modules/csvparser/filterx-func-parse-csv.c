@@ -285,15 +285,19 @@ _extract_opts(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
         opt_flags &= ~CSV_SCANNER_GREEDY;
     }
 
-  flag_val = filterx_function_args_get_named_literal_boolean(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
+  flag_val = filterx_function_args_get_named_literal_boolean(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACE,
                                                              &exists,
                                                              &flag_err);
+  if (!exists)
+    flag_val = filterx_function_args_get_named_literal_boolean(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
+                                                               &exists,
+                                                               &flag_err);
   if (exists)
     {
 
       if (flag_err)
         {
-          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES " argument evaluation error";
+          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACE " argument evaluation error";
           goto error;
         }
 
@@ -347,7 +351,6 @@ filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *
   self->super.super.free_fn = _free;
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
-  csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE);
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_NONE);
 
   if (!_extract_args(self, args, error) ||

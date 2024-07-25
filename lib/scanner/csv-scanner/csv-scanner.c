@@ -154,10 +154,27 @@ _is_whitespace_char(const gchar *str)
 }
 
 static void
-_skip_whitespace(const gchar **src)
+_skip_whitespace(CSVScanner *self, const gchar **src)
 {
-  while (_is_whitespace_char(*src))
-    (*src)++;
+  if (self->current_quote)
+    {
+      /* quoted value, all whitespace is to be removed, even if the delimiter is considered whitespace */
+      while (_is_whitespace_char(*src))
+        (*src)++;
+    }
+  else
+    {
+      /* in case the value is unquoted, delimiters are never considered
+       * whitespace.  This plays a role in case the delimiter is either a
+       * space or a tab.  In those cases, a new delimiter starts the next
+       * new value to be extracted.  */
+      while (_is_whitespace_char(*src))
+        {
+          if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, **src))
+            break;
+          (*src)++;
+        }
+    }
 }
 
 static void
@@ -184,7 +201,7 @@ _parse_left_whitespace(CSVScanner *self)
   if ((self->options->flags & CSV_SCANNER_STRIP_WHITESPACE) == 0)
     return;
 
-  _skip_whitespace(&self->src);
+  _skip_whitespace(self, &self->src);
 }
 
 static gint
@@ -378,6 +395,10 @@ static gint
 _get_value_length_without_right_whitespace(CSVScanner *self)
 {
   gint len = self->current_value->len;
+
+  /* if the value was quoted, we can get rid off whitespace even if they are
+   * part of delimiters.  In any other case we won't have delimiters as
+   * whitespace on the right side (as they started the next value) */
 
   while (len > 0 && _is_whitespace_char(self->current_value->str + len - 1))
     len--;

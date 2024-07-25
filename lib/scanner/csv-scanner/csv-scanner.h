@@ -78,8 +78,8 @@ typedef struct
     CSV_STATE_FINISH,
   } state;
   const gchar *src;
-  gint current_column;
   GString *current_value;
+  gint current_column;
   gchar current_quote;
 } CSVScanner;
 
