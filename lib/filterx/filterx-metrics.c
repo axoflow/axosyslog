@@ -44,6 +44,7 @@ struct _FilterXMetrics
   FilterXMetricsLabels *labels;
   gint level;
 
+  gboolean is_optimized;
   StatsCluster *const_cluster;
 };
 
@@ -102,6 +103,40 @@ _is_const(FilterXMetrics *self)
   return !self->key.expr && (!self->labels || filterx_metrics_labels_is_const(self->labels));
 }
 
+static gboolean
+_optimize(FilterXMetrics *self)
+{
+  if (!self->key.str || !filterx_metrics_labels_is_const(self->labels))
+    return TRUE;
+
+  ScratchBuffersMarker marker;
+  scratch_buffers_mark(&marker);
+
+  StatsClusterKey sck;
+  if (!_format_sck(self, &sck))
+    {
+      scratch_buffers_reclaim_marked(marker);
+      return FALSE;
+    }
+
+  stats_lock();
+  {
+    StatsCounterItem *counter;
+    self->const_cluster = stats_register_dynamic_counter(self->level, &sck, SC_TYPE_SINGLE_VALUE, &counter);
+  }
+  stats_unlock();
+
+  scratch_buffers_reclaim_marked(marker);
+
+  g_free(self->key.str);
+  self->key.str = NULL;
+
+  filterx_metrics_labels_free(self->labels);
+  self->labels = NULL;
+
+  return TRUE;
+}
+
 gboolean
 filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **counter)
 {
@@ -109,6 +144,17 @@ filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **count
     {
       *counter = NULL;
       return TRUE;
+    }
+
+  /*
+   * We need to delay the optimization to the first get() call,
+   * as we don't have stats options when FilterXExprs are being created.
+   */
+  if (!self->is_optimized)
+    {
+      if (!_optimize(self))
+        return FALSE;
+      self->is_optimized = TRUE;
     }
 
   if (_is_const(self))
@@ -183,40 +229,6 @@ _init_labels(FilterXMetrics *self, FilterXExpr *labels)
   return !!self->labels;
 }
 
-static gboolean
-_optimize(FilterXMetrics *self)
-{
-  if (!self->key.str || !filterx_metrics_labels_is_const(self->labels))
-    return TRUE;
-
-  ScratchBuffersMarker marker;
-  scratch_buffers_mark(&marker);
-
-  StatsClusterKey sck;
-  if (!_format_sck(self, &sck))
-    {
-      scratch_buffers_reclaim_marked(marker);
-      return FALSE;
-    }
-
-  stats_lock();
-  {
-    StatsCounterItem *counter;
-    self->const_cluster = stats_register_dynamic_counter(self->level, &sck, SC_TYPE_SINGLE_VALUE, &counter);
-  }
-  stats_unlock();
-
-  scratch_buffers_reclaim_marked(marker);
-
-  g_free(self->key.str);
-  self->key.str = NULL;
-
-  filterx_metrics_labels_free(self->labels);
-  self->labels = NULL;
-
-  return TRUE;
-}
-
 FilterXMetrics *
 filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels)
 {
@@ -230,9 +242,6 @@ filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels)
     goto error;
 
   if (!_init_labels(self, labels))
-    goto error;
-
-  if (!_optimize(self))
     goto error;
 
   return self;
