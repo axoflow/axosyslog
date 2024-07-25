@@ -26,6 +26,8 @@
 #include "metrics-cache.h"
 #include "stats/stats-cluster-single.h"
 
+#include <string.h>
+
 struct _MetricsCache
 {
   GHashTable *clusters;
