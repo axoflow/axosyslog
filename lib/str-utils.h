@@ -63,21 +63,20 @@ g_string_append_unichar_optimized(GString *string, gunichar wc)
  */
 #define APPEND_ZERO(dest, value, value_len) \
   do { \
-    gchar *__buf; \
     if (G_UNLIKELY(value[value_len] != 0)) \
       { \
         /* value is NOT zero terminated */ \
         \
-        __buf = g_alloca(value_len + 1); \
+        gchar *__buf = g_alloca(value_len + 1); \
         memcpy(__buf, value, value_len); \
         __buf[value_len] = 0; \
+        dest = __buf; \
       } \
     else \
       { \
         /* value is zero terminated */ \
-        __buf = (gchar *) value; \
+        dest = value; \
       } \
-    dest = __buf; \
   } while (0)
 
 gchar *__normalize_key(const gchar *buffer);
