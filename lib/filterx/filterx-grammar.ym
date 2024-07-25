@@ -123,8 +123,8 @@ construct_template_expr(LogTemplate *template)
 %type <ptr> argument
 %type <node> literal
 %type <ptr> literal_object
-%type <node> lvalue
-%type <node> lvalue_floating
+%type <node> variable
+%type <node> filterx_variable
 %type <ptr> template
 %type <ptr> dict_generator
 %type <ptr> inner_dict_generator
@@ -181,7 +181,8 @@ stmt_expr
 	;
 
 assignment
-	: lvalue KW_ASSIGN expr			{ $$ = filterx_assign_new($1, $3); }
+	/* TODO extract lvalues */
+	: variable KW_ASSIGN expr			{ $$ = filterx_assign_new($1, $3); }
 	| expr '.' LL_IDENTIFIER KW_ASSIGN expr	{ $$ = filterx_setattr_new($1, $3, $5); free($3); }
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
@@ -189,6 +190,7 @@ assignment
 	;
 
 generator_assignment
+	/* TODO extract lvalues */
 	: expr '.' LL_IDENTIFIER KW_ASSIGN expr_generator
 						{
 						  filterx_generator_set_fillable($5, filterx_getattr_new(filterx_expr_ref($1), $3));
@@ -226,7 +228,8 @@ generator_assignment
 	;
 
 generator_casted_assignment
-	: lvalue KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
+	/* TODO extract lvalues */
+	: variable KW_ASSIGN LL_IDENTIFIER '(' expr_generator ')'
 						{
 						  GError *error = NULL;
 						  FilterXExpr *func = filterx_function_lookup(configuration, $3, NULL, &error);
@@ -290,7 +293,7 @@ generator_casted_assignment
 	;
 
 declaration
-	: KW_DECLARE lvalue_floating KW_ASSIGN expr	{ filterx_variable_expr_declare($2); $$ = filterx_assign_new($2, $4); }
+	: KW_DECLARE filterx_variable KW_ASSIGN expr	{ filterx_variable_expr_declare($2); $$ = filterx_assign_new($2, $4); }
 	;
 
 
@@ -300,6 +303,7 @@ expr
 	| KW_NOT expr				{ $$ = filterx_unary_not_new($2); }
 	| expr KW_OR expr			{ $$ = filterx_binary_or_new($1, $3); }
 	| expr KW_AND expr                      { $$ = filterx_binary_and_new($1, $3); }
+	/* TODO extract lvalues */
 	| expr '.' LL_IDENTIFIER		{ $$ = filterx_getattr_new($1, $3); free($3); }
 	| expr '[' expr ']'			{ $$ = filterx_get_subscript_new($1, $3); }
         | expr KW_TA_LT expr		        { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_LT); }
@@ -326,7 +330,7 @@ expr
 
 expr_value
 	: literal
-	| lvalue				{ $$ = $1; }
+	| variable				{ $$ = $1; }
 	| template				{ $$ = construct_template_expr($1); }
 	;
 
@@ -381,13 +385,13 @@ literal_object
 						}
 	;
 
-lvalue
+variable
 	: '$' LL_IDENTIFIER			{ $$ = filterx_msg_variable_expr_new($2); free($2); }
 	| LL_MESSAGE_REF			{ $$ = filterx_msg_variable_expr_new($1); free($1); }
-	| lvalue_floating
+	| filterx_variable
 	;
 
-lvalue_floating
+filterx_variable
 	: LL_IDENTIFIER				{ $$ = filterx_floating_variable_expr_new($1); free($1); }
 	;
 
@@ -487,7 +491,7 @@ if
 
 	    /* link it into the else branch of the last if */
 	    filterx_conditional_set_false_branch(tailing_if, elif_expr);
-	
+
 	    $$ = $1;
 	  }
 	;
