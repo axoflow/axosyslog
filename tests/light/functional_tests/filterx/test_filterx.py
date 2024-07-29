@@ -1806,3 +1806,27 @@ def test_add_operator_for_base_types(config, syslog_ng):
         r""""dict_dict":{"foo":"bar","baz":"other"}}""" + "\n"
     )
     assert file_true.read_log() == exp
+
+
+def test_flatten(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            dict = json({"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":{"inner_inner_field":1}}});
+
+            default_separator = dict;
+            custom_separator = dict;
+
+            flatten(default_separator);
+            flatten(custom_separator, separator="->");
+
+            $MSG = json_array([default_separator, custom_separator]);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '[' \
+        '{"top_level_field":42,"top_level_dict.inner_dict.inner_inner_field":1,"top_level_dict.inner_field":1337},' \
+        '{"top_level_field":42,"top_level_dict->inner_dict->inner_inner_field":1,"top_level_dict->inner_field":1337}' \
+        ']\n'
