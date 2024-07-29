@@ -20,6 +20,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_type_registry \
 		lib/filterx/tests/test_func_istype \
 		lib/filterx/tests/test_func_unset_empties \
+		lib/filterx/tests/test_func_flatten \
 		lib/filterx/tests/test_expr_regexp	\
 		lib/filterx/tests/test_expr_null_coalesce	\
 		lib/filterx/tests/test_expr_plus
@@ -84,6 +85,9 @@ lib_filterx_tests_test_func_istype_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_func_unset_empties_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_unset_empties_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_func_flatten_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_func_flatten_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_expr_function_CFLAGS	= $(TEST_CFLAGS)
 lib_filterx_tests_test_expr_function_LDADD	= $(TEST_LDADD) $(JSON_LIBS)
