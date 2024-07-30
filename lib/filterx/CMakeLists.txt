@@ -41,6 +41,7 @@ set(FILTERX_HEADERS
     filterx/func-vars.h
     filterx/func-unset-empties.h
     filterx/func-str-transform.h
+    filterx/func-flatten.h
     filterx/expr-plus.h
     filterx/expr-null-coalesce.h
     PARENT_SCOPE
@@ -89,6 +90,7 @@ set(FILTERX_SOURCES
     filterx/func-vars.c
     filterx/func-unset-empties.c
     filterx/func-str-transform.c
+    filterx/func-flatten.c
     filterx/expr-plus.c
     filterx/filterx-private.c
     filterx/expr-null-coalesce.c
