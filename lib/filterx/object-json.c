@@ -36,30 +36,28 @@ static int
 _deep_copy_filterx_object_ref(json_object *src, json_object *parent, const char *key, size_t index, json_object **dst)
 {
   int result = json_c_shallow_copy_default(src, parent, key, index, dst);
+  if (*dst == NULL)
+    return result;
 
-  if (*dst != NULL)
+  /* we need to copy the userdata for primitive types */
+
+  switch (json_object_get_type(src))
     {
-      /* we need to copy the userdata for primitive types */
-
-      switch (json_object_get_type(src))
-        {
-        case json_type_null:
-        case json_type_boolean:
-        case json_type_double:
-        case json_type_int:
-        case json_type_string:
-        {
-          FilterXObject *fobj = json_object_get_userdata(src);
-          if (fobj)
-            filterx_json_associate_cached_object(*dst, fobj);
-          break;
-        }
-        default:
-          break;
-        }
-      return 2;
+    case json_type_null:
+    case json_type_boolean:
+    case json_type_double:
+    case json_type_int:
+    case json_type_string:
+    {
+      FilterXObject *fobj = json_object_get_userdata(src);
+      if (fobj)
+        filterx_json_associate_cached_object(*dst, fobj);
+      break;
     }
-  return result;
+    default:
+      break;
+    }
+  return 2;
 }
 
 struct json_object *
