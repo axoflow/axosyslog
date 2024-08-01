@@ -21,11 +21,13 @@
  *
  */
 #include "object-string.h"
+#include "object-extractor.h"
 #include "str-utils.h"
 #include "scratch-buffers.h"
 #include "filterx-globals.h"
 #include "utf8utils.h"
 #include "str-format.h"
+#include "str-utils.h"
 
 typedef struct _FilterXString
 {
@@ -284,17 +286,11 @@ filterx_typecast_bytes(FilterXExpr *s, GPtrArray *args)
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
     return filterx_object_ref(object);
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+  const gchar *data;
+  gsize size;
+  if (filterx_object_extract_string(object, &data, &size) ||
+      filterx_object_extract_protobuf(object, &data, &size))
     {
-      gsize size;
-      const gchar *data = filterx_string_get_value(object, &size);
-      return filterx_bytes_new(data, size);
-    }
-
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(protobuf)))
-    {
-      gsize size;
-      const gchar *data = filterx_protobuf_get_value(object, &size);
       return filterx_bytes_new(data, size);
     }
 
@@ -317,12 +313,11 @@ filterx_typecast_protobuf(FilterXExpr *s, GPtrArray *args)
       return object;
     }
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-    {
-      gsize size;
-      const gchar *data = filterx_bytes_get_value(object, &size);
-      return filterx_protobuf_new(data, size);
-    }
+  const gchar *data;
+  gsize size;
+  if (filterx_object_extract_protobuf(object, &data, &size) ||
+      filterx_object_extract_bytes(object, &data, &size))
+    return filterx_protobuf_new(data, size);
 
   msg_error("filterx: invalid typecast",
             evt_tag_str("from", object->type->name),
