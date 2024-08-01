@@ -152,14 +152,14 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, GPtrArray *args)
   if (!object)
     return NULL;
 
-  if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+  const gchar *str;
+  gsize len;
+  if (!filterx_object_extract_string(object, &str, &len))
     return NULL;
 
   UnixTime ut = UNIX_TIME_INIT;
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
 
-  gsize len;
-  const gchar *timestr = filterx_string_get_value(object, &len);
   if (len == 0)
     {
       msg_error("filterx: empty time string",
@@ -169,14 +169,14 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, GPtrArray *args)
       return NULL;
     }
 
-  gchar *end = wall_clock_time_strptime(&wct, datefmt_isodate, timestr);
+  gchar *end = wall_clock_time_strptime(&wct, datefmt_isodate, str);
   if (end && *end != 0)
     {
       msg_error("filterx: unable to parse time",
                 evt_tag_str("from", object->type->name),
                 evt_tag_str("to", "datetime"),
                 evt_tag_str("format", "isodate"),
-                evt_tag_str("time_string", timestr),
+                evt_tag_str("time_string", str),
                 evt_tag_str("end", end));
       return NULL;
     }
@@ -197,29 +197,35 @@ datetime_repr(const UnixTime *ut, GString *repr)
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
-  UnixTime ut = filterx_datetime_get_value(s);
-  return datetime_repr(&ut, repr);
+  FilterXDateTime *self = (FilterXDateTime *) s;
+
+  return datetime_repr(&self->ut, repr);
 }
 
 static FilterXObject *
-_add(FilterXObject *self, FilterXObject *object)
+_add(FilterXObject *s, FilterXObject *object)
 {
+  FilterXDateTime *self = (FilterXDateTime *) s;
+
   UnixTime result;
-  UnixTime base = filterx_datetime_get_value(self);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      result = unix_time_add_duration(base, gn_as_int64(&gn));
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      result = unix_time_add_duration(base, (gint64)(gn_as_double(&gn) * USEC_PER_SEC));
-    }
-  else
-    return NULL;
 
+  gint64 i;
+  if (filterx_object_extract_integer(object, &i))
+    {
+      result = unix_time_add_duration(self->ut, i);
+      goto success;
+    }
 
+  gdouble d;
+  if (filterx_object_extract_double(object, &d))
+    {
+      result = unix_time_add_duration(self->ut, (gint64)(d * USEC_PER_SEC));
+      goto success;
+    }
+
+  return NULL;
+
+success:
   return filterx_datetime_new(&result);
 }
 
