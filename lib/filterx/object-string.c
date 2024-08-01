@@ -34,6 +34,7 @@ typedef struct _FilterXString
   gchar str[];
 } FilterXString;
 
+/* NOTE: Consider using filterx_object_extract_string() to also support message_value. */
 const gchar *
 filterx_string_get_value(FilterXObject *s, gsize *length)
 {
@@ -49,6 +50,7 @@ filterx_string_get_value(FilterXObject *s, gsize *length)
   return self->str;
 }
 
+/* NOTE: Consider using filterx_object_extract_bytes() to also support message_value. */
 const gchar *
 filterx_bytes_get_value(FilterXObject *s, gsize *length)
 {
@@ -63,6 +65,7 @@ filterx_bytes_get_value(FilterXObject *s, gsize *length)
   return self->str;
 }
 
+/* NOTE: Consider using filterx_object_extract_protobuf() to also support message_value. */
 const gchar *
 filterx_protobuf_get_value(FilterXObject *s, gsize *length)
 {

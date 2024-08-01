@@ -257,6 +257,7 @@ filterx_enum_new(GlobalConfig *cfg, const gchar *namespace_name, const gchar *en
   return &self->super;
 }
 
+/* NOTE: Consider using filterx_object_extract_generic_number() to also support message_value. */
 GenericNumber
 filterx_primitive_get_value(FilterXObject *s)
 {

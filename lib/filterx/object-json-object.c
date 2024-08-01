@@ -253,6 +253,7 @@ filterx_json_object_to_json_literal(FilterXObject *s)
   return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
 }
 
+/* NOTE: Consider using filterx_object_extract_json_object() to also support message_value. */
 struct json_object *
 filterx_json_object_get_value(FilterXObject *s)
 {

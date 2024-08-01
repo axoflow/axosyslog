@@ -104,6 +104,7 @@ filterx_datetime_new(const UnixTime *ut)
   return &self->super;
 }
 
+/* NOTE: Consider using filterx_object_extract_datetime() to also support message_value. */
 UnixTime
 filterx_datetime_get_value(FilterXObject *s)
 {

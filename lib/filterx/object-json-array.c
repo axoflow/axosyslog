@@ -340,6 +340,7 @@ filterx_json_array_to_json_literal(FilterXObject *s)
   return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
 }
 
+/* NOTE: Consider using filterx_object_extract_json_array() to also support message_value. */
 struct json_object *
 filterx_json_array_get_value(FilterXObject *s)
 {

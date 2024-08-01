@@ -20,6 +20,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/object-primitive.h		\
 	lib/filterx/filterx-scope.h		\
 	lib/filterx/filterx-eval.h		\
+	lib/filterx/object-extractor.h		\
 	lib/filterx/object-json.h		\
 	lib/filterx/object-json-internal.h		\
 	lib/filterx/object-string.h		\
@@ -68,6 +69,7 @@ filterx_sources = 				\
 	lib/filterx/object-primitive.c		\
 	lib/filterx/filterx-scope.c		\
 	lib/filterx/filterx-eval.c		\
+	lib/filterx/object-extractor.c		\
 	lib/filterx/object-json.c		\
 	lib/filterx/object-json-object.c		\
 	lib/filterx/object-json-array.c		\

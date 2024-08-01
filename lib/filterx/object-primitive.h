@@ -57,6 +57,7 @@ gboolean bool_repr(gboolean bool_val, GString *repr);
 gboolean double_repr(double val, GString *repr);
 gboolean integer_repr(gint64 val, GString *repr);
 
+/* NOTE: Consider using filterx_object_extract_integer() to also support message_value. */
 static inline gboolean
 filterx_integer_unwrap(FilterXObject *s, gint64 *value)
 {
@@ -68,6 +69,7 @@ filterx_integer_unwrap(FilterXObject *s, gint64 *value)
   return TRUE;
 }
 
+/* NOTE: Consider using filterx_object_extract_double() to also support message_value. */
 static inline gboolean
 filterx_double_unwrap(FilterXObject *s, gdouble *value)
 {
@@ -79,6 +81,7 @@ filterx_double_unwrap(FilterXObject *s, gdouble *value)
   return TRUE;
 }
 
+/* NOTE: Consider using filterx_object_extract_boolean() to also support message_value. */
 static inline gboolean
 filterx_boolean_unwrap(FilterXObject *s, gboolean *value)
 {
