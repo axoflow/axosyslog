@@ -26,6 +26,7 @@
 #include "filterx/object-string.h"
 #include "filterx/filterx-weakrefs.h"
 #include "filterx/object-dict-interface.h"
+#include "logmsg/type-hinting.h"
 
 struct FilterXJsonObject_
 {
@@ -229,18 +230,11 @@ _free(FilterXObject *s)
 FilterXObject *
 filterx_json_object_new_from_repr(const gchar *repr, gssize repr_len)
 {
-  struct json_tokener *tokener = json_tokener_new();
   struct json_object *jso;
+  if (!type_cast_to_json(repr, repr_len, &jso, NULL))
+    return NULL;
 
-  jso = json_tokener_parse_ex(tokener, repr, repr_len < 0 ? strlen(repr) : repr_len);
-  if (repr_len >= 0 && json_tokener_get_error(tokener) == json_tokener_continue)
-    {
-      /* pass the closing NUL character */
-      jso = json_tokener_parse_ex(tokener, "", 1);
-    }
-
-  json_tokener_free(tokener);
-  return jso ? filterx_json_object_new_sub(jso, NULL) : NULL;
+  return filterx_json_object_new_sub(jso, NULL);
 }
 
 FilterXObject *
