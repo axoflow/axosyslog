@@ -22,6 +22,7 @@
  */
 
 #include "filterx/func-unset-empties.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
@@ -45,13 +46,13 @@ static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *
 static gboolean
 _should_unset(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)))
+  gsize str_len;
+  const gchar *str;
+  if (filterx_object_extract_string(obj, &str, &str_len))
     {
-      gsize len;
-      const gchar *value = filterx_string_get_value(obj, &len);
-      return len == 0 ||
-             strcasecmp(value, "n/a") == 0 ||
-             strcmp(value, "-") == 0;
+      return str_len == 0 ||
+             strcasecmp(str, "n/a") == 0 ||
+             strcmp(str, "-") == 0;
     }
 
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)))
