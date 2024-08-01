@@ -259,10 +259,7 @@ filterx_typecast_string(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
+    return filterx_object_ref(object);
 
   GString *buf = scratch_buffers_alloc();
 
@@ -285,10 +282,7 @@ filterx_typecast_bytes(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
+    return filterx_object_ref(object);
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
     {
