@@ -66,19 +66,18 @@ _integer_map_to_json(FilterXObject *s, struct json_object **object, FilterXObjec
 }
 
 static FilterXObject *
-_integer_add(FilterXObject *self, FilterXObject *object)
+_integer_add(FilterXObject *s, FilterXObject *object)
 {
-  GenericNumber base = filterx_primitive_get_value(self);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_integer_new(gn_as_int64(&base) + gn_as_int64(&add));
-    }
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_int64(&base) + gn_as_double(&add));
-    }
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  gint64 i;
+  if (filterx_object_extract_integer(object, &i))
+    return filterx_integer_new(gn_as_int64(&self->value) + i);
+
+  gdouble d;
+  if (filterx_object_extract_double(object, &d))
+    return filterx_double_new(gn_as_int64(&self->value) + d);
+
   return NULL;
 }
 
@@ -123,19 +122,18 @@ _double_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject
 }
 
 static FilterXObject *
-_double_add(FilterXObject *self, FilterXObject *object)
+_double_add(FilterXObject *s, FilterXObject *object)
 {
-  GenericNumber base = filterx_primitive_get_value(self);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_double(&base) + gn_as_int64(&add));
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_double(&base) + gn_as_double(&add));
-    }
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  gint64 i;
+  if (filterx_object_extract_integer(object, &i))
+    return filterx_double_new(gn_as_double(&self->value) + i);
+
+  gdouble d;
+  if (filterx_object_extract_double(object, &d))
+    return filterx_double_new(gn_as_double(&self->value) + d);
+
   return NULL;
 }
 
