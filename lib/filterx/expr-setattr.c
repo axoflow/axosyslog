@@ -50,7 +50,7 @@ _eval(FilterXExpr *s)
       goto exit;
     }
 
-  FilterXObject *new_value = filterx_expr_eval_typed(self->new_value);
+  FilterXObject *new_value = filterx_expr_eval(self->new_value);
   if (!new_value)
     goto exit;
 
