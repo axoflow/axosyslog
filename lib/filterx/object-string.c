@@ -126,23 +126,20 @@ _string_repr(FilterXObject *s, GString *repr)
 }
 
 static FilterXObject *
-_string_add(FilterXObject *self, FilterXObject *object)
+_string_add(FilterXObject *s, FilterXObject *object)
 {
+  FilterXString *self = (FilterXString *) s;
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      gsize lhs_len, rhs_len;
-      const gchar *lhs_value = filterx_string_get_value(self, &lhs_len);
-      const gchar *rhs_value = filterx_string_get_value(object, &rhs_len);
-      GString *buffer = scratch_buffers_alloc();
+  const gchar *other_str;
+  gsize other_str_len;
+  if (!filterx_object_extract_string(object, &other_str, &other_str_len))
+    return NULL;
 
-      g_string_append_len(buffer, lhs_value, lhs_len);
-      g_string_append_len(buffer, rhs_value, rhs_len);
-      /* FIXME: support taking over the already allocated space */
-      return filterx_string_new(buffer->str, buffer->len);
-    }
-
-  return NULL;
+  GString *buffer = scratch_buffers_alloc();
+  g_string_append_len(buffer, self->str, self->str_len);
+  g_string_append_len(buffer, other_str, other_str_len);
+  /* FIXME: support taking over the already allocated space */
+  return filterx_string_new(buffer->str, buffer->len);
 }
 
 FilterXObject *
@@ -216,23 +213,20 @@ _bytes_repr(FilterXObject *s, GString *repr)
 }
 
 static FilterXObject *
-_bytes_add(FilterXObject *self, FilterXObject *object)
+_bytes_add(FilterXObject *s, FilterXObject *object)
 {
+  FilterXString *self = (FilterXString *) s;
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-    {
-      gsize lhs_len, rhs_len;
-      const gchar *lhs_value = filterx_bytes_get_value(self, &lhs_len);
-      const gchar *rhs_value = filterx_bytes_get_value(object, &rhs_len);
-      GString *buffer = scratch_buffers_alloc();
+  const gchar *other_str;
+  gsize other_str_len;
+  if (!filterx_object_extract_bytes(object, &other_str, &other_str_len))
+    return NULL;
 
-      g_string_append_len(buffer, lhs_value, lhs_len);
-      g_string_append_len(buffer, rhs_value, rhs_len);
-      /* FIXME: support taking over the already allocated space */
-      return filterx_bytes_new(buffer->str, buffer->len);
-    }
-
-  return NULL;
+  GString *buffer = scratch_buffers_alloc();
+  g_string_append_len(buffer, self->str, self->str_len);
+  g_string_append_len(buffer, other_str, other_str_len);
+  /* FIXME: support taking over the already allocated space */
+  return filterx_bytes_new(buffer->str, buffer->len);
 }
 
 FilterXObject *
