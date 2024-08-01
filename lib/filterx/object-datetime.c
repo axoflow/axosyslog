@@ -28,6 +28,7 @@
 #include "timeutils/conv.h"
 #include "timeutils/misc.h"
 #include "timeutils/format.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-message-value.h"
@@ -126,28 +127,22 @@ filterx_typecast_datetime(FilterXExpr *s, GPtrArray *args)
       filterx_object_ref(object);
       return object;
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+
+  gint64 i;
+  if (filterx_object_extract_integer(object, &i))
     {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      int64_t val = gn_as_int64(&gn);
-      UnixTime ut = unix_time_from_unix_epoch(val);
+      UnixTime ut = unix_time_from_unix_epoch(i);
       return filterx_datetime_new(&ut);
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
+
+  gdouble d;
+  if (filterx_object_extract_double(object, &d))
     {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      double val = gn_as_double(&gn);
-      UnixTime ut = unix_time_from_unix_epoch((gint64)(val * USEC_PER_SEC));
+      UnixTime ut = unix_time_from_unix_epoch((gint64)(d * USEC_PER_SEC));
       return filterx_datetime_new(&ut);
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      return filterx_typecast_datetime_isodate(s, args);
-    }
-  msg_error("filterx: invalid typecast",
-            evt_tag_str("from", object->type->name),
-            evt_tag_str("to", "datetime"));
-  return NULL;
+
+  return filterx_typecast_datetime_isodate(s, args);
 }
 
 FilterXObject *
@@ -228,21 +223,6 @@ _add(FilterXObject *self, FilterXObject *object)
   return filterx_datetime_new(&result);
 }
 
-const gchar *
-_strptime_get_time_str_from_object(FilterXObject *obj, gsize *len)
-{
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)))
-    return filterx_string_get_value(obj, len);
-
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
-    {
-      if (filterx_message_value_get_type(obj) == LM_VT_STRING)
-        return filterx_message_value_get_value(obj, len);
-    }
-
-  return NULL;
-}
-
 
 typedef struct FilterXFunctionStrptime_
 {
@@ -258,7 +238,6 @@ _strptime_eval(FilterXExpr *s)
 
   FilterXObject *result = NULL;
 
-  gsize time_str_len;
   FilterXObject *time_str_obj = filterx_expr_eval(self->time_str_expr);
   if (!time_str_obj)
     {
@@ -266,10 +245,12 @@ _strptime_eval(FilterXExpr *s)
       return NULL;
     }
 
-  const gchar *time_str = _strptime_get_time_str_from_object(time_str_obj, &time_str_len);
+  const gchar *time_str;
+  gsize time_str_len;
+  gboolean extract_success = filterx_object_extract_string(time_str_obj, &time_str, &time_str_len);
   filterx_object_unref(time_str_obj);
 
-  if (!time_str)
+  if (!extract_success)
     {
       filterx_eval_push_error("First argument must be string typed. " FILTERX_FUNC_STRPTIME_USAGE, s, NULL);
       return NULL;
