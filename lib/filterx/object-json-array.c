@@ -21,6 +21,7 @@
  *
  */
 #include "filterx/object-json-internal.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
@@ -302,23 +303,15 @@ filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args)
   if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_array)))
     return filterx_object_ref(arg);
 
-  if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(message_value)))
-    {
-      FilterXObject *unmarshalled = filterx_object_unmarshal(arg);
-      if (!filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(json_array)))
-        {
-          filterx_object_unref(unmarshalled);
-          goto error;
-        }
-      return unmarshalled;
-    }
+  struct json_object *jso;
+  if (filterx_object_extract_json_array(arg, &jso))
+    return filterx_json_array_new_sub(jso, NULL);
 
+  const gchar *repr;
   gsize repr_len;
-  const gchar *repr = filterx_string_get_value(arg, &repr_len);
-  if (repr)
+  if (filterx_object_extract_string(arg, &repr, &repr_len))
     return filterx_json_array_new_from_repr(repr, repr_len);
 
-error:
   filterx_eval_push_error_info("Argument must be a json array, a string or a syslog-ng list", s,
                                g_strdup_printf("got \"%s\" instead", arg->type->name), TRUE);
   return NULL;
