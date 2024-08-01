@@ -22,12 +22,14 @@
  */
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-grammar.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "generic-number.h"
 #include "str-format.h"
 #include "plugin.h"
 #include "cfg.h"
 #include "filterx-globals.h"
+#include "str-utils.h"
 
 #include "compat/json.h"
 
@@ -289,21 +291,19 @@ filterx_typecast_integer(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      return filterx_integer_new(gn_as_int64(&gn));
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      gsize size;
-      gchar *endptr;
-      const gchar *str = filterx_string_get_value(object, &size);
+    return filterx_object_ref(object);
 
+  GenericNumber gn;
+  if (filterx_object_extract_generic_number(object, &gn))
+    return filterx_integer_new(gn_as_int64(&gn));
+
+  const gchar *str;
+  gsize str_len;
+  if (filterx_object_extract_string(object, &str, &str_len))
+    {
+      APPEND_ZERO(str, str, str_len);
+
+      gchar *endptr;
       gint64 val = g_ascii_strtoll(str, &endptr, 10);
       if (str != endptr && *endptr == '\0')
         return filterx_integer_new(val);
@@ -323,21 +323,19 @@ filterx_typecast_double(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_double(&gn));
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      gsize size;
-      gchar *endptr;
-      const gchar *str = filterx_string_get_value(object, &size);
+    return filterx_object_ref(object);
 
+  GenericNumber gn;
+  if (filterx_object_extract_generic_number(object, &gn))
+    return filterx_double_new(gn_as_double(&gn));
+
+  const gchar *str;
+  gsize str_len;
+  if (filterx_object_extract_string(object, &str, &str_len))
+    {
+      APPEND_ZERO(str, str, str_len);
+
+      gchar *endptr;
       gdouble val = g_ascii_strtod(str, &endptr);
       if (str != endptr && *endptr == '\0')
         return filterx_double_new(val);
