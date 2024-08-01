@@ -24,6 +24,7 @@
 
 #include "compat/cpp-start.h"
 
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-datetime.h"
@@ -36,6 +37,7 @@
 
 #include <unistd.h>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 
 using namespace syslogng::grpc::otel;
@@ -88,13 +90,14 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+    gint64 i;
+    if (!filterx_object_extract_integer(object, &i))
       {
         log_type_error(reflectors, object->type->name);
         return false;
       }
-    GenericNumber gn = filterx_primitive_get_value(object);
-    int32_t val = MAX(INT32_MIN, MIN(INT32_MAX, gn_as_int64(&gn)));
+
+    int32_t val = MAX(INT32_MIN, MIN(INT32_MAX, i));
     reflectors.reflection->SetInt32(message, reflectors.fieldDescriptor, val);
     return true;
   }
@@ -110,16 +113,16 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
       {
-        GenericNumber gn = filterx_primitive_get_value(object);
-        int64_t val = gn_as_int64(&gn);
-        reflectors.reflection->SetInt64(message, reflectors.fieldDescriptor, val);
+        reflectors.reflection->SetInt64(message, reflectors.fieldDescriptor, i);
         return true;
       }
-    else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(datetime)))
+
+    UnixTime utime;
+    if (filterx_object_extract_datetime(object, &utime))
       {
-        const UnixTime utime = filterx_datetime_get_value(object);
         uint64_t unix_epoch = unix_time_to_unix_epoch(utime);
         reflectors.reflection->SetInt64(message, reflectors.fieldDescriptor, (int64_t)(unix_epoch));
         return true;
@@ -140,13 +143,14 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+    gint64 i;
+    if (!filterx_object_extract_integer(object, &i))
       {
         log_type_error(reflectors, object->type->name);
         return false;
       }
-    GenericNumber gn = filterx_primitive_get_value(object);
-    uint32_t val = MAX(0, MIN(UINT32_MAX, gn_as_int64(&gn)));
+
+    uint32_t val = MAX(0, MIN(UINT32_MAX, i));
     reflectors.reflection->SetUInt32(message, reflectors.fieldDescriptor, val);
     return true;
   }
@@ -172,16 +176,17 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
       {
-        GenericNumber gn = filterx_primitive_get_value(object);
-        uint64_t val = MAX(0, MIN(UINT64_MAX, (uint64_t) gn_as_int64(&gn)));
+        uint64_t val = MAX(0, MIN(UINT64_MAX, (uint64_t) i));
         reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, val);
         return true;
       }
-    else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(datetime)))
+
+    UnixTime utime;
+    if (filterx_object_extract_datetime(object, &utime))
       {
-        const UnixTime utime = filterx_datetime_get_value(object);
         uint64_t unix_epoch = unix_time_to_unix_epoch(utime);
         reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, unix_epoch);
         return true;
@@ -205,29 +210,39 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+    const gchar *str;
+    gsize len;
+
+    if (filterx_object_extract_string(object, &str, &len))
+      goto success;
+
+    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+        filterx_message_value_get_type(object) == LM_VT_JSON)
       {
-        gsize value_len = -1;
-        const gchar *str = filterx_string_get_value(object, &value_len);
-        std::string stdString(str, value_len);
-        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, stdString);
-        return true;
+        str = filterx_message_value_get_value(object, &len);
+        goto success;
       }
-    else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)) ||
-             filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
+
+    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)) ||
+        filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
       {
-        const gchar *json_literal = filterx_json_to_json_literal(object);
-        if (!json_literal)
+        str = filterx_json_to_json_literal(object);
+        if (!str)
           {
             msg_error("protobuf-field: json marshal error",
                       evt_tag_str("field", reflectors.fieldDescriptor->name().c_str()));
             return false;
           }
-        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, json_literal);
-        return true;
+        len = strlen(str);
+        goto success;
       }
+
     log_type_error(reflectors, object->type->name);
     return false;
+
+success:
+    reflectors.reflection->SetString(message, reflectors.fieldDescriptor, std::string{str, len});
+    return true;
   }
 };
 
@@ -241,25 +256,22 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    GenericNumber gn = filterx_primitive_get_value(object);
-    double val;
-
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
       {
-        val = gn_as_double(&gn);
-      }
-    else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-      {
-        val = (double)(gn_as_int64(&gn));
-      }
-    else
-      {
-        log_type_error(reflectors, object->type->name);
-        return false;
+        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, i);
+        return true;
       }
 
-    reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, val);
-    return true;
+    gdouble d;
+    if (filterx_object_extract_double(object, &d))
+      {
+        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, d);
+        return true;
+      }
+
+    log_type_error(reflectors, object->type->name);
+    return false;
   }
 };
 
@@ -273,26 +285,22 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    GenericNumber gn = filterx_primitive_get_value(object);
-    double val;
-
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
       {
-        val = gn_as_double(&gn);
-      }
-    else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-      {
-        val = (double)(gn_as_int64(&gn));
-      }
-    else
-      {
-        log_type_error(reflectors, object->type->name);
-        return false;
+        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, double_to_float_safe(i));
+        return true;
       }
 
-    float floatVal = double_to_float_safe(val);
-    reflectors.reflection->SetFloat(message, reflectors.fieldDescriptor, floatVal);
-    return true;
+    gdouble d;
+    if (filterx_object_extract_double(object, &d))
+      {
+        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, double_to_float_safe(d));
+        return true;
+      }
+
+    log_type_error(reflectors, object->type->name);
+    return false;
   }
 };
 
@@ -309,23 +317,16 @@ public:
   bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-      {
-        gsize value_len = -1;
-        const gchar *str = filterx_bytes_get_value(object, &value_len);
-        std::string stdString(str, value_len);
-        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, stdString);
+    const gchar *str;
+    gsize len;
 
-        return true;
-      }
-    else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(protobuf)))
+    if (filterx_object_extract_bytes(object, &str, &len) ||
+        filterx_object_extract_protobuf(object, &str, &len))
       {
-        gsize value_len = -1;
-        const gchar *str = filterx_protobuf_get_value(object, &value_len);
-        std::string stdString(str, value_len);
-        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, stdString);
+        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, std::string{str, len});
         return true;
       }
+
     log_type_error(reflectors, object->type->name);
     return false;
   }
@@ -370,13 +371,10 @@ ProtobufField *syslogng::grpc::otel::protobuf_converter_by_type(google::protobuf
 std::string
 syslogng::grpc::otel::extract_string_from_object(FilterXObject *object)
 {
+  const gchar *key_c_str;
   gsize len;
-  const gchar *key_c_str = filterx_string_get_value(object, &len);
 
-  if (!key_c_str)
-    key_c_str = filterx_message_value_get_value(object, &len);
-
-  if (!key_c_str)
+  if (!filterx_object_extract_string(object, &key_c_str, &len))
     throw std::runtime_error("not a string instance");
 
   return std::string{key_c_str, len};

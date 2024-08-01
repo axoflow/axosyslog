@@ -28,11 +28,13 @@
 
 #include "compat/cpp-start.h"
 #include "filterx/filterx-object.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
+#include "filterx/object-message-value.h"
 #include "filterx/object-json.h"
 #include "filterx/object-null.h"
 #include "compat/cpp-end.h"
@@ -174,53 +176,73 @@ AnyField::FilterXObjectDirectSetter(AnyValue *anyValue, FilterXObject *object, F
   ProtobufField *converter = nullptr;
   const char *typeFieldName;
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(boolean)))
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(boolean)) ||
+      (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+       filterx_message_value_get_type(object) == LM_VT_BOOLEAN))
     {
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BOOL);
       typeFieldName = "bool_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer))||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_INTEGER))
     {
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_INT64);
       typeFieldName = "int_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_DOUBLE))
     {
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_DOUBLE);
       typeFieldName = "double_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_STRING))
     {
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_STRING);
       typeFieldName = "string_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_BYTES))
     {
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BYTES);
       typeFieldName = "bytes_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(protobuf)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(protobuf)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_PROTOBUF))
     {
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BYTES);
       typeFieldName = "bytes_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_JSON))
     {
       converter = &filterx::otel_kvlist_converter;
       typeFieldName = "kvlist_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_LIST))
     {
       converter = &filterx::otel_array_converter;
       typeFieldName = "array_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(datetime)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(datetime)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_DATETIME))
     {
       // notice int64_t (sfixed64) instead of uint64_t (fixed64) since anyvalue's int_value is int64_t
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_SFIXED64);
       typeFieldName = "int_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(null)))
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(null)) ||
+           (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+            filterx_message_value_get_type(object) == LM_VT_NULL))
     {
       anyValue->clear_value();
       return true;
@@ -250,9 +272,9 @@ public:
   bool FilterXObjectSetter(Message *message, ProtoReflectors reflectors, FilterXObject *object,
                            FilterXObject **assoc_object)
   {
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(datetime)))
+    UnixTime utime;
+    if (filterx_object_extract_datetime(object, &utime))
       {
-        const UnixTime utime = filterx_datetime_get_value(object);
         uint64_t unix_epoch = unix_time_to_unix_epoch(utime);
         reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, unix_epoch);
         return true;

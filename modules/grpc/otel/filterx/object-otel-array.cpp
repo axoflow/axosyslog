@@ -27,6 +27,7 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
+#include "filterx/object-message-value.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/reflection.h>
@@ -363,6 +364,15 @@ OtelArrayField::FilterXObjectSetter(google::protobuf::Message *message, ProtoRef
     {
       if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
         return _set_array_field_from_list(message, reflectors, object, assoc_object);
+
+      if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
+        {
+          FilterXObject *unmarshalled = filterx_object_unmarshal(object);
+          bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(list)) &&
+                         _set_array_field_from_list(message, reflectors, unmarshalled, assoc_object);
+          filterx_object_unref(unmarshalled);
+          return success;
+        }
 
       msg_error("otel-array: Failed to convert field, type is unsupported",
                 evt_tag_str("field", reflectors.fieldDescriptor->name().c_str()),

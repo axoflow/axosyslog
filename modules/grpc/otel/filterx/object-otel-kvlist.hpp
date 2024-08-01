@@ -68,7 +68,7 @@ public:
 private:
   KVList(const KVList &o, FilterXOtelKVList *s);
   friend FilterXObject *::_filterx_otel_kvlist_clone(FilterXObject *s);
-  KeyValue *get_mutable_kv_for_key(const char *key) const;
+  KeyValue *get_mutable_kv_for_key(const std::string &key) const;
 
 private:
   FilterXOtelKVList *super;
