@@ -35,11 +35,11 @@ _eval(FilterXExpr *s)
 {
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
 
-  FilterXObject *lhs_object = filterx_expr_eval_typed(self->super.lhs);
+  FilterXObject *lhs_object = filterx_expr_eval(self->super.lhs);
   if (!lhs_object)
     return NULL;
 
-  FilterXObject *rhs_object = filterx_expr_eval_typed(self->super.rhs);
+  FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
   if (!rhs_object)
     {
       filterx_object_unref(lhs_object);
