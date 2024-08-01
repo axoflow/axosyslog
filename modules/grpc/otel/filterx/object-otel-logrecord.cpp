@@ -26,6 +26,7 @@
 
 #include "compat/cpp-start.h"
 
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
@@ -50,10 +51,9 @@ LogRecord::LogRecord(FilterXOtelLogRecord *super_) : super(super_)
 
 LogRecord::LogRecord(FilterXOtelLogRecord *super_, FilterXObject *protobuf_object) : super(super_)
 {
+  const gchar *value;
   gsize length;
-  const gchar *value = filterx_protobuf_get_value(protobuf_object, &length);
-
-  if (!value)
+  if (!filterx_object_extract_protobuf(protobuf_object, &value, &length))
     throw std::runtime_error("Argument is not a protobuf object");
 
   if (!logRecord.ParsePartialFromArray(value, length))

@@ -24,6 +24,7 @@
 #include "otel-field.hpp"
 
 #include "compat/cpp-start.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "compat/cpp-end.h"
@@ -63,10 +64,9 @@ Array::Array(FilterXOtelArray *s, FilterXObject *protobuf_object) :
   array(new ArrayValue()),
   borrowed(false)
 {
+  const gchar *value;
   gsize length;
-  const gchar *value = filterx_protobuf_get_value(protobuf_object, &length);
-
-  if (!value)
+  if (!filterx_object_extract_protobuf(protobuf_object, &value, &length))
     {
       delete array;
       throw std::runtime_error("Argument is not a protobuf object");
