@@ -22,8 +22,10 @@
  */
 
 #include "filterx/object-dict-interface.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-json.h"
+#include "str-utils.h"
 
 gboolean
 filterx_dict_iter(FilterXObject *s, FilterXDictIterFunc func, gpointer user_data)
@@ -153,10 +155,12 @@ _add_elem_to_json_object(FilterXObject *key_obj, FilterXObject *value_obj, gpoin
 {
   struct json_object *object = (struct json_object *) user_data;
 
-  /* FilterX strings are always NUL terminated. */
-  const gchar *key = filterx_string_get_value(key_obj, NULL);
-  if (!key)
+  const gchar *key;
+  gsize len;
+  if (!filterx_object_extract_string(key_obj, &key, &len))
     return FALSE;
+
+  APPEND_ZERO(key, key, len);
 
   struct json_object *value = NULL;
   FilterXObject *assoc_object = NULL;

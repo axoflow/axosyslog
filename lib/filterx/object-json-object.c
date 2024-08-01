@@ -21,11 +21,13 @@
  *
  */
 #include "filterx/object-json-internal.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-weakrefs.h"
 #include "filterx/object-dict-interface.h"
+#include "str-utils.h"
 #include "logmsg/type-hinting.h"
 
 struct FilterXJsonObject_
@@ -91,9 +93,12 @@ _get_subscript(FilterXDict *s, FilterXObject *key)
 {
   FilterXJsonObject *self = (FilterXJsonObject *) s;
 
-  const gchar *key_str = filterx_string_get_value(key, NULL);
-  if (!key_str)
+  const gchar *key_str;
+  gsize len;
+  if (!filterx_object_extract_string(key, &key_str, &len))
     return NULL;
+
+  APPEND_ZERO(key_str, key_str, len);
 
   struct json_object *jso = NULL;
   if (!json_object_object_get_ex(self->jso, key_str, &jso))
@@ -107,9 +112,12 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXJsonObject *self = (FilterXJsonObject *) s;
 
-  const gchar *key_str = filterx_string_get_value(key, NULL);
-  if (!key_str)
+  const gchar *key_str;
+  gsize len;
+  if (!filterx_object_extract_string(key, &key_str, &len))
     return FALSE;
+
+  APPEND_ZERO(key_str, key_str, len);
 
   struct json_object *jso = NULL;
   FilterXObject *assoc_object = NULL;
@@ -144,9 +152,12 @@ _unset_key(FilterXDict *s, FilterXObject *key)
 {
   FilterXJsonObject *self = (FilterXJsonObject *) s;
 
-  const gchar *key_str = filterx_string_get_value(key, NULL);
-  if (!key_str)
+  const gchar *key_str;
+  gsize len;
+  if (!filterx_object_extract_string(key, &key_str, &len))
     return FALSE;
+
+  APPEND_ZERO(key_str, key_str, len);
 
   json_object_object_del(self->jso, key_str);
 
