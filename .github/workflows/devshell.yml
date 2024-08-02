@@ -45,6 +45,7 @@ jobs:
             --prefix=${SYSLOG_NG_INSTALL_DIR}
             --enable-debug
             --enable-all-modules
+            --disable-smtp
             --disable-java
             --disable-java-modules
             --enable-ebpf
@@ -169,6 +170,7 @@ jobs:
             --enable-linux-caps
             --enable-manpages
             --enable-all-modules
+            --disable-smtp
             --disable-java
             --disable-java-modules
             --with-python=3
