@@ -204,6 +204,15 @@ Test(filterx_json, filterx_json_array_repr)
   filterx_object_unref(obj);
 }
 
+Test(filterx_json, filterx_json_object_cloning_double)
+{
+  FilterXObject *obj = filterx_json_object_new_from_repr("{\"foo\": 3.14}", -1);
+  FilterXObject *obj_clone = filterx_object_clone(obj);
+  cr_assert_not_null(obj_clone);
+  filterx_object_unref(obj_clone);
+  filterx_object_unref(obj);
+}
+
 static void
 setup(void)
 {

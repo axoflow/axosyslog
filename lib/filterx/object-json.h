@@ -53,6 +53,7 @@ const gchar *filterx_json_array_to_json_literal(FilterXObject *s);
 FilterXObject *filterx_json_convert_json_to_object(FilterXObject *root_obj, FilterXWeakRef *root_container,
                                                    struct json_object *jso);
 void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
+FilterXObject *filterx_json_get_cached_object(struct json_object *jso);
 
 struct json_object *filterx_json_object_get_value(FilterXObject *s);
 struct json_object *filterx_json_array_get_value(FilterXObject *s);

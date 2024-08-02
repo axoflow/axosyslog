@@ -32,34 +32,50 @@
 #include "scanner/list-scanner/list-scanner.h"
 #include "str-repr/encode.h"
 
+static gboolean
+_is_json_cacheable(struct json_object *jso)
+{
+  if (json_object_get_type(jso) == json_type_double && JSON_C_MAJOR_VERSION == 0 && JSON_C_MINOR_VERSION < 14)
+    {
+      /*
+       * See: filterx_json_get_cached_object()
+       *
+       * The workaround only works starting with 0.14, before that json_object_set_double()
+       * does not drop the string user data, so we cannot check if it is our
+       * filterx object or the string, which means we cannot cache doubles.
+       */
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 static int
 _deep_copy_filterx_object_ref(json_object *src, json_object *parent, const char *key, size_t index, json_object **dst)
 {
   int result = json_c_shallow_copy_default(src, parent, key, index, dst);
+  if (*dst == NULL)
+    return result;
 
-  if (*dst != NULL)
+  /* we need to copy the userdata for primitive types */
+
+  switch (json_object_get_type(src))
     {
-      /* we need to copy the userdata for primitive types */
-
-      switch (json_object_get_type(src))
-        {
-        case json_type_null:
-        case json_type_boolean:
-        case json_type_double:
-        case json_type_int:
-        case json_type_string:
-        {
-          FilterXObject *fobj = json_object_get_userdata(src);
-          if (fobj)
-            filterx_json_associate_cached_object(*dst, fobj);
-          break;
-        }
-        default:
-          break;
-        }
-      return 2;
+    case json_type_null:
+    case json_type_boolean:
+    case json_type_double:
+    case json_type_int:
+    case json_type_string:
+    {
+      FilterXObject *fobj = filterx_json_get_cached_object(src);
+      if (fobj)
+        filterx_json_associate_cached_object(*dst, fobj);
+      break;
     }
-  return result;
+    default:
+      break;
+    }
+  return 2;
 }
 
 struct json_object *
@@ -107,29 +123,8 @@ filterx_json_convert_json_to_object_cached(FilterXObject *self, FilterXWeakRef *
   if (!jso || json_object_get_type(jso) == json_type_null)
     return filterx_null_new();
 
-  if (json_object_get_type(jso) == json_type_double)
-    {
-      /* this is a workaround to ditch builtin serializer for double objects
-       * that are set when parsing from a string representation.
-       * json_object_double_new_ds() will set userdata to the string
-       * representation of the number, as extracted from the JSON source.
-       *
-       * Changing the value of the double to the same value, ditches this,
-       * but only if necessary.
-       *
-       * This only works starting with 0.14, before that json_object_set_double()
-       * does not drop the string user data, so we cannot check if it is our
-       * filterx object or the string, which means we cannot cache doubles.
-       */
-
-      if (JSON_C_MAJOR_VERSION == 0 && JSON_C_MINOR_VERSION < 14)
-        return filterx_json_convert_json_to_object(self, root_container, jso);
-
-      json_object_set_double(jso, json_object_get_double(jso));
-    }
-
   /* NOTE: userdata is a weak reference */
-  filterx_obj = json_object_get_userdata(jso);
+  filterx_obj = filterx_json_get_cached_object(jso);
   if (filterx_obj)
     return filterx_object_ref(filterx_obj);
 
@@ -145,12 +140,38 @@ filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *fil
   if (!jso)
     return;
 
+  if (!_is_json_cacheable(jso))
+    return;
+
   filterx_eval_store_weak_ref(filterx_obj);
 
   /* we are not storing a reference in userdata to avoid circular
    * references.  That ref is retained by the filterx_scope_store_weak_ref()
    * call above, which is automatically terminated when the scope ends */
   json_object_set_userdata(jso, filterx_obj, NULL);
+}
+
+FilterXObject *
+filterx_json_get_cached_object(struct json_object *jso)
+{
+  if (!_is_json_cacheable(jso))
+    return NULL;
+
+  if (json_object_get_type(jso) == json_type_double)
+    {
+      /*
+       * This is a workaround to ditch builtin serializer for double objects
+       * that are set when parsing from a string representation.
+       * json_object_double_new_ds() will set userdata to the string
+       * representation of the number, as extracted from the JSON source.
+       *
+       * Changing the value of the double to the same value, ditches this,
+       * but only if necessary.
+       */
+      json_object_set_double(jso, json_object_get_double(jso));
+    }
+
+  return (FilterXObject *) json_object_get_userdata(jso);
 }
 
 FilterXObject *
