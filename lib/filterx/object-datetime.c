@@ -131,7 +131,7 @@ filterx_typecast_datetime(FilterXExpr *s, GPtrArray *args)
   gint64 i;
   if (filterx_object_extract_integer(object, &i))
     {
-      UnixTime ut = unix_time_from_unix_epoch(i);
+      UnixTime ut = unix_time_from_unix_epoch((guint64) MAX(i, 0));
       return filterx_datetime_new(&ut);
     }
 
