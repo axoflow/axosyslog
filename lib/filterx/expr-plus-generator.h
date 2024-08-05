@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 shifter
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,26 +21,11 @@
  * COPYING for details.
  *
  */
+#ifndef FILTERX_EXPR_PLUS_GENERATOR_H_INCLUDED
+#define FILTERX_EXPR_PLUS_GENERATOR_H_INCLUDED
 
-#ifndef FILTERX_EXPR_GENERATOR_H_INCLUDED
-#define FILTERX_EXPR_GENERATOR_H_INCLUDED
+#include "filterx-expr.h"
 
-#include "filterx/filterx-expr.h"
-
-typedef struct FilterXExprGenerator_ FilterXExprGenerator;
-struct FilterXExprGenerator_
-{
-  FilterXExpr super;
-  FilterXExpr *fillable;
-  gboolean (*generate)(FilterXExprGenerator *self, FilterXObject *fillable);
-  FilterXObject *(*create_container)(FilterXExprGenerator *self, FilterXExpr *fillable_parent);
-};
-
-void filterx_generator_set_fillable(FilterXExpr *s, FilterXExpr *fillable);
-void filterx_generator_init_instance(FilterXExpr *s);
-void filterx_generator_free_method(FilterXExpr *s);
-gboolean filterx_expr_is_generator(FilterXExpr *s);
-
-FilterXExpr *filterx_generator_create_container_new(FilterXExpr *g, FilterXExpr *fillable_parent);
+FilterXExpr *filterx_operator_plus_generator_new(FilterXExpr *lhs, FilterXExpr *rhs);
 
 #endif

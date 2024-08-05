@@ -45,7 +45,8 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-str-transform.h		\
 	lib/filterx/func-flatten.h		\
 	lib/filterx/filterx-private.h			\
-	lib/filterx/expr-null-coalesce.h
+	lib/filterx/expr-null-coalesce.h	\
+	lib/filterx/expr-plus-generator.h
 
 
 filterx_sources = 				\
@@ -95,6 +96,7 @@ filterx_sources = 				\
 	lib/filterx/func-flatten.c		\
 	lib/filterx/filterx-private.c	\
 	lib/filterx/expr-null-coalesce.c	\
+	lib/filterx/expr-plus-generator.c	\
 	lib/filterx/filterx-grammar.y
 
 BUILT_SOURCES += 				\
