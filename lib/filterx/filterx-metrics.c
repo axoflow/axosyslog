@@ -32,6 +32,7 @@
 #include "stats/stats-registry.h"
 #include "metrics/metrics-tls-cache.h"
 #include "scratch-buffers.h"
+#include "atomic.h"
 
 struct _FilterXMetrics
 {
@@ -44,7 +45,7 @@ struct _FilterXMetrics
   FilterXMetricsLabels *labels;
   gint level;
 
-  gboolean is_optimized;
+  GAtomicCounter is_optimized;
   StatsCluster *const_cluster;
 };
 
@@ -106,8 +107,13 @@ _is_const(FilterXMetrics *self)
 static void
 _optimize(FilterXMetrics *self)
 {
+  stats_lock();
+
+  if (g_atomic_counter_get(&self->is_optimized))
+    goto exit;
+
   if (!self->key.str || !filterx_metrics_labels_is_const(self->labels))
-    return;
+    goto exit;
 
   ScratchBuffersMarker marker;
   scratch_buffers_mark(&marker);
@@ -117,15 +123,11 @@ _optimize(FilterXMetrics *self)
     {
       msg_debug("FilterX: Failed to optimize metrics, continuing unoptimized");
       scratch_buffers_reclaim_marked(marker);
-      return;
+      goto exit;
     }
 
-  stats_lock();
-  {
-    StatsCounterItem *counter;
-    self->const_cluster = stats_register_dynamic_counter(self->level, &sck, SC_TYPE_SINGLE_VALUE, &counter);
-  }
-  stats_unlock();
+  StatsCounterItem *counter;
+  self->const_cluster = stats_register_dynamic_counter(self->level, &sck, SC_TYPE_SINGLE_VALUE, &counter);
 
   scratch_buffers_reclaim_marked(marker);
 
@@ -134,6 +136,10 @@ _optimize(FilterXMetrics *self)
 
   filterx_metrics_labels_free(self->labels);
   self->labels = NULL;
+
+exit:
+  g_atomic_counter_set(&self->is_optimized, TRUE);
+  stats_unlock();
 }
 
 gboolean
@@ -149,7 +155,7 @@ filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **count
    * We need to delay the optimization to the first get() call,
    * as we don't have stats options when FilterXExprs are being created.
    */
-  if (!self->is_optimized)
+  if (!g_atomic_counter_get(&self->is_optimized))
     _optimize(self);
 
   if (_is_const(self))
@@ -238,6 +244,8 @@ filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels)
 
   if (!_init_labels(self, labels))
     goto error;
+
+  g_atomic_counter_set(&self->is_optimized, FALSE);
 
   return self;
 
