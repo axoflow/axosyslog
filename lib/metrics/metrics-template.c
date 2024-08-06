@@ -82,10 +82,8 @@ metrics_template_is_enabled(MetricsTemplate *self)
   return stats_check_level(self->level);
 }
 
-void
-metrics_template_build_sck(MetricsTemplate *self,
-                           LogTemplateOptions *template_options,
-                           LogMessage *msg, StatsClusterKey *key)
+static void
+_build_sck(MetricsTemplate *self, LogTemplateOptions *template_options, LogMessage *msg, StatsClusterKey *key)
 {
   MetricsCache *tls_cache = metrics_tls_cache();
 
@@ -117,7 +115,7 @@ metrics_template_get_stats_counter(MetricsTemplate *self,
   ScratchBuffersMarker marker;
 
   scratch_buffers_mark(&marker);
-  metrics_template_build_sck(self, template_options, msg, &key);
+  _build_sck(self, template_options, msg, &key);
 
   StatsCounterItem *counter = metrics_cache_get_counter(metrics_tls_cache(), &key, self->level);
 
