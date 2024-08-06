@@ -36,6 +36,7 @@
 #include "filterx/func-unset-empties.h"
 #include "filterx/func-str-transform.h"
 #include "filterx/func-flatten.h"
+#include "filterx/func-sdata.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-unset.h"
 #include "filterx/filterx-eval.h"
@@ -99,6 +100,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
+  g_assert(filterx_builtin_simple_function_register("is_sdata_from_enterprise",
+                                                    filterx_simple_function_is_sdata_from_enterprise));
 }
 
 static void
