@@ -86,7 +86,8 @@ _eval(FilterXExpr *s)
 exit:
   if (!success)
     {
-      msg_error("FilterX: Failed to process update_metric()", filterx_format_last_error());
+      /* It would be nice to introduce a counter for this. */
+      msg_debug("FilterX: Failed to process update_metric()", filterx_format_last_error());
       filterx_eval_clear_errors();
     }
 
