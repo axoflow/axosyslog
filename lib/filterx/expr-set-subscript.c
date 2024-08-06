@@ -46,7 +46,7 @@ _eval(FilterXExpr *s)
 
   if (self->key)
     {
-      key = filterx_expr_eval_typed(self->key);
+      key = filterx_expr_eval(self->key);
       if (!key)
         goto exit;
     }
@@ -62,7 +62,7 @@ _eval(FilterXExpr *s)
       goto exit;
     }
 
-  new_value = filterx_expr_eval_typed(self->new_value);
+  new_value = filterx_expr_eval(self->new_value);
   if (!new_value)
     goto exit;
 

@@ -24,8 +24,10 @@
 #include "otel-field.hpp"
 
 #include "compat/cpp-start.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
+#include "filterx/object-message-value.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/reflection.h>
@@ -59,10 +61,9 @@ KVList::KVList(FilterXOtelKVList *s, FilterXObject *protobuf_object) :
   repeated_kv(new RepeatedPtrField<KeyValue>()),
   borrowed(false)
 {
+  const gchar *value;
   gsize length;
-  const gchar *value = filterx_protobuf_get_value(protobuf_object, &length);
-
-  if (!value)
+  if (!filterx_object_extract_protobuf(protobuf_object, &value, &length))
     {
       delete repeated_kv;
       throw std::runtime_error("Argument is not a protobuf object");
@@ -101,7 +102,7 @@ KVList::marshal(void)
 }
 
 KeyValue *
-KVList::get_mutable_kv_for_key(const char *key) const
+KVList::get_mutable_kv_for_key(const std::string &key) const
 {
   for (int i = 0; i < repeated_kv->size(); i++)
     {
@@ -117,8 +118,12 @@ KVList::get_mutable_kv_for_key(const char *key) const
 bool
 KVList::set_subscript(FilterXObject *key, FilterXObject **value)
 {
-  const gchar *key_c_str = filterx_string_get_value(key, NULL);
-  if (!key_c_str)
+  std::string key_str;
+  try
+    {
+      key_str = extract_string_from_object(key);
+    }
+  catch (const std::runtime_error &)
     {
       msg_error("FilterX: Failed to set OTel KVList element",
                 evt_tag_str("error", "Key must be string type"));
@@ -127,11 +132,11 @@ KVList::set_subscript(FilterXObject *key, FilterXObject **value)
 
   ProtobufField *converter = otel_converter_by_type(FieldDescriptor::TYPE_MESSAGE);
 
-  KeyValue *kv = get_mutable_kv_for_key(key_c_str);
+  KeyValue *kv = get_mutable_kv_for_key(key_str);
   if (!kv)
     {
       kv = repeated_kv->Add();
-      kv->set_key(key_c_str);
+      kv->set_key(key_str);
     }
 
   FilterXObject *assoc_object = NULL;
@@ -146,18 +151,22 @@ KVList::set_subscript(FilterXObject *key, FilterXObject **value)
 FilterXObject *
 KVList::get_subscript(FilterXObject *key)
 {
-  const gchar *key_c_str = filterx_string_get_value(key, NULL);
-  if (!key_c_str)
+  std::string key_str;
+  try
     {
-      msg_error("FilterX: Failed to get OTel KVList element",
+      key_str = extract_string_from_object(key);
+    }
+  catch (const std::runtime_error &)
+    {
+      msg_error("FilterX: Failed to set OTel KVList element",
                 evt_tag_str("error", "Key must be string type"));
-      return NULL;
+      return nullptr;
     }
 
   ProtobufField *converter = otel_converter_by_type(FieldDescriptor::TYPE_MESSAGE);
-  KeyValue *kv = get_mutable_kv_for_key(key_c_str);
+  KeyValue *kv = get_mutable_kv_for_key(key_str);
   if (!kv)
-    return NULL;
+    return nullptr;
 
   return converter->Get(kv, "value");
 }
@@ -165,24 +174,29 @@ KVList::get_subscript(FilterXObject *key)
 bool
 KVList::is_key_set(FilterXObject *key) const
 {
-  const gchar *key_c_str = filterx_string_get_value(key, NULL);
-  if (!key_c_str)
+  try
     {
-      msg_error("FilterX: Failed to check OTel KVList key",
+      return !!get_mutable_kv_for_key(extract_string_from_object(key));
+    }
+  catch (const std::runtime_error &)
+    {
+      msg_error("FilterX: Failed to set OTel KVList element",
                 evt_tag_str("error", "Key must be string type"));
       return false;
     }
-
-  return !!get_mutable_kv_for_key(key_c_str);
 }
 
 bool
 KVList::unset_key(FilterXObject *key)
 {
-  const gchar *key_c_str = filterx_string_get_value(key, NULL);
-  if (!key_c_str)
+  std::string key_str;
+  try
     {
-      msg_error("FilterX: Failed to unset OTel KVList element",
+      key_str = extract_string_from_object(key);
+    }
+  catch (const std::runtime_error &)
+    {
+      msg_error("FilterX: Failed to set OTel KVList element",
                 evt_tag_str("error", "Key must be string type"));
       return false;
     }
@@ -190,7 +204,7 @@ KVList::unset_key(FilterXObject *key)
   for (int i = 0; i < repeated_kv->size(); i++)
     {
       KeyValue &possible_kv = repeated_kv->at(i);
-      if (possible_kv.key().compare(key_c_str) == 0)
+      if (possible_kv.key().compare(key_str) == 0)
         {
           repeated_kv->DeleteSubrange(i, 1);
           return true;
@@ -458,13 +472,13 @@ _add_elem_to_repeated_kv(FilterXObject *key_obj, FilterXObject *value_obj, gpoin
 {
   RepeatedPtrField<KeyValue> *repeated_kv = (RepeatedPtrField<KeyValue> *) user_data;
 
-  /* FilterX strings are always NUL terminated. */
-  const gchar *key = filterx_string_get_value(key_obj, NULL);
-  if (!key)
-    return FALSE;
+  const gchar *key;
+  gsize key_len;
+  if (!filterx_object_extract_string(key_obj, &key, &key_len))
+    return false;
 
   KeyValue *kv = repeated_kv->Add();
-  kv->set_key(key);
+  kv->set_key(key, key_len);
 
   FilterXObject *assoc_object = NULL;
   if (!syslogng::grpc::otel::any_field_converter.FilterXObjectDirectSetter(kv->mutable_value(), value_obj, &assoc_object))
@@ -494,6 +508,15 @@ OtelKVListField::FilterXObjectSetter(google::protobuf::Message *message, ProtoRe
     {
       if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)))
         return _set_kvlist_field_from_dict(message, reflectors, object, assoc_object);
+
+      if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
+        {
+          FilterXObject *unmarshalled = filterx_object_unmarshal(object);
+          bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(dict)) &&
+                         _set_kvlist_field_from_dict(message, reflectors, unmarshalled, assoc_object);
+          filterx_object_unref(unmarshalled);
+          return success;
+        }
 
       msg_error("otel-kvlist: Failed to convert field, type is unsupported",
                 evt_tag_str("field", reflectors.fieldDescriptor->name().c_str()),

@@ -22,12 +22,14 @@
  */
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-grammar.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "generic-number.h"
 #include "str-format.h"
 #include "plugin.h"
 #include "cfg.h"
 #include "filterx-globals.h"
+#include "str-utils.h"
 
 #include "compat/json.h"
 
@@ -64,19 +66,18 @@ _integer_map_to_json(FilterXObject *s, struct json_object **object, FilterXObjec
 }
 
 static FilterXObject *
-_integer_add(FilterXObject *self, FilterXObject *object)
+_integer_add(FilterXObject *s, FilterXObject *object)
 {
-  GenericNumber base = filterx_primitive_get_value(self);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_integer_new(gn_as_int64(&base) + gn_as_int64(&add));
-    }
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_int64(&base) + gn_as_double(&add));
-    }
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  gint64 i;
+  if (filterx_object_extract_integer(object, &i))
+    return filterx_integer_new(gn_as_int64(&self->value) + i);
+
+  gdouble d;
+  if (filterx_object_extract_double(object, &d))
+    return filterx_double_new(gn_as_int64(&self->value) + d);
+
   return NULL;
 }
 
@@ -121,19 +122,18 @@ _double_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject
 }
 
 static FilterXObject *
-_double_add(FilterXObject *self, FilterXObject *object)
+_double_add(FilterXObject *s, FilterXObject *object)
 {
-  GenericNumber base = filterx_primitive_get_value(self);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_double(&base) + gn_as_int64(&add));
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      GenericNumber add = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_double(&base) + gn_as_double(&add));
-    }
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  gint64 i;
+  if (filterx_object_extract_integer(object, &i))
+    return filterx_double_new(gn_as_double(&self->value) + i);
+
+  gdouble d;
+  if (filterx_object_extract_double(object, &d))
+    return filterx_double_new(gn_as_double(&self->value) + d);
+
   return NULL;
 }
 
@@ -257,6 +257,7 @@ filterx_enum_new(GlobalConfig *cfg, const gchar *namespace_name, const gchar *en
   return &self->super;
 }
 
+/* NOTE: Consider using filterx_object_extract_generic_number() to also support message_value. */
 GenericNumber
 filterx_primitive_get_value(FilterXObject *s)
 {
@@ -288,21 +289,19 @@ filterx_typecast_integer(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      return filterx_integer_new(gn_as_int64(&gn));
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      gsize size;
-      gchar *endptr;
-      const gchar *str = filterx_string_get_value(object, &size);
+    return filterx_object_ref(object);
 
+  GenericNumber gn;
+  if (filterx_object_extract_generic_number(object, &gn))
+    return filterx_integer_new(gn_as_int64(&gn));
+
+  const gchar *str;
+  gsize str_len;
+  if (filterx_object_extract_string(object, &str, &str_len))
+    {
+      APPEND_ZERO(str, str, str_len);
+
+      gchar *endptr;
       gint64 val = g_ascii_strtoll(str, &endptr, 10);
       if (str != endptr && *endptr == '\0')
         return filterx_integer_new(val);
@@ -322,21 +321,19 @@ filterx_typecast_double(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
-    {
-      GenericNumber gn = filterx_primitive_get_value(object);
-      return filterx_double_new(gn_as_double(&gn));
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      gsize size;
-      gchar *endptr;
-      const gchar *str = filterx_string_get_value(object, &size);
+    return filterx_object_ref(object);
 
+  GenericNumber gn;
+  if (filterx_object_extract_generic_number(object, &gn))
+    return filterx_double_new(gn_as_double(&gn));
+
+  const gchar *str;
+  gsize str_len;
+  if (filterx_object_extract_string(object, &str, &str_len))
+    {
+      APPEND_ZERO(str, str, str_len);
+
+      gchar *endptr;
       gdouble val = g_ascii_strtod(str, &endptr);
       if (str != endptr && *endptr == '\0')
         return filterx_double_new(val);
@@ -355,27 +352,26 @@ _repr(FilterXObject *s, GString *repr)
   return filterx_object_marshal_append(s, repr, &t);
 }
 
-FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(object),
+FILTERX_DEFINE_TYPE(primitive, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
+                    .repr = _repr,
+                   );
+
+FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(primitive),
                     .marshal = _integer_marshal,
                     .map_to_json = _integer_map_to_json,
-                    .repr = _repr,
                     .add = _integer_add,
                    );
 
-FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(object),
-                    .truthy = _truthy,
+FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(primitive),
                     .marshal = _double_marshal,
                     .map_to_json = _double_map_to_json,
-                    .repr = _repr,
                     .add = _double_add,
                    );
 
-FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(object),
-                    .truthy = _truthy,
+FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(primitive),
                     .marshal = _bool_marshal,
                     .map_to_json = _bool_map_to_json,
-                    .repr = _repr,
                    );
 
 void

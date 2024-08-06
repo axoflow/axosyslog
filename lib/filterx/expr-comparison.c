@@ -24,6 +24,7 @@
 #include "filterx/expr-comparison.h"
 #include "filterx/object-datetime.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
@@ -44,43 +45,43 @@ typedef struct _FilterXComparison
 static void
 _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
 {
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)) ||
-      filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)) ||
-      filterx_object_is_type(obj, &FILTERX_TYPE_NAME(boolean)))
-    *gn = filterx_primitive_get_value(obj);
-  else if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)))
+  if (filterx_object_extract_generic_number(obj, gn))
+    return;
+
+  const gchar *str;
+  if (filterx_object_extract_string(obj, &str, NULL))
     {
-      if (!parse_generic_number(filterx_string_get_value(obj, NULL), gn))
+      if (!parse_generic_number(str, gn))
         gn_set_nan(gn);
+      return;
     }
-  else if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)))
-    gn_set_int64(gn, 0);
-  else if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)))
+
+  if (filterx_object_extract_null(obj))
     {
-      const UnixTime utime = filterx_datetime_get_value(obj);
-      uint64_t unix_epoch = unix_time_to_unix_epoch(utime);
-      gn_set_int64(gn, (uint64_t)unix_epoch);
+      gn_set_int64(gn, 0);
+      return;
     }
-  else
+
+  UnixTime utime;
+  if (filterx_object_extract_datetime(obj, &utime))
     {
-      gn_set_nan(gn);
+      guint64 unix_epoch = unix_time_to_unix_epoch(utime);
+      gn_set_int64(gn, (gint64) MIN(unix_epoch, G_MAXINT64));
+      return;
     }
+
+  gn_set_nan(gn);
 }
 
 static const gchar *
 _convert_filterx_object_to_string(FilterXObject *obj, gsize *len)
 {
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)))
+  const gchar *str;
+  if (filterx_object_extract_string(obj, &str, len) ||
+      filterx_object_extract_bytes(obj, &str, len) ||
+      filterx_object_extract_protobuf(obj, &str, len))
     {
-      return filterx_string_get_value(obj, len);
-    }
-  else if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(bytes)))
-    {
-      return filterx_bytes_get_value(obj, len);
-    }
-  else if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(protobuf)))
-    {
-      return filterx_protobuf_get_value(obj, len);
+      return str;
     }
 
   GString *buffer = scratch_buffers_alloc();
@@ -183,19 +184,22 @@ _eval(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
 
-  FilterXObject *lhs_object = filterx_expr_eval_typed(self->super.lhs);
+  gint compare_mode = self->operator & FCMPX_MODE_MASK;
+  gint operator = self->operator & FCMPX_OP_MASK;
+  gboolean typed_eval_needed = compare_mode & FCMPX_TYPE_AWARE || compare_mode & FCMPX_TYPE_AND_VALUE_BASED;
+
+  FilterXObject *lhs_object = typed_eval_needed ? filterx_expr_eval_typed(self->super.lhs) : filterx_expr_eval(
+                                self->super.lhs);
   if (!lhs_object)
     return NULL;
 
-  FilterXObject *rhs_object = filterx_expr_eval_typed(self->super.rhs);
+  FilterXObject *rhs_object = typed_eval_needed ? filterx_expr_eval_typed(self->super.rhs) : filterx_expr_eval(
+                                self->super.rhs);
   if (!rhs_object)
     {
       filterx_object_unref(lhs_object);
       return NULL;
     }
-
-  gint compare_mode = self->operator & FCMPX_MODE_MASK;
-  gint operator = self->operator & FCMPX_OP_MASK;
 
   gboolean result = TRUE;
   if (compare_mode & FCMPX_TYPE_AWARE)

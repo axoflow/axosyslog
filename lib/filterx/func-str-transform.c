@@ -23,6 +23,7 @@
  */
 
 #include "filterx/func-str-transform.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
 
@@ -35,10 +36,11 @@ _extract_str_arg(FilterXExpr *s, GPtrArray *args, gssize *len)
       return NULL;
     }
 
+  const gchar *str;
   gsize inner_len;
   FilterXObject *object = g_ptr_array_index(args, 0);
-  const gchar *str = filterx_string_get_value(object, &inner_len);
-  if (!str)
+
+  if (!filterx_object_extract_string(object, &str, &inner_len))
     {
       filterx_simple_function_argument_error(s, "Object must be string", FALSE);
       return NULL;

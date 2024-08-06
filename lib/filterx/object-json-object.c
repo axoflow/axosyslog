@@ -21,11 +21,14 @@
  *
  */
 #include "filterx/object-json-internal.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-weakrefs.h"
 #include "filterx/object-dict-interface.h"
+#include "str-utils.h"
+#include "logmsg/type-hinting.h"
 
 struct FilterXJsonObject_
 {
@@ -90,9 +93,12 @@ _get_subscript(FilterXDict *s, FilterXObject *key)
 {
   FilterXJsonObject *self = (FilterXJsonObject *) s;
 
-  const gchar *key_str = filterx_string_get_value(key, NULL);
-  if (!key_str)
+  const gchar *key_str;
+  gsize len;
+  if (!filterx_object_extract_string(key, &key_str, &len))
     return NULL;
+
+  APPEND_ZERO(key_str, key_str, len);
 
   struct json_object *jso = NULL;
   if (!json_object_object_get_ex(self->jso, key_str, &jso))
@@ -106,9 +112,12 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXJsonObject *self = (FilterXJsonObject *) s;
 
-  const gchar *key_str = filterx_string_get_value(key, NULL);
-  if (!key_str)
+  const gchar *key_str;
+  gsize len;
+  if (!filterx_object_extract_string(key, &key_str, &len))
     return FALSE;
+
+  APPEND_ZERO(key_str, key_str, len);
 
   struct json_object *jso = NULL;
   FilterXObject *assoc_object = NULL;
@@ -143,9 +152,12 @@ _unset_key(FilterXDict *s, FilterXObject *key)
 {
   FilterXJsonObject *self = (FilterXJsonObject *) s;
 
-  const gchar *key_str = filterx_string_get_value(key, NULL);
-  if (!key_str)
+  const gchar *key_str;
+  gsize len;
+  if (!filterx_object_extract_string(key, &key_str, &len))
     return FALSE;
+
+  APPEND_ZERO(key_str, key_str, len);
 
   json_object_object_del(self->jso, key_str);
 
@@ -229,18 +241,11 @@ _free(FilterXObject *s)
 FilterXObject *
 filterx_json_object_new_from_repr(const gchar *repr, gssize repr_len)
 {
-  struct json_tokener *tokener = json_tokener_new();
   struct json_object *jso;
+  if (!type_cast_to_json(repr, repr_len, &jso, NULL))
+    return NULL;
 
-  jso = json_tokener_parse_ex(tokener, repr, repr_len < 0 ? strlen(repr) : repr_len);
-  if (repr_len >= 0 && json_tokener_get_error(tokener) == json_tokener_continue)
-    {
-      /* pass the closing NUL character */
-      jso = json_tokener_parse_ex(tokener, "", 1);
-    }
-
-  json_tokener_free(tokener);
-  return jso ? filterx_json_object_new_sub(jso, NULL) : NULL;
+  return filterx_json_object_new_sub(jso, NULL);
 }
 
 FilterXObject *
@@ -259,6 +264,7 @@ filterx_json_object_to_json_literal(FilterXObject *s)
   return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
 }
 
+/* NOTE: Consider using filterx_object_extract_json_object() to also support message_value. */
 struct json_object *
 filterx_json_object_get_value(FilterXObject *s)
 {

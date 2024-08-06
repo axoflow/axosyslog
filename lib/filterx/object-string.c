@@ -21,11 +21,13 @@
  *
  */
 #include "object-string.h"
+#include "object-extractor.h"
 #include "str-utils.h"
 #include "scratch-buffers.h"
 #include "filterx-globals.h"
 #include "utf8utils.h"
 #include "str-format.h"
+#include "str-utils.h"
 
 typedef struct _FilterXString
 {
@@ -34,6 +36,7 @@ typedef struct _FilterXString
   gchar str[];
 } FilterXString;
 
+/* NOTE: Consider using filterx_object_extract_string() to also support message_value. */
 const gchar *
 filterx_string_get_value(FilterXObject *s, gsize *length)
 {
@@ -49,6 +52,7 @@ filterx_string_get_value(FilterXObject *s, gsize *length)
   return self->str;
 }
 
+/* NOTE: Consider using filterx_object_extract_bytes() to also support message_value. */
 const gchar *
 filterx_bytes_get_value(FilterXObject *s, gsize *length)
 {
@@ -63,6 +67,7 @@ filterx_bytes_get_value(FilterXObject *s, gsize *length)
   return self->str;
 }
 
+/* NOTE: Consider using filterx_object_extract_protobuf() to also support message_value. */
 const gchar *
 filterx_protobuf_get_value(FilterXObject *s, gsize *length)
 {
@@ -121,23 +126,20 @@ _string_repr(FilterXObject *s, GString *repr)
 }
 
 static FilterXObject *
-_string_add(FilterXObject *self, FilterXObject *object)
+_string_add(FilterXObject *s, FilterXObject *object)
 {
+  FilterXString *self = (FilterXString *) s;
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      gsize lhs_len, rhs_len;
-      const gchar *lhs_value = filterx_string_get_value(self, &lhs_len);
-      const gchar *rhs_value = filterx_string_get_value(object, &rhs_len);
-      GString *buffer = scratch_buffers_alloc();
+  const gchar *other_str;
+  gsize other_str_len;
+  if (!filterx_object_extract_string(object, &other_str, &other_str_len))
+    return NULL;
 
-      g_string_append_len(buffer, lhs_value, lhs_len);
-      g_string_append_len(buffer, rhs_value, rhs_len);
-      /* FIXME: support taking over the already allocated space */
-      return filterx_string_new(buffer->str, buffer->len);
-    }
-
-  return NULL;
+  GString *buffer = scratch_buffers_alloc();
+  g_string_append_len(buffer, self->str, self->str_len);
+  g_string_append_len(buffer, other_str, other_str_len);
+  /* FIXME: support taking over the already allocated space */
+  return filterx_string_new(buffer->str, buffer->len);
 }
 
 FilterXObject *
@@ -211,23 +213,20 @@ _bytes_repr(FilterXObject *s, GString *repr)
 }
 
 static FilterXObject *
-_bytes_add(FilterXObject *self, FilterXObject *object)
+_bytes_add(FilterXObject *s, FilterXObject *object)
 {
+  FilterXString *self = (FilterXString *) s;
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-    {
-      gsize lhs_len, rhs_len;
-      const gchar *lhs_value = filterx_bytes_get_value(self, &lhs_len);
-      const gchar *rhs_value = filterx_bytes_get_value(object, &rhs_len);
-      GString *buffer = scratch_buffers_alloc();
+  const gchar *other_str;
+  gsize other_str_len;
+  if (!filterx_object_extract_bytes(object, &other_str, &other_str_len))
+    return NULL;
 
-      g_string_append_len(buffer, lhs_value, lhs_len);
-      g_string_append_len(buffer, rhs_value, rhs_len);
-      /* FIXME: support taking over the already allocated space */
-      return filterx_bytes_new(buffer->str, buffer->len);
-    }
-
-  return NULL;
+  GString *buffer = scratch_buffers_alloc();
+  g_string_append_len(buffer, self->str, self->str_len);
+  g_string_append_len(buffer, other_str, other_str_len);
+  /* FIXME: support taking over the already allocated space */
+  return filterx_bytes_new(buffer->str, buffer->len);
 }
 
 FilterXObject *
@@ -256,10 +255,7 @@ filterx_typecast_string(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
+    return filterx_object_ref(object);
 
   GString *buf = scratch_buffers_alloc();
 
@@ -282,22 +278,13 @@ filterx_typecast_bytes(FilterXExpr *s, GPtrArray *args)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-    {
-      filterx_object_ref(object);
-      return object;
-    }
+    return filterx_object_ref(object);
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+  const gchar *data;
+  gsize size;
+  if (filterx_object_extract_string(object, &data, &size) ||
+      filterx_object_extract_protobuf(object, &data, &size))
     {
-      gsize size;
-      const gchar *data = filterx_string_get_value(object, &size);
-      return filterx_bytes_new(data, size);
-    }
-
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(protobuf)))
-    {
-      gsize size;
-      const gchar *data = filterx_protobuf_get_value(object, &size);
       return filterx_bytes_new(data, size);
     }
 
@@ -320,12 +307,11 @@ filterx_typecast_protobuf(FilterXExpr *s, GPtrArray *args)
       return object;
     }
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-    {
-      gsize size;
-      const gchar *data = filterx_bytes_get_value(object, &size);
-      return filterx_protobuf_new(data, size);
-    }
+  const gchar *data;
+  gsize size;
+  if (filterx_object_extract_protobuf(object, &data, &size) ||
+      filterx_object_extract_bytes(object, &data, &size))
+    return filterx_protobuf_new(data, size);
 
   msg_error("filterx: invalid typecast",
             evt_tag_str("from", object->type->name),

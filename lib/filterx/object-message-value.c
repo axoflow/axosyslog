@@ -41,6 +41,111 @@ typedef struct _FilterXMessageValue
 } FilterXMessageValue;
 
 gboolean
+filterx_message_value_get_string(FilterXObject *s, const gchar **value, gsize *len)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type != LM_VT_STRING)
+    return FALSE;
+
+  *value = self->repr;
+  *len = self->repr_len;
+  return TRUE;
+}
+
+gboolean
+filterx_message_value_get_bytes(FilterXObject *s, const gchar **value, gsize *len)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type != LM_VT_BYTES)
+    return FALSE;
+
+  *value = self->repr;
+  *len = self->repr_len;
+  return TRUE;
+}
+
+gboolean
+filterx_message_value_get_protobuf(FilterXObject *s, const gchar **value, gsize *len)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type != LM_VT_PROTOBUF)
+    return FALSE;
+
+  *value = self->repr;
+  *len = self->repr_len;
+  return TRUE;
+}
+
+gboolean
+filterx_message_value_get_boolean(FilterXObject *s, gboolean *value)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type != LM_VT_BOOLEAN)
+    return FALSE;
+
+  return type_cast_to_boolean(self->repr, self->repr_len, value, NULL);
+}
+
+gboolean
+filterx_message_value_get_integer(FilterXObject *s, gint64 *value)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type != LM_VT_INTEGER)
+    return FALSE;
+
+  return type_cast_to_int64(self->repr, self->repr_len, value, NULL);
+}
+
+gboolean
+filterx_message_value_get_double(FilterXObject *s, gdouble *value)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type != LM_VT_DOUBLE)
+    return FALSE;
+
+  return type_cast_to_double(self->repr, self->repr_len, value, NULL);
+}
+
+gboolean
+filterx_message_value_get_datetime(FilterXObject *s, UnixTime *value)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type != LM_VT_DATETIME)
+    return FALSE;
+
+  return type_cast_to_datetime_unixtime(self->repr, self->repr_len, value, NULL);
+}
+
+gboolean
+filterx_message_value_get_null(FilterXObject *s)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  return self->type == LM_VT_NULL;
+}
+
+gboolean
+filterx_message_value_get_json(FilterXObject *s, struct json_object **value)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  if (self->type == LM_VT_JSON)
+    return type_cast_to_json(self->repr, self->repr_len, value, NULL);
+
+  if (self->type == LM_VT_LIST)
+    return type_cast_to_json_from_list(self->repr, self->repr_len, value, NULL);
+
+  return FALSE;
+}
+
+gboolean
 _is_value_type_pair_truthy(const gchar  *repr, gssize repr_len, LogMessageValueType type)
 {
   gboolean b;

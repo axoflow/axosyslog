@@ -27,6 +27,7 @@
 #include "template/templates.h"
 #include "timeutils/scan-timestamp.h"
 #include "str-utils.h"
+#include "scanner/list-scanner/list-scanner.h"
 
 #include <errno.h>
 #include <math.h>
@@ -239,6 +240,46 @@ type_cast_to_datetime_msec(const gchar *value, gssize value_len, gint64 *out, GE
     return FALSE;
 
   *out = ut.ut_sec * 1000 + ut.ut_usec / 1000;
+  return TRUE;
+}
+
+gboolean
+type_cast_to_json(const gchar *value, gssize value_len, struct json_object **out, GError **error)
+{
+  struct json_tokener *tokener = json_tokener_new();
+
+  *out = json_tokener_parse_ex(tokener, value, value_len < 0 ? strlen(value) : value_len);
+  if (value_len >= 0 && json_tokener_get_error(tokener) == json_tokener_continue)
+    {
+      /* pass the closing NUL character */
+      *out = json_tokener_parse_ex(tokener, "", 1);
+    }
+
+  json_tokener_free(tokener);
+
+  if (!(*out))
+    g_set_error(error, TYPE_HINTING_ERROR, TYPE_HINTING_INVALID_CAST,
+                "json(%s)", value);
+
+  return !!(*out);
+}
+
+gboolean
+type_cast_to_json_from_list(const gchar *value, gssize value_len, struct json_object **out, GError **error)
+{
+  *out = json_object_new_array();
+
+  ListScanner scanner;
+  list_scanner_init(&scanner);
+  list_scanner_input_string(&scanner, value, value_len);
+  for (gint i = 0; list_scanner_scan_next(&scanner); i++)
+    {
+      json_object_array_put_idx(*out, i,
+                                json_object_new_string_len(list_scanner_get_current_value(&scanner),
+                                                           list_scanner_get_current_value_len(&scanner)));
+    }
+  list_scanner_deinit(&scanner);
+
   return TRUE;
 }
 

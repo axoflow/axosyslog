@@ -78,12 +78,12 @@ _eval_elements(FilterXObject *fillable, GList *elements)
       FilterXObject *key = NULL;
       if (elem->key)
         {
-          key = filterx_expr_eval_typed(elem->key);
+          key = filterx_expr_eval(elem->key);
           if (!key)
             return FALSE;
         }
 
-      FilterXObject *value = filterx_expr_eval_typed(elem->value);
+      FilterXObject *value = filterx_expr_eval(elem->value);
       if (!value)
         {
           filterx_object_unref(key);

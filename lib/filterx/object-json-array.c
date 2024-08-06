@@ -21,6 +21,7 @@
  *
  */
 #include "filterx/object-json-internal.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
@@ -30,7 +31,7 @@
 #include "filterx/expr-function.h"
 #include "filterx/filterx-eval.h"
 
-#include "scanner/list-scanner/list-scanner.h"
+#include "logmsg/type-hinting.h"
 #include "str-repr/encode.h"
 
 #define JSON_ARRAY_MAX_SIZE 65536
@@ -262,19 +263,8 @@ _free(FilterXObject *s)
 FilterXObject *
 filterx_json_array_new_from_repr(const gchar *repr, gssize repr_len)
 {
-  struct json_tokener *tokener = json_tokener_new();
   struct json_object *jso;
-
-  jso = json_tokener_parse_ex(tokener, repr, repr_len < 0 ? strlen(repr) : repr_len);
-  if (repr_len >= 0 && json_tokener_get_error(tokener) == json_tokener_continue)
-    {
-      /* pass the closing NUL character */
-      jso = json_tokener_parse_ex(tokener, "", 1);
-    }
-
-  json_tokener_free(tokener);
-
-  if (!jso)
+  if (!type_cast_to_json(repr, repr_len, &jso, NULL))
     return NULL;
 
   if (!json_object_is_type(jso, json_type_array))
@@ -289,18 +279,9 @@ filterx_json_array_new_from_repr(const gchar *repr, gssize repr_len)
 FilterXObject *
 filterx_json_array_new_from_syslog_ng_list(const gchar *repr, gssize repr_len)
 {
-  struct json_object *jso = json_object_new_array();
-
-  ListScanner scanner;
-  list_scanner_init(&scanner);
-  list_scanner_input_string(&scanner, repr, repr_len);
-  for (gint i = 0; list_scanner_scan_next(&scanner); i++)
-    {
-      json_object_array_put_idx(jso, i,
-                                json_object_new_string_len(list_scanner_get_current_value(&scanner),
-                                                           list_scanner_get_current_value_len(&scanner)));
-    }
-  list_scanner_deinit(&scanner);
+  struct json_object *jso;
+  if (!type_cast_to_json_from_list(repr, repr_len, &jso, NULL))
+    return NULL;
 
   return filterx_json_array_new_sub(jso, NULL);
 }
@@ -322,23 +303,15 @@ filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args)
   if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_array)))
     return filterx_object_ref(arg);
 
-  if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(message_value)))
-    {
-      FilterXObject *unmarshalled = filterx_object_unmarshal(arg);
-      if (!filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(json_array)))
-        {
-          filterx_object_unref(unmarshalled);
-          goto error;
-        }
-      return unmarshalled;
-    }
+  struct json_object *jso;
+  if (filterx_object_extract_json_array(arg, &jso))
+    return filterx_json_array_new_sub(jso, NULL);
 
+  const gchar *repr;
   gsize repr_len;
-  const gchar *repr = filterx_string_get_value(arg, &repr_len);
-  if (repr)
+  if (filterx_object_extract_string(arg, &repr, &repr_len))
     return filterx_json_array_new_from_repr(repr, repr_len);
 
-error:
   filterx_eval_push_error_info("Argument must be a json array, a string or a syslog-ng list", s,
                                g_strdup_printf("got \"%s\" instead", arg->type->name), TRUE);
   return NULL;
@@ -360,6 +333,7 @@ filterx_json_array_to_json_literal(FilterXObject *s)
   return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
 }
 
+/* NOTE: Consider using filterx_object_extract_json_array() to also support message_value. */
 struct json_object *
 filterx_json_array_get_value(FilterXObject *s)
 {

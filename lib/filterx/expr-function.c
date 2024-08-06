@@ -267,6 +267,7 @@ _get_literal_string_from_expr(FilterXExpr *expr, gsize *len)
   if (!obj)
     goto error;
 
+  /* Literal message values don't exist, so we don't need to use the extractor. */
   str = filterx_string_get_value(obj, len);
 
   /*

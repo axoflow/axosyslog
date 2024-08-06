@@ -21,6 +21,7 @@
  */
 
 #include "filterx-format-json.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
@@ -46,28 +47,18 @@ _append_comma_if_needed(GString *result)
 }
 
 static gboolean
-_format_and_append_message_value(FilterXObject *value, GString *result)
+_append_literal(const gchar *value, gsize len, GString *result)
 {
-  if (filterx_message_value_get_type(value) == LM_VT_JSON)
-    {
-      gsize json_value_len;
-      const gchar *json_value = filterx_message_value_get_value(value, &json_value_len);
-      _append_comma_if_needed(result);
-      g_string_append_len(result, json_value, json_value_len);
-      return TRUE;
-    }
-
-  FilterXObject *unmarshalled_value = filterx_object_unmarshal(value);
-  gboolean success = _format_and_append_value(unmarshalled_value, result);
-  filterx_object_unref(unmarshalled_value);
-  return success;
+  _append_comma_if_needed(result);
+  g_string_append_len(result, value, len);
+  return TRUE;
 }
 
 static gboolean
-_format_and_append_json(FilterXObject *value, GString *result)
+_format_and_append_json(struct json_object *value, GString *result)
 {
   _append_comma_if_needed(result);
-  g_string_append(result, filterx_json_to_json_literal(value));
+  g_string_append(result, json_object_to_json_string_ext(value, JSON_C_TO_STRING_PLAIN));
   return TRUE;
 }
 
@@ -80,38 +71,29 @@ _format_and_append_null(GString *result)
 }
 
 static gboolean
-_format_and_append_boolean(FilterXObject *value, GString *result)
+_format_and_append_boolean(gboolean value, GString *result)
 {
-  gboolean bool_value;
-  g_assert(filterx_boolean_unwrap(value, &bool_value));
-
   _append_comma_if_needed(result);
-  g_string_append(result, bool_value ? "true" : "false");
+  g_string_append(result, value ? "true" : "false");
   return TRUE;
 }
 
 static gboolean
-_format_and_append_integer(FilterXObject *value, GString *result)
+_format_and_append_integer(gint64 value, GString *result)
 {
-  gint64 int_value;
-  g_assert(filterx_integer_unwrap(value, &int_value));
-
   _append_comma_if_needed(result);
-  g_string_append_printf(result, "%" G_GINT64_FORMAT, int_value);
+  g_string_append_printf(result, "%" G_GINT64_FORMAT, value);
   return TRUE;
 }
 
 static gboolean
-_format_and_append_double(FilterXObject *value, GString *result)
+_format_and_append_double(gdouble value, GString *result)
 {
-  gdouble double_value;
-  g_assert(filterx_double_unwrap(value, &double_value));
-
   _append_comma_if_needed(result);
 
   gsize init_len = result->len;
   g_string_set_size(result, init_len + G_ASCII_DTOSTR_BUF_SIZE);
-  g_ascii_dtostr(result->str + init_len, G_ASCII_DTOSTR_BUF_SIZE, double_value);
+  g_ascii_dtostr(result->str + init_len, G_ASCII_DTOSTR_BUF_SIZE, value);
   g_string_set_size(result, strchr(result->str + init_len, '\0') - result->str);
   return TRUE;
 }
@@ -123,7 +105,7 @@ _get_base64_encoded_size(gsize len)
 }
 
 static gboolean
-_append_bytes(const gchar *value, gsize len, GString *result)
+_format_and_append_bytes(const gchar *value, gssize value_len, GString *result)
 {
   _append_comma_if_needed(result);
   g_string_append_c(result, '"');
@@ -133,8 +115,8 @@ _append_bytes(const gchar *value, gsize len, GString *result)
   gsize init_len = result->len;
 
   /* expand the buffer and add space for the base64 encoded string */
-  g_string_set_size(result, init_len + _get_base64_encoded_size(len));
-  gsize out_len = g_base64_encode_step((const guchar *) value, len, FALSE, result->str + init_len,
+  g_string_set_size(result, init_len + _get_base64_encoded_size(value_len));
+  gsize out_len = g_base64_encode_step((const guchar *) value, value_len, FALSE, result->str + init_len,
                                        &encode_state, &encode_save);
   g_string_set_size(result, init_len + out_len + _get_base64_encoded_size(0));
 
@@ -152,30 +134,17 @@ _append_bytes(const gchar *value, gsize len, GString *result)
 }
 
 static gboolean
-_format_and_append_bytes(FilterXObject *value, GString *result)
+_format_and_append_protobuf(const gchar *value, gssize value_len, GString *result)
 {
-  gsize bytes_value_len;
-  const gchar *bytes_value = filterx_bytes_get_value(value, &bytes_value_len);
-  return _append_bytes(bytes_value, bytes_value_len, result);
+  return _format_and_append_bytes(value, value_len, result);
 }
 
 static gboolean
-_format_and_append_protobuf(FilterXObject *value, GString *result)
+_format_and_append_string(const gchar *value, gssize value_len, GString *result)
 {
-  gsize protobuf_value_len;
-  const gchar *protobuf_value = filterx_protobuf_get_value(value, &protobuf_value_len);
-  return _append_bytes(protobuf_value, protobuf_value_len, result);
-}
-
-static gboolean
-_format_and_append_string(FilterXObject *value, GString *result)
-{
-  gsize string_value_len;
-  const gchar *string_value = filterx_string_get_value(value, &string_value_len);
-
   _append_comma_if_needed(result);
   g_string_append_c(result, '"');
-  append_unsafe_utf8_as_escaped(result, string_value, string_value_len, "\"", "\\u%04x", "\\\\x%02x");
+  append_unsafe_utf8_as_escaped(result, value, value_len, "\"", "\\u%04x", "\\\\x%02x");
   g_string_append_c(result, '"');
   return TRUE;
 }
@@ -185,9 +154,9 @@ _format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer 
 {
   GString *result = (GString *) user_data;
 
+  const gchar *key_str;
   gsize key_str_len;
-  const gchar *key_str = filterx_string_get_value(key, &key_str_len);
-  if (!key_str)
+  if (!filterx_object_extract_string(key, &key_str, &key_str_len))
     return FALSE;
 
   _append_comma_if_needed(result);
@@ -259,33 +228,47 @@ exit:
 static gboolean
 _format_and_append_value(FilterXObject *value, GString *result)
 {
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(message_value)))
-    return _format_and_append_message_value(value, result);
+  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(message_value)) &&
+      (filterx_message_value_get_type(value) == LM_VT_JSON ||
+       filterx_message_value_get_type(value) == LM_VT_INTEGER ||
+       filterx_message_value_get_type(value) == LM_VT_DOUBLE))
+    {
+      gsize len;
+      const gchar *str = filterx_message_value_get_value(value, &len);
+      return _append_literal(str, len, result);
+    }
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(json_object)) ||
-      filterx_object_is_type(value, &FILTERX_TYPE_NAME(json_array)))
-    return _format_and_append_json(value, result);
+  struct json_object *js;
+  if (filterx_object_extract_json_array(value, &js) ||
+      filterx_object_extract_json_object(value, &js))
+    return _format_and_append_json(js, result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(null)))
+  if (filterx_object_extract_null(value))
     return _format_and_append_null(result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(boolean)))
-    return _format_and_append_boolean(value, result);
+  gboolean b;
+  if (filterx_object_extract_boolean(value, &b))
+    return _format_and_append_boolean(b, result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(integer)))
-    return _format_and_append_integer(value, result);
+  gint64 i;
+  if (filterx_object_extract_integer(value, &i))
+    return _format_and_append_integer(i, result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(double)))
-    return _format_and_append_double(value, result);
+  gdouble d;
+  if (filterx_object_extract_double(value, &d))
+    return _format_and_append_double(d, result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(bytes)))
-    return _format_and_append_bytes(value, result);
+  const gchar *str;
+  gsize str_len;
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(protobuf)))
-    return _format_and_append_protobuf(value, result);
+  if (filterx_object_extract_bytes(value, &str, &str_len))
+    return _format_and_append_bytes(str, str_len, result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(string)))
-    return _format_and_append_string(value, result);
+  if (filterx_object_extract_protobuf(value, &str, &str_len))
+    return _format_and_append_protobuf(str, str_len, result);
+
+  if (filterx_object_extract_string(value, &str, &str_len))
+    return _format_and_append_string(str, str_len, result);
 
   if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)))
     return _format_and_append_dict(value, result);

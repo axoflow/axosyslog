@@ -27,6 +27,7 @@
 
 #include "syslog-ng.h"
 #include "logmsg/logmsg.h"
+#include "compat/json.h"
 
 #define TYPE_HINTING_ERROR type_hinting_error_quark()
 
@@ -49,6 +50,8 @@ gboolean type_cast_to_int64(const gchar *value, gssize value_len, gint64 *out, G
 gboolean type_cast_to_double(const gchar *value, gssize value_len, gdouble *out, GError **error);
 gboolean type_cast_to_datetime_msec(const gchar *value, gssize value_len, gint64 *out, GError **error);
 gboolean type_cast_to_datetime_unixtime(const gchar *value, gssize value_len, UnixTime *ut, GError **error);
+gboolean type_cast_to_json(const gchar *value, gssize value_len, struct json_object **out, GError **error);
+gboolean type_cast_to_json_from_list(const gchar *value, gssize value_len, struct json_object **out, GError **error);
 
 gboolean type_cast_validate(const gchar *value, gssize value_len, LogMessageValueType type, GError **error);
 

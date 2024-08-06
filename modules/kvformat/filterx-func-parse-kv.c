@@ -26,6 +26,7 @@
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-json.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
@@ -33,6 +34,7 @@
 #include "kv-parser.h"
 #include "parser/parser-expr.h"
 #include "scratch-buffers.h"
+#include "str-utils.h"
 
 typedef struct FilterXFunctionParseKV_
 {
@@ -93,7 +95,6 @@ _extract_key_values(FilterXFunctionParseKV *self, const gchar *input, gsize inpu
   gboolean result = FALSE;
 
   kv_scanner_init(&scanner, self->value_separator, self->pair_separator, self->stray_words_key != NULL);
-  /* FIXME: input_len is ignored */
   kv_scanner_input(&scanner, input);
   while (kv_scanner_scan_next(&scanner))
     {
@@ -130,12 +131,10 @@ _eval(FilterXExpr *s)
   const gchar *input;
   FilterXObject *result = NULL;
 
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)))
-    input = filterx_string_get_value(obj, &len);
-  else if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
-    input = filterx_message_value_get_value(obj, &len);
-  else
+  if (!filterx_object_extract_string(obj, &input, &len))
     goto exit;
+
+  APPEND_ZERO(input, input, len);
 
   result = filterx_json_object_new_empty();
   if (!_extract_key_values(self, input, len, result))

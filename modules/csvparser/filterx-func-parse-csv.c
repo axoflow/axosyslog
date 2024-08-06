@@ -26,6 +26,7 @@
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-json.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
@@ -73,11 +74,11 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
   for (guint64 i = 0; i < size; i++)
     {
       FilterXObject *elt = filterx_list_get_subscript(list_obj, i);
-      if (filterx_object_is_type(elt, &FILTERX_TYPE_NAME(string)))
-        {
-          const gchar *val = filterx_string_get_value(elt, NULL);
-          *list = g_list_append(*list, g_strdup(val));
-        }
+
+      const gchar *val;
+      gsize len;
+      if (filterx_object_extract_string(elt, &val, &len))
+        *list = g_list_append(*list, g_strndup(val, len));
       filterx_object_unref(elt);
     }
 
@@ -104,12 +105,7 @@ _eval(FilterXExpr *s)
 
   gsize len;
   const gchar *input;
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)))
-    input = filterx_string_get_value(obj, &len);
-  else if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value))
-           && filterx_message_value_get_type(obj) == LM_VT_STRING)
-    input = filterx_message_value_get_value(obj, &len);
-  else
+  if (!filterx_object_extract_string(obj, &input, &len))
     goto exit;
 
   APPEND_ZERO(input, input, len);

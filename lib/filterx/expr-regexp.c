@@ -23,8 +23,8 @@
 
 #include "filterx/expr-regexp.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
-#include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "compat/pcre.h"
@@ -142,21 +142,7 @@ _match(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXReMatchState *state)
   if (!state->lhs_obj)
     goto error;
 
-  if (filterx_object_is_type(state->lhs_obj, &FILTERX_TYPE_NAME(message_value)))
-    {
-      if (filterx_message_value_get_type(state->lhs_obj) != LM_VT_STRING)
-        {
-          msg_error("FilterX: Regexp matching left hand side must be string type",
-                    evt_tag_str("type", state->lhs_obj->type->name));
-          goto error;
-        }
-      state->lhs_str = filterx_message_value_get_value(state->lhs_obj, &state->lhs_str_len);
-    }
-  else if (filterx_object_is_type(state->lhs_obj, &FILTERX_TYPE_NAME(string)))
-    {
-      state->lhs_str = filterx_string_get_value(state->lhs_obj, &state->lhs_str_len);
-    }
-  else
+  if (!filterx_object_extract_string(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
     {
       msg_error("FilterX: Regexp matching left hand side must be string type",
                 evt_tag_str("type", state->lhs_obj->type->name));
