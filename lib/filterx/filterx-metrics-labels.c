@@ -190,8 +190,10 @@ filterx_metrics_labels_is_const(FilterXMetricsLabels *self)
 }
 
 static gboolean
-_format_dict_elem_to_tls_cache(FilterXObject *key, FilterXObject *value, gpointer user_data)
+_format_dict_elem_to_cache(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
+  MetricsCache *cache = (MetricsCache *) user_data;
+
   const gchar *name_str = _format_str_obj(key);
   if (!name_str)
     {
@@ -208,7 +210,7 @@ _format_dict_elem_to_tls_cache(FilterXObject *key, FilterXObject *value, gpointe
       return FALSE;
     }
 
-  StatsClusterLabel *label = metrics_cache_alloc_label(metrics_tls_cache());
+  StatsClusterLabel *label = metrics_cache_alloc_label(cache);
   label->name = name_str;
   label->value = value_str;
 
@@ -216,7 +218,7 @@ _format_dict_elem_to_tls_cache(FilterXObject *key, FilterXObject *value, gpointe
 }
 
 static gboolean
-_format_expr_to_tls_cache(FilterXExpr *expr)
+_format_expr_to_cache(FilterXExpr *expr, MetricsCache *cache)
 {
   FilterXObject *obj = filterx_expr_eval_typed(expr);
   if (!obj)
@@ -231,11 +233,11 @@ _format_expr_to_tls_cache(FilterXExpr *expr)
       goto exit;
     }
 
-  success = filterx_dict_iter(obj, _format_dict_elem_to_tls_cache, NULL);
+  success = filterx_dict_iter(obj, _format_dict_elem_to_cache, cache);
   if (!success)
     goto exit;
 
-  metrics_cache_sort_labels(metrics_tls_cache());
+  metrics_cache_sort_labels(cache);
 
 exit:
   filterx_object_unref(obj);
@@ -243,33 +245,42 @@ exit:
 }
 
 static void
-_format_label_to_tls_cache(gpointer data, gpointer user_data)
+_format_label_to_cache(gpointer data, gpointer user_data)
 {
   FilterXMetricsLabel *label = (FilterXMetricsLabel *) data;
-  gboolean *success = (gboolean *) user_data;
+  gboolean *success = ((gpointer *) user_data)[0];
+  MetricsCache *cache = ((gpointer *) user_data)[1];
 
   if (!(*success))
     return;
 
-  *success = _label_format(label, metrics_cache_alloc_label(metrics_tls_cache()));
+  *success = _label_format(label, metrics_cache_alloc_label(cache));
 }
 
 gboolean
 filterx_metrics_labels_format(FilterXMetricsLabels *self, StatsClusterLabel **labels, gsize *len)
 {
-  metrics_cache_reset_labels(metrics_tls_cache());
+  MetricsCache *cache = metrics_tls_cache();
 
-  gboolean success = TRUE;
+  metrics_cache_reset_labels(cache);
+
+  gboolean success;
   if (self->expr)
-    success = _format_expr_to_tls_cache(self->expr);
+    {
+      success = _format_expr_to_cache(self->expr, cache);
+    }
   else
-    g_ptr_array_foreach(self->literal_labels, _format_label_to_tls_cache, &success);
+    {
+      success = TRUE;
+      gpointer user_data[] = { &success, cache };
+      g_ptr_array_foreach(self->literal_labels, _format_label_to_cache, user_data);
+    }
 
   if (!success)
     return FALSE;
 
-  *labels = metrics_cache_get_labels(metrics_tls_cache());
-  *len = metrics_cache_get_labels_len(metrics_tls_cache());
+  *labels = metrics_cache_get_labels(cache);
+  *len = metrics_cache_get_labels_len(cache);
   return TRUE;
 }
 
