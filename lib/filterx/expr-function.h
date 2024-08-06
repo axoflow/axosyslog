@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2023-2024 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2023 shifter
  *
  * This library is free software; you can redistribute it and/or
@@ -26,6 +28,7 @@
 
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-object.h"
+#include "generic-number.h"
 #include "plugin.h"
 
 typedef FilterXObject *(*FilterXSimpleFunctionProto)(FilterXExpr *s, GPtrArray *);
@@ -77,6 +80,12 @@ const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs 
                                                             gsize *len, gboolean *exists);
 gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
                                                          gboolean *exists, gboolean *error);
+gint64 filterx_function_args_get_named_literal_integer(FilterXFunctionArgs *self, const gchar *name,
+                                                       gboolean *exists, gboolean *error);
+gdouble filterx_function_args_get_named_literal_double(FilterXFunctionArgs *self, const gchar *name,
+                                                       gboolean *exists, gboolean *error);
+GenericNumber filterx_function_args_get_named_literal_generic_number(FilterXFunctionArgs *self, const gchar *name,
+    gboolean *exists, gboolean *error);
 gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
 void filterx_function_args_free(FilterXFunctionArgs *self);
 
@@ -103,6 +112,27 @@ FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_na
     .type = LL_CONTEXT_FILTERX_SIMPLE_FUNC,            \
     .name = # func_name,                                 \
     .construct = filterx_ ## func_name ## _construct,  \
+  }
+
+#define FILTERX_FUNCTION_PROTOTYPE(func_name)                \
+  gpointer                                                   \
+  filterx_function_ ## func_name ## _construct(Plugin *self)
+
+#define FILTERX_FUNCTION_DECLARE(func_name) \
+  FILTERX_FUNCTION_PROTOTYPE(func_name);
+
+#define FILTERX_FUNCTION(func_name, ctor) \
+  FILTERX_FUNCTION_PROTOTYPE(func_name)   \
+  {                                       \
+    FilterXFunctionCtor f = ctor;         \
+    return (gpointer) f;                  \
+  }
+
+#define FILTERX_FUNCTION_PLUGIN(func_name)                     \
+  {                                                            \
+    .type = LL_CONTEXT_FILTERX_FUNC,                           \
+    .name = # func_name,                                       \
+    .construct = filterx_function_ ## func_name ## _construct, \
   }
 
 #endif

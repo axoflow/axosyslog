@@ -378,15 +378,67 @@ gboolean
 filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name, gboolean *exists,
                                                 gboolean *error)
 {
+  GenericNumber gn = filterx_function_args_get_named_literal_generic_number(self, name, exists, error);
+  if (!(*exists) || *error)
+    return 0;
+
+  if (gn.type != GN_INT64)
+    {
+      *error = TRUE;
+      return 0;
+    }
+
+  return !!gn_as_int64(&gn);
+}
+
+gint64
+filterx_function_args_get_named_literal_integer(FilterXFunctionArgs *self, const gchar *name, gboolean *exists,
+                                                gboolean *error)
+{
+  GenericNumber gn = filterx_function_args_get_named_literal_generic_number(self, name, exists, error);
+  if (!(*exists) || *error)
+    return 0;
+
+  if (gn.type != GN_INT64)
+    {
+      *error = TRUE;
+      return 0;
+    }
+
+  return gn_as_int64(&gn);
+}
+
+gdouble
+filterx_function_args_get_named_literal_double(FilterXFunctionArgs *self, const gchar *name, gboolean *exists,
+                                               gboolean *error)
+{
+  GenericNumber gn = filterx_function_args_get_named_literal_generic_number(self, name, exists, error);
+  if (!(*exists) || *error)
+    return 0;
+
+  if (gn.type != GN_DOUBLE)
+    {
+      *error = TRUE;
+      return 0;
+    }
+
+  return gn_as_double(&gn);
+}
+
+GenericNumber
+filterx_function_args_get_named_literal_generic_number(FilterXFunctionArgs *self, const gchar *name, gboolean *exists,
+                                                       gboolean *error)
+{
   *error = FALSE;
+  GenericNumber value;
+  gn_set_nan(&value);
 
   FilterXExpr *expr = filterx_function_args_get_named_expr(self, name);
   *exists = !!expr;
   if (!expr)
-    return FALSE;
+    return value;
 
   FilterXObject *obj = NULL;
-  gboolean value = FALSE;
 
   if (!filterx_expr_is_literal(expr))
     goto error;
@@ -395,9 +447,11 @@ filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const
   if (!obj)
     goto error;
 
-  if (!filterx_boolean_unwrap(obj, &value))
+  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(primitive)))
     goto error;
 
+  /* Literal message values don't exist, so we don't need to use the extractor. */
+  value = filterx_primitive_get_value(obj);
   goto success;
 
 error:

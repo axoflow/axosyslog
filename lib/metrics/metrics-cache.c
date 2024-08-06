@@ -26,6 +26,8 @@
 #include "metrics-cache.h"
 #include "stats/stats-cluster-single.h"
 
+#include <string.h>
+
 struct _MetricsCache
 {
   GHashTable *clusters;
@@ -123,4 +125,16 @@ guint
 metrics_cache_get_labels_len(MetricsCache *self)
 {
   return self->label_buffers->len;
+}
+
+static gint
+_label_cmp(StatsClusterLabel *lhs, StatsClusterLabel *rhs)
+{
+  return strcmp(lhs->name, rhs->name);
+}
+
+void
+metrics_cache_sort_labels(MetricsCache *self)
+{
+  g_array_sort(self->label_buffers, (GCompareFunc) _label_cmp);
 }

@@ -31,6 +31,8 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/object-dict-interface.h	\
 	lib/filterx/filterx-config.h		\
 	lib/filterx/filterx-pipe.h		\
+	lib/filterx/filterx-metrics.h		\
+	lib/filterx/filterx-metrics-labels.h	\
 	lib/filterx/expr-function.h	\
 	lib/filterx/expr-condition.h \
 	lib/filterx/expr-isset.h \
@@ -82,6 +84,8 @@ filterx_sources = 				\
 	lib/filterx/object-dict-interface.c	\
 	lib/filterx/filterx-config.c		\
 	lib/filterx/filterx-pipe.c		\
+	lib/filterx/filterx-metrics.c		\
+	lib/filterx/filterx-metrics-labels.c	\
 	lib/filterx/expr-function.c		\
 	lib/filterx/expr-condition.c		\
 	lib/filterx/expr-isset.c		\
