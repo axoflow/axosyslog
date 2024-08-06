@@ -103,11 +103,11 @@ _is_const(FilterXMetrics *self)
   return !self->key.expr && (!self->labels || filterx_metrics_labels_is_const(self->labels));
 }
 
-static gboolean
+static void
 _optimize(FilterXMetrics *self)
 {
   if (!self->key.str || !filterx_metrics_labels_is_const(self->labels))
-    return TRUE;
+    return;
 
   ScratchBuffersMarker marker;
   scratch_buffers_mark(&marker);
@@ -115,8 +115,9 @@ _optimize(FilterXMetrics *self)
   StatsClusterKey sck;
   if (!_format_sck(self, &sck))
     {
+      msg_debug("FilterX: Failed to optimize metrics, continuing unoptimized");
       scratch_buffers_reclaim_marked(marker);
-      return FALSE;
+      return;
     }
 
   stats_lock();
@@ -133,8 +134,6 @@ _optimize(FilterXMetrics *self)
 
   filterx_metrics_labels_free(self->labels);
   self->labels = NULL;
-
-  return TRUE;
 }
 
 gboolean
@@ -151,11 +150,7 @@ filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **count
    * as we don't have stats options when FilterXExprs are being created.
    */
   if (!self->is_optimized)
-    {
-      if (!_optimize(self))
-        return FALSE;
-      self->is_optimized = TRUE;
-    }
+    _optimize(self);
 
   if (_is_const(self))
     {
