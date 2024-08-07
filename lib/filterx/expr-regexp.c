@@ -661,7 +661,7 @@ _opts_init(FilterXFuncRegexpSubstOpts *opts)
   opts->jit = TRUE;
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
@@ -676,7 +676,7 @@ filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArg
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
@@ -685,7 +685,7 @@ error:
 }
 
 gboolean
-filterx_regexp_subst_is_jit_enabled(FilterXFunction *s)
+filterx_regexp_subst_is_jit_enabled(FilterXExpr *s)
 {
   g_assert(s);
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *)s;

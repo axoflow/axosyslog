@@ -549,10 +549,7 @@ _lookup_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionA
   if (!ctor)
     return NULL;
 
-  FilterXFunction *func_expr = ctor(function_name, args, error);
-  if (!func_expr)
-    return NULL;
-  return &func_expr->super;
+  return ctor(function_name, args, error);
 }
 
 /* NOTE: takes the reference of "args_list" */

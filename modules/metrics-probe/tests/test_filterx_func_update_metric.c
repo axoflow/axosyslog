@@ -66,12 +66,12 @@ _create_func(FilterXExpr *key, FilterXExpr *labels, FilterXExpr *increment, Filt
     args_list = g_list_append(args_list, filterx_function_arg_new("level", level));
 
   GError *error = NULL;
-  FilterXFunction *func = filterx_function_update_metric_new("update_metric",
-                                                             filterx_function_args_new(args_list, &error), &error);
+  FilterXExpr *func = filterx_function_update_metric_new("update_metric",
+                                                         filterx_function_args_new(args_list, &error), &error);
   cr_assert(!error, "Failed to create update_metric(): %s", error->message);
   cr_assert(func);
 
-  return &func->super;
+  return func;
 }
 
 static gboolean

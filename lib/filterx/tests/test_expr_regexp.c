@@ -237,7 +237,7 @@ Test(filterx_expr_regexp, regexp_search_init_error)
   _assert_search_init_error("foobarbaz", "(");
 }
 
-static FilterXFunction *
+static FilterXExpr *
 _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, FilterXFuncRegexpSubstOpts opts)
 {
   GList *args = NULL;
@@ -261,7 +261,7 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
                                                         filterx_literal_new(filterx_boolean_new(TRUE))));
 
   GError *err = NULL;
-  FilterXFunction *func = filterx_function_regexp_subst_new("test", filterx_function_args_new(args, NULL), &err);
+  FilterXExpr *func = filterx_function_regexp_subst_new("test", filterx_function_args_new(args, NULL), &err);
   cr_assert_null(err);
   return func;
 }
@@ -269,10 +269,10 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
 static FilterXObject *
 _sub(const gchar *pattern, const gchar *repr, const gchar *str, FilterXFuncRegexpSubstOpts opts)
 {
-  FilterXFunction *func = _build_subst_func(pattern, repr, str, opts);
+  FilterXExpr *func = _build_subst_func(pattern, repr, str, opts);
 
-  FilterXObject *res = filterx_expr_eval(&func->super);
-  filterx_expr_unref(&func->super);
+  FilterXObject *res = filterx_expr_eval(func);
+  filterx_expr_unref(func);
   return res;
 }
 
@@ -463,16 +463,16 @@ Test(filterx_expr_regexp, regexp_subst_accept_groups_with_global)
 Test(filterx_expr_regexp, regexp_subst_nojit_arg)
 {
   FilterXFuncRegexpSubstOpts opts = {.jit = TRUE};
-  FilterXFunction *func = _build_subst_func("o", "X", "foobarbaz", opts);
+  FilterXExpr *func = _build_subst_func("o", "X", "foobarbaz", opts);
   cr_assert_not_null(func);
   cr_assert(filterx_regexp_subst_is_jit_enabled(func));
-  filterx_expr_unref(&func->super);
+  filterx_expr_unref(func);
 
   FilterXFuncRegexpSubstOpts opts_nojit = {};
-  FilterXFunction *func_nojit = _build_subst_func("o", "X", "foobarbaz", opts_nojit);
+  FilterXExpr *func_nojit = _build_subst_func("o", "X", "foobarbaz", opts_nojit);
   cr_assert_not_null(func_nojit);
   cr_assert(!filterx_regexp_subst_is_jit_enabled(func_nojit));
-  filterx_expr_unref(&func_nojit->super);
+  filterx_expr_unref(func_nojit);
 }
 
 Test(filterx_expr_regexp, regexp_subst_match_opt_ignorecase)

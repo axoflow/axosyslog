@@ -194,7 +194,7 @@ _extract_args(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GErr
   return TRUE;
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_update_metric_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionUpdateMetric *self = g_new0(FilterXFunctionUpdateMetric, 1);
@@ -208,7 +208,7 @@ filterx_function_update_metric_new(const gchar *function_name, FilterXFunctionAr
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
