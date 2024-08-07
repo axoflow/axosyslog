@@ -511,6 +511,7 @@ regexp_search
 
 regexp_match
 	: expr KW_REGEXP_MATCH string		{ $$ = filterx_expr_regexp_match_new($1, $3); free($3); }
+	| expr KW_REGEXP_NOMATCH string		{ $$ = filterx_expr_regexp_nomatch_new($1, $3); free($3); }
 	;
 
 conditional
