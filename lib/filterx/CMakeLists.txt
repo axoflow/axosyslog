@@ -45,6 +45,7 @@ set(FILTERX_HEADERS
     filterx/func-unset-empties.h
     filterx/func-str-transform.h
     filterx/func-flatten.h
+    filterx/func-sdata.h
     filterx/expr-plus.h
     filterx/expr-null-coalesce.h
     filterx/expr-plus-generator.h
@@ -98,6 +99,7 @@ set(FILTERX_SOURCES
     filterx/func-unset-empties.c
     filterx/func-str-transform.c
     filterx/func-flatten.c
+    filterx/func-sdata.c
     filterx/expr-plus.c
     filterx/filterx-private.c
     filterx/expr-null-coalesce.c
