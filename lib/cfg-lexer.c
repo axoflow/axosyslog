@@ -32,6 +32,7 @@
 #include "pathutils.h"
 #include "plugin.h"
 #include "plugin-types.h"
+#include "filterx/filterx-globals.h"
 
 #include <string.h>
 #include <glob.h>
@@ -309,6 +310,29 @@ cfg_lexer_map_word_to_token(CfgLexer *self, CFG_STYPE *yylval, const CFG_LTYPE *
 
       if (self->cfg && plugin_is_plugin_available(&self->cfg->plugin_context, cfg_lexer_get_context_type(self), token))
         return LL_PLUGIN;
+    }
+  return tok;
+}
+
+int
+cfg_lexer_map_filterx_word_to_token(CfgLexer *self, CFG_STYPE *yylval, const CFG_LTYPE *yylloc, const char *token)
+{
+  int tok = cfg_lexer_map_word_to_token(self, yylval, yylloc, token);
+
+  if (tok == LL_IDENTIFIER)
+    {
+      /*
+       * Regular functions and generator functions have the exact same syntax,
+       * but we need to have different tokens for them as they are handled in
+       * completely different grammar rules.
+       */
+
+      PluginContext *plugin_context = &self->cfg->plugin_context;
+
+      if ((self->cfg && plugin_is_plugin_available(plugin_context, LL_CONTEXT_FILTERX_FUNC, token)) ||
+          (self->cfg && plugin_is_plugin_available(plugin_context, LL_CONTEXT_FILTERX_SIMPLE_FUNC, token)) ||
+          filterx_builtin_function_exists(token))
+        return LL_FILTERX_FUNC;
     }
   return tok;
 }
@@ -1342,6 +1366,7 @@ static const gchar *lexer_contexts[] =
   [LL_CONTEXT_FILTERX_SIMPLE_FUNC] = "filterx-simple-func",
   [LL_CONTEXT_FILTERX_ENUM] = "filterx-enum",
   [LL_CONTEXT_FILTERX_FUNC] = "filterx-func",
+  [LL_CONTEXT_FILTERX_GEN_FUNC] = "filterx-gen-func",
 };
 
 gint
