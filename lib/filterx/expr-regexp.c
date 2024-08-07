@@ -30,7 +30,7 @@
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
 
-#define FILTERX_FUNC_REGEXP_SUBST_USAGE "regexp_subst(string, pattern, replacement, " \
+#define FILTERX_FUNC_REGEXP_SUBST_USAGE "Usage: regexp_subst(string, pattern, replacement, " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME"=(boolean) " \
