@@ -73,6 +73,13 @@ filterx_builtin_simple_function_lookup(const gchar *fn_name)
   return filterx_builtin_simple_function_lookup_private(filterx_builtin_simple_functions, fn_name);
 }
 
+gboolean
+filterx_builtin_function_exists(const gchar *function_name)
+{
+  return !!filterx_builtin_simple_function_lookup(function_name) ||
+         !!filterx_builtin_function_ctor_lookup(function_name);
+}
+
 static void
 _simple_init(void)
 {
