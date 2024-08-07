@@ -333,6 +333,10 @@ cfg_lexer_map_filterx_word_to_token(CfgLexer *self, CFG_STYPE *yylval, const CFG
           (self->cfg && plugin_is_plugin_available(plugin_context, LL_CONTEXT_FILTERX_SIMPLE_FUNC, token)) ||
           filterx_builtin_function_exists(token))
         return LL_FILTERX_FUNC;
+
+      if ((self->cfg && plugin_is_plugin_available(plugin_context, LL_CONTEXT_FILTERX_GEN_FUNC, token)) ||
+          filterx_builtin_generator_function_exists(token))
+        return LL_FILTERX_GEN_FUNC;
     }
   return tok;
 }
