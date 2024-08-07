@@ -1245,6 +1245,32 @@ def test_regexp_match(config, syslog_ng):
     assert file_true.read_log() == "success\n"
 
 
+def test_regexp_nomatch(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    $MSG = json();
+    $MSG.match = ${values.str} !~ /string/;
+    $MSG.match_any = ${values.str} !~ /.*/;
+    $MSG.nomatch = ${values.str} !~ /wrong/;
+    $MSG.match_inverse = not (${values.str} !~ /.*/);
+    $MSG.nomatch_inverse = not (${values.str} !~ /foobar/);
+""",
+    )
+    syslog_ng.start(config)
+
+    exp = (
+        r"""{"match":false,"""
+        r""""match_any":false,"""
+        r""""nomatch":true,"""
+        r""""match_inverse":true,"""
+        r""""nomatch_inverse":false}""" + "\n"
+    )
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == exp
+
+
 def test_regexp_match_error_in_pattern(config, syslog_ng):
     _ = create_config(
         config, r"""

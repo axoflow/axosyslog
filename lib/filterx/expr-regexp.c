@@ -282,6 +282,7 @@ typedef struct FilterXExprRegexpMatch_
   FilterXExpr super;
   FilterXExpr *lhs;
   pcre2_code_8 *pattern;
+  gboolean invert;
 } FilterXExprRegexpMatch;
 
 static FilterXObject *
@@ -300,7 +301,7 @@ _regexp_match_eval(FilterXExpr *s)
       goto exit;
     }
 
-  result = filterx_boolean_new(matched);
+  result = filterx_boolean_new(matched != self->invert);
 
 exit:
   _state_cleanup(&state);
@@ -339,6 +340,13 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
   return &self->super;
 }
 
+FilterXExpr *
+filterx_expr_regexp_nomatch_new(FilterXExpr *lhs, const gchar *pattern)
+{
+  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *)filterx_expr_regexp_match_new(lhs, pattern);
+  self->invert = TRUE;
+  return &self->super;
+}
 
 typedef struct FilterXExprRegexpSearchGenerator_
 {
