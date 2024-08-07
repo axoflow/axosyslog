@@ -63,3 +63,18 @@ filterx_simple_function_is_sdata_from_enterprise(FilterXExpr *s, GPtrArray *args
   filterx_object_unref(obj);
   return filterx_boolean_new(contains);
 }
+
+
+FilterXObject *
+filterx_simple_function_has_sdata(FilterXExpr *s, GPtrArray *args)
+{
+  if (args && args->len != 0)
+    {
+      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
+      return NULL;
+    }
+
+  FilterXEvalContext *context = filterx_eval_get_context();
+  LogMessage *msg = context->msgs[0];
+  return filterx_boolean_new(msg->num_sdata != 0);
+}

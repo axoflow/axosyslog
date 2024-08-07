@@ -102,6 +102,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
   g_assert(filterx_builtin_simple_function_register("is_sdata_from_enterprise",
                                                     filterx_simple_function_is_sdata_from_enterprise));
+  g_assert(filterx_builtin_simple_function_register("has_sdata",
+                                                    filterx_simple_function_has_sdata));
 }
 
 static void
