@@ -80,7 +80,11 @@ Test(filterx_expr_regexp, regexp_match)
 static FilterXObject *
 _search(const gchar *lhs, const gchar *pattern)
 {
-  FilterXExpr *expr = filterx_expr_regexp_search_generator_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern);
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+
+  FilterXExpr *expr = filterx_generator_function_regexp_search_new("test", filterx_function_args_new(args, NULL), NULL);
   FilterXExpr *parent_fillable_expr_new = filterx_literal_new(filterx_test_dict_new());
   FilterXExpr *cc_expr = filterx_generator_create_container_new(expr, parent_fillable_expr_new);
   FilterXExpr *fillable_expr = filterx_literal_new(filterx_expr_eval(cc_expr));
@@ -104,7 +108,12 @@ _search(const gchar *lhs, const gchar *pattern)
 static void
 _search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fillable)
 {
-  FilterXExpr *expr = filterx_expr_regexp_search_generator_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern);
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+
+  FilterXExpr *expr = filterx_generator_function_regexp_search_new("test",
+                      filterx_function_args_new(args, NULL), NULL);
   filterx_generator_set_fillable(expr, filterx_literal_new(filterx_object_ref(fillable)));
 
   FilterXObject *result_obj = filterx_expr_eval(expr);
@@ -118,7 +127,18 @@ _search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fil
 static void
 _assert_search_init_error(const gchar *lhs, const gchar *pattern)
 {
-  cr_assert_not(filterx_expr_regexp_search_generator_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern));
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+
+  GError *arg_err = NULL;
+  GError *func_err = NULL;
+  cr_assert_not(filterx_generator_function_regexp_search_new("test",
+                                                             filterx_function_args_new(args, &arg_err), &func_err));
+
+  cr_assert(arg_err || func_err);
+  g_clear_error(&arg_err);
+  g_clear_error(&func_err);
 }
 
 static void
