@@ -55,7 +55,7 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_unset_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprUnset *self = g_new0(FilterXExprUnset, 1);
@@ -72,7 +72,7 @@ filterx_function_unset_new(const gchar *function_name, FilterXFunctionArgs *args
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);

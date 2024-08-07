@@ -120,7 +120,7 @@ _extract_args(FilterXFunctionIsType *self, FilterXFunctionArgs *args, GError **e
   return TRUE;
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_istype_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionIsType *self = g_new0(FilterXFunctionIsType, 1);
@@ -133,7 +133,7 @@ filterx_function_istype_new(const gchar *function_name, FilterXFunctionArgs *arg
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);

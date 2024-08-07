@@ -46,8 +46,7 @@ typedef struct FilterXFuncRegexpSubstOpts_
 FilterXExpr *filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern);
 FilterXExpr *filterx_expr_regexp_nomatch_new(FilterXExpr *lhs, const gchar *pattern);
 FilterXExpr *filterx_expr_regexp_search_generator_new(FilterXExpr *lhs, const gchar *pattern);
-FilterXFunction *filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args,
-                                                   GError **error);
-gboolean filterx_regexp_subst_is_jit_enabled(FilterXFunction *s);
+FilterXExpr *filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+gboolean filterx_regexp_subst_is_jit_enabled(FilterXExpr *s);
 
 #endif
