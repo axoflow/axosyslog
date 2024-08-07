@@ -28,6 +28,7 @@
 
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-object.h"
+#include "filterx/expr-generator.h"
 #include "generic-number.h"
 #include "plugin.h"
 
@@ -40,6 +41,12 @@ typedef struct _FilterXFunction
   FilterXExpr super;
   gchar *function_name;
 } FilterXFunction;
+
+typedef struct _FilterXGeneratorFunction
+{
+  FilterXExprGenerator super;
+  gchar *function_name;
+} FilterXGeneratorFunction;
 
 typedef struct _FilterXFunctionArgs FilterXFunctionArgs;
 typedef struct _FilterXFunctionArg
@@ -63,6 +70,8 @@ enum FilterXFunctionError
 
 void filterx_function_init_instance(FilterXFunction *s, const gchar *function_name);
 void filterx_function_free_method(FilterXFunction *s);
+void filterx_generator_function_init_instance(FilterXGeneratorFunction *s, const gchar *function_name);
+void filterx_generator_function_free_method(FilterXGeneratorFunction *s);
 
 FilterXFunctionArg *filterx_function_arg_new(const gchar *name, FilterXExpr *value);
 FilterXFunctionArgs *filterx_function_args_new(GList *args, GError **error);
@@ -90,6 +99,8 @@ gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
 void filterx_function_args_free(FilterXFunctionArgs *self);
 
 FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args, GError **error);
+FilterXExpr *filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args,
+                                               GError **error);
 
 
 #define FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name) \
@@ -133,6 +144,27 @@ FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_na
     .type = LL_CONTEXT_FILTERX_FUNC,                           \
     .name = # func_name,                                       \
     .construct = filterx_function_ ## func_name ## _construct, \
+  }
+
+#define FILTERX_GENERATOR_FUNCTION_PROTOTYPE(func_name)                \
+  gpointer                                                             \
+  filterx_generator_function_ ## func_name ## _construct(Plugin *self)
+
+#define FILTERX_GENERATOR_FUNCTION_DECLARE(func_name) \
+  FILTERX_GENERATOR_FUNCTION_PROTOTYPE(func_name);
+
+#define FILTERX_GENERATOR_FUNCTION(func_name, ctor) \
+  FILTERX_GENERATOR_FUNCTION_PROTOTYPE(func_name)   \
+  {                                                 \
+    FilterXFunctionCtor f = ctor;                   \
+    return (gpointer) f;                            \
+  }
+
+#define FILTERX_GENERATOR_FUNCTION_PLUGIN(func_name)                     \
+  {                                                                      \
+    .type = LL_CONTEXT_FILTERX_GEN_FUNC,                                 \
+    .name = # func_name,                                                 \
+    .construct = filterx_generator_function_ ## func_name ## _construct, \
   }
 
 #endif

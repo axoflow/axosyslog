@@ -121,6 +121,7 @@ construct_template_expr(LogTemplate *template)
 %type <node> expr_value
 %type <node> expr_generator
 %type <node> expr_generator_unchecked
+%type <node> generator_function_call
 %type <node> function_call
 %type <ptr> arguments
 %type <ptr> argument
@@ -149,6 +150,7 @@ construct_template_expr(LogTemplate *template)
 %type <ptr> default
 %type <cptr> identifier
 %type <cptr> func_name
+%type <cptr> gen_func_name
 
 %%
 
@@ -369,12 +371,24 @@ expr_generator
 expr_generator_unchecked
 	: dict_generator
 	| list_generator
+	| generator_function_call
 	| regexp_search
 	| '(' expr_generator ')'		{ $$ = $2; }
 	| expr '+' expr_generator		{ $$ = filterx_operator_plus_generator_new($1, $3); }
 	| expr_generator '+' expr 		{ $$ = filterx_operator_plus_generator_new($1, $3); }
 	| expr_generator '+' expr_generator 	{ $$ = filterx_operator_plus_generator_new($1, $3); }
 	;
+
+generator_function_call
+	: gen_func_name '(' arguments ')'	{
+						  GError *error = NULL;
+						  FilterXExpr *res = filterx_generator_function_lookup(configuration, $1, $3, &error);
+						  CHECK_FUNCTION_ERROR(res, @$, $1, error);
+						  free($1);
+						  $$ = res;
+						}
+	;
+
 
 function_call
 	: func_name '(' arguments ')'		{
@@ -576,6 +590,7 @@ default
 identifier
 	: LL_IDENTIFIER
 	| LL_FILTERX_FUNC
+	| LL_FILTERX_GEN_FUNC
 	;
 
 /*
@@ -589,6 +604,10 @@ identifier
 func_name
 	: LL_IDENTIFIER
 	| LL_FILTERX_FUNC
+	;
+
+gen_func_name
+	: LL_FILTERX_GEN_FUNC
 	;
 
 /* INCLUDE_RULES */
