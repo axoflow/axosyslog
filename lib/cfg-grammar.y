@@ -409,6 +409,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token <cptr> LL_PLUGIN	              10436
 %token <cptr> LL_TEMPLATE_REF         10437
 %token <cptr> LL_MESSAGE_REF          10438
+%token <cptr> LL_FILTERX_FUNC         10439
 
 %destructor { free($$); } <cptr>
 
