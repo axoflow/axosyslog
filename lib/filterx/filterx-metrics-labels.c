@@ -192,7 +192,7 @@ filterx_metrics_labels_is_const(FilterXMetricsLabels *self)
 static gboolean
 _format_dict_elem_to_cache(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
-  MetricsCache *cache = (MetricsCache *) user_data;
+  DynMetricsStore *cache = (DynMetricsStore *) user_data;
 
   const gchar *name_str = _format_str_obj(key);
   if (!name_str)
@@ -210,7 +210,7 @@ _format_dict_elem_to_cache(FilterXObject *key, FilterXObject *value, gpointer us
       return FALSE;
     }
 
-  StatsClusterLabel *label = metrics_cache_alloc_label(cache);
+  StatsClusterLabel *label = dyn_metrics_store_alloc_label(cache);
   label->name = name_str;
   label->value = value_str;
 
@@ -218,7 +218,7 @@ _format_dict_elem_to_cache(FilterXObject *key, FilterXObject *value, gpointer us
 }
 
 static gboolean
-_format_expr_to_cache(FilterXExpr *expr, MetricsCache *cache)
+_format_expr_to_cache(FilterXExpr *expr, DynMetricsStore *cache)
 {
   FilterXObject *obj = filterx_expr_eval_typed(expr);
   if (!obj)
@@ -237,7 +237,7 @@ _format_expr_to_cache(FilterXExpr *expr, MetricsCache *cache)
   if (!success)
     goto exit;
 
-  metrics_cache_sort_labels(cache);
+  dyn_metrics_store_sort_labels(cache);
 
 exit:
   filterx_object_unref(obj);
@@ -249,20 +249,20 @@ _format_label_to_cache(gpointer data, gpointer user_data)
 {
   FilterXMetricsLabel *label = (FilterXMetricsLabel *) data;
   gboolean *success = ((gpointer *) user_data)[0];
-  MetricsCache *cache = ((gpointer *) user_data)[1];
+  DynMetricsStore *cache = ((gpointer *) user_data)[1];
 
   if (!(*success))
     return;
 
-  *success = _label_format(label, metrics_cache_alloc_label(cache));
+  *success = _label_format(label, dyn_metrics_store_alloc_label(cache));
 }
 
 gboolean
 filterx_metrics_labels_format(FilterXMetricsLabels *self, StatsClusterLabel **labels, gsize *len)
 {
-  MetricsCache *cache = metrics_tls_cache();
+  DynMetricsStore *cache = metrics_tls_cache();
 
-  metrics_cache_reset_labels(cache);
+  dyn_metrics_store_reset_labels(cache);
 
   gboolean success;
   if (self->expr)
@@ -279,8 +279,8 @@ filterx_metrics_labels_format(FilterXMetricsLabels *self, StatsClusterLabel **la
   if (!success)
     return FALSE;
 
-  *labels = metrics_cache_get_labels(cache);
-  *len = metrics_cache_get_labels_len(cache);
+  *labels = dyn_metrics_store_get_labels(cache);
+  *len = dyn_metrics_store_get_labels_len(cache);
   return TRUE;
 }
 
