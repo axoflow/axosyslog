@@ -120,6 +120,7 @@ construct_template_expr(LogTemplate *template)
 %type <node> expr_value
 %type <node> expr_generator
 %type <node> expr_generator_unchecked
+%type <node> expr_plus_generator
 %type <node> generator_function_call
 %type <node> function_call
 %type <ptr> arguments
@@ -370,8 +371,12 @@ expr_generator_unchecked
 	: dict_generator
 	| list_generator
 	| generator_function_call
+	| expr_plus_generator
 	| '(' expr_generator ')'		{ $$ = $2; }
-	| expr '+' expr_generator		{ $$ = filterx_operator_plus_generator_new($1, $3); }
+	;
+
+expr_plus_generator
+	: expr '+' expr_generator		{ $$ = filterx_operator_plus_generator_new($1, $3); }
 	| expr_generator '+' expr 		{ $$ = filterx_operator_plus_generator_new($1, $3); }
 	| expr_generator '+' expr_generator 	{ $$ = filterx_operator_plus_generator_new($1, $3); }
 	;
