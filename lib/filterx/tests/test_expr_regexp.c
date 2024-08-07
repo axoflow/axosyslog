@@ -80,7 +80,11 @@ Test(filterx_expr_regexp, regexp_match)
 static FilterXObject *
 _search(const gchar *lhs, const gchar *pattern)
 {
-  FilterXExpr *expr = filterx_expr_regexp_search_generator_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern);
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+
+  FilterXExpr *expr = filterx_generator_function_regexp_search_new("test", filterx_function_args_new(args, NULL), NULL);
   FilterXExpr *parent_fillable_expr_new = filterx_literal_new(filterx_test_dict_new());
   FilterXExpr *cc_expr = filterx_generator_create_container_new(expr, parent_fillable_expr_new);
   FilterXExpr *fillable_expr = filterx_literal_new(filterx_expr_eval(cc_expr));
@@ -104,7 +108,12 @@ _search(const gchar *lhs, const gchar *pattern)
 static void
 _search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fillable)
 {
-  FilterXExpr *expr = filterx_expr_regexp_search_generator_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern);
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+
+  FilterXExpr *expr = filterx_generator_function_regexp_search_new("test",
+                      filterx_function_args_new(args, NULL), NULL);
   filterx_generator_set_fillable(expr, filterx_literal_new(filterx_object_ref(fillable)));
 
   FilterXObject *result_obj = filterx_expr_eval(expr);
@@ -118,7 +127,18 @@ _search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fil
 static void
 _assert_search_init_error(const gchar *lhs, const gchar *pattern)
 {
-  cr_assert_not(filterx_expr_regexp_search_generator_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern));
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+
+  GError *arg_err = NULL;
+  GError *func_err = NULL;
+  cr_assert_not(filterx_generator_function_regexp_search_new("test",
+                                                             filterx_function_args_new(args, &arg_err), &func_err));
+
+  cr_assert(arg_err || func_err);
+  g_clear_error(&arg_err);
+  g_clear_error(&func_err);
 }
 
 static void
@@ -237,7 +257,7 @@ Test(filterx_expr_regexp, regexp_search_init_error)
   _assert_search_init_error("foobarbaz", "(");
 }
 
-static FilterXFunction *
+static FilterXExpr *
 _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, FilterXFuncRegexpSubstOpts opts)
 {
   GList *args = NULL;
@@ -261,7 +281,7 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
                                                         filterx_literal_new(filterx_boolean_new(TRUE))));
 
   GError *err = NULL;
-  FilterXFunction *func = filterx_function_regexp_subst_new("test", filterx_function_args_new(args, NULL), &err);
+  FilterXExpr *func = filterx_function_regexp_subst_new("test", filterx_function_args_new(args, NULL), &err);
   cr_assert_null(err);
   return func;
 }
@@ -269,10 +289,10 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
 static FilterXObject *
 _sub(const gchar *pattern, const gchar *repr, const gchar *str, FilterXFuncRegexpSubstOpts opts)
 {
-  FilterXFunction *func = _build_subst_func(pattern, repr, str, opts);
+  FilterXExpr *func = _build_subst_func(pattern, repr, str, opts);
 
-  FilterXObject *res = filterx_expr_eval(&func->super);
-  filterx_expr_unref(&func->super);
+  FilterXObject *res = filterx_expr_eval(func);
+  filterx_expr_unref(func);
   return res;
 }
 
@@ -463,16 +483,16 @@ Test(filterx_expr_regexp, regexp_subst_accept_groups_with_global)
 Test(filterx_expr_regexp, regexp_subst_nojit_arg)
 {
   FilterXFuncRegexpSubstOpts opts = {.jit = TRUE};
-  FilterXFunction *func = _build_subst_func("o", "X", "foobarbaz", opts);
+  FilterXExpr *func = _build_subst_func("o", "X", "foobarbaz", opts);
   cr_assert_not_null(func);
   cr_assert(filterx_regexp_subst_is_jit_enabled(func));
-  filterx_expr_unref(&func->super);
+  filterx_expr_unref(func);
 
   FilterXFuncRegexpSubstOpts opts_nojit = {};
-  FilterXFunction *func_nojit = _build_subst_func("o", "X", "foobarbaz", opts_nojit);
+  FilterXExpr *func_nojit = _build_subst_func("o", "X", "foobarbaz", opts_nojit);
   cr_assert_not_null(func_nojit);
   cr_assert(!filterx_regexp_subst_is_jit_enabled(func_nojit));
-  filterx_expr_unref(&func_nojit->super);
+  filterx_expr_unref(func_nojit);
 }
 
 Test(filterx_expr_regexp, regexp_subst_match_opt_ignorecase)

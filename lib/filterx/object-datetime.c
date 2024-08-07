@@ -365,7 +365,7 @@ _extract_args(FilterXFunctionStrptime *self, FilterXFunctionArgs *args, GError *
 }
 
 /* Takes reference of args */
-FilterXFunction *
+FilterXExpr *
 filterx_function_strptime_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrptime *self = g_new0(FilterXFunctionStrptime, 1);
@@ -378,7 +378,7 @@ filterx_function_strptime_new(const gchar *function_name, FilterXFunctionArgs *a
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);

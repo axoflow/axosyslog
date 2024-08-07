@@ -42,6 +42,7 @@
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
 static GHashTable *filterx_builtin_function_ctors = NULL;
+static GHashTable *filterx_builtin_generator_function_ctors = NULL;
 static GHashTable *filterx_types = NULL;
 
 void
@@ -71,6 +72,13 @@ FilterXSimpleFunctionProto
 filterx_builtin_simple_function_lookup(const gchar *fn_name)
 {
   return filterx_builtin_simple_function_lookup_private(filterx_builtin_simple_functions, fn_name);
+}
+
+gboolean
+filterx_builtin_function_exists(const gchar *function_name)
+{
+  return !!filterx_builtin_simple_function_lookup(function_name) ||
+         !!filterx_builtin_function_ctor_lookup(function_name);
 }
 
 static void
@@ -129,11 +137,45 @@ _ctors_deinit(void)
   filterx_builtin_function_ctors_deinit_private(filterx_builtin_function_ctors);
 }
 
+static gboolean
+filterx_builtin_generator_function_ctor_register(const gchar *fn_name, FilterXFunctionCtor ctor)
+{
+  return filterx_builtin_function_ctor_register_private(filterx_builtin_generator_function_ctors, fn_name, ctor);
+}
+
+FilterXFunctionCtor
+filterx_builtin_generator_function_ctor_lookup(const gchar *function_name)
+{
+  return filterx_builtin_function_ctor_lookup_private(filterx_builtin_generator_function_ctors, function_name);
+}
+
+gboolean
+filterx_builtin_generator_function_exists(const gchar *function_name)
+{
+  return !!filterx_builtin_generator_function_ctor_lookup(function_name);
+}
+
+static void
+_generator_ctors_init(void)
+{
+  filterx_builtin_function_ctors_init_private(&filterx_builtin_generator_function_ctors);
+  g_assert(filterx_builtin_generator_function_ctor_register("regexp_search",
+                                                            filterx_generator_function_regexp_search_new));
+}
+
+static void
+_generator_ctors_deinit(void)
+{
+  filterx_builtin_function_ctors_deinit_private(filterx_builtin_generator_function_ctors);
+
+}
+
 void
 filterx_builtin_functions_init(void)
 {
   _simple_init();
   _ctors_init();
+  _generator_ctors_init();
 }
 
 void
@@ -141,6 +183,7 @@ filterx_builtin_functions_deinit(void)
 {
   _simple_deinit();
   _ctors_deinit();
+  _generator_ctors_deinit();
 }
 
 // FilterX types

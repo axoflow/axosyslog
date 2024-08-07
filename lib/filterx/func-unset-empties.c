@@ -254,7 +254,7 @@ _extract_args(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *args, GErr
   return TRUE;
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_unset_empties_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionUnsetEmpties *self = g_new0(FilterXFunctionUnsetEmpties, 1);
@@ -268,7 +268,7 @@ filterx_function_unset_empties_new(const gchar *function_name, FilterXFunctionAr
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);

@@ -35,6 +35,9 @@ void filterx_global_deinit(void);
 // Builtin functions
 FilterXSimpleFunctionProto filterx_builtin_simple_function_lookup(const gchar *);
 FilterXFunctionCtor filterx_builtin_function_ctor_lookup(const gchar *function_name);
+FilterXFunctionCtor filterx_builtin_generator_function_ctor_lookup(const gchar *function_name);
+gboolean filterx_builtin_function_exists(const gchar *function_name);
+gboolean filterx_builtin_generator_function_exists(const gchar *function_name);
 
 // FilterX types
 FilterXType *filterx_type_lookup(const gchar *type_name);

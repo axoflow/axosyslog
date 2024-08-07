@@ -197,9 +197,10 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token LL_CONTEXT_FILTERX_SIMPLE_FUNC 24
 %token LL_CONTEXT_FILTERX_ENUM        25
 %token LL_CONTEXT_FILTERX_FUNC        26
+%token LL_CONTEXT_FILTERX_GEN_FUNC    27
 
 /* this is a placeholder for unit tests, must be the latest & largest */
-%token LL_CONTEXT_MAX                 27
+%token LL_CONTEXT_MAX                 28
 
 
 %left   ';'
@@ -409,6 +410,8 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token <cptr> LL_PLUGIN	              10436
 %token <cptr> LL_TEMPLATE_REF         10437
 %token <cptr> LL_MESSAGE_REF          10438
+%token <cptr> LL_FILTERX_FUNC         10439
+%token <cptr> LL_FILTERX_GEN_FUNC     10440
 
 %destructor { free($$); } <cptr>
 
