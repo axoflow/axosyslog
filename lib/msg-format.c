@@ -45,6 +45,15 @@ msg_format_inject_parse_error(MsgFormatOptions *options, LogMessage *msg, const 
 {
   GString *buf = scratch_buffers_alloc();
 
+  if ((options->flags & LP_PIGGYBACK_ERRORS) == 0)
+    {
+      /* leave the message as is, partially parsed.  $MSG is probably set to
+       * the input we tried to parse, but that's also up to the user to set.
+       * */
+      return;
+    }
+
+  /* overwrite the message as if it was coming from syslog-ng */
   log_msg_clear(msg);
 
   msg->timestamps[LM_TS_STAMP] = msg->timestamps[LM_TS_RECVD];
@@ -235,7 +244,7 @@ msg_format_options_set_sdata_prefix(MsgFormatOptions *options, const gchar *pref
 void
 msg_format_options_defaults(MsgFormatOptions *options)
 {
-  options->flags = LP_EXPECT_HOSTNAME | LP_STORE_LEGACY_MSGHDR;
+  options->flags = LP_EXPECT_HOSTNAME | LP_STORE_LEGACY_MSGHDR | LP_PIGGYBACK_ERRORS;
   options->recv_time_zone = NULL;
   options->recv_time_zone_info = NULL;
   options->bad_hostname = NULL;
@@ -327,6 +336,8 @@ CfgFlagHandler msg_format_flag_handlers[] =
   { "guess-timezone",             CFH_SET, offsetof(MsgFormatOptions, flags), LP_GUESS_TIMEZONE },
   { "no-header",                  CFH_SET, offsetof(MsgFormatOptions, flags), LP_NO_HEADER },
   { "no-rfc3164-fallback",        CFH_SET, offsetof(MsgFormatOptions, flags), LP_NO_RFC3164_FALLBACK },
+  { "piggyback-errors",           CFH_SET, offsetof(MsgFormatOptions, flags), LP_PIGGYBACK_ERRORS },
+  { "no-piggyback-errors",      CFH_CLEAR, offsetof(MsgFormatOptions, flags), LP_PIGGYBACK_ERRORS },
   { NULL },
 };
 
