@@ -43,7 +43,14 @@ msg_format_inject_parse_error(LogMessage *msg, const guchar *data, gsize length,
 {
   GString *buf = scratch_buffers_alloc();
 
+  /* retain RAWMSG across errors */
+  gssize rawmsg_len;
+  const gchar *rawmsg = log_msg_get_value(msg, LM_V_RAWMSG, &rawmsg_len);
+
+  NVTable *payload = nv_table_ref(msg->payload);
   log_msg_clear(msg);
+  log_msg_set_value(msg, LM_V_RAWMSG, rawmsg, rawmsg_len);
+  nv_table_unref(payload);
 
   msg->timestamps[LM_TS_STAMP] = msg->timestamps[LM_TS_RECVD];
   log_msg_set_value(msg, LM_V_HOST, "", 0);
