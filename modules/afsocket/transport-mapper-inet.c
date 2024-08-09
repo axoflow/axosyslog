@@ -314,9 +314,9 @@ transport_mapper_tcp_apply_transport(TransportMapper *s, GlobalConfig *cfg)
     return FALSE;
 
   if (self->tls_context)
-    self->super.transport_name = g_strdup("rfc3164+tls");
+    self->super.transport_name = g_strdup("bsdsyslog+tls");
   else
-    self->super.transport_name = g_strdup("rfc3164+tcp");
+    self->super.transport_name = g_strdup("bsdsyslog+tcp");
 
   return TRUE;
 }
@@ -351,7 +351,7 @@ transport_mapper_udp_new(void)
 {
   TransportMapperInet *self = transport_mapper_inet_new_instance("udp");
 
-  self->super.transport_name = g_strdup("rfc3164+udp");
+  self->super.transport_name = g_strdup("bsdsyslog+udp");
   self->super.sock_type = SOCK_DGRAM;
   self->super.sock_proto = IPPROTO_UDP;
   self->super.logproto = "dgram";
@@ -388,14 +388,14 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->super.sock_type = SOCK_DGRAM;
       self->super.sock_proto = IPPROTO_UDP;
       self->super.logproto = "dgram";
-      self->super.transport_name = g_strdup("rfc3164+udp");
+      self->super.transport_name = g_strdup("bsdsyslog+udp");
     }
   else if (strcasecmp(transport, "tcp") == 0)
     {
       self->super.logproto = "text";
       self->super.sock_type = SOCK_STREAM;
       self->super.sock_proto = IPPROTO_TCP;
-      self->super.transport_name = g_strdup("rfc3164+tcp");
+      self->super.transport_name = g_strdup("bsdsyslog+tcp");
     }
   else if (strcasecmp(transport, "tls") == 0)
     {
@@ -403,7 +403,7 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->super.sock_type = SOCK_STREAM;
       self->super.sock_proto = IPPROTO_TCP;
       self->require_tls = TRUE;
-      self->super.transport_name = g_strdup("rfc3164+tls");
+      self->super.transport_name = g_strdup("bsdsyslog+tls");
     }
   else if (strcasecmp(transport, "proxied-tls") == 0)
     {
@@ -411,7 +411,7 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->super.sock_type = SOCK_STREAM;
       self->super.sock_proto = IPPROTO_TCP;
       self->require_tls = TRUE;
-      self->super.transport_name = g_strdup("rfc3164+proxied-tls");
+      self->super.transport_name = g_strdup("bsdsyslog+proxied-tls");
     }
   else
     {
@@ -421,7 +421,7 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       /* FIXME: look up port/protocol from the logproto */
       self->server_port = TCP_PORT;
       self->allow_tls = TRUE;
-      self->super.transport_name = g_strdup_printf("rfc3164+%s", self->super.transport);
+      self->super.transport_name = g_strdup_printf("bsdsyslog+%s", self->super.transport);
     }
 
   g_assert(self->server_port != 0);
