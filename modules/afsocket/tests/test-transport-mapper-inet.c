@@ -149,7 +149,7 @@ Test(transport_mapper_inet, test_tcp_apply_transport_sets_defaults)
   assert_transport_mapper_logproto(transport_mapper, "text");
   assert_transport_mapper_stats_source(transport_mapper, SCS_TCP);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+tcp");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+tcp");
 }
 
 Test(transport_mapper_inet, test_tcp6_apply_transport_sets_defaults)
@@ -162,7 +162,7 @@ Test(transport_mapper_inet, test_tcp6_apply_transport_sets_defaults)
   assert_transport_mapper_logproto(transport_mapper, "text");
   assert_transport_mapper_stats_source(transport_mapper, SCS_TCP6);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+tcp");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+tcp");
 }
 
 Test(transport_mapper_inet, test_udp_apply_transport_sets_defaults)
@@ -175,7 +175,7 @@ Test(transport_mapper_inet, test_udp_apply_transport_sets_defaults)
   assert_transport_mapper_logproto(transport_mapper, "dgram");
   assert_transport_mapper_stats_source(transport_mapper, SCS_UDP);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+udp");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+udp");
 }
 
 Test(transport_mapper_inet, test_udp_apply_fails_when_tls_context_is_set)
@@ -183,7 +183,7 @@ Test(transport_mapper_inet, test_udp_apply_fails_when_tls_context_is_set)
   transport_mapper = transport_mapper_udp_new();
   transport_mapper_inet_set_tls_context((TransportMapperInet *) transport_mapper, create_dummy_tls_context());
   assert_transport_mapper_apply_fails(transport_mapper, "udp");
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+udp");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+udp");
 }
 
 Test(transport_mapper_inet, test_udp6_apply_transport_sets_defaults)
@@ -196,7 +196,7 @@ Test(transport_mapper_inet, test_udp6_apply_transport_sets_defaults)
   assert_transport_mapper_logproto(transport_mapper, "dgram");
   assert_transport_mapper_stats_source(transport_mapper, SCS_UDP6);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+udp");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+udp");
 }
 
 Test(transport_mapper_inet, test_network_transport_udp_apply_transport_sets_defaults)
@@ -209,7 +209,7 @@ Test(transport_mapper_inet, test_network_transport_udp_apply_transport_sets_defa
   assert_transport_mapper_logproto(transport_mapper, "dgram");
   assert_transport_mapper_stats_source(transport_mapper, SCS_NETWORK);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+udp");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+udp");
 }
 
 Test(transport_mapper_inet, test_network_transport_udp_apply_fails_when_tls_context_is_set)
@@ -229,7 +229,7 @@ Test(transport_mapper_inet, test_network_transport_tcp_apply_transport_sets_defa
   assert_transport_mapper_logproto(transport_mapper, "text");
   assert_transport_mapper_stats_source(transport_mapper, SCS_NETWORK);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+tcp");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+tcp");
 }
 
 Test(transport_mapper_inet, test_network_transport_tls_apply_fails_without_tls_context)
@@ -249,7 +249,7 @@ Test(transport_mapper_inet, test_network_transport_tls_apply_transport_sets_defa
   assert_transport_mapper_logproto(transport_mapper, "text");
   assert_transport_mapper_stats_source(transport_mapper, SCS_NETWORK);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+tls");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+tls");
 }
 
 Test(transport_mapper_inet, test_network_transport_foo_apply_transport_sets_defaults)
@@ -262,7 +262,7 @@ Test(transport_mapper_inet, test_network_transport_foo_apply_transport_sets_defa
   assert_transport_mapper_logproto(transport_mapper, "foo");
   assert_transport_mapper_stats_source(transport_mapper, SCS_NETWORK);
   assert_transport_mapper_inet_server_port(transport_mapper, 514);
-  assert_transport_mapper_transport_name(transport_mapper, "rfc3164+foo");
+  assert_transport_mapper_transport_name(transport_mapper, "bsdsyslog+foo");
 }
 
 Test(transport_mapper_inet, test_syslog_transport_udp_apply_transport_sets_defaults)
