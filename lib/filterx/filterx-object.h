@@ -25,6 +25,7 @@
 
 #include "logmsg/logmsg.h"
 #include "compat/json.h"
+#include "atomic.h"
 
 typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
@@ -73,13 +74,7 @@ FILTERX_DECLARE_TYPE(object);
 
 struct _FilterXObject
 {
-  /* NOTE: this packs into 16 bytes in total (64 bit), let's try to keep
-   * this small, potentially using bitfields.  A simple boolean is 32 bytes
-   * in total at the moment (factoring in GenericNumber which is used to
-   * represent it).  Maybe we could get rid off the GenericNumber wrapper
-   * which would potentially decrease the struct to 16-24 bytes. */
-
-  gint ref_cnt;
+  GAtomicCounter ref_cnt;
 
   /* NOTE:
    *
@@ -89,7 +84,7 @@ struct _FilterXObject
    *                          propagates to the inner elements lazily
    *
    */
-  guint thread_index:16, modified_in_place:1, readonly:1, weak_referenced:1;
+  guint modified_in_place:1, readonly:1, weak_referenced:1;
   FilterXType *type;
 };
 
