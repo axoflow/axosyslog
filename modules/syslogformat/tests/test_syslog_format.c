@@ -100,7 +100,7 @@ Test(syslog_format, rfc3164_style_message_when_parsed_as_rfc5424_is_marked_as_su
   assert_log_message_value_by_name(msg, "PROGRAM", "program");
   assert_log_message_value_by_name(msg, "PID", "pid");
   assert_log_message_value_by_name(msg, "MSG", "message");
-  assert_log_message_value_by_name(msg, "MSGFORMAT", "rfc3164");
+  assert_log_message_value_by_name(msg, "MSGFORMAT", "syslog:rfc3164");
 
   log_msg_unref(msg);
 }
@@ -120,7 +120,7 @@ Test(syslog_format, rfc5424_style_message_when_parsed_as_rfc5424_is_marked_as_su
   assert_log_message_value_by_name(msg, "PID", "pid");
   assert_log_message_value_by_name(msg, "MSGID", "msgid");
   assert_log_message_value_by_name(msg, "MSG", "message");
-  assert_log_message_value_by_name(msg, "MSGFORMAT", "rfc5424");
+  assert_log_message_value_by_name(msg, "MSGFORMAT", "syslog:rfc5424");
 
   log_msg_unref(msg);
 }

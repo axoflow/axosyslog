@@ -179,7 +179,7 @@ msg_format_parse_into(MsgFormatOptions *options, LogMessage *msg,
       msg_format_postprocess_message(options, msg, data, length);
 
       gchar buf[256];
-      gsize len = g_snprintf(buf, sizeof(buf), "%s-error", options->format);
+      gsize len = g_snprintf(buf, sizeof(buf), "%s:error", options->format);
       log_msg_set_value(msg, LM_V_MSGFORMAT, buf, len);
     }
 }
