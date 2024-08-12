@@ -60,15 +60,19 @@
 
 FilterXExpr *last_literal_generator;
 
+FilterXObject *
+_frozen_string_obj(const gchar *v)
+{
+  return filterx_config_freeze_object(configuration, filterx_string_new(v, -1));
+}
+
 FilterXExpr *
 construct_template_expr(LogTemplate *template)
 {
   FilterXExpr *result;
 
   if (log_template_is_literal_string(template))
-    result = filterx_literal_new(
-		filterx_config_freeze_object(configuration,
-			filterx_string_new(log_template_get_literal_value(template, NULL), -1)));
+    result = filterx_literal_new(_frozen_string_obj(log_template_get_literal_value(template, NULL)));
   else if (log_template_is_trivial(template))
     result = filterx_msg_variable_expr_new(
                 log_msg_get_value_name(log_template_get_trivial_value_handle(template), NULL));
