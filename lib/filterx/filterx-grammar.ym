@@ -74,8 +74,8 @@ construct_template_expr(LogTemplate *template)
   if (log_template_is_literal_string(template))
     result = filterx_literal_new(_frozen_string_obj(log_template_get_literal_value(template, NULL)));
   else if (log_template_is_trivial(template))
-    result = filterx_msg_variable_expr_new(
-                log_msg_get_value_name(log_template_get_trivial_value_handle(template), NULL));
+    result = filterx_msg_variable_expr_new(filterx_frozen_dollar_msg_varname(configuration,
+				log_msg_get_value_name(log_template_get_trivial_value_handle(template), NULL)));
   else
     result = filterx_template_new(log_template_ref(template));
   log_template_unref(template);
@@ -471,13 +471,13 @@ literal_object
 	;
 
 variable
-	: '$' identifier			{ $$ = filterx_msg_variable_expr_new($2); free($2); }
-	| LL_MESSAGE_REF			{ $$ = filterx_msg_variable_expr_new($1); free($1); }
+	: '$' identifier			{ $$ = filterx_msg_variable_expr_new(filterx_frozen_dollar_msg_varname(configuration, $2)); free($2); }
+	| LL_MESSAGE_REF			{ $$ = filterx_msg_variable_expr_new(filterx_frozen_dollar_msg_varname(configuration, $1)); free($1); }
 	| filterx_variable
 	;
 
 filterx_variable
-	: identifier				{ $$ = filterx_floating_variable_expr_new($1); free($1); }
+	: identifier				{ $$ = filterx_floating_variable_expr_new(_frozen_string_obj($1)); free($1); }
 	;
 
 boolean
