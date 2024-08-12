@@ -102,7 +102,7 @@ _free(FilterXExpr *s)
 
 /* NOTE: takes the object reference */
 FilterXExpr *
-filterx_getattr_new(FilterXExpr *operand, const gchar *attr_name)
+filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
 {
   FilterXGetAttr *self = g_new0(FilterXGetAttr, 1);
 
@@ -112,6 +112,9 @@ filterx_getattr_new(FilterXExpr *operand, const gchar *attr_name)
   self->super.is_set = _isset;
   self->super.free_fn = _free;
   self->operand = operand;
-  self->attr = filterx_string_new(attr_name, -1);
+
+  g_assert(filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string)));
+  self->attr = filterx_object_ref(attr_name);
+
   return &self->super;
 }

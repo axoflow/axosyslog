@@ -405,7 +405,7 @@ Test(filterx_expr, test_filterx_readonly)
   filterx_expr_unref(set_subscript);
 
 
-  FilterXExpr *getattr = filterx_getattr_new(filterx_expr_ref(literal), "foo");
+  FilterXExpr *getattr = filterx_getattr_new(filterx_expr_ref(literal), filterx_string_new("foo", -1));
   cr_assert_not(filterx_expr_unset(getattr));
   cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));
   filterx_eval_clear_errors();
