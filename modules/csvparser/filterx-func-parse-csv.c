@@ -89,12 +89,12 @@ exit:
 }
 
 static inline void
-_init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, GList *cols, const gchar *input,
+_init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_of_cols, const gchar *input,
               CSVScanner *scanner, CSVScannerOptions *local_opts)
 {
   CSVScannerOptions *opts = &self->options;
 
-  if (string_delimiters || cols)
+  if (string_delimiters || num_of_cols)
     {
       csv_scanner_options_copy(local_opts, &self->options);
       opts = local_opts;
@@ -103,8 +103,8 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, GList *co
   if (string_delimiters)
     csv_scanner_options_set_string_delimiters(local_opts, string_delimiters);
 
-  if (cols)
-    csv_scanner_options_set_expected_columns(local_opts, g_list_length(cols));
+  if (num_of_cols)
+    csv_scanner_options_set_expected_columns(local_opts, num_of_cols);
 
   csv_scanner_init(scanner, opts, input);
 }
@@ -144,7 +144,7 @@ _eval(FilterXExpr *s)
 
   CSVScanner scanner;
   CSVScannerOptions local_opts = {0};
-  _init_scanner(self, string_delimiters, cols, input, &scanner, &local_opts);
+  _init_scanner(self, string_delimiters, g_list_length(cols), input, &scanner, &local_opts);
 
   GList *col = cols;
   while (csv_scanner_scan_next(&scanner))
