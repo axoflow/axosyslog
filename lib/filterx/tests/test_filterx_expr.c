@@ -333,7 +333,8 @@ Test(filterx_expr, test_filterx_setattr)
   FilterXObject *json = filterx_json_object_new_empty();
   FilterXExpr *fillable = filterx_literal_new(json);
 
-  FilterXExpr *setattr = filterx_setattr_new(fillable, "foo", filterx_literal_new(filterx_string_new("bar", -1)));
+  FilterXExpr *setattr = filterx_setattr_new(fillable, filterx_string_new("foo", -1),
+                                             filterx_literal_new(filterx_string_new("bar", -1)));
   cr_assert_not_null(setattr);
 
   FilterXObject *res = filterx_expr_eval(setattr);
@@ -387,7 +388,7 @@ Test(filterx_expr, test_filterx_readonly)
 
 
   FilterXExpr *setattr = filterx_setattr_new(filterx_expr_ref(literal),
-                                             "bar",
+                                             filterx_string_new("bar", -1),
                                              filterx_literal_new(filterx_object_ref(foo)));
   cr_assert_not(filterx_expr_eval(setattr));
   cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));
@@ -419,8 +420,8 @@ Test(filterx_expr, test_filterx_readonly)
   filterx_expr_unref(get_subscript);
 
 
-  FilterXExpr *inner = filterx_setattr_new(filterx_getattr_new(filterx_expr_ref(literal), "foo"),
-                                           "bar",
+  FilterXExpr *inner = filterx_setattr_new(filterx_getattr_new(filterx_expr_ref(literal), filterx_string_new("foo", -1)),
+                                           filterx_string_new("bar", -1),
                                            filterx_literal_new(filterx_object_ref(bar)));
   cr_assert_not(filterx_expr_eval(inner));
   cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));

@@ -197,7 +197,7 @@ plus_assignment
 	| expr '[' expr ']' KW_PLUS_ASSIGN expr	{ $$ = filterx_set_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3), filterx_operator_plus_new(filterx_get_subscript_new($1, $3), $6)); }
 	| expr '.' identifier KW_PLUS_ASSIGN expr
 						{
-							$$ = filterx_setattr_new(filterx_expr_ref($1), $3, filterx_operator_plus_new(filterx_getattr_new($1, $3), $5));
+							$$ = filterx_setattr_new(filterx_expr_ref($1), _frozen_string_obj($3), filterx_operator_plus_new(filterx_getattr_new($1, $3), $5));
 							free($3);
 						}
 	;
@@ -206,7 +206,7 @@ plus_assignment
 assignment
 	/* TODO extract lvalues */
 	: variable KW_ASSIGN expr			{ $$ = filterx_assign_new($1, $3); }
-	| expr '.' identifier KW_ASSIGN expr	{ $$ = filterx_setattr_new($1, $3, $5); free($3); }
+	| expr '.' identifier KW_ASSIGN expr	{ $$ = filterx_setattr_new($1, _frozen_string_obj($3), $5); free($3); }
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
 	| generator_assignment
@@ -222,7 +222,7 @@ generator_assignment
 						  filterx_generator_set_fillable($5, filterx_getattr_new(filterx_expr_ref($1), $3));
 
 						  $$ = filterx_compound_expr_new_va(TRUE,
-						    filterx_setattr_new($1, $3, filterx_generator_create_container_new($5, $1)),
+						    filterx_setattr_new($1, _frozen_string_obj($3), filterx_generator_create_container_new($5, $1)),
 						    $5,
 						    NULL
                                                   );
@@ -297,7 +297,7 @@ generator_casted_assignment
 						  filterx_generator_set_fillable($7, filterx_getattr_new(filterx_expr_ref($1), $3));
 
 						  $$ = filterx_compound_expr_new_va(TRUE,
-						    filterx_setattr_new($1, $3, func),
+						    filterx_setattr_new($1, _frozen_string_obj($3), func),
 						    $7,
 						    NULL
 						  );
