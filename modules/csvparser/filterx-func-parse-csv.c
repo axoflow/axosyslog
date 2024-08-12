@@ -109,6 +109,34 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_
   csv_scanner_init(scanner, opts, input);
 }
 
+static inline gboolean
+_maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guint64 *num_of_columns)
+{
+  if (!self->columns)
+    {
+      *columns = NULL;
+      *num_of_columns = 0;
+      return TRUE;
+    }
+
+  *columns = filterx_expr_eval(self->columns);
+  if (!*columns)
+    return FALSE;
+
+  if (!filterx_object_is_type(*columns, &FILTERX_TYPE_NAME(json_array)))
+    {
+      msg_error("list object argument must be a type of json array.",
+                evt_tag_str("current_type", (*columns)->type->name),
+                evt_tag_str("argument_name", FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS));
+      return FALSE;
+    }
+
+  if (!filterx_object_len(*columns, num_of_columns))
+    return FALSE;
+
+  return TRUE;
+}
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
@@ -120,8 +148,9 @@ _eval(FilterXExpr *s)
 
   gboolean ok = FALSE;
   FilterXObject *result = NULL;
-  GList *cols = NULL;
   GList *string_delimiters = NULL;
+  guint64 num_of_columns = 0;
+  FilterXObject *cols = NULL;
 
   gsize len;
   const gchar *input;
@@ -134,7 +163,7 @@ _eval(FilterXExpr *s)
                             FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS))
     goto exit;
 
-  if (!_parse_list_argument(self, self->columns, &cols, FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS))
+  if(!_maybe_init_columns(self, &cols, &num_of_columns))
     goto exit;
 
   if (cols)
@@ -144,16 +173,22 @@ _eval(FilterXExpr *s)
 
   CSVScanner scanner;
   CSVScannerOptions local_opts = {0};
-  _init_scanner(self, string_delimiters, g_list_length(cols), input, &scanner, &local_opts);
+  _init_scanner(self, string_delimiters, num_of_columns, input, &scanner, &local_opts);
 
-  GList *col = cols;
+  guint64 i = 0;
   while (csv_scanner_scan_next(&scanner))
     {
       if (cols)
         {
-          if (!col)
+          if (i >= num_of_columns)
             break;
-          FilterXObject *key = filterx_string_new(col->data, -1);
+
+          FilterXObject *col = filterx_list_get_subscript(cols, i);
+          const gchar *col_name;
+          gsize col_name_len;
+          filterx_object_extract_string(col, &col_name, &col_name_len);
+
+          FilterXObject *key = filterx_string_new(col_name, col_name_len);
           FilterXObject *val = filterx_string_new(csv_scanner_get_current_value(&scanner),
                                                   csv_scanner_get_current_value_len(&scanner));
 
@@ -161,10 +196,11 @@ _eval(FilterXExpr *s)
 
           filterx_object_unref(key);
           filterx_object_unref(val);
+          filterx_object_unref(col);
 
           if (!ok)
             goto exit;
-          col = g_list_next(col);
+          i++;
         }
       else
         {
@@ -184,10 +220,10 @@ exit:
     {
       filterx_object_unref(result);
     }
-  g_list_free_full(cols, (GDestroyNotify)g_free);
+  filterx_object_unref(cols);
   filterx_object_unref(obj);
   csv_scanner_deinit(&scanner);
-  return ok?result:NULL;
+  return ok ? result : NULL;
 }
 
 static void
