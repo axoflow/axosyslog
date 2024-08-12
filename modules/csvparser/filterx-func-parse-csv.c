@@ -88,6 +88,27 @@ exit:
   return result;
 }
 
+static inline void
+_init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, GList *cols, const gchar *input,
+              CSVScanner *scanner, CSVScannerOptions *local_opts)
+{
+  CSVScannerOptions *opts = &self->options;
+
+  if (string_delimiters || cols)
+    {
+      csv_scanner_options_copy(local_opts, &self->options);
+      opts = local_opts;
+    }
+
+  if (string_delimiters)
+    csv_scanner_options_set_string_delimiters(local_opts, string_delimiters);
+
+  if (cols)
+    csv_scanner_options_set_expected_columns(local_opts, g_list_length(cols));
+
+  csv_scanner_init(scanner, opts, input);
+}
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
@@ -97,7 +118,6 @@ _eval(FilterXExpr *s)
   if (!obj)
     return NULL;
 
-  CSVScanner scanner;
   gboolean ok = FALSE;
   FilterXObject *result = NULL;
   GList *cols = NULL;
@@ -114,21 +134,17 @@ _eval(FilterXExpr *s)
                             FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS))
     goto exit;
 
-  if (string_delimiters)
-    csv_scanner_options_set_string_delimiters(&self->options, string_delimiters);
-
   if (!_parse_list_argument(self, self->columns, &cols, FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS))
     goto exit;
 
   if (cols)
-    {
-      csv_scanner_options_set_expected_columns(&self->options, g_list_length(cols));
-      result = filterx_json_object_new_empty();
-    }
+    result = filterx_json_object_new_empty();
   else
     result = filterx_json_array_new_empty();
 
-  csv_scanner_init(&scanner, &self->options, input);
+  CSVScanner scanner;
+  CSVScannerOptions local_opts = {0};
+  _init_scanner(self, string_delimiters, cols, input, &scanner, &local_opts);
 
   GList *col = cols;
   while (csv_scanner_scan_next(&scanner))
@@ -163,6 +179,7 @@ _eval(FilterXExpr *s)
     }
 
 exit:
+  csv_scanner_options_clean(&local_opts);
   if (!ok)
     {
       filterx_object_unref(result);
