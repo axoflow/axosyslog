@@ -101,7 +101,7 @@ _dummy_eval(FilterXExpr *s)
   return filterx_string_new("test-builtin-functions", -1);
 }
 
-static FilterXFunction *
+static FilterXExpr *
 _test_builtin_dummy_function_ctor(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunction *self = g_new0(FilterXFunction, 1);
@@ -109,7 +109,7 @@ _test_builtin_dummy_function_ctor(const gchar *function_name, FilterXFunctionArg
   self->super.eval = _dummy_eval;
 
   filterx_function_args_free(args);
-  return self;
+  return &self->super;
 }
 
 Test(builtin_functions, test_builtin_function_ctors_registering_existing_key_returns_false)
@@ -143,10 +143,10 @@ Test(builtin_functions, test_builtin_function_ctors_lookup)
   cr_assert(ctor != NULL);
 
   // check dummy ctor as result
-  FilterXFunction *func_expr = ctor(TEST_BUILTIN_FUNCTION_NAME, filterx_function_args_new(NULL, NULL), NULL);
+  FilterXExpr *func_expr = ctor(TEST_BUILTIN_FUNCTION_NAME, filterx_function_args_new(NULL, NULL), NULL);
   cr_assert(func_expr != NULL);
 
-  FilterXObject *res = filterx_expr_eval(&func_expr->super);
+  FilterXObject *res = filterx_expr_eval(func_expr);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   gsize len;
   const gchar *str = filterx_string_get_value(res, &len);
@@ -156,7 +156,7 @@ Test(builtin_functions, test_builtin_function_ctors_lookup)
 
   filterx_builtin_function_ctors_deinit_private(ht);
   filterx_object_unref(res);
-  filterx_expr_unref(&func_expr->super);
+  filterx_expr_unref(func_expr);
 }
 
 static void

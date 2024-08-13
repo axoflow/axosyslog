@@ -27,15 +27,18 @@
 #include "filterx/object-string.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/expr-function.h"
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
 
-#define FILTERX_FUNC_REGEXP_SUBST_USAGE "regexp_subst(string, pattern, replacement, " \
+#define FILTERX_FUNC_REGEXP_SUBST_USAGE "Usage: regexp_subst(string, pattern, replacement, " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME"=(boolean))" \
+
+#define FILTERX_FUNC_REGEXP_SEARCH_USAGE "Usage: regexp_search(string, pattern)"
 
 typedef struct FilterXReMatchState_
 {
@@ -350,7 +353,7 @@ filterx_expr_regexp_nomatch_new(FilterXExpr *lhs, const gchar *pattern)
 
 typedef struct FilterXExprRegexpSearchGenerator_
 {
-  FilterXExprGenerator super;
+  FilterXGeneratorFunction super;
   FilterXExpr *lhs;
   pcre2_code_8 *pattern;
 } FilterXExprRegexpSearchGenerator;
@@ -412,30 +415,65 @@ _regexp_search_generator_free(FilterXExpr *s)
   filterx_expr_unref(self->lhs);
   if (self->pattern)
     pcre2_code_free(self->pattern);
-  filterx_generator_free_method(s);
+  filterx_generator_function_free_method(&self->super);
+}
+
+static gboolean
+_extract_search_args(FilterXExprRegexpSearchGenerator *self, FilterXFunctionArgs *args, GError **error)
+{
+  if (filterx_function_args_len(args) != 2)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      return FALSE;
+    }
+
+  self->lhs = filterx_function_args_get_expr(args, 0);
+
+  const gchar *pattern = filterx_function_args_get_literal_string(args, 1, NULL);
+  if (!pattern)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "pattern must be string literal. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      return FALSE;
+    }
+
+  self->pattern = _compile_pattern_defaults(pattern);
+  if (!self->pattern)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "failed to compile pattern. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      return FALSE;
+    }
+
+  return TRUE;
+
 }
 
 /* Takes reference of lhs */
 FilterXExpr *
-filterx_expr_regexp_search_generator_new(FilterXExpr *lhs, const gchar *pattern)
+filterx_generator_function_regexp_search_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprRegexpSearchGenerator *self = g_new0(FilterXExprRegexpSearchGenerator, 1);
 
-  filterx_generator_init_instance(&self->super.super);
-  self->super.generate = _regexp_search_generator_generate;
-  self->super.super.free_fn = _regexp_search_generator_free;
-  self->super.create_container = _regexp_search_generator_create_container;
+  filterx_generator_function_init_instance(&self->super, function_name);
+  self->super.super.generate = _regexp_search_generator_generate;
+  self->super.super.super.free_fn = _regexp_search_generator_free;
+  self->super.super.create_container = _regexp_search_generator_create_container;
 
-  self->lhs = lhs;
-  self->pattern = _compile_pattern_defaults(pattern);
-  if (!self->pattern)
-    {
-      filterx_expr_unref(&self->super.super);
-      return NULL;
-    }
+  if (!_extract_search_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
 
-  return &self->super.super;
+  filterx_function_args_free(args);
+  return &self->super.super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super.super);
+  return NULL;
 }
+
 
 typedef struct FilterXFuncRegexpSubst_
 {
@@ -661,7 +699,7 @@ _opts_init(FilterXFuncRegexpSubstOpts *opts)
   opts->jit = TRUE;
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
@@ -676,7 +714,7 @@ filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArg
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
@@ -685,7 +723,7 @@ error:
 }
 
 gboolean
-filterx_regexp_subst_is_jit_enabled(FilterXFunction *s)
+filterx_regexp_subst_is_jit_enabled(FilterXExpr *s)
 {
   g_assert(s);
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *)s;

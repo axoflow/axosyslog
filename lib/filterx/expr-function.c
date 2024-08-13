@@ -156,6 +156,28 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
   s->super.free_fn = _function_free;
 }
 
+void
+filterx_generator_function_free_method(FilterXGeneratorFunction *s)
+{
+  g_free(s->function_name);
+  filterx_generator_free_method(&s->super.super);
+}
+
+static void
+_generator_function_free(FilterXExpr *s)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  filterx_generator_function_free_method(self);
+}
+
+void
+filterx_generator_function_init_instance(FilterXGeneratorFunction *s, const gchar *function_name)
+{
+  filterx_generator_init_instance(&s->super.super);
+  s->function_name = g_strdup_printf("%s()", function_name);
+  s->super.super.free_fn = _generator_function_free;
+}
+
 struct _FilterXFunctionArgs
 {
   GPtrArray *positional_args;
@@ -549,10 +571,7 @@ _lookup_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionA
   if (!ctor)
     return NULL;
 
-  FilterXFunction *func_expr = ctor(function_name, args, error);
-  if (!func_expr)
-    return NULL;
-  return &func_expr->super;
+  return ctor(function_name, args, error);
 }
 
 /* NOTE: takes the reference of "args_list" */
@@ -568,6 +587,43 @@ filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *ar
     return expr;
 
   expr = _lookup_function(cfg, function_name, args, error);
+  if (expr)
+    return expr;
+
+  if (!(*error))
+    g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND, "function not found");
+  return NULL;
+}
+
+static FilterXExpr *
+_lookup_generator_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+{
+  // Checking filterx builtin generator functions first
+  FilterXFunctionCtor ctor = filterx_builtin_generator_function_ctor_lookup(function_name);
+
+  if (!ctor)
+    {
+      // fallback to plugin lookup
+      Plugin *p = cfg_find_plugin(cfg, LL_CONTEXT_FILTERX_GEN_FUNC, function_name);
+      if (!p)
+        return NULL;
+      ctor = plugin_construct(p);
+    }
+
+  if (!ctor)
+    return NULL;
+  return ctor(function_name, args, error);
+}
+
+/* NOTE: takes the references of objects passed in "arguments" */
+FilterXExpr *
+filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args_list, GError **error)
+{
+  FilterXFunctionArgs *args = filterx_function_args_new(args_list, error);
+  if (!args)
+    return NULL;
+
+  FilterXExpr *expr = _lookup_generator_function(cfg, function_name, args, error);
   if (expr)
     return expr;
 

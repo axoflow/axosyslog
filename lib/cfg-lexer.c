@@ -32,6 +32,7 @@
 #include "pathutils.h"
 #include "plugin.h"
 #include "plugin-types.h"
+#include "filterx/filterx-globals.h"
 
 #include <string.h>
 #include <glob.h>
@@ -1219,6 +1220,26 @@ cfg_lexer_lex(CfgLexer *self, CFG_STYPE *yylval, CFG_LTYPE *yylloc)
                     }
                 }
             }
+
+          if (cfg_lexer_get_context_type(self) == LL_CONTEXT_FILTERX)
+            {
+              if (tok == LL_IDENTIFIER)
+                {
+                  PluginContext *plugin_context = &self->cfg->plugin_context;
+
+                  if ((self->cfg && plugin_is_plugin_available(plugin_context, LL_CONTEXT_FILTERX_FUNC, yylval->cptr)) ||
+                      (self->cfg && plugin_is_plugin_available(plugin_context, LL_CONTEXT_FILTERX_SIMPLE_FUNC, yylval->cptr)) ||
+                      filterx_builtin_function_exists(yylval->cptr))
+                    {
+                      tok = LL_FILTERX_FUNC;
+                    }
+                  else if ((self->cfg && plugin_is_plugin_available(plugin_context, LL_CONTEXT_FILTERX_GEN_FUNC, yylval->cptr)) ||
+                           filterx_builtin_generator_function_exists(yylval->cptr))
+                    {
+                      tok = LL_FILTERX_GEN_FUNC;
+                    }
+                }
+            }
         }
 
       preprocess_result = cfg_lexer_preprocess(self, tok, yylval, yylloc);
@@ -1342,6 +1363,7 @@ static const gchar *lexer_contexts[] =
   [LL_CONTEXT_FILTERX_SIMPLE_FUNC] = "filterx-simple-func",
   [LL_CONTEXT_FILTERX_ENUM] = "filterx-enum",
   [LL_CONTEXT_FILTERX_FUNC] = "filterx-func",
+  [LL_CONTEXT_FILTERX_GEN_FUNC] = "filterx-gen-func",
 };
 
 gint
