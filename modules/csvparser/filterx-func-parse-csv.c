@@ -152,6 +152,20 @@ _fill_object_col(FilterXObject *cols, gint64 index, CSVScanner *scanner, FilterX
   return ok;
 }
 
+static inline gboolean
+_fill_array_element(CSVScanner *scanner, FilterXObject *result)
+{
+  const gchar *current_value = csv_scanner_get_current_value(scanner);
+  gint current_value_len = csv_scanner_get_current_value_len(scanner);
+  FilterXObject *val = filterx_string_new(current_value, current_value_len);
+
+  gboolean ok = filterx_list_append(result, &val);
+
+  filterx_object_unref(val);
+
+  return ok;
+}
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
@@ -206,13 +220,7 @@ _eval(FilterXExpr *s)
         }
       else
         {
-          const gchar *current_value = csv_scanner_get_current_value(&scanner);
-          gint current_value_len = csv_scanner_get_current_value_len(&scanner);
-          FilterXObject *val = filterx_string_new(current_value, current_value_len);
-
-          ok = filterx_list_append(result, &val);
-
-          filterx_object_unref(val);
+          ok = _fill_array_element(&scanner, result);
         }
     }
 
