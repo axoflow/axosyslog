@@ -25,6 +25,8 @@
 
 #include "filterx-object.h"
 
+typedef struct _FilterXString FilterXString;
+
 FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
 FILTERX_DECLARE_TYPE(protobuf);
@@ -39,5 +41,7 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, GPtrArray *args);
 FilterXObject *filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
+
+FilterXString *filterx_string_typed_new(const gchar *str);
 
 #endif
