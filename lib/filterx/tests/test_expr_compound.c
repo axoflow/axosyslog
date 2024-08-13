@@ -38,7 +38,7 @@
 FilterXExpr *
 _assert_assign_var(const char *var_name, FilterXExpr *value)
 {
-  FilterXExpr *control_variable = filterx_msg_variable_expr_new(filterx_string_new(var_name, -1));
+  FilterXExpr *control_variable = filterx_msg_variable_expr_new(filterx_string_typed_new(var_name));
   cr_assert(control_variable != NULL);
 
   return filterx_assign_new(control_variable, value);
@@ -76,7 +76,7 @@ _assert_set_test_variable(const char *var_name, FilterXExpr *expr)
 FilterXObject *
 _assert_get_test_variable(const char *var_name)
 {
-  FilterXExpr *control_variable = filterx_msg_variable_expr_new(filterx_string_new(var_name, -1));
+  FilterXExpr *control_variable = filterx_msg_variable_expr_new(filterx_string_typed_new(var_name));
   cr_assert(control_variable != NULL);
   FilterXObject *result = filterx_expr_eval(control_variable);
   filterx_expr_unref(control_variable);

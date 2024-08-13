@@ -165,7 +165,7 @@ _free(FilterXExpr *s)
 }
 
 static FilterXExpr *
-filterx_variable_expr_new(FilterXObject *name, FilterXVariableType type)
+filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
@@ -177,21 +177,20 @@ filterx_variable_expr_new(FilterXObject *name, FilterXVariableType type)
   self->super.is_set = _isset;
   self->super.unset = _unset;
 
-  g_assert(filterx_object_is_type(name, &FILTERX_TYPE_NAME(string)));
-  self->handle = filterx_scope_map_variable_to_handle(filterx_string_get_value(name, NULL), type);
-  self->variable_name = filterx_object_ref(name);
+  self->variable_name = (FilterXObject *) name;
+  self->handle = filterx_scope_map_variable_to_handle(filterx_string_get_value(self->variable_name, NULL), type);
 
   return &self->super;
 }
 
 FilterXExpr *
-filterx_msg_variable_expr_new(FilterXObject *name)
+filterx_msg_variable_expr_new(FilterXString *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_MESSAGE);
 }
 
 FilterXExpr *
-filterx_floating_variable_expr_new(FilterXObject *name)
+filterx_floating_variable_expr_new(FilterXString *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
 }

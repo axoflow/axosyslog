@@ -25,6 +25,7 @@
 
 #include "module-config.h"
 #include "filterx/filterx-object.h"
+#include "filterx/object-string.h"
 
 typedef struct _FilterXConfig
 {
@@ -34,5 +35,6 @@ typedef struct _FilterXConfig
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);
 FilterXObject *filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object);
+FilterXString *filterx_config_frozen_string(GlobalConfig *cfg, const gchar *str);
 
 #endif
