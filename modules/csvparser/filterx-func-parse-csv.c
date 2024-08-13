@@ -141,17 +141,11 @@ static inline gboolean
 _fill_object_col(FilterXObject *cols, gint64 index, CSVScanner *scanner, FilterXObject *result)
 {
   FilterXObject *col = filterx_list_get_subscript(cols, index);
-  const gchar *col_name;
-  gsize col_name_len;
-  filterx_object_extract_string(col, &col_name, &col_name_len);
-
-  FilterXObject *key = filterx_string_new(col_name, col_name_len);
   FilterXObject *val = filterx_string_new(csv_scanner_get_current_value(scanner),
                                           csv_scanner_get_current_value_len(scanner));
 
-  gboolean ok = filterx_object_set_subscript(result, key, &val);
+  gboolean ok = filterx_object_set_subscript(result, col, &val);
 
-  filterx_object_unref(key);
   filterx_object_unref(val);
   filterx_object_unref(col);
 
