@@ -89,12 +89,12 @@ exit:
 }
 
 static inline void
-_init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, GList *cols, const gchar *input,
+_init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_of_cols, const gchar *input,
               CSVScanner *scanner, CSVScannerOptions *local_opts)
 {
   CSVScannerOptions *opts = &self->options;
 
-  if (string_delimiters || cols)
+  if (string_delimiters || num_of_cols)
     {
       csv_scanner_options_copy(local_opts, &self->options);
       opts = local_opts;
@@ -103,10 +103,67 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, GList *co
   if (string_delimiters)
     csv_scanner_options_set_string_delimiters(local_opts, string_delimiters);
 
-  if (cols)
-    csv_scanner_options_set_expected_columns(local_opts, g_list_length(cols));
+  if (num_of_cols)
+    csv_scanner_options_set_expected_columns(local_opts, num_of_cols);
 
   csv_scanner_init(scanner, opts, input);
+}
+
+static inline gboolean
+_maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guint64 *num_of_columns)
+{
+  if (!self->columns)
+    {
+      *columns = NULL;
+      *num_of_columns = 0;
+      return TRUE;
+    }
+
+  *columns = filterx_expr_eval(self->columns);
+  if (!*columns)
+    return FALSE;
+
+  if (!filterx_object_is_type(*columns, &FILTERX_TYPE_NAME(json_array)))
+    {
+      msg_error("list object argument must be a type of json array.",
+                evt_tag_str("current_type", (*columns)->type->name),
+                evt_tag_str("argument_name", FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS));
+      return FALSE;
+    }
+
+  if (!filterx_object_len(*columns, num_of_columns))
+    return FALSE;
+
+  return TRUE;
+}
+
+static inline gboolean
+_fill_object_col(FilterXObject *cols, gint64 index, CSVScanner *scanner, FilterXObject *result)
+{
+  FilterXObject *col = filterx_list_get_subscript(cols, index);
+  FilterXObject *val = filterx_string_new(csv_scanner_get_current_value(scanner),
+                                          csv_scanner_get_current_value_len(scanner));
+
+  gboolean ok = filterx_object_set_subscript(result, col, &val);
+
+  filterx_object_unref(val);
+  filterx_object_unref(col);
+
+  return ok;
+}
+
+static inline gboolean
+_fill_array_element(CSVScanner *scanner, FilterXObject *result)
+{
+  const gchar *current_value = csv_scanner_get_current_value(scanner);
+  gint current_value_len = csv_scanner_get_current_value_len(scanner);
+  FilterXObject *val = filterx_string_new(current_value, current_value_len);
+
+  gboolean ok = filterx_list_append(result, &val);
+
+  filterx_object_unref(val);
+
+  return ok;
 }
 
 static FilterXObject *
@@ -120,8 +177,9 @@ _eval(FilterXExpr *s)
 
   gboolean ok = FALSE;
   FilterXObject *result = NULL;
-  GList *cols = NULL;
   GList *string_delimiters = NULL;
+  guint64 num_of_columns = 0;
+  FilterXObject *cols = NULL;
 
   gsize len;
   const gchar *input;
@@ -134,7 +192,7 @@ _eval(FilterXExpr *s)
                             FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS))
     goto exit;
 
-  if (!_parse_list_argument(self, self->columns, &cols, FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS))
+  if(!_maybe_init_columns(self, &cols, &num_of_columns))
     goto exit;
 
   if (cols)
@@ -144,37 +202,25 @@ _eval(FilterXExpr *s)
 
   CSVScanner scanner;
   CSVScannerOptions local_opts = {0};
-  _init_scanner(self, string_delimiters, cols, input, &scanner, &local_opts);
+  _init_scanner(self, string_delimiters, num_of_columns, input, &scanner, &local_opts);
 
-  GList *col = cols;
+  guint64 i = 0;
   while (csv_scanner_scan_next(&scanner))
     {
       if (cols)
         {
-          if (!col)
+          if (i >= num_of_columns)
             break;
-          FilterXObject *key = filterx_string_new(col->data, -1);
-          FilterXObject *val = filterx_string_new(csv_scanner_get_current_value(&scanner),
-                                                  csv_scanner_get_current_value_len(&scanner));
 
-          ok = filterx_object_set_subscript(result, key, &val);
-
-          filterx_object_unref(key);
-          filterx_object_unref(val);
-
-          if (!ok)
+          ok = _fill_object_col(cols, i, &scanner, result);
+          if(!ok)
             goto exit;
-          col = g_list_next(col);
+
+          i++;
         }
       else
         {
-          const gchar *current_value = csv_scanner_get_current_value(&scanner);
-          gint current_value_len = csv_scanner_get_current_value_len(&scanner);
-          FilterXObject *val = filterx_string_new(current_value, current_value_len);
-
-          ok = filterx_list_append(result, &val);
-
-          filterx_object_unref(val);
+          ok = _fill_array_element(&scanner, result);
         }
     }
 
@@ -184,10 +230,10 @@ exit:
     {
       filterx_object_unref(result);
     }
-  g_list_free_full(cols, (GDestroyNotify)g_free);
+  filterx_object_unref(cols);
   filterx_object_unref(obj);
   csv_scanner_deinit(&scanner);
-  return ok?result:NULL;
+  return ok ? result : NULL;
 }
 
 static void
