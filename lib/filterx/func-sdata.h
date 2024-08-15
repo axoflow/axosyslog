@@ -27,7 +27,8 @@
 
 #include "filterx/expr-function.h"
 
-FilterXObject *filterx_simple_function_is_sdata_from_enterprise(FilterXExpr *s, GPtrArray *args);
+FilterXExpr *filterx_function_is_sdata_from_enterprise_new(const gchar *function_name, FilterXFunctionArgs *args,
+                                                           GError **error);
 FilterXObject *filterx_simple_function_has_sdata(FilterXExpr *s, GPtrArray *args);
 FilterXExpr *filterx_generator_function_get_sdata_new(const gchar *function_name, FilterXFunctionArgs *args,
                                                       GError **error);

@@ -33,22 +33,43 @@
 
 #define SDATA_PREFIX_LEN (7)
 
-FilterXObject *
-filterx_simple_function_is_sdata_from_enterprise(FilterXExpr *s, GPtrArray *args)
+#define FILTERX_FUNC_IS_SDATA_FROM_ENTERPRISE_USAGE "Usage: is_sdata_from_enteprise(\"32473\")"
+
+typedef struct FilterXFunctionIsSdataFromEnteprise_
 {
-  if (args == NULL || args->len != 1)
+  FilterXFunction super;
+  gchar *str_literal;
+  gsize str_literal_len;
+} FilterXFunctionIsSdataFromEnteprise;
+
+static gboolean
+_extract_args(FilterXFunctionIsSdataFromEnteprise *self, FilterXFunctionArgs *args, GError **error)
+{
+  gsize len = filterx_function_args_len(args);
+  if (len != 1)
     {
-      filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
-      return NULL;
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_IS_SDATA_FROM_ENTERPRISE_USAGE);
+      return FALSE;
     }
 
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
-  if (!obj)
-    return NULL;
-  const gchar *str_value;
-  gsize len;
-  if (!filterx_object_extract_string(obj, &str_value, &len))
-    return NULL;
+  gsize str_literal_len;
+  const gchar *str_literal = filterx_function_args_get_literal_string(args, 0, &str_literal_len);
+  if (!str_literal)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be a string literal. " FILTERX_FUNC_IS_SDATA_FROM_ENTERPRISE_USAGE);
+      return FALSE;
+    }
+  self->str_literal = g_strdup(str_literal);
+  self->str_literal_len = str_literal_len;
+  return TRUE;
+}
+
+static FilterXObject *
+_eval(FilterXExpr *s)
+{
+  FilterXFunctionIsSdataFromEnteprise *self = (FilterXFunctionIsSdataFromEnteprise *) s;
 
   gboolean contains = FALSE;
   FilterXEvalContext *context = filterx_eval_get_context();
@@ -60,10 +81,39 @@ filterx_simple_function_is_sdata_from_enterprise(FilterXExpr *s, GPtrArray *args
       gchar *at_sign = strchr(value, '@');
       if (!at_sign)
         continue;
-      contains = strncmp(at_sign+1, str_value, len) == 0;
+      contains = strncmp(at_sign+1, self->str_literal, self->str_literal_len) == 0;
     }
-  filterx_object_unref(obj);
+
   return filterx_boolean_new(contains);
+}
+
+static void
+_free(FilterXExpr *s)
+{
+  FilterXFunctionIsSdataFromEnteprise *self = (FilterXFunctionIsSdataFromEnteprise *) s;
+
+  g_free(self->str_literal);
+  filterx_function_free_method(&self->super);
+}
+
+
+FilterXExpr *
+filterx_function_is_sdata_from_enterprise_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionIsSdataFromEnteprise *self = g_new0(FilterXFunctionIsSdataFromEnteprise, 1);
+  filterx_function_init_instance(&self->super, function_name);
+
+  if (!_extract_args(self, args, error) || !filterx_function_args_check(args, error))
+    goto error;
+  self->super.super.eval = _eval;
+  self->super.super.free_fn = _free;
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
 }
 
 

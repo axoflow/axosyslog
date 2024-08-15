@@ -100,8 +100,6 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
-  g_assert(filterx_builtin_simple_function_register("is_sdata_from_enterprise",
-                                                    filterx_simple_function_is_sdata_from_enterprise));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
 }
@@ -134,6 +132,8 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("regexp_subst", filterx_function_regexp_subst_new));
   g_assert(filterx_builtin_function_ctor_register("unset", filterx_function_unset_new));
   g_assert(filterx_builtin_function_ctor_register("flatten", filterx_function_flatten_new));
+  g_assert(filterx_builtin_function_ctor_register("is_sdata_from_enterprise",
+                                                  filterx_function_is_sdata_from_enterprise_new));
 }
 
 static void
