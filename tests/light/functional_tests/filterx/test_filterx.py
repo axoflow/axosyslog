@@ -635,7 +635,7 @@ $MSG.recursive.recursive.newattr = "newattrvalue";
 def test_list_literal_becomes_syslogng_list_as_string(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-$MSG = json_array(["foo", "bar", "baz"]);
+$MSG = ["foo", "bar", "baz"];
 """,
     )
     syslog_ng.start(config)
@@ -648,7 +648,7 @@ $MSG = json_array(["foo", "bar", "baz"]);
 def test_list_literal_becomes_json_list_as_a_part_of_json(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-$list = json_array(["foo", "bar", "baz"]);
+$list = ["foo", "bar", "baz"];
 $MSG = json({
     "key": "value",
     "list": $list,
@@ -665,7 +665,7 @@ $MSG = json({
 def test_list_is_cloned_upon_assignment(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-$list = json_array(["foo", "bar", "baz"]);
+$list = ["foo", "bar", "baz"];
 $MSG = $list;
 $list[0] = "changed foo";
 $MSG[2] = "changed baz";
@@ -682,7 +682,7 @@ $MSG[2] = "changed baz";
 def test_list_subscript_without_index_appends_an_element(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-$list = json_array();
+$list = [];
 $list[] = "foo";
 $list[] = "bar";
 $list[] = "baz";
@@ -699,8 +699,8 @@ $MSG = $list;
 
 def test_literal_generator_assignment(config, syslog_ng):
     (file_true, file_false) = create_config(
-        config, """
-$MSG = json();
+        config, r"""
+$MSG = {};  # implicit json
 $MSG.foo = {"answer": 42, "leet": 1337};
 $MSG["bar"] = {"answer+1": 43, "leet+1": 1338};
 $MSG.list = ["will be replaced"];
@@ -736,7 +736,7 @@ $MSG.list[] = json_array([4, 5, 6]);
 def test_function_call(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-$list = json_array();
+$list = [];
 $list[] = "foo";
 $list[] = "bar";
 $list[] = "baz";
@@ -1049,7 +1049,7 @@ def test_isset_inexisting_value_already_in_scope(config, syslog_ng):
 def test_isset(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-    $MSG = json();
+    $MSG = {};
     $MSG.inner_key = "foo";
 
     isset(${values.int});
@@ -1095,7 +1095,7 @@ def test_unset_value_already_in_scope(config, syslog_ng):
 def test_unset_existing_key(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-    $MSG = json();
+    $MSG = {};
     $MSG["foo"] = "bar";
     unset($MSG["foo"]);
     not isset($MSG["foo"]);
@@ -1111,7 +1111,7 @@ def test_unset_existing_key(config, syslog_ng):
 def test_unset_inexisting_key(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-    $MSG = json();
+    $MSG = {};
     unset($MSG["foo"]);
     not isset($MSG["foo"]);
 """,
@@ -1126,7 +1126,7 @@ def test_unset_inexisting_key(config, syslog_ng):
 def test_setting_an_unset_key_will_contain_the_right_value(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-    $MSG = json();
+    $MSG = {};
     $MSG["foo"] = "first";
     unset($MSG["foo"]);
     not isset($MSG["foo"]);
@@ -1143,9 +1143,9 @@ def test_setting_an_unset_key_will_contain_the_right_value(config, syslog_ng):
 def test_unset(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
-    $MSG = json();
+    $MSG = {};
     $MSG["inner_key"] = "foo";
-    $arr = json_array();
+    $arr = [];
     $arr[] = "first";
     $arr[] = "second";
 
@@ -1206,8 +1206,8 @@ def test_strptime_failure_result(config, syslog_ng):
 def test_len(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-    $dict = json();
-    $list = json_array();
+    $dict = {};
+    $list = [];
     len($dict) == 0;
     len($list) == 0;
 
@@ -1248,7 +1248,7 @@ def test_regexp_match(config, syslog_ng):
 def test_regexp_nomatch(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-    $MSG = json();
+    $MSG = {};
     $MSG.match = ${values.str} !~ /string/;
     $MSG.match_any = ${values.str} !~ /.*/;
     $MSG.nomatch = ${values.str} !~ /wrong/;
@@ -1284,7 +1284,7 @@ def test_regexp_match_error_in_pattern(config, syslog_ng):
 def test_regexp_search(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-    $MSG = json();
+    $MSG = {};
     $MSG.unnamed = regexp_search("foobarbaz", /(foo)(bar)(baz)/);
     $MSG.named = regexp_search("foobarbaz", /(?<first>foo)(?<second>bar)(?<third>baz)/);
     $MSG.mixed = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/);
@@ -1322,7 +1322,7 @@ def test_regexp_search(config, syslog_ng):
 def test_regexp_search_error_in_pattern(config, syslog_ng):
     _ = create_config(
         config, r"""
-    $MSG = json(regexp_search("foo", /(/));
+    $MSG = regexp_search("foo", /(/);
 """,
     )
     with pytest.raises(Exception):
@@ -1412,7 +1412,7 @@ def test_parse_csv_optional_arg_columns(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
     custom_message = "foo,bar,baz";
-    cols = json_array(["1st","2nd","3rd"]);
+    cols = ["1st","2nd","3rd"];
     $MSG = parse_csv(custom_message, columns=cols);
     """,
     )
@@ -1441,7 +1441,7 @@ def test_parse_csv_optional_arg_non_greedy(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
     custom_message = "foo,bar,baz,tik,tak,toe";
-    cols = json_array(["1st","2nd","3rd"]);
+    cols = ["1st","2nd","3rd"];
     $MSG = parse_csv(custom_message, columns=cols, greedy=false);
     """,
     )
@@ -1456,7 +1456,7 @@ def test_parse_csv_optional_arg_greedy(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
     custom_message = "foo,bar,baz,tik,tak,toe";
-    cols = json_array(["1st","2nd","3rd","rest"]);
+    cols = ["1st","2nd","3rd","rest"];
     $MSG = parse_csv(custom_message, columns=cols, greedy=true);
     """,
     )
@@ -1519,19 +1519,19 @@ def test_vars(config, syslog_ng):
 def test_unset_empties(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-            dict = json({"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]});
+            dict = {"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]};
             defaults_dict = dict;
             explicit_dict = dict;
             unset_empties(defaults_dict);
             unset_empties(explicit_dict, recursive=true);
 
-            list = json_array(["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]]);
+            list = ["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]];
             defaults_list = list;
             explicit_list = list;
             unset_empties(defaults_list);
             unset_empties(explicit_list, recursive=true);
 
-            $MSG = json_array([defaults_dict, explicit_dict, defaults_list, explicit_list]);
+            $MSG = [defaults_dict, explicit_dict, defaults_list, explicit_list];
     """,
     )
     syslog_ng.start(config)
@@ -1573,10 +1573,10 @@ def test_null_coalesce_use_default_on_error_and_supress_error(config, syslog_ng)
 def test_null_coalesce_get_happy_paths(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        data = {"foo":"1", "bar":"2", "baz":"3"};
         def = "default";
         key = "bar";
-        $MSG = json();
+        $MSG = {};
 
         $MSG.a = data[key] ?? def;
         $MSG.b = key ?? def;
@@ -1592,7 +1592,7 @@ def test_null_coalesce_get_happy_paths(config, syslog_ng):
 def test_null_coalesce_get_subscript_error(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        data = {"foo":"1", "bar":"2", "baz":"3"};
         def = "default";
         key = "missing_key";
         $MSG = data[key] ?? def;
@@ -1608,7 +1608,7 @@ def test_null_coalesce_get_subscript_error(config, syslog_ng):
 def test_null_coalesce_use_nested_coalesce(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        data = {"foo":"1", "bar":"2", "baz":"3"};
         def = "default";
         key1 = "missing_key1";
         key2 = "missing_key2";
@@ -1625,7 +1625,7 @@ def test_null_coalesce_use_nested_coalesce(config, syslog_ng):
 def test_null_coalesce_use_nested_coalesce_return_mid_match(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        data = {"foo":"1", "bar":"2", "baz":"3"};
         def = "default";
         key1 = "missing_key1";
         key2 = "baz";
@@ -1642,7 +1642,7 @@ def test_null_coalesce_use_nested_coalesce_return_mid_match(config, syslog_ng):
 def test_null_coalesce_do_not_supress_last_error(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        data = {"foo":"1", "bar":"2", "baz":"3"};
         def = "default";
         key1 = "missing_key1";
         key2 = "missing_key2";
@@ -1659,9 +1659,9 @@ def test_null_coalesce_do_not_supress_last_error(config, syslog_ng):
 def test_null_coalesce_precedence_versus_ternary(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-        data = json({"foo":"1", "bar":"2", "baz":"3"});
+        data = {"foo":"1", "bar":"2", "baz":"3"};
         def = "default";
-        $MSG = json();
+        $MSG = {};
 
         # according to c# and python null coalesce have higher precedence
 
@@ -1689,7 +1689,7 @@ def test_null_coalesce_precedence_versus_ternary(config, syslog_ng):
 
 def test_slash_string_features(config, syslog_ng):
     cfg = r"""
-            $MSG = json();
+            $MSG = {};
             $MSG.base = /foo bar/;
             $MSG.line_break = /foo
 bar/;
@@ -1749,7 +1749,7 @@ bar/;
 def test_regexp_subst(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-        $MSG = json();
+        $MSG = {};
         $MSG.single = regexp_subst("foobarbaz","o","");
         $MSG.empty_string = regexp_subst("","a","!");
         $MSG.empty_pattern = regexp_subst("foobarbaz","","!");
@@ -1798,7 +1798,7 @@ def test_regexp_subst_all_args_are_mandatory(config, syslog_ng):
 def test_add_operator_for_base_types(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-            $MSG = json();
+            $MSG = {};
             $MSG.string = "foo" + "bar" + "baz";
             $MSG.bytes = string(bytes("\xCA") + bytes("\xFE"));
             $MSG.datetime_integer = string(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600000000);
@@ -1807,11 +1807,11 @@ def test_add_operator_for_base_types(config, syslog_ng):
             $MSG.integer_double = 3 + 0.5;
             $MSG.double_integer = 3.5 + 2;
             $MSG.double_double = 3.14 + 0.86;
-            js1 = json_array(["foo","bar"]);
-            js2 = json_array(["baz","other"]);
+            js1 = ["foo","bar"];
+            js2 = ["baz","other"];
             $MSG.list_list = js1 + js2;
-            dict1 = json({"foo":"bar"});
-            dict2 = json({"baz":"other"});
+            dict1 = {"foo":"bar"};
+            dict2 = {"baz":"other"};
             $MSG.dict_dict = dict1 + dict2;
     """,
     )
@@ -1837,7 +1837,7 @@ def test_add_operator_for_base_types(config, syslog_ng):
 def test_flatten(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-            dict = json({"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":{"inner_inner_field":1}}});
+            dict = {"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":{"inner_inner_field":1}}};
 
             default_separator = dict;
             custom_separator = dict;
@@ -1845,7 +1845,7 @@ def test_flatten(config, syslog_ng):
             flatten(default_separator);
             flatten(custom_separator, separator="->");
 
-            $MSG = json_array([default_separator, custom_separator]);
+            $MSG = [default_separator, custom_separator];
     """,
     )
     syslog_ng.start(config)
@@ -1861,14 +1861,14 @@ def test_flatten(config, syslog_ng):
 def test_add_operator_for_generators(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-            $MSG = json();
-            js1 = json_array(["foo","bar"]);
-            js2 = json_array(["baz","other"]);
+            $MSG = {};
+            js1 = ["foo","bar"];
+            js2 = ["baz","other"];
             $MSG.list_var_gen = js1 + ["baz1","other1"];
             $MSG.list_gen_var = ["foo2", "bar2"] + js2;
             $MSG.list_gen_gen = ["foo3", "bar3"] + ["baz3", "other3"];
-            dict1 = json({"foo":{"bar":"baz"}});
-            dict2 = json({"tik":{"tak":"toe"}});
+            dict1 = {"foo":{"bar":"baz"}};
+            dict2 = {"tik":{"tak":"toe"}};
             $MSG.dict_var_gen = dict1 + {"tik1":{"tak1":"toe1"}};
             $MSG.dict_gen_var = {"foo2":{"bar2":"baz2"}} + dict2;
             $MSG.dict_gen_gen = {"foo3":{"bar3":"baz3"}} + {"tik3":{"tak3":"toe3"}};
@@ -1892,9 +1892,9 @@ def test_add_operator_for_generators(config, syslog_ng):
 def test_plus_equal_grammar_rules(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-            $MSG = json();
-            js1 = json_array(["foo","bar"]);
-            js2 = json_array(["baz","other"]);
+            $MSG = {};
+            js1 = ["foo","bar"];
+            js2 = ["baz","other"];
 
             a = 3;
             a += 2;
