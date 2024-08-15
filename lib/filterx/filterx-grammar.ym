@@ -245,6 +245,19 @@ generator_assignment
 						    NULL
 						  );
 						}
+	| variable KW_ASSIGN expr_generator
+						{
+						  GError *error = NULL;
+						  FilterXExpr *json_func = filterx_function_lookup(configuration, "json", NULL, &error);
+						  CHECK_FUNCTION_ERROR(json_func, @1, "json", error);
+
+						  filterx_generator_set_fillable($3, filterx_expr_ref($1));
+						  $$ = filterx_compound_expr_new_va(TRUE,
+						    filterx_assign_new($1, filterx_generator_create_container_new($3, json_func)),
+						    $3,
+						    NULL
+						  );
+						}
 	| generator_plus_assignment
 	| generator_casted_assignment
 	;
