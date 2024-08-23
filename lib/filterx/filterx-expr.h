@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024 Axoflow
  * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -29,6 +30,7 @@
 
 struct _FilterXExpr
 {
+  /* not thread-safe*/
   guint32 ref_cnt;
   const gchar *type;
   guint32 ignore_falsy_result:1, suppress_from_trace:1;
