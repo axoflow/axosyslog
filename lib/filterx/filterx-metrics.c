@@ -101,7 +101,7 @@ _format_sck(FilterXMetrics *self, StatsClusterKey *sck)
 static gboolean
 _is_const(FilterXMetrics *self)
 {
-  return !self->key.expr && (!self->labels || filterx_metrics_labels_is_const(self->labels));
+  return !self->key.expr && (self->const_cluster || filterx_metrics_labels_is_const(self->labels));
 }
 
 static void
@@ -133,9 +133,6 @@ _optimize(FilterXMetrics *self)
 
   g_free(self->key.str);
   self->key.str = NULL;
-
-  filterx_metrics_labels_free(self->labels);
-  self->labels = NULL;
 
 exit:
   g_atomic_counter_set(&self->is_optimized, TRUE);
