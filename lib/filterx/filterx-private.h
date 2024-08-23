@@ -28,7 +28,7 @@
 
 // Builtin functions
 FilterXExpr *filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *args,
-                                         FilterXSimpleFunctionProto function_proto);
+                                         FilterXSimpleFunctionProto function_proto, GError **error);
 
 gboolean filterx_builtin_simple_function_register_private(GHashTable *ht, const gchar *fn_name,
                                                           FilterXSimpleFunctionProto func);

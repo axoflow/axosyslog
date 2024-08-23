@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024 Axoflow
  * Copyright (c) 2023 Balázs Scheidler <balazs.scheidler@axoflow.com>
  * Copyright (c) 2023 shifter
  *
@@ -43,7 +44,7 @@ filterx_function_error_quark(void)
 typedef struct _FilterXSimpleFunction
 {
   FilterXFunction super;
-  FilterXFunctionArgs *args;
+  GPtrArray *args;
   FilterXSimpleFunctionProto function_proto;
 } FilterXSimpleFunction;
 
@@ -76,9 +77,9 @@ _args_get_expr(FilterXFunctionArgs *self, guint64 index)
 }
 
 static FilterXObject *
-_args_get_object(FilterXFunctionArgs *self, guint64 index)
+_get_arg_object(FilterXSimpleFunction *self, guint64 index)
 {
-  FilterXExpr *expr = _args_get_expr(self, index);
+  FilterXExpr *expr = g_ptr_array_index(self->args, index);
   if (!expr)
     return NULL;
 
@@ -88,26 +89,15 @@ _args_get_object(FilterXFunctionArgs *self, guint64 index)
 static GPtrArray *
 _simple_function_eval_args(FilterXSimpleFunction *self)
 {
-  guint64 len = filterx_function_args_len(self->args);
+  GPtrArray *res = g_ptr_array_new_full(self->args->len, (GDestroyNotify) filterx_object_unref);
 
-  GPtrArray *res = g_ptr_array_new_full(len, (GDestroyNotify) filterx_object_unref);
-
-  for (guint64 i = 0; i < len; i++)
+  for (guint64 i = 0; i < self->args->len; i++)
     {
-      FilterXObject *obj = _args_get_object(self->args, i);
+      FilterXObject *obj = _get_arg_object(self, i);
       if (obj == NULL)
         goto error;
 
       g_ptr_array_add(res, obj);
-    }
-
-  GError *error = NULL;
-  if (!filterx_function_args_check(self->args, &error))
-    {
-      filterx_simple_function_argument_error(&self->super.super, error->message, TRUE);
-      error->message = NULL;
-      g_clear_error(&error);
-      goto error;
     }
 
   return res;
@@ -124,7 +114,7 @@ _simple_eval(FilterXExpr *s)
 
   GPtrArray *args = NULL;
 
-  if (!filterx_function_args_empty(self->args))
+  if (self->args->len)
     {
       args = _simple_function_eval_args(self);
       if (!args)
@@ -146,23 +136,53 @@ static void
 _simple_free(FilterXExpr *s)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
-  filterx_function_args_free(self->args);
+  g_ptr_array_free(self->args, TRUE);
   filterx_function_free_method(&self->super);
+}
+
+static inline gboolean
+_simple_process_args(FilterXSimpleFunction *self, FilterXFunctionArgs *args, GError **error)
+{
+  guint64 len = filterx_function_args_len(args);
+
+  for (guint64 i = 0; i < len; i++)
+    {
+      FilterXExpr *expr = filterx_function_args_get_expr(args, i);
+      if (!expr)
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_UNEXPECTED_ARGS, "can't get argument");
+          return FALSE;
+        }
+
+      g_ptr_array_add(self->args, expr);
+    }
+
+  return TRUE;
 }
 
 FilterXExpr *
 filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *args,
-                            FilterXSimpleFunctionProto function_proto)
+                            FilterXSimpleFunctionProto function_proto, GError **error)
 {
   FilterXSimpleFunction *self = g_new0(FilterXSimpleFunction, 1);
 
   filterx_function_init_instance(&self->super, function_name);
   self->super.super.eval = _simple_eval;
   self->super.super.free_fn = _simple_free;
-  self->args = args;
   self->function_proto = function_proto;
 
+  self->args = g_ptr_array_new_full(filterx_function_args_len(args), (GDestroyNotify) filterx_expr_unref);
+  if (!_simple_process_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
   return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
 }
 
 void
@@ -520,13 +540,13 @@ filterx_function_args_free(FilterXFunctionArgs *self)
 
 
 static FilterXExpr *
-_lookup_simple_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionArgs *args)
+_lookup_simple_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   // Checking filterx builtin functions first
   FilterXSimpleFunctionProto f = filterx_builtin_simple_function_lookup(function_name);
   if (f != NULL)
     {
-      return filterx_simple_function_new(function_name, args, f);
+      return filterx_simple_function_new(function_name, args, f, error);
     }
 
   // fallback to plugin lookup
@@ -539,7 +559,7 @@ _lookup_simple_function(GlobalConfig *cfg, const gchar *function_name, FilterXFu
   if (f == NULL)
     return NULL;
 
-  return filterx_simple_function_new(function_name, args, f);
+  return filterx_simple_function_new(function_name, args, f, error);
 }
 
 static FilterXExpr *
@@ -571,7 +591,7 @@ filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *ar
   if (!args)
     return NULL;
 
-  FilterXExpr *expr = _lookup_simple_function(cfg, function_name, args);
+  FilterXExpr *expr = _lookup_simple_function(cfg, function_name, args, error);
   if (expr)
     return expr;
 

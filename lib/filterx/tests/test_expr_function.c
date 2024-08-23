@@ -60,8 +60,12 @@ FilterXObject *test_dummy_function(FilterXExpr *s, GPtrArray *args)
 
 Test(expr_function, test_function_null_args)
 {
+  GError *error = NULL;
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(NULL, NULL),
-                                                  test_dummy_function);
+                                                  test_dummy_function, &error);
+  cr_assert_null(error);
+  g_clear_error(&error);
+
   cr_assert_not_null(func);
   filterx_expr_unref(func);
 }
@@ -70,9 +74,15 @@ Test(expr_function, test_function_null_arg)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, NULL));
+
+  GError *error = NULL;
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(args, NULL),
-                                                  test_dummy_function);
-  cr_assert_not_null(func);
+                                                  test_dummy_function, &error);
+
+  cr_assert_not_null(error);
+  g_clear_error(&error);
+
+  cr_assert_null(func);
   filterx_expr_unref(func);
 }
 
@@ -81,9 +91,13 @@ Test(expr_function, test_function_valid_arg)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("bad format 1", -1))));
 
+  GError *error = NULL;
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(args, NULL),
-                                                  test_dummy_function);
+                                                  test_dummy_function, &error);
   cr_assert_not_null(func);
+
+  cr_assert_null(error);
+  g_clear_error(&error);
 
   FilterXObject *res = filterx_expr_eval(func);
   cr_assert_not_null(res);
@@ -100,8 +114,13 @@ Test(expr_function, test_function_multiple_args)
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_null_new())));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_integer_new(443))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new("foobar", -1))));
+
+  GError *error = NULL;
   FilterXExpr *func = filterx_simple_function_new("test_dummy", filterx_function_args_new(args, NULL),
-                                                  test_dummy_function);
+                                                  test_dummy_function, &error);
+
+  cr_assert_null(error);
+  g_clear_error(&error);
   cr_assert_not_null(func);
   FilterXObject *res = filterx_expr_eval(func);
   cr_assert_not_null(res);
