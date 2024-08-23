@@ -64,3 +64,12 @@ filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object)
     g_ptr_array_add(fxc->frozen_objects, object);
   return object;
 }
+
+FilterXString *
+filterx_config_frozen_string(GlobalConfig *cfg, const gchar *str)
+{
+  FilterXString *frozen_str = filterx_string_typed_new(str);
+  filterx_config_freeze_object(cfg, (FilterXObject *) frozen_str);
+
+  return frozen_str;
+}

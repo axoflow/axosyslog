@@ -85,7 +85,7 @@ _free(FilterXExpr *s)
 
 /* Takes reference of object and new_value */
 FilterXExpr *
-filterx_setattr_new(FilterXExpr *object, const gchar *attr_name, FilterXExpr *new_value)
+filterx_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterXExpr *new_value)
 {
   FilterXSetAttr *self = g_new0(FilterXSetAttr, 1);
 
@@ -93,7 +93,9 @@ filterx_setattr_new(FilterXExpr *object, const gchar *attr_name, FilterXExpr *ne
   self->super.eval = _eval;
   self->super.free_fn = _free;
   self->object = object;
-  self->attr = filterx_string_new(attr_name, -1);
+
+  self->attr = (FilterXObject *) attr_name;
+
   self->new_value = new_value;
   self->super.ignore_falsy_result = TRUE;
   return &self->super;

@@ -29,12 +29,12 @@
 #include "str-format.h"
 #include "str-utils.h"
 
-typedef struct _FilterXString
+struct _FilterXString
 {
   FilterXObject super;
   gsize str_len;
   gchar str[];
-} FilterXString;
+};
 
 /* NOTE: Consider using filterx_object_extract_string() to also support message_value. */
 const gchar *
@@ -142,18 +142,33 @@ _string_add(FilterXObject *s, FilterXObject *object)
   return filterx_string_new(buffer->str, buffer->len);
 }
 
-FilterXObject *
-filterx_string_new(const gchar *str, gssize str_len)
+FilterXString *
+_string_new(const gchar *str, gssize str_len)
 {
   if (str_len < 0)
     str_len = strlen(str);
+
   FilterXString *self = g_malloc(sizeof(FilterXString) + str_len + 1);
   memset(self, 0, sizeof(FilterXString));
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
+
   self->str_len = str_len;
   memcpy(self->str, str, str_len);
   self->str[str_len] = 0;
-  return &self->super;
+
+  return self;
+}
+
+FilterXObject *
+filterx_string_new(const gchar *str, gssize str_len)
+{
+  return &_string_new(str, str_len)->super;
+}
+
+FilterXString *
+filterx_string_typed_new(const gchar *str)
+{
+  return _string_new(str, -1);
 }
 
 static inline gsize

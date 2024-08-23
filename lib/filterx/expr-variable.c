@@ -27,6 +27,7 @@
 #include "filterx/filterx-eval.h"
 #include "logmsg/logmsg.h"
 
+
 typedef struct _FilterXVariableExpr
 {
   FilterXExpr super;
@@ -164,7 +165,7 @@ _free(FilterXExpr *s)
 }
 
 static FilterXExpr *
-filterx_variable_expr_new(const gchar *name, FilterXVariableType type)
+filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
@@ -175,27 +176,21 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType type)
   self->super.assign = _assign;
   self->super.is_set = _isset;
   self->super.unset = _unset;
-  self->handle = filterx_scope_map_variable_to_handle(name, type);
-  if (type == FX_VAR_MESSAGE)
-    {
-      gchar *dollar_name = g_strdup_printf("$%s", name);
-      self->variable_name = filterx_string_new(dollar_name, -1);
-      g_free(dollar_name);
-    }
-  else
-    self->variable_name = filterx_string_new(name, -1);
+
+  self->variable_name = (FilterXObject *) name;
+  self->handle = filterx_scope_map_variable_to_handle(filterx_string_get_value(self->variable_name, NULL), type);
 
   return &self->super;
 }
 
 FilterXExpr *
-filterx_msg_variable_expr_new(const gchar *name)
+filterx_msg_variable_expr_new(FilterXString *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_MESSAGE);
 }
 
 FilterXExpr *
-filterx_floating_variable_expr_new(const gchar *name)
+filterx_floating_variable_expr_new(FilterXString *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
 }

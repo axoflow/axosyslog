@@ -153,6 +153,9 @@ filterx_scope_is_dirty(FilterXScope *self)
 FilterXVariableHandle
 filterx_scope_map_variable_to_handle(const gchar *name, FilterXVariableType type)
 {
+  if (type == FX_VAR_MESSAGE)
+    name++;
+
   NVHandle nv_handle = log_msg_get_value_handle(name);
 
   if (type == FX_VAR_MESSAGE)

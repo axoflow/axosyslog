@@ -24,8 +24,9 @@
 #define FILTERX_SETATTR_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
+#include "filterx/object-string.h"
 
-FilterXExpr *filterx_setattr_new(FilterXExpr *object, const gchar *attr_name, FilterXExpr *new_value);
+FilterXExpr *filterx_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterXExpr *new_value);
 
 
 #endif
