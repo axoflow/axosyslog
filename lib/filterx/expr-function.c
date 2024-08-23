@@ -253,15 +253,21 @@ filterx_function_args_empty(FilterXFunctionArgs *self)
   return self->positional_args->len == 0 && g_hash_table_size(self->named_args) == 0;
 }
 
-FilterXExpr *
-filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
+static inline FilterXExpr *
+_args_get_expr(FilterXFunctionArgs *self, guint64 index)
 {
   if (self->positional_args->len <= index)
     return NULL;
 
   FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, index);
   arg->retrieved = TRUE;
-  return filterx_expr_ref((FilterXExpr *) arg->value);
+  return (FilterXExpr *) arg->value;
+}
+
+FilterXExpr *
+filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
+{
+  return filterx_expr_ref(_args_get_expr(self, index));
 }
 
 FilterXObject *
