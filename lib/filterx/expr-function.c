@@ -47,12 +47,42 @@ typedef struct _FilterXSimpleFunction
   FilterXSimpleFunctionProto function_proto;
 } FilterXSimpleFunction;
 
+struct _FilterXFunctionArgs
+{
+  GPtrArray *positional_args;
+  GHashTable *named_args;
+};
+
 void
 filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
 
   filterx_eval_push_error_info(self ? self->super.function_name : "n/a", s, error_info, free_info);
+}
+
+static inline FilterXExpr *
+_args_get_expr(FilterXFunctionArgs *self, guint64 index)
+{
+  /* 'retrieved' is not thread-safe */
+  main_loop_assert_main_thread();
+
+  if (self->positional_args->len <= index)
+    return NULL;
+
+  FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, index);
+  arg->retrieved = TRUE;
+  return (FilterXExpr *) arg->value;
+}
+
+static FilterXObject *
+_args_get_object(FilterXFunctionArgs *self, guint64 index)
+{
+  FilterXExpr *expr = _args_get_expr(self, index);
+  if (!expr)
+    return NULL;
+
+  return filterx_expr_eval(expr);
 }
 
 static GPtrArray *
@@ -64,7 +94,7 @@ _simple_function_eval_args(FilterXSimpleFunction *self)
 
   for (guint64 i = 0; i < len; i++)
     {
-      FilterXObject *obj = filterx_function_args_get_object(self->args, i);
+      FilterXObject *obj = _args_get_object(self->args, i);
       if (obj == NULL)
         goto error;
 
@@ -179,12 +209,6 @@ filterx_generator_function_init_instance(FilterXGeneratorFunction *s, const gcha
   s->super.super.free_fn = _generator_function_free;
 }
 
-struct _FilterXFunctionArgs
-{
-  GPtrArray *positional_args;
-  GHashTable *named_args;
-};
-
 /* Takes reference of value */
 FilterXFunctionArg *
 filterx_function_arg_new(const gchar *name, FilterXExpr *value)
@@ -254,34 +278,10 @@ filterx_function_args_empty(FilterXFunctionArgs *self)
   return self->positional_args->len == 0 && g_hash_table_size(self->named_args) == 0;
 }
 
-static inline FilterXExpr *
-_args_get_expr(FilterXFunctionArgs *self, guint64 index)
-{
-  /* 'retrieved' is not thread-safe */
-  main_loop_assert_main_thread();
-
-  if (self->positional_args->len <= index)
-    return NULL;
-
-  FilterXFunctionArg *arg = g_ptr_array_index(self->positional_args, index);
-  arg->retrieved = TRUE;
-  return (FilterXExpr *) arg->value;
-}
-
 FilterXExpr *
 filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
 {
   return filterx_expr_ref(_args_get_expr(self, index));
-}
-
-FilterXObject *
-filterx_function_args_get_object(FilterXFunctionArgs *self, guint64 index)
-{
-  FilterXExpr *expr = _args_get_expr(self, index);
-  if (!expr)
-    return NULL;
-
-  return filterx_expr_eval(expr);
 }
 
 static const gchar *
@@ -357,17 +357,6 @@ FilterXExpr *
 filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name)
 {
   return filterx_expr_ref(_args_get_named_expr(self, name));
-}
-
-FilterXObject *
-filterx_function_args_get_named_object(FilterXFunctionArgs *self, const gchar *name, gboolean *exists)
-{
-  FilterXExpr *expr = _args_get_named_expr(self, name);
-  *exists = !!expr;
-  if (!expr)
-    return NULL;
-
-  return filterx_expr_eval(expr);
 }
 
 FilterXObject *
