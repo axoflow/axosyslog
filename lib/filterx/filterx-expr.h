@@ -26,11 +26,10 @@
 
 #include "filterx-object.h"
 #include "cfg-lexer.h"
-#include "atomic.h"
 
 struct _FilterXExpr
 {
-  GAtomicCounter ref_cnt;
+  guint32 ref_cnt;
   const gchar *type;
   guint32 ignore_falsy_result:1, suppress_from_trace:1;
 

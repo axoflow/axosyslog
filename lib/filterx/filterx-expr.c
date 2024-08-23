@@ -65,7 +65,7 @@ filterx_expr_free_method(FilterXExpr *self)
 void
 filterx_expr_init_instance(FilterXExpr *self)
 {
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   self->free_fn = filterx_expr_free_method;
 }
 
@@ -83,7 +83,7 @@ filterx_expr_ref(FilterXExpr *self)
   if (!self)
     return NULL;
 
-  g_atomic_counter_inc(&self->ref_cnt);
+  self->ref_cnt++;
   return self;
 }
 
@@ -93,7 +93,7 @@ filterx_expr_unref(FilterXExpr *self)
   if (!self)
     return;
 
-  if (g_atomic_counter_dec_and_test(&self->ref_cnt))
+  if (--self->ref_cnt == 0)
     {
       self->free_fn(self);
       g_free(self);
