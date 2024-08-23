@@ -257,6 +257,8 @@ filterx_function_args_empty(FilterXFunctionArgs *self)
 static inline FilterXExpr *
 _args_get_expr(FilterXFunctionArgs *self, guint64 index)
 {
+  /* 'retrieved' is not thread-safe */
+  main_loop_assert_main_thread();
 
   if (self->positional_args->len <= index)
     return NULL;
