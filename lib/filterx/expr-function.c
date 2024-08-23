@@ -32,6 +32,7 @@
 #include "filterx/object-null.h"
 #include "plugin.h"
 #include "cfg.h"
+#include "mainloop.h"
 
 GQuark
 filterx_function_error_quark(void)
@@ -256,6 +257,7 @@ filterx_function_args_empty(FilterXFunctionArgs *self)
 static inline FilterXExpr *
 _args_get_expr(FilterXFunctionArgs *self, guint64 index)
 {
+
   if (self->positional_args->len <= index)
     return NULL;
 
@@ -273,13 +275,11 @@ filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index)
 FilterXObject *
 filterx_function_args_get_object(FilterXFunctionArgs *self, guint64 index)
 {
-  FilterXExpr *expr = filterx_function_args_get_expr(self, index);
+  FilterXExpr *expr = _args_get_expr(self, index);
   if (!expr)
     return NULL;
 
-  FilterXObject *obj = filterx_expr_eval(expr);
-  filterx_expr_unref(expr);
-  return obj;
+  return filterx_expr_eval(expr);
 }
 
 static const gchar *
@@ -311,79 +311,75 @@ error:
 const gchar *
 filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 index, gsize *len)
 {
-  FilterXExpr *expr = filterx_function_args_get_expr(self, index);
+  FilterXExpr *expr = _args_get_expr(self, index);
   if (!expr)
     return NULL;
 
-  const gchar *str = _get_literal_string_from_expr(expr, len);
-
-  filterx_expr_unref(expr);
-  return str;
+  return _get_literal_string_from_expr(expr, len);
 }
 
 gboolean
 filterx_function_args_is_literal_null(FilterXFunctionArgs *self, guint64 index)
 {
-  gboolean is_literal_null = FALSE;
-
-  FilterXExpr *expr = filterx_function_args_get_expr(self, index);
+  FilterXExpr *expr = _args_get_expr(self, index);
   if (!expr)
-    goto error;
+    return FALSE;
 
   if (!filterx_expr_is_literal(expr))
-    goto error;
+    return FALSE;
 
   FilterXObject *obj = filterx_expr_eval(expr);
   if (!obj)
-    goto error;
+    return FALSE;
 
-  is_literal_null = filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null));
+  gboolean is_literal_null = filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null));
   filterx_object_unref(obj);
 
-error:
-  filterx_expr_unref(expr);
   return is_literal_null;
+}
+
+FilterXExpr *
+_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name)
+{
+  /* 'retrieved' is not thread-safe */
+  main_loop_assert_main_thread();
+
+  FilterXFunctionArg *arg = g_hash_table_lookup(self->named_args, name);
+  if (!arg)
+    return NULL;
+  arg->retrieved = TRUE;
+  return arg->value;
 }
 
 FilterXExpr *
 filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name)
 {
-  FilterXFunctionArg *arg = g_hash_table_lookup(self->named_args, name);
-  if (!arg)
-    return NULL;
-  arg->retrieved = TRUE;
-  return filterx_expr_ref(arg->value);
+  return filterx_expr_ref(_args_get_named_expr(self, name));
 }
 
 FilterXObject *
 filterx_function_args_get_named_object(FilterXFunctionArgs *self, const gchar *name, gboolean *exists)
 {
-  FilterXExpr *expr = filterx_function_args_get_named_expr(self, name);
+  FilterXExpr *expr = _args_get_named_expr(self, name);
   *exists = !!expr;
   if (!expr)
     return NULL;
 
-  FilterXObject *obj = filterx_expr_eval(expr);
-  filterx_expr_unref(expr);
-  return obj;
+  return filterx_expr_eval(expr);
 }
 
 FilterXObject *
 filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const gchar *name, gboolean *exists)
 {
-  FilterXObject *obj = NULL;
-  FilterXExpr *expr = filterx_function_args_get_named_expr(self, name);
+  FilterXExpr *expr = _args_get_named_expr(self, name);
   *exists = !!expr;
   if (!expr)
     return NULL;
 
   if (!filterx_expr_is_literal(expr))
-    goto error;
+    return NULL;
 
-  obj = filterx_expr_eval(expr);
-error:
-  filterx_expr_unref(expr);
-  return obj;
+  return filterx_expr_eval(expr);
 }
 
 
@@ -391,15 +387,12 @@ const gchar *
 filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name, gsize *len,
                                                gboolean *exists)
 {
-  FilterXExpr *expr = filterx_function_args_get_named_expr(self, name);
+  FilterXExpr *expr = _args_get_named_expr(self, name);
   *exists = !!expr;
   if (!expr)
     return NULL;
 
-  const gchar *str = _get_literal_string_from_expr(expr, len);
-
-  filterx_expr_unref(expr);
-  return str;
+  return _get_literal_string_from_expr(expr, len);
 }
 
 gboolean
@@ -461,7 +454,7 @@ filterx_function_args_get_named_literal_generic_number(FilterXFunctionArgs *self
   GenericNumber value;
   gn_set_nan(&value);
 
-  FilterXExpr *expr = filterx_function_args_get_named_expr(self, name);
+  FilterXExpr *expr = _args_get_named_expr(self, name);
   *exists = !!expr;
   if (!expr)
     return value;
@@ -486,7 +479,6 @@ error:
   *error = TRUE;
 success:
   filterx_object_unref(obj);
-  filterx_expr_unref(expr);
   return value;
 }
 
