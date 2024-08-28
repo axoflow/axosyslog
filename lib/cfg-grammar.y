@@ -124,7 +124,7 @@
 
 #define YYMAXDEPTH 20000
 
-#if YYBISON >= 30802
+#if YYBISON >= 30802 && defined(YYDEBUG) && YYDEBUG
 
 /* adding custom location reporting into yydebug output requires bison 3.8.
  * I've tested it with 3.8.2
