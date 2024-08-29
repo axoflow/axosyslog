@@ -1799,7 +1799,7 @@ def test_add_operator_for_base_types(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
             $MSG = {};
-            $MSG.string = "foo" + "bar" + "baz";
+            $MSG.string = ${values.str} + "bar" + "baz";
             $MSG.bytes = string(bytes("\xCA") + bytes("\xFE"));
             $MSG.datetime_integer = string(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600000000);
             $MSG.datetime_double = string(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600.0);
@@ -1820,7 +1820,7 @@ def test_add_operator_for_base_types(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = (
-        r"""{"string":"foobarbaz","""
+        r"""{"string":"stringbarbaz","""
         r""""bytes":"cafe","""
         r""""datetime_integer":"2000-01-01T01:00:00.000+00:00","""
         r""""datetime_double":"2000-01-01T01:00:00.000+00:00","""
