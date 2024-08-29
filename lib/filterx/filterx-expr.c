@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024 Axoflow
  * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -24,6 +25,7 @@
 #include "filterx/filterx-expr.h"
 #include "cfg-source.h"
 #include "messages.h"
+#include "mainloop.h"
 
 void
 filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text)
@@ -65,7 +67,7 @@ filterx_expr_free_method(FilterXExpr *self)
 void
 filterx_expr_init_instance(FilterXExpr *self)
 {
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   self->free_fn = filterx_expr_free_method;
 }
 
@@ -80,20 +82,24 @@ filterx_expr_new(void)
 FilterXExpr *
 filterx_expr_ref(FilterXExpr *self)
 {
+  main_loop_assert_main_thread();
+
   if (!self)
     return NULL;
 
-  g_atomic_counter_inc(&self->ref_cnt);
+  self->ref_cnt++;
   return self;
 }
 
 void
 filterx_expr_unref(FilterXExpr *self)
 {
+  main_loop_assert_main_thread();
+
   if (!self)
     return;
 
-  if (g_atomic_counter_dec_and_test(&self->ref_cnt))
+  if (--self->ref_cnt == 0)
     {
       self->free_fn(self);
       g_free(self);

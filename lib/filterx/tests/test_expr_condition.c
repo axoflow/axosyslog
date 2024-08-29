@@ -352,7 +352,9 @@ _dummy_func(FilterXExpr *s, GPtrArray *args)
 
 Test(expr_condition, test_condition_return_expr_result_on_missing_stmts)
 {
-  FilterXExpr *func = filterx_simple_function_new("test_fn", filterx_function_args_new(NULL, NULL), _dummy_func);
+  GError *error = NULL;
+  FilterXExpr *func = filterx_simple_function_new("test_fn", filterx_function_args_new(NULL, NULL), _dummy_func, &error);
+  g_clear_error(&error);
 
   FilterXExpr *cond = filterx_conditional_new(func);
   FilterXObject *res = filterx_expr_eval(cond);
