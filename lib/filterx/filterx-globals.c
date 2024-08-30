@@ -36,6 +36,7 @@
 #include "filterx/func-unset-empties.h"
 #include "filterx/func-str-transform.h"
 #include "filterx/func-flatten.h"
+#include "filterx/func-sdata.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-unset.h"
 #include "filterx/filterx-eval.h"
@@ -99,6 +100,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
+  g_assert(filterx_builtin_simple_function_register("has_sdata",
+                                                    filterx_simple_function_has_sdata));
 }
 
 static void
@@ -129,6 +132,8 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("regexp_subst", filterx_function_regexp_subst_new));
   g_assert(filterx_builtin_function_ctor_register("unset", filterx_function_unset_new));
   g_assert(filterx_builtin_function_ctor_register("flatten", filterx_function_flatten_new));
+  g_assert(filterx_builtin_function_ctor_register("is_sdata_from_enterprise",
+                                                  filterx_function_is_sdata_from_enterprise_new));
 }
 
 static void
@@ -161,6 +166,8 @@ _generator_ctors_init(void)
   filterx_builtin_function_ctors_init_private(&filterx_builtin_generator_function_ctors);
   g_assert(filterx_builtin_generator_function_ctor_register("regexp_search",
                                                             filterx_generator_function_regexp_search_new));
+  g_assert(filterx_builtin_generator_function_ctor_register("get_sdata",
+                                                            filterx_generator_function_get_sdata_new));
 }
 
 static void

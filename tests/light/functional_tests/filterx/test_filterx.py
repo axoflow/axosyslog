@@ -1948,3 +1948,63 @@ def test_plus_equal_grammar_rules(config, syslog_ng):
         r""""attr_gen_var":["some","basic","foo","bar","and","add","to","plus"]}""" + "\n"
     )
     assert file_true.read_log() == exp
+
+
+def test_get_sdata(config, syslog_ng):
+    file_true = config.create_file_destination(file_name="dest-true.log", template="'$MSG\n'")
+    file_false = config.create_file_destination(file_name="dest-false.log", template="'$MSG\n'")
+
+    raw_conf = f"""
+@version: {config.get_version()}
+
+options {{ stats(level(1)); }};
+
+source genmsg {{
+    example-msg-generator(
+        num(1)
+        template("[Originator@6876 sub=Vimsvc.ha-eventmgr opID=esxui-13c6-6b16 sid=5214bde6 user=root][anotherSDID@32473 iut=4 eventSource=Application eventID=1012]")
+    );
+}};
+
+destination dest_true {{
+    {render_statement(file_true)};
+}};
+
+destination dest_false {{
+    {render_statement(file_false)};
+}};
+
+parser my_sdata_parser {{
+  sdata-parser();
+}};
+
+log {{
+    source(genmsg);
+    if {{
+        parser(my_sdata_parser);
+        filterx {{ {"$MSG = {}; $MSG.got_sdata = get_sdata();"} \n}};
+        destination(dest_true);
+    }} else {{
+        destination(dest_false);
+    }};
+}};
+"""
+    config.set_raw_config(raw_conf)
+
+    syslog_ng.start(config)
+
+    assert json.loads(file_true.read_log()) == {
+        "got_sdata": {
+            "anotherSDID@32473": {
+                "iut": "4",
+                "eventSource": "Application",
+                "eventID": "1012",
+            },
+            "Originator@6876": {
+                "sub": "Vimsvc.ha-eventmgr",
+                "opID": "esxui-13c6-6b16",
+                "sid": "5214bde6",
+                "user": "root",
+            },
+        },
+    }
