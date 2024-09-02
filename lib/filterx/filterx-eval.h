@@ -40,7 +40,8 @@ typedef enum _FilterXEvalResult
 typedef enum _FilterXEvalControl
 {
   FXC_NOTSET,
-  FXC_DROP
+  FXC_DROP,
+  FXC_DONE
 } FilterXEvalControl;
 
 typedef struct _FilterXEvalContext FilterXEvalContext;

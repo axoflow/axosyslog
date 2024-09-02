@@ -11,6 +11,7 @@ set(FILTERX_HEADERS
     filterx/expr-set-subscript.h
     filterx/expr-template.h
     filterx/expr-drop.h
+    filterx/expr-done.h
     filterx/filterx-config.h
     filterx/filterx-eval.h
     filterx/filterx-error.h
@@ -67,6 +68,7 @@ set(FILTERX_SOURCES
     filterx/expr-set-subscript.c
     filterx/expr-template.c
     filterx/expr-drop.c
+    filterx/expr-done.c
     filterx/filterx-config.c
     filterx/filterx-eval.c
     filterx/filterx-error.c
