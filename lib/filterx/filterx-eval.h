@@ -25,16 +25,9 @@
 
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-expr.h"
+#include "filterx/filterx-error.h"
 #include "template/eval.h"
 
-typedef struct _FilterXError
-{
-  const gchar *message;
-  FilterXExpr *expr;
-  FilterXObject *object;
-  gchar *info;
-  gboolean free_info;
-} FilterXError;
 
 typedef struct _FilterXEvalContext FilterXEvalContext;
 struct _FilterXEvalContext

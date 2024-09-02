@@ -54,15 +54,6 @@ filterx_eval_set_context(FilterXEvalContext *context)
   eval_context = context;
 }
 
-static void
-filterx_eval_clear_error(FilterXError *error)
-{
-  filterx_object_unref(error->object);
-  if (error->free_info)
-    g_free(error->info);
-  memset(error, 0, sizeof(*error));
-}
-
 void
 filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
