@@ -33,6 +33,7 @@ typedef enum _FilterXEvalResult
 {
   FXE_SUCCESS,
   FXE_FAILURE,
+  FXE_DROP,
 } FilterXEvalResult;
 
 typedef struct _FilterXEvalContext FilterXEvalContext;
@@ -58,6 +59,7 @@ const gchar *filterx_eval_get_last_error(void);
 EVTTAG *filterx_format_last_error(void);
 EVTTAG *filterx_format_last_error_location(void);
 void filterx_eval_clear_errors(void);
+EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 
 void filterx_eval_store_weak_ref(FilterXObject *object);
 

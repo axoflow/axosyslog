@@ -154,7 +154,7 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *ms
 {
   context->msgs = &msg;
   context->num_msg = 1;
-  FilterXEvalResult success = FXE_FAILURE;
+  FilterXEvalResult result = FXE_FAILURE;
 
   FilterXObject *res = filterx_expr_eval(expr);
   if (!res)
@@ -165,15 +165,14 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *ms
       filterx_eval_clear_errors();
       goto fail;
     }
+
   if (filterx_object_truthy(res))
-    success = FXE_SUCCESS;
-  else
-    success = FXE_FAILURE;
+    result = FXE_SUCCESS;
   filterx_object_unref(res);
   /* NOTE: we only store the results into the message if the entire evaluation was successful */
 fail:
   filterx_scope_set_dirty(context->scope);
-  return success;
+  return result;
 }
 
 void
@@ -207,4 +206,26 @@ filterx_eval_deinit_context(FilterXEvalContext *context)
     g_ptr_array_free(context->weak_refs, TRUE);
   filterx_scope_unref(context->scope);
   filterx_eval_set_context(context->previous_context);
+}
+
+EVTTAG *
+filterx_format_eval_result(FilterXEvalResult result)
+{
+  const gchar *eval_result = NULL;
+  switch (result)
+    {
+    case FXE_SUCCESS:
+      eval_result = g_strdup("matched");
+      break;
+    case FXE_DROP:
+      eval_result = g_strdup("explicitly dropped");
+      break;
+    case FXE_FAILURE:
+      eval_result = g_strdup("unmatched");
+      break;
+    default:
+      g_assert_not_reached();
+      break;
+    }
+  return evt_tag_printf("result", "%s", eval_result);
 }
