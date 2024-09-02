@@ -24,7 +24,7 @@
 #include "filterx/filterx-error.h"
 
 void
-filterx_eval_clear_error(FilterXError *error)
+filterx_error_clear(FilterXError *error)
 {
   filterx_object_unref(error->object);
   if (error->free_info)

@@ -21,6 +21,7 @@
  *
  */
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-error.h"
 #include "filterx/filterx-expr.h"
 #include "logpipe.h"
 #include "scratch-buffers.h"
@@ -61,7 +62,7 @@ filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *
 
   if (context)
     {
-      filterx_eval_clear_error(&context->error);
+      filterx_error_clear(&context->error);
       context->error.message = message;
       context->error.expr = expr;
       context->error.object = filterx_object_ref(object);
@@ -77,7 +78,7 @@ filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *inf
 
   if (context)
     {
-      filterx_eval_clear_error(&context->error);
+      filterx_error_clear(&context->error);
       context->error.message = message;
       context->error.expr = expr;
       context->error.object = NULL;
@@ -96,7 +97,7 @@ filterx_eval_clear_errors(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  filterx_eval_clear_error(&context->error);
+  filterx_error_clear(&context->error);
 }
 
 const gchar *

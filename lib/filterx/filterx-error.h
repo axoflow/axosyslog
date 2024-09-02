@@ -38,4 +38,7 @@ typedef struct _FilterXError
   gboolean free_info;
 } FilterXError;
 
+void filterx_error_clear(FilterXError *error);
+
+
 #endif
