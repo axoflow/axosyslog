@@ -29,6 +29,12 @@
 #include "template/eval.h"
 
 
+typedef enum _FilterXEvalResult
+{
+  FXE_SUCCESS,
+  FXE_FAILURE,
+} FilterXEvalResult;
+
 typedef struct _FilterXEvalContext FilterXEvalContext;
 struct _FilterXEvalContext
 {
@@ -46,7 +52,7 @@ FilterXScope *filterx_eval_get_scope(void);
 void filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
 void filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info);
 void filterx_eval_set_context(FilterXEvalContext *context);
-gboolean filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *msg);
+FilterXEvalResult filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *msg);
 void filterx_eval_sync_scope_and_message(FilterXScope *scope, LogMessage *msg);
 const gchar *filterx_eval_get_last_error(void);
 EVTTAG *filterx_format_last_error(void);

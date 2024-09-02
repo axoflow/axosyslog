@@ -149,12 +149,12 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
-gboolean
+FilterXEvalResult
 filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *msg)
 {
   context->msgs = &msg;
   context->num_msg = 1;
-  gboolean success = FALSE;
+  FilterXEvalResult success = FXE_FAILURE;
 
   FilterXObject *res = filterx_expr_eval(expr);
   if (!res)
@@ -165,7 +165,10 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *ms
       filterx_eval_clear_errors();
       goto fail;
     }
-  success = filterx_object_truthy(res);
+  if (filterx_object_truthy(res))
+    success = FXE_SUCCESS;
+  else
+    success = FXE_FAILURE;
   filterx_object_unref(res);
   /* NOTE: we only store the results into the message if the entire evaluation was successful */
 fail:

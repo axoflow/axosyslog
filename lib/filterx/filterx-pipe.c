@@ -51,7 +51,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
   LogFilterXPipe *self = (LogFilterXPipe *) s;
   FilterXEvalContext eval_context;
   LogPathOptions local_path_options;
-  gboolean res;
+  FilterXEvalResult eval_res;
 
   path_options = log_path_options_chain(&local_path_options, path_options);
   filterx_eval_init_context(&eval_context, path_options->filterx_context);
@@ -62,17 +62,17 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
             evt_tag_msg_reference(msg));
 
   NVTable *payload = nv_table_ref(msg->payload);
-  res = filterx_eval_exec(&eval_context, self->block, msg);
+  eval_res = filterx_eval_exec(&eval_context, self->block, msg);
 
   msg_trace("<<<<<< filterx rule evaluation result",
-            evt_tag_str("result", res ? "matched" : "unmatched"),
+            evt_tag_str("result", eval_res == FXE_SUCCESS ? "matched" : "unmatched"),
             evt_tag_str("rule", self->name),
             log_pipe_location_tag(s),
             evt_tag_int("dirty", filterx_scope_is_dirty(eval_context.scope)),
             evt_tag_msg_reference(msg));
 
   local_path_options.filterx_context = &eval_context;
-  if (res)
+  if (eval_res == FXE_SUCCESS)
     {
       log_pipe_forward_msg(s, msg, path_options);
     }
