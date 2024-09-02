@@ -113,32 +113,7 @@ filterx_format_last_error(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  if (!context->error.message)
-    return evt_tag_str("error", "Error information unset");
-
-  const gchar *extra_info = NULL;
-
-  if (context->error.info)
-    {
-      extra_info = context->error.info;
-    }
-  else if (context->error.object)
-    {
-      GString *buf = scratch_buffers_alloc();
-
-      if (!filterx_object_repr(context->error.object, buf))
-        {
-          LogMessageValueType t;
-          if (!filterx_object_marshal(context->error.object, buf, &t))
-            g_assert_not_reached();
-        }
-      extra_info = buf->str;
-    }
-
-  return evt_tag_printf("error", "%s%s%s",
-                        context->error.message,
-                        extra_info ? ": " : "",
-                        extra_info ? : "");
+  return filterx_error_format(&context->error);
 }
 
 EVTTAG *

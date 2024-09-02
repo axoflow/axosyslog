@@ -39,6 +39,7 @@ typedef struct _FilterXError
 } FilterXError;
 
 void filterx_error_clear(FilterXError *error);
+EVTTAG *filterx_error_format(FilterXError *error);
 
 
 #endif

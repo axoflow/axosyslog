@@ -22,6 +22,7 @@
  */
 
 #include "filterx/filterx-error.h"
+#include "scratch-buffers.h"
 
 void
 filterx_error_clear(FilterXError *error)
@@ -30,4 +31,36 @@ filterx_error_clear(FilterXError *error)
   if (error->free_info)
     g_free(error->info);
   memset(error, 0, sizeof(*error));
+}
+
+EVTTAG *
+filterx_error_format(FilterXError *error)
+{
+
+  if (!error->message)
+    return evt_tag_str("error", "Error information unset");
+
+  const gchar *extra_info = NULL;
+
+  if (error->info)
+    {
+      extra_info = error->info;
+    }
+  else if (error->object)
+    {
+      GString *buf = scratch_buffers_alloc();
+
+      if (!filterx_object_repr(error->object, buf))
+        {
+          LogMessageValueType t;
+          if (!filterx_object_marshal(error->object, buf, &t))
+            g_assert_not_reached();
+        }
+      extra_info = buf->str;
+    }
+
+  return evt_tag_printf("error", "%s%s%s",
+                        error->message,
+                        extra_info ? ": " : "",
+                        extra_info ? : "");
 }
