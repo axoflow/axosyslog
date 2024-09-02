@@ -5,7 +5,7 @@
 # Contributor: jv <jens@eisfair.org>
 # Maintainer: László Várady <laszlo.varady@axoflow.com>
 pkgname=axosyslog
-pkgver=4.8.0
+pkgver=4.8.1
 pkgrel=0
 pkgdesc="Next generation logging daemon"
 url="https://axoflow.com/docs/axosyslog/"
@@ -174,5 +174,5 @@ _submv() {
 }
 
 sha512sums="
-SKIP  axosyslog-4.8.0.tar.gz
+SKIP  axosyslog-4.8.1.tar.gz
 "

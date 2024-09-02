@@ -1,141 +1,62 @@
-4.8.0
+4.8.1
 =====
 
-We are excited to announce the first [independent release](https://axoflow.com/axosyslog-syslog-ng-fork/) of AxoSyslog.
+This is a bugfix release of AxoSyslog.
 
 AxoSyslog is binary-compatible with syslog-ng [[1]](#r1) and serves as a drop-in replacement.
 
 Explore and learn more about the new features in our [release announcement blog post](https://axoflow.com/axosyslog-release-4-8/).
 
+We provide [cloud-ready container images](https://github.com/axoflow/axosyslog/pkgs/container/axosyslog) and Helm charts.
+
+Packages are available for Debian and Ubuntu from our APT repository.
+RPM packages are available in the Assets section (we’re working on an RPM repository as well, and hope to have it up and running for the next release).
+
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
-
-## Highlights
-
-### Send log messages to Elasticsearch data stream
-The `elasticsearch-datastream()` destination can be used to feed Elasticsearch [data streams](https://www.elastic.co/guide/en/elasticsearch/reference/current/data-streams.html).
-
-Example config:
-
-```
-elasticsearch-datastream(
-  url("https://elastic-endpoint:9200/my-data-stream/_bulk")
-  user("elastic")
-  password("ba3DI8u5qX61We7EP748V8RZ")
-);
-```
-([#178](https://github.com/axoflow/axosyslog/pull/178))
-
-## Features
-
-  * `s3()`: Introduced server side encryption related options
-
-    `server-side-encryption()` and `kms-key()` can be used to configure encryption.
-
-    Currently only `server-side-encryption("aws:kms")` is supported.
-    The `kms-key()` should be:
-      * an ID of a key
-      * an alias of a key, but in that case you have to add the alias/prefix
-      * an ARN of a key
-
-    To be able to use the aws:kms encryption the AWS Role or User has to have the following
-    permissions on the given key:
-      * `kms:Decrypt`
-      * `kms:Encrypt`
-      * `kms:GenerateDataKey`
-
-    Check [this](https://repost.aws/knowledge-center/s3-large-file-encryption-kms-key) page on why the `kms:Decrypt` is mandatory.
-
-    Example config:
-    ```
-    destination d_s3 {
-      s3(
-        bucket("log-archive-bucket")
-        object-key("logs/syslog")
-        server-side-encryption("aws:kms")
-        kms-key("alias/log-archive")
-      );
-    };
-    ```
-
-    See the [S3](https://docs.aws.amazon.com/AmazonS3/latest/userguide/UsingKMSEncryption.html) documentation for more details.
-    ([#127](https://github.com/axoflow/axosyslog/pull/127))
-
-  * `opentelemetry()`, `loki()`, `bigquery()` destination: Added `headers()` option
-
-    With this option you can add gRPC headers to each RPC call.
-
-    Example config:
-    ```
-    opentelemetry(
-      ...
-      headers(
-        "organization" => "Axoflow"
-        "stream-name" => "axo-stream"
-      )
-    );
-    ```
-    ([#192](https://github.com/axoflow/axosyslog/pull/192))
-
 
 ## Bugfixes
 
-  * `csv-parser()`: fix escape-backslash-with-sequences dialect on ARM
-    ([#4947](https://github.com/syslog-ng/syslog-ng/pull/4947))
+  * Fixed crash around wildard `@include` configuration pragmas when compiled with musl libc
 
-  * `csv-parser()` produced invalid output on platforms where char is an unsigned type.
-    ([#4947](https://github.com/syslog-ng/syslog-ng/pull/4947))
+    The AxoSyslog container image, for example, was affected by this bug.
 
-  * `rate-limit()`: Fixed a crash which occured on a config parse failure.
-    ([#169](https://github.com/axoflow/axosyslog/pull/169))
+    ([#261](https://github.com/axoflow/axosyslog/pull/261))
 
-  * macros: Fixed a bug which always set certain macros to string type
+  * `metrics-probe()`: fix disappearing metrics from `stats prometheus` output
 
-    The affected macros are `$PROGRAM`, `$HOST` and `$MESSAGE`.
-    ([#162](https://github.com/axoflow/axosyslog/pull/162))
+    `metrics-probe()` metrics became orphaned and disappeared from the `syslog-ng-ctl stats prometheus` output
+    whenever an ivykis worker stopped (after 10 seconds of inactivity).
+    ([#243](https://github.com/axoflow/axosyslog/pull/243))
 
-  * `wildcard-file()`: fix crash when a deleted file is concurrently written
-    ([#160](https://github.com/axoflow/axosyslog/pull/160))
+  * `syslog-ng-ctl`: fix escaping of `stats prometheus`
 
-  * `disk-buffer()`: fix crash when pipeline initialization fails
+    Metric labels (for example, the ones produced by `metrics-probe()`) may contain control characters, invalid UTF-8 or `\`
+    characters. In those specific rare cases, the escaping of the `stats prometheus` output was incorrect.
+    ([#224](https://github.com/axoflow/axosyslog/pull/224))
 
-    `log_queue_disk_free_method: assertion failed: (!qdisk_started(self->qdisk))`
-    ([#128](https://github.com/axoflow/axosyslog/pull/128))
+  * Fixed potential null pointer deref issues
 
-  * `syslog-ng-ctl query`: fix showing Prometheus metrics as unnamed values
-
-    `none.value=726685`
-    ([#129](https://github.com/axoflow/axosyslog/pull/129))
-
-  * `syslog-ng-ctl query`: show timestamps and fix `g_pattern_spec_match_string` assert
-    ([#129](https://github.com/axoflow/axosyslog/pull/129))
-
+    ([#216](https://github.com/axoflow/axosyslog/pull/216))
 
 ## Other changes
 
-  * packages/dbld: add support for Ubuntu 24.04 (Noble Numbat)
-    ([#4925](https://github.com/syslog-ng/syslog-ng/pull/4925))
+  * `tls()`: expose the key fingerprint of the peer in ${.tls.x509_fp} if
+    trusted-keys() is used to retain the actual peer identity in received
+    messages.
+    ([#136](https://github.com/axoflow/axosyslog/pull/136))
 
-  * `syslog-ng-ctl`: do not show orphan metrics for `stats prometheus`
+  * `network()`, `syslog()` sources and `syslog-parser()`: add `no-piggyback-errors` flag
 
-    As the `stats prometheus` command is intended to be used to forward metrics
-    to Prometheus or any other time-series database, displaying orphaned metrics
-    should be avoided in order not to insert new data points when a given metric
-    is no longer alive.
+    With the `no-piggyback-errors` flag of `syslog-parser()`, the message will not be attributed to AxoSyslog in
+    case of errors. Actually it retains everything that was present at the time of the parse error,
+    potentially things that were already extracted.
 
-    In case you are interested in the last known value of orphaned counters, use
-    the `stats` or `query` subcommands.
-    ([#4921](https://github.com/syslog-ng/syslog-ng/pull/4921))
+    So $MSG remains that was set (potentially the raw message), $HOST may or may not be extracted,
+    likewise for $PROGRAM, $PID, $MSGID, etc.
 
-  * `bigquery()`, `loki()`, `opentelemetry()`, `cloud-auth()`: C++ modules can be compiled with clang
+    The error is still indicated via $MSGFORMAT set to "syslog:error".
 
-    Compiling and using these C++ modules are now easier on FreeBSD and macOS.
-    ([#4933](https://github.com/syslog-ng/syslog-ng/pull/4933))
-
-  * `s3()`: new metric `syslogng_output_event_bytes_total`
-    ([#4958](https://github.com/syslog-ng/syslog-ng/pull/4958))
-
-
-<a id="r1">[1]</a> syslog-ng is a trademark of One Identity.
+    ([#245](https://github.com/axoflow/axosyslog/pull/245))
 
 ## Discord
 
@@ -154,7 +75,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Arpad Kunszt, Attila Szakacs, Balazs Scheidler, Dmitry Levin,
-Ferenc HERNADI, Gabor Kozma, Hofi, Ilya Kheifets, Kristof Gyuracz,
-László Várady, Mate Ory, Máté Őry, Robert Fekete, Szilard Parrag,
-Wolfram Joost, shifter
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, Dmitry Levin,  Hofi,
+László Várady, Szilárd Parrag, shifter
