@@ -3,7 +3,6 @@ if ENABLE_GRPC
 noinst_LTLIBRARIES += modules/grpc/bigquery/libbigquery_cpp.la
 
 modules_grpc_bigquery_libbigquery_cpp_la_SOURCES = \
-  $(grpc_metrics_sources) \
   modules/grpc/bigquery/bigquery-dest.h \
   modules/grpc/bigquery/bigquery-dest.hpp \
   modules/grpc/bigquery/bigquery-dest.cpp \
@@ -15,6 +14,7 @@ modules_grpc_bigquery_libbigquery_cpp_la_CXXFLAGS = \
   $(AM_CXXFLAGS) \
   $(PROTOBUF_CFLAGS) \
   $(GRPCPP_CFLAGS) \
+  $(GRPC_COMMON_CFLAGS) \
   -I$(GOOGLEAPIS_PROTO_BUILDDIR) \
   -I$(top_srcdir)/modules/grpc \
   -I$(top_srcdir)/modules/grpc/bigquery \
@@ -34,12 +34,14 @@ modules_grpc_bigquery_libbigquery_la_SOURCES = \
 
 modules_grpc_bigquery_libbigquery_la_CPPFLAGS = \
   $(AM_CPPFLAGS) \
+  $(GRPC_COMMON_CFLAGS) \
   -I$(top_srcdir)/modules/grpc/bigquery \
   -I$(top_builddir)/modules/grpc/bigquery \
   -I$(top_srcdir)/modules/grpc
 
 modules_grpc_bigquery_libbigquery_la_LIBADD = \
   $(MODULE_DEPS_LIBS) \
+  $(GRPC_COMMON_LIBS) \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
   $(top_builddir)/modules/grpc/bigquery/libbigquery_cpp.la
 
@@ -48,6 +50,7 @@ nodist_EXTRA_modules_grpc_bigquery_libbigquery_la_SOURCES = force-cpp-linker-wit
 modules_grpc_bigquery_libbigquery_la_LDFLAGS = $(MODULE_LDFLAGS)
 EXTRA_modules_grpc_bigquery_libbigquery_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \
+  $(GRPC_COMMON_LIBS) \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
   $(top_builddir)/modules/grpc/bigquery/libbigquery_cpp.la
 
