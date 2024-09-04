@@ -165,8 +165,9 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *ms
       filterx_eval_clear_errors();
       goto fail;
     }
-
-  if (filterx_object_truthy(res))
+  if (context->eval_control_modifier == FXC_DROP)
+    result = FXE_DROP;
+  else if (filterx_object_truthy(res))
     result = FXE_SUCCESS;
   filterx_object_unref(res);
   /* NOTE: we only store the results into the message if the entire evaluation was successful */
@@ -196,6 +197,7 @@ filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previ
     context->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   context->previous_context = previous_context;
 
+  context->eval_control_modifier = FXC_NOTSET;
   filterx_eval_set_context(context);
 }
 

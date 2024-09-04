@@ -36,6 +36,13 @@ typedef enum _FilterXEvalResult
   FXE_DROP,
 } FilterXEvalResult;
 
+
+typedef enum _FilterXEvalControl
+{
+  FXC_NOTSET,
+  FXC_DROP
+} FilterXEvalControl;
+
 typedef struct _FilterXEvalContext FilterXEvalContext;
 struct _FilterXEvalContext
 {
@@ -45,6 +52,7 @@ struct _FilterXEvalContext
   FilterXError error;
   LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
+  FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
 };
 
