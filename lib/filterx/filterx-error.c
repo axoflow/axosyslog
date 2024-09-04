@@ -70,3 +70,18 @@ filterx_error_format_location(FilterXError *error)
 {
   return filterx_expr_format_location_tag(error->expr);
 }
+
+void
+filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
+{
+  error->message = message;
+  error->expr = expr;
+  error->object = filterx_object_ref(object);
+}
+
+void
+filterx_error_set_info(FilterXError *error, gchar *info, gboolean free_info)
+{
+  error->info = info;
+  error->free_info = free_info;
+}

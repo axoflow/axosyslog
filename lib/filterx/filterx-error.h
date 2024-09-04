@@ -41,6 +41,8 @@ typedef struct _FilterXError
 void filterx_error_clear(FilterXError *error);
 EVTTAG *filterx_error_format(FilterXError *error);
 EVTTAG *filterx_error_format_location(FilterXError *error);
+void filterx_error_set_info(FilterXError *error, gchar *info, gboolean free_info);
+void filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object);
 
 
 #endif

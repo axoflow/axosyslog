@@ -63,10 +63,7 @@ filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *
   if (context)
     {
       filterx_error_clear(&context->error);
-      context->error.message = message;
-      context->error.expr = expr;
-      context->error.object = filterx_object_ref(object);
-      context->error.info = NULL;
+      filterx_error_set_values(&context->error, message, expr, object);
     }
 }
 
@@ -79,11 +76,8 @@ filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *inf
   if (context)
     {
       filterx_error_clear(&context->error);
-      context->error.message = message;
-      context->error.expr = expr;
-      context->error.object = NULL;
-      context->error.info = info;
-      context->error.free_info = free_info;
+      filterx_error_set_values(&context->error, message, expr, NULL);
+      filterx_error_set_info(&context->error, info, free_info);
     }
   else
     {
