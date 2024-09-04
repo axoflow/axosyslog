@@ -2008,3 +2008,34 @@ log {{
             },
         },
     }
+
+
+def test_list_range_check_with_nulls(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = json();
+            js1 = json_array([null]);
+            js2 = json_array([null, "bar"]);
+            $MSG.caseA = js1[0];
+            $MSG.caseB = js2[0];
+            $MSG.caseC = js2[1];
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"caseA":null,"caseB":null,"caseC":"bar"}\n'
+
+
+def test_list_range_check_out_of_range(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = json();
+            js1 = json_array([null, "bar"]);
+            $MSG.caseA = js1[2];
+        """,
+    )
+    syslog_ng.start(config)
+    assert file_false.get_stats()["processed"] == 1
+    assert file_false.read_log() == "foobar\n"
