@@ -55,14 +55,6 @@ _append_literal(const gchar *value, gsize len, GString *result)
 }
 
 static gboolean
-_format_and_append_json(struct json_object *value, GString *result)
-{
-  _append_comma_if_needed(result);
-  g_string_append(result, json_object_to_json_string_ext(value, JSON_C_TO_STRING_PLAIN));
-  return TRUE;
-}
-
-static gboolean
 _format_and_append_null(GString *result)
 {
   _append_comma_if_needed(result);
@@ -238,10 +230,13 @@ _format_and_append_value(FilterXObject *value, GString *result)
       return _append_literal(str, len, result);
     }
 
-  struct json_object *js;
-  if (filterx_object_extract_json_array(value, &js) ||
-      filterx_object_extract_json_object(value, &js))
-    return _format_and_append_json(js, result);
+  const gchar *json_literal = filterx_json_to_json_literal(value);
+  if (json_literal)
+    {
+      _append_comma_if_needed(result);
+      g_string_append(result, json_literal);
+      return TRUE;
+    }
 
   if (filterx_object_extract_null(value))
     return _format_and_append_null(result);

@@ -41,6 +41,9 @@ struct FilterXJsonArray_
   FilterXList super;
   FilterXWeakRef root_container;
   struct json_object *jso;
+
+  GMutex lock;
+  const gchar *cached_ro_literal;
 };
 
 static gboolean
@@ -49,12 +52,21 @@ _truthy(FilterXObject *s)
   return TRUE;
 }
 
+static inline const gchar *
+_json_string(FilterXJsonArray *self)
+{
+  if (self->super.super.readonly)
+    return g_atomic_pointer_get(&self->cached_ro_literal);
+
+  return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
+}
+
 static gboolean
 _marshal_to_json_literal_append(FilterXJsonArray *self, GString *repr, LogMessageValueType *t)
 {
   *t = LM_VT_JSON;
 
-  const gchar *json_repr = json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
+  const gchar *json_repr = _json_string(self);
   g_string_append(repr, json_repr);
 
   return TRUE;
@@ -86,7 +98,7 @@ _repr(FilterXObject *s, GString *repr)
 {
   FilterXJsonArray *self = (FilterXJsonArray *) s;
 
-  const gchar *json_repr = json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
+  const gchar *json_repr = _json_string(self);
   g_string_append(repr, json_repr);
 
   return TRUE;
@@ -225,6 +237,21 @@ _unset_index(FilterXList *s, guint64 index)
   return TRUE;
 }
 
+static void
+_make_readonly(FilterXObject *s)
+{
+  FilterXJsonArray *self = (FilterXJsonArray *) s;
+
+  if (g_atomic_pointer_get(&self->cached_ro_literal))
+    return;
+
+  /* json_object_to_json_string_ext() writes/caches into jso, so it's not thread safe  */
+  g_mutex_lock(&self->lock);
+  if (!g_atomic_pointer_get(&self->cached_ro_literal))
+    g_atomic_pointer_set(&self->cached_ro_literal, json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN));
+  g_mutex_unlock(&self->lock);
+}
+
 /* NOTE: consumes root ref */
 FilterXObject *
 filterx_json_array_new_sub(struct json_object *jso, FilterXObject *root)
@@ -232,6 +259,7 @@ filterx_json_array_new_sub(struct json_object *jso, FilterXObject *root)
   FilterXJsonArray *self = g_new0(FilterXJsonArray, 1);
   filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(json_array));
 
+  self->super.super.make_readonly = _make_readonly;
   self->super.get_subscript = _get_subscript;
   self->super.set_subscript = _set_subscript;
   self->super.append = _append;
@@ -241,6 +269,8 @@ filterx_json_array_new_sub(struct json_object *jso, FilterXObject *root)
   filterx_weakref_set(&self->root_container, root);
   filterx_object_unref(root);
   self->jso = jso;
+
+  g_mutex_init(&self->lock);
 
   return &self->super.super;
 }
@@ -252,6 +282,8 @@ _free(FilterXObject *s)
 
   json_object_put(self->jso);
   filterx_weakref_clear(&self->root_container);
+
+  g_mutex_clear(&self->lock);
 }
 
 FilterXObject *
@@ -324,7 +356,7 @@ filterx_json_array_to_json_literal(FilterXObject *s)
 
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_array)))
     return NULL;
-  return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
+  return _json_string(self);
 }
 
 /* NOTE: Consider using filterx_object_extract_json_array() to also support message_value. */

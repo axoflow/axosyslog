@@ -301,7 +301,7 @@ public:
     if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer)))
       {
         int64_t value;
-        filterx_integer_unwrap(object, &value);
+        g_assert(filterx_integer_unwrap(object, &value));
         if (!SeverityNumber_IsValid((int) value))
           {
             msg_error("otel-field: Failed to set severity_number",
