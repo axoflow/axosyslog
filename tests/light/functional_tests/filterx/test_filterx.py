@@ -2081,3 +2081,25 @@ log {{
     assert file_true.get_stats()["processed"] == 1
     assert file_true.read_log() == 'bar\n'
     assert syslog_ng.wait_for_message_in_console_log("filterx rule evaluation result; result='explicitly dropped'") != []
+
+
+def test_done(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        msg="foo",
+        filterx_expr_1=r"""
+            if ($MSG =~ 'foo') {
+              declare var_wont_change = true;
+              done;
+              var_wont_change = false; # This will be skipped
+            };
+        """,
+        filterx_expr_2=r"""
+            $MSG = vars();
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"MESSAGE":"foo","var_wont_change":true}\n'
