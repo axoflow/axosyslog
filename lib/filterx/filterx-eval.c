@@ -165,7 +165,8 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, LogMessage *ms
       filterx_eval_clear_errors();
       goto fail;
     }
-  if (context->eval_control_modifier == FXC_DROP)
+
+  if (G_UNLIKELY(context->eval_control_modifier == FXC_DROP))
     result = FXE_DROP;
   else if (filterx_object_truthy(res))
     result = FXE_SUCCESS;
