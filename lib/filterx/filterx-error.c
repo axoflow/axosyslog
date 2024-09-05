@@ -64,3 +64,9 @@ filterx_error_format(FilterXError *error)
                         extra_info ? ": " : "",
                         extra_info ? : "");
 }
+
+EVTTAG *
+filterx_error_format_location(FilterXError *error)
+{
+  return filterx_expr_format_location_tag(error->expr);
+}
