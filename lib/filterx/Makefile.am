@@ -49,6 +49,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-vars.h		\
 	lib/filterx/func-unset-empties.h		\
 	lib/filterx/func-str-transform.h		\
+	lib/filterx/func-str.h		\
 	lib/filterx/func-flatten.h		\
 	lib/filterx/func-sdata.h		\
 	lib/filterx/filterx-private.h			\
@@ -107,6 +108,7 @@ filterx_sources = 				\
 	lib/filterx/func-vars.c		\
 	lib/filterx/func-unset-empties.c		\
 	lib/filterx/func-str-transform.c		\
+	lib/filterx/func-str.c		\
 	lib/filterx/func-flatten.c		\
 	lib/filterx/func-sdata.c		\
 	lib/filterx/filterx-private.c	\
