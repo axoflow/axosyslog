@@ -34,6 +34,7 @@
 #include "filterx/func-len.h"
 #include "filterx/func-vars.h"
 #include "filterx/func-unset-empties.h"
+#include "filterx/func-str.h"
 #include "filterx/func-str-transform.h"
 #include "filterx/func-flatten.h"
 #include "filterx/func-sdata.h"
@@ -134,6 +135,9 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("flatten", filterx_function_flatten_new));
   g_assert(filterx_builtin_function_ctor_register("is_sdata_from_enterprise",
                                                   filterx_function_is_sdata_from_enterprise_new));
+  g_assert(filterx_builtin_function_ctor_register("startswith", filterx_function_startswith_new));
+  g_assert(filterx_builtin_function_ctor_register("endswith", filterx_function_endswith_new));
+  g_assert(filterx_builtin_function_ctor_register("includes", filterx_function_includes_new));
 }
 
 static void
