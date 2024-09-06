@@ -2074,3 +2074,38 @@ def test_startswith_expr_ignorecase(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"startswith_foo_ignorecase":true}\n'
+
+
+def test_endswith_literal(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            if (endswith($MSG, "bar"))
+              {
+                $MSG = json();
+                $MSG.endswith_bar = true;
+              };
+        """, msg="foobar",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"endswith_bar":true}\n'
+
+
+def test_endswith_expr_ignorecase(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            suffix = "bAR";
+            if (endswith($MSG, suffix, ignorecase=true))
+              {
+                $MSG = json();
+                $MSG.endswith_bar_ignorecase = true;
+              };
+        """, msg="foobar",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"endswith_bar_ignorecase":true}\n'
