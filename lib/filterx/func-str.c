@@ -33,6 +33,7 @@
 
 
 #define FILTERX_FUNC_STARTSWITH_USAGE "Usage: startswith(my_string, my_prefix)"
+#define FILTERX_FUNC_ENDSWITH_USAGE "Usage: endswith(my_string, my_prefix)"
 
 static FilterXExpr *
 _extract_haystack_arg(FilterXFunctionArgs *args, GError **error, const gchar *function_usage)
@@ -234,6 +235,79 @@ filterx_function_startswith_new(const gchar *function_name, FilterXFunctionArgs 
 
   self->super.super.eval = _filterx_function_startswith_eval;
   self->super.super.free_fn = _filterx_function_startswith_free;
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+
+FilterXObject *
+_filterx_function_endswith_eval(FilterXExpr *s)
+{
+  FilterXFuncEndsWith *self = (FilterXFuncEndsWith *) s;
+
+  gsize haystack_len;
+  gchar *haystack_str;
+  if(!_eval_haystack_expr(self->haystack, self->ignore_case, &haystack_str, &haystack_len))
+    return NULL;
+  gsize needle_len;
+  gchar *needle_str;
+  if(!self->needle.expr)
+    {
+      needle_str = self->needle.literal.str;
+      needle_len = self->needle.literal.str_len;
+    }
+  else if (!_eval_needle_expr(self->needle.expr, self->ignore_case, &needle_str, &needle_len))
+    return NULL;
+  gboolean endswith = FALSE;
+  if (needle_len > haystack_len)
+    goto exit;
+
+  if (memcmp(haystack_str + haystack_len - needle_len, needle_str, needle_len) == 0)
+    endswith = TRUE;
+
+exit:
+  g_free(haystack_str);
+  if(self->needle.expr)
+    g_free(needle_str);
+  return filterx_boolean_new(endswith);
+}
+
+
+static void
+_filterx_function_endswith_free(FilterXExpr *s)
+{
+  FilterXFuncEndsWith *self = (FilterXFuncEndsWith *) s;
+
+  filterx_expr_unref(self->haystack);
+  if (self->needle.expr)
+    filterx_expr_unref(self->needle.expr);
+
+  filterx_function_free_method(&self->super);
+}
+
+FilterXExpr *
+filterx_function_endswith_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFuncEndsWith *self = g_new0(FilterXFuncEndsWith, 1);
+  filterx_function_init_instance(&self->super, function_name);
+  self->ignore_case = FALSE;
+  if(!_extract_optional_args(&self->ignore_case, args, error, FILTERX_FUNC_STARTSWITH_USAGE))
+    goto error;
+
+  self->haystack = _extract_haystack_arg(args, error, FILTERX_FUNC_ENDSWITH_USAGE);
+  if (!self->haystack)
+    goto error;
+  if (!(_extract_needle_arg(&self->needle, self->ignore_case, args, error, FILTERX_FUNC_ENDSWITH_USAGE))
+      || !filterx_function_args_check(args, error))
+    goto error;
+
+  self->super.super.eval = _filterx_function_endswith_eval;
+  self->super.super.free_fn = _filterx_function_endswith_free;
   filterx_function_args_free(args);
   return &self->super.super;
 

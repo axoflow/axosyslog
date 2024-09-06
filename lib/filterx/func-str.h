@@ -46,6 +46,16 @@ typedef struct _FilterXFuncStartsWith
   gboolean ignore_case;
 } FilterXFuncStartsWith;
 
+typedef struct _FilterXFuncEndsWith
+{
+  FilterXFunction super;
+  FilterXExpr *haystack;
+  FilterXExprOrLiteral needle;
+  gsize needle_len;
+  gboolean ignore_case;
+} FilterXFuncEndsWith;
+
 FilterXExpr *filterx_function_startswith_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_endswith_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
 
 #endif
