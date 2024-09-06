@@ -2039,3 +2039,38 @@ def test_list_range_check_out_of_range(config, syslog_ng):
     syslog_ng.start(config)
     assert file_false.get_stats()["processed"] == 1
     assert file_false.read_log() == "foobar\n"
+
+
+def test_startswith_literal(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            if (startswith($MSG, "foo"))
+              {
+                $MSG = json();
+                $MSG.startswith_foo = true;
+              };
+        """, msg="foo",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"startswith_foo":true}\n'
+
+
+def test_startswith_expr_ignorecase(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            prefix = "FoO";
+            if (startswith($MSG, prefix, ignorecase=true))
+              {
+                $MSG = json();
+                $MSG.startswith_foo_ignorecase = true;
+              };
+        """, msg="foo",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"startswith_foo_ignorecase":true}\n'
