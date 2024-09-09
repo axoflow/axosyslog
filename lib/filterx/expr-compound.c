@@ -84,6 +84,11 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result)
   for (gint i = 0; i < self->exprs->len; i++)
     {
       filterx_object_unref(*result);
+      FilterXEvalContext *context = filterx_eval_get_context();
+
+      if (G_UNLIKELY(context->eval_control_modifier == FXC_DROP || context->eval_control_modifier == FXC_DONE))
+        /* code flow modifier detected, short circuiting */
+        return TRUE;
 
       FilterXExpr *expr = g_ptr_array_index(self->exprs, i);
       if (!_eval_expr(expr, result))

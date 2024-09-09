@@ -50,6 +50,8 @@ static CfgLexerKeyword filterx_keywords[] =
 
   { "isset",              KW_ISSET },
   { "declare",            KW_DECLARE },
+  { "drop",               KW_DROP },
+  { "done",               KW_DONE },
 
   { CFG_KEYWORD_STOP },
 };

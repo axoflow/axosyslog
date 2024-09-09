@@ -15,11 +15,14 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-plus.h	\
 	lib/filterx/expr-variable.h		\
 	lib/filterx/expr-comparison.h		\
+	lib/filterx/expr-drop.h		\
+	lib/filterx/expr-done.h		\
 	lib/filterx/filterx-object.h		\
 	lib/filterx/filterx-weakrefs.h		\
 	lib/filterx/object-primitive.h		\
 	lib/filterx/filterx-scope.h		\
 	lib/filterx/filterx-eval.h		\
+	lib/filterx/filterx-error.h		\
 	lib/filterx/object-extractor.h		\
 	lib/filterx/object-json.h		\
 	lib/filterx/object-json-internal.h		\
@@ -68,11 +71,14 @@ filterx_sources = 				\
 	lib/filterx/expr-plus.c	\
 	lib/filterx/expr-variable.c		\
 	lib/filterx/expr-comparison.c		\
+	lib/filterx/expr-drop.c		\
+	lib/filterx/expr-done.c		\
 	lib/filterx/filterx-object.c		\
 	lib/filterx/filterx-weakrefs.c		\
 	lib/filterx/object-primitive.c		\
 	lib/filterx/filterx-scope.c		\
 	lib/filterx/filterx-eval.c		\
+	lib/filterx/filterx-error.c		\
 	lib/filterx/object-extractor.c		\
 	lib/filterx/object-json.c		\
 	lib/filterx/object-json-object.c		\

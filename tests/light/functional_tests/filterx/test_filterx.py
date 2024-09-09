@@ -2039,3 +2039,67 @@ def test_list_range_check_out_of_range(config, syslog_ng):
     syslog_ng.start(config)
     assert file_false.get_stats()["processed"] == 1
     assert file_false.read_log() == "foobar\n"
+
+
+def test_drop(config, syslog_ng):
+    file_true = config.create_file_destination(file_name="dest-true.log", template="'$MSG\n'")
+    file_false = config.create_file_destination(file_name="dest-false.log", template="'$MSG\n'")
+
+    raw_conf = f"""
+@version: {config.get_version()}
+
+options {{ stats(level(1)); }};
+
+source genmsg {{
+    example-msg-generator(num(1) template("foo"));
+    example-msg-generator(num(1) template("bar"));
+}};
+
+destination dest_true {{
+    {render_statement(file_true)};
+}};
+
+destination dest_false {{
+    {render_statement(file_false)};
+}};
+
+log {{
+    source(genmsg);
+    if {{
+        filterx {{ {"if ($MSG =~ 'foo') {drop;};"} \n}};
+        destination(dest_true);
+    }} else {{
+        destination(dest_false);
+    }};
+}};
+"""
+    config.set_raw_config(raw_conf)
+
+    syslog_ng.start(config)
+
+    assert "processed" in file_true.get_stats()
+    assert file_true.get_stats()["processed"] == 1
+    assert file_true.read_log() == 'bar\n'
+    assert syslog_ng.wait_for_message_in_console_log("filterx rule evaluation result; result='explicitly dropped'") != []
+
+
+def test_done(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        msg="foo",
+        filterx_expr_1=r"""
+            if ($MSG =~ 'foo') {
+              declare var_wont_change = true;
+              done;
+              var_wont_change = false; # This will be skipped
+            };
+        """,
+        filterx_expr_2=r"""
+            $MSG = vars();
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"MESSAGE":"foo","var_wont_change":true}\n'

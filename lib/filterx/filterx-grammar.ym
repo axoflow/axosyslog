@@ -55,6 +55,8 @@
 #include "filterx/expr-plus.h"
 #include "filterx/expr-null-coalesce.h"
 #include "filterx/expr-plus-generator.h"
+#include "filterx/expr-drop.h"
+#include "filterx/expr-done.h"
 
 #include "template/templates.h"
 
@@ -103,6 +105,8 @@ construct_template_expr(LogTemplate *template)
 %token KW_ENUM
 %token KW_ISSET
 %token KW_DECLARE
+%token KW_DROP
+%token KW_DONE
 
 %type <ptr> block
 %type <ptr> stmts
@@ -362,6 +366,8 @@ expr
 	| ternary				{ $$ = $1; }
 	| default				{ $$ = $1; }
 	| KW_ISSET '(' expr ')'			{ $$ = filterx_isset_new($3); }
+	| KW_DROP                   { $$ = filterx_expr_drop_msg(); }
+	| KW_DONE                   { $$ = filterx_expr_done(); }
 	| regexp_match				{ $$ = $1; }
 	;
 
