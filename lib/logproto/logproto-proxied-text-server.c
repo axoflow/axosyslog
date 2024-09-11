@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include "messages.h"
 #include "logproto-proxied-text-server.h"
-#include "transport/multitransport.h"
+#include "transport/transport-stack.h"
 #include "transport/transport-factory-tls.h"
 #include "str-utils.h"
 
@@ -496,7 +496,7 @@ process_proxy_v2:
 static gboolean
 _switch_to_tls(LogProtoProxiedTextServer *self)
 {
-  if (!multitransport_switch((MultiTransport *)self->super.super.super.transport, TRANSPORT_FACTORY_TLS_ID))
+  if (!log_transport_stack_switch((LogTransportStack *)self->super.super.super.transport, TRANSPORT_FACTORY_TLS_ID))
     {
       msg_error("proxied-tls failed to switch to TLS");
       return FALSE;
