@@ -101,6 +101,27 @@ FilterXExpr *filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *f
                                                GError **error);
 
 
+#define FILTERX_FUNCTION_PROTOTYPE(func_name)                \
+  gpointer                                                   \
+  filterx_function_ ## func_name ## _construct(Plugin *self)
+
+#define FILTERX_FUNCTION_DECLARE(func_name) \
+  FILTERX_FUNCTION_PROTOTYPE(func_name);
+
+#define FILTERX_FUNCTION(func_name, ctor) \
+  FILTERX_FUNCTION_PROTOTYPE(func_name)   \
+  {                                       \
+    FilterXFunctionCtor f = ctor;         \
+    return (gpointer) f;                  \
+  }
+
+#define FILTERX_FUNCTION_PLUGIN(func_name)                     \
+  {                                                            \
+    .type = LL_CONTEXT_FILTERX_FUNC,                           \
+    .name = # func_name,                                       \
+    .construct = filterx_function_ ## func_name ## _construct, \
+  }
+
 #define FILTERX_SIMPLE_FUNCTION_PROTOTYPE(func_name) \
   gpointer                                                              \
   filterx_ ## func_name ## _construct(Plugin *self)
@@ -121,27 +142,6 @@ FilterXExpr *filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *f
     .type = LL_CONTEXT_FILTERX_SIMPLE_FUNC,            \
     .name = # func_name,                                 \
     .construct = filterx_ ## func_name ## _construct,  \
-  }
-
-#define FILTERX_FUNCTION_PROTOTYPE(func_name)                \
-  gpointer                                                   \
-  filterx_function_ ## func_name ## _construct(Plugin *self)
-
-#define FILTERX_FUNCTION_DECLARE(func_name) \
-  FILTERX_FUNCTION_PROTOTYPE(func_name);
-
-#define FILTERX_FUNCTION(func_name, ctor) \
-  FILTERX_FUNCTION_PROTOTYPE(func_name)   \
-  {                                       \
-    FilterXFunctionCtor f = ctor;         \
-    return (gpointer) f;                  \
-  }
-
-#define FILTERX_FUNCTION_PLUGIN(func_name)                     \
-  {                                                            \
-    .type = LL_CONTEXT_FILTERX_FUNC,                           \
-    .name = # func_name,                                       \
-    .construct = filterx_function_ ## func_name ## _construct, \
   }
 
 #define FILTERX_GENERATOR_FUNCTION_PROTOTYPE(func_name)                \
