@@ -2103,3 +2103,17 @@ def test_done(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"MESSAGE":"foo","var_wont_change":true}\n'
+
+
+def test_parse_xml(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    custom_message = "<a><b attr=\"attr_val\">c</b><b>e</b></a>";
+    $MSG = json(parse_xml(custom_message));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "{\"a\":{\"b\":[{\"@attr\":\"attr_val\",\"#text\":\"c\"},\"e\"]}}\n"
