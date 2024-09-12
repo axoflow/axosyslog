@@ -42,4 +42,9 @@ gboolean filterx_expr_is_generator(FilterXExpr *s);
 
 FilterXExpr *filterx_generator_create_container_new(FilterXExpr *g, FilterXExpr *fillable_parent);
 
+
+/* protected */
+FilterXObject *filterx_generator_create_dict_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent);
+FilterXObject *filterx_generator_create_list_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent);
+
 #endif

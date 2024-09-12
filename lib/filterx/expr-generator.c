@@ -97,6 +97,30 @@ _create_container_free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+FilterXObject *
+filterx_generator_create_dict_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
+{
+  FilterXObject *fillable_parent_obj = filterx_expr_eval_typed(fillable_parent);
+  if (!fillable_parent_obj)
+    return NULL;
+
+  FilterXObject *result = filterx_object_create_dict(fillable_parent_obj);
+  filterx_object_unref(fillable_parent_obj);
+  return result;
+}
+
+FilterXObject *
+filterx_generator_create_list_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
+{
+  FilterXObject *fillable_parent_obj = filterx_expr_eval_typed(fillable_parent);
+  if (!fillable_parent_obj)
+    return NULL;
+
+  FilterXObject *result = filterx_object_create_list(fillable_parent_obj);
+  filterx_object_unref(fillable_parent_obj);
+  return result;
+}
+
 /* Takes reference of g and fillable_parent */
 FilterXExpr *
 filterx_generator_create_container_new(FilterXExpr *g, FilterXExpr *fillable_parent)
