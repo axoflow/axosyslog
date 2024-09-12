@@ -393,18 +393,10 @@ _regexp_search_generator_create_container(FilterXExprGenerator *s, FilterXExpr *
 {
   FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
 
-  FilterXObject *fillable_parent_obj = filterx_expr_eval_typed(fillable_parent);
-  if (!fillable_parent_obj)
-    return NULL;
-
-  FilterXObject *result;
   if (_has_named_capture_groups(self->pattern))
-    result = filterx_object_create_dict(fillable_parent_obj);
-  else
-    result = filterx_object_create_list(fillable_parent_obj);
+    return filterx_generator_create_dict_container(s, fillable_parent);
 
-  filterx_object_unref(fillable_parent_obj);
-  return result;
+  return filterx_generator_create_list_container(s, fillable_parent);
 }
 
 static void

@@ -640,18 +640,6 @@ exit:
   return success;
 }
 
-static FilterXObject *
-_create_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
-{
-  FilterXObject *fillable_parent_obj = filterx_expr_eval_typed(fillable_parent);
-  if (!fillable_parent_obj)
-    return NULL;
-
-  FilterXObject *result = filterx_object_create_dict(fillable_parent_obj);
-  filterx_object_unref(fillable_parent_obj);
-  return result;
-}
-
 static gboolean
 _extract_args(FilterXGeneratorFunctionParseXml *self, FilterXFunctionArgs *args, GError **error)
 {
@@ -682,7 +670,7 @@ filterx_generator_function_parse_xml_new(const gchar *func_name, FilterXFunction
 
   filterx_generator_function_init_instance(&self->super, func_name);
   self->super.super.generate = _generate;
-  self->super.super.create_container = _create_container;
+  self->super.super.create_container = filterx_generator_create_dict_container;
   self->super.super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) ||
