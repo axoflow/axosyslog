@@ -1,5 +1,7 @@
 /*
+ * Copyright (c) 2024 Axoflow
  * Copyright (c) 2024 shifter
+ *
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -42,7 +44,7 @@
 
 typedef struct FilterXFunctionParseCSV_
 {
-  FilterXFunction super;
+  FilterXGeneratorFunction super;
   FilterXExpr *msg;
   CSVScannerOptions options;
   FilterXExpr *columns;
@@ -166,17 +168,39 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
   return ok;
 }
 
-static FilterXObject *
-_eval(FilterXExpr *s)
+static gboolean
+_validate_fillable(FilterXFunctionParseCSV *self, FilterXObject *fillable)
+{
+  if (self->columns && !filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(dict)))
+    {
+      filterx_eval_push_error_info("fillable must be dict", &self->super.super.super,
+                                   g_strdup_printf("got %s instead", fillable->type->name), TRUE);
+      return FALSE;
+    }
+
+  if (!self->columns && !filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(list)))
+    {
+      filterx_eval_push_error_info("fillable must be list", &self->super.super.super,
+                                   g_strdup_printf("got %s instead", fillable->type->name), TRUE);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_generate(FilterXExprGenerator *s, FilterXObject *fillable)
 {
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
 
+  if (!_validate_fillable(self, fillable))
+    return FALSE;
+
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
-    return NULL;
+    return FALSE;
 
   gboolean ok = FALSE;
-  FilterXObject *result = NULL;
   GList *string_delimiters = NULL;
   guint64 num_of_columns = 0;
   FilterXObject *cols = NULL;
@@ -196,11 +220,6 @@ _eval(FilterXExpr *s)
   if(!_maybe_init_columns(self, &cols, &num_of_columns))
     goto exit;
 
-  if (cols)
-    result = filterx_json_object_new_empty();
-  else
-    result = filterx_json_array_new_empty();
-
   CSVScanner scanner;
   _init_scanner(self, string_delimiters, num_of_columns, input, &scanner, &local_opts);
 
@@ -212,7 +231,7 @@ _eval(FilterXExpr *s)
           if (i >= num_of_columns)
             break;
 
-          ok = _fill_object_col(cols, i, &scanner, result);
+          ok = _fill_object_col(cols, i, &scanner, fillable);
           if(!ok)
             goto exit;
 
@@ -220,20 +239,16 @@ _eval(FilterXExpr *s)
         }
       else
         {
-          ok = _fill_array_element(&scanner, result);
+          ok = _fill_array_element(&scanner, fillable);
         }
     }
 
 exit:
   csv_scanner_options_clean(&local_opts);
-  if (!ok)
-    {
-      filterx_object_unref(result);
-    }
   filterx_object_unref(cols);
   filterx_object_unref(obj);
   csv_scanner_deinit(&scanner);
-  return ok ? result : NULL;
+  return ok;
 }
 
 static void
@@ -244,7 +259,7 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->columns);
   filterx_expr_unref(self->string_delimiters);
   csv_scanner_options_clean(&self->options);
-  filterx_function_free_method(&self->super);
+  filterx_generator_function_free_method(&self->super);
 }
 
 static FilterXExpr *
@@ -400,14 +415,25 @@ _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
   return TRUE;
 }
 
+static FilterXObject *
+_create_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
+{
+  FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
+
+  if (self->columns)
+    return filterx_generator_create_dict_container(s, fillable_parent);
+
+  return filterx_generator_create_list_container(s, fillable_parent);
+}
+
 FilterXExpr *
 filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
-
 {
   FilterXFunctionParseCSV *self = g_new0(FilterXFunctionParseCSV, 1);
-  filterx_function_init_instance(&self->super, function_name);
-  self->super.super.eval = _eval;
-  self->super.super.free_fn = _free;
+  filterx_generator_function_init_instance(&self->super, function_name);
+  self->super.super.generate = _generate;
+  self->super.super.create_container = _create_container;
+  self->super.super.super.free_fn = _free;
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_NONE);
@@ -417,12 +443,12 @@ filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super.super;
+  return &self->super.super.super;
 
 error:
   filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super);
+  filterx_expr_unref(&self->super.super.super);
   return NULL;
 }
 
-FILTERX_FUNCTION(parse_csv, filterx_function_parse_csv_new);
+FILTERX_GENERATOR_FUNCTION(parse_csv, filterx_function_parse_csv_new);

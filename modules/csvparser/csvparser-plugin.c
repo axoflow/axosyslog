@@ -38,7 +38,7 @@ static Plugin csvparser_plugins[] =
     .name = "csv-parser",
     .parser = &csvparser_parser,
   },
-  FILTERX_FUNCTION_PLUGIN(parse_csv),
+  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_csv),
   FILTERX_FUNCTION_PLUGIN(format_csv),
 };
 
