@@ -69,6 +69,28 @@ struct FilterXGeneratorFunctionParseXml_
   FilterXExpr *xml_expr;
 
   FilterXParseXmlState *(*create_state)(void);
+
+  void (*start_elem)(FilterXGeneratorFunctionParseXml *self,
+                     GMarkupParseContext *context, const gchar *element_name,
+                     const gchar **attribute_names, const gchar **attribute_values,
+                     FilterXParseXmlState *state, GError **error);
+  void (*end_elem)(FilterXGeneratorFunctionParseXml *self,
+                   GMarkupParseContext *context, const gchar *element_name,
+                   FilterXParseXmlState *state, GError **error);
+  void (*text)(FilterXGeneratorFunctionParseXml *self,
+               GMarkupParseContext *context, const gchar *text, gsize text_len,
+               FilterXParseXmlState *state, GError **error);
 };
+
+void filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
+                                         GMarkupParseContext *context, const gchar *element_name,
+                                         const gchar **attribute_names, const gchar **attribute_values,
+                                         FilterXParseXmlState *state, GError **error);
+void filterx_parse_xml_end_elem_method(FilterXGeneratorFunctionParseXml *self,
+                                       GMarkupParseContext *context, const gchar *element_name,
+                                       FilterXParseXmlState *state, GError **error);
+void filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
+                                   GMarkupParseContext *context, const gchar *text, gsize text_len,
+                                   FilterXParseXmlState *state, GError **error);
 
 #endif

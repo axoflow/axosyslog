@@ -381,12 +381,12 @@ exit:
   return !(*error);
 }
 
-static void
-_start_elem_cb(GMarkupParseContext *context, const gchar *element_name,
-               const gchar **attribute_names, const gchar **attribute_values,
-               gpointer user_data, GError **error)
+void
+filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
+                                    GMarkupParseContext *context, const gchar *element_name,
+                                    const gchar **attribute_names, const gchar **attribute_values,
+                                    FilterXParseXmlState *state, GError **error)
 {
-  FilterXParseXmlState *state = (FilterXParseXmlState *) user_data;
   XmlElemContext *last_elem_context = g_queue_peek_head(state->xml_elem_context_stack);
 
   if (!filterx_object_is_type(last_elem_context->current_obj, &FILTERX_TYPE_NAME(dict)))
@@ -412,9 +412,10 @@ _start_elem_cb(GMarkupParseContext *context, const gchar *element_name,
 }
 
 void
-_end_elem_cb(GMarkupParseContext *context, const gchar *element_name, gpointer user_data, GError **error)
+filterx_parse_xml_end_elem_method(FilterXGeneratorFunctionParseXml *self,
+                                  GMarkupParseContext *context, const gchar *element_name,
+                                  FilterXParseXmlState *state, GError **error)
 {
-  FilterXParseXmlState *state = (FilterXParseXmlState *) user_data;
   XmlElemContext *elem_context = g_queue_pop_head(state->xml_elem_context_stack);
   xml_elem_context_free(elem_context);
 }
@@ -527,10 +528,11 @@ fail:
   filterx_object_unref(text_obj);
 }
 
-static void
-_text_cb(GMarkupParseContext *context, const gchar *text, gsize text_len, gpointer user_data, GError **error)
+void
+filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
+                              GMarkupParseContext *context, const gchar *text, gsize text_len,
+                              FilterXParseXmlState *state, GError **error)
 {
-  FilterXParseXmlState *state = (FilterXParseXmlState *) user_data;
   XmlElemContext *elem_context = g_queue_peek_head(state->xml_elem_context_stack);
   const gchar *element_name = g_markup_parse_context_get_element(context);
 
@@ -590,6 +592,37 @@ _extract_raw_xml(FilterXGeneratorFunctionParseXml *self, FilterXObject *xml_obj,
   return raw_xml;
 }
 
+static void
+_start_elem_cb(GMarkupParseContext *context, const gchar *element_name,
+               const gchar **attribute_names, const gchar **attribute_values,
+               gpointer cb_user_data, GError **error)
+{
+  FilterXGeneratorFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
+  FilterXParseXmlState *user_data = ((gpointer *) cb_user_data)[1];
+
+  self->start_elem(self, context, element_name, attribute_names, attribute_values, user_data, error);
+}
+
+static void
+_end_elem_cb(GMarkupParseContext *context, const gchar *element_name,
+             gpointer cb_user_data, GError **error)
+{
+  FilterXGeneratorFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
+  FilterXParseXmlState *user_data = ((gpointer *) cb_user_data)[1];
+
+  self->end_elem(self, context, element_name, user_data, error);
+}
+
+static void
+_text_cb(GMarkupParseContext *context, const gchar *text, gsize text_len,
+         gpointer cb_user_data, GError **error)
+{
+  FilterXGeneratorFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
+  FilterXParseXmlState *user_data = ((gpointer *) cb_user_data)[1];
+
+  self->text(self, context, text, text_len, user_data, error);
+}
+
 static gboolean
 _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_xml_len, FilterXObject *fillable)
 {
@@ -600,10 +633,11 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
     .text = _text_cb,
   };
 
-  FilterXParseXmlState *state = self->create_state();
+  FilterXParseXmlState *state = self->create_state();;
+  gpointer user_data[] = { self, state };
   XmlElemContext *root_elem_context = xml_elem_context_new(NULL, fillable);
   g_queue_push_head(state->xml_elem_context_stack, root_elem_context);
-  GMarkupParseContext *context = g_markup_parse_context_new(&scanner_callbacks, 0, state, NULL);
+  GMarkupParseContext *context = g_markup_parse_context_new(&scanner_callbacks, 0, user_data, NULL);
 
   GError *error = NULL;
   gboolean success = g_markup_parse_context_parse(context, raw_xml, raw_xml_len, &error) &&
@@ -683,6 +717,9 @@ filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **err
   self->super.super.super.free_fn = _free;
 
   self->create_state = _state_new;
+  self->start_elem = filterx_parse_xml_start_elem_method;
+  self->end_elem = filterx_parse_xml_end_elem_method;
+  self->text = filterx_parse_xml_text_method;
 
   if (!_extract_args(self, args, error) ||
       !filterx_function_args_check(args, error))
