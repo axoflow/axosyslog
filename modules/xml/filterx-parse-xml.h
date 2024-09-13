@@ -50,6 +50,18 @@ filterx_parse_xml_state_free(FilterXParseXmlState *self)
 }
 
 
+typedef struct XmlElemContext_
+{
+  FilterXObject *current_obj;
+  FilterXObject *parent_obj;
+} XmlElemContext;
+
+XmlElemContext *xml_elem_context_new(FilterXObject *parent_obj, FilterXObject *current_obj);
+void xml_elem_context_free(XmlElemContext *self);
+void xml_elem_context_set_current_obj(XmlElemContext *self, FilterXObject *current_obj);
+void xml_elem_context_set_parent_obj(XmlElemContext *self, FilterXObject *parent_obj);
+
+
 typedef struct FilterXGeneratorFunctionParseXml_ FilterXGeneratorFunctionParseXml;
 struct FilterXGeneratorFunctionParseXml_
 {

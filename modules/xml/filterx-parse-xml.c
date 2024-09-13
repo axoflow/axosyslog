@@ -97,41 +97,34 @@ _set_error(GError **error, const gchar *format, ...)
   va_end(va);
 }
 
-
-typedef struct XmlElemContext_
-{
-  FilterXObject *current_obj;
-  FilterXObject *parent_obj;
-} XmlElemContext;
-
-static void
-_elem_context_set_current_obj(XmlElemContext *self, FilterXObject *current_obj)
+void
+xml_elem_context_set_current_obj(XmlElemContext *self, FilterXObject *current_obj)
 {
   filterx_object_unref(self->current_obj);
   self->current_obj = filterx_object_ref(current_obj);
 }
 
-static void
-_elem_context_set_parent_obj(XmlElemContext *self, FilterXObject *parent_obj)
+void
+xml_elem_context_set_parent_obj(XmlElemContext *self, FilterXObject *parent_obj)
 {
   filterx_object_unref(self->parent_obj);
   self->parent_obj = filterx_object_ref(parent_obj);
 }
 
-static void
-_elem_context_free(XmlElemContext *self)
+void
+xml_elem_context_free(XmlElemContext *self)
 {
-  _elem_context_set_current_obj(self, NULL);
-  _elem_context_set_parent_obj(self, NULL);
+  xml_elem_context_set_current_obj(self, NULL);
+  xml_elem_context_set_parent_obj(self, NULL);
   g_free(self);
 }
 
-static XmlElemContext *
-_elem_context_new(FilterXObject *parent_obj, FilterXObject *current_obj)
+XmlElemContext *
+xml_elem_context_new(FilterXObject *parent_obj, FilterXObject *current_obj)
 {
   XmlElemContext *self = g_new0(XmlElemContext, 1);
-  _elem_context_set_parent_obj(self, parent_obj);
-  _elem_context_set_current_obj(self, current_obj);
+  xml_elem_context_set_parent_obj(self, parent_obj);
+  xml_elem_context_set_current_obj(self, current_obj);
   return self;
 }
 
@@ -146,7 +139,7 @@ filterx_parse_xml_state_init_instance(FilterXParseXmlState *self)
 void
 filterx_parse_xml_state_free_method(FilterXParseXmlState *self)
 {
-  g_queue_free_full(self->xml_elem_context_stack, (GDestroyNotify) _elem_context_free);
+  g_queue_free_full(self->xml_elem_context_stack, (GDestroyNotify) xml_elem_context_free);
 }
 
 static FilterXParseXmlState *
@@ -214,7 +207,7 @@ _store_second_elem(XmlElemContext *new_elem_context, FilterXObject **existing_ob
   if (!filterx_object_set_subscript(new_elem_context->parent_obj, new_elem_key, &list_obj))
     goto fail;
 
-  _elem_context_set_parent_obj(new_elem_context, list_obj);
+  xml_elem_context_set_parent_obj(new_elem_context, list_obj);
   filterx_object_unref(list_obj);
   return;
 
@@ -239,7 +232,7 @@ _store_nth_elem(XmlElemContext *new_elem_context, FilterXObject *existing_obj, F
       return;
     }
 
-  _elem_context_set_parent_obj(new_elem_context, existing_obj);
+  xml_elem_context_set_parent_obj(new_elem_context, existing_obj);
 }
 
 static XmlElemContext *
@@ -249,7 +242,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gbo
 
   const gchar *new_elem_repr;
   FilterXObject *new_elem_obj = _create_object_for_new_elem(last_elem_context->current_obj, has_attrs, &new_elem_repr);
-  XmlElemContext *new_elem_context = _elem_context_new(last_elem_context->current_obj, new_elem_obj);
+  XmlElemContext *new_elem_context = xml_elem_context_new(last_elem_context->current_obj, new_elem_obj);
 
   FilterXObject *new_elem_key = filterx_string_new(new_elem_name, -1);
   FilterXObject *existing_obj = NULL;
@@ -280,7 +273,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gbo
       _set_error(error, "failed to unset existing unexpected node");
       goto exit;
     }
-  _elem_context_free(new_elem_context);
+  xml_elem_context_free(new_elem_context);
   new_elem_context = _prepare_elem(new_elem_name, last_elem_context, has_attrs, error);
 
 exit:
@@ -290,7 +283,7 @@ exit:
 
   if (*error)
     {
-      _elem_context_free(new_elem_context);
+      xml_elem_context_free(new_elem_context);
       new_elem_context = NULL;
     }
 
@@ -381,7 +374,7 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
 
 exit:
   if (!(*error))
-    _elem_context_set_current_obj(elem_context, dict_obj);
+    xml_elem_context_set_current_obj(elem_context, dict_obj);
 
   filterx_object_unref(key);
   filterx_object_unref(dict_obj);
@@ -423,7 +416,7 @@ _end_elem_cb(GMarkupParseContext *context, const gchar *element_name, gpointer u
 {
   FilterXParseXmlState *state = (FilterXParseXmlState *) user_data;
   XmlElemContext *elem_context = g_queue_pop_head(state->xml_elem_context_stack);
-  _elem_context_free(elem_context);
+  xml_elem_context_free(elem_context);
 }
 
 static gchar *
@@ -475,7 +468,7 @@ _replace_string_text(XmlElemContext *elem_context, const gchar *element_name, co
   g_assert_not_reached();
 
 success:
-  _elem_context_set_current_obj(elem_context, text_obj);
+  xml_elem_context_set_current_obj(elem_context, text_obj);
 fail:
   filterx_object_unref(text_obj);
 }
@@ -526,8 +519,8 @@ _add_text_to_dict(XmlElemContext *elem_context, const gchar *text, gsize text_le
       goto fail;
     }
 
-  _elem_context_set_parent_obj(elem_context, elem_context->current_obj);
-  _elem_context_set_current_obj(elem_context, text_obj);
+  xml_elem_context_set_parent_obj(elem_context, elem_context->current_obj);
+  xml_elem_context_set_current_obj(elem_context, text_obj);
 
 fail:
   filterx_object_unref(key);
@@ -608,7 +601,7 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
   };
 
   FilterXParseXmlState *state = self->create_state();
-  XmlElemContext *root_elem_context = _elem_context_new(NULL, fillable);
+  XmlElemContext *root_elem_context = xml_elem_context_new(NULL, fillable);
   g_queue_push_head(state->xml_elem_context_stack, root_elem_context);
   GMarkupParseContext *context = g_markup_parse_context_new(&scanner_callbacks, 0, state, NULL);
 
