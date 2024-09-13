@@ -218,17 +218,17 @@ filterx_format_eval_result(FilterXEvalResult result)
   switch (result)
     {
     case FXE_SUCCESS:
-      eval_result = g_strdup("matched");
+      eval_result = "matched";
       break;
     case FXE_DROP:
-      eval_result = g_strdup("explicitly dropped");
+      eval_result = "explicitly dropped";
       break;
     case FXE_FAILURE:
-      eval_result = g_strdup("unmatched");
+      eval_result = "unmatched";
       break;
     default:
       g_assert_not_reached();
       break;
     }
-  return evt_tag_printf("result", "%s", eval_result);
+  return evt_tag_str("result", eval_result);
 }
