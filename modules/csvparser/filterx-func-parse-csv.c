@@ -425,8 +425,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_construct_parse_csv(Plugin *self)
-{
-  return (gpointer) filterx_function_parse_csv_new;
-}
+FILTERX_FUNCTION(parse_csv, filterx_function_parse_csv_new);

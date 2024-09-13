@@ -28,7 +28,8 @@
 
 #define FILTERX_FUNC_PARSE_KV_USAGE "Usage: parse_kv(msg, value_separator=\"=\", pair_separator=\", \", stray_words_key=\"stray_words\")"
 
+FILTERX_FUNCTION_DECLARE(parse_kv);
+
 FilterXExpr *filterx_function_parse_kv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
-gpointer filterx_function_construct_parse_kv(Plugin *self);
 
 #endif

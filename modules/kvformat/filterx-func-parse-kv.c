@@ -273,8 +273,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_construct_parse_kv(Plugin *self)
-{
-  return (gpointer) filterx_function_parse_kv_new;
-}
+FILTERX_FUNCTION(parse_kv, filterx_function_parse_kv_new);

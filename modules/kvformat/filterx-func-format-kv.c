@@ -231,8 +231,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_construct_format_kv(Plugin *self)
-{
-  return (gpointer) filterx_function_format_kv_new;
-}
+FILTERX_FUNCTION(format_kv, filterx_function_format_kv_new);

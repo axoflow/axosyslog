@@ -283,8 +283,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_construct_format_csv(Plugin *self)
-{
-  return (gpointer) filterx_function_format_csv_new;
-}
+FILTERX_FUNCTION(format_csv, filterx_function_format_csv_new);

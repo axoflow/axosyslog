@@ -228,8 +228,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_cache_json_file_new_construct(Plugin *self)
-{
-  return (gpointer) &filterx_function_cache_json_file_new;
-}
+FILTERX_FUNCTION(cache_json_file, filterx_function_cache_json_file_new);
