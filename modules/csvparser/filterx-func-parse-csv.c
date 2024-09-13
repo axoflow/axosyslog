@@ -26,6 +26,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
+#include "filterx/expr-literal-generator.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
@@ -47,9 +48,20 @@ typedef struct FilterXFunctionParseCSV_
   FilterXGeneratorFunction super;
   FilterXExpr *msg;
   CSVScannerOptions options;
-  FilterXExpr *columns;
   FilterXExpr *string_delimiters;
+
+  struct
+  {
+    FilterXExpr *expr;
+    GPtrArray *literals;
+  } columns;
 } FilterXFunctionParseCSV;
+
+static inline gboolean
+_are_column_names_set(FilterXFunctionParseCSV *self)
+{
+  return self->columns.expr || self->columns.literals;
+}
 
 static gboolean
 _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GList **list, const gchar *arg_name)
@@ -114,14 +126,21 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_
 static inline gboolean
 _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guint64 *num_of_columns)
 {
-  if (!self->columns)
+  if (self->columns.literals)
+    {
+      *num_of_columns = self->columns.literals->len;
+      *columns = NULL;
+      return TRUE;
+    }
+
+  if (!self->columns.expr)
     {
       *columns = NULL;
       *num_of_columns = 0;
       return TRUE;
     }
 
-  *columns = filterx_expr_eval(self->columns);
+  *columns = filterx_expr_eval(self->columns.expr);
   if (!*columns)
     return FALSE;
 
@@ -140,9 +159,15 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
 }
 
 static inline gboolean
-_fill_object_col(FilterXObject *cols, gint64 index, CSVScanner *scanner, FilterXObject *result)
+_fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 index, CSVScanner *scanner,
+                 FilterXObject *result)
 {
-  FilterXObject *col = filterx_list_get_subscript(cols, index);
+  FilterXObject *col;
+  if (self->columns.literals)
+    col = filterx_object_ref(g_ptr_array_index(self->columns.literals, index));
+  else
+    col = filterx_list_get_subscript(cols, index);
+
   FilterXObject *val = filterx_string_new(csv_scanner_get_current_value(scanner),
                                           csv_scanner_get_current_value_len(scanner));
 
@@ -171,14 +196,14 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
 static gboolean
 _validate_fillable(FilterXFunctionParseCSV *self, FilterXObject *fillable)
 {
-  if (self->columns && !filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(dict)))
+  if (_are_column_names_set(self) && !filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_eval_push_error_info("fillable must be dict", &self->super.super.super,
                                    g_strdup_printf("got %s instead", fillable->type->name), TRUE);
       return FALSE;
     }
 
-  if (!self->columns && !filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(list)))
+  if (!_are_column_names_set(self) && !filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(list)))
     {
       filterx_eval_push_error_info("fillable must be list", &self->super.super.super,
                                    g_strdup_printf("got %s instead", fillable->type->name), TRUE);
@@ -226,12 +251,12 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   guint64 i = 0;
   while (csv_scanner_scan_next(&scanner))
     {
-      if (cols)
+      if (_are_column_names_set(self))
         {
           if (i >= num_of_columns)
             break;
 
-          ok = _fill_object_col(cols, i, &scanner, fillable);
+          ok = _fill_object_col(self, cols, i, &scanner, fillable);
           if(!ok)
             goto exit;
 
@@ -256,7 +281,9 @@ _free(FilterXExpr *s)
 {
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
   filterx_expr_unref(self->msg);
-  filterx_expr_unref(self->columns);
+  filterx_expr_unref(self->columns.expr);
+  if (self->columns.literals)
+    g_ptr_array_unref(self->columns.literals);
   filterx_expr_unref(self->string_delimiters);
   csv_scanner_options_clean(&self->options);
   filterx_generator_function_free_method(&self->super);
@@ -391,6 +418,41 @@ error:
 }
 
 static gboolean
+_add_literal_column(gsize index, FilterXExpr *column, gpointer user_data)
+{
+  GPtrArray *literal_columns = (GPtrArray *) user_data;
+
+  if (!filterx_expr_is_literal(column))
+    return FALSE;
+
+  FilterXObject *column_name = filterx_expr_eval_typed(column);
+
+  if (!filterx_object_is_type(column_name, &FILTERX_TYPE_NAME(string)))
+    {
+      filterx_object_unref(column_name);
+      return FALSE;
+    }
+
+  g_ptr_array_add(literal_columns, column_name);
+  return TRUE;
+}
+
+static gboolean
+_extract_literal_columns(FilterXFunctionParseCSV *self, FilterXExpr *columns)
+{
+  GPtrArray *literal_columns = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+
+  if (!filterx_literal_list_generator_foreach(columns, _add_literal_column, literal_columns))
+    {
+      g_ptr_array_unref(literal_columns);
+      return FALSE;
+    }
+
+  self->columns.literals = literal_columns;
+  return TRUE;
+}
+
+static gboolean
 _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError **error)
 {
   gsize args_len = filterx_function_args_len(args);
@@ -405,7 +467,11 @@ _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
   if (!self->msg)
     return FALSE;
 
-  self->columns = _extract_columns_expr(args, error);
+  FilterXExpr *columns = _extract_columns_expr(args, error);
+  if (filterx_expr_is_literal_list_generator(columns) && _extract_literal_columns(self, columns))
+    filterx_expr_unref(columns);
+  else
+    self->columns.expr = columns;
 
   self->string_delimiters = _extract_stringdelimiters_expr(args, error);
 
@@ -420,7 +486,7 @@ _create_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
 {
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
 
-  if (self->columns)
+  if (_are_column_names_set(self))
     return filterx_generator_create_dict_container(s, fillable_parent);
 
   return filterx_generator_create_list_container(s, fillable_parent);
