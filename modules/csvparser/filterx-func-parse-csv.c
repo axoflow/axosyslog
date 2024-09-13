@@ -61,9 +61,9 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
   if (!list_obj)
     return FALSE;
 
-  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(json_array)))
+  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
-      msg_error("list object argument must be a type of json array.",
+      msg_error("list object argument must be a type of list.",
                 evt_tag_str("current_type", list_obj->type->name ),
                 evt_tag_str("argument_name", arg_name));
       goto exit;
@@ -125,9 +125,9 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
   if (!*columns)
     return FALSE;
 
-  if (!filterx_object_is_type(*columns, &FILTERX_TYPE_NAME(json_array)))
+  if (!filterx_object_is_type(*columns, &FILTERX_TYPE_NAME(list)))
     {
-      msg_error("list object argument must be a type of json array.",
+      msg_error("list object argument must be a type of list.",
                 evt_tag_str("current_type", (*columns)->type->name),
                 evt_tag_str("argument_name", FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS));
       return FALSE;
