@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -28,5 +29,14 @@
 FILTERX_GENERATOR_FUNCTION_DECLARE(parse_xml);
 
 FilterXExpr *filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **error);
+
+
+
+typedef struct FilterXGeneratorFunctionParseXml_ FilterXGeneratorFunctionParseXml;
+struct FilterXGeneratorFunctionParseXml_
+{
+  FilterXGeneratorFunction super;
+  FilterXExpr *xml_expr;
+};
 
 #endif

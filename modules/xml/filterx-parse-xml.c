@@ -136,11 +136,6 @@ _elem_context_new(FilterXObject *parent_obj, FilterXObject *current_obj)
 }
 
 
-typedef struct FilterXGeneratorFunctionParseXml_
-{
-  FilterXGeneratorFunction super;
-  FilterXExpr *xml_expr;
-} FilterXGeneratorFunctionParseXml;
 
 static FilterXObject *
 _create_object_for_new_elem(FilterXObject *parent_obj, gboolean has_attrs, const gchar **new_elem_repr)
