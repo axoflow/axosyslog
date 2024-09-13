@@ -52,7 +52,7 @@ _eval(FilterXExpr *s)
 gboolean
 filterx_expr_is_generator(FilterXExpr *s)
 {
-  return s->eval == _eval;
+  return s && s->eval == _eval;
 }
 
 void
