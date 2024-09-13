@@ -10,12 +10,14 @@ set(xml_SOURCES
     "xml-private.h"
     "windows-eventlog-xml-parser.h"
     "filterx-parse-xml.h"
+    "filterx-parse-windows-eventlog-xml.h"
 
     "xml-plugin.c"
     "xml-parser.c"
     "xml.c"
     "windows-eventlog-xml-parser.c"
     "filterx-parse-xml.c"
+    "filterx-parse-windows-eventlog-xml.c"
 )
 
 
