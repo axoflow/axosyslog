@@ -31,12 +31,32 @@ FILTERX_GENERATOR_FUNCTION_DECLARE(parse_xml);
 FilterXExpr *filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **error);
 
 
+typedef struct FilterXParseXmlState_ FilterXParseXmlState;
+struct FilterXParseXmlState_
+{
+  GQueue *xml_elem_context_stack;
+
+  void (*free_fn)(FilterXParseXmlState *self);
+};
+
+void filterx_parse_xml_state_init_instance(FilterXParseXmlState *self);
+void filterx_parse_xml_state_free_method(FilterXParseXmlState *self);
+
+static inline void
+filterx_parse_xml_state_free(FilterXParseXmlState *self)
+{
+  self->free_fn(self);
+  g_free(self);
+}
+
 
 typedef struct FilterXGeneratorFunctionParseXml_ FilterXGeneratorFunctionParseXml;
 struct FilterXGeneratorFunctionParseXml_
 {
   FilterXGeneratorFunction super;
   FilterXExpr *xml_expr;
+
+  FilterXParseXmlState *(*create_state)(void);
 };
 
 #endif

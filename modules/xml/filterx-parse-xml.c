@@ -136,6 +136,27 @@ _elem_context_new(FilterXObject *parent_obj, FilterXObject *current_obj)
 }
 
 
+void
+filterx_parse_xml_state_init_instance(FilterXParseXmlState *self)
+{
+  self->xml_elem_context_stack = g_queue_new();
+  self->free_fn = filterx_parse_xml_state_free_method;
+}
+
+void
+filterx_parse_xml_state_free_method(FilterXParseXmlState *self)
+{
+  g_queue_free_full(self->xml_elem_context_stack, (GDestroyNotify) _elem_context_free);
+}
+
+static FilterXParseXmlState *
+_state_new(void)
+{
+  FilterXParseXmlState *self = g_new0(FilterXParseXmlState, 1);
+  filterx_parse_xml_state_init_instance(self);
+  return self;
+}
+
 
 static FilterXObject *
 _create_object_for_new_elem(FilterXObject *parent_obj, gboolean has_attrs, const gchar **new_elem_repr)
@@ -372,8 +393,8 @@ _start_elem_cb(GMarkupParseContext *context, const gchar *element_name,
                const gchar **attribute_names, const gchar **attribute_values,
                gpointer user_data, GError **error)
 {
-  GQueue *obj_stack = (GQueue *) user_data;
-  XmlElemContext *last_elem_context = g_queue_peek_head(obj_stack);
+  FilterXParseXmlState *state = (FilterXParseXmlState *) user_data;
+  XmlElemContext *last_elem_context = g_queue_peek_head(state->xml_elem_context_stack);
 
   if (!filterx_object_is_type(last_elem_context->current_obj, &FILTERX_TYPE_NAME(dict)))
     {
@@ -391,7 +412,7 @@ _start_elem_cb(GMarkupParseContext *context, const gchar *element_name,
   if (!new_elem_context)
     return;
 
-  g_queue_push_head(obj_stack, new_elem_context);
+  g_queue_push_head(state->xml_elem_context_stack, new_elem_context);
 
   if (has_attrs)
     _collect_attrs(element_name, new_elem_context, attribute_names, attribute_values, error);
@@ -400,8 +421,8 @@ _start_elem_cb(GMarkupParseContext *context, const gchar *element_name,
 void
 _end_elem_cb(GMarkupParseContext *context, const gchar *element_name, gpointer user_data, GError **error)
 {
-  GQueue *obj_stack = (GQueue *) user_data;
-  XmlElemContext *elem_context = g_queue_pop_head(obj_stack);
+  FilterXParseXmlState *state = (FilterXParseXmlState *) user_data;
+  XmlElemContext *elem_context = g_queue_pop_head(state->xml_elem_context_stack);
   _elem_context_free(elem_context);
 }
 
@@ -516,8 +537,8 @@ fail:
 static void
 _text_cb(GMarkupParseContext *context, const gchar *text, gsize text_len, gpointer user_data, GError **error)
 {
-  GQueue *obj_stack = (GQueue *) user_data;
-  XmlElemContext *elem_context = g_queue_peek_head(obj_stack);
+  FilterXParseXmlState *state = (FilterXParseXmlState *) user_data;
+  XmlElemContext *elem_context = g_queue_peek_head(state->xml_elem_context_stack);
   const gchar *element_name = g_markup_parse_context_get_element(context);
 
   gsize stripped_text_len;
@@ -586,10 +607,10 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
     .text = _text_cb,
   };
 
-  GQueue *obj_stack = g_queue_new();
+  FilterXParseXmlState *state = self->create_state();
   XmlElemContext *root_elem_context = _elem_context_new(NULL, fillable);
-  g_queue_push_head(obj_stack, root_elem_context);
-  GMarkupParseContext *context = g_markup_parse_context_new(&scanner_callbacks, 0, obj_stack, NULL);
+  g_queue_push_head(state->xml_elem_context_stack, root_elem_context);
+  GMarkupParseContext *context = g_markup_parse_context_new(&scanner_callbacks, 0, state, NULL);
 
   GError *error = NULL;
   gboolean success = g_markup_parse_context_parse(context, raw_xml, raw_xml_len, &error) &&
@@ -604,7 +625,7 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
     }
 
 exit:
-  g_queue_free_full(obj_stack, (GDestroyNotify) _elem_context_free);
+  filterx_parse_xml_state_free(state);
   g_markup_parse_context_free(context);
   return success;
 }
@@ -667,6 +688,8 @@ filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **err
   self->super.super.generate = _generate;
   self->super.super.create_container = filterx_generator_create_dict_container;
   self->super.super.super.free_fn = _free;
+
+  self->create_state = _state_new;
 
   if (!_extract_args(self, args, error) ||
       !filterx_function_args_check(args, error))
