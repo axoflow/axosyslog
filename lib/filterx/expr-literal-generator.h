@@ -27,6 +27,7 @@
 #include "filterx/expr-generator.h"
 
 typedef gboolean (*FilterXLiteralDictGeneratorForeachFunc)(FilterXExpr *, FilterXExpr *, gpointer);
+typedef gboolean (*FilterXLiteralListGeneratorForeachFunc)(gsize, FilterXExpr *, gpointer);
 
 typedef struct FilterXLiteralGeneratorElem_ FilterXLiteralGeneratorElem;
 typedef struct FilterXExprLiteralGenerator_ FilterXExprLiteralGenerator;
@@ -38,6 +39,8 @@ FilterXExpr *filterx_literal_dict_generator_new(void);
 FilterXExpr *filterx_literal_list_generator_new(void);
 void filterx_literal_generator_set_elements(FilterXExpr *s, GList *elements);
 gboolean filterx_literal_dict_generator_foreach(FilterXExpr *s, FilterXLiteralDictGeneratorForeachFunc func,
+                                                gpointer user_data);
+gboolean filterx_literal_list_generator_foreach(FilterXExpr *s, FilterXLiteralListGeneratorForeachFunc func,
                                                 gpointer user_data);
 
 FilterXExpr *filterx_literal_inner_dict_generator_new(FilterXExpr *root_literal_generator, GList *elements);
