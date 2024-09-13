@@ -207,7 +207,7 @@ _extract_arguments(FilterXFunctionFormatKV *self, FilterXFunctionArgs *args, GEr
   return TRUE;
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_format_kv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatKV *self = g_new0(FilterXFunctionFormatKV, 1);
@@ -223,7 +223,7 @@ filterx_function_format_kv_new(const gchar *function_name, FilterXFunctionArgs *
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);

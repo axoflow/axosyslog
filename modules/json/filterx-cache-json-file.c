@@ -195,7 +195,7 @@ _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
     _deep_freeze_list(self, object);
 }
 
-FilterXFunction *
+FilterXExpr *
 filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuntionCacheJsonFile *self = g_new0(FilterXFuntionCacheJsonFile, 1);
@@ -220,7 +220,7 @@ filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunction
   _deep_freeze(self, self->cached_json);
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);

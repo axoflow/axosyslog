@@ -31,7 +31,7 @@
 #define FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DELIMITER "delimiter"
 #define FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DEFAULT_VALUE "default_value"
 
-FilterXFunction *filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
 gpointer filterx_function_construct_format_csv(Plugin *self);
 
 #endif

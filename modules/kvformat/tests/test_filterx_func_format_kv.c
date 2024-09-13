@@ -37,7 +37,7 @@ _assert_format_kv_init_fail(GList *args)
 {
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXFunction *func = filterx_function_format_kv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = filterx_function_format_kv_new("test", filterx_function_args_new(args, &args_err), &err);
   cr_assert(!func);
   cr_assert(err);
   g_error_free(err);
@@ -48,10 +48,10 @@ _assert_format_kv(GList *args, const gchar *expected_output)
 {
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXFunction *func = filterx_function_format_kv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = filterx_function_format_kv_new("test", filterx_function_args_new(args, &args_err), &err);
   cr_assert(!err);
 
-  FilterXObject *obj = filterx_expr_eval(&func->super);
+  FilterXObject *obj = filterx_expr_eval(func);
   cr_assert(obj);
 
   const gchar *output = filterx_string_get_value(obj, NULL);
@@ -60,7 +60,7 @@ _assert_format_kv(GList *args, const gchar *expected_output)
   cr_assert_str_eq(output, expected_output);
 
   filterx_object_unref(obj);
-  filterx_expr_unref(&func->super);
+  filterx_expr_unref(func);
 }
 
 Test(filterx_func_format_kv, test_invalid_args)
