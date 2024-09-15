@@ -207,9 +207,9 @@ log_transport_socket_write_method(LogTransport *s, const gpointer buf, gsize buf
 }
 
 static void
-log_transport_socket_init_instance(LogTransportSocket *self, gint fd)
+log_transport_socket_init_instance(LogTransportSocket *self, const gchar *name, gint fd)
 {
-  log_transport_init_instance(&self->super, fd);
+  log_transport_init_instance(&self->super, name, fd);
   self->super.read = log_transport_socket_read_method;
   self->super.write = log_transport_socket_write_method;
   self->address_family = _determine_address_family(fd);
@@ -256,7 +256,7 @@ log_transport_dgram_socket_write_method(LogTransport *s, const gpointer buf, gsi
 void
 log_transport_dgram_socket_init_instance(LogTransportSocket *self, gint fd)
 {
-  log_transport_socket_init_instance(self, fd);
+  log_transport_socket_init_instance(self, "dgram-socket", fd);
   self->super.read = log_transport_dgram_socket_read_method;
   self->super.write = log_transport_dgram_socket_write_method;
 }
@@ -281,7 +281,7 @@ log_transport_stream_socket_free_method(LogTransport *s)
 void
 log_transport_stream_socket_init_instance(LogTransportSocket *self, gint fd)
 {
-  log_transport_socket_init_instance(self, fd);
+  log_transport_socket_init_instance(self, "stream-socket", fd);
   self->super.free_fn = log_transport_stream_socket_free_method;
 }
 
