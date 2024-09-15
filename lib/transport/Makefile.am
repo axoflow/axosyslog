@@ -10,7 +10,6 @@ transportinclude_HEADERS = \
 	lib/transport/transport-pipe.h	\
 	lib/transport/transport-socket.h \
 	lib/transport/transport-udp-socket.h \
-	lib/transport/transport-factory.h \
 	lib/transport/transport-stack.h \
 	lib/transport/transport-factory-tls.h \
 	lib/transport/transport-factory-socket.h \
