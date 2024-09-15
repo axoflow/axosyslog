@@ -6,7 +6,6 @@ set(TRANSPORT_HEADERS
     transport/transport-pipe.h
     transport/transport-socket.h
     transport/transport-udp-socket.h
-    transport/transport-factory.h
     transport/transport-stack.h
     transport/transport-factory-tls.h
     transport/transport-factory-socket.h
