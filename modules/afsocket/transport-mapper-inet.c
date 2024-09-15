@@ -385,9 +385,9 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
   self->server_port = NETWORK_PORT;
   if (strcasecmp(transport, "udp") == 0)
     {
+      self->super.logproto = "dgram";
       self->super.sock_type = SOCK_DGRAM;
       self->super.sock_proto = IPPROTO_UDP;
-      self->super.logproto = "dgram";
       self->super.transport_name = g_strdup("bsdsyslog+udp");
     }
   else if (strcasecmp(transport, "tcp") == 0)
@@ -464,9 +464,9 @@ transport_mapper_syslog_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       else
         self->server_port = SYSLOG_TRANSPORT_UDP_PORT;
 
+      self->super.logproto = "dgram";
       self->super.sock_type = SOCK_DGRAM;
       self->super.sock_proto = IPPROTO_UDP;
-      self->super.logproto = "dgram";
       self->super.transport_name = g_strdup("rfc5426");
     }
   else if (strcasecmp(transport, "tcp") == 0)
