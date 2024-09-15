@@ -213,7 +213,6 @@ struct _LogProtoServerFactory
 {
   LogProtoServer *(*construct)(LogTransport *transport, const LogProtoServerOptions *options);
   gint default_inet_port;
-  gboolean use_multitransport;
 };
 
 static inline LogProtoServer *
