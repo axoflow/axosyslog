@@ -302,3 +302,10 @@ filterx_expr_is_literal_list_generator(FilterXExpr *s)
   FilterXExprGenerator *generator = (FilterXExprGenerator *) s;
   return filterx_expr_is_generator(s) && generator->create_container == filterx_generator_create_list_container;
 }
+
+guint
+filterx_expr_literal_generator_len(FilterXExpr *s)
+{
+  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
+  return g_list_length(self->elements);
+}

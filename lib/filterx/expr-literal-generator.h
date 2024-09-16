@@ -49,4 +49,6 @@ FilterXExpr *filterx_literal_inner_list_generator_new(FilterXExpr *root_literal_
 gboolean filterx_expr_is_literal_dict_generator(FilterXExpr *s);
 gboolean filterx_expr_is_literal_list_generator(FilterXExpr *s);
 
+guint filterx_expr_literal_generator_len(FilterXExpr *s);
+
 #endif
