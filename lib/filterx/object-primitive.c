@@ -30,6 +30,7 @@
 #include "cfg.h"
 #include "filterx-globals.h"
 #include "str-utils.h"
+#include "timeutils/misc.h"
 
 #include "compat/json.h"
 
@@ -307,6 +308,10 @@ filterx_typecast_integer(FilterXExpr *s, GPtrArray *args)
         return filterx_integer_new(val);
     }
 
+  UnixTime ut;
+  if (filterx_object_extract_datetime(object, &ut))
+    return filterx_integer_new(ut.ut_sec * USEC_PER_SEC + ut.ut_usec);
+
   msg_error("filterx: invalid typecast",
             evt_tag_str("from", object->type->name),
             evt_tag_str("to", "integer"));
@@ -338,6 +343,10 @@ filterx_typecast_double(FilterXExpr *s, GPtrArray *args)
       if (str != endptr && *endptr == '\0')
         return filterx_double_new(val);
     }
+
+  UnixTime ut;
+  if (filterx_object_extract_datetime(object, &ut))
+    return filterx_double_new(ut.ut_sec + (gdouble) ut.ut_usec / USEC_PER_SEC);
 
   msg_error("filterx: invalid typecast",
             evt_tag_str("from", object->type->name),
