@@ -50,7 +50,8 @@ typedef struct _FilterXDateTime
 static gboolean
 _truthy(FilterXObject *s)
 {
-  return TRUE;
+  FilterXDateTime *self = (FilterXDateTime *) s;
+  return self->ut.ut_sec != 0 || self->ut.ut_usec != 0;
 }
 
 /* FIXME: delegate formatting and parsing to UnixTime */
