@@ -277,6 +277,7 @@ modules/xml/filterx-parse-xml\.[ch]$
 modules/xml/filterx-parse-windows-eventlog-xml\.[ch]$
 modules/xml/tests/test_windows_eventlog_xml_parser\.c
 modules/xml/tests/test_filterx_parse_xml\.c
+modules/xml/tests/test_filterx_parse_windows_eventlog_xml\.c
 modules/examples/filterx/example-filterx-func/example-filterx-func-plugin\.[ch]
 modules/grpc/otel/filterx
 modules/kvformat/filterx-func-parse-kv\.[ch]
