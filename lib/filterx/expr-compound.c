@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -146,6 +147,7 @@ filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr)
   g_ptr_array_add(self->exprs, expr);
 }
 
+/* Takes reference of expr_list */
 void
 filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list)
 {
@@ -153,6 +155,7 @@ filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list)
     {
       filterx_compound_expr_add(s, elem->data);
     }
+  g_list_free(expr_list);
 }
 
 FilterXExpr *
