@@ -42,7 +42,7 @@ static Plugin kvformat_plugins[] =
     .parser = &kv_parser_parser,
   },
   TEMPLATE_FUNCTION_PLUGIN(tf_format_welf, "format-welf"),
-  FILTERX_FUNCTION_PLUGIN(parse_kv),
+  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_kv),
   FILTERX_FUNCTION_PLUGIN(format_kv),
 };
 
