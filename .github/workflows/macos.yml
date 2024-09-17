@@ -60,7 +60,6 @@ jobs:
             --disable-smtp
             --disable-java
             --disable-java-modules
-            --disable-mqtt
             --disable-pacct
           "
           CMAKE_CONFIGURE_FLAGS="
@@ -74,7 +73,6 @@ jobs:
             -DENABLE_GRPC=OFF
             -DENABLE_JAVA=OFF
             -DENABLE_JAVA_MODULES=OFF
-            -DENABLE_MQTT=OFF
             -DENABLE_PACCT=OFF
           "
           PATH="${HOMEBREW_PREFIX}/opt/bison/bin:${HOMEBREW_PREFIX}/opt/libnet/bin:${HOMEBREW_PREFIX}/opt/net-snmp/bin:${HOMEBREW_PREFIX}/bin:${HOMEBREW_PREFIX}/sbin:${PYTHONUSERBASE}/bin:${PATH}"
