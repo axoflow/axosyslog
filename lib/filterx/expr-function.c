@@ -580,7 +580,7 @@ _lookup_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionA
   if (!ctor)
     return NULL;
 
-  return ctor(function_name, args, error);
+  return ctor(args, error);
 }
 
 /* NOTE: takes the reference of "args_list" */
@@ -621,7 +621,11 @@ _lookup_generator_function(GlobalConfig *cfg, const gchar *function_name, Filter
 
   if (!ctor)
     return NULL;
-  return ctor(function_name, args, error);
+
+  FilterXExpr *func = ctor(args, error);
+  g_assert(!func || filterx_expr_is_generator(func));
+
+  return func;
 }
 
 /* NOTE: takes the references of objects passed in "arguments" */

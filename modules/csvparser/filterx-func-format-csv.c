@@ -259,11 +259,11 @@ _extract_arguments(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GE
   return TRUE;
 }
 
-FilterXFunction *
-filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+FilterXExpr *
+filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatCSV *self = g_new0(FilterXFunctionFormatCSV, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "format_csv");
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
@@ -275,7 +275,7 @@ filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs 
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
@@ -283,8 +283,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_construct_format_csv(Plugin *self)
-{
-  return (gpointer) filterx_function_format_csv_new;
-}
+FILTERX_FUNCTION(format_csv, filterx_function_format_csv_new);

@@ -207,11 +207,11 @@ _extract_arguments(FilterXFunctionFormatKV *self, FilterXFunctionArgs *args, GEr
   return TRUE;
 }
 
-FilterXFunction *
-filterx_function_format_kv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+FilterXExpr *
+filterx_function_format_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatKV *self = g_new0(FilterXFunctionFormatKV, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "format_kv");
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
@@ -223,7 +223,7 @@ filterx_function_format_kv_new(const gchar *function_name, FilterXFunctionArgs *
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
@@ -231,8 +231,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_construct_format_kv(Plugin *self)
-{
-  return (gpointer) filterx_function_format_kv_new;
-}
+FILTERX_FUNCTION(format_kv, filterx_function_format_kv_new);

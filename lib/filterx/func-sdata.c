@@ -98,10 +98,10 @@ _free(FilterXExpr *s)
 
 
 FilterXExpr *
-filterx_function_is_sdata_from_enterprise_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_is_sdata_from_enterprise_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionIsSdataFromEnteprise *self = g_new0(FilterXFunctionIsSdataFromEnteprise, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "is_sdata_from_enterprise");
 
   if (!_extract_args(self, args, error) || !filterx_function_args_check(args, error))
     goto error;
@@ -263,20 +263,6 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   return TRUE;
 }
 
-
-static FilterXObject *
-_create_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
-{
-  FilterXObject *fillable_parent_obj = filterx_expr_eval_typed(fillable_parent);
-  if (!fillable_parent_obj)
-    return NULL;
-
-  FilterXObject *result = filterx_object_create_dict(fillable_parent_obj);
-  filterx_object_unref(fillable_parent_obj);
-
-  return result;
-}
-
 static void
 _get_sdata_free(FilterXExpr *s)
 {
@@ -285,14 +271,14 @@ _get_sdata_free(FilterXExpr *s)
 }
 
 FilterXExpr *
-filterx_generator_function_get_sdata_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_generator_function_get_sdata_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXGenFuncGetSdata *self = g_new0(FilterXGenFuncGetSdata, 1);
 
-  filterx_generator_function_init_instance(&self->super, function_name);
+  filterx_generator_function_init_instance(&self->super, "get_sdata");
   self->super.super.generate = _generate;
   self->super.super.super.free_fn = _get_sdata_free;
-  self->super.super.create_container = _create_container;
+  self->super.super.create_container = filterx_generator_create_dict_container;
 
   if (filterx_function_args_len(args) != 0)
     {

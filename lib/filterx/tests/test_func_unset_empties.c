@@ -38,7 +38,7 @@ _assert_unset_empties_init_fail(GList *args)
 {
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_unset_empties_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
   cr_assert(!func);
   cr_assert(err);
   g_error_free(err);
@@ -51,7 +51,7 @@ _assert_unset_empties(GList *args, const gchar *expected_repr)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_unset_empties_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
   cr_assert(!err);
 
   FilterXObject *obj = filterx_expr_eval(func);

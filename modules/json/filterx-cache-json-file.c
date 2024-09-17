@@ -195,11 +195,11 @@ _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
     _deep_freeze_list(self, object);
 }
 
-FilterXFunction *
-filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+FilterXExpr *
+filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuntionCacheJsonFile *self = g_new0(FilterXFuntionCacheJsonFile, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "cache_json_file");
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
@@ -220,7 +220,7 @@ filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunction
   _deep_freeze(self, self->cached_json);
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
@@ -228,8 +228,4 @@ error:
   return NULL;
 }
 
-gpointer
-filterx_function_cache_json_file_new_construct(Plugin *self)
-{
-  return (gpointer) &filterx_function_cache_json_file_new;
-}
+FILTERX_FUNCTION(cache_json_file, filterx_function_cache_json_file_new);

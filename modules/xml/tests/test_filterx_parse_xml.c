@@ -42,7 +42,7 @@ _create_parse_xml_expr(const gchar *raw_xml, FilterXObject *fillable)
   FilterXFunctionArgs *args = filterx_function_args_new(args_list, &error);
   g_assert(!error);
 
-  FilterXExpr *func = filterx_generator_function_parse_xml_new("test", args, &error);
+  FilterXExpr *func = filterx_generator_function_parse_xml_new(args, &error);
   g_assert(!error);
 
   FilterXExpr *fillable_expr = filterx_non_literal_new(fillable);

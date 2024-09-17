@@ -1,4 +1,5 @@
 /*
+ * Copyright (c) 2024 Axoflow
  * Copyright (c) 2024 shifter
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -27,9 +28,10 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
-#include "filterx/object-json.h"
+#include "filterx/object-dict-interface.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
+#include "filterx/expr-generator.h"
 
 #include "kv-parser.h"
 #include "parser/parser-expr.h"
@@ -38,7 +40,7 @@
 
 typedef struct FilterXFunctionParseKV_
 {
-  FilterXFunction super;
+  FilterXGeneratorFunction super;
   FilterXExpr *msg;
   gchar value_separator;
   gchar *pair_separator;
@@ -74,17 +76,17 @@ _set_stray_words_key(FilterXFunctionParseKV *self, const gchar *value_name)
 }
 
 gboolean
-_set_json_value(FilterXObject *out,
+_set_dict_value(FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)
 {
-  FilterXObject *json_key = filterx_string_new(key, key_len);
-  FilterXObject *json_val = filterx_string_new(value, value_len);
+  FilterXObject *dict_key = filterx_string_new(key, key_len);
+  FilterXObject *dict_val = filterx_string_new(value, value_len);
 
-  gboolean ok = filterx_object_set_subscript(out, json_key, &json_val);
+  gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
 
-  filterx_object_unref(json_key);
-  filterx_object_unref(json_val);
+  filterx_object_unref(dict_key);
+  filterx_object_unref(dict_val);
   return ok;
 }
 
@@ -103,12 +105,12 @@ _extract_key_values(FilterXFunctionParseKV *self, const gchar *input, gsize inpu
       const gchar *value = kv_scanner_get_current_value(&scanner);
       gsize value_len = kv_scanner_get_current_value_len(&scanner);
 
-      if (!_set_json_value(output, name, name_len, value, value_len))
+      if (!_set_dict_value(output, name, name_len, value, value_len))
         goto exit;
     }
 
   if (self->stray_words_key &&
-      !_set_json_value(output, self->stray_words_key, -1,
+      !_set_dict_value(output, self->stray_words_key, -1,
                        kv_scanner_get_stray_words(&scanner), kv_scanner_get_stray_words_len(&scanner)))
     goto exit;
 
@@ -118,30 +120,26 @@ exit:
   return result;
 }
 
-static FilterXObject *
-_eval(FilterXExpr *s)
+static gboolean
+_generate(FilterXExprGenerator *s, FilterXObject *fillable)
 {
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
 
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
-    return NULL;
+    return FALSE;
 
   gsize len;
   const gchar *input;
-  FilterXObject *result = NULL;
 
+  gboolean result = FALSE;
   if (!filterx_object_extract_string(obj, &input, &len))
     goto exit;
 
   APPEND_ZERO(input, input, len);
 
-  result = filterx_json_object_new_empty();
-  if (!_extract_key_values(self, input, len, result))
-    {
-      filterx_object_unref(result);
-      result = NULL;
-    }
+  result = _extract_key_values(self, input, len, fillable);
+
 exit:
   filterx_object_unref(obj);
   return result;
@@ -153,7 +151,7 @@ _free(FilterXExpr *s)
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
   filterx_expr_unref(self->msg);
   g_free(self->pair_separator);
-  filterx_function_free_method(&self->super);
+  filterx_generator_function_free_method(&self->super);
 }
 
 static FilterXExpr *
@@ -250,13 +248,14 @@ _extract_args(FilterXFunctionParseKV *self, FilterXFunctionArgs *args, GError **
   return TRUE;
 }
 
-FilterXFunction *
-filterx_function_parse_kv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+FilterXExpr *
+filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
-  filterx_function_init_instance(&self->super, function_name);
-  self->super.super.eval = _eval;
-  self->super.super.free_fn = _free;
+  filterx_generator_function_init_instance(&self->super, "parse_kv");
+  self->super.super.generate = _generate;
+  self->super.super.create_container = filterx_generator_create_dict_container;
+  self->super.super.super.free_fn = _free;
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");
 
@@ -265,16 +264,12 @@ filterx_function_parse_kv_new(const gchar *function_name, FilterXFunctionArgs *a
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super;
+  return &self->super.super.super;
 
 error:
   filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super);
+  filterx_expr_unref(&self->super.super.super);
   return NULL;
 }
 
-gpointer
-filterx_function_construct_parse_kv(Plugin *self)
-{
-  return (gpointer) filterx_function_parse_kv_new;
-}
+FILTERX_GENERATOR_FUNCTION(parse_kv, filterx_function_parse_kv_new);

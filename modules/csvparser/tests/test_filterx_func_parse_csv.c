@@ -57,6 +57,20 @@ _generate_string_list(const gchar *elts, ...)
   return result;
 }
 
+FilterXExpr *
+_csv_new(FilterXFunctionArgs *args, GError **error, FilterXObject *fillable)
+{
+  FilterXExpr *func = filterx_function_parse_csv_new(args, error);
+
+  if (!func)
+    return NULL;
+
+  FilterXExpr *fillable_expr = filterx_non_literal_new(fillable);
+  filterx_generator_set_fillable(func, fillable_expr);
+
+  return func;
+}
+
 Test(filterx_func_parse_csv, test_helper_generate_string_list_empty)
 {
   FilterXObject *col_names = _generate_string_list(NULL);
@@ -100,7 +114,7 @@ Test(filterx_func_parse_csv, test_empty_args_error)
 {
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(NULL, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(NULL, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(func);
   cr_assert_not_null(err);
@@ -117,7 +131,7 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -147,7 +161,7 @@ Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -178,7 +192,7 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -208,7 +222,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiters)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -238,7 +252,7 @@ Test(filterx_func_parse_csv, test_optional_argument_dialect)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -271,7 +285,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -304,7 +318,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -337,7 +351,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -370,7 +384,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -401,7 +415,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -434,7 +448,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimi
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -467,7 +481,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
@@ -498,7 +512,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_unable_to_set_with
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = filterx_function_parse_csv_new("test", filterx_function_args_new(args, &args_err), &err);
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
   cr_assert_null(args_err);
   cr_assert_not_null(err);
   cr_assert(strcmp(err->message, FILTERX_FUNC_PARSE_ERR_EMPTY_DELIMITER));

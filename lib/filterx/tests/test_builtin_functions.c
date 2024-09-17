@@ -102,10 +102,10 @@ _dummy_eval(FilterXExpr *s)
 }
 
 static FilterXExpr *
-_test_builtin_dummy_function_ctor(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+_test_builtin_dummy_function_ctor(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunction *self = g_new0(FilterXFunction, 1);
-  filterx_function_init_instance(self, function_name);
+  filterx_function_init_instance(self, TEST_BUILTIN_FUNCTION_NAME);
   self->super.eval = _dummy_eval;
 
   filterx_function_args_free(args);
@@ -143,7 +143,7 @@ Test(builtin_functions, test_builtin_function_ctors_lookup)
   cr_assert(ctor != NULL);
 
   // check dummy ctor as result
-  FilterXExpr *func_expr = ctor(TEST_BUILTIN_FUNCTION_NAME, filterx_function_args_new(NULL, NULL), NULL);
+  FilterXExpr *func_expr = ctor(filterx_function_args_new(NULL, NULL), NULL);
   cr_assert(func_expr != NULL);
 
   FilterXObject *res = filterx_expr_eval(func_expr);

@@ -393,18 +393,10 @@ _regexp_search_generator_create_container(FilterXExprGenerator *s, FilterXExpr *
 {
   FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
 
-  FilterXObject *fillable_parent_obj = filterx_expr_eval_typed(fillable_parent);
-  if (!fillable_parent_obj)
-    return NULL;
-
-  FilterXObject *result;
   if (_has_named_capture_groups(self->pattern))
-    result = filterx_object_create_dict(fillable_parent_obj);
-  else
-    result = filterx_object_create_list(fillable_parent_obj);
+    return filterx_generator_create_dict_container(s, fillable_parent);
 
-  filterx_object_unref(fillable_parent_obj);
-  return result;
+  return filterx_generator_create_list_container(s, fillable_parent);
 }
 
 static void
@@ -452,11 +444,11 @@ _extract_search_args(FilterXExprRegexpSearchGenerator *self, FilterXFunctionArgs
 
 /* Takes reference of lhs */
 FilterXExpr *
-filterx_generator_function_regexp_search_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprRegexpSearchGenerator *self = g_new0(FilterXExprRegexpSearchGenerator, 1);
 
-  filterx_generator_function_init_instance(&self->super, function_name);
+  filterx_generator_function_init_instance(&self->super, "regexp_search");
   self->super.super.generate = _regexp_search_generator_generate;
   self->super.super.super.free_fn = _regexp_search_generator_free;
   self->super.super.create_container = _regexp_search_generator_create_container;
@@ -700,10 +692,10 @@ _opts_init(FilterXFuncRegexpSubstOpts *opts)
 }
 
 FilterXExpr *
-filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "regexp_subst");
   self->super.super.eval = _subst_eval;
   self->super.super.free_fn = _subst_free;
 

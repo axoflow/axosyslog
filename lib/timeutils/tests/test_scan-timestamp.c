@@ -31,9 +31,10 @@
 #include "timeutils/conv.h"
 #include "apphook.h"
 
+#define CONVERTED_TS_SIZE 32
 
 static gboolean
-_parse_rfc3164(const gchar *ts, gint len, gchar isotimestamp[32])
+_parse_rfc3164(const gchar *ts, gint len, gchar isotimestamp[CONVERTED_TS_SIZE])
 {
   UnixTime stamp;
   const guchar *tsu = (const guchar *) ts;
@@ -52,13 +53,14 @@ _parse_rfc3164(const gchar *ts, gint len, gchar isotimestamp[32])
   convert_wall_clock_time_to_unix_time(&wct, &stamp);
 
   append_format_unix_time(&stamp, result, TS_FMT_ISO, stamp.ut_gmtoff, 3);
-  strncpy(isotimestamp, result->str, 32);
+  strncpy(isotimestamp, result->str, CONVERTED_TS_SIZE);
+  isotimestamp[CONVERTED_TS_SIZE - 1] = 0;
   g_string_free(result, TRUE);
   return success;
 }
 
 static gboolean
-_parse_rfc5424(const gchar *ts, gint len, gchar isotimestamp[32])
+_parse_rfc5424(const gchar *ts, gint len, gchar isotimestamp[CONVERTED_TS_SIZE])
 {
   UnixTime stamp;
   const guchar *tsu = (const guchar *) ts;
@@ -77,20 +79,21 @@ _parse_rfc5424(const gchar *ts, gint len, gchar isotimestamp[32])
   convert_wall_clock_time_to_unix_time(&wct, &stamp);
 
   append_format_unix_time(&stamp, result, TS_FMT_ISO, stamp.ut_gmtoff, 3);
-  strncpy(isotimestamp, result->str, 32);
+  strncpy(isotimestamp, result->str, CONVERTED_TS_SIZE);
+  isotimestamp[CONVERTED_TS_SIZE - 1] = 0;
   g_string_free(result, TRUE);
   return success;
 }
 
 static gboolean
-_rfc3164_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar converted[32])
+_rfc3164_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar converted[CONVERTED_TS_SIZE])
 {
   cr_assert(_parse_rfc3164(ts, len, converted));
   return strcmp(converted, expected) == 0;
 }
 
 static gboolean
-_rfc5424_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar converted[32])
+_rfc5424_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar converted[CONVERTED_TS_SIZE])
 {
   cr_assert(_parse_rfc5424(ts, len, converted));
   return strcmp(converted, expected) == 0;
@@ -98,13 +101,13 @@ _rfc5424_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar co
 
 #define _expect_rfc3164_timestamp_eq(ts, expected) \
   ({ \
-    gchar converted[32]; \
+    gchar converted[CONVERTED_TS_SIZE]; \
     cr_expect(_rfc3164_timestamp_eq(ts, -1, expected, converted), "Parsed RFC3164 timestamp does not equal expected, ts=%s, converted=%s, expected=%s", ts, converted, expected); \
   })
 
 #define _expect_rfc3164_timestamp_len_eq(ts, len, expected) \
   ({ \
-    gchar converted[32]; \
+    gchar converted[CONVERTED_TS_SIZE]; \
     cr_expect(_rfc3164_timestamp_eq(ts, len, expected, converted), "Parsed RFC3164 timestamp does not equal expected, ts=%s, converted=%s, expected=%s", ts, converted, expected); \
   })
 
@@ -118,13 +121,13 @@ _rfc5424_timestamp_eq(const gchar *ts, gint len, const gchar *expected, gchar co
 
 #define _expect_rfc5424_timestamp_eq(ts, expected) \
   ({ \
-    gchar converted[32]; \
+    gchar converted[CONVERTED_TS_SIZE]; \
     cr_expect(_rfc5424_timestamp_eq(ts, -1, expected, converted), "Parsed RFC5424 timestamp does not equal expected, ts=%s, converted=%s, expected=%s", ts, converted, expected); \
   })
 
 #define _expect_rfc5424_timestamp_len_eq(ts, len, expected) \
   ({ \
-    gchar converted[32]; \
+    gchar converted[CONVERTED_TS_SIZE]; \
     cr_expect(_rfc5424_timestamp_eq(ts, len, expected, converted), "Parsed RFC5424 timestamp does not equal expected, ts=%s, converted=%s, expected=%s", ts, converted, expected); \
   })
 

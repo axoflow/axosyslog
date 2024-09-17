@@ -26,6 +26,7 @@
 #include "json-parser-parser.h"
 #include "plugin.h"
 #include "plugin-types.h"
+#include "filterx/expr-function.h"
 
 extern CfgParser json_parser_parser;
 
@@ -39,12 +40,7 @@ static Plugin json_plugins[] =
   TEMPLATE_FUNCTION_PLUGIN(tf_json, "format_json"),
   TEMPLATE_FUNCTION_PLUGIN(tf_flat_json, "format_flat_json"),
   FILTERX_SIMPLE_FUNCTION_PLUGIN(format_json),
-  {
-    .type = LL_CONTEXT_FILTERX_FUNC,
-    .name = "cache_json_file",
-    .construct = filterx_function_cache_json_file_new_construct,
-  },
-
+  FILTERX_FUNCTION_PLUGIN(cache_json_file),
 };
 
 gboolean

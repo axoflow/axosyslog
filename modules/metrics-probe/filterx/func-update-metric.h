@@ -28,6 +28,6 @@
 
 FILTERX_FUNCTION_DECLARE(update_metric);
 
-FilterXExpr *filterx_function_update_metric_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error);
 
 #endif
