@@ -180,6 +180,7 @@ _eval(FilterXExpr *s)
   GList *string_delimiters = NULL;
   guint64 num_of_columns = 0;
   FilterXObject *cols = NULL;
+  CSVScannerOptions local_opts = {0};
 
   gsize len;
   const gchar *input;
@@ -201,7 +202,6 @@ _eval(FilterXExpr *s)
     result = filterx_json_array_new_empty();
 
   CSVScanner scanner;
-  CSVScannerOptions local_opts = {0};
   _init_scanner(self, string_delimiters, num_of_columns, input, &scanner, &local_opts);
 
   guint64 i = 0;
