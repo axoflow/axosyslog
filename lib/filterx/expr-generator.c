@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -96,14 +97,15 @@ _create_container_free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+/* Takes reference of g and fillable_parent */
 FilterXExpr *
 filterx_generator_create_container_new(FilterXExpr *g, FilterXExpr *fillable_parent)
 {
   FilterXExprGeneratorCreateContainer *self = g_new0(FilterXExprGeneratorCreateContainer, 1);
 
   filterx_expr_init_instance(&self->super);
-  self->generator = (FilterXExprGenerator *) filterx_expr_ref(g);
-  self->fillable_parent = filterx_expr_ref(fillable_parent);
+  self->generator = (FilterXExprGenerator *) g;
+  self->fillable_parent = fillable_parent;
   self->super.eval = _create_container_eval;
   self->super.free_fn = _create_container_free;
 
