@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -232,7 +234,7 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
 static gboolean
 _map_to_json(FilterXObject *s, struct json_object **jso, FilterXObject **assoc_object)
 {
-  FilterXObject *unmarshalled_object = filterx_object_unmarshal(filterx_object_ref(s));
+  FilterXObject *unmarshalled_object = filterx_object_unmarshal(s);
 
   if (unmarshalled_object)
     {
