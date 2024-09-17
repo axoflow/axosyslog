@@ -226,7 +226,7 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
   return NULL;
 }
 
-/* NOTE: calling map_to_json() on a FilterXMessageBase is less than ideal as
+/* NOTE: calling map_to_json() on a FilterXMessageValue is less than ideal as
  * we would unmarshal the value and then drop the result.  The expectation
  * is that the caller would explicitly unmarshall first, cache the result
  * and call map_to_json on the unmarshalled object.
