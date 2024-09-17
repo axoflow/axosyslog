@@ -1485,14 +1485,14 @@ def test_parse_csv_dialect(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
     custom_message = "\"PTHREAD \\\"support initialized\"";
-    $MSG = format_json(parse_csv(custom_message, dialect="escape-backslash")); # ["PTHREAD \"support initialized"]
+    $MSG = parse_csv(custom_message, dialect="escape-backslash");
     """,
     )
     syslog_ng.start(config)
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '["PTHREAD \\"support initialized"]\n'
+    assert file_true.read_log() == "'PTHREAD \"support initialized'\n"
 
 
 def test_vars(config, syslog_ng):
