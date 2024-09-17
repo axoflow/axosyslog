@@ -335,8 +335,23 @@ generator_casted_assignment
 	;
 
 declaration
-	: KW_DECLARE filterx_variable KW_ASSIGN expr	{ filterx_variable_expr_declare($2); $$ = filterx_assign_new($2, $4); }
-	;
+    : KW_DECLARE filterx_variable KW_ASSIGN expr	{ filterx_variable_expr_declare($2); $$ = filterx_assign_new($2, $4); }
+    | KW_DECLARE filterx_variable KW_ASSIGN expr_generator
+        {
+          GError *error = NULL;
+          FilterXExpr *json_func = filterx_function_lookup(configuration, "json", NULL, &error);
+          CHECK_FUNCTION_ERROR(json_func, @1, "json", error);
+
+          filterx_variable_expr_declare($2);
+
+          filterx_generator_set_fillable($4, filterx_expr_ref($2));
+          $$ = filterx_compound_expr_new_va(TRUE,
+            filterx_assign_new($2, filterx_generator_create_container_new($4, json_func)),
+            $4,
+            NULL
+          );
+        }
+    ;
 
 expr
 	: expr_value				{ $$ = $1; }
