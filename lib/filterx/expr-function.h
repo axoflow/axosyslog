@@ -56,7 +56,7 @@ typedef struct _FilterXFunctionArg
   gboolean retrieved;
 } FilterXFunctionArg;
 
-typedef FilterXExpr *(*FilterXFunctionCtor)(const gchar *, FilterXFunctionArgs *, GError **);
+typedef FilterXExpr *(*FilterXFunctionCtor)(FilterXFunctionArgs *, GError **);
 
 #define FILTERX_FUNCTION_ERROR filterx_function_error_quark()
 GQuark filterx_function_error_quark(void);

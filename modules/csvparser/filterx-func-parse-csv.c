@@ -493,10 +493,10 @@ _create_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
 }
 
 FilterXExpr *
-filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseCSV *self = g_new0(FilterXFunctionParseCSV, 1);
-  filterx_generator_function_init_instance(&self->super, function_name);
+  filterx_generator_function_init_instance(&self->super, "parse_csv");
   self->super.super.generate = _generate;
   self->super.super.create_container = _create_container;
   self->super.super.super.free_fn = _free;

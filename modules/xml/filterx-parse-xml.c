@@ -664,11 +664,11 @@ _free(FilterXExpr *s)
 }
 
 FilterXExpr *
-filterx_generator_function_parse_xml_new(const gchar *func_name, FilterXFunctionArgs *args, GError **error)
+filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXGeneratorFunctionParseXml *self = g_new0(FilterXGeneratorFunctionParseXml, 1);
 
-  filterx_generator_function_init_instance(&self->super, func_name);
+  filterx_generator_function_init_instance(&self->super, "parse_xml");
   self->super.super.generate = _generate;
   self->super.super.create_container = filterx_generator_create_dict_container;
   self->super.super.super.free_fn = _free;

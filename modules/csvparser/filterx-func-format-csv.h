@@ -33,6 +33,6 @@
 
 FILTERX_FUNCTION_DECLARE(format_csv);
 
-FilterXExpr *filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

@@ -48,6 +48,6 @@
 
 FILTERX_GENERATOR_FUNCTION_DECLARE(parse_csv);
 
-FilterXExpr *filterx_function_parse_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

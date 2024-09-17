@@ -249,10 +249,10 @@ _extract_args(FilterXFunctionParseKV *self, FilterXFunctionArgs *args, GError **
 }
 
 FilterXExpr *
-filterx_function_parse_kv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
-  filterx_generator_function_init_instance(&self->super, function_name);
+  filterx_generator_function_init_instance(&self->super, "parse_kv");
   self->super.super.generate = _generate;
   self->super.super.create_container = filterx_generator_create_dict_container;
   self->super.super.super.free_fn = _free;

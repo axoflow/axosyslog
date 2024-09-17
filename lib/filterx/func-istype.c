@@ -121,10 +121,10 @@ _extract_args(FilterXFunctionIsType *self, FilterXFunctionArgs *args, GError **e
 }
 
 FilterXExpr *
-filterx_function_istype_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_istype_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionIsType *self = g_new0(FilterXFunctionIsType, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "istype");
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
 

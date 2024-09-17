@@ -367,10 +367,10 @@ _extract_args(FilterXFunctionStrptime *self, FilterXFunctionArgs *args, GError *
 
 /* Takes reference of args */
 FilterXExpr *
-filterx_function_strptime_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrptime *self = g_new0(FilterXFunctionStrptime, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "strptime");
   self->super.super.eval = _strptime_eval;
   self->super.super.free_fn = _strptime_free;
 

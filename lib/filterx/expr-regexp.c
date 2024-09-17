@@ -444,11 +444,11 @@ _extract_search_args(FilterXExprRegexpSearchGenerator *self, FilterXFunctionArgs
 
 /* Takes reference of lhs */
 FilterXExpr *
-filterx_generator_function_regexp_search_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprRegexpSearchGenerator *self = g_new0(FilterXExprRegexpSearchGenerator, 1);
 
-  filterx_generator_function_init_instance(&self->super, function_name);
+  filterx_generator_function_init_instance(&self->super, "regexp_search");
   self->super.super.generate = _regexp_search_generator_generate;
   self->super.super.super.free_fn = _regexp_search_generator_free;
   self->super.super.create_container = _regexp_search_generator_create_container;
@@ -692,10 +692,10 @@ _opts_init(FilterXFuncRegexpSubstOpts *opts)
 }
 
 FilterXExpr *
-filterx_function_regexp_subst_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "regexp_subst");
   self->super.super.eval = _subst_eval;
   self->super.super.free_fn = _subst_free;
 

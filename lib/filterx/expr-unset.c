@@ -56,10 +56,10 @@ _free(FilterXExpr *s)
 }
 
 FilterXExpr *
-filterx_function_unset_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprUnset *self = g_new0(FilterXExprUnset, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "unset");
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;

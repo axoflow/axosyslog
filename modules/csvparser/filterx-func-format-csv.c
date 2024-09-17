@@ -260,10 +260,10 @@ _extract_arguments(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GE
 }
 
 FilterXExpr *
-filterx_function_format_csv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatCSV *self = g_new0(FilterXFunctionFormatCSV, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "format_csv");
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;

@@ -196,10 +196,10 @@ _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
 }
 
 FilterXExpr *
-filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuntionCacheJsonFile *self = g_new0(FilterXFuntionCacheJsonFile, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "cache_json_file");
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;

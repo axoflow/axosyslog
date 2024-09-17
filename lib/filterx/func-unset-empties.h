@@ -26,6 +26,6 @@
 
 #include "filterx/expr-function.h"
 
-FilterXExpr *filterx_function_unset_empties_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

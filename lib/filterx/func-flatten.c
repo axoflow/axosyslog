@@ -253,10 +253,10 @@ _extract_args(FilterXFunctionFlatten *self, FilterXFunctionArgs *args, GError **
 }
 
 FilterXExpr *
-filterx_function_flatten_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFlatten *self = g_new0(FilterXFunctionFlatten, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "flatten");
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;
 

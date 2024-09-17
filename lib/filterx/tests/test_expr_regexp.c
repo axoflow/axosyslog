@@ -84,7 +84,7 @@ _search(const gchar *lhs, const gchar *pattern)
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
 
-  FilterXExpr *expr = filterx_generator_function_regexp_search_new("test", filterx_function_args_new(args, NULL), NULL);
+  FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
   FilterXExpr *parent_fillable_expr_new = filterx_literal_new(filterx_test_dict_new());
   FilterXExpr *cc_expr = filterx_generator_create_container_new(expr, parent_fillable_expr_new);
   FilterXExpr *fillable_expr = filterx_literal_new(filterx_expr_eval(cc_expr));
@@ -112,8 +112,7 @@ _search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fil
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
 
-  FilterXExpr *expr = filterx_generator_function_regexp_search_new("test",
-                      filterx_function_args_new(args, NULL), NULL);
+  FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
   filterx_generator_set_fillable(expr, filterx_literal_new(filterx_object_ref(fillable)));
 
   FilterXObject *result_obj = filterx_expr_eval(expr);
@@ -133,8 +132,7 @@ _assert_search_init_error(const gchar *lhs, const gchar *pattern)
 
   GError *arg_err = NULL;
   GError *func_err = NULL;
-  cr_assert_not(filterx_generator_function_regexp_search_new("test",
-                                                             filterx_function_args_new(args, &arg_err), &func_err));
+  cr_assert_not(filterx_generator_function_regexp_search_new(filterx_function_args_new(args, &arg_err), &func_err));
 
   cr_assert(arg_err || func_err);
   g_clear_error(&arg_err);
@@ -281,7 +279,7 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
                                                         filterx_literal_new(filterx_boolean_new(TRUE))));
 
   GError *err = NULL;
-  FilterXExpr *func = filterx_function_regexp_subst_new("test", filterx_function_args_new(args, NULL), &err);
+  FilterXExpr *func = filterx_function_regexp_subst_new(filterx_function_args_new(args, NULL), &err);
   cr_assert_null(err);
   return func;
 }

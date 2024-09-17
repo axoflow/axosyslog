@@ -27,7 +27,6 @@
 
 FILTERX_GENERATOR_FUNCTION_DECLARE(parse_xml);
 
-FilterXExpr *filterx_generator_function_parse_xml_new(const gchar *func_name, FilterXFunctionArgs *args,
-                                                      GError **error);
+FilterXExpr *filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

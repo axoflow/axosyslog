@@ -37,7 +37,7 @@
 FilterXExpr *
 _kv_new(FilterXFunctionArgs *args, GError **error, FilterXObject *fillable)
 {
-  FilterXExpr *func = filterx_function_parse_kv_new("test", args, error);
+  FilterXExpr *func = filterx_function_parse_kv_new(args, error);
 
   if (!func)
     return NULL;

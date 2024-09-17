@@ -30,6 +30,6 @@
 
 FILTERX_GENERATOR_FUNCTION_DECLARE(parse_kv);
 
-FilterXExpr *filterx_function_parse_kv_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

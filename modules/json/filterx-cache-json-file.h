@@ -26,7 +26,6 @@
 
 FILTERX_FUNCTION_DECLARE(cache_json_file);
 
-FilterXExpr *filterx_function_cache_json_file_new(const gchar *function_name, FilterXFunctionArgs *args,
-                                                  GError **error);
+FilterXExpr *filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

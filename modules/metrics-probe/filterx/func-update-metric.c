@@ -195,10 +195,10 @@ _extract_args(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GErr
 }
 
 FilterXExpr *
-filterx_function_update_metric_new(const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionUpdateMetric *self = g_new0(FilterXFunctionUpdateMetric, 1);
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, "update_metric");
 
   self->super.super.eval = _eval;
   self->super.super.free_fn = _free;

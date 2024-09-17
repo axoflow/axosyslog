@@ -60,7 +60,7 @@ _generate_string_list(const gchar *elts, ...)
 FilterXExpr *
 _csv_new(FilterXFunctionArgs *args, GError **error, FilterXObject *fillable)
 {
-  FilterXExpr *func = filterx_function_parse_csv_new("test", args, error);
+  FilterXExpr *func = filterx_function_parse_csv_new(args, error);
 
   if (!func)
     return NULL;
