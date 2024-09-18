@@ -128,7 +128,8 @@ construct_template_expr(LogTemplate *template)
 %type <node> generator_function_call
 %type <node> function_call
 %type <ptr> arguments
-%type <ptr> argument
+%type <ptr> first_argument
+%type <ptr> rest_argument
 %type <ptr> list_argument
 %type <ptr> dict_argument
 %type <node> literal
@@ -443,16 +444,22 @@ function_call
 	;
 
 arguments
-	: arguments ',' argument		{ $$ = g_list_append($1, $3); }
-	| argument				{ $$ = g_list_append(NULL, $1); }
+	: arguments ',' rest_argument		{ $$ = g_list_append($1, $3); }
+	| first_argument			{ $$ = g_list_append(NULL, $1); }
 	|					{ $$ = NULL; }
 	;
 
-argument
+first_argument
 	: expr					{ $$ = filterx_function_arg_new(NULL, $1); }
 	| string KW_ASSIGN expr			{ $$ = filterx_function_arg_new($1, $3); free($1); }
 	| string KW_ASSIGN list_argument	{ $$ = filterx_function_arg_new($1, $3); free($1); }
 	| string KW_ASSIGN dict_argument	{ $$ = filterx_function_arg_new($1, $3); free($1); }
+	;
+
+rest_argument
+	: first_argument
+	| dict_argument				{ $$ = filterx_function_arg_new(NULL, $1); }
+	| list_argument				{ $$ = filterx_function_arg_new(NULL, $1); }
 	;
 
 list_argument
