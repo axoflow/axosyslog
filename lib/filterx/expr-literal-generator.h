@@ -50,5 +50,6 @@ gboolean filterx_expr_is_literal_dict_generator(FilterXExpr *s);
 gboolean filterx_expr_is_literal_list_generator(FilterXExpr *s);
 
 guint filterx_expr_literal_generator_len(FilterXExpr *s);
+gboolean filterx_expr_is_literal_generator(FilterXExpr *s);
 
 #endif
