@@ -36,6 +36,9 @@
 #define FILTERX_FUNC_STARTSWITH_USAGE "Usage: startswith(string, prefix, ignorecase=true)" \
 "or startswith(string, [prefix_1, prefix_2, ..], ignorecase=true)"
 
+#define FILTERX_FUNC_ENDSWITH_USAGE "Usage: endswith(string, suffix, ignorecase=true)" \
+"or endswith(string, [suffix_1, suffix_2, ..], ignorecase=true)"
+
 typedef struct _FilterXStringWithCache
 {
   FilterXExpr *expr;
@@ -405,4 +408,19 @@ filterx_function_startswith_new(FilterXFunctionArgs *args, GError **error)
 {
   return _function_affix_new(args, "startswith", _function_startswith_process,
                              FILTERX_FUNC_STARTSWITH_USAGE, error);
+}
+
+static gboolean
+_function_endswith_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+{
+  if (needle_len > haystack_len)
+    return FALSE;
+  return memcmp(haystack + haystack_len - needle_len, needle, needle_len) == 0;
+}
+
+FilterXExpr *
+filterx_function_endswith_new(FilterXFunctionArgs *args, GError **error)
+{
+  return _function_affix_new(args, "endswith", _function_endswith_process, FILTERX_FUNC_ENDSWITH_USAGE,
+                             error);
 }
