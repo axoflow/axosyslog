@@ -26,7 +26,6 @@
 #include "mainloop.h"
 #include "poll-file-changes.h"
 
-
 static inline const gchar *
 _format_persist_name(const LogPipe *s)
 {
@@ -44,12 +43,49 @@ _format_persist_name(const LogPipe *s)
   return persist_name;
 }
 
+static inline const gchar *
+_format_legacy_persist_name(const LogPipe *s)
+{
+  const FileReader *self = (const FileReader *)s;
+  static gchar persist_name[1024];
+
+  if (self->owner->super.super.persist_name)
+    g_snprintf(persist_name, sizeof(persist_name), "affile_sd.%s.curpos", self->owner->super.super.persist_name);
+  else
+    g_snprintf(persist_name, sizeof(persist_name), "affile_sd_curpos(%s)", self->filename->str);
+
+  return persist_name;
+}
+
+static gboolean
+_update_legacy_persist_name(WildcardFileReader *self)
+{
+  GlobalConfig *cfg = log_pipe_get_config(&self->super.super);
+
+  if (!cfg->state)
+    return TRUE;
+
+  const gchar *current_persist_name = _format_persist_name(&self->super.super);
+  const gchar *legacy_persist_name = _format_legacy_persist_name(&self->super.super);
+
+  if (persist_state_entry_exists(cfg->state, current_persist_name))
+    return TRUE;
+
+  if (!persist_state_entry_exists(cfg->state, legacy_persist_name))
+    return TRUE;
+
+  return persist_state_copy_entry(cfg->state, legacy_persist_name, current_persist_name);
+}
+
 static gboolean
 _init(LogPipe *s)
 {
   WildcardFileReader *self = (WildcardFileReader *)s;
   self->file_state.deleted = FALSE;
   self->file_state.last_eof = FALSE;
+
+  _update_legacy_persist_name(self);
+
   return file_reader_init_method(s);
 }
 
