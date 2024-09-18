@@ -26,6 +26,24 @@
 #include "mainloop.h"
 #include "poll-file-changes.h"
 
+
+static inline const gchar *
+_format_persist_name(const LogPipe *s)
+{
+  const FileReader *self = (const FileReader *)s;
+  static gchar persist_name[1024];
+
+  if (self->owner->super.super.persist_name)
+    {
+      g_snprintf(persist_name, sizeof(persist_name), "wildcard_file_sd.%s.curpos(%s)",
+                 self->owner->super.super.persist_name, self->filename->str);
+    }
+  else
+    g_snprintf(persist_name, sizeof(persist_name), "wildcard_file_sd_curpos(%s)", self->filename->str);
+
+  return persist_name;
+}
+
 static gboolean
 _init(LogPipe *s)
 {
@@ -148,6 +166,7 @@ wildcard_file_reader_new(const gchar *filename, FileReaderOptions *options, File
   self->super.super.init = _init;
   self->super.super.notify = _notify;
   self->super.super.deinit = _deinit;
+  self->super.super.generate_persist_name = _format_persist_name;
   IV_TASK_INIT(&self->file_state_event_handler);
   self->file_state_event_handler.cookie = self;
   self->file_state_event_handler.handler = _handle_file_state_event;
