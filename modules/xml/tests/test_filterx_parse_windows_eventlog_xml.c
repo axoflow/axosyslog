@@ -175,6 +175,8 @@ Test(filterx_parse_windows_eventlog_xml, invalid_inputs)
 {
   _assert_parse_event_data_fail("<Data almafa='param1'>foo</Data>\n");
   _assert_parse_event_data_fail("<Data Name='param1' almafa='kortefa'>foo</Data>\n");
+  _assert_parse_fail("<Event xmlns='http://unexpected.schema.url'></Event>");
+  _assert_parse_fail("<NotEvent xmlns='http://schemas.microsoft.com/win/2004/08/events/event'></NotEvent>");
 }
 
 static void

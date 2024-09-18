@@ -148,25 +148,67 @@ _collect_attrs(const gchar **attribute_names, const gchar **attribute_values,
   state->has_named_data = TRUE;
 }
 
-static void
-_push_position(FilterXParseWEVTState *state, const gchar *element_name)
+static gboolean
+_has_valid_schema_url(const gchar **attribute_names, const gchar **attribute_values, GError **error)
+{
+  if (!attribute_names[0])
+    return FALSE;
+
+  if (g_strcmp0(attribute_names[0], "xmlns") != 0)
+    return FALSE;
+
+  if (g_strcmp0(attribute_values[0], "http://schemas.microsoft.com/win/2004/08/events/event") != 0)
+    {
+      _set_error(error, "unexpected schema URL: %s", attribute_values[0]);
+      return FALSE;
+    }
+
+  if (attribute_names[1])
+    {
+      _set_error(error, "unexpected attribute in Event, number of attributes must be 1, got: %s", attribute_names[1]);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_is_root_elem_valid(const gchar *element_name, const gchar **attribute_names, const gchar **attribute_values,
+                    GError **error)
+{
+  if (g_strcmp0(element_name, "Event") != 0)
+    {
+      _set_error(error, "unexpected Windows EventLog XML root element: %s, expected \"Event\"", element_name);
+      return FALSE;
+    }
+
+  if (!_has_valid_schema_url(attribute_names, attribute_values, error))
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
+_push_position(FilterXParseWEVTState *state, const gchar *element_name,
+               const gchar **attribute_names, const gchar **attribute_values, GError **error)
 {
   switch (state->position)
     {
     case WEVT_POS_NONE:
-      if (g_strcmp0(element_name, "Event") == 0)
-        state->position = WEVT_POS_EVENT;
-      break;
+      if (!_is_root_elem_valid(element_name, attribute_names, attribute_values, error))
+        return FALSE;
+      state->position = WEVT_POS_EVENT;
+      return TRUE;
     case WEVT_POS_EVENT:
       if (g_strcmp0(element_name, "EventData") == 0)
         state->position = WEVT_POS_EVENT_DATA;
-      break;
+      return TRUE;
     case WEVT_POS_EVENT_DATA:
       if (g_strcmp0(element_name, "Data") == 0)
         state->position = WEVT_POS_DATA;
-      break;
+      return TRUE;
     case WEVT_POS_DATA:
-      break;
+      return TRUE;
     default:
       g_assert_not_reached();
     }
@@ -229,7 +271,8 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
   XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
 
-  _push_position(state, element_name);
+  if (!_push_position(state, element_name, attribute_names, attribute_values, error))
+    return;
 
   if (!_has_wevt_event_data_attr(attribute_names, state, error))
     {
