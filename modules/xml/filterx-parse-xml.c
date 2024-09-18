@@ -82,7 +82,7 @@
  */
 
 #define FILTERX_FUNC_PARSE_XML_USAGE "Usage: parse_xml(raw_xml)"
-
+#define XML_ELEM_CTX_STACK_INIT_SIZE (8)
 
 static void _set_error(GError **error, const gchar *format, ...) G_GNUC_PRINTF(2, 0);
 static void
@@ -112,34 +112,33 @@ xml_elem_context_set_parent_obj(XmlElemContext *self, FilterXObject *parent_obj)
 }
 
 void
-xml_elem_context_free(XmlElemContext *self)
+xml_elem_context_destroy(XmlElemContext *self)
 {
   xml_elem_context_set_current_obj(self, NULL);
   xml_elem_context_set_parent_obj(self, NULL);
-  g_free(self);
 }
 
-XmlElemContext *
-xml_elem_context_new(FilterXObject *parent_obj, FilterXObject *current_obj)
+void
+xml_elem_context_init(XmlElemContext *self, FilterXObject *parent_obj, FilterXObject *current_obj)
 {
-  XmlElemContext *self = g_new0(XmlElemContext, 1);
   xml_elem_context_set_parent_obj(self, parent_obj);
   xml_elem_context_set_current_obj(self, current_obj);
-  return self;
 }
 
 
 void
 filterx_parse_xml_state_init_instance(FilterXParseXmlState *self)
 {
-  self->xml_elem_context_stack = g_queue_new();
+  self->xml_elem_context_stack = g_array_sized_new(FALSE, FALSE, sizeof(XmlElemContext), XML_ELEM_CTX_STACK_INIT_SIZE);
   self->free_fn = filterx_parse_xml_state_free_method;
 }
 
 void
 filterx_parse_xml_state_free_method(FilterXParseXmlState *self)
 {
-  g_queue_free_full(self->xml_elem_context_stack, (GDestroyNotify) xml_elem_context_free);
+  for (guint i = 0; i < self->xml_elem_context_stack->len; i++)
+    xml_elem_context_destroy(&g_array_index(self->xml_elem_context_stack, XmlElemContext, i));
+  g_array_free(self->xml_elem_context_stack, TRUE);
 }
 
 static FilterXParseXmlState *
@@ -235,14 +234,15 @@ _store_nth_elem(XmlElemContext *new_elem_context, FilterXObject *existing_obj, F
   xml_elem_context_set_parent_obj(new_elem_context, existing_obj);
 }
 
-static XmlElemContext *
-_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gboolean has_attrs, GError **error)
+static gboolean
+_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gboolean has_attrs,
+              XmlElemContext *new_elem_context, GError **error)
 {
   g_assert(filterx_object_is_type(last_elem_context->current_obj, &FILTERX_TYPE_NAME(dict)));
 
   const gchar *new_elem_repr;
   FilterXObject *new_elem_obj = _create_object_for_new_elem(last_elem_context->current_obj, has_attrs, &new_elem_repr);
-  XmlElemContext *new_elem_context = xml_elem_context_new(last_elem_context->current_obj, new_elem_obj);
+  xml_elem_context_init(new_elem_context, last_elem_context->current_obj, new_elem_obj);
 
   FilterXObject *new_elem_key = filterx_string_new(new_elem_name, -1);
   FilterXObject *existing_obj = NULL;
@@ -273,8 +273,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gbo
       _set_error(error, "failed to unset existing unexpected node");
       goto exit;
     }
-  xml_elem_context_free(new_elem_context);
-  new_elem_context = _prepare_elem(new_elem_name, last_elem_context, has_attrs, error);
+  _prepare_elem(new_elem_name, last_elem_context, has_attrs, new_elem_context, error);
 
 exit:
   filterx_object_unref(new_elem_key);
@@ -283,11 +282,11 @@ exit:
 
   if (*error)
     {
-      xml_elem_context_free(new_elem_context);
-      new_elem_context = NULL;
+      xml_elem_context_destroy(new_elem_context);
+      return FALSE;
     }
 
-  return new_elem_context;
+  return TRUE;
 }
 
 static void
@@ -387,7 +386,7 @@ filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
                                     const gchar **attribute_names, const gchar **attribute_values,
                                     FilterXParseXmlState *state, GError **error)
 {
-  XmlElemContext *last_elem_context = g_queue_peek_head(state->xml_elem_context_stack);
+  XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->xml_elem_context_stack);
 
   if (!filterx_object_is_type(last_elem_context->current_obj, &FILTERX_TYPE_NAME(dict)))
     {
@@ -401,14 +400,15 @@ filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
     }
 
   gboolean has_attrs = !!attribute_names[0];
-  XmlElemContext *new_elem_context = _prepare_elem(element_name, last_elem_context, has_attrs, error);
-  if (!new_elem_context)
+
+  XmlElemContext new_elem_context = { 0 };
+  if (!_prepare_elem(element_name, last_elem_context, has_attrs, &new_elem_context, error))
     return;
 
-  g_queue_push_head(state->xml_elem_context_stack, new_elem_context);
+  xml_elem_context_stack_push(state->xml_elem_context_stack, &new_elem_context);
 
   if (has_attrs)
-    _collect_attrs(element_name, new_elem_context, attribute_names, attribute_values, error);
+    _collect_attrs(element_name, &new_elem_context, attribute_names, attribute_values, error);
 }
 
 void
@@ -416,8 +416,7 @@ filterx_parse_xml_end_elem_method(FilterXGeneratorFunctionParseXml *self,
                                   GMarkupParseContext *context, const gchar *element_name,
                                   FilterXParseXmlState *state, GError **error)
 {
-  XmlElemContext *elem_context = g_queue_pop_head(state->xml_elem_context_stack);
-  xml_elem_context_free(elem_context);
+  xml_elem_context_stack_remove_last(state->xml_elem_context_stack);
 }
 
 static gchar *
@@ -533,7 +532,7 @@ filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
                               GMarkupParseContext *context, const gchar *text, gsize text_len,
                               FilterXParseXmlState *state, GError **error)
 {
-  XmlElemContext *elem_context = g_queue_peek_head(state->xml_elem_context_stack);
+  XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->xml_elem_context_stack);
   const gchar *element_name = g_markup_parse_context_get_element(context);
 
   gsize stripped_text_len;
@@ -635,8 +634,11 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
 
   FilterXParseXmlState *state = self->create_state();;
   gpointer user_data[] = { self, state };
-  XmlElemContext *root_elem_context = xml_elem_context_new(NULL, fillable);
-  g_queue_push_head(state->xml_elem_context_stack, root_elem_context);
+
+  XmlElemContext root_elem_context = { 0 };
+  xml_elem_context_init(&root_elem_context, NULL, fillable);
+  xml_elem_context_stack_push(state->xml_elem_context_stack, &root_elem_context);
+
   GMarkupParseContext *context = g_markup_parse_context_new(&scanner_callbacks, 0, user_data, NULL);
 
   GError *error = NULL;

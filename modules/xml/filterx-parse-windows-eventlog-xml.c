@@ -97,10 +97,11 @@ exit:
   return !(*error);
 }
 
-static XmlElemContext *
-_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, GError **error)
+static gboolean
+_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, XmlElemContext *new_elem_context,
+              GError **error)
 {
-  XmlElemContext *new_elem_context = xml_elem_context_new(last_elem_context->current_obj, NULL);
+  xml_elem_context_init(new_elem_context, last_elem_context->current_obj, NULL);
 
   FilterXObject *new_elem_key = filterx_string_new(new_elem_name, -1);
   FilterXObject *existing_obj = NULL;
@@ -132,11 +133,11 @@ exit:
 
   if (*error)
     {
-      xml_elem_context_free(new_elem_context);
-      new_elem_context = NULL;
+      xml_elem_context_destroy(new_elem_context);
+      return FALSE;
     }
 
-  return new_elem_context;
+  return TRUE;
 }
 
 static void
@@ -226,7 +227,7 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
             FilterXParseXmlState *st, GError **error)
 {
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
-  XmlElemContext *last_elem_context = g_queue_peek_head(state->super.xml_elem_context_stack);
+  XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
 
   _push_position(state, element_name);
 
@@ -245,10 +246,11 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
         return;
     }
 
-  XmlElemContext *new_elem_context = _prepare_elem(element_name, last_elem_context, error);
-  if (!new_elem_context)
+  XmlElemContext new_elem_context = { 0 };
+  if (!_prepare_elem(element_name, last_elem_context, &new_elem_context, error))
     return;
-  g_queue_push_head(state->super.xml_elem_context_stack, new_elem_context);
+
+  xml_elem_context_stack_push(state->super.xml_elem_context_stack, &new_elem_context);
 
   _collect_attrs(attribute_names, attribute_values, state, error);
 }
@@ -270,7 +272,7 @@ _text(FilterXGeneratorFunctionParseXml *s,
       FilterXParseXmlState *st, GError **error)
 {
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
-  XmlElemContext *elem_context = g_queue_peek_head(state->super.xml_elem_context_stack);
+  XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
 
   if (!filterx_object_is_type(elem_context->current_obj, &FILTERX_TYPE_NAME(dict)) ||
       !state->has_named_data)

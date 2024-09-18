@@ -34,7 +34,7 @@ FilterXExpr *filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args,
 typedef struct FilterXParseXmlState_ FilterXParseXmlState;
 struct FilterXParseXmlState_
 {
-  GQueue *xml_elem_context_stack;
+  GArray *xml_elem_context_stack;
 
   void (*free_fn)(FilterXParseXmlState *self);
 };
@@ -56,10 +56,30 @@ typedef struct XmlElemContext_
   FilterXObject *parent_obj;
 } XmlElemContext;
 
-XmlElemContext *xml_elem_context_new(FilterXObject *parent_obj, FilterXObject *current_obj);
-void xml_elem_context_free(XmlElemContext *self);
+void xml_elem_context_init(XmlElemContext *self, FilterXObject *parent_obj, FilterXObject *current_obj);
+void xml_elem_context_destroy(XmlElemContext *self);
 void xml_elem_context_set_current_obj(XmlElemContext *self, FilterXObject *current_obj);
 void xml_elem_context_set_parent_obj(XmlElemContext *self, FilterXObject *parent_obj);
+
+
+static inline void
+xml_elem_context_stack_push(GArray *xml_elem_context_stack, XmlElemContext *elem_context)
+{
+  g_array_append_val(xml_elem_context_stack, *elem_context);
+}
+
+static inline XmlElemContext *
+xml_elem_context_stack_peek_last(GArray *xml_elem_context_stack)
+{
+  return &g_array_index(xml_elem_context_stack, XmlElemContext, xml_elem_context_stack->len - 1);
+}
+
+static inline void
+xml_elem_context_stack_remove_last(GArray *xml_elem_context_stack)
+{
+  xml_elem_context_destroy(xml_elem_context_stack_peek_last(xml_elem_context_stack));
+  g_array_remove_index(xml_elem_context_stack, xml_elem_context_stack->len - 1);
+}
 
 
 typedef struct FilterXGeneratorFunctionParseXml_ FilterXGeneratorFunctionParseXml;
