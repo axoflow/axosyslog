@@ -10,7 +10,7 @@ brew "ivykis"
 brew "json-c"
 brew "libtool"
 brew "openssl@3"
-brew "pcre"
+brew "pcre2"
 brew "pkg-config"
 
 brew "curl"
@@ -25,6 +25,7 @@ brew "net-snmp"
 brew "python@3", link: true, force: true
 brew "rabbitmq-c"
 brew "riemann-client"
+brew "libpaho-mqtt"
 
 brew "grpc"
 

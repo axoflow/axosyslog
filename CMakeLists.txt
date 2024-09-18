@@ -18,21 +18,25 @@ project(axosyslog C)
 
 option(ENABLE_CPP "Enable C++" ON)
 
-if(APPLE)
-  # Turned out that even the latest gcc has no proper support of the required ObjC version
-  # Once gcc was able to compile our ObjC modules properly this requirement could be removed again
-  set(CMAKE_OBJC_COMPILER clang)
-
-  set_property(GLOBAL PROPERTY OBJC_STANDARD 11)
-  set_property(GLOBAL PROPERTY OBJC_STANDARD_REQUIRED ON)
-endif()
-
 if (ENABLE_CPP)
   enable_language(CXX)
   set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ standard")
   set(CMAKE_CXX_STANDARD_REQUIRED OFF CACHE BOOL "C++ standard is a requirement")
   set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "C++ compiler specific extensions")
   set(SYSLOG_NG_ENABLE_CPP ${ENABLE_CPP})
+endif()
+
+if(APPLE)
+  option(ENABLE_OBJC "Enable OSLog" ENABLE_DARWIN_OSL)
+endif()
+
+if(ENABLE_OBJC)
+  # Turned out that even the latest gcc has no proper support of the required ObjC version
+  # Once gcc was able to compile our ObjC modules properly this requirement could be removed again
+  set(CMAKE_OBJC_COMPILER clang)
+
+  set_property(GLOBAL PROPERTY OBJC_STANDARD 11)
+  set_property(GLOBAL PROPERTY OBJC_STANDARD_REQUIRED ON)
 endif()
 
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules ${PROJECT_SOURCE_DIR}/cmake/)
@@ -140,10 +144,6 @@ check_symbol_exists(TCP_KEEPINTVL "sys/socket.h;netinet/in.h;netinet/tcp.h" HAVE
 check_symbol_exists(TCP_KEEPCNT   "sys/socket.h;netinet/in.h;netinet/tcp.h" HAVE_TCP_KEEPCNT)
 if (HAVE_TCP_KEEPIDLE AND HAVE_TCP_KEEPINTVL AND HAVE_TCP_KEEPCNT)
   set(SYSLOG_NG_HAVE_TCP_KEEPALIVE_TIMERS 1)
-endif()
-
-if (NOT APPLE)
-  set(SYSLOG_NG_HAVE_ENVIRON 1)
 endif()
 
 option(ENV_LD_LIBRARY_PATH "Set LD_LIBRARY_PATH during runtime to the value given" "")
