@@ -419,6 +419,21 @@ wildcard_sd_set_max_files(LogDriver *s, guint32 max_files)
   self->max_files = max_files;
 }
 
+/* to validate init-time uniqueness */
+static inline const gchar *
+_format_persist_name(const LogPipe *s)
+{
+  const WildcardSourceDriver *self = (const WildcardSourceDriver *)s;
+  static gchar persist_name[1024];
+
+  if (self->super.super.super.persist_name)
+    g_snprintf(persist_name, sizeof(persist_name), "wildcard_file_sd.%s", self->super.super.super.persist_name);
+  else
+    g_snprintf(persist_name, sizeof(persist_name), "wildcard_file_sd(%s,%s)", self->base_dir, self->filename_pattern);
+
+  return persist_name;
+}
+
 static void
 _free(LogPipe *s)
 {
@@ -445,6 +460,7 @@ wildcard_sd_new(GlobalConfig *cfg)
   self->super.super.super.free_fn = _free;
   self->super.super.super.init = _init;
   self->super.super.super.deinit = _deinit;
+  self->super.super.super.generate_persist_name = _format_persist_name;
 
   self->file_readers = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)log_pipe_unref);
   self->directory_monitors = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
