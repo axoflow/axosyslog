@@ -29,5 +29,6 @@
 
 FilterXExpr *filterx_function_startswith_new(FilterXFunctionArgs *args, GError **error);
 FilterXExpr *filterx_function_endswith_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_includes_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

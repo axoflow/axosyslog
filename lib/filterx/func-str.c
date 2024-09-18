@@ -39,6 +39,9 @@
 #define FILTERX_FUNC_ENDSWITH_USAGE "Usage: endswith(string, suffix, ignorecase=true)" \
 "or endswith(string, [suffix_1, suffix_2, ..], ignorecase=true)"
 
+#define FILTERX_FUNC_INCLUDES_USAGE "Usage: includes(string, substring, ignorecase=true)" \
+"or includes(string, [substring_1, substring_2, ..], ignorecase=true)"
+
 typedef struct _FilterXStringWithCache
 {
   FilterXExpr *expr;
@@ -422,5 +425,20 @@ FilterXExpr *
 filterx_function_endswith_new(FilterXFunctionArgs *args, GError **error)
 {
   return _function_affix_new(args, "endswith", _function_endswith_process, FILTERX_FUNC_ENDSWITH_USAGE,
+                             error);
+}
+
+static gboolean
+_function_includes_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+{
+  if (needle_len > haystack_len)
+    return FALSE;
+  return g_strstr_len(haystack, haystack_len, needle) != NULL;
+}
+
+FilterXExpr *
+filterx_function_includes_new(FilterXFunctionArgs *args, GError **error)
+{
+  return _function_affix_new(args, "includes", _function_includes_process, FILTERX_FUNC_INCLUDES_USAGE,
                              error);
 }
