@@ -496,7 +496,7 @@ process_proxy_v2:
 static gboolean
 _switch_to_tls(LogProtoProxiedTextServer *self)
 {
-  if (!multitransport_switch((MultiTransport *)self->super.super.super.transport, transport_factory_tls_id()))
+  if (!multitransport_switch((MultiTransport *)self->super.super.super.transport, TRANSPORT_FACTORY_TLS_ID))
     {
       msg_error("proxied-tls failed to switch to TLS");
       return FALSE;
