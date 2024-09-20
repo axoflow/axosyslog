@@ -309,6 +309,7 @@ generator_casted_assignment
 						    NULL
 						  );
 						  free($3);
+						  free($5);
 						}
 	| expr '[' expr ']' KW_ASSIGN func_name '(' expr_generator ')'
 						{
