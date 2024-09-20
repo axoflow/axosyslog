@@ -355,7 +355,7 @@ declaration
 
           filterx_generator_set_fillable($4, filterx_expr_ref($2));
           $$ = filterx_compound_expr_new_va(TRUE,
-            filterx_assign_new($2, filterx_generator_create_container_new($4, json_func)),
+            filterx_assign_new($2, filterx_generator_create_container_new(filterx_expr_ref($4), json_func)),
             $4,
             NULL
           );
