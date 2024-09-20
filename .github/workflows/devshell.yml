@@ -50,6 +50,7 @@ jobs:
             --disable-java-modules
             --enable-ebpf
             --with-python=3
+            --enable-extra-warnings
             `[ $CC = clang ] && echo '--enable-force-gnu99' || true`
           "
           CMAKE_FLAGS="
