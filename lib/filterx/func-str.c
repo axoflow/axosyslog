@@ -391,3 +391,18 @@ error:
   filterx_expr_unref(&self->super.super);
   return NULL;
 }
+
+static gboolean
+_function_startswith_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+{
+  if (needle_len > haystack_len)
+    return FALSE;
+  return memcmp(haystack, needle, needle_len) == 0;
+}
+
+FilterXExpr *
+filterx_function_startswith_new(FilterXFunctionArgs *args, GError **error)
+{
+  return _function_affix_new(args, "startswith", _function_startswith_process,
+                             FILTERX_FUNC_STARTSWITH_USAGE, error);
+}

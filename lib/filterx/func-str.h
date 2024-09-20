@@ -27,4 +27,6 @@
 
 #include "filterx/expr-function.h"
 
+FilterXExpr *filterx_function_startswith_new(FilterXFunctionArgs *args, GError **error);
+
 #endif
