@@ -38,6 +38,7 @@ transformation_step_free(TransformationStep *self)
 {
   g_free(self->name);
   g_free(self->expr);
+  g_free(self);
 }
 
 /* TransformationBlock: named list of steps */
