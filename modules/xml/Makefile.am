@@ -10,7 +10,10 @@ modules_xml_libxml_la_SOURCES = \
   modules/xml/windows-eventlog-xml-parser.h \
   modules/xml/windows-eventlog-xml-parser.c \
   modules/xml/filterx-parse-xml.h \
-  modules/xml/filterx-parse-xml.c
+  modules/xml/filterx-parse-xml.c \
+  modules/xml/filterx-parse-windows-eventlog-xml.h \
+  modules/xml/filterx-parse-windows-eventlog-xml.c
+
 
 
 BUILT_SOURCES       +=      \
