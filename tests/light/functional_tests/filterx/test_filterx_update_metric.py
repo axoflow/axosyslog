@@ -21,6 +21,7 @@
 # COPYING for details.
 #
 #############################################################################
+from src.common.blocking import wait_until_true
 from src.syslog_ng_config.renderer import render_statement
 from src.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
@@ -184,6 +185,7 @@ def test_filterx_update_metric_level(config, port_allocator, syslog_ng):
     network_source.write_log("foo\n")
     file_destination.read_log()
 
+    assert wait_until_true(lambda: config.get_prometheus_samples([MetricFilter("syslogng_metric", {})]) != [])
     samples = config.get_prometheus_samples([MetricFilter("syslogng_metric", {})])
     assert len(samples) == 1
     assert int(samples[0].value) == 1
