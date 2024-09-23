@@ -66,7 +66,16 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 
   self->exprs = g_ptr_array_new_full(filterx_function_args_len(args), (GDestroyNotify) filterx_expr_unref);
   for (guint64 i = 0; i < filterx_function_args_len(args); i++)
-    g_ptr_array_add(self->exprs, filterx_function_args_get_expr(args, i));
+    {
+      FilterXExpr *expr = filterx_function_args_get_expr(args, i);
+      if (!filterx_expr_unset_available(expr))
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                      "expected argument %d to be unsettable", (gint) i);
+          goto error;
+        }
+      g_ptr_array_add(self->exprs, expr);
+    }
 
   if (!filterx_function_args_check(args, error))
     goto error;

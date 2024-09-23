@@ -132,6 +132,12 @@ filterx_expr_unset(FilterXExpr *self)
   return FALSE;
 }
 
+static inline gboolean
+filterx_expr_unset_available(FilterXExpr *self)
+{
+  return self->unset != NULL;
+}
+
 void filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc);
 void filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text);
 EVTTAG *filterx_expr_format_location_tag(FilterXExpr *self);
