@@ -53,7 +53,8 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-sdata.h		\
 	lib/filterx/filterx-private.h			\
 	lib/filterx/expr-null-coalesce.h	\
-	lib/filterx/expr-plus-generator.h
+	lib/filterx/expr-plus-generator.h	\
+	lib/filterx/func-flags.h
 
 
 filterx_sources = 				\

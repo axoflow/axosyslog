@@ -1,5 +1,7 @@
 /*
+ * Copyright (c) 2023 Axoflow
  * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2024 shifter
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,6 +27,11 @@
 #define FILTERX_FUNC_UNSET_EMPTIES_H_INCLUDED
 
 #include "filterx/expr-function.h"
+
+#define FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE "recursive"
+#define FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS "targets"
+#define FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_REPLACEMENT "replacement"
+#define FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_IGNORECASE "ignorecase"
 
 FilterXExpr *filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error);
 

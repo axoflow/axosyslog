@@ -290,15 +290,42 @@ filterx_literal_inner_list_generator_new(FilterXExpr *root_literal_generator, GL
 }
 
 gboolean
+_filterx_expr_is_inner_dict_generator(FilterXExpr *s)
+{
+  return s && (s->eval == _inner_dict_generator_eval);
+}
+
+gboolean
+_filterx_expr_is_inner_list_generator(FilterXExpr *s)
+{
+  return s && (s->eval == _inner_list_generator_eval);
+}
+
+gboolean
 filterx_expr_is_literal_dict_generator(FilterXExpr *s)
 {
   FilterXExprGenerator *generator = (FilterXExprGenerator *) s;
-  return filterx_expr_is_generator(s) && generator->create_container == filterx_generator_create_dict_container;
+  return (filterx_expr_is_generator(s) && generator->create_container == filterx_generator_create_dict_container)
+         || _filterx_expr_is_inner_dict_generator(s);
 }
 
 gboolean
 filterx_expr_is_literal_list_generator(FilterXExpr *s)
 {
   FilterXExprGenerator *generator = (FilterXExprGenerator *) s;
-  return filterx_expr_is_generator(s) && generator->create_container == filterx_generator_create_list_container;
+  return (filterx_expr_is_generator(s) && generator->create_container == filterx_generator_create_list_container)
+         || _filterx_expr_is_inner_list_generator(s);
+}
+
+gboolean
+filterx_expr_is_literal_generator(FilterXExpr *s)
+{
+  return filterx_expr_is_literal_list_generator(s) || filterx_expr_is_literal_dict_generator(s);
+}
+
+guint
+filterx_expr_literal_generator_len(FilterXExpr *s)
+{
+  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
+  return g_list_length(self->elements);
 }

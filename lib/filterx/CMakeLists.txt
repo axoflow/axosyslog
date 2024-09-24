@@ -52,6 +52,7 @@ set(FILTERX_HEADERS
     filterx/expr-plus.h
     filterx/expr-null-coalesce.h
     filterx/expr-plus-generator.h
+    filterx/func-flags.h
     PARENT_SCOPE
     )
 
