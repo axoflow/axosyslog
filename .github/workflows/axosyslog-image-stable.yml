@@ -1,0 +1,24 @@
+name: AxoSyslog stable image
+
+permissions: write-all
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pre-check:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'axoflow'
+    steps:
+      - name: Validate tag
+        run: |
+          if [[ ! "${{ github.ref }}" =~ ^refs/tags/axosyslog-[0-9]+ ]]; then
+            echo "Please start the workflow on a 'axosyslog-[0-9]+*' tag"
+            false
+          fi
+
+  publish-image:
+    uses: ./.github/workflows/axosyslog-docker.yml
+    needs: pre-check
+    with:
+      type: stable
