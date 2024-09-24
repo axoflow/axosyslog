@@ -26,6 +26,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-datetime.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -197,6 +198,25 @@ Test(filterx_integer, test_filterx_integer_typecast_from_double_string)
 
   FilterXObject *obj = filterx_typecast_integer(NULL, args);
   cr_assert_null(obj);
+
+  g_ptr_array_free(args, TRUE);
+  filterx_object_unref(obj);
+}
+
+Test(filterx_integer, test_filterx_integer_typecast_from_datetime)
+{
+  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  UnixTime ut = { .ut_sec = 171, .ut_usec = 443221 };
+  FilterXObject *in = filterx_datetime_new(&ut);
+  g_ptr_array_add(args, in);
+
+  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  cr_assert_not_null(obj);
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
+
+  GenericNumber gn = filterx_primitive_get_value(obj);
+
+  cr_assert(gn_as_int64(&gn) == 171443221);
 
   g_ptr_array_free(args, TRUE);
   filterx_object_unref(obj);
