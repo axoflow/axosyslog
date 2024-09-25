@@ -35,10 +35,10 @@ spec:
       port: 601
       targetPort: rfc5424-tcp
 {{- end }}
-{{- if .syslogNgOtlp.enabled }}
+{{- if .axosyslogOtlp.enabled }}
     - name: otlp
       protocol: TCP
-      nodePort: {{ .syslogNgOtlp.port | default 30317 }}
+      nodePort: {{ .axosyslogOtlp.port | default 30317 }}
       port: 4317
       targetPort: otlp
 {{- end }}

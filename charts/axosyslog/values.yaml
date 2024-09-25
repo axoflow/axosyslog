@@ -46,7 +46,7 @@ collector:
           peerVerify: false
         template: "$(format-json .*)"
         extraOptionsRaw: "time-reopen(10)"
-      syslogNgOtlp:
+      axosyslogOtlp:
         enabled: false
         url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
@@ -74,7 +74,7 @@ syslog:
     enabled: false
     storageClass: standard
     size: 10Gi
-  config: 
+  config:
     raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
     stats:
       level: 2
@@ -94,12 +94,12 @@ syslog:
         #  Cert: "/path/to/Cert.pem"
         #  Key: "/path/to/Key.pem"
         #  peerVerify: false
-      syslogNgOtlp:
+      axosyslogOtlp:
         enabled: true
         # nodePort
         port: 30317
         extraOptionsRaw: ""
-        
+
     rewrites:
       set: {}
       #  foo: "${foovalue}"
@@ -134,11 +134,11 @@ syslog:
         #  peerVerify: false
         #template: "$(format-json --scope rfc5424 --exclude DATE --key ISODATE @timestamp=${ISODATE})"
         extraOptionsRaw: "time-reopen(10)"
-      syslogNgOtlp:
+      axosyslogOtlp:
         enabled: false
         url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
-    
+
 metricsExporter:
   enabled: false  # deploy the axosyslog Deamonset with the axosyslog-metrics-exporter sidecar
   image:
