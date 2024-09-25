@@ -3,6 +3,16 @@ entries:
   axosyslog:
   - apiVersion: v2
     appVersion: 4.8.1
+    created: "2024-09-25T16:23:43.865071732Z"
+    description: AxoSyslog for Kubernetes
+    digest: cc61a2de8d1dd93f9ad1bd600d5533c1e82a2915692eacda782c0bc2544bccbe
+    name: axosyslog
+    type: application
+    urls:
+    - https://github.com/axoflow/axosyslog/releases/download/axosyslog-charts-0.11.0/axosyslog-0.11.0.tgz
+    version: 0.11.0
+  - apiVersion: v2
+    appVersion: 4.8.1
     created: "2024-09-05T08:31:34.9358653Z"
     description: AxoSyslog for Kubernetes
     digest: 5775eac1363e21979a054e43b110f9be489142560b82b9c68427595086e504ae
@@ -152,4 +162,4 @@ entries:
     urls:
     - https://github.com/axoflow/axosyslog-charts/releases/download/axosyslog-collector-0.1.0/axosyslog-collector-0.1.0.tgz
     version: 0.1.0
-generated: "2024-09-05T08:31:34.935902149Z"
+generated: "2024-09-25T16:23:43.865123079Z"
