@@ -59,6 +59,16 @@ static Plugin otel_plugins[] =
     .parser = &otel_parser,
   },
   {
+    .type = LL_CONTEXT_DESTINATION,
+    .name = "axosyslog_otlp",
+    .parser = &otel_parser,
+  },
+  {
+    .type = LL_CONTEXT_SOURCE,
+    .name = "axosyslog_otlp",
+    .parser = &otel_parser,
+  },
+  {
     .type = LL_CONTEXT_FILTERX_ENUM,
     .name = "otel",
     .construct = grpc_otel_filterx_enum_construct,

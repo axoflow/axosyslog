@@ -30,7 +30,7 @@ data:
   {{- if .keyDelimiter }}
         key-delimiter({{ .keyDelimiter | quote }})
   {{- end }}
-      ); 
+      );
     };
 {{- end }}
 {{- end }}
@@ -106,10 +106,10 @@ data:
       };
     {{- end }}
 {{- end }}
-{{- with .Values.collector.config.destinations.syslogNgOtlp }}
+{{- with .Values.collector.config.destinations.axosyslogOtlp }}
   {{- if .enabled }}
       destination {
-        syslog-ng-otlp (
+        axosyslog-otlp (
           url({{ tpl .url $ | quote }})
     {{- if .extraOptionsRaw }}
           {{ .extraOptionsRaw }}

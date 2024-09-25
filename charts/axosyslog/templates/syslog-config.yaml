@@ -56,10 +56,10 @@ data:
   {{- end }}
 {{- end }}
 
-{{- with .Values.syslog.config.sources.syslogNgOtlp }}
+{{- with .Values.syslog.config.sources.axosyslogOtlp }}
   {{- if .enabled }}
     source s_syslogng_otlp {
-      syslog-ng-otlp();
+      axosyslog-otlp();
     };
   {{- end }}
 {{- end }}
@@ -68,7 +68,7 @@ data:
 {{- if .Values.syslog.config.sources.syslog.enabled }}
       source (s_syslog);
 {{- end }}
-{{- if .Values.syslog.config.sources.syslogNgOtlp.enabled }}
+{{- if .Values.syslog.config.sources.axosyslogOtlp.enabled }}
       source (s_syslogng_otlp);
 {{- end }}
 
@@ -133,10 +133,10 @@ data:
       };
     {{- end }}
 {{- end }}
-{{- with .Values.syslog.config.destinations.syslogNgOtlp }}
+{{- with .Values.syslog.config.destinations.axosyslogOtlp }}
   {{- if .enabled }}
       destination {
-        syslog-ng-otlp (
+        axosyslog-otlp (
           url({{ tpl .url $ | quote }})
     {{- if .extraOptionsRaw }}
           {{ .extraOptionsRaw }}
