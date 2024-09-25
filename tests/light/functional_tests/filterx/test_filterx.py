@@ -1516,6 +1516,33 @@ def test_vars(config, syslog_ng):
     assert file_true.read_log() == '{"logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
 
 
+def test_unset_empties_invalid_utf8(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            invalid_utf8 = "ba\xC080az";
+            dict = {"foo":invalid_utf8};
+            unset_empties(dict, targets=["baz"]);
+            $MSG = dict;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+
+
+def test_unset_empties_invalid_utf8_target(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            dict = {};
+            unset_empties(dict, targets=["b\xC080az"], recursive=true);
+            $MSG = dict;
+    """,
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
+
+
 def test_unset_empties(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
