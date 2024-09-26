@@ -489,7 +489,8 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
 
   reset_flags(&self->flags, ALL_FLAG_SET(FilterXFunctionUnsetEmptiesFlags));
 
-  if (!_extract_args(self, args, error))
+  if (!_extract_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);
