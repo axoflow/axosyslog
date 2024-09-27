@@ -34,6 +34,7 @@ set(FILTERX_HEADERS
     filterx/filterx-pipe.h
     filterx/filterx-private.h
     filterx/filterx-scope.h
+    filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
     filterx/func-flags.h
     filterx/func-flatten.h
@@ -93,6 +94,7 @@ set(FILTERX_SOURCES
     filterx/filterx-pipe.c
     filterx/filterx-private.c
     filterx/filterx-scope.c
+    filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
     filterx/func-flatten.c
     filterx/func-istype.c
