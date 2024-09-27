@@ -2,58 +2,58 @@ set(FILTERX_HEADERS
     filterx/expr-assign.h
     filterx/expr-boolalg.h
     filterx/expr-comparison.h
-    filterx/expr-function.h
-    filterx/expr-getattr.h
-    filterx/expr-get-subscript.h
-    filterx/expr-literal.h
-    filterx/expr-variable.h
-    filterx/expr-setattr.h
-    filterx/expr-set-subscript.h
-    filterx/expr-template.h
-    filterx/expr-drop.h
+    filterx/expr-compound.h
+    filterx/expr-condition.h
     filterx/expr-done.h
+    filterx/expr-drop.h
+    filterx/expr-function.h
+    filterx/expr-generator.h
+    filterx/expr-get-subscript.h
+    filterx/expr-getattr.h
+    filterx/expr-isset.h
+    filterx/expr-literal-generator.h
+    filterx/expr-literal.h
+    filterx/expr-null-coalesce.h
+    filterx/expr-plus-generator.h
+    filterx/expr-plus.h
+    filterx/expr-regexp.h
+    filterx/expr-set-subscript.h
+    filterx/expr-setattr.h
+    filterx/expr-template.h
+    filterx/expr-unset.h
+    filterx/expr-variable.h
     filterx/filterx-config.h
-    filterx/filterx-eval.h
     filterx/filterx-error.h
+    filterx/filterx-eval.h
     filterx/filterx-expr.h
     filterx/filterx-globals.h
+    filterx/filterx-metrics-labels.h
+    filterx/filterx-metrics.h
     filterx/filterx-object.h
     filterx/filterx-parser.h
     filterx/filterx-pipe.h
+    filterx/filterx-private.h
     filterx/filterx-scope.h
     filterx/filterx-weakrefs.h
-    filterx/filterx-metrics.h
-    filterx/filterx-metrics-labels.h
-    filterx/object-extractor.h
+    filterx/func-flags.h
+    filterx/func-flatten.h
+    filterx/func-istype.h
+    filterx/func-len.h
+    filterx/func-sdata.h
+    filterx/func-str-transform.h
+    filterx/func-str.h
+    filterx/func-unset-empties.h
+    filterx/func-vars.h
     filterx/object-datetime.h
-    filterx/object-json.h
+    filterx/object-dict-interface.h
+    filterx/object-extractor.h
     filterx/object-json-internal.h
+    filterx/object-json.h
+    filterx/object-list-interface.h
     filterx/object-message-value.h
     filterx/object-null.h
     filterx/object-primitive.h
     filterx/object-string.h
-    filterx/object-list-interface.h
-    filterx/object-dict-interface.h
-    filterx/expr-condition.h
-    filterx/expr-isset.h
-    filterx/expr-unset.h
-    filterx/expr-compound.h
-    filterx/expr-generator.h
-    filterx/expr-literal-generator.h
-    filterx/expr-regexp.h
-    filterx/filterx-private.h
-    filterx/func-istype.h
-    filterx/func-len.h
-    filterx/func-vars.h
-    filterx/func-unset-empties.h
-    filterx/func-str.h
-    filterx/func-str-transform.h
-    filterx/func-flatten.h
-    filterx/func-sdata.h
-    filterx/expr-plus.h
-    filterx/expr-null-coalesce.h
-    filterx/expr-plus-generator.h
-    filterx/func-flags.h
     PARENT_SCOPE
     )
 
@@ -61,58 +61,58 @@ set(FILTERX_SOURCES
     filterx/expr-assign.c
     filterx/expr-boolalg.c
     filterx/expr-comparison.c
-    filterx/expr-function.c
-    filterx/expr-getattr.c
-    filterx/expr-get-subscript.c
-    filterx/expr-literal.c
-    filterx/expr-variable.c
-    filterx/expr-setattr.c
-    filterx/expr-set-subscript.c
-    filterx/expr-template.c
-    filterx/expr-drop.c
+    filterx/expr-compound.c
+    filterx/expr-condition.c
     filterx/expr-done.c
+    filterx/expr-drop.c
+    filterx/expr-function.c
+    filterx/expr-generator.c
+    filterx/expr-get-subscript.c
+    filterx/expr-getattr.c
+    filterx/expr-isset.c
+    filterx/expr-literal-generator.c
+    filterx/expr-literal.c
+    filterx/expr-null-coalesce.c
+    filterx/expr-plus-generator.c
+    filterx/expr-plus.c
+    filterx/expr-regexp.c
+    filterx/expr-set-subscript.c
+    filterx/expr-setattr.c
+    filterx/expr-template.c
+    filterx/expr-unset.c
+    filterx/expr-variable.c
     filterx/filterx-config.c
-    filterx/filterx-eval.c
     filterx/filterx-error.c
+    filterx/filterx-eval.c
     filterx/filterx-expr.c
     filterx/filterx-globals.c
+    filterx/filterx-metrics-labels.c
+    filterx/filterx-metrics.c
     filterx/filterx-object.c
     filterx/filterx-parser.c
     filterx/filterx-pipe.c
+    filterx/filterx-private.c
     filterx/filterx-scope.c
     filterx/filterx-weakrefs.c
-    filterx/filterx-metrics.c
-    filterx/filterx-metrics-labels.c
-    filterx/object-extractor.c
+    filterx/func-flatten.c
+    filterx/func-istype.c
+    filterx/func-len.c
+    filterx/func-sdata.c
+    filterx/func-str-transform.c
+    filterx/func-str.c
+    filterx/func-unset-empties.c
+    filterx/func-vars.c
     filterx/object-datetime.c
-    filterx/object-json.c
-    filterx/object-json-object.c
+    filterx/object-dict-interface.c
+    filterx/object-extractor.c
     filterx/object-json-array.c
+    filterx/object-json-object.c
+    filterx/object-json.c
+    filterx/object-list-interface.c
     filterx/object-message-value.c
     filterx/object-null.c
     filterx/object-primitive.c
     filterx/object-string.c
-    filterx/object-list-interface.c
-    filterx/object-dict-interface.c
-    filterx/expr-condition.c
-    filterx/expr-isset.c
-    filterx/expr-unset.c
-    filterx/expr-compound.c
-    filterx/expr-generator.c
-    filterx/expr-literal-generator.c
-    filterx/expr-regexp.c
-    filterx/func-istype.c
-    filterx/func-len.c
-    filterx/func-vars.c
-    filterx/func-unset-empties.c
-    filterx/func-str.c
-    filterx/func-str-transform.c
-    filterx/func-flatten.c
-    filterx/func-sdata.c
-    filterx/expr-plus.c
-    filterx/filterx-private.c
-    filterx/expr-null-coalesce.c
-    filterx/expr-plus-generator.c
     PARENT_SCOPE
     )
 
