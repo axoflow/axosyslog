@@ -89,6 +89,8 @@ static gboolean _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXO
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_STRING) && (str_len == 0))
     return TRUE;
 
+  if (!g_utf8_validate(str, -1, NULL))
+    return FALSE;
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
     {
       casefold_str = g_utf8_casefold(str, str_len);
@@ -379,6 +381,12 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
         {
           set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_STRING, TRUE);
           return TRUE;
+        }
+      if (!g_utf8_validate(str, -1, NULL))
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                      FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS" strings must be valid utf8 strings! " FILTERX_FUNC_UNSET_EMPTIES_USAGE);
+          return FALSE;
         }
       if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
         {
