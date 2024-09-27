@@ -36,6 +36,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-pipe.h \
 	lib/filterx/filterx-private.h \
 	lib/filterx/filterx-scope.h \
+	lib/filterx/filterx-variable.h \
 	lib/filterx/filterx-weakrefs.h \
 	lib/filterx/func-flags.h \
 	lib/filterx/func-flatten.h \
@@ -95,6 +96,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-pipe.c \
 	lib/filterx/filterx-private.c \
 	lib/filterx/filterx-scope.c \
+	lib/filterx/filterx-variable.c \
 	lib/filterx/filterx-weakrefs.c \
 	lib/filterx/func-flatten.c \
 	lib/filterx/func-istype.c \

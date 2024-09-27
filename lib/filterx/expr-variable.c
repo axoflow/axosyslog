@@ -25,6 +25,7 @@
 #include "filterx/object-string.h"
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-variable.h"
 #include "logmsg/logmsg.h"
 
 
@@ -186,7 +187,7 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
   self->super.unset = _unset;
 
   self->variable_name = (FilterXObject *) name;
-  self->handle = filterx_scope_map_variable_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
+  self->handle = filterx_map_varname_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
 
   return &self->super;
 }
