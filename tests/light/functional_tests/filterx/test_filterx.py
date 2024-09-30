@@ -1516,6 +1516,34 @@ def test_vars(config, syslog_ng):
     assert file_true.read_log() == '{"logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
 
 
+def test_macro_caching(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            $MSG = {"1": {}, "2": {}, "3": {}, "4": {}};
+
+            $MSG["1"].SEVERITY = $SEVERITY;
+            $MSG["1"].FACILITY = $FACILITY;
+
+            $MSG["2"].SEVERITY = $SEVERITY;
+            $MSG["2"].FACILITY = $FACILITY;
+        """,
+        filterx_expr_2=r"""
+            $MSG["3"].SEVERITY = $SEVERITY;
+            $MSG["3"].FACILITY = $FACILITY;
+
+            $MSG["4"].SEVERITY = $SEVERITY;
+            $MSG["4"].FACILITY = $FACILITY;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    output = json.loads(file_true.read_log())
+    assert output["1"] == output["2"] == output["3"] == output["4"] == {"SEVERITY": "notice", "FACILITY": "user"}
+
+
 def test_unset_empties_invalid_utf8(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
