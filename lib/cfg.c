@@ -338,9 +338,12 @@ cfg_set_version(GlobalConfig *self, gint version)
 {
   if (self->user_version != 0)
     {
-      msg_warning("WARNING: you have multiple @version directives in your configuration, only the first one is considered",
+      msg_warning("WARNING: The @version directive must be placed at the top of the main configuration file "
+                  "(preferably as the very first line), preceding any @include directives and other configuration "
+                  "elements, otherwise, the current version will be used. If you specify multiple @version directives "
+                  "in your configuration, only the first one will be considered",
                   cfg_format_config_version_tag(self),
-                  cfg_format_version_tag("new-version", version));
+                  cfg_format_version_tag("ignored-version", version));
       return TRUE;
     }
   cfg_set_version_without_validation(self, version);
@@ -661,9 +664,6 @@ cfg_read_config(GlobalConfig *self, const gchar *fname, gchar *preprocess_into)
         {
           cfg_dump_processed_config(self->preprocess_config, preprocess_into);
         }
-
-      if (self->user_version == 0)
-        cfg_set_current_version(self);
 
       if (res)
         {
