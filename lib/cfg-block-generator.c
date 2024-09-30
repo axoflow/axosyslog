@@ -39,6 +39,8 @@ _report_generator_args(gpointer key, gpointer value, gpointer user_data)
 {
   GString *result = (GString *) user_data;
   g_string_append_printf(result, "## %s=", (gchar *) key);
+  if (!value)
+    return;
   for (const gchar *c = (const gchar *) value; *c; c++)
     {
       if (*c == '\n' && *(c + 1))
