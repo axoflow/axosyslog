@@ -48,7 +48,12 @@ _pull_variable_from_message(FilterXVariableExpr *self, FilterXEvalContext *conte
       return NULL;
     }
 
-  FilterXObject *msg_ref = filterx_message_value_new_borrowed(value, value_len, t);
+  FilterXObject *msg_ref;
+  if (log_msg_is_value_from_macro(value))
+    msg_ref = filterx_message_value_new(value, value_len, t);
+  else
+    msg_ref = filterx_message_value_new_borrowed(value, value_len, t);
+
   filterx_scope_register_variable(context->scope, self->handle, msg_ref);
   return msg_ref;
 }
