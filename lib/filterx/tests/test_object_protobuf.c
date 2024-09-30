@@ -80,7 +80,7 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_from_bytes)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(protobuf)));
 
   gsize size;
-  const gchar *bytes = filterx_protobuf_get_value(obj, &size);
+  const gchar *bytes = filterx_protobuf_get_value_ref(obj, &size);
 
   cr_assert(memcmp("not valid \0protobuf!", bytes, size) == 0);
 

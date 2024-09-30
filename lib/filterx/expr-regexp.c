@@ -145,7 +145,7 @@ _match(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXReMatchState *state)
   if (!state->lhs_obj)
     goto error;
 
-  if (!filterx_object_extract_string(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
+  if (!filterx_object_extract_string_ref(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
     {
       msg_error("FilterX: Regexp matching left hand side must be string type",
                 evt_tag_str("type", state->lhs_obj->type->name));

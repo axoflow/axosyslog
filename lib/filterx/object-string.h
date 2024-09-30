@@ -31,9 +31,9 @@ FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
 FILTERX_DECLARE_TYPE(protobuf);
 
-const gchar *filterx_string_get_value(FilterXObject *s, gsize *length);
-const gchar *filterx_bytes_get_value(FilterXObject *s, gsize *length);
-const gchar *filterx_protobuf_get_value(FilterXObject *s, gsize *length);
+const gchar *filterx_string_get_value_ref(FilterXObject *s, gsize *length);
+const gchar *filterx_bytes_get_value_ref(FilterXObject *s, gsize *length);
+const gchar *filterx_protobuf_get_value_ref(FilterXObject *s, gsize *length);
 FilterXObject *filterx_typecast_string(FilterXExpr *s, GPtrArray *args);
 FilterXObject *filterx_typecast_bytes(FilterXExpr *s, GPtrArray *args);
 FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, GPtrArray *args);

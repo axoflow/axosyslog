@@ -84,7 +84,7 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
   gsize size;
-  const gchar *str = filterx_string_get_value(obj, &size);
+  const gchar *str = filterx_string_get_value_ref(obj, &size);
 
   cr_assert(strcmp("null", str) == 0);
 
@@ -117,7 +117,7 @@ Test(filterx_string, test_filterx_string_typecast_from_bytes)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
   gsize size;
-  const gchar *str = filterx_string_get_value(obj, &size);
+  const gchar *str = filterx_string_get_value_ref(obj, &size);
   cr_assert(memcmp("001f2062797465205c73657175656e6365207f20ff", str, size) == 0);
 
 
@@ -136,7 +136,7 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
   gsize size;
-  const gchar *str = filterx_string_get_value(obj, &size);
+  const gchar *str = filterx_string_get_value_ref(obj, &size);
   cr_assert(memcmp("ff6e6f7420612076616c69642070726f746f6275662120d9", str, size) == 0);
 
 

@@ -213,7 +213,7 @@ public:
     const gchar *str;
     gsize len;
 
-    if (filterx_object_extract_string(object, &str, &len))
+    if (filterx_object_extract_string_ref(object, &str, &len))
       goto success;
 
     if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
@@ -320,8 +320,8 @@ public:
     const gchar *str;
     gsize len;
 
-    if (filterx_object_extract_bytes(object, &str, &len) ||
-        filterx_object_extract_protobuf(object, &str, &len))
+    if (filterx_object_extract_bytes_ref(object, &str, &len) ||
+        filterx_object_extract_protobuf_ref(object, &str, &len))
       {
         reflectors.reflection->SetString(message, reflectors.fieldDescriptor, std::string{str, len});
         return true;
@@ -374,7 +374,7 @@ syslogng::grpc::otel::extract_string_from_object(FilterXObject *object)
   const gchar *key_c_str;
   gsize len;
 
-  if (!filterx_object_extract_string(object, &key_c_str, &len))
+  if (!filterx_object_extract_string_ref(object, &key_c_str, &len))
     throw std::runtime_error("not a string instance");
 
   return std::string{key_c_str, len};

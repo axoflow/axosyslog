@@ -318,7 +318,7 @@ _get_literal_string_from_expr(FilterXExpr *expr, gsize *len)
     goto error;
 
   /* Literal message values don't exist, so we don't need to use the extractor. */
-  str = filterx_string_get_value(obj, len);
+  str = filterx_string_get_value_ref(obj, len);
 
   /*
    * We can unref both obj and expr, the underlying string will be kept alive as long as the literal expr is alive,

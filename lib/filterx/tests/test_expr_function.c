@@ -102,7 +102,7 @@ Test(expr_function, test_function_valid_arg)
   FilterXObject *res = filterx_expr_eval(func);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  const gchar *str = filterx_string_get_value(res, NULL);
+  const gchar *str = filterx_string_get_value_ref(res, NULL);
   cr_assert_str_eq(str, "bad format 1");
   filterx_expr_unref(func);
   filterx_object_unref(res);
@@ -125,7 +125,7 @@ Test(expr_function, test_function_multiple_args)
   FilterXObject *res = filterx_expr_eval(func);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  const gchar *str = filterx_string_get_value(res, NULL);
+  const gchar *str = filterx_string_get_value_ref(res, NULL);
   cr_assert_str_eq(str, "null443foobar");
   filterx_expr_unref(func);
   filterx_object_unref(res);

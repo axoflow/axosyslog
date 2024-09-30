@@ -339,7 +339,7 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   /* current_obj is either a dict or a string, ensured by _prepare_elem() and _text_cb(). */
   gsize existing_value_len;
   const gchar *existing_value;
-  g_assert(filterx_object_extract_string(elem_context->current_obj, &existing_value, &existing_value_len));
+  g_assert(filterx_object_extract_string_ref(elem_context->current_obj, &existing_value, &existing_value_len));
 
   if (existing_value_len > 0)
     {
@@ -483,7 +483,7 @@ _create_text_obj(FilterXObject *dict, FilterXObject *existing_text_key, const gc
     {
       gsize existing_value_len;
       const gchar *existing_value;
-      if (!filterx_object_extract_string(existing_obj, &existing_value, &existing_value_len))
+      if (!filterx_object_extract_string_ref(existing_obj, &existing_value, &existing_value_len))
         {
           msg_debug("FilterX: parse_xml(): Unexpected node type, overwriting",
                     evt_tag_str("type", existing_obj->type->name));
@@ -514,7 +514,7 @@ _add_text_to_dict(XmlElemContext *elem_context, const gchar *text, gsize text_le
 
   if (!filterx_object_set_subscript(elem_context->current_obj, key, &text_obj))
     {
-      const gchar *new_text = filterx_string_get_value(text_obj, NULL);
+      const gchar *new_text = filterx_string_get_value_ref(text_obj, NULL);
       _set_error(error, "failed to add text to dict: \"#text\"=\"%s\"", new_text);
       goto fail;
     }
@@ -580,7 +580,7 @@ static const gchar *
 _extract_raw_xml(FilterXGeneratorFunctionParseXml *self, FilterXObject *xml_obj, gsize *len)
 {
   const gchar *raw_xml;
-  if (!filterx_object_extract_string(xml_obj, &raw_xml, len))
+  if (!filterx_object_extract_string_ref(xml_obj, &raw_xml, len))
     {
       filterx_eval_push_error_info("input must be string", &self->super.super.super,
                                    g_strdup_printf("got %s instead", xml_obj->type->name), TRUE);

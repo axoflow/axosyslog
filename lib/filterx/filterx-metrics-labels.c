@@ -117,7 +117,7 @@ _init_label_name(FilterXExpr *name)
     }
 
   FilterXObject *obj = filterx_expr_eval_typed(name);
-  gchar *str = g_strdup(filterx_string_get_value(obj, NULL));
+  gchar *str = g_strdup(filterx_string_get_value_ref(obj, NULL));
   if (!str)
     filterx_eval_push_error_info("failed to initialize metrics label name, name must be a string literal", name,
                                  g_strdup_printf("got %s instead", obj->type->name), TRUE);

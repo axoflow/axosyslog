@@ -82,7 +82,7 @@ static gboolean _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXO
   gsize str_len = 0;
   const gchar *str = NULL;
   gchar *casefold_str = NULL;
-  if (!filterx_object_extract_string(obj, &str, &str_len))
+  if (!filterx_object_extract_string_ref(obj, &str, &str_len))
     return FALSE;
   g_assert(str);
 
@@ -376,7 +376,7 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
     }
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(string)))
     {
-      const gchar *str = filterx_string_get_value(target, &len);
+      const gchar *str = filterx_string_get_value_ref(target, &len);
       if (len == 0)
         {
           set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_STRING, TRUE);

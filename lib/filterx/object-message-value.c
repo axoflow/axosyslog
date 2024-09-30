@@ -43,7 +43,7 @@ typedef struct _FilterXMessageValue
 } FilterXMessageValue;
 
 gboolean
-filterx_message_value_get_string(FilterXObject *s, const gchar **value, gsize *len)
+filterx_message_value_get_string_ref(FilterXObject *s, const gchar **value, gsize *len)
 {
   FilterXMessageValue *self = (FilterXMessageValue *) s;
 
@@ -56,7 +56,7 @@ filterx_message_value_get_string(FilterXObject *s, const gchar **value, gsize *l
 }
 
 gboolean
-filterx_message_value_get_bytes(FilterXObject *s, const gchar **value, gsize *len)
+filterx_message_value_get_bytes_ref(FilterXObject *s, const gchar **value, gsize *len)
 {
   FilterXMessageValue *self = (FilterXMessageValue *) s;
 
@@ -69,7 +69,7 @@ filterx_message_value_get_bytes(FilterXObject *s, const gchar **value, gsize *le
 }
 
 gboolean
-filterx_message_value_get_protobuf(FilterXObject *s, const gchar **value, gsize *len)
+filterx_message_value_get_protobuf_ref(FilterXObject *s, const gchar **value, gsize *len)
 {
   FilterXMessageValue *self = (FilterXMessageValue *) s;
 

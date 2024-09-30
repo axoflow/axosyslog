@@ -63,7 +63,7 @@ KVList::KVList(FilterXOtelKVList *s, FilterXObject *protobuf_object) :
 {
   const gchar *value;
   gsize length;
-  if (!filterx_object_extract_protobuf(protobuf_object, &value, &length))
+  if (!filterx_object_extract_protobuf_ref(protobuf_object, &value, &length))
     {
       delete repeated_kv;
       throw std::runtime_error("Argument is not a protobuf object");
@@ -474,7 +474,7 @@ _add_elem_to_repeated_kv(FilterXObject *key_obj, FilterXObject *value_obj, gpoin
 
   const gchar *key;
   gsize key_len;
-  if (!filterx_object_extract_string(key_obj, &key, &key_len))
+  if (!filterx_object_extract_string_ref(key_obj, &key, &key_len))
     return false;
 
   KeyValue *kv = repeated_kv->Add();

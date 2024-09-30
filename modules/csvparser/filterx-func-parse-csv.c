@@ -91,7 +91,7 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
 
       const gchar *val;
       gsize len;
-      if (filterx_object_extract_string(elt, &val, &len))
+      if (filterx_object_extract_string_ref(elt, &val, &len))
         *list = g_list_append(*list, g_strndup(val, len));
       filterx_object_unref(elt);
     }
@@ -233,7 +233,7 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
 
   gsize len;
   const gchar *input;
-  if (!filterx_object_extract_string(obj, &input, &len))
+  if (!filterx_object_extract_string_ref(obj, &input, &len))
     goto exit;
 
   APPEND_ZERO(input, input, len);

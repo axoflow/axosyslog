@@ -48,7 +48,12 @@ _pull_variable_from_message(FilterXVariableExpr *self, FilterXEvalContext *conte
       return NULL;
     }
 
-  FilterXObject *msg_ref = filterx_message_value_new_borrowed(value, value_len, t);
+  FilterXObject *msg_ref;
+  if (log_msg_is_value_from_macro(value))
+    msg_ref = filterx_message_value_new(value, value_len, t);
+  else
+    msg_ref = filterx_message_value_new_borrowed(value, value_len, t);
+
   filterx_scope_register_variable(context->scope, self->handle, msg_ref);
   return msg_ref;
 }
@@ -178,7 +183,7 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
   self->super.unset = _unset;
 
   self->variable_name = (FilterXObject *) name;
-  self->handle = filterx_scope_map_variable_to_handle(filterx_string_get_value(self->variable_name, NULL), type);
+  self->handle = filterx_scope_map_variable_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
 
   return &self->super;
 }

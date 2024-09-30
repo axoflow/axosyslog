@@ -95,7 +95,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_string)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(bytes)));
 
   gsize size;
-  const gchar *bytes = filterx_bytes_get_value(obj, &size);
+  const gchar *bytes = filterx_bytes_get_value_ref(obj, &size);
 
   cr_assert(memcmp("string whatever", bytes, size) == 0);
 
@@ -114,7 +114,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_protobuf)
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(bytes)));
 
   gsize size;
-  const gchar *bytes = filterx_bytes_get_value(obj, &size);
+  const gchar *bytes = filterx_bytes_get_value_ref(obj, &size);
 
   cr_assert(memcmp("not a valid \0protobuf!", bytes, size) == 0);
 

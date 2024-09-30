@@ -63,7 +63,7 @@ Test(expr_plus, test_string_success)
 
 
   gsize size;
-  const gchar *res = filterx_string_get_value(obj, &size);
+  const gchar *res = filterx_string_get_value_ref(obj, &size);
 
   cr_assert_str_eq(res, "foobar");
 
