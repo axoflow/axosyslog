@@ -28,9 +28,9 @@
 #include "generic-number.h"
 #include "compat/json.h"
 
-gboolean filterx_object_extract_string(FilterXObject *obj, const gchar **value, gsize *len);
-gboolean filterx_object_extract_bytes(FilterXObject *obj, const gchar **value, gsize *len);
-gboolean filterx_object_extract_protobuf(FilterXObject *obj, const gchar **value, gsize *len);
+gboolean filterx_object_extract_string_ref(FilterXObject *obj, const gchar **value, gsize *len);
+gboolean filterx_object_extract_bytes_ref(FilterXObject *obj, const gchar **value, gsize *len);
+gboolean filterx_object_extract_protobuf_ref(FilterXObject *obj, const gchar **value, gsize *len);
 gboolean filterx_object_extract_boolean(FilterXObject *obj, gboolean *value);
 gboolean filterx_object_extract_integer(FilterXObject *obj, gint64 *value);
 gboolean filterx_object_extract_double(FilterXObject *obj, gdouble *value);

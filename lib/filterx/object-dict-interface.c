@@ -157,7 +157,7 @@ _add_elem_to_json_object(FilterXObject *key_obj, FilterXObject *value_obj, gpoin
 
   const gchar *key;
   gsize len;
-  if (!filterx_object_extract_string(key_obj, &key, &len))
+  if (!filterx_object_extract_string_ref(key_obj, &key, &len))
     return FALSE;
 
   APPEND_ZERO(key, key, len);

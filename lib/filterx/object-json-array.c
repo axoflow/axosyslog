@@ -335,7 +335,7 @@ filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args)
 
   const gchar *repr;
   gsize repr_len;
-  if (filterx_object_extract_string(arg, &repr, &repr_len))
+  if (filterx_object_extract_string_ref(arg, &repr, &repr_len))
     return filterx_json_array_new_from_repr(repr, repr_len);
 
   filterx_eval_push_error_info("Argument must be a json array, a string or a syslog-ng list", s,

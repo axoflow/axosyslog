@@ -30,7 +30,7 @@
 #include "filterx/object-json.h"
 
 gboolean
-filterx_object_extract_string(FilterXObject *obj, const gchar **value, gsize *len)
+filterx_object_extract_string_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
     return filterx_message_value_get_string(obj, value, len);
@@ -40,7 +40,7 @@ filterx_object_extract_string(FilterXObject *obj, const gchar **value, gsize *le
 }
 
 gboolean
-filterx_object_extract_bytes(FilterXObject *obj, const gchar **value, gsize *len)
+filterx_object_extract_bytes_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
     return filterx_message_value_get_bytes(obj, value, len);
@@ -50,7 +50,7 @@ filterx_object_extract_bytes(FilterXObject *obj, const gchar **value, gsize *len
 }
 
 gboolean
-filterx_object_extract_protobuf(FilterXObject *obj, const gchar **value, gsize *len)
+filterx_object_extract_protobuf_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
     return filterx_message_value_get_protobuf(obj, value, len);

@@ -133,7 +133,7 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   const gchar *input;
 
   gboolean result = FALSE;
-  if (!filterx_object_extract_string(obj, &input, &len))
+  if (!filterx_object_extract_string_ref(obj, &input, &len))
     goto exit;
 
   APPEND_ZERO(input, input, len);

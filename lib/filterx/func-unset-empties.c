@@ -82,7 +82,7 @@ static gboolean _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXO
   gsize str_len = 0;
   const gchar *str = NULL;
   gchar *casefold_str = NULL;
-  if (!filterx_object_extract_string(obj, &str, &str_len))
+  if (!filterx_object_extract_string_ref(obj, &str, &str_len))
     return FALSE;
   g_assert(str);
 

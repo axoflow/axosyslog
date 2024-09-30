@@ -53,7 +53,7 @@ LogRecord::LogRecord(FilterXOtelLogRecord *super_, FilterXObject *protobuf_objec
 {
   const gchar *value;
   gsize length;
-  if (!filterx_object_extract_protobuf(protobuf_object, &value, &length))
+  if (!filterx_object_extract_protobuf_ref(protobuf_object, &value, &length))
     throw std::runtime_error("Argument is not a protobuf object");
 
   if (!logRecord.ParsePartialFromArray(value, length))

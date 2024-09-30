@@ -298,7 +298,7 @@ filterx_typecast_integer(FilterXExpr *s, GPtrArray *args)
 
   const gchar *str;
   gsize str_len;
-  if (filterx_object_extract_string(object, &str, &str_len))
+  if (filterx_object_extract_string_ref(object, &str, &str_len))
     {
       APPEND_ZERO(str, str, str_len);
 
@@ -334,7 +334,7 @@ filterx_typecast_double(FilterXExpr *s, GPtrArray *args)
 
   const gchar *str;
   gsize str_len;
-  if (filterx_object_extract_string(object, &str, &str_len))
+  if (filterx_object_extract_string_ref(object, &str, &str_len))
     {
       APPEND_ZERO(str, str, str_len);
 

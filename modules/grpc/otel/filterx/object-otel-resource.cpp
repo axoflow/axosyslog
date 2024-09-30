@@ -42,7 +42,7 @@ Resource::Resource(FilterXOtelResource *s, FilterXObject *protobuf_object) : sup
 {
   const gchar *value;
   gsize length;
-  if (!filterx_object_extract_protobuf(protobuf_object, &value, &length))
+  if (!filterx_object_extract_protobuf_ref(protobuf_object, &value, &length))
     throw std::runtime_error("Argument is not a protobuf object");
 
   if (!resource.ParsePartialFromArray(value, length))

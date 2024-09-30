@@ -148,7 +148,7 @@ _format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer 
 
   const gchar *key_str;
   gsize key_str_len;
-  if (!filterx_object_extract_string(key, &key_str, &key_str_len))
+  if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
     return FALSE;
 
   _append_comma_if_needed(result);
@@ -256,13 +256,13 @@ _format_and_append_value(FilterXObject *value, GString *result)
   const gchar *str;
   gsize str_len;
 
-  if (filterx_object_extract_bytes(value, &str, &str_len))
+  if (filterx_object_extract_bytes_ref(value, &str, &str_len))
     return _format_and_append_bytes(str, str_len, result);
 
-  if (filterx_object_extract_protobuf(value, &str, &str_len))
+  if (filterx_object_extract_protobuf_ref(value, &str, &str_len))
     return _format_and_append_protobuf(str, str_len, result);
 
-  if (filterx_object_extract_string(value, &str, &str_len))
+  if (filterx_object_extract_string_ref(value, &str, &str_len))
     return _format_and_append_string(str, str_len, result);
 
   if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)))

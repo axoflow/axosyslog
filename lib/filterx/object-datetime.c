@@ -155,7 +155,7 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, GPtrArray *args)
 
   const gchar *str;
   gsize len;
-  if (!filterx_object_extract_string(object, &str, &len))
+  if (!filterx_object_extract_string_ref(object, &str, &len))
     return NULL;
 
   UnixTime ut = UNIX_TIME_INIT;
@@ -254,7 +254,7 @@ _strptime_eval(FilterXExpr *s)
 
   const gchar *time_str;
   gsize time_str_len;
-  gboolean extract_success = filterx_object_extract_string(time_str_obj, &time_str, &time_str_len);
+  gboolean extract_success = filterx_object_extract_string_ref(time_str_obj, &time_str, &time_str_len);
 
   if (!extract_success)
     {

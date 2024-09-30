@@ -67,7 +67,7 @@ Array::Array(FilterXOtelArray *s, FilterXObject *protobuf_object) :
 {
   const gchar *value;
   gsize length;
-  if (!filterx_object_extract_protobuf(protobuf_object, &value, &length))
+  if (!filterx_object_extract_protobuf_ref(protobuf_object, &value, &length))
     {
       delete array;
       throw std::runtime_error("Argument is not a protobuf object");

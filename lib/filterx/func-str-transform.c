@@ -40,7 +40,7 @@ _extract_str_arg(FilterXExpr *s, GPtrArray *args, gssize *len)
   gsize inner_len;
   FilterXObject *object = g_ptr_array_index(args, 0);
 
-  if (!filterx_object_extract_string(object, &str, &inner_len))
+  if (!filterx_object_extract_string_ref(object, &str, &inner_len))
     {
       filterx_simple_function_argument_error(s, "Object must be string", FALSE);
       return NULL;

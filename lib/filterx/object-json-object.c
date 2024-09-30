@@ -109,7 +109,7 @@ _get_subscript(FilterXDict *s, FilterXObject *key)
 
   const gchar *key_str;
   gsize len;
-  if (!filterx_object_extract_string(key, &key_str, &len))
+  if (!filterx_object_extract_string_ref(key, &key_str, &len))
     return NULL;
 
   APPEND_ZERO(key_str, key_str, len);
@@ -128,7 +128,7 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
 
   const gchar *key_str;
   gsize len;
-  if (!filterx_object_extract_string(key, &key_str, &len))
+  if (!filterx_object_extract_string_ref(key, &key_str, &len))
     return FALSE;
 
   APPEND_ZERO(key_str, key_str, len);
@@ -168,7 +168,7 @@ _unset_key(FilterXDict *s, FilterXObject *key)
 
   const gchar *key_str;
   gsize len;
-  if (!filterx_object_extract_string(key, &key_str, &len))
+  if (!filterx_object_extract_string_ref(key, &key_str, &len))
     return FALSE;
 
   APPEND_ZERO(key_str, key_str, len);

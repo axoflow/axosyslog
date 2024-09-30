@@ -49,7 +49,7 @@ _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
     return;
 
   const gchar *str;
-  if (filterx_object_extract_string(obj, &str, NULL))
+  if (filterx_object_extract_string_ref(obj, &str, NULL))
     {
       if (!parse_generic_number(str, gn))
         gn_set_nan(gn);
@@ -77,9 +77,9 @@ static const gchar *
 _convert_filterx_object_to_string(FilterXObject *obj, gsize *len)
 {
   const gchar *str;
-  if (filterx_object_extract_string(obj, &str, len) ||
-      filterx_object_extract_bytes(obj, &str, len) ||
-      filterx_object_extract_protobuf(obj, &str, len))
+  if (filterx_object_extract_string_ref(obj, &str, len) ||
+      filterx_object_extract_bytes_ref(obj, &str, len) ||
+      filterx_object_extract_protobuf_ref(obj, &str, len))
     {
       return str;
     }
