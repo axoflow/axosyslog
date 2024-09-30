@@ -55,7 +55,7 @@ _assert_cmp_string_to_filterx_object(const char *str, FilterXObject *obj)
 {
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
   gsize string_len;
-  const gchar *string = filterx_string_get_value(obj, &string_len);
+  const gchar *string = filterx_string_get_value_ref(obj, &string_len);
   return strcmp(string, str);
 }
 

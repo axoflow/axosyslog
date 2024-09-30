@@ -54,7 +54,7 @@ _assert_format_kv(GList *args, const gchar *expected_output)
   FilterXObject *obj = filterx_expr_eval(func);
   cr_assert(obj);
 
-  const gchar *output = filterx_string_get_value(obj, NULL);
+  const gchar *output = filterx_string_get_value_ref(obj, NULL);
   cr_assert(output);
 
   cr_assert_str_eq(output, expected_output);

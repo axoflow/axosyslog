@@ -55,7 +55,8 @@ static void
 _assert_filterx_format_json_and_unref(FilterXObject *arg, const gchar *expected_json)
 {
   FilterXObject *result = _exec_format_json_and_unref(arg);
-  cr_assert_str_eq(filterx_string_get_value(result, NULL), expected_json, "%s", filterx_string_get_value(result, NULL));
+  cr_assert_str_eq(filterx_string_get_value_ref(result, NULL), expected_json, "%s", filterx_string_get_value_ref(result,
+                   NULL));
   filterx_object_unref(result);
 }
 
@@ -63,7 +64,7 @@ static void
 _assert_filterx_format_json_double_and_unref(FilterXObject *arg, gdouble expected_double)
 {
   FilterXObject *result = _exec_format_json_and_unref(arg);
-  cr_assert_float_eq(g_strtod(filterx_string_get_value(result, NULL), NULL), expected_double, DBL_EPSILON);
+  cr_assert_float_eq(g_strtod(filterx_string_get_value_ref(result, NULL), NULL), expected_double, DBL_EPSILON);
   filterx_object_unref(result);
 }
 

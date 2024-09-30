@@ -216,7 +216,7 @@ _init_key(FilterXMetrics *self, FilterXExpr *key)
     }
 
   /* There are no literal message values, so we don't need to call extract_string() here. */
-  self->key.str = g_strdup(filterx_string_get_value(key_obj, NULL));
+  self->key.str = g_strdup(filterx_string_get_value_ref(key_obj, NULL));
   return TRUE;
 }
 

@@ -514,7 +514,7 @@ _add_text_to_dict(XmlElemContext *elem_context, const gchar *text, gsize text_le
 
   if (!filterx_object_set_subscript(elem_context->current_obj, key, &text_obj))
     {
-      const gchar *new_text = filterx_string_get_value(text_obj, NULL);
+      const gchar *new_text = filterx_string_get_value_ref(text_obj, NULL);
       _set_error(error, "failed to add text to dict: \"#text\"=\"%s\"", new_text);
       goto fail;
     }

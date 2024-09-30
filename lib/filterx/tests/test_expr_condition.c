@@ -55,7 +55,7 @@ _assert_cmp_string_to_filterx_object(const char *str, FilterXObject *obj)
 {
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
   gsize string_len;
-  const gchar *string = filterx_string_get_value(obj, &string_len);
+  const gchar *string = filterx_string_get_value_ref(obj, &string_len);
   return strcmp(string, str);
 }
 
@@ -360,7 +360,7 @@ Test(expr_condition, test_condition_return_expr_result_on_missing_stmts)
   FilterXObject *res = filterx_expr_eval(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  const gchar *strval = filterx_string_get_value(res, NULL);
+  const gchar *strval = filterx_string_get_value_ref(res, NULL);
   cr_assert_str_eq(strval, "foobar");
 
   filterx_expr_unref(cond);
@@ -396,7 +396,7 @@ Test(expr_condition, test_condition_with_complex_expression_to_check_memory_leak
   FilterXObject *res = filterx_expr_eval(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  const gchar *str = filterx_string_get_value(res, NULL);
+  const gchar *str = filterx_string_get_value_ref(res, NULL);
   cr_assert_str_eq(str, "foobar");
 
   filterx_expr_unref(cond);

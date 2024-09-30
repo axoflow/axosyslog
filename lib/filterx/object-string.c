@@ -38,7 +38,7 @@ struct _FilterXString
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
 const gchar *
-filterx_string_get_value(FilterXObject *s, gsize *length)
+filterx_string_get_value_ref(FilterXObject *s, gsize *length)
 {
   FilterXString *self = (FilterXString *) s;
 
@@ -54,7 +54,7 @@ filterx_string_get_value(FilterXObject *s, gsize *length)
 
 /* NOTE: Consider using filterx_object_extract_bytes_ref() to also support message_value. */
 const gchar *
-filterx_bytes_get_value(FilterXObject *s, gsize *length)
+filterx_bytes_get_value_ref(FilterXObject *s, gsize *length)
 {
   FilterXString *self = (FilterXString *) s;
 
@@ -69,7 +69,7 @@ filterx_bytes_get_value(FilterXObject *s, gsize *length)
 
 /* NOTE: Consider using filterx_object_extract_protobuf_ref() to also support message_value. */
 const gchar *
-filterx_protobuf_get_value(FilterXObject *s, gsize *length)
+filterx_protobuf_get_value_ref(FilterXObject *s, gsize *length)
 {
   FilterXString *self = (FilterXString *) s;
 
