@@ -34,9 +34,9 @@ FilterXObject *filterx_message_value_new(const gchar *repr, gssize repr_len, Log
 LogMessageValueType filterx_message_value_get_type(FilterXObject *s);
 const gchar *filterx_message_value_get_value(FilterXObject *s, gsize *len);
 
-gboolean filterx_message_value_get_string(FilterXObject *s, const gchar **value, gsize *len);
-gboolean filterx_message_value_get_bytes(FilterXObject *s, const gchar **value, gsize *len);
-gboolean filterx_message_value_get_protobuf(FilterXObject *s, const gchar **value, gsize *len);
+gboolean filterx_message_value_get_string_ref(FilterXObject *s, const gchar **value, gsize *len);
+gboolean filterx_message_value_get_bytes_ref(FilterXObject *s, const gchar **value, gsize *len);
+gboolean filterx_message_value_get_protobuf_ref(FilterXObject *s, const gchar **value, gsize *len);
 gboolean filterx_message_value_get_boolean(FilterXObject *s, gboolean *value);
 gboolean filterx_message_value_get_integer(FilterXObject *s, gint64 *value);
 gboolean filterx_message_value_get_double(FilterXObject *s, gdouble *value);

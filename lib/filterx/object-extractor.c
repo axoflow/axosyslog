@@ -33,7 +33,7 @@ gboolean
 filterx_object_extract_string_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
-    return filterx_message_value_get_string(obj, value, len);
+    return filterx_message_value_get_string_ref(obj, value, len);
 
   *value = filterx_string_get_value(obj, len);
   return !!(*value);
@@ -43,7 +43,7 @@ gboolean
 filterx_object_extract_bytes_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
-    return filterx_message_value_get_bytes(obj, value, len);
+    return filterx_message_value_get_bytes_ref(obj, value, len);
 
   *value = filterx_bytes_get_value(obj, len);
   return !!(*value);
@@ -53,7 +53,7 @@ gboolean
 filterx_object_extract_protobuf_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
-    return filterx_message_value_get_protobuf(obj, value, len);
+    return filterx_message_value_get_protobuf_ref(obj, value, len);
 
   *value = filterx_protobuf_get_value(obj, len);
   return !!(*value);
