@@ -255,10 +255,10 @@ _strptime_eval(FilterXExpr *s)
   const gchar *time_str;
   gsize time_str_len;
   gboolean extract_success = filterx_object_extract_string(time_str_obj, &time_str, &time_str_len);
-  filterx_object_unref(time_str_obj);
 
   if (!extract_success)
     {
+      filterx_object_unref(time_str_obj);
       filterx_eval_push_error("First argument must be string typed. " FILTERX_FUNC_STRPTIME_USAGE, s, NULL);
       return NULL;
     }
@@ -289,6 +289,7 @@ _strptime_eval(FilterXExpr *s)
   else
     result = filterx_null_new();
 
+  filterx_object_unref(time_str_obj);
   return result;
 }
 
