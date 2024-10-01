@@ -257,6 +257,8 @@ _free(FilterXObject *s)
 
   delete self->cpp;
   self->cpp = NULL;
+
+  filterx_object_free_method(s);
 }
 
 static gboolean
