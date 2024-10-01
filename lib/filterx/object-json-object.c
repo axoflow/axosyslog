@@ -269,6 +269,8 @@ _free(FilterXObject *s)
   filterx_weakref_clear(&self->root_container);
 
   g_mutex_clear(&self->lock);
+
+  filterx_object_free_method(s);
 }
 
 FilterXObject *
