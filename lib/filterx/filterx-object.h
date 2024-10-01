@@ -58,6 +58,7 @@ struct _FilterXType
 };
 
 void filterx_type_init(FilterXType *type);
+void _filterx_type_init_methods(FilterXType *type);
 
 #define FILTERX_TYPE_NAME(_name) filterx_type_ ## _name
 #define FILTERX_DECLARE_TYPE(_name) \
