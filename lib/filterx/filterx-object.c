@@ -61,7 +61,7 @@ filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, Filte
   } while (0)
 
 void
-filterx_type_init(FilterXType *type)
+_filterx_type_init_methods(FilterXType *type)
 {
   INIT_TYPE_METHOD(type, unmarshal);
   INIT_TYPE_METHOD(type, marshal);
@@ -80,6 +80,12 @@ filterx_type_init(FilterXType *type)
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
   INIT_TYPE_METHOD(type, free_fn);
+}
+
+void
+filterx_type_init(FilterXType *type)
+{
+  _filterx_type_init_methods(type);
 
   if (!filterx_type_register(type->name, type))
     msg_error("Reregistering filterx type", evt_tag_str("name", type->name));
