@@ -37,6 +37,7 @@ struct _FilterXType
   const gchar *name;
   gboolean is_mutable;
 
+  /* WARNING: adding a new method here requires an implementation in FilterXRef as well */
   FilterXObject *(*unmarshal)(FilterXObject *self);
   gboolean (*marshal)(FilterXObject *self, GString *repr, LogMessageValueType *t);
   FilterXObject *(*clone)(FilterXObject *self);
@@ -77,6 +78,7 @@ FILTERX_DECLARE_TYPE(object);
 struct _FilterXObject
 {
   GAtomicCounter ref_cnt;
+  GAtomicCounter fx_ref_cnt;
 
   /* NOTE:
    *
