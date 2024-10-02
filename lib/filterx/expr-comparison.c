@@ -24,6 +24,7 @@
 #include "filterx/expr-comparison.h"
 #include "filterx/object-datetime.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/filterx-ref.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
@@ -140,6 +141,8 @@ _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
+  lhs = filterx_ref_get_readonly_value(lhs);
+
   if (lhs->type == rhs->type &&
       (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
        filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(bytes)) ||

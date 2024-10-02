@@ -29,6 +29,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-ref.h"
 
 #include "scanner/list-scanner/list-scanner.h"
 #include "str-repr/encode.h"
@@ -197,6 +198,8 @@ filterx_json_new_from_args(FilterXExpr *s, GPtrArray *args)
 
   FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
 
+  arg = filterx_ref_get_readonly_value(arg);
+
   if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_array)) ||
       filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_object)))
     return filterx_object_ref(arg);
@@ -252,6 +255,8 @@ filterx_json_new_from_object(struct json_object *jso)
 const gchar *
 filterx_json_to_json_literal(FilterXObject *s)
 {
+  s = filterx_ref_get_readonly_value(s);
+
   if (filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
     return filterx_json_object_to_json_literal(s);
   if (filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_array)))

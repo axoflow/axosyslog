@@ -27,6 +27,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-weakrefs.h"
+#include "filterx/filterx-ref.h"
 #include "filterx/object-dict-interface.h"
 #include "syslog-ng.h"
 #include "str-utils.h"
@@ -293,6 +294,8 @@ filterx_json_object_new_empty(void)
 const gchar *
 filterx_json_object_to_json_literal(FilterXObject *s)
 {
+  s = filterx_ref_get_readonly_value(s);
+
   FilterXJsonObject *self = (FilterXJsonObject *) s;
 
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
@@ -304,6 +307,8 @@ filterx_json_object_to_json_literal(FilterXObject *s)
 struct json_object *
 filterx_json_object_get_value(FilterXObject *s)
 {
+  s = filterx_ref_get_readonly_value(s);
+
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
     return NULL;
 

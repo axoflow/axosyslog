@@ -27,6 +27,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 #define FILTERX_FUNC_FLATTEN_USAGE "Usage: flatten(dict, separator=\".\")"
@@ -70,7 +71,8 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   GString *key_buffer = ((gpointer *) user_data)[3];
   gboolean is_top_level = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[4]);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *inner_value = filterx_ref_get_readonly_value(value);
+  if (filterx_object_is_type(inner_value, &FILTERX_TYPE_NAME(dict)))
     {
       if (is_top_level)
         *top_level_dict_keys = g_list_prepend(*top_level_dict_keys, filterx_object_ref(key));
@@ -84,7 +86,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
       g_string_append(key_buffer, self->separator);
 
       gpointer inner_user_data[] = { self, flattened_kvs, NULL, key_buffer, GINT_TO_POINTER(FALSE)};
-      gboolean result = filterx_dict_iter(value, _collect_modifications_from_elem, inner_user_data);
+      gboolean result = filterx_dict_iter(inner_value, _collect_modifications_from_elem, inner_user_data);
 
       g_string_truncate(key_buffer, orig_len);
       return result;
@@ -190,14 +192,15 @@ _eval(FilterXExpr *s)
 
   gboolean result = FALSE;
 
-  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *inner_dict = filterx_ref_get_writable_value(dict);
+  if (!filterx_object_is_type(inner_dict, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_eval_push_error_info("object must be a dict", self->dict_expr,
-                                   g_strdup_printf("got %s instead", dict->type->name), TRUE);
+                                   g_strdup_printf("got %s instead", inner_dict->type->name), TRUE);
       goto exit;
     }
 
-  result = _flatten(self, dict);
+  result = _flatten(self, inner_dict);
 
 exit:
   filterx_object_unref(dict);

@@ -27,6 +27,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-ref.h"
 
 #include "scratch-buffers.h"
 #include "utf8utils.h"
@@ -54,11 +55,12 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (!value)
     value = self->default_value;
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)) ||
-      filterx_object_is_type(value, &FILTERX_TYPE_NAME(list)))
+  FilterXObject *inner_value = filterx_ref_get_readonly_value(value);
+  if (filterx_object_is_type(inner_value, &FILTERX_TYPE_NAME(dict)) ||
+      filterx_object_is_type(inner_value, &FILTERX_TYPE_NAME(list)))
     {
       msg_debug("FilterX: format_csv(): skipping object, type not supported",
-                evt_tag_str("type", value->type->name));
+                evt_tag_str("type", inner_value->type->name));
       return TRUE;
     }
 
@@ -113,7 +115,8 @@ _handle_dict_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
   if (self->columns)
     {
       FilterXObject *cols = filterx_expr_eval(self->columns);
-      if (!cols || !filterx_object_is_type(cols, &FILTERX_TYPE_NAME(list)) || !filterx_object_len(cols, &size))
+      FilterXObject *inner_cols = filterx_ref_get_readonly_value(cols);
+      if (!inner_cols || !filterx_object_is_type(inner_cols, &FILTERX_TYPE_NAME(list)) || !filterx_object_len(cols, &size))
         {
           filterx_object_unref(cols);
           filterx_eval_push_error("Columns must represented as list. " FILTERX_FUNC_FORMAT_CSV_USAGE, &self->super.super, NULL);
@@ -148,9 +151,10 @@ _eval(FilterXExpr *s)
   gboolean success = FALSE;
   GString *formatted = scratch_buffers_alloc();
 
-  if (filterx_object_is_type(csv_data, &FILTERX_TYPE_NAME(list)))
+  FilterXObject *inner_csv_data = filterx_ref_get_readonly_value(csv_data);
+  if (filterx_object_is_type(inner_csv_data, &FILTERX_TYPE_NAME(list)))
     success = _handle_list_input(self, csv_data, formatted);
-  else if (filterx_object_is_type(csv_data, &FILTERX_TYPE_NAME(dict)))
+  else if (filterx_object_is_type(inner_csv_data, &FILTERX_TYPE_NAME(dict)))
     success = _handle_dict_input(self, csv_data, formatted);
   else
     filterx_eval_push_error("input must be a dict or list. " FILTERX_FUNC_FORMAT_CSV_USAGE, s, csv_data);
