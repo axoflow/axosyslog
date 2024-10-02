@@ -22,6 +22,8 @@
  */
 #include "filterx/expr-assign.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-ref.h"
+#include "filterx/object-json.h"
 #include "scratch-buffers.h"
 
 static FilterXObject *
@@ -33,6 +35,13 @@ _eval(FilterXExpr *s)
 
   if (!value)
     return NULL;
+
+  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
+   * (or after creating our own dict/list repr) */
+  if (!value->weak_referenced)
+    {
+      value = filterx_ref_new(value);
+    }
 
   if (!filterx_expr_assign(self->lhs, value))
     {

@@ -23,6 +23,7 @@
 
 #include "filterx/expr-literal-generator.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-ref.h"
 
 struct FilterXLiteralGeneratorElem_
 {
