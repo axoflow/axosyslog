@@ -372,6 +372,18 @@ filterx_json_array_get_value(FilterXObject *s)
   return self->jso;
 }
 
+static FilterXObject *
+_list_factory(FilterXObject *self)
+{
+  return filterx_json_array_new_empty();
+}
+
+static FilterXObject *
+_dict_factory(FilterXObject *self)
+{
+  return filterx_json_object_new_empty();
+}
+
 FILTERX_DEFINE_TYPE(json_array, FILTERX_TYPE_NAME(list),
                     .is_mutable = TRUE,
                     .truthy = _truthy,
@@ -380,7 +392,7 @@ FILTERX_DEFINE_TYPE(json_array, FILTERX_TYPE_NAME(list),
                     .repr = _repr,
                     .map_to_json = _map_to_json,
                     .clone = _clone,
-                    .list_factory = filterx_json_array_new_empty,
-                    .dict_factory = filterx_json_object_new_empty,
+                    .list_factory = _list_factory,
+                    .dict_factory = _dict_factory,
                     .make_readonly = _make_readonly,
                    );

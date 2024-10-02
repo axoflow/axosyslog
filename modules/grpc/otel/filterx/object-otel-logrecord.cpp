@@ -319,6 +319,18 @@ filterx_otel_logrecord_new_from_args(FilterXExpr *s, GPtrArray *args)
   return &self->super.super;
 }
 
+static FilterXObject *
+_list_factory(FilterXObject *self)
+{
+  return filterx_otel_array_new();
+}
+
+static FilterXObject *
+_dict_factory(FilterXObject *self)
+{
+  return filterx_otel_kvlist_new();
+}
+
 FILTERX_SIMPLE_FUNCTION(otel_logrecord, filterx_otel_logrecord_new_from_args);
 
 FILTERX_DEFINE_TYPE(otel_logrecord, FILTERX_TYPE_NAME(dict),
@@ -326,7 +338,7 @@ FILTERX_DEFINE_TYPE(otel_logrecord, FILTERX_TYPE_NAME(dict),
                     .marshal = _marshal,
                     .clone = _filterx_otel_logrecord_clone,
                     .truthy = _truthy,
-                    .list_factory = filterx_otel_array_new,
-                    .dict_factory = filterx_otel_kvlist_new,
+                    .list_factory = _list_factory,
+                    .dict_factory = _dict_factory,
                     .free_fn = _free,
                    );
