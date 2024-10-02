@@ -33,6 +33,7 @@ set(FILTERX_HEADERS
     filterx/filterx-parser.h
     filterx/filterx-pipe.h
     filterx/filterx-private.h
+    filterx/filterx-ref.h
     filterx/filterx-scope.h
     filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
@@ -93,6 +94,7 @@ set(FILTERX_SOURCES
     filterx/filterx-parser.c
     filterx/filterx-pipe.c
     filterx/filterx-private.c
+    filterx/filterx-ref.c
     filterx/filterx-scope.c
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
