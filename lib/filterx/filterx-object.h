@@ -48,8 +48,8 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
-  FilterXObject *(*list_factory)(void);
-  FilterXObject *(*dict_factory)(void);
+  FilterXObject *(*list_factory)(FilterXObject *self);
+  FilterXObject *(*dict_factory)(FilterXObject *self);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
@@ -282,7 +282,7 @@ filterx_object_create_list(FilterXObject *self)
   if (!self->type->list_factory)
     return NULL;
 
-  return self->type->list_factory();
+  return self->type->list_factory(self);
 }
 
 static inline FilterXObject *
@@ -291,7 +291,7 @@ filterx_object_create_dict(FilterXObject *self)
   if (!self->type->dict_factory)
     return NULL;
 
-  return self->type->dict_factory();
+  return self->type->dict_factory(self);
 }
 
 static inline FilterXObject *

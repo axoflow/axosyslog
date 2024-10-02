@@ -550,12 +550,24 @@ OtelKVListField::FilterXObjectSetter(google::protobuf::Message *message, ProtoRe
 
 OtelKVListField syslogng::grpc::otel::filterx::otel_kvlist_converter;
 
+static FilterXObject *
+_list_factory(FilterXObject *self)
+{
+  return filterx_otel_array_new();
+}
+
+static FilterXObject *
+_dict_factory(FilterXObject *self)
+{
+  return filterx_otel_kvlist_new();
+}
+
 FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_otel_kvlist_clone,
                     .truthy = _truthy,
-                    .list_factory = filterx_otel_array_new,
-                    .dict_factory = filterx_otel_kvlist_new,
+                    .list_factory = _list_factory,
+                    .dict_factory = _dict_factory,
                     .free_fn = _free,
                    );
