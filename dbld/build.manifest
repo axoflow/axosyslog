@@ -31,7 +31,7 @@
 debian-bullseye		python3,nojava,notzdatalegacy,nobpf
 debian-bookworm		python3,nojava,notzdatalegacy
 debian-testing		python3,nojava
-debian-sid		python3,nojava
+debian-sid		python3,nojava,notzdatalegacy
 
 # on ubuntu, we start using Python3 at focal onwards.
 # libcriterion-dev is available starting with 21.04
