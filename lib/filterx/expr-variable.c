@@ -48,14 +48,10 @@ _pull_variable_from_message(FilterXVariableExpr *self, FilterXEvalContext *conte
       return NULL;
     }
 
-  FilterXObject *msg_ref;
   if (log_msg_is_value_from_macro(value))
-    msg_ref = filterx_message_value_new(value, value_len, t);
+    return filterx_message_value_new(value, value_len, t);
   else
-    msg_ref = filterx_message_value_new_borrowed(value, value_len, t);
-
-  filterx_scope_register_variable(context->scope, self->handle, msg_ref);
-  return msg_ref;
+    return filterx_message_value_new_borrowed(value, value_len, t);
 }
 
 /* NOTE: unset on a variable that only exists in the LogMessage, without making the message writable */
@@ -84,7 +80,14 @@ _eval(FilterXExpr *s)
     }
 
   if (!filterx_variable_handle_is_floating(self->handle))
-    return _pull_variable_from_message(self, context, context->msgs[0]);
+    {
+      FilterXObject *msg_ref = _pull_variable_from_message(self, context, context->msgs[0]);
+      if(!msg_ref)
+        return NULL;
+      filterx_scope_register_variable(context->scope, self->handle, msg_ref);
+      return msg_ref;
+    }
+
   filterx_eval_push_error("No such variable", s, self->variable_name);
   return NULL;
 }
