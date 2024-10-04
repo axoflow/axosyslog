@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2015 Balabit
+ * Copyright (c) 2023 Axoflow
+ * Copyright (c) 2024 shifter
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -17,33 +18,19 @@
  * As an additional exemption you are allowed to compile & link against the
  * OpenSSL libraries as published by the OpenSSL project. See the file
  * COPYING for details.
+ *
  */
 
-#include "format-cef-extension.h"
+#ifndef FILTERX_FUNC_PARSE_CEF_H_INCLUDED
+#define FILTERX_FUNC_PARSE_CEF_H_INCLUDED
+
 #include "plugin.h"
-#include "plugin-types.h"
-#include "filterx-func-parse-cef.h"
 #include "filterx/expr-function.h"
 
-static Plugin cef_plugins[] =
-{
-  TEMPLATE_FUNCTION_PLUGIN(tf_cef, "format-cef-extension"),
-  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_cef),
-};
+#define FILTERX_FUNC_PARSE_CEF_USAGE "Usage: parse_cef(str)"
 
-gboolean
-cef_module_init(PluginContext *context, CfgArgs *args)
-{
-  plugin_register(context, cef_plugins, G_N_ELEMENTS(cef_plugins));
-  return TRUE;
-}
+FILTERX_GENERATOR_FUNCTION_DECLARE(parse_cef);
 
-const ModuleInfo module_info =
-{
-  .canonical_name = "cef",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The CEF module provides CEF formatting support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = cef_plugins,
-  .plugins_len = G_N_ELEMENTS(cef_plugins),
-};
+FilterXExpr *filterx_function_parse_cef_new(FilterXFunctionArgs *args, GError **error);
+
+#endif

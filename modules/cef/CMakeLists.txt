@@ -5,6 +5,8 @@ set(CEF_SOURCES
     event-format-parser.c
     event-format-parser.h
     event-format-parser-cfg.h
+    filterx-func-parse-cef.c
+    filterx-func-parse-cef.h
 )
 
 add_module(
