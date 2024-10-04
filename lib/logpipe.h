@@ -222,8 +222,8 @@ struct _LogPathOptions
   FilterXEvalContext *filterx_context;
 };
 
-#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL }
-#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL }
+#define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL, NULL}
+#define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL, NULL }
 
 /*
  * Embed a step in our LogPathOptions chain.
