@@ -5,6 +5,9 @@ EXTRA_DIST += modules/cef/CMakeLists.txt
 modules_cef_libcef_la_SOURCES	=	\
 	modules/cef/format-cef-extension.c	\
 	modules/cef/format-cef-extension.h	\
+	modules/cef/event-format-parser-cfg.h	\
+	modules/cef/event-format-parser.c	\
+	modules/cef/event-format-parser.h	\
 	modules/cef/cef-plugin.c
 
 modules_cef_libcef_la_CFLAGS	=	\
