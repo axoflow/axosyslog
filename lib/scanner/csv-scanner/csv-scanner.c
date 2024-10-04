@@ -344,11 +344,23 @@ _parse_string_delimiters_at_current_position(CSVScanner *self)
 static gboolean
 _parse_character_delimiters_at_current_position(CSVScanner *self)
 {
+  gboolean escaped = FALSE;
+  if (self->options->dialect == CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER &&
+      *self->src == '\\' &&
+      *(self->src + 1))
+    {
+      self->src++;
+      escaped = TRUE;
+    }
   if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, *self->src) != NULL)
     {
+      if (escaped)
+        return FALSE;
       self->src++;
       return TRUE;
     }
+  if (escaped)
+    self->src--;
   return FALSE;
 }
 

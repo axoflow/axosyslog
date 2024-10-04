@@ -21,6 +21,7 @@
  *
  */
 #include <criterion/criterion.h>
+#include <stdio.h>
 
 #include "scratch-buffers.h"
 #include "apphook.h"
@@ -427,6 +428,7 @@ Test(csv_scanner, escape_backslash_x_sequences)
   csv_scanner_deinit(&scanner);
 }
 
+
 Test(csv_scanner, escape_backslash_invalid_x_sequence)
 {
   _default_options_with_flags(2, CSV_SCANNER_STRIP_WHITESPACE);
@@ -471,6 +473,34 @@ Test(csv_scanner, columnless_no_flags)
   cr_expect(!_scan_complete());
 
   /* go past the last column */
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
+Test(csv_scanner, escaped_unquoted_delimiter)
+{
+  _default_options_with_flags(3, CSV_SCANNER_STRIP_WHITESPACE);
+
+  csv_scanner_options_set_dialect(&options, CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER);
+  csv_scanner_options_set_delimiters(&options, "|");
+  csv_scanner_init(&scanner, &options, "first|foo\\|bar\\|ba\\z|last");
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "first"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, "foo|bar|ba\\z"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(2, "last"));
+  cr_expect(!_scan_complete());
+
   cr_expect(!_scan_next());
   cr_expect(_scan_complete());
   csv_scanner_deinit(&scanner);
