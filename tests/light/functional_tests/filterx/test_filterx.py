@@ -2366,3 +2366,32 @@ def test_parse_cef(config, syslog_ng):
         r"""}""" + "\n"
     )
     assert file_true.read_log() == exp
+
+
+def test_parse_leef(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    custom_message = "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black";
+    $MSG = json(parse_leef(custom_message));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"version":"1.0","""
+        r""""vendor":"Microsoft","""
+        r""""product_name":"MSExchange","""
+        r""""product_version":"4.0 SP1","""
+        r""""event_id":"15345","""
+        r""""extensions":{"""
+        r""""src":"192.0.2.0","""
+        r""""dst":"172.50.123.1","""
+        r""""sev":"5cat=anomaly","""
+        r""""srcPort":"81","""
+        r""""dstPort":"21","""
+        r""""usrName":"joe.black"}"""
+        r"""}""" + "\n"
+    )
+    assert file_true.read_log() == exp
