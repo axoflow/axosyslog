@@ -26,6 +26,7 @@
 #include "userdb.h"
 #include "messages.h"
 #include "reloc.h"
+#include "console.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -651,13 +652,13 @@ g_process_message(const gchar *fmt, ...)
 }
 
 /**
- * g_process_detach_tty:
+ * g_process_setup_console:
  *
- * This function is called from g_process_start() to detach from the
- * controlling tty.
+ * This function is called from g_process_start() to acquire the terminal as
+ * console or to detach from it in case we are in the background.
  **/
 static void
-g_process_detach_tty(void)
+g_process_setup_console(void)
 {
   if (process_opts.mode != G_PM_FOREGROUND)
     {
@@ -669,6 +670,10 @@ g_process_detach_tty(void)
 #endif
         }
       setsid();
+    }
+  else
+    {
+      console_acquire_from_stdio();
     }
 }
 
@@ -710,23 +715,9 @@ g_process_change_limits(void)
 static void
 g_process_detach_stdio(void)
 {
-  gint devnull_fd;
-
   if (process_opts.mode != G_PM_FOREGROUND && stderr_present)
     {
-      devnull_fd = open("/dev/null", O_RDONLY);
-      if (devnull_fd >= 0)
-        {
-          dup2(devnull_fd, STDIN_FILENO);
-          close(devnull_fd);
-        }
-      devnull_fd = open("/dev/null", O_WRONLY);
-      if (devnull_fd >= 0)
-        {
-          dup2(devnull_fd, STDOUT_FILENO);
-          dup2(devnull_fd, STDERR_FILENO);
-          close(devnull_fd);
-        }
+      console_release();
       stderr_present = FALSE;
     }
 }
@@ -1361,7 +1352,7 @@ g_process_start(void)
 {
   pid_t pid;
 
-  g_process_detach_tty();
+  g_process_setup_console();
   g_process_change_limits();
   if (!g_process_resolve_names())
     {

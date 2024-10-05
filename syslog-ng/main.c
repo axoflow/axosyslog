@@ -37,6 +37,7 @@
 #include "mainloop.h"
 #include "plugin.h"
 #include "reloc.h"
+#include "console.h"
 #include "resolved-configurable-paths.h"
 
 #include <sys/types.h>
@@ -235,6 +236,7 @@ main(int argc, char *argv[])
   GOptionContext *ctx;
   GError *error = NULL;
 
+  console_global_init();
   MainLoop *main_loop = main_loop_get_instance();
 
   z_mem_trace_init("syslog-ng.trace");
@@ -348,6 +350,7 @@ main(int argc, char *argv[])
   app_shutdown();
   z_mem_trace_dump();
   g_process_finish();
+  console_global_deinit();
   reloc_deinit();
   return rc;
 }
