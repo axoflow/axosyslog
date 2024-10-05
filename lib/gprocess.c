@@ -100,7 +100,6 @@ static gint startup_result_pipe[2] = { -1, -1 };
 /* pipe used to deliver initialization result to the supervisor */
 static gint init_result_pipe[2] = { -1, -1 };
 static GProcessKind process_kind = G_PK_STARTUP;
-static gboolean stderr_present = TRUE;
 #if SYSLOG_NG_ENABLE_LINUX_CAPS
 static int have_capsyslog = FALSE;
 static cap_value_t cap_syslog;
@@ -638,7 +637,7 @@ g_process_message(const gchar *fmt, ...)
   va_start(ap, fmt);
   g_vsnprintf(buf, sizeof(buf), fmt, ap);
   va_end(ap);
-  if (stderr_present)
+  if (console_is_present(FALSE))
     fprintf(stderr, "%s: %s\n", process_opts.name, buf);
   else
     {
@@ -715,10 +714,9 @@ g_process_change_limits(void)
 static void
 g_process_detach_stdio(void)
 {
-  if (process_opts.mode != G_PM_FOREGROUND && stderr_present)
+  if (process_opts.mode != G_PM_FOREGROUND)
     {
       console_release();
-      stderr_present = FALSE;
     }
 }
 
