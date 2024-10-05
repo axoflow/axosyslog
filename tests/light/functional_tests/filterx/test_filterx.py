@@ -2338,3 +2338,31 @@ def test_startswith_endswith_includes(config, syslog_ng):
 
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"startswith_foo":true,"contains_bar":true,"endswith_baz":true,"works_with_message_value":true}\n'
+
+
+def test_parse_cef(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    custom_message = "CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|foo=foo\\=bar bar=bar\\=baz baz=test";
+    $MSG = json(parse_cef(custom_message));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"version":"0","""
+        r""""device_vendor":"KasperskyLab","""
+        r""""device_product":"SecurityCenter","""
+        r""""device_version":"13.2.0.1511","""
+        r""""device_event_class_id":"KLPRCI_TaskState","""
+        r""""name":"Completed successfully","""
+        r""""agent_severity":"1","""
+        r""""extensions":{"""
+        r""""foo":"foo=bar","""
+        r""""bar":"bar=baz","""
+        r""""baz":"test"}"""
+        r"""}""" + "\n"
+    )
+    assert file_true.read_log() == exp
