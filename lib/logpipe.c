@@ -77,15 +77,7 @@ log_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
         }
     }
 
-  if (s->queue)
-    {
-      s->queue(s, msg, path_options);
-    }
-  else
-    {
-      log_pipe_forward_msg(s, msg, path_options);
-    }
-
+  s->queue(s, msg, path_options);
 }
 
 
@@ -140,7 +132,7 @@ log_pipe_init_instance(LogPipe *self, GlobalConfig *cfg)
    * log_msg_forward_msg. Since this is a common case, it is better
    * inlined (than to use an indirect call) for performance. */
 
-  self->queue = NULL;
+  self->queue = log_pipe_forward_msg;
   self->free_fn = log_pipe_free_method;
   self->arcs = _arcs;
 }
