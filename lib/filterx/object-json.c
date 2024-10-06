@@ -103,7 +103,7 @@ filterx_json_convert_json_to_object(FilterXObject *root_obj, FilterXWeakRef *roo
     case json_type_int:
       return filterx_integer_new(json_object_get_int64(jso));
     case json_type_string:
-      return filterx_string_new(json_object_get_string(jso), -1);
+      return filterx_string_new(json_object_get_string(jso), json_object_get_string_len(jso));
     case json_type_array:
       return filterx_json_array_new_sub(json_object_get(jso),
                                         filterx_weakref_get(root_container) ? : filterx_object_ref(root_obj));
