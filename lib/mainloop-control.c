@@ -32,6 +32,7 @@
 #include "cfg-walker.h"
 #include "logpipe.h"
 #include "console.h"
+#include "debugger/debugger-main.h"
 
 #include <string.h>
 
@@ -121,9 +122,12 @@ _wait_until_console_is_released_or_peer_disappears(ControlConnection *cc, gint m
 static void
 control_connection_attach(ControlConnection *cc, GString *command, gpointer user_data, gboolean *cancelled)
 {
+  MainLoop *main_loop = (MainLoop *) user_data;
   gchar **cmds = g_strsplit(command->str, " ", 4);
+
   GString *result = g_string_sized_new(128);
   gint n_seconds = -1;
+  gboolean start_debugger = FALSE;
   struct
   {
     gboolean log_stderr;
@@ -148,6 +152,10 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
       log_stderr = TRUE;
       if (cmds[3] && !_control_process_log_level(cmds[3], result))
         goto exit;
+    }
+  else if (g_str_equal(cmds[1], "DEBUGGER"))
+    {
+      start_debugger = TRUE;
     }
   else
     {
@@ -174,7 +182,16 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
     }
   console_acquire_from_fds(fds);
 
+  if (start_debugger && !debugger_is_running())
+    {
+      //cfg_load_module(self->current_configuration, "mod-python");
+      debugger_start(main_loop, main_loop_get_current_config(main_loop));
+    }
   _wait_until_console_is_released_or_peer_disappears(cc, n_seconds, cancelled);
+  if (start_debugger && debugger_is_running())
+    {
+      debugger_stop();
+    }
   g_string_assign(result, "OK [console output ends here]");
   log_stderr = old_values.log_stderr;
   msg_set_log_level(old_values.log_level);
