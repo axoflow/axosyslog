@@ -22,6 +22,7 @@
  */
 #include "filterx/expr-assign.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 static FilterXObject *
@@ -29,7 +30,8 @@ _eval(FilterXExpr *s)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
 
-  FilterXObject *value = filterx_expr_eval(self->rhs);
+  FilterXObject *v = filterx_expr_eval(self->rhs);
+  FilterXObject *value = filterx_ref_new(v);
 
   if (!value)
     return NULL;

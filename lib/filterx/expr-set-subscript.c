@@ -23,6 +23,7 @@
 #include "filterx/expr-set-subscript.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 typedef struct _FilterXSetSubscript
@@ -62,7 +63,7 @@ _eval(FilterXExpr *s)
       goto exit;
     }
 
-  new_value = filterx_expr_eval(self->new_value);
+  new_value = filterx_ref_new(filterx_expr_eval(self->new_value));
   if (!new_value)
     goto exit;
 

@@ -32,6 +32,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/filterx-ref.h"
 #include "filterx/func-flags.h"
 #include "filterx/expr-literal-generator.h"
 #include "filterx/expr-literal.h"
@@ -104,6 +105,8 @@ static gboolean _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXO
 static gboolean
 _should_unset(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
+  obj = filterx_ref_get_readonly_value(obj);
+
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL) &&
       filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)))
     return TRUE;
@@ -129,6 +132,8 @@ _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpoin
 
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
     {
+      value = filterx_ref_get_readonly_value(value);
+
       if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, value))
         return FALSE;
       if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(list)) && !_process_list(self, value))
@@ -189,14 +194,16 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
     {
       FilterXObject *elem = filterx_list_get_subscript(obj, i);
 
+      FilterXObject *inner_elem = filterx_ref_get_readonly_value(elem);
+
       if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
         {
-          if (filterx_object_is_type(elem, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, elem))
+          if (filterx_object_is_type(inner_elem, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, inner_elem))
             {
               filterx_object_unref(elem);
               return FALSE;
             }
-          if (filterx_object_is_type(elem, &FILTERX_TYPE_NAME(list)) && !_process_list(self, elem))
+          if (filterx_object_is_type(inner_elem, &FILTERX_TYPE_NAME(list)) && !_process_list(self, inner_elem))
             {
               filterx_object_unref(elem);
               return FALSE;
@@ -247,13 +254,15 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)))
-    return _eval_on_dict(self, obj);
+  FilterXObject *inner_obj = filterx_ref_get_writable_value(obj);
 
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)))
-    return _eval_on_list(self, obj);
+  if (filterx_object_is_type(inner_obj, &FILTERX_TYPE_NAME(dict)))
+    return _eval_on_dict(self, inner_obj);
 
-  filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
+  if (filterx_object_is_type(inner_obj, &FILTERX_TYPE_NAME(list)))
+    return _eval_on_list(self, inner_obj);
+
+  filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, inner_obj);
   filterx_object_unref(obj);
   return NULL;
 }
@@ -350,6 +359,9 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
 {
   g_assert(target);
   guint64 len;
+
+  target = filterx_ref_get_readonly_value(target);
+
   if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(null)))
     set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL, TRUE);
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(list)))
