@@ -5,6 +5,7 @@ BUILDER_IMAGES=		\
 	almalinux-9	\
 	fedora-39	\
 	fedora-40	\
+	fedora-41 \
 	debian-stretch	\
 	debian-bullseye	\
 	debian-bookworm	\

@@ -31,6 +31,7 @@ EXTRA_DIST += \
 	dbld/images/devshell.dockerfile \
 	dbld/images/fedora-39.dockerfile \
 	dbld/images/fedora-40.dockerfile \
+	dbld/images/fedora-41.dockerfile \
 	dbld/images/debian-bullseye.dockerfile \
 	dbld/images/debian-bookworm.dockerfile \
 	dbld/images/debian-sid.dockerfile \
