@@ -139,6 +139,7 @@ The following x86-64 distros are supported:
 | Debian 11       | debian-bullseye        |
 | Debian Unstable | debian-sid             |
 | Debian Testing  | debian-testing         |
+| Ubuntu 24.10    | ubuntu-oracular        |
 | Ubuntu 24.04    | ubuntu-noble           |
 | Ubuntu 23.10    | ubuntu-mantic          |
 | Ubuntu 23.04    | ubuntu-lunar           |

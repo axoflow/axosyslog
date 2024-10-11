@@ -13,6 +13,7 @@ BUILDER_IMAGES=		\
 	ubuntu-focal	\
 	ubuntu-jammy \
 	ubuntu-noble \
+	ubuntu-oracular \
 	ubuntu-lunar	\
 	ubuntu-mantic	\
 	tarball
