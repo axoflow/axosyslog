@@ -31,7 +31,7 @@
 #include "filterx/filterx-ref.h"
 
 static inline gboolean
-filterx_object_is_type(FilterXObject *object, FilterXType *type)
+_filterx_object_is_type(FilterXObject *object, FilterXType *type)
 {
   FilterXType *self_type = object->type;
   while (self_type)
@@ -41,4 +41,15 @@ filterx_object_is_type(FilterXObject *object, FilterXType *type)
       self_type = self_type->super_type;
     }
   return FALSE;
+}
+
+static inline gboolean
+filterx_object_is_type(FilterXObject *object, FilterXType *type)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(!(_filterx_type_is_referenceable(type) && _filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
+           && "filterx_ref_unwrap() must be used before comparing to mutable types");
+#endif
+
+  return _filterx_object_is_type(object, type);
 }
