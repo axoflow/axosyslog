@@ -28,6 +28,7 @@
 #include "filterx/object-string.h"
 #include "filterx/filterx-weakrefs.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/filterx-object-istype.h"
 #include "syslog-ng.h"
 #include "str-utils.h"
 #include "logmsg/type-hinting.h"

@@ -27,6 +27,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
 #include "scratch-buffers.h"
 
 #include "compat/json.h"

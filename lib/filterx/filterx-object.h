@@ -104,19 +104,6 @@ void filterx_object_unfreeze_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
 
-static inline gboolean
-filterx_object_is_type(FilterXObject *object, FilterXType *type)
-{
-  FilterXType *self_type = object->type;
-  while (self_type)
-    {
-      if (type == self_type)
-        return TRUE;
-      self_type = self_type->super_type;
-    }
-  return FALSE;
-}
-
 static inline void
 filterx_object_make_readonly(FilterXObject *self)
 {

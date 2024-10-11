@@ -26,6 +26,7 @@
 #include "filterx/object-null.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-message-value.h"
+#include "filterx/filterx-object-istype.h"
 
 typedef struct _FilterXNullCoalesce FilterXNullCoalesce;
 

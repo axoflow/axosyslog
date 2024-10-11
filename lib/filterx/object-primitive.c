@@ -29,6 +29,7 @@
 #include "plugin.h"
 #include "cfg.h"
 #include "filterx-globals.h"
+#include "filterx/filterx-object-istype.h"
 #include "str-utils.h"
 #include "timeutils/misc.h"
 

@@ -28,6 +28,7 @@
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/filterx-object-istype.h"
 
 #define FILTERX_FUNC_ISTYPE_USAGE "Usage: istype(object, type_str)"
 

@@ -27,6 +27,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
 #include "scratch-buffers.h"
 
 #define FILTERX_FUNC_FLATTEN_USAGE "Usage: flatten(dict, separator=\".\")"

@@ -46,6 +46,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/expr-generator.h"
 #include "filterx/expr-literal-generator.h"
+#include "filterx/filterx-object-istype.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"

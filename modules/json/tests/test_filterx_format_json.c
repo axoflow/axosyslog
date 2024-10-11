@@ -31,6 +31,7 @@
 #include "filterx/object-json.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"

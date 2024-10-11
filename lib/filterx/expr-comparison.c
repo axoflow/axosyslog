@@ -31,6 +31,7 @@
 #include "filterx/object-json.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
+#include "filterx/filterx-object-istype.h"
 #include "object-primitive.h"
 #include "generic-number.h"
 #include "parse-number.h"

@@ -31,6 +31,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
 #include "scratch-buffers.h"
 
 #define FILTERX_FUNC_STARTSWITH_USAGE "Usage: startswith(string, prefix, ignorecase=true)" \
