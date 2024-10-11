@@ -225,6 +225,9 @@ AC_ARG_ENABLE(dynamic-linking,
 AC_ARG_ENABLE(mixed-linking,
               [  --enable-mixed-linking          Link 3rd party libraries statically, system libraries dynamically],,enable_mixed_linking="auto")
 
+AC_ARG_ENABLE(thread-local-storage,
+              [  --enable-thread-local-storage   Enable thread local storage],,enable_thread_local_storage="auto")
+
 AC_ARG_ENABLE(force-classic-linking,
               [  --enable-force-classic-linking  Link using ld-classic (default: no)],, enable_force_classic_linking="no")
 
@@ -740,12 +743,20 @@ dnl ***************************************************************************
 dnl Is the __thread keyword available?
 dnl ***************************************************************************
 
-AC_LINK_IFELSE([AC_LANG_PROGRAM(
-[[#include <pthread.h>
-__thread int a;
-]],
-[a=0;])],
-[ac_cv_have_tls=yes; AC_DEFINE_UNQUOTED(HAVE_THREAD_KEYWORD, 1, "Whether Thread Local Storage is supported by the system")])
+if test "x$enable_thread_local_storage" = "xauto"; then
+    AC_LINK_IFELSE([AC_LANG_PROGRAM(
+    [[#include <pthread.h>
+    __thread int a;
+    ]],
+    [a=0;])],
+    [ac_cv_have_tls=yes])
+else
+    ac_cv_have_tls=$enable_thread_local_storage
+fi
+
+if test "x$ac_cv_have_tls" = "xyes"; then
+    AC_DEFINE_UNQUOTED(HAVE_THREAD_KEYWORD, 1, "Whether Thread Local Storage is supported by the system")
+fi
 
 dnl ***************************************************************************
 dnl How to do static linking?
