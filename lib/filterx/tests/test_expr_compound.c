@@ -31,6 +31,7 @@
 #include "filterx/expr-variable.h"
 #include "filterx/expr-assign.h"
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-object-istype.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
 

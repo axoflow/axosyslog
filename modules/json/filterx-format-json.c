@@ -29,6 +29,7 @@
 #include "filterx/object-json.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
 #include "scratch-buffers.h"
 #include "utf8utils.h"
 

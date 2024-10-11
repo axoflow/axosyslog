@@ -24,6 +24,7 @@
 #include "expr-plus.h"
 #include "object-string.h"
 #include "filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
 #include "scratch-buffers.h"
 #include "expr-generator.h"
 #include "object-list-interface.h"

@@ -36,6 +36,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
 
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "parser/parser-expr.h"
