@@ -30,6 +30,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/expr-function.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
 
 #include "logmsg/type-hinting.h"
 #include "str-repr/encode.h"

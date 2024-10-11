@@ -22,6 +22,7 @@
  */
 
 #include "filterx-ref.h"
+#include "filterx/filterx-object-istype.h"
 
 static FilterXObject *
 _filterx_ref_clone(FilterXObject *s)

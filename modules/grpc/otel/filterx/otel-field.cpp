@@ -37,6 +37,7 @@
 #include "filterx/object-message-value.h"
 #include "filterx/object-json.h"
 #include "filterx/object-null.h"
+#include "filterx/filterx-object-istype.h"
 #include "compat/cpp-end.h"
 
 #include "opentelemetry/proto/logs/v1/logs.pb.h"
