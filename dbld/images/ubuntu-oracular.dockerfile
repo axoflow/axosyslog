@@ -1,7 +1,7 @@
-FROM ubuntu:focal
-LABEL maintainer="Laszlo Budai <laszlo.budai@outlook.com>, Andras Mitzki <andras.mitzki@balabit.com>, Laszlo Szemere <laszlo.szemere@balabit.com>, Balazs Scheidler <balazs.scheidler@oneidentity.com>"
+FROM ubuntu:oracular
+LABEL maintainer="Laszlo Varady <laszlo.varady@axoflow.com>"
 ENV OS_DISTRIBUTION=ubuntu
-ENV OS_DISTRIBUTION_CODE_NAME=focal
+ENV OS_DISTRIBUTION_CODE_NAME=oracular
 
 ARG ARG_IMAGE_PLATFORM
 ARG COMMIT
@@ -19,8 +19,6 @@ RUN /dbld/builddeps update_packages
 RUN /dbld/builddeps install_dbld_dependencies
 RUN /dbld/builddeps install_apt_packages
 RUN /dbld/builddeps install_debian_build_deps
-
-RUN /dbld/builddeps install_criterion
 
 VOLUME /source
 VOLUME /build

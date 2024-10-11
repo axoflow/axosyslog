@@ -35,6 +35,7 @@ jobs:
           - almalinux-8
           - fedora-39
           - fedora-40
+          - fedora-41
           - debian-bullseye
           - debian-bookworm
           - debian-sid
@@ -42,6 +43,7 @@ jobs:
           - ubuntu-focal
           - ubuntu-jammy
           - ubuntu-noble
+          - ubuntu-oracular
           - ubuntu-lunar
           - ubuntu-mantic
           - devshell

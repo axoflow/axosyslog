@@ -21,12 +21,14 @@ on:
           "ubuntu-focal",
           "ubuntu-jammy",
           "ubuntu-noble",
+          "ubuntu-oracular",
           "ubuntu-lunar",
           "ubuntu-mantic",
           "almalinux-8",
           "almalinux-9",
           "fedora-39",
-          "fedora-40"
+          "fedora-40",
+          "fedora-41"
         ]'
 
 

@@ -1,7 +1,7 @@
-FROM fedora:40
+FROM fedora:41
 LABEL maintainer="László Várady <laszlo.varady@axoflow.com>, Balazs Scheidler <bazsi77@gmail.com>"
 ENV OS_DISTRIBUTION=fedora
-ENV OS_DISTRIBUTION_CODE_NAME=40
+ENV OS_DISTRIBUTION_CODE_NAME=41
 
 ARG ARG_IMAGE_PLATFORM
 ARG COMMIT

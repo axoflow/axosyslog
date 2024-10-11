@@ -5,6 +5,7 @@ BUILDER_IMAGES=		\
 	almalinux-9	\
 	fedora-39	\
 	fedora-40	\
+	fedora-41 \
 	debian-stretch	\
 	debian-bullseye	\
 	debian-bookworm	\
@@ -13,6 +14,7 @@ BUILDER_IMAGES=		\
 	ubuntu-focal	\
 	ubuntu-jammy \
 	ubuntu-noble \
+	ubuntu-oracular \
 	ubuntu-lunar	\
 	ubuntu-mantic	\
 	tarball
