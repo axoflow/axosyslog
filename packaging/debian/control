@@ -885,6 +885,7 @@ Description: Enhanced system logging daemon (GRPC plugins)
   * OpenTelemetry logs, traces and metrics
   * Google BigQuery
   * Grafana Loki
+  * ClickHouse
 
 Package: axosyslog-mod-bpf
 Architecture: any
