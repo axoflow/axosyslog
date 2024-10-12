@@ -52,6 +52,8 @@ DestDriver::init()
       return false;
     }
 
+  this->query = "INSERT INTO " + this->database + "." + this->table + " FORMAT Protobuf";
+
   if (!this->schema.init())
     return false;
 

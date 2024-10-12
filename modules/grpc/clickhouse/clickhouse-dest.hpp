@@ -82,6 +82,11 @@ public:
     return this->password;
   }
 
+  const std::string &get_query()
+  {
+    return this->query;
+  }
+
   Schema *get_schema()
   {
     return &this->schema;
@@ -98,6 +103,7 @@ private:
   std::string table;
   std::string user;
   std::string password;
+  std::string query;
 
   Schema schema;
 };
