@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2002-2013 Balabit
- * Copyright (c) 1998-2013 Balázs Scheidler
+ * Copyright (c) 2002-2012 Balabit
+ * Copyright (c) 1998-2012 Balázs Scheidler
+ * Copyright (c) 2024 Balázs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,19 +22,17 @@
  * COPYING for details.
  *
  */
-
-#ifndef CONTROL_CLIENT_H
-#define CONTROL_CLIENT_H 1
+#ifndef SYSLOG_NG_CONSOLE_H_INCLUDED
+#define SYSLOG_NG_CONSOLE_H_INCLUDED
 
 #include "syslog-ng.h"
-#include "commands/commands.h"
 
-typedef struct _ControlClient ControlClient;
+gboolean console_is_present(gboolean exclude_initial);
+void console_acquire_from_fds(gint fds[3]);
+void console_acquire_from_stdio(void);
+void console_release(void);
 
-ControlClient *control_client_new(const gchar *path);
-gboolean control_client_connect(ControlClient *self);
-gint control_client_send_command(ControlClient *self, const gchar *cmd, gboolean attach);
-gint control_client_read_reply(ControlClient *self, CommandResponseHandlerFunc cb, gpointer user_data);
-void control_client_free(ControlClient *self);
+void console_global_init(void);
+void console_global_deinit(void);
 
 #endif
