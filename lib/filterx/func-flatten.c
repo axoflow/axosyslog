@@ -28,6 +28,7 @@
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 #define FILTERX_FUNC_FLATTEN_USAGE "Usage: flatten(dict, separator=\".\")"
@@ -71,7 +72,8 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   GString *key_buffer = ((gpointer *) user_data)[3];
   gboolean is_top_level = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[4]);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *dict = filterx_ref_unwrap_ro(value);
+  if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
       if (is_top_level)
         *top_level_dict_keys = g_list_prepend(*top_level_dict_keys, filterx_object_ref(key));
@@ -85,7 +87,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
       g_string_append(key_buffer, self->separator);
 
       gpointer inner_user_data[] = { self, flattened_kvs, NULL, key_buffer, GINT_TO_POINTER(FALSE)};
-      gboolean result = filterx_dict_iter(value, _collect_modifications_from_elem, inner_user_data);
+      gboolean result = filterx_dict_iter(dict, _collect_modifications_from_elem, inner_user_data);
 
       g_string_truncate(key_buffer, orig_len);
       return result;
@@ -185,12 +187,13 @@ _eval(FilterXExpr *s)
 {
   FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
 
-  FilterXObject *dict = filterx_expr_eval_typed(self->dict_expr);
-  if (!dict)
+  FilterXObject *obj = filterx_expr_eval_typed(self->dict_expr);
+  if (!obj)
     return NULL;
 
   gboolean result = FALSE;
 
+  FilterXObject *dict = filterx_ref_unwrap_rw(obj);
   if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_eval_push_error_info("object must be a dict", self->dict_expr,
@@ -201,7 +204,7 @@ _eval(FilterXExpr *s)
   result = _flatten(self, dict);
 
 exit:
-  filterx_object_unref(dict);
+  filterx_object_unref(obj);
   return result ? filterx_boolean_new(TRUE) : NULL;
 }
 

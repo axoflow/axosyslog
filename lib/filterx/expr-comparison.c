@@ -32,6 +32,7 @@
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "object-primitive.h"
 #include "generic-number.h"
 #include "parse-number.h"
@@ -141,6 +142,9 @@ _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
+  filterx_assert_not_ref(lhs);
+  filterx_assert_not_ref(rhs);
+
   if (lhs->type == rhs->type &&
       (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
        filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(bytes)) ||
@@ -165,6 +169,9 @@ _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_and_value_based(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
+  filterx_assert_not_ref(lhs);
+  filterx_assert_not_ref(rhs);
+
   if (operator == FCMPX_EQ)
     {
       if (lhs->type != rhs->type)
@@ -202,15 +209,17 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
+  FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_object);
+  FilterXObject *rhs = filterx_ref_unwrap_ro(rhs_object);
   gboolean result = TRUE;
   if (compare_mode & FCMPX_TYPE_AWARE)
-    result = _evaluate_type_aware(lhs_object, rhs_object, operator);
+    result = _evaluate_type_aware(lhs, rhs, operator);
   else if (compare_mode & FCMPX_STRING_BASED)
-    result = _evaluate_as_string(lhs_object, rhs_object, operator);
+    result = _evaluate_as_string(lhs, rhs, operator);
   else if (compare_mode & FCMPX_NUM_BASED)
-    result = _evaluate_as_num(lhs_object, rhs_object, operator);
+    result = _evaluate_as_num(lhs, rhs, operator);
   else if (compare_mode & FCMPX_TYPE_AND_VALUE_BASED)
-    result = _evaluate_type_and_value_based(lhs_object, rhs_object, operator);
+    result = _evaluate_type_and_value_based(lhs, rhs, operator);
   else
     g_assert_not_reached();
 

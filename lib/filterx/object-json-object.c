@@ -29,6 +29,7 @@
 #include "filterx/filterx-weakrefs.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "syslog-ng.h"
 #include "str-utils.h"
 #include "logmsg/type-hinting.h"
@@ -293,10 +294,11 @@ filterx_json_object_new_empty(void)
 const gchar *
 filterx_json_object_to_json_literal(FilterXObject *s)
 {
-  FilterXJsonObject *self = (FilterXJsonObject *) s;
-
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
     return NULL;
+
+  FilterXJsonObject *self = (FilterXJsonObject *) s;
   return _json_string(self);
 }
 
@@ -304,11 +306,11 @@ filterx_json_object_to_json_literal(FilterXObject *s)
 struct json_object *
 filterx_json_object_get_value(FilterXObject *s)
 {
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
     return NULL;
 
   FilterXJsonObject *self = (FilterXJsonObject *) s;
-
   return self->jso;
 }
 

@@ -31,6 +31,7 @@
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
 
@@ -294,10 +295,11 @@ filterx_otel_logrecord_new_from_args(FilterXExpr *s, GPtrArray *args)
       else if (args->len == 1)
         {
           FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
-          if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(dict)))
+          FilterXObject *dict_arg = filterx_ref_unwrap_ro(arg);
+          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(dict)))
             {
               self->cpp = new LogRecord(self);
-              if (!filterx_dict_merge(&self->super.super, arg))
+              if (!filterx_dict_merge(&self->super.super, dict_arg))
                 throw std::runtime_error("Failed to merge dict");
             }
           else

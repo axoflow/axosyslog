@@ -31,6 +31,7 @@
 #include "filterx/expr-function.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #include "logmsg/type-hinting.h"
 #include "str-repr/encode.h"
@@ -328,7 +329,8 @@ filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args)
 
   FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
 
-  if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_array)))
+  FilterXObject *json_arr = filterx_ref_unwrap_ro(arg);
+  if (filterx_object_is_type(json_arr, &FILTERX_TYPE_NAME(json_array)))
     return filterx_object_ref(arg);
 
   struct json_object *jso;
@@ -354,10 +356,11 @@ filterx_json_array_new_empty(void)
 const gchar *
 filterx_json_array_to_json_literal(FilterXObject *s)
 {
-  FilterXJsonArray *self = (FilterXJsonArray *) s;
-
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_array)))
     return NULL;
+
+  FilterXJsonArray *self = (FilterXJsonArray *) s;
   return _json_string(self);
 }
 
@@ -365,11 +368,11 @@ filterx_json_array_to_json_literal(FilterXObject *s)
 struct json_object *
 filterx_json_array_get_value(FilterXObject *s)
 {
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_array)))
     return NULL;
 
   FilterXJsonArray *self = (FilterXJsonArray *) s;
-
   return self->jso;
 }
 

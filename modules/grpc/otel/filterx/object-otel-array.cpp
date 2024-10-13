@@ -29,6 +29,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/reflection.h>
@@ -262,10 +263,12 @@ filterx_otel_array_new_from_args(FilterXExpr *s, GPtrArray *args)
       else if (args->len == 1)
         {
           FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
-          if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(list)))
+
+          FilterXObject *list_arg = filterx_ref_unwrap_ro(arg);
+          if (filterx_object_is_type(list_arg, &FILTERX_TYPE_NAME(list)))
             {
               self->cpp = new Array(self);
-              if (!filterx_list_merge(&self->super.super, arg))
+              if (!filterx_list_merge(&self->super.super, list_arg))
                 throw std::runtime_error("Failed to merge list");
             }
           else
@@ -363,6 +366,7 @@ bool
 OtelArrayField::FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors,
                                     FilterXObject *object, FilterXObject **assoc_object)
 {
+  object = filterx_ref_unwrap_rw(object);
   if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(otel_array)))
     {
       if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))

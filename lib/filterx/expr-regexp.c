@@ -29,6 +29,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/expr-function.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
 
@@ -269,6 +270,8 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
 static gboolean
 _store_matches(pcre2_code_8 *pattern, const FilterXReMatchState *state, FilterXObject *fillable)
 {
+  fillable = filterx_ref_unwrap_rw(fillable);
+
   if (filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(list)))
     return _store_matches_to_list(pattern, state, fillable);
 
