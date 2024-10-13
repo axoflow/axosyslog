@@ -28,6 +28,7 @@
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 #include "compat/json.h"
@@ -189,6 +190,7 @@ _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
   if (filterx_object_freeze(object))
     g_ptr_array_add(self->frozen_objects, object);
 
+  object = filterx_ref_unwrap_ro(object);
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)))
     _deep_freeze_dict(self, object);
 

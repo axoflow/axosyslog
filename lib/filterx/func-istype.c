@@ -29,6 +29,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #define FILTERX_FUNC_ISTYPE_USAGE "Usage: istype(object, type_str)"
 
@@ -51,7 +52,9 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
-  gboolean result = filterx_object_is_type(object_expr, self->type);
+  FilterXObject *obj = filterx_ref_unwrap_ro(object_expr);
+  gboolean result = filterx_object_is_type(obj, self->type);
+
   filterx_object_unref(object_expr);
   return filterx_boolean_new(result);
 }
