@@ -153,7 +153,8 @@ _grpc() {
 	pkgdesc="$pkgdesc (grpc module)"
 
 	_submv usr/lib/syslog-ng/libotel.so \
-		usr/lib/syslog-ng/libloki.so
+		usr/lib/syslog-ng/libloki.so \
+		usr/lib/syslog-ng/libbigquery.so
 }
 
 _module() {
