@@ -161,7 +161,7 @@ _cmd_help(Debugger *self, gint argc, gchar *argv[])
   printf("syslog-ng interactive console, the following commands are available\n\n"
          "  help, h, or ?            Display this help\n"
          "  continue or c            Continue until the next breakpoint\n"
-         "  trace                    Display timing information as the message traverses the config\n"
+         "  trace or t               Trace this message along the configuration\n"
          "  info                     Display information about the current execution state\n"
          "  list or l                Display source code at the current location\n"
          "  print, p                 Print the current log message\n"
@@ -334,6 +334,7 @@ struct
   { "quit",     _cmd_quit },
   { "q",        _cmd_quit },
   { "trace",    _cmd_trace, .requires_breakpoint_site = TRUE },
+  { "t",        _cmd_trace, .requires_breakpoint_site = TRUE },
   { "info",     _cmd_info, .requires_breakpoint_site = TRUE },
   { "i",        _cmd_info, .requires_breakpoint_site = TRUE },
   { NULL, NULL }
