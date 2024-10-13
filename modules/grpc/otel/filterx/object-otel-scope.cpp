@@ -27,6 +27,7 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "compat/cpp-end.h"
 
 #include <stdexcept>
@@ -280,10 +281,11 @@ filterx_otel_scope_new_from_args(FilterXExpr *s, GPtrArray *args)
       else if (args->len == 1)
         {
           FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
-          if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(dict)))
+          FilterXObject *dict_arg = filterx_ref_unwrap_ro(arg);
+          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(dict)))
             {
               self->cpp = new Scope(self);
-              if (!filterx_dict_merge(&self->super.super, arg))
+              if (!filterx_dict_merge(&self->super.super, dict_arg))
                 throw std::runtime_error("Failed to merge dict");
             }
           else

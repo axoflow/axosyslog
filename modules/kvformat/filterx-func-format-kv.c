@@ -28,6 +28,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #include "scratch-buffers.h"
 #include "utf8utils.h"
@@ -48,11 +49,12 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
   FilterXFunctionFormatKV *self = ((gpointer *) user_data)[0];
   GString *buffer = ((gpointer *) user_data)[1];
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)) ||
-      filterx_object_is_type(value, &FILTERX_TYPE_NAME(list)))
+  FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
+  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)) ||
+      filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
       msg_debug("FilterX: format_kv(): skipping object, type not supported",
-                evt_tag_str("type", value->type->name));
+                evt_tag_str("type", value_unwrapped->type->name));
       return TRUE;
     }
 
@@ -91,17 +93,18 @@ _eval(FilterXExpr *s)
 {
   FilterXFunctionFormatKV *self = (FilterXFunctionFormatKV *) s;
 
-  FilterXObject *kvs = filterx_expr_eval_typed(self->kvs);
-  if (!kvs)
+  FilterXObject *obj = filterx_expr_eval_typed(self->kvs);
+  if (!obj)
     {
       filterx_eval_push_error("Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE, s, NULL);
       return NULL;
     }
 
+  FilterXObject *kvs = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(kvs, &FILTERX_TYPE_NAME(dict)))
     {
-      filterx_eval_push_error("kvs_dict must be a dict. " FILTERX_FUNC_FORMAT_KV_USAGE, s, kvs);
-      filterx_object_unref(kvs);
+      filterx_eval_push_error("kvs_dict must be a dict. " FILTERX_FUNC_FORMAT_KV_USAGE, s, obj);
+      filterx_object_unref(obj);
       return NULL;
     }
 
@@ -109,7 +112,7 @@ _eval(FilterXExpr *s)
   gpointer user_data[] = { self, formatted };
   gboolean success = filterx_dict_iter(kvs, _append_kv_to_buffer, user_data);
 
-  filterx_object_unref(kvs);
+  filterx_object_unref(obj);
   return success ? filterx_string_new(formatted->str, formatted->len) : NULL;
 }
 
