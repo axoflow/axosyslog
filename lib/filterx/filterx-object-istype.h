@@ -53,3 +53,15 @@ filterx_object_is_type(FilterXObject *object, FilterXType *type)
 
   return _filterx_object_is_type(object, type);
 }
+
+#if SYSLOG_NG_ENABLE_DEBUG
+static inline void
+filterx_assert_not_ref(FilterXObject *object)
+{
+  g_assert(!_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)));
+}
+#else
+#define filterx_assert_not_ref(o)
+#endif
+
+#endif
