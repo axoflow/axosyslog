@@ -302,8 +302,7 @@ filterx_list_init_instance(FilterXList *self, FilterXType *type)
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
-  if (!filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(list)) ||
-      !filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(list)))
+  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(list)))
     return NULL;
 
   FilterXObject *cloned = filterx_object_clone(lhs_object);

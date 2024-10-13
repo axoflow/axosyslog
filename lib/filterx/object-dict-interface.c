@@ -215,8 +215,7 @@ filterx_dict_init_instance(FilterXDict *self, FilterXType *type)
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
-  if (!filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(dict)) ||
-      !filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(dict)))
     return NULL;
 
   FilterXObject *cloned = filterx_object_clone(lhs_object);
