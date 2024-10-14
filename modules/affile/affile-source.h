@@ -41,6 +41,7 @@ typedef struct _AFFileSourceDriver
   gsize transport_name_len;
 } AFFileSourceDriver;
 
+gboolean affile_sd_init(LogPipe *s);
 void affile_sd_set_transport_name(AFFileSourceDriver *s, const gchar *transport_name);
 AFFileSourceDriver *affile_sd_new_instance(gchar *filename, GlobalConfig *cfg);
 LogDriver *affile_sd_new(gchar *filename, GlobalConfig *cfg);
