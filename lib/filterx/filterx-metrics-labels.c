@@ -203,9 +203,9 @@ filterx_metrics_labels_is_const(FilterXMetricsLabels *self)
 }
 
 static gboolean
-_format_dict_elem_to_cache(FilterXObject *key, FilterXObject *value, gpointer user_data)
+_format_dict_elem_to_store(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
-  DynMetricsStore *cache = (DynMetricsStore *) user_data;
+  DynMetricsStore *store = (DynMetricsStore *) user_data;
 
   const gchar *name_str = _format_str_obj(key);
   if (!name_str)
@@ -223,7 +223,7 @@ _format_dict_elem_to_cache(FilterXObject *key, FilterXObject *value, gpointer us
       return FALSE;
     }
 
-  StatsClusterLabel *label = dyn_metrics_store_cache_label(cache);
+  StatsClusterLabel *label = dyn_metrics_store_cache_label(store);
   label->name = name_str;
   label->value = value_str;
 
@@ -231,7 +231,7 @@ _format_dict_elem_to_cache(FilterXObject *key, FilterXObject *value, gpointer us
 }
 
 static gboolean
-_format_expr_to_cache(FilterXExpr *expr, DynMetricsStore *cache)
+_format_expr_to_store(FilterXExpr *expr, DynMetricsStore *store)
 {
   FilterXObject *obj = filterx_expr_eval_typed(expr);
   if (!obj)
@@ -247,11 +247,11 @@ _format_expr_to_cache(FilterXExpr *expr, DynMetricsStore *cache)
       goto exit;
     }
 
-  success = filterx_dict_iter(typed_obj, _format_dict_elem_to_cache, cache);
+  success = filterx_dict_iter(typed_obj, _format_dict_elem_to_store, store);
   if (!success)
     goto exit;
 
-  dyn_metrics_store_sort_cached_labels(cache);
+  dyn_metrics_store_sort_cached_labels(store);
 
 exit:
   filterx_object_unref(obj);
@@ -259,42 +259,42 @@ exit:
 }
 
 static void
-_format_label_to_cache(gpointer data, gpointer user_data)
+_format_label_to_store(gpointer data, gpointer user_data)
 {
   FilterXMetricsLabel *label = (FilterXMetricsLabel *) data;
   gboolean *success = ((gpointer *) user_data)[0];
-  DynMetricsStore *cache = ((gpointer *) user_data)[1];
+  DynMetricsStore *store = ((gpointer *) user_data)[1];
 
   if (!(*success))
     return;
 
-  *success = _label_format(label, dyn_metrics_store_cache_label(cache));
+  *success = _label_format(label, dyn_metrics_store_cache_label(store));
 }
 
 gboolean
 filterx_metrics_labels_format(FilterXMetricsLabels *self, StatsClusterLabel **labels, gsize *len)
 {
-  DynMetricsStore *cache = dyn_metrics_cache();
+  DynMetricsStore *store = dyn_metrics_cache();
 
-  dyn_metrics_store_reset_labels_cache(cache);
+  dyn_metrics_store_reset_labels_cache(store);
 
   gboolean success;
   if (self->expr)
     {
-      success = _format_expr_to_cache(self->expr, cache);
+      success = _format_expr_to_store(self->expr, store);
     }
   else
     {
       success = TRUE;
-      gpointer user_data[] = { &success, cache };
-      g_ptr_array_foreach(self->literal_labels, _format_label_to_cache, user_data);
+      gpointer user_data[] = { &success, store };
+      g_ptr_array_foreach(self->literal_labels, _format_label_to_store, user_data);
     }
 
   if (!success)
     return FALSE;
 
-  *labels = dyn_metrics_store_get_cached_labels(cache);
-  *len = dyn_metrics_store_get_cached_labels_len(cache);
+  *labels = dyn_metrics_store_get_cached_labels(store);
+  *len = dyn_metrics_store_get_cached_labels_len(store);
   return TRUE;
 }
 
