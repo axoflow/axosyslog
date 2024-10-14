@@ -82,7 +82,7 @@ exit:
 }
 
 static gboolean
-_format_sck(FilterXMetrics *self, StatsClusterKey *sck)
+_format_sck(FilterXMetrics *self, StatsClusterKey *sck, DynMetricsStore *store)
 {
   const gchar *name = _format_sck_name(self);
   if (!name)
@@ -90,7 +90,7 @@ _format_sck(FilterXMetrics *self, StatsClusterKey *sck)
 
   StatsClusterLabel *labels;
   gsize labels_len;
-  if (!filterx_metrics_labels_format(self->labels, &labels, &labels_len))
+  if (!filterx_metrics_labels_format(self->labels, store, &labels, &labels_len))
     return FALSE;
 
   stats_cluster_single_key_set(sck, name, labels, labels_len);
@@ -106,6 +106,8 @@ _is_const(FilterXMetrics *self)
 static void
 _optimize(FilterXMetrics *self)
 {
+  DynMetricsStore *store = dyn_metrics_cache();
+
   stats_lock();
 
   if (!self->key.str || !filterx_metrics_labels_is_const(self->labels))
@@ -115,7 +117,7 @@ _optimize(FilterXMetrics *self)
   scratch_buffers_mark(&marker);
 
   StatsClusterKey sck;
-  if (!_format_sck(self, &sck))
+  if (!_format_sck(self, &sck, store))
     {
       msg_debug("FilterX: Failed to optimize metrics, continuing unoptimized");
       scratch_buffers_reclaim_marked(marker);
@@ -137,6 +139,8 @@ exit:
 gboolean
 filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **counter)
 {
+  DynMetricsStore *store = dyn_metrics_cache();
+
   if (!filterx_metrics_is_enabled(self))
     {
       *counter = NULL;
@@ -155,10 +159,10 @@ filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **count
   scratch_buffers_mark(&marker);
 
   StatsClusterKey sck;
-  if (!_format_sck(self, &sck))
+  if (!_format_sck(self, &sck, store))
     goto exit;
 
-  *counter = dyn_metrics_store_retrieve_counter(dyn_metrics_cache(), &sck, self->level);
+  *counter = dyn_metrics_store_retrieve_counter(store, &sck, self->level);
   success = TRUE;
 
 exit:

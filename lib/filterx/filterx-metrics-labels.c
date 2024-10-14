@@ -272,10 +272,9 @@ _format_label_to_store(gpointer data, gpointer user_data)
 }
 
 gboolean
-filterx_metrics_labels_format(FilterXMetricsLabels *self, StatsClusterLabel **labels, gsize *len)
+filterx_metrics_labels_format(FilterXMetricsLabels *self, DynMetricsStore *store,
+                              StatsClusterLabel **labels, gsize *len)
 {
-  DynMetricsStore *store = dyn_metrics_cache();
-
   dyn_metrics_store_reset_labels_cache(store);
 
   gboolean success;

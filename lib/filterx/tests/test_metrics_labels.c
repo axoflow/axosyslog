@@ -30,6 +30,7 @@
 #include "filterx/expr-literal-generator.h"
 #include "filterx/object-string.h"
 #include "stats/stats-cluster.h"
+#include "metrics/dyn-metrics-cache.h"
 #include "scratch-buffers.h"
 #include "apphook.h"
 
@@ -46,9 +47,11 @@ Test(filterx_metrics_labels, null_labels)
 
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
+  DynMetricsStore *store = dyn_metrics_cache();
+
   StatsClusterLabel *sc_labels;
   gsize len;
-  cr_assert(filterx_metrics_labels_format(metrics_labels, &sc_labels, &len));
+  cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 0);
 
   filterx_metrics_labels_free(metrics_labels);
@@ -63,9 +66,11 @@ Test(filterx_metrics_labels, const_literal_generator_empty_labels)
 
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
+  DynMetricsStore *store = dyn_metrics_cache();
+
   StatsClusterLabel *sc_labels;
   gsize len;
-  cr_assert(filterx_metrics_labels_format(metrics_labels, &sc_labels, &len));
+  cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 0);
 
   filterx_metrics_labels_free(metrics_labels);
@@ -80,9 +85,11 @@ Test(filterx_metrics_labels, non_literal_empty_labels)
 
   cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
 
+  DynMetricsStore *store = dyn_metrics_cache();
+
   StatsClusterLabel *sc_labels;
   gsize len;
-  cr_assert(filterx_metrics_labels_format(metrics_labels, &sc_labels, &len));
+  cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 0);
 
   filterx_metrics_labels_free(metrics_labels);
@@ -107,9 +114,11 @@ Test(filterx_metrics_labels, const_literal_generator_labels)
 
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
+  DynMetricsStore *store = dyn_metrics_cache();
+
   StatsClusterLabel *sc_labels;
   gsize len;
-  cr_assert(filterx_metrics_labels_format(metrics_labels, &sc_labels, &len));
+  cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 2);
 
   cr_assert_str_eq(sc_labels[0].name, "bar");
@@ -139,9 +148,11 @@ Test(filterx_metrics_labels, non_const_literal_generator_labels)
 
   cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
 
+  DynMetricsStore *store = dyn_metrics_cache();
+
   StatsClusterLabel *sc_labels;
   gsize len;
-  cr_assert(filterx_metrics_labels_format(metrics_labels, &sc_labels, &len));
+  cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 2);
 
   cr_assert_str_eq(sc_labels[0].name, "bar");
