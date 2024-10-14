@@ -271,6 +271,7 @@ _format_label_to_store(gpointer data, gpointer user_data)
   *success = _label_format(label, dyn_metrics_store_cache_label(store));
 }
 
+/* NOTE: Names and values of the labels are stored in ScratchBuffers. */
 gboolean
 filterx_metrics_labels_format(FilterXMetricsLabels *self, DynMetricsStore *store,
                               StatsClusterLabel **labels, gsize *len)
