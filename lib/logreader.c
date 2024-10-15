@@ -573,7 +573,11 @@ log_reader_io_handle_in(gpointer s)
   log_reader_disable_watches(self);
   if ((self->options->flags & LR_THREADED))
     {
-      main_loop_io_worker_job_submit(&self->io_job, NULL);
+      if (!main_loop_io_worker_job_submit(&self->io_job, NULL))
+        {
+          log_reader_set_immediate_check(self);
+          log_reader_update_watches(self);
+        }
     }
   else
     {
