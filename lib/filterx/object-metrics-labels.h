@@ -21,6 +21,7 @@
  * COPYING for details.
  *
  */
+
 #ifndef FILTERX_OBJECT_METRICS_LABELS_H_INCLUDED
 #define FILTERX_OBJECT_METRICS_LABELS_H_INCLUDED
 
@@ -30,6 +31,7 @@
 FILTERX_DECLARE_TYPE(metrics_labels);
 
 FilterXObject *filterx_object_metrics_labels_new(guint reserved_size);
+StatsClusterLabel *filterx_object_metrics_labels_get_value_ref(FilterXObject *s, gsize *len);
 FilterXObject *filterx_simple_function_metrics_labels(FilterXExpr *s, GPtrArray *args);
 
 #endif

@@ -21,125 +21,255 @@
  * COPYING for details.
  *
  */
+
 #include "object-metrics-labels.h"
+#include "object-dict-interface.h"
+#include "object-string.h"
+#include "object-extractor.h"
+#include "filterx-object-istype.h"
+#include "filterx-ref.h"
+#include "stats/stats-prometheus.h"
+#include "stats/stats-cluster.h"
+#include "scratch-buffers.h"
+
+#include <string.h>
+
+typedef struct _FilterXObjectMetricsLabels
+{
+  FilterXDict super;
+  GArray *labels;
+  gboolean sorted;
+} FilterXObjectMetricsLabels;
 
 static gboolean
 _truthy(FilterXObject *s)
 {
-  // TODO: implement
-  return FALSE;
+  return TRUE;
 }
 
 static gboolean
 _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 {
-  // TODO: implement
-  return FALSE;
-}
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
 
-static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  // TODO: implement
-  return FALSE;
+  stats_prometheus_format_labels_append((StatsClusterLabel *) self->labels->data, self->labels->len, repr);
+  if (t)
+    *t = LM_VT_STRING;
+  return TRUE;
 }
 
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
-  // TODO: implement
-  return FALSE;
+  _marshal(s, repr, NULL);
+  return TRUE;
+}
+
+static guint64
+_len(FilterXDict *s)
+{
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  return self->labels->len;
 }
 
 static FilterXObject *
-_add(FilterXObject *s, FilterXObject *object)
+_get_subscript(FilterXDict *s, FilterXObject *key)
 {
-  // TODO: implement
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  const gchar *key_str;
+  if (!filterx_object_extract_string_ref(key, &key_str, NULL))
+    return NULL;
+
+  for (guint i = self->labels->len - 1; i >= 0; i--)
+    {
+      StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
+      if (strcmp(label->name, key_str) == 0)
+        return filterx_string_new(label->value, -1);
+    }
+
+  return NULL;
+}
+
+static const gchar *
+_obj_to_string(FilterXObject *obj, gsize *len)
+{
+  const gchar *str;
+  if (filterx_object_extract_string_ref(obj, &str, len))
+    return str;
+
+  GString *buf = scratch_buffers_alloc();
+  if (filterx_object_repr(obj, buf))
+    {
+      *len = buf->len;
+      return buf->str;
+    }
+
   return NULL;
 }
 
 static gboolean
-_len(FilterXObject *s, guint64 *len)
+_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
 {
-  // TODO: implement
-  return FALSE;
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  ScratchBuffersMarker marker;
+  scratch_buffers_mark(&marker);
+
+  gsize name_len, value_len;
+  const gchar *name_str = _obj_to_string(key, &name_len);
+  const gchar *value_str = _obj_to_string(*new_value, &value_len);
+  if (!name_str || !value_str)
+    return FALSE;
+
+  if (!filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(string)))
+    *new_value = filterx_string_new(value_str, -1);
+
+  StatsClusterLabel label = stats_cluster_label(g_strndup(name_str, name_len), g_strndup(value_str, value_len));
+  g_array_append_val(self->labels, label);
+
+  self->sorted = FALSE;
+
+  scratch_buffers_reclaim_marked(marker);
+  return TRUE;
+}
+
+static gboolean
+_unset_key(FilterXDict *s, FilterXObject *key)
+{
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  const gchar *key_str;
+  if (!filterx_object_extract_string_ref(key, &key_str, NULL))
+    return FALSE;
+
+  for (guint i = self->labels->len - 1; i >= 0; i--)
+    {
+      StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
+      if (strcmp(label->name, key_str) == 0)
+        g_array_remove_index(self->labels, i);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+_iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
+{
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  for (guint i = 0; i < self->labels->len; i++)
+    {
+      StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
+
+      FilterXObject *name = filterx_string_new(label->name, -1);
+      FilterXObject *value = filterx_string_new(label->value, -1);
+
+      gboolean success = func(name, value, user_data);
+
+      filterx_object_unref(name);
+      filterx_object_unref(value);
+
+      if (!success)
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 static FilterXObject *
-_get_subscript(FilterXObject *s, FilterXObject *key)
+_clone(FilterXObject *s)
 {
-  // TODO: implement
-  return NULL;
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  FilterXObjectMetricsLabels *cloned = \
+                                       (FilterXObjectMetricsLabels *) filterx_object_metrics_labels_new(self->labels->len);
+
+  for (guint i = 0; i < self->labels->len; i++)
+    {
+      StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
+      StatsClusterLabel cloned_label = stats_cluster_label(g_strdup(label->name), g_strdup(label->value));
+      g_array_append_val(cloned->labels, cloned_label);
+    }
+
+  return &cloned->super.super;
 }
 
-static gboolean
-_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
+static void
+_label_destroy(StatsClusterLabel *label)
 {
-  // TODO: implement
-  return FALSE;
-}
-
-static gboolean
-_is_key_set(FilterXObject *s, FilterXObject *key)
-{
-  // TODO: implement
-  return FALSE;
-}
-
-static gboolean
-_unset_key(FilterXObject *s, FilterXObject *key)
-{
-  // TODO: implement
-  return FALSE;
-}
-
-static FilterXObject *
-_getattr(FilterXObject *s, FilterXObject *attr)
-{
-  // TODO: implement
-  return NULL;
-}
-
-static gboolean
-_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_value)
-{
-  // TODO: implement
-  return FALSE;
+  g_free((gchar *) label->name);
+  g_free((gchar *) label->value);
 }
 
 static void
 _free(FilterXObject *s)
 {
-  // TODO: implement
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  for (guint i = 0; i < self->labels->len; i++)
+    _label_destroy(&g_array_index(self->labels, StatsClusterLabel, i));
+
+  g_array_free(self->labels, TRUE);
+  filterx_object_free_method(s);
+}
+
+static gint
+_label_cmp(const StatsClusterLabel *lhs, const StatsClusterLabel *rhs)
+{
+  return strcmp(lhs->name, rhs->name);
+}
+
+StatsClusterLabel *
+filterx_object_metrics_labels_get_value_ref(FilterXObject *s, gsize *len)
+{
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  if (!self->sorted)
+    {
+      g_array_sort(self->labels, (GCompareFunc) _label_cmp);
+      self->sorted = TRUE;
+    }
+
+  *len = self->labels->len;
+  return (StatsClusterLabel *) self->labels->data;
 }
 
 FilterXObject *
 filterx_object_metrics_labels_new(guint reserved_size)
 {
-  // TODO: implement
-  return NULL;
+  FilterXObjectMetricsLabels *self = g_new0(FilterXObjectMetricsLabels, 1);
+  filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
+
+  self->super.get_subscript = _get_subscript;
+  self->super.set_subscript = _set_subscript;
+  self->super.unset_key = _unset_key;
+  self->super.len = _len;
+  self->super.iter = _iter;
+
+  self->labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), reserved_size);
+
+  return &self->super.super;
 }
 
 FilterXObject *
 filterx_simple_function_metrics_labels(FilterXExpr *s, GPtrArray *args)
 {
-  // TODO: implement
-  return NULL;
+  if (args && args->len)
+    {
+      filterx_simple_function_argument_error(s, "unexpected argument.", FALSE);
+      return NULL;
+    }
+
+  return filterx_object_metrics_labels_new(16);
 }
 
-FILTERX_DEFINE_TYPE(metrics_labels, FILTERX_TYPE_NAME(object),
+FILTERX_DEFINE_TYPE(metrics_labels, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,
                     .truthy = _truthy,
-                    .map_to_json = _map_to_json,
                     .marshal = _marshal,
                     .repr = _repr,
-                    .add = _add,
-                    .len = _len,
-                    .get_subscript = _get_subscript,
-                    .set_subscript = _set_subscript,
-                    .is_key_set = _is_key_set,
-                    .unset_key = _unset_key,
-                    .getattr = _getattr,
-                    .setattr = _setattr,
+                    .clone = _clone,
                     .free_fn = _free,
                    );
