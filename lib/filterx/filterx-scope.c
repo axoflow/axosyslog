@@ -102,7 +102,7 @@ struct _FilterXScope
 {
   GAtomicCounter ref_cnt;
   GArray *variables;
-  guint32 generation:20, write_protected, dirty, syncable;
+  guint32 generation:20, write_protected, dirty, syncable, log_msg_has_changes;
 };
 
 static gboolean
@@ -136,6 +136,24 @@ _lookup_variable(FilterXScope *self, FilterXVariableHandle handle, FilterXVariab
     }
   *v_slot = &g_array_index(self->variables, FilterXVariable, l);
   return FALSE;
+}
+
+void
+filterx_scope_set_log_msg_has_changes(FilterXScope *self)
+{
+  self->log_msg_has_changes = TRUE;
+}
+
+void
+filterx_scope_clear_log_msg_has_changes(FilterXScope *self)
+{
+  self->log_msg_has_changes = FALSE;
+}
+
+gboolean
+filterx_scope_has_log_msg_changes(FilterXScope *self)
+{
+  return self->log_msg_has_changes;
 }
 
 void
@@ -382,6 +400,7 @@ filterx_scope_clone(FilterXScope *other)
   if (other->variables->len > 0)
     self->dirty = other->dirty;
   self->syncable = other->syncable;
+  self->log_msg_has_changes = other->log_msg_has_changes;
   msg_trace("Filterx clone finished",
             evt_tag_printf("scope", "%p", self),
             evt_tag_printf("other", "%p", other),
@@ -435,4 +454,20 @@ filterx_scope_unref(FilterXScope *self)
 {
   if (self && (g_atomic_counter_dec_and_test(&self->ref_cnt)))
     _free(self);
+}
+
+void
+filterx_scope_invalidate_log_msg_cache(FilterXScope *self)
+{
+  g_assert(filterx_scope_has_log_msg_changes(self));
+
+  for (gint i = 0; i < self->variables->len; i++)
+    {
+      FilterXVariable *v = &g_array_index(self->variables, FilterXVariable, i);
+
+      if (!filterx_variable_is_floating(v) && self->syncable)
+        v->generation = 0;
+    }
+
+  filterx_scope_clear_log_msg_has_changes(self);
 }
