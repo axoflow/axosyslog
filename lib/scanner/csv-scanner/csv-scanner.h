@@ -94,4 +94,6 @@ gchar *csv_scanner_dup_current_value(CSVScanner *self);
 void csv_scanner_init(CSVScanner *pstate, CSVScannerOptions *options, const gchar *input);
 void csv_scanner_deinit(CSVScanner *pstate);
 
+gboolean csv_scanner_take_rest(CSVScanner *self);
+
 #endif

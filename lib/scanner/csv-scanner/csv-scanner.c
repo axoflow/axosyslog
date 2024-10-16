@@ -486,6 +486,17 @@ _switch_to_next_column(CSVScanner *self)
 }
 
 gboolean
+csv_scanner_take_rest(CSVScanner *self)
+{
+  _parse_left_whitespace(self);
+  g_string_assign(self->current_value, self->src);
+  self->src += self->current_value->len;
+  self->state = CSV_STATE_GREEDY_COLUMN;
+  _translate_value(self);
+  return TRUE;
+}
+
+gboolean
 csv_scanner_scan_next(CSVScanner *self)
 {
   if (!_switch_to_next_column(self))
@@ -493,12 +504,7 @@ csv_scanner_scan_next(CSVScanner *self)
 
   if (_is_last_column(self) && (self->options->flags & CSV_SCANNER_GREEDY))
     {
-      _parse_left_whitespace(self);
-      g_string_assign(self->current_value, self->src);
-      self->src += self->current_value->len;
-      self->state = CSV_STATE_GREEDY_COLUMN;
-      _translate_value(self);
-      return TRUE;
+      return csv_scanner_take_rest(self);
     }
   else if (self->src[0] == 0)
     {
