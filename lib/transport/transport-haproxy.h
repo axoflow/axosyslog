@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2002-2018 Balabit
- * Copyright (c) 2018 Laszlo Budai <laszlo.budai@balabit.com>
+ * Copyright (c) 2020-2023 One Identity LLC.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,21 +21,11 @@
  *
  */
 
-#ifndef TRANSPORT_FACTORY_SOCKET_H_INCLUDED
-#define TRANSPORT_FACTORY_SOCKET_H_INCLUDED
+#ifndef TRANSPORT_HAPROXY_H_INCLUDED
+#define TRANSPORT_HAPROXY_H_INCLUDED
 
-#include "transport/transport-factory.h"
-#include "transport/transport-socket.h"
+#include "transport-adapter.h"
 
-typedef struct _TransportFactorySocket TransportFactorySocket;
-
-struct _TransportFactorySocket
-{
-  TransportFactory super;
-};
-
-#define TRANSPORT_FACTORY_SOCKET_ID "socket"
-
-TransportFactory *transport_factory_socket_new(gint sock_type);
+LogTransport *log_transport_haproxy_new(LogTransportStack *stack, LogTransportIndex base, LogTransportIndex flip);
 
 #endif

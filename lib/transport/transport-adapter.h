@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020 One Identity
+ * Copyright (c) 2024 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,13 +21,24 @@
  *
  */
 
-#ifndef LOGPROTO_PROXIED_TEXT_SERVER
-#define LOGPROTO_PROXIED_TEXT_SERVER
+#ifndef TRANSPORT_ADAPTER_H_INCLUDED
+#define TRANSPORT_ADAPTER_H_INCLUDED
 
-#include "logproto-text-server.h"
+#include "transport-stack.h"
 
-LogProtoServer *log_proto_proxied_text_server_new(LogTransport *transport, const LogProtoServerOptions *options);
-LogProtoServer *log_proto_proxied_text_tls_passthrough_server_new(LogTransport *transport,
-    const LogProtoServerOptions *options);
+typedef struct _LogTransportAdapter LogTransportAdapter;
+struct _LogTransportAdapter
+{
+  LogTransport super;
+  LogTransportStack *stack;
+  LogTransportIndex base_index;
+};
+
+gssize log_transport_adapter_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTransportAuxData *aux);
+gssize log_transport_adapter_write_method(LogTransport *s, const gpointer buf, gsize count);
+gssize log_transport_adapter_writev_method(LogTransport *s, struct iovec *iov, gint iov_count);
+
+void log_transport_adapter_init_instance(LogTransportAdapter *self, const gchar *name,
+                                         LogTransportStack *stack, LogTransportIndex base);
 
 #endif
