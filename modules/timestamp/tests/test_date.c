@@ -186,7 +186,8 @@ ParameterizedTest(struct date_params *params, date, test_date_parser)
   GString *res = g_string_sized_new(128);
 
   logmsg = _construct_logmsg(params->msg);
-  success = log_parser_process(parser, &logmsg, NULL, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  success = log_parser_process(parser, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
 
   cr_assert(success, "unable to parse format=%s msg=%s", params->format, params->msg);
 
@@ -203,11 +204,13 @@ ParameterizedTest(struct date_params *params, date, test_date_parser)
 
 Test(date, test_date_with_additional_text_at_the_end)
 {
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   const gchar *msg = "2015-01-26T16:14:49+0300 Disappointing log file";
 
   LogParser *parser = _construct_parser(NULL, NULL, LM_TS_STAMP);
   LogMessage *logmsg = _construct_logmsg(msg);
-  gboolean success = log_parser_process(parser, &logmsg, NULL, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
+  gboolean success = log_parser_process(parser, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL),
+                                        -1);
 
   cr_assert_not(success, "successfully parsed but expected failure, msg=%s", msg);
 
@@ -247,8 +250,10 @@ ParameterizedTest(struct date_with_multiple_formats_params *params, date, test_d
   date_parser_set_time_stamp(parser, LM_TS_STAMP);
 
   LogMessage *logmsg = _construct_logmsg(params->msg);
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
 
-  gboolean success = log_parser_process(parser, &logmsg, NULL, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
+  gboolean success = log_parser_process(parser, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL),
+                                        -1);
 
   cr_assert(success, "unable to parse msg=%s with a list of formats", params->msg);
 
@@ -269,7 +274,10 @@ Test(date, test_date_with_guess_timezone)
   date_parser_process_flag(parser, "guess-timezone");
 
   LogMessage *logmsg = _construct_logmsg(msg);
-  gboolean success = log_parser_process(parser, &logmsg, NULL, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+  gboolean success = log_parser_process(parser, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL),
+                                        -1);
 
   cr_assert(success, "failed to parse timestamp, msg=%s", msg);
   append_format_unix_time(&logmsg->timestamps[LM_TS_STAMP], res, TS_FMT_ISO, -1, 0);

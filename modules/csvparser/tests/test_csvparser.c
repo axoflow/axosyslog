@@ -840,7 +840,8 @@ ParameterizedTest(CsvParserTestParam *param, parser, test_csv_parser)
   cr_assert(log_pipe_init(&pclone->super));
 
   nvtable = nv_table_ref(logmsg->payload);
-  success = log_parser_process(pclone, &logmsg, NULL, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  success = log_parser_process(pclone, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
   nv_table_unref(nvtable);
 
   cr_assert_not((success && !param->expected_values[0]), "unexpected match; msg=%s\n", param->msg);
