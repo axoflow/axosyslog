@@ -53,6 +53,7 @@ set(FILTERX_HEADERS
     filterx/object-json.h
     filterx/object-list-interface.h
     filterx/object-message-value.h
+    filterx/object-metrics-labels.h
     filterx/object-null.h
     filterx/object-primitive.h
     filterx/object-string.h
@@ -115,6 +116,7 @@ set(FILTERX_SOURCES
     filterx/object-json.c
     filterx/object-list-interface.c
     filterx/object-message-value.c
+    filterx/object-metrics-labels.c
     filterx/object-null.c
     filterx/object-primitive.c
     filterx/object-string.c
