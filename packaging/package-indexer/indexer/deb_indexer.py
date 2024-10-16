@@ -274,7 +274,7 @@ class NightlyDebIndexer(DebIndexer):
         timestamp_regexp = re.compile(r"\+([^_]+)_")
         pkg_timestamps: List[str] = []
 
-        for deb_file in dir.rglob("syslog-ng-core*.deb"):
+        for deb_file in dir.rglob("axosyslog-core*.deb"):
             pkg_timestamp = timestamp_regexp.findall(deb_file.name)[0]
             pkg_timestamps.append(pkg_timestamp)
         pkg_timestamps.sort()
