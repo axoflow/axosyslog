@@ -107,6 +107,7 @@ class S3BucketSynchronizer(RemoteStorageSynchronizer):
             try:
                 for obj in response.get("Contents", []):
                     objects.append(obj)
+                    print("--------------------------------__" + str(obj))
                 if not response["IsTruncated"]:
                     break
                 pagination_options = {"Marker": response["Contents"][-1]["Key"]}
