@@ -27,8 +27,9 @@
 #include "filterx/filterx-object.h"
 
 typedef struct _FilterXFunctionEventFormatParser FilterXFunctionEventFormatParser;
+typedef struct _EventParserContext EventParserContext;
 
-typedef FilterXObject *(*FieldParser)(FilterXFunctionEventFormatParser *parser, const gchar *value, gint value_len,
+typedef FilterXObject *(*FieldParser)(EventParserContext *ctx, const gchar *value, gint value_len,
                                       GError **error,
                                       gpointer user_data);
 
@@ -36,6 +37,7 @@ typedef struct _Field
 {
   const gchar *name;
   FieldParser field_parser;
+  gboolean optional;
 } Field;
 
 typedef struct _Header
