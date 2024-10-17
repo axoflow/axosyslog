@@ -165,10 +165,15 @@ stats_format_prometheus_format_value(const StatsClusterKey *key, StatsCounterIte
 }
 
 static inline void
-_append_formatted_label(GString *serialized_labels, const StatsClusterLabel *label)
+_append_formatted_label(GString *serialized_labels, const StatsClusterLabel *label, gboolean *comma_needed)
 {
   if (!label->value)
     return;
+
+  if (*comma_needed)
+    g_string_append_c(serialized_labels, ',');
+  else
+    *comma_needed = TRUE;
 
   g_string_append_printf(serialized_labels, "%s=\"%s\"",
                          stats_format_prometheus_sanitize_name(label->name),
@@ -200,20 +205,11 @@ _format_labels(StatsCluster *sc, gint type)
       if (_is_str_empty(label->value))
         continue;
 
-      if (comma_needed)
-        g_string_append_c(serialized_labels, ',');
-      else
-        comma_needed = TRUE;
-
-      _append_formatted_label(serialized_labels, label);
+      _append_formatted_label(serialized_labels, label, &comma_needed);
     }
 
   if (needs_type_label)
-    {
-      if (comma_needed)
-        g_string_append_c(serialized_labels, ',');
-      _append_formatted_label(serialized_labels, &type_label);
-    }
+    _append_formatted_label(serialized_labels, &type_label, &comma_needed);
 
   if (serialized_labels->len == 0)
     return NULL;
