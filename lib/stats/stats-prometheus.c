@@ -167,7 +167,7 @@ stats_format_prometheus_format_value(const StatsClusterKey *key, StatsCounterIte
 static inline void
 _append_formatted_label(GString *serialized_labels, const StatsClusterLabel *label, gboolean *comma_needed)
 {
-  if (!label->value)
+  if (_is_str_empty(label->value))
     return;
 
   if (*comma_needed)
@@ -199,14 +199,7 @@ _format_labels(StatsCluster *sc, gint type)
 
   gboolean comma_needed = FALSE;
   for (gsize i = 0; i < sc->key.labels_len; ++i)
-    {
-      const StatsClusterLabel *label = &sc->key.labels[i];
-
-      if (_is_str_empty(label->value))
-        continue;
-
-      _append_formatted_label(serialized_labels, label, &comma_needed);
-    }
+    _append_formatted_label(serialized_labels, &sc->key.labels[i], &comma_needed);
 
   if (needs_type_label)
     _append_formatted_label(serialized_labels, &type_label, &comma_needed);
