@@ -30,6 +30,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
 #include "compat/pcre.h"

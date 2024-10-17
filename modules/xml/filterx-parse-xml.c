@@ -27,6 +27,8 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 #include <stdarg.h>
@@ -185,6 +187,7 @@ _store_first_elem(XmlElemContext *new_elem_context, FilterXObject *new_elem_key,
 static gboolean
 _is_obj_storing_a_single_elem(FilterXObject *obj)
 {
+  obj = filterx_ref_unwrap_ro(obj);
   return filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)) ||
          filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict));
 }
@@ -218,6 +221,7 @@ fail:
 static gboolean
 _is_obj_storing_multiple_elems(FilterXObject *obj)
 {
+  obj = filterx_ref_unwrap_ro(obj);
   return filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list));
 }
 
@@ -238,7 +242,8 @@ static gboolean
 _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gboolean has_attrs,
               XmlElemContext *new_elem_context, GError **error)
 {
-  g_assert(filterx_object_is_type(last_elem_context->current_obj, &FILTERX_TYPE_NAME(dict)));
+  FilterXObject *current_obj = filterx_ref_unwrap_ro(last_elem_context->current_obj);
+  g_assert(filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)));
 
   const gchar *new_elem_repr;
   FilterXObject *new_elem_obj = _create_object_for_new_elem(last_elem_context->current_obj, has_attrs, &new_elem_repr);
@@ -294,8 +299,9 @@ _collect_attrs(const gchar *element_name, XmlElemContext *elem_context,
                const gchar **attribute_names, const gchar **attribute_values,
                GError **error)
 {
+  FilterXObject *current_obj = filterx_ref_unwrap_ro(elem_context->current_obj);
   /* Ensured by _prepare_elem() and _create_object_for_new_elem(). */
-  g_assert(filterx_object_is_type(elem_context->current_obj, &FILTERX_TYPE_NAME(dict)));
+  g_assert(filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)));
 
   ScratchBuffersMarker marker;
   GString *attr_key = scratch_buffers_alloc_and_mark(&marker);
@@ -355,16 +361,17 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
         }
     }
 
-  if (filterx_object_is_type(elem_context->parent_obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *parent_obj = filterx_ref_unwrap_rw(elem_context->parent_obj);
+  if (filterx_object_is_type(parent_obj, &FILTERX_TYPE_NAME(dict)))
     {
-      if (!filterx_object_set_subscript(elem_context->parent_obj, key, &dict_obj))
+      if (!filterx_object_set_subscript(parent_obj, key, &dict_obj))
         _set_error(error, "failed to replace leaf node object with: \"%s\"={}", parent_elem_name);
       goto exit;
     }
 
-  if (filterx_object_is_type(elem_context->parent_obj, &FILTERX_TYPE_NAME(list)))
+  if (filterx_object_is_type(parent_obj, &FILTERX_TYPE_NAME(list)))
     {
-      if (!filterx_list_set_subscript(elem_context->parent_obj, -1, &dict_obj))
+      if (!filterx_list_set_subscript(parent_obj, -1, &dict_obj))
         _set_error(error, "failed to replace leaf node object with: {}");
       goto exit;
     }
@@ -388,7 +395,8 @@ filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
 {
   XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->xml_elem_context_stack);
 
-  if (!filterx_object_is_type(last_elem_context->current_obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *current_obj = filterx_ref_unwrap_ro(last_elem_context->current_obj);
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)))
     {
       /*
        * We need the last node to be a dict, so we can start a new inner element in it.
@@ -441,10 +449,11 @@ _replace_string_text(XmlElemContext *elem_context, const gchar *element_name, co
 {
   FilterXObject *text_obj = filterx_string_new(text, text_len);
 
-  if (filterx_object_is_type(elem_context->parent_obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *parent_obj = filterx_ref_unwrap_rw(elem_context->parent_obj);
+  if (filterx_object_is_type(parent_obj, &FILTERX_TYPE_NAME(dict)))
     {
       FilterXObject *key = filterx_string_new(element_name, -1);
-      gboolean result = filterx_object_set_subscript(elem_context->parent_obj, key, &text_obj);
+      gboolean result = filterx_object_set_subscript(parent_obj, key, &text_obj);
       filterx_object_unref(key);
 
       if (!result)
@@ -455,9 +464,9 @@ _replace_string_text(XmlElemContext *elem_context, const gchar *element_name, co
       goto success;
     }
 
-  if (filterx_object_is_type(elem_context->parent_obj, &FILTERX_TYPE_NAME(list)))
+  if (filterx_object_is_type(parent_obj, &FILTERX_TYPE_NAME(list)))
     {
-      if (!filterx_list_set_subscript(elem_context->parent_obj, -1, &text_obj))
+      if (!filterx_list_set_subscript(parent_obj, -1, &text_obj))
         {
           _set_error(error, "failed to add text to list: \"%s\"", text);
           goto fail;
@@ -552,7 +561,8 @@ filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
       goto exit;
     }
 
-  if (filterx_object_is_type(elem_context->current_obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *current_obj = filterx_ref_unwrap_ro(elem_context->current_obj);
+  if (filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)))
     {
       _add_text_to_dict(elem_context, stripped_text, stripped_text_len, error);
       goto exit;
@@ -567,6 +577,7 @@ exit:
 static gboolean
 _validate_fillable(FilterXGeneratorFunctionParseXml *self, FilterXObject *fillable)
 {
+  fillable = filterx_ref_unwrap_ro(fillable);
   if (!filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_eval_push_error_info("fillable must be dict", &self->super.super.super,

@@ -37,6 +37,7 @@ struct _FilterXType
   const gchar *name;
   gboolean is_mutable;
 
+  /* WARNING: adding a new method here requires an implementation in FilterXRef as well */
   FilterXObject *(*unmarshal)(FilterXObject *self);
   gboolean (*marshal)(FilterXObject *self, GString *repr, LogMessageValueType *t);
   FilterXObject *(*clone)(FilterXObject *self);
@@ -48,8 +49,8 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
-  FilterXObject *(*list_factory)(void);
-  FilterXObject *(*dict_factory)(void);
+  FilterXObject *(*list_factory)(FilterXObject *self);
+  FilterXObject *(*dict_factory)(FilterXObject *self);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
@@ -57,6 +58,7 @@ struct _FilterXType
 };
 
 void filterx_type_init(FilterXType *type);
+void _filterx_type_init_methods(FilterXType *type);
 
 #define FILTERX_TYPE_NAME(_name) filterx_type_ ## _name
 #define FILTERX_DECLARE_TYPE(_name) \
@@ -75,6 +77,7 @@ FILTERX_DECLARE_TYPE(object);
 struct _FilterXObject
 {
   GAtomicCounter ref_cnt;
+  GAtomicCounter fx_ref_cnt;
 
   /* NOTE:
    *
@@ -100,19 +103,6 @@ gboolean filterx_object_is_frozen(FilterXObject *self);
 void filterx_object_unfreeze_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
-
-static inline gboolean
-filterx_object_is_type(FilterXObject *object, FilterXType *type)
-{
-  FilterXType *self_type = object->type;
-  while (self_type)
-    {
-      if (type == self_type)
-        return TRUE;
-      self_type = self_type->super_type;
-    }
-  return FALSE;
-}
 
 static inline void
 filterx_object_make_readonly(FilterXObject *self)
@@ -281,7 +271,7 @@ filterx_object_create_list(FilterXObject *self)
   if (!self->type->list_factory)
     return NULL;
 
-  return self->type->list_factory();
+  return self->type->list_factory(self);
 }
 
 static inline FilterXObject *
@@ -290,7 +280,7 @@ filterx_object_create_dict(FilterXObject *self)
   if (!self->type->dict_factory)
     return NULL;
 
-  return self->type->dict_factory();
+  return self->type->dict_factory(self);
 }
 
 static inline FilterXObject *
