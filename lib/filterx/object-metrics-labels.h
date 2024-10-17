@@ -33,5 +33,6 @@ FILTERX_DECLARE_TYPE(metrics_labels);
 FilterXObject *filterx_object_metrics_labels_new(guint reserved_size);
 StatsClusterLabel *filterx_object_metrics_labels_get_value_ref(FilterXObject *s, gsize *len);
 FilterXObject *filterx_simple_function_metrics_labels(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, GPtrArray *args);
 
 #endif

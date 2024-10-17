@@ -99,6 +99,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("int", filterx_typecast_integer));
   g_assert(filterx_builtin_simple_function_register("double", filterx_typecast_double));
   g_assert(filterx_builtin_simple_function_register("metrics_labels", filterx_simple_function_metrics_labels));
+  g_assert(filterx_builtin_simple_function_register("dedup_metrics_labels",
+                                                    filterx_simple_function_dedup_metrics_labels));
   g_assert(filterx_builtin_simple_function_register("len", filterx_simple_function_len));
   g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
