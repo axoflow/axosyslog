@@ -102,11 +102,12 @@ struct _FilterXScope
 {
   GAtomicCounter ref_cnt;
   GArray *variables;
-  guint32 generation:20, write_protected, dirty, syncable;
+  guint32 generation:20, write_protected, dirty, syncable, log_msg_has_changes;
 };
 
-static gboolean
-_lookup_variable(FilterXScope *self, FilterXVariableHandle handle, FilterXVariable **v_slot)
+gboolean
+filterx_scope_lookup_variable_without_validation(FilterXScope *self, FilterXVariableHandle handle,
+                                                 FilterXVariable **v_slot)
 {
   gint l, h, m;
 
@@ -139,6 +140,24 @@ _lookup_variable(FilterXScope *self, FilterXVariableHandle handle, FilterXVariab
 }
 
 void
+filterx_scope_set_log_msg_has_changes(FilterXScope *self)
+{
+  self->log_msg_has_changes = TRUE;
+}
+
+void
+filterx_scope_clear_log_msg_has_changes(FilterXScope *self)
+{
+  self->log_msg_has_changes = FALSE;
+}
+
+gboolean
+filterx_scope_has_log_msg_changes(FilterXScope *self)
+{
+  return self->log_msg_has_changes;
+}
+
+void
 filterx_scope_set_dirty(FilterXScope *self)
 {
   self->dirty = TRUE;
@@ -163,15 +182,25 @@ filterx_scope_map_variable_to_handle(const gchar *name, FilterXVariableType type
   return (FilterXVariableHandle) nv_handle | FILTERX_HANDLE_FLOATING_BIT;
 }
 
+static gboolean
+filterx_scope_validate_variable(FilterXScope *self, FilterXVariable *variable)
+{
+  if (filterx_variable_handle_is_floating(variable->handle) &&
+      !variable->declared && variable->generation != self->generation)
+    return FALSE;
+  if(!filterx_variable_handle_is_floating(variable->handle) && filterx_scope_has_log_msg_changes(self))
+    return FALSE;
+  return TRUE;
+}
+
 FilterXVariable *
 filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
 {
   FilterXVariable *v;
 
-  if (_lookup_variable(self, handle, &v))
+  if (filterx_scope_lookup_variable_without_validation(self, handle, &v))
     {
-      if (filterx_variable_handle_is_floating(handle) &&
-          !v->declared && v->generation != self->generation)
+      if (!filterx_scope_validate_variable(self, v))
         return NULL;
       return v;
     }
@@ -185,7 +214,7 @@ _register_variable(FilterXScope *self,
 {
   FilterXVariable v, *v_slot;
 
-  if (_lookup_variable(self, handle, &v_slot))
+  if (filterx_scope_lookup_variable_without_validation(self, handle, &v_slot))
     {
       /* already present */
       if (v_slot->generation != self->generation)
@@ -252,8 +281,7 @@ filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func,
       if (!variable->value)
         continue;
 
-      if (filterx_variable_handle_is_floating(variable->handle) &&
-          !variable->declared && variable->generation != self->generation)
+      if (!filterx_scope_validate_variable(self, variable))
         continue;
 
       if (!func(variable, user_data))
@@ -382,6 +410,7 @@ filterx_scope_clone(FilterXScope *other)
   if (other->variables->len > 0)
     self->dirty = other->dirty;
   self->syncable = other->syncable;
+  self->log_msg_has_changes = other->log_msg_has_changes;
   msg_trace("Filterx clone finished",
             evt_tag_printf("scope", "%p", self),
             evt_tag_printf("other", "%p", other),
@@ -435,4 +464,23 @@ filterx_scope_unref(FilterXScope *self)
 {
   if (self && (g_atomic_counter_dec_and_test(&self->ref_cnt)))
     _free(self);
+}
+
+void
+filterx_scope_invalidate_log_msg_cache(FilterXScope *self)
+{
+  g_assert(filterx_scope_has_log_msg_changes(self));
+  gint i = 0;
+
+  while (i < self->variables->len)
+    {
+      FilterXVariable *v = &g_array_index(self->variables, FilterXVariable, i);
+
+      if (!filterx_variable_is_floating(v))
+        g_array_remove_index(self->variables, i);
+      else
+        i++;
+    }
+
+  filterx_scope_clear_log_msg_has_changes(self);
 }

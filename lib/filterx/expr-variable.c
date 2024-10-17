@@ -97,8 +97,11 @@ _update_repr(FilterXExpr *s, FilterXObject *new_repr)
 {
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
   FilterXScope *scope = filterx_eval_get_scope();
-  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
 
+  FilterXVariable *variable = NULL;
+  gboolean success = filterx_scope_lookup_variable_without_validation(scope, self->handle, &variable);
+
+  g_assert(success);
   g_assert(variable != NULL);
   filterx_variable_set_value(variable, new_repr);
 }

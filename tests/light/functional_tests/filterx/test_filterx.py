@@ -2395,3 +2395,55 @@ def test_parse_leef(config, syslog_ng):
         r"""}""" + "\n"
     )
     assert file_true.read_log() == exp
+
+
+def test_proper_generation_counter(config, syslog_ng):
+    file_true = config.create_file_destination(file_name="dest-true.log", template="'$MSG\n'")
+    file_false = config.create_file_destination(file_name="dest-false.log", template="'$MSG\n'")
+
+    raw_conf = f"""
+@version: {config.get_version()}
+
+options {{ stats(level(1)); }};
+
+source genmsg {{
+    example-msg-generator(num(1) template("dummy message") values("bar" => "bar_value"));
+}};
+
+destination dest_true {{
+    {render_statement(file_true)};
+}};
+
+destination dest_false {{
+    {render_statement(file_false)};
+}};
+
+log {{
+    source(genmsg);
+    if {{
+        filterx {{
+            $foo = "foovalue"; # Could have come from the log message as well, doesn't matter
+            $ISODATE; # Special case for macro resolution
+            unset(${{values.str}}); # Must come from the log message
+        }};
+
+        rewrite {{ set("almafa", value("foo")); }};
+        parser  {{ date-parser(format("%Y-%m-%dT%H:%M:%S%z") template("2000-01-01T00:00:00+01:00")); }};
+        rewrite {{ set("kortefa", value("values.str")); }};
+
+        filterx {{
+            $MSG = {{"from_nvtable": $foo, "from_a_macro": $ISODATE, "unset_then_set": ${{values.str}} ?? "not found"}};
+        }};
+    destination(dest_true);
+    }} else {{
+        destination(dest_false);
+    }};
+}};
+"""
+    config.set_raw_config(raw_conf)
+
+    syslog_ng.start(config)
+
+    assert "processed" in file_true.get_stats()
+    assert file_true.get_stats()["processed"] == 1
+    assert file_true.read_log() == '{"from_nvtable":"almafa","from_a_macro":"2000-01-01T00:00:00+01:00","unset_then_set":"kortefa"}\n'
