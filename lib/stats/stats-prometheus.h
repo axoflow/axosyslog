@@ -34,5 +34,6 @@ GString *stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCount
 
 void stats_generate_prometheus(StatsPrometheusRecordFunc process_record, gpointer user_data, gboolean with_legacy,
                                gboolean *cancelled);
+void stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_len, GString *buf);
 
 #endif

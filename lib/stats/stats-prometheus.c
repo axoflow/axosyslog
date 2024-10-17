@@ -302,6 +302,24 @@ stats_format_prometheus(StatsCluster *sc, gint type, StatsCounterItem *counter, 
 }
 
 void
+stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_len, GString *buf)
+{
+  gsize orig_size = buf->len;
+
+  g_string_append_c(buf, '{');
+
+  gboolean comma_needed = FALSE;
+  for (gsize i = 0; i < labels_len; ++i)
+    _append_formatted_label(buf, &labels[i], &comma_needed);
+
+  gboolean no_labels = buf->len == orig_size + 1;
+  if (no_labels)
+    g_string_truncate(buf, orig_size);
+  else
+    g_string_append_c(buf, '}');
+}
+
+void
 stats_generate_prometheus(StatsPrometheusRecordFunc process_record, gpointer user_data, gboolean with_legacy,
                           gboolean *cancelled)
 {
