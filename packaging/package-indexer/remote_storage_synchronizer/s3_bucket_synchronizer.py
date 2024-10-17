@@ -91,10 +91,13 @@ class S3BucketSynchronizer(RemoteStorageSynchronizer):
         objects: List[Dict[str, Any]] = []
         pagination_options: Dict[str, str] = {}
 
+        file_name_prefix = "{}/".format(self.remote_dir.working_dir)
+
         while True:
             try:
                 response: Dict[str, Any] = self.__client.list_objects(
                     Bucket=self.__bucket,
+                    Prefix=file_name_prefix,
                     **pagination_options,
                 )
             except (ClientError, EndpointConnectionError) as e:
