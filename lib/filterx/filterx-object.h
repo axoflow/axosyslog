@@ -53,6 +53,7 @@ struct _FilterXType
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
+  void (*make_readonly)(FilterXObject *self);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -86,7 +87,6 @@ struct _FilterXObject
    */
   guint modified_in_place:1, readonly:1, weak_referenced:1;
   FilterXType *type;
-  void (*make_readonly)(FilterXObject *self);
 };
 
 FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *attr_name);
@@ -117,8 +117,8 @@ filterx_object_is_type(FilterXObject *object, FilterXType *type)
 static inline void
 filterx_object_make_readonly(FilterXObject *self)
 {
-  if (self->make_readonly)
-    self->make_readonly(self);
+  if (self->type->make_readonly)
+    self->type->make_readonly(self);
 
   self->readonly = TRUE;
 }
