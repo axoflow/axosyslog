@@ -259,7 +259,6 @@ filterx_json_array_new_sub(struct json_object *jso, FilterXObject *root)
   FilterXJsonArray *self = g_new0(FilterXJsonArray, 1);
   filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(json_array));
 
-  self->super.super.make_readonly = _make_readonly;
   self->super.get_subscript = _get_subscript;
   self->super.set_subscript = _set_subscript;
   self->super.append = _append;
@@ -381,4 +380,5 @@ FILTERX_DEFINE_TYPE(json_array, FILTERX_TYPE_NAME(list),
                     .clone = _clone,
                     .list_factory = filterx_json_array_new_empty,
                     .dict_factory = filterx_json_object_new_empty,
+                    .make_readonly = _make_readonly,
                    );
