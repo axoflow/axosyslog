@@ -29,6 +29,8 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #include "scanner/list-scanner/list-scanner.h"
 #include "str-repr/encode.h"
@@ -103,7 +105,7 @@ filterx_json_convert_json_to_object(FilterXObject *root_obj, FilterXWeakRef *roo
     case json_type_int:
       return filterx_integer_new(json_object_get_int64(jso));
     case json_type_string:
-      return filterx_string_new(json_object_get_string(jso), -1);
+      return filterx_string_new(json_object_get_string(jso), json_object_get_string_len(jso));
     case json_type_array:
       return filterx_json_array_new_sub(json_object_get(jso),
                                         filterx_weakref_get(root_container) ? : filterx_object_ref(root_obj));
@@ -197,14 +199,15 @@ filterx_json_new_from_args(FilterXExpr *s, GPtrArray *args)
 
   FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
 
-  if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_array)) ||
-      filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_object)))
+  FilterXObject *arg_unwrapped = filterx_ref_unwrap_ro(arg);
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(json_array)) ||
+      filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(json_object)))
     return filterx_object_ref(arg);
 
-  if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(dict)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
       FilterXObject *self = filterx_json_object_new_empty();
-      if (!filterx_dict_merge(self, arg))
+      if (!filterx_dict_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);
           return NULL;
@@ -212,10 +215,10 @@ filterx_json_new_from_args(FilterXExpr *s, GPtrArray *args)
       return self;
     }
 
-  if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(list)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
       FilterXObject *self = filterx_json_array_new_empty();
-      if (!filterx_list_merge(self, arg))
+      if (!filterx_list_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);
           return NULL;
@@ -233,7 +236,7 @@ filterx_json_new_from_args(FilterXExpr *s, GPtrArray *args)
     return filterx_json_new_from_repr(repr, repr_len);
 
   filterx_eval_push_error_info("Argument must be a json, a string or a syslog-ng list", s,
-                               g_strdup_printf("got \"%s\" instead", arg->type->name), TRUE);
+                               g_strdup_printf("got \"%s\" instead", arg_unwrapped->type->name), TRUE);
   return NULL;
 }
 
@@ -252,6 +255,8 @@ filterx_json_new_from_object(struct json_object *jso)
 const gchar *
 filterx_json_to_json_literal(FilterXObject *s)
 {
+  s = filterx_ref_unwrap_ro(s);
+
   if (filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
     return filterx_json_object_to_json_literal(s);
   if (filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_array)))

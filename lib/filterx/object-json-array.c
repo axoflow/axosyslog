@@ -30,6 +30,8 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/expr-function.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #include "logmsg/type-hinting.h"
 #include "str-repr/encode.h"
@@ -284,6 +286,8 @@ _free(FilterXObject *s)
   filterx_weakref_clear(&self->root_container);
 
   g_mutex_clear(&self->lock);
+
+  filterx_object_free_method(s);
 }
 
 FilterXObject *
@@ -326,7 +330,8 @@ filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args)
 
   FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
 
-  if (filterx_object_is_type(arg, &FILTERX_TYPE_NAME(json_array)))
+  FilterXObject *json_arr = filterx_ref_unwrap_ro(arg);
+  if (filterx_object_is_type(json_arr, &FILTERX_TYPE_NAME(json_array)))
     return filterx_object_ref(arg);
 
   struct json_object *jso;
@@ -352,10 +357,11 @@ filterx_json_array_new_empty(void)
 const gchar *
 filterx_json_array_to_json_literal(FilterXObject *s)
 {
-  FilterXJsonArray *self = (FilterXJsonArray *) s;
-
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_array)))
     return NULL;
+
+  FilterXJsonArray *self = (FilterXJsonArray *) s;
   return _json_string(self);
 }
 
@@ -363,12 +369,24 @@ filterx_json_array_to_json_literal(FilterXObject *s)
 struct json_object *
 filterx_json_array_get_value(FilterXObject *s)
 {
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_array)))
     return NULL;
 
   FilterXJsonArray *self = (FilterXJsonArray *) s;
-
   return self->jso;
+}
+
+static FilterXObject *
+_list_factory(FilterXObject *self)
+{
+  return filterx_json_array_new_empty();
+}
+
+static FilterXObject *
+_dict_factory(FilterXObject *self)
+{
+  return filterx_json_object_new_empty();
 }
 
 FILTERX_DEFINE_TYPE(json_array, FILTERX_TYPE_NAME(list),
@@ -379,6 +397,6 @@ FILTERX_DEFINE_TYPE(json_array, FILTERX_TYPE_NAME(list),
                     .repr = _repr,
                     .map_to_json = _map_to_json,
                     .clone = _clone,
-                    .list_factory = filterx_json_array_new_empty,
-                    .dict_factory = filterx_json_object_new_empty,
+                    .list_factory = _list_factory,
+                    .dict_factory = _dict_factory,
                    );

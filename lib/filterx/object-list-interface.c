@@ -24,6 +24,8 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-json.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 FilterXObject *
 filterx_list_get_subscript(FilterXObject *s, gint64 index)
@@ -64,6 +66,7 @@ filterx_list_unset_index(FilterXObject *s, gint64 index)
 gboolean
 filterx_list_merge(FilterXObject *s, FilterXObject *other)
 {
+  other = filterx_ref_unwrap_ro(other);
   g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(list)));
 
   guint64 len;
@@ -301,8 +304,9 @@ filterx_list_init_instance(FilterXList *self, FilterXType *type)
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
-  if (!filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(list)) ||
-      !filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(list)))
+  rhs_object = filterx_ref_unwrap_ro(rhs_object);
+
+  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(list)))
     return NULL;
 
   FilterXObject *cloned = filterx_object_clone(lhs_object);

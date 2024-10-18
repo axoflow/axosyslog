@@ -25,6 +25,8 @@
 #include "filterx/object-string.h"
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-variable.h"
+#include "filterx/filterx-ref.h"
 #include "logmsg/logmsg.h"
 
 
@@ -100,7 +102,7 @@ _update_repr(FilterXExpr *s, FilterXObject *new_repr)
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
 
   g_assert(variable != NULL);
-  filterx_variable_set_value(variable, new_repr);
+  filterx_variable_set_value(variable, filterx_ref_new(new_repr));
 }
 
 static gboolean
@@ -186,7 +188,7 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
   self->super.unset = _unset;
 
   self->variable_name = (FilterXObject *) name;
-  self->handle = filterx_scope_map_variable_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
+  self->handle = filterx_map_varname_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
 
   return &self->super;
 }

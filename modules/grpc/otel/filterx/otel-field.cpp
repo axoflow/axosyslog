@@ -37,6 +37,8 @@
 #include "filterx/object-message-value.h"
 #include "filterx/object-json.h"
 #include "filterx/object-null.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "compat/cpp-end.h"
 
 #include "opentelemetry/proto/logs/v1/logs.pb.h"
@@ -176,6 +178,7 @@ AnyField::FilterXObjectDirectSetter(AnyValue *anyValue, FilterXObject *object, F
   ProtobufField *converter = nullptr;
   const char *typeFieldName;
 
+  FilterXObject *object_unwrapped = filterx_ref_unwrap_ro(object);
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(boolean)) ||
       (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
        filterx_message_value_get_type(object) == LM_VT_BOOLEAN))
@@ -218,14 +221,14 @@ AnyField::FilterXObjectDirectSetter(AnyValue *anyValue, FilterXObject *object, F
       converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BYTES);
       typeFieldName = "bytes_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)) ||
+  else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(dict)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_JSON))
     {
       converter = &filterx::otel_kvlist_converter;
       typeFieldName = "kvlist_value";
     }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)) ||
+  else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(list)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_LIST))
     {

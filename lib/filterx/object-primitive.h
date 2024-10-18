@@ -24,6 +24,7 @@
 #define FILTERX_PRIMITIVE_H_INCLUDED
 
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-object-istype.h"
 #include "generic-number.h"
 
 FILTERX_DECLARE_TYPE(primitive);

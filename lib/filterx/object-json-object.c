@@ -28,6 +28,8 @@
 #include "filterx/object-string.h"
 #include "filterx/filterx-weakrefs.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "syslog-ng.h"
 #include "str-utils.h"
 #include "logmsg/type-hinting.h"
@@ -270,6 +272,8 @@ _free(FilterXObject *s)
   filterx_weakref_clear(&self->root_container);
 
   g_mutex_clear(&self->lock);
+
+  filterx_object_free_method(s);
 }
 
 FilterXObject *
@@ -291,10 +295,11 @@ filterx_json_object_new_empty(void)
 const gchar *
 filterx_json_object_to_json_literal(FilterXObject *s)
 {
-  FilterXJsonObject *self = (FilterXJsonObject *) s;
-
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
     return NULL;
+
+  FilterXJsonObject *self = (FilterXJsonObject *) s;
   return _json_string(self);
 }
 
@@ -302,12 +307,24 @@ filterx_json_object_to_json_literal(FilterXObject *s)
 struct json_object *
 filterx_json_object_get_value(FilterXObject *s)
 {
+  s = filterx_ref_unwrap_ro(s);
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(json_object)))
     return NULL;
 
   FilterXJsonObject *self = (FilterXJsonObject *) s;
-
   return self->jso;
+}
+
+static FilterXObject *
+_list_factory(FilterXObject *self)
+{
+  return filterx_json_array_new_empty();
+}
+
+static FilterXObject *
+_dict_factory(FilterXObject *self)
+{
+  return filterx_json_object_new_empty();
 }
 
 FILTERX_DEFINE_TYPE(json_object, FILTERX_TYPE_NAME(dict),
@@ -318,6 +335,6 @@ FILTERX_DEFINE_TYPE(json_object, FILTERX_TYPE_NAME(dict),
                     .repr = _repr,
                     .map_to_json = _map_to_json,
                     .clone = _clone,
-                    .list_factory = filterx_json_array_new_empty,
-                    .dict_factory = filterx_json_object_new_empty,
+                    .list_factory = _list_factory,
+                    .dict_factory = _dict_factory,
                    );

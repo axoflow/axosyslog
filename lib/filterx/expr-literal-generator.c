@@ -23,6 +23,7 @@
 
 #include "filterx/expr-literal-generator.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-ref.h"
 
 struct FilterXLiteralGeneratorElem_
 {
@@ -83,7 +84,7 @@ _eval_elements(FilterXObject *fillable, GList *elements)
             return FALSE;
         }
 
-      FilterXObject *value = filterx_expr_eval(elem->value);
+      FilterXObject *value = filterx_ref_new(filterx_expr_eval(elem->value));
       if (!value)
         {
           filterx_object_unref(key);
