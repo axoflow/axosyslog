@@ -55,6 +55,8 @@ struct _FilterXType
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*make_readonly)(FilterXObject *self);
+  gboolean (*is_modified_in_place)(FilterXObject *self);
+  void (*set_modified_in_place)(FilterXObject *self, gboolean modified);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -83,7 +85,9 @@ struct _FilterXObject
   /* NOTE:
    *
    *     modified_in_place -- set to TRUE in case the value in this
-   *                          FilterXObject was changed
+   *                          FilterXObject was changed.
+   *                          don't use it directly, use
+   *                          filterx_object_{is,set}_modified_in_place()
    *     readonly          -- marks the object as unmodifiable,
    *                          propagates to the inner elements lazily
    *
@@ -294,6 +298,24 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
     }
 
   return self->type->add(self, object);
+}
+
+static inline gboolean
+filterx_object_is_modified_in_place(FilterXObject *self)
+{
+  if (G_UNLIKELY(self->type->is_modified_in_place))
+    return self->type->is_modified_in_place(self);
+
+  return self->modified_in_place;
+}
+
+static inline void
+filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
+{
+  if (G_UNLIKELY(self->type->set_modified_in_place))
+    return self->type->set_modified_in_place(self, modified);
+
+  self->modified_in_place = modified;
 }
 
 #endif

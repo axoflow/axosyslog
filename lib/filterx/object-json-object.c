@@ -149,11 +149,11 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
       return FALSE;
     }
 
-  self->super.super.modified_in_place = TRUE;
+  filterx_object_set_modified_in_place(&self->super.super, TRUE);
   FilterXObject *root_container = filterx_weakref_get(&self->root_container);
   if (root_container)
     {
-      root_container->modified_in_place = TRUE;
+      filterx_object_set_modified_in_place(root_container, TRUE);
       filterx_object_unref(root_container);
     }
 
@@ -177,11 +177,11 @@ _unset_key(FilterXDict *s, FilterXObject *key)
 
   json_object_object_del(self->jso, key_str);
 
-  self->super.super.modified_in_place = TRUE;
+  filterx_object_set_modified_in_place(&self->super.super, TRUE);
   FilterXObject *root_container = filterx_weakref_get(&self->root_container);
   if (root_container)
     {
-      root_container->modified_in_place = TRUE;
+      filterx_object_set_modified_in_place(root_container, TRUE);
       filterx_object_unref(root_container);
     }
 
