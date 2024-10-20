@@ -173,15 +173,6 @@ _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
   return success;
 }
 
-/* Takes reference of obj. */
-static FilterXObject *
-_eval_on_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
-{
-  gboolean success = _process_dict(self, obj);
-  filterx_object_unref(obj);
-  return success ? filterx_boolean_new(TRUE) : NULL;
-}
-
 static gboolean
 _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
@@ -232,15 +223,6 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
   return TRUE;
 }
 
-/* Takes reference of obj. */
-static FilterXObject *
-_eval_on_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
-{
-  gboolean success = _process_list(self, obj);
-  filterx_object_unref(obj);
-  return success ? filterx_boolean_new(TRUE) : NULL;
-}
-
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
@@ -255,10 +237,18 @@ _eval(FilterXExpr *s)
 
   FilterXObject *obj_unwrapped = filterx_ref_unwrap_rw(obj);
   if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
-    return _eval_on_dict(self, obj_unwrapped);
+    {
+      gboolean success = _process_dict(self, obj_unwrapped);
+      filterx_object_unref(obj);
+      return success ? filterx_boolean_new(TRUE) : NULL;
+    }
 
   if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(list)))
-    return _eval_on_list(self, obj_unwrapped);
+    {
+      gboolean success = _process_list(self, obj_unwrapped);
+      filterx_object_unref(obj);
+      return success ? filterx_boolean_new(TRUE) : NULL;
+    }
 
   filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
   filterx_object_unref(obj);
