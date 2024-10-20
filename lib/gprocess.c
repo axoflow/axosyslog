@@ -615,41 +615,6 @@ g_process_set_check(gint check_period, gboolean (*check_fn)(void))
   process_opts.check_fn = check_fn;
 }
 
-
-/**
- * g_process_message:
- * @fmt: format string
- * @...: arguments to @fmt
- *
- * This function sends a message to the client preferring to use the stderr
- * channel as long as it is available and switching to using syslog() if it
- * isn't. Generally the stderr channell will be available in the startup
- * process and in the beginning of the first startup in the
- * supervisor/daemon processes. Later on the stderr fd will be closed and we
- * have to fall back to using the system log.
- **/
-void
-g_process_message(const gchar *fmt, ...)
-{
-  gchar buf[2048];
-  va_list ap;
-
-  va_start(ap, fmt);
-  g_vsnprintf(buf, sizeof(buf), fmt, ap);
-  va_end(ap);
-  if (console_is_present(FALSE))
-    fprintf(stderr, "%s: %s\n", process_opts.name, buf);
-  else
-    {
-      gchar name[32];
-
-      g_snprintf(name, sizeof(name), "%s/%s", process_kind == G_PK_SUPERVISOR ? "supervise" : "daemon", process_opts.name);
-      openlog(name, LOG_PID, LOG_DAEMON);
-      syslog(LOG_CRIT, "%s\n", buf);
-      closelog();
-    }
-}
-
 /**
  * g_process_setup_console:
  *
@@ -701,8 +666,8 @@ g_process_change_limits(void)
     }
 
   if (setrlimit(RLIMIT_NOFILE, &limit) < 0)
-    g_process_message("Error setting file number limit; limit='%d'; error='%s'", process_opts.fd_limit_min,
-                      g_strerror(errno));
+    console_printf("Error setting file number limit; limit='%d'; error='%s'", process_opts.fd_limit_min,
+                   g_strerror(errno));
 }
 
 /**
@@ -731,7 +696,7 @@ g_process_set_dumpable(void)
       rc = prctl(PR_SET_DUMPABLE, 1, 0, 0, 0);
 
       if (rc < 0)
-        g_process_message("Cannot set process to be dumpable; error='%s'", g_strerror(errno));
+        console_printf("Cannot set process to be dumpable; error='%s'", g_strerror(errno));
     }
 #endif
 }
@@ -753,7 +718,7 @@ g_process_enable_core(void)
 
       limit.rlim_cur = limit.rlim_max = RLIM_INFINITY;
       if (setrlimit(RLIMIT_CORE, &limit) < 0)
-        g_process_message("Error setting core limit to infinity; error='%s'", g_strerror(errno));
+        console_printf("Error setting core limit to infinity; error='%s'", g_strerror(errno));
 
     }
 }
@@ -811,7 +776,7 @@ g_process_write_pidfile(pid_t pid)
     }
   else
     {
-      g_process_message("Error creating pid file; file='%s', error='%s'", pidfile, g_strerror(errno));
+      console_printf("Error creating pid file; file='%s', error='%s'", pidfile, g_strerror(errno));
     }
 
 }
@@ -831,7 +796,7 @@ g_process_remove_pidfile(void)
 
   if (unlink(pidfile) < 0)
     {
-      g_process_message("Error removing pid file; file='%s', error='%s'", pidfile, g_strerror(errno));
+      console_printf("Error removing pid file; file='%s', error='%s'", pidfile, g_strerror(errno));
     }
 }
 
@@ -851,13 +816,13 @@ g_process_change_root(void)
     {
       if (chroot(process_opts.chroot_dir) < 0)
         {
-          g_process_message("Error in chroot(); chroot='%s', error='%s'\n", process_opts.chroot_dir, g_strerror(errno));
+          console_printf("Error in chroot(); chroot='%s', error='%s'\n", process_opts.chroot_dir, g_strerror(errno));
           return FALSE;
         }
       if (chdir("/") < 0)
         {
-          g_process_message("Error in chdir() after chroot; chroot='%s', error='%s'\n", process_opts.chroot_dir,
-                            g_strerror(errno));
+          console_printf("Error in chdir() after chroot; chroot='%s', error='%s'\n", process_opts.chroot_dir,
+                         g_strerror(errno));
           return FALSE;
         }
     }
@@ -891,14 +856,14 @@ g_process_change_user(void)
     {
       if (setgid((gid_t) process_opts.gid) < 0)
         {
-          g_process_message("Error in setgid(); group='%s', gid='%d', error='%s'", process_opts.group, process_opts.gid,
-                            g_strerror(errno));
+          console_printf("Error in setgid(); group='%s', gid='%d', error='%s'", process_opts.group, process_opts.gid,
+                         g_strerror(errno));
           if (getuid() == 0)
             return FALSE;
         }
       if (process_opts.user && initgroups(process_opts.user, (gid_t) process_opts.gid) < 0)
         {
-          g_process_message("Error in initgroups(); user='%s', error='%s'", process_opts.user, g_strerror(errno));
+          console_printf("Error in initgroups(); user='%s', error='%s'", process_opts.user, g_strerror(errno));
           if (getuid() == 0)
             return FALSE;
         }
@@ -908,8 +873,8 @@ g_process_change_user(void)
     {
       if (setuid((uid_t) process_opts.uid) < 0)
         {
-          g_process_message("Error in setuid(); user='%s', uid='%d', error='%s'", process_opts.user, process_opts.uid,
-                            g_strerror(errno));
+          console_printf("Error in setuid(); user='%s', uid='%d', error='%s'", process_opts.user, process_opts.uid,
+                         g_strerror(errno));
           if (getuid() == 0)
             return FALSE;
         }
@@ -938,7 +903,7 @@ g_process_change_caps(void)
 
       if (cap == NULL)
         {
-          g_process_message("Error parsing capabilities: %s", process_opts.caps);
+          console_printf("Error parsing capabilities: %s", process_opts.caps);
           g_process_disable_caps();
           return FALSE;
         }
@@ -946,7 +911,7 @@ g_process_change_caps(void)
         {
           if (cap_set_proc(cap) == -1)
             {
-              g_process_message("Error setting capabilities, capability management disabled; error='%s'", g_strerror(errno));
+              console_printf("Error setting capabilities, capability management disabled; error='%s'", g_strerror(errno));
               g_process_disable_caps();
 
             }
@@ -972,13 +937,13 @@ g_process_resolve_names(void)
   gboolean result = TRUE;
   if (process_opts.user && !resolve_user(process_opts.user, &process_opts.uid))
     {
-      g_process_message("Error resolving user; user='%s'", process_opts.user);
+      console_printf("Error resolving user; user='%s'", process_opts.user);
       process_opts.uid = -1;
       result = FALSE;
     }
   if (process_opts.group && !resolve_group(process_opts.group, &process_opts.gid))
     {
-      g_process_message("Error resolving group; group='%s'", process_opts.group);
+      console_printf("Error resolving group; group='%s'", process_opts.group);
       process_opts.gid = -1;
       result = FALSE;
     }
@@ -1007,8 +972,10 @@ g_process_change_dir(void)
         cwd = get_installation_path_for(SYSLOG_NG_PATH_PIDFILEDIR);
 
       if (cwd)
-        if (chdir(cwd))
-          g_process_message("Error changing to directory=%s, errcode=%d", cwd, errno);
+        {
+          if (chdir(cwd))
+            console_printf("Error changing to directory=%s, errcode=%d", cwd, errno);
+        }
     }
 
   /* this check is here to avoid having to change directory early in the startup process */
@@ -1018,8 +985,8 @@ g_process_change_dir(void)
 
       if (!getcwd(buf, sizeof(buf)))
         strncpy(buf, "unable-to-query", sizeof(buf));
-      g_process_message("Unable to write to current directory, core dumps will not be generated; dir='%s', error='%s'", buf,
-                        g_strerror(errno));
+      console_printf("Unable to write to current directory, core dumps will not be generated; dir='%s', error='%s'", buf,
+                     g_strerror(errno));
     }
 
 }
@@ -1159,14 +1126,14 @@ g_process_perform_supervise(void)
     {
       if (pipe(init_result_pipe) != 0)
         {
-          g_process_message("Error daemonizing process, cannot open pipe; error='%s'", g_strerror(errno));
+          console_printf("Error daemonizing process, cannot open pipe; error='%s'", g_strerror(errno));
           g_process_startup_failed(1, TRUE);
         }
 
       /* fork off a child process */
       if ((pid = fork()) < 0)
         {
-          g_process_message("Error forking child process; error='%s'", g_strerror(errno));
+          console_printf("Error forking child process; error='%s'", g_strerror(errno));
           g_process_startup_failed(1, TRUE);
         }
       else if (pid != 0)
@@ -1203,8 +1170,8 @@ g_process_perform_supervise(void)
                   i++;
                 }
               if (i == 6)
-                g_process_message("Initialization failed but the daemon did not exit, even when forced to, trying to recover; pid='%d'",
-                                  pid);
+                console_printf("Initialization failed but the daemon did not exit, even when forced to, trying to recover; pid='%d'",
+                               pid);
               continue;
             }
 
@@ -1226,7 +1193,7 @@ g_process_perform_supervise(void)
               if (!exited)
                 {
                   gint j = 0;
-                  g_process_message("Daemon deadlock detected, killing process;");
+                  console_printf("Daemon deadlock detected, killing process;");
                   deadlock = TRUE;
 
                   while (j < 6 && waitpid(pid, &rc, WNOHANG) == 0)
@@ -1237,7 +1204,7 @@ g_process_perform_supervise(void)
                       j++;
                     }
                   if (j == 6)
-                    g_process_message("The daemon did not exit after deadlock, even when forced to, trying to recover; pid='%d'", pid);
+                    console_printf("The daemon did not exit after deadlock, even when forced to, trying to recover; pid='%d'", pid);
                 }
             }
           else
@@ -1257,14 +1224,14 @@ g_process_perform_supervise(void)
                   switch (npid)
                     {
                     case -1:
-                      g_process_message("Could not fork for external notification; reason='%s'", strerror(errno));
+                      console_printf("Could not fork for external notification; reason='%s'", strerror(errno));
                       break;
 
                     case 0:
                       switch(fork())
                         {
                         case -1:
-                          g_process_message("Could not fork for external notification; reason='%s'", strerror(errno));
+                          console_printf("Could not fork for external notification; reason='%s'", strerror(errno));
                           exit(1);
                           break;
                         case 0:
@@ -1292,7 +1259,7 @@ g_process_perform_supervise(void)
                                  argbuf,
                                  (deadlock || !WIFSIGNALED(rc) || WTERMSIG(rc) != SIGKILL) ? "restarting" : "not-restarting",
                                  (gchar *) NULL);
-                          g_process_message("Could not execute external notification; reason='%s'", strerror(errno));
+                          console_printf("Could not execute external notification; reason='%s'", strerror(errno));
                           break;
 
                         default:
@@ -1306,18 +1273,18 @@ g_process_perform_supervise(void)
                 }
               if (deadlock || !WIFSIGNALED(rc) || WTERMSIG(rc) != SIGKILL)
                 {
-                  g_process_message("Daemon exited due to a deadlock/signal/failure, restarting; exitcode='%d'", rc);
+                  console_printf("Daemon exited due to a deadlock/signal/failure, restarting; exitcode='%d'", rc);
                   sleep(1);
                 }
               else
                 {
-                  g_process_message("Daemon was killed, not restarting; exitcode='%d'", rc);
+                  console_printf("Daemon was killed, not restarting; exitcode='%d'", rc);
                   break;
                 }
             }
           else
             {
-              g_process_message("Daemon exited gracefully, not restarting; exitcode='%d'", rc);
+              console_printf("Daemon exited gracefully, not restarting; exitcode='%d'", rc);
               break;
             }
         }
@@ -1362,13 +1329,13 @@ g_process_start(void)
       /* no supervisor, sends result to startup process directly */
       if (pipe(init_result_pipe) != 0)
         {
-          g_process_message("Error daemonizing process, cannot open pipe; error='%s'", g_strerror(errno));
+          console_printf("Error daemonizing process, cannot open pipe; error='%s'", g_strerror(errno));
           exit(1);
         }
 
       if ((pid = fork()) < 0)
         {
-          g_process_message("Error forking child process; error='%s'", g_strerror(errno));
+          console_printf("Error forking child process; error='%s'", g_strerror(errno));
           exit(1);
         }
       else if (pid != 0)
@@ -1399,13 +1366,13 @@ g_process_start(void)
       /* full blown startup/supervisor/daemon */
       if (pipe(startup_result_pipe) != 0)
         {
-          g_process_message("Error daemonizing process, cannot open pipe; error='%s'", g_strerror(errno));
+          console_printf("Error daemonizing process, cannot open pipe; error='%s'", g_strerror(errno));
           exit(1);
         }
       /* first fork off supervisor process */
       if ((pid = fork()) < 0)
         {
-          g_process_message("Error forking child process; error='%s'", g_strerror(errno));
+          console_printf("Error forking child process; error='%s'", g_strerror(errno));
           exit(1);
         }
       else if (pid != 0)

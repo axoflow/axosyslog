@@ -26,10 +26,44 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <syslog.h>
 
 GMutex console_lock;
 gboolean console_present = FALSE;
 gboolean using_initial_console = TRUE;
+const gchar *console_prefix;
+
+/**
+ * console_printf:
+ * @fmt: format string
+ * @...: arguments to @fmt
+ *
+ * This function sends a message to the client preferring to use the stderr
+ * channel as long as it is available and switching to using syslog() if it
+ * isn't. Generally the stderr channell will be available in the startup
+ * process and in the beginning of the first startup in the
+ * supervisor/daemon processes. Later on the stderr fd will be closed and we
+ * have to fall back to using the system log.
+ **/
+void
+console_printf(const gchar *fmt, ...)
+{
+  gchar buf[2048];
+  va_list ap;
+
+  va_start(ap, fmt);
+  g_vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+  if (console_is_present(FALSE))
+    fprintf(stderr, "%s: %s\n", console_prefix, buf);
+  else
+    {
+      openlog(console_prefix, LOG_PID, LOG_DAEMON);
+      syslog(LOG_CRIT, "%s\n", buf);
+      closelog();
+    }
+}
+
 
 /* NOTE: this is not synced with any changes and is just an indication whether we have a console */
 gboolean
@@ -120,9 +154,10 @@ exit:
 }
 
 void
-console_global_init(void)
+console_global_init(const gchar *console_prefix_)
 {
   g_mutex_init(&console_lock);
+  console_prefix = console_prefix_;
 }
 
 void

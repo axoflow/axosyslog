@@ -236,7 +236,7 @@ main(int argc, char *argv[])
   GOptionContext *ctx;
   GError *error = NULL;
 
-  console_global_init();
+  console_global_init("syslog-ng");
   MainLoop *main_loop = main_loop_get_instance();
 
   z_mem_trace_init("syslog-ng.trace");
@@ -295,7 +295,7 @@ main(int argc, char *argv[])
 
   if (debug_flag && !log_stderr)
     {
-      g_process_message("The -d/--debug option no longer implies -e/--stderr, if you want to redirect internal() source to stderr please also include -e/--stderr option");
+      fprintf(stderr, "The -d/--debug option no longer implies -e/--stderr, if you want to redirect internal() source to stderr please also include -e/--stderr option");
     }
 
   gboolean exit_before_main_loop_run = main_loop_options.syntax_only
