@@ -235,24 +235,17 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
+  gboolean success = FALSE;
   FilterXObject *obj_unwrapped = filterx_ref_unwrap_rw(obj);
   if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
-    {
-      gboolean success = _process_dict(self, obj_unwrapped);
-      filterx_object_unref(obj);
-      return success ? filterx_boolean_new(TRUE) : NULL;
-    }
+    success = _process_dict(self, obj_unwrapped);
+  else if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(list)))
+    success = _process_list(self, obj_unwrapped);
+  else
+    filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
 
-  if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(list)))
-    {
-      gboolean success = _process_list(self, obj_unwrapped);
-      filterx_object_unref(obj);
-      return success ? filterx_boolean_new(TRUE) : NULL;
-    }
-
-  filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
   filterx_object_unref(obj);
-  return NULL;
+  return success ? filterx_boolean_new(TRUE) : NULL;
 }
 
 static void
