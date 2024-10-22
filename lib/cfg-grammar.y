@@ -258,6 +258,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_BATCH_LINES                 10087
 %token KW_BATCH_TIMEOUT               10088
 %token KW_TRIM_LARGE_MESSAGES         10089
+
 %token KW_STATS                       10400
 %token KW_FREQ                        10401
 %token KW_LEVEL                       10402
@@ -273,6 +274,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_CHECK_HOSTNAME              10093
 %token KW_BAD_HOSTNAME                10094
 %token KW_LOG_LEVEL                   10095
+%token KW_IDLE_TIMEOUT                10096
 
 %token KW_KEEP_TIMESTAMP              10100
 
@@ -1507,6 +1509,7 @@ source_proto_option
             free($3);
           }
         | KW_LOG_MSG_SIZE '(' positive_integer ')'      { last_proto_server_options->max_msg_size = $3; }
+        | KW_IDLE_TIMEOUT '(' positive_integer ')'      { last_proto_server_options->idle_timeout = $3; }
         | KW_TRIM_LARGE_MESSAGES '(' yesno ')'          { last_proto_server_options->trim_large_messages = $3; }
         ;
 
