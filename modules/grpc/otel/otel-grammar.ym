@@ -123,7 +123,7 @@ destination_otel_options
   ;
 
 destination_otel_option
-  : grpc_dest_option
+  : grpc_dest_general_option
   ;
 
 destination_syslog_ng_otlp
