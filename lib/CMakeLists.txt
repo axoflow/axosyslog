@@ -80,6 +80,7 @@ set (LIB_HEADERS
     atomic-gssize.h
     block-ref-parser.h
     cache.h
+    console.h
     cfg.h
     cfg-lexer.h
     cfg-lexer-subst.h
@@ -179,6 +180,7 @@ set(LIB_SOURCES
     apphook.c
     block-ref-parser.c
     cache.c
+    console.c
     cfg.c
     cfg-args.c
     cfg-block.c
