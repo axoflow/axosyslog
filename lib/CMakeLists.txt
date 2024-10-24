@@ -80,6 +80,7 @@ set (LIB_HEADERS
     atomic-gssize.h
     block-ref-parser.h
     cache.h
+    console.h
     cfg.h
     cfg-lexer.h
     cfg-lexer-subst.h
@@ -152,6 +153,7 @@ set (LIB_HEADERS
     serialize.h
     service-management.h
     seqnum.h
+    stackdump.h
     str-format.h
     str-utils.h
     syslog-names.h
@@ -179,6 +181,7 @@ set(LIB_SOURCES
     apphook.c
     block-ref-parser.c
     cache.c
+    console.c
     cfg.c
     cfg-args.c
     cfg-block.c
@@ -247,6 +250,7 @@ set(LIB_SOURCES
     scratch-buffers.c
     serialize.c
     service-management.c
+    stackdump.c
     str-format.c
     str-utils.c
     syslog-names.c
