@@ -245,7 +245,6 @@ filterx_json_object_new_sub(struct json_object *jso, FilterXObject *root)
   FilterXJsonObject *self = g_new0(FilterXJsonObject, 1);
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(json_object));
 
-  self->super.super.make_readonly = _make_readonly;
   self->super.get_subscript = _get_subscript;
   self->super.set_subscript = _set_subscript;
   self->super.unset_key = _unset_key;
@@ -320,4 +319,5 @@ FILTERX_DEFINE_TYPE(json_object, FILTERX_TYPE_NAME(dict),
                     .clone = _clone,
                     .list_factory = filterx_json_array_new_empty,
                     .dict_factory = filterx_json_object_new_empty,
+                    .make_readonly = _make_readonly,
                    );
