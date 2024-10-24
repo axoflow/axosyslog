@@ -27,6 +27,8 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #include "scratch-buffers.h"
 #include "utf8utils.h"
@@ -54,11 +56,12 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (!value)
     value = self->default_value;
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)) ||
-      filterx_object_is_type(value, &FILTERX_TYPE_NAME(list)))
+  FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
+  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)) ||
+      filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
       msg_debug("FilterX: format_csv(): skipping object, type not supported",
-                evt_tag_str("type", value->type->name));
+                evt_tag_str("type", value_unwrapped->type->name));
       return TRUE;
     }
 
@@ -113,7 +116,8 @@ _handle_dict_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
   if (self->columns)
     {
       FilterXObject *cols = filterx_expr_eval(self->columns);
-      if (!cols || !filterx_object_is_type(cols, &FILTERX_TYPE_NAME(list)) || !filterx_object_len(cols, &size))
+      FilterXObject *cols_unwrapped = filterx_ref_unwrap_ro(cols);
+      if (!cols || !filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)) || !filterx_object_len(cols, &size))
         {
           filterx_object_unref(cols);
           filterx_eval_push_error("Columns must represented as list. " FILTERX_FUNC_FORMAT_CSV_USAGE, &self->super.super, NULL);
@@ -123,7 +127,7 @@ _handle_dict_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
       gboolean success = TRUE;
       for (guint64 i = 0; i < size && success; i++)
         {
-          FilterXObject *col = filterx_list_get_subscript(cols, i);
+          FilterXObject *col = filterx_list_get_subscript(cols_unwrapped, i);
           FilterXObject *elt = filterx_object_get_subscript(csv_data, col);
           success = _append_to_buffer(col, elt, user_data);
           filterx_object_unref(col);
@@ -148,10 +152,11 @@ _eval(FilterXExpr *s)
   gboolean success = FALSE;
   GString *formatted = scratch_buffers_alloc();
 
-  if (filterx_object_is_type(csv_data, &FILTERX_TYPE_NAME(list)))
-    success = _handle_list_input(self, csv_data, formatted);
-  else if (filterx_object_is_type(csv_data, &FILTERX_TYPE_NAME(dict)))
-    success = _handle_dict_input(self, csv_data, formatted);
+  FilterXObject *csv_data_unwrapped = filterx_ref_unwrap_ro(csv_data);
+  if (filterx_object_is_type(csv_data_unwrapped, &FILTERX_TYPE_NAME(list)))
+    success = _handle_list_input(self, csv_data_unwrapped, formatted);
+  else if (filterx_object_is_type(csv_data_unwrapped, &FILTERX_TYPE_NAME(dict)))
+    success = _handle_dict_input(self, csv_data_unwrapped, formatted);
   else
     filterx_eval_push_error("input must be a dict or list. " FILTERX_FUNC_FORMAT_CSV_USAGE, s, csv_data);
 

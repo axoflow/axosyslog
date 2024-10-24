@@ -36,6 +36,8 @@
 #include "filterx/filterx-object.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "parser/parser-expr.h"
@@ -69,10 +71,11 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
   gboolean result = FALSE;
   if (!list_expr)
     return TRUE;
-  FilterXObject *list_obj = filterx_expr_eval(list_expr);
-  if (!list_obj)
+  FilterXObject *obj = filterx_expr_eval(list_expr);
+  if (!obj)
     return FALSE;
 
+  FilterXObject *list_obj = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
       msg_error("list object argument must be a type of list.",
@@ -98,7 +101,7 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
 
   result = TRUE;
 exit:
-  filterx_object_unref(list_obj);
+  filterx_object_unref(obj);
   return result;
 }
 
@@ -144,15 +147,16 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
   if (!*columns)
     return FALSE;
 
-  if (!filterx_object_is_type(*columns, &FILTERX_TYPE_NAME(list)))
+  FilterXObject *cols_unwrapped = filterx_ref_unwrap_ro(*columns);
+  if (!filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
       msg_error("list object argument must be a type of list.",
-                evt_tag_str("current_type", (*columns)->type->name),
+                evt_tag_str("current_type", cols_unwrapped->type->name),
                 evt_tag_str("argument_name", FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS));
       return FALSE;
     }
 
-  if (!filterx_object_len(*columns, num_of_columns))
+  if (!filterx_object_len(cols_unwrapped, num_of_columns))
     return FALSE;
 
   return TRUE;
@@ -196,6 +200,8 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
 static gboolean
 _validate_fillable(FilterXFunctionParseCSV *self, FilterXObject *fillable)
 {
+  fillable = filterx_ref_unwrap_ro(fillable);
+
   if (_are_column_names_set(self) && !filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_eval_push_error_info("fillable must be dict", &self->super.super.super,

@@ -361,6 +361,8 @@ _free(FilterXObject *s)
   FilterXMessageValue *self = (FilterXMessageValue *) s;
 
   g_free(self->buf);
+
+  filterx_object_free_method(s);
 }
 
 static gboolean
