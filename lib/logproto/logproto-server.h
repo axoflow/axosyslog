@@ -79,7 +79,7 @@ struct _LogProtoServer
 {
   LogProtoStatus status;
   const LogProtoServerOptions *options;
-  LogTransport *transport;
+  LogTransportStack transport_stack;
   AckTracker *ack_tracker;
 
   LogProtoServerWakeupCallback wakeup_callback;
@@ -149,7 +149,7 @@ log_proto_server_get_fd(LogProtoServer *s)
   /* FIXME: Layering violation, as transport may not be fd based at all.
    * But LogReader assumes it is.  */
 
-  return s->transport->fd;
+  return s->transport_stack.fd;
 }
 
 static inline void
@@ -218,7 +218,6 @@ struct _LogProtoServerFactory
 {
   LogProtoServer *(*construct)(LogTransport *transport, const LogProtoServerOptions *options);
   gint default_inet_port;
-  gboolean use_multitransport;
 };
 
 static inline LogProtoServer *
