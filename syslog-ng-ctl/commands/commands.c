@@ -57,14 +57,14 @@ process_response_status(GString *response)
 }
 
 static gboolean
-slng_send_cmd(const gchar *cmd)
+slng_send_cmd(const gchar *cmd, gboolean attach)
 {
   if (!control_client_connect(control_client))
     {
       return FALSE;
     }
 
-  if (control_client_send_command(control_client, cmd) < 0)
+  if (control_client_send_command(control_client, cmd, attach) < 0)
     {
       return FALSE;
     }
@@ -75,7 +75,16 @@ slng_send_cmd(const gchar *cmd)
 gint
 slng_run_command(const gchar *command, CommandResponseHandlerFunc cb, gpointer user_data)
 {
-  if (!slng_send_cmd(command))
+  if (!slng_send_cmd(command, FALSE))
+    return 1;
+
+  return control_client_read_reply(control_client, cb, user_data);
+}
+
+gint
+slng_attach_command(const gchar *command, CommandResponseHandlerFunc cb, gpointer user_data)
+{
+  if (!slng_send_cmd(command, TRUE))
     return 1;
 
   return control_client_read_reply(control_client, cb, user_data);
@@ -110,6 +119,26 @@ dispatch_command(const gchar *cmd)
   gint retval = 0;
   gchar *dispatchable_command = g_strdup_printf("%s\n", cmd);
   retval = slng_run_command(dispatchable_command, _print_reply_to_stdout, &first_response);
+
+  secret_storage_wipe(dispatchable_command, strlen(dispatchable_command));
+  g_free(dispatchable_command);
+
+  return retval;
+}
+
+static gint
+_ignore_alive_messages(GString *reply, gpointer user_data)
+{
+  return 0;
+}
+
+gint
+attach_command(const gchar *cmd)
+{
+  gboolean first_response = TRUE;
+  gint retval = 0;
+  gchar *dispatchable_command = g_strdup_printf("%s\n", cmd);
+  retval = slng_attach_command(dispatchable_command, _ignore_alive_messages, &first_response);
 
   secret_storage_wipe(dispatchable_command, strlen(dispatchable_command));
   g_free(dispatchable_command);
