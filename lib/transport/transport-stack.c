@@ -77,6 +77,37 @@ log_transport_stack_switch(LogTransportStack *self, gint index)
   return TRUE;
 }
 
+/*
+ * Move the transport stack state to another LogTransportStack instance.
+ * Normally LogTransportStack instances are embedded in LogProto instances,
+ * so in case the LogProto instance is replaced, the transport stack may
+ * need to be moved.
+ */
+void
+log_transport_stack_move(LogTransportStack *self, LogTransportStack *other)
+{
+  self->fd = other->fd;
+  self->active_transport = other->active_transport;
+  other->fd = -1;
+
+  for (gint i = 0; i < LOG_TRANSPORT__MAX; i++)
+    {
+      g_assert(self->transports[i] == NULL);
+      g_assert(self->transport_factories[i] == NULL);
+
+      if (other->transports[i])
+        {
+          self->transports[i] = other->transports[i];
+          other->transports[i] = NULL;
+        }
+      if (other->transport_factories[i])
+        {
+          self->transport_factories[i] = other->transport_factories[i];
+          other->transport_factories[i] = NULL;
+        }
+    }
+}
+
 void
 log_transport_stack_init(LogTransportStack *self, LogTransport *initial_transport)
 {
