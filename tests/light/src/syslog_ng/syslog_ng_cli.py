@@ -72,7 +72,7 @@ class SyslogNgCli(object):
         result = self.__syntax_only()
         if result["exit_code"] != 0:
             logger.error(result["stderr"])
-            raise Exception("syslog-ng can not started exit_code={}".format(result["exit_code"]))
+            raise Exception("syslog-ng could not start exit_code={}".format(result["exit_code"]))
 
     def is_process_running(self):
         return self.__process and self.__process.poll() is None
