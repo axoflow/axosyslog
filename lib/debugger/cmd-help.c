@@ -36,6 +36,7 @@ _cmd_help(Debugger *self, gint argc, gchar *argv[])
          "  info                     Display information about the current execution state\n"
          "  list or l                Display source code at the current location\n"
          "  print or p               Print the current log message using a template\n"
+         "  printx or px             Print the current log message using a filterx expression\n"
          "  drop or d                Drop the current message\n"
          "  quit or q                Tell syslog-ng to exit\n"
         );
