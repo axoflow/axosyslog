@@ -185,7 +185,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %%
 
 start
-        : block					{ *result = $1; if (yychar != FILTERX_EMPTY) { cfg_lexer_unput_token(lexer, &yylval); } YYACCEPT; }
+        : stmts					{ *result = $1; if (yychar != FILTERX_EMPTY) { cfg_lexer_unput_token(lexer, &yylval); } YYACCEPT; }
 	;
 
 block
