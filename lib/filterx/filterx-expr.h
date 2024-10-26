@@ -27,6 +27,7 @@
 #include "filterx-object.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
+#include "atomic.h"
 
 #define FXE_EFFECT_BITFIELD_SIZE 3
 typedef enum
@@ -49,11 +50,12 @@ typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr *parent, FilterXExpr **child
 struct _FilterXExpr
 {
   StatsCounterItem *eval_count;
+  GAtomicCounter ref_cnt;
+
   /* evaluate expression */
   FilterXObject *(*eval)(FilterXExpr *self);
 
   /* not thread-safe */
-  guint32 ref_cnt;
   guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, effects:FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
