@@ -47,8 +47,8 @@ _eval_null_coalesce(FilterXExpr *s)
     {
       if (!lhs_object)
         {
-          msg_debug("FilterX: null-coalesce suppressing error",
-                    filterx_format_last_error());
+          msg_debug("FILTERX null coalesce supressing error:",
+                    filterx_eval_format_last_error_tag());
           filterx_eval_clear_errors();
         }
       FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
