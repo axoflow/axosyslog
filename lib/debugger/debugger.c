@@ -145,6 +145,7 @@ _set_mode(Debugger *self, DebuggerMode new_mode, gboolean trace_message)
 
 #include "cmd-help.c"
 #include "cmd-print.c"
+#include "cmd-printx.c"
 #include "cmd-display.c"
 #include "cmd-drop.c"
 #include "cmd-info.c"
@@ -175,6 +176,8 @@ struct
   { "f",        _cmd_follow, .requires_breakpoint_site = TRUE },
   { "print",    _cmd_print, .requires_breakpoint_site = TRUE },
   { "p",        _cmd_print, .requires_breakpoint_site = TRUE },
+  { "printx",   _cmd_printx, .requires_breakpoint_site = TRUE },
+  { "px",       _cmd_printx, .requires_breakpoint_site = TRUE },
   { "list",     _cmd_list, },
   { "l",        _cmd_list, },
   { "display",  _cmd_display },
@@ -229,6 +232,30 @@ _fetch_command(Debugger *self)
   if (command && strlen(command) > 0)
     _set_command(self, command);
   g_free(command);
+}
+
+static void
+_setup_filterx_context(Debugger *self, FilterXEvalContext *context, FilterXScope **_scope)
+{
+  const LogPathOptions *path_options = self->breakpoint_site->path_options;
+  FilterXEvalContext *previous_context = path_options->filterx_context;
+  FilterXScope *scope = NULL;
+
+  if (previous_context)
+    scope = filterx_scope_reuse(previous_context->scope);
+
+  if (!scope)
+    *_scope = scope = filterx_scope_new(previous_context ? previous_context->scope : NULL);
+
+  filterx_eval_init_context(context, previous_context, scope, self->breakpoint_site->msg);
+}
+
+static void
+_clear_filterx_context(Debugger *self, FilterXEvalContext *context, FilterXScope **_scope)
+{
+  if (*_scope)
+    filterx_scope_free(*_scope);
+  filterx_eval_deinit_context(context);
 }
 
 static gboolean
@@ -290,6 +317,12 @@ _handle_interactive_prompt(Debugger *self)
       _set_current_location(self, NULL);
       printf("  Stopping on Interrupt...\n");
     }
+
+  FilterXEvalContext temporary_context;
+  FilterXScope *scope = NULL;
+  if (self->breakpoint_site)
+    _setup_filterx_context(self, &temporary_context, &scope);
+
   while (1)
     {
       _fetch_command(self);
@@ -298,6 +331,8 @@ _handle_interactive_prompt(Debugger *self)
         break;
 
     }
+  if (self->breakpoint_site)
+    _clear_filterx_context(self, &temporary_context, &scope);
   printf("(continuing)\n");
 }
 
