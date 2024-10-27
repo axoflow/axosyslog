@@ -35,6 +35,12 @@
 #include <fcntl.h>
 #include <errno.h>
 
+typedef struct _FileOpenerNamedPipe
+{
+  FileOpener super;
+  gboolean suppress_eof;
+} FileOpenerNamedPipe;
+
 static gboolean
 _prepare_open(FileOpener *self, const gchar *name)
 {
@@ -64,11 +70,19 @@ _prepare_open(FileOpener *self, const gchar *name)
 }
 
 static gint
-_get_open_flags(FileOpener *self, FileDirection dir)
+_get_open_flags(FileOpener *s, FileDirection dir)
 {
+  FileOpenerNamedPipe *self = (FileOpenerNamedPipe *) s;
   switch (dir)
     {
     case AFFILE_DIR_READ:
+      /* if a named pipe is opened for read write, we won't get an EOF, as
+       * there's always a writer (us, having opened in RW mode). EOF is only
+       * indicated if no writers remain */
+
+      if (self->suppress_eof)
+        return (O_RDWR | O_NOCTTY | O_NONBLOCK | O_LARGEFILE);
+      return (O_RDONLY | O_NOCTTY | O_NONBLOCK | O_LARGEFILE);
     case AFFILE_DIR_WRITE:
       return (O_RDWR | O_NOCTTY | O_NONBLOCK | O_LARGEFILE);
     default:
@@ -77,11 +91,13 @@ _get_open_flags(FileOpener *self, FileDirection dir)
 }
 
 static LogTransport *
-_construct_transport(FileOpener *self, gint fd)
+_construct_transport(FileOpener *s, gint fd)
 {
+  FileOpenerNamedPipe *self = (FileOpenerNamedPipe *) s;
   LogTransport *transport = log_transport_pipe_new(fd);
 
-  transport->read = log_transport_file_read_and_ignore_eof_method;
+  if (self->suppress_eof)
+    transport->read = log_transport_file_read_and_ignore_eof_method;
   return transport;
 }
 
@@ -106,16 +122,29 @@ pipe_sd_set_create_dirs(LogDriver *s, gboolean create_dirs)
 }
 
 FileOpener *
-file_opener_for_named_pipes_new(void)
+file_opener_for_named_pipes_new(gboolean suppress_eof)
 {
-  FileOpener *self = file_opener_new();
+  FileOpenerNamedPipe *self = g_new0(FileOpenerNamedPipe, 1);
+  
+  file_opener_init_instance(&self->super);
 
-  self->prepare_open = _prepare_open;
-  self->get_open_flags = _get_open_flags;
-  self->construct_transport = _construct_transport;
-  self->construct_src_proto = _construct_src_proto;
-  self->construct_dst_proto = _construct_dst_proto;
-  return self;
+  self->super.prepare_open = _prepare_open;
+  self->super.get_open_flags = _get_open_flags;
+  self->super.construct_transport = _construct_transport;
+  self->super.construct_src_proto = _construct_src_proto;
+  self->super.construct_dst_proto = _construct_dst_proto;
+
+  self->suppress_eof = suppress_eof;
+  return &self->super;
+}
+
+static gboolean
+_init(LogPipe *s)
+{
+  AFFileSourceDriver *self = (AFFileSourceDriver *) s;
+  if (!self->file_opener)
+    self->file_opener = file_opener_for_named_pipes_new((self->file_reader_options.reader_options.flags & LR_EXIT_ON_EOF) == 0);
+  return affile_sd_init(s);
 }
 
 LogDriver *
@@ -123,6 +152,7 @@ pipe_sd_new(gchar *filename, GlobalConfig *cfg)
 {
   AFFileSourceDriver *self = affile_sd_new_instance(filename, cfg);
 
+  self->super.super.super.init = _init;
   self->file_reader_options.reader_options.super.stats_source = stats_register_type("pipe");
 
   if (cfg_is_config_version_older(cfg, VERSION_VALUE_3_2))
@@ -137,8 +167,6 @@ pipe_sd_new(gchar *filename, GlobalConfig *cfg)
       self->file_reader_options.reader_options.parse_options.flags &= ~LP_EXPECT_HOSTNAME;
     }
 
-  self->file_opener = file_opener_for_named_pipes_new();
-
   affile_sd_set_transport_name(self, "local+pipe");
   return &self->super.super;
 }
@@ -149,6 +177,6 @@ pipe_dd_new(LogTemplate *filename_template, GlobalConfig *cfg)
   AFFileDestDriver *self = affile_dd_new_instance(filename_template, cfg);
 
   self->writer_options.stats_source = stats_register_type("pipe");
-  self->file_opener = file_opener_for_named_pipes_new();
+  self->file_opener = file_opener_for_named_pipes_new(FALSE);
   return &self->super.super;
 }
