@@ -191,6 +191,8 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
       if (filterx_variable_handle_is_floating(handle) &&
           !v->declared && v->generation != self->generation)
         return NULL;
+      if (!filterx_variable_handle_is_floating(handle) && v->generation == 0 && self->syncable)
+        return NULL;
       return v;
     }
   return NULL;
