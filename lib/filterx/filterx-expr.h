@@ -49,7 +49,12 @@ struct _FilterXExpr
   /* unset the expression */
   gboolean (*unset)(FilterXExpr *self);
 
+  gboolean (*init)(FilterXExpr *self, GlobalConfig *cfg);
+  void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   void (*free_fn)(FilterXExpr *self);
+
+  gboolean inited;
+
   CFG_LTYPE lloc;
   gchar *expr_text;
 };
@@ -145,7 +150,36 @@ void filterx_expr_init_instance(FilterXExpr *self);
 FilterXExpr *filterx_expr_new(void);
 FilterXExpr *filterx_expr_ref(FilterXExpr *self);
 void filterx_expr_unref(FilterXExpr *self);
+gboolean filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg);
+void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_free_method(FilterXExpr *self);
+
+static inline gboolean
+filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg)
+{
+  if (!self || self->inited)
+    return TRUE;
+
+  if (!self->init || self->init(self, cfg))
+    {
+      self->inited = TRUE;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
+static inline void
+filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
+{
+  if (!self || !self->inited)
+    return;
+
+  if (self->deinit)
+    self->deinit(self, cfg);
+
+  self->inited = FALSE;
+}
 
 typedef struct _FilterXUnaryOp
 {

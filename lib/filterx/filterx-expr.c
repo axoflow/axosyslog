@@ -58,6 +58,17 @@ filterx_expr_format_location_tag(FilterXExpr *self)
     return evt_tag_str("expr", "n/a");
 }
 
+gboolean
+filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg)
+{
+  return TRUE;
+}
+
+void
+filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
+{
+}
+
 void
 filterx_expr_free_method(FilterXExpr *self)
 {
@@ -68,6 +79,8 @@ void
 filterx_expr_init_instance(FilterXExpr *self)
 {
   self->ref_cnt = 1;
+  self->init = filterx_expr_init_method;
+  self->deinit = filterx_expr_deinit_method;
   self->free_fn = filterx_expr_free_method;
 }
 
