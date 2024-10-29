@@ -206,6 +206,18 @@ deinit_libtest_filterx(void)
   filterx_eval_deinit_context(&filterx_env.context);
 }
 
+static FilterXObject *
+_list_factory(FilterXObject *self)
+{
+  return filterx_test_list_new();
+}
+
+static FilterXObject *
+_dict_factory(FilterXObject *self)
+{
+  return filterx_test_dict_new();
+}
+
 FILTERX_DEFINE_TYPE(test_dict, FILTERX_TYPE_NAME(object));
 FILTERX_DEFINE_TYPE(test_list, FILTERX_TYPE_NAME(object));
 FILTERX_DEFINE_TYPE(test_unknown_object, FILTERX_TYPE_NAME(object),
@@ -214,5 +226,5 @@ FILTERX_DEFINE_TYPE(test_unknown_object, FILTERX_TYPE_NAME(object),
                     .marshal = _unknown_marshal,
                     .repr = _unknown_repr,
                     .map_to_json = _unknown_map_to_json,
-                    .list_factory = filterx_test_list_new,
-                    .dict_factory = filterx_test_dict_new);
+                    .list_factory = _list_factory,
+                    .dict_factory = _dict_factory);

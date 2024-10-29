@@ -24,6 +24,8 @@
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 static void _set_error(GError **error, const gchar *format, ...) G_GNUC_PRINTF(2, 0);
@@ -76,7 +78,8 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   if (!dict_obj)
     goto exit;
 
-  if (!filterx_object_is_type(elem_context->parent_obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *parent_unwrapped = filterx_ref_unwrap_ro(elem_context->parent_obj);
+  if (!filterx_object_is_type(parent_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
       _set_error(error, "failed to convert EventData string to dict, parent must be a dict");
       goto exit;
@@ -118,10 +121,11 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
     }
 
   existing_obj = filterx_object_get_subscript(new_elem_context->parent_obj, new_elem_key);
-  if (!filterx_object_is_type(existing_obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *existing_obj_unwrapped = filterx_ref_unwrap_ro(existing_obj);
+  if (!filterx_object_is_type(existing_obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
       _set_error(error, "failed to prepare dict for named param, parent must be dict, got \"%s\"",
-                 existing_obj->type->name);
+                 existing_obj_unwrapped->type->name);
       goto exit;
     }
 
@@ -283,7 +287,8 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
       return;
     }
 
-  if (!filterx_object_is_type(last_elem_context->current_obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *current_obj = filterx_ref_unwrap_ro(last_elem_context->current_obj);
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)))
     {
       if (!_convert_to_dict(context, last_elem_context, error))
         return;
@@ -317,7 +322,8 @@ _text(FilterXGeneratorFunctionParseXml *s,
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
   XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
 
-  if (!filterx_object_is_type(elem_context->current_obj, &FILTERX_TYPE_NAME(dict)) ||
+  FilterXObject *current_obj = filterx_ref_unwrap_ro(elem_context->current_obj);
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)) ||
       !state->has_named_data)
     {
       filterx_parse_xml_text_method(s, context, text, text_len, st, error);

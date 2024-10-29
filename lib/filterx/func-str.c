@@ -31,6 +31,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
 #include "scratch-buffers.h"
 
 #define FILTERX_FUNC_STARTSWITH_USAGE "Usage: startswith(string, prefix, ignorecase=true)" \
@@ -246,7 +247,9 @@ _expr_affix_eval_needle(FilterXExprAffix *self)
       g_ptr_array_add(needles, str_value);
       return needles;
     }
-  if (filterx_object_is_type(needle_obj, &FILTERX_TYPE_NAME(list)))
+
+  FilterXObject *list_needle = filterx_ref_unwrap_ro(needle_obj);
+  if (filterx_object_is_type(list_needle, &FILTERX_TYPE_NAME(list)))
     {
       guint64 len;
       filterx_object_len(needle_obj, &len);
@@ -260,7 +263,7 @@ _expr_affix_eval_needle(FilterXExprAffix *self)
 
       for (guint64 i = 0; i < len; i++)
         {
-          FilterXObject *elem = filterx_list_get_subscript(needle_obj, i);
+          FilterXObject *elem = filterx_list_get_subscript(list_needle, i);
 
           GString *str_value = _obj_format(elem, self->ignore_case);
           filterx_object_unref(elem);

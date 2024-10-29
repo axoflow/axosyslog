@@ -24,6 +24,8 @@
 #include "expr-plus.h"
 #include "object-string.h"
 #include "filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 #include "expr-generator.h"
 #include "object-list-interface.h"
@@ -39,6 +41,8 @@ typedef struct FilterXOperatorPlusGenerator
 static gboolean
 _generate_obj(FilterXOperatorPlusGenerator *self, FilterXObject *obj, FilterXObject *fillable)
 {
+  fillable = filterx_ref_unwrap_rw(fillable);
+
   if (filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(list)))
     return filterx_list_merge(fillable, obj);
 

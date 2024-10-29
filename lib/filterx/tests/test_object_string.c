@@ -25,6 +25,7 @@
 
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
+#include "filterx/filterx-object-istype.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"

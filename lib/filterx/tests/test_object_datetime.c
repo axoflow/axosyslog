@@ -34,6 +34,7 @@
 #include "filterx/expr-function.h"
 #include "filterx/expr-get-subscript.h"
 #include "filterx/filterx-private.h"
+#include "filterx/filterx-object-istype.h"
 
 
 Test(filterx_datetime, test_filterx_object_datetime_marshals_to_the_stored_values)

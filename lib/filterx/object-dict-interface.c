@@ -25,6 +25,8 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-json.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "str-utils.h"
 
 gboolean
@@ -53,6 +55,7 @@ filterx_dict_merge(FilterXObject *s, FilterXObject *other)
 {
   FilterXDict *self = (FilterXDict *) s;
 
+  other = filterx_ref_unwrap_ro(other);
   g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(dict)));
   return filterx_dict_iter(other, _add_elem_to_dict, self);
 }
@@ -214,8 +217,8 @@ filterx_dict_init_instance(FilterXDict *self, FilterXType *type)
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
-  if (!filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(dict)) ||
-      !filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(dict)))
+  rhs_object = filterx_ref_unwrap_ro(rhs_object);
+  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(dict)))
     return NULL;
 
   FilterXObject *cloned = filterx_object_clone(lhs_object);

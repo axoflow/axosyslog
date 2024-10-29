@@ -35,6 +35,8 @@
 #include "filterx/func-flags.h"
 #include "filterx/expr-literal-generator.h"
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #define FILTERX_FUNC_UNSET_EMPTIES_USAGE "Usage: unset_empties(object, " \
 FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE"=bool, " \
@@ -104,6 +106,8 @@ static gboolean _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXO
 static gboolean
 _should_unset(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
+  filterx_assert_not_ref(obj);
+
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL) &&
       filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)))
     return TRUE;
@@ -127,6 +131,7 @@ _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpoin
   FilterXFunctionUnsetEmpties *self = ((gpointer *) user_data)[0];
   GList **keys_to_unset = ((gpointer *) user_data)[1];
 
+  value = filterx_ref_unwrap_rw(value);
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
     {
       if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, value))
@@ -168,15 +173,6 @@ _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
   return success;
 }
 
-/* Takes reference of obj. */
-static FilterXObject *
-_eval_on_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
-{
-  gboolean success = _process_dict(self, obj);
-  filterx_object_unref(obj);
-  return success ? filterx_boolean_new(TRUE) : NULL;
-}
-
 static gboolean
 _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
@@ -188,22 +184,23 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
   for (gint64 i = ((gint64) len) - 1; i >= 0; i--)
     {
       FilterXObject *elem = filterx_list_get_subscript(obj, i);
+      FilterXObject *elem_unwrapped = filterx_ref_unwrap_rw(elem);
 
       if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
         {
-          if (filterx_object_is_type(elem, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, elem))
+          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, elem_unwrapped))
             {
               filterx_object_unref(elem);
               return FALSE;
             }
-          if (filterx_object_is_type(elem, &FILTERX_TYPE_NAME(list)) && !_process_list(self, elem))
+          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(list)) && !_process_list(self, elem_unwrapped))
             {
               filterx_object_unref(elem);
               return FALSE;
             }
         }
 
-      if (_should_unset(self, elem))
+      if (_should_unset(self, elem_unwrapped))
         {
           if (self->replacement)
             {
@@ -226,15 +223,6 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
   return TRUE;
 }
 
-/* Takes reference of obj. */
-static FilterXObject *
-_eval_on_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
-{
-  gboolean success = _process_list(self, obj);
-  filterx_object_unref(obj);
-  return success ? filterx_boolean_new(TRUE) : NULL;
-}
-
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
@@ -247,15 +235,17 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)))
-    return _eval_on_dict(self, obj);
+  gboolean success = FALSE;
+  FilterXObject *obj_unwrapped = filterx_ref_unwrap_rw(obj);
+  if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
+    success = _process_dict(self, obj_unwrapped);
+  else if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(list)))
+    success = _process_list(self, obj_unwrapped);
+  else
+    filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
 
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)))
-    return _eval_on_list(self, obj);
-
-  filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
   filterx_object_unref(obj);
-  return NULL;
+  return success ? filterx_boolean_new(TRUE) : NULL;
 }
 
 static void
@@ -350,6 +340,9 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
 {
   g_assert(target);
   guint64 len;
+
+  target = filterx_ref_unwrap_ro(target);
+
   if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(null)))
     set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL, TRUE);
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(list)))

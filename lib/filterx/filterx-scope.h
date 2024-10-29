@@ -24,24 +24,8 @@
 #define FILTERX_SCOPE_H_INCLUDED
 
 #include "filterx-object.h"
+#include "filterx-variable.h"
 #include "logmsg/logmsg.h"
-
-typedef struct _FilterXVariable FilterXVariable;
-typedef guint32 FilterXVariableHandle;
-typedef enum
-{
-  FX_VAR_MESSAGE,
-  FX_VAR_FLOATING,
-  FX_VAR_DECLARED,
-} FilterXVariableType;
-
-gboolean filterx_variable_is_floating(FilterXVariable *v);
-gboolean filterx_variable_handle_is_floating(FilterXVariableHandle handle);
-const gchar *filterx_variable_get_name(FilterXVariable *v, gssize *len);
-FilterXObject *filterx_variable_get_value(FilterXVariable *v);
-void filterx_variable_set_value(FilterXVariable *v, FilterXObject *new_value);
-void filterx_variable_unset_value(FilterXVariable *v);
-gboolean filterx_variable_is_set(FilterXVariable *v);
 
 /*
  * FilterXScope represents variables in a filterx scope.
@@ -66,7 +50,6 @@ void filterx_scope_set_dirty(FilterXScope *self);
 gboolean filterx_scope_is_dirty(FilterXScope *self);
 void filterx_scope_sync(FilterXScope *self, LogMessage *msg);
 
-FilterXVariableHandle filterx_scope_map_variable_to_handle(const gchar *name, FilterXVariableType type);
 FilterXVariable *filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle);
 FilterXVariable *filterx_scope_register_variable(FilterXScope *self,
                                                  FilterXVariableHandle handle,

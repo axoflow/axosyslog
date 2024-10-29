@@ -40,6 +40,8 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/expr-set-subscript.h"
 #include "filterx/expr-get-subscript.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -151,7 +153,7 @@ Test(filterx_expr, test_filterx_list_merge)
 
   FilterXObject *stored_inner_list = filterx_list_get_subscript(json_array, 2);
   cr_assert(stored_inner_list);
-  cr_assert(filterx_object_is_type(stored_inner_list, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_list), &FILTERX_TYPE_NAME(list)));
   cr_assert(filterx_object_len(stored_inner_list, &len));
   cr_assert_eq(len, 1);
   _assert_int_value_and_unref(filterx_list_get_subscript(stored_inner_list, 0), 1337);
@@ -269,7 +271,7 @@ Test(filterx_expr, test_filterx_dict_merge)
 
   FilterXObject *stored_inner_dict = filterx_object_get_subscript(json, baz);
   cr_assert(stored_inner_dict);
-  cr_assert(filterx_object_is_type(stored_inner_dict, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_dict), &FILTERX_TYPE_NAME(dict)));
   cr_assert_eq(filterx_object_len(stored_inner_dict, &len), 1);
   _assert_int_value_and_unref(filterx_object_get_subscript(stored_inner_dict, foo), 1);
   filterx_object_unref(stored_inner_dict);
@@ -286,7 +288,7 @@ Test(filterx_expr, test_filterx_dict_merge)
 
   stored_inner_dict = filterx_object_get_subscript(json, baz);
   cr_assert(stored_inner_dict);
-  cr_assert(filterx_object_is_type(stored_inner_dict, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_dict), &FILTERX_TYPE_NAME(dict)));
   cr_assert(filterx_object_len(stored_inner_dict, &len));
   cr_assert_eq(len, 1);
   _assert_int_value_and_unref(filterx_object_get_subscript(stored_inner_dict, foo), 1);

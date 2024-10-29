@@ -29,6 +29,8 @@
 #include "filterx/object-json.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 #include "utf8utils.h"
 
@@ -265,11 +267,12 @@ _format_and_append_value(FilterXObject *value, GString *result)
   if (filterx_object_extract_string_ref(value, &str, &str_len))
     return _format_and_append_string(str, str_len, result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)))
-    return _format_and_append_dict(value, result);
+  FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
+  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)))
+    return _format_and_append_dict(value_unwrapped, result);
 
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(list)))
-    return _format_and_append_list(value, result);
+  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
+    return _format_and_append_list(value_unwrapped, result);
 
   /* FIXME: handle datetime based on object-datetime.c:_convert_unix_time_to_string() */
 

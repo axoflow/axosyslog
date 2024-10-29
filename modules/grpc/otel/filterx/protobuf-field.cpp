@@ -33,6 +33,8 @@
 #include "generic-number.h"
 #include "filterx/object-json.h"
 #include "filterx/object-null.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
 #include "compat/cpp-end.h"
 
 #include <unistd.h>
@@ -223,6 +225,7 @@ public:
         goto success;
       }
 
+    object = filterx_ref_unwrap_ro(object);
     if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)) ||
         filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
       {

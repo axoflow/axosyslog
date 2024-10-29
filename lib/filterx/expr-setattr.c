@@ -24,6 +24,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 typedef struct _FilterXSetAttr
@@ -53,6 +54,13 @@ _eval(FilterXExpr *s)
   FilterXObject *new_value = filterx_expr_eval(self->new_value);
   if (!new_value)
     goto exit;
+
+  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
+   * (or after creating our own dict/list repr) */
+  if (!new_value->weak_referenced)
+    {
+      new_value = filterx_ref_new(new_value);
+    }
 
   FilterXObject *cloned = filterx_object_clone(new_value);
   filterx_object_unref(new_value);

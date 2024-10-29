@@ -24,6 +24,7 @@
 
 #include "filterx-metrics-labels.h"
 #include "filterx-eval.h"
+#include "filterx/filterx-object-istype.h"
 #include "expr-literal.h"
 #include "expr-literal-generator.h"
 #include "object-string.h"
@@ -226,14 +227,15 @@ _format_expr_to_cache(FilterXExpr *expr, DynMetricsStore *cache)
 
   gboolean success = FALSE;
 
-  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
+  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_eval_push_error_info("failed to format metrics labels, labels must be a dict", expr,
                                    g_strdup_printf("got %s instead", obj->type->name), TRUE);
       goto exit;
     }
 
-  success = filterx_dict_iter(obj, _format_dict_elem_to_cache, cache);
+  success = filterx_dict_iter(typed_obj, _format_dict_elem_to_cache, cache);
   if (!success)
     goto exit;
 
