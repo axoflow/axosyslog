@@ -54,10 +54,14 @@ gboolean filterx_variable_is_set(FilterXVariable *v);
  * upon the exit from the scope.
  *
  */
+
 typedef struct _FilterXScope FilterXScope;
 
 typedef gboolean (*FilterXScopeForeachFunc)(FilterXVariable *variable, gpointer user_data);
 
+void filterx_scope_set_log_msg_has_changes(FilterXScope *self);
+void filterx_scope_clear_log_msg_has_changes(FilterXScope *self);
+gboolean filterx_scope_has_log_msg_changes(FilterXScope *self);
 void filterx_scope_set_dirty(FilterXScope *self);
 gboolean filterx_scope_is_dirty(FilterXScope *self);
 void filterx_scope_sync(FilterXScope *self, LogMessage *msg);
@@ -71,6 +75,7 @@ FilterXVariable *filterx_scope_register_declared_variable(FilterXScope *self,
                                                           FilterXVariableHandle handle,
                                                           FilterXObject *initial_value);
 gboolean filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data);
+void filterx_scope_invalidate_log_msg_cache(FilterXScope *self);
 
 /* copy on write */
 void filterx_scope_write_protect(FilterXScope *self);
