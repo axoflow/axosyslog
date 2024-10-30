@@ -90,6 +90,25 @@ _isset(FilterXExpr *s)
   return result;
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  if (!filterx_expr_init(self->operand, cfg))
+    return FALSE;
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  filterx_expr_deinit(self->operand, cfg);
+  filterx_expr_deinit_method(s, cfg);
+}
 
 static void
 _free(FilterXExpr *s)
@@ -110,6 +129,8 @@ filterx_getattr_new(FilterXExpr *operand, FilterXString *attr_name)
   self->super.eval = _eval;
   self->super.unset = _unset;
   self->super.is_set = _isset;
+  self->super.init = _init;
+  self->super.deinit = _deinit;
   self->super.free_fn = _free;
   self->operand = operand;
 

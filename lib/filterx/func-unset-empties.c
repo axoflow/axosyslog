@@ -248,6 +248,26 @@ _eval(FilterXExpr *s)
   return success ? filterx_boolean_new(TRUE) : NULL;
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
+
+  if (!filterx_expr_init_method(self->object_expr, cfg))
+    return FALSE;
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
+
+  filterx_expr_deinit(self->object_expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -486,6 +506,8 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionUnsetEmpties *self = g_new0(FilterXFunctionUnsetEmpties, 1);
   filterx_function_init_instance(&self->super, "unset_empties");
   self->super.super.eval = _eval;
+  self->super.super.init = _init;
+  self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
 
   reset_flags(&self->flags, ALL_FLAG_SET(FilterXFunctionUnsetEmptiesFlags));

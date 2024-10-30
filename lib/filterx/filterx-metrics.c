@@ -179,6 +179,28 @@ exit:
   return success;
 }
 
+gboolean
+filterx_metrics_init(FilterXMetrics *self, GlobalConfig *cfg)
+{
+  if (!filterx_expr_init(self->key.expr, cfg))
+    return FALSE;
+
+  if (!filterx_metrics_labels_init(self->labels, cfg))
+    {
+      filterx_expr_deinit(self->key.expr, cfg);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+void
+filterx_metrics_deinit(FilterXMetrics *self, GlobalConfig *cfg)
+{
+  filterx_expr_deinit(self->key.expr, cfg);
+  filterx_metrics_labels_deinit(self->labels, cfg);
+}
+
 void
 filterx_metrics_free(FilterXMetrics *self)
 {

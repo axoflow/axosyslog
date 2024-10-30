@@ -119,6 +119,26 @@ filterx_expr_unref(FilterXExpr *self)
     }
 }
 
+gboolean
+filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  if (!filterx_expr_init(self->operand, cfg))
+    return FALSE;
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+void
+filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  filterx_expr_deinit(self->operand, cfg);
+  filterx_expr_deinit_method(s, cfg);
+}
+
 void
 filterx_unary_op_free_method(FilterXExpr *s)
 {
@@ -132,6 +152,8 @@ void
 filterx_unary_op_init_instance(FilterXUnaryOp *self, FilterXExpr *operand)
 {
   filterx_expr_init_instance(&self->super);
+  self->super.init = filterx_unary_op_init_method;
+  self->super.deinit = filterx_unary_op_deinit_method;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
 }
@@ -146,10 +168,36 @@ filterx_binary_op_free_method(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+gboolean
+filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  if (!filterx_expr_init(self->lhs, cfg))
+    return FALSE;
+
+  if (!filterx_expr_init(self->rhs, cfg))
+    return FALSE;
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+void
+filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  filterx_expr_deinit(self->lhs, cfg);
+  filterx_expr_deinit(self->rhs, cfg);
+  filterx_expr_deinit_method(s, cfg);
+}
+
 void
 filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterXExpr *rhs)
 {
   filterx_expr_init_instance(&self->super);
+  self->super.init = filterx_binary_op_init_method;
+  self->super.deinit = filterx_binary_op_deinit_method;
   self->super.free_fn = filterx_binary_op_free_method;
   g_assert(lhs);
   g_assert(rhs);

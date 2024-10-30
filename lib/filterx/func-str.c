@@ -217,6 +217,33 @@ _expr_affix_init_needle(FilterXExprAffix *self)
   return TRUE;
 }
 
+static gboolean
+_expr_affix_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprAffix *self = (FilterXExprAffix *) s;
+
+  if (!filterx_expr_init(self->haystack, cfg))
+    return FALSE;
+
+  if (!filterx_expr_init(self->needle.expr, cfg))
+    {
+      filterx_expr_deinit(self->haystack, cfg);
+      return FALSE;
+    }
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_expr_affix_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprAffix *self = (FilterXExprAffix *) s;
+
+  filterx_expr_deinit(self->haystack, cfg);
+  filterx_expr_deinit(self->needle.expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _expr_affix_free(FilterXExpr *s)
 {
@@ -376,6 +403,8 @@ _function_affix_new(FilterXFunctionArgs *args,
 
   filterx_function_init_instance(&self->super, affix_name);
   self->super.super.eval = _expr_affix_eval;
+  self->super.super.init = _expr_affix_init;
+  self->super.super.deinit = _expr_affix_deinit;
   self->super.super.free_fn = _expr_affix_free;
 
   self->needle.cached_strings = g_ptr_array_new_with_free_func((GDestroyNotify) _string_with_cache_free);

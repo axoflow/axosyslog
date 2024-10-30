@@ -100,6 +100,31 @@ _expr_plus_generator_create_container(FilterXExprGenerator *s, FilterXExpr *fill
   return generator->create_container(generator, fillable_parent);
 }
 
+static gboolean
+_expr_plus_generator_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXOperatorPlusGenerator *self = (FilterXOperatorPlusGenerator *) s;
+
+  if (!filterx_expr_init(self->lhs, cfg))
+    return FALSE;
+
+  if (!filterx_expr_init(self->rhs, cfg))
+    {
+      filterx_expr_deinit(self->lhs, cfg);
+      return FALSE;
+    }
+  return filterx_generator_init_method(s, cfg);
+}
+
+static void
+_expr_plus_generator_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXOperatorPlusGenerator *self = (FilterXOperatorPlusGenerator *) s;
+  filterx_expr_deinit(self->lhs, cfg);
+  filterx_expr_deinit(self->rhs, cfg);
+  filterx_generator_deinit_method(s, cfg);
+}
+
 static void
 _expr_plus_generator_free(FilterXExpr *s)
 {
@@ -117,6 +142,8 @@ filterx_operator_plus_generator_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->lhs = lhs;
   self->rhs = rhs;
   self->super.generate = _expr_plus_generator_generate;
+  self->super.super.init = _expr_plus_generator_init;
+  self->super.super.deinit = _expr_plus_generator_deinit;
   self->super.super.free_fn = _expr_plus_generator_free;
   self->super.create_container = _expr_plus_generator_create_container;
 

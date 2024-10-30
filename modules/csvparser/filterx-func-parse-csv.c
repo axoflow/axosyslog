@@ -282,6 +282,40 @@ exit:
   return ok;
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
+
+  if (!filterx_expr_init(self->msg, cfg))
+    return FALSE;
+
+  if (!filterx_expr_init(self->columns.expr, cfg))
+    {
+      filterx_expr_deinit(self->msg, cfg);
+      return FALSE;
+    }
+
+  if (!filterx_expr_init(self->string_delimiters, cfg))
+    {
+      filterx_expr_deinit(self->msg, cfg);
+      filterx_expr_deinit(self->columns.expr, cfg);
+      return FALSE;
+    }
+
+  return filterx_generator_function_init_method(&self->super, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
+  filterx_expr_deinit(self->msg, cfg);
+  filterx_expr_deinit(self->columns.expr, cfg);
+  filterx_expr_deinit(self->string_delimiters, cfg);
+  filterx_generator_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -505,6 +539,8 @@ filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error)
   filterx_generator_function_init_instance(&self->super, "parse_csv");
   self->super.super.generate = _generate;
   self->super.super.create_container = _create_container;
+  self->super.super.super.init = _init;
+  self->super.super.super.deinit = _deinit;
   self->super.super.super.free_fn = _free;
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");

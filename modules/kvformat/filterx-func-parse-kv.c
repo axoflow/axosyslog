@@ -145,6 +145,25 @@ exit:
   return result;
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
+
+  if (!filterx_expr_init(self->msg, cfg))
+    return FALSE;
+
+  return filterx_generator_function_init_method(&self->super, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
+  filterx_expr_deinit(self->msg, cfg);
+  filterx_generator_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -255,6 +274,8 @@ filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
   filterx_generator_function_init_instance(&self->super, "parse_kv");
   self->super.super.generate = _generate;
   self->super.super.create_container = filterx_generator_create_dict_container;
+  self->super.super.super.init = _init;
+  self->super.super.super.deinit = _deinit;
   self->super.super.super.free_fn = _free;
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");

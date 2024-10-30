@@ -103,6 +103,33 @@ exit:
   return result;
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  if (!filterx_expr_init(self->operand, cfg))
+    return FALSE;
+
+  if (!filterx_expr_init(self->key, cfg))
+    {
+      filterx_expr_deinit(self->operand, cfg);
+      return FALSE;
+    }
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  filterx_expr_deinit(self->operand, cfg);
+  filterx_expr_deinit(self->key, cfg);
+  filterx_expr_deinit_method(s, cfg);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -122,6 +149,8 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.eval = _eval;
   self->super.is_set = _isset;
   self->super.unset = _unset;
+  self->super.init = _init;
+  self->super.deinit = _deinit;
   self->super.free_fn = _free;
   self->operand = operand;
   self->key = key;

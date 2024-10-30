@@ -129,6 +129,42 @@ _eval(FilterXExpr *s)
   return result;
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  for (gint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr *expr = g_ptr_array_index(self->exprs, i);
+      if (!filterx_expr_init(expr, cfg))
+        {
+          for (gint j = 0; j < i; j++)
+            {
+              expr = g_ptr_array_index(self->exprs, j);
+              filterx_expr_deinit(expr, cfg);
+            }
+          return FALSE;
+        }
+    }
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  for (gint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr *expr = g_ptr_array_index(self->exprs, i);
+      filterx_expr_deinit(expr, cfg);
+    }
+
+  filterx_expr_deinit_method(s, cfg);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -165,6 +201,8 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
+  self->super.init = _init;
+  self->super.deinit = _deinit;
   self->super.free_fn = _free;
   self->exprs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->return_value_of_last_expr = return_value_of_last_expr;

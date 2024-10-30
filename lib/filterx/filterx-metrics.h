@@ -34,6 +34,8 @@ gboolean filterx_metrics_is_enabled(FilterXMetrics *self);
 gboolean filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **counter);
 
 FilterXMetrics *filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels);
+gboolean filterx_metrics_init(FilterXMetrics *self, GlobalConfig *cfg);
+void filterx_metrics_deinit(FilterXMetrics *self, GlobalConfig *cfg);
 void filterx_metrics_free(FilterXMetrics *self);
 
 #endif
