@@ -33,7 +33,6 @@
 #include "stats/stats-registry.h"
 #include "metrics/dyn-metrics-cache.h"
 #include "scratch-buffers.h"
-#include "atomic.h"
 
 struct _FilterXMetrics
 {
@@ -46,7 +45,6 @@ struct _FilterXMetrics
   FilterXMetricsLabels *labels;
   gint level;
 
-  GAtomicCounter is_optimized;
   StatsCluster *const_cluster;
 };
 
@@ -110,9 +108,6 @@ _optimize(FilterXMetrics *self)
 {
   stats_lock();
 
-  if (g_atomic_counter_get(&self->is_optimized))
-    goto exit;
-
   if (!self->key.str || !filterx_metrics_labels_is_const(self->labels))
     goto exit;
 
@@ -136,7 +131,6 @@ _optimize(FilterXMetrics *self)
   self->key.str = NULL;
 
 exit:
-  g_atomic_counter_set(&self->is_optimized, TRUE);
   stats_unlock();
 }
 
@@ -148,13 +142,6 @@ filterx_metrics_get_stats_counter(FilterXMetrics *self, StatsCounterItem **count
       *counter = NULL;
       return TRUE;
     }
-
-  /*
-   * We need to delay the optimization to the first get() call,
-   * as we don't have stats options when FilterXExprs are being created.
-   */
-  if (!g_atomic_counter_get(&self->is_optimized))
-    _optimize(self);
 
   if (_is_const(self))
     {
@@ -190,6 +177,8 @@ filterx_metrics_init(FilterXMetrics *self, GlobalConfig *cfg)
       filterx_expr_deinit(self->key.expr, cfg);
       return FALSE;
     }
+
+  _optimize(self);
 
   return TRUE;
 }
@@ -264,8 +253,6 @@ filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels)
 
   if (!_init_labels(self, labels))
     goto error;
-
-  g_atomic_counter_set(&self->is_optimized, FALSE);
 
   return self;
 
