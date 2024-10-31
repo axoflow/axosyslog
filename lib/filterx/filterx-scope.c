@@ -93,21 +93,25 @@ filterx_scope_is_dirty(FilterXScope *self)
   return self->dirty;
 }
 
+static gboolean
+_validate_variable(FilterXScope *self, FilterXVariable *variable)
+{
+  if (filterx_variable_is_floating(variable) &&
+      !filterx_variable_is_declared(variable) &&
+      !filterx_variable_is_same_generation(variable, self->generation))
+    return FALSE;
+  if (!filterx_variable_is_floating(variable) && filterx_variable_is_same_generation(variable, 0) && self->syncable)
+    return FALSE;
+  return TRUE;
+}
+
 FilterXVariable *
 filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
 {
   FilterXVariable *v;
 
-  if (_lookup_variable(self, handle, &v))
-    {
-      if (filterx_variable_handle_is_floating(handle) &&
-          !filterx_variable_is_declared(v) &&
-          !filterx_variable_is_same_generation(v, self->generation))
-        return NULL;
-      if (!filterx_variable_handle_is_floating(handle) && v->generation == 0 && self->syncable)
-        return NULL;
-      return v;
-    }
+  if (_lookup_variable(self, handle, &v) && _validate_variable(self, v))
+    return v;
   return NULL;
 }
 
@@ -185,9 +189,7 @@ filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func,
       if (!variable->value)
         continue;
 
-      if (filterx_variable_is_floating(variable) &&
-          !filterx_variable_is_declared(variable) &&
-          !filterx_variable_is_same_generation(variable, self->generation))
+      if (!_validate_variable(self, variable))
         continue;
 
       if (!func(variable, user_data))
