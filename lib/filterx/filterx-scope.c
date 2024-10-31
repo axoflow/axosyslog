@@ -316,7 +316,7 @@ filterx_scope_clone(FilterXScope *other)
   if (other->variables->len > 0)
     self->dirty = other->dirty;
   self->syncable = other->syncable;
-  self->log_msg_has_changes = other->log_msg_has_changes;
+
   msg_trace("Filterx clone finished",
             evt_tag_printf("scope", "%p", self),
             evt_tag_printf("other", "%p", other),
