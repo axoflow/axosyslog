@@ -100,8 +100,6 @@ _validate_variable(FilterXScope *self, FilterXVariable *variable)
       !filterx_variable_is_declared(variable) &&
       !filterx_variable_is_same_generation(variable, self->generation))
     return FALSE;
-  if (!filterx_variable_is_floating(variable) && filterx_variable_is_same_generation(variable, 0) && self->syncable)
-    return FALSE;
   return TRUE;
 }
 
@@ -379,12 +377,15 @@ filterx_scope_invalidate_log_msg_cache(FilterXScope *self)
 {
   g_assert(filterx_scope_has_log_msg_changes(self));
 
-  for (gint i = 0; i < self->variables->len; i++)
+  gint i = 0;
+  while (i < self->variables->len)
     {
       FilterXVariable *v = &g_array_index(self->variables, FilterXVariable, i);
 
       if (!filterx_variable_is_floating(v) && self->syncable)
-        filterx_variable_set_generation(v, 0);
+        g_array_remove_index(self->variables, i);
+      else
+        i++;
     }
 
   filterx_scope_clear_log_msg_has_changes(self);
