@@ -384,7 +384,7 @@ filterx_scope_invalidate_log_msg_cache(FilterXScope *self)
       FilterXVariable *v = &g_array_index(self->variables, FilterXVariable, i);
 
       if (!filterx_variable_is_floating(v) && self->syncable)
-        v->generation = 0;
+        filterx_variable_set_generation(v, 0);
     }
 
   filterx_scope_clear_log_msg_has_changes(self);
