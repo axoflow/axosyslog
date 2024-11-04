@@ -6,6 +6,9 @@ writing code, or simply providing feedback are all important
 contributions. This guide provides guidelines to make contributing
 easier.
 
+For brief development guidelines and architecture overview, see
+[Development Guide](DEVELOPMENT-GUIDE.md).
+
 ## Table of contents
 
 1. [Issues](#issues)
