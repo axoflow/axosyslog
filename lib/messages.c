@@ -50,6 +50,7 @@ typedef struct _MsgContext
   guint16 recurse_state;
   guint recurse_warning:1;
   gchar recurse_trigger[128];
+  guint64 original_msg_rcptid;
 } MsgContext;
 
 static gint active_log_level = -1;
@@ -83,6 +84,8 @@ void
 msg_set_context(LogMessage *msg)
 {
   MsgContext *context = msg_get_context();
+
+  context->original_msg_rcptid = msg ? msg->rcptid : 0;
 
   if (msg && (msg->flags & LF_INTERNAL))
     {
