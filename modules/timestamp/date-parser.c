@@ -171,8 +171,7 @@ date_parser_process(LogParser *s,
   UnixTime time_stamp;
 
   msg_trace("date-parser message processing started",
-            evt_tag_str("input", input),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str("input", input));
 
   /* this macro ensures zero termination by copying input to a
    * g_alloca()-d buffer if necessary. In most cases it's not though.
@@ -185,7 +184,6 @@ date_parser_process(LogParser *s,
                                                 input);
   if (res)
     _store_timestamp(self, msg, &time_stamp);
-
 
   return res;
 }

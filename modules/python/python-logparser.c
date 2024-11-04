@@ -203,8 +203,7 @@ python_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *pat
     msg_trace("python-parser message processing started",
               evt_tag_str("input", input),
               evt_tag_str("parser", self->super.name),
-              evt_tag_str("class", self->binding.class),
-              evt_tag_msg_reference(msg));
+              evt_tag_str("class", self->binding.class));
 
     PyObject *msg_object = py_log_message_new(msg, cfg);
     result = _py_invoke_parser_process(self, msg_object);

@@ -332,12 +332,12 @@ json_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *path_
   JSONParser *self = (JSONParser *) s;
   struct json_object *jso;
   struct json_tokener *tok;
+  gboolean success = TRUE;
 
   msg_trace("json-parser message processing started",
             evt_tag_str("input", input),
             evt_tag_str("prefix", self->prefix),
-            evt_tag_str("marker", self->marker),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str("marker", self->marker));
   if (self->marker)
     {
       if (strncmp(input, self->marker, self->marker_len) != 0)
@@ -345,7 +345,8 @@ json_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *path_
           msg_debug("json-parser(): no marker at the beginning of the message, skipping JSON parsing ",
                     evt_tag_str("input", input),
                     evt_tag_str("marker", self->marker));
-          return FALSE;
+          success =  FALSE;
+          goto exit;
         }
       input += self->marker_len;
 
@@ -361,7 +362,8 @@ json_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *path_
                 evt_tag_str("input", input),
                 tok->err != json_tokener_success ? evt_tag_str ("json_error", json_tokener_error_desc(tok->err)) : NULL);
       json_tokener_free (tok);
-      return FALSE;
+      success = FALSE;
+      goto exit;
     }
   json_tokener_free(tok);
 
@@ -372,11 +374,13 @@ json_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *path_
                 evt_tag_str("input", input),
                 evt_tag_str("extract_prefix", self->extract_prefix));
       json_object_put(jso);
-      return FALSE;
+      success = FALSE;
+      goto exit;
     }
   json_object_put(jso);
 
-  return TRUE;
+exit:
+  return success;
 }
 
 static LogPipe *

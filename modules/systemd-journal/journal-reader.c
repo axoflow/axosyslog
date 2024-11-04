@@ -311,11 +311,12 @@ _handle_message(JournalReader *self)
   _set_program(self->options, msg);
   _set_transport(msg);
 
+  msg_set_context(msg);
   msg_debug("Incoming log entry from journal",
-            evt_tag_printf("input", "%s", log_msg_get_value(msg, LM_V_MESSAGE, NULL)),
-            evt_tag_msg_reference(msg));
+            evt_tag_printf("input", "%s", log_msg_get_value(msg, LM_V_MESSAGE, NULL)));
 
   log_source_post(&self->super, msg);
+  msg_set_context(NULL);
   return log_source_free_to_send(&self->super);
 }
 

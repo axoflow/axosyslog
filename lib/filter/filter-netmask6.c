@@ -131,8 +131,7 @@ _eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTemplateEvalOptions
   msg_trace("netmask6() evaluation started",
             evt_tag_inaddr6("msg_address", address),
             evt_tag_inaddr6("address", &self->address),
-            evt_tag_int("prefix", self->prefix),
-            evt_tag_msg_reference(msg));
+            evt_tag_int("prefix", self->prefix));
   return result ^ s->comp;
 }
 

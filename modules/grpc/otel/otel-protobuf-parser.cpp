@@ -58,7 +58,6 @@ _get_string_field(LogMessage *msg, NVHandle handle, gssize *len)
   if (type != LM_VT_STRING)
     {
       msg_error("OpenTelemetry: unexpected LogMessage type, while getting string field",
-                evt_tag_msg_reference(msg),
                 evt_tag_str("name", log_msg_get_value_name(handle, NULL)),
                 evt_tag_str("type", log_msg_value_type_to_str(type)));
       return nullptr;
@@ -76,9 +75,8 @@ _get_protobuf_field(LogMessage *msg, NVHandle handle, gssize *len)
   if (type != LM_VT_PROTOBUF)
     {
       msg_error("OpenTelemetry: unexpected LogMessage type, while getting protobuf field",
-                evt_tag_msg_reference(msg),
                 evt_tag_str("name", log_msg_get_value_name(handle, NULL)),
-                evt_tag_str("type", log_msg_value_type_to_str(type)));
+                evt_tag_str("type", log_msg_value_type_to_str(type)), NULL);
       return nullptr;
     }
 
@@ -283,8 +281,7 @@ _parse_metadata(LogMessage *msg, bool set_hostname)
   Resource resource;
   if (!resource.ParsePartialFromArray(value, len))
     {
-      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.resource",
-                evt_tag_msg_reference(msg));
+      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.resource");
       return false;
     }
 
@@ -310,8 +307,7 @@ _parse_metadata(LogMessage *msg, bool set_hostname)
   InstrumentationScope scope;
   if (!scope.ParsePartialFromArray(value, len))
     {
-      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.scope",
-                evt_tag_msg_reference(msg));
+      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.scope");
       return false;
     }
 
@@ -390,8 +386,7 @@ _parse_log_record(LogMessage *msg)
   LogRecord log_record;
   if (!log_record.ParsePartialFromArray(raw_value, len))
     {
-      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.log",
-                evt_tag_msg_reference(msg));
+      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.log");
       return false;
     }
 
@@ -935,8 +930,7 @@ _parse_metric(LogMessage *msg)
   Metric metric;
   if (!metric.ParsePartialFromArray(raw_value, len))
     {
-      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.metric",
-                evt_tag_msg_reference(msg));
+      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.metric");
       return false;
     }
 
@@ -968,8 +962,7 @@ _parse_span(LogMessage *msg)
   Span span;
   if (!span.ParsePartialFromArray(raw_value, len))
     {
-      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.span",
-                evt_tag_msg_reference(msg));
+      msg_error("OpenTelemetry: Failed to deserialize .otel_raw.span");
       return false;
     }
 
@@ -1186,7 +1179,6 @@ _value_case_equals_or_error(LogMessage *msg, const KeyValue &kv, const AnyValue:
   if (kv.value().value_case() != expected_value_case)
     {
       msg_error("OpenTelemetry: unexpected attribute value type, skipping",
-                evt_tag_msg_reference(msg),
                 evt_tag_str("name", kv.key().c_str()),
                 evt_tag_int("type", kv.value().value_case()));
       return false;
@@ -1205,14 +1197,12 @@ syslogng::grpc::otel::ProtobufParser::set_syslog_ng_nv_pairs(LogMessage *msg, co
       if (!log_msg_value_type_from_str(type_as_str.c_str(), &log_msg_type))
         {
           msg_debug("OpenTelemetry: unexpected attribute logmsg type, skipping",
-                    evt_tag_msg_reference(msg),
                     evt_tag_str("type", type_as_str.c_str()));
           continue;
         }
       if (nv_pairs_by_type.value().value_case() != AnyValue::kKvlistValue)
         {
           msg_debug("OpenTelemetry: unexpected attribute, skipping",
-                    evt_tag_msg_reference(msg),
                     evt_tag_str("key", type_as_str.c_str()));
           continue;
         }
@@ -1245,7 +1235,6 @@ syslogng::grpc::otel::ProtobufParser::set_syslog_ng_macros(LogMessage *msg, cons
           else
             {
               msg_error("OpenTelemetry: unexpected attribute value type, skipping",
-                        evt_tag_msg_reference(msg),
                         evt_tag_str("name", macro.key().c_str()),
                         evt_tag_int("type", macro.value().value_case()));
             }
@@ -1271,7 +1260,6 @@ syslogng::grpc::otel::ProtobufParser::set_syslog_ng_macros(LogMessage *msg, cons
       else
         {
           msg_debug("OpenTelemetry: unexpected attribute macro, skipping",
-                    evt_tag_msg_reference(msg),
                     evt_tag_str("name", name.c_str()));
         }
     }
@@ -1352,7 +1340,6 @@ syslogng::grpc::otel::ProtobufParser::store_syslog_ng(LogMessage *msg, const Log
       if (attr.value().value_case() != AnyValue::kKvlistValue)
         {
           msg_debug("OpenTelemetry: unexpected attribute, skipping",
-                    evt_tag_msg_reference(msg),
                     evt_tag_str("key", key.c_str()));
           continue;
         }
@@ -1377,7 +1364,6 @@ syslogng::grpc::otel::ProtobufParser::store_syslog_ng(LogMessage *msg, const Log
       else
         {
           msg_debug("OpenTelemetry: unexpected attribute, skipping",
-                    evt_tag_msg_reference(msg),
                     evt_tag_str("key", key.c_str()));
         }
     }
@@ -1395,8 +1381,7 @@ syslogng::grpc::otel::ProtobufParser::is_syslog_ng_log_record(const Resource &re
 bool
 syslogng::grpc::otel::ProtobufParser::process(LogMessage *msg)
 {
-  msg_trace("OpenTelemetry: message processing started",
-            evt_tag_msg_reference(msg));
+  msg_trace("OpenTelemetry: message processing started");
 
   gssize len;
   LogMessageValueType log_msg_type;
@@ -1413,7 +1398,6 @@ syslogng::grpc::otel::ProtobufParser::process(LogMessage *msg)
   if (log_msg_type != LM_VT_STRING)
     {
       msg_error("OpenTelemetry: unexpected .otel_raw.type LogMessage type",
-                evt_tag_msg_reference(msg),
                 evt_tag_str("log_msg_type", log_msg_value_type_to_str(log_msg_type)));
       return false;
     }
@@ -1439,7 +1423,6 @@ syslogng::grpc::otel::ProtobufParser::process(LogMessage *msg)
   else
     {
       msg_error("OpenTelemetry: unexpected .otel_raw.type",
-                evt_tag_msg_reference(msg),
                 evt_tag_str("type", type.c_str()));
       return false;
     }

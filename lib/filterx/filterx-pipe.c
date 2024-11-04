@@ -61,8 +61,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
 
   msg_trace(">>>>>> filterx rule evaluation begin",
             evt_tag_str("rule", self->name),
-            log_pipe_location_tag(s),
-            evt_tag_msg_reference(msg));
+            log_pipe_location_tag(s));
 
   NVTable *payload = nv_table_ref(msg->payload);
   eval_res = filterx_eval_exec(&eval_context, self->block, msg);
@@ -71,8 +70,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
             filterx_format_eval_result(eval_res),
             evt_tag_str("rule", self->name),
             log_pipe_location_tag(s),
-            evt_tag_int("dirty", filterx_scope_is_dirty(eval_context.scope)),
-            evt_tag_msg_reference(msg));
+            evt_tag_int("dirty", filterx_scope_is_dirty(eval_context.scope)));
 
   local_path_options.filterx_context = &eval_context;
   switch (eval_res)

@@ -411,8 +411,7 @@ log_threaded_source_worker_post(LogThreadedSourceWorker *self, LogMessage *msg)
   msg_debug("Incoming log message",
             evt_tag_str("input", log_msg_get_value(msg, LM_V_MESSAGE, NULL)),
             evt_tag_str("driver", self->control->super.super.id),
-            evt_tag_int("worker_index", self->worker_index),
-            evt_tag_msg_reference(msg));
+            evt_tag_int("worker_index", self->worker_index));
   _apply_message_attributes(self->control, msg);
   log_source_post(&self->super, msg);
 

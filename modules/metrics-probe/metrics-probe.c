@@ -95,8 +95,7 @@ _process(LogParser *s, LogMessage **pmsg, const LogPathOptions *path_options, co
   MetricsProbe *self = (MetricsProbe *) s;
 
   msg_trace("metrics-probe message processing started",
-            evt_tag_str("key", self->metrics_template->key),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str("key", self->metrics_template->key));
 
   if (!dyn_metrics_template_is_enabled(self->metrics_template))
     return TRUE;

@@ -103,8 +103,7 @@ regexp_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *pat
   log_msg_make_writable(pmsg, path_options);
   msg_trace("regexp-parser message processing started",
             evt_tag_str("input", input),
-            evt_tag_str("prefix", self->prefix),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str("prefix", self->prefix));
 
   gboolean result = FALSE;
   for (GList *item = self->matchers; item; item = item->next)

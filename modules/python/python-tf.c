@@ -58,7 +58,8 @@ static PyObject *
 _py_invoke_template_function(PythonTfState *state, const gchar *function_name, LogMessage *msg, gint argc,
                              GString *const *argv)
 {
-  PyObject *callable, *ret, *args;
+  PyObject *callable, *args;
+  PyObject *ret = NULL;
 
   callable = _py_resolve_qualified_name(function_name);
   if (!callable)
@@ -69,12 +70,11 @@ _py_invoke_template_function(PythonTfState *state, const gchar *function_name, L
                 evt_tag_str("function", function_name),
                 evt_tag_str("exception", _py_format_exception_text(buf, sizeof(buf))));
       _py_finish_exception_handling();
-      return NULL;
+      goto exit;
     }
 
   msg_debug("$(python): Invoking Python template function",
-            evt_tag_str("function", function_name),
-            evt_tag_msg_reference(msg));
+            evt_tag_str("function", function_name));
 
   args = _py_construct_args_tuple(state, msg, argc, argv);
   ret = PyObject_CallObject(callable, args);
@@ -89,8 +89,9 @@ _py_invoke_template_function(PythonTfState *state, const gchar *function_name, L
                 evt_tag_str("function", function_name),
                 evt_tag_str("exception", _py_format_exception_text(buf, sizeof(buf))));
       _py_finish_exception_handling();
-      return NULL;
+      goto exit;
     }
+exit:
   return ret;
 }
 

@@ -357,8 +357,7 @@ DestWorker::insert(LogMessage *msg)
 
 drop:
   msg_error("OpenTelemetry: Failed to insert message, dropping message",
-            log_pipe_location_tag(&owner.super->super.super.super.super),
-            evt_tag_msg_reference(msg));
+            log_pipe_location_tag(&owner.super->super.super.super.super));
 
   /* LTR_DROP currently drops the entire batch */
   return LTR_QUEUED;

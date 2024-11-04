@@ -106,8 +106,7 @@ xml_parser_process(LogParser *s, LogMessage **pmsg,
   XMLScanner xml_scanner;
   msg_trace("xml-parser message processing started",
             evt_tag_str ("input", input),
-            evt_tag_str ("prefix", self->prefix),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str ("prefix", self->prefix));
 
   PushParams push_params = {.msg = msg, .create_lists = self->create_lists};
   xml_scanner_init(&xml_scanner, &self->options, &scanner_push_function, &push_params, self->prefix);

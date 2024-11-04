@@ -66,8 +66,7 @@ filter_netmask_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTempl
   msg_trace("netmask() evaluation started",
             evt_tag_inaddr("msg_address", addr),
             evt_tag_inaddr("address", &self->address),
-            evt_tag_inaddr("netmask", &self->netmask),
-            evt_tag_msg_reference(msg));
+            evt_tag_inaddr("netmask", &self->netmask));
   return res ^ s->comp;
 }
 

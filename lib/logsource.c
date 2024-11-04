@@ -636,8 +636,7 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
   msg_set_context(msg);
 
   msg_diagnostics(">>>>>> Source side message processing begin",
-                  log_pipe_location_tag(s),
-                  evt_tag_msg_reference(msg));
+                  log_pipe_location_tag(s));
 
   /* $HOST setup */
   log_source_mangle_hostname(self, msg);

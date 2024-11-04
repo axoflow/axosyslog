@@ -51,8 +51,7 @@ filter_in_list_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTempl
 
   gboolean result = (g_tree_lookup(self->tree, value) != NULL);
   msg_trace("in-list() evaluation started",
-            evt_tag_str("value", value),
-            evt_tag_msg_reference(msg));
+            evt_tag_str("value", value));
 
   return result ^ s->comp;
 }

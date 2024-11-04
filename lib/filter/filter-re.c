@@ -46,8 +46,7 @@ filter_re_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTemplateEv
   msg_trace("match() evaluation started against a name-value pair",
             evt_tag_msg_value_name("name", self->value_handle),
             evt_tag_msg_value("value", msg, self->value_handle),
-            evt_tag_str("pattern", self->matcher->pattern),
-            evt_tag_msg_reference(msg));
+            evt_tag_str("pattern", self->matcher->pattern));
   result = log_matcher_match_value(self->matcher, msg, self->value_handle);
   return result ^ s->comp;
 }
@@ -180,8 +179,7 @@ filter_match_eval_against_program_pid_msg(FilterExprNode *s, LogMessage **msgs, 
 
   msg_trace("match() evaluation started against constructed $PROGRAM[$PID]: $MESSAGE string for compatibility",
             evt_tag_printf("input", "%s", str),
-            evt_tag_str("pattern", self->super.matcher->pattern),
-            evt_tag_msg_reference(msg));
+            evt_tag_str("pattern", self->super.matcher->pattern));
 
   result = log_matcher_match_buffer(self->super.matcher, msg, str, -1);
 
@@ -198,8 +196,7 @@ filter_match_eval_against_template(FilterExprNode *s, LogMessage **msgs, gint nu
   msg_trace("match() evaluation started against template",
             evt_tag_template("input", self->template, msg, options),
             evt_tag_str("pattern", self->super.matcher->pattern),
-            evt_tag_str("template", self->template->template_str),
-            evt_tag_msg_reference(msg));
+            evt_tag_str("template", self->template->template_str));
   gboolean result = log_matcher_match_template(self->super.matcher, msg, self->template, options);
   return result ^ s->comp;
 }

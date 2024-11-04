@@ -95,8 +95,7 @@ maxminddb_parser_process(LogParser *s, LogMessage **pmsg,
   LogMessage *msg = log_msg_make_writable(pmsg, path_options);
   msg_trace("geoip2-parser message processing started",
             evt_tag_str("input", input),
-            evt_tag_str("prefix", self->prefix),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str("prefix", self->prefix));
 
   MMDB_entry_data_list_s *entry_data_list;
   if (!_mmdb_load_entry_data_list(self, input, &entry_data_list))

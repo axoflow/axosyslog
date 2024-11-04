@@ -101,8 +101,7 @@ log_rewrite_set_facility_process(LogRewrite *s, LogMessage **pmsg, const LogPath
 
   msg_trace("Setting syslog facility",
             evt_tag_int("old_facility", (*pmsg)->pri & SYSLOG_FACMASK),
-            evt_tag_int("new_facility", facility),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_int("new_facility", facility));
   _set_msg_facility(*pmsg, facility);
 
 error:

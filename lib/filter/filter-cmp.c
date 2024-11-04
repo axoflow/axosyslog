@@ -302,8 +302,7 @@ fop_cmp_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTemplateEval
             evt_tag_str("compare_mode", _compare_mode_to_string(self->compare_mode)),
             evt_tag_str("left_type", log_msg_value_type_to_str(left_type)),
             evt_tag_str("right_type", log_msg_value_type_to_str(right_type)),
-            evt_tag_int("result", result),
-            evt_tag_msg_reference(msgs[num_msg - 1]));
+            evt_tag_int("result", result));
 
   scratch_buffers_reclaim_marked(marker);
   return result ^ s->comp;

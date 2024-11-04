@@ -459,9 +459,9 @@ log_reader_handle_line(LogReader *self, const guchar *line, gint length, LogTran
   LogMessage *m;
 
   m = msg_format_construct_message(&self->options->parse_options, line, length);
+  msg_set_context(m);
   msg_debug("Incoming log entry",
-            evt_tag_mem("input", line, length),
-            evt_tag_msg_reference(m));
+            evt_tag_mem("input", line, length));
 
   msg_format_parse_into(&self->options->parse_options, m, line, length);
 
@@ -487,6 +487,7 @@ log_reader_handle_line(LogReader *self, const guchar *line, gint length, LogTran
   log_transport_aux_data_foreach(aux, _add_aux_nvpair, m);
 
   log_source_post(&self->super, m);
+  msg_set_context(NULL);
   log_msg_refcache_stop();
   return log_source_free_to_send(&self->super);
 }

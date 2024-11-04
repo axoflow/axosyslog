@@ -633,8 +633,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
       msg_trace("Setting value",
                 evt_tag_str("name", name),
                 evt_tag_mem("value", value, value_len),
-                evt_tag_str("type", log_msg_value_type_to_str(type)),
-                evt_tag_msg_reference(self));
+                evt_tag_str("type", log_msg_value_type_to_str(type)));
     }
 
   if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
@@ -689,8 +688,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
   if (_log_name_value_updates(self))
     {
       msg_trace("Unsetting value",
-                evt_tag_str("name", log_msg_get_value_name(handle, NULL)),
-                evt_tag_msg_reference(self));
+                evt_tag_str("name", log_msg_get_value_name(handle, NULL)));
     }
 
   if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
@@ -754,8 +752,7 @@ log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle,
                 evt_tag_str("type", log_msg_value_type_to_str(type)),
                 evt_tag_int("ref_handle", ref_handle),
                 evt_tag_int("ofs", ofs),
-                evt_tag_int("len", len),
-                evt_tag_msg_reference(self));
+                evt_tag_int("len", len));
     }
 
   if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
@@ -788,6 +785,7 @@ log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle,
   if (new_entry)
     log_msg_update_sdata(self, handle, name, name_len);
   log_msg_update_num_matches(self, handle);
+
 }
 
 void
@@ -1510,8 +1508,7 @@ log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options)
   msg->allocated_bytes = allocated_bytes;
 
   msg_trace("Message was cloned",
-            evt_tag_printf("original_msg", "%p", msg),
-            evt_tag_msg_reference(self));
+            evt_tag_printf("original_msg", "%p", msg));
 
   /* every field _must_ be initialized explicitly if its direct
    * copying would cause problems (like copying a pointer by value) */
@@ -1537,6 +1534,7 @@ log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options)
 
   if (self->num_tags == 0)
     self->flags |= LF_STATE_OWN_TAGS;
+
   return self;
 }
 

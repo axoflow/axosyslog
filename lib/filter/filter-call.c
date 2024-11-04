@@ -51,8 +51,7 @@ filter_call_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTemplate
     stats_counter_inc(self->super.not_matched);
 
   msg_trace("filter() evaluation started",
-            evt_tag_str("called-rule", self->rule),
-            evt_tag_msg_reference(msgs[num_msg - 1]));
+            evt_tag_str("called-rule", self->rule));
 
   return res ^ s->comp;
 }

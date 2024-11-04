@@ -46,8 +46,7 @@ filter_tags_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTemplate
       if (log_msg_is_tag_by_id(msg, tag_id))
         {
           msg_trace("tags() evaluation result, matching tag is found",
-                    evt_tag_str("tag", log_tags_get_by_id(tag_id)),
-                    evt_tag_msg_reference(msg));
+                    evt_tag_str("tag", log_tags_get_by_id(tag_id)));
 
           res = TRUE;
           return res ^ s->comp;
@@ -56,13 +55,11 @@ filter_tags_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTemplate
         {
           msg_trace("tags() evaluation progress, tag is not set",
                     evt_tag_str("tag", log_tags_get_by_id(tag_id)),
-                    evt_tag_int("value", log_msg_is_tag_by_id(msg, tag_id)),
-                    evt_tag_msg_reference(msg));
+                    evt_tag_int("value", log_msg_is_tag_by_id(msg, tag_id)));
         }
     }
 
-  msg_trace("tags() evaluation result, none of the tags is present",
-            evt_tag_msg_reference(msg));
+  msg_trace("tags() evaluation result, none of the tags is present");
   res = FALSE;
   return res ^ s->comp;
 }

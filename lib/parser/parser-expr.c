@@ -93,16 +93,14 @@ log_parser_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *path_
 
   msg_trace(">>>>>> parser rule evaluation begin",
             evt_tag_str("rule", self->name),
-            log_pipe_location_tag(s),
-            evt_tag_msg_reference(msg));
+            log_pipe_location_tag(s));
 
   success = log_parser_process_message(self, &msg, path_options);
 
   msg_trace("<<<<<< parser rule evaluation result",
             evt_tag_str("result", success ? "accepted" : "rejected"),
             evt_tag_str("rule", self->name),
-            log_pipe_location_tag(s),
-            evt_tag_msg_reference(msg));
+            log_pipe_location_tag(s));
 
   if (success)
     {

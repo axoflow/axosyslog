@@ -61,16 +61,14 @@ log_filter_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
 
   msg_trace(">>>>>> filter rule evaluation begin",
             evt_tag_str("rule", self->name),
-            log_pipe_location_tag(s),
-            evt_tag_msg_reference(msg));
+            log_pipe_location_tag(s));
 
   res = filter_expr_eval_root(self->expr, &msg, path_options);
 
   msg_trace("<<<<<< filter rule evaluation result",
             evt_tag_str("result", res ? "matched" : "unmatched"),
             evt_tag_str("rule", self->name),
-            log_pipe_location_tag(s),
-            evt_tag_msg_reference(msg));
+            log_pipe_location_tag(s));
 
   if (res)
     {

@@ -123,8 +123,7 @@ _process(LogParser *s, LogMessage **pmsg,
   msg_trace("add-contextual-data(): message lookup finished",
             evt_tag_str("message", input),
             evt_tag_str("resolved_selector", resolved_selector),
-            evt_tag_str("selector", selector),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str("selector", selector));
 
   if (selector)
     context_info_db_foreach_record(self->context_info_db, selector,

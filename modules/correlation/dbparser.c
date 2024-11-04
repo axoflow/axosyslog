@@ -202,8 +202,7 @@ log_db_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *pat
     {
       log_msg_make_writable(pmsg, path_options);
       msg_trace("db-parser message processing started",
-                evt_tag_str("input", input),
-                evt_tag_msg_reference(*pmsg));
+                evt_tag_str("input", input));
       if (G_UNLIKELY(self->super.super.template_obj))
         matched = pattern_db_process_with_custom_message(self->db, *pmsg, input, input_len);
       else
@@ -220,6 +219,7 @@ log_db_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *pat
     matched = TRUE;
   if (self->super.inject_mode == LDBP_IM_AGGREGATE_ONLY)
     matched = FALSE;
+
   return matched;
 }
 

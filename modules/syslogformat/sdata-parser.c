@@ -33,8 +33,7 @@ sdata_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *path
 
   msg = log_msg_make_writable(pmsg, path_options);
   msg_trace("sdata-parser() message processing started",
-            evt_tag_str("input", input),
-            evt_tag_msg_reference(*pmsg));
+            evt_tag_str("input", input));
 
   const guchar *data = (const guchar *) input;
   gint data_len = input_len;
