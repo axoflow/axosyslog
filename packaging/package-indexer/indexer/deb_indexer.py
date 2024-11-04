@@ -284,8 +284,8 @@ class NightlyDebIndexer(DebIndexer):
     def __remove_pkgs_with_timestamp(self, dir: Path, timestamps_to_remove: List[str]) -> None:
         for timestamp in timestamps_to_remove:
             for deb_file in dir.rglob("*{}*.deb".format(timestamp)):
-                self._log_info("Dry-run: removing old nightly package.", path=str(deb_file.resolve()))
-                # deb_file.unlink()
+                self._log_info("Removing old nightly package.", path=str(deb_file.resolve()))
+                deb_file.unlink()
 
     def __remove_old_pkgs(self, indexed_dir: Path) -> None:
         platform_dirs = list(filter(lambda path: path.is_dir(), indexed_dir.glob("*")))
