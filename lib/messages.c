@@ -243,6 +243,12 @@ msg_event_create(gint prio, const gchar *desc, EVTTAG *tag1, ...)
       evt_rec_add_tagsv(e, va);
       va_end(va);
     }
+  MsgContext *msg_context = msg_get_context();
+  if (msg_context->original_msg_rcptid != 0)
+    {
+      EVTTAG *rcptid_tag = evt_tag_printf("rcptid", "%" G_GUINT64_FORMAT, msg_context->original_msg_rcptid);
+      evt_rec_add_tag(e, rcptid_tag);
+    }
   g_mutex_unlock(&evtlog_lock);
   return e;
 }
