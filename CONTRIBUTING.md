@@ -9,9 +9,9 @@ easier.
 ## Table of contents
 
 1. [Issues](#issues)
- 1. [Reporting bugs](#reporting-bugs)
- 2. [Feature requests](#feature-requests)
- 3. [Testing](#testing)
+    1. [Reporting bugs](#reporting-bugs)
+    2. [Feature requests](#feature-requests)
+    3. [Testing](#testing)
 2. [Pull requests](#pull-requests)
 3. [Additional resources](#additional-resources)
 
