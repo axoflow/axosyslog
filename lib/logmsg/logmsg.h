@@ -558,10 +558,6 @@ gint log_msg_lookup_time_stamp_name(const gchar *name);
 
 gssize log_msg_get_size(LogMessage *self);
 
-#define evt_tag_msg_reference(msg)             \
-    evt_tag_printf("msg", "%p", (msg)),        \
-    evt_tag_printf("rcptid", "%" G_GUINT64_FORMAT, (msg)->rcptid)
-
 static inline EVTTAG *
 evt_tag_msg_value(const gchar *name, LogMessage *msg, NVHandle value_handle)
 {
