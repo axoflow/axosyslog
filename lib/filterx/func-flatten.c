@@ -76,7 +76,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
       if (is_top_level)
-        *top_level_dict_keys = g_list_prepend(*top_level_dict_keys, filterx_object_ref(key));
+        *top_level_dict_keys = g_list_append(*top_level_dict_keys, filterx_object_ref(key));
 
       gssize orig_len = key_buffer->len;
       if (!filterx_object_repr_append(key, key_buffer))
@@ -108,7 +108,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
     }
 
   FilterXObject *flat_key = filterx_string_new(key_buffer->str, (gssize) MIN(key_buffer->len, G_MAXSSIZE));
-  *flattened_kvs = g_list_prepend(*flattened_kvs, _kv_new(flat_key, value));
+  *flattened_kvs = g_list_append(*flattened_kvs, _kv_new(flat_key, value));
   filterx_object_unref(flat_key);
 
   g_string_truncate(key_buffer, orig_len);
