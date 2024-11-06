@@ -308,7 +308,7 @@ Requires: %{name}%{?_isa} = %{version}-%{release}
 
 %description grpc
 This module provides gRPC plugins that allows receiving and sending logs from/to
-OpenTelemetry, Google BigQuery, and Grafana Loki.
+OpenTelemetry, Google BigQuery, Grafana Loki and ClickHouse.
 
 %package bpf
 Summary: BPF support for %{name}
@@ -590,6 +590,7 @@ fi
 %{_libdir}/syslog-ng/libotel.so
 %{_libdir}/syslog-ng/libloki.so
 %{_libdir}/syslog-ng/libbigquery.so
+%{_libdir}/syslog-ng/libclickhouse.so
 %endif
 
 %if %{with bpf}
