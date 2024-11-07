@@ -28,6 +28,59 @@
 
 gboolean (*pipe_single_step_hook)(LogPipe *pipe, LogMessage *msg, const LogPathOptions *path_options);
 
+void
+log_pipe_forward_msg(LogPipe *self, LogMessage *msg, const LogPathOptions *path_options)
+{
+  if (self->pipe_next)
+    {
+      log_pipe_queue(self->pipe_next, msg, path_options);
+    }
+  else
+    {
+      log_msg_drop(msg, path_options, AT_PROCESSED);
+    }
+}
+
+void
+log_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
+{
+  LogPathOptions local_path_options;
+  g_assert((s->flags & PIF_INITIALIZED) != 0);
+
+  if (G_UNLIKELY((s->flags & PIF_CONFIG_RELATED) != 0 && pipe_single_step_hook))
+    {
+      if (!pipe_single_step_hook(s, msg, path_options))
+        {
+          log_msg_drop(msg, path_options, AT_PROCESSED);
+          return;
+        }
+    }
+
+  if ((s->flags & PIF_SYNC_FILTERX_TO_MSG))
+    filterx_eval_sync_message(path_options->filterx_context, &msg, path_options);
+
+  if (G_UNLIKELY(s->flags & (PIF_HARD_FLOW_CONTROL | PIF_JUNCTION_END | PIF_CONDITIONAL_MIDPOINT)))
+    {
+      path_options = log_path_options_chain(&local_path_options, path_options);
+      if (s->flags & PIF_HARD_FLOW_CONTROL)
+        {
+          local_path_options.flow_control_requested = 1;
+          msg_trace("Requesting flow control", log_pipe_location_tag(s));
+        }
+      if (s->flags & PIF_JUNCTION_END)
+        {
+          log_path_options_pop_junction(&local_path_options);
+        }
+      if (s->flags & PIF_CONDITIONAL_MIDPOINT)
+        {
+          log_path_options_pop_conditional(&local_path_options);
+        }
+    }
+
+  s->queue(s, msg, path_options);
+}
+
+
 EVTTAG *
 log_pipe_location_tag(LogPipe *pipe)
 {
@@ -40,7 +93,8 @@ log_pipe_attach_expr_node(LogPipe *self, LogExprNode *expr_node)
   self->expr_node = log_expr_node_ref(expr_node);
 }
 
-void log_pipe_detach_expr_node(LogPipe *self)
+void
+log_pipe_detach_expr_node(LogPipe *self)
 {
   if (!self->expr_node)
     return;
@@ -79,7 +133,7 @@ log_pipe_init_instance(LogPipe *self, GlobalConfig *cfg)
    * log_msg_forward_msg. Since this is a common case, it is better
    * inlined (than to use an indirect call) for performance. */
 
-  self->queue = NULL;
+  self->queue = log_pipe_forward_msg;
   self->free_fn = log_pipe_free_method;
   self->arcs = _arcs;
 }
