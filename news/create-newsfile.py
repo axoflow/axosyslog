@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 #############################################################################
+# Copyright (c) 2024 Axoflow
+# Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
 # Copyright (c) 2020 Balabit
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -41,6 +43,8 @@ exclude_contributor_list = [
 blocks = [
     ('Features', 'feature-*.md'),
     ('Bugfixes', 'bugfix-*.md'),
+    ('FilterX features', 'fx-feature-*.md'),
+    ('FilterX bugfixes', 'fx-bugfix-*.md'),
     ('Packaging', 'packaging-*.md'),
     ('Notes to developers', 'developer-note-*.md'),
     ('Other changes', 'other-*.md'),

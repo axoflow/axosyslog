@@ -4,6 +4,8 @@ How to create a newsfile entry
  1. Create a file in the `news/` directory called `<type>-<pr-id>.md`, where `<type>` is either:
      * `feature`: New functionality.
      * `bugfix`: Fix to a reported bug.
+     * `fx-feature`: FilterX related feature.
+     * `fx-bugfix`: FilterX related bugfix.
      * `packaging`: Packaging related change.
      * `developer-note`: Changes, that are only interesting to developers. (internal API change, etc...)
      * `other`: Other important, but not categorized change.
