@@ -282,6 +282,8 @@ _strptime_eval(FilterXExpr *s)
         break;
     }
 
+  wall_clock_time_guess_missing_fields(&wct);
+
   if (end)
     {
       convert_wall_clock_time_to_unix_time(&wct, &ut);

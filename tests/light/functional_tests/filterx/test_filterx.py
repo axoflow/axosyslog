@@ -21,6 +21,8 @@
 #
 #############################################################################
 import json
+from datetime import datetime
+from datetime import timezone
 
 import pytest
 
@@ -1181,13 +1183,28 @@ def test_strptime_success_result(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
         $MSG = strptime("2024-04-10T08:09:10Z", "%Y-%m-%dT%H:%M:%S%z");
-""",
+        """,
     )
     syslog_ng.start(config)
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "1712736550.000000+00:00\n"
+
+
+def test_strptime_guess_missing_year(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = strptime("Sep 09 18:12:11Z", '%b %d %H:%M:%S%z');
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    timestamp_part = file_true.read_log().split('+')[0]
+    # Assert that the timestamp is greater than January 1, 2024 (UTC). The exact year may vary due to aging.
+    assert datetime.fromtimestamp(float(timestamp_part), tz=timezone.utc) > datetime(2024, 1, 1, tzinfo=timezone.utc)
 
 
 def test_strptime_failure_result(config, syslog_ng):
