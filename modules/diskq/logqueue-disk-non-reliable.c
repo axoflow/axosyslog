@@ -345,6 +345,7 @@ success:
   if (stats_update)
     log_queue_queued_messages_dec(s);
 
+  msg_set_context(msg);
   return msg;
 }
 

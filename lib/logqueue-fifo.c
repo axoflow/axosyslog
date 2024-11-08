@@ -489,6 +489,7 @@ log_queue_fifo_pop_head(LogQueue *s, LogPathOptions *path_options)
   if (!node->flow_control_requested)
     self->backlog_queue.non_flow_controlled_len++;
 
+  msg_set_context(msg);
   return msg;
 }
 

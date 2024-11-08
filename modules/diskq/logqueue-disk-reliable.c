@@ -310,6 +310,7 @@ exit:
     log_queue_disk_restart_corrupted(&self->super);
 
   g_mutex_unlock(&s->lock);
+  msg_set_context(msg);
   return msg;
 }
 
