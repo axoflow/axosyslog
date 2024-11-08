@@ -87,6 +87,7 @@ _work(gpointer s, gpointer arg)
           iv_list_del(&node->list);
 
           LogMessage *msg = log_msg_ref(node->msg);
+          msg_set_context(msg);
 
           LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
           path_options.ack_needed = node->ack_needed;
@@ -96,6 +97,7 @@ _work(gpointer s, gpointer arg)
 
           log_msg_refcache_start_consumer(msg, &path_options);
           _reinject_message(partition->front_pipe, msg, &path_options);
+          msg_set_context(NULL);
           log_msg_unref(msg);
           log_msg_refcache_stop();
         }
