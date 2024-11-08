@@ -300,6 +300,7 @@ static gboolean
 _handle_message(JournalReader *self)
 {
   LogMessage *msg = log_msg_new_empty();
+  msg_set_context(msg);
 
   msg->pri = self->options->default_pri;
 
@@ -311,7 +312,6 @@ _handle_message(JournalReader *self)
   _set_program(self->options, msg);
   _set_transport(msg);
 
-  msg_set_context(msg);
   msg_debug("Incoming log entry from journal",
             evt_tag_printf("input", "%s", log_msg_get_value(msg, LM_V_MESSAGE, NULL)));
 
