@@ -151,6 +151,7 @@ _fetch(LogThreadedFetcherDriver *s)
 
   gint64 remaining_messages = log_queue_get_length(self->queue);
   LogMessage *msg = log_queue_pop_head(self->queue, &local_options);
+  msg_set_context(msg);
 
   if (!msg)
     {

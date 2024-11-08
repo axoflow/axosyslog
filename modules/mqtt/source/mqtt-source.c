@@ -191,6 +191,7 @@ _fetch(LogThreadedFetcherDriver *s)
   if (result == THREADED_FETCH_SUCCESS)
     {
       msg = log_msg_new_empty();
+      msg_set_context(msg);
       log_msg_set_value(msg, LM_V_MESSAGE, (gchar *)message->payload, message->payloadlen);
       log_msg_set_value(msg, handle_mqtt_topic, topicName, topicLen);
       log_msg_set_value_to_string(msg, LM_V_TRANSPORT, "mqtt");

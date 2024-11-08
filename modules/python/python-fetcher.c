@@ -236,6 +236,7 @@ _py_invoke_fetch(PythonFetcherDriver *self, LogMessage **msg)
 
       /* keep a reference until the PyLogMessage instance is freed */
       *msg = log_msg_ref(pymsg->msg);
+      msg_set_context(*msg);
     }
 
   Py_XDECREF(ret);
