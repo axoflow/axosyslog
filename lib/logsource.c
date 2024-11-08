@@ -633,8 +633,6 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
   LogSource *self = (LogSource *) s;
   gint i;
 
-  msg_set_context(msg);
-
   msg_diagnostics(">>>>>> Source side message processing begin",
                   log_pipe_location_tag(s));
 
