@@ -591,6 +591,7 @@ py_log_source_post(PyObject *s, PyObject *args, PyObject *kwrds)
 
   /* keep a reference until the PyLogMessage instance is freed */
   LogMessage *message = log_msg_ref(pymsg->msg);
+  msg_set_context(message);
   sd->post_message(sd, message);
 
   Py_RETURN_NONE;

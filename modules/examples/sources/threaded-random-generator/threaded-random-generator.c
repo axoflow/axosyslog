@@ -86,6 +86,7 @@ _worker_run(LogThreadedSourceWorker *w)
           format_hex_string(random_bytes, control->bytes, random_hex_str, random_hex_str_size);
 
           LogMessage *msg = log_msg_new_empty();
+          msg_set_context(msg);
           log_msg_set_value(msg, LM_V_MESSAGE, random_hex_str, -1);
 
           log_threaded_source_worker_blocking_post(w, msg);

@@ -35,6 +35,7 @@ SourceWorker::SourceWorker(GrpcSourceWorker *s, SourceDriver &d)
 void
 SourceWorker::post(LogMessage *msg)
 {
+  msg_set_context(msg);
   log_threaded_source_worker_blocking_post(&super->super, msg);
 }
 

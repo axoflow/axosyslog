@@ -102,6 +102,7 @@ SourceWorker::run()
       std::string random_choice = driver.choices[rand() % driver.choices.size()];
 
       LogMessage *msg = log_msg_new_empty();
+      msg_set_context(msg);
       log_msg_set_value(msg, LM_V_MESSAGE, random_choice.c_str(), -1);
 
       log_threaded_source_worker_blocking_post(&super->super, msg);

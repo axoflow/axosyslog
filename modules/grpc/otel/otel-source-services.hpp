@@ -123,6 +123,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
                 }
 
               LogMessage *msg = log_msg_new_empty();
+              msg_set_context(msg);
               ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_spans_schema_url, scope,
                                                  scope_spans_schema_url);
               ProtobufParser::store_raw(msg, span);
