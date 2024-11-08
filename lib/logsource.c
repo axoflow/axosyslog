@@ -685,8 +685,6 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
                   log_pipe_location_tag(s),
                   evt_tag_printf("msg", "%p", msg),
                   evt_tag_printf("rcptid", "%" G_GUINT64_FORMAT, rcptid));
-
-  msg_set_context(NULL);
 }
 
 static void

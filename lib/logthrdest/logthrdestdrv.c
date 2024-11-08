@@ -496,7 +496,6 @@ _perform_inserts(LogThreadedDestWorker *self)
         _perform_flush(self);
 
       log_msg_unref(msg);
-      msg_set_context(NULL);
       log_msg_refcache_stop();
 
 flush_error:
