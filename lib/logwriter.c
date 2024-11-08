@@ -1218,7 +1218,6 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
   *write_error = FALSE;
 
   log_msg_refcache_start_consumer(msg, path_options);
-  msg_set_context(msg);
 
   log_writer_format_log(self, msg, self->line_buffer);
 

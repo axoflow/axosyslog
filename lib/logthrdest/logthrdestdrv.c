@@ -484,7 +484,6 @@ _perform_inserts(LogThreadedDestWorker *self)
           break;
         }
 
-      msg_set_context(msg);
       log_msg_refcache_start_consumer(msg, &path_options);
 
       self->batch_size++;
