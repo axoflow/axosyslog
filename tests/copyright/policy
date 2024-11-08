@@ -303,6 +303,7 @@ modules/cef/filterx-func-parse-cef.[ch]
 modules/cef/filterx-func-parse-leef.[ch]
 modules/cef/tests/test-filterx-function-parse-cef.c
 modules/cef/tests/test-filterx-function-parse-leef.c
+modules/cef/tests/test_helpers.[ch]
 
 ###########################################################################
 # These files are GPLd with Balabit origin.

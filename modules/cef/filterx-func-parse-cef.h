@@ -27,7 +27,9 @@
 #include "plugin.h"
 #include "filterx/expr-function.h"
 
-#define FILTERX_FUNC_PARSE_CEF_USAGE "Usage: parse_cef(str)"
+#define FILTERX_FUNC_PARSE_CEF_USAGE "Usage: parse_cef(str " \
+        EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR"=boolean, " \
+        EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=boolean)"
 
 FILTERX_GENERATOR_FUNCTION_DECLARE(parse_cef);
 

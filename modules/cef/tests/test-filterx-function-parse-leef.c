@@ -39,63 +39,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object-istype.h"
 
-
-FilterXExpr *
-_new_leef_parser(FilterXFunctionArgs *args, GError **error, FilterXObject *fillable)
-{
-  FilterXExpr *func = filterx_function_parse_leef_new(args, error);
-
-  if (!func)
-    return NULL;
-
-  FilterXExpr *fillable_expr = filterx_non_literal_new(fillable);
-  filterx_generator_set_fillable(func, fillable_expr);
-
-  return func;
-}
-
-FilterXFunctionArgs *
-_assert_create_args(const gchar *input)
-{
-  GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(input, -1))));
-  GError *args_err = NULL;
-  FilterXFunctionArgs *result = filterx_function_args_new(args, &args_err);
-  cr_assert_null(args_err);
-  g_error_free(args_err);
-  return result;
-}
-
-FilterXObject *
-_eval_leef_input(const gchar *input, GError **error)
-{
-  FilterXExpr *func = _new_leef_parser(_assert_create_args(input), error, filterx_json_object_new_empty());
-  FilterXObject *obj = filterx_expr_eval(func);
-  filterx_expr_unref(func);
-  return obj;
-}
-
-void
-_assert_leef_parser_result(const gchar *input, const gchar *expected_result)
-{
-
-  GError *err = NULL;
-  FilterXObject *obj = _eval_leef_input(input, &err);
-  cr_assert_null(err);
-  cr_assert_not_null(obj);
-
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
-
-  GString *repr = scratch_buffers_alloc();
-
-  LogMessageValueType lmvt;
-  cr_assert(filterx_object_marshal(obj, repr, &lmvt));
-
-  cr_assert_str_eq(repr->str, expected_result);
-
-  filterx_object_unref(obj);
-  g_error_free(err);
-}
+#include "test_helpers.h"
 
 Test(filterx_func_parse_leef, test_invalid_input)
 {
@@ -107,7 +51,7 @@ Test(filterx_func_parse_leef, test_invalid_input)
   cr_assert_null(args_err);
   g_error_free(args_err);
 
-  FilterXExpr *func = _new_leef_parser(fx_args, &error, filterx_json_object_new_empty());
+  FilterXExpr *func = _new_parser(fx_args, &error, filterx_json_object_new_empty());
   cr_assert_null(error);
   FilterXObject *obj = filterx_expr_eval(func);
   cr_assert_null(obj);
@@ -121,9 +65,9 @@ Test(filterx_func_parse_leef, test_invalid_input)
 Test(filterx_func_parse_leef, test_invalid_version)
 {
   GError *init_err = NULL;
-  cr_assert_null(
-    _eval_leef_input("INVALID|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
-                     &init_err));
+  const gchar *input =
+    "INVALID|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black";
+  cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
   cr_assert_null(init_err);
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
@@ -135,9 +79,9 @@ Test(filterx_func_parse_leef, test_invalid_version)
 Test(filterx_func_parse_leef, test_invalid_log_signature)
 {
   GError *init_err = NULL;
-  cr_assert_null(
-    _eval_leef_input("BAD_SIGN:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
-                     &init_err));
+  const gchar *input =
+    "BAD_SIGN:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black";
+  cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
   cr_assert_null(init_err);
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
@@ -149,75 +93,165 @@ Test(filterx_func_parse_leef, test_invalid_log_signature)
 Test(filterx_func_parse_leef, test_header_missing_field)
 {
   GError *init_err = NULL;
-  cr_assert_null(_eval_leef_input("LEEF:1.0|Microsoft|MSExchange", &init_err));
+  const gchar *input = "LEEF:1.0|Microsoft|MSExchange";
+  cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
   cr_assert_null(init_err);
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, (guint64)3, (guint64)6);
+  g_string_append_printf(expected_err_msg, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, (guint64)3, (guint64)7);
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
 Test(filterx_func_parse_leef, test_basic_leef_message)
 {
-  _assert_leef_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
-                             "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5cat=anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}");
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
+                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5cat=anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}");
 }
 
 Test(filterx_func_parse_leef, test_extensions_empty)
 {
-  _assert_leef_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|",
-                             "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{}}");
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|",
+                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{}}");
 }
 
 Test(filterx_func_parse_leef, test_header_escaped_delimiter)
 {
-  _assert_leef_parser_result("LEEF:1.0|Micro\\|soft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
-                             "{\"version\":\"1.0\",\"vendor\":\"Micro|soft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5cat=anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}");
+  _assert_parser_result("LEEF:1.0|Micro\\|soft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
+                        "{\"version\":\"1.0\",\"vendor\":\"Micro|soft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5cat=anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}");
 }
 
 
 Test(filterx_func_parse_leef, test_extension_escaped_delimiter)
 {
-  _assert_leef_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz tik=tik\\=tak\\=toe",
-                             "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}}");
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz tik=tik\\=tak\\=toe",
+                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}}");
 }
 
 Test(filterx_func_parse_leef, test_header_do_not_strip_whitespaces)
 {
-  _assert_leef_parser_result("LEEF:1.0| Microsoft |  MSExchange  |   4.0 SP1   |    15345    |",
-                             "{\"version\":\"1.0\",\"vendor\":\" Microsoft \",\"product_name\":\"  MSExchange  \",\"product_version\":\"   4.0 SP1   \",\"event_id\":\"    15345    \",\"extensions\":{}}");
+  _assert_parser_result("LEEF:1.0| Microsoft |  MSExchange  |   4.0 SP1   |    15345    |",
+                        "{\"version\":\"1.0\",\"vendor\":\" Microsoft \",\"product_name\":\"  MSExchange  \",\"product_version\":\"   4.0 SP1   \",\"event_id\":\"    15345    \",\"extensions\":{}}");
 }
 
 Test(filterx_func_parse_leef, test_extensions_space_in_value)
 {
-  _assert_leef_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar baz tik=tak toe",
-                             "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar baz\",\"tik\":\"tak toe\"}}");
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar baz tik=tak toe",
+                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar baz\",\"tik\":\"tak toe\"}}");
 }
-
-// TODO: fix spaces?
-// Test(filterx_func_parse_cef, test_extensions_trailing_space_in_key)
-// {
-//   _assert_cef_parser_result("CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|foo bar=bar baz",
-//   "{\"version\":\"0\",\"deviceVendor\":\"KasperskyLab\",\"deviceProduct\":\"SecurityCenter\",\"deviceVersion\":\"13.2.0.1511\",\"deviceEventClassId\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agentSeverity\":\"1\",\"extensions\":{\"foo bar\":\"bar baz\"}}");
-// }
-
-// Test(filterx_func_parse_cef, test_extensions_trailing_space_in_value)
-// {
-//   _assert_cef_parser_result("CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|foo= bar baz tik=  tak toe ",
-//   "{\"version\":\"0\",\"deviceVendor\":\"KasperskyLab\",\"deviceProduct\":\"SecurityCenter\",\"deviceVersion\":\"13.2.0.1511\",\"deviceEventClassId\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agentSeverity\":\"1\",\"extensions\":{\"foo\":\"bar baz\"}}");
-// }
 
 Test(filterx_func_parse_leef, test_header_whitespaces)
 {
-  _assert_leef_parser_result("LEEF:1.0|Mic roso  ft|MSExchange|4.0 SP1|15345|",
-                             "{\"version\":\"1.0\",\"vendor\":\"Mic roso  ft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{}}");
+  _assert_parser_result("LEEF:1.0|Mic roso  ft|MSExchange|4.0 SP1|15345|",
+                        "{\"version\":\"1.0\",\"vendor\":\"Mic roso  ft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{}}");
 }
 
 Test(filterx_func_parse_leef, test_header_leading_trailing_whitespaces)
 {
-  _assert_leef_parser_result("LEEF:1.0|  Microsoft |MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz tik=tik\\=tak\\=toe",
-                             "{\"version\":\"1.0\",\"vendor\":\"  Microsoft \",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}}");
+  _assert_parser_result("LEEF:1.0|  Microsoft |MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz tik=tik\\=tak\\=toe",
+                        "{\"version\":\"1.0\",\"vendor\":\"  Microsoft \",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}}");
+}
+
+Test(filterx_func_parse_leef, test_header_optional_field_set)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"^\",\"extensions\":{\"foo\":\"bar\"}}");
+}
+
+Test(filterx_func_parse_leef, test_header_optional_field_unset)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar\"}}");
+}
+
+Test(filterx_func_parse_leef, test_header_custom_delimiter)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar^bar=baz^baz=tik\\=tak",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"^\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}");
+}
+
+Test(filterx_func_parse_leef, test_header_custom_hex_delimiter)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|0x40|foo=bar@bar=baz@baz=tik\\=tak",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"@\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}");
+}
+
+Test(filterx_func_parse_leef, test_header_custom_nonstandard_hex_delimiter)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|x40|foo=bar@bar=baz@baz=tik\\=tak",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"@\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}");
+}
+
+Test(filterx_func_parse_leef, test_header_custom_invalid_delimiter)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|INVALID|foo=bar^bar=baz^baz=tik\\=tak",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{}}");
+}
+
+Test(filterx_func_parse_leef, test_header_custom_delimiter_v1)
+{
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar^bar=baz^baz=tik\\=tak",
+                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{}}");
+}
+
+Test(filterx_func_parse_leef, test_header_empty_delimiter)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345||foo=bar bar=baz baz=tik\\=tak",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}");
+}
+
+Test(filterx_func_parse_leef, test_forced_pair_separator_v1_no_delimiter_field)
+{
+  const gchar *input = "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar@bar=baz@baz=tik\\=tak";
+  _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}",
+                              _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
+}
+
+Test(filterx_func_parse_leef, test_forced_pair_separator_v2_no_delimiter_field)
+{
+  const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar@bar=baz@baz=tik\\=tak";
+  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}",
+                              _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
+}
+
+Test(filterx_func_parse_leef, test_forced_pair_separator_v2_with_delimiter_field)
+{
+  const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar@bar=baz@baz=tik\\=tak";
+  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"^\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}",
+                              _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
+}
+
+Test(filterx_func_parse_leef, test_forced_pair_separator_v2_with_empty_delimiter_field)
+{
+  const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345||foo=bar@bar=baz@baz=tik\\=tak";
+  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}",
+                              _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
+}
+
+Test(filterx_func_parse_leef, test_forced_value_separator)
+{
+  const gchar *input = "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo#bar\tbar#baz\tbaz#tik\\#tak";
+  _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik#tak\"}}",
+                              _create_msg_arg(input), _create_value_separator_arg("#"), NULL);
+}
+
+Test(filterx_func_parse_leef, test_forced_empty_value_separator)
+{
+  const gchar *input = "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo#bar\tbar#baz\tbaz#tik\\#tak";
+  GError *error = NULL;
+  FilterXExpr *func = _new_parser(_assert_create_args(0, _create_msg_arg(input), _create_value_separator_arg(""), NULL),
+                                  &error, filterx_json_object_new_empty());
+  cr_assert_not_null(error);
+  cr_assert_null(func);
+
+  GString *expected_err_msg = scratch_buffers_alloc();
+  g_string_append_printf(expected_err_msg, EVENT_FORMAT_PARSER_ERR_EMPTY_STRING" "FILTERX_FUNC_PARSE_LEEF_USAGE,
+                         EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR);
+
+  cr_assert_str_eq(error->message, expected_err_msg->str);
+
+  filterx_expr_unref(func);
+  g_error_free(error);
 }
 
 static void
@@ -225,6 +259,7 @@ setup(void)
 {
   app_startup();
   init_libtest_filterx();
+  set_constructor(filterx_function_parse_leef_new);
 }
 
 static void
