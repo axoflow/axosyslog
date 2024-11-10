@@ -155,6 +155,7 @@ _grpc() {
 	_submv usr/lib/syslog-ng/libotel.so \
 		usr/lib/syslog-ng/libloki.so \
 		usr/lib/syslog-ng/libbigquery.so \
+		usr/lib/syslog-ng/libpubsub.so \
 		usr/lib/syslog-ng/libclickhouse.so
 }
 
