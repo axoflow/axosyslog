@@ -10,5 +10,5 @@ $ syslog-ng-ctl attach stdio --seconds 10
 ```
 ```
 # steal trace level log messages for 10 seconds
-$ syslog-ng-ctl attach logs --seconds 10 --level trace
+$ syslog-ng-ctl attach logs --seconds 10 --log-level trace
 ```
