@@ -22,7 +22,7 @@
 
 #include "transformation.h"
 
-/* TransformStep: a named filterx expression */
+/* TransformStep: a named filterx block */
 
 TransformStep *
 transform_step_new(const gchar *name, const gchar *expr)
@@ -41,7 +41,7 @@ transform_step_free(TransformStep *self)
   g_free(self);
 }
 
-/* Transform: named list of steps */
+/* Transform: named list of TransformSteps */
 
 void
 transform_add_step(Transform *self, const gchar *name, const gchar *expr)
@@ -65,8 +65,7 @@ transform_free(Transform *self)
   g_free(self);
 }
 
-/* Transformation */
-/* list of transforms */
+/* Transformation: list of Transforms corresponding to an app (with optional flavour) */
 
 void
 transformation_add_transform(Transformation *self, Transform *transform)
