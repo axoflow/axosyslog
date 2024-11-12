@@ -78,7 +78,7 @@ _generate_steps(AppTransformGenerator *self, GList *steps)
 {
   for (GList *l = steps; l; l = l->next)
     {
-      TransformationStep *step = l->data;
+      TransformStep *step = l->data;
       g_string_append_printf(self->block, "        # step: %s", step->name);
       g_string_append_printf(self->block, "        %s\n", step->expr);
     }

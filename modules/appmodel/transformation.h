@@ -27,14 +27,14 @@
 
 #define TRANSFORMATION_TYPE_NAME "transformation"
 
-typedef struct _TransformationStep
+typedef struct _TransformStep
 {
   gchar *name;
   gchar *expr;
-} TransformationStep;
+} TransformStep;
 
-TransformationStep *transformation_step_new(const gchar *name, const gchar *expr);
-void transformation_step_free(TransformationStep *self);
+TransformStep *transform_step_new(const gchar *name, const gchar *expr);
+void transform_step_free(TransformStep *self);
 
 
 typedef struct _Transform

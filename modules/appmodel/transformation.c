@@ -22,19 +22,19 @@
 
 #include "transformation.h"
 
-/* TransformationStep: a named filterx expression */
+/* TransformStep: a named filterx expression */
 
-TransformationStep *
-transformation_step_new(const gchar *name, const gchar *expr)
+TransformStep *
+transform_step_new(const gchar *name, const gchar *expr)
 {
-  TransformationStep *self = g_new0(TransformationStep, 1);
+  TransformStep *self = g_new0(TransformStep, 1);
   self->name = g_strdup(name);
   self->expr = g_strdup(expr);
   return self;
 }
 
 void
-transformation_step_free(TransformationStep *self)
+transform_step_free(TransformStep *self)
 {
   g_free(self->name);
   g_free(self->expr);
@@ -46,7 +46,7 @@ transformation_step_free(TransformationStep *self)
 void
 transform_add_step(Transform *self, const gchar *name, const gchar *expr)
 {
-  self->steps = g_list_append(self->steps, transformation_step_new(name, expr));
+  self->steps = g_list_append(self->steps, transform_step_new(name, expr));
 }
 
 Transform *
@@ -61,7 +61,7 @@ void
 transform_free(Transform *self)
 {
   g_free(self->name);
-  g_list_free_full(self->steps, (GDestroyNotify) transformation_step_free);
+  g_list_free_full(self->steps, (GDestroyNotify) transform_step_free);
   g_free(self);
 }
 
