@@ -118,21 +118,21 @@ transformation_options
 
 /* $0 is Transformation */
 transformation_option
-        : KW_TRANSFORM '[' string ']' '{' { $<ptr>$ = transformation_block_new($3); } transformation_steps '}'
-          { free($3); transformation_add_block($<ptr>0, $<ptr>6); }
+        : KW_TRANSFORM '[' string ']' '{' { $<ptr>$ = transform_new($3); } transformation_steps '}'
+          { free($3); transformation_add_transform($<ptr>0, $<ptr>6); }
         ;
 
-/* $0 is TransformationBlock */
+/* $0 is Transform */
 transformation_steps
 	: transformation_step semicolons { $<ptr>$ = $<ptr>0; } transformation_steps
 	|
 	;
 
-/* $0 is TransformationBlock */
+/* $0 is Transform */
 transformation_step
 	: KW_STEP '[' string ']' _block_content_context_push LL_BLOCK _block_content_context_pop
           {
-	    transformation_block_add_step($<ptr>0, $3, $6); free($3); free($6);
+	    transform_add_step($<ptr>0, $3, $6); free($3); free($6);
 	  }
 	;
 

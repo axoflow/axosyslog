@@ -37,23 +37,23 @@ TransformationStep *transformation_step_new(const gchar *name, const gchar *expr
 void transformation_step_free(TransformationStep *self);
 
 
-typedef struct _TransformationBlock
+typedef struct _Transform
 {
   gchar *name;
   GList *steps;
-} TransformationBlock;
+} Transform;
 
-void transformation_block_add_step(TransformationBlock *self, const gchar *name, const gchar *step);
-TransformationBlock *transformation_block_new(const gchar *name);
-void transformation_block_free(TransformationBlock *self);
+void transform_add_step(Transform *self, const gchar *name, const gchar *step);
+Transform *transform_new(const gchar *name);
+void transform_free(Transform *self);
 
 typedef struct _Transformation
 {
   AppModelObject super;
-  GList *blocks;
+  GList *transforms;
 } Transformation;
 
-void transformation_add_block(Transformation *self, TransformationBlock *block);
+void transformation_add_transform(Transformation *self, Transform *transform);
 Transformation *transformation_new(const gchar *app, const gchar *name);
 
 #endif

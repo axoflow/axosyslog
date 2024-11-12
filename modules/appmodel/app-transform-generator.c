@@ -101,11 +101,11 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
   g_string_append_printf(self->block, "\n#Start Application %s\n", transformation->super.name);
   g_string_append_printf(self->block,     "    if (%s == '%s') {\n", self->filterx_app_variable,
                          transformation->super.name);
-  for (GList *l = transformation->blocks; l; l = l->next)
+  for (GList *l = transformation->transforms; l; l = l->next)
     {
-      TransformationBlock *block = l->data;
+      Transform *transform = l->data;
 
-      _generate_steps(self, block->steps);
+      _generate_steps(self, transform->steps);
     }
   g_string_append(self->block,            "    };\n");
   g_string_append_printf(self->block, "\n#End Application %s\n", transformation->super.name);
