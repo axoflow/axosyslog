@@ -279,6 +279,25 @@ exit:
   return ok;
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
+
+  if (!filterx_expr_init(self->msg, cfg))
+    return FALSE;
+
+  return filterx_generator_init_method(s, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
+  filterx_expr_deinit(self->msg, cfg);
+  filterx_generator_deinit_method(s, cfg);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -383,6 +402,8 @@ filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, co
   filterx_generator_function_init_instance(&self->super, fn_name);
   self->super.super.generate = _generate;
   self->super.super.create_container = filterx_generator_create_dict_container;
+  self->super.super.super.init = _init;
+  self->super.super.super.deinit = _deinit;
   self->super.super.super.free_fn = _free;
 
   _set_config(self, cfg);

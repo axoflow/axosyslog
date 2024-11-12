@@ -133,6 +133,42 @@ _simple_eval(FilterXExpr *s)
   return res;
 }
 
+static gboolean
+_simple_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+
+  for (guint64 i = 0; i < self->args->len; i++)
+    {
+      FilterXExpr *arg = g_ptr_array_index(self->args, i);
+      if (!filterx_expr_init(arg, cfg))
+        {
+          for (gint j = 0; j < i; j++)
+            {
+              arg = g_ptr_array_index(self->args, j);
+              filterx_expr_deinit(arg, cfg);
+            }
+          return FALSE;
+        }
+    }
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_simple_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+
+  for (guint64 i = 0; i < self->args->len; i++)
+    {
+      FilterXExpr *arg = g_ptr_array_index(self->args, i);
+      filterx_expr_deinit(arg, cfg);
+    }
+
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _simple_free(FilterXExpr *s)
 {
@@ -169,6 +205,8 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
 
   filterx_function_init_instance(&self->super, function_name);
   self->super.super.eval = _simple_eval;
+  self->super.super.init = _simple_init;
+  self->super.super.deinit = _simple_deinit;
   self->super.super.free_fn = _simple_free;
   self->function_proto = function_proto;
 
@@ -184,6 +222,18 @@ error:
   filterx_function_args_free(args);
   filterx_expr_unref(&self->super.super);
   return NULL;
+}
+
+gboolean
+filterx_function_init_method(FilterXFunction *s, GlobalConfig *cfg)
+{
+  return filterx_expr_init_method(&s->super, cfg);
+}
+
+void
+filterx_function_deinit_method(FilterXFunction *s, GlobalConfig *cfg)
+{
+  filterx_expr_deinit_method(&s->super, cfg);
 }
 
 void
@@ -206,6 +256,18 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
   filterx_expr_init_instance(&s->super);
   s->function_name = g_strdup_printf("%s()", function_name);
   s->super.free_fn = _function_free;
+}
+
+gboolean
+filterx_generator_function_init_method(FilterXGeneratorFunction *s, GlobalConfig *cfg)
+{
+  return filterx_generator_init_method(&s->super.super, cfg);
+}
+
+void
+filterx_generator_function_deinit_method(FilterXGeneratorFunction *s, GlobalConfig *cfg)
+{
+  filterx_generator_deinit_method(&s->super.super, cfg);
 }
 
 void

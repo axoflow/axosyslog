@@ -95,6 +95,7 @@ Test(filterx_func_update_metric, key_and_labels)
   _add_label(labels, "test_label_1", "foo");
   _add_label(labels, "test_label_2", "bar");
   FilterXExpr *func = _create_func(key, labels, NULL, NULL);
+  cr_assert(filterx_expr_init(func, configuration));
 
   StatsClusterLabel expected_labels[] =
   {
@@ -115,6 +116,7 @@ Test(filterx_func_update_metric, key_and_labels)
                                           G_N_ELEMENTS(expected_labels),
                                           2);
 
+  filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
 }
 
@@ -122,6 +124,7 @@ Test(filterx_func_update_metric, increment)
 {
   FilterXExpr *key = filterx_literal_new(filterx_string_new("test_key", -1));
   FilterXExpr *func = _create_func(key, NULL, filterx_non_literal_new(filterx_integer_new(42)), NULL);
+  cr_assert(filterx_expr_init(func, configuration));
 
   StatsClusterLabel expected_labels[] = {};
 
@@ -137,6 +140,7 @@ Test(filterx_func_update_metric, increment)
                                           G_N_ELEMENTS(expected_labels),
                                           84);
 
+  filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
 }
 
@@ -149,7 +153,9 @@ Test(filterx_func_update_metric, level)
   cr_assert(cfg_init(configuration));
   func = _create_func(filterx_literal_new(filterx_string_new("test_key", -1)), NULL, NULL,
                       filterx_literal_new(filterx_integer_new(2)));
+  cr_assert(filterx_expr_init(func, configuration));
   cr_assert(_eval(func));
+  filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
   cr_assert_not(metrics_probe_test_stats_cluster_exists("test_key", expected_labels, G_N_ELEMENTS(expected_labels)));
   cr_assert(cfg_deinit(configuration));
@@ -158,7 +164,9 @@ Test(filterx_func_update_metric, level)
   cr_assert(cfg_init(configuration));
   func = _create_func(filterx_literal_new(filterx_string_new("test_key", -1)), NULL, NULL,
                       filterx_literal_new(filterx_integer_new(2)));
+  cr_assert(filterx_expr_init(func, configuration));
   cr_assert(_eval(func));
+  filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
   cr_assert_not(metrics_probe_test_stats_cluster_exists("test_key", expected_labels, G_N_ELEMENTS(expected_labels)));
   cr_assert(cfg_deinit(configuration));
@@ -167,7 +175,9 @@ Test(filterx_func_update_metric, level)
   cr_assert(cfg_init(configuration));
   func = _create_func(filterx_literal_new(filterx_string_new("test_key", -1)), NULL, NULL,
                       filterx_literal_new(filterx_integer_new(2)));
+  cr_assert(filterx_expr_init(func, configuration));
   cr_assert(_eval(func));
+  filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
   metrics_probe_test_assert_counter_value("test_key",
                                           expected_labels,

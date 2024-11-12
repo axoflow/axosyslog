@@ -41,9 +41,21 @@ log_filterx_pipe_init(LogPipe *s)
   if (!self->name)
     self->name = cfg_tree_get_rule_name(&cfg->tree, ENC_FILTER, s->expr_node);
 
+  if (!filterx_expr_init(self->block, cfg))
+    return FALSE;
+
   return TRUE;
 }
 
+static gboolean
+log_filterx_pipe_deinit(LogPipe *s)
+{
+  LogFilterXPipe *self = (LogFilterXPipe *) s;
+  GlobalConfig *cfg = log_pipe_get_config(s);
+
+  filterx_expr_deinit(self->block, cfg);
+  return TRUE;
+}
 
 static void
 log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
@@ -127,6 +139,7 @@ log_filterx_pipe_new(FilterXExpr *block, GlobalConfig *cfg)
   log_pipe_init_instance(&self->super, cfg);
   self->super.flags = (self->super.flags | PIF_CONFIG_RELATED);
   self->super.init = log_filterx_pipe_init;
+  self->super.deinit = log_filterx_pipe_deinit;
   self->super.queue = log_filterx_pipe_queue;
   self->super.free_fn = log_filterx_pipe_free;
   self->super.clone = log_filterx_pipe_clone;

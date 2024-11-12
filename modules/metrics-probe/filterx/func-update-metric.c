@@ -94,6 +94,32 @@ exit:
   return filterx_boolean_new(TRUE);
 }
 
+static gboolean
+_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
+
+  if (!filterx_expr_init(self->increment.expr, cfg))
+    return FALSE;
+
+  if (!filterx_metrics_init(self->metrics, cfg))
+    {
+      filterx_expr_deinit(self->increment.expr, cfg);
+      return FALSE;
+    }
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
+  filterx_expr_deinit(self->increment.expr, cfg);
+  filterx_metrics_deinit(self->metrics, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _free(FilterXExpr *s)
 {
@@ -201,6 +227,8 @@ filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "update_metric");
 
   self->super.super.eval = _eval;
+  self->super.super.init = _init;
+  self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) ||

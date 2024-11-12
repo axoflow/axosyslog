@@ -98,6 +98,18 @@ _label_cmp(gconstpointer a, gconstpointer b)
   return strcmp(lhs->name, rhs->name);
 }
 
+static gboolean
+_label_init(FilterXMetricsLabel *self, GlobalConfig *cfg)
+{
+  return filterx_expr_init(self->value.expr, cfg);
+}
+
+static void
+_label_deinit(FilterXMetricsLabel *self, GlobalConfig *cfg)
+{
+  filterx_expr_deinit(self->value.expr, cfg);
+}
+
 static void
 _label_free(FilterXMetricsLabel *self)
 {
@@ -284,6 +296,48 @@ filterx_metrics_labels_format(FilterXMetricsLabels *self, StatsClusterLabel **la
   *labels = dyn_metrics_store_get_cached_labels(cache);
   *len = dyn_metrics_store_get_cached_labels_len(cache);
   return TRUE;
+}
+
+gboolean
+filterx_metrics_labels_init(FilterXMetricsLabels *self, GlobalConfig *cfg)
+{
+  if (!filterx_expr_init(self->expr, cfg))
+    return FALSE;
+
+  if (self->literal_labels)
+    {
+      for (guint i = 0; i < self->literal_labels->len; i++)
+        {
+          FilterXMetricsLabel *label = g_ptr_array_index(self->literal_labels, i);
+          if (!_label_init(label, cfg))
+            {
+              for (guint j = 0; j < i; j++)
+                {
+                  label = g_ptr_array_index(self->literal_labels, j);
+                  _label_deinit(label, cfg);
+                }
+              filterx_expr_deinit(self->expr, cfg);
+              return FALSE;
+            }
+        }
+    }
+
+  return TRUE;
+}
+
+void
+filterx_metrics_labels_deinit(FilterXMetricsLabels *self, GlobalConfig *cfg)
+{
+  filterx_expr_deinit(self->expr, cfg);
+
+  if (self->literal_labels)
+    {
+      for (guint i = 0; i < self->literal_labels->len; i++)
+        {
+          FilterXMetricsLabel *label = g_ptr_array_index(self->literal_labels, i);
+          _label_deinit(label, cfg);
+        }
+    }
 }
 
 void

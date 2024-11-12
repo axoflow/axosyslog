@@ -315,6 +315,26 @@ exit:
   return result;
 }
 
+static gboolean
+_regexp_match_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
+
+  if (!filterx_expr_init(self->lhs, cfg))
+    return FALSE;
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+static void
+_regexp_match_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
+
+  filterx_expr_deinit(self->lhs, cfg);
+  filterx_expr_deinit_method(s, cfg);
+}
+
 static void
 _regexp_match_free(FilterXExpr *s)
 {
@@ -334,6 +354,8 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
 
   filterx_expr_init_instance(&self->super);
   self->super.eval = _regexp_match_eval;
+  self->super.init = _regexp_match_init;
+  self->super.deinit = _regexp_match_deinit;
   self->super.free_fn = _regexp_match_free;
 
   self->lhs = lhs;
@@ -403,6 +425,26 @@ _regexp_search_generator_create_container(FilterXExprGenerator *s, FilterXExpr *
   return filterx_generator_create_list_container(s, fillable_parent);
 }
 
+static gboolean
+_regexp_search_generator_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
+
+  if (!filterx_expr_init(self->lhs, cfg))
+    return FALSE;
+
+  return filterx_generator_init_method(s, cfg);
+}
+
+static void
+_regexp_search_generator_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
+
+  filterx_expr_deinit(self->lhs, cfg);
+  filterx_generator_deinit_method(s, cfg);
+}
+
 static void
 _regexp_search_generator_free(FilterXExpr *s)
 {
@@ -454,6 +496,8 @@ filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError *
 
   filterx_generator_function_init_instance(&self->super, "regexp_search");
   self->super.super.generate = _regexp_search_generator_generate;
+  self->super.super.super.init = _regexp_search_generator_init;
+  self->super.super.super.deinit = _regexp_search_generator_deinit;
   self->super.super.super.free_fn = _regexp_search_generator_free;
   self->super.super.create_container = _regexp_search_generator_create_container;
 
@@ -677,6 +721,25 @@ _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GEr
   return TRUE;
 }
 
+static gboolean
+_subst_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+
+  if (!filterx_expr_init(self->string_expr, cfg))
+    return FALSE;
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_subst_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+  filterx_expr_deinit(self->string_expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _subst_free(FilterXExpr *s)
 {
@@ -701,6 +764,8 @@ filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
   filterx_function_init_instance(&self->super, "regexp_subst");
   self->super.super.eval = _subst_eval;
+  self->super.super.init = _subst_init;
+  self->super.super.deinit = _subst_deinit;
   self->super.super.free_fn = _subst_free;
 
   _opts_init(&self->opts);

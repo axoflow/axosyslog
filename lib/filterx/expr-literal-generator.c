@@ -44,6 +44,28 @@ filterx_literal_generator_elem_new(FilterXExpr *key, FilterXExpr *value, gboolea
   return self;
 }
 
+static gboolean
+_literal_generator_elem_init(FilterXLiteralGeneratorElem *self, GlobalConfig *cfg)
+{
+  if (!filterx_expr_init(self->key, cfg))
+    return FALSE;
+
+  if (!filterx_expr_init(self->value, cfg))
+    {
+      filterx_expr_deinit(self->key, cfg);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+_literal_generator_elem_deinit(FilterXLiteralGeneratorElem *self, GlobalConfig *cfg)
+{
+  filterx_expr_deinit(self->key, cfg);
+  filterx_expr_deinit(self->value, cfg);
+}
+
 static void
 _literal_generator_elem_free(FilterXLiteralGeneratorElem *self)
 {
@@ -118,6 +140,43 @@ _literal_generator_generate(FilterXExprGenerator *s, FilterXObject *fillable)
   return _eval_elements(fillable, self->elements);
 }
 
+static gboolean
+_literal_generator_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
+
+  for (GList *link = self->elements; link; link = link->next)
+    {
+      FilterXLiteralGeneratorElem *elem = (FilterXLiteralGeneratorElem *) link->data;
+
+      if (!_literal_generator_elem_init(elem, cfg))
+        {
+          for (GList *deinit_link = self->elements; deinit_link != link; deinit_link = deinit_link->next)
+            {
+              elem = (FilterXLiteralGeneratorElem *) deinit_link->data;
+              _literal_generator_elem_deinit(elem, cfg);
+            }
+          return FALSE;
+        }
+    }
+
+  return filterx_generator_init_method(s, cfg);
+}
+
+static void
+_literal_generator_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
+
+  for (GList *link = self->elements; link; link = link->next)
+    {
+      FilterXLiteralGeneratorElem *elem = (FilterXLiteralGeneratorElem *) link->data;
+      _literal_generator_elem_deinit(elem, cfg);
+    }
+
+  filterx_generator_deinit_method(s, cfg);
+}
+
 void
 _literal_generator_free(FilterXExpr *s)
 {
@@ -132,6 +191,8 @@ _literal_generator_init_instance(FilterXExprLiteralGenerator *self)
 {
   filterx_generator_init_instance(&self->super.super);
   self->super.generate = _literal_generator_generate;
+  self->super.super.init = _literal_generator_init;
+  self->super.super.deinit = _literal_generator_deinit;
   self->super.super.free_fn = _literal_generator_free;
 }
 
