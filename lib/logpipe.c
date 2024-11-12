@@ -128,11 +128,6 @@ log_pipe_init_instance(LogPipe *self, GlobalConfig *cfg)
   self->plugin_name = NULL;
   self->signal_slot_connector = signal_slot_connector_new();
 
-  /* NOTE: queue == NULL means that this pipe simply forwards the
-   * message along the pipeline, e.g. like it has called
-   * log_msg_forward_msg. Since this is a common case, it is better
-   * inlined (than to use an indirect call) for performance. */
-
   self->queue = log_pipe_forward_msg;
   self->free_fn = log_pipe_free_method;
   self->arcs = _arcs;
