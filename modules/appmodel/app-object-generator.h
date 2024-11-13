@@ -44,6 +44,7 @@ gboolean app_object_generator_is_application_excluded(AppObjectGenerator *self, 
 
 gboolean app_object_generator_parse_arguments_method(AppObjectGenerator *self, CfgArgs *args, const gchar *reference);
 void app_object_generator_init_instance(AppObjectGenerator *self, gint context, const gchar *name);
+void app_object_generator_free_method(CfgBlockGenerator *s);
 
 
 #endif

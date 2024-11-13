@@ -105,9 +105,20 @@ _generate(CfgBlockGenerator *s, GlobalConfig *cfg, gpointer args, GString *resul
 }
 
 void
+app_object_generator_free_method(CfgBlockGenerator *s)
+{
+  AppObjectGenerator *self = (AppObjectGenerator *) s;
+
+  g_free(self->included_apps);
+  g_free(self->excluded_apps);
+  cfg_block_generator_free_method(s);
+}
+
+void
 app_object_generator_init_instance(AppObjectGenerator *self, gint context, const gchar *name)
 {
   cfg_block_generator_init_instance(&self->super, context, name);
   self->super.generate = _generate;
   self->parse_arguments = app_object_generator_parse_arguments_method;
+  self->super.free_fn = app_object_generator_free_method;
 }
