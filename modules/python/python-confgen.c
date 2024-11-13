@@ -78,7 +78,7 @@ python_config_generator_free(CfgBlockGenerator *s)
   gstate = PyGILState_Ensure();
   Py_XDECREF(self->py_generator_function);
   PyGILState_Release(gstate);
-  cfg_block_generator_free_instance(s);
+  cfg_block_generator_free_method(s);
 }
 
 CfgBlockGenerator *

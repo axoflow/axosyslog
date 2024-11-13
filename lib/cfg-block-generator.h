@@ -59,7 +59,7 @@ cfg_block_generator_format_name(CfgBlockGenerator *self, gchar *buf, gsize buf_l
 gboolean cfg_block_generator_generate(CfgBlockGenerator *self, GlobalConfig *cfg, gpointer args, GString *result,
                                       const gchar *reference);
 void cfg_block_generator_init_instance(CfgBlockGenerator *self, gint context, const gchar *name);
-void cfg_block_generator_free_instance(CfgBlockGenerator *self);
+void cfg_block_generator_free_method(CfgBlockGenerator *self);
 CfgBlockGenerator *cfg_block_generator_ref(CfgBlockGenerator *self);
 void cfg_block_generator_unref(CfgBlockGenerator *self);
 
