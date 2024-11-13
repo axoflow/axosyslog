@@ -74,7 +74,8 @@ typedef enum _CfgYesNoAuto
 
 gboolean cfg_process_flag(CfgFlagHandler *handlers, gpointer base, const gchar *flag);
 gboolean cfg_process_yesno(const gchar *yesno);
-
+gboolean cfg_process_list_of_literals(const gchar *input, GList **result);
+gboolean cfg_is_literal_in_list_of_literals(GList *list, const gchar *literal);
 
 extern CfgParser main_parser;
 
