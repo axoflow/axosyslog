@@ -30,6 +30,8 @@ typedef struct _AppTransformGenerator
   AppObjectGenerator super;
   const gchar *flavour;
   const gchar *filterx_app_variable;
+  GList *included_transforms;
+  GList *excluded_transforms;
   GString *block;
 } AppTransformGenerator;
 
@@ -56,6 +58,24 @@ _parse_filterx_app_variable(AppTransformGenerator *self, CfgArgs *args, const gc
 }
 
 static gboolean
+_parse_include_transforms_arg(AppTransformGenerator *self, CfgArgs *args, const gchar *reference)
+{
+  const gchar *v = cfg_args_get(args, "include-transforms");
+  if (!v)
+    return TRUE;
+  return cfg_process_list_of_literals(v, &self->included_transforms);
+}
+
+static gboolean
+_parse_exclude_transforms_arg(AppTransformGenerator *self, CfgArgs *args, const gchar *reference)
+{
+  const gchar *v = cfg_args_get(args, "exclude-transforms");
+  if (!v)
+    return TRUE;
+  return cfg_process_list_of_literals(v, &self->excluded_transforms);
+}
+
+static gboolean
 app_transform_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, const gchar *reference)
 {
   AppTransformGenerator *self = (AppTransformGenerator *) s;
@@ -65,6 +85,12 @@ app_transform_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, co
     return FALSE;
 
   if (!_parse_filterx_app_variable(self, args, reference))
+    return FALSE;
+
+  if (!_parse_include_transforms_arg(self, args, reference))
+    return FALSE;
+
+  if (!_parse_exclude_transforms_arg(self, args, reference))
     return FALSE;
 
   if (!app_object_generator_parse_arguments_method(&self->super, args, reference))
@@ -127,6 +153,16 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
   self->block = NULL;
 }
 
+static void
+_free(CfgBlockGenerator *s)
+{
+  AppTransformGenerator *self = (AppTransformGenerator *) s;
+
+  g_list_free_full(self->included_transforms, g_free);
+  g_list_free_full(self->excluded_transforms, g_free);
+  app_object_generator_free_method(s);
+}
+
 CfgBlockGenerator *
 app_transform_generator_new(gint context, const gchar *name)
 {
@@ -135,5 +171,6 @@ app_transform_generator_new(gint context, const gchar *name)
   app_object_generator_init_instance(&self->super, context, name);
   self->super.parse_arguments = app_transform_generator_parse_arguments;
   self->super.generate_config = app_transform_generate_config;
+  self->super.super.free_fn = _free;
   return &self->super.super;
 }
