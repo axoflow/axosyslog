@@ -110,6 +110,22 @@ _generate_steps(AppTransformGenerator *self, GList *steps)
     }
 }
 
+static gboolean
+_is_transform_included(AppTransformGenerator *self, const gchar *name)
+{
+  if (!self->included_transforms)
+    return TRUE;
+  return cfg_is_literal_in_list_of_literals(self->included_transforms, name);
+}
+
+static gboolean
+_is_transform_excluded(AppTransformGenerator *self, const gchar *name)
+{
+  if (!self->excluded_transforms)
+    return FALSE;
+  return cfg_is_literal_in_list_of_literals(self->excluded_transforms, name);
+}
+
 static void
 _generate_app_transform(Transformation *transformation, gpointer user_data)
 {
@@ -130,6 +146,9 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
   for (GList *l = transformation->transforms; l; l = l->next)
     {
       Transform *transform = l->data;
+
+      if (!_is_transform_included(self, transform->name) || _is_transform_excluded(self, transform->name))
+        continue;
 
       _generate_steps(self, transform->steps);
     }
