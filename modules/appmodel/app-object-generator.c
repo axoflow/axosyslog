@@ -33,7 +33,7 @@ app_object_generator_is_application_included(AppObjectGenerator *self, const gch
   /* include everything if we don't have the option */
   if (!self->included_apps)
     return TRUE;
-  return strstr(self->included_apps, app_name) != NULL;
+  return cfg_is_literal_in_list_of_literals(self->included_apps, app_name);
 }
 
 gboolean
@@ -41,7 +41,7 @@ app_object_generator_is_application_excluded(AppObjectGenerator *self, const gch
 {
   if (!self->excluded_apps)
     return FALSE;
-  return strstr(self->excluded_apps, app_name) != NULL;
+  return cfg_is_literal_in_list_of_literals(self->excluded_apps, app_name);
 }
 
 static gboolean
@@ -62,8 +62,7 @@ _parse_auto_parse_exclude_arg(AppObjectGenerator *self, CfgArgs *args, const gch
   const gchar *v = cfg_args_get(args, "auto-parse-exclude");
   if (!v)
     return TRUE;
-  self->excluded_apps = g_strdup(v);
-  return TRUE;
+  return cfg_process_list_of_literals(v, &self->excluded_apps);
 }
 
 static gboolean
@@ -72,8 +71,7 @@ _parse_auto_parse_include_arg(AppObjectGenerator *self, CfgArgs *args, const gch
   const gchar *v = cfg_args_get(args, "auto-parse-include");
   if (!v)
     return TRUE;
-  self->included_apps = g_strdup(v);
-  return TRUE;
+  return cfg_process_list_of_literals(v, &self->included_apps);
 }
 
 gboolean
@@ -109,8 +107,8 @@ app_object_generator_free_method(CfgBlockGenerator *s)
 {
   AppObjectGenerator *self = (AppObjectGenerator *) s;
 
-  g_free(self->included_apps);
-  g_free(self->excluded_apps);
+  g_list_free_full(self->included_apps, g_free);
+  g_list_free_full(self->excluded_apps, g_free);
   cfg_block_generator_free_method(s);
 }
 

@@ -34,8 +34,8 @@ struct _AppObjectGenerator
   CfgBlockGenerator super;
   gboolean (*parse_arguments)(AppObjectGenerator *self, CfgArgs *args, const gchar *reference);
   void (*generate_config)(AppObjectGenerator *self, GlobalConfig *cfg, GString *result);
-  const gchar *included_apps;
-  const gchar *excluded_apps;
+  GList *included_apps;
+  GList *excluded_apps;
   gboolean is_parsing_enabled;
 };
 
