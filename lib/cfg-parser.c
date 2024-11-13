@@ -378,3 +378,43 @@ cfg_process_yesno(const gchar *yesno)
     return TRUE;
   return FALSE;
 }
+
+gboolean
+cfg_process_list_of_literals(const gchar *input, GList **result)
+{
+  if (strchr(input, '"') || strchr(input, '\''))
+    {
+      fprintf(stderr, "Error: list of literals must not contain single or double quotes: %s\n", input);
+      return FALSE;
+    }
+
+  *result = NULL;
+
+  gchar *input_copy = g_strdup(input);
+  const gchar delimiters[] = ", \t\n";
+  const gchar *elem = strtok(input_copy, delimiters);
+  while (elem)
+    {
+      if (strlen(elem) > 0)
+        *result = g_list_append(*result, __normalize_key(elem));
+      elem = strtok(NULL, delimiters);
+    }
+
+  g_free(input_copy);
+  return TRUE;
+}
+
+static gint
+_compare_literals_normalized(gconstpointer a, gconstpointer b)
+{
+  gchar *normalized_b = __normalize_key(b);
+  gint result = strcmp(a, normalized_b);
+  g_free(normalized_b);
+  return result;
+}
+
+gboolean
+cfg_is_literal_in_list_of_literals(GList *list, const gchar *literal)
+{
+  return !!g_list_find_custom(list, literal, _compare_literals_normalized);
+}

@@ -22,56 +22,55 @@
 
 #include "transformation.h"
 
-/* TransformationStep: a named filterx expression */
+/* TransformStep: a named filterx block */
 
-TransformationStep *
-transformation_step_new(const gchar *name, const gchar *expr)
+TransformStep *
+transform_step_new(const gchar *name, const gchar *expr)
 {
-  TransformationStep *self = g_new0(TransformationStep, 1);
+  TransformStep *self = g_new0(TransformStep, 1);
   self->name = g_strdup(name);
   self->expr = g_strdup(expr);
   return self;
 }
 
 void
-transformation_step_free(TransformationStep *self)
+transform_step_free(TransformStep *self)
 {
   g_free(self->name);
   g_free(self->expr);
   g_free(self);
 }
 
-/* TransformationBlock: named list of steps */
+/* Transform: named list of TransformSteps */
 
 void
-transformation_block_add_step(TransformationBlock *self, const gchar *name, const gchar *expr)
+transform_add_step(Transform *self, const gchar *name, const gchar *expr)
 {
-  self->steps = g_list_append(self->steps, transformation_step_new(name, expr));
+  self->steps = g_list_append(self->steps, transform_step_new(name, expr));
 }
 
-TransformationBlock *
-transformation_block_new(const gchar *name)
+Transform *
+transform_new(const gchar *name)
 {
-  TransformationBlock *self = g_new0(TransformationBlock, 1);
+  Transform *self = g_new0(Transform, 1);
   self->name = g_strdup(name);
   return self;
 }
 
 void
-transformation_block_free(TransformationBlock *self)
+transform_free(Transform *self)
 {
   g_free(self->name);
-  g_list_free_full(self->steps, (GDestroyNotify) transformation_step_free);
+  g_list_free_full(self->steps, (GDestroyNotify) transform_step_free);
   g_free(self);
 }
 
-/* Transformation */
-/* list of blocks */
+/* Transformation: list of Transforms corresponding to an app (with optional flavour) */
 
 void
-transformation_add_block(Transformation *self, TransformationBlock *block)
+transformation_add_transform(Transformation *self, Transform *transform)
 {
-  self->blocks = g_list_append(self->blocks, block);
+  self->transforms = g_list_append(self->transforms, transform);
 }
 
 static void
@@ -79,7 +78,7 @@ transformation_free(AppModelObject *s)
 {
   Transformation *self = (Transformation *) s;
 
-  g_list_free_full(self->blocks, (GDestroyNotify) transformation_block_free);
+  g_list_free_full(self->transforms, (GDestroyNotify) transform_free);
 }
 
 Transformation *

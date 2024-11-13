@@ -129,7 +129,7 @@ confgen_exec_free(CfgBlockGenerator *s)
   ConfgenExec *self = (ConfgenExec *) s;
 
   g_free(self->exec);
-  cfg_block_generator_free_instance(s);
+  cfg_block_generator_free_method(s);
 }
 
 static CfgBlockGenerator *

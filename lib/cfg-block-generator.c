@@ -73,11 +73,11 @@ cfg_block_generator_init_instance(CfgBlockGenerator *self, gint context, const g
   self->context = context;
   self->name = g_strdup(name);
   self->format_name = cfg_block_generator_format_name_method;
-  self->free_fn = cfg_block_generator_free_instance;
+  self->free_fn = cfg_block_generator_free_method;
 }
 
 void
-cfg_block_generator_free_instance(CfgBlockGenerator *self)
+cfg_block_generator_free_method(CfgBlockGenerator *self)
 {
   g_free(self->name);
 }

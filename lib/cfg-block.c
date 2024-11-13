@@ -196,7 +196,7 @@ cfg_block_free_instance(CfgBlockGenerator *s)
   g_free(self->filename);
   g_free(self->content);
   cfg_args_unref(self->arg_defs);
-  cfg_block_generator_free_instance(s);
+  cfg_block_generator_free_method(s);
 }
 
 
