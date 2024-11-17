@@ -30,6 +30,7 @@
 #include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/object-metrics-labels.h"
 #include "filterx/func-istype.h"
 #include "filterx/func-len.h"
 #include "filterx/func-vars.h"
@@ -97,6 +98,9 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("bool", filterx_typecast_boolean));
   g_assert(filterx_builtin_simple_function_register("int", filterx_typecast_integer));
   g_assert(filterx_builtin_simple_function_register("double", filterx_typecast_double));
+  g_assert(filterx_builtin_simple_function_register("metrics_labels", filterx_simple_function_metrics_labels));
+  g_assert(filterx_builtin_simple_function_register("dedup_metrics_labels",
+                                                    filterx_simple_function_dedup_metrics_labels));
   g_assert(filterx_builtin_simple_function_register("len", filterx_simple_function_len));
   g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
@@ -247,6 +251,8 @@ filterx_global_init(void)
   filterx_type_init(&FILTERX_TYPE_NAME(json_array));
   filterx_type_init(&FILTERX_TYPE_NAME(datetime));
   filterx_type_init(&FILTERX_TYPE_NAME(message_value));
+
+  filterx_type_init(&FILTERX_TYPE_NAME(metrics_labels));
 
   filterx_primitive_global_init();
   filterx_null_global_init();

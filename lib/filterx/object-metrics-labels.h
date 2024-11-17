@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 László Várady
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,20 +21,18 @@
  * COPYING for details.
  *
  */
-#ifndef STATS_PROMETHEUS_H_INCLUDED
-#define STATS_PROMETHEUS_H_INCLUDED 1
 
-#include "syslog-ng.h"
-#include "stats-cluster.h"
+#ifndef FILTERX_OBJECT_METRICS_LABELS_H_INCLUDED
+#define FILTERX_OBJECT_METRICS_LABELS_H_INCLUDED
 
-#define PROMETHEUS_METRIC_PREFIX "syslogng_"
+#include "filterx-object.h"
+#include "filterx/expr-function.h"
 
-typedef void (*StatsPrometheusRecordFunc)(const char *record, gpointer user_data);
+FILTERX_DECLARE_TYPE(metrics_labels);
 
-GString *stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *counter);
-
-void stats_generate_prometheus(StatsPrometheusRecordFunc process_record, gpointer user_data, gboolean with_legacy,
-                               gboolean *cancelled);
-void stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_len, GString *buf);
+FilterXObject *filterx_object_metrics_labels_new(guint reserved_size);
+StatsClusterLabel *filterx_object_metrics_labels_get_value_ref(FilterXObject *s, gsize *len);
+FilterXObject *filterx_simple_function_metrics_labels(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, GPtrArray *args);
 
 #endif

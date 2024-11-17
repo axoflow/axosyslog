@@ -1973,8 +1973,8 @@ def test_flatten(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '[' \
-        '{"top_level_field":42,"top_level_dict.inner_dict.inner_inner_field":1,"top_level_dict.inner_field":1337},' \
-        '{"top_level_field":42,"top_level_dict->inner_dict->inner_inner_field":1,"top_level_dict->inner_field":1337}' \
+        '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1},' \
+        '{"top_level_field":42,"top_level_dict->inner_field":1337,"top_level_dict->inner_dict->inner_inner_field":1}' \
         ']\n'
 
 

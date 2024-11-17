@@ -46,29 +46,26 @@ typedef struct FilterXFunctionFlattenKV_
   FilterXObject *value;
 } FilterXFunctionFlattenKV;
 
-static FilterXFunctionFlattenKV *
-_kv_new(FilterXObject *key, FilterXObject *value)
+static void
+_kv_init(FilterXFunctionFlattenKV *self, FilterXObject *key, FilterXObject *value)
 {
-  FilterXFunctionFlattenKV *self = g_new0(FilterXFunctionFlattenKV, 1);
   self->key = filterx_object_ref(key);
   self->value = filterx_object_ref(value);
-  return self;
 }
 
 static void
-_kv_free(FilterXFunctionFlattenKV *self)
+_kv_destroy(FilterXFunctionFlattenKV *self)
 {
   filterx_object_unref(self->key);
   filterx_object_unref(self->value);
-  g_free(self);
 }
 
 static gboolean
 _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   FilterXFunctionFlatten *self = ((gpointer *) user_data)[0];
-  GList **flattened_kvs = ((gpointer *) user_data)[1];
-  GList **top_level_dict_keys = ((gpointer *) user_data)[2];
+  GArray *flattened_kvs = ((gpointer *) user_data)[1];
+  GPtrArray *top_level_dict_keys = ((gpointer *) user_data)[2];
   GString *key_buffer = ((gpointer *) user_data)[3];
   gboolean is_top_level = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[4]);
 
@@ -76,7 +73,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
       if (is_top_level)
-        *top_level_dict_keys = g_list_prepend(*top_level_dict_keys, filterx_object_ref(key));
+        g_ptr_array_add(top_level_dict_keys, filterx_object_ref(key));
 
       gssize orig_len = key_buffer->len;
       if (!filterx_object_repr_append(key, key_buffer))
@@ -108,7 +105,9 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
     }
 
   FilterXObject *flat_key = filterx_string_new(key_buffer->str, (gssize) MIN(key_buffer->len, G_MAXSSIZE));
-  *flattened_kvs = g_list_prepend(*flattened_kvs, _kv_new(flat_key, value));
+  FilterXFunctionFlattenKV kv;
+  _kv_init(&kv, flat_key, value);
+  g_array_append_val(flattened_kvs, kv);
   filterx_object_unref(flat_key);
 
   g_string_truncate(key_buffer, orig_len);
@@ -117,7 +116,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
 
 static gboolean
 _collect_dict_modifications(FilterXFunctionFlatten *self, FilterXObject *dict,
-                            GList **flattened_kvs, GList **top_level_dict_keys)
+                            GArray *flattened_kvs, GPtrArray *top_level_dict_keys)
 {
   GString *key_buffer = scratch_buffers_alloc();
   gpointer user_data[] = { self, flattened_kvs, top_level_dict_keys, key_buffer, GINT_TO_POINTER(TRUE)};
@@ -125,12 +124,11 @@ _collect_dict_modifications(FilterXFunctionFlatten *self, FilterXObject *dict,
 }
 
 static gboolean
-_remove_keys(FilterXFunctionFlatten *self, FilterXObject *dict, GList *keys)
+_remove_keys(FilterXFunctionFlatten *self, FilterXObject *dict, GPtrArray *keys)
 {
-  for (GList *elem = keys; elem; elem = elem->next)
+  for (guint i = 0; i < keys->len; i++)
     {
-      FilterXObject *key = (FilterXObject *) elem->data;
-
+      FilterXObject *key = (FilterXObject *) g_ptr_array_index(keys, i);
       if (!filterx_object_unset_key(dict, key))
         return FALSE;
     }
@@ -139,11 +137,11 @@ _remove_keys(FilterXFunctionFlatten *self, FilterXObject *dict, GList *keys)
 }
 
 static gboolean
-_add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GList *kvs)
+_add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
 {
-  for (GList *elem = kvs; elem; elem = elem->next)
+  for (guint i = 0; i < kvs->len; i++)
     {
-      FilterXFunctionFlattenKV *kv = (FilterXFunctionFlattenKV *) elem->data;
+      FilterXFunctionFlattenKV *kv = &g_array_index(kvs, FilterXFunctionFlattenKV, i);
 
       FilterXObject *value = filterx_object_clone(kv->value);
       gboolean success = filterx_object_set_subscript(dict, kv->key, &value);
@@ -162,10 +160,11 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GList *kvs)
 static gboolean
 _flatten(FilterXFunctionFlatten *self, FilterXObject *dict)
 {
-  GList *flattened_kvs = NULL, *top_level_dict_keys = NULL;
+  GArray *flattened_kvs = g_array_new(FALSE, FALSE, sizeof(FilterXFunctionFlattenKV));
+  GPtrArray *top_level_dict_keys = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   gboolean result = FALSE;
 
-  if (!_collect_dict_modifications(self, dict, &flattened_kvs, &top_level_dict_keys))
+  if (!_collect_dict_modifications(self, dict, flattened_kvs, top_level_dict_keys))
     goto exit;
 
   if (!_remove_keys(self, dict, top_level_dict_keys))
@@ -177,8 +176,10 @@ _flatten(FilterXFunctionFlatten *self, FilterXObject *dict)
   result = TRUE;
 
 exit:
-  g_list_free_full(flattened_kvs, (GDestroyNotify) _kv_free);
-  g_list_free_full(top_level_dict_keys, (GDestroyNotify) filterx_object_unref);
+  for (guint i = 0; i < flattened_kvs->len; i++)
+    _kv_destroy(&g_array_index(flattened_kvs, FilterXFunctionFlattenKV, i));
+  g_array_free(flattened_kvs, TRUE);
+  g_ptr_array_free(top_level_dict_keys, TRUE);
   return result;
 }
 

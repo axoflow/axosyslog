@@ -111,7 +111,7 @@ Test(filterx_func_flatten, default_separator)
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
                                                              filterx_literal_new(filterx_json_new_from_repr(input, -1))));
   _assert_flatten(args,
-                  "{\"top_level_field\":42,\"top_level_dict.inner_dict.inner_inner_field\":1,\"top_level_dict.inner_field\":1337}");
+                  "{\"top_level_field\":42,\"top_level_dict.inner_field\":1337,\"top_level_dict.inner_dict.inner_inner_field\":1}");
 }
 
 Test(filterx_func_flatten, custom_separator)
@@ -122,7 +122,7 @@ Test(filterx_func_flatten, custom_separator)
                                                              filterx_literal_new(filterx_json_new_from_repr(input, -1))));
   args = g_list_append(args, filterx_function_arg_new("separator", filterx_literal_new(filterx_string_new("->", -1))));
   _assert_flatten(args,
-                  "{\"top_level_field\":42,\"top_level_dict->inner_dict->inner_inner_field\":1,\"top_level_dict->inner_field\":1337}");
+                  "{\"top_level_field\":42,\"top_level_dict->inner_field\":1337,\"top_level_dict->inner_dict->inner_inner_field\":1}");
 }
 
 static void

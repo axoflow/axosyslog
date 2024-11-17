@@ -165,10 +165,15 @@ stats_format_prometheus_format_value(const StatsClusterKey *key, StatsCounterIte
 }
 
 static inline void
-_append_formatted_label(GString *serialized_labels, const StatsClusterLabel *label)
+_append_formatted_label(GString *serialized_labels, const StatsClusterLabel *label, gboolean *comma_needed)
 {
-  if (!label->value)
+  if (_is_str_empty(label->value))
     return;
+
+  if (*comma_needed)
+    g_string_append_c(serialized_labels, ',');
+  else
+    *comma_needed = TRUE;
 
   g_string_append_printf(serialized_labels, "%s=\"%s\"",
                          stats_format_prometheus_sanitize_name(label->name),
@@ -194,26 +199,10 @@ _format_labels(StatsCluster *sc, gint type)
 
   gboolean comma_needed = FALSE;
   for (gsize i = 0; i < sc->key.labels_len; ++i)
-    {
-      const StatsClusterLabel *label = &sc->key.labels[i];
-
-      if (_is_str_empty(label->value))
-        continue;
-
-      if (comma_needed)
-        g_string_append_c(serialized_labels, ',');
-      else
-        comma_needed = TRUE;
-
-      _append_formatted_label(serialized_labels, label);
-    }
+    _append_formatted_label(serialized_labels, &sc->key.labels[i], &comma_needed);
 
   if (needs_type_label)
-    {
-      if (comma_needed)
-        g_string_append_c(serialized_labels, ',');
-      _append_formatted_label(serialized_labels, &type_label);
-    }
+    _append_formatted_label(serialized_labels, &type_label, &comma_needed);
 
   if (serialized_labels->len == 0)
     return NULL;
@@ -310,6 +299,24 @@ stats_format_prometheus(StatsCluster *sc, gint type, StatsCounterItem *counter, 
 
   process_record(record->str, process_record_arg);
   scratch_buffers_reclaim_marked(marker);
+}
+
+void
+stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_len, GString *buf)
+{
+  gsize orig_size = buf->len;
+
+  g_string_append_c(buf, '{');
+
+  gboolean comma_needed = FALSE;
+  for (gsize i = 0; i < labels_len; ++i)
+    _append_formatted_label(buf, &labels[i], &comma_needed);
+
+  gboolean no_labels = buf->len == orig_size + 1;
+  if (no_labels)
+    g_string_truncate(buf, orig_size);
+  else
+    g_string_append_c(buf, '}');
 }
 
 void

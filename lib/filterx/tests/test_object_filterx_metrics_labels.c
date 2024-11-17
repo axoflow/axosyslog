@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 László Várady
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,20 +21,25 @@
  * COPYING for details.
  *
  */
-#ifndef STATS_PROMETHEUS_H_INCLUDED
-#define STATS_PROMETHEUS_H_INCLUDED 1
+#include <criterion/criterion.h>
+#include "libtest/filterx-lib.h"
 
-#include "syslog-ng.h"
-#include "stats-cluster.h"
+#include "filterx/object-metrics-labels.h"
 
-#define PROMETHEUS_METRIC_PREFIX "syslogng_"
+#include "apphook.h"
+#include "scratch-buffers.h"
 
-typedef void (*StatsPrometheusRecordFunc)(const char *record, gpointer user_data);
+static void
+setup(void)
+{
+  app_startup();
+}
 
-GString *stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *counter);
+static void
+teardown(void)
+{
+  scratch_buffers_explicit_gc();
+  app_shutdown();
+}
 
-void stats_generate_prometheus(StatsPrometheusRecordFunc process_record, gpointer user_data, gboolean with_legacy,
-                               gboolean *cancelled);
-void stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_len, GString *buf);
-
-#endif
+TestSuite(filterx_object_metrics_labels, .init = setup, .fini = teardown);
