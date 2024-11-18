@@ -27,7 +27,7 @@ from pathlib import Path
 from sys import stdin
 from typing import List
 
-from indexer import Indexer, NightlyDebIndexer, StableDebIndexer
+from indexer import Indexer, NightlyDebIndexer, StableDebIndexer, NightlyRpmIndexer, StableRpmIndexer
 from config import Config
 
 
@@ -129,9 +129,29 @@ def construct_indexers(cfg: Config, args: dict) -> List[Indexer]:
                 gpg_key_passphrase=gpg_key_passphrase,
             )
         )
+        indexers.append(
+            NightlyRpmIndexer(
+                incoming_remote_storage_synchronizer=cfg.create_incoming_remote_storage_synchronizer(suite),
+                indexed_remote_storage_synchronizer=cfg.create_indexed_remote_storage_synchronizer(suite),
+                cdn=cfg.create_cdn(suite),
+                run_id=args["run_id"],
+                gpg_key_path=gpg_key_path,
+                gpg_key_passphrase=gpg_key_passphrase,
+            )
+        )
     elif suite == "stable":
         indexers.append(
             StableDebIndexer(
+                incoming_remote_storage_synchronizer=cfg.create_incoming_remote_storage_synchronizer(suite),
+                indexed_remote_storage_synchronizer=cfg.create_indexed_remote_storage_synchronizer(suite),
+                cdn=cfg.create_cdn(suite),
+                run_id=args["run_id"],
+                gpg_key_path=gpg_key_path,
+                gpg_key_passphrase=gpg_key_passphrase,
+            )
+        )
+        indexers.append(
+            StableRpmIndexer(
                 incoming_remote_storage_synchronizer=cfg.create_incoming_remote_storage_synchronizer(suite),
                 indexed_remote_storage_synchronizer=cfg.create_indexed_remote_storage_synchronizer(suite),
                 cdn=cfg.create_cdn(suite),

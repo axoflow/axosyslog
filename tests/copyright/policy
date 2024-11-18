@@ -293,6 +293,7 @@ docker/python-modules/webhook/scl/webhook.conf
 docker/python-modules/webhook/source.py
 packaging/package-indexer/remote_storage_synchronizer/s3_bucket_synchronizer.py
 packaging/package-indexer/cdn/cloudflare_cdn.py
+packaging/package-indexer/indexer/rpm_indexer.py
 modules/csvparser/filterx-func-parse-csv\.[ch]
 modules/csvparser/filterx-func-format-csv\.[ch]
 modules/csvparser/tests/test_filterx_func_parse_csv.c
