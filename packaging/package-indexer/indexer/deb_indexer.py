@@ -125,6 +125,7 @@ class DebIndexer(Indexer):
     def _index_pkgs(self, indexed_dir: Path) -> None:
         self.__create_packages_files(indexed_dir)
         self.__create_release_file(indexed_dir)
+        self.__sign_pkgs(indexed_dir)
 
     @staticmethod
     def __add_gpg_security_params(command: list) -> list:
@@ -212,7 +213,7 @@ class DebIndexer(Indexer):
         )
         utils.execute_command(command, env=env, input=self.__gpg_key_passphrase)
 
-    def _sign_pkgs(self, indexed_dir: Path) -> None:
+    def __sign_pkgs(self, indexed_dir: Path) -> None:
         gnupghome = TemporaryDirectory(dir=CURRENT_DIR)
         release_file_path = Path(indexed_dir, "Release")
 
