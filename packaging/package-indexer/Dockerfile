@@ -3,7 +3,11 @@ FROM ubuntu:noble
 RUN apt-get update && apt-get install -y \
   python3-pip \
   apt-utils \
-  gnupg2
+  gnupg2 \
+  gpg-agent \
+  scdaemon \
+  rpm \
+  createrepo-c
 
 RUN pip install --break-system-packages \
   azure-storage-blob \
