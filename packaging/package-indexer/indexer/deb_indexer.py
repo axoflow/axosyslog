@@ -238,7 +238,7 @@ class StableDebIndexer(DebIndexer):
         super().__init__(
             incoming_remote_storage_synchronizer=incoming_remote_storage_synchronizer,
             indexed_remote_storage_synchronizer=indexed_remote_storage_synchronizer,
-            incoming_sub_dir=Path("stable", run_id),
+            incoming_sub_dir=Path("stable", run_id, "deb"),
             dist_dir=Path("stable"),
             cdn=cdn,
             apt_conf_file_path=Path(CURRENT_DIR, "apt_conf", "stable.conf"),
@@ -262,7 +262,7 @@ class NightlyDebIndexer(DebIndexer):
         super().__init__(
             incoming_remote_storage_synchronizer=incoming_remote_storage_synchronizer,
             indexed_remote_storage_synchronizer=indexed_remote_storage_synchronizer,
-            incoming_sub_dir=Path("nightly", run_id),
+            incoming_sub_dir=Path("nightly", run_id, "deb"),
             dist_dir=Path("nightly"),
             cdn=cdn,
             apt_conf_file_path=Path(CURRENT_DIR, "apt_conf", "nightly.conf"),
