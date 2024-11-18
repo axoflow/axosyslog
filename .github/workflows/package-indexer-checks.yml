@@ -35,10 +35,10 @@ jobs:
 
       - name: style-check
         run: |
-          docker exec ${DOCKER_CONTAINER_NAME} pip install black
+          docker exec ${DOCKER_CONTAINER_NAME} pip install --break-system-packages black
           docker exec ${DOCKER_CONTAINER_NAME} black --check --diff .
 
       - name: linter
         run: |
-          docker exec ${DOCKER_CONTAINER_NAME} pip install mypy
+          docker exec ${DOCKER_CONTAINER_NAME} pip install --break-system-packages mypy
           docker exec ${DOCKER_CONTAINER_NAME} mypy .
