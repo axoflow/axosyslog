@@ -41,7 +41,6 @@ EXTRA_DIST += \
 	dbld/images/ubuntu-noble.dockerfile \
 	dbld/images/ubuntu-oracular.dockerfile \
 	dbld/images/ubuntu-lunar.dockerfile \
-	dbld/images/ubuntu-mantic.dockerfile \
 	dbld/images/tarball.dockerfile \
 	dbld/images/hooks/build \
 	dbld/images/README.md \

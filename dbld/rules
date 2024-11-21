@@ -16,7 +16,6 @@ BUILDER_IMAGES=		\
 	ubuntu-noble \
 	ubuntu-oracular \
 	ubuntu-lunar	\
-	ubuntu-mantic	\
 	tarball
 
 IMAGES=${BUILDER_IMAGES} devshell

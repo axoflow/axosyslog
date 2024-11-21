@@ -20,7 +20,6 @@ on:
           "ubuntu-noble",
           "ubuntu-oracular",
           "ubuntu-lunar",
-          "ubuntu-mantic"
         ]'
     secrets:
       r2-access-key:

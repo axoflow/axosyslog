@@ -141,7 +141,6 @@ The following x86-64 distros are supported:
 | Debian Testing  | debian-testing         |
 | Ubuntu 24.10    | ubuntu-oracular        |
 | Ubuntu 24.04    | ubuntu-noble           |
-| Ubuntu 23.10    | ubuntu-mantic          |
 | Ubuntu 23.04    | ubuntu-lunar           |
 | Ubuntu 22.04    | ubuntu-jammy           |
 | Ubuntu 20.04    | ubuntu-focal           |

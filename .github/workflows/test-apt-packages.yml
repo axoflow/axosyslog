@@ -24,7 +24,6 @@ jobs:
           - "ubuntu:jammy"
           - "ubuntu:noble"
           - "ubuntu:lunar"
-          - "ubuntu:mantic"
         upgrade-from:
           - "debian-official"
           - "axosyslog-last"

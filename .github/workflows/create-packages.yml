@@ -23,7 +23,6 @@ on:
           "ubuntu-noble",
           "ubuntu-oracular",
           "ubuntu-lunar",
-          "ubuntu-mantic",
           "almalinux-8",
           "almalinux-9",
           "fedora-39",
