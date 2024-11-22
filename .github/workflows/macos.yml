@@ -36,7 +36,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew update --preinstall
-          brew bundle --file=contrib/Brewfile
+          brew bundle --force --file=contrib/Brewfile
 
       - name: Set ENV variables
         run: |
