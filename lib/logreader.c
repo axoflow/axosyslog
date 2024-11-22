@@ -231,7 +231,12 @@ log_reader_apply_proto_and_poll_events(LogReader *self, LogProtoServer *proto, P
   self->proto = proto;
 
   if (self->proto)
-    log_proto_server_set_wakeup_cb(self->proto, (LogProtoServerWakeupFunc) log_reader_wakeup, self);
+    {
+      log_proto_server_set_wakeup_cb(self->proto, (LogProtoServerWakeupFunc) log_reader_wakeup, self);
+      self->handshake_in_progress = log_proto_server_needs_handshake(self->proto);
+    }
+  else
+    self->handshake_in_progress = FALSE;
 
   self->poll_events = poll_events;
 }
@@ -501,11 +506,13 @@ log_reader_fetch_log(LogReader *self)
 
   if ((self->options->flags & LR_IGNORE_AUX_DATA))
     aux = NULL;
-
   log_transport_aux_data_init(aux);
+
   if (self->handshake_in_progress)
     {
-      return log_reader_process_handshake(self);
+      gboolean succ = log_reader_process_handshake(self);
+      if (FALSE == succ || self->handshake_in_progress)
+        return FALSE;
     }
 
   /* NOTE: this loop is here to decrease the load on the main loop, we try
@@ -777,7 +784,7 @@ log_reader_new(GlobalConfig *cfg)
   self->super.schedule_dynamic_window_realloc = _schedule_dynamic_window_realloc;
   self->super.metrics.raw_bytes_enabled = TRUE;
   self->immediate_check = FALSE;
-  self->handshake_in_progress = TRUE;
+  self->handshake_in_progress = FALSE;
   log_reader_init_watches(self);
   g_mutex_init(&self->pending_close_lock);
   g_cond_init(&self->pending_close_cond);
