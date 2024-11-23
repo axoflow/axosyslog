@@ -82,6 +82,14 @@ filterx_double_unwrap(FilterXObject *s, gdouble *value)
   return TRUE;
 }
 
+static inline gboolean
+filterx_boolean_get_value(FilterXObject *s)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  return !!gn_as_int64(&self->value);
+}
+
 /* NOTE: Consider using filterx_object_extract_boolean() to also support message_value. */
 static inline gboolean
 filterx_boolean_unwrap(FilterXObject *s, gboolean *value)
