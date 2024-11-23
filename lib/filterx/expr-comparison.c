@@ -187,6 +187,13 @@ _evaluate_type_and_value_based(FilterXObject *lhs, FilterXObject *rhs, gint oper
   return _evaluate_type_aware(lhs, rhs, operator);
 }
 
+static inline FilterXObject *
+_eval_based_on_compare_mode(FilterXExpr *expr, gint compare_mode)
+{
+  gboolean typed_eval_needed = compare_mode & FCMPX_TYPE_AWARE || compare_mode & FCMPX_TYPE_AND_VALUE_BASED;
+  return typed_eval_needed ? filterx_expr_eval_typed(expr) : filterx_expr_eval(expr);
+}
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
@@ -194,15 +201,12 @@ _eval(FilterXExpr *s)
 
   gint compare_mode = self->operator & FCMPX_MODE_MASK;
   gint operator = self->operator & FCMPX_OP_MASK;
-  gboolean typed_eval_needed = compare_mode & FCMPX_TYPE_AWARE || compare_mode & FCMPX_TYPE_AND_VALUE_BASED;
 
-  FilterXObject *lhs_object = typed_eval_needed ? filterx_expr_eval_typed(self->super.lhs) : filterx_expr_eval(
-                                self->super.lhs);
+  FilterXObject *lhs_object = _eval_based_on_compare_mode(self->super.lhs, compare_mode);
   if (!lhs_object)
     return NULL;
 
-  FilterXObject *rhs_object = typed_eval_needed ? filterx_expr_eval_typed(self->super.rhs) : filterx_expr_eval(
-                                self->super.rhs);
+  FilterXObject *rhs_object = _eval_based_on_compare_mode(self->super.rhs, compare_mode);
   if (!rhs_object)
     {
       filterx_object_unref(lhs_object);
