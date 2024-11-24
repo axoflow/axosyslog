@@ -30,7 +30,7 @@
 
 struct _FilterXExpr
 {
-  /* not thread-safe*/
+  /* not thread-safe */
   guint32 ref_cnt;
   const gchar *type;
   guint32 ignore_falsy_result:1, suppress_from_trace:1;
