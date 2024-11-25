@@ -1530,7 +1530,7 @@ def test_vars(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
+    assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
 
 
 def test_macro_caching(config, syslog_ng):
@@ -2222,7 +2222,7 @@ def test_done(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"MESSAGE":"foo","var_wont_change":true}\n'
+    assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true}\n'
 
 
 def test_parse_xml(config, syslog_ng):
