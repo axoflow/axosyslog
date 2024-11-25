@@ -1533,6 +1533,39 @@ def test_vars(config, syslog_ng):
     assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
 
 
+def test_load_vars(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            my_vars = {
+                "$" + "logmsg_variable": "foo",  # "$" + "...": workaround for templating
+                "pipeline_level_variable": "baz",
+                "log": {
+                    "body": "foobar",
+                    "attributes": {
+                        "attribute": 42
+                    }
+                },
+                "js_array": [1, 2, 3, [4, 5, 6]]
+            };
+            load_vars(my_vars);
+        """,
+        filterx_expr_2=r"""
+            $MSG = {
+                "$" + "logmsg_variable": $logmsg_variable,  # "$" + "...": workaround for templating
+                "pipeline_level_variable": pipeline_level_variable,
+                "log": log,
+                "js_array": js_array
+            };
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
+
+
 def test_macro_caching(config, syslog_ng):
     (file_true, file_false) = create_config(
         config,
