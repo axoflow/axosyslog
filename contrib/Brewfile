@@ -4,14 +4,13 @@ brew "automake"
 brew "binutils"
 brew "bison"
 brew "flex"
-brew "gcc@11"
 brew "glib"
 brew "ivykis"
 brew "json-c"
 brew "libtool"
 brew "openssl@3"
 brew "pcre2"
-brew "pkg-config"
+brew "pkgconf"
 
 brew "curl"
 brew "gradle"
@@ -26,7 +25,6 @@ brew "python@3", link: true, force: true
 brew "rabbitmq-c"
 brew "riemann-client"
 brew "libpaho-mqtt"
-
 brew "grpc"
 
 brew "criterion"
