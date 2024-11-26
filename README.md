@@ -165,6 +165,79 @@ To install AxoSyslog:
 apt install axosyslog
 ```
 
+## RPM packages
+
+You can install AxoSyslog on your RPM-based system from Axoflow's RPM repository.
+AxoSyslog is a drop in replacement for the syslog-ng RPM package, all the binaries
+and configuration files are stored at the same place on your system.
+
+The following x86-64 distros are supported:
+
+| Distro          | axosyslog.repo component |
+|-----------------|--------------------------|
+| Fedora 39       | fedora                   |
+| Fedora 40       | fedora                   |
+| Fedora 41       | fedora                   |
+| AlmaLinux 8     | almalinux                |
+| AlmaLinux 9     | almalinux                |
+
+To add the RPM repo (e.g. Fedora 41):
+
+```
+yum install -y epel-release
+
+tee /etc/yum.repos.d/axosyslog.repo <<< '[axosyslog]
+name=AxoSyslog
+baseurl=https://pkg.axoflow.io/rpm/stable/fedora-$releasever/$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://pkg.axoflow.io/axoflow-code-signing-pub.asc' > /dev/null
+
+yum update -y
+```
+
+Nightly builds are also available:
+
+```
+tee /etc/yum.repos.d/axosyslog.repo <<< '[axosyslog]
+name=AxoSyslog
+baseurl=https://pkg.axoflow.io/rpm/nightly/fedora-$releasever/$basearch
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://pkg.axoflow.io/axoflow-code-signing-pub.asc' > /dev/null
+```
+
+To install AxoSyslog:
+```
+yum install -y axosyslog
+```
+
+### Extra repos
+
+As the example above showed, EPEL is necessary for AxoSyslog to work.
+Certain AxoSyslog modules need extra dependencies on some of the supported distros.
+
+#### Fedora
+
+```
+dnf install -y dnf-plugins-core
+```
+
+#### AlmaLinux 8
+
+```
+yum install -u yum-plugin-copr
+yum config-manager --set-enabled powertools
+```
+
+#### AlmaLinux 9
+
+```
+dnf config-manager --set-enabled crb
+```
+
 ## Documentation
 
 You can find [comprehensive documentation for AxoSyslog](https://axoflow.com/docs/axosyslog-core)
