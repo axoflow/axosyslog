@@ -103,6 +103,7 @@ _simple_init(void)
                                                     filterx_simple_function_dedup_metrics_labels));
   g_assert(filterx_builtin_simple_function_register("len", filterx_simple_function_len));
   g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
+  g_assert(filterx_builtin_simple_function_register("load_vars", filterx_simple_function_load_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
