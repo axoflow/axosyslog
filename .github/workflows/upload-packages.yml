@@ -20,7 +20,6 @@ on:
             {"type": "deb", "name": "ubuntu-jammy"},
             {"type": "deb", "name": "ubuntu-noble"},
             {"type": "deb", "name": "ubuntu-oracular"},
-            {"type": "deb", "name": "ubuntu-lunar"},
 
             {"type": "rpm", "name": "almalinux-8"},
             {"type": "rpm", "name": "almalinux-9"},

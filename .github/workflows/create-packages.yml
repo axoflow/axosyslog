@@ -22,7 +22,6 @@ on:
           "ubuntu-jammy",
           "ubuntu-noble",
           "ubuntu-oracular",
-          "ubuntu-lunar",
           "almalinux-8",
           "almalinux-9",
           "fedora-39",
