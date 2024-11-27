@@ -33,6 +33,7 @@
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME "utf8"
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME "ignorecase"
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME "newline"
+#define FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME "groups"
 
 typedef struct FilterXFuncRegexpSubstOpts_
 {
@@ -41,6 +42,7 @@ typedef struct FilterXFuncRegexpSubstOpts_
   gboolean utf8;
   gboolean ignorecase;
   gboolean newline;
+  gboolean groups;
 } FilterXFuncRegexpSubstOpts;
 
 FilterXExpr *filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern);

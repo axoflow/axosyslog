@@ -38,7 +38,8 @@
   FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME"=(boolean) " \
-  FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME"=(boolean))" \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME"=(boolean)" \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME"=(boolean))" \
 
 #define FILTERX_FUNC_REGEXP_SEARCH_USAGE "Usage: regexp_search(string, pattern)"
 
@@ -543,18 +544,61 @@ _is_zero_length_match(PCRE2_SIZE *ovector)
   return ovector[0] == ovector[1];
 }
 
+static gboolean
+_build_replacement_stirng_with_match_groups(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state,
+                                            GString *replacement_string)
+{
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(state->match_data);
+  g_string_set_size(replacement_string, 0);
+  const gchar *rep_ptr = self->replacement;
+
+  while (*rep_ptr)
+    {
+      if (*rep_ptr == '\\')
+        {
+          rep_ptr++;
+          if (*rep_ptr >= '1' && *rep_ptr <= '9')
+            {
+              gint grp_num = *rep_ptr - '0';
+              PCRE2_SIZE start = ovector[2 * grp_num];
+              PCRE2_SIZE end = ovector[2 * grp_num + 1];
+              if (start != PCRE2_UNSET)
+                {
+                  size_t group_len = end - start;
+                  g_string_append_len_inline(replacement_string, state->lhs_str + start, group_len);
+                }
+            }
+          rep_ptr++;
+        }
+      else
+        {
+          g_string_append_c_inline(replacement_string, *rep_ptr++);
+        }
+    }
+  return TRUE;
+}
+
 static FilterXObject *
 _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
 {
   GString *new_value = scratch_buffers_alloc();
   PCRE2_SIZE *ovector = NULL;
   gint pos = 0;
+  const gchar *replacement_string = self->replacement;
+
+  if (self->opts.groups)
+    {
+      GString *rep_str = scratch_buffers_alloc();
+      _build_replacement_stirng_with_match_groups(self, state, rep_str);
+      replacement_string = rep_str->str;
+    }
+
   do
     {
       ovector = pcre2_get_ovector_pointer(state->match_data);
 
       g_string_append_len(new_value, state->lhs_str + pos, _start_offset(ovector) - pos);
-      g_string_append(new_value, self->replacement);
+      g_string_append(new_value, replacement_string);
 
       if (_is_zero_length_match(ovector))
         {
@@ -574,7 +618,7 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
 
   // handle the very last of zero lenght matches
   if (_is_zero_length_match(ovector))
-    g_string_append(new_value, self->replacement);
+    g_string_append(new_value, replacement_string);
 
   return filterx_string_new(new_value->str, new_value->len);
 }
@@ -688,6 +732,9 @@ _extract_optional_flags(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args,
     return FALSE;
   if (!_extract_literal_bool(args, FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME, &self->opts.utf8,
                              error))
+    return FALSE;
+  if (!_extract_literal_bool(args, FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME,
+                             &self->opts.groups, error))
     return FALSE;
   return TRUE;
 }
