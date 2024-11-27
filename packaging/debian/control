@@ -884,6 +884,7 @@ Description: Enhanced system logging daemon (GRPC plugins)
  .
   * OpenTelemetry logs, traces and metrics
   * Google BigQuery
+  * Google Pub/Sub
   * Grafana Loki
   * ClickHouse
 
