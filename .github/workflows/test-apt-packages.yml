@@ -23,7 +23,6 @@ jobs:
           - "ubuntu:focal"
           - "ubuntu:jammy"
           - "ubuntu:noble"
-          - "ubuntu:lunar"
           - "ubuntu:oracular"
         upgrade-from:
           - "debian-official"

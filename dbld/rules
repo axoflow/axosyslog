@@ -15,7 +15,6 @@ BUILDER_IMAGES=		\
 	ubuntu-jammy \
 	ubuntu-noble \
 	ubuntu-oracular \
-	ubuntu-lunar	\
 	tarball
 
 IMAGES=${BUILDER_IMAGES} devshell

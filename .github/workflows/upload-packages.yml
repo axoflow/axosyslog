@@ -10,17 +10,23 @@ on:
       distros:
         required: false
         type: string
-        default: '[
-          "debian-testing",
-          "debian-sid",
-          "debian-bullseye",
-          "debian-bookworm",
-          "ubuntu-focal",
-          "ubuntu-jammy",
-          "ubuntu-noble",
-          "ubuntu-oracular",
-          "ubuntu-lunar",
-        ]'
+        default: >
+          [
+            {"type": "deb", "name": "debian-testing"},
+            {"type": "deb", "name": "debian-sid"},
+            {"type": "deb", "name": "debian-bullseye"},
+            {"type": "deb", "name": "debian-bookworm"},
+            {"type": "deb", "name": "ubuntu-focal"},
+            {"type": "deb", "name": "ubuntu-jammy"},
+            {"type": "deb", "name": "ubuntu-noble"},
+            {"type": "deb", "name": "ubuntu-oracular"},
+
+            {"type": "rpm", "name": "almalinux-8"},
+            {"type": "rpm", "name": "almalinux-9"},
+            {"type": "rpm", "name": "fedora-39"},
+            {"type": "rpm", "name": "fedora-40"},
+            {"type": "rpm", "name": "fedora-41"}
+          ]
     secrets:
       r2-access-key:
         required: true
@@ -32,7 +38,7 @@ on:
 
 jobs:
   upload-packages:
-    name: ${{ matrix.distro }}
+    name: ${{ matrix.distro.name }} (${{ matrix.distro.type }})
 
     runs-on: ubuntu-latest
 
@@ -47,7 +53,7 @@ jobs:
       - name: Download package artifact
         uses: actions/download-artifact@v4
         with:
-          name: package-${{ matrix.distro }}
+          name: package-${{ matrix.distro.name }}
           path: package
 
       - name: Upload packages to R2 incoming
@@ -60,5 +66,5 @@ jobs:
             aws s3api put-object \
               --endpoint-url https://${{ secrets.r2-account-id }}.r2.cloudflarestorage.com \
               --bucket axoflow-packages-build \
-              --key ${{ inputs.pkg-type }}/${{ github.run_id }}/{} \
+              --key ${{ inputs.pkg-type }}/${{ github.run_id }}/${{ matrix.distro.type }}/{} \
               --body {} \;

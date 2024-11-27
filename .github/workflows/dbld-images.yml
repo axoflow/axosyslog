@@ -44,7 +44,6 @@ jobs:
           - ubuntu-jammy
           - ubuntu-noble
           - ubuntu-oracular
-          - ubuntu-lunar
           - devshell
           - tarball
       fail-fast: false

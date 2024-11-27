@@ -57,10 +57,6 @@ class Indexer(ABC):
     def _index_pkgs(self, indexed_dir: Path) -> None:
         pass
 
-    @abstractmethod
-    def _sign_pkgs(self, indexed_dir: Path) -> None:
-        pass
-
     def __create_snapshot_of_indexed(self) -> None:
         self.__indexed_remote_storage_synchronizer.create_snapshot_of_remote()
 
@@ -80,7 +76,6 @@ class Indexer(ABC):
 
         self._prepare_indexed_dir(incoming_dir, indexed_dir)
         self._index_pkgs(indexed_dir)
-        self._sign_pkgs(indexed_dir)
 
         self.__create_snapshot_of_indexed()
         self.__sync_to_remote()
