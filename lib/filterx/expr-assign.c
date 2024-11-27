@@ -24,18 +24,15 @@
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-ref.h"
 #include "filterx/object-json.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-eval.h"
+#include "filterx/object-null.h"
+#include "filterx/object-message-value.h"
 #include "scratch-buffers.h"
 
-static FilterXObject *
-_eval(FilterXExpr *s)
+static inline FilterXObject *
+_assign(FilterXBinaryOp *self, FilterXObject *value)
 {
-  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  FilterXObject *value = filterx_expr_eval(self->rhs);
-
-  if (!value)
-    return NULL;
-
   /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
    * (or after creating our own dict/list repr) */
   if (!value->weak_referenced)
@@ -52,6 +49,59 @@ _eval(FilterXExpr *s)
   return value;
 }
 
+static inline FilterXObject *
+_suppress_error(void)
+{
+  msg_debug("FILTERX null coalesce assignment supressing error", filterx_format_last_error());
+  filterx_eval_clear_errors();
+
+  return filterx_null_new();
+}
+
+static FilterXObject *
+_nullv_assign_eval(FilterXExpr *s)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  FilterXObject *value = filterx_expr_eval(self->rhs);
+
+  if (!value || filterx_object_is_type(value, &FILTERX_TYPE_NAME(null))
+      || (filterx_object_is_type(value, &FILTERX_TYPE_NAME(message_value))
+          && filterx_message_value_get_type(value) == LM_VT_NULL))
+    {
+      if (!value)
+        return _suppress_error();
+
+      return value;
+    }
+
+  return _assign(self, value);
+}
+
+static FilterXObject *
+_assign_eval(FilterXExpr *s)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  FilterXObject *value = filterx_expr_eval(self->rhs);
+
+  if (!value)
+    return NULL;
+
+  return _assign(self, value);
+}
+
+FilterXExpr *
+filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
+
+  filterx_binary_op_init_instance(self, lhs, rhs);
+  self->super.eval = _nullv_assign_eval;
+  self->super.ignore_falsy_result = TRUE;
+  return &self->super;
+}
+
 /* NOTE: takes the object reference */
 FilterXExpr *
 filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
@@ -59,7 +109,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
   filterx_binary_op_init_instance(self, lhs, rhs);
-  self->super.eval = _eval;
+  self->super.eval = _assign_eval;
   self->super.ignore_falsy_result = TRUE;
   return &self->super;
 }
