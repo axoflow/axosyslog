@@ -41,19 +41,19 @@ _eval(FilterXExpr *s)
   FilterXSetAttr *self = (FilterXSetAttr *) s;
   FilterXObject *result = NULL;
 
+  FilterXObject *new_value = filterx_expr_eval(self->new_value);
+  if (!new_value)
+    return NULL;
+
   FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
-    return NULL;
+    goto exit;
 
   if (object->readonly)
     {
       filterx_eval_push_error("Attribute set failed, object is readonly", s, self->attr);
       goto exit;
     }
-
-  FilterXObject *new_value = filterx_expr_eval(self->new_value);
-  if (!new_value)
-    goto exit;
 
   /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
    * (or after creating our own dict/list repr) */
@@ -64,6 +64,7 @@ _eval(FilterXExpr *s)
 
   FilterXObject *cloned = filterx_object_clone(new_value);
   filterx_object_unref(new_value);
+  new_value = NULL;
 
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
@@ -76,6 +77,7 @@ _eval(FilterXExpr *s)
     }
 
 exit:
+  filterx_object_unref(new_value);
   filterx_object_unref(object);
   return result;
 }
