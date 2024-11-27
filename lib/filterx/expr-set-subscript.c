@@ -24,6 +24,10 @@
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-ref.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-eval.h"
+#include "filterx/object-null.h"
+#include "filterx/object-message-value.h"
 #include "scratch-buffers.h"
 
 typedef struct _FilterXSetSubscript
@@ -37,7 +41,7 @@ typedef struct _FilterXSetSubscript
 static inline FilterXObject *
 _set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *key, FilterXObject **new_value)
 {
-   if (object->readonly)
+  if (object->readonly)
     {
       filterx_eval_push_error("Object set-subscript failed, object is readonly", &self->super, key);
       return NULL;
@@ -62,6 +66,53 @@ _set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *
     }
 
   return cloned;
+}
+
+static inline FilterXObject *
+_suppress_error(void)
+{
+  msg_debug("FILTERX null coalesce assignment supressing error", filterx_format_last_error());
+  filterx_eval_clear_errors();
+
+  return filterx_null_new();
+}
+
+static FilterXObject *
+_nullv_set_subscript_eval(FilterXExpr *s)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+  FilterXObject *result = NULL;
+  FilterXObject *key = NULL;
+
+  FilterXObject *new_value = filterx_expr_eval(self->new_value);
+  if (!new_value || filterx_object_is_type(new_value, &FILTERX_TYPE_NAME(null))
+      || (filterx_object_is_type(new_value, &FILTERX_TYPE_NAME(message_value))
+          && filterx_message_value_get_type(new_value) == LM_VT_NULL))
+    {
+      if (!new_value)
+        return _suppress_error();
+
+      return new_value;
+    }
+
+  FilterXObject *object = filterx_expr_eval_typed(self->object);
+  if (!object)
+    goto exit;
+
+  if (self->key)
+    {
+      key = filterx_expr_eval(self->key);
+      if (!key)
+        goto exit;
+    }
+
+  result = _set_subscript(self, object, key, &new_value);
+
+exit:
+  filterx_object_unref(new_value);
+  filterx_object_unref(key);
+  filterx_object_unref(object);
+  return result;
 }
 
 static FilterXObject *
@@ -139,6 +190,23 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->object);
   filterx_expr_unref(self->new_value);
   filterx_expr_free_method(s);
+}
+
+FilterXExpr *
+filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *new_value)
+{
+  FilterXSetSubscript *self = g_new0(FilterXSetSubscript, 1);
+
+  filterx_expr_init_instance(&self->super);
+  self->super.eval = _nullv_set_subscript_eval;
+  self->super.init = _init;
+  self->super.deinit = _deinit;
+  self->super.free_fn = _free;
+  self->object = object;
+  self->key = key;
+  self->new_value = new_value;
+  self->super.ignore_falsy_result = TRUE;
+  return &self->super;
 }
 
 FilterXExpr *
