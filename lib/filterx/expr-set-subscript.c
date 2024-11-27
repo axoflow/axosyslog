@@ -35,26 +35,21 @@ typedef struct _FilterXSetSubscript
 } FilterXSetSubscript;
 
 static FilterXObject *
-_eval(FilterXExpr *s)
+_set_subscript_eval(FilterXExpr *s)
 {
   FilterXSetSubscript *self = (FilterXSetSubscript *) s;
   FilterXObject *result = NULL;
-  FilterXObject *new_value = NULL, *key = NULL, *object = NULL;
 
-  object = filterx_expr_eval_typed(self->object);
+  FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
     return NULL;
 
+  FilterXObject *key = NULL;
   if (self->key)
     {
       key = filterx_expr_eval(self->key);
       if (!key)
         goto exit;
-    }
-  else
-    {
-      /* append */
-      key = NULL;
     }
 
   if (object->readonly)
@@ -63,7 +58,7 @@ _eval(FilterXExpr *s)
       goto exit;
     }
 
-  new_value = filterx_expr_eval(self->new_value);
+  FilterXObject *new_value = filterx_expr_eval(self->new_value);
   if (!new_value)
     goto exit;
 
@@ -145,7 +140,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   FilterXSetSubscript *self = g_new0(FilterXSetSubscript, 1);
 
   filterx_expr_init_instance(&self->super);
-  self->super.eval = _eval;
+  self->super.eval = _set_subscript_eval;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;
