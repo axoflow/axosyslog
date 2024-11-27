@@ -42,6 +42,7 @@ set(FILTERX_HEADERS
     filterx/func-istype.h
     filterx/func-len.h
     filterx/func-sdata.h
+    filterx/func-set-fields.h
     filterx/func-str-transform.h
     filterx/func-str.h
     filterx/func-unset-empties.h
@@ -104,6 +105,7 @@ set(FILTERX_SOURCES
     filterx/func-istype.c
     filterx/func-len.c
     filterx/func-sdata.c
+    filterx/func-set-fields.c
     filterx/func-str-transform.c
     filterx/func-str.c
     filterx/func-unset-empties.c
