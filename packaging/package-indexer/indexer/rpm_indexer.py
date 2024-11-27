@@ -35,6 +35,7 @@ from indexer import Indexer
 from . import utils
 
 CURRENT_DIR = Path(__file__).parent.resolve()
+ARCH = "x86_64"
 
 
 class RpmIndexer(Indexer):
@@ -64,7 +65,7 @@ class RpmIndexer(Indexer):
             platform = relative_path.parent
             file_name = relative_path.name
 
-            new_path = Path(indexed_dir, platform, "x86_64", file_name)
+            new_path = Path(indexed_dir, platform, ARCH, file_name)
 
             self._log_info("Moving file.", src_path=str(file), dst_path=str(new_path))
 
@@ -131,7 +132,7 @@ class RpmIndexer(Indexer):
 
     def __createrepo(self, gnupghome_dir: Path, indexed_dir: Path) -> None:
         for d in indexed_dir.glob("*"):
-            repo_path = Path(indexed_dir, d, "x86_64")
+            repo_path = Path(indexed_dir, d, ARCH)
 
             self._log_info("Creating repo.", repo_path=str(repo_path))
             utils.execute_command(["createrepo_c", "--update", str(repo_path)])

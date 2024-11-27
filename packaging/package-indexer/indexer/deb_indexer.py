@@ -36,6 +36,7 @@ from indexer import Indexer
 from . import utils
 
 CURRENT_DIR = Path(__file__).parent.resolve()
+ARCH = "amd64"
 
 
 class DebIndexer(Indexer):
@@ -67,7 +68,7 @@ class DebIndexer(Indexer):
             platform = relative_path.parent
             file_name = relative_path.name
 
-            new_path = Path(indexed_dir, platform, "binary-amd64", file_name)
+            new_path = Path(indexed_dir, platform, "binary-" + ARCH, file_name)
 
             self._log_info("Moving file.", src_path=str(file), dst_path=str(new_path))
 
@@ -83,7 +84,7 @@ class DebIndexer(Indexer):
         # APT wants to have the `Filename` field in the `Packages` file to start with `dists`.
         dir = indexed_dir.parents[1]
 
-        for pkg_dir in list(indexed_dir.rglob("binary-amd64")):
+        for pkg_dir in list(indexed_dir.rglob("binary-" + ARCH)):
             relative_pkg_dir = pkg_dir.relative_to(dir)
             command = base_command + [str(relative_pkg_dir)]
 
