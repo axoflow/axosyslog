@@ -35,8 +35,38 @@ typedef struct _FilterXSetAttr
   FilterXExpr *new_value;
 } FilterXSetAttr;
 
+static inline FilterXObject *
+_setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject **new_value)
+{
+  if (object->readonly)
+    {
+      filterx_eval_push_error("Attribute set failed, object is readonly", &self->super, self->attr);
+      return NULL;
+    }
+
+  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
+   * (or after creating our own dict/list repr) */
+  if (!(*new_value)->weak_referenced)
+    {
+      *new_value = filterx_ref_new(*new_value);
+    }
+
+  FilterXObject *cloned = filterx_object_clone(*new_value);
+  filterx_object_unref(*new_value);
+  *new_value = NULL;
+
+  if (!filterx_object_setattr(object, self->attr, &cloned))
+    {
+      filterx_eval_push_error("Attribute set failed", &self->super, self->attr);
+      filterx_object_unref(cloned);
+      return NULL;
+    }
+
+  return cloned;
+}
+
 static FilterXObject *
-_eval(FilterXExpr *s)
+_setattr_eval(FilterXExpr *s)
 {
   FilterXSetAttr *self = (FilterXSetAttr *) s;
   FilterXObject *result = NULL;
@@ -49,32 +79,7 @@ _eval(FilterXExpr *s)
   if (!object)
     goto exit;
 
-  if (object->readonly)
-    {
-      filterx_eval_push_error("Attribute set failed, object is readonly", s, self->attr);
-      goto exit;
-    }
-
-  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
-   * (or after creating our own dict/list repr) */
-  if (!new_value->weak_referenced)
-    {
-      new_value = filterx_ref_new(new_value);
-    }
-
-  FilterXObject *cloned = filterx_object_clone(new_value);
-  filterx_object_unref(new_value);
-  new_value = NULL;
-
-  if (!filterx_object_setattr(object, self->attr, &cloned))
-    {
-      filterx_eval_push_error("Attribute set failed", s, self->attr);
-      filterx_object_unref(cloned);
-    }
-  else
-    {
-      result = cloned;
-    }
+  result = _setattr(self, object, &new_value);
 
 exit:
   filterx_object_unref(new_value);
@@ -127,7 +132,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterXExpr *
   FilterXSetAttr *self = g_new0(FilterXSetAttr, 1);
 
   filterx_expr_init_instance(&self->super);
-  self->super.eval = _eval;
+  self->super.eval = _setattr_eval;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;
