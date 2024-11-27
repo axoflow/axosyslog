@@ -39,12 +39,16 @@ _set_subscript_eval(FilterXExpr *s)
 {
   FilterXSetSubscript *self = (FilterXSetSubscript *) s;
   FilterXObject *result = NULL;
+  FilterXObject *key = NULL;
+
+  FilterXObject *new_value = filterx_expr_eval(self->new_value);
+  if (!new_value)
+    return NULL;
 
   FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
-    return NULL;
+    goto exit;
 
-  FilterXObject *key = NULL;
   if (self->key)
     {
       key = filterx_expr_eval(self->key);
@@ -58,10 +62,6 @@ _set_subscript_eval(FilterXExpr *s)
       goto exit;
     }
 
-  FilterXObject *new_value = filterx_expr_eval(self->new_value);
-  if (!new_value)
-    goto exit;
-
   /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
    * (or after creating our own dict/list repr) */
   if (!new_value->weak_referenced)
@@ -71,6 +71,7 @@ _set_subscript_eval(FilterXExpr *s)
 
   FilterXObject *cloned = filterx_object_clone(new_value);
   filterx_object_unref(new_value);
+  new_value = NULL;
 
   if (!filterx_object_set_subscript(object, key, &cloned))
     {
@@ -83,6 +84,7 @@ _set_subscript_eval(FilterXExpr *s)
     }
 
 exit:
+  filterx_object_unref(new_value);
   filterx_object_unref(key);
   filterx_object_unref(object);
   return result;
