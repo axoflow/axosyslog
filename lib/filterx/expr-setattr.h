@@ -27,6 +27,6 @@
 #include "filterx/object-string.h"
 
 FilterXExpr *filterx_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterXExpr *new_value);
-
+FilterXExpr *filterx_nullv_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterXExpr *new_value);
 
 #endif
