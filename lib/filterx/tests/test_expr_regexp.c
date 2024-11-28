@@ -547,6 +547,16 @@ Test(filterx_expr_regexp, regexp_subst_group_subst)
   filterx_object_unref(result_alt);
 }
 
+Test(filterx_expr_regexp, regexp_subst_group_subst_without_ref)
+{
+  FilterXFuncRegexpSubstOpts opts = {.groups = TRUE};
+  FilterXObject *result = _sub("(\\d{2})-(\\d{2})-(\\d{4})", "group without ref", "25-02-2022", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value_ref(result, NULL);
+  cr_assert_str_eq(res, "group without ref");
+  filterx_object_unref(result);
+}
+
 static void
 setup(void)
 {

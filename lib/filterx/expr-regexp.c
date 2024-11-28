@@ -49,6 +49,7 @@ typedef struct FilterXReMatchState_
   FilterXObject *lhs_obj;
   const gchar *lhs_str;
   gsize lhs_str_len;
+  gint rc;
 } FilterXReMatchState;
 
 static void
@@ -113,6 +114,7 @@ _match_inner(FilterXReMatchState *state, pcre2_code_8 *pattern, gint start_offse
   gint rc = pcre2_match(pattern, (PCRE2_SPTR) state->lhs_str, (PCRE2_SIZE) state->lhs_str_len, (PCRE2_SIZE) start_offset,
                         0,
                         state->match_data, NULL);
+  state->rc = rc;
   if (rc < 0)
     {
       switch (rc)
@@ -551,6 +553,8 @@ _build_replacement_stirng_with_match_groups(const FilterXFuncRegexpSubst *self, 
   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(state->match_data);
   g_string_set_size(replacement_string, 0);
   const gchar *rep_ptr = self->replacement;
+  const gchar *last_ptr = rep_ptr;
+  gint num_grps = state->rc;
 
   while (*rep_ptr)
     {
@@ -559,22 +563,26 @@ _build_replacement_stirng_with_match_groups(const FilterXFuncRegexpSubst *self, 
           rep_ptr++;
           if (*rep_ptr >= '1' && *rep_ptr <= '9')
             {
-              gint grp_num = *rep_ptr - '0';
-              PCRE2_SIZE start = ovector[2 * grp_num];
-              PCRE2_SIZE end = ovector[2 * grp_num + 1];
-              if (start != PCRE2_UNSET)
+              gint grp_idx = *rep_ptr - '0';
+              if (grp_idx < num_grps)
                 {
-                  size_t group_len = end - start;
-                  g_string_append_len_inline(replacement_string, state->lhs_str + start, group_len);
+                  PCRE2_SIZE start = ovector[2 * grp_idx];
+                  PCRE2_SIZE end = ovector[2 * grp_idx + 1];
+                  if (start != PCRE2_UNSET)
+                    {
+                      g_string_append_len(replacement_string, last_ptr, rep_ptr - last_ptr - 1);
+                      last_ptr = rep_ptr + 1;
+                      size_t group_len = end - start;
+                      g_string_append_len(replacement_string, state->lhs_str + start, group_len);
+                    }
                 }
             }
           rep_ptr++;
         }
       else
-        {
-          g_string_append_c_inline(replacement_string, *rep_ptr++);
-        }
+        rep_ptr++;
     }
+  g_string_append_len(replacement_string, last_ptr, rep_ptr - last_ptr);
   return TRUE;
 }
 
