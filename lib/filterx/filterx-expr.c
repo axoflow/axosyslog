@@ -149,13 +149,15 @@ filterx_unary_op_free_method(FilterXExpr *s)
 }
 
 void
-filterx_unary_op_init_instance(FilterXUnaryOp *self, FilterXExpr *operand)
+filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
 {
   filterx_expr_init_instance(&self->super);
   self->super.init = filterx_unary_op_init_method;
   self->super.deinit = filterx_unary_op_deinit_method;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
+
+  self->name = name;
 }
 
 void
@@ -193,7 +195,7 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 }
 
 void
-filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
 {
   filterx_expr_init_instance(&self->super);
   self->super.init = filterx_binary_op_init_method;
@@ -203,4 +205,6 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterX
   g_assert(rhs);
   self->lhs = lhs;
   self->rhs = rhs;
+
+  self->name = name;
 }

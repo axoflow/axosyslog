@@ -36,7 +36,7 @@ FilterXExpr *
 filterx_isset_new(FilterXExpr *expr)
 {
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
-  filterx_unary_op_init_instance(self, expr);
+  filterx_unary_op_init_instance(self, "isset", expr);
   self->super.eval = _eval;
   return &self->super;
 }
