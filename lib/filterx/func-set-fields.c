@@ -24,7 +24,9 @@
 
 #include "filterx/func-set-fields.h"
 #include "filterx/object-string.h"
+#include "filterx/object-primitive.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/object-extractor.h"
 #include "filterx/expr-literal.h"
 #include "filterx/expr-literal-generator.h"
 #include "filterx/filterx-object-istype.h"
@@ -127,11 +129,89 @@ typedef struct FilterXFunctionSetFields_
   GArray *fields;
 } FilterXFunctionSetFields;
 
+static gboolean
+_set_with_fallbacks(FilterXObject *dict, FilterXObject *key, GPtrArray *values)
+{
+  gboolean changed = FALSE;
+
+  if (!values || values->len == 0)
+    return changed;
+
+  for (guint i = 0; i < values->len; i++)
+    {
+      FilterXExpr *value = g_ptr_array_index(values, i);
+      FilterXObject *value_obj = filterx_expr_eval(value);
+      if (!value_obj)
+        {
+          filterx_eval_clear_errors();
+          continue;
+        }
+
+      if (filterx_object_extract_null(value_obj))
+        {
+          filterx_object_unref(value_obj);
+          continue;
+        }
+
+      FilterXObject *value_obj_cloned = filterx_object_clone(value_obj);
+      filterx_object_unref(value_obj);
+
+      if (!filterx_object_set_subscript(dict, key, &value_obj_cloned))
+        {
+          filterx_object_unref(value_obj_cloned);
+          continue;
+        }
+
+      filterx_object_unref(value_obj_cloned);
+      changed = TRUE;
+      break;
+    }
+
+  return changed;
+}
+
+static void
+_process_field(Field *field, FilterXObject *dict)
+{
+  gboolean changed = _set_with_fallbacks(dict, field->key, field->overrides);
+  if (changed)
+    return;
+
+  if (filterx_object_is_key_set(dict, field->key))
+    return;
+
+  _set_with_fallbacks(dict, field->key, field->defaults);
+}
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
-  // TODO: implement
-  return NULL;
+  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
+
+  gboolean success = FALSE;
+
+  FilterXObject *dict = filterx_expr_eval(self->dict);
+  if (!dict)
+    goto exit;
+
+  FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
+  if (!filterx_object_is_type(dict_unwrapped, &FILTERX_TYPE_NAME(dict)))
+    {
+      filterx_eval_push_error("First argument must be a dict. " FILTERX_FUNC_SET_FIELDS_USAGE, s, NULL);
+      goto exit;
+    }
+
+  for (guint i = 0; i < self->fields->len; i++)
+    {
+      Field *field = &g_array_index(self->fields, Field, i);
+      _process_field(field, dict);
+    }
+
+  success = TRUE;
+
+exit:
+  filterx_object_unref(dict);
+  return success ? filterx_boolean_new(TRUE) : NULL;
 }
 
 static gboolean
