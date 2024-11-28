@@ -83,7 +83,7 @@ for _i in $_modules; do
 done
 
 build() {
-	CFLAGS="$CFLAGS -flto=auto" \
+	CFLAGS="$CFLAGS -flto=auto -O3" \
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc/syslog-ng \
