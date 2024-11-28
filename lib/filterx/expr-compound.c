@@ -26,6 +26,8 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
 #include "scratch-buffers.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 #include <stdarg.h>
 
@@ -35,6 +37,7 @@ typedef struct _FilterXCompoundExpr
   /* whether this is a statement expression */
   gboolean return_value_of_last_expr;
   GPtrArray *exprs;
+
 } FilterXCompoundExpr;
 
 static gboolean
@@ -148,6 +151,12 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
         }
     }
 
+  stats_lock();
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set(&sc_key, "fx_compound_evals_total", NULL, 0);
+  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
+
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -155,6 +164,12 @@ static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  stats_lock();
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set(&sc_key, "fx_compound_evals_total", NULL, 0);
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
 
   for (gint i = 0; i < self->exprs->len; i++)
     {

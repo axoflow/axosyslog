@@ -29,6 +29,7 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-object.h"
 #include "filterx/expr-generator.h"
+#include "stats/stats-registry.h"
 #include "generic-number.h"
 #include "plugin.h"
 

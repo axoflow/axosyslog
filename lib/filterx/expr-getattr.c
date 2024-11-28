@@ -23,6 +23,8 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 typedef struct _FilterXGetAttr
 {
@@ -98,6 +100,12 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->operand, cfg))
     return FALSE;
 
+  stats_lock();
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set(&sc_key, "fx_getattr_evals_total", NULL, 0);
+  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
+
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -105,6 +113,12 @@ static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  stats_lock();
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set(&sc_key, "fx_getattr_evals_total", NULL, 0);
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
 
   filterx_expr_deinit(self->operand, cfg);
   filterx_expr_deinit_method(s, cfg);
