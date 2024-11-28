@@ -27,6 +27,7 @@
 
 #include "filterx-object.h"
 #include "cfg-lexer.h"
+#include "stats/stats-counter.h"
 
 struct _FilterXExpr
 {
@@ -34,6 +35,8 @@ struct _FilterXExpr
   guint32 ref_cnt;
   const gchar *type;
   guint32 ignore_falsy_result:1, suppress_from_trace:1;
+
+  StatsCounterItem *eval_count;
 
   /* evaluate expression */
   FilterXObject *(*eval)(FilterXExpr *self);
@@ -76,6 +79,8 @@ struct _FilterXExpr
 static inline FilterXObject *
 filterx_expr_eval(FilterXExpr *self)
 {
+  stats_counter_inc(self->eval_count);
+
   return self->eval(self);
 }
 
