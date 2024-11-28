@@ -24,6 +24,92 @@
 
 #include "filterx/func-set-fields.h"
 
+typedef struct Field_
+{
+  FilterXObject *key;
+  GPtrArray *overrides;
+  GPtrArray *defaults;
+} Field;
+
+static void
+_field_deinit(Field *self, GlobalConfig *cfg)
+{
+  if (self->overrides)
+    {
+      for (guint i = 0; i < self->overrides->len; i++)
+        {
+          FilterXExpr *override = g_ptr_array_index(self->overrides, i);
+          filterx_expr_deinit(override, cfg);
+        }
+    }
+
+  if (self->defaults)
+    {
+      for (guint i = 0; i < self->defaults->len; i++)
+        {
+          FilterXExpr *def = g_ptr_array_index(self->defaults, i);
+          filterx_expr_deinit(def, cfg);
+        }
+    }
+}
+
+static gboolean
+_field_init(Field *self, GlobalConfig *cfg)
+{
+  if (self->overrides)
+    {
+      for (guint i = 0; i < self->overrides->len; i++)
+        {
+          FilterXExpr *override = g_ptr_array_index(self->overrides, i);
+          if (!filterx_expr_init(override, cfg))
+            goto error;
+        }
+    }
+
+  if (self->defaults)
+    {
+      for (guint i = 0; i < self->defaults->len; i++)
+        {
+          FilterXExpr *def = g_ptr_array_index(self->defaults, i);
+          if (!filterx_expr_init(def, cfg))
+            goto error;
+        }
+    }
+
+  return TRUE;
+
+error:
+  _field_deinit(self, cfg);
+  return FALSE;
+}
+
+static void
+_field_destroy(Field *self)
+{
+  filterx_object_unref(self->key);
+  if (self->overrides)
+    g_ptr_array_free(self->overrides, TRUE);
+  if (self->defaults)
+    g_ptr_array_free(self->defaults, TRUE);
+}
+
+static void
+_field_add_override(Field *self, FilterXExpr *override)
+{
+  if (!self->overrides)
+    self->overrides = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
+  g_ptr_array_add(self->overrides, filterx_expr_ref(override));
+}
+
+static void
+_field_add_default(Field *self, FilterXExpr *def)
+{
+  if (!self->defaults)
+    self->defaults = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
+  g_ptr_array_add(self->defaults, filterx_expr_ref(def));
+}
+
+
 typedef struct FilterXFunctionSetFields_
 {
   FilterXFunction super;
