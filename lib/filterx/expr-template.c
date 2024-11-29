@@ -25,6 +25,8 @@
 #include "filterx/filterx-eval.h"
 #include "template/templates.h"
 #include "scratch-buffers.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 typedef struct _FilterXTemplate
 {
@@ -63,6 +65,34 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_template_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXTemplate *self = (FilterXTemplate *) s;
+
+  stats_lock();
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set(&sc_key, "fx_template_evals_total", NULL, 0);
+  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
+
+  return filterx_expr_init_method(s, cfg);
+}
+
+static void
+_template_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXTemplate *self = (FilterXTemplate *) s;
+
+  stats_lock();
+  StatsClusterKey sc_key;
+  stats_cluster_single_key_set(&sc_key, "fx_template_evals_total", NULL, 0);
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
+
+  filterx_expr_deinit_method(s, cfg);
+}
+
 /* NOTE: takes the object reference */
 FilterXExpr *
 filterx_template_new(LogTemplate *template)
@@ -70,6 +100,8 @@ filterx_template_new(LogTemplate *template)
   FilterXTemplate *self = g_new0(FilterXTemplate, 1);
 
   filterx_expr_init_instance(&self->super);
+  self->super.init = _template_init;
+  self->super.deinit = _template_deinit;
   self->super.eval = _eval;
   self->super.free_fn = _free;
   self->template = template;

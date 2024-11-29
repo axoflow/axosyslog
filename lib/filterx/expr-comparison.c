@@ -253,7 +253,7 @@ filterx_comparison_new(FilterXExpr *lhs, FilterXExpr *rhs, gint operator)
 {
   FilterXComparison *self = g_new0(FilterXComparison, 1);
 
-  filterx_binary_op_init_instance(&self->super, lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "comparison", lhs, rhs);
   self->super.super.eval = _eval;
   self->super.super.free_fn = _filterx_comparison_free;
   self->operator = operator;

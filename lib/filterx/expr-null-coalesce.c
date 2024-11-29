@@ -76,7 +76,7 @@ filterx_null_coalesce_new(FilterXExpr *lhs, FilterXExpr *rhs)
     }
 
   FilterXNullCoalesce *self = g_new0(FilterXNullCoalesce, 1);
-  filterx_binary_op_init_instance(&self->super, lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "null_coalesce", lhs, rhs);
   self->super.super.eval = _eval;
   return &self->super.super;
 }

@@ -26,6 +26,8 @@
 #include "cfg-source.h"
 #include "messages.h"
 #include "mainloop.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 void
 filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text)
@@ -127,6 +129,13 @@ filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->operand, cfg))
     return FALSE;
 
+  stats_lock();
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
+  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
+  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
+
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -134,6 +143,13 @@ void
 filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  stats_lock();
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
+  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
 
   filterx_expr_deinit(self->operand, cfg);
   filterx_expr_deinit_method(s, cfg);
@@ -149,13 +165,15 @@ filterx_unary_op_free_method(FilterXExpr *s)
 }
 
 void
-filterx_unary_op_init_instance(FilterXUnaryOp *self, FilterXExpr *operand)
+filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
 {
   filterx_expr_init_instance(&self->super);
   self->super.init = filterx_unary_op_init_method;
   self->super.deinit = filterx_unary_op_deinit_method;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
+
+  self->name = name;
 }
 
 void
@@ -179,6 +197,13 @@ filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->rhs, cfg))
     return FALSE;
 
+  stats_lock();
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
+  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
+  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
+
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -187,13 +212,20 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
 
+  stats_lock();
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
+  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
+  stats_unlock();
+
   filterx_expr_deinit(self->lhs, cfg);
   filterx_expr_deinit(self->rhs, cfg);
   filterx_expr_deinit_method(s, cfg);
 }
 
 void
-filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
 {
   filterx_expr_init_instance(&self->super);
   self->super.init = filterx_binary_op_init_method;
@@ -203,4 +235,6 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterX
   g_assert(rhs);
   self->lhs = lhs;
   self->rhs = rhs;
+
+  self->name = name;
 }

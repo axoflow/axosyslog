@@ -96,7 +96,7 @@ filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
-  filterx_binary_op_init_instance(self, lhs, rhs);
+  filterx_binary_op_init_instance(self, "nullv_assign", lhs, rhs);
   self->super.eval = _nullv_assign_eval;
   self->super.ignore_falsy_result = TRUE;
   return &self->super;
@@ -108,7 +108,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
-  filterx_binary_op_init_instance(self, lhs, rhs);
+  filterx_binary_op_init_instance(self, "assign", lhs, rhs);
   self->super.eval = _assign_eval;
   self->super.ignore_falsy_result = TRUE;
   return &self->super;

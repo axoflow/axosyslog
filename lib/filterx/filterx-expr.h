@@ -27,13 +27,16 @@
 
 #include "filterx-object.h"
 #include "cfg-lexer.h"
+#include "stats/stats-counter.h"
 
 struct _FilterXExpr
 {
-  /* not thread-safe*/
+  /* not thread-safe */
   guint32 ref_cnt;
   const gchar *type;
   guint32 ignore_falsy_result:1, suppress_from_trace:1;
+
+  StatsCounterItem *eval_count;
 
   /* evaluate expression */
   FilterXObject *(*eval)(FilterXExpr *self);
@@ -76,6 +79,8 @@ struct _FilterXExpr
 static inline FilterXObject *
 filterx_expr_eval(FilterXExpr *self)
 {
+  stats_counter_inc(self->eval_count);
+
   return self->eval(self);
 }
 
@@ -185,22 +190,24 @@ typedef struct _FilterXUnaryOp
 {
   FilterXExpr super;
   FilterXExpr *operand;
+  const gchar *name;
 } FilterXUnaryOp;
 
 gboolean filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_unary_op_free_method(FilterXExpr *s);
-void filterx_unary_op_init_instance(FilterXUnaryOp *self, FilterXExpr *operand);
+void filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand);
 
 typedef struct _FilterXBinaryOp
 {
   FilterXExpr super;
   FilterXExpr *lhs, *rhs;
+  const gchar *name;
 } FilterXBinaryOp;
 
 gboolean filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_binary_op_free_method(FilterXExpr *s);
-void filterx_binary_op_init_instance(FilterXBinaryOp *self, FilterXExpr *lhs, FilterXExpr *rhs);
+void filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs);
 
 #endif
