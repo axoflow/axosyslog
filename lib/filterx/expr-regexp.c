@@ -41,7 +41,14 @@
   FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME"=(boolean)" \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME"=(boolean))" \
 
-#define FILTERX_FUNC_REGEXP_SEARCH_USAGE "Usage: regexp_search(string, pattern)"
+DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSearchFlags,
+                       FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO_NAME,
+                       FILTERX_REGEXP_SEARCH_LIST_MODE_NAME
+                      );
+
+#define FILTERX_FUNC_REGEXP_SEARCH_USAGE "Usage: regexp_search(string, pattern, " \
+FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO_NAME"=(boolean), "\
+FILTERX_REGEXP_SEARCH_LIST_MODE_NAME"=(boolean))"
 
 typedef struct FilterXReMatchState_
 {
@@ -50,6 +57,7 @@ typedef struct FilterXReMatchState_
   const gchar *lhs_str;
   gsize lhs_str_len;
   gint rc;
+  FLAGSET flags;
 } FilterXReMatchState;
 
 static void
@@ -165,14 +173,6 @@ error:
 }
 
 static gboolean
-_has_named_capture_groups(pcre2_code_8 *pattern)
-{
-  guint32 namecount = 0;
-  pcre2_pattern_info(pattern, PCRE2_INFO_NAMECOUNT, &namecount);
-  return namecount > 0;
-}
-
-static gboolean
 _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state, FilterXObject *fillable)
 {
   guint32 num_matches = pcre2_get_ovector_count(state->match_data);
@@ -180,6 +180,8 @@ _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
 
   for (gint i = 0; i < num_matches; i++)
     {
+      if (num_matches > 1 && i==0 && !check_flag(state->flags, FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO))
+        continue;
       gint begin_index = matches[2 * i];
       gint end_index = matches[2 * i + 1];
       if (begin_index < 0 || end_index < 0)
@@ -209,6 +211,9 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
   /* First store all matches with string formatted indexes as keys. */
   for (guint32 i = 0; i < num_matches; i++)
     {
+      if (num_matches > 1 && i==0 && !check_flag(state->flags, FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO))
+        continue;
+
       PCRE2_SIZE begin_index = matches[2 * i];
       PCRE2_SIZE end_index = matches[2 * i + 1];
       if (begin_index < 0 || end_index < 0)
@@ -385,6 +390,7 @@ typedef struct FilterXExprRegexpSearchGenerator_
   FilterXGeneratorFunction super;
   FilterXExpr *lhs;
   pcre2_code_8 *pattern;
+  FLAGSET flags;
 } FilterXExprRegexpSearchGenerator;
 
 static gboolean
@@ -395,6 +401,7 @@ _regexp_search_generator_generate(FilterXExprGenerator *s, FilterXObject *fillab
   gboolean result;
   FilterXReMatchState state;
   _state_init(&state);
+  state.flags = self->flags;
 
   gboolean matched = _match(self->lhs, self->pattern, &state);
   if (!matched)
@@ -422,10 +429,10 @@ _regexp_search_generator_create_container(FilterXExprGenerator *s, FilterXExpr *
 {
   FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
 
-  if (_has_named_capture_groups(self->pattern))
-    return filterx_generator_create_dict_container(s, fillable_parent);
+  if (check_flag(self->flags, FILTERX_REGEXP_SEARCH_LIST_MODE))
+    return filterx_generator_create_list_container(s, fillable_parent);
 
-  return filterx_generator_create_list_container(s, fillable_parent);
+  return filterx_generator_create_dict_container(s, fillable_parent);
 }
 
 static gboolean
@@ -457,6 +464,29 @@ _regexp_search_generator_free(FilterXExpr *s)
   if (self->pattern)
     pcre2_code_free(self->pattern);
   filterx_generator_function_free_method(&self->super);
+}
+
+static gboolean
+_extract_optional_arg_flag(FilterXExprRegexpSearchGenerator *self, FilterXRegexpSearchFlags flag,
+                           FilterXFunctionArgs *args, GError **error)
+{
+  gboolean exists, eval_error;
+  g_assert(flag < FilterXRegexpSearchFlags_MAX);
+  const gchar *arg_name = FilterXRegexpSearchFlags_NAMES[flag];
+  gboolean value = filterx_function_args_get_named_literal_boolean(args, arg_name, &exists, &eval_error);
+  if (!exists)
+    return TRUE;
+
+  if (eval_error)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "%s argument must be boolean literal. " FILTERX_FUNC_REGEXP_SEARCH_USAGE, arg_name);
+      return FALSE;
+    }
+
+  set_flag(&self->flags, flag, value);
+
+  return TRUE;
 }
 
 static gboolean
@@ -503,6 +533,12 @@ filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError *
   self->super.super.super.deinit = _regexp_search_generator_deinit;
   self->super.super.super.free_fn = _regexp_search_generator_free;
   self->super.super.create_container = _regexp_search_generator_create_container;
+
+  if (!_extract_optional_arg_flag(self, FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO, args, error))
+    goto error;
+
+  if (!_extract_optional_arg_flag(self, FILTERX_REGEXP_SEARCH_LIST_MODE, args, error))
+    goto error;
 
   if (!_extract_search_args(self, args, error) ||
       !filterx_function_args_check(args, error))

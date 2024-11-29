@@ -27,6 +27,7 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-generator.h"
 #include "filterx/expr-function.h"
+#include "filterx/func-flags.h"
 
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME "jit"
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME "global"
@@ -34,6 +35,16 @@
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME "ignorecase"
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME "newline"
 #define FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME "groups"
+
+DEFINE_FUNC_FLAGS(FilterXRegexpSearchFlags,
+                  FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO,
+                  FILTERX_REGEXP_SEARCH_LIST_MODE
+                 );
+
+#define FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO_NAME "keep_zero"
+#define FILTERX_REGEXP_SEARCH_LIST_MODE_NAME "list_mode"
+
+extern const char *FilterXRegexpSearchFlags_NAMES[];
 
 typedef struct FilterXFuncRegexpSubstOpts_
 {
