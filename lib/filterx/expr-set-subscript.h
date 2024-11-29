@@ -26,6 +26,6 @@
 #include "filterx/filterx-expr.h"
 
 FilterXExpr *filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *new_value);
-
+FilterXExpr *filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *new_value);
 
 #endif

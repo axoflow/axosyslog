@@ -26,6 +26,6 @@
 #include "filterx/filterx-expr.h"
 
 FilterXExpr *filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs);
-
+FilterXExpr *filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs);
 
 #endif

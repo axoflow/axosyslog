@@ -24,6 +24,10 @@
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-ref.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-eval.h"
+#include "filterx/object-null.h"
+#include "filterx/object-message-value.h"
 #include "scratch-buffers.h"
 
 typedef struct _FilterXSetSubscript
@@ -34,16 +38,66 @@ typedef struct _FilterXSetSubscript
   FilterXExpr *new_value;
 } FilterXSetSubscript;
 
+static inline FilterXObject *
+_set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *key, FilterXObject **new_value)
+{
+  if (object->readonly)
+    {
+      filterx_eval_push_error("Object set-subscript failed, object is readonly", &self->super, key);
+      return NULL;
+    }
+
+  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
+   * (or after creating our own dict/list repr) */
+  if (!(*new_value)->weak_referenced)
+    {
+      *new_value = filterx_ref_new(*new_value);
+    }
+
+  FilterXObject *cloned = filterx_object_clone(*new_value);
+  filterx_object_unref(*new_value);
+  *new_value = NULL;
+
+  if (!filterx_object_set_subscript(object, key, &cloned))
+    {
+      filterx_eval_push_error("Object set-subscript failed", &self->super, key);
+      filterx_object_unref(cloned);
+      return NULL;
+    }
+
+  return cloned;
+}
+
+static inline FilterXObject *
+_suppress_error(void)
+{
+  msg_debug("FILTERX null coalesce assignment supressing error", filterx_format_last_error());
+  filterx_eval_clear_errors();
+
+  return filterx_null_new();
+}
+
 static FilterXObject *
-_eval(FilterXExpr *s)
+_nullv_set_subscript_eval(FilterXExpr *s)
 {
   FilterXSetSubscript *self = (FilterXSetSubscript *) s;
   FilterXObject *result = NULL;
-  FilterXObject *new_value = NULL, *key = NULL, *object = NULL;
+  FilterXObject *key = NULL;
 
-  object = filterx_expr_eval_typed(self->object);
+  FilterXObject *new_value = filterx_expr_eval(self->new_value);
+  if (!new_value || filterx_object_is_type(new_value, &FILTERX_TYPE_NAME(null))
+      || (filterx_object_is_type(new_value, &FILTERX_TYPE_NAME(message_value))
+          && filterx_message_value_get_type(new_value) == LM_VT_NULL))
+    {
+      if (!new_value)
+        return _suppress_error();
+
+      return new_value;
+    }
+
+  FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
-    return NULL;
+    goto exit;
 
   if (self->key)
     {
@@ -51,43 +105,42 @@ _eval(FilterXExpr *s)
       if (!key)
         goto exit;
     }
-  else
-    {
-      /* append */
-      key = NULL;
-    }
 
-  if (object->readonly)
-    {
-      filterx_eval_push_error("Object set-subscript failed, object is readonly", s, key);
-      goto exit;
-    }
-
-  new_value = filterx_expr_eval(self->new_value);
-  if (!new_value)
-    goto exit;
-
-  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
-   * (or after creating our own dict/list repr) */
-  if (!new_value->weak_referenced)
-    {
-      new_value = filterx_ref_new(new_value);
-    }
-
-  FilterXObject *cloned = filterx_object_clone(new_value);
-  filterx_object_unref(new_value);
-
-  if (!filterx_object_set_subscript(object, key, &cloned))
-    {
-      filterx_eval_push_error("Object set-subscript failed", s, key);
-      filterx_object_unref(cloned);
-    }
-  else
-    {
-      result = cloned;
-    }
+  result = _set_subscript(self, object, key, &new_value);
 
 exit:
+  filterx_object_unref(new_value);
+  filterx_object_unref(key);
+  filterx_object_unref(object);
+  return result;
+}
+
+static FilterXObject *
+_set_subscript_eval(FilterXExpr *s)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+  FilterXObject *result = NULL;
+  FilterXObject *key = NULL;
+
+  FilterXObject *new_value = filterx_expr_eval(self->new_value);
+  if (!new_value)
+    return NULL;
+
+  FilterXObject *object = filterx_expr_eval_typed(self->object);
+  if (!object)
+    goto exit;
+
+  if (self->key)
+    {
+      key = filterx_expr_eval(self->key);
+      if (!key)
+        goto exit;
+    }
+
+  result = _set_subscript(self, object, key, &new_value);
+
+exit:
+  filterx_object_unref(new_value);
   filterx_object_unref(key);
   filterx_object_unref(object);
   return result;
@@ -140,12 +193,29 @@ _free(FilterXExpr *s)
 }
 
 FilterXExpr *
+filterx_nullv_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *new_value)
+{
+  FilterXSetSubscript *self = g_new0(FilterXSetSubscript, 1);
+
+  filterx_expr_init_instance(&self->super);
+  self->super.eval = _nullv_set_subscript_eval;
+  self->super.init = _init;
+  self->super.deinit = _deinit;
+  self->super.free_fn = _free;
+  self->object = object;
+  self->key = key;
+  self->new_value = new_value;
+  self->super.ignore_falsy_result = TRUE;
+  return &self->super;
+}
+
+FilterXExpr *
 filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *new_value)
 {
   FilterXSetSubscript *self = g_new0(FilterXSetSubscript, 1);
 
   filterx_expr_init_instance(&self->super);
-  self->super.eval = _eval;
+  self->super.eval = _set_subscript_eval;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;

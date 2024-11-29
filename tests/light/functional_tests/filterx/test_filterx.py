@@ -1709,6 +1709,29 @@ def test_null_coalesce_use_default_on_null(config, syslog_ng):
     assert file_true.read_log() == "bar\n"
 
 
+def test_nullv_coalesce_assignment(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        x = null;
+        y = "bar";
+        obj = json();
+        obj.a =?? x;
+        obj.b =?? y;
+        obj.b =?? nonexistent;
+
+        $MSG =?? y;
+        $MSG =?? x;
+        $MSG =?? nonexistent;
+        $MSG += string(obj);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == 'bar{"b":"bar"}\n'
+
+
 def test_null_coalesce_use_default_on_error_and_supress_error(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
