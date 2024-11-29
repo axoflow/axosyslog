@@ -78,12 +78,26 @@ Test(filterx_expr_regexp, regexp_match)
   _assert_match_init_error("abc", "(");
 }
 
+static void
+_parse_search_flags(GList *args, FLAGSET flags)
+{
+  FUNC_FLAGS_ITER(FilterXRegexpSearchFlags,
+  {
+    if (check_flag(flags, enum_elt))
+      {
+        const gchar *flag_name = FilterXRegexpSearchFlags_NAMES[enum_elt];
+        args = g_list_append(args, filterx_function_arg_new(flag_name, filterx_literal_new(filterx_boolean_new(TRUE))));
+      }
+  })
+}
+
 static FilterXObject *
-_search(const gchar *lhs, const gchar *pattern)
+_search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+  _parse_search_flags(args, flags);
 
   FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
   FilterXExpr *parent_fillable_expr_new = filterx_literal_new(filterx_test_dict_new());
@@ -105,11 +119,12 @@ _search(const gchar *lhs, const gchar *pattern)
 }
 
 static void
-_search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fillable)
+_search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fillable, FLAGSET flags)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
+  _parse_search_flags(args, flags);
 
   FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
   filterx_generator_set_fillable(expr, filterx_literal_new(filterx_object_ref(fillable)));
@@ -175,7 +190,31 @@ _assert_dict_elem(FilterXObject *list, const gchar *key, const gchar *expected_v
 
 Test(filterx_expr_regexp, regexp_search_unnamed)
 {
-  FilterXObject *result = _search("foobarbaz", "(foo)(bar)(baz)");
+  FilterXObject *result = _search("foobarbaz", "(foo)(bar)(baz)", 0);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  _assert_len(result, 3);
+  _assert_dict_elem(result, "1", "foo");
+  _assert_dict_elem(result, "2", "bar");
+  _assert_dict_elem(result, "3", "baz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_search_unnamed_grp_zero)
+{
+  FilterXObject *result = _search("foobarbaz", "(foo)(bar)(baz)", FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  _assert_len(result, 4);
+  _assert_dict_elem(result, "0", "foobarbaz");
+  _assert_dict_elem(result, "1", "foo");
+  _assert_dict_elem(result, "2", "bar");
+  _assert_dict_elem(result, "3", "baz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_search_unnamed_grp_zero_list_mode)
+{
+  FilterXObject *result = _search("foobarbaz", "(foo)(bar)(baz)",
+                                  FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO) | FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
   _assert_len(result, 4);
   _assert_list_elem(result, 0, "foobarbaz");
@@ -187,7 +226,19 @@ Test(filterx_expr_regexp, regexp_search_unnamed)
 
 Test(filterx_expr_regexp, regexp_search_named)
 {
-  FilterXObject *result = _search("foobarbaz", "(?<first>foo)(?<second>bar)(?<third>baz)");
+  FilterXObject *result = _search("foobarbaz", "(?<first>foo)(?<second>bar)(?<third>baz)", 0);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  _assert_len(result, 3);
+  _assert_dict_elem(result, "first", "foo");
+  _assert_dict_elem(result, "second", "bar");
+  _assert_dict_elem(result, "third", "baz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_search_named_grp_zero)
+{
+  FilterXObject *result = _search("foobarbaz", "(?<first>foo)(?<second>bar)(?<third>baz)",
+                                  FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO));
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
   _assert_len(result, 4);
   _assert_dict_elem(result, "0", "foobarbaz");
@@ -197,12 +248,24 @@ Test(filterx_expr_regexp, regexp_search_named)
   filterx_object_unref(result);
 }
 
+Test(filterx_expr_regexp, regexp_search_named_grp_zero_list_mode)
+{
+  FilterXObject *result = _search("foobarbaz", "(?<first>foo)(?<second>bar)(?<third>baz)",
+                                  FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO) | FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  _assert_len(result, 4);
+  _assert_list_elem(result, 0, "foobarbaz");
+  _assert_list_elem(result, 1, "foo");
+  _assert_list_elem(result, 2, "bar");
+  _assert_list_elem(result, 3, "baz");
+  filterx_object_unref(result);
+}
+
 Test(filterx_expr_regexp, regexp_search_mixed)
 {
-  FilterXObject *result = _search("foobarbaz", "(?<first>foo)(bar)(?<third>baz)");
+  FilterXObject *result = _search("foobarbaz", "(?<first>foo)(bar)(?<third>baz)", 0);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
-  _assert_len(result, 4);
-  _assert_dict_elem(result, "0", "foobarbaz");
+  _assert_len(result, 3);
   _assert_dict_elem(result, "first", "foo");
   _assert_dict_elem(result, "2", "bar");
   _assert_dict_elem(result, "third", "baz");
@@ -212,40 +275,69 @@ Test(filterx_expr_regexp, regexp_search_mixed)
 Test(filterx_expr_regexp, regexp_search_forced_list)
 {
   FilterXObject *result = filterx_test_list_new();
-  _search_with_fillable("foobarbaz", "(?<first>foo)(bar)(?<third>baz)", result);
-  _assert_len(result, 4);
-  _assert_list_elem(result, 0, "foobarbaz");
-  _assert_list_elem(result, 1, "foo");
-  _assert_list_elem(result, 2, "bar");
-  _assert_list_elem(result, 3, "baz");
+  _search_with_fillable("foobarbaz", "(?<first>foo)(bar)(?<third>baz)", result, 0);
+  _assert_len(result, 3);
+  _assert_list_elem(result, 0, "foo");
+  _assert_list_elem(result, 1, "bar");
+  _assert_list_elem(result, 2, "baz");
   filterx_object_unref(result);
 }
 
 Test(filterx_expr_regexp, regexp_search_forced_dict)
 {
   FilterXObject *result = filterx_test_dict_new();
-  _search_with_fillable("foobarbaz", "(foo)(bar)(baz)", result);
-  _assert_len(result, 4);
-  _assert_dict_elem(result, "0", "foobarbaz");
+  _search_with_fillable("foobarbaz", "(foo)(bar)(baz)", result, 0);
+  _assert_len(result, 3);
   _assert_dict_elem(result, "1", "foo");
   _assert_dict_elem(result, "2", "bar");
   _assert_dict_elem(result, "3", "baz");
   filterx_object_unref(result);
 }
 
+Test(filterx_expr_regexp, regexp_search_forced_dict_list_mode)
+{
+  // list mode overrides the default dict container creation, but still returns dict when fillable type is forced
+  FilterXObject *result = filterx_test_dict_new();
+  _search_with_fillable("foobarbaz", "(foo)(bar)(baz)", result, FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
+  _assert_len(result, 3);
+  _assert_dict_elem(result, "1", "foo");
+  _assert_dict_elem(result, "2", "bar");
+  _assert_dict_elem(result, "3", "baz");
+  filterx_object_unref(result);
+}
+
+
 Test(filterx_expr_regexp, regexp_search_unnamed_no_match)
 {
-  FilterXObject *result = _search("foobarbaz", "(almafa)");
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  FilterXObject *result = _search("foobarbaz", "(almafa)", 0);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
   _assert_len(result, 0);
   filterx_object_unref(result);
 }
 
 Test(filterx_expr_regexp, regexp_search_named_no_match)
 {
-  FilterXObject *result = _search("foobarbaz", "(?<first>almafa)");
+  FilterXObject *result = _search("foobarbaz", "(?<first>almafa)", 0);
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
   _assert_len(result, 0);
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_search_retain_group_zero_if_sole)
+{
+  FilterXObject *result = _search("foobarbaz", "foobarbaz", 0);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  _assert_len(result, 1);
+  _assert_dict_elem(result, "0", "foobarbaz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp, regexp_search_retain_group_zero_if_sole_list_mode)
+{
+  FilterXObject *result = _search("foobarbaz", "foobarbaz", FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  _assert_len(result, 1);
+  _assert_list_elem(result, 0, "foobarbaz");
   filterx_object_unref(result);
 }
 
