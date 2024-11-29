@@ -196,40 +196,6 @@ _literal_generator_init_instance(FilterXExprLiteralGenerator *self)
   self->super.super.free_fn = _literal_generator_free;
 }
 
-gboolean
-filterx_literal_dict_generator_foreach(FilterXExpr *s, FilterXLiteralDictGeneratorForeachFunc func, gpointer user_data)
-{
-  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
-
-  for (GList *link = self->elements; link; link = link->next)
-    {
-      FilterXLiteralGeneratorElem *elem = (FilterXLiteralGeneratorElem *) link->data;
-
-      if (!func(elem->key, elem->value, user_data))
-        return FALSE;
-    }
-
-  return TRUE;
-}
-
-gboolean
-filterx_literal_list_generator_foreach(FilterXExpr *s, FilterXLiteralListGeneratorForeachFunc func, gpointer user_data)
-{
-  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
-
-  gsize i = 0;
-  for (GList *link = self->elements; link; link = link->next)
-    {
-      FilterXLiteralGeneratorElem *elem = (FilterXLiteralGeneratorElem *) link->data;
-
-      if (!func(i, elem->value, user_data))
-        return FALSE;
-
-      i++;
-    }
-
-  return TRUE;
-}
 
 FilterXExpr *
 filterx_literal_dict_generator_new(void)
@@ -388,6 +354,54 @@ filterx_expr_is_literal_generator(FilterXExpr *s)
 guint
 filterx_expr_literal_generator_len(FilterXExpr *s)
 {
-  FilterXExprLiteralGenerator *self = (FilterXExprLiteralGenerator *) s;
-  return g_list_length(self->elements);
+  GList *elements = NULL;
+  if (_filterx_expr_is_inner_dict_generator(s))
+    elements = ((FilterXLiteralInnerGenerator *) s)->elements;
+  else
+    elements = ((FilterXExprLiteralGenerator *) s)->elements;
+
+  return g_list_length(elements);
+}
+
+gboolean
+filterx_literal_dict_generator_foreach(FilterXExpr *s, FilterXLiteralDictGeneratorForeachFunc func, gpointer user_data)
+{
+  GList *elements = NULL;
+  if (_filterx_expr_is_inner_dict_generator(s))
+    elements = ((FilterXLiteralInnerGenerator *) s)->elements;
+  else
+    elements = ((FilterXExprLiteralGenerator *) s)->elements;
+
+  for (GList *link = elements; link; link = link->next)
+    {
+      FilterXLiteralGeneratorElem *elem = (FilterXLiteralGeneratorElem *) link->data;
+
+      if (!func(elem->key, elem->value, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+gboolean
+filterx_literal_list_generator_foreach(FilterXExpr *s, FilterXLiteralListGeneratorForeachFunc func, gpointer user_data)
+{
+  GList *elements = NULL;
+  if (_filterx_expr_is_inner_list_generator(s))
+    elements = ((FilterXLiteralInnerGenerator *) s)->elements;
+  else
+    elements = ((FilterXExprLiteralGenerator *) s)->elements;
+
+  gsize i = 0;
+  for (GList *link = elements; link; link = link->next)
+    {
+      FilterXLiteralGeneratorElem *elem = (FilterXLiteralGeneratorElem *) link->data;
+
+      if (!func(i, elem->value, user_data))
+        return FALSE;
+
+      i++;
+    }
+
+  return TRUE;
 }
