@@ -27,6 +27,8 @@
 
 #include "syslog-ng.h"
 
+#define FLAGSET guint64
+
 #define MAX_ENUMS 64
 
 #define STATIC_ASSERT(COND) G_STATIC_ASSERT(COND)
@@ -35,14 +37,19 @@
     typedef enum { __VA_ARGS__, ENUM_NAME##_MAX} ENUM_NAME; \
     STATIC_ASSERT(ENUM_NAME##_MAX <= MAX_ENUMS) \
 
-#define FUNC_FLAGS_ITER(ENUM_NAME, CODE) for (guint64 enum_elt = 0; enum_elt < ENUM_NAME##_MAX; enum_elt++) { CODE; };
+#define DEFINE_FUNC_FLAG_NAMES(ENUM_NAME, ...)  \
+    const char *ENUM_NAME##_NAMES[] = {  \
+      __VA_ARGS__                               \
+    };
+
+#define FUNC_FLAGS_ITER(ENUM_NAME, CODE) for (FLAGSET enum_elt = 0; enum_elt < ENUM_NAME##_MAX; enum_elt++) { CODE; };
 
 #define FLAG_VAL(ID) (1 << ID)
 
 #define ALL_FLAG_SET(ENUM_NAME) (FLAG_VAL(ENUM_NAME##_MAX) - 1)
 
 static inline void
-set_flag(guint64 *flags, guint64 flag, gboolean val)
+set_flag(FLAGSET *flags, FLAGSET flag, gboolean val)
 {
   if (val)
     {
@@ -55,19 +62,19 @@ set_flag(guint64 *flags, guint64 flag, gboolean val)
 }
 
 static inline gboolean
-check_flag(guint64 flags, guint64 flag)
+check_flag(FLAGSET flags, FLAGSET flag)
 {
   return (flags & FLAG_VAL(flag)) != 0;
 }
 
 static inline void
-reset_flags(guint64 *flags, guint64 val)
+reset_flags(FLAGSET *flags, FLAGSET val)
 {
   *flags = val;
 }
 
 static inline gboolean
-toggle_flag(guint64 *flags, guint64 flag)
+toggle_flag(FLAGSET *flags, FLAGSET flag)
 {
   *flags ^= FLAG_VAL(flag);
   return (*flags & FLAG_VAL(flag)) != 0;
