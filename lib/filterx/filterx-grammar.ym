@@ -122,6 +122,10 @@ construct_template_expr(LogTemplate *template)
 %type <node> declaration
 %type <node> expr
 %type <node> expr_value
+%type <node> expr_operator
+%type <node> boolalg_operator
+%type <node> comparison_operator
+%type <node> arithmetic_operator
 %type <node> expr_generator
 %type <node> expr_generator_unchecked
 %type <node> expr_plus_generator
@@ -187,10 +191,10 @@ stmt
 	;
 
 stmt_expr
-	: expr 					{ $$ = $1; }
-	| conditional 				{ $$ = $1; }
-	| assignment 				{ $$ = $1; }
-	| declaration 				{ $$ = $1; }
+	: expr
+	| conditional
+	| assignment
+	| declaration
 	;
 
 plus_assignment
@@ -211,7 +215,7 @@ assignment
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
 	| generator_assignment
-	| plus_assignment			{ $$ = $1; }
+	| plus_assignment
 	;
 
 
@@ -364,41 +368,57 @@ declaration
     ;
 
 expr
-	: expr_value				{ $$ = $1; }
-	| function_call				{ $$ = $1; }
-	| KW_NOT expr				{ $$ = filterx_unary_not_new($2); }
-	| expr KW_OR expr			{ $$ = filterx_binary_or_new($1, $3); }
-	| expr KW_AND expr                      { $$ = filterx_binary_and_new($1, $3); }
-	/* TODO extract lvalues */
-	| expr '.' identifier		{ $$ = filterx_getattr_new($1, filterx_config_frozen_string(configuration, $3)); free($3); }
-	| expr '[' expr ']'			{ $$ = filterx_get_subscript_new($1, $3); }
-        | expr KW_TA_LT expr		        { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_LT); }
-        | expr KW_TA_LE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_LT | FCMPX_EQ); }
-        | expr KW_TA_EQ expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_EQ); }
-        | expr KW_TA_NE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_NE ); }
-        | expr KW_TA_GE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_EQ | FCMPX_GT); }
-        | expr KW_TA_GT expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_GT); }
-        | expr KW_STR_LT expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_LT); }
-        | expr KW_STR_LE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_LT | FCMPX_EQ); }
-        | expr KW_STR_EQ expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_EQ); }
-        | expr KW_STR_NE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_NE ); }
-        | expr KW_STR_GE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_EQ | FCMPX_GT); }
-        | expr KW_STR_GT expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_GT); }
-        | expr KW_TAV_EQ expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ); }
-        | expr KW_TAV_NE expr			{ $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_NE ); }
-	| expr '+' expr				{ $$ = filterx_operator_plus_new($1, $3); }
+	: expr_value
+	| function_call
+	| expr_operator
 	| '(' expr ')'				{ $$ = $2; }
-	| ternary				{ $$ = $1; }
-	| default				{ $$ = $1; }
 	| KW_ISSET '(' expr ')'			{ $$ = filterx_isset_new($3); }
 	| KW_DROP                   { $$ = filterx_expr_drop_msg(); }
 	| KW_DONE                   { $$ = filterx_expr_done(); }
-	| regexp_match				{ $$ = $1; }
+	;
+
+expr_operator
+	: boolalg_operator
+	| comparison_operator
+	| arithmetic_operator
+	| ternary
+	| default
+	/* TODO extract lvalues */
+	| expr '.' identifier		{ $$ = filterx_getattr_new($1, filterx_config_frozen_string(configuration, $3)); free($3); }
+	| expr '[' expr ']'			{ $$ = filterx_get_subscript_new($1, $3); }
+	;
+
+boolalg_operator
+	: KW_NOT expr { $$ = filterx_unary_not_new($2); }
+	| expr KW_OR expr { $$ = filterx_binary_or_new($1, $3); }
+	| expr KW_AND expr { $$ = filterx_binary_and_new($1, $3); }
+	;
+
+comparison_operator
+	: expr KW_TA_LT expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_LT); }
+	| expr KW_TA_LE expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_LT | FCMPX_EQ); }
+	| expr KW_TA_EQ expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_EQ); }
+	| expr KW_TA_NE expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_NE ); }
+	| expr KW_TA_GE expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_EQ | FCMPX_GT); }
+	| expr KW_TA_GT expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AWARE | FCMPX_GT); }
+	| expr KW_STR_LT expr { $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_LT); }
+	| expr KW_STR_LE expr { $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_LT | FCMPX_EQ); }
+	| expr KW_STR_EQ expr { $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_EQ); }
+	| expr KW_STR_NE expr { $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_NE ); }
+	| expr KW_STR_GE expr { $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_EQ | FCMPX_GT); }
+	| expr KW_STR_GT expr { $$ = filterx_comparison_new($1, $3, FCMPX_STRING_BASED | FCMPX_GT); }
+	| expr KW_TAV_EQ expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ); }
+	| expr KW_TAV_NE expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_NE ); }
+	| regexp_match
+	;
+
+arithmetic_operator
+	: expr '+' expr { $$ = filterx_operator_plus_new($1, $3); }
 	;
 
 expr_value
 	: literal
-	| variable				{ $$ = $1; }
+	| variable
 	| template				{ $$ = construct_template_expr($1); }
 	;
 
@@ -577,7 +597,7 @@ regexp_match
 	;
 
 conditional
-	: if					{ $$ = $1; }
+	: if
 	| if KW_ELSE block
 	  {
             FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
@@ -614,15 +634,29 @@ ternary
 	: expr '?' expr ':' expr
 	  {
             filterx_expr_set_location($1, lexer, &@1);
-	    $$ = filterx_conditional_new($1);
-            filterx_conditional_set_true_branch($$, $3);
-            filterx_conditional_set_false_branch($$, $5);
+            if (filterx_expr_is_literal($1))
+              {
+                $$ = filterx_literal_conditional($1, $3, $5);
+              }
+            else
+              {
+                $$ = filterx_conditional_new($1);
+                filterx_conditional_set_true_branch($$, $3);
+                filterx_conditional_set_false_branch($$, $5);
+              }
 	  }
 	| expr '?' ':' expr
 	  {
             filterx_expr_set_location($1, lexer, &@1);
-	    $$ = filterx_conditional_new($1);
-	    filterx_conditional_set_false_branch($$, $4);
+            if (filterx_expr_is_literal($1))
+              {
+                $$ = filterx_literal_conditional($1, NULL, $4);
+              }
+            else
+              {
+                $$ = filterx_conditional_new($1);
+                filterx_conditional_set_false_branch($$, $4);
+              }
 	  }
 	;
 

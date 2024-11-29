@@ -22,6 +22,19 @@
  */
 #include "filterx/expr-boolalg.h"
 #include "filterx/object-primitive.h"
+#include "filterx/expr-literal.h"
+
+static inline gboolean
+_literal_expr_truthy(FilterXExpr *expr)
+{
+  FilterXObject *result = filterx_expr_eval(expr);
+  g_assert(result);
+
+  gboolean truthy = filterx_object_truthy(result);
+  filterx_object_unref(result);
+
+  return truthy;
+}
 
 static FilterXObject *
 _eval_not(FilterXExpr *s)
@@ -44,6 +57,9 @@ _eval_not(FilterXExpr *s)
 FilterXExpr *
 filterx_unary_not_new(FilterXExpr *operand)
 {
+  if (filterx_expr_is_literal(operand))
+    return filterx_literal_new(filterx_boolean_new(!_literal_expr_truthy(operand)));
+
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
 
   filterx_unary_op_init_instance(self, operand);
@@ -59,17 +75,20 @@ _eval_and(FilterXExpr *s)
   /* we only evaluate our rhs if lhs is true, e.g.  we do fast circuit
    * evaluation just like most languages */
 
-  FilterXObject *result = filterx_expr_eval(self->lhs);
-  if (!result)
-    return NULL;
+  if (self->lhs)
+    {
+      FilterXObject *result = filterx_expr_eval(self->lhs);
+      if (!result)
+        return NULL;
 
-  gboolean lhs_truthy = filterx_object_truthy(result);
-  filterx_object_unref(result);
+      gboolean lhs_truthy = filterx_object_truthy(result);
+      filterx_object_unref(result);
 
-  if (!lhs_truthy)
-    return filterx_boolean_new(FALSE);
+      if (!lhs_truthy)
+        return filterx_boolean_new(FALSE);
+    }
 
-  result = filterx_expr_eval(self->rhs);
+  FilterXObject *result = filterx_expr_eval(self->rhs);
   if (!result)
     return NULL;
 
@@ -85,9 +104,21 @@ _eval_and(FilterXExpr *s)
 FilterXExpr *
 filterx_binary_and_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
+  if (filterx_expr_is_literal(lhs))
+    {
+      if (!_literal_expr_truthy(lhs))
+        return filterx_literal_new(filterx_boolean_new(FALSE));
+
+      if (filterx_expr_is_literal(rhs))
+        return filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
+    }
+
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
   filterx_binary_op_init_instance(self, lhs, rhs);
+  if (filterx_expr_is_literal(lhs))
+    self->lhs = NULL;
+
   self->super.eval = _eval_and;
   return &self->super;
 }
@@ -100,17 +131,20 @@ _eval_or(FilterXExpr *s)
   /* we only evaluate our rhs if lhs is false, e.g.  we do fast circuit
    * evaluation just like most languages */
 
-  FilterXObject *result = filterx_expr_eval(self->lhs);
-  if (!result)
-    return NULL;
+  if (self->lhs)
+    {
+      FilterXObject *result = filterx_expr_eval(self->lhs);
+      if (!result)
+        return NULL;
 
-  gboolean lhs_truthy = filterx_object_truthy(result);
-  filterx_object_unref(result);
+      gboolean lhs_truthy = filterx_object_truthy(result);
+      filterx_object_unref(result);
 
-  if (lhs_truthy)
-    return filterx_boolean_new(TRUE);
+      if (lhs_truthy)
+        return filterx_boolean_new(TRUE);
+    }
 
-  result = filterx_expr_eval(self->rhs);
+  FilterXObject *result = filterx_expr_eval(self->rhs);
   if (!result)
     return NULL;
 
@@ -126,9 +160,21 @@ _eval_or(FilterXExpr *s)
 FilterXExpr *
 filterx_binary_or_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
+  if (filterx_expr_is_literal(lhs))
+    {
+      if (_literal_expr_truthy(lhs))
+        return filterx_literal_new(filterx_boolean_new(TRUE));
+
+      if (filterx_expr_is_literal(rhs))
+        return filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
+    }
+
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
   filterx_binary_op_init_instance(self, lhs, rhs);
+  if (filterx_expr_is_literal(lhs))
+    self->lhs = NULL;
+
   self->super.eval = _eval_or;
   return &self->super;
 }

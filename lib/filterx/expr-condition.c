@@ -22,6 +22,7 @@
  */
 
 #include "filterx/expr-condition.h"
+#include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
 #include "scratch-buffers.h"
 
@@ -181,4 +182,38 @@ filterx_conditional_find_tail(FilterXExpr *s)
         }
     }
   return s;
+}
+
+FilterXExpr *
+filterx_literal_conditional(FilterXExpr *condition, FilterXExpr *true_branch, FilterXExpr *false_branch)
+{
+  g_assert(filterx_expr_is_literal(condition));
+
+  FilterXObject *condition_value = filterx_expr_eval(condition);
+  g_assert(condition_value);
+
+  FilterXExpr *optimized = NULL;
+
+  if (filterx_object_truthy(condition_value))
+    {
+      if (true_branch)
+        optimized = true_branch;
+      else
+        optimized = filterx_expr_ref(condition);
+
+      filterx_expr_unref(false_branch);
+    }
+  else
+    {
+      if (false_branch)
+        optimized = false_branch;
+      else
+        optimized = filterx_literal_new(filterx_boolean_new(TRUE));
+
+      filterx_expr_unref(true_branch);
+    }
+
+  filterx_object_unref(condition_value);
+  filterx_expr_unref(condition);
+  return optimized;
 }

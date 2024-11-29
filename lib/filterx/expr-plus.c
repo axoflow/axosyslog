@@ -23,11 +23,14 @@
 #include "expr-plus.h"
 #include "object-string.h"
 #include "filterx-eval.h"
+#include "filterx/expr-literal.h"
 #include "scratch-buffers.h"
 
 typedef struct FilterXOperatorPlus
 {
   FilterXBinaryOp super;
+  FilterXObject *literal_lhs;
+  FilterXObject *literal_rhs;
 } FilterXOperatorPlus;
 
 static FilterXObject *
@@ -35,11 +38,13 @@ _eval(FilterXExpr *s)
 {
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
 
-  FilterXObject *lhs_object = filterx_expr_eval_typed(self->super.lhs);
+  FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
+                              : filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
     return NULL;
 
-  FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
+  FilterXObject *rhs_object = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
+                              : filterx_expr_eval(self->super.rhs);
   if (!rhs_object)
     {
       filterx_object_unref(lhs_object);
@@ -52,11 +57,36 @@ _eval(FilterXExpr *s)
   return res;
 }
 
+static void
+_filterx_operator_plus_free(FilterXExpr *s)
+{
+  FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
+  filterx_object_unref(self->literal_lhs);
+  filterx_object_unref(self->literal_rhs);
+
+  filterx_binary_op_free_method(s);
+}
+
 FilterXExpr *
 filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorPlus *self = g_new0(FilterXOperatorPlus, 1);
   filterx_binary_op_init_instance(&self->super, lhs, rhs);
   self->super.super.eval = _eval;
+  self->super.super.free_fn = _filterx_operator_plus_free;
+
+  if (filterx_expr_is_literal(lhs))
+    self->literal_lhs = filterx_expr_eval_typed(lhs);
+
+  if (filterx_expr_is_literal(rhs))
+    self->literal_rhs = filterx_expr_eval(rhs);
+
+  if (filterx_expr_is_literal(lhs) && filterx_expr_is_literal(rhs))
+    {
+      FilterXExpr *optimized = filterx_literal_new(_eval(&self->super.super));
+      filterx_expr_unref(&self->super.super);
+      return optimized;
+    }
+
   return &self->super.super;
 }

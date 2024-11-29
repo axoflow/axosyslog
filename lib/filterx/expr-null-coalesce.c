@@ -23,6 +23,7 @@
  */
 
 #include "filterx/expr-null-coalesce.h"
+#include "filterx/expr-literal.h"
 #include "filterx/object-null.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-message-value.h"
@@ -61,6 +62,19 @@ _eval(FilterXExpr *s)
 FilterXExpr *
 filterx_null_coalesce_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
+  if (filterx_expr_is_literal(lhs))
+    {
+      FilterXObject *lhs_object = filterx_expr_eval(lhs);
+      if (!lhs_object || filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(null)))
+        {
+          filterx_object_unref(lhs_object);
+          return rhs;
+        }
+
+      filterx_object_unref(lhs_object);
+      return lhs;
+    }
+
   FilterXNullCoalesce *self = g_new0(FilterXNullCoalesce, 1);
   filterx_binary_op_init_instance(&self->super, lhs, rhs);
   self->super.super.eval = _eval;
