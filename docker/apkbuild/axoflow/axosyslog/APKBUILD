@@ -31,6 +31,7 @@ makedepends="
 	librdkafka-dev
 	libtool
 	libxml2-utils
+	libexecinfo-dev
 	mongo-c-driver-dev
 	net-snmp-dev
 	openssl-dev>3
