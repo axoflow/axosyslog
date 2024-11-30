@@ -35,16 +35,16 @@ _filterx_ref_clone(FilterXObject *s)
 static void
 _filterx_ref_cow(FilterXRef *self)
 {
-  if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
+  if (self->value->fx_ref_cnt <= 1)
     return;
 
   FilterXObject *cloned = filterx_object_clone(self->value);
 
-  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
+  self->value->fx_ref_cnt--;
   filterx_object_unref(self->value);
 
   self->value = cloned;
-  g_atomic_counter_inc(&self->value->fx_ref_cnt);
+  self->value->fx_ref_cnt++;
 }
 
 FilterXObject *
@@ -107,7 +107,7 @@ _filterx_ref_free(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
+  self->value->fx_ref_cnt--;
   filterx_object_unref(self->value);
 
   filterx_object_free_method(s);
@@ -257,7 +257,7 @@ filterx_ref_new(FilterXObject *value)
   self->super.readonly = FALSE;
 
   self->value = value;
-  g_atomic_counter_inc(&self->value->fx_ref_cnt);
+  self->value->fx_ref_cnt++;
 
   return &self->super;
 }
