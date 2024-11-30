@@ -32,7 +32,10 @@
 void
 filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text)
 {
-  self->lloc = *lloc;
+  if (!self->lloc)
+    self->lloc = g_new0(CFG_LTYPE, 1);
+  *self->lloc = *lloc;
+
   if (debug_flag)
     self->expr_text = g_strdup(text);
 }
@@ -40,7 +43,9 @@ filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYP
 void
 filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
 {
-  self->lloc = *lloc;
+  if (!self->lloc)
+    self->lloc = g_new0(CFG_LTYPE, 1);
+  *self->lloc = *lloc;
   if (debug_flag)
     {
       GString *res = g_string_sized_new(0);
@@ -52,9 +57,9 @@ filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
 EVTTAG *
 filterx_expr_format_location_tag(FilterXExpr *self)
 {
-  if (self)
+  if (self && self->lloc)
     return evt_tag_printf("expr", "%s:%d:%d|\t%s",
-                          self->lloc.name, self->lloc.first_line, self->lloc.first_column,
+                          self->lloc->name, self->lloc->first_line, self->lloc->first_column,
                           self->expr_text ? : "n/a");
   else
     return evt_tag_str("expr", "n/a");
@@ -74,6 +79,7 @@ filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
 void
 filterx_expr_free_method(FilterXExpr *self)
 {
+  g_free(self->lloc);
   g_free(self->expr_text);
 }
 

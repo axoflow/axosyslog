@@ -58,7 +58,7 @@ struct _FilterXExpr
 
   gboolean inited;
 
-  CFG_LTYPE lloc;
+  CFG_LTYPE *lloc;
   gchar *expr_text;
 };
 
