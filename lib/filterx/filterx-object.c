@@ -91,8 +91,6 @@ filterx_type_init(FilterXType *type)
     msg_error("Reregistering filterx type", evt_tag_str("name", type->name));
 }
 
-#define FILTERX_OBJECT_MAGIC_BIAS G_MAXINT32
-
 void
 filterx_object_free_method(FilterXObject *self)
 {
@@ -123,12 +121,6 @@ filterx_object_freeze(FilterXObject *self)
   g_assert(g_atomic_counter_get(&self->ref_cnt) == 1);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_MAGIC_BIAS);
   return TRUE;
-}
-
-gboolean
-filterx_object_is_frozen(FilterXObject *self)
-{
-  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_MAGIC_BIAS;
 }
 
 void
