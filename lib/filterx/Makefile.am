@@ -114,7 +114,6 @@ filterx_sources = 				\
 	lib/filterx/func-vars.c \
 	lib/filterx/object-datetime.c \
 	lib/filterx/object-dict-interface.c \
-	lib/filterx/object-extractor.c \
 	lib/filterx/object-json-array.c \
 	lib/filterx/object-json-object.c \
 	lib/filterx/object-json.c \

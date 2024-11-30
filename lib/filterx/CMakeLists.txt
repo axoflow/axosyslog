@@ -112,7 +112,6 @@ set(FILTERX_SOURCES
     filterx/func-vars.c
     filterx/object-datetime.c
     filterx/object-dict-interface.c
-    filterx/object-extractor.c
     filterx/object-json-array.c
     filterx/object-json-object.c
     filterx/object-json.c
