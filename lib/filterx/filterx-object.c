@@ -131,37 +131,6 @@ filterx_object_unfreeze_and_free(FilterXObject *self)
   filterx_object_unref(self);
 }
 
-FilterXObject *
-filterx_object_ref(FilterXObject *self)
-{
-  if (!self)
-    return NULL;
-
-  if (filterx_object_is_frozen(self))
-    return self;
-
-  g_atomic_counter_inc(&self->ref_cnt);
-
-  return self;
-}
-
-void
-filterx_object_unref(FilterXObject *self)
-{
-  if (!self)
-    return;
-
-  if (filterx_object_is_frozen(self))
-    return;
-
-  g_assert(g_atomic_counter_get(&self->ref_cnt) > 0);
-  if (g_atomic_counter_dec_and_test(&self->ref_cnt))
-    {
-      self->type->free_fn(self);
-      g_free(self);
-    }
-}
-
 FilterXType FILTERX_TYPE_NAME(object) =
 {
   .super_type = NULL,
