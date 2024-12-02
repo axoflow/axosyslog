@@ -87,7 +87,8 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result)
   FilterXEvalContext *context = filterx_eval_get_context();
 
   *result = NULL;
-  for (gint i = 0; i < self->exprs->len; i++)
+  gint len = self->exprs->len;
+  for (gint i = 0; i < len; i++)
     {
       filterx_object_unref(*result);
 
