@@ -43,6 +43,7 @@
 #include "compat/json.h"
 
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"
+#define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(fornat_str, datetime)"
 
 typedef struct _FilterXDateTime
 {
@@ -396,6 +397,8 @@ error:
 typedef struct FilterXFunctionStrftime_
 {
   FilterXFunction super;
+  const gchar *format;
+  FilterXExpr *datetime_expr;
 } FilterXFunctionStrftime;
 
 static FilterXObject *
@@ -409,12 +412,62 @@ _strftime_free(FilterXExpr *s)
 {
   FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
 
+  filterx_expr_unref(self->datetime_expr);
   filterx_function_free_method(&self->super);
+}
+
+static const gchar *
+_extract_strftime_format(FilterXFunctionArgs *args, GError **error)
+{
+  const gchar *format = filterx_function_args_get_literal_string(args, 0, NULL);
+  if (!format)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be set: format_str. " FILTERX_FUNC_STRFTIME_USAGE);
+      return NULL;
+    }
+
+  return format;
+}
+
+static FilterXExpr *
+_extract_strftime_datetime_expr(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExpr *datetime_expr = filterx_function_args_get_expr(args, 1);
+  if (!datetime_expr)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be set: time_str. " FILTERX_FUNC_STRFTIME_USAGE);
+      return NULL;
+    }
+
+  return datetime_expr;
 }
 
 static gboolean
 _extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args, GError **error)
 {
+  gsize len = filterx_function_args_len(args);
+
+  if (len != 2)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_STRFTIME_USAGE);
+      return FALSE;
+    }
+
+  self->format = _extract_strftime_format(args, error);
+  if (!self->format)
+    {
+      return FALSE;
+    }
+
+  self->datetime_expr = _extract_strftime_datetime_expr(args, error);
+  if (!self->format)
+    {
+      return FALSE;
+    }
+
   return TRUE;
 }
 
