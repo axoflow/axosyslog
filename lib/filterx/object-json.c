@@ -35,7 +35,9 @@
 #include "scanner/list-scanner/list-scanner.h"
 #include "str-repr/encode.h"
 
-static gboolean
+#define json_object_get_type(jso) (*((int *) jso))
+
+static inline gboolean
 _is_json_cacheable(struct json_object *jso)
 {
   if (json_object_get_type(jso) == json_type_double && JSON_C_MAJOR_VERSION == 0 && JSON_C_MINOR_VERSION < 14)
@@ -52,6 +54,30 @@ _is_json_cacheable(struct json_object *jso)
 
   return TRUE;
 }
+
+static inline FilterXObject *
+filterx_json_get_cached_object(struct json_object *jso)
+{
+  if (!_is_json_cacheable(jso))
+    return NULL;
+
+  if (json_object_get_type(jso) == json_type_double)
+    {
+      /*
+       * This is a workaround to ditch builtin serializer for double objects
+       * that are set when parsing from a string representation.
+       * json_object_double_new_ds() will set userdata to the string
+       * representation of the number, as extracted from the JSON source.
+       *
+       * Changing the value of the double to the same value, ditches this,
+       * but only if necessary.
+       */
+      json_object_set_double(jso, json_object_get_double(jso));
+    }
+
+  return (FilterXObject *) json_object_get_userdata(jso);
+}
+
 
 static int
 _deep_copy_filterx_object_ref(json_object *src, json_object *parent, const char *key, size_t index, json_object **dst)
@@ -154,28 +180,6 @@ filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *fil
   json_object_set_userdata(jso, filterx_obj, NULL);
 }
 
-FilterXObject *
-filterx_json_get_cached_object(struct json_object *jso)
-{
-  if (!_is_json_cacheable(jso))
-    return NULL;
-
-  if (json_object_get_type(jso) == json_type_double)
-    {
-      /*
-       * This is a workaround to ditch builtin serializer for double objects
-       * that are set when parsing from a string representation.
-       * json_object_double_new_ds() will set userdata to the string
-       * representation of the number, as extracted from the JSON source.
-       *
-       * Changing the value of the double to the same value, ditches this,
-       * but only if necessary.
-       */
-      json_object_set_double(jso, json_object_get_double(jso));
-    }
-
-  return (FilterXObject *) json_object_get_userdata(jso);
-}
 
 FilterXObject *
 filterx_json_new_from_repr(const gchar *repr, gssize repr_len)
