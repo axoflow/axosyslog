@@ -51,7 +51,7 @@ stats_counter_read_only(StatsCounterItem *counter)
 static inline void
 stats_counter_add(StatsCounterItem *counter, gssize add)
 {
-  if (counter)
+  if (G_UNLIKELY(counter))
     {
       g_assert(!stats_counter_read_only(counter));
       atomic_gssize_add(&counter->value, add);
@@ -61,7 +61,7 @@ stats_counter_add(StatsCounterItem *counter, gssize add)
 static inline void
 stats_counter_sub(StatsCounterItem *counter, gssize sub)
 {
-  if (counter)
+  if (G_UNLIKELY(counter))
     {
       g_assert(!stats_counter_read_only(counter));
       atomic_gssize_sub(&counter->value, sub);
@@ -71,7 +71,7 @@ stats_counter_sub(StatsCounterItem *counter, gssize sub)
 static inline void
 stats_counter_inc(StatsCounterItem *counter)
 {
-  if (counter)
+  if (G_UNLIKELY(counter))
     {
       g_assert(!stats_counter_read_only(counter));
       atomic_gssize_inc(&counter->value);
@@ -81,7 +81,7 @@ stats_counter_inc(StatsCounterItem *counter)
 static inline void
 stats_counter_dec(StatsCounterItem *counter)
 {
-  if (counter)
+  if (G_UNLIKELY(counter))
     {
       g_assert(!stats_counter_read_only(counter));
       atomic_gssize_dec(&counter->value);
