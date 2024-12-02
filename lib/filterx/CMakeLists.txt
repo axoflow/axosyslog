@@ -16,6 +16,7 @@ set(FILTERX_HEADERS
     filterx/expr-null-coalesce.h
     filterx/expr-plus-generator.h
     filterx/expr-plus.h
+    filterx/expr-regexp-common.h
     filterx/expr-regexp.h
     filterx/expr-set-subscript.h
     filterx/expr-setattr.h
@@ -79,6 +80,7 @@ set(FILTERX_SOURCES
     filterx/expr-null-coalesce.c
     filterx/expr-plus-generator.c
     filterx/expr-plus.c
+    filterx/expr-regexp-common.c
     filterx/expr-regexp.c
     filterx/expr-set-subscript.c
     filterx/expr-setattr.c

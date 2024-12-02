@@ -32,6 +32,7 @@
 #include "filterx/filterx-ref.h"
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
+#include "filterx/expr-regexp-common.h"
 
 #define FILTERX_FUNC_REGEXP_SUBST_USAGE "Usage: regexp_subst(string, pattern, replacement, " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME"=(boolean) " \
@@ -50,127 +51,6 @@ DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSearchFlags,
 FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO_NAME"=(boolean), "\
 FILTERX_REGEXP_SEARCH_LIST_MODE_NAME"=(boolean))"
 
-typedef struct FilterXReMatchState_
-{
-  pcre2_match_data *match_data;
-  FilterXObject *lhs_obj;
-  const gchar *lhs_str;
-  gsize lhs_str_len;
-  gint rc;
-  FLAGSET flags;
-} FilterXReMatchState;
-
-static void
-_state_init(FilterXReMatchState *state)
-{
-  memset(state, 0, sizeof(FilterXReMatchState));
-}
-
-static void
-_state_cleanup(FilterXReMatchState *state)
-{
-  if (state->match_data)
-    pcre2_match_data_free(state->match_data);
-  filterx_object_unref(state->lhs_obj);
-  memset(state, 0, sizeof(FilterXReMatchState));
-}
-
-static pcre2_code_8 *
-_compile_pattern(const gchar *pattern, gboolean jit_enabled, gint opts)
-{
-  gint rc;
-  PCRE2_SIZE error_offset;
-  gint flags = opts | PCRE2_DUPNAMES;
-
-  pcre2_code_8 *compiled = pcre2_compile((PCRE2_SPTR) pattern, PCRE2_ZERO_TERMINATED, flags, &rc, &error_offset, NULL);
-  if (!compiled)
-    {
-      PCRE2_UCHAR error_message[128];
-      pcre2_get_error_message(rc, error_message, sizeof(error_message));
-      msg_error("FilterX: Failed to compile regexp pattern",
-                evt_tag_str("pattern", pattern),
-                evt_tag_str("error", (const gchar *) error_message),
-                evt_tag_int("error_offset", (gint) error_offset));
-      return NULL;
-    }
-
-  if (jit_enabled)
-    {
-      rc = pcre2_jit_compile(compiled, PCRE2_JIT_COMPLETE);
-      if (rc < 0)
-        {
-          PCRE2_UCHAR error_message[128];
-          pcre2_get_error_message(rc, error_message, sizeof(error_message));
-          msg_debug("FilterX: Failed to JIT compile regular expression",
-                    evt_tag_str("pattern", pattern),
-                    evt_tag_str("error", (const gchar *) error_message));
-        }
-    }
-
-  return compiled;
-}
-
-static pcre2_code_8 *
-_compile_pattern_defaults(const gchar *pattern)
-{
-  return _compile_pattern(pattern, TRUE, 0);
-}
-
-static gboolean
-_match_inner(FilterXReMatchState *state, pcre2_code_8 *pattern, gint start_offset)
-{
-  gint rc = pcre2_match(pattern, (PCRE2_SPTR) state->lhs_str, (PCRE2_SIZE) state->lhs_str_len, (PCRE2_SIZE) start_offset,
-                        0,
-                        state->match_data, NULL);
-  state->rc = rc;
-  if (rc < 0)
-    {
-      switch (rc)
-        {
-        case PCRE2_ERROR_NOMATCH:
-          return FALSE;
-        default:
-          /* Handle other special cases */
-          msg_error("FilterX: Error while matching regexp", evt_tag_int("error_code", rc));
-          goto error;
-        }
-    }
-  else if (rc == 0)
-    {
-      msg_error("FilterX: Error while storing matching substrings, more than 256 capture groups encountered");
-      goto error;
-    }
-
-  return TRUE;
-
-error:
-  return FALSE;
-}
-
-/*
- * Returns whether lhs matched the pattern.
- * Populates state if no error happened.
- */
-static gboolean
-_match(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXReMatchState *state)
-{
-  state->lhs_obj = filterx_expr_eval(lhs_expr);
-  if (!state->lhs_obj)
-    goto error;
-
-  if (!filterx_object_extract_string_ref(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
-    {
-      msg_error("FilterX: Regexp matching left hand side must be string type",
-                evt_tag_str("type", state->lhs_obj->type->name));
-      goto error;
-    }
-
-  state->match_data = pcre2_match_data_create_from_pattern(pattern, NULL);
-  return _match_inner(state, pattern, 0);
-error:
-  _state_cleanup(state);
-  return FALSE;
-}
 
 static gboolean
 _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state, FilterXObject *fillable)
@@ -307,9 +187,9 @@ _regexp_match_eval(FilterXExpr *s)
 
   FilterXObject *result = NULL;
   FilterXReMatchState state;
-  _state_init(&state);
+  filterx_expr_rematch_state_init(&state);
 
-  gboolean matched = _match(self->lhs, self->pattern, &state);
+  gboolean matched = filterx_regexp_match_eval(self->lhs, self->pattern, &state);
   if (!state.match_data)
     {
       /* Error happened during matching. */
@@ -319,7 +199,7 @@ _regexp_match_eval(FilterXExpr *s)
   result = filterx_boolean_new(matched != self->invert);
 
 exit:
-  _state_cleanup(&state);
+  filterx_expr_rematch_state_cleanup(&state);
   return result;
 }
 
@@ -367,7 +247,7 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
   self->super.free_fn = _regexp_match_free;
 
   self->lhs = lhs;
-  self->pattern = _compile_pattern_defaults(pattern);
+  self->pattern = filterx_regexp_compile_pattern_defaults(pattern);
   if (!self->pattern)
     {
       filterx_expr_unref(&self->super);
@@ -652,7 +532,7 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
       else
         pos = _end_offset(ovector);
 
-      if (!_match_inner(state, self->pattern, pos))
+      if (!filterx_regexp_match(state, self->pattern, pos))
         break;
     }
   while ((pos < state->lhs_str_len) && self->opts.global);
@@ -674,9 +554,9 @@ _subst_eval(FilterXExpr *s)
 
   FilterXObject *result = NULL;
   FilterXReMatchState state;
-  _state_init(&state);
+  filterx_expr_rematch_state_init(&state);
 
-  gboolean matched = _match(self->string_expr, self->pattern, &state);
+  gboolean matched = filterx_regexp_match_eval(self->string_expr, self->pattern, &state);
   if (!matched)
     {
       result = filterx_object_ref(state.lhs_obj);
@@ -693,7 +573,7 @@ _subst_eval(FilterXExpr *s)
   result = _replace_matches(self, &state);
 
 exit:
-  _state_cleanup(&state);
+  filterx_expr_rematch_state_cleanup(&state);
   return result;
 }
 
@@ -724,7 +604,7 @@ _extract_subst_pattern_arg(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *ar
       return NULL;
     }
 
-  return _compile_pattern(pattern, self->opts.jit, _create_compile_opts(self->opts));
+  return filterx_regexp_compile_pattern(pattern, self->opts.jit, _create_compile_opts(self->opts));
 }
 
 static gchar *
