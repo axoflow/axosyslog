@@ -25,6 +25,7 @@
 #include "libtest/filterx-lib.h"
 
 #include "filterx/expr-regexp.h"
+#include "filterx/expr-regexp-search.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
