@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 #############################################################################
+# Copyright (c) 2024 Axoflow
+# Copyright (c) 2024 Tamás Kosztyu <tamas.kosztyu@axoflow.com>
 # Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -1179,6 +1181,16 @@ def test_strptime_error_result(config, syslog_ng):
         syslog_ng.start(config)
 
 
+def test_strftime_error_result(config, syslog_ng):
+    _ = create_config(
+        config, """
+        $MSG = strftime("2024-04-10T08:09:10Z"); # wrong arg set
+""",
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
+
+
 def test_strptime_success_result(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
@@ -1190,6 +1202,20 @@ def test_strptime_success_result(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "1712736550.000000+00:00\n"
+
+
+def test_strftime_success_result(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        $MSG = strftime("%Y-%m-%dT%H:%M:%S %z", datetime);
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "2000-01-01T00:00:00 +0200\n"
 
 
 def test_strptime_guess_missing_year(config, syslog_ng):
