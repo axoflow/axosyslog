@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2023 Axoflow
+ * Copyright (c) 2024 shifter
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,34 +22,24 @@
  *
  */
 
-#ifndef FILTERX_EXPR_REGEXP_H_INCLUDED
-#define FILTERX_EXPR_REGEXP_H_INCLUDED
+#ifndef FILTERX_EXPR_REGEXP_SEARCH_H_INCLUDED
+#define FILTERX_EXPR_REGEXP_SEARCH_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-generator.h"
 #include "filterx/expr-function.h"
 #include "filterx/func-flags.h"
 
-#define FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME "jit"
-#define FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL_NAME "global"
-#define FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME "utf8"
-#define FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME "ignorecase"
-#define FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME "newline"
-#define FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME "groups"
+DEFINE_FUNC_FLAGS(FilterXRegexpSearchFlags,
+                  FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO,
+                  FILTERX_REGEXP_SEARCH_LIST_MODE
+                 );
 
-typedef struct FilterXFuncRegexpSubstOpts_
-{
-  gboolean global;
-  gboolean jit;
-  gboolean utf8;
-  gboolean ignorecase;
-  gboolean newline;
-  gboolean groups;
-} FilterXFuncRegexpSubstOpts;
+#define FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO_NAME "keep_zero"
+#define FILTERX_REGEXP_SEARCH_LIST_MODE_NAME "list_mode"
 
-FilterXExpr *filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern);
-FilterXExpr *filterx_expr_regexp_nomatch_new(FilterXExpr *lhs, const gchar *pattern);
-FilterXExpr *filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error);
-gboolean filterx_regexp_subst_is_jit_enabled(FilterXExpr *s);
+extern const char *FilterXRegexpSearchFlags_NAMES[];
+
+FilterXExpr *filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

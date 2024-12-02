@@ -42,6 +42,7 @@
 #include "filterx/func-str-transform.h"
 #include "filterx/func-flatten.h"
 #include "filterx/func-sdata.h"
+#include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-unset.h"
 #include "filterx/filterx-eval.h"
