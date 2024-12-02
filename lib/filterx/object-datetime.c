@@ -404,7 +404,42 @@ typedef struct FilterXFunctionStrftime_
 static FilterXObject *
 _strftime_eval(FilterXExpr *s)
 {
-  return NULL;
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
+  if (!datetime_obj)
+    {
+      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_STRFTIME_USAGE, s, NULL);
+      return NULL;
+    }
+
+  UnixTime datetime = UNIX_TIME_INIT;
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+
+  if (!filterx_object_extract_datetime(datetime_obj, &datetime))
+    {
+      filterx_object_unref(datetime_obj);
+      filterx_eval_push_error("Second argument must be of datetime type. " FILTERX_FUNC_STRFTIME_USAGE, s, NULL);
+      return NULL;
+    }
+
+  filterx_object_unref(datetime_obj);
+
+  convert_unix_time_to_wall_clock_time (&datetime, &wct);
+
+  const gsize MAX_RESULT_STR_LEN = 256;
+  size_t date_size = 0;
+  gchar result_str[MAX_RESULT_STR_LEN];
+
+  // TODO - implement wall_clock_time_strftime, because there is some inconsistency with the format accepted by wall_clock_time_strptime
+  date_size = strftime(result_str, MAX_RESULT_STR_LEN, self->format, &wct.tm);
+
+  if (!date_size)
+    {
+      return filterx_null_new();
+    }
+
+  return filterx_string_new(result_str, strnlen(result_str, MAX_RESULT_STR_LEN));
 }
 
 static void
