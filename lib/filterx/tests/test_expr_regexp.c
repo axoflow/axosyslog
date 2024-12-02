@@ -100,8 +100,6 @@ _search(const gchar *lhs, const gchar *pattern)
 
   filterx_object_unref(result_obj);
   filterx_expr_unref(cc_expr);
-  filterx_expr_unref(parent_fillable_expr_new);
-  filterx_expr_unref(expr);
 
   return fillable;
 }

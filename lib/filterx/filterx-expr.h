@@ -31,15 +31,14 @@
 
 struct _FilterXExpr
 {
-  /* not thread-safe */
-  guint32 ref_cnt;
-  const gchar *type;
-  guint32 ignore_falsy_result:1, suppress_from_trace:1;
-
   StatsCounterItem *eval_count;
-
   /* evaluate expression */
   FilterXObject *(*eval)(FilterXExpr *self);
+
+  /* not thread-safe */
+  guint32 ref_cnt;
+  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1;
+
   /* not to be used except for FilterXMessageRef, replace any cached values
    * with the unmarshaled version */
   void (*_update_repr)(FilterXExpr *self, FilterXObject *new_repr);
@@ -56,9 +55,8 @@ struct _FilterXExpr
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   void (*free_fn)(FilterXExpr *self);
 
-  gboolean inited;
-
-  CFG_LTYPE lloc;
+  const gchar *type;
+  CFG_LTYPE *lloc;
   gchar *expr_text;
 };
 

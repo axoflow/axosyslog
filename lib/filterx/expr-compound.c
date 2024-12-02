@@ -84,15 +84,19 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
 static gboolean
 _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result)
 {
+  FilterXEvalContext *context = filterx_eval_get_context();
+
   *result = NULL;
-  for (gint i = 0; i < self->exprs->len; i++)
+  gint len = self->exprs->len;
+  for (gint i = 0; i < len; i++)
     {
       filterx_object_unref(*result);
-      FilterXEvalContext *context = filterx_eval_get_context();
 
       if (G_UNLIKELY(context->eval_control_modifier == FXC_DROP || context->eval_control_modifier == FXC_DONE))
-        /* code flow modifier detected, short circuiting */
-        return TRUE;
+        {
+          /* code flow modifier detected, short circuiting */
+          return TRUE;
+        }
 
       FilterXExpr *expr = g_ptr_array_index(self->exprs, i);
       if (!_eval_expr(expr, result))

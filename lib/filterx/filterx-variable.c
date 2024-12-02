@@ -25,58 +25,6 @@
 
 #include "filterx-variable.h"
 
-#define FILTERX_HANDLE_FLOATING_BIT (1UL << 31)
-
-gboolean
-filterx_variable_handle_is_floating(FilterXVariableHandle handle)
-{
-  return !!(handle & FILTERX_HANDLE_FLOATING_BIT);
-}
-
-gboolean
-filterx_variable_is_floating(FilterXVariable *v)
-{
-  return filterx_variable_handle_is_floating(v->handle);
-}
-
-NVHandle
-filterx_variable_get_nv_handle(FilterXVariable *v)
-{
-  return v->handle & ~FILTERX_HANDLE_FLOATING_BIT;
-}
-
-const gchar *
-filterx_variable_get_name(FilterXVariable *v, gssize *len)
-{
-  return log_msg_get_handle_name(filterx_variable_get_nv_handle(v), len);
-}
-
-FilterXObject *
-filterx_variable_get_value(FilterXVariable *v)
-{
-  return filterx_object_ref(v->value);
-}
-
-void
-filterx_variable_set_value(FilterXVariable *v, FilterXObject *new_value)
-{
-  filterx_object_unref(v->value);
-  v->value = filterx_object_ref(new_value);
-  v->assigned = TRUE;
-}
-
-void
-filterx_variable_unset_value(FilterXVariable *v)
-{
-  filterx_variable_set_value(v, NULL);
-}
-
-gboolean
-filterx_variable_is_set(FilterXVariable *v)
-{
-  return v->value != NULL;
-}
-
 FilterXVariableHandle
 filterx_map_varname_to_handle(const gchar *name, FilterXVariableType type)
 {

@@ -60,14 +60,57 @@ void filterx_variable_init_instance(FilterXVariable *v, FilterXVariableHandle ha
                                     FilterXObject *initial_value, guint32 generation);
 void filterx_variable_free_method(FilterXVariable *v);
 
-gboolean filterx_variable_is_floating(FilterXVariable *v);
-gboolean filterx_variable_handle_is_floating(FilterXVariableHandle handle);
-const gchar *filterx_variable_get_name(FilterXVariable *v, gssize *len);
-NVHandle filterx_variable_get_nv_handle(FilterXVariable *v);
-FilterXObject *filterx_variable_get_value(FilterXVariable *v);
-void filterx_variable_set_value(FilterXVariable *v, FilterXObject *new_value);
-void filterx_variable_unset_value(FilterXVariable *v);
-gboolean filterx_variable_is_set(FilterXVariable *v);
+#define FILTERX_HANDLE_FLOATING_BIT (1UL << 31)
+
+static inline gboolean
+filterx_variable_handle_is_floating(FilterXVariableHandle handle)
+{
+  return !!(handle & FILTERX_HANDLE_FLOATING_BIT);
+}
+
+static inline gboolean
+filterx_variable_is_floating(FilterXVariable *v)
+{
+  return filterx_variable_handle_is_floating(v->handle);
+}
+
+static inline NVHandle
+filterx_variable_get_nv_handle(FilterXVariable *v)
+{
+  return v->handle & ~FILTERX_HANDLE_FLOATING_BIT;
+}
+
+static inline const gchar *
+filterx_variable_get_name(FilterXVariable *v, gssize *len)
+{
+  return log_msg_get_handle_name(filterx_variable_get_nv_handle(v), len);
+}
+
+static inline FilterXObject *
+filterx_variable_get_value(FilterXVariable *v)
+{
+  return filterx_object_ref(v->value);
+}
+
+static inline void
+filterx_variable_set_value(FilterXVariable *v, FilterXObject *new_value)
+{
+  filterx_object_unref(v->value);
+  v->value = filterx_object_ref(new_value);
+  v->assigned = TRUE;
+}
+
+static inline void
+filterx_variable_unset_value(FilterXVariable *v)
+{
+  filterx_variable_set_value(v, NULL);
+}
+
+static inline gboolean
+filterx_variable_is_set(FilterXVariable *v)
+{
+  return v->value != NULL;
+}
 
 static inline gboolean
 filterx_variable_is_declared(FilterXVariable *v)

@@ -74,6 +74,8 @@ void _filterx_type_init_methods(FilterXType *type);
       __VA_ARGS__       \
     }
 
+#define FILTERX_OBJECT_MAGIC_BIAS G_MAXINT32
+
 
 FILTERX_DECLARE_TYPE(object);
 
@@ -100,13 +102,47 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
-FilterXObject *filterx_object_ref(FilterXObject *self);
-void filterx_object_unref(FilterXObject *self);
 gboolean filterx_object_freeze(FilterXObject *self);
-gboolean filterx_object_is_frozen(FilterXObject *self);
 void filterx_object_unfreeze_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
+
+static inline gboolean
+filterx_object_is_frozen(FilterXObject *self)
+{
+  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_MAGIC_BIAS;
+}
+
+static inline FilterXObject *
+filterx_object_ref(FilterXObject *self)
+{
+  if (!self)
+    return NULL;
+
+  if (filterx_object_is_frozen(self))
+    return self;
+
+  g_atomic_counter_inc(&self->ref_cnt);
+
+  return self;
+}
+
+static inline void
+filterx_object_unref(FilterXObject *self)
+{
+  if (!self)
+    return;
+
+  if (filterx_object_is_frozen(self))
+    return;
+
+  g_assert(g_atomic_counter_get(&self->ref_cnt) > 0);
+  if (g_atomic_counter_dec_and_test(&self->ref_cnt))
+    {
+      self->type->free_fn(self);
+      g_free(self);
+    }
+}
 
 static inline void
 filterx_object_make_readonly(FilterXObject *self)
