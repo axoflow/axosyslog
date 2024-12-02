@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Tamás Kosztyu <tamas.kosztyu@axoflow.com>
  * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -381,6 +383,56 @@ filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
   if (!_extract_strptime_args(self, args, error) ||
       !filterx_function_args_check(args, error))
     goto error;
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+typedef struct FilterXFunctionStrftime_
+{
+  FilterXFunction super;
+} FilterXFunctionStrftime;
+
+static FilterXObject *
+_strftime_eval(FilterXExpr *s)
+{
+  return NULL;
+}
+
+static void
+_strftime_free(FilterXExpr *s)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args, GError **error)
+{
+  return TRUE;
+}
+
+/* Takes reference of args */
+FilterXExpr *
+filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionStrftime *self = g_new0(FilterXFunctionStrftime, 1);
+  filterx_function_init_instance(&self->super, "strftime");
+
+  self->super.super.eval = _strftime_eval;
+  self->super.super.free_fn = _strftime_free;
+
+  if (!_extract_strftime_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    {
+      goto error;
+    }
 
   filterx_function_args_free(args);
   return &self->super.super;

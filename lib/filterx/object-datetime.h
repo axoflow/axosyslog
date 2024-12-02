@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Tamás Kosztyu <tamas.kosztyu@axoflow.com>
  * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
@@ -35,6 +37,7 @@ UnixTime filterx_datetime_get_value(FilterXObject *s);
 FilterXObject *filterx_typecast_datetime(FilterXExpr *s, GPtrArray *args);
 FilterXObject *filterx_typecast_datetime_isodate(FilterXExpr *, GPtrArray *args);
 FilterXExpr *filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error);
 
 gboolean datetime_repr(const UnixTime *ut, GString *repr);
 
