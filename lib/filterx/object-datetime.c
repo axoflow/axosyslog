@@ -348,7 +348,7 @@ _extract_time_str_expr(FilterXFunctionArgs *args, GError **error)
 }
 
 static gboolean
-_extract_args(FilterXFunctionStrptime *self, FilterXFunctionArgs *args, GError **error)
+_extract_strptime_args(FilterXFunctionStrptime *self, FilterXFunctionArgs *args, GError **error)
 {
   gsize len = filterx_function_args_len(args);
   if (len < 2)
@@ -378,7 +378,7 @@ filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.eval = _strptime_eval;
   self->super.super.free_fn = _strptime_free;
 
-  if (!_extract_args(self, args, error) ||
+  if (!_extract_strptime_args(self, args, error) ||
       !filterx_function_args_check(args, error))
     goto error;
 
