@@ -1329,20 +1329,44 @@ def test_regexp_search(config, syslog_ng):
         config, r"""
     $MSG = {};
     $MSG.unnamed = regexp_search("foobarbaz", /(foo)(bar)(baz)/);
+    $MSG.unnamed_keep_zero = regexp_search("foobarbaz", /(foo)(bar)(baz)/, keep_zero=true);
+    $MSG.unnamed_list_mode = regexp_search("foobarbaz", /(foo)(bar)(baz)/, list_mode=true);
+    $MSG.unnamed_keep_zero_list_mode = regexp_search("foobarbaz", /(foo)(bar)(baz)/, keep_zero=true, list_mode=true);
     $MSG.named = regexp_search("foobarbaz", /(?<first>foo)(?<second>bar)(?<third>baz)/);
+    $MSG.named_keep_zero = regexp_search("foobarbaz", /(?<first>foo)(?<second>bar)(?<third>baz)/, keep_zero=true);
+    $MSG.named_list_mode = regexp_search("foobarbaz", /(?<first>foo)(?<second>bar)(?<third>baz)/, list_mode=true);
+    $MSG.named_keep_zero_list_mode = regexp_search("foobarbaz", /(?<first>foo)(?<second>bar)(?<third>baz)/, keep_zero=true, list_mode=true);
     $MSG.mixed = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/);
+    $MSG.mixed_keep_zero = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, keep_zero=true);
+    $MSG.mixed_list_mode = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, list_mode=true);
+    $MSG.mixed_keep_zero_list_mode = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, keep_zero=true, list_mode=true);
     $MSG.force_list = json_array(regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/));
     $MSG.force_dict = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/));
+    $MSG.force_dict_list_mode = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/, list_mode=true));
 
     $MSG.no_match_unnamed = regexp_search("foobarbaz", /(almafa)/);
     if (len($MSG.no_match_unnamed) == 0) {
         $MSG.no_match_unnamed_handling = true;
     };
 
+    $MSG.no_match_unnamed_list_mode = regexp_search("foobarbaz", /(almafa)/, list_mode=true);
+    if (len($MSG.no_match_unnamed_list_mode) == 0) {
+        $MSG.no_match_unnamed_list_mode_handling = true;
+    };
+
     $MSG.no_match_named = regexp_search("foobarbaz", /(?<first>almafa)/);
     if (len($MSG.no_match_named) == 0) {
         $MSG.no_match_named_handling = true;
     };
+
+    $MSG.no_match_named_list_mode = regexp_search("foobarbaz", /(?<first>almafa)/, list_mode=true);
+    if (len($MSG.no_match_named_list_mode) == 0) {
+        $MSG.no_match_named_list_mode_handling = true;
+    };
+
+    $MSG.full_match=regexp_search("foobarbaz", /foobarbaz/);
+    $MSG.full_match_list_mode=regexp_search("foobarbaz", /foobarbaz/, list_mode=true);
+
 """,
     )
     syslog_ng.start(config)
@@ -1350,15 +1374,31 @@ def test_regexp_search(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert json.loads(file_true.read_log()) == {
-        "unnamed": ["foobarbaz", "foo", "bar", "baz"],
-        "named": {"0": "foobarbaz", "first": "foo", "second": "bar", "third": "baz"},
-        "mixed": {"0": "foobarbaz", "first": "foo", "2": "bar", "third": "baz"},
-        "force_list": ["foobarbaz", "foo", "bar", "baz"],
-        "force_dict": {"0": "foobarbaz", "1": "foo", "2": "bar", "3": "baz"},
-        "no_match_unnamed": [],
+        "unnamed": {"1": "foo", "2": "bar", "3": "baz"},
+        "unnamed_keep_zero": {"0": "foobarbaz", "1": "foo", "2": "bar", "3": "baz"},
+        "unnamed_list_mode": ["foo", "bar", "baz"],
+        "unnamed_keep_zero_list_mode": ["foobarbaz", "foo", "bar", "baz"],
+        "named": {"first": "foo", "second": "bar", "third": "baz"},
+        "named_keep_zero": {"0": "foobarbaz", "first": "foo", "second": "bar", "third": "baz"},
+        "named_list_mode": ["foo", "bar", "baz"],
+        "named_keep_zero_list_mode": ["foobarbaz", "foo", "bar", "baz"],
+        "mixed": {"first": "foo", "2": "bar", "third": "baz"},
+        "mixed_keep_zero": {"0": "foobarbaz", "first": "foo", "2": "bar", "third": "baz"},
+        "mixed_list_mode": ["foo", "bar", "baz"],
+        "mixed_keep_zero_list_mode": ["foobarbaz", "foo", "bar", "baz"],
+        "force_list": ["foo", "bar", "baz"],
+        "force_dict": {"1": "foo", "2": "bar", "3": "baz"},
+        "force_dict_list_mode": {"1": "foo", "2": "bar", "3": "baz"},
+        "no_match_unnamed": {},
         "no_match_unnamed_handling": True,
+        "no_match_unnamed_list_mode": [],
+        "no_match_unnamed_list_mode_handling": True,
         "no_match_named": {},
         "no_match_named_handling": True,
+        "no_match_named_list_mode": [],
+        "no_match_named_list_mode_handling": True,
+        "full_match": {"0": "foobarbaz"},  # does not suppress grp 0 when it's the only result
+        "full_match_list_mode": ["foobarbaz"],  # does not suppress grp 0 when it's the only result
     }
 
 
