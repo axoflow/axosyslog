@@ -276,6 +276,9 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
   if (opts.utf8)
     args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME,
                                                         filterx_literal_new(filterx_boolean_new(TRUE))));
+  if (opts.groups)
+    args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME,
+                                                        filterx_literal_new(filterx_boolean_new(TRUE))));
 
   GError *err = NULL;
   FilterXExpr *func = filterx_function_regexp_subst_new(filterx_function_args_new(args, NULL), &err);
@@ -525,6 +528,33 @@ Test(filterx_expr_regexp, regexp_subst_match_opt_ignorecase_nojit)
   const gchar *res_alt = filterx_string_get_value_ref(result_alt, NULL);
   cr_assert_str_eq(res_alt, "fXXbXrbXz");
   filterx_object_unref(result_alt);
+}
+
+Test(filterx_expr_regexp, regexp_subst_group_subst)
+{
+  FilterXFuncRegexpSubstOpts opts = {};
+  FilterXObject *result = _sub("(\\d{2})-(\\d{2})-(\\d{4})", "\\3-\\2-\\1", "25-02-2022", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value_ref(result, NULL);
+  cr_assert_str_eq(res, "\\3-\\2-\\1");
+  filterx_object_unref(result);
+
+  FilterXFuncRegexpSubstOpts opts_alt = {.groups = TRUE};
+  FilterXObject *result_alt = _sub("(\\d{2})-(\\d{2})-(\\d{4})", "\\3-\\2-\\1", "25-02-2022", opts_alt);
+  cr_assert(filterx_object_is_type(result_alt, &FILTERX_TYPE_NAME(string)));
+  const gchar *res_alt = filterx_string_get_value_ref(result_alt, NULL);
+  cr_assert_str_eq(res_alt, "2022-02-25");
+  filterx_object_unref(result_alt);
+}
+
+Test(filterx_expr_regexp, regexp_subst_group_subst_without_ref)
+{
+  FilterXFuncRegexpSubstOpts opts = {.groups = TRUE};
+  FilterXObject *result = _sub("(\\d{2})-(\\d{2})-(\\d{4})", "group without ref", "25-02-2022", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value_ref(result, NULL);
+  cr_assert_str_eq(res, "group without ref");
+  filterx_object_unref(result);
 }
 
 static void
