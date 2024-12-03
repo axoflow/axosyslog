@@ -68,10 +68,12 @@ filterx_null_coalesce_new(FilterXExpr *lhs, FilterXExpr *rhs)
       if (!lhs_object || filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(null)))
         {
           filterx_object_unref(lhs_object);
+          filterx_expr_unref(lhs);
           return rhs;
         }
 
       filterx_object_unref(lhs_object);
+      filterx_expr_unref(rhs);
       return lhs;
     }
 

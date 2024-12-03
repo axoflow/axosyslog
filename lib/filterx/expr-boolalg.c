@@ -58,7 +58,11 @@ FilterXExpr *
 filterx_unary_not_new(FilterXExpr *operand)
 {
   if (filterx_expr_is_literal(operand))
-    return filterx_literal_new(filterx_boolean_new(!_literal_expr_truthy(operand)));
+    {
+      FilterXExpr *optimized = filterx_literal_new(filterx_boolean_new(!_literal_expr_truthy(operand)));
+      filterx_expr_unref(operand);
+      return optimized;
+    }
 
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
 
@@ -104,23 +108,38 @@ _eval_and(FilterXExpr *s)
 FilterXExpr *
 filterx_binary_and_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
+  FilterXExpr *optimized = NULL;
   if (filterx_expr_is_literal(lhs))
     {
       if (!_literal_expr_truthy(lhs))
-        return filterx_literal_new(filterx_boolean_new(FALSE));
+        {
+          optimized = filterx_literal_new(filterx_boolean_new(FALSE));
+          goto optimize;
+        }
 
       if (filterx_expr_is_literal(rhs))
-        return filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
+        {
+          optimized = filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
+          goto optimize;
+        }
     }
 
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
   filterx_binary_op_init_instance(self, "and", lhs, rhs);
   if (filterx_expr_is_literal(lhs))
-    self->lhs = NULL;
+    {
+      filterx_expr_unref(self->lhs);
+      self->lhs = NULL;
+    }
 
   self->super.eval = _eval_and;
   return &self->super;
+
+optimize:
+  filterx_expr_unref(lhs);
+  filterx_expr_unref(rhs);
+  return optimized;
 }
 
 static FilterXObject *
@@ -160,21 +179,36 @@ _eval_or(FilterXExpr *s)
 FilterXExpr *
 filterx_binary_or_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
+  FilterXExpr *optimized = NULL;
   if (filterx_expr_is_literal(lhs))
     {
       if (_literal_expr_truthy(lhs))
-        return filterx_literal_new(filterx_boolean_new(TRUE));
+        {
+          optimized = filterx_literal_new(filterx_boolean_new(TRUE));
+          goto optimize;
+        }
 
       if (filterx_expr_is_literal(rhs))
-        return filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
+        {
+          optimized = filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
+          goto optimize;
+        }
     }
 
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
   filterx_binary_op_init_instance(self, "or", lhs, rhs);
   if (filterx_expr_is_literal(lhs))
-    self->lhs = NULL;
+    {
+      filterx_expr_unref(self->lhs);
+      self->lhs = NULL;
+    }
 
   self->super.eval = _eval_or;
   return &self->super;
+
+optimize:
+  filterx_expr_unref(lhs);
+  filterx_expr_unref(rhs);
+  return optimized;
 }
