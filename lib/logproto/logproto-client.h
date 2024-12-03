@@ -112,13 +112,18 @@ log_proto_client_validate_options(LogProtoClient *self)
   return self->validate_options(self);
 }
 
+static inline gboolean
+log_proto_client_needs_handshake(LogProtoClient *s)
+{
+  return s->handshake != NULL;
+}
+
 static inline LogProtoStatus
 log_proto_client_handshake(LogProtoClient *s, gboolean *handshake_finished)
 {
-  if (s->handshake)
-    {
-      return s->handshake(s, handshake_finished);
-    }
+  if (log_proto_client_needs_handshake(s))
+    return s->handshake(s, handshake_finished);
+
   *handshake_finished = TRUE;
   return LPS_SUCCESS;
 }

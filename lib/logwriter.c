@@ -1334,7 +1334,11 @@ log_writer_flush(LogWriter *self, LogWriterFlushMode flush_mode)
     return FALSE;
 
   if (self->handshake_in_progress)
-    return log_writer_process_handshake(self);
+    {
+      gboolean succ = log_writer_process_handshake(self);
+      if (FALSE == succ || self->handshake_in_progress)
+        return FALSE;
+    }
 
   /* NOTE: in case we're reloading or exiting we flush all queued items as
    * long as the destination can consume it.  This is not going to be an
@@ -1720,7 +1724,11 @@ log_writer_set_proto(LogWriter *self, LogProtoClient *proto)
 
       log_proto_client_set_client_flow_control(self->proto, &flow_control_funcs);
       log_proto_client_set_options(self->proto, &self->options->proto_options.super);
+
+      self->handshake_in_progress = log_proto_client_needs_handshake(self->proto);
     }
+  else
+    self->handshake_in_progress = FALSE;
 }
 
 static void
@@ -1923,7 +1931,7 @@ log_writer_new(guint32 flags, GlobalConfig *cfg)
   self->flags = flags;
   self->line_buffer = g_string_sized_new(128);
   self->pollable_state = -1;
-  self->handshake_in_progress = TRUE;
+  self->handshake_in_progress = FALSE;
   init_sequence_number(&self->seq_num);
 
   log_writer_init_watches(self);
