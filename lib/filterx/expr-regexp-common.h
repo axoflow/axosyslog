@@ -52,4 +52,22 @@ gboolean filterx_regexp_extract_optional_arg_flag(FLAGSET *flags, const gchar **
 gboolean filterx_regexp_match(FilterXReMatchState *state, pcre2_code_8 *pattern, gint start_offset);
 gboolean filterx_regexp_match_eval(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXReMatchState *state);
 
+static inline gint
+match_start_offset(PCRE2_SIZE *ovector)
+{
+  return ovector[0];
+}
+
+static inline gint
+match_end_offset(PCRE2_SIZE *ovector)
+{
+  return ovector[1];
+}
+
+static inline gboolean
+is_zero_length_match(PCRE2_SIZE *ovector)
+{
+  return ovector[0] == ovector[1];
+}
+
 #endif
