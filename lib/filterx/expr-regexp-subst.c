@@ -160,7 +160,6 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
       _build_replacement_stirng_with_match_groups(self, state, rep_str);
       replacement_string = rep_str->str;
     }
-
   do
     {
       ovector = pcre2_get_ovector_pointer(state->match_data);
@@ -297,6 +296,13 @@ _extract_optional_flags(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args,
 }
 
 static gboolean
+_contains_match_grp_ref(gchar *str)
+{
+  gchar *close = NULL;
+  return _next_matchgrp_ref(str, &close) != NULL;
+}
+
+static gboolean
 _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
 {
   if (filterx_function_args_len(args) != 3)
@@ -320,7 +326,9 @@ _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GEr
   self->replacement = _extract_subst_replacement_arg(args, error);
   if (!self->replacement)
     return FALSE;
-
+  // turn off group mode if there is no match grp ref due to it's performance impact
+  if (!_contains_match_grp_ref(self->replacement))
+    set_flag(&self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS, FALSE);
 
   return TRUE;
 }
@@ -365,7 +373,8 @@ filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _subst_deinit;
   self->super.super.free_fn = _subst_free;
 
-  reset_flags(&self->flags, FLAG_VAL(FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT));
+  reset_flags(&self->flags, FLAG_VAL(FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT) | FLAG_VAL(
+                FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS));
   if (!_extract_subst_args(self, args, error) ||
       !filterx_function_args_check(args, error))
     goto error;
