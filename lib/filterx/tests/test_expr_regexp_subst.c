@@ -69,8 +69,8 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
   if (opts.utf8)
     args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME,
                                                         filterx_literal_new(filterx_boolean_new(TRUE))));
-  if (opts.groups)
-    args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME,
+  if (!opts.groups)
+    args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_REGEXP_SUBST_FLAG_NOGROUPS_NAME,
                                                         filterx_literal_new(filterx_boolean_new(TRUE))));
 
   GError *err = NULL;

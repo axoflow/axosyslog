@@ -43,7 +43,7 @@ DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSubstFlags,
                        FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME,
                        FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME,
                        FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME,
-                       FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME
+                       FILTERX_FUNC_REGEXP_SUBST_FLAG_NOGROUPS_NAME
                       );
 
 #define FILTERX_FUNC_REGEXP_SUBST_USAGE "Usage: regexp_subst(string, pattern, replacement, " \
@@ -52,7 +52,7 @@ DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSubstFlags,
   FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_IGNORECASE_NAME"=(boolean) " \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME"=(boolean)" \
-  FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME"=(boolean))" \
+  FILTERX_FUNC_REGEXP_SUBST_FLAG_NOGROUPS_NAME"=(boolean))" \
 
 #define FILTERX_FUNC_REGEXP_SUBST_GRP_ID_MAX_DIGITS 3
 
@@ -154,13 +154,12 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
   gint pos = 0;
   const gchar *replacement_string = self->replacement;
 
-  if (check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS))
+  if (!check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_NOGROUPS))
     {
       GString *rep_str = scratch_buffers_alloc();
       _build_replacement_stirng_with_match_groups(self, state, rep_str);
       replacement_string = rep_str->str;
     }
-
   do
     {
       ovector = pcre2_get_ovector_pointer(state->match_data);
@@ -291,7 +290,7 @@ _extract_optional_flags(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args,
     return FALSE;
   if (!_extract_optional_arg_flag(self, FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8, args, error))
     return FALSE;
-  if (!_extract_optional_arg_flag(self, FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS, args, error))
+  if (!_extract_optional_arg_flag(self, FILTERX_FUNC_REGEXP_SUBST_FLAG_NOGROUPS, args, error))
     return FALSE;
   return TRUE;
 }
