@@ -597,22 +597,16 @@ class S3Object:
         if self.__persist.kms_key != "":
             extra_args["SSEKMSKeyId"] = self.__persist.kms_key
 
+        if self.__persist.canned_acl != "":
+            extra_args["ACL"] = self.__persist.canned_acl,
+
         try:
-            if self.__persist.canned_acl != "":
-                response = self.__client.create_multipart_upload(
-                    Bucket=self.bucket,
-                    Key=self.key,
-                    StorageClass=self.__persist.storage_class,
-                    ACL=self.__persist.canned_acl,
-                    **extra_args,
-                )
-            else:
-                response = self.__client.create_multipart_upload(
-                    Bucket=self.bucket,
-                    Key=self.key,
-                    StorageClass=self.__persist.storage_class,
-                    **extra_args,
-                )
+            response = self.__client.create_multipart_upload(
+                Bucket=self.bucket,
+                Key=self.key,
+                StorageClass=self.__persist.storage_class,
+                **extra_args,
+            )
         except (ClientError, EndpointConnectionError) as e:
             self.__logger.error(f"Failed to create multipart upload: {self.bucket}/{self.key} => {e}")
             return False
