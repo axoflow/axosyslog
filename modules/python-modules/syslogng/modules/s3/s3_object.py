@@ -121,6 +121,7 @@ class S3ObjectPersist:
         kms_key: Optional[str] = None,
         storage_class: Optional[str] = None,
         canned_acl: Optional[str] = None,
+        content_type: Optional[str] = None,
     ):
         if path is not None:
             self.__path = path
@@ -138,6 +139,7 @@ class S3ObjectPersist:
                 and server_side_encryption is not None
                 and kms_key is not None
                 and canned_acl is not None
+                and content_type is not None
             )
         else:
             assert False
@@ -163,6 +165,7 @@ class S3ObjectPersist:
                 "canned-acl",
                 "kms-key",
                 "server-side-encryption",
+                "content-type",
             }:
                 cache[upgrade_field] = cache.get(upgrade_field, "")
 
@@ -207,6 +210,7 @@ class S3ObjectPersist:
         self.__canned_acl: str = cache.get("canned-acl", canned_acl)
         self.__kms_key: str = cache.get("kms-key", kms_key)
         self.__server_side_encryption: str = cache.get("server-side-encryption", server_side_encryption)
+        self.__content_type: str = cache.get("content-type", content_type)
 
         self.__flush()
 
@@ -232,6 +236,7 @@ class S3ObjectPersist:
             "upload-id": self.__upload_id,
             "uploaded-parts": self.__uploaded_parts,
             "pending-parts": self.__pending_parts,
+            "content-type": self.__content_type,
         }
 
         with self.__path.open("w", encoding="utf-8") as f:
@@ -302,6 +307,10 @@ class S3ObjectPersist:
     @property
     def canned_acl(self) -> str:
         return self.__canned_acl
+
+    @property
+    def content_type(self) -> str:
+        return self.__content_type
 
     @property
     def finished(self) -> bool:
@@ -380,6 +389,7 @@ class S3Object:
         kms_key: Optional[str] = None,
         storage_class: Optional[str] = None,
         canned_acl: Optional[str] = None,
+        content_type: Optional[str] = None,
         persist: Optional[S3ObjectPersist] = None,
         persist_name: Optional[str] = None,
         working_dir: Optional[Path] = None,
@@ -414,6 +424,7 @@ class S3Object:
                 and kms_key is not None
                 and storage_class is not None
                 and canned_acl is not None
+                and content_type is not None
             )
             self.__persist = S3ObjectPersist(
                 working_dir=working_dir,
@@ -428,6 +439,7 @@ class S3Object:
                 kms_key=kms_key,
                 storage_class=storage_class,
                 canned_acl=canned_acl,
+                content_type=content_type,
             )
             self.__persist.index = self.__get_next_index(target_index)
 
@@ -472,6 +484,7 @@ class S3Object:
         kms_key: str,
         storage_class: str,
         canned_acl: str,
+        content_type: str,
         persist_name: str,
         chunk_size: int,
         executor: ThreadPoolExecutor,
@@ -494,6 +507,7 @@ class S3Object:
             kms_key=kms_key,
             storage_class=storage_class,
             canned_acl=canned_acl,
+            content_type=content_type,
             chunk_size=chunk_size,
             persist_name=persist_name,
             exit_requested=exit_requested,
@@ -526,6 +540,7 @@ class S3Object:
             storage_class=self.__persist.storage_class,
             canned_acl=self.__persist.canned_acl,
             chunk_size=self.__persist.chunk_size,
+            content_type=self.__persist.content_type,
             persist_name=self.__persist.persist_name,
             exit_requested=self.__exit_requested,
         )
@@ -599,6 +614,9 @@ class S3Object:
 
         if self.__persist.canned_acl != "":
             extra_args["ACL"] = self.__persist.canned_acl,
+
+        if self.__persist.content_type != "":
+            extra_args["ContentType"] = self.__persist.content_type
 
         try:
             response = self.__client.create_multipart_upload(
