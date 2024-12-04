@@ -296,6 +296,13 @@ _extract_optional_flags(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args,
 }
 
 static gboolean
+_contains_match_grp_ref(gchar *str)
+{
+  gchar *close = NULL;
+  return _next_matchgrp_ref(str, &close) != NULL;
+}
+
+static gboolean
 _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
 {
   if (filterx_function_args_len(args) != 3)
@@ -319,7 +326,9 @@ _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GEr
   self->replacement = _extract_subst_replacement_arg(args, error);
   if (!self->replacement)
     return FALSE;
-
+  // turn off group mode if there is no match grp ref due to it's performance impact
+  if (!_contains_match_grp_ref(self->replacement))
+    set_flag(&self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_NOGROUPS, TRUE);
 
   return TRUE;
 }
