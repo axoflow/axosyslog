@@ -2004,9 +2004,11 @@ def test_regexp_subst(config, syslog_ng):
         $MSG.orgrp_global = regexp_subst("foobarbaz", "(fo|az)", "!", global=true);
         $MSG.ignore_case_control = regexp_subst("FoObArBaz", "(o|a)", "!", global=true);
         $MSG.ignore_case = regexp_subst("FoObArBaz", "(o|a)", "!", ignorecase=true, global=true);
-        $MSG.groups_off = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "\\3-\\2-\\1");;
-        $MSG.groups_on = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "\\3-\\2-\\1", groups=true);
-        $MSG.mixed_grps = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "foo:\\3-\\2-\\1:bar:baz", groups=true);
+        $MSG.groups_off = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "\\3-\\2-\\1", groups=false);
+        $MSG.groups_on = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "\\3-\\2-\\1");
+        $MSG.mixed_grps = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "foo:\\3-\\2-\\1:bar:baz");
+        $MSG.multi_digit_grps = regexp_subst("010203040506070809101112", /(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "\\10-\\11-\\12");
+        $MSG.prefixing_zeros = regexp_subst("foobar", /^(.*)$/, "\\001012345");
     """,
     )
     syslog_ng.start(config)
@@ -2028,7 +2030,9 @@ def test_regexp_subst(config, syslog_ng):
         r""""ignore_case":"F!!b!rB!z","""
         r""""groups_off":"\\3-\\2-\\1","""
         r""""groups_on":"2022-02-25","""
-        r""""mixed_grps":"foo:2022-02-25:bar:baz"}""" + "\n"
+        r""""mixed_grps":"foo:2022-02-25:bar:baz","""
+        r""""multi_digit_grps":"10-11-12","""
+        r""""prefixing_zeros":"foobar012345"}""" + "\n"
     )
     assert file_true.read_log() == exp
 
