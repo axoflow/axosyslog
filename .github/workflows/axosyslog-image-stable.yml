@@ -8,7 +8,6 @@ on:
 jobs:
   pre-check:
     runs-on: ubuntu-latest
-    if: github.repository_owner == 'axoflow'
     steps:
       - name: Validate tag
         run: |
