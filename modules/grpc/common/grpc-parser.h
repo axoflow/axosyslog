@@ -35,6 +35,11 @@
   { "url",                       KW_URL }, \
   { "target_service_accounts",   KW_TARGET_SERVICE_ACCOUNTS }, \
   { "adc",                       KW_ADC }, \
+  { "service_account",           KW_SERVICE_ACCOUNT }, \
+  { "key",                       KW_KEY }, \
+  { "scope",                     KW_SCOPE }, \
+  { "audience",                  KW_AUDIENCE }, \
+  { "token_validity_duration",   KW_TOKEN_VALIDITY_DURATION }, \
   { "compression",               KW_COMPRESSION }, \
   { "batch_bytes",               KW_BATCH_BYTES }, \
   { "channel_args",              KW_CHANNEL_ARGS }, \
