@@ -18,6 +18,9 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-null-coalesce.h \
 	lib/filterx/expr-plus-generator.h \
 	lib/filterx/expr-plus.h \
+	lib/filterx/expr-regexp-common.h \
+	lib/filterx/expr-regexp-search.h \
+	lib/filterx/expr-regexp-subst.h \
 	lib/filterx/expr-regexp.h \
 	lib/filterx/expr-set-subscript.h \
 	lib/filterx/expr-setattr.h \
@@ -81,6 +84,9 @@ filterx_sources = 				\
 	lib/filterx/expr-null-coalesce.c \
 	lib/filterx/expr-plus-generator.c \
 	lib/filterx/expr-plus.c \
+	lib/filterx/expr-regexp-common.c \
+	lib/filterx/expr-regexp-search.c \
+	lib/filterx/expr-regexp-subst.c \
 	lib/filterx/expr-regexp.c \
 	lib/filterx/expr-set-subscript.c \
 	lib/filterx/expr-setattr.c \
