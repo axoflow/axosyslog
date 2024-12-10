@@ -28,8 +28,8 @@
 #include "filterx/expr-function.h"
 
 #define FILTERX_FUNC_PARSE_LEEF_USAGE "Usage: parse_leef(str " \
-        EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR"=boolean, " \
-        EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=boolean)"
+        EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR"=string, " \
+        EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=string)"
 
 FILTERX_GENERATOR_FUNCTION_DECLARE(parse_leef);
 
