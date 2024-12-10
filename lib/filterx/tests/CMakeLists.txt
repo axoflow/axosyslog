@@ -24,3 +24,5 @@ add_unit_test(LIBTEST CRITERION TARGET test_expr_null_coalesce DEPENDS json-plug
 add_unit_test(LIBTEST CRITERION TARGET test_expr_plus DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_expr_plus_generator DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_metrics_labels DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_expr_regexp_search DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_expr_regexp_subst DEPENDS json-plugin ${JSONC_LIBRARY})
