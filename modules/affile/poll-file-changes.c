@@ -169,11 +169,11 @@ poll_file_changes_stop_watches(PollEvents *s)
 }
 
 static void
-poll_file_changes_rearm_timer(PollFileChanges *self)
+poll_file_changes_rearm_timer(PollFileChanges *self, glong delay)
 {
   iv_validate_now();
   self->follow_timer.expires = iv_now;
-  timespec_add_msec(&self->follow_timer.expires, self->follow_freq);
+  timespec_add_msec(&self->follow_timer.expires, delay);
   iv_timer_register(&self->follow_timer);
 }
 
@@ -181,8 +181,6 @@ static gboolean
 poll_file_changes_check_eof(PollFileChanges *self)
 {
   gint fd = self->fd;
-  if (fd < 0)
-    return FALSE;
 
   off_t pos = lseek(fd, 0, SEEK_CUR);
   if (pos == (off_t) -1)
@@ -202,22 +200,32 @@ void
 poll_file_changes_update_watches(PollEvents *s, GIOCondition cond)
 {
   PollFileChanges *self = (PollFileChanges *) s;
-  gboolean check_again = TRUE;
 
   /* we can only provide input events */
   g_assert((cond & ~G_IO_IN) == 0);
 
   poll_file_changes_stop_watches(s);
 
+  if (self->fd < 0)
+    {
+      /* file does not exist yet, go back checking after follow_freq */
+      poll_file_changes_rearm_timer(self, self->follow_freq);
+      return;
+    }
+
   if (poll_file_changes_check_eof(self))
     {
       msg_trace("End of file, following file",
                 evt_tag_str("follow_filename", self->follow_filename));
-      check_again = poll_file_changes_on_eof(self);
+      if (poll_file_changes_on_eof(self))
+        poll_file_changes_rearm_timer(self, self->follow_freq);
     }
-
-  if (check_again)
-    poll_file_changes_rearm_timer(self);
+  else
+    {
+      msg_trace("File exists and contains data",
+                evt_tag_str("follow_filename", self->follow_filename));
+      poll_file_changes_rearm_timer(self, 0);
+    }
 }
 
 void
