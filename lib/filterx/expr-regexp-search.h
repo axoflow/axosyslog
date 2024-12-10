@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2023 Axoflow
+ * Copyright (c) 2024 shifter
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,15 +22,24 @@
  *
  */
 
-#ifndef FILTERX_EXPR_REGEXP_H_INCLUDED
-#define FILTERX_EXPR_REGEXP_H_INCLUDED
+#ifndef FILTERX_EXPR_REGEXP_SEARCH_H_INCLUDED
+#define FILTERX_EXPR_REGEXP_SEARCH_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
 #include "filterx/expr-generator.h"
 #include "filterx/expr-function.h"
 #include "filterx/func-flags.h"
 
-FilterXExpr *filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern);
-FilterXExpr *filterx_expr_regexp_nomatch_new(FilterXExpr *lhs, const gchar *pattern);
+DEFINE_FUNC_FLAGS(FilterXRegexpSearchFlags,
+                  FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO,
+                  FILTERX_REGEXP_SEARCH_LIST_MODE
+                 );
+
+#define FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO_NAME "keep_zero"
+#define FILTERX_REGEXP_SEARCH_LIST_MODE_NAME "list_mode"
+
+extern const char *FilterXRegexpSearchFlags_NAMES[];
+
+FilterXExpr *filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError **error);
 
 #endif
