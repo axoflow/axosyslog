@@ -126,11 +126,23 @@ _load_json_file(const gchar *filepath, GError **error)
     }
 
   FilterXObject *result = NULL;
-  if (object && (result = filterx_json_new_from_object(object)))
-    filterx_object_make_readonly(result);
-  else
-    json_object_put(object);
 
+  if (!object)
+    goto exit;
+
+  if (json_object_get_type(object) != json_type_object && json_object_get_type(object) != json_type_array)
+    {
+      g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_JSON_PARSE_ERROR,
+                  "JSON file must contain an object or an array");
+      json_object_put(object);
+      goto exit;
+    }
+
+  result = filterx_json_new_from_object(object);
+  g_assert(result);
+  filterx_object_make_readonly(result);
+
+exit:
   json_tokener_free(tokener);
   fclose(file);
   return result;
