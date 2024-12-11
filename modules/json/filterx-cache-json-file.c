@@ -106,6 +106,9 @@ _load_json_file(const gchar *filepath, GError **error)
           if (ferror(file))
             g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_FILE_READ_ERROR,
                         "failed to read file: %s (%s)", filepath, g_strerror(errno));
+          else
+            g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_FILE_READ_ERROR,
+                        "failed to read file: %s (unexpected EOF)", filepath);
           break;
         }
 
