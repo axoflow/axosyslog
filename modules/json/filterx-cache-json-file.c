@@ -91,7 +91,7 @@ _load_json_file(const gchar *filepath, GError **error)
     {
       g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_FILE_OPEN_ERROR,
                   "failed to open file: %s (%s)", filepath, g_strerror(errno));
-      return FALSE;
+      return NULL;
     }
 
   struct json_tokener *tokener = json_tokener_new();
