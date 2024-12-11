@@ -11,7 +11,7 @@ on:
       platforms:
         required: false
         type: string
-        default: linux/amd64,linux/arm64,linux/arm/v7
+        default: linux/amd64
       snapshot-tarball-artifact:
         required: false
         type: string
@@ -48,7 +48,7 @@ jobs:
 
 
   image-build:
-    if: github.repository_owner == 'axoflow' || github.event_name != 'schedule'
+    if: github.event_name != 'schedule'
     runs-on: ${{ matrix.platform == 'linux/arm64' && 'linux-arm64' || 'ubuntu-latest' }}
     needs: prepare
 
@@ -164,7 +164,7 @@ jobs:
               next_patch_level=1
           fi
           next_full_version="$last_version-$next_patch_level"
-          TAGS="ghcr.io/axoflow/axosyslog:$last_version,ghcr.io/axoflow/axosyslog:$next_full_version,ghcr.io/axoflow/axosyslog:latest"
+          TAGS="ghcr.io/mitzkia/axosyslog:$last_version,ghcr.io/mitzkia/axosyslog:$next_full_version,ghcr.io/mitzkia/axosyslog:latest"
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Compose Docker image tags
