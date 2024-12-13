@@ -77,8 +77,9 @@ struct _FilterXExpr
 static inline FilterXObject *
 filterx_expr_eval(FilterXExpr *self)
 {
+#if 0
   stats_counter_inc(self->eval_count);
-
+#endif
   return self->eval(self);
 }
 

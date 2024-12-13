@@ -100,7 +100,7 @@ filterx_object_free_method(FilterXObject *self)
 void
 filterx_object_init_instance(FilterXObject *self, FilterXType *type)
 {
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   self->type = type;
   self->readonly = !type->is_mutable;
 }
@@ -118,8 +118,8 @@ filterx_object_freeze(FilterXObject *self)
 {
   if (filterx_object_is_frozen(self))
     return FALSE;
-  g_assert(g_atomic_counter_get(&self->ref_cnt) == 1);
-  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_MAGIC_BIAS);
+  g_assert(self->ref_cnt == 1);
+  self->ref_cnt = FILTERX_OBJECT_MAGIC_BIAS;
   return TRUE;
 }
 
@@ -127,7 +127,7 @@ void
 filterx_object_unfreeze_and_free(FilterXObject *self)
 {
   g_assert(filterx_object_is_frozen(self));
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   filterx_object_unref(self);
 }
 

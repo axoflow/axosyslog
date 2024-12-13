@@ -81,8 +81,8 @@ FILTERX_DECLARE_TYPE(object);
 
 struct _FilterXObject
 {
-  GAtomicCounter ref_cnt;
-  GAtomicCounter fx_ref_cnt;
+  guint32 ref_cnt;
+  guint32 fx_ref_cnt;
 
   /* NOTE:
    *
@@ -110,7 +110,7 @@ void filterx_object_free_method(FilterXObject *self);
 static inline gboolean
 filterx_object_is_frozen(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_MAGIC_BIAS;
+  return self->ref_cnt == FILTERX_OBJECT_MAGIC_BIAS;
 }
 
 static inline FilterXObject *
@@ -122,7 +122,7 @@ filterx_object_ref(FilterXObject *self)
   if (filterx_object_is_frozen(self))
     return self;
 
-  g_atomic_counter_inc(&self->ref_cnt);
+  self->ref_cnt++;
 
   return self;
 }
@@ -136,8 +136,8 @@ filterx_object_unref(FilterXObject *self)
   if (filterx_object_is_frozen(self))
     return;
 
-  g_assert(g_atomic_counter_get(&self->ref_cnt) > 0);
-  if (g_atomic_counter_dec_and_test(&self->ref_cnt))
+  g_assert(self->ref_cnt > 0);
+  if (--(self->ref_cnt) == 0)
     {
       self->type->free_fn(self);
       g_free(self);
