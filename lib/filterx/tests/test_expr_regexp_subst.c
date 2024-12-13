@@ -69,9 +69,9 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
   if (opts.utf8)
     args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_REGEXP_SUBST_FLAG_UTF8_NAME,
                                                         filterx_literal_new(filterx_boolean_new(TRUE))));
-  if (opts.groups)
+  if (!opts.groups)
     args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME,
-                                                        filterx_literal_new(filterx_boolean_new(TRUE))));
+                                                        filterx_literal_new(filterx_boolean_new(FALSE))));
 
   GError *err = NULL;
   FilterXExpr *func = filterx_function_regexp_subst_new(filterx_function_args_new(args, NULL), &err);
@@ -347,6 +347,39 @@ Test(filterx_expr_regexp_subst, regexp_subst_group_subst_without_ref)
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
   const gchar *res = filterx_string_get_value_ref(result, NULL);
   cr_assert_str_eq(res, "group without ref");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp_subst, regexp_subst_group_reference_with_multiple_digits)
+{
+  FilterXFuncRegexpSubstOpts opts = {.groups = TRUE};
+  FilterXObject *result =
+    _sub("(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})(\\d{2})",
+         "\\12-\\11-\\10-\\9\\8\\7\\6\\5\\4\\3\\2\\1", "010203040506070809101112", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value_ref(result, NULL);
+  cr_assert_str_eq(res, "12-11-10-090807060504030201");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp_subst, regexp_subst_group_do_not_replace_unknown_ref)
+{
+  FilterXFuncRegexpSubstOpts opts = {.groups = TRUE};
+  FilterXObject *result = _sub("(\\d{2})(\\d{2})(\\d{2})",
+                               "\\3\\20\\1", "010203", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value_ref(result, NULL);
+  cr_assert_str_eq(res, "03\\2001");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp_subst, regexp_subst_group_limited_digits_and_zero_prefixes)
+{
+  FilterXFuncRegexpSubstOpts opts = {.groups = TRUE};
+  FilterXObject *result = _sub("(\\w+),(\\w+),(\\w+)", "\\3\\02\\0013.14", "baz,bar,foo", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  const gchar *res = filterx_string_get_value_ref(result, NULL);
+  cr_assert_str_eq(res, "foobarbaz3.14");
   filterx_object_unref(result);
 }
 

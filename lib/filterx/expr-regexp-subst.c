@@ -35,6 +35,7 @@
 #include "filterx/expr-regexp-common.h"
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
+#include <ctype.h>
 
 DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSubstFlags,
                        FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT_NAME,
@@ -53,6 +54,7 @@ DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSubstFlags,
   FILTERX_FUNC_REGEXP_SUBST_FLAG_NEWLINE_NAME"=(boolean)" \
   FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS_NAME"=(boolean))" \
 
+#define FILTERX_FUNC_REGEXP_SUBST_GRP_ID_MAX_DIGITS 3
 
 typedef struct FilterXFuncRegexpSubst_
 {
@@ -63,43 +65,84 @@ typedef struct FilterXFuncRegexpSubst_
   FLAGSET flags;
 } FilterXFuncRegexpSubst;
 
+static gchar *
+_next_matchgrp_ref(gchar *from, gchar **to)
+{
+  if (from == NULL || *from == '\0')
+    return NULL;
+  g_assert(to);
+  while (*from != '\0')
+    {
+      if ((*from == '\\') && isdigit(*(from + 1)))
+        {
+          gchar *start = from;
+          from += 2;
+          while (isdigit(*from) && from - start <= FILTERX_FUNC_REGEXP_SUBST_GRP_ID_MAX_DIGITS)
+            {
+              from++;
+            }
+          *to = from;
+          return start;
+        }
+      from++;
+    }
+  return NULL;
+}
+
+static gboolean
+_parse_machgrp_ref(const gchar *from, const gchar *to, gint *value)
+{
+  if (!from || !to || !value || from >= to || to > from + 5)
+    {
+      return FALSE;
+    }
+
+  if (*from != '\\')
+    {
+      return FALSE;
+    }
+
+  from++;
+  *value = 0;
+
+  while (from < to && isdigit(*from))
+    {
+      *value = (*value * 10) + (*from - '0');
+      from++;
+    }
+
+  return from == to;
+}
+
 static gboolean
 _build_replacement_stirng_with_match_groups(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state,
                                             GString *replacement_string)
 {
-  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(state->match_data);
   g_string_set_size(replacement_string, 0);
-  const gchar *rep_ptr = self->replacement;
-  const gchar *last_ptr = rep_ptr;
   gint num_grps = state->rc;
+  PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(state->match_data);
 
-  while (*rep_ptr)
+  gchar *pos = self->replacement;
+  gchar *last = pos;
+  gchar *close = NULL;
+  gint idx = -1;
+  while ((pos = _next_matchgrp_ref(pos, &close)) != NULL)
     {
-      if (*rep_ptr == '\\')
+      if (_parse_machgrp_ref(pos, close, &idx) && (idx < num_grps))
         {
-          rep_ptr++;
-          if (*rep_ptr >= '1' && *rep_ptr <= '9')
+          PCRE2_SIZE start = ovector[2 * idx];
+          PCRE2_SIZE end = ovector[2 * idx + 1];
+          if (start != PCRE2_UNSET)
             {
-              gint grp_idx = *rep_ptr - '0';
-              if (grp_idx < num_grps)
-                {
-                  PCRE2_SIZE start = ovector[2 * grp_idx];
-                  PCRE2_SIZE end = ovector[2 * grp_idx + 1];
-                  if (start != PCRE2_UNSET)
-                    {
-                      g_string_append_len(replacement_string, last_ptr, rep_ptr - last_ptr - 1);
-                      last_ptr = rep_ptr + 1;
-                      size_t group_len = end - start;
-                      g_string_append_len(replacement_string, state->lhs_str + start, group_len);
-                    }
-                }
+              g_string_append_len(replacement_string, last, pos - last);
+              last = close;
+              size_t group_len = end - start;
+              g_string_append_len(replacement_string, state->lhs_str + start, group_len);
             }
-          rep_ptr++;
         }
-      else
-        rep_ptr++;
+      pos = close;
     }
-  g_string_append_len(replacement_string, last_ptr, rep_ptr - last_ptr);
+  g_string_append_len(replacement_string, last, pos - last);
   return TRUE;
 }
 
@@ -117,7 +160,6 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
       _build_replacement_stirng_with_match_groups(self, state, rep_str);
       replacement_string = rep_str->str;
     }
-
   do
     {
       ovector = pcre2_get_ovector_pointer(state->match_data);
@@ -254,6 +296,13 @@ _extract_optional_flags(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args,
 }
 
 static gboolean
+_contains_match_grp_ref(gchar *str)
+{
+  gchar *close = NULL;
+  return _next_matchgrp_ref(str, &close) != NULL;
+}
+
+static gboolean
 _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
 {
   if (filterx_function_args_len(args) != 3)
@@ -277,7 +326,9 @@ _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GEr
   self->replacement = _extract_subst_replacement_arg(args, error);
   if (!self->replacement)
     return FALSE;
-
+  // turn off group mode if there is no match grp ref due to it's performance impact
+  if (!_contains_match_grp_ref(self->replacement))
+    set_flag(&self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS, FALSE);
 
   return TRUE;
 }
@@ -322,7 +373,8 @@ filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _subst_deinit;
   self->super.super.free_fn = _subst_free;
 
-  reset_flags(&self->flags, FLAG_VAL(FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT));
+  reset_flags(&self->flags, FLAG_VAL(FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT) | FLAG_VAL(
+                FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS));
   if (!_extract_subst_args(self, args, error) ||
       !filterx_function_args_check(args, error))
     goto error;
