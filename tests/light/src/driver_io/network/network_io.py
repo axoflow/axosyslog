@@ -29,12 +29,12 @@ from pathlib import Path
 from src.common.asynchronous import BackgroundEventLoop
 from src.common.blocking import DEFAULT_TIMEOUT
 from src.common.file import File
+from src.common.file import get_shared_file
 from src.common.network import SingleConnectionTCPServer
 from src.common.network import UDPServer
 from src.common.random_id import get_unique_id
 from src.driver_io import message_readers
 from src.helpers.loggen.loggen import Loggen
-from src.common.file import get_shared_file
 
 
 class NetworkIO():
