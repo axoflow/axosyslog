@@ -28,6 +28,7 @@ def map_transport(transport):
     mapping = {
         "tcp": NetworkIO.Transport.TCP,
         "udp": NetworkIO.Transport.UDP,
+        "tls": NetworkIO.Transport.TLS,
     }
     transport = transport.replace("_", "-").replace("'", "").replace('"', "").lower()
 

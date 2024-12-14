@@ -21,6 +21,7 @@
 #
 #############################################################################
 import socket
+import ssl
 from enum import Enum
 from enum import IntEnum
 from pathlib import Path
@@ -33,6 +34,7 @@ from src.common.network import UDPServer
 from src.common.random_id import get_unique_id
 from src.driver_io import message_readers
 from src.helpers.loggen.loggen import Loggen
+from src.common.file import get_shared_file
 
 
 class NetworkIO():
@@ -84,8 +86,12 @@ class NetworkIO():
             def _construct(server, reader_class):
                 return reader_class(server), server
 
+            tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            tls.load_cert_chain(get_shared_file("valid-localhost.crt"), get_shared_file("valid-localhost.key"))
+
             transport_mapping = {
                 NetworkIO.Transport.TCP: lambda: _construct(SingleConnectionTCPServer(port, host, ip_proto_version), message_readers.SingleLineStreamReader),
+                NetworkIO.Transport.TLS: lambda: _construct(SingleConnectionTCPServer(port, host, ip_proto_version, tls), message_readers.SingleLineStreamReader),
                 NetworkIO.Transport.UDP: lambda: _construct(UDPServer(port, host, ip_proto_version), message_readers.DatagramReader),
             }
             return transport_mapping[self]()
