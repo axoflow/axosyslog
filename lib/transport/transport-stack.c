@@ -124,17 +124,18 @@ log_transport_stack_init(LogTransportStack *self, LogTransport *initial_transpor
 void
 log_transport_stack_deinit(LogTransportStack *self)
 {
-  if (self->fd != -1)
-    {
-      msg_trace("Closing log transport fd",
-                evt_tag_int("fd", self->fd));
-      close(self->fd);
-    }
   for (gint i = 0; i < LOG_TRANSPORT__MAX; i++)
     {
       if (self->transports[i])
         log_transport_free(self->transports[i]);
       if (self->transport_factories[i])
         log_transport_factory_free(self->transport_factories[i]);
+    }
+
+  if (self->fd != -1)
+    {
+      msg_trace("Closing log transport fd",
+                evt_tag_int("fd", self->fd));
+      close(self->fd);
     }
 }
