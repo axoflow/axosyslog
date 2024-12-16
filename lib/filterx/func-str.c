@@ -184,7 +184,7 @@ _string_with_cache_get_string_value(FilterXStringWithCache *self, gboolean ignor
 }
 
 static gboolean
-_cache_needle(guint64 index, FilterXExpr *value, gpointer user_data)
+_cache_needle(gsize index, FilterXExpr *value, gpointer user_data)
 {
   gboolean *ignore_case = ((gpointer *)user_data)[0];
   GPtrArray *cached_strings = ((gpointer *) user_data)[1];
