@@ -52,7 +52,7 @@ _slot_append_test_identity(TlsTestValidationPlugin *self, AFSocketTLSCertificate
 static gboolean
 _attach(LogDriverPlugin *s, LogDriver *driver)
 {
-  SignalSlotConnector *ssc = driver->super.signal_slot_connector;
+  SignalSlotConnector *ssc = driver->signal_slot_connector;
 
   msg_debug("TlsTestValidationPlugin::attach()",
             evt_tag_printf("SignalSlotConnector", "%p", ssc));
@@ -65,7 +65,7 @@ _attach(LogDriverPlugin *s, LogDriver *driver)
 static void
 _detach(LogDriverPlugin *s, LogDriver *driver)
 {
-  SignalSlotConnector *ssc = driver->super.signal_slot_connector;
+  SignalSlotConnector *ssc = driver->signal_slot_connector;
 
   msg_debug("TlsTestValidationPlugin::detach()",
             evt_tag_printf("SignalSlotConnector", "%p", ssc));

@@ -229,7 +229,7 @@ afinet_dd_setup_tls_verifier(AFInetDestDriver *self)
 
   AFInetDestDriverTLSVerifyData *verify_data;
   verify_data = afinet_dd_tls_verify_data_new(transport_mapper_inet->tls_context, _afinet_dd_get_hostname(self),
-                                              self->super.super.super.super.signal_slot_connector);
+                                              self->super.super.super.signal_slot_connector);
   TLSVerifier *verifier = tls_verifier_new(afinet_dd_verify_callback, verify_data, afinet_dd_tls_verify_data_free);
 
   transport_mapper_inet_set_tls_verifier(transport_mapper_inet, verifier);
@@ -731,7 +731,7 @@ afinet_dd_restore_connection(AFSocketDestDriver *s, AFSocketDestKeptAliveConnect
     {
       TLSSession *session = log_tansport_tls_get_session(transport);
       AFInetDestDriverTLSVerifyData *verify_data = _get_tls_verify_data (session->verifier);
-      verify_data->signal_connector = self->super.super.super.super.signal_slot_connector;
+      verify_data->signal_connector = self->super.super.super.signal_slot_connector;
     }
 
 exit:

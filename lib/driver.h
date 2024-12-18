@@ -29,6 +29,7 @@
 #include "logpipe.h"
 #include "logqueue.h"
 #include "cfg.h"
+#include "signal-slot-connector/signal-slot-connector.h"
 
 /*
  * Drivers overview
@@ -111,6 +112,9 @@ struct _LogDriver
   gboolean optional;
   gchar *group;
   gchar *id;
+
+  SignalSlotConnector *signal_slot_connector;
+
   GList *plugins;
 
   StatsCounterItem *processed_group_messages;
