@@ -45,6 +45,11 @@ def copy_shared_file(testcase_parameters, shared_file_name):
     return Path(Path.cwd(), shared_file_name)
 
 
+def get_shared_file(shared_file_name):
+    absolute_framework_dir = Path(__file__).parents[2].resolve()
+    return absolute_framework_dir / "shared_files" / shared_file_name
+
+
 def delete_session_file(shared_file_name):
     shared_file_name = Path(shared_file_name)
     shared_file_name.unlink()

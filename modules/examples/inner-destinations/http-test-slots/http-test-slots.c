@@ -48,7 +48,7 @@ _slot_append_test_headers(HttpTestSlotsPlugin *self, HttpHeaderRequestSignalData
 static gboolean
 _attach(LogDriverPlugin *s, LogDriver *driver)
 {
-  SignalSlotConnector *ssc = driver->super.signal_slot_connector;
+  SignalSlotConnector *ssc = driver->signal_slot_connector;
 
   msg_debug("HttpTestSlotsPlugin::attach()",
             evt_tag_printf("SignalSlotConnector", "%p", ssc));
@@ -61,7 +61,7 @@ _attach(LogDriverPlugin *s, LogDriver *driver)
 static void
 _detach(LogDriverPlugin *s, LogDriver *driver)
 {
-  SignalSlotConnector *ssc = driver->super.signal_slot_connector;
+  SignalSlotConnector *ssc = driver->signal_slot_connector;
 
   msg_debug("HttpTestSlotsPlugin::detach()",
             evt_tag_printf("SignalSlotConnector", "%p", ssc));
