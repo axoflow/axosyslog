@@ -92,6 +92,15 @@ _isset(FilterXExpr *s)
   return result;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  self->operand = filterx_expr_optimize(self->operand);
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -143,6 +152,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXString *attr_name)
   self->super.eval = _eval;
   self->super.unset = _unset;
   self->super.is_set = _isset;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;

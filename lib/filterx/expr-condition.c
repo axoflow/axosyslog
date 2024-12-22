@@ -38,6 +38,16 @@ struct _FilterXConditional
   FilterXExpr *false_branch;
 };
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  self->true_branch = filterx_expr_optimize(self->true_branch);
+  self->false_branch = filterx_expr_optimize(self->false_branch);
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -67,7 +77,6 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 
   return filterx_expr_init_method(s, cfg);
 }
-
 
 static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
@@ -170,6 +179,7 @@ filterx_conditional_new(FilterXExpr *condition)
   FilterXConditional *self = g_new0(FilterXConditional, 1);
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;

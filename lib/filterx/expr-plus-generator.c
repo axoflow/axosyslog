@@ -100,6 +100,16 @@ _expr_plus_generator_create_container(FilterXExprGenerator *s, FilterXExpr *fill
   return generator->create_container(generator, fillable_parent);
 }
 
+static FilterXExpr *
+_expr_plus_generator_optimize(FilterXExpr *s)
+{
+  FilterXOperatorPlusGenerator *self = (FilterXOperatorPlusGenerator *) s;
+
+  self->lhs = filterx_expr_optimize(self->lhs);
+  self->rhs = filterx_expr_optimize(self->rhs);
+  return filterx_generator_optimize_method(s);
+}
+
 static gboolean
 _expr_plus_generator_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -142,6 +152,7 @@ filterx_operator_plus_generator_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->lhs = lhs;
   self->rhs = rhs;
   self->super.generate = _expr_plus_generator_generate;
+  self->super.super.optimize = _expr_plus_generator_optimize;
   self->super.super.init = _expr_plus_generator_init;
   self->super.super.deinit = _expr_plus_generator_deinit;
   self->super.super.free_fn = _expr_plus_generator_free;

@@ -65,6 +65,40 @@ filterx_expr_format_location_tag(FilterXExpr *self)
     return evt_tag_str("expr", "n/a");
 }
 
+FilterXExpr *
+filterx_expr_optimize(FilterXExpr *self)
+{
+  if (!self)
+    return NULL;
+
+  if (self->optimized)
+    return self;
+
+  self->optimized = TRUE;
+  g_assert(!self->inited);
+
+  if (!self->optimize)
+    return self;
+
+  FilterXExpr *optimized = self->optimize(self);
+  if (!optimized)
+    return self;
+
+  /* the new expression may be also be optimized */
+  optimized = filterx_expr_optimize(optimized);
+
+  msg_trace("FilterX: expression optimized",
+            filterx_expr_format_location_tag(self));
+  if (self->lloc)
+    {
+      /* copy location information to the optimized representation */
+      filterx_expr_set_location_with_text(optimized, self->lloc, self->expr_text);
+    }
+  /* consume original expression */
+  filterx_expr_unref(self);
+  return optimized;
+}
+
 gboolean
 filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg)
 {
@@ -127,6 +161,15 @@ filterx_expr_unref(FilterXExpr *self)
     }
 }
 
+FilterXExpr *
+filterx_unary_op_optimize_method(FilterXExpr *s)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  self->operand = filterx_expr_optimize(self->operand);
+  return NULL;
+}
+
 gboolean
 filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -174,6 +217,7 @@ void
 filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
 {
   filterx_expr_init_instance(&self->super);
+  self->super.optimize = filterx_unary_op_optimize_method;
   self->super.init = filterx_unary_op_init_method;
   self->super.deinit = filterx_unary_op_deinit_method;
   self->super.free_fn = filterx_unary_op_free_method;
@@ -190,6 +234,16 @@ filterx_binary_op_free_method(FilterXExpr *s)
   filterx_expr_unref(self->lhs);
   filterx_expr_unref(self->rhs);
   filterx_expr_free_method(s);
+}
+
+FilterXExpr *
+filterx_binary_op_optimize_method(FilterXExpr *s)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  self->lhs = filterx_expr_optimize(self->lhs);
+  self->rhs = filterx_expr_optimize(self->rhs);
+  return NULL;
 }
 
 gboolean
@@ -234,6 +288,7 @@ void
 filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
 {
   filterx_expr_init_instance(&self->super);
+  self->super.optimize = filterx_binary_op_optimize_method;
   self->super.init = filterx_binary_op_init_method;
   self->super.deinit = filterx_binary_op_deinit_method;
   self->super.free_fn = filterx_binary_op_free_method;
