@@ -171,7 +171,7 @@ block
 	: '{' stmts '}'				{
                                                   FilterXExpr *block = filterx_compound_expr_new(FALSE);
                                                   filterx_compound_expr_add_list(block, $2);
-						  filterx_expr_set_location_with_text(block, lexer, &@$, "{ ... }");
+						  filterx_expr_set_location_with_text(block, &@$, "{ ... }");
                                                   $$ = block;
                                                 }
 	;
