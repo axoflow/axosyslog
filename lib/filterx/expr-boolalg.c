@@ -36,6 +36,20 @@ _literal_expr_truthy(FilterXExpr *expr)
   return truthy;
 }
 
+static FilterXExpr *
+_optimize_not(FilterXExpr *s)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  if (filterx_unary_op_optimize_method(s))
+    g_assert_not_reached();
+
+  if (!filterx_expr_is_literal(self->operand))
+    return NULL;
+
+  return filterx_literal_new(filterx_boolean_new(!_literal_expr_truthy(self->operand)));
+}
+
 static FilterXObject *
 _eval_not(FilterXExpr *s)
 {
@@ -57,18 +71,39 @@ _eval_not(FilterXExpr *s)
 FilterXExpr *
 filterx_unary_not_new(FilterXExpr *operand)
 {
-  if (filterx_expr_is_literal(operand))
-    {
-      FilterXExpr *optimized = filterx_literal_new(filterx_boolean_new(!_literal_expr_truthy(operand)));
-      filterx_expr_unref(operand);
-      return optimized;
-    }
-
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
 
   filterx_unary_op_init_instance(self, "not", operand);
+  self->super.optimize = _optimize_not;
   self->super.eval = _eval_not;
   return &self->super;
+}
+
+static FilterXExpr *
+_optimize_and(FilterXExpr *s)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  if (filterx_binary_op_optimize_method(s))
+    g_assert_not_reached();
+
+  if (!filterx_expr_is_literal(self->lhs))
+    return NULL;
+
+  if (!_literal_expr_truthy(self->lhs))
+    return filterx_literal_new(filterx_boolean_new(FALSE));
+
+  if (!filterx_expr_is_literal(self->rhs))
+    {
+      /* we can't optimize the AND away, but the LHS is a literal & truthy
+       * value.  In this case we won't need to evaluate this every time in
+       * eval(), so unset it */
+      filterx_expr_unref(self->lhs);
+      self->lhs = NULL;
+      return NULL;
+    }
+
+  return filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(self->rhs)));
 }
 
 static FilterXObject *
@@ -108,38 +143,42 @@ _eval_and(FilterXExpr *s)
 FilterXExpr *
 filterx_binary_and_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  FilterXExpr *optimized = NULL;
-  if (filterx_expr_is_literal(lhs))
-    {
-      if (!_literal_expr_truthy(lhs))
-        {
-          optimized = filterx_literal_new(filterx_boolean_new(FALSE));
-          goto optimize;
-        }
-
-      if (filterx_expr_is_literal(rhs))
-        {
-          optimized = filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
-          goto optimize;
-        }
-    }
-
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
   filterx_binary_op_init_instance(self, "and", lhs, rhs);
-  if (filterx_expr_is_literal(lhs))
-    {
-      filterx_expr_unref(self->lhs);
-      self->lhs = NULL;
-    }
 
+  self->super.optimize = _optimize_and;
   self->super.eval = _eval_and;
   return &self->super;
 
-optimize:
-  filterx_expr_unref(lhs);
-  filterx_expr_unref(rhs);
-  return optimized;
+}
+
+static FilterXExpr *
+_optimize_or(FilterXExpr *s)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  if (filterx_binary_op_optimize_method(s))
+    g_assert_not_reached();
+
+  if (!filterx_expr_is_literal(self->lhs))
+    return NULL;
+
+  if (_literal_expr_truthy(self->lhs))
+    return filterx_literal_new(filterx_boolean_new(TRUE));
+
+  if (!filterx_expr_is_literal(self->rhs))
+    {
+      /* we can't optimize the OR away (as rhs is not literal), but we do
+       * know that the lhs is literal and is a falsy value.  In this case we
+       * won't need to evaluate this every time in eval(), so unset it */
+
+      filterx_expr_unref(self->lhs);
+      self->lhs = NULL;
+      return NULL;
+    }
+
+  return filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(self->rhs)));
 }
 
 static FilterXObject *
@@ -179,36 +218,11 @@ _eval_or(FilterXExpr *s)
 FilterXExpr *
 filterx_binary_or_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  FilterXExpr *optimized = NULL;
-  if (filterx_expr_is_literal(lhs))
-    {
-      if (_literal_expr_truthy(lhs))
-        {
-          optimized = filterx_literal_new(filterx_boolean_new(TRUE));
-          goto optimize;
-        }
-
-      if (filterx_expr_is_literal(rhs))
-        {
-          optimized = filterx_literal_new(filterx_boolean_new(_literal_expr_truthy(rhs)));
-          goto optimize;
-        }
-    }
-
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
   filterx_binary_op_init_instance(self, "or", lhs, rhs);
-  if (filterx_expr_is_literal(lhs))
-    {
-      filterx_expr_unref(self->lhs);
-      self->lhs = NULL;
-    }
 
+  self->super.optimize = _optimize_or;
   self->super.eval = _eval_or;
   return &self->super;
-
-optimize:
-  filterx_expr_unref(lhs);
-  filterx_expr_unref(rhs);
-  return optimized;
 }
