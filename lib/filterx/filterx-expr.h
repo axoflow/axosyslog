@@ -55,6 +55,7 @@ struct _FilterXExpr
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   void (*free_fn)(FilterXExpr *self);
 
+  /* type of the expr */
   const gchar *type;
   CFG_LTYPE *lloc;
   gchar *expr_text;
@@ -149,7 +150,7 @@ filterx_expr_unset_available(FilterXExpr *self)
 void filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc);
 void filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text);
 EVTTAG *filterx_expr_format_location_tag(FilterXExpr *self);
-void filterx_expr_init_instance(FilterXExpr *self);
+void filterx_expr_init_instance(FilterXExpr *self, const gchar *type);
 FilterXExpr *filterx_expr_new(void);
 FilterXExpr *filterx_expr_ref(FilterXExpr *self);
 void filterx_expr_unref(FilterXExpr *self);
@@ -188,7 +189,6 @@ typedef struct _FilterXUnaryOp
 {
   FilterXExpr super;
   FilterXExpr *operand;
-  const gchar *name;
 } FilterXUnaryOp;
 
 gboolean filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);
@@ -200,7 +200,6 @@ typedef struct _FilterXBinaryOp
 {
   FilterXExpr super;
   FilterXExpr *lhs, *rhs;
-  const gchar *name;
 } FilterXBinaryOp;
 
 gboolean filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);

@@ -84,19 +84,20 @@ filterx_expr_free_method(FilterXExpr *self)
 }
 
 void
-filterx_expr_init_instance(FilterXExpr *self)
+filterx_expr_init_instance(FilterXExpr *self, const gchar *type)
 {
   self->ref_cnt = 1;
   self->init = filterx_expr_init_method;
   self->deinit = filterx_expr_deinit_method;
   self->free_fn = filterx_expr_free_method;
+  self->type = type;
 }
 
 FilterXExpr *
 filterx_expr_new(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self);
+  filterx_expr_init_instance(self, "expr");
   return self;
 }
 
@@ -173,13 +174,11 @@ filterx_unary_op_free_method(FilterXExpr *s)
 void
 filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
 {
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, name);
   self->super.init = filterx_unary_op_init_method;
   self->super.deinit = filterx_unary_op_deinit_method;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
-
-  self->name = name;
 }
 
 void
@@ -205,7 +204,7 @@ filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
 
   stats_lock();
   StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
+  StatsClusterLabel labels[] = { stats_cluster_label("name", self->super.type) };
   stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
   stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
   stats_unlock();
@@ -220,7 +219,7 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 
   stats_lock();
   StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
+  StatsClusterLabel labels[] = { stats_cluster_label("name", self->super.type) };
   stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
   stats_unlock();
@@ -233,7 +232,7 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 void
 filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, name);
   self->super.init = filterx_binary_op_init_method;
   self->super.deinit = filterx_binary_op_deinit_method;
   self->super.free_fn = filterx_binary_op_free_method;
@@ -241,6 +240,4 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, Filter
   g_assert(rhs);
   self->lhs = lhs;
   self->rhs = rhs;
-
-  self->name = name;
 }

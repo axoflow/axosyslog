@@ -218,7 +218,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
   FilterXCompoundExpr *self = g_new0(FilterXCompoundExpr, 1);
 
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, "compound");
   self->super.eval = _eval;
   self->super.init = _init;
   self->super.deinit = _deinit;
