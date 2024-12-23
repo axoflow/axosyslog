@@ -38,15 +38,6 @@ struct _FilterXConditional
   FilterXExpr *false_branch;
 };
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-
-  self->true_branch = filterx_expr_optimize(self->true_branch);
-  self->false_branch = filterx_expr_optimize(self->false_branch);
-  return NULL;
-}
 
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
@@ -155,6 +146,50 @@ _eval(FilterXExpr *s)
   return result;
 }
 
+static void
+_optimize_branches(FilterXExpr *s)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  self->condition = filterx_expr_optimize(self->condition);
+  self->true_branch = filterx_expr_optimize(self->true_branch);
+  self->false_branch = filterx_expr_optimize(self->false_branch);
+}
+
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  _optimize_branches(s);
+
+  if (!filterx_expr_is_literal(self->condition))
+    return FALSE;
+
+  FilterXObject *condition_value = filterx_expr_eval(self->condition);
+
+  g_assert(condition_value);
+  gboolean condition_truthy = filterx_object_truthy(condition_value);
+  filterx_object_unref(condition_value);
+
+  if (condition_truthy)
+    {
+      if (self->true_branch)
+        return filterx_expr_ref(self->true_branch);
+      else
+        return filterx_expr_ref(self->condition);
+    }
+  else
+    {
+      if (self->false_branch)
+        return filterx_expr_ref(self->false_branch);
+      else
+        return filterx_literal_new(filterx_boolean_new(TRUE));
+    }
+
+  return NULL;
+}
+
 void
 filterx_conditional_set_true_branch(FilterXExpr *s, FilterXExpr *true_branch)
 {
@@ -206,38 +241,4 @@ filterx_conditional_find_tail(FilterXExpr *s)
         }
     }
   return s;
-}
-
-FilterXExpr *
-filterx_literal_conditional(FilterXExpr *condition, FilterXExpr *true_branch, FilterXExpr *false_branch)
-{
-  g_assert(filterx_expr_is_literal(condition));
-
-  FilterXObject *condition_value = filterx_expr_eval(condition);
-  g_assert(condition_value);
-
-  FilterXExpr *optimized = NULL;
-
-  if (filterx_object_truthy(condition_value))
-    {
-      if (true_branch)
-        optimized = true_branch;
-      else
-        optimized = filterx_expr_ref(condition);
-
-      filterx_expr_unref(false_branch);
-    }
-  else
-    {
-      if (false_branch)
-        optimized = false_branch;
-      else
-        optimized = filterx_literal_new(filterx_boolean_new(TRUE));
-
-      filterx_expr_unref(true_branch);
-    }
-
-  filterx_object_unref(condition_value);
-  filterx_expr_unref(condition);
-  return optimized;
 }
