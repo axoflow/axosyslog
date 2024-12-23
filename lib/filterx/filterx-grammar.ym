@@ -80,6 +80,13 @@ construct_template_expr(LogTemplate *template)
   return result;
 }
 
+static FilterXExpr *
+_assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
+{
+  filterx_expr_set_location(expr, lexer, lloc);
+  return expr;
+}
+
 #define CHECK_FUNCTION_ERROR(val, token, function, error) do {       \
     if (!(val))                                                         \
       {                                                                 \
@@ -114,6 +121,8 @@ construct_template_expr(LogTemplate *template)
 %type <ptr> stmts
 %type <node> stmt
 %type <node> stmt_expr
+%type <node> complex_expr
+%type <node> __complex_expr
 %type <node> assignment
 %type <node> plus_assignment
 %type <node> nullv_assignment
@@ -122,6 +131,7 @@ construct_template_expr(LogTemplate *template)
 %type <node> generator_casted_assignment
 %type <node> declaration
 %type <node> expr
+%type <node> __expr
 %type <node> expr_value
 %type <node> expr_operator
 %type <node> boolalg_operator
@@ -185,7 +195,6 @@ stmts
 stmt
 	: stmt_expr ';'				{
 						  CHECK_ERROR($1, @1, "failed to initialize statement");
-						  filterx_expr_set_location($1, lexer, &@1);
 						  $$ = $1;
 						}
 	| ';'					{ $$ = NULL; }
@@ -193,7 +202,13 @@ stmt
 
 stmt_expr
 	: expr
-	| conditional
+	| complex_expr
+	;
+
+complex_expr: __complex_expr			{ $$ = _assign_location($1, lexer, &@1); }
+
+__complex_expr
+	: conditional
 	| assignment
 	| declaration
 	;
@@ -234,9 +249,11 @@ generator_assignment
 						  filterx_generator_set_fillable($5, filterx_getattr_new(filterx_expr_ref($1), filterx_config_frozen_string(configuration, $3)));
 
 						  $$ = filterx_compound_expr_new_va(TRUE,
-						    filterx_setattr_new(filterx_expr_ref($1),
-						                        filterx_config_frozen_string(configuration, $3),
-						                        filterx_generator_create_container_new(filterx_expr_ref($5), $1)),
+						    _assign_location(
+						      filterx_setattr_new(filterx_expr_ref($1),
+						                          filterx_config_frozen_string(configuration, $3),
+						                          filterx_generator_create_container_new(filterx_expr_ref($5), $1)),
+						      lexer, &@$),
 						    $5,
 						    NULL
                                                   );
@@ -247,9 +264,11 @@ generator_assignment
 						  filterx_generator_set_fillable($6, filterx_get_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3)));
 
 						  $$ = filterx_compound_expr_new_va(TRUE,
-						    filterx_set_subscript_new(filterx_expr_ref($1),
-						                              $3,
-						                              filterx_generator_create_container_new(filterx_expr_ref($6), $1)),
+						    _assign_location(
+						      filterx_set_subscript_new(filterx_expr_ref($1),
+										$3,
+										filterx_generator_create_container_new(filterx_expr_ref($6), $1)),
+						      lexer, &@$),
 						    $6,
 						    NULL
 						  );
@@ -260,9 +279,11 @@ generator_assignment
 						  filterx_generator_set_fillable($5, filterx_get_subscript_new(filterx_expr_ref($1), minus_one));
 
 						  $$ = filterx_compound_expr_new_va(TRUE,
-						    filterx_set_subscript_new(filterx_expr_ref($1),
-						                              NULL,
-						                              filterx_generator_create_container_new(filterx_expr_ref($5), $1)),
+						    _assign_location(
+						      filterx_set_subscript_new(filterx_expr_ref($1),
+										NULL,
+										filterx_generator_create_container_new(filterx_expr_ref($5), $1)),
+						      lexer, &@$),
 						    $5,
 						    NULL
 						  );
@@ -275,7 +296,9 @@ generator_assignment
 
 						  filterx_generator_set_fillable($3, filterx_expr_ref($1));
 						  $$ = filterx_compound_expr_new_va(TRUE,
-						    filterx_assign_new($1, filterx_generator_create_container_new(filterx_expr_ref($3), json_func)),
+						    _assign_location(
+						      filterx_assign_new($1, filterx_generator_create_container_new(filterx_expr_ref($3), json_func)),
+						      lexer, &@$),
 						    $3,
 						    NULL
 						  );
@@ -374,7 +397,9 @@ declaration
         }
     ;
 
-expr
+expr: __expr					{ $$ = $1; filterx_expr_set_location($1, lexer, &@1); }
+
+__expr
 	: expr_value
 	| function_call
 	| expr_operator
@@ -616,7 +641,6 @@ conditional
 if
 	: KW_IF '(' expr ')' block
 	  {
-            filterx_expr_set_location($3, lexer, &@3);
 	    $$ = filterx_conditional_new($3);
             filterx_conditional_set_true_branch($$, $5);
 	  }
@@ -624,7 +648,6 @@ if
 	  {
             FilterXExpr *tailing_if = filterx_conditional_find_tail($1);
 
-            filterx_expr_set_location($4, lexer, &@4);
 	    /* create new conditional */
 	    FilterXExpr *elif_expr = filterx_conditional_new($4);
             filterx_conditional_set_true_branch(elif_expr, $6);
@@ -640,14 +663,12 @@ if
 ternary
 	: expr '?' expr ':' expr
 	  {
-            filterx_expr_set_location($1, lexer, &@1);
 	    $$ = filterx_conditional_new($1);
 	    filterx_conditional_set_true_branch($$, $3);
 	    filterx_conditional_set_false_branch($$, $5);
 	  }
 	| expr '?' ':' expr
 	  {
-            filterx_expr_set_location($1, lexer, &@1);
             $$ = filterx_conditional_new($1);
             filterx_conditional_set_false_branch($$, $4);
 	  }
