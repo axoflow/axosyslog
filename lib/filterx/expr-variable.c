@@ -191,6 +191,9 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
   self->variable_name = (FilterXObject *) name;
   self->handle = filterx_map_varname_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
 
+  /* NOTE: name borrows the string value from the string object */
+  self->super.name = filterx_string_get_value_ref(self->variable_name, NULL);
+
   return &self->super;
 }
 
