@@ -42,16 +42,19 @@ which				[fedora]
 #############################################################################
 # eBPF related tools
 #############################################################################
-clang				[tarball]
-libbpf-dev			[tarball]
+clang				[tarball, devshell]
+libbpf-dev			[tarball, devshell]
 bpftool				[tarball]
+# as long as devshell is based on ubuntu and not tarball
+linux-tools-common		[devshell]
+linux-tools-generic		[devshell]
 
 #############################################################################
 # Tarball related tools
 #############################################################################
 
 # docbook to generate man pages
-docbook-xsl                     [tarball]
+docbook-xsl                     [tarball, devshell]
 docbook-style-xsl               [fedora]
 
 #############################################################################
@@ -128,7 +131,8 @@ libglib2.0-0t64-dbgsym          [devshell]
 libjemalloc-dev                 [devshell]
 libjemalloc2-dbgsym             [devshell]
 libssl3t64-dbgsym               [devshell]
-linux-perf                      [devshell]
+libjson-c5-dbgsym		[devshell]
+libpcre2-8-0-dbgsym		[devshell]
 locales                         [devshell]
 lsof                            [devshell]
 netcat-openbsd                  [devshell]
