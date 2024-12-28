@@ -28,6 +28,7 @@
 #include "mainloop.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "perf/perf.h"
 
 void
 filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gchar *text)
@@ -36,7 +37,7 @@ filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gc
     self->lloc = g_new0(CFG_LTYPE, 1);
   *self->lloc = *lloc;
 
-  if (debug_flag && text)
+  if ((debug_flag || 1) && text)
     self->expr_text = g_strdup(text);
 }
 
@@ -46,7 +47,7 @@ filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
   if (!self->lloc)
     self->lloc = g_new0(CFG_LTYPE, 1);
   *self->lloc = *lloc;
-  if (debug_flag)
+  if (debug_flag || 1)
     {
       GString *res = g_string_sized_new(0);
       cfg_source_extract_source_text(lexer, lloc, res);
@@ -108,7 +109,7 @@ _init_sc_key_name(FilterXExpr *self, gchar *buf, gsize buf_len)
 gboolean
 filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg)
 {
-  gchar buf[64];
+  gchar buf[256];
 
   _init_sc_key_name(self, buf, sizeof(buf));
   stats_lock();
@@ -121,6 +122,22 @@ filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg)
   stats_cluster_single_key_set(&sc_key, buf, labels, labels_len);
   stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->eval_count);
   stats_unlock();
+
+  if (!perf_is_trampoline_address(self->eval))
+    {
+      //g_snprintf(buf, sizeof(buf), "filterx_%s_eval(%s)", self->type, self->name ? : "anon");
+      if (self->lloc)
+//        g_snprintf(buf, sizeof(buf), "filterx::%s:%d:%d|\t%s",
+//                            self->lloc->name, self->lloc->first_line, self->lloc->first_column,
+//                            self->expr_text ? : "n/a");
+        g_snprintf(buf, sizeof(buf), "filterx::%s", self->expr_text ? : "n/a");
+      else
+        g_snprintf(buf, sizeof(buf), "filterx::%s(%s)", self->type, self->name ? : "anon");
+//      msg_error("installing trampoline on expr",
+//                evt_tag_str("expr", buf));
+      self->eval = perf_generate_trampoline(self->eval, buf);
+    }
+
   return TRUE;
 }
 

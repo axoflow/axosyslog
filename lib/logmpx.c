@@ -93,6 +93,11 @@ log_multiplexer_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_op
        * write protected so that changes in those branches don't overwrite
        * data we still need */
 
+      msg_trace("logmpx: making message readonly",
+                evt_tag_int("next_hops", self->next_hops->len),
+                evt_tag_int("pipe_next", !!self->super.pipe_next),
+                log_expr_node_location_tag(self->super.expr_node),
+                evt_tag_str("expr_text", self->super.expr_node && self->super.expr_node->expr_text ? self->super.expr_node->expr_text : "n/a"));
       filterx_eval_prepare_for_fork(path_options->filterx_context, &msg, path_options);
       log_msg_write_protect(msg);
     }
