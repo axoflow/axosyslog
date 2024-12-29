@@ -502,14 +502,6 @@ log_msg_get_macro_value(const LogMessage *self, gint id, gssize *value_len, LogM
   return value->str;
 }
 
-gboolean
-log_msg_is_value_from_macro(const gchar *value)
-{
-  GString *buffer = g_private_get(&priv_macro_value);
-  return buffer && buffer->str == value;
-}
-
-
 static void
 log_msg_init_queue_node(LogMessage *msg, LogMessageQueueNode *node, const LogPathOptions *path_options)
 {
