@@ -27,7 +27,13 @@
 
 #include "common-template-typedefs.h"
 
-LogTemplateOptions *log_template_get_global_template_options(void);
+extern LogTemplateOptions global_template_options;
+
+static inline LogTemplateOptions *
+log_template_get_global_template_options(void)
+{
+  return &global_template_options;
+}
 
 void log_template_global_init(void);
 void log_template_global_deinit(void);
