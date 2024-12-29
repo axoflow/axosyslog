@@ -68,6 +68,12 @@ filterx_variable_handle_is_floating(FilterXVariableHandle handle)
   return !!(handle & FILTERX_HANDLE_FLOATING_BIT);
 }
 
+static inline NVHandle
+filterx_variable_handle_to_nv_handle(FilterXVariableHandle handle)
+{
+  return handle & ~FILTERX_HANDLE_FLOATING_BIT;
+}
+
 static inline gboolean
 filterx_variable_is_floating(FilterXVariable *v)
 {
@@ -77,7 +83,7 @@ filterx_variable_is_floating(FilterXVariable *v)
 static inline NVHandle
 filterx_variable_get_nv_handle(FilterXVariable *v)
 {
-  return v->handle & ~FILTERX_HANDLE_FLOATING_BIT;
+  return filterx_variable_handle_to_nv_handle(v->handle);
 }
 
 static inline const gchar *
