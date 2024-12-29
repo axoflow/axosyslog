@@ -1107,16 +1107,43 @@ value_pairs_global_init(void)
   value_pairs_init_set(rfc5424);
   value_pairs_init_set(selected_macros);
 
+  ValuePairSpec pair;
+
   a = g_array_new(TRUE, TRUE, sizeof(ValuePairSpec));
   for (i = 0; macros[i].name; i++)
     {
-      ValuePairSpec pair;
-
       pair.name = macros[i].name;
       pair.type = VPT_MACRO;
       pair.id = macros[i].id;
       g_array_append_val(a, pair);
     }
+  /* NOTE: this is a hack
+   *
+   * We used to have $MSG and $MESSAGE both as macros, doing some weird
+   * escaping back in the day but have been doing basically nothing forever.
+   * When removing these as macros, we have MESSAGE as a name-value pair and
+   * MSG being an alias to the same.
+   *
+   * However, when a value-pairs expression has `--key MSG`, that does not
+   * match the $MESSAGE name-value pair and it does not consult aliases.
+   * Adding alias support to --key would be difficult (and probably risky as
+   * well), so we add a $MSG entry to all_macros here, which would mimic the
+   * alias support as it exists in NVRegistry.
+   *
+   * For everything outside of value-pairs, we only have a name-value pair
+   * called $MESSAGE and $MSG as its alias.  Within value-pairs, we also
+   * have $MSG listed as a part of all macros, causing any --key using MSG
+   * to remain operational.
+   *
+   * Without this --key MSG would not match any name-value pairs (as that's
+   * called MESSAGE) and would not encounter a macro that is called MSG),
+   * causing that key to be never become part of the value-pairs output.
+   */
+
+  pair.name = "MSG";
+  pair.type = VPT_NVPAIR;
+  pair.id = LM_V_MESSAGE;
+  g_array_append_val(a, pair);
   all_macros = (ValuePairSpec *) g_array_free(a, FALSE);
 }
 

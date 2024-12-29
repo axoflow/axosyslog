@@ -156,15 +156,15 @@ Test(template_compile, test_simple_string_literal)
 
 Test(template_compile, test_simple_macro)
 {
-  assert_template_compile("${MESSAGE}");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("${MSGHDR}");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 }
 
 Test(template_compile, test_macro_and_text)
 {
 
-  assert_template_compile("${MESSAGE}test value");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("${MSGHDR}test value");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 
   select_next_element();
   assert_compiled_template(text = "test value", default_value = NULL, macro = M_NONE, type = LTE_MACRO, msg_ref = 0);
@@ -172,15 +172,15 @@ Test(template_compile, test_macro_and_text)
 
 Test(template_compile, test_macro_without_braces)
 {
-  assert_template_compile("$MESSAGE");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("$MSGHDR");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 }
 
 Test(template_compile, test_macro_name_without_braces_are_terminated_with_non_identifier_characters)
 {
   /* macro names consist of [A-Z0-9_] */
-  assert_template_compile("$MESSAGE test value");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("$MSGHDR test value");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 
   select_next_element();
   assert_compiled_template(text = " test value", default_value = NULL, macro = M_NONE, type = LTE_MACRO, msg_ref = 0);
@@ -188,24 +188,24 @@ Test(template_compile, test_macro_name_without_braces_are_terminated_with_non_id
 
 Test(template_compile, test_macro_without_at_records_that_no_msgref_was_present_by_msgref_zero)
 {
-  assert_template_compile("${MESSAGE}");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("${MSGHDR}");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 }
 
 Test(template_compile, test_macro_with_at_references_a_single_msg_in_the_context_stack_by_setting_msgref)
 {
-  assert_template_compile("${MESSAGE}@0");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 1);
+  assert_template_compile("${MSGHDR}@0");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 1);
 
-  assert_template_compile("${MESSAGE}@1");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 2);
+  assert_template_compile("${MSGHDR}@1");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 2);
 
 }
 
 Test(template_compile, test_macro_with_invalid_msgref_are_recognized_as_the_top_element_in_the_stack)
 {
-  assert_template_compile("${MESSAGE}@gmail.com");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("${MSGHDR}@gmail.com");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 
   select_next_element();
   assert_compiled_template(text = "@gmail.com", default_value = NULL, macro = M_NONE, type = LTE_MACRO, msg_ref = 0);
@@ -225,11 +225,11 @@ Test(template_compile, test_dollar_prefixed_with_backslash_is_a_literal_dollar)
 
 Test(template_compile, test_colon_dash_in_braces_is_parsed_as_default_value)
 {
-  assert_template_compile("${MESSAGE:-default value}");
-  assert_compiled_template(text = "", default_value = "default value", macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("${MSGHDR:-default value}");
+  assert_compiled_template(text = "", default_value = "default value", macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 
-  assert_template_compile("${MESSAGE:-}");
-  assert_compiled_template(text = "", default_value = "", macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("${MSGHDR:-}");
+  assert_compiled_template(text = "", default_value = "", macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 }
 
 Test(template_compile, test_double_dollars_is_a_literal_dollar)
@@ -264,8 +264,8 @@ Test(template_compile, test_backslash_without_finishing_the_escape_sequence_is_i
 
 Test(template_compile, test_double_at_is_a_literal_at)
 {
-  assert_template_compile("${MESSAGE}@@12");
-  assert_compiled_template(text = "", default_value = NULL, macro = M_MESSAGE, type = LTE_MACRO, msg_ref = 0);
+  assert_template_compile("${MSGHDR}@@12");
+  assert_compiled_template(text = "", default_value = NULL, macro = M_MSGHDR, type = LTE_MACRO, msg_ref = 0);
 
   select_next_element();
   assert_compiled_template(text = "@12", default_value = NULL, macro = M_NONE, type = LTE_MACRO, msg_ref = 0);
@@ -332,15 +332,15 @@ Test(template_compile, test_qouted_string_in_name_template_function)
 
 Test(template_compile, test_invalid_macro)
 {
-  assert_failed_template_compile("${MESSAGE", "Invalid macro, '}' is missing, error_pos='9'");
-  assert_compiled_template(text = "error in template: ${MESSAGE", default_value = NULL, macro = M_NONE, type = LTE_MACRO,
+  assert_failed_template_compile("${MSGHDR", "Invalid macro, '}' is missing, error_pos='8'");
+  assert_compiled_template(text = "error in template: ${MSGHDR", default_value = NULL, macro = M_NONE, type = LTE_MACRO,
                            msg_ref = 0);
 }
 
 Test(template_compile, test_invalid_subst)
 {
-  assert_failed_template_compile("${MESSAGE:1}", "Unknown substitution function, error_pos='10'");
-  assert_compiled_template(text = "error in template: ${MESSAGE:1}", default_value = NULL, macro = M_NONE,
+  assert_failed_template_compile("${MSGHDR:1}", "Unknown substitution function, error_pos='9'");
+  assert_compiled_template(text = "error in template: ${MSGHDR:1}", default_value = NULL, macro = M_NONE,
                            type = LTE_MACRO, msg_ref = 0);
 }
 
