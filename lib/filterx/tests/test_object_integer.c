@@ -63,67 +63,53 @@ Test(filterx_integer, test_filterx_primitive_int_is_truthy_if_nonzero)
 
 Test(filterx_integer, test_filterx_integer_typecast_null_args)
 {
-  GPtrArray *args = NULL;
-
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, NULL, 0);
   cr_assert_null(obj);
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_empty_args)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  FilterXObject *args[] = { NULL };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, 0);
   cr_assert_null(obj);
-
-  g_ptr_array_free(args, TRUE);
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_null_arg)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  FilterXObject *args[] = { NULL };
 
-  g_ptr_array_add(args, NULL);
-
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_null(obj);
-
-  g_ptr_array_free(args, TRUE);
 }
 
 // null->int cast can might be result in 0 later
 Test(filterx_integer, test_filterx_integer_typecast_null_object_arg)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_null_new();
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_null_new() };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_null(obj);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_from_integer)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_integer_new(443);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_integer_new(443) };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
-  cr_assert_eq(in, obj);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
+  cr_assert_eq(args[0], obj);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_from_double)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_double_new(171.443);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_double_new(171.443) };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
 
@@ -131,7 +117,7 @@ Test(filterx_integer, test_filterx_integer_typecast_from_double)
 
   cr_assert(gn_as_int64(&gn) == 171);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
@@ -139,11 +125,9 @@ Test(filterx_integer, test_filterx_integer_typecast_from_double)
 // ceil/floor helper functions or exact int(double) typecasts are possible solutions later
 Test(filterx_integer, test_filterx_integer_typecast_from_double_roundup)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_double_new(171.743);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_double_new(171.743) };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
 
@@ -151,17 +135,15 @@ Test(filterx_integer, test_filterx_integer_typecast_from_double_roundup)
 
   cr_assert(gn_as_int64(&gn) == 172);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_from_string)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_string_new("443", -1);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_string_new("443", -1) };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
 
@@ -169,17 +151,15 @@ Test(filterx_integer, test_filterx_integer_typecast_from_string)
 
   cr_assert(gn_as_int64(&gn) == 443);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_from_string_very_very_zero)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_string_new("000", -1);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_string_new("000", -1) };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
 
@@ -187,31 +167,27 @@ Test(filterx_integer, test_filterx_integer_typecast_from_string_very_very_zero)
 
   cr_assert(gn_as_int64(&gn) == 0);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_from_double_string)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_string_new("443.117", -1);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_string_new("443.117", -1) };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_null(obj);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_integer, test_filterx_integer_typecast_from_datetime)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   UnixTime ut = { .ut_sec = 171, .ut_usec = 443221 };
-  FilterXObject *in = filterx_datetime_new(&ut);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_datetime_new(&ut) };
 
-  FilterXObject *obj = filterx_typecast_integer(NULL, args);
+  FilterXObject *obj = filterx_typecast_integer(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
 
@@ -219,7 +195,7 @@ Test(filterx_integer, test_filterx_integer_typecast_from_datetime)
 
   cr_assert(gn_as_int64(&gn) == 171443221);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 

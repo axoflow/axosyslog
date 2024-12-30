@@ -27,7 +27,7 @@
 
 #include "filterx/expr-function.h"
 
-FilterXObject *filterx_simple_function_lower(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_simple_function_upper(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_simple_function_lower(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_upper(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif

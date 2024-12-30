@@ -279,14 +279,13 @@ filterx_global_deinit(void)
 }
 
 FilterXObject *
-filterx_typecast_get_arg(FilterXExpr *s, GPtrArray *args)
+filterx_typecast_get_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (args == NULL || args->len != 1)
+  if (args == NULL || args_len != 1)
     {
       filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
       return NULL;
     }
 
-  FilterXObject *object = g_ptr_array_index(args, 0);
-  return object;
+  return args[0];
 }

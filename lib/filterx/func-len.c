@@ -28,15 +28,15 @@
 #define FILTERX_FUNC_LEN_USAGE "Usage: len(object)"
 
 FilterXObject *
-filterx_simple_function_len(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_len(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (args == NULL || args->len != 1)
+  if (args == NULL || args_len != 1)
     {
       filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
       return NULL;
     }
 
-  FilterXObject *object = g_ptr_array_index(args, 0);
+  FilterXObject *object = args[0];
 
   guint64 len;
   gboolean success = filterx_object_len(object, &len);

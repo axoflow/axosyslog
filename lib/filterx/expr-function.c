@@ -88,49 +88,43 @@ _get_arg_object(FilterXSimpleFunction *self, guint64 index)
   return filterx_expr_eval(expr);
 }
 
-static GPtrArray *
-_simple_function_eval_args(FilterXSimpleFunction *self)
+static gboolean
+_simple_function_eval_args(FilterXSimpleFunction *self, FilterXObject **args, gsize *args_len)
 {
-  GPtrArray *res = g_ptr_array_new_full(self->args->len, (GDestroyNotify) filterx_object_unref);
-
-  for (guint64 i = 0; i < self->args->len; i++)
+  gsize n = *args_len;
+  for (gsize i = 0; i < n; i++)
     {
-      FilterXObject *obj = _get_arg_object(self, i);
-      if (obj == NULL)
-        goto error;
-
-      g_ptr_array_add(res, obj);
+      if ((args[i] = _get_arg_object(self, i)) == NULL)
+        {
+          *args_len = i;
+          return FALSE;
+        }
     }
+  *args_len = n;
+  return TRUE;
+}
 
-  return res;
-
-error:
-  g_ptr_array_free(res, TRUE);
-  return NULL;
+static void
+_simple_function_free_args(FilterXObject *args[], gsize args_len)
+{
+  for (gsize i = 0; i < args_len; i++)
+    filterx_object_unref(args[i]);
 }
 
 static FilterXObject *
 _simple_eval(FilterXExpr *s)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+  gsize args_len = self->args->len;
+  FilterXObject *args[self->args->len];
+  FilterXObject *res = NULL;
 
-  GPtrArray *args = NULL;
-
-  if (self->args->len)
+  if (_simple_function_eval_args(self, args, &args_len))
     {
-      args = _simple_function_eval_args(self);
-      if (!args)
-        return NULL;
+      res = self->function_proto(s, args, args_len);
     }
 
-  FilterXSimpleFunctionProto f = self->function_proto;
-
-  g_assert(f != NULL);
-  FilterXObject *res = f(s, args);
-
-  if (args != NULL)
-    g_ptr_array_free(args, TRUE);
-
+  _simple_function_free_args(args, args_len);
   return res;
 }
 

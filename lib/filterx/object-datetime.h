@@ -34,8 +34,8 @@ FILTERX_DECLARE_TYPE(datetime);
 
 FilterXObject *filterx_datetime_new(const UnixTime *ut);
 UnixTime filterx_datetime_get_value(FilterXObject *s);
-FilterXObject *filterx_typecast_datetime(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_typecast_datetime_isodate(FilterXExpr *, GPtrArray *args);
+FilterXObject *filterx_typecast_datetime(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_typecast_datetime_isodate(FilterXExpr *, FilterXObject *args[], gsize args_len);
 FilterXExpr *filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error);
 FilterXExpr *filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error);
 

@@ -34,9 +34,9 @@ FILTERX_DECLARE_TYPE(protobuf);
 const gchar *filterx_string_get_value_ref(FilterXObject *s, gsize *length);
 const gchar *filterx_bytes_get_value_ref(FilterXObject *s, gsize *length);
 const gchar *filterx_protobuf_get_value_ref(FilterXObject *s, gsize *length);
-FilterXObject *filterx_typecast_string(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_typecast_bytes(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_typecast_bytes(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 FilterXObject *filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);

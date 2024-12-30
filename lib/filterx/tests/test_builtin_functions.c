@@ -47,7 +47,7 @@
 #define TEST_BUILTIN_FUNCTION_NAME "TEST_BUILTIN_DUMMY_KEY"
 
 FilterXObject *
-test_builtin_simple_dummy_function(FilterXExpr *s, GPtrArray *args)
+test_builtin_simple_dummy_function(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   return filterx_string_new("test-builtin-functions", -1);
 }
@@ -83,7 +83,7 @@ Test(builtin_functions, test_builtin_simple_functions_lookup)
   cr_assert(func != NULL);
 
   // check dummy function as result
-  FilterXObject *res = func(NULL, NULL);
+  FilterXObject *res = func(NULL, NULL, 0);
   cr_assert(res != NULL);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   gsize len;

@@ -36,40 +36,40 @@ FILTERX_SIMPLE_FUNCTION_DECLARE(otel_kvlist);
 FILTERX_SIMPLE_FUNCTION_DECLARE(otel_array);
 
 
-FilterXObject *filterx_otel_logrecord_new_from_args(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_otel_resource_new_from_args(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_otel_scope_new_from_args(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_otel_kvlist_new_from_args(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_otel_array_new_from_args(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_otel_logrecord_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_otel_scope_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_otel_kvlist_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_otel_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 static inline FilterXObject *
 filterx_otel_logrecord_new(void)
 {
-  return filterx_otel_logrecord_new_from_args(NULL, NULL);
+  return filterx_otel_logrecord_new_from_args(NULL, NULL, 0);
 }
 
 static inline FilterXObject *
 filterx_otel_resource_new(void)
 {
-  return filterx_otel_resource_new_from_args(NULL, NULL);
+  return filterx_otel_resource_new_from_args(NULL, NULL, 0);
 }
 
 static inline FilterXObject *
 filterx_otel_scope_new(void)
 {
-  return filterx_otel_scope_new_from_args(NULL, NULL);
+  return filterx_otel_scope_new_from_args(NULL, NULL, 0);
 }
 
 static inline FilterXObject *
 filterx_otel_kvlist_new(void)
 {
-  return filterx_otel_kvlist_new_from_args(NULL, NULL);
+  return filterx_otel_kvlist_new_from_args(NULL, NULL, 0);
 }
 
 static inline FilterXObject *
 filterx_otel_array_new(void)
 {
-  return filterx_otel_array_new_from_args(NULL, NULL);
+  return filterx_otel_array_new_from_args(NULL, NULL, 0);
 }
 
 gpointer grpc_otel_filterx_enum_construct(Plugin *self);

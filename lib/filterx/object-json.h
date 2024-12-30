@@ -41,8 +41,8 @@ FilterXObject *filterx_json_array_new_from_syslog_ng_list(const gchar *repr, gss
 FilterXObject *filterx_json_object_new_empty(void);
 FilterXObject *filterx_json_array_new_empty(void);
 
-FilterXObject *filterx_json_new_from_args(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_json_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_json_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 FilterXObject *filterx_json_new_from_object(struct json_object *object);
 
