@@ -27,3 +27,4 @@ add_unit_test(LIBTEST CRITERION TARGET test_metrics_labels DEPENDS json-plugin $
 add_unit_test(LIBTEST CRITERION TARGET test_expr_regexp_search DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_expr_regexp_subst DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_dict_interface DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_func_keys DEPENDS json-plugin ${JSONC_LIBRARY})
