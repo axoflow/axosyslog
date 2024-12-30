@@ -46,6 +46,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-flags.h \
 	lib/filterx/func-flatten.h \
 	lib/filterx/func-istype.h \
+	lib/filterx/func-keys.h	\
 	lib/filterx/func-len.h \
 	lib/filterx/func-sdata.h \
 	lib/filterx/func-set-fields.h \
@@ -111,6 +112,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-weakrefs.c \
 	lib/filterx/func-flatten.c \
 	lib/filterx/func-istype.c \
+	lib/filterx/func-keys.c	\
 	lib/filterx/func-len.c \
 	lib/filterx/func-sdata.c \
 	lib/filterx/func-set-fields.c \

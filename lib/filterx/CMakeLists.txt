@@ -61,6 +61,7 @@ set(FILTERX_HEADERS
     filterx/object-null.h
     filterx/object-primitive.h
     filterx/object-string.h
+    filterx/func-keys.h
     PARENT_SCOPE
     )
 
@@ -127,6 +128,7 @@ set(FILTERX_SOURCES
     filterx/object-null.c
     filterx/object-primitive.c
     filterx/object-string.c
+    filterx/func-keys.c
     PARENT_SCOPE
     )
 
