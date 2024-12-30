@@ -297,16 +297,16 @@ exit:
 }
 
 FilterXObject *
-filterx_format_json_call(FilterXExpr *s, GPtrArray *args)
+filterx_format_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (!args || args->len != 1)
+  if (!args || args_len != 1)
     {
       msg_error("FilterX: format_json(): Invalid number of arguments. "
                 "Usage: format_json($data)");
       return NULL;
     }
 
-  FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
+  FilterXObject *arg = args[0];
   return _format_json(arg);
 }
 

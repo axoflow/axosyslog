@@ -70,12 +70,11 @@ static FilterXObject *
 _exec_func(FilterXSimpleFunctionProto func, FilterXObject *arg)
 {
   if (!arg)
-    return func(NULL, NULL);
+    return func(NULL, NULL, 0);
 
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  g_ptr_array_add(args, arg);
-  FilterXObject *result = func(NULL, args);
-  g_ptr_array_unref(args);
+  FilterXObject *args[] = { arg };
+  FilterXObject *result = func(NULL, args, G_N_ELEMENTS(args));
+  filterx_object_unref(arg);
   return result;
 }
 

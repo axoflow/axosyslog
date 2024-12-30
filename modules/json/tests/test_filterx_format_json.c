@@ -42,13 +42,12 @@
 static FilterXObject *
 _exec_format_json_and_unref(FilterXObject *arg)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  g_ptr_array_add(args, arg);
+  FilterXObject *args[] = { arg };
 
-  FilterXObject *result = filterx_format_json_call(NULL, args);
+  FilterXObject *result = filterx_format_json_call(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
 
-  g_ptr_array_unref(args);
+  filterx_object_unref(arg);
   return result;
 }
 

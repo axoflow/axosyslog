@@ -121,9 +121,9 @@ filterx_datetime_get_value(FilterXObject *s)
 
 
 FilterXObject *
-filterx_typecast_datetime(FilterXExpr *s, GPtrArray *args)
+filterx_typecast_datetime(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  FilterXObject *object = filterx_typecast_get_arg(s, args);
+  FilterXObject *object = filterx_typecast_get_arg(s, args, args_len);
   if (!object)
     return NULL;
 
@@ -147,13 +147,13 @@ filterx_typecast_datetime(FilterXExpr *s, GPtrArray *args)
       return filterx_datetime_new(&ut);
     }
 
-  return filterx_typecast_datetime_isodate(s, args);
+  return filterx_typecast_datetime_isodate(s, args, args_len);
 }
 
 FilterXObject *
-filterx_typecast_datetime_isodate(FilterXExpr *s, GPtrArray *args)
+filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  FilterXObject *object = filterx_typecast_get_arg(s, args);
+  FilterXObject *object = filterx_typecast_get_arg(s, args, args_len);
   if (!object)
     return NULL;
 
