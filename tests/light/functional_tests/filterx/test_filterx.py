@@ -2626,3 +2626,27 @@ def test_set_fields(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"foo":"foo_override","bar":"bar_exists","baz":"baz_override","almafa":"almafa_default"}\n'
+
+
+def test_keys(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    dict = {"foo":{"bar":{"baz":"foobarbaz"}},"tik":{"tak":{"toe":"tiktaktoe"}}};
+    $MSG = json();
+    $MSG.empty = keys(json());
+    $MSG.top_level = keys(dict);
+    $MSG.nested = keys(dict["foo"]);
+    $MSG.direct_access = keys(dict)[0];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"empty":[],"""
+        r""""top_level":["foo","tik"],"""
+        r""""nested":["bar"],"""
+        r""""direct_access":"foo"}""" + "\n"
+    )
+    assert file_true.read_log() == exp
