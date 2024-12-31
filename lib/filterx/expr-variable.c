@@ -175,43 +175,13 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_variable_evals_total", NULL, 0);
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_variable_evals_total", NULL, 0);
-  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
-
-  return filterx_expr_deinit_method(s, cfg);
-}
-
 static FilterXExpr *
 filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, "variable");
   self->super.free_fn = _free;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
   self->super.eval = _eval;
   self->super._update_repr = _update_repr;
   self->super.assign = _assign;
@@ -220,6 +190,9 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
 
   self->variable_name = (FilterXObject *) name;
   self->handle = filterx_map_varname_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
+
+  /* NOTE: name borrows the string value from the string object */
+  self->super.name = filterx_string_get_value_ref(self->variable_name, NULL);
 
   return &self->super;
 }
