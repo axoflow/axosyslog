@@ -221,8 +221,6 @@ LogMacroDef macros[] =
   { "UNIQID", M_UNIQID },
 
   /* values that have specific behaviour with older syslog-ng config versions */
-  { "MSG", M_MESSAGE },
-  { "MESSAGE", M_MESSAGE },
   { "HOST", M_HOST },
 
   /* message independent macros */
@@ -583,11 +581,6 @@ log_macro_expand(gint id, LogTemplateEvalOptions *options, const LogMessage *msg
               g_string_append_len(result, ": ", 2);
             }
         }
-      break;
-    }
-    case M_MESSAGE:
-    {
-      _result_append_value(result, msg, LM_V_MESSAGE, &t);
       break;
     }
     case M_SOURCE_IP:
