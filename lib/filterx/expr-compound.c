@@ -51,7 +51,7 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
 
   gboolean success = expr->ignore_falsy_result || filterx_object_truthy(res);
 
-  if ((!success || trace_flag) && !expr->suppress_from_trace)
+  if (((!success && debug_flag) || trace_flag) && !expr->suppress_from_trace)
     {
       ScratchBuffersMarker mark;
       GString *buf = scratch_buffers_alloc_and_mark(&mark);
@@ -107,7 +107,7 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result)
 }
 
 static FilterXObject *
-_eval(FilterXExpr *s)
+_eval_compound(FilterXExpr *s)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
   FilterXObject *result = NULL;
@@ -136,6 +136,19 @@ _eval(FilterXExpr *s)
   return result;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  for (gint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
+      *expr = filterx_expr_optimize(*expr);
+    }
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -155,12 +168,6 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
         }
     }
 
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_compound_evals_total", NULL, 0);
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
-
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -168,12 +175,6 @@ static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_compound_evals_total", NULL, 0);
-  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
 
   for (gint i = 0; i < self->exprs->len; i++)
     {
@@ -218,8 +219,9 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
   FilterXCompoundExpr *self = g_new0(FilterXCompoundExpr, 1);
 
-  filterx_expr_init_instance(&self->super);
-  self->super.eval = _eval;
+  filterx_expr_init_instance(&self->super, "compound");
+  self->super.eval = _eval_compound;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;

@@ -316,18 +316,18 @@ filterx_json_array_new_from_syslog_ng_list(const gchar *repr, gssize repr_len)
 }
 
 FilterXObject *
-filterx_json_array_new_from_args(FilterXExpr *s, GPtrArray *args)
+filterx_json_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (!args || args->len == 0)
+  if (!args || args_len == 0)
     return filterx_json_array_new_empty();
 
-  if (args->len != 1)
+  if (args_len != 1)
     {
       filterx_simple_function_argument_error(s, "Requires zero or one argument", FALSE);
       return NULL;
     }
 
-  FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
+  FilterXObject *arg = args[0];
 
   FilterXObject *json_arr = filterx_ref_unwrap_ro(arg);
   if (filterx_object_is_type(json_arr, &FILTERX_TYPE_NAME(json_array)))

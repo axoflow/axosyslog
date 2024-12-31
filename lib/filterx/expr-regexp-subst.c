@@ -333,6 +333,15 @@ _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GEr
   return TRUE;
 }
 
+static FilterXExpr *
+_subst_optimize(FilterXExpr *s)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+
+  self->string_expr = filterx_expr_optimize(self->string_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _subst_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -369,6 +378,7 @@ filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
   filterx_function_init_instance(&self->super, "regexp_subst");
   self->super.super.eval = _subst_eval;
+  self->super.super.optimize = _subst_optimize;
   self->super.super.init = _subst_init;
   self->super.super.deinit = _subst_deinit;
   self->super.super.free_fn = _subst_free;

@@ -88,50 +88,57 @@ _get_arg_object(FilterXSimpleFunction *self, guint64 index)
   return filterx_expr_eval(expr);
 }
 
-static GPtrArray *
-_simple_function_eval_args(FilterXSimpleFunction *self)
+static gboolean
+_simple_function_eval_args(FilterXSimpleFunction *self, FilterXObject **args, gsize *args_len)
 {
-  GPtrArray *res = g_ptr_array_new_full(self->args->len, (GDestroyNotify) filterx_object_unref);
-
-  for (guint64 i = 0; i < self->args->len; i++)
+  gsize n = *args_len;
+  for (gsize i = 0; i < n; i++)
     {
-      FilterXObject *obj = _get_arg_object(self, i);
-      if (obj == NULL)
-        goto error;
-
-      g_ptr_array_add(res, obj);
+      if ((args[i] = _get_arg_object(self, i)) == NULL)
+        {
+          *args_len = i;
+          return FALSE;
+        }
     }
+  *args_len = n;
+  return TRUE;
+}
 
-  return res;
-
-error:
-  g_ptr_array_free(res, TRUE);
-  return NULL;
+static void
+_simple_function_free_args(FilterXObject *args[], gsize args_len)
+{
+  for (gsize i = 0; i < args_len; i++)
+    filterx_object_unref(args[i]);
 }
 
 static FilterXObject *
 _simple_eval(FilterXExpr *s)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+  gsize args_len = self->args->len;
+  FilterXObject *args[self->args->len];
+  FilterXObject *res = NULL;
 
-  GPtrArray *args = NULL;
-
-  if (self->args->len)
+  if (_simple_function_eval_args(self, args, &args_len))
     {
-      args = _simple_function_eval_args(self);
-      if (!args)
-        return NULL;
+      res = self->function_proto(s, args, args_len);
     }
 
-  FilterXSimpleFunctionProto f = self->function_proto;
-
-  g_assert(f != NULL);
-  FilterXObject *res = f(s, args);
-
-  if (args != NULL)
-    g_ptr_array_free(args, TRUE);
-
+  _simple_function_free_args(args, args_len);
   return res;
+}
+
+static FilterXExpr *
+_simple_optimize(FilterXExpr *s)
+{
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+
+  for (guint64 i = 0; i < self->args->len; i++)
+    {
+      FilterXExpr **arg = (FilterXExpr **) &g_ptr_array_index(self->args, i);
+      *arg = filterx_expr_optimize(*arg);
+    }
+  return filterx_function_optimize_method(&self->super);
 }
 
 static gboolean
@@ -206,6 +213,7 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
 
   filterx_function_init_instance(&self->super, function_name);
   self->super.super.eval = _simple_eval;
+  self->super.super.optimize = _simple_optimize;
   self->super.super.init = _simple_init;
   self->super.super.deinit = _simple_deinit;
   self->super.super.free_fn = _simple_free;
@@ -225,29 +233,21 @@ error:
   return NULL;
 }
 
+FilterXExpr *
+filterx_function_optimize_method(FilterXFunction *s)
+{
+  return NULL;
+}
+
 gboolean
 filterx_function_init_method(FilterXFunction *s, GlobalConfig *cfg)
 {
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", s->function_name) };
-  stats_cluster_single_key_set(&sc_key, "fx_func_evals_total", labels, G_N_ELEMENTS(labels));
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &s->super.eval_count);
-  stats_unlock();
-
   return filterx_expr_init_method(&s->super, cfg);
 }
 
 void
 filterx_function_deinit_method(FilterXFunction *s, GlobalConfig *cfg)
 {
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", s->function_name) };
-  stats_cluster_single_key_set(&sc_key, "fx_func_evals_total", labels, G_N_ELEMENTS(labels));
-  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &s->super.eval_count);
-  stats_unlock();
-
   filterx_expr_deinit_method(&s->super, cfg);
 }
 
@@ -268,8 +268,9 @@ _function_free(FilterXExpr *s)
 void
 filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
 {
-  filterx_expr_init_instance(&s->super);
+  filterx_expr_init_instance(&s->super, "func");
   s->function_name = g_strdup_printf("%s()", function_name);
+  s->super.name = s->function_name;
   s->super.free_fn = _function_free;
 }
 

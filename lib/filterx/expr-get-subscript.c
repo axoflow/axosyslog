@@ -33,7 +33,7 @@ typedef struct _FilterXGetSubscript
 } FilterXGetSubscript;
 
 static FilterXObject *
-_eval(FilterXExpr *s)
+_eval_get_subscript(FilterXExpr *s)
 {
   FilterXGetSubscript *self = (FilterXGetSubscript *) s;
   FilterXObject *result = NULL;
@@ -105,6 +105,16 @@ exit:
   return result;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  self->operand = filterx_expr_optimize(self->operand);
+  self->key = filterx_expr_optimize(self->key);
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -119,12 +129,6 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
       return FALSE;
     }
 
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_get_subscript_evals_total", NULL, 0);
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
-
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -132,12 +136,6 @@ static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXGetSubscript *self = (FilterXGetSubscript *) s;
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_get_subscript_evals_total", NULL, 0);
-  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
 
   filterx_expr_deinit(self->operand, cfg);
   filterx_expr_deinit(self->key, cfg);
@@ -159,10 +157,11 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
 {
   FilterXGetSubscript *self = g_new0(FilterXGetSubscript, 1);
 
-  filterx_expr_init_instance(&self->super);
-  self->super.eval = _eval;
+  filterx_expr_init_instance(&self->super, "get_subscript");
+  self->super.eval = _eval_get_subscript;
   self->super.is_set = _isset;
   self->super.unset = _unset;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;

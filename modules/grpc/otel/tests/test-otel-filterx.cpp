@@ -171,55 +171,51 @@ Test(otel_filterx, logrecord_from_protobuf)
   attribute->mutable_value()->set_int_value(42);
 
   std::string serialized_log_record = log_record.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_log_record.c_str(), serialized_log_record.length()));
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
-                                                 args);
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_log_record.c_str(), serialized_log_record.length()) };
+
+  FilterXOtelLogRecord *filterx_otel_logrecord =
+    (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args, G_N_ELEMENTS(args));
+
   cr_assert(filterx_otel_logrecord);
 
   const LogRecord &log_record_from_filterx = filterx_otel_logrecord->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(log_record, log_record_from_filterx));
 
   filterx_object_unref(&filterx_otel_logrecord->super.super);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, logrecord_from_protobuf_invalid_arg)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("", 0));
+  FilterXObject *args[] = { filterx_string_new("", 0) };
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
-                                                 args);
+  FilterXOtelLogRecord *filterx_otel_logrecord =
+    (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args, G_N_ELEMENTS(args));
+
   cr_assert_not(filterx_otel_logrecord);
-
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, logrecord_from_protobuf_malformed_data)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
+  FilterXObject *args[] = { filterx_protobuf_new("1234", 4) };
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
-                                                 args);
+  FilterXOtelLogRecord *filterx_otel_logrecord =
+    (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args, G_N_ELEMENTS(args));
+
   cr_assert_not(filterx_otel_logrecord);
-
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, logrecord_too_many_args)
 {
-  GPtrArray *args = g_ptr_array_new_full(2, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
-  g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
+  FilterXObject *args[] = { filterx_string_new("foo", 3), filterx_protobuf_new("bar", 3) };
 
-  FilterXOtelLogRecord *filterx_otel_logrecord = (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL,
-                                                 args);
+  FilterXOtelLogRecord *filterx_otel_logrecord =
+    (FilterXOtelLogRecord *) filterx_otel_logrecord_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_logrecord);
-
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, logrecord_len_and_unset_and_is_key_set)
@@ -324,51 +320,50 @@ Test(otel_filterx, resource_from_protobuf)
   attribute->mutable_value()->set_int_value(42);
 
   std::string serialized_resource = resource.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_resource.c_str(), serialized_resource.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_resource.c_str(), serialized_resource.length()) };
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
+  FilterXOtelResource *filterx_otel_resource =
+    (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_resource);
 
   const opentelemetry::proto::resource::v1::Resource &resource_from_filterx = filterx_otel_resource->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(resource, resource_from_filterx));
 
   filterx_object_unref(&filterx_otel_resource->super.super);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, resource_from_protobuf_invalid_arg)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("", 0));
+  FilterXObject *args[] = { filterx_string_new("", 0) };
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
+  FilterXOtelResource *filterx_otel_resource =
+    (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_resource);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, resource_from_protobuf_malformed_data)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
+  FilterXObject *args[] = { filterx_protobuf_new("1234", 4) };
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
+  FilterXOtelResource *filterx_otel_resource =
+    (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_resource);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, resource_too_many_args)
 {
-  GPtrArray *args = g_ptr_array_new_full(2, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
-  g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
+  FilterXObject *args[] = { filterx_string_new("foo", 3), filterx_protobuf_new("bar", 3) };
 
-  FilterXOtelResource *filterx_otel_resource = (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args);
+  FilterXOtelResource *filterx_otel_resource =
+    (FilterXOtelResource *) filterx_otel_resource_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_resource);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, resource_get_field)
@@ -380,10 +375,10 @@ Test(otel_filterx, resource_get_field)
   attribute_1->mutable_value()->set_int_value(1337);
 
   std::string serialized_resource = resource.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_resource.c_str(), serialized_resource.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_resource.c_str(), serialized_resource.length()) };
 
-  FilterXObject *filterx_otel_resource = (FilterXObject *) filterx_otel_resource_new_from_args(NULL, args);
+  FilterXObject *filterx_otel_resource =
+    (FilterXObject *) filterx_otel_resource_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_resource);
 
   _assert_filterx_integer_attribute(filterx_otel_resource, "dropped_attributes_count", 42);
@@ -393,7 +388,7 @@ Test(otel_filterx, resource_get_field)
   cr_assert_not(filterx_invalid);
 
   filterx_object_unref(filterx_otel_resource);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, resource_set_field)
@@ -409,10 +404,9 @@ Test(otel_filterx, resource_set_field)
   attribute_1->set_key("attribute_1");
   attribute_1->mutable_value()->set_int_value(1337);
   std::string serialized_attributes = attributes.SerializePartialAsString();
-  GPtrArray *attributes_kvlist_args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(attributes_kvlist_args, 0, filterx_protobuf_new(serialized_attributes.c_str(),
-                     serialized_attributes.length()));
-  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(NULL, attributes_kvlist_args);
+
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_attributes.c_str(), serialized_attributes.length()) };
+  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_object_setattr_string(filterx_otel_resource, "attributes", &filterx_kvlist));
 
   cr_assert_not(filterx_object_setattr_string(filterx_otel_resource, "invalid_attr", &filterx_integer));
@@ -428,7 +422,7 @@ Test(otel_filterx, resource_set_field)
   cr_assert_eq(resource.dropped_attributes_count(), 42);
 
   g_string_free(serialized, TRUE);
-  g_ptr_array_unref(attributes_kvlist_args);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(filterx_kvlist);
   filterx_object_unref(filterx_integer);
   filterx_object_unref(filterx_otel_resource);
@@ -504,51 +498,50 @@ Test(otel_filterx, scope_from_protobuf)
   attribute->mutable_value()->set_int_value(42);
 
   std::string serialized_scope = scope.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_scope.c_str(), serialized_scope.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_scope.c_str(), serialized_scope.length()) };
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
+  FilterXOtelScope *filterx_otel_scope =
+    (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_scope);
 
   const opentelemetry::proto::common::v1::InstrumentationScope &scope_from_filterx = filterx_otel_scope->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(scope, scope_from_filterx));
 
   filterx_object_unref(&filterx_otel_scope->super.super);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, scope_from_protobuf_invalid_arg)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("", 0));
+  FilterXObject *args[] = { filterx_string_new("", 0) };
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
+  FilterXOtelScope *filterx_otel_scope =
+    (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_scope);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, scope_from_protobuf_malformed_data)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
+  FilterXObject *args[] = { filterx_protobuf_new("1234", 4) };
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
+  FilterXOtelScope *filterx_otel_scope =
+    (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_scope);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, scope_too_many_args)
 {
-  GPtrArray *args = g_ptr_array_new_full(2, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
-  g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
+  FilterXObject *args[] = { filterx_string_new("foo", 3), filterx_protobuf_new("bar", 3) };
 
-  FilterXOtelScope *filterx_otel_scope = (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args);
+  FilterXOtelScope *filterx_otel_scope =
+    (FilterXOtelScope *) filterx_otel_scope_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_scope);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, scope_get_field)
@@ -561,10 +554,10 @@ Test(otel_filterx, scope_get_field)
   attribute_1->mutable_value()->set_int_value(1337);
 
   std::string serialized_scope = scope.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_scope.c_str(), serialized_scope.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_scope.c_str(), serialized_scope.length()) };
 
-  FilterXObject *filterx_otel_scope = (FilterXObject *) filterx_otel_scope_new_from_args(NULL, args);
+  FilterXObject *filterx_otel_scope =
+    (FilterXObject *) filterx_otel_scope_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_scope);
 
   _assert_filterx_integer_attribute(filterx_otel_scope, "dropped_attributes_count", 42);
@@ -575,7 +568,7 @@ Test(otel_filterx, scope_get_field)
   cr_assert_not(filterx_invalid);
 
   filterx_object_unref(filterx_otel_scope);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, scope_set_field)
@@ -594,10 +587,9 @@ Test(otel_filterx, scope_set_field)
   attribute_1->set_key("attribute_1");
   attribute_1->mutable_value()->set_int_value(1337);
   std::string serialized_attributes = attributes.SerializePartialAsString();
-  GPtrArray *attributes_kvlist_args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(attributes_kvlist_args, 0, filterx_protobuf_new(serialized_attributes.c_str(),
-                     serialized_attributes.length()));
-  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(NULL, attributes_kvlist_args);
+
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_attributes.c_str(), serialized_attributes.length()) };
+  FilterXObject *filterx_kvlist = filterx_otel_kvlist_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_object_setattr_string(filterx_otel_scope, "attributes", &filterx_kvlist));
 
   cr_assert_not(filterx_object_setattr_string(filterx_otel_scope, "invalid_attr", &filterx_integer));
@@ -614,7 +606,8 @@ Test(otel_filterx, scope_set_field)
   cr_assert_eq(scope.name().compare("foobar"), 0);
 
   g_string_free(serialized, TRUE);
-  g_ptr_array_unref(attributes_kvlist_args);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
+
   filterx_object_unref(filterx_kvlist);
   filterx_object_unref(filterx_string);
   filterx_object_unref(filterx_integer);
@@ -645,50 +638,49 @@ Test(otel_filterx, kvlist_from_protobuf)
   element_2->mutable_value()->set_string_value("foobar");
 
   std::string serialized_kvlist = kvlist.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_kvlist.c_str(), serialized_kvlist.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_kvlist.c_str(), serialized_kvlist.length()) };
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
+  FilterXOtelKVList *filterx_otel_kvlist =
+    (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_kvlist);
 
   _assert_repeated_kvs(filterx_otel_kvlist->cpp->get_value(), kvlist.values());
 
   filterx_object_unref(&filterx_otel_kvlist->super.super);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, kvlist_from_protobuf_invalid_arg)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("", 0));
+  FilterXObject *args[] = { filterx_string_new("", 0) };
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
+  FilterXOtelKVList *filterx_otel_kvlist =
+    (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_kvlist);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, kvlist_from_protobuf_malformed_data)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
+  FilterXObject *args[] = { filterx_protobuf_new("1234", 4) };
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
+  FilterXOtelKVList *filterx_otel_kvlist =
+    (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_kvlist);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, kvlist_too_many_args)
 {
-  GPtrArray *args = g_ptr_array_new_full(2, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
-  g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
+  FilterXObject *args[] = { filterx_string_new("foo", 3), filterx_protobuf_new("bar", 3) };
 
-  FilterXOtelKVList *filterx_otel_kvlist = (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args);
+  FilterXOtelKVList *filterx_otel_kvlist =
+    (FilterXOtelKVList *) filterx_otel_kvlist_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_kvlist);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, kvlist_get_subscript)
@@ -713,10 +705,10 @@ Test(otel_filterx, kvlist_get_subscript)
   inner_array->add_values()->set_int_value(1000);
 
   std::string serialized_kvlist = kvlist.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_kvlist.c_str(), serialized_kvlist.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_kvlist.c_str(), serialized_kvlist.length()) };
 
-  FilterXObject *filterx_otel_kvlist = (FilterXObject *) filterx_otel_kvlist_new_from_args(NULL, args);
+  FilterXObject *filterx_otel_kvlist =
+    (FilterXObject *) filterx_otel_kvlist_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_kvlist);
 
   FilterXObject *element_1_key = filterx_string_new("element_1_key", -1);
@@ -733,7 +725,7 @@ Test(otel_filterx, kvlist_get_subscript)
   filterx_object_unref(element_3_key);
   filterx_object_unref(element_4_key);
   filterx_object_unref(filterx_otel_kvlist);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, kvlist_set_subscript)
@@ -974,51 +966,50 @@ Test(otel_filterx, array_from_protobuf)
   element_2->set_string_value("foobar");
 
   std::string serialized_array = array.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_array.c_str(), serialized_array.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_array.c_str(), serialized_array.length()) };
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
+  FilterXOtelArray *filterx_otel_array =
+    (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_array);
 
   const opentelemetry::proto::common::v1::ArrayValue &array_from_filterx = filterx_otel_array->cpp->get_value();
   cr_assert(MessageDifferencer::Equals(array, array_from_filterx));
 
   filterx_object_unref(&filterx_otel_array->super.super);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, array_from_protobuf_invalid_arg)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("", 0));
+  FilterXObject *args[] = { filterx_string_new("", 0) };
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
+  FilterXOtelArray *filterx_otel_array =
+    (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_array);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, array_from_protobuf_malformed_data)
 {
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new("1234", 4));
+  FilterXObject *args[] = { filterx_protobuf_new("1234", 4) };
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
+  FilterXOtelArray *filterx_otel_array =
+    (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_array);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, array_too_many_args)
 {
-  GPtrArray *args = g_ptr_array_new_full(2, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_string_new("foo", 3));
-  g_ptr_array_insert(args, 1, filterx_protobuf_new("bar", 3));
+  FilterXObject *args[] = { filterx_string_new("foo", 3), filterx_protobuf_new("bar", 3) };
 
-  FilterXOtelArray *filterx_otel_array = (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args);
+  FilterXOtelArray *filterx_otel_array =
+    (FilterXOtelArray *) filterx_otel_array_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not(filterx_otel_array);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, array_get_subscript)
@@ -1039,10 +1030,10 @@ Test(otel_filterx, array_get_subscript)
   inner_array->add_values()->set_int_value(1000);
 
   std::string serialized_array = array.SerializePartialAsString();
-  GPtrArray *args = g_ptr_array_new_full(1, (GDestroyNotify) filterx_object_unref);
-  g_ptr_array_insert(args, 0, filterx_protobuf_new(serialized_array.c_str(), serialized_array.length()));
+  FilterXObject *args[] = { filterx_protobuf_new(serialized_array.c_str(), serialized_array.length()) };
 
-  FilterXObject *filterx_otel_array = (FilterXObject *) filterx_otel_array_new_from_args(NULL, args);
+  FilterXObject *filterx_otel_array =
+    (FilterXObject *) filterx_otel_array_new_from_args(NULL, args, G_N_ELEMENTS(args));
   cr_assert(filterx_otel_array);
 
   FilterXObject *element_1_index = filterx_integer_new(0);
@@ -1064,7 +1055,7 @@ Test(otel_filterx, array_get_subscript)
   filterx_object_unref(element_3_index);
   filterx_object_unref(element_4_index);
   filterx_object_unref(filterx_otel_array);
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(otel_filterx, array_set_subscript)

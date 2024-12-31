@@ -26,6 +26,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/expr-function.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -46,41 +47,31 @@ Test(filterx_string, test_filterx_object_string_maps_to_the_right_json_value)
 
 Test(filterx_string, test_filterx_string_typecast_null_args)
 {
-  GPtrArray *args = NULL;
-
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
+  FilterXObject *obj = filterx_typecast_string(NULL, NULL, 0);
   cr_assert_null(obj);
 }
 
 Test(filterx_string, test_filterx_string_typecast_empty_args)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  FilterXObject *args[] = { NULL };
 
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args, 0);
   cr_assert_null(obj);
-
-  g_ptr_array_free(args, TRUE);
 }
 
 Test(filterx_string, test_filterx_string_typecast_null_arg)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  FilterXObject *args[] = { NULL };
 
-  g_ptr_array_add(args, NULL);
-
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
   cr_assert_null(obj);
-
-  g_ptr_array_free(args, TRUE);
 }
 
 Test(filterx_string, test_filterx_string_typecast_null_object_arg)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_null_new();
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_null_new() };
 
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
@@ -89,31 +80,27 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
 
   cr_assert(strcmp("null", str) == 0);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_string, test_filterx_string_typecast_from_string)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_string_new("foobar", -1);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_string_new("foobar", -1) };
 
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
 
-  cr_assert_eq(in, obj);
+  cr_assert_eq(args[0], obj);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_string, test_filterx_string_typecast_from_bytes)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_bytes_new("\x00\x1f byte \\sequence \x7f \xff", 21);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_bytes_new("\x00\x1f byte \\sequence \x7f \xff", 21) };
 
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
@@ -121,18 +108,15 @@ Test(filterx_string, test_filterx_string_typecast_from_bytes)
   const gchar *str = filterx_string_get_value_ref(obj, &size);
   cr_assert(memcmp("001f2062797465205c73657175656e6365207f20ff", str, size) == 0);
 
-
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_string, test_filterx_string_typecast_from_protobuf)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_protobuf_new("\xffnot a valid protobuf! \xd9", 23);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_protobuf_new("\xffnot a valid protobuf! \xd9", 23) };
 
-  FilterXObject *obj = filterx_typecast_string(NULL, args);
+  FilterXObject *obj = filterx_typecast_string(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
@@ -140,8 +124,7 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
   const gchar *str = filterx_string_get_value_ref(obj, &size);
   cr_assert(memcmp("ff6e6f7420612076616c69642070726f746f6275662120d9", str, size) == 0);
 
-
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 

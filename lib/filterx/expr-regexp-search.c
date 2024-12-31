@@ -214,6 +214,15 @@ _regexp_search_generator_create_container(FilterXExprGenerator *s, FilterXExpr *
   return filterx_generator_create_dict_container(s, fillable_parent);
 }
 
+static FilterXExpr *
+_regexp_search_generator_optimize(FilterXExpr *s)
+{
+  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
+
+  self->lhs = filterx_expr_optimize(self->lhs);
+  return filterx_generator_optimize_method(s);
+}
+
 static gboolean
 _regexp_search_generator_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -293,6 +302,7 @@ filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError *
 
   filterx_generator_function_init_instance(&self->super, "regexp_search");
   self->super.super.generate = _regexp_search_generator_generate;
+  self->super.super.super.optimize = _regexp_search_generator_optimize;
   self->super.super.super.init = _regexp_search_generator_init;
   self->super.super.super.deinit = _regexp_search_generator_deinit;
   self->super.super.super.free_fn = _regexp_search_generator_free;

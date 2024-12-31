@@ -49,6 +49,7 @@
 #include "timeutils/cache.h"
 #include "multi-line/multi-line-factory.h"
 #include "filterx/filterx-globals.h"
+#include "perf/perf.h"
 
 #include <iv.h>
 #include <iv_work.h>
@@ -215,6 +216,7 @@ construct_nondumpable_logger(msg_fatal);
 void
 app_startup(void)
 {
+  perf_global_init();
   msg_init(FALSE);
   iv_set_fatal_msg_handler(app_fatal);
   iv_init();
@@ -293,6 +295,7 @@ app_shutdown(void)
   hostname_global_deinit();
   crypto_deinit();
   msg_deinit();
+  perf_global_deinit();
 
 
   /* NOTE: the iv_deinit() call should come here, but there's some exit

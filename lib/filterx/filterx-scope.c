@@ -377,16 +377,24 @@ filterx_scope_invalidate_log_msg_cache(FilterXScope *self)
 {
   g_assert(filterx_scope_has_log_msg_changes(self));
 
-  gint i = 0;
-  while (i < self->variables->len)
+  gint src_index, dst_index;
+
+  for (src_index = 0, dst_index = 0; src_index < self->variables->len; src_index++)
     {
-      FilterXVariable *v = &g_array_index(self->variables, FilterXVariable, i);
+      FilterXVariable *v = &g_array_index(self->variables, FilterXVariable, src_index);
 
       if (!filterx_variable_is_floating(v) && self->syncable)
-        g_array_remove_index(self->variables, i);
+        {
+          ;
+        }
       else
-        i++;
+        {
+          if (src_index != dst_index)
+            g_array_index(self->variables, FilterXVariable, dst_index) = g_array_index(self->variables, FilterXVariable, src_index);
+          dst_index++;
+        }
     }
+  g_array_set_size(self->variables, dst_index);
 
   filterx_scope_clear_log_msg_has_changes(self);
 }

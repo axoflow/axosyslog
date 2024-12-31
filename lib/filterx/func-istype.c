@@ -41,7 +41,7 @@ typedef struct FilterXFunctionIsType_
 } FilterXFunctionIsType;
 
 static FilterXObject *
-_eval(FilterXExpr *s)
+_eval_fx_istype(FilterXExpr *s)
 {
   FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
 
@@ -148,7 +148,7 @@ filterx_function_istype_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionIsType *self = g_new0(FilterXFunctionIsType, 1);
   filterx_function_init_instance(&self->super, "istype");
-  self->super.super.eval = _eval;
+  self->super.super.eval = _eval_fx_istype;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;

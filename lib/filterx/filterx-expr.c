@@ -28,15 +28,16 @@
 #include "mainloop.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "perf/perf.h"
 
 void
-filterx_expr_set_location_with_text(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc, const gchar *text)
+filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gchar *text)
 {
   if (!self->lloc)
     self->lloc = g_new0(CFG_LTYPE, 1);
   *self->lloc = *lloc;
 
-  if (debug_flag)
+  if ((debug_flag || 1) && text)
     self->expr_text = g_strdup(text);
 }
 
@@ -46,7 +47,7 @@ filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
   if (!self->lloc)
     self->lloc = g_new0(CFG_LTYPE, 1);
   *self->lloc = *lloc;
-  if (debug_flag)
+  if (debug_flag || 1)
     {
       GString *res = g_string_sized_new(0);
       cfg_source_extract_source_text(lexer, lloc, res);
@@ -65,15 +66,99 @@ filterx_expr_format_location_tag(FilterXExpr *self)
     return evt_tag_str("expr", "n/a");
 }
 
+FilterXExpr *
+filterx_expr_optimize(FilterXExpr *self)
+{
+  if (!self)
+    return NULL;
+
+  if (self->optimized)
+    return self;
+
+  self->optimized = TRUE;
+  g_assert(!self->inited);
+
+  if (!self->optimize)
+    return self;
+
+  FilterXExpr *optimized = self->optimize(self);
+  if (!optimized)
+    return self;
+
+  /* the new expression may be also be optimized */
+  optimized = filterx_expr_optimize(optimized);
+
+  msg_trace("FilterX: expression optimized",
+            filterx_expr_format_location_tag(self),
+            evt_tag_str("old_type", self->type),
+            evt_tag_str("new_type", optimized->type));
+  if (self->lloc)
+    {
+      /* copy location information to the optimized representation */
+      filterx_expr_set_location_with_text(optimized, self->lloc, self->expr_text);
+    }
+  /* consume original expression */
+  filterx_expr_unref(self);
+  return optimized;
+}
+
+static void
+_init_sc_key_name(FilterXExpr *self, gchar *buf, gsize buf_len)
+{
+  g_snprintf(buf, buf_len, "fx_%s_evals_total", self->type);
+}
+
 gboolean
 filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg)
 {
+  gchar buf[256];
+
+  _init_sc_key_name(self, buf, sizeof(buf));
+  stats_lock();
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[1];
+  gint labels_len = 0;
+
+  if (self->name)
+    labels[labels_len++] = stats_cluster_label("name", self->name);
+  stats_cluster_single_key_set(&sc_key, buf, labels, labels_len);
+  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->eval_count);
+  stats_unlock();
+
+  if (!perf_is_trampoline_address(self->eval))
+    {
+      //g_snprintf(buf, sizeof(buf), "filterx_%s_eval(%s)", self->type, self->name ? : "anon");
+      if (self->lloc)
+//        g_snprintf(buf, sizeof(buf), "filterx::%s:%d:%d|\t%s",
+//                            self->lloc->name, self->lloc->first_line, self->lloc->first_column,
+//                            self->expr_text ? : "n/a");
+        g_snprintf(buf, sizeof(buf), "filterx::%s", self->expr_text ? : "n/a");
+      else
+        g_snprintf(buf, sizeof(buf), "filterx::%s(%s)", self->type, self->name ? : "anon");
+//      msg_error("installing trampoline on expr",
+//                evt_tag_str("expr", buf));
+      self->eval = perf_generate_trampoline(self->eval, buf);
+    }
+
   return TRUE;
 }
 
 void
 filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
 {
+  gchar buf[64];
+
+  _init_sc_key_name(self, buf, sizeof(buf));
+  stats_lock();
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[1];
+  gint labels_len = 0;
+
+  if (self->name)
+    labels[labels_len++] = stats_cluster_label("name", self->name);
+  stats_cluster_single_key_set(&sc_key, buf, labels, labels_len);
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->eval_count);
+  stats_unlock();
 }
 
 void
@@ -84,19 +169,20 @@ filterx_expr_free_method(FilterXExpr *self)
 }
 
 void
-filterx_expr_init_instance(FilterXExpr *self)
+filterx_expr_init_instance(FilterXExpr *self, const gchar *type)
 {
   self->ref_cnt = 1;
   self->init = filterx_expr_init_method;
   self->deinit = filterx_expr_deinit_method;
   self->free_fn = filterx_expr_free_method;
+  self->type = type;
 }
 
 FilterXExpr *
 filterx_expr_new(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self);
+  filterx_expr_init_instance(self, "expr");
   return self;
 }
 
@@ -127,6 +213,15 @@ filterx_expr_unref(FilterXExpr *self)
     }
 }
 
+FilterXExpr *
+filterx_unary_op_optimize_method(FilterXExpr *s)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  self->operand = filterx_expr_optimize(self->operand);
+  return NULL;
+}
+
 gboolean
 filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -135,12 +230,6 @@ filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->operand, cfg))
     return FALSE;
 
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
-  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
 
   return filterx_expr_init_method(s, cfg);
 }
@@ -149,13 +238,6 @@ void
 filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXUnaryOp *self = (FilterXUnaryOp *) s;
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
-  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
-  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
 
   filterx_expr_deinit(self->operand, cfg);
   filterx_expr_deinit_method(s, cfg);
@@ -173,13 +255,12 @@ filterx_unary_op_free_method(FilterXExpr *s)
 void
 filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
 {
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, name);
+  self->super.optimize = filterx_unary_op_optimize_method;
   self->super.init = filterx_unary_op_init_method;
   self->super.deinit = filterx_unary_op_deinit_method;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
-
-  self->name = name;
 }
 
 void
@@ -190,6 +271,16 @@ filterx_binary_op_free_method(FilterXExpr *s)
   filterx_expr_unref(self->lhs);
   filterx_expr_unref(self->rhs);
   filterx_expr_free_method(s);
+}
+
+FilterXExpr *
+filterx_binary_op_optimize_method(FilterXExpr *s)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  self->lhs = filterx_expr_optimize(self->lhs);
+  self->rhs = filterx_expr_optimize(self->rhs);
+  return NULL;
 }
 
 gboolean
@@ -203,13 +294,6 @@ filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->rhs, cfg))
     return FALSE;
 
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
-  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
-
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -217,13 +301,6 @@ void
 filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  StatsClusterLabel labels[] = { stats_cluster_label("name", self->name) };
-  stats_cluster_single_key_set(&sc_key, "fx_op_evals_total", labels, G_N_ELEMENTS(labels));
-  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
 
   filterx_expr_deinit(self->lhs, cfg);
   filterx_expr_deinit(self->rhs, cfg);
@@ -233,7 +310,8 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 void
 filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, name);
+  self->super.optimize = filterx_binary_op_optimize_method;
   self->super.init = filterx_binary_op_init_method;
   self->super.deinit = filterx_binary_op_deinit_method;
   self->super.free_fn = filterx_binary_op_free_method;
@@ -241,6 +319,4 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, Filter
   g_assert(rhs);
   self->lhs = lhs;
   self->rhs = rhs;
-
-  self->name = name;
 }

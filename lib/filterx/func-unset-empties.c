@@ -224,7 +224,7 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 }
 
 static FilterXObject *
-_eval(FilterXExpr *s)
+_eval_fx_unset_empties(FilterXExpr *s)
 {
   FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
 
@@ -253,7 +253,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
 
-  if (!filterx_expr_init_method(self->object_expr, cfg))
+  if (!filterx_expr_init(self->object_expr, cfg))
     return FALSE;
 
   return filterx_function_init_method(&self->super, cfg);
@@ -505,7 +505,7 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionUnsetEmpties *self = g_new0(FilterXFunctionUnsetEmpties, 1);
   filterx_function_init_instance(&self->super, "unset_empties");
-  self->super.super.eval = _eval;
+  self->super.super.eval = _eval_fx_unset_empties;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;

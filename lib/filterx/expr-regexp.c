@@ -65,6 +65,15 @@ exit:
   return result;
 }
 
+static FilterXExpr *
+_regexp_match_optimize(FilterXExpr *s)
+{
+  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
+
+  self->lhs = filterx_expr_optimize(self->lhs);
+  return NULL;
+}
+
 static gboolean
 _regexp_match_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -102,8 +111,9 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
 {
   FilterXExprRegexpMatch *self = g_new0(FilterXExprRegexpMatch, 1);
 
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, "regexp_match");
   self->super.eval = _regexp_match_eval;
+  self->super.optimize = _regexp_match_optimize;
   self->super.init = _regexp_match_init;
   self->super.deinit = _regexp_match_deinit;
   self->super.free_fn = _regexp_match_free;

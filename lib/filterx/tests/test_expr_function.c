@@ -44,13 +44,13 @@
 #include "apphook.h"
 #include "scratch-buffers.h"
 
-FilterXObject *test_dummy_function(FilterXExpr *s, GPtrArray *args)
+FilterXObject *test_dummy_function(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   GString *repr = scratch_buffers_alloc();
   GString *out = scratch_buffers_alloc();
-  for (int i = 0; i < args->len; i++)
+  for (int i = 0; i < args_len; i++)
     {
-      FilterXObject *object = g_ptr_array_index(args, i);
+      FilterXObject *object = args[i];
       cr_assert_not_null(object);
       cr_assert(filterx_object_repr(object, repr));
       g_string_append(out, repr->str);

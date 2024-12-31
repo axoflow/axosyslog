@@ -267,20 +267,20 @@ _filterx_otel_resource_clone(FilterXObject *s)
 }
 
 FilterXObject *
-filterx_otel_resource_new_from_args(FilterXExpr *s, GPtrArray *args)
+filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   FilterXOtelResource *self = g_new0(FilterXOtelResource, 1);
   _init_instance(self);
 
   try
     {
-      if (!args || args->len == 0)
+      if (!args || args_len == 0)
         {
           self->cpp = new Resource(self);
         }
-      else if (args->len == 1)
+      else if (args_len == 1)
         {
-          FilterXObject *arg = (FilterXObject *) g_ptr_array_index(args, 0);
+          FilterXObject *arg = args[0];
           FilterXObject *dict_arg = filterx_ref_unwrap_ro(arg);
           if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(dict)))
             {
