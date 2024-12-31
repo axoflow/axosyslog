@@ -253,7 +253,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
 
-  if (!filterx_expr_init_method(self->object_expr, cfg))
+  if (!filterx_expr_init(self->object_expr, cfg))
     return FALSE;
 
   return filterx_function_init_method(&self->super, cfg);
