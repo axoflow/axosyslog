@@ -31,9 +31,9 @@ import pytest
 from src.syslog_ng_config.renderer import render_statement
 
 
-def create_config(config, filterx_expr_1, filterx_expr_2=None, msg="foobar"):
-    file_true = config.create_file_destination(file_name="dest-true.log", template="'$MSG\n'")
-    file_false = config.create_file_destination(file_name="dest-false.log", template="'$MSG\n'")
+def create_config(config, filterx_expr_1, filterx_expr_2=None, msg="foobar", template="'$MSG\n'"):
+    file_true = config.create_file_destination(file_name="dest-true.log", template=template)
+    file_false = config.create_file_destination(file_name="dest-false.log", template=template)
 
     preamble = f"""
 @version: {config.get_version()}
@@ -118,6 +118,7 @@ def test_otel_logrecord_bytes_setter_getter(config, syslog_ng):
                                             $olr = otel_logrecord();
                                             $olr.trace_id = ${values.bytes};
                                             $MSG = $olr.trace_id; """,
+        template="""bytes('$MSG\n')""",
     )
     syslog_ng.start(config)
 
@@ -218,6 +219,7 @@ def test_otel_logrecord_body_bytes_setter_getter(config, syslog_ng):
                                             $olr = otel_logrecord();
                                             $olr.body = ${values.bytes};
                                             $MSG = $olr.body; """,
+        template="""bytes('$MSG\n')""",
     )
     syslog_ng.start(config)
 
@@ -227,11 +229,13 @@ def test_otel_logrecord_body_bytes_setter_getter(config, syslog_ng):
 
 
 def test_otel_logrecord_body_protobuf_setter_getter(config, syslog_ng):
+    # NOTE: protobuf is converted to bytes
     (file_true, file_false) = create_config(
         config, """
                                             $olr = otel_logrecord();
                                             $olr.body = ${values.protobuf};
                                             $MSG = $olr.body; """,
+        template="""bytes('$MSG\n')""",
     )
     syslog_ng.start(config)
 
