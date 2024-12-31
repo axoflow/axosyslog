@@ -75,6 +75,10 @@ log_template_append_elem_value(LogTemplate *self, LogTemplateElem *e, LogTemplat
     }
   else if (value_type == LM_VT_BYTES || value_type == LM_VT_PROTOBUF)
     {
+      msg_warning_once("template: not rendering binary name-value pair, use an explicit type hint",
+                       evt_tag_str("template", self->template_str),
+                       evt_tag_str("name", log_msg_get_handle_name(e->value_handle, NULL)),
+                       evt_tag_str("type", log_msg_value_type_to_str(value_type)));
       value_type = LM_VT_NULL;
     }
   *type = _propagate_type(*type, value_type);
