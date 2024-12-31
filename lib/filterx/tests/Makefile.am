@@ -28,7 +28,9 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_expr_plus	\
 		lib/filterx/tests/test_expr_plus_generator \
 		lib/filterx/tests/test_expr_plus \
-		lib/filterx/tests/test_metrics_labels
+		lib/filterx/tests/test_metrics_labels \
+		lib/filterx/tests/test_object_dict_interface \
+		lib/filterx/tests/test_func_keys
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
 
@@ -117,3 +119,9 @@ lib_filterx_tests_test_expr_plus_generator_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_metrics_labels_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_metrics_labels_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_object_dict_interface_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_object_dict_interface_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_func_keys_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_func_keys_LDADD   = $(TEST_LDADD) $(JSON_LIBS)

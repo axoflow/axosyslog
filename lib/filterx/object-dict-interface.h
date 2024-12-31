@@ -45,6 +45,7 @@ struct FilterXDict_
 
 gboolean filterx_dict_iter(FilterXObject *s, FilterXDictIterFunc func, gpointer user_data);
 gboolean filterx_dict_merge(FilterXObject *s, FilterXObject *other);
+gboolean filterx_dict_keys(FilterXObject *s, FilterXObject **keys);
 
 void filterx_dict_init_instance(FilterXDict *self, FilterXType *type);
 

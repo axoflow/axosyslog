@@ -27,6 +27,7 @@
 #include "filterx/object-json.h"
 #include "filterx/filterx-object-istype.h"
 #include "filterx/filterx-ref.h"
+#include "filterx/object-list-interface.h"
 #include "str-utils.h"
 
 gboolean
@@ -58,6 +59,33 @@ filterx_dict_merge(FilterXObject *s, FilterXObject *other)
   other = filterx_ref_unwrap_ro(other);
   g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(dict)));
   return filterx_dict_iter(other, _add_elem_to_dict, self);
+}
+
+static gboolean
+_add_elem_to_list(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
+{
+  FilterXObject *list = (FilterXObject *) user_data;
+
+  return filterx_list_append(list, &key_obj);
+}
+
+gboolean
+filterx_dict_keys(FilterXObject *s, FilterXObject **keys)
+{
+  g_assert(s);
+  g_assert(keys);
+  FilterXObject *obj = filterx_ref_unwrap_ro(s);
+  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)))
+    goto error;
+  g_assert(filterx_object_is_type(*keys, &FILTERX_TYPE_NAME(list)));
+
+  gboolean result = filterx_dict_iter(obj, _add_elem_to_list, *keys);
+
+  filterx_object_unref(s);
+  return result;
+error:
+  filterx_object_unref(s);
+  return FALSE;
 }
 
 static gboolean
