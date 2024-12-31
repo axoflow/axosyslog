@@ -134,6 +134,19 @@ _simple_eval(FilterXExpr *s)
   return res;
 }
 
+static FilterXExpr *
+_simple_optimize(FilterXExpr *s)
+{
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+
+  for (guint64 i = 0; i < self->args->len; i++)
+    {
+      FilterXExpr **arg = (FilterXExpr **) &g_ptr_array_index(self->args, i);
+      *arg = filterx_expr_optimize(*arg);
+    }
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _simple_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -206,6 +219,7 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
 
   filterx_function_init_instance(&self->super, function_name);
   self->super.super.eval = _simple_eval;
+  self->super.super.optimize = _simple_optimize;
   self->super.super.init = _simple_init;
   self->super.super.deinit = _simple_deinit;
   self->super.super.free_fn = _simple_free;
@@ -222,6 +236,12 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
 error:
   filterx_function_args_free(args);
   filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+FilterXExpr *
+filterx_function_optimize_method(FilterXFunction *s)
+{
   return NULL;
 }
 

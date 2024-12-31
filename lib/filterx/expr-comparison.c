@@ -237,6 +237,24 @@ _eval(FilterXExpr *s)
   return filterx_boolean_new(result);
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXComparison *self = (FilterXComparison *) s;
+
+  gint compare_mode = self->operator & FCMPX_MODE_MASK;
+  if (filterx_expr_is_literal(self->super.lhs))
+    self->literal_lhs = _eval_based_on_compare_mode(self->super.lhs, compare_mode);
+
+  if (filterx_expr_is_literal(self->super.rhs))
+    self->literal_rhs = _eval_based_on_compare_mode(self->super.rhs, compare_mode);
+
+  if (self->literal_lhs && self->literal_rhs)
+    return filterx_literal_new(_eval(&self->super.super));
+
+  return NULL;
+}
+
 static void
 _filterx_comparison_free(FilterXExpr *s)
 {
@@ -254,23 +272,10 @@ filterx_comparison_new(FilterXExpr *lhs, FilterXExpr *rhs, gint operator)
   FilterXComparison *self = g_new0(FilterXComparison, 1);
 
   filterx_binary_op_init_instance(&self->super, "comparison", lhs, rhs);
+  self->super.super.optimize = _optimize;
   self->super.super.eval = _eval;
   self->super.super.free_fn = _filterx_comparison_free;
   self->operator = operator;
-
-  gint compare_mode = self->operator & FCMPX_MODE_MASK;
-  if (filterx_expr_is_literal(lhs))
-    self->literal_lhs = _eval_based_on_compare_mode(lhs, compare_mode);
-
-  if (filterx_expr_is_literal(rhs))
-    self->literal_rhs = _eval_based_on_compare_mode(rhs, compare_mode);
-
-  if (filterx_expr_is_literal(lhs) && filterx_expr_is_literal(rhs))
-    {
-      FilterXExpr *optimized = filterx_literal_new(_eval(&self->super.super));
-      filterx_expr_unref(&self->super.super);
-      return optimized;
-    }
 
   return &self->super.super;
 }

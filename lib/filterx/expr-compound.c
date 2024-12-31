@@ -136,6 +136,19 @@ _eval(FilterXExpr *s)
   return result;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  for (gint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
+      *expr = filterx_expr_optimize(*expr);
+    }
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -220,6 +233,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 
   filterx_expr_init_instance(&self->super);
   self->super.eval = _eval;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;

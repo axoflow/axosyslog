@@ -46,6 +46,19 @@ _eval(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXExprUnset *self = (FilterXExprUnset *) s;
+
+  for (guint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
+      *expr = filterx_expr_optimize(*expr);
+    }
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -98,6 +111,7 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "unset");
 
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;

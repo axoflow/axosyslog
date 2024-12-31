@@ -57,6 +57,25 @@ _eval(FilterXExpr *s)
   return res;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
+
+  if (filterx_binary_op_optimize_method(s))
+    g_assert_not_reached();
+
+  if (filterx_expr_is_literal(self->super.lhs))
+    self->literal_lhs = filterx_expr_eval_typed(self->super.lhs);
+
+  if (filterx_expr_is_literal(self->super.rhs))
+    self->literal_rhs = filterx_expr_eval(self->super.rhs);
+
+  if (self->literal_lhs && self->literal_rhs)
+    return filterx_literal_new(_eval(&self->super.super));
+  return NULL;
+}
+
 static void
 _filterx_operator_plus_free(FilterXExpr *s)
 {
@@ -72,21 +91,9 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorPlus *self = g_new0(FilterXOperatorPlus, 1);
   filterx_binary_op_init_instance(&self->super, "plus", lhs, rhs);
+  self->super.super.optimize = _optimize;
   self->super.super.eval = _eval;
   self->super.super.free_fn = _filterx_operator_plus_free;
-
-  if (filterx_expr_is_literal(lhs))
-    self->literal_lhs = filterx_expr_eval_typed(lhs);
-
-  if (filterx_expr_is_literal(rhs))
-    self->literal_rhs = filterx_expr_eval(rhs);
-
-  if (filterx_expr_is_literal(lhs) && filterx_expr_is_literal(rhs))
-    {
-      FilterXExpr *optimized = filterx_literal_new(_eval(&self->super.super));
-      filterx_expr_unref(&self->super.super);
-      return optimized;
-    }
 
   return &self->super.super;
 }

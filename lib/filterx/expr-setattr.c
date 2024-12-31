@@ -131,6 +131,16 @@ exit:
   return result;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  self->object = filterx_expr_optimize(self->object);
+  self->new_value = filterx_expr_optimize(self->new_value);
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -188,6 +198,7 @@ filterx_nullv_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterX
 
   filterx_expr_init_instance(&self->super);
   self->super.eval = _nullv_setattr_eval;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;
@@ -208,6 +219,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterXExpr *
 
   filterx_expr_init_instance(&self->super);
   self->super.eval = _setattr_eval;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;
