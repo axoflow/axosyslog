@@ -29,27 +29,27 @@
 #include "filterx/object-primitive.h"
 
 static FilterXObject *
-echo(FilterXExpr *s, GPtrArray *args)
+echo(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   GString *buf = scratch_buffers_alloc();
   LogMessageValueType t;
 
   if (args == NULL ||
-      args->len < 1)
+      args_len < 1)
     {
       return NULL;
     }
 
-  for (int i = 0; i < args->len; i++)
+  for (int i = 0; i < args_len; i++)
     {
-      if (!filterx_object_marshal(args->pdata[i], buf, &t))
+      if (!filterx_object_marshal(args[i], buf, &t))
         goto exit;
       msg_debug("FILTERX EXAMPLE ECHO",
                 evt_tag_str("value", buf->str),
                 evt_tag_str("type", log_msg_value_type_to_str(t)));
     }
-  if (args->len > 0)
-    return filterx_object_ref(args->pdata[0]);
+  if (args_len > 0)
+    return filterx_object_ref(args[0]);
 exit:
   return filterx_boolean_new(FALSE);
 }

@@ -44,6 +44,6 @@ FilterXType *filterx_type_lookup(const gchar *type_name);
 gboolean filterx_type_register(const gchar *type_name, FilterXType *fxtype);
 
 // Helpers
-FilterXObject *filterx_typecast_get_arg(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_typecast_get_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif
