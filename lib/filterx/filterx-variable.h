@@ -58,7 +58,7 @@ typedef enum
 
 void filterx_variable_init_instance(FilterXVariable *v, FilterXVariableHandle handle,
                                     FilterXObject *initial_value, guint32 generation);
-void filterx_variable_free_method(FilterXVariable *v);
+void filterx_variable_free(FilterXVariable *v);
 
 #define FILTERX_HANDLE_FLOATING_BIT (1UL << 31)
 

@@ -284,7 +284,7 @@ filterx_scope_new(void)
 
   g_atomic_counter_set(&self->ref_cnt, 1);
   self->variables = g_array_sized_new(FALSE, TRUE, sizeof(FilterXVariable), 16);
-  g_array_set_clear_func(self->variables, (GDestroyNotify) filterx_variable_free_method);
+  g_array_set_clear_func(self->variables, (GDestroyNotify) filterx_variable_free);
   return self;
 }
 
