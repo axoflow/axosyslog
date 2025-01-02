@@ -74,6 +74,8 @@ FilterXExpr *filterx_function_optimize_method(FilterXFunction *s);
 gboolean filterx_function_init_method(FilterXFunction *s, GlobalConfig *cfg);
 void filterx_function_deinit_method(FilterXFunction *s, GlobalConfig *cfg);
 void filterx_function_free_method(FilterXFunction *s);
+
+FilterXExpr *filterx_generator_function_optimize_method(FilterXGeneratorFunction *s);
 gboolean filterx_generator_function_init_method(FilterXGeneratorFunction *s, GlobalConfig *cfg);
 void filterx_generator_function_deinit_method(FilterXGeneratorFunction *s, GlobalConfig *cfg);
 void filterx_generator_function_init_instance(FilterXGeneratorFunction *s, const gchar *function_name);

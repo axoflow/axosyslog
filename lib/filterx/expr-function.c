@@ -293,6 +293,12 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
   s->super.free_fn = _function_free;
 }
 
+FilterXExpr *
+filterx_generator_function_optimize_method(FilterXGeneratorFunction *s)
+{
+  return filterx_generator_optimize_method(&s->super.super);
+}
+
 gboolean
 filterx_generator_function_init_method(FilterXGeneratorFunction *s, GlobalConfig *cfg)
 {
