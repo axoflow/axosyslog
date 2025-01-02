@@ -209,6 +209,15 @@ exit:
   return result ? filterx_boolean_new(TRUE) : NULL;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
+
+  self->dict_expr = filterx_expr_optimize(self->dict_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -283,6 +292,7 @@ filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionFlatten *self = g_new0(FilterXFunctionFlatten, 1);
   filterx_function_init_instance(&self->super, "flatten");
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
