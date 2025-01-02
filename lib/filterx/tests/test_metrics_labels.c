@@ -45,6 +45,8 @@ Test(filterx_metrics_labels, null_labels)
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(NULL);
   cr_assert(metrics_labels);
 
+  filterx_metrics_labels_optimize(metrics_labels);
+
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
   DynMetricsStore *store = dyn_metrics_cache();
@@ -64,6 +66,8 @@ Test(filterx_metrics_labels, const_literal_generator_empty_labels)
   filterx_expr_unref(labels_expr);
   cr_assert(metrics_labels);
 
+  filterx_metrics_labels_optimize(metrics_labels);
+
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
   DynMetricsStore *store = dyn_metrics_cache();
@@ -82,6 +86,8 @@ Test(filterx_metrics_labels, non_literal_empty_labels)
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
   cr_assert(metrics_labels);
+
+  filterx_metrics_labels_optimize(metrics_labels);
 
   cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
 
@@ -111,6 +117,8 @@ Test(filterx_metrics_labels, const_literal_generator_labels)
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
   cr_assert(metrics_labels);
+
+  filterx_metrics_labels_optimize(metrics_labels);
 
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
@@ -145,6 +153,8 @@ Test(filterx_metrics_labels, non_const_literal_generator_labels)
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
   cr_assert(metrics_labels);
+
+  filterx_metrics_labels_optimize(metrics_labels);
 
   cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
 

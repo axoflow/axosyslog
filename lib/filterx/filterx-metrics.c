@@ -104,7 +104,31 @@ _is_const(FilterXMetrics *self)
 }
 
 static void
-_optimize(FilterXMetrics *self)
+_optimize_key(FilterXMetrics *self)
+{
+  self->key.expr = filterx_expr_optimize(self->key.expr);
+
+  if (!filterx_expr_is_literal(self->key.expr))
+    return;
+
+  FilterXObject *key_obj = filterx_expr_eval_typed(self->key.expr);
+  if (!filterx_object_is_type(key_obj, &FILTERX_TYPE_NAME(string)))
+    {
+      filterx_object_unref(key_obj);
+      return;
+    }
+
+  /* There are no literal message values, so we don't need to call extract_string() here. */
+  self->key.str = g_strdup(filterx_string_get_value_ref(key_obj, NULL));
+
+  filterx_expr_unref(self->key.expr);
+  self->key.expr = NULL;
+
+  filterx_object_unref(key_obj);
+}
+
+static void
+_optimize_counter(FilterXMetrics *self)
 {
   DynMetricsStore *store = dyn_metrics_cache();
 
@@ -134,6 +158,14 @@ _optimize(FilterXMetrics *self)
 
 exit:
   stats_unlock();
+}
+
+void
+filterx_metrics_optimize(FilterXMetrics *self)
+{
+  _optimize_key(self);
+  filterx_metrics_labels_optimize(self->labels);
+  _optimize_counter(self);
 }
 
 gboolean
@@ -182,8 +214,6 @@ filterx_metrics_init(FilterXMetrics *self, GlobalConfig *cfg)
       return FALSE;
     }
 
-  _optimize(self);
-
   return TRUE;
 }
 
@@ -213,36 +243,6 @@ filterx_metrics_free(FilterXMetrics *self)
   g_free(self);
 }
 
-static gboolean
-_init_key(FilterXMetrics *self, FilterXExpr *key)
-{
-  if (!filterx_expr_is_literal(key))
-    {
-      self->key.expr = filterx_expr_ref(key);
-      return TRUE;
-    }
-
-  FilterXObject *key_obj = filterx_expr_eval_typed(key);
-  if (!filterx_object_is_type(key_obj, &FILTERX_TYPE_NAME(string)))
-    {
-      filterx_eval_push_error_info("failed to init metrics key, key must be a string", key,
-                                   g_strdup_printf("got %s instread", key_obj->type->name), TRUE);
-      filterx_object_unref(key_obj);
-      return FALSE;
-    }
-
-  /* There are no literal message values, so we don't need to call extract_string() here. */
-  self->key.str = g_strdup(filterx_string_get_value_ref(key_obj, NULL));
-  return TRUE;
-}
-
-static gboolean
-_init_labels(FilterXMetrics *self, FilterXExpr *labels)
-{
-  self->labels = filterx_metrics_labels_new(labels);
-  return !!self->labels;
-}
-
 FilterXMetrics *
 filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels)
 {
@@ -251,11 +251,10 @@ filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels)
   g_assert(key);
 
   self->level = level;
+  self->key.expr = filterx_expr_ref(key);
 
-  if (!_init_key(self, key))
-    goto error;
-
-  if (!_init_labels(self, labels))
+  self->labels = filterx_metrics_labels_new(labels);
+  if (!self->labels)
     goto error;
 
   return self;

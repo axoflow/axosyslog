@@ -99,6 +99,23 @@ _label_cmp(gconstpointer a, gconstpointer b)
   return strcmp(lhs->name, rhs->name);
 }
 
+static void
+_label_optimize(FilterXMetricsLabel *self)
+{
+  self->value.expr = filterx_expr_optimize(self->value.expr);
+
+  if (!filterx_expr_is_literal(self->value.expr))
+    return;
+
+  ScratchBuffersMarker marker;
+  scratch_buffers_mark(&marker);
+  self->value.str = g_strdup(_format_value_expr(self->value.expr));
+  scratch_buffers_reclaim_marked(marker);
+
+  filterx_expr_unref(self->value.expr);
+  self->value.expr = NULL;
+}
+
 static gboolean
 _label_init(FilterXMetricsLabel *self, GlobalConfig *cfg)
 {
@@ -140,23 +157,6 @@ _init_label_name(FilterXExpr *name)
   return str;
 }
 
-static gboolean
-_init_label_value(FilterXMetricsLabel *self, FilterXExpr *value)
-{
-  if (!filterx_expr_is_literal(value))
-    {
-      self->value.expr = filterx_expr_ref(value);
-      return TRUE;
-    }
-
-  ScratchBuffersMarker marker;
-  scratch_buffers_mark(&marker);
-  self->value.str = g_strdup(_format_value_expr(value));
-  scratch_buffers_reclaim_marked(marker);
-
-  return !!self->value.str;
-}
-
 static FilterXMetricsLabel *
 _label_new(FilterXExpr *name, FilterXExpr *value)
 {
@@ -166,8 +166,7 @@ _label_new(FilterXExpr *name, FilterXExpr *value)
   if (!self->name)
     goto error;
 
-  if (!_init_label_value(self, value))
-    goto error;
+  self->value.expr = filterx_expr_ref(value);
 
   return self;
 
@@ -317,6 +316,34 @@ filterx_metrics_labels_format(FilterXMetricsLabels *self, DynMetricsStore *store
   return TRUE;
 }
 
+static gboolean
+_calculate_constness(FilterXMetricsLabels *self)
+{
+  if (self->expr)
+    return FALSE;
+
+  gboolean is_const = TRUE;
+  g_ptr_array_foreach(self->literal_labels, _check_label_is_const, &is_const);
+  return is_const;
+}
+
+void
+filterx_metrics_labels_optimize(FilterXMetricsLabels *self)
+{
+  self->expr = filterx_expr_optimize(self->expr);
+
+  if (self->literal_labels)
+    {
+      for (guint i = 0; i < self->literal_labels->len; i++)
+        {
+          FilterXMetricsLabel *label = g_ptr_array_index(self->literal_labels, i);
+          _label_optimize(label);
+        }
+    }
+
+  self->is_const = _calculate_constness(self);
+}
+
 gboolean
 filterx_metrics_labels_init(FilterXMetricsLabels *self, GlobalConfig *cfg)
 {
@@ -419,17 +446,6 @@ _init_labels(FilterXMetricsLabels *self, FilterXExpr *labels)
   return TRUE;
 }
 
-static gboolean
-_calculate_constness(FilterXMetricsLabels *self)
-{
-  if (self->expr)
-    return FALSE;
-
-  gboolean is_const = TRUE;
-  g_ptr_array_foreach(self->literal_labels, _check_label_is_const, &is_const);
-  return is_const;
-}
-
 FilterXMetricsLabels *
 filterx_metrics_labels_new(FilterXExpr *labels)
 {
@@ -441,7 +457,7 @@ filterx_metrics_labels_new(FilterXExpr *labels)
       return NULL;
     }
 
-  self->is_const = _calculate_constness(self);
+  self->is_const = FALSE;
 
   return self;
 }

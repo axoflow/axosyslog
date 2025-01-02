@@ -31,6 +31,7 @@
 typedef struct _FilterXMetricsLabels FilterXMetricsLabels;
 
 FilterXMetricsLabels *filterx_metrics_labels_new(FilterXExpr *labels);
+void filterx_metrics_labels_optimize(FilterXMetricsLabels *self);
 gboolean filterx_metrics_labels_init(FilterXMetricsLabels *self, GlobalConfig *cfg);
 void filterx_metrics_labels_deinit(FilterXMetricsLabels *self, GlobalConfig *cfg);
 void filterx_metrics_labels_free(FilterXMetricsLabels *self);
