@@ -145,12 +145,6 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
       return FALSE;
     }
 
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_setattr_evals_total", NULL, 0);
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
-
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -158,12 +152,6 @@ static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXSetAttr *self = (FilterXSetAttr *) s;
-
-  stats_lock();
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "fx_setattr_evals_total", NULL, 0);
-  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->super.eval_count);
-  stats_unlock();
 
   filterx_expr_deinit(self->object, cfg);
   filterx_expr_deinit(self->new_value, cfg);
@@ -186,7 +174,7 @@ filterx_nullv_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterX
 {
   FilterXSetAttr *self = g_new0(FilterXSetAttr, 1);
 
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, "nullv_setattr");
   self->super.eval = _nullv_setattr_eval;
   self->super.init = _init;
   self->super.deinit = _deinit;
@@ -197,6 +185,8 @@ filterx_nullv_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterX
 
   self->new_value = new_value;
   self->super.ignore_falsy_result = TRUE;
+  /* NOTE: name borrows the string value from the string object */
+  self->super.name = filterx_string_get_value_ref(self->attr, NULL);
   return &self->super;
 }
 
@@ -206,7 +196,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXString *attr_name, FilterXExpr *
 {
   FilterXSetAttr *self = g_new0(FilterXSetAttr, 1);
 
-  filterx_expr_init_instance(&self->super);
+  filterx_expr_init_instance(&self->super, "setattr");
   self->super.eval = _setattr_eval;
   self->super.init = _init;
   self->super.deinit = _deinit;
