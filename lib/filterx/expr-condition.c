@@ -164,7 +164,7 @@ _optimize(FilterXExpr *s)
   _optimize_branches(s);
 
   if (!filterx_expr_is_literal(self->condition))
-    return FALSE;
+    return NULL;
 
   FilterXObject *condition_value = filterx_expr_eval(self->condition);
 
