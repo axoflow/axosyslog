@@ -44,6 +44,28 @@ typedef struct Field_
 } Field;
 
 static void
+_field_optimize(Field *self)
+{
+  if (self->overrides)
+    {
+      for (guint i = 0; i < self->overrides->len; i++)
+        {
+          FilterXExpr *override = g_ptr_array_index(self->overrides, i);
+          g_ptr_array_index(self->overrides, i) = filterx_expr_optimize(override);
+        }
+    }
+
+  if (self->defaults)
+    {
+      for (guint i = 0; i < self->defaults->len; i++)
+        {
+          FilterXExpr *def = g_ptr_array_index(self->defaults, i);
+          g_ptr_array_index(self->defaults, i) = filterx_expr_optimize(def);
+        }
+    }
+}
+
+static void
 _field_deinit(Field *self, GlobalConfig *cfg)
 {
   if (self->overrides)
@@ -212,6 +234,22 @@ _eval(FilterXExpr *s)
 exit:
   filterx_object_unref(dict);
   return success ? filterx_boolean_new(TRUE) : NULL;
+}
+
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
+
+  self->dict = filterx_expr_optimize(self->dict);
+
+  for (guint i = 0; i < self->fields->len; i++)
+    {
+      Field *field = &g_array_index(self->fields, Field, i);
+      _field_optimize(field);
+    }
+
+  return filterx_function_optimize_method(&self->super);
 }
 
 static gboolean
@@ -458,6 +496,7 @@ filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "set_fields");
 
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
