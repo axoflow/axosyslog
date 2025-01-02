@@ -293,9 +293,9 @@ filterx_object_metrics_labels_new(guint reserved_size)
 }
 
 FilterXObject *
-filterx_simple_function_metrics_labels(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (args && args->len)
+  if (args && args_len)
     {
       filterx_simple_function_argument_error(s, "unexpected argument.", FALSE);
       return NULL;
@@ -305,16 +305,16 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, GPtrArray *args)
 }
 
 static FilterXObject *
-_dedup_extract_obj_arg(FilterXExpr *s, GPtrArray *args)
+_dedup_extract_obj_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (!args || args->len != 1)
+  if (!args || args_len != 1)
     {
       filterx_simple_function_argument_error(s, "unexpected number of arguments. "
                                              DEDUP_METRICS_LABELS_USAGE, FALSE);
       return NULL;
     }
 
-  FilterXObject *obj = g_ptr_array_index(args, 0);
+  FilterXObject *obj = args[0];
   FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(metrics_labels)))
     {
@@ -327,9 +327,9 @@ _dedup_extract_obj_arg(FilterXExpr *s, GPtrArray *args)
 }
 
 FilterXObject *
-filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  FilterXObject *obj = _dedup_extract_obj_arg(s, args);
+  FilterXObject *obj = _dedup_extract_obj_arg(s, args, args_len);
   if (!obj)
     return NULL;
 

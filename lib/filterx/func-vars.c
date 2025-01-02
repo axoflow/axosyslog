@@ -64,9 +64,9 @@ _add_to_dict(FilterXVariable *variable, gpointer user_data)
 }
 
 FilterXObject *
-filterx_simple_function_vars(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_vars(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (args && args->len != 0)
+  if (args && args_len != 0)
     {
       filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
       return NULL;
@@ -150,15 +150,15 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
 }
 
 FilterXObject *
-filterx_simple_function_load_vars(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (!args || args->len != 1)
+  if (!args || args_len != 1)
     {
       filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
       return NULL;
     }
 
-  FilterXObject *vars = g_ptr_array_index(args, 0);
+  FilterXObject *vars = args[0];
   FilterXObject *vars_unwrapped = filterx_ref_unwrap_ro(vars);
   FilterXObject *vars_unmarshalled = NULL;
 
