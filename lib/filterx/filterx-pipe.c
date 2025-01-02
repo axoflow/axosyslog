@@ -41,6 +41,8 @@ log_filterx_pipe_init(LogPipe *s)
   if (!self->name)
     self->name = cfg_tree_get_rule_name(&cfg->tree, ENC_FILTER, s->expr_node);
 
+  self->block = filterx_expr_optimize(self->block);
+
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
 

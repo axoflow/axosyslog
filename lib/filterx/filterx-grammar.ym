@@ -171,7 +171,7 @@ block
 	: '{' stmts '}'				{
                                                   FilterXExpr *block = filterx_compound_expr_new(FALSE);
                                                   filterx_compound_expr_add_list(block, $2);
-						  filterx_expr_set_location_with_text(block, lexer, &@$, "{ ... }");
+						  filterx_expr_set_location_with_text(block, &@$, "{ ... }");
                                                   $$ = block;
                                                 }
 	;
@@ -641,29 +641,15 @@ ternary
 	: expr '?' expr ':' expr
 	  {
             filterx_expr_set_location($1, lexer, &@1);
-            if (filterx_expr_is_literal($1))
-              {
-                $$ = filterx_literal_conditional($1, $3, $5);
-              }
-            else
-              {
-                $$ = filterx_conditional_new($1);
-                filterx_conditional_set_true_branch($$, $3);
-                filterx_conditional_set_false_branch($$, $5);
-              }
+	    $$ = filterx_conditional_new($1);
+	    filterx_conditional_set_true_branch($$, $3);
+	    filterx_conditional_set_false_branch($$, $5);
 	  }
 	| expr '?' ':' expr
 	  {
             filterx_expr_set_location($1, lexer, &@1);
-            if (filterx_expr_is_literal($1))
-              {
-                $$ = filterx_literal_conditional($1, NULL, $4);
-              }
-            else
-              {
-                $$ = filterx_conditional_new($1);
-                filterx_conditional_set_false_branch($$, $4);
-              }
+            $$ = filterx_conditional_new($1);
+            filterx_conditional_set_false_branch($$, $4);
 	  }
 	;
 

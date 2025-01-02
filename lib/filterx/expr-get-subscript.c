@@ -105,6 +105,16 @@ exit:
   return result;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  self->operand = filterx_expr_optimize(self->operand);
+  self->key = filterx_expr_optimize(self->key);
+  return NULL;
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -163,6 +173,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.eval = _eval;
   self->super.is_set = _isset;
   self->super.unset = _unset;
+  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;

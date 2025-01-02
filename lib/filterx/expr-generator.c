@@ -55,10 +55,20 @@ filterx_expr_is_generator(FilterXExpr *s)
   return s && s->eval == _eval;
 }
 
+FilterXExpr *
+filterx_generator_optimize_method(FilterXExpr *s)
+{
+  FilterXExprGenerator *self = (FilterXExprGenerator *) s;
+
+  self->fillable = filterx_expr_optimize(self->fillable);
+  return NULL;
+}
+
 void
 filterx_generator_init_instance(FilterXExpr *s)
 {
   filterx_expr_init_instance(s);
+  s->optimize = filterx_generator_optimize_method;
   s->init = filterx_generator_init_method;
   s->deinit = filterx_generator_deinit_method;
   s->eval = _eval;
@@ -107,6 +117,15 @@ _create_container_eval(FilterXExpr *s)
   FilterXExprGeneratorCreateContainer *self = (FilterXExprGeneratorCreateContainer *) s;
 
   return self->generator->create_container(self->generator, self->fillable_parent);
+}
+
+static FilterXExpr *
+_create_container_optimize(FilterXExpr *s)
+{
+  FilterXExprGeneratorCreateContainer *self = (FilterXExprGeneratorCreateContainer *) s;
+
+  self->fillable_parent = filterx_expr_optimize(self->fillable_parent);
+  return NULL;
 }
 
 static gboolean
@@ -172,6 +191,7 @@ filterx_generator_create_container_new(FilterXExpr *g, FilterXExpr *fillable_par
   filterx_expr_init_instance(&self->super);
   self->generator = (FilterXExprGenerator *) g;
   self->fillable_parent = fillable_parent;
+  self->super.optimize = _create_container_optimize;
   self->super.init = _create_container_init;
   self->super.deinit = _create_container_deinit;
   self->super.eval = _create_container_eval;

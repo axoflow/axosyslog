@@ -31,6 +31,4 @@ void filterx_conditional_set_false_branch(FilterXExpr *s, FilterXExpr *false_bra
 FilterXExpr *filterx_conditional_find_tail(FilterXExpr *s);
 FilterXExpr *filterx_conditional_new(FilterXExpr *condition);
 
-FilterXExpr *filterx_literal_conditional(FilterXExpr *condition, FilterXExpr *true_branch, FilterXExpr *false_branch);
-
 #endif
