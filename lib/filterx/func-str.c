@@ -148,6 +148,7 @@ _string_with_cache_new(FilterXExpr *expr, gboolean ignore_case)
 {
   FilterXStringWithCache *self = g_new0(FilterXStringWithCache, 1);
   self->expr = filterx_expr_ref(expr);
+  self->expr = filterx_expr_optimize(self->expr);
 
   if (!_string_with_cache_fill_cache(self, ignore_case))
     return NULL;
@@ -199,22 +200,27 @@ _cache_needle(gsize index, FilterXExpr *value, gpointer user_data)
 
 
 static gboolean
-_expr_affix_init_needle(FilterXExprAffix *self)
+_expr_affix_cache_needle(FilterXExprAffix *self)
 {
   if (filterx_expr_is_literal(self->needle.expr))
     {
       FilterXStringWithCache *obj_with_cache =  _string_with_cache_new(self->needle.expr, self->ignore_case);
       if (!obj_with_cache)
-        return FALSE;
+        goto error;
       g_ptr_array_add(self->needle.cached_strings, obj_with_cache);
     }
-  if (filterx_expr_is_literal_list_generator(self->needle.expr))
+  else if (filterx_expr_is_literal_list_generator(self->needle.expr))
     {
       gpointer user_data[] = {&self->ignore_case, self->needle.cached_strings};
-      if(!filterx_literal_list_generator_foreach(self->needle.expr, _cache_needle, user_data))
-        return FALSE;
+      if (!filterx_literal_list_generator_foreach(self->needle.expr, _cache_needle, user_data))
+        goto error;
     }
+
   return TRUE;
+
+error:
+  g_ptr_array_remove_range(self->needle.cached_strings, 0, self->needle.cached_strings->len);
+  return FALSE;
 }
 
 static gboolean
@@ -358,6 +364,28 @@ exit:
 
 }
 
+static FilterXExpr *
+_expr_affix_optimize(FilterXExpr *s)
+{
+  FilterXExprAffix *self = (FilterXExprAffix *) s;
+
+  self->haystack = filterx_expr_optimize(self->haystack);
+  self->needle.expr = filterx_expr_optimize(self->needle.expr);
+
+  if (!_expr_affix_cache_needle(self))
+    goto exit;
+
+  if (!filterx_expr_is_literal(self->haystack))
+    goto exit;
+
+  FilterXObject *result = _expr_affix_eval(s);
+  if (result)
+    return filterx_literal_new(result);
+
+exit:
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _extract_args(FilterXExprAffix *self, FilterXFunctionArgs *args, GError **error, const gchar *function_usage)
 {
@@ -403,6 +431,7 @@ _function_affix_new(FilterXFunctionArgs *args,
 
   filterx_function_init_instance(&self->super, affix_name);
   self->super.super.eval = _expr_affix_eval;
+  self->super.super.optimize = _expr_affix_optimize;
   self->super.super.init = _expr_affix_init;
   self->super.super.deinit = _expr_affix_deinit;
   self->super.super.free_fn = _expr_affix_free;
@@ -413,13 +442,6 @@ _function_affix_new(FilterXFunctionArgs *args,
 
   if (!_extract_args(self, args, error, usage))
     goto error;
-
-  if(!_expr_affix_init_needle(self))
-    {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "needle caching failed.");
-      goto error;
-    }
 
   filterx_function_args_free(args);
   return &self->super.super;
