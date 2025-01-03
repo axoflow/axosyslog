@@ -67,20 +67,18 @@ _optimize(FilterXExpr *s)
   if (filterx_binary_op_optimize_method(s))
     g_assert_not_reached();
 
-  if (filterx_expr_is_literal(self->super.lhs))
-    {
-      FilterXObject *lhs_object = filterx_expr_eval(self->super.lhs);
-      if (!lhs_object || filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(null)))
-        {
-          filterx_object_unref(lhs_object);
-          return filterx_expr_ref(self->super.rhs);
-        }
+  if (!filterx_expr_is_literal(self->super.lhs))
+    return NULL;
 
+  FilterXObject *lhs_object = filterx_expr_eval(self->super.lhs);
+  if (!lhs_object || filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(null)))
+    {
       filterx_object_unref(lhs_object);
-      return filterx_expr_ref(self->super.lhs);
+      return filterx_expr_ref(self->super.rhs);
     }
 
-  return NULL;
+  filterx_object_unref(lhs_object);
+  return filterx_expr_ref(self->super.lhs);
 }
 
 FilterXExpr *
