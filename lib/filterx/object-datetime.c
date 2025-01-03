@@ -442,6 +442,26 @@ _strftime_eval(FilterXExpr *s)
   return filterx_string_new(result_str, strnlen(result_str, MAX_RESULT_STR_LEN));
 }
 
+static gboolean
+_strftime_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  if (!filterx_expr_init(self->datetime_expr, cfg))
+    return FALSE;
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_strftime_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  filterx_expr_deinit(self->datetime_expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _strftime_free(FilterXExpr *s)
 {
@@ -514,6 +534,8 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "strftime");
 
   self->super.super.eval = _strftime_eval;
+  self->super.super.init = _strftime_init;
+  self->super.super.deinit = _strftime_deinit;
   self->super.super.free_fn = _strftime_free;
 
   if (!_extract_strftime_args(self, args, error) ||
