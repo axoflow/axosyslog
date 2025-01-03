@@ -57,6 +57,15 @@ _eval(FilterXExpr *s)
   return result;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXFunctionKeys *self = (FilterXFunctionKeys *) s;
+
+  self->object_expr = filterx_expr_optimize(self->object_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -121,6 +130,7 @@ filterx_function_keys_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionKeys *self = g_new0(FilterXFunctionKeys, 1);
   filterx_function_init_instance(&self->super, "keys");
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
