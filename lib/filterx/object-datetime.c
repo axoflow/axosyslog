@@ -397,7 +397,7 @@ error:
 typedef struct FilterXFunctionStrftime_
 {
   FilterXFunction super;
-  const gchar *format;
+  gchar *format;
   FilterXExpr *datetime_expr;
 } FilterXFunctionStrftime;
 
@@ -467,6 +467,7 @@ _strftime_free(FilterXExpr *s)
 {
   FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
 
+  g_free(self->format);
   filterx_expr_unref(self->datetime_expr);
   filterx_function_free_method(&self->super);
 }
@@ -511,7 +512,7 @@ _extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args,
       return FALSE;
     }
 
-  self->format = _extract_strftime_format(args, error);
+  self->format = g_strdup(_extract_strftime_format(args, error));
   if (!self->format)
     {
       return FALSE;
