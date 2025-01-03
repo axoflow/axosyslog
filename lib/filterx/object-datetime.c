@@ -442,6 +442,15 @@ _strftime_eval(FilterXExpr *s)
   return filterx_string_new(result_str, strnlen(result_str, MAX_RESULT_STR_LEN));
 }
 
+static FilterXExpr *
+_strftime_optimize(FilterXExpr *s)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  self->datetime_expr = filterx_expr_optimize(self->datetime_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _strftime_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -535,6 +544,7 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "strftime");
 
   self->super.super.eval = _strftime_eval;
+  self->super.super.optimize = _strftime_optimize;
   self->super.super.init = _strftime_init;
   self->super.super.deinit = _strftime_deinit;
   self->super.super.free_fn = _strftime_free;
