@@ -519,7 +519,7 @@ _extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args,
     }
 
   self->datetime_expr = _extract_strftime_datetime_expr(args, error);
-  if (!self->format)
+  if (!self->datetime_expr)
     {
       return FALSE;
     }
