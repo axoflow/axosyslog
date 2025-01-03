@@ -296,7 +296,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->msg, cfg))
     return FALSE;
 
-  return filterx_generator_init_method(s, cfg);
+  return filterx_generator_function_init_method(&self->super, cfg);
 }
 
 static void
@@ -304,7 +304,7 @@ _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
   filterx_expr_deinit(self->msg, cfg);
-  filterx_generator_deinit_method(s, cfg);
+  filterx_generator_function_deinit_method(&self->super, cfg);
 }
 
 static void
