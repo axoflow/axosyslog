@@ -278,7 +278,28 @@ filterx_function_free_method(FilterXFunction *s)
   filterx_expr_free_method(&s->super);
 }
 
-static void
+static inline FilterXExpr *
+_function_optimize(FilterXExpr *s)
+{
+  FilterXFunction *self = (FilterXFunction *) s;
+  return filterx_function_optimize_method(self);
+}
+
+static inline gboolean
+_function_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunction *self = (FilterXFunction *) s;
+  return filterx_function_init_method(self, cfg);
+}
+
+static inline void
+_function_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunction *self = (FilterXFunction *) s;
+  return filterx_function_deinit_method(self, cfg);
+}
+
+static inline void
 _function_free(FilterXExpr *s)
 {
   FilterXFunction *self = (FilterXFunction *) s;
@@ -290,7 +311,16 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
 {
   filterx_expr_init_instance(&s->super);
   s->function_name = g_strdup_printf("%s()", function_name);
+  s->super.optimize = _function_optimize;
+  s->super.init = _function_init;
+  s->super.deinit = _function_deinit;
   s->super.free_fn = _function_free;
+}
+
+FilterXExpr *
+filterx_generator_function_optimize_method(FilterXGeneratorFunction *s)
+{
+  return filterx_generator_optimize_method(&s->super.super);
 }
 
 gboolean
@@ -312,7 +342,28 @@ filterx_generator_function_free_method(FilterXGeneratorFunction *s)
   filterx_generator_free_method(&s->super.super);
 }
 
-static void
+static inline FilterXExpr *
+_generator_function_optimize(FilterXExpr *s)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  return filterx_generator_function_optimize_method(self);
+}
+
+static inline gboolean
+_generator_function_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  return filterx_generator_function_init_method(self, cfg);
+}
+
+static inline void
+_generator_function_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  filterx_generator_function_deinit_method(self, cfg);
+}
+
+static inline void
 _generator_function_free(FilterXExpr *s)
 {
   FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
@@ -324,6 +375,9 @@ filterx_generator_function_init_instance(FilterXGeneratorFunction *s, const gcha
 {
   filterx_generator_init_instance(&s->super.super);
   s->function_name = g_strdup_printf("%s()", function_name);
+  s->super.super.optimize = _generator_function_optimize;
+  s->super.super.init = _generator_function_init;
+  s->super.super.deinit = _generator_function_deinit;
   s->super.super.free_fn = _generator_function_free;
 }
 

@@ -59,26 +59,34 @@ _eval(FilterXExpr *s)
   return lhs_object;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXNullCoalesce *self = (FilterXNullCoalesce *) s;
+
+  if (filterx_binary_op_optimize_method(s))
+    g_assert_not_reached();
+
+  if (!filterx_expr_is_literal(self->super.lhs))
+    return NULL;
+
+  FilterXObject *lhs_object = filterx_expr_eval(self->super.lhs);
+  if (!lhs_object || filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(null)))
+    {
+      filterx_object_unref(lhs_object);
+      return filterx_expr_ref(self->super.rhs);
+    }
+
+  filterx_object_unref(lhs_object);
+  return filterx_expr_ref(self->super.lhs);
+}
+
 FilterXExpr *
 filterx_null_coalesce_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  if (filterx_expr_is_literal(lhs))
-    {
-      FilterXObject *lhs_object = filterx_expr_eval(lhs);
-      if (!lhs_object || filterx_object_is_type(lhs_object, &FILTERX_TYPE_NAME(null)))
-        {
-          filterx_object_unref(lhs_object);
-          filterx_expr_unref(lhs);
-          return rhs;
-        }
-
-      filterx_object_unref(lhs_object);
-      filterx_expr_unref(rhs);
-      return lhs;
-    }
-
   FilterXNullCoalesce *self = g_new0(FilterXNullCoalesce, 1);
   filterx_binary_op_init_instance(&self->super, "null_coalesce", lhs, rhs);
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   return &self->super.super;
 }

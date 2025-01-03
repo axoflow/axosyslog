@@ -397,7 +397,7 @@ error:
 typedef struct FilterXFunctionStrftime_
 {
   FilterXFunction super;
-  const gchar *format;
+  gchar *format;
   FilterXExpr *datetime_expr;
 } FilterXFunctionStrftime;
 
@@ -442,11 +442,41 @@ _strftime_eval(FilterXExpr *s)
   return filterx_string_new(result_str, strnlen(result_str, MAX_RESULT_STR_LEN));
 }
 
+static FilterXExpr *
+_strftime_optimize(FilterXExpr *s)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  self->datetime_expr = filterx_expr_optimize(self->datetime_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
+static gboolean
+_strftime_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  if (!filterx_expr_init(self->datetime_expr, cfg))
+    return FALSE;
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_strftime_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  filterx_expr_deinit(self->datetime_expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _strftime_free(FilterXExpr *s)
 {
   FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
 
+  g_free(self->format);
   filterx_expr_unref(self->datetime_expr);
   filterx_function_free_method(&self->super);
 }
@@ -491,14 +521,14 @@ _extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args,
       return FALSE;
     }
 
-  self->format = _extract_strftime_format(args, error);
+  self->format = g_strdup(_extract_strftime_format(args, error));
   if (!self->format)
     {
       return FALSE;
     }
 
   self->datetime_expr = _extract_strftime_datetime_expr(args, error);
-  if (!self->format)
+  if (!self->datetime_expr)
     {
       return FALSE;
     }
@@ -514,6 +544,9 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "strftime");
 
   self->super.super.eval = _strftime_eval;
+  self->super.super.optimize = _strftime_optimize;
+  self->super.super.init = _strftime_init;
+  self->super.super.deinit = _strftime_deinit;
   self->super.super.free_fn = _strftime_free;
 
   if (!_extract_strftime_args(self, args, error) ||

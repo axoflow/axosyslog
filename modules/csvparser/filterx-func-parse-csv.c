@@ -282,6 +282,18 @@ exit:
   return ok;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
+
+  self->msg = filterx_expr_optimize(self->msg);
+  self->columns.expr = filterx_expr_optimize(self->columns.expr);
+  self->string_delimiters = filterx_expr_optimize(self->string_delimiters);
+
+  return filterx_generator_function_optimize_method(&self->super);
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -539,6 +551,7 @@ filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error)
   filterx_generator_function_init_instance(&self->super, "parse_csv");
   self->super.super.generate = _generate;
   self->super.super.create_container = _create_container;
+  self->super.super.super.optimize = _optimize;
   self->super.super.super.init = _init;
   self->super.super.super.deinit = _deinit;
   self->super.super.super.free_fn = _free;

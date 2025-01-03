@@ -710,6 +710,15 @@ _extract_args(FilterXGeneratorFunctionParseXml *self, FilterXFunctionArgs *args,
   return TRUE;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXGeneratorFunctionParseXml *self = (FilterXGeneratorFunctionParseXml *) s;
+
+  self->xml_expr = filterx_expr_optimize(self->xml_expr);
+  return filterx_generator_function_optimize_method(&self->super);
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -747,6 +756,7 @@ filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **err
   filterx_generator_function_init_instance(&self->super, "parse_xml");
   self->super.super.generate = _generate;
   self->super.super.create_container = filterx_generator_create_dict_container;
+  self->super.super.super.optimize = _optimize;
   self->super.super.super.init = _init;
   self->super.super.super.deinit = _deinit;
   self->super.super.super.free_fn = _free;

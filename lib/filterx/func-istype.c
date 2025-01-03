@@ -59,6 +59,23 @@ _eval(FilterXExpr *s)
   return filterx_boolean_new(result);
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
+
+  self->object_expr = filterx_expr_optimize(self->object_expr);
+
+  if (filterx_expr_is_literal(self->object_expr))
+    {
+      FilterXObject *optimized_object = _eval(s);
+      g_assert(optimized_object);
+      return filterx_literal_new(optimized_object);
+    }
+
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -149,6 +166,7 @@ filterx_function_istype_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionIsType *self = g_new0(FilterXFunctionIsType, 1);
   filterx_function_init_instance(&self->super, "istype");
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;

@@ -164,6 +164,17 @@ _eval(FilterXExpr *s)
   return success ? filterx_string_new(formatted->str, formatted->len) : NULL;
 }
 
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
+
+  self->input = filterx_expr_optimize(self->input);
+  self->columns = filterx_expr_optimize(self->columns);
+
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -298,6 +309,7 @@ filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "format_csv");
 
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;

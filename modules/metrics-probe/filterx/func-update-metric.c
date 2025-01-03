@@ -94,6 +94,37 @@ exit:
   return filterx_boolean_new(TRUE);
 }
 
+static void
+_optimize_increment(FilterXFunctionUpdateMetric *self)
+{
+  self->increment.expr = filterx_expr_optimize(self->increment.expr);
+  if (!self->increment.expr || !filterx_expr_is_literal(self->increment.expr))
+    return;
+
+  FilterXObject *increment_obj = filterx_expr_eval(self->increment.expr);
+  if (!increment_obj)
+    return;
+
+  gboolean success = filterx_object_extract_integer(increment_obj, &self->increment.value);
+  filterx_object_unref(increment_obj);
+  if (!success)
+    return;
+
+  filterx_expr_unref(self->increment.expr);
+  self->increment.expr = NULL;
+}
+
+static FilterXExpr *
+_optimize(FilterXExpr *s)
+{
+  FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
+
+  _optimize_increment(self);
+  filterx_metrics_optimize(self->metrics);
+
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -137,29 +168,6 @@ _extract_increment_arg(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *a
 {
   self->increment.value = 1;
   self->increment.expr = filterx_function_args_get_named_expr(args, "increment");
-
-  if (self->increment.expr && filterx_expr_is_literal(self->increment.expr))
-    {
-      FilterXObject *increment_obj = filterx_expr_eval(self->increment.expr);
-      if (!increment_obj)
-        {
-          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                      "failed to evaluate increment. " FILTERX_FUNC_UPDATE_METRIC_USAGE);
-          return FALSE;
-        }
-
-      gboolean success = filterx_object_extract_integer(increment_obj, &self->increment.value);
-      filterx_object_unref(increment_obj);
-      if (!success)
-        {
-          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                      "failed to set increment, increment must be integer. " FILTERX_FUNC_UPDATE_METRIC_USAGE);
-          return FALSE;
-        }
-
-      filterx_expr_unref(self->increment.expr);
-      self->increment.expr = NULL;
-    }
 
   return TRUE;
 }
@@ -227,6 +235,7 @@ filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "update_metric");
 
   self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
