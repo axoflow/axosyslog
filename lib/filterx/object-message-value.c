@@ -169,6 +169,8 @@ _is_value_type_pair_truthy(const gchar  *repr, gssize repr_len, LogMessageValueT
         return TRUE;
       break;
     case LM_VT_STRING:
+    case LM_VT_PROTOBUF:
+    case LM_VT_BYTES:
       if (repr_len > 0)
         return TRUE;
       break;
@@ -176,6 +178,7 @@ _is_value_type_pair_truthy(const gchar  *repr, gssize repr_len, LogMessageValueT
     case LM_VT_LIST:
     case LM_VT_DATETIME:
       return TRUE;
+    case LM_VT_NULL:
     default:
       break;
     }

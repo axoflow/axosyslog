@@ -47,7 +47,6 @@ enum
   M_SDATA,
 
   M_MSGHDR,
-  M_MESSAGE,
   M_SOURCE_IP,
   M_DEST_IP,
   M_DEST_PORT,
