@@ -59,6 +59,7 @@ source genmsg {{
             "values.bytes" => bytes("binary whatever"),
             "values.protobuf" => protobuf("this is not a valid protobuf!!"),
             "values.json" => json('{{"emb_key1": "emb_key1 value", "emb_key2": "emb_key2 value"}}'),
+            "values.json2" => json('{{"foo":{{"foo1":"foo1value","foo2":"foo2value"}},"bar":{{"bar1":"bar1value","bar2":"bar2value"}}}}'),
             "values.true_string" => string("boolean:true"),
             "values.false_string" => string("boolean:false"),
         )
@@ -186,6 +187,57 @@ def test_message_tied_variables_do_not_propagate_to_parallel_branches(config, sy
     assert file_false.get_stats()["processed"] == 1
     assert "processed" not in file_true.get_stats()
     assert file_false.read_log() == "kecske\n"
+
+
+def test_message_tied_variables_are_invalidated_if_message_is_changed(config, syslog_ng):
+    (file_true, file_false, file_final) = create_config(
+        config, init_exprs=[
+            """
+                declare foo = $MSG;
+                foo;
+                $MSG;
+                foo == "foobar";
+                $MSG == "foobar";
+            """,
+        ], init_log_exprs=[
+            """
+                rewrite {
+                    set("foobar replacement" value("MSG"));
+                };
+            """,
+        ], true_exprs=[
+            """
+                $MSG;
+                foo;
+                $MSG == "foobar replacement";
+                foo == "foobar";
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "foobar replacement\n"
+
+
+def test_message_tied_mutable_objects_are_synced_if_child_object_is_changed(config, syslog_ng):
+    (file_true, file_false, file_final) = create_config(
+        config, init_exprs=[
+            """
+                ${values.json2}.foo.foo1 = 'child-changed';
+            """,
+        ], true_exprs=[
+            """
+            """,
+        ],
+        template='''"${values.json2}\n"''',
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """{"foo":{"foo1":"child-changed","foo2":"foo2value"},"bar":{"bar1":"bar1value","bar2":"bar2value"}}\n"""
 
 
 def test_message_tied_variables_are_not_considered_changed_just_by_unmarshaling(config, syslog_ng):
