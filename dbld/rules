@@ -213,7 +213,7 @@ shell-%: setup
 
 images: $(foreach image,$(IMAGES), image-$(image))
 image: image-$(DEFAULT_IMAGE)
-image-devshell: image-ubuntu-noble
+image-devshell: image-tarball
 image-tarball: image-debian-testing
 image-%:
 	$(DBLD_DIR)/prepare-image-build $* && \
