@@ -1,5 +1,5 @@
 ARG CONTAINER_REGISTRY
-FROM $CONTAINER_REGISTRY/axosyslog-dbld-tarball:latest
+FROM $CONTAINER_REGISTRY/axosyslog-dbld-ubuntu-noble:latest
 
 ARG ARG_IMAGE_PLATFORM
 ARG COMMIT
