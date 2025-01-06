@@ -69,7 +69,8 @@ filterx_regexp_compile_pattern_defaults(const gchar *pattern)
 void
 filterx_expr_rematch_state_init(FilterXReMatchState *state)
 {
-  memset(state, 0, sizeof(FilterXReMatchState));
+  state->match_data = NULL;
+  state->lhs_obj = NULL;
 }
 
 void
@@ -78,7 +79,6 @@ filterx_expr_rematch_state_cleanup(FilterXReMatchState *state)
   if (state->match_data)
     pcre2_match_data_free(state->match_data);
   filterx_object_unref(state->lhs_obj);
-  memset(state, 0, sizeof(FilterXReMatchState));
 }
 
 gboolean
