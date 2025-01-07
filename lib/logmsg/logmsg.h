@@ -395,8 +395,6 @@ log_msg_get_value_if_set_with_type(const LogMessage *self, NVHandle handle,
     return nv_table_get_value(self->payload, handle, value_len, type);
 }
 
-gboolean log_msg_is_value_from_macro(const gchar *value);
-
 static inline gboolean
 log_msg_is_value_set(const LogMessage *self, NVHandle handle)
 {

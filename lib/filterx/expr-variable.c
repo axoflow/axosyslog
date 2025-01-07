@@ -36,7 +36,7 @@ typedef struct _FilterXVariableExpr
   FilterXExpr super;
   FilterXObject *variable_name;
   NVHandle handle;
-  gboolean declared;
+  guint32 declared:1, handle_is_macro:1;
 } FilterXVariableExpr;
 
 static FilterXObject *
@@ -51,7 +51,7 @@ _pull_variable_from_message(FilterXVariableExpr *self, FilterXEvalContext *conte
       return NULL;
     }
 
-  if (log_msg_is_value_from_macro(value))
+  if (self->handle_is_macro)
     return filterx_message_value_new(value, value_len, t);
   else
     return filterx_message_value_new_borrowed(value, value_len, t);
@@ -220,6 +220,8 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType type)
 
   self->variable_name = (FilterXObject *) name;
   self->handle = filterx_map_varname_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), type);
+  if (type == FX_VAR_MESSAGE)
+    self->handle_is_macro = log_msg_is_handle_macro(filterx_variable_handle_to_nv_handle(self->handle));
 
   return &self->super;
 }

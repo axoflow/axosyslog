@@ -71,9 +71,7 @@ log_template_get_trivial_value_handle(LogTemplate *self)
   switch (e->type)
     {
     case LTE_MACRO:
-      if (e->macro == M_MESSAGE)
-        return LM_V_MESSAGE;
-      else if (e->macro == M_HOST)
+      if (e->macro == M_HOST)
         return LM_V_HOST;
       else
         g_assert_not_reached();
@@ -170,7 +168,7 @@ _calculate_if_trivial(LogTemplate *self)
       /* we have macros for MESSAGE and HOST for compatibility reasons, but
        * they should be considered trivial */
 
-      if (e->macro == M_MESSAGE || e->macro == M_HOST)
+      if (e->macro == M_HOST)
         return TRUE;
       return FALSE;
     case LTE_VALUE:
