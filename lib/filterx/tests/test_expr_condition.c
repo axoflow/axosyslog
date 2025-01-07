@@ -346,7 +346,7 @@ Test(expr_condition, test_condition_error_statement_must_return_null)
 }
 
 FilterXObject *
-_dummy_func(FilterXExpr *s, GPtrArray *args)
+_dummy_func(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   return filterx_string_new("foobar", -1);
 }

@@ -24,59 +24,50 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/expr-function.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_null_args)
 {
-  GPtrArray *args = NULL;
-
-  FilterXObject *obj = filterx_typecast_protobuf(NULL, args);
+  FilterXObject *obj = filterx_typecast_protobuf(NULL, NULL, 0);
   cr_assert_null(obj);
 }
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_empty_args)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  FilterXObject *args[] = { NULL };
 
-  FilterXObject *obj = filterx_typecast_protobuf(NULL, args);
+  FilterXObject *obj = filterx_typecast_protobuf(NULL, args, 0);
   cr_assert_null(obj);
-
-  g_ptr_array_free(args, TRUE);
 }
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_null_arg)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  FilterXObject *args[] = { NULL };
 
-  g_ptr_array_add(args, NULL);
-
-  FilterXObject *obj = filterx_typecast_protobuf(NULL, args);
+  FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
   cr_assert_null(obj);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_null_object_arg)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_null_new();
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_null_new() };
 
-  FilterXObject *obj = filterx_typecast_protobuf(NULL, args);
+  FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
   cr_assert_null(obj);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
 }
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_from_bytes)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_bytes_new("not valid \0protobuf!", 20);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_bytes_new("not valid \0protobuf!", 20) };
 
-  FilterXObject *obj = filterx_typecast_protobuf(NULL, args);
+  FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(protobuf)));
 
@@ -85,20 +76,18 @@ Test(filterx_protobuf, test_filterx_protobuf_typecast_from_bytes)
 
   cr_assert(memcmp("not valid \0protobuf!", bytes, size) == 0);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 
 Test(filterx_protobuf, test_filterx_protobuf_typecast_from_protobuf)
 {
-  GPtrArray *args = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  FilterXObject *in = filterx_protobuf_new("not valid \0protobuf!", 20);
-  g_ptr_array_add(args, in);
+  FilterXObject *args[] = { filterx_protobuf_new("not valid \0protobuf!", 20) };
 
-  FilterXObject *obj = filterx_typecast_protobuf(NULL, args);
-  cr_assert_eq(in, obj);
+  FilterXObject *obj = filterx_typecast_protobuf(NULL, args, G_N_ELEMENTS(args));
+  cr_assert_eq(args[0], obj);
 
-  g_ptr_array_free(args, TRUE);
+  filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
 }
 

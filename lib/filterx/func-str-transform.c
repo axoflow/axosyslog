@@ -28,9 +28,9 @@
 #include "filterx/filterx-eval.h"
 
 static const gchar *
-_extract_str_arg(FilterXExpr *s, GPtrArray *args, gssize *len)
+_extract_str_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len, gssize *len)
 {
-  if (args == NULL || args->len != 1)
+  if (args == NULL || args_len != 1)
     {
       filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
       return NULL;
@@ -38,7 +38,7 @@ _extract_str_arg(FilterXExpr *s, GPtrArray *args, gssize *len)
 
   const gchar *str;
   gsize inner_len;
-  FilterXObject *object = g_ptr_array_index(args, 0);
+  FilterXObject *object = args[0];
 
   if (!filterx_object_extract_string_ref(object, &str, &inner_len))
     {
@@ -51,10 +51,10 @@ _extract_str_arg(FilterXExpr *s, GPtrArray *args, gssize *len)
 }
 
 FilterXObject *
-filterx_simple_function_lower(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_lower(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   gssize len;
-  const gchar *str = _extract_str_arg(s, args, &len);
+  const gchar *str = _extract_str_arg(s, args, args_len, &len);
   if (!str)
     return NULL;
 
@@ -66,10 +66,10 @@ filterx_simple_function_lower(FilterXExpr *s, GPtrArray *args)
 }
 
 FilterXObject *
-filterx_simple_function_upper(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_upper(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   gssize len;
-  const gchar *str = _extract_str_arg(s, args, &len);
+  const gchar *str = _extract_str_arg(s, args, args_len, &len);
   if (!str)
     return NULL;
 

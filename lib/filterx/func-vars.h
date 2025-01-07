@@ -26,7 +26,7 @@
 
 #include "filterx/expr-function.h"
 
-FilterXObject *filterx_simple_function_vars(FilterXExpr *s, GPtrArray *args);
-FilterXObject *filterx_simple_function_load_vars(FilterXExpr *s, GPtrArray *args);
+FilterXObject *filterx_simple_function_vars(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif

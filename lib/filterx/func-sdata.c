@@ -118,9 +118,9 @@ error:
 
 
 FilterXObject *
-filterx_simple_function_has_sdata(FilterXExpr *s, GPtrArray *args)
+filterx_simple_function_has_sdata(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (args && args->len != 0)
+  if (args && args_len != 0)
     {
       filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
       return NULL;
