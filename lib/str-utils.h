@@ -172,4 +172,20 @@ ch_isascii(gchar c)
   return c >= 0 && c <= 127;
 }
 
+static inline gchar
+ch_toupper(gchar c)
+{
+  if (c >= 'a' && c <= 'z')
+    return 'A' + (c - 'a');
+  return c;
+}
+
+static inline gchar
+ch_tolower(gchar c)
+{
+  if (c >= 'A' && c <= 'Z')
+    return 'a' + (c - 'A');
+  return c;
+}
+
 #endif
