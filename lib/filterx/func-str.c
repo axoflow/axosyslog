@@ -74,7 +74,7 @@ _format_str_obj(FilterXObject *obj)
   gsize str_len;
   if(!filterx_object_extract_string_ref(obj, &obj_str, &str_len))
     return NULL;
-  g_string_assign(str, obj_str);
+  g_string_assign_len(str, obj_str, str_len);
 
   return str;
 }
