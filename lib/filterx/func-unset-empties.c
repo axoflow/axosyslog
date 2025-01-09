@@ -511,7 +511,14 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
 
-  reset_flags(&self->flags, ALL_FLAG_SET(FilterXFunctionUnsetEmptiesFlags));
+  /* everything is enabled except ignorecase */
+  reset_flags(&self->flags,
+              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE) |
+              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL) |
+              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_STRING) |
+              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_LIST) |
+              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_DICT)
+             );
 
   if (!_extract_args(self, args, error) ||
       !filterx_function_args_check(args, error))
