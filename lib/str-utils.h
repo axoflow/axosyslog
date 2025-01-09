@@ -154,4 +154,22 @@ gchar **strsplit(const gchar *str, char delim, gint maxtokens)
   return (gchar **) g_ptr_array_free(array, FALSE);
 }
 
+static inline gboolean
+ch_isdigit(gchar c)
+{
+  return c >= '0' && c <= '9';
+}
+
+static inline gboolean
+ch_isalpha(gchar c)
+{
+  return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+static inline gboolean
+ch_isascii(gchar c)
+{
+  return c >= 0 && c <= 127;
+}
+
 #endif
