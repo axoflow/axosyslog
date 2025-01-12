@@ -301,6 +301,8 @@ cfg_init(GlobalConfig *cfg)
     return FALSE;
   if (!cfg_tree_compile(&cfg->tree))
     return FALSE;
+  if (!cfg_tree_optimize(&cfg->tree))
+    return FALSE;
   app_config_pre_pre_init();
   if (!cfg_tree_pre_config_init(&cfg->tree))
     return FALSE;
