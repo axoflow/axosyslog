@@ -654,6 +654,7 @@ log_expr_node_lookup_flag(const gchar *flag)
   return 0;
 }
 
+/* stores the ref to @pipe */
 static LogPipe *
 cfg_tree_assoc_pipe(CfgTree *self, LogExprNode *node, LogPipe *pipe, const gchar *info)
 {
@@ -1620,6 +1621,40 @@ cfg_tree_stop(CfgTree *self)
 }
 
 gboolean
+cfg_tree_optimize(CfgTree *self)
+{
+  gint i;
+
+  g_assert(self->compiled);
+
+  for (i = 0; i < self->initialized_pipes->len; i++)
+    {
+      LogPipe **ppipe = (LogPipe **) &g_ptr_array_index(self->initialized_pipes, i);
+      LogPipe *pipe = *ppipe;
+
+      log_pipe_optimize(&pipe);
+      if (pipe != *ppipe)
+        {
+//          log_pipe_unref(*ppipe);
+          *ppipe = log_pipe_ref(pipe);
+        }
+    }
+
+  for (i = 0; i < self->initialized_pipes->len;)
+    {
+      if (g_ptr_array_index(self->initialized_pipes, i) == NULL)
+        {
+          g_ptr_array_remove_index(self->initialized_pipes, i);
+        }
+      else
+        i++;
+    }
+  
+
+  return TRUE;
+}
+
+gboolean
 cfg_tree_pre_config_init(CfgTree *self)
 {
   gint i;
@@ -1667,7 +1702,7 @@ void
 cfg_tree_init_instance(CfgTree *self, GlobalConfig *cfg)
 {
   memset(self, 0, sizeof(*self));
-  self->initialized_pipes = g_ptr_array_new();
+  self->initialized_pipes = g_ptr_array_new_with_free_func((GDestroyNotify) log_pipe_unref);
   self->objects = g_hash_table_new_full(cfg_tree_objects_hash, cfg_tree_objects_equal, NULL,
                                         (GDestroyNotify) log_expr_node_unref);
   self->templates = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, (GDestroyNotify) log_template_unref);
@@ -1679,7 +1714,6 @@ cfg_tree_init_instance(CfgTree *self, GlobalConfig *cfg)
 void
 cfg_tree_free_instance(CfgTree *self)
 {
-  g_ptr_array_foreach(self->initialized_pipes, (GFunc) log_pipe_unref, NULL);
   g_ptr_array_free(self->initialized_pipes, TRUE);
 
   g_ptr_array_foreach(self->rules, (GFunc) log_expr_node_unref, NULL);
