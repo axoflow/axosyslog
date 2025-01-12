@@ -173,7 +173,7 @@ _extract_source_from_file_location(GString *result, const gchar *filename, const
   FILE *f;
   gint lineno = 0;
   gint buflen = 65520;
-  gchar *line = g_malloc(buflen);
+  gboolean res = FALSE;
 
   if (yylloc->first_column < 1 || yylloc->last_column < 1 ||
       yylloc->first_column > buflen-1 || yylloc->last_column > buflen-1)
@@ -183,6 +183,7 @@ _extract_source_from_file_location(GString *result, const gchar *filename, const
   if (!f)
     return FALSE;
 
+  gchar *line = g_malloc(buflen);
   while (fgets(line, buflen, f))
     {
       lineno++;
@@ -216,13 +217,13 @@ _extract_source_from_file_location(GString *result, const gchar *filename, const
         }
     }
   fclose(f);
+  res = TRUE;
 
   /* NOTE: do we have the appropriate number of lines? */
   if (lineno <= yylloc->first_line)
-    return FALSE;
-
+    res = FALSE;
   g_free(line);
-  return TRUE;
+  return res;
 }
 
 static gboolean
