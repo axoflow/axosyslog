@@ -299,10 +299,10 @@ struct _LogPipe
   gint32 flags;
 
   void (*queue)(LogPipe *self, LogMessage *msg, const LogPathOptions *path_options);
+  LogPipe *pipe_next;
 
   GlobalConfig *cfg;
   LogExprNode *expr_node;
-  LogPipe *pipe_next;
   StatsCounterItem *discarded_messages;
   const gchar *persist_name;
   gchar *plugin_name;
