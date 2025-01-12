@@ -248,10 +248,18 @@ _extract_source_from_buffer_location(GString *result, CfgIncludeLevel *level, co
 
       if (lineno == yylloc->first_line)
         {
+          gint token_start = MIN(linelen, yylloc->first_column - 1);
+
           if (yylloc->first_line == yylloc->last_line)
-            g_string_append_len(result, &line[MIN(linelen, yylloc->first_column-1)], yylloc->last_column - yylloc->first_column);
+            {
+              /* both last_column & first_column are 1 based, they cancel that out */
+              gint token_len = yylloc->last_column - yylloc->first_column;
+              if (token_start + token_len > linelen)
+                token_len = linelen - token_start;
+              g_string_append_len(result, &line[token_start], token_len);
+            }
           else
-            g_string_append(result, &line[MIN(linelen, yylloc->first_column-1)]);
+            g_string_append(result, &line[token_start]);
         }
       else if (lineno < yylloc->last_line)
         {
@@ -260,8 +268,12 @@ _extract_source_from_buffer_location(GString *result, CfgIncludeLevel *level, co
         }
       else if (lineno == yylloc->last_line)
         {
+          /* last_column is 1 based */
+          gint token_len = yylloc->last_column - 1;
+          if (token_len > linelen)
+            token_len = linelen;
           g_string_append_c(result, ' ');
-          g_string_append_len(result, line, yylloc->last_column);
+          g_string_append_len(result, line, token_len);
         }
     }
 
