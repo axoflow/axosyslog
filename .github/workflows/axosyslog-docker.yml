@@ -138,6 +138,8 @@ jobs:
   merge-and-push:
     runs-on: ubuntu-latest
     needs: [prepare, image-build]
+    outputs:
+      tags: ${{ steps.docker-metadata-tags.outputs.tags }}
     steps:
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -149,13 +151,53 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: "Query previous container image version"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const versionPattern = /^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$/;
+            const package_name = "axosyslog", org = "axoflow";
+            const allPackageVersions = await github.paginate(
+                github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg,
+                { package_type: "container", package_name, org }
+            );
+
+            const latest = allPackageVersions.find(p =>
+                p.metadata.container?.tags.includes("latest")
+            );
+            const { data: { metadata: { container: { tags } } } } =
+                await github.rest.packages.getPackageVersionForOrganization({
+                    package_type: "container", package_name, org, package_version_id: latest.id
+                });
+
+            previousDockerTag = tags.find(t => versionPattern.test(t));
+            core.exportVariable('previous_docker_tag', previousDockerTag);
+
       - name: Extract metadata (AxoSyslog version) for Docker
         id: docker-metadata-tags
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ needs.prepare.outputs.image-name }}
-          tags: type=match,pattern=axosyslog-([0-9].*),group=1
-          sep-tags: ','
+        run: |
+          previous_docker_tag_short=$(echo $previous_docker_tag | cut -d"-" -f1)
+          previous_docker_tag_rebuild_num=$(echo $previous_docker_tag | cut -d"-" -f2)
+          current_git_tag=$(echo ${{ github.ref }} | cut -d"-" -f2)
+          if [[ $current_git_tag =~ ^[0-9]+.[0-9]+.[0-9]+$ ]]; then
+            function version { echo "$@" | awk -F. '{ printf("%d%03d%03d\n", $1,$2,$3); }'; }
+            if [ $(version $current_git_tag) -gt $(version $previous_docker_tag_short) ]; then
+                next_docker_tag_with_patch=$current_git_tag-1
+                next_docker_tag=$current_git_tag
+                echo "New AxoSyslog release detected (new version: $next_docker_tag_with_patch, previous docker version: $previous_docker_tag)"
+            elif [ $(version $current_git_tag) -eq $(version $previous_docker_tag_short) ]; then
+                next_docker_tag_patch=$((previous_docker_tag_rebuild_num+1))
+                next_docker_tag_with_patch=$previous_docker_tag_short-$next_docker_tag_patch
+                next_docker_tag=$previous_docker_tag_short
+                echo "AxoSyslog image rebuild detected (new version: $next_docker_tag_with_patch, previous docker version: $previous_docker_tag)"
+            else
+                echo "Given git tag version is less than previous docker tag version: $current_git_tag < $previous_docker_tag_short"
+                echo "Rebuilding an older AxoSyslog version is not allowed. Please provide a valid git tag version."
+                exit 1
+            fi
+            TAGS="ghcr.io/axoflow/axosyslog:$next_docker_tag,ghcr.io/axoflow/axosyslog:$next_docker_tag_with_patch,ghcr.io/axoflow/axosyslog:latest"
+            echo "tags=$TAGS" >> $GITHUB_OUTPUT
+          fi
 
       - name: Compose Docker image tags
         id: tags
