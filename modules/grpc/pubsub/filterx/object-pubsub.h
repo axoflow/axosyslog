@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2024 Axoflow
- * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
+ * Copyright (c) 2023 shifter
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -21,38 +21,39 @@
  *
  */
 
-#include "cfg-parser.h"
-#include "plugin.h"
-#include "plugin-types.h"
-#include "protos/apphook.h"
-#include "filterx/object-pubsub.h"
+#ifndef OBJECT_PUBSUB_H
+#define OBJECT_PUBSUB_H
 
-extern CfgParser pubsub_parser;
+#include "syslog-ng.h"
 
-static Plugin pubsub_plugins[] =
+#include "compat/cpp-start.h"
+#include "filterx/filterx-object.h"
+#include "filterx/expr-function.h"
+
+FILTERX_SIMPLE_FUNCTION_DECLARE(pubsub_message);
+
+FilterXObject *filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+static inline FilterXObject *
+filterx_pubsub_message_new(void)
 {
-  {
-    .type = LL_CONTEXT_DESTINATION,
-    .name = "google_pubsub_grpc",
-    .parser = &pubsub_parser,
-  },
-  FILTERX_SIMPLE_FUNCTION_PLUGIN(pubsub_message),
-};
-
-gboolean
-google_pubsub_grpc_module_init(PluginContext *context, CfgArgs *args)
-{
-  plugin_register(context, pubsub_plugins, G_N_ELEMENTS(pubsub_plugins));
-  grpc_register_global_initializers();
-  return TRUE;
+  return filterx_pubsub_message_new_from_args(NULL, NULL, 0);
 }
 
-const ModuleInfo module_info =
+FILTERX_DECLARE_TYPE(pubsub_message);
+
+static inline void
+pubsub_filterx_objects_global_init(void)
 {
-  .canonical_name = "google_pubsub_grpc",
-  .version = SYSLOG_NG_VERSION,
-  .description = "Google Pub/Sub gRPC plugins",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = pubsub_plugins,
-  .plugins_len = G_N_ELEMENTS(pubsub_plugins),
-};
+  static gboolean initialized = FALSE;
+
+  if (!initialized)
+    {
+      filterx_type_init(&FILTERX_TYPE_NAME(pubsub_message));
+      initialized = TRUE;
+    }
+}
+
+#include "compat/cpp-end.h"
+
+#endif
