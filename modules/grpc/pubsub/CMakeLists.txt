@@ -35,3 +35,6 @@ add_module(
 )
 
 set_target_properties(pubsub PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_INSTALL_PREFIX}/lib/syslog-ng")
+
+add_subdirectory(filterx)
+target_link_libraries(pubsub PRIVATE pubsub_filterx_message_cpp)
