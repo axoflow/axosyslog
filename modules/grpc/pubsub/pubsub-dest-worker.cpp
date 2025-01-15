@@ -99,30 +99,70 @@ DestWorker::insert(LogMessage *msg)
 {
   DestDriver *owner_ = this->get_owner();
 
-  ScratchBuffersMarker m;
-  GString *buf = scratch_buffers_alloc_and_mark(&m);
-  Slice buf_slice;
   size_t message_bytes = 0;
 
   ::google::pubsub::v1::PubsubMessage *message = this->request.add_messages();
 
-  buf_slice = this->format_template(owner_->data, msg, buf, NULL, this->super->super.seq_num);
-  message->set_data(buf_slice.str, buf_slice.len);
-  message_bytes += buf_slice.len;
-
-  auto attributes = message->mutable_attributes();
-  for (const auto &attribute : owner_->attributes)
+  if (owner_->protovar)
     {
-      buf_slice = this->format_template(attribute.value, msg, buf, NULL, this->super->super.seq_num);
-      attributes->insert({attribute.name, buf_slice.str});
-      message_bytes += buf_slice.len;
+      if (log_template_is_trivial(owner_->protovar))
+        {
+
+          LogMessageValueType lmvt;
+          gssize len;
+          const gchar *proto = log_template_get_trivial_value_and_type(owner_->protovar, msg, &len, &lmvt);
+          if (lmvt != LM_VT_PROTOBUF)
+            {
+              msg_error("Error loggmessage type is not protobuf",
+                        evt_tag_int("expected_type", LM_VT_PROTOBUF),
+                        evt_tag_int("current_type", lmvt));
+              return LTR_ERROR;
+            }
+
+          if (!message->ParsePartialFromArray(proto, len))
+            {
+              msg_error("Unable to deserialize protobuf message",
+                        evt_tag_int("proto_size", len));
+              return LTR_ERROR;
+            }
+
+          message_bytes += message->data().length();
+
+          for (const auto &pair : message->attributes())
+            {
+              const std::string &key = pair.first;
+              const std::string &value = pair.second;
+
+              message_bytes += key.length() + value.length();
+
+              std::cout << "Key: \"" << key << "\", Length: " << key.length() << "\n";
+              std::cout << "Value: \"" << value << "\", Length: " << value.length() << "\n";
+            }
+        }
     }
+  else
+    {
+      ScratchBuffersMarker m;
+      GString *buf = scratch_buffers_alloc_and_mark(&m);
+      Slice buf_slice;
 
-  scratch_buffers_reclaim_marked(m);
+      buf_slice = this->format_template(owner_->data, msg, buf, NULL, this->super->super.seq_num);
+      message->set_data(buf_slice.str, buf_slice.len);
+      message_bytes += buf_slice.len;
 
+      auto attributes = message->mutable_attributes();
+      for (const auto &attribute : owner_->attributes)
+        {
+          buf_slice = this->format_template(attribute.value, msg, buf, NULL, this->super->super.seq_num);
+          attributes->insert({attribute.name, buf_slice.str});
+          message_bytes += buf_slice.len;
+        }
+
+      scratch_buffers_reclaim_marked(m);
+
+    }
   this->current_batch_bytes += message_bytes;
   log_threaded_dest_driver_insert_msg_length_stats(this->super->super.owner, message_bytes);
-
   this->batch_size++;
 
   if (!this->client_context.get())
