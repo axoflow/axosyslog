@@ -2627,3 +2627,20 @@ def test_keys(config, syslog_ng):
         r""""direct_access":"foo"}""" + "\n"
     )
     assert file_true.read_log() == exp
+
+
+def test_pubsub_message(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    $MSG = json();
+    $MSG.msg = pubsub_message("my pubsub message", {"foo":"bar"});
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"msg":{"data":"my pubsub message","attributes":{"foo":"bar"}}}""" + "\n"
+    )
+    assert file_true.read_log() == exp
