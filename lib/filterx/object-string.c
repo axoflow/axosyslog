@@ -291,7 +291,7 @@ filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len)
       return NULL;
     }
 
-  return filterx_string_new(buf->str, -1);
+  return filterx_string_new(buf->str, buf->len);
 }
 
 FilterXObject *
