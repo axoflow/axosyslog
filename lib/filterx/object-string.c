@@ -136,6 +136,15 @@ _string_add(FilterXObject *s, FilterXObject *object)
   return filterx_string_new(buffer->str, buffer->len);
 }
 
+/* we support clone of stack allocated strings */
+static FilterXObject *
+_string_clone(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  return filterx_string_new(self->str, self->str_len);
+}
+
 static inline FilterXString *
 _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate)
 {
@@ -348,6 +357,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
                     .repr = _string_repr,
                     .add = _string_add,
+                    .clone = _string_clone,
                    );
 
 FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
