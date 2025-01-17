@@ -32,8 +32,9 @@
 struct _FilterXString
 {
   FilterXObject super;
+  const gchar *str;
   gsize str_len;
-  gchar str[];
+  gchar storage[];
 };
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
@@ -154,10 +155,11 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
 
   self->str_len = str_len;
   if (translate)
-    translate(self->str, str, str_len);
+    translate(self->storage, str, str_len);
   else
-    memcpy(self->str, str, str_len);
-  self->str[str_len] = 0;
+    memcpy(self->storage, str, str_len);
+  self->storage[str_len] = 0;
+  self->str = self->storage;
 
   return self;
 }
