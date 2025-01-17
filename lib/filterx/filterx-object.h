@@ -74,7 +74,7 @@ void _filterx_type_init_methods(FilterXType *type);
       __VA_ARGS__       \
     }
 
-#define FILTERX_OBJECT_MAGIC_BIAS G_MAXINT32
+#define FILTERX_OBJECT_REFCOUNT_FROZEN (G_MAXINT32)
 
 
 FILTERX_DECLARE_TYPE(object);
@@ -110,7 +110,7 @@ void filterx_object_free_method(FilterXObject *self);
 static inline gboolean
 filterx_object_is_frozen(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_MAGIC_BIAS;
+  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_REFCOUNT_FROZEN;
 }
 
 static inline FilterXObject *
