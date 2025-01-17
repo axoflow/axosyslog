@@ -26,6 +26,14 @@
 #include "filterx-object.h"
 
 typedef struct _FilterXString FilterXString;
+struct _FilterXString
+{
+  FilterXObject super;
+  const gchar *str;
+  gsize str_len;
+  gchar storage[];
+};
+
 typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize source_len);
 
 FILTERX_DECLARE_TYPE(string);

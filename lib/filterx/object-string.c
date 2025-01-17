@@ -29,13 +29,6 @@
 #include "str-format.h"
 #include "str-utils.h"
 
-struct _FilterXString
-{
-  FilterXObject super;
-  const gchar *str;
-  gsize str_len;
-  gchar storage[];
-};
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
 const gchar *
