@@ -1,0 +1,252 @@
+/*
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2023 shifter
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published
+ * by the Free Software Foundation, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+#include "object-pubsub-message.hpp"
+
+#include "compat/cpp-start.h"
+
+#include "filterx/object-extractor.h"
+#include "filterx/object-string.h"
+#include "filterx/object-datetime.h"
+#include "filterx/object-primitive.h"
+#include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-ref.h"
+#include "scratch-buffers.h"
+#include "generic-number.h"
+
+#include "compat/cpp-end.h"
+
+#include <unistd.h>
+#include <cstdio>
+#include <memory>
+#include <stdexcept>
+#include <vector>
+
+using namespace syslogng::grpc::pubsub::filterx;
+
+/* C++ Implementations */
+
+Message::Message(FilterXPubSubMessage *super_) : super(super_)
+{
+}
+
+Message::Message(FilterXPubSubMessage *super_, const std::string data,
+                 const std::map<std::string, std::string> &attributes) : super(super_)
+{
+  message.set_data(data);
+  for (const auto &pair : attributes)
+    {
+      const auto &key = pair.first;
+      const auto &value = pair.second;
+
+      (*message.mutable_attributes())[key] = value;
+    }
+}
+
+Message::Message(FilterXPubSubMessage *super_, FilterXObject *protobuf_object) : super(super_)
+{
+  const gchar *value;
+  gsize length;
+  if (!filterx_object_extract_protobuf_ref(protobuf_object, &value, &length))
+    throw std::runtime_error("Argument is not a protobuf object");
+
+  if (!message.ParsePartialFromArray(value, length))
+    throw std::runtime_error("Failed to parse from protobuf object");
+}
+
+Message::Message(const Message &o, FilterXPubSubMessage *super_) : super(super_),
+  message(o.message)
+{
+}
+
+std::string
+Message::marshal(void)
+{
+  std::string serializedString = this->message.SerializePartialAsString();
+  return serializedString;
+}
+
+const google::pubsub::v1::PubsubMessage &
+Message::get_value() const
+{
+  return this->message;
+}
+
+// /* C Wrappers */
+
+static void
+_free(FilterXObject *s)
+{
+  FilterXPubSubMessage *self = (FilterXPubSubMessage *) s;
+
+  delete self->cpp;
+  self->cpp = NULL;
+
+  filterx_object_free_method(s);
+}
+
+static gboolean
+_truthy(FilterXObject *s)
+{
+  return TRUE;
+}
+
+static gboolean
+_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
+{
+  FilterXPubSubMessage *self = (FilterXPubSubMessage *) s;
+
+  std::string serialized = self->cpp->marshal();
+
+  g_string_truncate(repr, 0);
+  g_string_append_len(repr, serialized.c_str(), serialized.length());
+  *t = LM_VT_PROTOBUF;
+  return TRUE;
+}
+
+static gboolean
+_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+{
+  FilterXPubSubMessage *self = (FilterXPubSubMessage *) s;
+
+  std::string serialized;
+  google::protobuf::util::MessageToJsonString(self->cpp->get_value(), &serialized);
+
+  *assoc_object =  filterx_json_new_from_repr(serialized.c_str(), serialized.length());
+  // *object = filterx_json_object_get_value(filterx_object_ref(*assoc_object));
+  *object = json_object_new_object();
+  json_object_object_foreach(filterx_json_object_get_value(*assoc_object), key, val)
+  {
+    json_object_object_add(*object, key, json_object_get(val));
+  }
+  return TRUE;
+}
+
+static void
+_init_instance(FilterXPubSubMessage *self)
+{
+  filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(pubsub_message));
+}
+
+FilterXObject *
+_filterx_pubsub_message_clone(FilterXObject *s)
+{
+  FilterXPubSubMessage *self = (FilterXPubSubMessage *) s;
+
+  FilterXPubSubMessage *clone = g_new0(FilterXPubSubMessage, 1);
+  _init_instance(clone);
+
+  try
+    {
+      clone->cpp = new Message(*self->cpp, clone);
+    }
+  catch (const std::runtime_error &)
+    {
+      g_assert_not_reached();
+    }
+
+  return &clone->super;
+}
+
+
+gboolean
+_build_map(FilterXObject *key, FilterXObject *val, gpointer user_data)
+{
+  auto *attr = static_cast<std::map<std::string, std::string>*>(user_data);
+
+  GString *key_str = scratch_buffers_alloc();
+  GString *val_str = scratch_buffers_alloc();
+
+  if (!filterx_object_repr(key, key_str))
+    return FALSE;
+  if (!filterx_object_repr(val, val_str))
+    return FALSE;
+
+  std::string key_cpp = key_str->str;
+  std::string val_cpp = val_str->str;
+
+  (*attr)[key_cpp] = val_cpp;
+
+  return TRUE;
+}
+
+FilterXObject *
+filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  FilterXPubSubMessage *self = g_new0(FilterXPubSubMessage, 1);
+  _init_instance(self);
+
+  try
+    {
+      if (!args || args_len == 0)
+        {
+          self->cpp = new Message(self);
+        }
+      else if (args_len == 2)
+        {
+          FilterXObject *data = args[0];
+          FilterXObject *data_arg = filterx_ref_unwrap_ro(data);
+          FilterXObject *attributes = args[1];
+          FilterXObject *attributes_arg = filterx_ref_unwrap_ro(attributes);
+          if (filterx_object_is_type(data_arg, &FILTERX_TYPE_NAME(string)) &&
+              filterx_object_is_type(attributes_arg, &FILTERX_TYPE_NAME(dict))
+             )
+            {
+              std::string data_cpp(filterx_string_get_value_ref(data_arg, NULL));
+              std::map<std::string, std::string> attributes_cpp;
+              if (!filterx_dict_iter(attributes_arg, _build_map, static_cast<gpointer>(&attributes_cpp)))
+                {
+                  throw std::runtime_error("dictionary argument iterator resulted with some error");
+                }
+              self->cpp = new Message(self, data_cpp, attributes_cpp);
+            }
+          else
+            {
+              throw std::runtime_error("Invalid type of arguments");
+            }
+        }
+      else
+        {
+          throw std::runtime_error("Invalid number of arguments");
+        }
+    }
+  catch (const std::runtime_error &e)
+    {
+      msg_error("FilterX: Failed to create Pubsup Message object", evt_tag_str("error", e.what()));
+      filterx_object_unref(&self->super);
+      return NULL;
+    }
+
+  return &self->super;
+}
+
+FILTERX_SIMPLE_FUNCTION(pubsub_message, filterx_pubsub_message_new_from_args);
+
+FILTERX_DEFINE_TYPE(pubsub_message, FILTERX_TYPE_NAME(object),
+                    .is_mutable = TRUE,
+                    .marshal = _marshal,
+                    .clone = _filterx_pubsub_message_clone,
+                    .map_to_json = _map_to_json,
+                    .truthy = _truthy,
+                    .free_fn = _free,
+                   );

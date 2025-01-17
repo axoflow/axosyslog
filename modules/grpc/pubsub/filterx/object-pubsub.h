@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2024 Axoflow
- * Copyright (c) 2024 Attila Szakacs <attila.szakacs@axoflow.com>
+ * Copyright (c) 2023 shifter
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -21,37 +21,39 @@
  *
  */
 
-#include "driver.h"
-#include "cfg-parser.h"
-#include "pubsub-grammar.h"
-#include "grpc-parser.h"
+#ifndef OBJECT_PUBSUB_H
+#define OBJECT_PUBSUB_H
 
-extern int pubsub_debug;
+#include "syslog-ng.h"
 
-int pubsub_parse(CfgLexer *lexer, LogDriver **instance, gpointer arg);
+#include "compat/cpp-start.h"
+#include "filterx/filterx-object.h"
+#include "filterx/expr-function.h"
 
-static CfgLexerKeyword pubsub_keywords[] =
+FILTERX_SIMPLE_FUNCTION_DECLARE(pubsub_message);
+
+FilterXObject *filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+static inline FilterXObject *
+filterx_pubsub_message_new(void)
 {
-  GRPC_KEYWORDS,
-  { "google_pubsub_grpc", KW_GOOGLE_PUBSUB_GRPC },
-  { "service_endpoint", KW_SERVICE_ENDPOINT },
-  { "project", KW_PROJECT },
-  { "topic", KW_TOPIC },
-  { "data", KW_DATA },
-  { "attributes", KW_ATTRIBUTES },
-  { "proto_var", KW_PROTOVAR },
-  { NULL }
-};
+  return filterx_pubsub_message_new_from_args(NULL, NULL, 0);
+}
 
-CfgParser pubsub_parser =
+FILTERX_DECLARE_TYPE(pubsub_message);
+
+static inline void
+pubsub_filterx_objects_global_init(void)
 {
-#if SYSLOG_NG_ENABLE_DEBUG
-  .debug_flag = &pubsub_debug,
+  static gboolean initialized = FALSE;
+
+  if (!initialized)
+    {
+      filterx_type_init(&FILTERX_TYPE_NAME(pubsub_message));
+      initialized = TRUE;
+    }
+}
+
+#include "compat/cpp-end.h"
+
 #endif
-  .name = "google_pubsub_grpc",
-  .keywords = pubsub_keywords,
-  .parse = (gint (*)(CfgLexer *, gpointer *, gpointer)) pubsub_parse,
-  .cleanup = (void (*)(gpointer)) log_pipe_unref,
-};
-
-CFG_PARSER_IMPLEMENT_LEXER_BINDING(pubsub_, PUBSUB_, LogDriver **)

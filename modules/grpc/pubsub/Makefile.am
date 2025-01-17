@@ -42,7 +42,8 @@ modules_grpc_pubsub_libpubsub_la_LIBADD = \
   $(MODULE_DEPS_LIBS) \
   $(GRPC_COMMON_LIBS) \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
-  $(top_builddir)/modules/grpc/pubsub/libpubsub_cpp.la
+  $(top_builddir)/modules/grpc/pubsub/libpubsub_cpp.la \
+  $(top_builddir)/modules/grpc/pubsub/filterx/libfilterx.la
 
 nodist_EXTRA_modules_grpc_pubsub_libpubsub_la_SOURCES = force-cpp-linker-with-default-stdlib.cpp
 
@@ -51,7 +52,8 @@ EXTRA_modules_grpc_pubsub_libpubsub_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \
   $(GRPC_COMMON_LIBS) \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
-  $(top_builddir)/modules/grpc/pubsub/libpubsub_cpp.la
+  $(top_builddir)/modules/grpc/pubsub/libpubsub_cpp.la \
+  $(top_builddir)/modules/grpc/pubsub/filterx/libfilterx.la
 
 modules/grpc/pubsub modules/grpc/pubsub/ mod-pubsub: modules/grpc/pubsub/libpubsub.la
 
@@ -71,3 +73,5 @@ EXTRA_DIST += \
   modules/grpc/pubsub/CMakeLists.txt
 
 .PHONY: modules/grpc/pubsub/ mod-pubsub
+
+include modules/grpc/pubsub/filterx/Makefile.am
