@@ -377,4 +377,14 @@ filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
   self->modified_in_place = modified;
 }
 
+#define FILTERX_OBJECT_STACK_INIT(_type) \
+  { \
+    .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
+    .fx_ref_cnt = { .counter = 0 }, \
+    .modified_in_place = FALSE, \
+    .readonly = TRUE, \
+    .weak_referenced = FALSE, \
+    .type = &FILTERX_TYPE_NAME(_type) \
+  }
+
 #endif
