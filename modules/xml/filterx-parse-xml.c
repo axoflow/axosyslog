@@ -249,7 +249,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gbo
   FilterXObject *new_elem_obj = _create_object_for_new_elem(last_elem_context->current_obj, has_attrs, &new_elem_repr);
   xml_elem_context_init(new_elem_context, last_elem_context->current_obj, new_elem_obj);
 
-  FilterXObject *new_elem_key = filterx_string_new(new_elem_name, -1);
+  FILTERX_STRING_DECLARE_ON_STACK(new_elem_key, new_elem_name, -1);
   FilterXObject *existing_obj = NULL;
 
   if (!filterx_object_is_key_set(new_elem_context->parent_obj, new_elem_key))
@@ -314,8 +314,8 @@ _collect_attrs(const gchar *element_name, XmlElemContext *elem_context,
 
       const gchar *attr_value = attribute_values[i];
 
-      FilterXObject *key = filterx_string_new(attr_key->str, attr_key->len);
-      FilterXObject *value = filterx_string_new(attr_value, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(key, attr_key->str, attr_key->len);
+      FILTERX_STRING_DECLARE_ON_STACK(value, attr_value, -1);
 
       gboolean success = filterx_object_set_subscript(elem_context->current_obj, key, &value);
 
@@ -336,7 +336,7 @@ static gboolean
 _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GError **error)
 {
   const gchar *parent_elem_name = (const gchar *) g_markup_parse_context_get_element_stack(context)->next->data;
-  FilterXObject *key = filterx_string_new(parent_elem_name, -1);
+  FILTERX_STRING_DECLARE_ON_STACK(key, parent_elem_name, -1);
 
   FilterXObject *dict_obj = filterx_object_create_dict(elem_context->parent_obj);
   if (!dict_obj)
@@ -349,7 +349,7 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
 
   if (existing_value_len > 0)
     {
-      FilterXObject *existing_value_key = filterx_string_new("#text", 5);
+      FILTERX_STRING_DECLARE_ON_STACK(existing_value_key, "#text", 5);
       gboolean success = filterx_object_set_subscript(dict_obj, existing_value_key, &elem_context->current_obj);
       filterx_object_unref(existing_value_key);
 
@@ -447,12 +447,12 @@ static void
 _replace_string_text(XmlElemContext *elem_context, const gchar *element_name, const gchar *text, gsize text_len,
                      GError **error)
 {
-  FilterXObject *text_obj = filterx_string_new(text, text_len);
+  FILTERX_STRING_DECLARE_ON_STACK(text_obj, text, text_len);
 
   FilterXObject *parent_obj = filterx_ref_unwrap_rw(elem_context->parent_obj);
   if (filterx_object_is_type(parent_obj, &FILTERX_TYPE_NAME(dict)))
     {
-      FilterXObject *key = filterx_string_new(element_name, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(key, element_name, -1);
       gboolean result = filterx_object_set_subscript(parent_obj, key, &text_obj);
       filterx_object_unref(key);
 
@@ -482,10 +482,10 @@ fail:
   filterx_object_unref(text_obj);
 }
 
-static FilterXObject *
-_create_text_obj(FilterXObject *dict, FilterXObject *existing_text_key, const gchar *text, gsize text_len)
+static GString *
+_concatenate_text_value(FilterXObject *dict, FilterXObject *existing_text_key, const gchar *text, gsize text_len)
 {
-  FilterXObject *text_obj = NULL;
+  GString *buffer = NULL;
 
   FilterXObject *existing_obj = filterx_object_get_subscript(dict, existing_text_key);
   if (existing_obj)
@@ -499,32 +499,26 @@ _create_text_obj(FilterXObject *dict, FilterXObject *existing_text_key, const gc
         }
       else if (existing_value_len)
         {
-          ScratchBuffersMarker marker;
-          GString *buffer = scratch_buffers_alloc_and_mark(&marker);
+          buffer = scratch_buffers_alloc();
           g_string_append_len(buffer, existing_value, existing_value_len);
           g_string_append_len(buffer, text, text_len);
-          text_obj = filterx_string_new(buffer->str, buffer->len);
-          scratch_buffers_reclaim_marked(marker);
         }
       filterx_object_unref(existing_obj);
     }
 
-  if (!text_obj)
-    text_obj = filterx_string_new(text, text_len);
-
-  return text_obj;
+  return buffer;
 }
 
 static void
 _add_text_to_dict(XmlElemContext *elem_context, const gchar *text, gsize text_len, GError **error)
 {
-  FilterXObject *key = filterx_string_new("#text", 5);
-  FilterXObject *text_obj = _create_text_obj(elem_context->current_obj, key, text, text_len);
+  FILTERX_STRING_DECLARE_ON_STACK(key, "#text", 5);
+  GString *new_text = _concatenate_text_value(elem_context->current_obj, key, text, text_len);
+  FILTERX_STRING_DECLARE_ON_STACK(text_obj, new_text ? new_text->str : text, new_text ? new_text->len : text_len);
 
   if (!filterx_object_set_subscript(elem_context->current_obj, key, &text_obj))
     {
-      const gchar *new_text = filterx_string_get_value_ref(text_obj, NULL);
-      _set_error(error, "failed to add text to dict: \"#text\"=\"%s\"", new_text);
+      _set_error(error, "failed to add text to dict: \"#text\"=\"%s\"", new_text ? new_text->str : text);
       goto fail;
     }
 
