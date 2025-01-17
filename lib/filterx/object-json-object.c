@@ -200,7 +200,7 @@ static gboolean
 _iter_inner(FilterXJsonObject *self, const gchar *obj_key, struct json_object *jso,
             FilterXDictIterFunc func, gpointer user_data)
 {
-  FilterXObject *key = filterx_string_new(obj_key, -1);
+  FILTERX_STRING_DECLARE_ON_STACK(key, obj_key, strlen(obj_key));
   FilterXObject *value = filterx_json_convert_json_to_object_cached(&self->super.super, &self->root_container,
                          jso);
 
