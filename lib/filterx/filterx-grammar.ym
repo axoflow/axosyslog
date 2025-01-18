@@ -198,6 +198,7 @@ stmt
 						  $$ = $1;
 						}
 	| ';'					{ $$ = NULL; }
+	| conditional				{ $$ = _assign_location($1, lexer, &@1); }
 	;
 
 stmt_expr
@@ -208,8 +209,7 @@ stmt_expr
 complex_expr: __complex_expr			{ $$ = _assign_location($1, lexer, &@1); }
 
 __complex_expr
-	: conditional
-	| assignment
+	: assignment
 	| declaration
 	;
 
