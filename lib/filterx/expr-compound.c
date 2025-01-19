@@ -92,9 +92,11 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result, gsize start_index
     {
       filterx_object_unref(*result);
 
-      if (G_UNLIKELY(context->eval_control_modifier == FXC_DROP || context->eval_control_modifier == FXC_DONE))
+      if (G_UNLIKELY(context->eval_control_modifier != FXC_UNSET))
         {
           /* code flow modifier detected, short circuiting */
+          if (context->eval_control_modifier == FXC_BREAK)
+            context->eval_control_modifier = FXC_UNSET;
           *result = NULL;
           return TRUE;
         }
