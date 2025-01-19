@@ -47,6 +47,9 @@ static CfgLexerKeyword filterx_keywords[] =
   { "if",                 KW_IF },
   { "else",               KW_ELSE },
   { "elif",               KW_ELIF },
+  { "switch",             KW_SWITCH },
+  { "case",               KW_CASE },
+  { "default",            KW_DEFAULT },
 
   { "isset",              KW_ISSET },
   { "declare",            KW_DECLARE },
