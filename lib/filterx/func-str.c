@@ -483,7 +483,7 @@ _function_includes_process(const gchar *haystack, gsize haystack_len, const gcha
 {
   if (needle_len > haystack_len)
     return FALSE;
-  return g_strstr_len(haystack, haystack_len, needle) != NULL;
+  return strstr(haystack, needle) != NULL;
 }
 
 FilterXExpr *
