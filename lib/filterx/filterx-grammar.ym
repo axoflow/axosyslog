@@ -59,6 +59,7 @@
 #include "filterx/expr-plus-generator.h"
 #include "filterx/expr-drop.h"
 #include "filterx/expr-done.h"
+#include "filterx/expr-break.h"
 
 #include "template/templates.h"
 
@@ -116,6 +117,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %token KW_DECLARE
 %token KW_DROP
 %token KW_DONE
+%token KW_BREAK
 
 %type <ptr> block
 %type <ptr> stmts
@@ -410,6 +412,7 @@ __expr
 	| KW_ISSET '(' expr ')'		{ $$ = filterx_isset_new($3); }
 	| KW_DROP			{ $$ = filterx_expr_drop_msg(); }
 	| KW_DONE			{ $$ = filterx_expr_done(); }
+	| KW_BREAK			{ $$ = filterx_expr_break(); }
 	;
 
 expr_operator

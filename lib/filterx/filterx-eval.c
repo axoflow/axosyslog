@@ -167,7 +167,7 @@ filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previ
     context->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   context->previous_context = previous_context;
 
-  context->eval_control_modifier = FXC_NOTSET;
+  context->eval_control_modifier = FXC_UNSET;
   filterx_eval_set_context(context);
 }
 

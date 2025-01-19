@@ -298,3 +298,27 @@ def test_done(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true}\n'
+
+
+def test_break(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        msg="foo",
+        filterx_expr_1=r"""
+            if ($MSG =~ 'foo') {
+              declare var_wont_change = true;
+              break;
+              var_wont_change = false; # This will be skipped
+            };
+            declare new_variable = true;
+        """,
+        filterx_expr_2=r"""
+            $MSG = vars();
+            new_variable;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true,"new_variable":true}\n'
