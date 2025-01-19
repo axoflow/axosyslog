@@ -82,13 +82,13 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
 /* return value indicates if the list of expessions ran through.  *result
  * contains the value of the last expression (even if we bailed out) */
 static gboolean
-_eval_exprs(FilterXCompoundExpr *self, FilterXObject **result)
+_eval_exprs(FilterXCompoundExpr *self, FilterXObject **result, gsize start_index)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
   *result = NULL;
-  gint len = self->exprs->len;
-  for (gint i = 0; i < len; i++)
+  gsize len = self->exprs->len;
+  for (gsize i = start_index; i < len; i++)
     {
       filterx_object_unref(*result);
 
@@ -107,16 +107,15 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result)
 }
 
 static FilterXObject *
-_eval_compound(FilterXExpr *s)
+_eval_compound_start(FilterXCompoundExpr *self, gsize start_index)
 {
-  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
   FilterXObject *result = NULL;
 
-  if (!_eval_exprs(self, &result))
+  if (!_eval_exprs(self, &result, start_index))
     {
       if (result)
         {
-          filterx_eval_push_error("bailing out due to a falsy expr", s, result);
+          filterx_eval_push_error("bailing out due to a falsy expr", &self->super, result);
           filterx_object_unref(result);
           result = NULL;
         }
@@ -134,6 +133,22 @@ _eval_compound(FilterXExpr *s)
     }
 
   return result;
+}
+
+static FilterXObject *
+_eval_compound(FilterXExpr *s)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  return _eval_compound_start(self, 0);
+}
+
+FilterXObject *
+filterx_compound_expr_eval_ext(FilterXExpr *s, gsize start_index)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  return _eval_compound_start(self, start_index);
 }
 
 static FilterXExpr *
@@ -195,6 +210,14 @@ _free(FilterXExpr *s)
 }
 
 /* Takes reference of expr */
+
+gsize
+filterx_compound_expr_get_count(FilterXExpr *s)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+  return self->exprs->len;
+}
+
 void
 filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr)
 {
