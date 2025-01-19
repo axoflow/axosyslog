@@ -693,7 +693,7 @@ switch_case
 	;
 
 cases
-	: case cases				{ $$ = g_list_prepend($2, $1); }
+	: case cases				{ if ($1) $$ = g_list_prepend($2, $1); else $$ = $2; }
 	|					{ $$ = NULL; }
 	;
 
