@@ -92,19 +92,22 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result, gsize start_index
     {
       filterx_object_unref(*result);
 
+      FilterXExpr *expr = g_ptr_array_index(self->exprs, i);
+      if (!_eval_expr(expr, result))
+        return FALSE;
+
       if (G_UNLIKELY(context->eval_control_modifier != FXC_UNSET))
         {
           /* code flow modifier detected, short circuiting */
           if (context->eval_control_modifier == FXC_BREAK)
             context->eval_control_modifier = FXC_UNSET;
+
+          filterx_object_unref(*result);
           *result = NULL;
           return TRUE;
         }
-
-      FilterXExpr *expr = g_ptr_array_index(self->exprs, i);
-      if (!_eval_expr(expr, result))
-        return FALSE;
     }
+  /* we exit the loop with a ref to *result, which we return */
 
   return TRUE;
 }
