@@ -39,5 +39,7 @@
 
 FilterXExpr *filterx_comparison_new(FilterXExpr *lhs, FilterXExpr *rhs, gint operator);
 
+gboolean filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp);
+
 
 #endif
