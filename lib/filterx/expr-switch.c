@@ -24,6 +24,8 @@
 #include "expr-switch.h"
 #include "expr-compound.h"
 #include "expr-comparison.h"
+#include "expr-literal.h"
+#include "object-string.h"
 #include "object-primitive.h"
 
 typedef struct _FilterXSwitch FilterXSwitch;
@@ -77,7 +79,31 @@ struct _FilterXSwitch
   /* compound expr */
   FilterXExpr *body;
   gsize default_target;
+  GHashTable *literal_cache;
 };
+
+static gboolean
+_try_to_cache_literal(FilterXSwitch *self, FilterXSwitchCase *switch_case)
+{
+  if (!filterx_expr_is_literal(switch_case->super.operand))
+    return FALSE;
+
+  FilterXObject *case_value = filterx_expr_eval(switch_case->super.operand);
+  if (!case_value)
+    return FALSE;
+
+  gsize len;
+  const gchar *str = filterx_string_get_value_ref(case_value, &len);
+  if (!str)
+    {
+      filterx_object_unref(case_value);
+      return FALSE;
+    }
+
+  g_hash_table_insert(self->literal_cache, g_strdup(str), filterx_expr_ref(&switch_case->super.super));
+  filterx_object_unref(case_value);
+  return TRUE;
+}
 
 static void
 _build_switch_table(FilterXSwitch *self, GList *body)
@@ -94,7 +120,8 @@ _build_switch_table(FilterXSwitch *self, GList *body)
           if (!filterx_switch_case_is_default(switch_case))
             {
               filterx_switch_case_set_target(switch_case, filterx_compound_expr_get_count(self->body));
-              g_ptr_array_add(self->cases, expr);
+              if (!_try_to_cache_literal(self, switch_case))
+                g_ptr_array_add(self->cases, expr);
             }
           else
             {
@@ -118,22 +145,48 @@ _eval_body(FilterXSwitch *self, gssize target)
   return filterx_compound_expr_eval_ext(self->body, target);
 }
 
-static FilterXObject *
-_eval_switch(FilterXExpr *s)
+static FilterXSwitchCase *
+_find_matching_literal_case(FilterXSwitch *self, FilterXObject *selector)
 {
-  FilterXSwitch *self = (FilterXSwitch *) s;
-  FilterXObject *selector = filterx_expr_eval_typed(self->selector);
+  gsize len;
+  const gchar *str = filterx_string_get_value_ref(selector, &len);
+  if (!str)
+    return NULL;
 
-  gssize target = -1;
+  return g_hash_table_lookup(self->literal_cache, str);
+}
+
+static FilterXSwitchCase *
+_find_matching_case(FilterXSwitch *self, FilterXObject *selector)
+{
   for (gsize i = 0; i < self->cases->len; i++)
     {
       FilterXSwitchCase *switch_case = (FilterXSwitchCase *) g_ptr_array_index(self->cases, i);
 
       FilterXObject *value = _eval_switch_case(switch_case);
       if (filterx_compare_objects(selector, value, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
-        target = filterx_switch_case_get_target(switch_case);
+        return switch_case;
       filterx_object_unref(value);
     }
+  return NULL;
+}
+
+static FilterXObject *
+_eval_switch(FilterXExpr *s)
+{
+  FilterXSwitch *self = (FilterXSwitch *) s;
+  FilterXObject *selector = filterx_expr_eval_typed(self->selector);
+
+  FilterXSwitchCase *switch_case;
+
+  switch_case = _find_matching_literal_case(self, selector);
+  if (!switch_case)
+    switch_case = _find_matching_case(self, selector);
+
+  gssize target = -1;
+  if (switch_case)
+    target = filterx_switch_case_get_target(switch_case);
+
   if (target < 0)
     target = self->default_target;
 
@@ -227,6 +280,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->super.eval = _eval_switch;
   self->super.free_fn = _free;
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
+  self->literal_cache = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_expr_unref);
   self->selector = selector;
   _build_switch_table(self, body);
   return &self->super;
