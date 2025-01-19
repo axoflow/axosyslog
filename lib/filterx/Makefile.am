@@ -25,6 +25,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-regexp.h \
 	lib/filterx/expr-set-subscript.h \
 	lib/filterx/expr-setattr.h \
+	lib/filterx/expr-switch.h \
 	lib/filterx/expr-template.h \
 	lib/filterx/expr-unset.h \
 	lib/filterx/expr-variable.h \
@@ -94,6 +95,7 @@ filterx_sources = 				\
 	lib/filterx/expr-regexp.c \
 	lib/filterx/expr-set-subscript.c \
 	lib/filterx/expr-setattr.c \
+	lib/filterx/expr-switch.c \
 	lib/filterx/expr-template.c \
 	lib/filterx/expr-unset.c \
 	lib/filterx/expr-variable.c \

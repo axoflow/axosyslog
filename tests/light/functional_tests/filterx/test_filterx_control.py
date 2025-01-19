@@ -22,12 +22,6 @@
 # COPYING for details.
 #
 #############################################################################
-import json
-from datetime import datetime
-from datetime import timezone
-
-import pytest
-
 from src.syslog_ng_config.renderer import render_statement
 
 
@@ -322,3 +316,130 @@ def test_break(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true,"new_variable":true}\n'
+
+
+def test_switch_right_case_is_picked_from_the_middle(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "match1":
+                result = "does-not-match1";
+                break;
+              case "string":
+                result = "that's right";
+                break;
+
+              case "match2":
+                result = "does-not-match2";
+                break;
+              default:
+                result = "does-not-match-default";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "that's right\n"
+
+
+def test_switch_fallthrough(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "string":
+                result = "that's right";
+                # fallthrough
+              case "match2":
+                result = "fallthrough";
+                break;
+              default:
+                result = "does-not-match-default";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "fallthrough\n"
+
+
+def test_switch_fallthrough_twice(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "string":
+                result = "that's right";
+                # fallthrough
+              case "match2":
+                result = "fallthrough";
+                # fallthrough
+              default:
+                result = "fallthrough2";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "fallthrough2\n"
+
+
+def test_switch_default_case(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "match1":
+                result = "does not match1";
+                break;
+              case "match2":
+                result = "does not match2";
+                break;
+              default:
+                result = "default-case";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "default-case\n"
+
+
+def test_switch_variable_in_case(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        msg="string",
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case $MSG:
+                result = "that's right";
+                break;
+              default:
+                result = "default-case";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "that's right\n"

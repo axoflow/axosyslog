@@ -49,6 +49,7 @@
 #include "filterx/filterx-config.h"
 #include "filterx/expr-function.h"
 #include "filterx/expr-condition.h"
+#include "filterx/expr-switch.h"
 #include "filterx/expr-isset.h"
 #include "filterx/expr-unset.h"
 #include "filterx/expr-literal-generator.h"
@@ -118,6 +119,9 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %token KW_DROP
 %token KW_DONE
 %token KW_BREAK
+%token KW_SWITCH
+%token KW_CASE
+%token KW_DEFAULT
 
 %type <ptr> block
 %type <ptr> stmts
@@ -125,6 +129,9 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <node> stmt_expr
 %type <node> complex_expr
 %type <node> __complex_expr
+%type <node> switch_case
+%type <ptr> cases
+%type <ptr> case
 %type <node> assignment
 %type <node> plus_assignment
 %type <node> nullv_assignment
@@ -201,6 +208,7 @@ stmt
 						}
 	| ';'					{ $$ = NULL; }
 	| conditional				{ $$ = _assign_location($1, lexer, &@1); }
+	| switch_case				{ $$ = _assign_location($1, lexer, &@1); }
 	;
 
 stmt_expr
@@ -678,6 +686,21 @@ ternary
             $$ = filterx_conditional_new($1);
             filterx_conditional_set_false_branch($$, $4);
 	  }
+	;
+
+switch_case
+	: KW_SWITCH '(' expr ')' '{' cases '}'	{ $$ = filterx_switch_new($3, $6); }
+	;
+
+cases
+	: case cases				{ if ($1) $$ = g_list_prepend($2, $1); else $$ = $2; }
+	|					{ $$ = NULL; }
+	;
+
+case
+	: KW_CASE expr ':' 			{ $$ = filterx_switch_case_new($2); }
+	| KW_DEFAULT ':'			{ $$ = filterx_switch_case_new(NULL); }
+	| stmt					{ $$ = $1; }
 	;
 
 default
