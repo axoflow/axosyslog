@@ -197,13 +197,29 @@ _eval_based_on_compare_mode(FilterXExpr *expr, gint compare_mode)
   return typed_eval_needed ? filterx_expr_eval_typed(expr) : filterx_expr_eval(expr);
 }
 
+gboolean
+filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp)
+{
+  gint operator = cmp & FCMPX_OP_MASK;
+
+  if (cmp & FCMPX_TYPE_AWARE)
+    return _evaluate_type_aware(lhs, rhs, operator);
+  else if (cmp & FCMPX_STRING_BASED)
+    return _evaluate_as_string(lhs, rhs, operator);
+  else if (cmp & FCMPX_NUM_BASED)
+    return _evaluate_as_num(lhs, rhs, operator);
+  else if (cmp & FCMPX_TYPE_AND_VALUE_BASED)
+    return _evaluate_type_and_value_based(lhs, rhs, operator);
+  else
+    g_assert_not_reached();
+}
+
 static FilterXObject *
-_eval(FilterXExpr *s)
+_eval_comparison(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
 
   gint compare_mode = self->operator & FCMPX_MODE_MASK;
-  gint operator = self->operator & FCMPX_OP_MASK;
 
   FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
                               : _eval_based_on_compare_mode(self->super.lhs, compare_mode);
@@ -220,17 +236,8 @@ _eval(FilterXExpr *s)
 
   FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_object);
   FilterXObject *rhs = filterx_ref_unwrap_ro(rhs_object);
-  gboolean result = TRUE;
-  if (compare_mode & FCMPX_TYPE_AWARE)
-    result = _evaluate_type_aware(lhs, rhs, operator);
-  else if (compare_mode & FCMPX_STRING_BASED)
-    result = _evaluate_as_string(lhs, rhs, operator);
-  else if (compare_mode & FCMPX_NUM_BASED)
-    result = _evaluate_as_num(lhs, rhs, operator);
-  else if (compare_mode & FCMPX_TYPE_AND_VALUE_BASED)
-    result = _evaluate_type_and_value_based(lhs, rhs, operator);
-  else
-    g_assert_not_reached();
+
+  gboolean result = filterx_compare_objects(lhs, rhs, self->operator);
 
   filterx_object_unref(lhs_object);
   filterx_object_unref(rhs_object);
@@ -250,7 +257,7 @@ _optimize(FilterXExpr *s)
     self->literal_rhs = _eval_based_on_compare_mode(self->super.rhs, compare_mode);
 
   if (self->literal_lhs && self->literal_rhs)
-    return filterx_literal_new(_eval(&self->super.super));
+    return filterx_literal_new(_eval_comparison(&self->super.super));
 
   return NULL;
 }
@@ -273,7 +280,7 @@ filterx_comparison_new(FilterXExpr *lhs, FilterXExpr *rhs, gint operator)
 
   filterx_binary_op_init_instance(&self->super, "comparison", lhs, rhs);
   self->super.super.optimize = _optimize;
-  self->super.super.eval = _eval;
+  self->super.super.eval = _eval_comparison;
   self->super.super.free_fn = _filterx_comparison_free;
   self->operator = operator;
 

@@ -74,6 +74,9 @@
 /* sync filterx state to message in right before calling queue() */
 #define PIF_SYNC_FILTERX_TO_MSG      0x0200
 
+#define PIF_NOOP		0x0400
+#define PIF_OPTIMIZED		0x0800
+
 /* private flags range, to be used by other LogPipe instances for their own purposes */
 
 #define PIF_PRIVATE(x)       ((x) << 16)
@@ -299,10 +302,10 @@ struct _LogPipe
   gint32 flags;
 
   void (*queue)(LogPipe *self, LogMessage *msg, const LogPathOptions *path_options);
+  LogPipe *pipe_next;
 
   GlobalConfig *cfg;
   LogExprNode *expr_node;
-  LogPipe *pipe_next;
   StatsCounterItem *discarded_messages;
   const gchar *persist_name;
   gchar *plugin_name;
@@ -322,6 +325,7 @@ struct _LogPipe
 
   const gchar *(*generate_persist_name)(const LogPipe *self);
   GList *(*arcs)(LogPipe *self);
+  LogPipe *(*optimize)(LogPipe *self);
 
   /* clone this pipe when used in multiple locations in the processing
    * pipe-line. If it contains state, it should behave as if it was
@@ -349,8 +353,12 @@ extern gboolean (*pipe_single_step_hook)(LogPipe *pipe, LogMessage *msg, const L
 LogPipe *log_pipe_ref(LogPipe *self);
 gboolean log_pipe_unref(LogPipe *self);
 LogPipe *log_pipe_new(GlobalConfig *cfg);
+gboolean log_pipe_pre_config_init_method(LogPipe *self);
+gboolean log_pipe_post_config_init_method(LogPipe *self);
 void log_pipe_init_instance(LogPipe *self, GlobalConfig *cfg);
 void log_pipe_clone_method(LogPipe *dst, const LogPipe *src);
+void log_pipe_optimize(LogPipe **s);
+LogPipe *log_pipe_optimize_method(LogPipe *s);
 void log_pipe_forward_notify(LogPipe *self, gint notify_code, gpointer user_data);
 EVTTAG *log_pipe_location_tag(LogPipe *pipe);
 void log_pipe_attach_expr_node(LogPipe *self, LogExprNode *expr_node);

@@ -74,7 +74,9 @@ void _filterx_type_init_methods(FilterXType *type);
       __VA_ARGS__       \
     }
 
-#define FILTERX_OBJECT_MAGIC_BIAS G_MAXINT32
+#define FILTERX_OBJECT_REFCOUNT_FROZEN (G_MAXINT32)
+#define FILTERX_OBJECT_REFCOUNT_STACK  (G_MAXINT32-1)
+#define FILTERX_OBJECT_REFCOUNT_OFLOW_MARK (G_MAXINT32-2)
 
 
 FILTERX_DECLARE_TYPE(object);
@@ -110,7 +112,7 @@ void filterx_object_free_method(FilterXObject *self);
 static inline gboolean
 filterx_object_is_frozen(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_MAGIC_BIAS;
+  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_REFCOUNT_FROZEN;
 }
 
 static inline FilterXObject *
@@ -119,12 +121,25 @@ filterx_object_ref(FilterXObject *self)
   if (!self)
     return NULL;
 
-  if (filterx_object_is_frozen(self))
+  gsize r = g_atomic_counter_get(&self->ref_cnt);
+  if (r < FILTERX_OBJECT_REFCOUNT_OFLOW_MARK)
+    {
+      g_atomic_counter_inc(&self->ref_cnt);
+      return self;
+    }
+
+  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
     return self;
 
-  g_atomic_counter_inc(&self->ref_cnt);
-
-  return self;
+  if (r == FILTERX_OBJECT_REFCOUNT_STACK)
+    {
+      /* we can't use filterx_object_clone() directly, as that's an inline
+       * function declared further below.  Also, filterx_object_clone() does
+       * not clone inmutable objects.  We only support allocating inmutable
+       * objects on the stack */
+      return self->type->clone(self);
+    }
+  g_assert_not_reached();
 }
 
 static inline void
@@ -133,10 +148,18 @@ filterx_object_unref(FilterXObject *self)
   if (!self)
     return;
 
-  if (filterx_object_is_frozen(self))
+  gsize r = g_atomic_counter_get(&self->ref_cnt);
+  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
     return;
+  if (r == FILTERX_OBJECT_REFCOUNT_STACK)
+    {
+      /* we can call exactly one unref for a stack allocation */
+      g_atomic_counter_set(&self->ref_cnt, 0);
+      return;
+    }
+  if (r < 0)
+    g_assert_not_reached();
 
-  g_assert(g_atomic_counter_get(&self->ref_cnt) > 0);
   if (g_atomic_counter_dec_and_test(&self->ref_cnt))
     {
       self->type->free_fn(self);
@@ -353,5 +376,15 @@ filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
 
   self->modified_in_place = modified;
 }
+
+#define FILTERX_OBJECT_STACK_INIT(_type) \
+  { \
+    .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
+    .fx_ref_cnt = { .counter = 0 }, \
+    .modified_in_place = FALSE, \
+    .readonly = TRUE, \
+    .weak_referenced = FALSE, \
+    .type = &FILTERX_TYPE_NAME(_type) \
+  }
 
 #endif

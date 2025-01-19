@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,40 +21,27 @@
  * COPYING for details.
  *
  */
-#include "filterx/expr-literal.h"
 
-typedef struct _FilterXLiteral
-{
-  FilterXExpr super;
-  FilterXObject *object;
-} FilterXLiteral;
+
+#include "filterx/expr-break.h"
+#include "filterx/filterx-eval.h"
+#include "filterx/object-primitive.h"
 
 static FilterXObject *
-_eval_literal(FilterXExpr *s)
+_eval_break(FilterXExpr *s)
 {
-  FilterXLiteral *self = (FilterXLiteral *) s;
-  return filterx_object_ref(self->object);
+  FilterXEvalContext *context = filterx_eval_get_context();
+  context->eval_control_modifier = FXC_BREAK;
+
+  return filterx_boolean_new(TRUE);
 }
 
-static void
-_free(FilterXExpr *s)
-{
-  FilterXLiteral *self = (FilterXLiteral *) s;
-  filterx_object_unref(self->object);
-  filterx_expr_free_method(s);
-}
-
-/* NOTE: takes the object reference */
 FilterXExpr *
-filterx_literal_new(FilterXObject *object)
+filterx_expr_break(void)
 {
-  FilterXLiteral *self = g_new0(FilterXLiteral, 1);
+  FilterXExpr *self = g_new0(FilterXExpr, 1);
+  filterx_expr_init_instance(self, "break");
+  self->eval = _eval_break;
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(literal));
-  self->super.eval = _eval_literal;
-  self->super.free_fn = _free;
-  self->object = object;
-  return &self->super;
+  return self;
 }
-
-FILTERX_EXPR_DEFINE_TYPE(literal);

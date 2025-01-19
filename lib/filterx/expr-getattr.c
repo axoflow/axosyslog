@@ -34,7 +34,7 @@ typedef struct _FilterXGetAttr
 } FilterXGetAttr;
 
 static FilterXObject *
-_eval(FilterXExpr *s)
+_eval_getattr(FilterXExpr *s)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
 
@@ -136,8 +136,8 @@ filterx_getattr_new(FilterXExpr *operand, FilterXString *attr_name)
 {
   FilterXGetAttr *self = g_new0(FilterXGetAttr, 1);
 
-  filterx_expr_init_instance(&self->super, "getattr");
-  self->super.eval = _eval;
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr));
+  self->super.eval = _eval_getattr;
   self->super.unset = _unset;
   self->super.is_set = _isset;
   self->super.optimize = _optimize;
@@ -151,3 +151,5 @@ filterx_getattr_new(FilterXExpr *operand, FilterXString *attr_name)
   self->super.name = filterx_string_get_value_ref(self->attr, NULL);
   return &self->super;
 }
+
+FILTERX_EXPR_DEFINE_TYPE(getattr);

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024 Szilard Parrag <szilard.parrag@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,40 +21,12 @@
  * COPYING for details.
  *
  */
-#include "filterx/expr-literal.h"
 
-typedef struct _FilterXLiteral
-{
-  FilterXExpr super;
-  FilterXObject *object;
-} FilterXLiteral;
+#ifndef FILTERX_FUNC_BREAK_H_INCLUDED
+#define FILTERX_FUNC_BREAK_H_INCLUDED
 
-static FilterXObject *
-_eval_literal(FilterXExpr *s)
-{
-  FilterXLiteral *self = (FilterXLiteral *) s;
-  return filterx_object_ref(self->object);
-}
+#include "filterx/filterx-expr.h"
 
-static void
-_free(FilterXExpr *s)
-{
-  FilterXLiteral *self = (FilterXLiteral *) s;
-  filterx_object_unref(self->object);
-  filterx_expr_free_method(s);
-}
+FilterXExpr *filterx_expr_break(void);
 
-/* NOTE: takes the object reference */
-FilterXExpr *
-filterx_literal_new(FilterXObject *object)
-{
-  FilterXLiteral *self = g_new0(FilterXLiteral, 1);
-
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(literal));
-  self->super.eval = _eval_literal;
-  self->super.free_fn = _free;
-  self->object = object;
-  return &self->super;
-}
-
-FILTERX_EXPR_DEFINE_TYPE(literal);
+#endif

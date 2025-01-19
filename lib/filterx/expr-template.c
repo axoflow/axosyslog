@@ -35,7 +35,7 @@ typedef struct _FilterXTemplate
 } FilterXTemplate;
 
 static FilterXObject *
-_eval(FilterXExpr *s)
+_eval_template(FilterXExpr *s)
 {
   FilterXTemplate *self = (FilterXTemplate *) s;
   FilterXEvalContext *context = filterx_eval_get_context();
@@ -46,7 +46,7 @@ _eval(FilterXExpr *s)
   /* FIXME: we could go directly to filterx_string_new() here to avoid a round trip in FilterXMessageValue */
   /* FIXME/2: let's make this handle literal and trivial templates */
 
-  log_template_format_value_and_type_with_context(self->template, context->msgs, context->num_msg,
+  log_template_format_value_and_type_with_context(self->template, &context->msg, 1,
                                                   &context->template_eval_options, value, &t);
 
   /* NOTE: we borrow value->str here which is stored in a scratch buffer
@@ -72,7 +72,7 @@ filterx_template_new(LogTemplate *template)
   FilterXTemplate *self = g_new0(FilterXTemplate, 1);
 
   filterx_expr_init_instance(&self->super, "template");
-  self->super.eval = _eval;
+  self->super.eval = _eval_template;
   self->super.free_fn = _free;
   self->template = template;
   return &self->super;
