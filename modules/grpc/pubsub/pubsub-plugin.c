@@ -25,6 +25,7 @@
 #include "plugin.h"
 #include "plugin-types.h"
 #include "protos/apphook.h"
+#include "filterx/object-pubsub.h"
 
 extern CfgParser pubsub_parser;
 
@@ -35,11 +36,13 @@ static Plugin pubsub_plugins[] =
     .name = "google_pubsub_grpc",
     .parser = &pubsub_parser,
   },
+  FILTERX_SIMPLE_FUNCTION_PLUGIN(pubsub_message),
 };
 
 gboolean
 google_pubsub_grpc_module_init(PluginContext *context, CfgArgs *args)
 {
+  pubsub_filterx_objects_global_init();
   plugin_register(context, pubsub_plugins, G_N_ELEMENTS(pubsub_plugins));
   grpc_register_global_initializers();
   return TRUE;
