@@ -172,8 +172,9 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
   else
     col = filterx_list_get_subscript(cols, index);
 
-  FilterXObject *val = filterx_string_new(csv_scanner_get_current_value(scanner),
-                                          csv_scanner_get_current_value_len(scanner));
+  FILTERX_STRING_DECLARE_ON_STACK(val,
+                                  csv_scanner_get_current_value(scanner),
+                                  csv_scanner_get_current_value_len(scanner));
 
   gboolean ok = filterx_object_set_subscript(result, col, &val);
 
@@ -186,9 +187,9 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
 static inline gboolean
 _fill_array_element(CSVScanner *scanner, FilterXObject *result)
 {
-  const gchar *current_value = csv_scanner_get_current_value(scanner);
-  gint current_value_len = csv_scanner_get_current_value_len(scanner);
-  FilterXObject *val = filterx_string_new(current_value, current_value_len);
+  FILTERX_STRING_DECLARE_ON_STACK(val,
+                                  csv_scanner_get_current_value(scanner),
+                                  csv_scanner_get_current_value_len(scanner));
 
   gboolean ok = filterx_list_append(result, &val);
 
