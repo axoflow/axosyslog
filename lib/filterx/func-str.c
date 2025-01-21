@@ -66,76 +66,77 @@ typedef struct _FilterXExprAffix
   FilterXExprAffixProcessFunc process;
 } FilterXExprAffix;
 
-static GString *
-_format_str_obj(FilterXObject *obj)
+static gboolean
+_format_str_obj(FilterXObject *obj, const gchar **str, gsize *str_len)
 {
-  GString *str = scratch_buffers_alloc();
-
-  const gchar *obj_str;
-  gsize str_len;
-  if(!filterx_object_extract_string_ref(obj, &obj_str, &str_len))
-    return NULL;
-  g_string_assign_len(str, obj_str, str_len);
-
-  return str;
+  return filterx_object_extract_string_ref(obj, str, str_len);
 }
 
-static inline gboolean
-_do_casefold(GString *str)
+static inline void
+_do_casefold(const gchar **str, gsize *str_len)
 {
-  for (gsize i = 0; i < str->len; i++)
-    str->str[i] = ch_toupper(str->str[i]);
-  return TRUE;
+  GString *buf = scratch_buffers_alloc();
+
+  g_string_set_size(buf, *str_len);
+  for (gsize i = 0; i < (*str_len); i++)
+    buf->str[i] = ch_toupper((*str)[i]);
+  *str = buf->str;
 }
 
-static GString *
-_expr_format(FilterXExpr *expr, gboolean ignore_case)
+static gboolean
+_expr_format(FilterXExpr *expr, const gchar **str, gsize *str_len, gboolean ignore_case)
 {
-  FilterXObject *obj = filterx_expr_eval_typed(expr);
+  FilterXObject *obj = filterx_expr_eval(expr);
+  gboolean result = FALSE;
+
   if (!obj)
-    return NULL;
+    return FALSE;
 
-  GString *result = _format_str_obj(obj);
-  if (!result)
-    filterx_eval_push_error("failed to extract string value, repr() failed", expr, obj);
+  if (!_format_str_obj(obj, str, str_len))
+    {
+      filterx_eval_push_error("failed to extract string value, repr() failed", expr, obj);
+      goto exit;
+    }
+
+  if (ignore_case)
+    _do_casefold(str, str_len);
+
+  result = TRUE;
+exit:
   filterx_object_unref(obj);
-
-  if (ignore_case && !_do_casefold(result))
-    return NULL;
-
   return result;
 }
 
-static GString *
-_obj_format(FilterXObject *obj, gboolean ignore_case)
+static gboolean
+_obj_format(FilterXObject *obj, const gchar **str, gsize *str_len, gboolean ignore_case)
 {
-  GString *result = _format_str_obj(obj);
-  if (!result)
-    filterx_eval_push_error("failed to extract string value, repr() failed", NULL, obj);
+  gboolean result = FALSE;
+  if (!_format_str_obj(obj, str, str_len))
+    {
+      filterx_eval_push_error("failed to extract string value, repr() failed", NULL, obj);
+      goto exit;
+    }
 
-  if (ignore_case && !_do_casefold(result))
-    return NULL;
-
+  if (ignore_case)
+    _do_casefold(str, str_len);
+  result = TRUE;
+exit:
   return result;
 }
 
 static gboolean
 _string_with_cache_fill_cache(FilterXStringWithCache *self, gboolean ignore_case)
 {
-  if(!filterx_expr_is_literal(self->expr))
+  if (!filterx_expr_is_literal(self->expr))
     return TRUE;
 
-  ScratchBuffersMarker marker;
-  scratch_buffers_mark(&marker);
-
-  GString *res = _expr_format(self->expr, ignore_case);
-  if (!res)
+  const gchar *str;
+  gsize str_len;
+  if (!_expr_format(self->expr, &str, &str_len, ignore_case))
     return FALSE;
 
-  self->str_value = g_strdup(res->str);
-  self->str_len = res->len;
-
-  scratch_buffers_reclaim_marked(marker);
+  self->str_value = g_strndup(str, str_len);
+  self->str_len = str_len;
   return TRUE;
 }
 
@@ -164,19 +165,20 @@ static gboolean
 _string_with_cache_get_string_value(FilterXStringWithCache *self, gboolean ignore_case, const gchar **dst,
                                     gsize *len)
 {
-  if(self->str_value)
+  if (self->str_value)
     {
       *dst = self->str_value;
       *len = self->str_len;
       return TRUE;
     }
 
-  GString *res = _expr_format(self->expr, ignore_case);
-  if (!res)
+  const gchar *str;
+  gsize str_len;
+  if (!_expr_format(self->expr, &str, &str_len, ignore_case))
     return FALSE;
 
-  *dst = res->str;
-  *len = res->len;
+  *dst = str;
+  *len = str_len;
   return TRUE;
 }
 
@@ -193,7 +195,6 @@ _cache_needle(gsize index, FilterXExpr *value, gpointer user_data)
   g_ptr_array_add(cached_strings, obj_with_cache);
   return TRUE;
 }
-
 
 static gboolean
 _expr_affix_cache_needle(FilterXExprAffix *self)
@@ -257,57 +258,87 @@ _expr_affix_free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
-static GPtrArray *
-_expr_affix_eval_needle(FilterXExprAffix *self)
+static FilterXObject *
+_eval_against_literal_needles(FilterXExprAffix *self, const gchar *haystack, gsize haystack_len)
+{
+  gboolean matches = FALSE;
+  for (gsize i = 0; i < self->needle.cached_strings->len && !matches; i++)
+    {
+      FilterXStringWithCache *current_needle = g_ptr_array_index(self->needle.cached_strings, i);
+      const gchar *needle_str;
+      gsize needle_len;
+
+      if (!_string_with_cache_get_string_value(current_needle, self->ignore_case, &needle_str, &needle_len))
+        return NULL;
+
+      matches = self->process(haystack, haystack_len, needle_str, needle_len);
+    }
+  return filterx_boolean_new(matches);
+}
+
+static FilterXObject *
+_eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gsize haystack_len,
+                               FilterXObject *needle_obj)
+{
+  FilterXObject *list_needle = filterx_ref_unwrap_ro(needle_obj);
+
+  if (!filterx_object_is_type(list_needle, &FILTERX_TYPE_NAME(list)))
+    return NULL;
+
+  guint64 len;
+  filterx_object_len(needle_obj, &len);
+
+  if (len == 0)
+    return NULL;
+
+  gboolean matches = FALSE;
+  for (gsize i = 0; i < len && !matches; i++)
+    {
+      FilterXObject *elem = filterx_list_get_subscript(list_needle, i);
+      const gchar *current_needle;
+      gsize current_needle_len;
+
+      gboolean res = _obj_format(elem, &current_needle, &current_needle_len, self->ignore_case);
+      filterx_object_unref(elem);
+
+      if (!res)
+        return NULL;
+
+      matches = self->process(haystack, haystack_len, current_needle, current_needle_len);
+    }
+  return filterx_boolean_new(matches);
+}
+
+static FilterXObject *
+_eval_against_needle_expr_single(FilterXExprAffix *self, const gchar *haystack, gsize haystack_len,
+                                 FilterXObject *needle_obj)
+{
+  const gchar *needle;
+  gsize needle_len;
+
+  if (_obj_format(needle_obj, &needle, &needle_len, self->ignore_case))
+    {
+      return filterx_boolean_new(self->process(haystack, haystack_len, needle, needle_len));
+    }
+  return NULL;
+}
+
+static FilterXObject *
+_eval_against_needle_expr(FilterXExprAffix *self, const gchar *haystack, gsize haystack_len)
 {
   FilterXObject *needle_obj = filterx_expr_eval(self->needle.expr);
   if (!needle_obj)
     return NULL;
-  GPtrArray *needles = NULL;
 
-  if (filterx_object_is_type(needle_obj, &FILTERX_TYPE_NAME(string))
-      || filterx_object_is_type(needle_obj, &FILTERX_TYPE_NAME(message_value)))
-    {
-      GString *str_value = _obj_format(needle_obj, self->ignore_case);
-      filterx_object_unref(needle_obj);
-      if (!str_value)
-        return NULL;
-      needles = g_ptr_array_sized_new(1);
-      g_ptr_array_add(needles, str_value);
-      return needles;
-    }
+  FilterXObject *result = _eval_against_needle_expr_single(self, haystack, haystack_len, needle_obj);
+  if (!result)
+    result = _eval_against_needle_expr_list(self, haystack, haystack_len, needle_obj);
+  if (!result)
+    filterx_eval_push_error("failed to evaluate needle, expects a string value or a list of strings", self->needle.expr,
+                            needle_obj);
 
-  FilterXObject *list_needle = filterx_ref_unwrap_ro(needle_obj);
-  if (filterx_object_is_type(list_needle, &FILTERX_TYPE_NAME(list)))
-    {
-      guint64 len;
-      filterx_object_len(needle_obj, &len);
-
-      if (len == 0)
-        {
-          filterx_object_unref(needle_obj);
-          return NULL;
-        }
-      needles = g_ptr_array_sized_new(len);
-
-      for (guint64 i = 0; i < len; i++)
-        {
-          FilterXObject *elem = filterx_list_get_subscript(list_needle, i);
-
-          GString *str_value = _obj_format(elem, self->ignore_case);
-          filterx_object_unref(elem);
-          if (!str_value)
-            goto error;
-          g_ptr_array_add(needles, str_value);
-        }
-      filterx_object_unref(needle_obj);
-      return needles;
-    }
-
-error:
-  if(needles)
-    g_ptr_array_free(needles, TRUE);
-  return NULL;
+  filterx_object_unref(needle_obj);
+  return result;
 }
 
 static FilterXObject *
@@ -318,41 +349,16 @@ _expr_affix_eval(FilterXExpr *s)
 
   ScratchBuffersMarker marker;
   scratch_buffers_mark(&marker);
-  GString *haystack_str = _expr_format(self->haystack, self->ignore_case);
-  if (!haystack_str)
+
+  const gchar *haystack;
+  gsize haystack_len;
+  if (!_expr_format(self->haystack, &haystack, &haystack_len, self->ignore_case))
     goto exit;
 
-  gboolean matches = FALSE;
-  const gchar *needle_str;
-  gsize needle_len;
-
-  if(self->needle.cached_strings->len != 0)
-    {
-      for(guint64 i = 0; i < self->needle.cached_strings->len && !matches; i++)
-        {
-          FilterXStringWithCache *current_needle = g_ptr_array_index(self->needle.cached_strings, i);
-          if (!_string_with_cache_get_string_value(current_needle, self->ignore_case, &needle_str, &needle_len))
-            goto exit;
-          matches = self->process(haystack_str->str, haystack_str->len, needle_str, needle_len);
-        }
-      result = filterx_boolean_new(matches);
-      goto exit;
-    }
-
-  GPtrArray *needle_list = _expr_affix_eval_needle(self);
-  if (!needle_list)
-    goto exit;
-
-  if(needle_list->len != 0)
-    {
-      for(guint64 i = 0; i < needle_list->len && !matches; i++)
-        {
-          GString *current_needle = g_ptr_array_index(needle_list, i);
-          matches = self->process(haystack_str->str, haystack_str->len, current_needle->str, current_needle->len);
-        }
-    }
-  g_ptr_array_free(needle_list, TRUE);
-  result = filterx_boolean_new(matches);
+  if (self->needle.cached_strings->len != 0)
+    result = _eval_against_literal_needles(self, haystack, haystack_len);
+  else
+    result = _eval_against_needle_expr(self, haystack, haystack_len);
 
 exit:
   scratch_buffers_reclaim_marked(marker);

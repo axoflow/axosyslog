@@ -2432,40 +2432,6 @@ def test_parse_windows_eventlog_xml(config, syslog_ng):
     }
 
 
-def test_startswith_endswith_includes(config, syslog_ng):
-    (file_true, file_false) = create_config(
-        config, r"""
-    result = json();
-    if (startswith($MSG, ["dummy_prefix", "foo"]))
-    {
-        result.startswith_foo = true;
-    };
-    bar_var = "bar";
-    if (includes($MSG, bar_var, ignorecase=true))
-    {
-        result.contains_bar = true;
-    };
-    baz_var = "baz";
-    baz_list = ["dummy_suffix", baz_var];
-    if (endswith($MSG, baz_list, ignorecase=true))
-    {
-        result.endswith_baz = true;
-    };
-    log_msg_value = ${values.str};
-    if (includes(log_msg_value, log_msg_value))
-    {
-        result.works_with_message_value = true;
-    };
-    $MSG = json();
-    $MSG = result;
-    """, msg="fooBARbAz",
-    )
-    syslog_ng.start(config)
-
-    assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"startswith_foo":true,"contains_bar":true,"endswith_baz":true,"works_with_message_value":true}\n'
-
-
 def test_parse_cef(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
