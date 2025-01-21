@@ -263,6 +263,7 @@ filterx_global_init(void)
   filterx_type_init(&FILTERX_TYPE_NAME(message_value));
 
   filterx_type_init(&FILTERX_TYPE_NAME(metrics_labels));
+  filterx_string_global_init();
 
   filterx_primitive_global_init();
   filterx_null_global_init();
@@ -275,6 +276,7 @@ filterx_global_deinit(void)
   filterx_builtin_functions_deinit();
   filterx_null_global_deinit();
   filterx_primitive_global_deinit();
+  filterx_string_global_deinit();
   filterx_types_deinit();
 }
 

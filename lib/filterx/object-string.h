@@ -44,4 +44,7 @@ FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, F
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
+void filterx_string_global_init(void);
+void filterx_string_global_deinit(void);
+
 #endif
