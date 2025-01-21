@@ -65,11 +65,8 @@ filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object)
   return object;
 }
 
-FilterXString *
+FilterXObject *
 filterx_config_frozen_string(GlobalConfig *cfg, const gchar *str)
 {
-  FilterXString *frozen_str = filterx_string_typed_new(str);
-  filterx_config_freeze_object(cfg, (FilterXObject *) frozen_str);
-
-  return frozen_str;
+  return filterx_config_freeze_object(cfg, filterx_string_new(str, -1));
 }

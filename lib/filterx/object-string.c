@@ -178,12 +178,6 @@ filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTra
   return &_string_new(str, str_len, translate)->super;
 }
 
-FilterXString *
-filterx_string_typed_new(const gchar *str)
-{
-  return _string_new(str, -1, NULL);
-}
-
 static inline gsize
 _get_base64_encoded_size(gsize len)
 {
@@ -261,7 +255,7 @@ FilterXObject *
 filterx_bytes_new(const gchar *mem, gssize mem_len)
 {
   g_assert(mem_len != -1);
-  FilterXString *self = (FilterXString *) filterx_string_new(mem, mem_len);
+  FilterXString *self = (FilterXString *) _string_new(mem, mem_len, NULL);
   self->super.type = &FILTERX_TYPE_NAME(bytes);
   return &self->super;
 }
@@ -270,7 +264,7 @@ FilterXObject *
 filterx_protobuf_new(const gchar *mem, gssize mem_len)
 {
   g_assert(mem_len != -1);
-  FilterXString *self = (FilterXString *) filterx_bytes_new(mem, mem_len);
+  FilterXString *self = (FilterXString *) _string_new(mem, mem_len, NULL);
   self->super.type = &FILTERX_TYPE_NAME(protobuf);
   return &self->super;
 }

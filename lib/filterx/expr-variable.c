@@ -175,7 +175,7 @@ _free(FilterXExpr *s)
 }
 
 static FilterXExpr *
-filterx_variable_expr_new(FilterXString *name, FilterXVariableType variable_type)
+filterx_variable_expr_new(FilterXObject *name, FilterXVariableType variable_type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
@@ -188,7 +188,7 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType variable_type
   self->super.unset = _unset;
 
   self->variable_type = variable_type;
-  self->variable_name = (FilterXObject *) name;
+  self->variable_name = name;
   self->handle = filterx_map_varname_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), variable_type);
   if (variable_type == FX_VAR_MESSAGE_TIED)
     self->handle_is_macro = log_msg_is_handle_macro(filterx_variable_handle_to_nv_handle(self->handle));
@@ -200,13 +200,13 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType variable_type
 }
 
 FilterXExpr *
-filterx_msg_variable_expr_new(FilterXString *name)
+filterx_msg_variable_expr_new(FilterXObject *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_MESSAGE_TIED);
 }
 
 FilterXExpr *
-filterx_floating_variable_expr_new(FilterXString *name)
+filterx_floating_variable_expr_new(FilterXObject *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
 }
