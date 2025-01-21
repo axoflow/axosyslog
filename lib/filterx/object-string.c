@@ -34,6 +34,16 @@
 enum
 {
   FX_STR_ZERO_LENGTH,
+  FX_STR_NUMBER0,
+  FX_STR_NUMBER1,
+  FX_STR_NUMBER2,
+  FX_STR_NUMBER3,
+  FX_STR_NUMBER4,
+  FX_STR_NUMBER5,
+  FX_STR_NUMBER6,
+  FX_STR_NUMBER7,
+  FX_STR_NUMBER8,
+  FX_STR_NUMBER9,
   FX_STR_MAX,
 };
 
@@ -181,6 +191,11 @@ filterx_string_new(const gchar *str, gssize str_len)
   if (str_len == 0 || str[0] == 0)
     {
       return filterx_object_ref(string_cache[FX_STR_ZERO_LENGTH]);
+    }
+  else if (str[0] >= '0' && str[0] < '9' && (str_len == 1 || str[1] == 0))
+    {
+      gint index = str[0] - '0';
+      return filterx_object_ref(string_cache[FX_STR_NUMBER0 + index]);
     }
   return &_string_new(str, str_len, NULL)->super;
 }
@@ -388,6 +403,11 @@ void
 filterx_string_global_init(void)
 {
   filterx_cache_object(&string_cache[FX_STR_ZERO_LENGTH], &_string_new("", 0, NULL)->super);
+  for (gint i = 0; i < 10; i++)
+    {
+      gchar number[2] = { i+'0', 0 };
+      filterx_cache_object(&string_cache[FX_STR_NUMBER0+i], &_string_new(number, 1, NULL)->super);
+    }
 }
 
 void
