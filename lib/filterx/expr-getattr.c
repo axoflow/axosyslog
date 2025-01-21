@@ -22,6 +22,7 @@
  */
 #include "filterx/expr-getattr.h"
 #include "filterx/object-string.h"
+#include "filterx/filterx-object-istype.h"
 #include "filterx/filterx-eval.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
@@ -132,7 +133,7 @@ _free(FilterXExpr *s)
 
 /* NOTE: takes the object reference */
 FilterXExpr *
-filterx_getattr_new(FilterXExpr *operand, FilterXString *attr_name)
+filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
 {
   FilterXGetAttr *self = g_new0(FilterXGetAttr, 1);
 
@@ -146,7 +147,8 @@ filterx_getattr_new(FilterXExpr *operand, FilterXString *attr_name)
   self->super.free_fn = _free;
   self->operand = operand;
 
-  self->attr = (FilterXObject *) attr_name;
+  filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string));
+  self->attr = attr_name;
   /* NOTE: name borrows the string value from the string object */
   self->super.name = filterx_string_get_value_ref(self->attr, NULL);
   return &self->super;
