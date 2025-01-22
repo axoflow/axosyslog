@@ -2634,6 +2634,7 @@ def test_pubsub_message(config, syslog_ng):
         config, r"""
     $MSG = json();
     $MSG.msg = pubsub_message("my pubsub message", {"foo":"bar"});
+    $MSG.empty = pubsub_message("empty attribute value", {"empty":""});
     """,
     )
     syslog_ng.start(config)
@@ -2641,6 +2642,7 @@ def test_pubsub_message(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = (
-        r"""{"msg":{"data":"my pubsub message","attributes":{"foo":"bar"}}}""" + "\n"
+        r"""{"msg":{"data":"my pubsub message","attributes":{"foo":"bar"}},"""
+        """"empty":{"data":"empty attribute value","attributes":{"empty":""}}}""" + "\n"
     )
     assert file_true.read_log() == exp
