@@ -101,10 +101,6 @@ Message::set_attribute(const std::string &key, const std::string &value)
         {
           throw std::invalid_argument("Key cannot be empty");
         }
-      if (value.empty())
-        {
-          throw std::invalid_argument("Value cannot be empty");
-        }
       auto attributes = message.mutable_attributes();
       if (attributes)
         {
