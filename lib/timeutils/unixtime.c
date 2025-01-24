@@ -400,3 +400,34 @@ unix_time_add_duration(UnixTime time, guint64 duration)
   return ut;
 
 }
+
+void
+dump_unix_time(const UnixTime *ut, GString *output)
+{
+  if (!ut || !output)
+    return;
+
+  g_string_append_printf(output, "UnixTime:\n");
+  g_string_append_printf(output, "  Seconds since epoch: %" G_GINT64_FORMAT "\n", ut->ut_sec);
+  g_string_append_printf(output, "  Microseconds: %u\n", ut->ut_usec);
+  g_string_append_printf(output, "  GMT Offset (seconds): %d\n", ut->ut_gmtoff);
+
+  time_t utc_time = (time_t)ut->ut_sec;
+  time_t local_time = utc_time + ut->ut_gmtoff;
+
+  struct tm utc_tm, local_tm;
+
+  gmtime_r(&utc_time, &utc_tm);
+  localtime_r(&local_time, &local_tm);
+
+  char utc_time_str[64];
+  char local_time_str[64];
+
+  strftime(utc_time_str, sizeof(utc_time_str), "%Y-%m-%d %H:%M:%S", &utc_tm);
+  strftime(local_time_str, sizeof(local_time_str), "%Y-%m-%d %H:%M:%S", &local_tm);
+
+  g_string_append_printf(output, "  Human-Readable Time:\n");
+  g_string_append_printf(output, "    UTC Time: %s.%06u\n", utc_time_str, ut->ut_usec);
+  g_string_append_printf(output, "    Local Time: %s.%06u (GMT offset: %d seconds)\n",
+                         local_time_str, ut->ut_usec, ut->ut_gmtoff);
+}

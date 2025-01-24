@@ -88,5 +88,6 @@ guint64 unix_time_to_unix_epoch_usec(const UnixTime ut);
 UnixTime unix_time_from_unix_epoch_nsec(guint64 unix_epoch_nsec);
 guint64 unix_time_to_unix_epoch_nsec(const UnixTime ut);
 UnixTime unix_time_add_duration(UnixTime time, guint64 duration);
+void dump_unix_time(const UnixTime *ut, GString *output);
 
 #endif
