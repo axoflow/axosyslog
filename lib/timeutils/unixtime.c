@@ -370,8 +370,7 @@ unix_time_from_unix_epoch_usec(guint64 unix_epoch_usec)
 guint64
 unix_time_to_unix_epoch_usec(const UnixTime ut)
 {
-  gint32 gmtoff = (ut.ut_gmtoff != - 1) ? ut.ut_gmtoff : 0;
-  return (guint64)((ut.ut_sec + gmtoff) * USEC_PER_SEC + ut.ut_usec);
+  return (guint64)(ut.ut_sec * USEC_PER_SEC + ut.ut_usec);
 }
 
 UnixTime
