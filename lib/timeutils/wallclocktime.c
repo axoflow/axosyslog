@@ -1005,3 +1005,25 @@ find_string(const unsigned char *bp, int *tgt, const char *const *n1,
   /* Nothing matched */
   return NULL;
 }
+
+void
+dump_wall_clock_time(const WallClockTime *wct, GString *output)
+{
+  if (!wct || !output)
+    return;
+
+  g_string_append_printf(output, "WallClockTime:\n");
+  g_string_append_printf(output, "  Year: %d\n", wct->wct_year + 1900); // tm_year is years since 1900
+  g_string_append_printf(output, "  Month: %d\n", wct->wct_mon + 1);    // tm_mon is zero-based
+  g_string_append_printf(output, "  Day of Month: %d\n", wct->wct_mday);
+  g_string_append_printf(output, "  Weekday: %d\n", wct->wct_wday);
+  g_string_append_printf(output, "  Day of Year: %d\n", wct->wct_yday);
+  g_string_append_printf(output, "  Hour: %d\n", wct->wct_hour);
+  g_string_append_printf(output, "  Minute: %d\n", wct->wct_min);
+  g_string_append_printf(output, "  Second: %d\n", wct->wct_sec);
+  g_string_append_printf(output, "  Microsecond: %d\n", wct->wct_usec);
+  g_string_append_printf(output, "  DST: %d\n", wct->wct_isdst);
+
+  g_string_append_printf(output, "  GMT Offset: %ld\n", wct->wct_gmtoff);
+  g_string_append_printf(output, "  Timezone: %s\n", wct->wct_zone ? wct->wct_zone : "(null)");
+}
