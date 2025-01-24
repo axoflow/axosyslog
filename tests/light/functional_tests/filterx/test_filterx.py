@@ -317,7 +317,7 @@ def test_otel_resource_scope_log_to_json(config, syslog_ng):
                                             log = otel_logrecord();
                                             log += {
                                                 "body": "fit",
-                                                "time_unix_nano": 123456789,
+                                                "time_unix_nano": 123456789000,
                                                 "attributes": {
                                                     "answer": 42,
                                                     "cool": true
@@ -404,7 +404,7 @@ def test_json_to_otel_resource_scope_log(config, syslog_ng):
                                             log_js = json();
                                             log_js += {
                                                 "body": "fit",
-                                                "time_unix_nano": 123456789,
+                                                "time_unix_nano": 123456789000,
                                                 "attributes": {
                                                     "answer": 42,
                                                     "cool": true

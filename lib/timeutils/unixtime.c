@@ -374,6 +374,18 @@ unix_time_to_unix_epoch_usec(const UnixTime ut)
 }
 
 UnixTime
+unix_time_from_unix_epoch_nsec(guint64 unix_epoch_nsec)
+{
+  return unix_time_from_unix_epoch_usec(NSEC_TO_USEC(unix_epoch_nsec));
+}
+
+guint64
+unix_time_to_unix_epoch_nsec(const UnixTime ut)
+{
+  return unix_time_to_unix_epoch_usec(ut) * NSEC_PER_USEC;
+}
+
+UnixTime
 unix_time_add_duration(UnixTime time, guint64 duration)
 {
   gint64 secs;
