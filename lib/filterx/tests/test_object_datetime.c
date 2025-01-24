@@ -161,6 +161,29 @@ Test(filterx_datetime, test_filterx_datetime_repr_method)
   cr_assert_str_eq(repr->str, "1970-01-01T01:00:00.000+00:00");
 }
 
+Test(filterx_datetime, test_filterx_datetime_marshal)
+{
+  UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
+  FilterXObject *obj = filterx_datetime_new(&ut);
+  cr_assert_not_null(obj);
+
+  LogMessageValueType lmvt;
+  GString *repr = scratch_buffers_alloc();
+  cr_assert(filterx_object_marshal(obj, repr, &lmvt));
+  cr_assert_str_eq(repr->str, "1701350398.123000+01:00");
+}
+
+Test(filterx_datetime, test_filterx_datetime_marshal_negative_offset)
+{
+  UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = -10800 };
+  FilterXObject *obj = filterx_datetime_new(&ut);
+  cr_assert_not_null(obj);
+
+  LogMessageValueType lmvt;
+  GString *repr = scratch_buffers_alloc();
+  cr_assert(filterx_object_marshal(obj, repr, &lmvt));
+  cr_assert_str_eq(repr->str, "1701350398.123000-3:00");
+}
 
 Test(filterx_datetime, test_filterx_datetime_repr)
 {

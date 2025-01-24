@@ -69,8 +69,6 @@ _convert_unix_time_to_string(const UnixTime *ut, GString *result, gboolean inclu
     {
       if (ut->ut_gmtoff >= 0)
         g_string_append_c(result, '+');
-      else
-        g_string_append_c(result, '-');
 
       format_int64_padded(result, 2, '0', 10, ut->ut_gmtoff / 3600);
       g_string_append_c(result, ':');
