@@ -359,16 +359,16 @@ _unix_time_parts_from_unix_epoch(guint64 unix_epoch, gint64 *secs, guint32 *usec
 }
 
 UnixTime
-unix_time_from_unix_epoch(guint64 unix_epoch)
+unix_time_from_unix_epoch_usec(guint64 unix_epoch_usec)
 {
   UnixTime ut = UNIX_TIME_INIT;
   ut.ut_gmtoff = 0;
-  _unix_time_parts_from_unix_epoch(unix_epoch, &ut.ut_sec, &ut.ut_usec);
+  _unix_time_parts_from_unix_epoch(unix_epoch_usec, &ut.ut_sec, &ut.ut_usec);
   return ut;
 }
 
 guint64
-unix_time_to_unix_epoch(const UnixTime ut)
+unix_time_to_unix_epoch_usec(const UnixTime ut)
 {
   gint32 gmtoff = (ut.ut_gmtoff != - 1) ? ut.ut_gmtoff : 0;
   return (guint64)((ut.ut_sec + gmtoff) * USEC_PER_SEC + ut.ut_usec);

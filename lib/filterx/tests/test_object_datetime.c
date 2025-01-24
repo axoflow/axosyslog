@@ -152,7 +152,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_datetime)
 
 Test(filterx_datetime, test_filterx_datetime_repr_method)
 {
-  UnixTime ut = unix_time_from_unix_epoch(3600000000);
+  UnixTime ut = unix_time_from_unix_epoch_usec(3600000000);
   cr_assert(ut.ut_gmtoff == 0);
   cr_assert(ut.ut_usec == 0);
   cr_assert(ut.ut_sec == 3600);

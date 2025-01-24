@@ -70,7 +70,7 @@ _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
   UnixTime utime;
   if (filterx_object_extract_datetime(obj, &utime))
     {
-      guint64 unix_epoch = unix_time_to_unix_epoch(utime);
+      guint64 unix_epoch = unix_time_to_unix_epoch_usec(utime);
       gn_set_int64(gn, (gint64) MIN(unix_epoch, G_MAXINT64));
       return;
     }
