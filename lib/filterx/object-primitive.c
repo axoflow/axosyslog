@@ -108,10 +108,8 @@ _integer_wrap(gint64 value)
 }
 
 FilterXObject *
-filterx_integer_new(gint64 value)
+_filterx_integer_new(gint64 value)
 {
-  if (value >= -1 && value < FILTERX_INTEGER_CACHE_LIMIT - 1)
-    return filterx_object_ref(global_cache.integer_cache[value + 1]);
   return _integer_wrap(value);
 }
 
@@ -199,12 +197,6 @@ _bool_wrap(gboolean value)
   FilterXPrimitive *self = filterx_primitive_new(&FILTERX_TYPE_NAME(boolean));
   gn_set_int64(&self->value, (gint64) value);
   return &self->super;
-}
-
-FilterXObject *
-filterx_boolean_new(gboolean value)
-{
-  return filterx_object_ref(global_cache.bool_cache[!!(value)]);
 }
 
 static gboolean
