@@ -35,12 +35,6 @@
 
 #include "compat/json.h"
 
-#define FILTERX_BOOL_CACHE_LIMIT 2
-#define FILTERX_INTEGER_CACHE_LIMIT 100
-
-static FilterXObject *bool_cache[FILTERX_BOOL_CACHE_LIMIT];
-static FilterXObject *integer_cache[FILTERX_INTEGER_CACHE_LIMIT];
-
 static gboolean
 _truthy(FilterXObject *s)
 {
@@ -117,7 +111,7 @@ FilterXObject *
 filterx_integer_new(gint64 value)
 {
   if (value >= -1 && value < FILTERX_INTEGER_CACHE_LIMIT - 1)
-    return filterx_object_ref(integer_cache[value + 1]);
+    return filterx_object_ref(global_cache.integer_cache[value + 1]);
   return _integer_wrap(value);
 }
 
@@ -210,7 +204,7 @@ _bool_wrap(gboolean value)
 FilterXObject *
 filterx_boolean_new(gboolean value)
 {
-  return filterx_object_ref(bool_cache[!!(value)]);
+  return filterx_object_ref(global_cache.bool_cache[!!(value)]);
 }
 
 static gboolean
@@ -395,17 +389,17 @@ FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(primitive),
 void
 filterx_primitive_global_init(void)
 {
-  filterx_cache_object(&bool_cache[FALSE], _bool_wrap(FALSE));
-  filterx_cache_object(&bool_cache[TRUE], _bool_wrap(TRUE));
+  filterx_cache_object(&global_cache.bool_cache[FALSE], _bool_wrap(FALSE));
+  filterx_cache_object(&global_cache.bool_cache[TRUE], _bool_wrap(TRUE));
   for (guint64 i = 0; i < FILTERX_INTEGER_CACHE_LIMIT; i++)
-    filterx_cache_object(&integer_cache[i], _integer_wrap(i - 1));
+    filterx_cache_object(&global_cache.integer_cache[i], _integer_wrap(i - 1));
 }
 
 void
 filterx_primitive_global_deinit(void)
 {
-  filterx_uncache_object(&bool_cache[FALSE]);
-  filterx_uncache_object(&bool_cache[TRUE]);
+  filterx_uncache_object(&global_cache.bool_cache[FALSE]);
+  filterx_uncache_object(&global_cache.bool_cache[TRUE]);
   for (guint64 i = 0; i < FILTERX_INTEGER_CACHE_LIMIT; i++)
-    filterx_uncache_object(&integer_cache[i]);
+    filterx_uncache_object(&global_cache.integer_cache[i]);
 }

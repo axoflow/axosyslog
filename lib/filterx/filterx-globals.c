@@ -50,6 +50,8 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/func-keys.h"
 
+FilterXGlobalCache global_cache;
+
 static GHashTable *filterx_builtin_simple_functions = NULL;
 static GHashTable *filterx_builtin_function_ctors = NULL;
 static GHashTable *filterx_builtin_generator_function_ctors = NULL;
