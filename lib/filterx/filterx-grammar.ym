@@ -302,13 +302,13 @@ generator_assignment
 	| variable KW_ASSIGN expr_generator
 						{
 						  GError *error = NULL;
-						  FilterXExpr *json_func = filterx_function_lookup(configuration, "json", NULL, &error);
-						  CHECK_FUNCTION_ERROR(json_func, @1, "json", error);
+						  FilterXExpr *func = filterx_function_lookup(configuration, "dict", NULL, &error);
+						  CHECK_FUNCTION_ERROR(func, @1, "dict", error);
 
 						  filterx_generator_set_fillable($3, filterx_expr_ref($1));
 						  $$ = filterx_compound_expr_new_va(TRUE,
 						    _assign_location(
-						      filterx_assign_new($1, filterx_generator_create_container_new(filterx_expr_ref($3), json_func)),
+						      filterx_assign_new($1, filterx_generator_create_container_new(filterx_expr_ref($3), func)),
 						      lexer, &@$),
 						    $3,
 						    NULL
@@ -394,14 +394,14 @@ declaration
     | KW_DECLARE filterx_variable KW_ASSIGN expr_generator
         {
           GError *error = NULL;
-          FilterXExpr *json_func = filterx_function_lookup(configuration, "json", NULL, &error);
-          CHECK_FUNCTION_ERROR(json_func, @1, "json", error);
+          FilterXExpr *func = filterx_function_lookup(configuration, "dict", NULL, &error);
+          CHECK_FUNCTION_ERROR(func, @1, "dict", error);
 
           filterx_variable_expr_declare($2);
 
           filterx_generator_set_fillable($4, filterx_expr_ref($2));
           $$ = filterx_compound_expr_new_va(TRUE,
-            filterx_assign_new($2, filterx_generator_create_container_new(filterx_expr_ref($4), json_func)),
+            filterx_assign_new($2, filterx_generator_create_container_new(filterx_expr_ref($4), func)),
             $4,
             NULL
           );
@@ -530,8 +530,8 @@ rest_argument
 list_argument
 	: list_generator			{
 						  GError *error = NULL;
-						  FilterXExpr *func = filterx_function_lookup(configuration, "json_array", NULL, &error);
-						  CHECK_FUNCTION_ERROR(func, @1, "json_array", error);
+						  FilterXExpr *func = filterx_function_lookup(configuration, "list", NULL, &error);
+						  CHECK_FUNCTION_ERROR(func, @1, "list", error);
 
 						  filterx_generator_set_fillable($1, func);
 						  $$ = $1;
@@ -541,8 +541,8 @@ list_argument
 dict_argument
 	: dict_generator			{
 						  GError *error = NULL;
-						  FilterXExpr *func = filterx_function_lookup(configuration, "json", NULL, &error);
-						  CHECK_FUNCTION_ERROR(func, @1, "json", error);
+						  FilterXExpr *func = filterx_function_lookup(configuration, "dict", NULL, &error);
+						  CHECK_FUNCTION_ERROR(func, @1, "dict", error);
 
 						  filterx_generator_set_fillable($1, func);
 						  $$ = $1;
