@@ -30,9 +30,8 @@
 FilterXObject *
 filterx_list_get_subscript(FilterXObject *s, gint64 index)
 {
-  FilterXObject *index_obj = filterx_integer_new(index);
+  FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, index);
   FilterXObject *result = filterx_object_get_subscript(s, index_obj);
-
   filterx_object_unref(index_obj);
   return result;
 }
@@ -40,7 +39,7 @@ filterx_list_get_subscript(FilterXObject *s, gint64 index)
 gboolean
 filterx_list_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_value)
 {
-  FilterXObject *index_obj = filterx_integer_new(index);
+  FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, index);
   gboolean result = filterx_object_set_subscript(s, index_obj, new_value);
 
   filterx_object_unref(index_obj);
@@ -56,7 +55,7 @@ filterx_list_append(FilterXObject *s, FilterXObject **new_value)
 gboolean
 filterx_list_unset_index(FilterXObject *s, gint64 index)
 {
-  FilterXObject *index_obj = filterx_integer_new(index);
+  FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, index);
   gboolean result = filterx_object_unset_key(s, index_obj);
 
   filterx_object_unref(index_obj);
