@@ -55,7 +55,7 @@ typedef struct FilterXFunctionUnsetEmpties_
 {
   FilterXFunction super;
   FilterXExpr *object_expr;
-  GPtrArray *targets;
+  GHashTable *targets;
   FilterXObject *replacement;
   guint64 flags;
 } FilterXFunctionUnsetEmpties;
@@ -63,19 +63,23 @@ typedef struct FilterXFunctionUnsetEmpties_
 static gboolean _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj);
 static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj);
 
-typedef int (*str_cmp_fn)(const char *, const char *);
+static inline gboolean
+_string_compare_case_sensitive(FilterXFunctionUnsetEmpties *self, const gchar *str, gsize str_len)
+{
+  if (self->targets)
+    return g_hash_table_lookup_extended(self->targets, str, NULL, NULL);
+  return FALSE;
+}
 
 static inline gboolean
-_string_compare(FilterXFunctionUnsetEmpties *self, const gchar *str, str_cmp_fn cmp_fn)
+_string_compare_case_insensitive(FilterXFunctionUnsetEmpties *self, const gchar *str, gsize str_len)
 {
-  guint num_targets = self->targets ? self->targets->len : 0;
-  for (guint i = 0; i < num_targets; i++)
-    {
-      const gchar *target = g_ptr_array_index(self->targets, i);
-      if (cmp_fn(str, target) == 0)
-        return TRUE;
-    }
-  return FALSE;
+  gchar *up = g_ascii_strup(str, str_len);
+  gboolean result = FALSE;
+  if (self->targets)
+    result = g_hash_table_lookup_extended(self->targets, up, NULL, NULL);
+  g_free(up);
+  return result;
 }
 
 static gboolean
@@ -91,11 +95,9 @@ _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
     return TRUE;
 
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
-    {
-      gboolean result = _string_compare(self, str, strcasecmp);
-      return result;
-    }
-  return _string_compare(self, str, strcmp);
+    return _string_compare_case_insensitive(self, str, str_len);
+  else
+    return _string_compare_case_sensitive(self, str, str_len);
 }
 
 static gboolean
@@ -284,7 +286,7 @@ _free(FilterXExpr *s)
 {
   FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
   if (self->targets)
-    g_ptr_array_free(self->targets, TRUE);
+    g_hash_table_unref(self->targets);
   filterx_expr_unref(self->object_expr);
   filterx_object_unref(self->replacement);
   filterx_function_free_method(&self->super);
@@ -408,11 +410,10 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
           return TRUE;
         }
       if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
-        {
-          g_ptr_array_add(self->targets, g_strndup(str, len));
-          return TRUE;
-        }
-      g_ptr_array_add(self->targets, g_strndup(str, len));
+        g_hash_table_insert(self->targets, g_ascii_strup(str, len), NULL);
+      else
+        g_hash_table_insert(self->targets, g_strndup(str, len), NULL);
+      return TRUE;
     }
   else
     {
@@ -466,7 +467,7 @@ _extract_target_objects(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *
   if (num_targets > 0)
     reset_flags(&self->flags, self->flags & (FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE) |
                                              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE)));
-  self->targets = g_ptr_array_new_full(num_targets, (GDestroyNotify)g_free);
+  self->targets = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 
   gpointer user_data[] = { self, error };
   gboolean result = TRUE;
