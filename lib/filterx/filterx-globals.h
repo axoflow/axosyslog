@@ -26,6 +26,35 @@
 #include "filterx-object.h"
 #include "filterx/expr-function.h"
 
+#define FILTERX_BOOL_CACHE_LIMIT 2
+#define FILTERX_INTEGER_CACHE_LIMIT 100
+
+/* cache indices */
+enum
+{
+  FILTERX_STRING_ZERO_LENGTH,
+  FILTERX_STRING_NUMBER0,
+  FILTERX_STRING_NUMBER1,
+  FILTERX_STRING_NUMBER2,
+  FILTERX_STRING_NUMBER3,
+  FILTERX_STRING_NUMBER4,
+  FILTERX_STRING_NUMBER5,
+  FILTERX_STRING_NUMBER6,
+  FILTERX_STRING_NUMBER7,
+  FILTERX_STRING_NUMBER8,
+  FILTERX_STRING_NUMBER9,
+  FILTERX_STRING_MAX,
+};
+
+typedef struct _FilterXGlobalCache
+{
+  FilterXObject *bool_cache[FILTERX_BOOL_CACHE_LIMIT];
+  FilterXObject *integer_cache[FILTERX_INTEGER_CACHE_LIMIT];
+  FilterXObject *string_cache[FILTERX_STRING_MAX];
+} FilterXGlobalCache;
+
+extern FilterXGlobalCache global_cache;
+
 void filterx_cache_object(FilterXObject **cache_slot, FilterXObject *object);
 void filterx_uncache_object(FilterXObject **cache_slot);
 
