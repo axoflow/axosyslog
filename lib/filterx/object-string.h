@@ -24,6 +24,7 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
+#include "filterx-globals.h"
 
 typedef struct _FilterXString FilterXString;
 struct _FilterXString
@@ -47,10 +48,25 @@ FilterXObject *filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gs
 FilterXObject *filterx_typecast_bytes(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
-FilterXObject *filterx_string_new(const gchar *str, gssize str_len);
+FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
+
+static inline FilterXObject *
+filterx_string_new(const gchar *str, gssize str_len)
+{
+  if (str_len == 0 || str[0] == 0)
+    {
+      return filterx_object_ref(global_cache.string_cache[FILTERX_STRING_ZERO_LENGTH]);
+    }
+  else if (str_len == 1 && str[0] >= '0' && str[0] < '9')
+    {
+      gint index = str[0] - '0';
+      return filterx_object_ref(global_cache.string_cache[FILTERX_STRING_NUMBER0 + index]);
+    }
+  return _filterx_string_new(str, str_len);
+}
 
 void filterx_string_global_init(void);
 void filterx_string_global_deinit(void);
