@@ -147,7 +147,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <node> comparison_operator
 %type <node> arithmetic_operator
 %type <node> expr_generator
-%type <node> expr_generator_unchecked
+%type <node> __expr_generator
 %type <node> expr_plus_generator
 %type <node> generator_function_call
 %type <node> function_call
@@ -469,13 +469,13 @@ expr_value
 	;
 
 expr_generator
-	: expr_generator_unchecked		{
-                                                  $$ = $1;
+	: __expr_generator			{
                                                   CHECK_ERROR($1, @1, "error initializing generator expression");
+                                                  $$ = _assign_location($1, lexer, &@1);
                                                 }
         ;
 
-expr_generator_unchecked
+__expr_generator
 	: dict_generator
 	| list_generator
 	| generator_function_call
