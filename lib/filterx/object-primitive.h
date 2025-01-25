@@ -25,6 +25,7 @@
 
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/filterx-globals.h"
 #include "generic-number.h"
 
 FILTERX_DECLARE_TYPE(primitive);
@@ -44,9 +45,8 @@ typedef struct _FilterXEnumDefinition
   gint64 value;
 } FilterXEnumDefinition;
 
-FilterXObject *filterx_integer_new(gint64 value);
+FilterXObject *_filterx_integer_new(gint64 value);
 FilterXObject *filterx_double_new(gdouble value);
-FilterXObject *filterx_boolean_new(gboolean value);
 FilterXObject *filterx_enum_new(GlobalConfig *cfg, const gchar *namespace_name, const gchar *enum_name);
 GenericNumber filterx_primitive_get_value(FilterXObject *s);
 
@@ -100,6 +100,20 @@ filterx_boolean_unwrap(FilterXObject *s, gboolean *value)
     return FALSE;
   *value = !!gn_as_int64(&self->value);
   return TRUE;
+}
+
+static inline FilterXObject *
+filterx_boolean_new(gboolean value)
+{
+  return filterx_object_ref(global_cache.bool_cache[!!(value)]);
+}
+
+static inline FilterXObject *
+filterx_integer_new(gint64 value)
+{
+  if (value >= -1 && value < FILTERX_INTEGER_CACHE_LIMIT - 1)
+    return filterx_object_ref(global_cache.integer_cache[value + 1]);
+  return _filterx_integer_new(value);
 }
 
 void filterx_primitive_global_init(void);
