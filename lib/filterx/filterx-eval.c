@@ -140,6 +140,7 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
   filterx_object_unref(res);
   /* NOTE: we only store the results into the message if the entire evaluation was successful */
 fail:
+  filterx_scope_set_dirty(context->scope);
   return result;
 }
 
