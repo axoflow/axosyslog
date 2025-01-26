@@ -93,7 +93,7 @@ _len(FilterXObject *s, guint64 *len)
   return TRUE;
 }
 
-static gboolean
+static inline gboolean
 _normalize_index(FilterXList *self, gint64 index, guint64 *normalized_index, const gchar **error)
 {
   guint64 len = self->len(self);
