@@ -29,4 +29,10 @@ FilterXExpr *filterx_get_subscript_new(FilterXExpr *lhs, FilterXExpr *key);
 
 FILTERX_EXPR_DECLARE_TYPE(get_subscript);
 
+static inline gboolean
+filterx_expr_is_get_subscript(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(get_subscript);
+}
+
 #endif

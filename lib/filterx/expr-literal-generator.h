@@ -52,6 +52,18 @@ FILTERX_EXPR_DECLARE_TYPE(literal_inner_dict_generator);
 FILTERX_EXPR_DECLARE_TYPE(literal_inner_list_generator);
 
 static inline gboolean
+filterx_expr_is_literal_inner_dict_generator(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal_inner_dict_generator);
+}
+
+static inline gboolean
+filterx_expr_is_literal_inner_list_generator(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal_inner_list_generator);
+}
+
+static inline gboolean
 filterx_expr_is_literal_dict_generator(FilterXExpr *s)
 {
   FilterXExprGenerator *generator = (FilterXExprGenerator *) s;

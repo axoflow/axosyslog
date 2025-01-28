@@ -30,4 +30,10 @@ FilterXExpr *filterx_getattr_new(FilterXExpr *lhs, FilterXString *attr_name);
 
 FILTERX_EXPR_DECLARE_TYPE(getattr);
 
+static inline gboolean
+filterx_expr_is_getattr(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(getattr);
+}
+
 #endif
