@@ -31,13 +31,14 @@
 # define NSEC_PER_SEC 1000000000L
 # define USEC_PER_SEC 1000000L
 # define MSEC_PER_SEC 1000L
+# define NSEC_PER_USEC 1000L
 #endif
 
 #define MSEC_TO_NSEC(msec)   ((msec) * NSEC_PER_SEC / MSEC_PER_SEC)
 #define MSEC_TO_USEC(msec)   ((msec) * USEC_PER_SEC / MSEC_PER_SEC)
 
 #define USEC_TO_NSEC(usec)   ((usec) * NSEC_PER_SEC / USEC_PER_SEC)
-#define USEC_TO_USEC(usec)   ((usec) * USEC_PER_SEC / USEC_PER_SEC)
+#define NSEC_TO_USEC(nsec)   ((nsec) / NSEC_PER_USEC)
 
 gboolean check_nanosleep(void);
 

@@ -125,7 +125,7 @@ public:
     UnixTime utime;
     if (filterx_object_extract_datetime(object, &utime))
       {
-        uint64_t unix_epoch = unix_time_to_unix_epoch(utime);
+        uint64_t unix_epoch = unix_time_to_unix_epoch_usec(utime);
         reflectors.reflection->SetInt64(message, reflectors.fieldDescriptor, (int64_t)(unix_epoch));
         return true;
       }
@@ -189,7 +189,7 @@ public:
     UnixTime utime;
     if (filterx_object_extract_datetime(object, &utime))
       {
-        uint64_t unix_epoch = unix_time_to_unix_epoch(utime);
+        uint64_t unix_epoch = unix_time_to_unix_epoch_usec(utime);
         reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, unix_epoch);
         return true;
       }

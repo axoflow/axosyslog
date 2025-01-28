@@ -69,8 +69,6 @@ _convert_unix_time_to_string(const UnixTime *ut, GString *result, gboolean inclu
     {
       if (ut->ut_gmtoff >= 0)
         g_string_append_c(result, '+');
-      else
-        g_string_append_c(result, '-');
 
       format_int64_padded(result, 2, '0', 10, ut->ut_gmtoff / 3600);
       g_string_append_c(result, ':');
@@ -136,14 +134,14 @@ filterx_typecast_datetime(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   gint64 i;
   if (filterx_object_extract_integer(object, &i))
     {
-      UnixTime ut = unix_time_from_unix_epoch((guint64) MAX(i, 0));
+      UnixTime ut = unix_time_from_unix_epoch_usec((guint64) MAX(i, 0));
       return filterx_datetime_new(&ut);
     }
 
   gdouble d;
   if (filterx_object_extract_double(object, &d))
     {
-      UnixTime ut = unix_time_from_unix_epoch((gint64)(d * USEC_PER_SEC));
+      UnixTime ut = unix_time_from_unix_epoch_usec((gint64)(d * USEC_PER_SEC));
       return filterx_datetime_new(&ut);
     }
 

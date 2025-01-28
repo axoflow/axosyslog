@@ -89,8 +89,8 @@ Test(expr_plus, test_string_add_wrong_type)
 
 Test(expr_plus, test_datetime_add_datetime)
 {
-  UnixTime lhs_time = unix_time_from_unix_epoch(TEST_EPOCH);
-  UnixTime rhs_time = unix_time_from_unix_epoch(3600000000); // 1 h
+  UnixTime lhs_time = unix_time_from_unix_epoch_usec(TEST_EPOCH);
+  UnixTime rhs_time = unix_time_from_unix_epoch_usec(3600000000); // 1 h
 
   FilterXExpr *lhs = filterx_literal_new(filterx_datetime_new(&lhs_time));
   FilterXExpr *rhs = filterx_literal_new(filterx_datetime_new(&rhs_time));
@@ -107,7 +107,7 @@ Test(expr_plus, test_datetime_add_datetime)
 
 Test(expr_plus, test_datetime_add_integer)
 {
-  UnixTime lhs_time = unix_time_from_unix_epoch(TEST_EPOCH);
+  UnixTime lhs_time = unix_time_from_unix_epoch_usec(TEST_EPOCH);
 
   FilterXExpr *lhs = filterx_literal_new(filterx_datetime_new(&lhs_time));
   FilterXExpr *rhs = filterx_literal_new(filterx_integer_new(3600000000)); // 1h in usec
@@ -130,7 +130,7 @@ Test(expr_plus, test_datetime_add_integer)
 
 Test(expr_plus, test_datetime_add_double)
 {
-  UnixTime lhs_time = unix_time_from_unix_epoch(TEST_EPOCH);
+  UnixTime lhs_time = unix_time_from_unix_epoch_usec(TEST_EPOCH);
 
   FilterXExpr *lhs = filterx_literal_new(filterx_datetime_new(&lhs_time));
   FilterXExpr *rhs = filterx_literal_new(filterx_double_new(3600.0)); // 1h in sec
@@ -153,7 +153,7 @@ Test(expr_plus, test_datetime_add_double)
 
 Test(expr_plus, test_datetime_add_wrong_type)
 {
-  UnixTime lhs_time = unix_time_from_unix_epoch(TEST_EPOCH);
+  UnixTime lhs_time = unix_time_from_unix_epoch_usec(TEST_EPOCH);
   FilterXExpr *lhs = filterx_literal_new(filterx_datetime_new(&lhs_time));
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 

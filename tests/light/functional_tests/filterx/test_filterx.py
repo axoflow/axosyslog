@@ -138,7 +138,7 @@ def test_otel_logrecord_datetime_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "1701353998.123000+00:00\n"
+    assert file_true.read_log() == "1701350398.123000+00:00\n"
 
 
 def test_otel_logrecord_body_string_setter_getter(config, syslog_ng):
@@ -210,7 +210,7 @@ def test_otel_logrecord_body_datetime_setter_getter(config, syslog_ng):
     # does not distinguish int_value and datetime.
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "1701353998123000\n"
+    assert file_true.read_log() == "1701350398123000\n"
 
 
 def test_otel_logrecord_body_bytes_setter_getter(config, syslog_ng):
@@ -317,7 +317,7 @@ def test_otel_resource_scope_log_to_json(config, syslog_ng):
                                             log = otel_logrecord();
                                             log += {
                                                 "body": "fit",
-                                                "time_unix_nano": 123456789,
+                                                "time_unix_nano": 123456789000,
                                                 "attributes": {
                                                     "answer": 42,
                                                     "cool": true
@@ -404,7 +404,7 @@ def test_json_to_otel_resource_scope_log(config, syslog_ng):
                                             log_js = json();
                                             log_js += {
                                                 "body": "fit",
-                                                "time_unix_nano": 123456789,
+                                                "time_unix_nano": 123456789000,
                                                 "attributes": {
                                                     "answer": 42,
                                                     "cool": true

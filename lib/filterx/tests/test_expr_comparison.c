@@ -153,7 +153,7 @@ Test(expr_comparison, test_integer_to_bool_num_based_comparison)
 Test(expr_comparison, test_integer_to_datetime_num_based_comparison)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
-  guint64 epoch = unix_time_to_unix_epoch(ut);
+  guint64 epoch = unix_time_to_unix_epoch_usec(ut);
   _assert_comparison(filterx_integer_new((uint64_t)(epoch)), filterx_datetime_new(&ut), FCMPX_EQ | FCMPX_NUM_BASED, TRUE);
   _assert_comparison(filterx_integer_new((uint64_t)(epoch)), filterx_datetime_new(&ut), FCMPX_LT | FCMPX_NUM_BASED,
                      FALSE);
@@ -277,7 +277,7 @@ Test(expr_comparison, test_double_to_bool_num_based_comparison)
 Test(expr_comparison, test_double_to_datetime_num_based_comparison)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
-  guint64 epoch = unix_time_to_unix_epoch(ut);
+  guint64 epoch = unix_time_to_unix_epoch_usec(ut);
   _assert_comparison(filterx_double_new((double)(epoch)), filterx_datetime_new(&ut), FCMPX_EQ | FCMPX_NUM_BASED, TRUE);
   _assert_comparison(filterx_double_new((double)(epoch)), filterx_datetime_new(&ut), FCMPX_LT | FCMPX_NUM_BASED, FALSE);
   _assert_comparison(filterx_double_new((double)(epoch)), filterx_datetime_new(&ut), FCMPX_GT | FCMPX_NUM_BASED, FALSE);
@@ -605,7 +605,7 @@ Test(expr_comparison, test_string_cases_type_aware_comparison)
 Test(expr_comparison, test_numerical_fallback_type_aware_comparison)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
-  guint64 epoch = unix_time_to_unix_epoch(ut);
+  guint64 epoch = unix_time_to_unix_epoch_usec(ut);
   _assert_comparison(filterx_integer_new(6), filterx_integer_new(6), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);
   _assert_comparison(filterx_integer_new(6), filterx_double_new(6.0), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);
   _assert_comparison(filterx_integer_new(3), filterx_string_new("3", 1), FCMPX_EQ | FCMPX_TYPE_AWARE, TRUE);

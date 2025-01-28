@@ -27,6 +27,7 @@
 #include "object-otel-array.hpp"
 
 #include "compat/cpp-start.h"
+
 #include "filterx/filterx-object.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
@@ -39,6 +40,7 @@
 #include "filterx/object-null.h"
 #include "filterx/filterx-object-istype.h"
 #include "filterx/filterx-ref.h"
+
 #include "compat/cpp-end.h"
 
 #include "opentelemetry/proto/logs/v1/logs.pb.h"
@@ -269,7 +271,7 @@ public:
   FilterXObject *FilterXObjectGetter(Message *message, ProtoReflectors reflectors)
   {
     uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.fieldDescriptor);
-    UnixTime utime = unix_time_from_unix_epoch(val);
+    UnixTime utime = unix_time_from_unix_epoch_nsec(val);
     return filterx_datetime_new(&utime);
   }
   bool FilterXObjectSetter(Message *message, ProtoReflectors reflectors, FilterXObject *object,
@@ -278,7 +280,7 @@ public:
     UnixTime utime;
     if (filterx_object_extract_datetime(object, &utime))
       {
-        uint64_t unix_epoch = unix_time_to_unix_epoch(utime);
+        uint64_t unix_epoch = unix_time_to_unix_epoch_nsec(utime);
         reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, unix_epoch);
         return true;
       }

@@ -30,6 +30,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-object-istype.h"
+#include "filterx/object-datetime.h"
 #include "apphook.h"
 #include "cfg.h"
 #include "compat/cpp-end.h"
@@ -279,19 +280,26 @@ Test(otel_filterx, logrecord_iter)
   FilterXObject *body = filterx_string_new("body", -1);
   FilterXObject *body_val = filterx_string_new("body_val", -1);
   FilterXObject *time_unix_nano = filterx_string_new("time_unix_nano", -1);
-  FilterXObject *time_unix_nano_val = filterx_integer_new(123);
+  FilterXObject *time_unix_nano_val = filterx_integer_new(123000);
+  FilterXObject *observed_time_unix_nano = filterx_string_new("observed_time_unix_nano", -1);
+  UnixTime ut = {.ut_sec = 1712736550, .ut_usec = 1000, .ut_gmtoff = -10800};
+  FilterXObject *observed_time_unix_nano_val = filterx_datetime_new(&ut);
 
   cr_assert(filterx_object_set_subscript(logrecord, body, &body_val));
   cr_assert(filterx_object_set_subscript(logrecord, time_unix_nano, &time_unix_nano_val));
+  cr_assert(filterx_object_set_subscript(logrecord, observed_time_unix_nano, &observed_time_unix_nano_val));
 
   GString *output = g_string_new(NULL);
   cr_assert(filterx_dict_iter(logrecord, _append_to_str, output));
 
-  cr_assert_str_eq(output->str, "time_unix_nano\n0.000123+00:00\nbody\nbody_val\n");
+  cr_assert_str_eq(output->str,
+                   "time_unix_nano\n0.000123+00:00\nbody\nbody_val\nobserved_time_unix_nano\n1712736550.001000+00:00\n");
 
   g_string_free(output, TRUE);
   filterx_object_unref(time_unix_nano);
   filterx_object_unref(time_unix_nano_val);
+  filterx_object_unref(observed_time_unix_nano);
+  filterx_object_unref(observed_time_unix_nano_val);
   filterx_object_unref(body);
   filterx_object_unref(body_val);
   filterx_object_unref(logrecord);
