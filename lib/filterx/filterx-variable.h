@@ -41,18 +41,6 @@ typedef guint16 FilterXGenCounter;
 
 #define FILTERX_HANDLE_FLOATING_BIT (1UL << 31)
 
-static inline gboolean
-filterx_variable_handle_is_floating(FilterXVariableHandle handle)
-{
-  return !!(handle & FILTERX_HANDLE_FLOATING_BIT);
-}
-
-static inline gboolean
-filterx_variable_handle_is_message_tied(FilterXVariableHandle handle)
-{
-  return !filterx_variable_handle_is_floating(handle);
-}
-
 static inline NVHandle
 filterx_variable_handle_to_nv_handle(FilterXVariableHandle handle)
 {
@@ -82,13 +70,14 @@ void filterx_variable_clear(FilterXVariable *v);
 static inline gboolean
 filterx_variable_is_floating(FilterXVariable *v)
 {
-  return filterx_variable_handle_is_floating(v->handle);
+  /* matches both declared and undeclared floating values */
+  return v->variable_type != FX_VAR_MESSAGE_TIED;
 }
 
 static inline gboolean
 filterx_variable_is_message_tied(FilterXVariable *v)
 {
-  return filterx_variable_handle_is_message_tied(v->handle);
+  return v->variable_type == FX_VAR_MESSAGE_TIED;
 }
 
 static inline NVHandle
