@@ -34,7 +34,11 @@ typedef enum
   FX_VAR_MESSAGE_TIED,
   FX_VAR_FLOATING,
   FX_VAR_DECLARED_FLOATING,
+  __FX_VAR_MAX,
 } FilterXVariableType;
+
+/* currently we only have two bits in FilterXVariable to hold variable_type */
+G_STATIC_ASSERT(__FX_VAR_MAX < 4);
 
 typedef guint32 FilterXVariableHandle;
 typedef guint16 FilterXGenCounter;
@@ -55,12 +59,20 @@ typedef struct _FilterXVariable
   FilterXVariableHandle handle;
   /*
    * assigned -- Indicates that the variable was assigned to a new value
+   *
+   * variable_type -- one of the FilterXVariableType enum
+   *
+   * We are storing these in bitfields to keep FilterXVariable within 16
+   * bytes.
    */
   guint16 assigned:1,
           variable_type:2;
   FilterXGenCounter generation;
   FilterXObject *value;
 } FilterXVariable;
+
+/* NOTE: try to keep variable small */
+G_STATIC_ASSERT(sizeof(FilterXVariable) <= 16);
 
 void filterx_variable_init_instance(FilterXVariable *v,
                                     FilterXVariableType variable_type,
