@@ -31,6 +31,7 @@
 #include "filterx/expr-literal-generator.h"
 #include "filterx/filterx-object-istype.h"
 #include "filterx/filterx-eval.h"
+#include "scratch-buffers.h"
 
 #include <string.h>
 
@@ -151,6 +152,16 @@ typedef struct FilterXFunctionSetFields_
   GArray *fields;
 } FilterXFunctionSetFields;
 
+static const gchar *
+_object_to_string(FilterXObject *obj)
+{
+  LogMessageValueType lmvt;
+  GString *repr = scratch_buffers_alloc();
+  if (!filterx_object_repr(obj, repr))
+    filterx_object_marshal(obj, repr, &lmvt);
+  return repr->str;
+}
+
 static gboolean
 _set_with_fallbacks(FilterXObject *dict, FilterXObject *key, GPtrArray *values)
 {
@@ -165,12 +176,17 @@ _set_with_fallbacks(FilterXObject *dict, FilterXObject *key, GPtrArray *values)
       FilterXObject *value_obj = filterx_expr_eval(value);
       if (!value_obj)
         {
+          msg_debug("FilterX: set_fields(): eval error, skipping",
+                    evt_tag_str("key", _object_to_string(key)),
+                    filterx_format_last_error());
           filterx_eval_clear_errors();
           continue;
         }
 
       if (filterx_object_extract_null(value_obj))
         {
+          msg_debug("FilterX: set_fields(): null value, skipping",
+                    evt_tag_str("key", _object_to_string(key)));
           filterx_object_unref(value_obj);
           continue;
         }
@@ -180,9 +196,16 @@ _set_with_fallbacks(FilterXObject *dict, FilterXObject *key, GPtrArray *values)
 
       if (!filterx_object_set_subscript(dict, key, &value_obj_cloned))
         {
+          msg_debug("FilterX: set_fields(): object set-subscript error, skipping",
+                    evt_tag_str("key", _object_to_string(key)),
+                    evt_tag_str("value", _object_to_string(value_obj_cloned)));
           filterx_object_unref(value_obj_cloned);
           continue;
         }
+
+      msg_trace("FilterX: set_fields(): setting value",
+                evt_tag_str("key", _object_to_string(key)),
+                evt_tag_str("value", _object_to_string(value_obj_cloned)));
 
       filterx_object_unref(value_obj_cloned);
       changed = TRUE;
@@ -210,17 +233,15 @@ _eval_fx_set_fields(FilterXExpr *s)
 {
   FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
 
-  gboolean success = FALSE;
-
   FilterXObject *dict = filterx_expr_eval(self->dict);
   if (!dict)
-    goto exit;
+    goto error;
 
   FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
   if (!filterx_object_is_type(dict_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_eval_push_error("First argument must be a dict. " FILTERX_FUNC_SET_FIELDS_USAGE, s, NULL);
-      goto exit;
+      goto error;
     }
 
   for (guint i = 0; i < self->fields->len; i++)
@@ -229,11 +250,11 @@ _eval_fx_set_fields(FilterXExpr *s)
       _process_field(field, dict);
     }
 
-  success = TRUE;
+  return dict;
 
-exit:
+error:
   filterx_object_unref(dict);
-  return success ? filterx_boolean_new(TRUE) : NULL;
+  return NULL;
 }
 
 static FilterXExpr *
@@ -500,6 +521,7 @@ filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
+  self->super.super.ignore_falsy_result = TRUE;
 
   self->fields = g_array_new(FALSE, FALSE, sizeof(Field));
 
