@@ -109,8 +109,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const daysToKeep = 30
-            const snapshotTagPattern = /_git[0-9]+/
+            const nightliesToKeep = 30
+            const nightlyTagPattern = /_git[0-9]+/
 
             const package_name = "axosyslog"
             const org = "axoflow"
@@ -121,12 +121,11 @@ jobs:
                 { package_type: "container", package_name: package_name, org: org }
             )
 
-            const oldPackageDate = new Date()
-            oldPackageDate.setDate(oldPackageDate.getDate() - daysToKeep)
-
-            const oldSnapshotVersions = allPackageVersions.filter((p) => {
-                return new Date(p.updated_at) < oldPackageDate && p.metadata.container && p.metadata.container.tags.length != 0 && p.metadata.container.tags.every((t) => snapshotTagPattern.test(t))
+            const nightlyPackageVersions = allPackageVersions.filter((p) => {
+                return p.metadata.container && p.metadata.container.tags.length != 0 && p.metadata.container.tags.every((t) => nightlyTagPattern.test(t))
             })
+
+            const oldSnapshotVersions = nightlyPackageVersions.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(nightliesToKeep);
 
             if (oldSnapshotVersions.length === 0) {
                 console.log("Nothing to remove")
