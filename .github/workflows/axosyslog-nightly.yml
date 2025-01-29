@@ -9,7 +9,24 @@ on:
 
 
 jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      nightly-needed: ${{ github.event_name != 'schedule' || fromJson(steps.previous-nightly.outputs.data).workflow_runs[0].head_sha != github.sha }}
+    steps:
+      - name: Check previous nightly commit
+        id: previous-nightly
+        uses: octokit/request-action@v2.x
+        with:
+          route: GET /repos/${{github.repository}}/actions/workflows/axosyslog-nightly.yml/runs?per_page=1&status=success
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          echo "The previous nightly was built from commit ${{ fromJson(steps.previous-nightly.outputs.data).workflow_runs[0].head_sha }}"
+
   tarball:
+    if: needs.precheck.outputs.nightly-needed == 'true'
+    needs: precheck
     runs-on: ubuntu-latest
     outputs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
@@ -74,7 +91,6 @@ jobs:
       pkg-type: nightly
 
   publish-image:
-    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: tarball
     with:
