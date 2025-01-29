@@ -136,6 +136,7 @@ jobs:
 
             console.log(`Removing the following images: ${oldSnapshotTags}`)
 
+            /* REVERT after a few days
             const manifestsRequests = oldSnapshotTags.map((t) => {
                 const manifest = fetch(`https://ghcr.io/v2/${image}/manifests/${t}`, {
                     method: "GET",
@@ -168,3 +169,4 @@ jobs:
             await Promise.all(oldSnapshotVersions.map((v) => {
                 return github.rest.packages.deletePackageVersionForOrg({ package_type: "container", package_name: package_name, org: org, package_version_id: v.id})
             }))
+            */
