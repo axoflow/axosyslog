@@ -126,7 +126,9 @@ static gboolean
 _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   FilterXFunctionUnsetEmpties *self = ((gpointer *) user_data)[0];
-  GList **keys_to_unset = ((gpointer *) user_data)[1];
+  gsize len = GPOINTER_TO_UINT(((gpointer *)user_data)[1]);
+  gsize *num = ((gpointer *)user_data)[2];
+  FilterXObject **keys_to_unset = ((gpointer *) user_data)[3];
 
   value = filterx_ref_unwrap_rw(value);
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
@@ -140,20 +142,25 @@ _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpoin
   if (!_should_unset(self, value))
     return TRUE;
 
-  *keys_to_unset = g_list_append(*keys_to_unset, filterx_object_ref(key));
+  g_assert(*num < len);
+  keys_to_unset[*num] = filterx_object_ref(key);
+  (*num)++;
   return TRUE;
 }
 
 static gboolean
 _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
-  GList *keys_to_unset = NULL;
-  gpointer user_data[] = { self, &keys_to_unset };
+  gsize len, num = 0;
+  filterx_object_len(obj, &len);
+  FilterXObject *keys_to_unset[len];
+
+  gpointer user_data[] = { self, GINT_TO_POINTER(len), &num, &keys_to_unset };
   gboolean success = filterx_dict_iter(obj, _add_key_to_unset_list_if_needed, user_data);
 
-  for (GList *elem = keys_to_unset; elem && success; elem = elem->next)
+  for (gint i = 0; i < num; i++)
     {
-      FilterXObject *key = (FilterXObject *) elem->data;
+      FilterXObject *key = keys_to_unset[i];
       if (self->replacement)
         {
           if (!filterx_object_set_subscript(obj, key, &self->replacement))
@@ -164,9 +171,9 @@ _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
           if (!filterx_object_unset_key(obj, key))
             success = FALSE;
         }
+      filterx_object_unref(key);
     }
 
-  g_list_free_full(keys_to_unset, (GDestroyNotify) filterx_object_unref);
   return success;
 }
 
