@@ -169,7 +169,7 @@ ch_isalpha(gchar c)
 static inline gboolean
 ch_isascii(gchar c)
 {
-  return c >= 0 && c <= 127;
+  return c >= 0 && (guchar ) c <= 127;
 }
 
 static inline gchar
