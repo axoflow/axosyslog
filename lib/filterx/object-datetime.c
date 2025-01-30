@@ -426,18 +426,14 @@ _strftime_eval(FilterXExpr *s)
   convert_unix_time_to_wall_clock_time (&datetime, &wct);
 
   const gsize MAX_RESULT_STR_LEN = 256;
-  size_t date_size = 0;
   gchar result_str[MAX_RESULT_STR_LEN];
 
-  // TODO - implement wall_clock_time_strftime, because there is some inconsistency with the format accepted by wall_clock_time_strptime
-  date_size = strftime(result_str, MAX_RESULT_STR_LEN, self->format, &wct.tm);
+  size_t date_size = wall_clock_time_strftime(&wct, result_str, MAX_RESULT_STR_LEN, self->format);
 
   if (!date_size)
-    {
-      return filterx_null_new();
-    }
+    return filterx_null_new();
 
-  return filterx_string_new(result_str, strnlen(result_str, MAX_RESULT_STR_LEN));
+  return filterx_string_new(result_str, date_size);
 }
 
 static FilterXExpr *
