@@ -529,6 +529,15 @@ transport_mapper_syslog_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->allow_tls = TRUE;
       self->super.transport_name = g_strdup("rfc5425+proxied-tls-passthrough");
     }
+  else if (strcasecmp(transport, "auto") == 0 && self->tls_context)
+    {
+      self->server_port = SYSLOG_TRANSPORT_TLS_PORT;
+      self->super.logproto = self->super.transport;
+      self->super.sock_type = SOCK_STREAM;
+      self->super.sock_proto = IPPROTO_TCP;
+      self->require_tls_when_has_tls_context = TRUE;
+      self->super.transport_name = g_strdup_printf("rfc5424+%s", self->super.transport);
+    }
   else
     {
       self->super.logproto = self->super.transport;
