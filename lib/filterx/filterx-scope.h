@@ -40,23 +40,24 @@
  */
 
 typedef struct _FilterXScope FilterXScope;
+struct _FilterXScope
+{
+  GAtomicCounter ref_cnt;
+  guint16 write_protected:1, dirty:1, syncable:1;
+  FilterXGenCounter generation;
+  LogMessage *msg;
+  GArray *variables;
+};
 
 typedef gboolean (*FilterXScopeForeachFunc)(FilterXVariable *variable, gpointer user_data);
 
-void filterx_scope_set_log_msg_has_changes(FilterXScope *self);
-void filterx_scope_clear_log_msg_has_changes(FilterXScope *self);
-gboolean filterx_scope_has_log_msg_changes(FilterXScope *self);
-void filterx_scope_set_dirty(FilterXScope *self);
-gboolean filterx_scope_is_dirty(FilterXScope *self);
 void filterx_scope_sync(FilterXScope *self, LogMessage *msg);
 
 FilterXVariable *filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle);
 FilterXVariable *filterx_scope_register_variable(FilterXScope *self,
                                                  FilterXVariableType variable_type,
-                                                 FilterXVariableHandle handle,
-                                                 FilterXObject *initial_value);
+                                                 FilterXVariableHandle handle);
 gboolean filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data);
-void filterx_scope_invalidate_log_msg_cache(FilterXScope *self);
 
 /* copy on write */
 void filterx_scope_write_protect(FilterXScope *self);
@@ -65,5 +66,55 @@ FilterXScope *filterx_scope_make_writable(FilterXScope **pself);
 FilterXScope *filterx_scope_new(void);
 FilterXScope *filterx_scope_ref(FilterXScope *self);
 void filterx_scope_unref(FilterXScope *self);
+
+static inline void
+filterx_scope_set_dirty(FilterXScope *self)
+{
+  self->dirty = TRUE;
+}
+
+static inline gboolean
+filterx_scope_is_dirty(FilterXScope *self)
+{
+  return self->dirty;
+}
+
+static inline FilterXObject *
+filterx_scope_get_variable(FilterXScope *self, FilterXVariable *v)
+{
+  return filterx_variable_get_value(v);
+}
+
+static inline void
+filterx_scope_set_variable(FilterXScope *self, FilterXVariable *v, FilterXObject *value, gboolean assignment)
+{
+  if (filterx_variable_is_floating(v))
+    {
+      G_STATIC_ASSERT(sizeof(v->generation) == sizeof(self->generation));
+      filterx_variable_set_value(v, value, assignment, self->generation);
+    }
+  else
+    {
+      G_STATIC_ASSERT(sizeof(v->generation) == sizeof(self->msg->generation));
+      filterx_variable_set_value(v, value, assignment, self->msg->generation);
+    }
+}
+
+static inline void
+filterx_scope_unset_variable(FilterXScope *self, FilterXVariable *v)
+{
+  if (filterx_variable_is_floating(v))
+    filterx_variable_unset_value(v, self->generation);
+  else
+    filterx_variable_unset_value(v, self->msg->generation);
+}
+
+static inline void
+filterx_scope_set_message(FilterXScope *self, LogMessage *msg)
+{
+  if (self->msg)
+    log_msg_unref(self->msg);
+  self->msg = log_msg_ref(msg);
+}
 
 #endif
