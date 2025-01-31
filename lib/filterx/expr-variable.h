@@ -42,4 +42,12 @@ filterx_frozen_dollar_msg_varname(GlobalConfig *cfg, const gchar *name)
   return dollar_name_obj;
 }
 
+FILTERX_EXPR_DECLARE_TYPE(variable);
+
+static inline gboolean
+filterx_expr_is_variable(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(variable);
+}
+
 #endif

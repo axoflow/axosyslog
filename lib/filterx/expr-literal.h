@@ -27,6 +27,13 @@
 #include "filterx/filterx-expr.h"
 
 FilterXExpr *filterx_literal_new(FilterXObject *object);
-gboolean filterx_expr_is_literal(FilterXExpr *expr);
+
+FILTERX_EXPR_DECLARE_TYPE(literal);
+
+static inline gboolean
+filterx_expr_is_literal(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal);
+}
 
 #endif

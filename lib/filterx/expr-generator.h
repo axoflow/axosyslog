@@ -41,10 +41,16 @@ FilterXExpr *filterx_generator_optimize_method(FilterXExpr *s);
 gboolean filterx_generator_init_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_generator_deinit_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_generator_free_method(FilterXExpr *s);
-gboolean filterx_expr_is_generator(FilterXExpr *s);
+
+FILTERX_EXPR_DECLARE_TYPE(generator);
 
 FilterXExpr *filterx_generator_create_container_new(FilterXExpr *g, FilterXExpr *fillable_parent);
 
+static inline gboolean
+filterx_expr_is_generator(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(generator);
+}
 
 /* protected */
 FilterXObject *filterx_generator_create_dict_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent);

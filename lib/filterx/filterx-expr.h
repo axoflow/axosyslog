@@ -68,6 +68,14 @@ struct _FilterXExpr
   gchar *expr_text;
 };
 
+#define FILTERX_EXPR_TYPE_NAME(_type) filterx_expr_type_ ## _type
+
+#define FILTERX_EXPR_DECLARE_TYPE(_type) \
+  extern const gchar *FILTERX_EXPR_TYPE_NAME(_type);
+
+#define FILTERX_EXPR_DEFINE_TYPE(_type) \
+  const gchar *FILTERX_EXPR_TYPE_NAME(_type) = # _type
+
 /*
  * Evaluate the expression and return the result as a FilterXObject.  The
  * result can either be a
