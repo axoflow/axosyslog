@@ -2624,6 +2624,7 @@ def test_otel_repr(config, syslog_ng):
     scope = otel_scope({"name":$MESSAGE, "version":"one", "attributes":{"foo":"bar"}, "dropped_attributes_count": 333});
     $MESSAGE = json();
     $MESSAGE.kvlist = string(kvlist);
+    $MESSAGE.array = string(array);
     $MESSAGE.scope = string(scope);
     """,
     )
@@ -2633,6 +2634,7 @@ def test_otel_repr(config, syslog_ng):
     assert "processed" not in file_false.get_stats()
     exp = (
         r"""{"kvlist":"{\"values\":[{\"key\":\"test\",\"value\":{\"stringValue\":\"kvlist\"}},{\"key\":\"message\",\"value\":{\"stringValue\":\"foobar\"}}]}","""
+        r""""array":"{\"values\":[{\"stringValue\":\"message\"},{\"stringValue\":\"foobar\"}]}","""
         r""""scope":"{\"name\":\"foobar\",\"version\":\"one\",\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}],\"droppedAttributesCount\":333}"}""" + "\n"
     )
     assert file_true.read_log() == exp
