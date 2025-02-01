@@ -48,6 +48,7 @@ enum
 
   M_MSGHDR,
   M_SOURCE_IP,
+  M_SOURCE_PORT,
   M_DEST_IP,
   M_DEST_PORT,
   M_IP_PROTOCOL,
