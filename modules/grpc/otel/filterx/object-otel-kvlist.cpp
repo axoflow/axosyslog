@@ -33,6 +33,8 @@
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/reflection.h>
+#include <google/protobuf/util/json_util.h>
+
 #include <stdexcept>
 
 /* The deprecated MutableRepeatedPtrField() does not have a proper alternative. */
@@ -43,6 +45,8 @@ using opentelemetry::proto::common::v1::KeyValueList;
 using opentelemetry::proto::common::v1::AnyValue;
 
 /* C++ Implementations */
+
+thread_local KeyValueList KVList::cached_value;
 
 KVList::KVList(FilterXOtelKVList *s) :
   super(s),
@@ -248,6 +252,13 @@ const RepeatedPtrField<KeyValue> &
 KVList::get_value() const
 {
   return *repeated_kv;
+}
+
+const google::protobuf::Message &
+KVList::get_protobuf_value() const
+{
+  cached_value.mutable_values()->CopyFrom(*repeated_kv);
+  return static_cast<const google::protobuf::Message &>(cached_value);
 }
 
 /* C Wrappers */
@@ -566,6 +577,25 @@ _dict_factory(FilterXObject *self)
   return filterx_otel_kvlist_new();
 }
 
+static gboolean
+_repr(FilterXObject *s, GString *repr)
+{
+  FilterXOtelKVList *self = (FilterXOtelKVList *) s;
+
+  try
+    {
+      std::string cstring = self->cpp->repr();
+      g_string_assign(repr, cstring.c_str());
+    }
+  catch (const std::runtime_error &e)
+    {
+      msg_error("FilterX: Failed to repr OTel KVList object", evt_tag_str("error", e.what()));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
@@ -573,5 +603,6 @@ FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(dict),
                     .truthy = _truthy,
                     .list_factory = _list_factory,
                     .dict_factory = _dict_factory,
+                    .repr = _repr,
                     .free_fn = _free,
                    );
