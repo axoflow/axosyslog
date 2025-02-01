@@ -32,10 +32,16 @@ typedef struct _TransportMapperInet
 
   gint server_port;
   const gchar *server_port_change_warning;
-  gboolean require_tls;
-  gboolean allow_tls;
-  gboolean require_tls_when_has_tls_context;
+  /* tls() options are required */
+  gboolean require_tls_configuration;
+  /* tls() options are optional, but are permitted */
+  gboolean allow_tls_configuration;
+  gboolean delegate_tls_start_to_logproto;
+
+  /* HAProxy v1 or v2 protocol is to be used */
   gboolean proxied;
+  /* switch to TLS after plaintext haproxy negotiation */
+  gboolean proxied_passthrough;
   TLSContext *tls_context;
   TLSVerifier *tls_verifier;
   gpointer secret_store_cb_data;
