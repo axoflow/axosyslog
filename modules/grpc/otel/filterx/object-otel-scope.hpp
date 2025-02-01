@@ -30,6 +30,7 @@
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
+#include "object-otel-base.hpp"
 #include "opentelemetry/proto/common/v1/common.pb.h"
 
 typedef struct FilterXOtelScope_ FilterXOtelScope;
@@ -41,7 +42,7 @@ namespace grpc {
 namespace otel {
 namespace filterx {
 
-class Scope
+class Scope : public Base
 {
 public:
   Scope(FilterXOtelScope *s);
@@ -65,6 +66,9 @@ private:
 private:
   FilterXOtelScope *super;
   opentelemetry::proto::common::v1::InstrumentationScope scope;
+
+protected:
+  const google::protobuf::Message &get_protobuf_value() const override;
 };
 
 }
