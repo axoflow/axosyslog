@@ -2626,6 +2626,7 @@ def test_otel_repr(config, syslog_ng):
     $MESSAGE.kvlist = string(kvlist);
     $MESSAGE.array = string(array);
     $MESSAGE.logrecord = string(logrecord);
+    $MESSAGE.resource = string(resource);
     $MESSAGE.scope = string(scope);
     """,
     )
@@ -2637,6 +2638,7 @@ def test_otel_repr(config, syslog_ng):
         r"""{"kvlist":"{\"values\":[{\"key\":\"test\",\"value\":{\"stringValue\":\"kvlist\"}},{\"key\":\"message\",\"value\":{\"stringValue\":\"foobar\"}}]}","""
         r""""array":"{\"values\":[{\"stringValue\":\"message\"},{\"stringValue\":\"foobar\"}]}","""
         r""""logrecord":"{\"body\":{\"stringValue\":\"foobar\"},\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}]}","""
+        r""""resource":"{\"attributes\":[{\"key\":\"resource\",\"value\":{\"stringValue\":\"foobar\"}}],\"droppedAttributesCount\":444}","""
         r""""scope":"{\"name\":\"foobar\",\"version\":\"one\",\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}],\"droppedAttributesCount\":333}"}""" + "\n"
     )
     assert file_true.read_log() == exp

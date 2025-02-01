@@ -30,6 +30,7 @@
 #include "filterx/filterx-ref.h"
 #include "compat/cpp-end.h"
 
+#include <google/protobuf/util/json_util.h>
 #include <stdexcept>
 
 using namespace syslogng::grpc::otel::filterx;
@@ -151,6 +152,12 @@ const opentelemetry::proto::resource::v1::Resource &
 Resource::get_value() const
 {
   return resource;
+}
+
+const google::protobuf::Message &
+Resource::get_protobuf_value() const
+{
+  return get_value();
 }
 
 /* C Wrappers */
@@ -320,8 +327,26 @@ _dict_factory(FilterXObject *self)
   return filterx_otel_kvlist_new();
 }
 
-FILTERX_SIMPLE_FUNCTION(otel_resource, filterx_otel_resource_new_from_args);
+static gboolean
+_repr(FilterXObject *s, GString *repr)
+{
+  FilterXOtelResource *self = (FilterXOtelResource *) s;
 
+  try
+    {
+      std::string cstring = self->cpp->repr();
+      g_string_assign(repr, cstring.c_str());
+    }
+  catch (const std::runtime_error &e)
+    {
+      msg_error("FilterX: Failed to repr OTel Resource object", evt_tag_str("error", e.what()));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+FILTERX_SIMPLE_FUNCTION(otel_resource, filterx_otel_resource_new_from_args);
 
 FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,
@@ -330,5 +355,6 @@ FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(dict),
                     .truthy = _truthy,
                     .list_factory = _list_factory,
                     .dict_factory = _dict_factory,
+                    .repr = _repr,
                     .free_fn = _free,
                    );

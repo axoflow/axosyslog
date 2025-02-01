@@ -30,6 +30,7 @@
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
+#include "object-otel-base.hpp"
 #include "opentelemetry/proto/resource/v1/resource.pb.h"
 
 typedef struct FilterXOtelResource_ FilterXOtelResource;
@@ -41,7 +42,7 @@ namespace grpc {
 namespace otel {
 namespace filterx {
 
-class Resource
+class Resource : public Base
 {
 public:
   Resource(FilterXOtelResource *s);
@@ -65,6 +66,9 @@ private:
 private:
   FilterXOtelResource *super;
   opentelemetry::proto::resource::v1::Resource resource;
+
+protected:
+  const google::protobuf::Message &get_protobuf_value() const override;
 };
 
 }
