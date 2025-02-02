@@ -26,6 +26,7 @@
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <ctype.h>
 
 enum
 {
@@ -160,6 +161,24 @@ _is_tls_client_alert(const gchar *buf, gsize buf_len, guint8 *alert, guint8 *des
   return LPAS_SUCCESS;
 }
 
+static gboolean
+_is_binary_data(const gchar *buf, gsize buf_len)
+{
+  for (gsize i = 0; i < buf_len; i++)
+    {
+      gchar c = buf[i];
+
+      if (c >= 32)
+        continue;
+
+      if (isspace(c))
+        continue;
+
+      return TRUE;
+    }
+  return FALSE;
+}
+
 static LogProtoPrepareAction
 log_proto_auto_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *timeout G_GNUC_UNUSED)
 {
@@ -235,6 +254,15 @@ log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogPro
         default:
           break;
         }
+    }
+  if (_is_binary_data(detect_buffer, rc))
+    {
+      msg_error("Binary data detected during protocol auto-detection, but none of the "
+                "recognized protocols match. Make sure your syslog client talks some "
+                "form of syslog, rejecting connection",
+                evt_tag_mem("detect_buffer", detect_buffer, rc),
+                evt_tag_int("fd", self->super.transport_stack.fd));
+      return LPS_ERROR;
     }
   *proto_replacement = _construct_detected_proto(self, detect_buffer, rc);
   return LPS_SUCCESS;
