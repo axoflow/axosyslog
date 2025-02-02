@@ -993,6 +993,18 @@ tls_context_set_extended_key_usage_verify(TLSContext *self, gboolean extended_ke
   self->extended_key_usage_verify = extended_key_usage_verify;
 }
 
+void
+tls_context_set_optional(TLSContext *self, gboolean optional)
+{
+  self->optional = optional;
+}
+
+gboolean
+tls_context_is_optional(TLSContext *self)
+{
+  return self->optional;
+}
+
 /* NOTE: location is a string description where this tls context was defined, e.g. the location in the config */
 TLSContext *
 tls_context_new(TLSMode mode, const gchar *location)
