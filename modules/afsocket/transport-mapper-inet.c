@@ -135,6 +135,7 @@ transport_mapper_inet_setup_stack(TransportMapper *s, LogTransportStack *stack)
     {
       LogTransportIndex switch_to;
 
+      /* NOTE: explicit transport(proxied-XXX), we customize the HAProxy transports here */
       if (_should_switch_to_tls_after_proxy_handshake(self))
         switch_to = LOG_TRANSPORT_TLS;
       else
@@ -142,6 +143,13 @@ transport_mapper_inet_setup_stack(TransportMapper *s, LogTransportStack *stack)
       if (!_setup_haproxy_transport(self, stack, initial_transport_index, switch_to))
         return FALSE;
       initial_transport_index = LOG_TRANSPORT_HAPROXY;
+    }
+  else
+    {
+      /* NOTE: haproxy auto-detection, HAProxy transport should use the active
+       * transport as it starts */
+      if (!_setup_haproxy_transport(self, stack, LOG_TRANSPORT_NONE, LOG_TRANSPORT_NONE))
+        return FALSE;
     }
 
   if (!log_transport_stack_switch(stack, initial_transport_index))
