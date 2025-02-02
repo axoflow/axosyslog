@@ -24,6 +24,9 @@
 #include "logproto-framed-server.h"
 #include "messages.h"
 
+#include <openssl/err.h>
+#include <openssl/ssl.h>
+
 enum
 {
   LPAS_FAILURE,
@@ -117,6 +120,46 @@ _is_tls_client_hello(const gchar *buf, gsize buf_len)
   return LPAS_SUCCESS;
 }
 
+static gint
+_is_tls_client_alert(const gchar *buf, gsize buf_len, guint8 *alert, guint8 *desc)
+{
+  /*
+   * The first message on a TLS connection must be the client_hello, which
+   * is a type of handshake record, and it cannot be compressed or
+   * encrypted.  A plaintext record has this format:
+   *
+   *       0      byte    record_type      // 0x15 = alert
+   *       1      byte    major            // major protocol version
+   *       2      byte    minor            // minor protocol version
+   *     3-4      uint16  length           // size of the payload
+   *       5      byte    alert
+   *       6      byte    desc
+   *              ...
+   */
+  if (buf_len < 1)
+    return LPAS_NEED_MORE_DATA;
+
+  /* 0x15 indicates a TLS handshake */
+  if (buf[0] != 0x15)
+    return LPAS_FAILURE;
+
+  if (buf_len < 5)
+    return LPAS_NEED_MORE_DATA;
+
+  guint32 record_len = (buf[3] << 8) + buf[4];
+
+  /* a protocol alert is 2 bytes */
+  if (record_len != 2)
+    return LPAS_FAILURE;
+
+  if (buf_len < 7)
+    return LPAS_NEED_MORE_DATA;
+
+  *alert = buf[5];
+  *desc = buf[6];
+  return LPAS_SUCCESS;
+}
+
 static LogProtoPrepareAction
 log_proto_auto_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *timeout G_GNUC_UNUSED)
 {
@@ -171,6 +214,24 @@ log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogPro
               return LPS_ERROR;
             }
           break;
+        default:
+          break;
+        }
+
+      guint8 alert_level = 0, alert_desc = 0;
+      switch (_is_tls_client_alert(detect_buffer, rc, &alert_level, &alert_desc))
+        {
+        case LPAS_NEED_MORE_DATA:
+          if (moved_forward)
+            return LPS_AGAIN;
+          break;
+        case LPAS_SUCCESS:
+          self->tls_detected = TRUE;
+          /* this is a TLS alert */
+          msg_error("TLS alert detected instead of ClientHello, rejecting connection",
+                    evt_tag_int("alert_level", alert_level),
+                    evt_tag_str("alert_desc", ERR_reason_error_string(ERR_PACK(ERR_LIB_SSL, NULL, alert_desc + SSL_AD_REASON_OFFSET))));
+          return LPS_ERROR;
         default:
           break;
         }
