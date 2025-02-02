@@ -33,6 +33,7 @@ G_STATIC_ASSERT(LOG_TRANSPORT_RA_BUFFER_SIZE >= RFC6587_MAX_FRAME_LEN_DIGITS + 1
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
+#include <ctype.h>
 
 enum
 {
@@ -194,6 +195,24 @@ _is_tls_client_alert(const guchar *buf, gsize buf_len, guint8 *alert, guint8 *de
   return LPAS_SUCCESS;
 }
 
+static gboolean
+_is_binary_data(const gchar *buf, gsize buf_len)
+{
+  for (gsize i = 0; i < buf_len; i++)
+    {
+      gchar c = buf[i];
+
+      if (c >= 32)
+        continue;
+
+      if (isspace(c))
+        continue;
+
+      return TRUE;
+    }
+  return FALSE;
+}
+
 /* tls() puts a TLS factory on the stack, its optional() decides whether
  * plaintext connections are accepted besides TLS ones */
 static gboolean
@@ -301,6 +320,16 @@ log_proto_auto_server_fetch(LogProtoServer *s, const guchar **msg, gsize *msg_le
   LogProtoStatus status = _detect_transport(self, detect_buffer, rc);
   if (status != LPS_SUCCESS)
     return status;
+
+  if (_is_binary_data(detect_buffer, rc))
+    {
+      msg_error("Binary data detected during protocol auto-detection, but none of the "
+                "recognized protocols match. Make sure your syslog client talks some "
+                "form of syslog, rejecting connection",
+                evt_tag_mem("detect_buffer", detect_buffer, rc),
+                evt_tag_int("fd", self->super.transport_stack.fd));
+      return LPS_ERROR;
+    }
 
   self->super.proto_replacement = _construct_detected_proto(self, detect_buffer, rc);
 
