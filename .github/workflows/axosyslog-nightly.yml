@@ -9,7 +9,24 @@ on:
 
 
 jobs:
+  precheck:
+    runs-on: ubuntu-latest
+    outputs:
+      nightly-needed: ${{ github.event_name != 'schedule' || fromJson(steps.previous-nightly.outputs.data).workflow_runs[0].head_sha != github.sha }}
+    steps:
+      - name: Check previous nightly commit
+        id: previous-nightly
+        uses: octokit/request-action@v2.x
+        with:
+          route: GET /repos/${{github.repository}}/actions/workflows/axosyslog-nightly.yml/runs?per_page=1&status=success
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: |
+          echo "The previous nightly was built from commit ${{ fromJson(steps.previous-nightly.outputs.data).workflow_runs[0].head_sha }}"
+
   tarball:
+    if: needs.precheck.outputs.nightly-needed == 'true'
+    needs: precheck
     runs-on: ubuntu-latest
     outputs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
@@ -74,7 +91,6 @@ jobs:
       pkg-type: nightly
 
   publish-image:
-    if: github.ref == 'refs/heads/main'
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: tarball
     with:
@@ -93,8 +109,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const daysToKeep = 30
-            const snapshotTagPattern = /_git[0-9]+/
+            const nightliesToKeep = 30
+            const nightlyTagPattern = /_git[0-9]+/
 
             const package_name = "axosyslog"
             const org = "axoflow"
@@ -105,12 +121,11 @@ jobs:
                 { package_type: "container", package_name: package_name, org: org }
             )
 
-            const oldPackageDate = new Date()
-            oldPackageDate.setDate(oldPackageDate.getDate() - daysToKeep)
-
-            const oldSnapshotVersions = allPackageVersions.filter((p) => {
-                return new Date(p.updated_at) < oldPackageDate && p.metadata.container && p.metadata.container.tags.length != 0 && p.metadata.container.tags.every((t) => snapshotTagPattern.test(t))
+            const nightlyPackageVersions = allPackageVersions.filter((p) => {
+                return p.metadata.container && p.metadata.container.tags.length != 0 && p.metadata.container.tags.every((t) => nightlyTagPattern.test(t))
             })
+
+            const oldSnapshotVersions = nightlyPackageVersions.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(nightliesToKeep);
 
             if (oldSnapshotVersions.length === 0) {
                 console.log("Nothing to remove")
@@ -121,6 +136,7 @@ jobs:
 
             console.log(`Removing the following images: ${oldSnapshotTags}`)
 
+            /* REVERT after a few days
             const manifestsRequests = oldSnapshotTags.map((t) => {
                 const manifest = fetch(`https://ghcr.io/v2/${image}/manifests/${t}`, {
                     method: "GET",
@@ -153,3 +169,4 @@ jobs:
             await Promise.all(oldSnapshotVersions.map((v) => {
                 return github.rest.packages.deletePackageVersionForOrg({ package_type: "container", package_name: package_name, org: org, package_version_id: v.id})
             }))
+            */
