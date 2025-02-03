@@ -5,6 +5,8 @@ endif()
 # C++ code
 
 set(OTEL_LOGRECORD_CPP_SOURCES
+  object-otel-base.hpp
+  object-otel-base.cpp
   object-otel.h
   object-otel-logrecord.cpp
   object-otel-logrecord.hpp
