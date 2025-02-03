@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from boto3 import Session
+from botocore.config import Config
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 from .remote_storage_synchronizer import RemoteStorageSynchronizer
@@ -64,9 +65,16 @@ class S3BucketSynchronizer(RemoteStorageSynchronizer):
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
         )
+        client_config = Config(
+            client_context_params={
+                "request_checksum_calculation": "when_required",
+                "response_checksum_validation": "when_required",
+            },
+        )
         self.__client = self.__session.client(
             service_name="s3",
             endpoint_url=endpoint,
+            config=client_config,
         )
         self.__bucket = bucket
         super().__init__(
