@@ -123,8 +123,18 @@ wall_clock_time_unset(WallClockTime *self)
 #define TM_NOVEMBER  10
 #define TM_DECEMBER  11
 
-#define isleap(y) ((((y) % 4) == 0 && ((y) % 100) != 0) || ((y) % 400) == 0)
-#define isleap_sum(a, b)  isleap((a) % 400 + (b) % 400)
+static int isleap(int y)
+{
+  /* Avoid overflow */
+  if (y>INT_MAX-1900) y -= 2000;
+  y += 1900;
+  return !(y%4) && ((y%100) || !(y%400));
+}
+
+static int isleap_sum(int a, int b)
+{
+  return isleap((a) % 400 + (b) % 400);
+}
 
 static gboolean
 _is_jan1_3_days_past_monday(WallClockTime *wct)
@@ -1076,6 +1086,11 @@ __strftime_fmt_1(WallClockTime *wct, char (*s)[100], size_t *l, int f, int pad)
     case 'D':
       fmt = "%m/%d/%y";
       goto recu_strftime;
+    case 'f':
+      val = wct->wct_usec;
+      width = 6;
+      pad = '0';
+      goto number;
     case 'F':
       fmt = "%Y-%m-%d";
       goto recu_strftime;
@@ -1181,8 +1196,10 @@ __strftime_fmt_1(WallClockTime *wct, char (*s)[100], size_t *l, int f, int pad)
           *l = 0;
           return "";
         }
-      // fmt = __tm_to_tzname(tm);
-      // goto string;
+      *l = snprintf(*s, sizeof *s, "%c%02ld:%02ld",
+                    wct->wct_gmtoff < 0 ? '-' : '+',
+                    wct->wct_gmtoff/3600, wct->wct_gmtoff%3600/60);
+      return *s;
     case '%':
       *l = 1;
       return "%";
@@ -1205,12 +1222,10 @@ number:
     }
   return *s;
 nl_strcat:
-  //  fmt = __nl_langinfo_l(item, loc);
 string:
   *l = strlen(fmt);
   return fmt;
 nl_strftime:
-  // fmt = __nl_langinfo_l(item, loc);
 recu_strftime:
   *l = wall_clock_time_strftime(wct, *s, sizeof *s, fmt);
   if (!*l) return 0;
@@ -1225,7 +1240,7 @@ wall_clock_time_strftime(WallClockTime *wct, char *s, size_t n, const char *f)
   char *p;
   const char *t;
   int pad, plus;
-  unsigned long width;
+  long width;
   for (l=0; l<n; f++)
     {
       if (!*f)
@@ -1242,18 +1257,17 @@ wall_clock_time_strftime(WallClockTime *wct, char *s, size_t n, const char *f)
       pad = 0;
       if (*f == '-' || *f == '_' || *f == '0') pad = *f++;
       if ((plus = (*f == '+'))) f++;
-      if (isdigit(*f))
-        {
-          width = strtoul(f, &p, 10);
-        }
-      else
-        {
-          width = 0;
-          p = (void *)f;
-        }
+      width = (int) strtoul(f, &p, 10);
       if (*p == 'C' || *p == 'F' || *p == 'G' || *p == 'Y')
         {
           if (!width && p!=f) width = 1;
+        }
+      else if (*p == 'f')
+        {
+          if (!width && p!=f)
+            width = -6;
+          else if (width > 0)
+            width = -width;
         }
       else
         {
@@ -1263,7 +1277,7 @@ wall_clock_time_strftime(WallClockTime *wct, char *s, size_t n, const char *f)
       if (*f == 'E' || *f == 'O') f++;
       t = __strftime_fmt_1(wct, &buf, &k, *f, pad);
       if (!t) break;
-      if (width)
+      if (width > 0)
         {
           /* Trim off any sign and leading zeros, then
            * count remaining digits to determine behavior
@@ -1285,6 +1299,11 @@ wall_clock_time_strftime(WallClockTime *wct, char *s, size_t n, const char *f)
             }
           for (; width > k && l < n; width--)
             s[l++] = '0';
+        }
+      else if (width < 0)
+        {
+          if (k > -width)
+            k = -width;
         }
       if (k > n-l) k = n-l;
       memcpy(s+l, t, k);
