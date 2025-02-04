@@ -66,10 +66,8 @@ class S3BucketSynchronizer(RemoteStorageSynchronizer):
             aws_secret_access_key=secret_key,
         )
         client_config = Config(
-            client_context_params={
-                "request_checksum_calculation": "when_required",
-                "response_checksum_validation": "when_required",
-            },
+            request_checksum_calculation="when_required",
+            response_checksum_validation="when_required",
         )
         self.__client = self.__session.client(
             service_name="s3",
