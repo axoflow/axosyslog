@@ -31,6 +31,7 @@
 #include "compat/cpp-end.h"
 
 #include "protobuf-field.hpp"
+#include "object-otel-base.hpp"
 #include "opentelemetry/proto/common/v1/common.pb.h"
 
 typedef struct FilterXOtelArray_ FilterXOtelArray;
@@ -44,7 +45,7 @@ namespace filterx {
 
 using opentelemetry::proto::common::v1::ArrayValue;
 
-class Array
+class Array : public Base
 {
 public:
   Array(FilterXOtelArray *s);
@@ -72,6 +73,9 @@ private:
   bool borrowed;
 
   friend class OtelArrayField;
+
+protected:
+  const google::protobuf::Message &get_protobuf_value() const override;
 };
 
 class OtelArrayField : public ProtobufField

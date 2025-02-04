@@ -2612,3 +2612,33 @@ def test_pubsub_message(config, syslog_ng):
         """"empty":{"data":"empty attribute value","attributes":{"empty":""}}}""" + "\n"
     )
     assert file_true.read_log() == exp
+
+
+def test_otel_repr(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    kvlist = otel_kvlist({"test":"kvlist", "message": $MESSAGE});
+    array = otel_array(["message", $MESSAGE]);
+    logrecord = otel_logrecord({"body":$MESSAGE, "attributes":{"foo":"bar"}});
+    resource = otel_resource({"attributes":{"resource":$MESSAGE}, "dropped_attributes_count": 444});
+    scope = otel_scope({"name":$MESSAGE, "version":"one", "attributes":{"foo":"bar"}, "dropped_attributes_count": 333});
+    $MESSAGE = json();
+    $MESSAGE.kvlist = string(kvlist);
+    $MESSAGE.array = string(array);
+    $MESSAGE.logrecord = string(logrecord);
+    $MESSAGE.resource = string(resource);
+    $MESSAGE.scope = string(scope);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"kvlist":"{\"values\":[{\"key\":\"test\",\"value\":{\"stringValue\":\"kvlist\"}},{\"key\":\"message\",\"value\":{\"stringValue\":\"foobar\"}}]}","""
+        r""""array":"{\"values\":[{\"stringValue\":\"message\"},{\"stringValue\":\"foobar\"}]}","""
+        r""""logrecord":"{\"body\":{\"stringValue\":\"foobar\"},\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}]}","""
+        r""""resource":"{\"attributes\":[{\"key\":\"resource\",\"value\":{\"stringValue\":\"foobar\"}}],\"droppedAttributesCount\":444}","""
+        r""""scope":"{\"name\":\"foobar\",\"version\":\"one\",\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}],\"droppedAttributesCount\":333}"}""" + "\n"
+    )
+    assert file_true.read_log() == exp

@@ -5,6 +5,8 @@ noinst_LTLIBRARIES += modules/grpc/otel/filterx/libfilterx.la
 
 modules_grpc_otel_filterx_libfilterx_la_SOURCES = \
   modules/grpc/otel/filterx/object-otel.h \
+  modules/grpc/otel/filterx/object-otel-base.cpp \
+  modules/grpc/otel/filterx/object-otel-base.hpp \
   modules/grpc/otel/filterx/object-otel-logrecord.cpp \
   modules/grpc/otel/filterx/object-otel-logrecord.hpp \
   modules/grpc/otel/filterx/object-otel-resource.cpp \

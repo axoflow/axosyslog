@@ -31,7 +31,9 @@
 #include "compat/cpp-end.h"
 
 #include "protobuf-field.hpp"
+#include "object-otel-base.hpp"
 #include "opentelemetry/proto/common/v1/common.pb.h"
+#include <mutex>
 
 typedef struct FilterXOtelKVList_ FilterXOtelKVList;
 
@@ -43,9 +45,10 @@ namespace otel {
 namespace filterx {
 
 using opentelemetry::proto::common::v1::KeyValue;
+using opentelemetry::proto::common::v1::KeyValueList;
 using google::protobuf::RepeatedPtrField;
 
-class KVList
+class KVList : public Base
 {
 
 public:
@@ -74,8 +77,12 @@ private:
   FilterXOtelKVList *super;
   RepeatedPtrField<KeyValue> *repeated_kv;
   bool borrowed;
+  thread_local static KeyValueList cached_value;
 
   friend class OtelKVListField;
+
+protected:
+  const google::protobuf::Message &get_protobuf_value() const override;
 };
 
 class OtelKVListField : public ProtobufField

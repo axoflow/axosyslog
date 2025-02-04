@@ -30,6 +30,7 @@
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
+#include "object-otel-base.hpp"
 #include "opentelemetry/proto/logs/v1/logs.pb.h"
 
 typedef struct FilterXOtelLogRecord_ FilterXOtelLogRecord;
@@ -41,7 +42,7 @@ namespace grpc {
 namespace otel {
 namespace filterx {
 
-class LogRecord
+class LogRecord : public Base
 {
 public:
   LogRecord(FilterXOtelLogRecord *super);
@@ -61,6 +62,9 @@ private:
   opentelemetry::proto::logs::v1::LogRecord logRecord;
   LogRecord(const LogRecord &o, FilterXOtelLogRecord *super);
   friend FilterXObject *::_filterx_otel_logrecord_clone(FilterXObject *s);
+
+protected:
+  const google::protobuf::Message &get_protobuf_value() const override;
 };
 
 }

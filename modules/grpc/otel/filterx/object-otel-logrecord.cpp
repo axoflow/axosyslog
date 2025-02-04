@@ -37,6 +37,8 @@
 
 #include "compat/cpp-end.h"
 
+#include <google/protobuf/util/json_util.h>
+
 #include <unistd.h>
 #include <cstdio>
 #include <memory>
@@ -165,6 +167,13 @@ LogRecord::get_value() const
 {
   return this->logRecord;
 }
+
+const google::protobuf::Message &
+LogRecord::get_protobuf_value() const
+{
+  return get_value();
+}
+
 
 /* C Wrappers */
 
@@ -334,6 +343,24 @@ _dict_factory(FilterXObject *self)
   return filterx_otel_kvlist_new();
 }
 
+static gboolean
+_repr(FilterXObject *s, GString *repr)
+{
+  FilterXOtelLogRecord *self = (FilterXOtelLogRecord *) s;
+
+  try
+    {
+      std::string cstring = self->cpp->repr();
+      g_string_assign(repr, cstring.c_str());
+    }
+  catch (const std::runtime_error &e)
+    {
+      msg_error("FilterX: Failed to repr OTel Logrecord object", evt_tag_str("error", e.what()));
+      return FALSE;
+    }
+  return TRUE;
+}
+
 FILTERX_SIMPLE_FUNCTION(otel_logrecord, filterx_otel_logrecord_new_from_args);
 
 FILTERX_DEFINE_TYPE(otel_logrecord, FILTERX_TYPE_NAME(dict),
@@ -343,5 +370,6 @@ FILTERX_DEFINE_TYPE(otel_logrecord, FILTERX_TYPE_NAME(dict),
                     .truthy = _truthy,
                     .list_factory = _list_factory,
                     .dict_factory = _dict_factory,
+                    .repr = _repr,
                     .free_fn = _free,
                    );
