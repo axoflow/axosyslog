@@ -109,8 +109,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const nightliesToKeep = 30
-            const nightlyTagPattern = /_git[0-9]+/
+            const nightliesToKeep = 30 * 2
+            const nightlyTagPattern = /^[0-9.]+_git[0-9]+/
 
             const package_name = "axosyslog"
             const org = "axoflow"
