@@ -50,7 +50,7 @@ _add_to_dict(FilterXVariable *variable, gpointer user_data)
       name_len = name_buf->len;
     }
 
-  FilterXObject *name = filterx_string_new(name_str, name_len);
+  FILTERX_STRING_DECLARE_ON_STACK(name, name_str, name_len);
 
   FilterXObject *value = filterx_variable_get_value(variable);
   FilterXObject *cloned_value = filterx_object_clone(value);

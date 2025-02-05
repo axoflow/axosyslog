@@ -45,6 +45,7 @@
 
 #include "opentelemetry/proto/logs/v1/logs.pb.h"
 
+#include <string.h>
 
 using namespace syslogng::grpc::otel;
 using namespace google::protobuf;
@@ -377,7 +378,7 @@ syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Mes
           ProtoReflectors field_reflectors(message, name);
           ProtobufField *converter = syslogng::grpc::otel::otel_converter_by_field_descriptor(field_reflectors.fieldDescriptor);
 
-          FilterXObject *key = filterx_string_new(name.c_str(), name.size());
+          FILTERX_STRING_DECLARE_ON_STACK(key, name.c_str(), name.size());
           FilterXObject *value = converter->Get(&message, name);
           if (!value)
             {

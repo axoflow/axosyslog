@@ -172,8 +172,8 @@ _iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
 
-      FilterXObject *name = filterx_string_new(label->name, -1);
-      FilterXObject *value = filterx_string_new(label->value, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(name, label->name, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(value, label->value, -1);
 
       gboolean success = func(name, value, user_data);
 

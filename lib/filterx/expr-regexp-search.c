@@ -68,7 +68,7 @@ _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
       if (begin_index < 0 || end_index < 0)
         continue;
 
-      FilterXObject *value = filterx_string_new(state->lhs_str + begin_index, end_index - begin_index);
+      FILTERX_STRING_DECLARE_ON_STACK(value, state->lhs_str + begin_index, end_index - begin_index);
       gboolean success = filterx_list_append(fillable, &value);
       filterx_object_unref(value);
 
@@ -101,8 +101,8 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
         continue;
 
       g_snprintf(num_str_buf, sizeof(num_str_buf), "%" G_GUINT32_FORMAT, i);
-      FilterXObject *key = filterx_string_new(num_str_buf, -1);
-      FilterXObject *value = filterx_string_new(state->lhs_str + begin_index, end_index - begin_index);
+      FILTERX_STRING_DECLARE_ON_STACK(key, num_str_buf, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(value, state->lhs_str + begin_index, end_index - begin_index);
 
       gboolean success = filterx_object_set_subscript(fillable, key, &value);
 
@@ -135,8 +135,8 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
         continue;
 
       g_snprintf(num_str_buf, sizeof(num_str_buf), "%" G_GUINT32_FORMAT, n);
-      FilterXObject *num_key = filterx_string_new(num_str_buf, -1);
-      FilterXObject *key = filterx_string_new(namedgroup_name, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(num_key, num_str_buf, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(key, namedgroup_name, -1);
       FilterXObject *value = filterx_object_get_subscript(fillable, num_key);
 
       gboolean success = filterx_object_set_subscript(fillable, key, &value);
