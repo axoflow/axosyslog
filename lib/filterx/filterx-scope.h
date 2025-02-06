@@ -112,9 +112,15 @@ filterx_scope_unset_variable(FilterXScope *self, FilterXVariable *v)
 static inline void
 filterx_scope_set_message(FilterXScope *self, LogMessage *msg)
 {
-  if (self->msg)
-    log_msg_unref(self->msg);
-  self->msg = log_msg_ref(msg);
+  if (self->msg != msg)
+    {
+      if (self->msg)
+        {
+          g_assert(self->msg->generation == msg->generation);
+          log_msg_unref(self->msg);
+        }
+      self->msg = log_msg_ref(msg);
+    }
 }
 
 #endif
