@@ -22,6 +22,8 @@
 # COPYING for details.
 #
 #############################################################################
+import pytest
+
 from src.syslog_ng_config.renderer import render_statement
 
 
@@ -466,3 +468,44 @@ def test_switch_variable_in_case(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "that's right\n"
+
+
+# Implicitly testing optimized expression caching
+def test_switch_duplicate_literal_case(config, syslog_ng):
+    _ = create_config(
+        config,
+        msg="string",
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case "string":
+                result = "that's right";
+                break;
+              case true ? "string" : "something else":
+                result = "that wants to be right again, but no bueno";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
+
+
+def test_switch_duplicate_default_case(config, syslog_ng):
+    _ = create_config(
+        config,
+        msg="string",
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              default:
+                result = "that's right";
+                break;
+              default:
+                result = "that wants to be right again, but no bueno";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)

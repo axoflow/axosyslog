@@ -80,7 +80,19 @@ struct _FilterXSwitch
   FilterXExpr *body;
   gsize default_target;
   GHashTable *literal_cache;
+  /* temporary init time error message storage */
+  GString *_caching_error_msg;
 };
+
+static void
+_store_duplicate_cases_error(FilterXSwitch *self, const gchar *str)
+{
+  if (!self->_caching_error_msg)
+    self->_caching_error_msg = g_string_new("Duplicate cases detected: ");
+  else
+    g_string_append(self->_caching_error_msg, ", ");
+  g_string_append(self->_caching_error_msg, str);
+}
 
 static gboolean
 _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_expr)
@@ -102,7 +114,12 @@ _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_
       return FALSE;
     }
 
-  g_hash_table_insert(self->literal_cache, g_strdup(str), filterx_expr_ref(&switch_case->super.super));
+  if (!g_hash_table_insert(self->literal_cache, g_strdup(str), filterx_expr_ref(&switch_case->super.super)))
+    {
+      /* Switch case already exists, this is not allowed. */
+      _store_duplicate_cases_error(self, str);
+    }
+
   filterx_object_unref(case_value);
   return TRUE;
 }
@@ -127,6 +144,11 @@ _build_switch_table(FilterXSwitch *self, GList *body)
           else
             {
               /* we do not add the default to our cases */
+              if (self->default_target != -1)
+                {
+                  /* Default case already set, this is not allowed. */
+                  _store_duplicate_cases_error(self, "default");
+                }
               self->default_target = filterx_compound_expr_get_count(self->body);
               filterx_expr_unref(expr);
             }
@@ -201,6 +223,14 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXSwitch *self = (FilterXSwitch *) s;
 
+  if (self->_caching_error_msg)
+    {
+      msg_error("Error during switch-case initialization",
+                evt_tag_str("error", self->_caching_error_msg->str),
+                filterx_expr_format_location_tag(s));
+      return FALSE;
+    }
+
   if (!filterx_expr_init(self->selector, cfg))
     goto error;
 
@@ -272,6 +302,8 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->selector);
   g_ptr_array_free(self->cases, TRUE);
   g_hash_table_unref(self->literal_cache);
+  if (self->_caching_error_msg)
+    g_string_free(self->_caching_error_msg, TRUE);
   filterx_expr_free_method(s);
 }
 
