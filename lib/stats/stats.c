@@ -27,6 +27,7 @@
 #include "stats/stats-query.h"
 #include "stats/stats-registry.h"
 #include "stats/aggregator/stats-aggregator-registry.h"
+#include "stats/stats-cluster-single.h"
 #include "stats/stats.h"
 #include "timeutils/cache.h"
 #include "timeutils/misc.h"
@@ -229,12 +230,42 @@ stats_timer_reinit(StatsOptions *options)
 }
 
 static StatsOptions *stats_options;
+static StatsCounterItem *stats_level;
+
+static inline void
+stats_register_self_metrics(void)
+{
+  StatsClusterKey sc_key;
+
+  stats_lock();
+  stats_cluster_single_key_set(&sc_key, "stats_level", NULL, 0);
+  stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &stats_level);
+  stats_unlock();
+}
+
+static inline void
+stats_unregister_self_metrics(void)
+{
+  StatsClusterKey sc_key;
+
+  stats_lock();
+  stats_cluster_single_key_set(&sc_key, "stats_level", NULL, 0);
+  stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &stats_level);
+  stats_unlock();
+}
+
+static inline void
+stats_update_self_metrics(StatsOptions *options)
+{
+  stats_counter_set(stats_level, options->level);
+}
 
 void
 stats_reinit(StatsOptions *options)
 {
   stats_options = options;
   stats_timer_reinit(options);
+  stats_update_self_metrics(options);
 }
 
 void
@@ -243,11 +274,13 @@ stats_init(void)
   stats_cluster_init();
   stats_registry_init();
   stats_aggregator_registry_init();
+  stats_register_self_metrics();
 }
 
 void
 stats_destroy(void)
 {
+  stats_unregister_self_metrics();
   stats_aggregator_registry_deinit();
   stats_registry_deinit();
   stats_cluster_deinit();
