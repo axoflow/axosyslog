@@ -422,6 +422,29 @@ def test_switch_default_case(config, syslog_ng):
     assert file_true.read_log() == "default-case\n"
 
 
+def test_switch_no_match_case_no_default_case(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            result = "no-match-no-default";
+            switch (${values.str}) {
+              case "match1":
+                result = "does not match1";
+                break;
+              case "match2":
+                result = "does not match2";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "no-match-no-default\n"
+
+
 def test_switch_variable_in_case(config, syslog_ng):
     (file_true, file_false) = create_config(
         config,

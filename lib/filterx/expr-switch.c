@@ -283,6 +283,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->literal_cache = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_expr_unref);
   self->selector = selector;
+  self->default_target = -1;
   _build_switch_table(self, body);
   return &self->super;
 }
