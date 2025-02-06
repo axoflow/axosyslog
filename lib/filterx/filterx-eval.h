@@ -39,9 +39,14 @@ typedef enum _FilterXEvalResult
 
 typedef enum _FilterXEvalControl
 {
-  FXC_NOTSET,
+  /* default, not set value, not to be confused with the unset() function */
+  FXC_UNSET,
+  /* exit from the current filterx {} block with success (matched), drop the message */
   FXC_DROP,
-  FXC_DONE
+  /* exit from the current filterx {} block with success (matched), accept the message */
+  FXC_DONE,
+  /* exit from the current compound expression, continue execution with the next statement in the same filterx {} block */
+  FXC_BREAK,
 } FilterXEvalControl;
 
 typedef struct _FilterXEvalContext FilterXEvalContext;

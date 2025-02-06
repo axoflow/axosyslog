@@ -141,8 +141,7 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
     return;
 
   g_string_append_printf(self->block, "\n#Start Application %s\n", transformation->super.name);
-  g_string_append_printf(self->block,     "    if (%s == '%s') {\n", self->filterx_app_variable,
-                         transformation->super.name);
+  g_string_append_printf(self->block,     "    case '%s':\n", transformation->super.name);
   for (GList *l = transformation->transforms; l; l = l->next)
     {
       Transform *transform = l->data;
@@ -152,7 +151,7 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
 
       _generate_steps(self, transform->steps);
     }
-  g_string_append(self->block,            "    };\n");
+  g_string_append(self->block,            "        break;\n");
   g_string_append_printf(self->block, "\n#End Application %s\n", transformation->super.name);
 }
 
@@ -165,9 +164,11 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
   self->block = result;
   g_string_append_printf(result, "## app-transform(flavour(%s))\n"
                          "channel {\n"
-                         "    filterx {\n", self->flavour);
+                         "    filterx {\n"
+                         "        switch (%s) {\n", self->flavour, self->filterx_app_variable);
   appmodel_iter_transformations(cfg, _generate_app_transform, self);
-  g_string_append(result,        "    };\n"
+  g_string_append(result, "        }\n"
+                  "    };\n"
                   "}");
   self->block = NULL;
 }

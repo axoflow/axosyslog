@@ -150,7 +150,7 @@ _unset_key(FilterXDict *s, FilterXObject *key)
   if (!filterx_object_extract_string_ref(key, &key_str, NULL))
     return FALSE;
 
-  for (guint i = self->labels->len - 1; i >= 0; i--)
+  for (gssize i = (gssize)(self->labels->len) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
       if (strcmp(label->name, key_str) == 0)

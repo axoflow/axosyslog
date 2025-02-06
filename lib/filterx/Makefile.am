@@ -8,6 +8,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-condition.h \
 	lib/filterx/expr-done.h \
 	lib/filterx/expr-drop.h \
+	lib/filterx/expr-break.h \
 	lib/filterx/expr-function.h \
 	lib/filterx/expr-generator.h \
 	lib/filterx/expr-get-subscript.h \
@@ -24,6 +25,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-regexp.h \
 	lib/filterx/expr-set-subscript.h \
 	lib/filterx/expr-setattr.h \
+	lib/filterx/expr-switch.h \
 	lib/filterx/expr-template.h \
 	lib/filterx/expr-unset.h \
 	lib/filterx/expr-variable.h \
@@ -76,6 +78,7 @@ filterx_sources = 				\
 	lib/filterx/expr-condition.c \
 	lib/filterx/expr-done.c \
 	lib/filterx/expr-drop.c \
+	lib/filterx/expr-break.c \
 	lib/filterx/expr-function.c \
 	lib/filterx/expr-generator.c \
 	lib/filterx/expr-get-subscript.c \
@@ -92,6 +95,7 @@ filterx_sources = 				\
 	lib/filterx/expr-regexp.c \
 	lib/filterx/expr-set-subscript.c \
 	lib/filterx/expr-setattr.c \
+	lib/filterx/expr-switch.c \
 	lib/filterx/expr-template.c \
 	lib/filterx/expr-unset.c \
 	lib/filterx/expr-variable.c \

@@ -49,6 +49,7 @@
 #include "filterx/filterx-config.h"
 #include "filterx/expr-function.h"
 #include "filterx/expr-condition.h"
+#include "filterx/expr-switch.h"
 #include "filterx/expr-isset.h"
 #include "filterx/expr-unset.h"
 #include "filterx/expr-literal-generator.h"
@@ -59,6 +60,7 @@
 #include "filterx/expr-plus-generator.h"
 #include "filterx/expr-drop.h"
 #include "filterx/expr-done.h"
+#include "filterx/expr-break.h"
 
 #include "template/templates.h"
 
@@ -116,6 +118,10 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %token KW_DECLARE
 %token KW_DROP
 %token KW_DONE
+%token KW_BREAK
+%token KW_SWITCH
+%token KW_CASE
+%token KW_DEFAULT
 
 %type <ptr> block
 %type <ptr> stmts
@@ -123,6 +129,9 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <node> stmt_expr
 %type <node> complex_expr
 %type <node> __complex_expr
+%type <node> switch_case
+%type <ptr> cases
+%type <ptr> case
 %type <node> assignment
 %type <node> plus_assignment
 %type <node> nullv_assignment
@@ -198,6 +207,8 @@ stmt
 						  $$ = $1;
 						}
 	| ';'					{ $$ = NULL; }
+	| conditional				{ $$ = _assign_location($1, lexer, &@1); }
+	| switch_case				{ $$ = _assign_location($1, lexer, &@1); }
 	;
 
 stmt_expr
@@ -208,8 +219,7 @@ stmt_expr
 complex_expr: __complex_expr			{ $$ = _assign_location($1, lexer, &@1); }
 
 __complex_expr
-	: conditional
-	| assignment
+	: assignment
 	| declaration
 	;
 
@@ -410,6 +420,7 @@ __expr
 	| KW_ISSET '(' expr ')'		{ $$ = filterx_isset_new($3); }
 	| KW_DROP			{ $$ = filterx_expr_drop_msg(); }
 	| KW_DONE			{ $$ = filterx_expr_done(); }
+	| KW_BREAK			{ $$ = filterx_expr_break(); }
 	;
 
 expr_operator
@@ -675,6 +686,21 @@ ternary
             $$ = filterx_conditional_new($1);
             filterx_conditional_set_false_branch($$, $4);
 	  }
+	;
+
+switch_case
+	: KW_SWITCH '(' expr ')' '{' cases '}'	{ $$ = filterx_switch_new($3, $6); }
+	;
+
+cases
+	: case cases				{ if ($1) $$ = g_list_prepend($2, $1); else $$ = $2; }
+	|					{ $$ = NULL; }
+	;
+
+case
+	: KW_CASE expr ':' 			{ $$ = filterx_switch_case_new($2); }
+	| KW_DEFAULT ':'			{ $$ = filterx_switch_case_new(NULL); }
+	| stmt					{ $$ = $1; }
 	;
 
 default

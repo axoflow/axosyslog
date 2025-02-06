@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Axoflow
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,26 +21,32 @@
  * COPYING for details.
  *
  */
-#ifndef FILTERX_COMPARISON_H_INCLUDED
-#define FILTERX_COMPARISON_H_INCLUDED
+#ifndef FILTERX_SWITCH_H_INCLUDED
+#define FILTERX_SWITCH_H_INCLUDED
 
-#include "filterx/filterx-expr.h"
+#include "filterx-expr.h"
 
-#define FCMPX_EQ                   0x0001
-#define FCMPX_LT                   0x0002
-#define FCMPX_GT                   0x0004
-#define FCMPX_NE                   0x0006 // (FCMPX_LT + FCMPX_GT)
-#define FCMPX_TYPE_AWARE           0x0010
-#define FCMPX_STRING_BASED         0x0020
-#define FCMPX_NUM_BASED            0x0040
-#define FCMPX_TYPE_AND_VALUE_BASED 0x0080
 
-#define FCMPX_OP_MASK      0x0007
-#define FCMPX_MODE_MASK    0x00F0
+/* the switch statement */
+FilterXExpr *filterx_switch_new(FilterXExpr *selector, GList *body);
 
-FilterXExpr *filterx_comparison_new(FilterXExpr *lhs, FilterXExpr *rhs, gint operator);
+/* a case in the switch statement */
+FilterXExpr *filterx_switch_case_new(FilterXExpr *value);
 
-gboolean filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp);
+FILTERX_EXPR_DECLARE_TYPE(switch);
+FILTERX_EXPR_DECLARE_TYPE(switch_case);
+
+static inline gboolean
+filterx_expr_is_switch_case(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(switch_case);
+}
+
+static inline gboolean
+filterx_expr_is_switch(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(switch);
+}
 
 
 #endif

@@ -1,6 +1,7 @@
 set(FILTERX_HEADERS
     filterx/expr-assign.h
     filterx/expr-boolalg.h
+    filterx/expr-break.h
     filterx/expr-comparison.h
     filterx/expr-compound.h
     filterx/expr-condition.h
@@ -22,6 +23,7 @@ set(FILTERX_HEADERS
     filterx/expr-regexp.h
     filterx/expr-set-subscript.h
     filterx/expr-setattr.h
+    filterx/expr-switch.h
     filterx/expr-template.h
     filterx/expr-unset.h
     filterx/expr-variable.h
@@ -69,6 +71,7 @@ set(FILTERX_HEADERS
 set(FILTERX_SOURCES
     filterx/expr-assign.c
     filterx/expr-boolalg.c
+    filterx/expr-break.c
     filterx/expr-comparison.c
     filterx/expr-compound.c
     filterx/expr-condition.c
@@ -90,6 +93,7 @@ set(FILTERX_SOURCES
     filterx/expr-regexp.c
     filterx/expr-set-subscript.c
     filterx/expr-setattr.c
+    filterx/expr-switch.c
     filterx/expr-template.c
     filterx/expr-unset.c
     filterx/expr-variable.c
