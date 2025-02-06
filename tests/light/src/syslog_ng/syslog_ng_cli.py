@@ -131,7 +131,7 @@ class SyslogNgCli(object):
         logger.info("syslog-ng process has been reloaded with PID: {}\n".format(self.__process.pid))
 
     def stop(self, unexpected_messages=None):
-        if self.__process:
+        if self.is_process_running():
             saved_pid = self.__process.pid
             # effective stop
             result = self.__syslog_ng_ctl.stop()
@@ -147,8 +147,8 @@ class SyslogNgCli(object):
             self.__console_log_reader.check_for_unexpected_messages(unexpected_messages)
             if self.__external_tool == "valgrind":
                 self.__console_log_reader.handle_valgrind_log(self.__instance_paths.get_external_tool_output_path(self.__external_tool))
-            self.__process = None
             logger.info("syslog-ng process has been stopped with PID: {}\n".format(saved_pid))
+        self.__process = None
 
     # Helper functions
     def __error_handling(self, error_message):
