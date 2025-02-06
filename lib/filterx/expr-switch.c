@@ -246,13 +246,13 @@ _optimize(FilterXExpr *s)
 {
   FilterXSwitch *self = (FilterXSwitch *) s;
 
-  filterx_expr_optimize(self->body);
-  filterx_expr_optimize(self->selector);
+  self->body = filterx_expr_optimize(self->body);
+  self->selector = filterx_expr_optimize(self->selector);
 
   for (gsize i = 0; i < self->cases->len; i++)
     {
       FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      filterx_expr_optimize(expr);
+      g_ptr_array_index(self->cases, i) = filterx_expr_optimize(expr);
     }
   return NULL;
 }
