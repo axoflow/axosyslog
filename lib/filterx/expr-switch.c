@@ -265,6 +265,7 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->body);
   filterx_expr_unref(self->selector);
   g_ptr_array_free(self->cases, TRUE);
+  g_hash_table_unref(self->literal_cache);
   filterx_expr_free_method(s);
 }
 
