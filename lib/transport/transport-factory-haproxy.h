@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Axoflow
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,25 +22,11 @@
  *
  */
 
-#ifndef TRANSPORT_ADAPTER_H_INCLUDED
-#define TRANSPORT_ADAPTER_H_INCLUDED
+#ifndef TRANSPORT_FACTORY_HAPROXY_H_INCLUDED
+#define TRANSPORT_FACTORY_HAPROXY_H_INCLUDED
 
-#include "transport-stack.h"
+#include "transport/transport-stack.h"
 
-typedef struct _LogTransportAdapter LogTransportAdapter;
-struct _LogTransportAdapter
-{
-  LogTransport super;
-  LogTransportIndex base_index;
-};
-
-gssize log_transport_adapter_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTransportAuxData *aux);
-gssize log_transport_adapter_write_method(LogTransport *s, const gpointer buf, gsize count);
-gssize log_transport_adapter_writev_method(LogTransport *s, struct iovec *iov, gint iov_count);
-
-void log_transport_adapter_init_instance(LogTransportAdapter *self, const gchar *name,
-                                         LogTransportIndex base);
-
-void log_transport_adapter_free_method(LogTransport *s);
+LogTransportFactory *transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to);
 
 #endif
