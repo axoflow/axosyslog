@@ -83,8 +83,10 @@ struct _FilterXSwitch
 };
 
 static gboolean
-_try_to_cache_literal(FilterXSwitch *self, FilterXSwitchCase *switch_case)
+_try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_expr)
 {
+  FilterXSwitchCase *switch_case = (FilterXSwitchCase *) switch_case_expr;
+
   if (!filterx_expr_is_literal(switch_case->super.operand))
     return FALSE;
 
@@ -120,8 +122,7 @@ _build_switch_table(FilterXSwitch *self, GList *body)
           if (!filterx_switch_case_is_default(switch_case))
             {
               filterx_switch_case_set_target(switch_case, filterx_compound_expr_get_count(self->body));
-              if (!_try_to_cache_literal(self, switch_case))
-                g_ptr_array_add(self->cases, expr);
+              g_ptr_array_add(self->cases, expr);
             }
           else
             {
@@ -249,11 +250,16 @@ _optimize(FilterXExpr *s)
   self->body = filterx_expr_optimize(self->body);
   self->selector = filterx_expr_optimize(self->selector);
 
-  for (gsize i = 0; i < self->cases->len; i++)
+  for (gssize i = (gssize)(self->cases->len) - 1; i >= 0; i--)
     {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      g_ptr_array_index(self->cases, i) = filterx_expr_optimize(expr);
+      FilterXExpr *switch_case = (FilterXExpr *) g_ptr_array_index(self->cases, i);
+      FilterXExpr *optimized_switch_case = filterx_expr_optimize(switch_case);
+      g_ptr_array_index(self->cases, i) = optimized_switch_case;
+
+      if (_try_to_cache_literal_switch_case(self, optimized_switch_case))
+        g_ptr_array_remove_index(self->cases, i);
     }
+
   return NULL;
 }
 
