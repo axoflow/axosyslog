@@ -26,6 +26,14 @@
 #include "filterx-object.h"
 
 typedef struct _FilterXString FilterXString;
+struct _FilterXString
+{
+  FilterXObject super;
+  const gchar *str;
+  gsize str_len;
+  gchar storage[];
+};
+
 typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize source_len);
 
 FILTERX_DECLARE_TYPE(string);
@@ -45,5 +53,16 @@ FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
 FilterXString *filterx_string_typed_new(const gchar *str);
+
+#define FILTERX_STRING_STACK_INIT(cstr, cstr_len) \
+  { \
+    FILTERX_OBJECT_STACK_INIT(string), \
+    .str = (cstr), \
+    .str_len = ((cstr_len) < 0 ? strlen(cstr) : (cstr_len)), \
+  }
+
+#define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \
+  FilterXString __ ## _name ## storage = FILTERX_STRING_STACK_INIT(cstr, cstr_len); \
+  FilterXObject *_name = &__ ## _name ## storage .super;
 
 #endif

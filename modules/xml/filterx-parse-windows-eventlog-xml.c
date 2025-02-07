@@ -72,7 +72,7 @@ static gboolean
 _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GError **error)
 {
   const gchar *parent_elem_name = (const gchar *) g_markup_parse_context_get_element_stack(context)->next->data;
-  FilterXObject *key = filterx_string_new(parent_elem_name, -1);
+  FILTERX_STRING_DECLARE_ON_STACK(key, parent_elem_name, -1);
 
   FilterXObject *dict_obj = filterx_object_create_dict(elem_context->parent_obj);
   if (!dict_obj)
@@ -106,7 +106,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
 {
   xml_elem_context_init(new_elem_context, last_elem_context->current_obj, NULL);
 
-  FilterXObject *new_elem_key = filterx_string_new(new_elem_name, -1);
+  FILTERX_STRING_DECLARE_ON_STACK(new_elem_key, new_elem_name, -1);
   FilterXObject *existing_obj = NULL;
 
   if (!filterx_object_is_key_set(new_elem_context->parent_obj, new_elem_key))
@@ -330,8 +330,8 @@ _text(FilterXGeneratorFunctionParseXml *s,
       return;
     }
 
-  FilterXObject *key = filterx_string_new(state->last_data_name->str, state->last_data_name->len);
-  FilterXObject *text_obj = filterx_string_new(text, text_len);
+  FILTERX_STRING_DECLARE_ON_STACK(key, state->last_data_name->str, state->last_data_name->len);
+  FILTERX_STRING_DECLARE_ON_STACK(text_obj, text, text_len);
 
   if (!filterx_object_set_subscript(elem_context->current_obj, key, &text_obj))
     {

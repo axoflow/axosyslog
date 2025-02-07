@@ -74,7 +74,9 @@ void _filterx_type_init_methods(FilterXType *type);
       __VA_ARGS__       \
     }
 
-#define FILTERX_OBJECT_MAGIC_BIAS G_MAXINT32
+#define FILTERX_OBJECT_REFCOUNT_FROZEN (G_MAXINT32)
+#define FILTERX_OBJECT_REFCOUNT_STACK  (G_MAXINT32-1)
+#define FILTERX_OBJECT_REFCOUNT_OFLOW_MARK (FILTERX_OBJECT_REFCOUNT_STACK-1024)
 
 
 FILTERX_DECLARE_TYPE(object);
@@ -110,7 +112,7 @@ void filterx_object_free_method(FilterXObject *self);
 static inline gboolean
 filterx_object_is_frozen(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_MAGIC_BIAS;
+  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_REFCOUNT_FROZEN;
 }
 
 static inline FilterXObject *
@@ -119,12 +121,53 @@ filterx_object_ref(FilterXObject *self)
   if (!self)
     return NULL;
 
-  if (filterx_object_is_frozen(self))
+  gint r = g_atomic_counter_get(&self->ref_cnt);
+  if (r < FILTERX_OBJECT_REFCOUNT_OFLOW_MARK && r > 0)
+    {
+      /* NOTE: getting into this path is racy, as two threads might be
+       * checking the overflow mark in parallel and then decide we need to
+       * run this (normal) path.  In this case, the race could cause ref_cnt
+       * to reach FILTERX_OBJECT_REFCOUNT_OFLOW_MARK, without triggering the
+       * overflow assert below.
+       *
+       * To mitigate this, FILTERX_OBJECT_REFCOUNT_OFLOW_MARK is set to 1024
+       * less than the first value that we handle specially.  This means
+       * that even if the race is lost, we would need 1024 competing CPUs
+       * concurrently losing the race and incrementing ref_cnt here.  And
+       * even in this case the only issue is that we don't detect an actual
+       * overflow at runtime that should never occur in the first place.
+       *
+       * This is _really_ unlikely, and we will detect ref_cnt overflows in
+       * non-doom scenarios first, so we can address the actual issue (which
+       * might be a reference counting bug somewhere).
+       *
+       * If less than 1024 CPUs lose the race, then the refcount would end
+       * up in the range between FILTERX_OBJECT_REFCOUNT_OFLOW_MARK and
+       * FILTERX_OBJECT_REFCOUNT_STACK, causing the assertion at the end of
+       * this function to trigger an abort.
+       *
+       * The non-racy solution would be to use a
+       * g_atomic_int_exchange_and_add() call and checking the old_value
+       * against FILTERX_OBJECT_REFCOUNT_OFLOW_MARK another time, but that's
+       * an extra conditional in a hot-path.
+       */
+
+      g_atomic_counter_inc(&self->ref_cnt);
+      return self;
+    }
+
+  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
     return self;
 
-  g_atomic_counter_inc(&self->ref_cnt);
-
-  return self;
+  if (r == FILTERX_OBJECT_REFCOUNT_STACK)
+    {
+      /* we can't use filterx_object_clone() directly, as that's an inline
+       * function declared further below.  Also, filterx_object_clone() does
+       * not clone inmutable objects.  We only support allocating inmutable
+       * objects on the stack */
+      return self->type->clone(self);
+    }
+  g_assert_not_reached();
 }
 
 static inline void
@@ -133,10 +176,30 @@ filterx_object_unref(FilterXObject *self)
   if (!self)
     return;
 
-  if (filterx_object_is_frozen(self))
+  gint r = g_atomic_counter_get(&self->ref_cnt);
+  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
     return;
+  if (r == FILTERX_OBJECT_REFCOUNT_STACK)
+    {
+      /* NOTE: Normally, stack based allocations are only used by a single
+       * thread.  Furthermore, code where we use this object will only have
+       * a borrowed reference, e.g.  it can't cross thread boundaries.  With
+       * that said, even though the condition of this if() statement is
+       * racy, it's not actually racing, as we only have a single relevant
+       * thread.
+       *
+       * In the rare case where we do want to pass a stack based allocation
+       * to another thread, we would need to pass a new reference to it, and
+       * filterx_object_ref() clones a new object in this case, which again
+       * means, that we won't have actual race here.
+       */
 
-  g_assert(g_atomic_counter_get(&self->ref_cnt) > 0);
+      g_atomic_counter_set(&self->ref_cnt, 0);
+      return;
+    }
+  if (r <= 0)
+    g_assert_not_reached();
+
   if (g_atomic_counter_dec_and_test(&self->ref_cnt))
     {
       self->type->free_fn(self);
@@ -353,5 +416,15 @@ filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
 
   self->modified_in_place = modified;
 }
+
+#define FILTERX_OBJECT_STACK_INIT(_type) \
+  { \
+    .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
+    .fx_ref_cnt = { .counter = 0 }, \
+    .modified_in_place = FALSE, \
+    .readonly = TRUE, \
+    .weak_referenced = FALSE, \
+    .type = &FILTERX_TYPE_NAME(_type) \
+  }
 
 #endif

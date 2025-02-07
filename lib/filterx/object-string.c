@@ -29,12 +29,6 @@
 #include "str-format.h"
 #include "str-utils.h"
 
-struct _FilterXString
-{
-  FilterXObject super;
-  gsize str_len;
-  gchar str[];
-};
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
 const gchar *
@@ -142,6 +136,15 @@ _string_add(FilterXObject *s, FilterXObject *object)
   return filterx_string_new(buffer->str, buffer->len);
 }
 
+/* we support clone of stack allocated strings */
+static FilterXObject *
+_string_clone(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  return filterx_string_new(self->str, self->str_len);
+}
+
 static inline FilterXString *
 _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate)
 {
@@ -154,10 +157,11 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
 
   self->str_len = str_len;
   if (translate)
-    translate(self->str, str, str_len);
+    translate(self->storage, str, str_len);
   else
-    memcpy(self->str, str, str_len);
-  self->str[str_len] = 0;
+    memcpy(self->storage, str, str_len);
+  self->storage[str_len] = 0;
+  self->str = self->storage;
 
   return self;
 }
@@ -291,7 +295,7 @@ filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len)
       return NULL;
     }
 
-  return filterx_string_new(buf->str, -1);
+  return filterx_string_new(buf->str, buf->len);
 }
 
 FilterXObject *
@@ -353,6 +357,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
                     .repr = _string_repr,
                     .add = _string_add,
+                    .clone = _string_clone,
                    );
 
 FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
