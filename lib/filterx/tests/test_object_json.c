@@ -217,11 +217,14 @@ static void
 setup(void)
 {
   app_startup();
+  init_libtest_filterx();
 }
 
 static void
 teardown(void)
 {
+  scratch_buffers_explicit_gc();
+  deinit_libtest_filterx();
   app_shutdown();
 }
 

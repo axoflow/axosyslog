@@ -202,9 +202,6 @@ _add_elem_to_json_object(FilterXObject *key_obj, FilterXObject *value_obj, gpoin
   if (!filterx_object_map_to_json(value_obj, &value, &assoc_object))
     return FALSE;
 
-  if (!value_obj->readonly)
-    filterx_json_associate_cached_object(value, assoc_object);
-
   filterx_object_unref(assoc_object);
 
   if (json_object_object_add(object, key, value) != 0)

@@ -109,6 +109,8 @@ void filterx_object_unfreeze_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
 
+void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
+
 static inline gboolean
 filterx_object_is_frozen(FilterXObject *self)
 {
@@ -289,6 +291,10 @@ filterx_object_map_to_json(FilterXObject *self, struct json_object **object, Fil
       gboolean result = self->type->map_to_json(self, object, assoc_object);
       if (!(*assoc_object))
         *assoc_object = filterx_object_ref(self);
+
+      if (!self->readonly)
+        filterx_json_associate_cached_object(*object, *assoc_object);
+
       return result;
     }
   return FALSE;
