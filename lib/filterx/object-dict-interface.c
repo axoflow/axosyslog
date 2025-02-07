@@ -66,7 +66,11 @@ _add_elem_to_list(FilterXObject *key_obj, FilterXObject *value_obj, gpointer use
 {
   FilterXObject *list = (FilterXObject *) user_data;
 
-  return filterx_list_append(list, &key_obj);
+  FilterXObject *key_to_add = filterx_object_ref(key_obj);
+  gboolean success = filterx_list_append(list, &key_to_add);
+  filterx_object_unref(key_to_add);
+
+  return success;
 }
 
 gboolean
