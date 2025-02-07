@@ -105,5 +105,20 @@ filterx_boolean_unwrap(FilterXObject *s, gboolean *value)
 void filterx_primitive_global_init(void);
 void filterx_primitive_global_deinit(void);
 
+#define FILTERX_INTEGER_STACK_INIT(v) \
+  { \
+    FILTERX_OBJECT_STACK_INIT(integer), \
+    .value = { \
+      { \
+        .raw_int64 = v, \
+      }, \
+      .type = GN_INT64, \
+      .precision = 0, \
+    }, \
+  }
+
+#define FILTERX_INTEGER_DECLARE_ON_STACK(_name, v) \
+  FilterXPrimitive __ ## _name ## storage = FILTERX_INTEGER_STACK_INIT(v); \
+  FilterXObject *_name = &__ ## _name ## storage .super;
 
 #endif

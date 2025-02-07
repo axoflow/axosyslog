@@ -83,6 +83,13 @@ _integer_add(FilterXObject *s, FilterXObject *object)
   return NULL;
 }
 
+static FilterXObject *
+_integer_clone(FilterXObject *s)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+  return filterx_integer_new(gn_as_int64(&self->value));
+}
+
 gboolean
 integer_repr(gint64 val, GString *repr)
 {
@@ -371,6 +378,7 @@ FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(primitive),
                     .marshal = _integer_marshal,
                     .map_to_json = _integer_map_to_json,
                     .add = _integer_add,
+                    .clone = _integer_clone,
                    );
 
 FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(primitive),
