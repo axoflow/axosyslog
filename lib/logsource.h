@@ -89,7 +89,6 @@ struct _LogSource
     StatsClusterKey *recvd_messages_key;
     StatsCounterItem *recvd_messages;
 
-    gboolean raw_bytes_enabled;
     StatsClusterKey *recvd_bytes_key;
     StatsByteCounter recvd_bytes;
 
