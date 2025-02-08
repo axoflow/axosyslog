@@ -140,8 +140,6 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
   if (!filterx_object_map_to_json(*new_value, &jso, &assoc_object))
     return FALSE;
 
-  filterx_json_associate_cached_object(jso, assoc_object);
-
   if (json_object_object_add(self->jso, key_str, jso) != 0)
     {
       filterx_object_unref(assoc_object);

@@ -146,6 +146,9 @@ filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *fil
   if (!_is_json_cacheable(jso))
     return;
 
+  if (json_object_get_userdata(jso) == filterx_obj)
+    return;
+
   filterx_eval_store_weak_ref(filterx_obj);
 
   /* we are not storing a reference in userdata to avoid circular
