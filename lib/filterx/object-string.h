@@ -63,4 +63,7 @@ FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
   FilterXString __ ## _name ## storage = FILTERX_STRING_STACK_INIT(cstr, cstr_len); \
   FilterXObject *_name = &__ ## _name ## storage .super;
 
+void filterx_string_global_init(void);
+void filterx_string_global_deinit(void);
+
 #endif
