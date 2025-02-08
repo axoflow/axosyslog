@@ -52,7 +52,8 @@ FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, F
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
-FilterXString *filterx_string_typed_new(const gchar *str);
+void filterx_string_global_init(void);
+void filterx_string_global_deinit(void);
 
 #define FILTERX_STRING_STACK_INIT(cstr, cstr_len) \
   { \

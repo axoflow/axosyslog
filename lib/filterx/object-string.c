@@ -30,6 +30,25 @@
 #include "str-utils.h"
 
 
+/* cache indices */
+enum
+{
+  FX_STR_ZERO_LENGTH,
+  FX_STR_NUMBER0,
+  FX_STR_NUMBER1,
+  FX_STR_NUMBER2,
+  FX_STR_NUMBER3,
+  FX_STR_NUMBER4,
+  FX_STR_NUMBER5,
+  FX_STR_NUMBER6,
+  FX_STR_NUMBER7,
+  FX_STR_NUMBER8,
+  FX_STR_NUMBER9,
+  FX_STR_MAX,
+};
+
+static FilterXObject *string_cache[FX_STR_MAX];
+
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
 const gchar *
 filterx_string_get_value_ref(FilterXObject *s, gsize *length)
@@ -169,6 +188,15 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
 FilterXObject *
 filterx_string_new(const gchar *str, gssize str_len)
 {
+  if (str_len == 0 || str[0] == 0)
+    {
+      return filterx_object_ref(string_cache[FX_STR_ZERO_LENGTH]);
+    }
+  else if (str_len == 1 && str[0] >= '0' && str[0] < '9')
+    {
+      gint index = str[0] - '0';
+      return filterx_object_ref(string_cache[FX_STR_NUMBER0 + index]);
+    }
   return &_string_new(str, str_len, NULL)->super;
 }
 
@@ -176,12 +204,6 @@ FilterXObject *
 filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate)
 {
   return &_string_new(str, str_len, translate)->super;
-}
-
-FilterXString *
-filterx_string_typed_new(const gchar *str)
-{
-  return _string_new(str, -1, NULL);
 }
 
 static inline gsize
@@ -261,7 +283,7 @@ FilterXObject *
 filterx_bytes_new(const gchar *mem, gssize mem_len)
 {
   g_assert(mem_len != -1);
-  FilterXString *self = (FilterXString *) filterx_string_new(mem, mem_len);
+  FilterXString *self = (FilterXString *) _string_new(mem, mem_len, NULL);
   self->super.type = &FILTERX_TYPE_NAME(bytes);
   return &self->super;
 }
@@ -270,7 +292,7 @@ FilterXObject *
 filterx_protobuf_new(const gchar *mem, gssize mem_len)
 {
   g_assert(mem_len != -1);
-  FilterXString *self = (FilterXString *) filterx_bytes_new(mem, mem_len);
+  FilterXString *self = (FilterXString *) _string_new(mem, mem_len, NULL);
   self->super.type = &FILTERX_TYPE_NAME(protobuf);
   return &self->super;
 }
@@ -376,3 +398,23 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
                     .repr = _bytes_repr,
                    );
+
+void
+filterx_string_global_init(void)
+{
+  filterx_cache_object(&string_cache[FX_STR_ZERO_LENGTH], &_string_new("", 0, NULL)->super);
+  for (gint i = 0; i < 10; i++)
+    {
+      gchar number[2] = { i+'0', 0 };
+      filterx_cache_object(&string_cache[FX_STR_NUMBER0+i], &_string_new(number, 1, NULL)->super);
+    }
+}
+
+void
+filterx_string_global_deinit(void)
+{
+  for (gint i = 0; i < FX_STR_MAX; i++)
+    {
+      filterx_uncache_object(&string_cache[i]);
+    }
+}
