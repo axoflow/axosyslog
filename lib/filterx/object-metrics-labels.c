@@ -128,14 +128,17 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
   if (!name_str || !value_str)
     return FALSE;
 
-  if (!filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(string)))
-    *new_value = filterx_string_new(value_str, -1);
-
   StatsClusterLabel label = stats_cluster_label(g_strndup(name_str, name_len), g_strndup(value_str, value_len));
   g_array_append_val(self->labels, label);
 
   self->sorted = FALSE;
   self->deduped = FALSE;
+
+  if (!filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(string)))
+    {
+      filterx_object_unref(*new_value);
+      *new_value = filterx_string_new(value_str, value_len);
+    }
 
   scratch_buffers_reclaim_marked(marker);
   return TRUE;
@@ -169,8 +172,8 @@ _iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
 
-      FilterXObject *name = filterx_string_new(label->name, -1);
-      FilterXObject *value = filterx_string_new(label->value, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(name, label->name, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(value, label->value, -1);
 
       gboolean success = func(name, value, user_data);
 

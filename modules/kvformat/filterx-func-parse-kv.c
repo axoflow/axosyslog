@@ -80,8 +80,8 @@ _set_dict_value(FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)
 {
-  FilterXObject *dict_key = filterx_string_new(key, key_len);
-  FilterXObject *dict_val = filterx_string_new(value, value_len);
+  FILTERX_STRING_DECLARE_ON_STACK(dict_key, key, key_len);
+  FILTERX_STRING_DECLARE_ON_STACK(dict_val, value, value_len);
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
 

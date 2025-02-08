@@ -86,8 +86,8 @@ _set_dict_value(FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)
 {
-  FilterXObject *dict_key = filterx_string_new(key, key_len);
-  FilterXObject *dict_val = filterx_string_new(value, value_len);
+  FILTERX_STRING_DECLARE_ON_STACK(dict_key, key, key_len);
+  FILTERX_STRING_DECLARE_ON_STACK(dict_val, value, value_len);
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
 
@@ -156,7 +156,7 @@ _match_field_to_column(EventParserContext *ctx, Field *field, const gchar *input
   gboolean ok = FALSE;
   if (!*error && val)
     {
-      FilterXObject *key = filterx_string_new(field->name, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(key, field->name, -1);
       ok = filterx_object_set_subscript(fillable, key, &val);
       filterx_object_unref(key);
     }

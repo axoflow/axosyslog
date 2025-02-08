@@ -36,6 +36,7 @@
 #include <google/protobuf/util/json_util.h>
 
 #include <stdexcept>
+#include <string.h>
 
 /* The deprecated MutableRepeatedPtrField() does not have a proper alternative. */
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -234,7 +235,8 @@ KVList::iter(FilterXDictIterFunc func, gpointer user_data) const
   for (int i = 0; i < repeated_kv->size(); i++)
     {
       KeyValue &kv = repeated_kv->at(i);
-      FilterXObject *key = filterx_string_new(kv.key().c_str(), kv.key().length());
+
+      FILTERX_STRING_DECLARE_ON_STACK(key, kv.key().c_str(), kv.key().length());
       FilterXObject *value = converter->Get(&kv, "value");
 
       bool result = func(key, value, user_data);

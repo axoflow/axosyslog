@@ -172,8 +172,9 @@ _extract_sd_components(const gchar *key, gssize key_len, const gchar **sd_id_sta
 static gboolean
 _insert_into_dict(FilterXObject *dict, const gchar *key, gssize key_len, const gchar *value, gssize value_len)
 {
-  FilterXObject *fob_key = filterx_string_new(key, key_len);
-  FilterXObject *fob_value = filterx_string_new(value, value_len);
+  FILTERX_STRING_DECLARE_ON_STACK(fob_key, key, key_len);
+  FILTERX_STRING_DECLARE_ON_STACK(fob_value, value, value_len);
+
   gboolean res = filterx_object_set_subscript(dict, fob_key, &fob_value);
 
   filterx_object_unref(fob_key);
@@ -254,7 +255,7 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
         return FALSE;
       i += num_insertions + 1;
 
-      FilterXObject *sd_id_key = filterx_string_new(current_sd_id_start, current_sd_id_len);
+      FILTERX_STRING_DECLARE_ON_STACK(sd_id_key, current_sd_id_start, current_sd_id_len);
       filterx_object_set_subscript(fillable, sd_id_key, &inner_dict);
       filterx_object_unref(inner_dict);
       filterx_object_unref(sd_id_key);
