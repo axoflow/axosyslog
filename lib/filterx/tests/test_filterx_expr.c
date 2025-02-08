@@ -300,7 +300,7 @@ Test(filterx_expr, test_filterx_dict_merge)
 
 Test(filterx_expr, test_filterx_assign)
 {
-  FilterXExpr *result_var = filterx_msg_variable_expr_new(filterx_string_new("$result-var", -1));
+  FilterXExpr *result_var = filterx_msg_variable_expr_new("result_var");
   cr_assert(result_var != NULL);
 
   FilterXExpr *assign = filterx_assign_new(result_var, filterx_literal_new(filterx_string_new("foobar", -1)));
