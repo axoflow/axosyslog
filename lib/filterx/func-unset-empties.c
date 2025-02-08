@@ -372,14 +372,13 @@ static gboolean
 _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, GError **error)
 {
   g_assert(target);
-  guint64 len;
-
   target = filterx_ref_unwrap_ro(target);
 
   if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(null)))
     set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL, TRUE);
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(list)))
     {
+      guint64 len;
       g_assert(filterx_object_len(target, &len));
       if (len != 0)
         {
@@ -391,6 +390,7 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
     }
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(dict)))
     {
+      guint64 len;
       g_assert(filterx_object_len(target, &len));
       if (len != 0)
         {
@@ -402,6 +402,7 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
     }
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(string)))
     {
+      gsize len;
       const gchar *str = filterx_string_get_value_ref(target, &len);
       if (len == 0)
         {
