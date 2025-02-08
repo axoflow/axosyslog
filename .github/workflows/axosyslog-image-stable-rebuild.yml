@@ -1,4 +1,4 @@
-name: AxoSyslog stable image
+name: AxoSyslog stable image rebuild
 
 permissions: write-all
 
