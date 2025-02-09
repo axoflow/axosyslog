@@ -60,7 +60,7 @@ _json_string(FilterXJsonArray *self)
   if (self->super.super.readonly)
     return g_atomic_pointer_get(&self->cached_ro_literal);
 
-  return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN);
+  return json_object_to_json_string_ext(self->jso, JSON_C_TO_STRING_PLAIN | JSON_C_TO_STRING_NOSLASHESCAPE);
 }
 
 static gboolean
