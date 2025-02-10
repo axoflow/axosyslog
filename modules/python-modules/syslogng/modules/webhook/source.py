@@ -54,6 +54,7 @@ class Handler(tornado.web.RequestHandler):
 
     def _construct_msg(self, request, path_arguments) -> LogMessage:
         msg = LogMessage(self.request.body)
+        msg.set_recvd_rawmsg_size(len(self.request.body))
 
         for key, value in request.query_arguments.items():
             value = value[0] if len(value) == 1 else value
