@@ -50,9 +50,31 @@ typedef struct _FilterXRef
 } FilterXRef;
 
 
+void _filterx_ref_cow(FilterXRef *self);
+
 /* Call them only where downcasting to a specific type is needed, the returned object should only be used locally. */
-FilterXObject *filterx_ref_unwrap_ro(FilterXObject *s);
-FilterXObject *filterx_ref_unwrap_rw(FilterXObject *s);
+static inline FilterXObject *
+filterx_ref_unwrap_ro(FilterXObject *s)
+{
+  if (!s || !(s->type == &FILTERX_TYPE_NAME(ref)))
+    return s;
+
+  FilterXRef *self = (FilterXRef *) s;
+  return self->value;
+}
+
+static inline FilterXObject *
+filterx_ref_unwrap_rw(FilterXObject *s)
+{
+  if (!s || !(s->type == &FILTERX_TYPE_NAME(ref)))
+    return s;
+
+  FilterXRef *self = (FilterXRef *) s;
+
+  _filterx_ref_cow(self);
+
+  return self->value;
+}
 
 static inline gboolean
 _filterx_type_is_referenceable(FilterXType *t)
