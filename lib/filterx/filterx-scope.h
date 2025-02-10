@@ -112,6 +112,8 @@ filterx_scope_unset_variable(FilterXScope *self, FilterXVariable *v)
 static inline void
 filterx_scope_set_message(FilterXScope *self, LogMessage *msg)
 {
+  if (msg == self->msg)
+    return;
   if (self->msg)
     log_msg_unref(self->msg);
   self->msg = log_msg_ref(msg);
