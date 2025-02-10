@@ -1,3 +1,9 @@
+axosyslog (4.10.0-1) unstable; urgency=medium
+
+  * New upstream release 4.10.0
+
+ -- github-actions <41898282+github-actions@users.noreply.github.com>  Mon, 10 Feb 2025 09:08:09 +0000
+
 axosyslog (4.9.0-1) unstable; urgency=medium
 
   * New upstream release 4.9.0
