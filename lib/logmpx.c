@@ -212,17 +212,7 @@ _arcs(LogPipe *s)
   if (s->pipe_next)
     list = g_list_append(list, arc_new((LogPipe *)self, s->pipe_next, ARC_TYPE_PIPE_NEXT));
   return list;
-}
-
-static LogPipe *
-_optimize(LogPipe *s)
-{
-  LogMultiplexer *self = (LogMultiplexer *)s;
-  
-  for (gint i = 0; i < self->next_hops->len; i++)
-    log_pipe_optimize((LogPipe **) &g_ptr_array_index(self->next_hops, i));
-  return log_pipe_optimize_method(s);
-}
+};
 
 LogMultiplexer *
 log_multiplexer_new(GlobalConfig *cfg)
@@ -236,7 +226,6 @@ log_multiplexer_new(GlobalConfig *cfg)
   self->super.free_fn = log_multiplexer_free;
   self->next_hops = g_ptr_array_new();
   self->super.arcs = _arcs;
-  self->super.optimize = _optimize;
   self->delivery_propagation = TRUE;
   log_pipe_add_info(&self->super, "multiplexer");
   return self;

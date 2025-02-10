@@ -188,7 +188,6 @@ gchar *cfg_tree_get_rule_name(CfgTree *self, gint content, LogExprNode *node);
 gchar *cfg_tree_get_child_id(CfgTree *self, gint content, LogExprNode *node);
 
 gboolean cfg_tree_compile(CfgTree *self);
-gboolean cfg_tree_optimize(CfgTree *self);
 gboolean cfg_tree_start(CfgTree *self);
 gboolean cfg_tree_stop(CfgTree *self);
 gboolean cfg_tree_pre_config_init(CfgTree *self);
