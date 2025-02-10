@@ -29,21 +29,6 @@
 #include "str-format.h"
 #include "str-utils.h"
 
-/* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
-const gchar *
-filterx_string_get_value_ref(FilterXObject *s, gsize *length)
-{
-  FilterXString *self = (FilterXString *) s;
-
-  if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
-    return NULL;
-
-  if (length)
-    *length = self->str_len;
-  else
-    g_assert(self->str[self->str_len] == 0);
-  return self->str;
-}
 
 /* NOTE: Consider using filterx_object_extract_bytes_ref() to also support message_value. */
 const gchar *

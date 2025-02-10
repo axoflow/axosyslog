@@ -24,6 +24,7 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
+#include "filterx-object-istype.h"
 #include "filterx-globals.h"
 
 typedef struct _FilterXString FilterXString;
@@ -41,7 +42,6 @@ FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
 FILTERX_DECLARE_TYPE(protobuf);
 
-const gchar *filterx_string_get_value_ref(FilterXObject *s, gsize *length);
 const gchar *filterx_bytes_get_value_ref(FilterXObject *s, gsize *length);
 const gchar *filterx_protobuf_get_value_ref(FilterXObject *s, gsize *length);
 FilterXObject *filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len);
@@ -52,6 +52,20 @@ FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
+
+/* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
+static inline const gchar *
+filterx_string_get_value_ref(FilterXObject *s, gsize *length)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
+    return NULL;
+
+  if (length)
+    *length = self->str_len;
+  return self->str;
+}
 
 static inline FilterXObject *
 filterx_string_new(const gchar *str, gssize str_len)
