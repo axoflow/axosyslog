@@ -126,8 +126,8 @@ static gboolean
 _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   FilterXFunctionUnsetEmpties *self = ((gpointer *) user_data)[0];
-  gsize len = GPOINTER_TO_UINT(((gpointer *)user_data)[1]);
-  gsize *num = ((gpointer *)user_data)[2];
+  guint64 len = GPOINTER_TO_UINT(((gpointer *)user_data)[1]);
+  guint64 *num = ((gpointer *)user_data)[2];
   FilterXObject **keys_to_unset = ((gpointer *) user_data)[3];
 
   value = filterx_ref_unwrap_rw(value);
@@ -151,7 +151,7 @@ _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpoin
 static gboolean
 _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
-  gsize len, num = 0;
+  guint64 len, num = 0;
   filterx_object_len(obj, &len);
   FilterXObject *keys_to_unset[len];
 
