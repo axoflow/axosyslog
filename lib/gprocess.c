@@ -28,6 +28,7 @@
 #include "reloc.h"
 #include "console.h"
 #include "perf/perf.h"
+#include "stackdump.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -1314,6 +1315,14 @@ g_process_perform_supervise(void)
   exit(0);
 }
 
+
+static void
+g_process_setup_fatal_signal_handler(void)
+{
+  stackdump_setup_signal(SIGSEGV);
+  stackdump_setup_signal(SIGABRT);
+}
+
 /**
  * g_process_start:
  *
@@ -1416,6 +1425,8 @@ g_process_start(void)
     {
       g_assert_not_reached();
     }
+
+  g_process_setup_fatal_signal_handler();
 
   /* daemon process, we should return to the caller to perform work */
   /* Only call setsid() for backgrounded processes. */
