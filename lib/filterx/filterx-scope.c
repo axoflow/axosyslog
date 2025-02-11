@@ -23,8 +23,10 @@
 #include "filterx/filterx-scope.h"
 #include "filterx/object-message-value.h"
 #include "scratch-buffers.h"
+#include "syslog-ng.h"
 
-
+/* inlined/coupled variables are allocated on the stack */
+#define MAX_COUPLED_VARIABLES 1024
 static volatile gint filterx_scope_coupled_variables_capacity = 16;
 
 static inline FilterXVariable *
@@ -367,6 +369,8 @@ void
 filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, FilterXScope *parent_scope)
 {
   FilterXScope *self = storage;
+
+  g_assert(storage_size > sizeof(FilterXScope));
   gsize coupled_variables_size = (storage_size - sizeof(FilterXScope)) / sizeof(FilterXVariable);
 
   memset(self, 0, sizeof(FilterXScope));
@@ -383,13 +387,22 @@ filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, FilterXSc
     }
 }
 
+static inline void
+_update_coupled_variables_capacity(FilterXScope *self)
+{
+  gint coupled_vars_capacity = filterx_scope_coupled_variables_capacity;
+  gint current_vars_count = self->variables.len;
+
+  gint new_capacity = MIN(current_vars_count, MAX_COUPLED_VARIABLES);
+
+  if (coupled_vars_capacity < new_capacity)
+    filterx_scope_coupled_variables_capacity = new_capacity;
+}
+
 void
 filterx_scope_clear(FilterXScope *self)
 {
-  /* NOTE: update the number of inlined variable allocations */
-  gint variables_max = filterx_scope_coupled_variables_capacity;
-  if (variables_max < self->variables.len)
-    filterx_scope_coupled_variables_capacity = self->variables.len;
+  _update_coupled_variables_capacity(self);
 
   if (self->msg)
     log_msg_unref(self->msg);
