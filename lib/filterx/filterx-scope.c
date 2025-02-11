@@ -25,7 +25,7 @@
 #include "scratch-buffers.h"
 
 
-static volatile gint filterx_scope_variables_max = 16;
+static volatile gint filterx_scope_coupled_variables_capacity = 16;
 
 static inline FilterXVariable *
 _get_variable_array(FilterXScope *self)
@@ -360,7 +360,7 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
 gsize
 filterx_scope_get_alloc_size(void)
 {
-  return sizeof(FilterXScope) + sizeof(FilterXVariable) * filterx_scope_variables_max;
+  return sizeof(FilterXScope) + sizeof(FilterXVariable) * filterx_scope_coupled_variables_capacity;
 }
 
 void
@@ -387,9 +387,9 @@ void
 filterx_scope_clear(FilterXScope *self)
 {
   /* NOTE: update the number of inlined variable allocations */
-  gint variables_max = filterx_scope_variables_max;
+  gint variables_max = filterx_scope_coupled_variables_capacity;
   if (variables_max < self->variables.len)
-    filterx_scope_variables_max = self->variables.len;
+    filterx_scope_coupled_variables_capacity = self->variables.len;
 
   if (self->msg)
     log_msg_unref(self->msg);
