@@ -25,7 +25,7 @@
 #include "scratch-buffers.h"
 
 
-volatile gint filterx_scope_variables_max = 16;
+static volatile gint filterx_scope_variables_max = 16;
 
 static inline FilterXVariable *
 _get_variable_array(FilterXScope *self)
