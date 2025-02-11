@@ -73,7 +73,8 @@ EVTTAG *filterx_format_last_error_location(void);
 void filterx_eval_clear_errors(void);
 EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 
-void filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previous_context, LogMessage *msg);
+void filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
+                               FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_deinit_context(FilterXEvalContext *context);
 
 static inline void
@@ -126,5 +127,30 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
+#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context) \
+  do { \
+    FilterXScope *scope = NULL; \
+    gboolean local_scope = FALSE; \
+    \
+    if (previous_context) \
+      scope = filterx_scope_reuse(previous_context->scope); \
+    \
+    if (!scope) \
+      { \
+        gsize alloc_size = filterx_scope_get_alloc_size(); \
+        scope = g_alloca(alloc_size); \
+        filterx_scope_init_instance(scope, alloc_size, path_options->filterx_context ? path_options->filterx_context->scope : NULL); \
+        local_scope = TRUE; \
+      } \
+    filterx_eval_init_context(&eval_context, path_options->filterx_context, scope, msg); \
+    do
+
+
+#define FILTERX_EVAL_END_CONTEXT(eval_context) \
+    while(0); \
+    filterx_eval_deinit_context(&eval_context); \
+    if (local_scope) \
+      filterx_scope_clear(scope); \
+  } while(0)
 
 #endif
