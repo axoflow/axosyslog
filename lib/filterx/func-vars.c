@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2025 László Várady
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,6 +34,11 @@
 #include "scratch-buffers.h"
 #include "str-utils.h"
 
+typedef struct _FilterXFunctionVars
+{
+  FilterXFunction super;
+} FilterXFunctionVars;
+
 static gboolean
 _add_to_dict(FilterXVariable *variable, gpointer user_data)
 {
@@ -63,15 +69,10 @@ _add_to_dict(FilterXVariable *variable, gpointer user_data)
   return success;
 }
 
-FilterXObject *
-filterx_simple_function_vars(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+static FilterXObject *
+_filterx_function_vars_eval(FilterXExpr *s)
 {
-  if (args && args_len != 0)
-    {
-      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
-      return NULL;
-    }
-
+  FilterXFunctionVars *self = (FilterXFunctionVars *) s;
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXObject *vars = filterx_json_object_new_empty();
 
@@ -88,6 +89,38 @@ filterx_simple_function_vars(FilterXExpr *s, FilterXObject *args[], gsize args_l
   scratch_buffers_reclaim_marked(marker);
   return vars;
 }
+
+FilterXExpr *
+filterx_function_vars_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionVars *self = g_new0(FilterXFunctionVars, 1);
+  filterx_function_init_instance(&self->super, "vars");
+
+  self->super.super.eval = _filterx_function_vars_eval;
+
+  if (filterx_function_args_len(args) != 0)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "function has only optional parameters");
+      goto error;
+    }
+
+  if (eval_error)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "floating_only argument must be boolean literal");
+      goto error;
+    }
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
 
 static gboolean
 _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
