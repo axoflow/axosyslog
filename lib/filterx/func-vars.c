@@ -37,13 +37,18 @@
 typedef struct _FilterXFunctionVars
 {
   FilterXFunction super;
+  gboolean exclude_msg_values;
 } FilterXFunctionVars;
 
 static gboolean
 _add_to_dict(FilterXVariable *variable, gpointer user_data)
 {
-  FilterXObject *vars = ((gpointer *)(user_data))[0];
-  GString *name_buf = ((gpointer *)(user_data))[1];
+  FilterXFunctionVars *self = ((gpointer *)(user_data))[0];
+  FilterXObject *vars = ((gpointer *)(user_data))[1];
+  GString *name_buf = ((gpointer *)(user_data))[2];
+
+  if (filterx_variable_is_message_tied(variable) && self->exclude_msg_values)
+    return TRUE;
 
   gssize name_len;
   const gchar *name_str = filterx_variable_get_name(variable, &name_len);
@@ -79,7 +84,7 @@ _filterx_function_vars_eval(FilterXExpr *s)
   ScratchBuffersMarker marker;
   GString *name_buf = scratch_buffers_alloc_and_mark(&marker);
 
-  gpointer user_data[] = { vars, name_buf };
+  gpointer user_data[] = { self, vars, name_buf };
   if (!filterx_scope_foreach_variable_readonly(context->scope, _add_to_dict, user_data))
     {
       filterx_object_unref(vars);
@@ -98,6 +103,13 @@ filterx_function_vars_new(FilterXFunctionArgs *args, GError **error)
 
   self->super.super.eval = _filterx_function_vars_eval;
 
+  gboolean exists, eval_error;
+  self->exclude_msg_values = filterx_function_args_get_named_literal_boolean(args, "exclude_msg_values", &exists,
+                             &eval_error);
+
+  if (!filterx_function_args_check(args, error))
+    goto error;
+
   if (filterx_function_args_len(args) != 0)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
@@ -108,7 +120,7 @@ filterx_function_vars_new(FilterXFunctionArgs *args, GError **error)
   if (eval_error)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "floating_only argument must be boolean literal");
+                  "exclude_msg_values argument must be boolean literal");
       goto error;
     }
 
