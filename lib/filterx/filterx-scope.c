@@ -250,23 +250,40 @@ filterx_scope_register_variable(FilterXScope *self,
 gboolean
 filterx_scope_foreach_variable_readonly(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data)
 {
-  FilterXVariable *variables = _get_variable_array(self);
+  gboolean result = TRUE;
+  GHashTable *already_found = g_hash_table_new(g_direct_hash, g_direct_equal);
 
-  for (gint i = 0; i < self->variables.len; i++)
+  for (FilterXScope *scope = self; scope; scope = scope->parent_scope)
     {
-      FilterXVariable *variable = &variables[i];
+      FilterXVariable *variables = _get_variable_array(scope);
+      for (gint i = 0; i < scope->variables.len; i++)
+        {
+          FilterXVariable *variable = &variables[i];
 
-      if (!variable->value)
-        continue;
+          if (!variable->value)
+            continue;
 
-      if (!_validate_variable(self, variable))
-        continue;
+          /* NOTE: we validate against @self */
+          if (!_validate_variable(self, variable))
+            continue;
 
-      if (!func(variable, user_data))
-        return FALSE;
+          if (g_hash_table_contains(already_found, GSIZE_TO_POINTER(variable->handle)))
+            continue;
+
+          /* objects are not pulled into the current scope (not cloned), so this is a readonly view */
+          if (!func(variable, user_data))
+            {
+              result = FALSE;
+              goto exit;
+            }
+
+          g_hash_table_add(already_found, GSIZE_TO_POINTER(variable->handle));
+        }
     }
 
-  return TRUE;
+exit:
+  g_hash_table_destroy(already_found);
+  return result;
 }
 
 /*
