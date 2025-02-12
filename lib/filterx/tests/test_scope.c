@@ -89,6 +89,36 @@ Test(filterx_scope, test_scope_sync)
   filterx_scope_clear(s);
 }
 
+static gboolean
+_assert_var_false(FilterXVariable *variable, gpointer user_data)
+{
+  cr_assert_not(filterx_boolean_get_value(variable->value));
+  return TRUE;
+}
+
+Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
+{
+  gsize alloc_size = filterx_scope_get_alloc_size();
+
+  FilterXScope *s = g_alloca(alloc_size);
+  filterx_scope_init_instance(s, alloc_size, NULL);
+
+  FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
+  filterx_scope_set_variable(s, v, filterx_boolean_new(TRUE), TRUE);
+
+  FilterXScope *s2 = g_alloca(alloc_size);
+  filterx_scope_init_instance(s2, alloc_size, s);
+
+  v = filterx_scope_register_variable(s2, FX_VAR_DECLARED_FLOATING, var);
+  filterx_scope_set_variable(s, v, filterx_boolean_new(FALSE), TRUE);
+
+  cr_assert(filterx_scope_foreach_variable_readonly(s2, _assert_var_false, NULL));
+
+  filterx_scope_clear(s2);
+  filterx_scope_clear(s);
+}
+
 static void
 setup(void)
 {
