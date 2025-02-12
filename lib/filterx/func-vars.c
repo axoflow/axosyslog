@@ -79,7 +79,7 @@ filterx_simple_function_vars(FilterXExpr *s, FilterXObject *args[], gsize args_l
   GString *name_buf = scratch_buffers_alloc_and_mark(&marker);
 
   gpointer user_data[] = { vars, name_buf };
-  if (!filterx_scope_foreach_variable(context->scope, _add_to_dict, user_data))
+  if (!filterx_scope_foreach_variable_readonly(context->scope, _add_to_dict, user_data))
     {
       filterx_object_unref(vars);
       vars = NULL;

@@ -68,7 +68,9 @@ FilterXVariable *filterx_scope_lookup_variable(FilterXScope *self, FilterXVariab
 FilterXVariable *filterx_scope_register_variable(FilterXScope *self,
                                                  FilterXVariableType variable_type,
                                                  FilterXVariableHandle handle);
-gboolean filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data);
+
+/* variables and their objects must not be modified */
+gboolean filterx_scope_foreach_variable_readonly(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data);
 
 gsize filterx_scope_get_alloc_size(void);
 void filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, FilterXScope *parent_scope);

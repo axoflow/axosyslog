@@ -248,7 +248,7 @@ filterx_scope_register_variable(FilterXScope *self,
 }
 
 gboolean
-filterx_scope_foreach_variable(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data)
+filterx_scope_foreach_variable_readonly(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data)
 {
   FilterXVariable *variables = _get_variable_array(self);
 
