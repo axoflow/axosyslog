@@ -63,7 +63,14 @@ _eval_variable(FilterXExpr *s)
       /* auto register message tied variables */
       variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle);
       if (variable)
-        return filterx_variable_get_value(variable);
+        {
+          FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
+          if (!value)
+            {
+              filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+            }
+          return value;
+        }
     }
 
   filterx_eval_push_error("No such variable", s, self->variable_name);
