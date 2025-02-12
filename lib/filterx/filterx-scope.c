@@ -180,9 +180,13 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
   FilterXVariable *v;
   gint v_index;
 
-  if (_lookup_variable(self, handle, &v, &v_index) &&
-      _validate_variable(self, v))
-    return v;
+  if (_lookup_variable(self, handle, &v, &v_index))
+    {
+      if (_validate_variable(self, v))
+        return v;
+
+      return NULL;
+    }
 
   for (FilterXScope *scope = self->parent_scope; scope; scope = scope->parent_scope)
     {
