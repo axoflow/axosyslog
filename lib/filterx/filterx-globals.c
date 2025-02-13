@@ -110,7 +110,6 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("dedup_metrics_labels",
                                                     filterx_simple_function_dedup_metrics_labels));
   g_assert(filterx_builtin_simple_function_register("len", filterx_simple_function_len));
-  g_assert(filterx_builtin_simple_function_register("vars", filterx_simple_function_vars));
   g_assert(filterx_builtin_simple_function_register("load_vars", filterx_simple_function_load_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
@@ -154,6 +153,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("includes", filterx_function_includes_new));
   g_assert(filterx_builtin_function_ctor_register("strftime", filterx_function_strftime_new));
   g_assert(filterx_builtin_function_ctor_register("keys", filterx_function_keys_new));
+  g_assert(filterx_builtin_function_ctor_register("vars", filterx_function_vars_new));
 }
 
 static void
