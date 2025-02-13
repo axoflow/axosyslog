@@ -33,6 +33,7 @@
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #include <dlfcn.h>
+#include <link.h>
 
 /* this is Linux only for now */
 
