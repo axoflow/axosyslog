@@ -98,7 +98,7 @@ build() {
 		\
 		--enable-all-modules \
 		--enable-ebpf \
-		--enable-stackdump \
+		--disable-stackdump \
 		--disable-linux-caps \
 		--disable-smtp \
 		--disable-systemd \
