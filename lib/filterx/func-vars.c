@@ -111,8 +111,17 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
       return FALSE;
     }
 
-  FilterXVariableType variable_type = (key_str[0] == '$') ? FX_VAR_MESSAGE_TIED : FX_VAR_DECLARED_FLOATING;
-  FilterXVariableHandle handle = filterx_map_varname_to_handle(key_str, variable_type);
+  FilterXVariableType variable_type = FX_VAR_DECLARED_FLOATING;
+  FilterXVariableHandle handle;
+  if (key_str[0] == '$')
+    {
+      variable_type = FX_VAR_MESSAGE_TIED;
+      handle = filterx_map_varname_to_handle(key_str + 1, variable_type);
+    }
+  else
+    {
+      handle = filterx_map_varname_to_handle(key_str, variable_type);
+    }
 
   FilterXVariable *variable = filterx_scope_register_variable(scope, variable_type, handle);
   if (!variable)

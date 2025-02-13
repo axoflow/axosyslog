@@ -174,8 +174,18 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static inline FilterXObject *
+_dollar_msg_varname(const gchar *name)
+{
+  gchar *dollar_name = g_strdup_printf("$%s", name);
+  FilterXObject *dollar_name_obj = filterx_string_new(dollar_name, -1);
+  g_free(dollar_name);
+
+  return dollar_name_obj;
+}
+
 static FilterXExpr *
-filterx_variable_expr_new(FilterXString *name, FilterXVariableType variable_type)
+filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
@@ -188,10 +198,15 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType variable_type
   self->super.unset = _unset;
 
   self->variable_type = variable_type;
-  self->variable_name = (FilterXObject *) name;
-  self->handle = filterx_map_varname_to_handle(filterx_string_get_value_ref(self->variable_name, NULL), variable_type);
+
+  self->handle = filterx_map_varname_to_handle(name, variable_type);
   if (variable_type == FX_VAR_MESSAGE_TIED)
-    self->handle_is_macro = log_msg_is_handle_macro(filterx_variable_handle_to_nv_handle(self->handle));
+    {
+      self->variable_name = _dollar_msg_varname(name);
+      self->handle_is_macro = log_msg_is_handle_macro(filterx_variable_handle_to_nv_handle(self->handle));
+    }
+  else
+    self->variable_name = filterx_string_new(name, -1);
 
   /* NOTE: name borrows the string value from the string object */
   self->super.name = filterx_string_get_value_ref(self->variable_name, NULL);
@@ -200,13 +215,13 @@ filterx_variable_expr_new(FilterXString *name, FilterXVariableType variable_type
 }
 
 FilterXExpr *
-filterx_msg_variable_expr_new(FilterXString *name)
+filterx_msg_variable_expr_new(const gchar *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_MESSAGE_TIED);
 }
 
 FilterXExpr *
-filterx_floating_variable_expr_new(FilterXString *name)
+filterx_floating_variable_expr_new(const gchar *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
 }

@@ -52,8 +52,6 @@ FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, F
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
-FilterXString *filterx_string_typed_new(const gchar *str);
-
 #define FILTERX_STRING_STACK_INIT(cstr, cstr_len) \
   { \
     FILTERX_OBJECT_STACK_INIT(string), \
@@ -64,5 +62,8 @@ FilterXString *filterx_string_typed_new(const gchar *str);
 #define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \
   FilterXString __ ## _name ## storage = FILTERX_STRING_STACK_INIT(cstr, cstr_len); \
   FilterXObject *_name = &__ ## _name ## storage .super;
+
+void filterx_string_global_init(void);
+void filterx_string_global_deinit(void);
 
 #endif

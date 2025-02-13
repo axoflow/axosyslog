@@ -28,9 +28,6 @@
 FilterXVariableHandle
 filterx_map_varname_to_handle(const gchar *name, FilterXVariableType type)
 {
-  if (type == FX_VAR_MESSAGE_TIED)
-    name++;
-
   NVHandle nv_handle = log_msg_get_value_handle(name);
 
   if (type == FX_VAR_MESSAGE_TIED)

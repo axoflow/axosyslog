@@ -28,19 +28,10 @@
 #include "filterx/object-string.h"
 #include "cfg.h"
 
-FilterXExpr *filterx_msg_variable_expr_new(FilterXString *name);
-FilterXExpr *filterx_floating_variable_expr_new(FilterXString *name);
+FilterXExpr *filterx_msg_variable_expr_new(const gchar *name);
+FilterXExpr *filterx_floating_variable_expr_new(const gchar *name);
 void filterx_variable_expr_declare(FilterXExpr *s);
 
-static inline FilterXString *
-filterx_frozen_dollar_msg_varname(GlobalConfig *cfg, const gchar *name)
-{
-  gchar *dollar_name = g_strdup_printf("$%s", name);
-  FilterXString *dollar_name_obj = filterx_config_frozen_string(cfg, dollar_name);
-  g_free(dollar_name);
-
-  return dollar_name_obj;
-}
 
 FILTERX_EXPR_DECLARE_TYPE(variable);
 
