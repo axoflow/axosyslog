@@ -28,7 +28,7 @@
 #include "filterx/func-flatten.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-json.h"
+#include "filterx/json-repr.h"
 #include "filterx/expr-literal.h"
 #include "filterx/func-keys.h"
 #include "filterx/filterx-eval.h"
@@ -92,7 +92,7 @@ Test(filterx_func_keys, invalid_arg_type)
 Test(filterx_func_keys, valid_input)
 {
   GList *args = NULL;
-  FilterXObject *dict = filterx_json_new_from_repr("{\"foo\":1,\"bar\":[3,2,1],\"baz\":{\"tik\":\"tak\"}}", -1);
+  FilterXObject *dict = filterx_object_from_json("{\"foo\":1,\"bar\":[3,2,1],\"baz\":{\"tik\":\"tak\"}}", -1, NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(dict)));
 
   GError *error = NULL;
