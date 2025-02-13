@@ -147,7 +147,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.free_fn = _free;
   self->operand = operand;
 
-  filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string));
+  g_assert(filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string)));
   self->attr = attr_name;
   /* NOTE: name borrows the string value from the string object */
   self->super.name = filterx_string_get_value_ref(self->attr, NULL);
