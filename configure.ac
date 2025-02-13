@@ -417,6 +417,10 @@ AC_ARG_ENABLE(native,
 
 AC_ARG_ENABLE(afsnmp, [ --enable-afsnmp Enable afsnmp module (default: auto)],, enable_afsnmp="auto")
 
+AC_ARG_ENABLE(stackdump,
+              [  --disable-stackdump       Disable stackdump support]
+              ,,enable_stackdump="auto")
+
 AC_ARG_ENABLE(all-modules,
               [  --enable-all-modules    Forcibly enable all modules. (default: auto)]
               ,,enable_all_modules="auto")
@@ -1407,6 +1411,10 @@ dnl ***************************************************************************
 
 PKG_CHECK_MODULES(LIBUNWIND, libunwind >= 1.6.2, enable_libunwind="yes", enable_libunwind="no")
 
+if test "$enable_stackdump" = "yes" && test "$enable_libunwind" = "no"; then
+       AC_MSG_ERROR([Could not find libunwind, and stackdump support was explicitly enabled.])
+fi
+
 dnl ***************************************************************************
 dnl libesmtp headers/libraries
 dnl ***************************************************************************
@@ -2001,6 +2009,16 @@ if test "x$enable_kafka" = "xauto"; then
     AC_MSG_RESULT([$enable_kafka])
 fi
 
+if test "x$enable_stackdump" = "xauto"; then
+    AC_MSG_CHECKING(whether to enable stackdump support)
+    if test "x$enable_libunwind" != "xno"; then
+        enable_stackdump="yes"
+    else
+        enable_stackdump="no"
+    fi
+    AC_MSG_RESULT([$enable_stackdump])
+fi
+
 if test "x$enable_systemd" = "xauto"; then
 	if test "$ostype" = "Linux" -a "$have_libsystemd" = "yes"; then
 		enable_systemd=yes
@@ -2269,7 +2287,7 @@ AC_DEFINE_UNQUOTED(ENABLE_ENV_WRAPPER, `enable_value $enable_env_wrapper`, [Enab
 AC_DEFINE_UNQUOTED(ENABLE_SYSTEMD, `enable_value $enable_systemd`, [Enable systemd support])
 AC_DEFINE_UNQUOTED(ENABLE_KAFKA, `enable_value $enable_kafka`, [Enable kafka support])
 AC_DEFINE_UNQUOTED(ENABLE_CPP, `enable_value $enable_cpp`, [Enable C++ support])
-AC_DEFINE_UNQUOTED(ENABLE_LIBUNWIND, `enable_value $enable_libunwind`, [Enable stackdump using libunwind])
+AC_DEFINE_UNQUOTED(ENABLE_STACKDUMP, `enable_value $enable_stackdump`, [Enable stackdump using libunwind])
 AC_DEFINE_UNQUOTED(SYSTEMD_JOURNAL_MODE, `journald_mode`, [Systemd-journal support mode])
 AC_DEFINE_UNQUOTED(HAVE_INOTIFY, `enable_value $ac_cv_func_inotify_init`, [Have inotify])
 AC_DEFINE_UNQUOTED(USE_CONST_IVYKIS_MOCK, `enable_value $IVYKIS_VERSION_UPDATED`, [ivykis version is greater than $IVYKIS_UPDATED_VERSION])
@@ -2439,7 +2457,7 @@ echo "  systemd support             : ${enable_systemd:=no} (unit dir: ${systemd
 echo "  systemd-journal support     : ${with_systemd_journal:=no}"
 echo "  JSON support                : $with_jsonc"
 echo "  perf support                : ${enable_perf:=no}"
-echo "  unwind support              : ${enable_libunwind:=no}"
+echo "  stackdump support           : ${enable_stackdump:=no}"
 echo " Build options:"
 echo "  Generate manual pages       : ${enable_manpages:=no}"
 echo "  Install manual pages        : ${enable_manpages_install:=no}"

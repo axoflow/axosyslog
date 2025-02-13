@@ -30,6 +30,7 @@ makedepends="
 	libnet-dev
 	librdkafka-dev
 	libtool
+	libunwind-dev
 	libxml2-utils
 	mongo-c-driver-dev
 	net-snmp-dev
@@ -97,6 +98,7 @@ build() {
 		\
 		--enable-all-modules \
 		--enable-ebpf \
+		--disable-stackdump \
 		--disable-linux-caps \
 		--disable-smtp \
 		--disable-systemd \
