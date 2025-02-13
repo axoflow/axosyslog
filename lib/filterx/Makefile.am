@@ -44,6 +44,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-scope.h \
 	lib/filterx/filterx-variable.h \
 	lib/filterx/filterx-weakrefs.h \
+	lib/filterx/json-repr.h \
 	lib/filterx/func-flags.h \
 	lib/filterx/func-flatten.h \
 	lib/filterx/func-istype.h \
@@ -117,6 +118,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-scope.c \
 	lib/filterx/filterx-variable.c \
 	lib/filterx/filterx-weakrefs.c \
+	lib/filterx/json-repr.c \
 	lib/filterx/func-flatten.c \
 	lib/filterx/func-istype.c \
 	lib/filterx/func-keys.c	\
