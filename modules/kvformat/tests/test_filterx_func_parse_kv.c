@@ -30,7 +30,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-literal.h"
-#include "filterx/object-json.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-dict-interface.h"
 #include "filterx-func-parse-kv.h"
 
 
@@ -52,7 +53,7 @@ Test(filterx_func_parse_kv, test_empty_args_error)
 {
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _kv_new(filterx_function_args_new(NULL, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _kv_new(filterx_function_args_new(NULL, &args_err), &err, filterx_dict_new());
 
   cr_assert_null(func);
   cr_assert_null(args_err);
@@ -70,7 +71,7 @@ Test(filterx_func_parse_kv, test_skipped_opts_causes_default_behaviour)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
 
   cr_assert_null(args_err);
   cr_assert_null(err);
@@ -78,7 +79,7 @@ Test(filterx_func_parse_kv, test_skipped_opts_causes_default_behaviour)
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -103,7 +104,7 @@ Test(filterx_func_parse_kv, test_optional_value_separator_option_first_character
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
 
   cr_assert_null(args_err);
   cr_assert_null(err);
@@ -111,7 +112,7 @@ Test(filterx_func_parse_kv, test_optional_value_separator_option_first_character
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -136,7 +137,7 @@ Test(filterx_func_parse_kv, test_optional_empty_value_separator_option)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
 
   cr_assert_null(func);
   cr_assert_null(args_err);
@@ -157,7 +158,7 @@ Test(filterx_func_parse_kv, test_optional_pair_separator_option)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
 
   cr_assert_null(args_err);
   cr_assert_null(err);
@@ -165,7 +166,7 @@ Test(filterx_func_parse_kv, test_optional_pair_separator_option)
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -191,7 +192,7 @@ Test(filterx_func_parse_kv, test_optional_stray_words_key_option)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _kv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
 
   cr_assert_null(args_err);
   cr_assert_null(err);
@@ -199,7 +200,7 @@ Test(filterx_func_parse_kv, test_optional_stray_words_key_option)
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 
