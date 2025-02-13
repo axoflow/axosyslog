@@ -43,7 +43,7 @@
 #include "compat/json.h"
 
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"
-#define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(fornat_str, datetime)"
+#define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(format_str, datetime)"
 
 typedef struct _FilterXDateTime
 {
