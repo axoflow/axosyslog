@@ -541,6 +541,7 @@ _filterx_dict_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **
   if (!_is_string(key))
     return FALSE;
 
+
   self->table = _table_resize_if_needed(self->table);
   _table_insert(self->table, key, *new_value);
 

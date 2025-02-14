@@ -20,7 +20,9 @@
  * COPYING for details.
  *
  */
-#include "filterx/filterx-weakrefs.h"
+
+/* weakrefs is included into and exposed from filterx-object.h */
+#include "filterx/filterx-object.h"
 #include "filterx/filterx-eval.h"
 
 void

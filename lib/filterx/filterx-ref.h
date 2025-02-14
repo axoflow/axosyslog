@@ -28,6 +28,8 @@
 #error "Please include filterx-ref.h through filterx-object.h"
 #endif
 
+#include "filterx/filterx-weakrefs.h"
+
 /*
  * References are currently not part of the FilterX language (hopefully, they
  * never will be). FilterXRef is used to reference the same FilterXObject from
@@ -45,6 +47,9 @@ struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
+  FilterXWeakRef root_container;
+  /* this is only maintained for the root ref of a mutable object tree */
+  gboolean is_dirty;
 };
 
 #if SYSLOG_NG_ENABLE_DEBUG
@@ -92,6 +97,16 @@ filterx_ref_new(FilterXObject *value)
   if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
     return value;
   return _filterx_ref_new(value);
+}
+
+static inline void
+filterx_ref_propagate_root(FilterXObject *s, const FilterXWeakRef *root_container)
+{
+  FilterXRef *self = (FilterXRef *) s;
+  if (s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      filterx_weakref_copy(&self->root_container, root_container);
+    }
 }
 
 #endif
