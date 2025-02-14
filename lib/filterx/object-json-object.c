@@ -26,7 +26,6 @@
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
-#include "filterx/filterx-weakrefs.h"
 #include "filterx/object-dict-interface.h"
 #include "syslog-ng.h"
 #include "str-utils.h"
@@ -145,11 +144,11 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
       return FALSE;
     }
 
-  filterx_object_set_modified_in_place(&self->super.super, TRUE);
+  filterx_object_set_dirty(&self->super.super, TRUE);
   FilterXObject *root_container = filterx_weakref_get(&self->root_container);
   if (root_container)
     {
-      filterx_object_set_modified_in_place(root_container, TRUE);
+      filterx_object_set_dirty(root_container, TRUE);
       filterx_object_unref(root_container);
     }
 
@@ -173,11 +172,11 @@ _unset_key(FilterXDict *s, FilterXObject *key)
 
   json_object_object_del(self->jso, key_str);
 
-  filterx_object_set_modified_in_place(&self->super.super, TRUE);
+  filterx_object_set_dirty(&self->super.super, TRUE);
   FilterXObject *root_container = filterx_weakref_get(&self->root_container);
   if (root_container)
     {
-      filterx_object_set_modified_in_place(root_container, TRUE);
+      filterx_object_set_dirty(root_container, TRUE);
       filterx_object_unref(root_container);
     }
 
