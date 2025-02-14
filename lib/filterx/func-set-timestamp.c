@@ -41,7 +41,32 @@ typedef struct FilterXFunctionSetTimestamp_
 static FilterXObject *
 _set_timestamp_eval(FilterXExpr *s)
 {
-  return NULL;
+  FilterXFunctionSetTimestamp *self = (FilterXFunctionSetTimestamp *) s;
+
+  FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
+  if (!datetime_obj)
+    {
+      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_SET_TIMESTAMP_USAGE, s, NULL);
+      return NULL;
+    }
+
+  UnixTime datetime = UNIX_TIME_INIT;
+
+  if (!filterx_object_extract_datetime(datetime_obj, &datetime))
+    {
+      filterx_object_unref(datetime_obj);
+      filterx_eval_push_error("Second argument must be of datetime type. " FILTERX_FUNC_SET_TIMESTAMP_USAGE, s, NULL);
+      return NULL;
+    }
+
+  filterx_object_unref(datetime_obj);
+
+  FilterXEvalContext *context = filterx_eval_get_context();
+  LogMessage *msg = context->msg;
+
+  msg->timestamps[self->timestamp_idx] = datetime;
+
+  return filterx_boolean_new(TRUE);
 }
 
 static void
