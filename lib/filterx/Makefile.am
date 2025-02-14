@@ -47,6 +47,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/json-repr.h \
 	lib/filterx/func-flags.h \
 	lib/filterx/func-flatten.h \
+	lib/filterx/func-cache-json-file.h \
 	lib/filterx/func-istype.h \
 	lib/filterx/func-keys.h	\
 	lib/filterx/func-len.h \
@@ -121,6 +122,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-weakrefs.c \
 	lib/filterx/json-repr.c \
 	lib/filterx/func-flatten.c \
+	lib/filterx/func-cache-json-file.c \
 	lib/filterx/func-istype.c \
 	lib/filterx/func-keys.c	\
 	lib/filterx/func-len.c \
