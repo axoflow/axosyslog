@@ -105,8 +105,8 @@ _simple_init(void)
   filterx_builtin_simple_functions_init_private(&filterx_builtin_simple_functions);
   g_assert(filterx_builtin_simple_function_register("dict", filterx_dict_new_from_args));
   g_assert(filterx_builtin_simple_function_register("list", filterx_list_new_from_args));
-  g_assert(filterx_builtin_simple_function_register("json", filterx_json_new_from_args));
-  g_assert(filterx_builtin_simple_function_register("json_array", filterx_json_array_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("json", filterx_dict_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("json_array", filterx_list_new_from_args));
   g_assert(filterx_builtin_simple_function_register("format_json", filterx_format_json_call));
   g_assert(filterx_builtin_simple_function_register("parse_json", filterx_parse_json_call));
   g_assert(filterx_builtin_simple_function_register("datetime", filterx_typecast_datetime));
