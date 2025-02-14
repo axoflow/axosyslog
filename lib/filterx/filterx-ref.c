@@ -32,7 +32,7 @@ _filterx_ref_clone(FilterXObject *s)
   return filterx_ref_new(filterx_object_ref(self->value));
 }
 
-static void
+void
 _filterx_ref_cow(FilterXRef *self)
 {
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
@@ -45,29 +45,6 @@ _filterx_ref_cow(FilterXRef *self)
 
   self->value = cloned;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
-}
-
-FilterXObject *
-filterx_ref_unwrap_ro(FilterXObject *s)
-{
-  if (!s || !filterx_object_is_type(s, &FILTERX_TYPE_NAME(ref)))
-    return s;
-
-  FilterXRef *self = (FilterXRef *) s;
-  return self->value;
-}
-
-FilterXObject *
-filterx_ref_unwrap_rw(FilterXObject *s)
-{
-  if (!s || !filterx_object_is_type(s, &FILTERX_TYPE_NAME(ref)))
-    return s;
-
-  FilterXRef *self = (FilterXRef *) s;
-
-  _filterx_ref_cow(self);
-
-  return self->value;
 }
 
 /* mutator methods */
