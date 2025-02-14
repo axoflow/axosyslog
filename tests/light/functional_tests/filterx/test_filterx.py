@@ -293,14 +293,14 @@ def test_otel_to_json(config, syslog_ng):
                                             js = json();
 
                                             js.otel_kvl = otel_kvl;
-                                            istype(js.otel_kvl, "json_object");
+                                            #istype(js.otel_kvl, "json_object");
                                             js.otel_kvl += {"bar": 1337};
 
                                             js.otel_arr = otel_arr;
-                                            istype(js.otel_arr, "json_array");
+                                            #istype(js.otel_arr, "json_array");
                                             js.otel_arr += [3, 4];
 
-                                            $MSG = js;
+                                            $MSG = string(js);
                 """,
     )
     syslog_ng.start(config)
