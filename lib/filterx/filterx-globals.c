@@ -46,6 +46,7 @@
 #include "filterx/func-flatten.h"
 #include "filterx/func-sdata.h"
 #include "filterx/func-repr.h"
+#include "filterx/func-cache-json-file.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
@@ -165,6 +166,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("keys", filterx_function_keys_new));
   g_assert(filterx_builtin_function_ctor_register("vars", filterx_function_vars_new));
   g_assert(filterx_builtin_function_ctor_register("set_timestamp", filterx_function_set_timestamp_new));
+  g_assert(filterx_builtin_function_ctor_register("cache_json_file", filterx_function_cache_json_file_new));
 }
 
 static void

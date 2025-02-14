@@ -44,6 +44,7 @@ set(FILTERX_HEADERS
     filterx/filterx-weakrefs.h
     filterx/func-flags.h
     filterx/func-flatten.h
+    filterx/func-cache-json-file.h
     filterx/func-istype.h
     filterx/func-len.h
     filterx/func-sdata.h
@@ -115,6 +116,7 @@ set(FILTERX_SOURCES
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
     filterx/func-flatten.c
+    filterx/func-cache-json-file.c
     filterx/func-istype.c
     filterx/func-len.c
     filterx/func-sdata.c
