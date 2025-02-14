@@ -35,6 +35,13 @@ _filterx_ref_clone(FilterXObject *s)
 void
 _filterx_ref_cow(FilterXRef *self)
 {
+  FilterXObject *container = filterx_weakref_get(&self->container);
+  if (container)
+    {
+      filterx_object_set_modified_in_place(container, TRUE);
+      filterx_object_unref(container);
+    }
+
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
     return;
 
@@ -54,6 +61,7 @@ _filterx_ref_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  filterx_ref_set_container(*new_value, s);
   _filterx_ref_cow(self);
 
   return filterx_object_setattr(self->value, attr, new_value);
@@ -64,6 +72,7 @@ _filterx_ref_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject *
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  filterx_ref_set_container(*new_value, s);
   _filterx_ref_cow(self);
 
   return filterx_object_set_subscript(self->value, key, new_value);

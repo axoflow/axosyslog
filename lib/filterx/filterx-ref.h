@@ -25,6 +25,7 @@
 #define FILTERX_REF_H
 
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-weakrefs.h"
 
 /*
  * References are currently not part of the FilterX language (hopefully, they
@@ -45,6 +46,7 @@ typedef struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
+  FilterXWeakRef container;
 } FilterXRef;
 
 
@@ -88,6 +90,16 @@ filterx_ref_new(FilterXObject *value)
   if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
     return value;
   return _filterx_ref_new(value);
+}
+
+static inline void
+filterx_ref_set_container(FilterXObject *s, FilterXObject *container)
+{
+  FilterXRef *self = (FilterXRef *) s;
+  if (s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      filterx_weakref_set(&self->container, container);
+    }
 }
 
 #endif
