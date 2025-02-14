@@ -28,22 +28,22 @@
 #include "scratch-buffers.h"
 
 static inline FilterXObject *
-_assign(FilterXBinaryOp *self, FilterXObject *value)
+_assign(FilterXBinaryOp *self, FilterXObject **value)
 {
   /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
    * (or after creating our own dict/list repr) */
-  if (!value->weak_referenced)
+  if (!(*value)->weak_referenced)
     {
-      value = filterx_ref_new(value);
+      *value = filterx_ref_new(*value);
     }
 
   if (!filterx_expr_assign(self->lhs, value))
     {
-      filterx_object_unref(value);
+      filterx_object_unref(*value);
       return NULL;
     }
 
-  return value;
+  return *value;
 }
 
 static inline FilterXObject *
@@ -72,7 +72,9 @@ _nullv_assign_eval(FilterXExpr *s)
       return value;
     }
 
-  return _assign(self, value);
+  FilterXObject *result = _assign(self, &value);
+  filterx_object_unref(value);
+  return result;
 }
 
 static FilterXObject *
@@ -85,7 +87,9 @@ _assign_eval(FilterXExpr *s)
   if (!value)
     return NULL;
 
-  return _assign(self, value);
+  FilterXObject *result = _assign(self, &value);
+  filterx_object_unref(value);
+  return result;
 }
 
 
