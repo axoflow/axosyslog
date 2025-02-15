@@ -104,6 +104,16 @@ gn_is_nan(const GenericNumber *number)
   return _gn_is_nan(number);
 }
 
+gboolean _gn_is_inf(const GenericNumber *number);
+
+static inline gboolean
+gn_is_inf(const GenericNumber *number)
+{
+  if (number->type != GN_DOUBLE)
+    return FALSE;
+  return _gn_is_nan(number);
+}
+
 static inline gint
 _gn_compare_int64(gint64 l, gint64 r)
 {
