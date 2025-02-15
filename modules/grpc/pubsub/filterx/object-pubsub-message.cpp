@@ -36,6 +36,8 @@
 
 #include "compat/cpp-end.h"
 
+#include <google/protobuf/util/json_util.h>
+
 #include <unistd.h>
 #include <cstdio>
 #include <memory>
@@ -135,6 +137,19 @@ Message::set_data(const std::string &data)
   return true;
 }
 
+std::string
+Message::repr() const
+{
+  std::string json_output;
+  std::ignore = google::protobuf::util::MessageToJsonString(message, &json_output);
+  if (json_output.empty())
+    {
+      throw std::runtime_error("MessageToJsonString failed: empty output");
+    }
+  return json_output;
+}
+
+
 // /* C Wrappers */
 
 static void
@@ -216,6 +231,24 @@ _filterx_pubsub_message_clone(FilterXObject *s)
     }
 
   return &clone->super;
+}
+
+static gboolean
+_repr(FilterXObject *s, GString *repr)
+{
+  FilterXPubSubMessage *self = (FilterXPubSubMessage *) s;
+
+  try
+    {
+      std::string cstring = self->cpp->repr();
+      g_string_assign(repr, cstring.c_str());
+    }
+  catch (const std::runtime_error &e)
+    {
+      msg_error("FilterX: Failed to repr OTel Logrecord object", evt_tag_str("error", e.what()));
+      return FALSE;
+    }
+  return TRUE;
 }
 
 gboolean
@@ -335,5 +368,6 @@ FILTERX_DEFINE_TYPE(pubsub_message, FILTERX_TYPE_NAME(object),
                     .clone = _filterx_pubsub_message_clone,
                     .map_to_json = _map_to_json,
                     .truthy = _truthy,
+                    .repr = _repr,
                     .free_fn = _free,
                    );
