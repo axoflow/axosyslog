@@ -53,6 +53,7 @@ struct _FilterXType
   FilterXObject *(*list_factory)(FilterXObject *self);
   FilterXObject *(*dict_factory)(FilterXObject *self);
   gboolean (*repr)(FilterXObject *self, GString *repr);
+  gboolean (*str)(FilterXObject *self, GString *str);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*make_readonly)(FilterXObject *self);
@@ -275,6 +276,27 @@ filterx_object_repr_append(FilterXObject *self, GString *repr)
       return self->type->repr(self, repr);
     }
   return FALSE;
+}
+
+static inline gboolean
+filterx_object_str(FilterXObject *self, GString *str)
+{
+  if (self->type->str)
+    {
+      g_string_truncate(str, 0);
+      return self->type->str(self, str);
+    }
+  return filterx_object_repr(self, str);
+}
+
+static inline gboolean
+filterx_object_str_append(FilterXObject *self, GString *str)
+{
+  if (self->type->str)
+    {
+      return self->type->str(self, str);
+    }
+  return filterx_object_repr_append(self, str);
 }
 
 static inline gboolean
