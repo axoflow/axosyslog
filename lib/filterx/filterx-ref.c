@@ -195,10 +195,15 @@ _filterx_ref_repr(FilterXObject *s, GString *repr)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  if (self->value->type->repr)
-    return self->value->type->repr(self->value, repr);
+  return filterx_object_repr(self->value, repr);
+}
 
-  return FALSE;
+static gboolean
+_filterx_ref_str(FilterXObject *s, GString *str)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  return filterx_object_str(self->value, str);
 }
 
 static gboolean
@@ -253,6 +258,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .list_factory = _filterx_ref_list_factory,
                     .dict_factory = _filterx_ref_dict_factory,
                     .repr = _filterx_ref_repr,
+                    .str = _filterx_ref_str,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
                     .make_readonly = _prohibit_readonly,
