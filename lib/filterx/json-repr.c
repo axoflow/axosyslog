@@ -310,21 +310,20 @@ _format_and_append_list(FilterXObject *value, GString *result)
 }
 
 static gboolean
-_repr_append(FilterXObject *value, GString *result)
+_json_append(FilterXObject *value, GString *result)
 {
-  ScratchBuffersMarker marker;
-  GString *repr = scratch_buffers_alloc_and_mark(&marker);
-
-  gboolean success = filterx_object_repr(value, repr);
+  struct json_object *jso;
+  FilterXObject *assoc_object = NULL;
+  gboolean success = filterx_object_map_to_json(value, &jso, &assoc_object);
   if (!success)
     goto exit;
 
-  g_string_append_c(result, '"');
-  append_unsafe_utf8_as_escaped(result, repr->str, repr->len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
-  g_string_append_c(result, '"');
+  const gchar *json = json_object_to_json_string_ext(jso, JSON_C_TO_STRING_PLAIN | JSON_C_TO_STRING_NOSLASHESCAPE);
+  g_string_append(result, json);
 
 exit:
-  scratch_buffers_reclaim_marked(marker);
+  filterx_object_unref(assoc_object);
+  json_object_put(jso);
   return success;
 }
 
@@ -382,9 +381,7 @@ filterx_object_to_json(FilterXObject *value, GString *result)
   if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     return _format_and_append_list(value_unwrapped, result);
 
-  /* FIXME: handle datetime based on object-datetime.c:_convert_unix_time_to_string() */
-
-  return _repr_append(value, result);
+  return _json_append(value, result);
 }
 
 static FilterXObject *
