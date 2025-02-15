@@ -53,6 +53,12 @@ _gn_is_nan(const GenericNumber *number)
   return (number->type == GN_DOUBLE && isnan(number->value.raw_double));
 }
 
+gboolean
+_gn_is_inf(const GenericNumber *number)
+{
+  return (number->type == GN_DOUBLE && isinf(number->value.raw_double));
+}
+
 gint
 _gn_compare_double(gdouble l, gdouble r)
 {
