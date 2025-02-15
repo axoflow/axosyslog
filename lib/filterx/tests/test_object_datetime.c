@@ -52,6 +52,22 @@ Test(filterx_datetime, test_filterx_object_datetime_maps_to_the_right_json_value
   filterx_object_unref(fobj);
 }
 
+Test(filterx_datetime, test_filterx_object_datetime_str_yields_unix_time)
+{
+  UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
+  FilterXObject *fobj = filterx_datetime_new(&ut);
+  assert_object_str_equals(fobj, "1701350398.123000");
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_datetime, test_filterx_object_datetime_repr_yields_isotime)
+{
+  UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
+  FilterXObject *fobj = filterx_datetime_new(&ut);
+  assert_object_repr_equals(fobj, "2023-11-30T14:19:58.123+01:00");
+  filterx_object_unref(fobj);
+}
+
 Test(filterx_datetime, test_filterx_datetime_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_datetime(NULL, NULL, 0);
