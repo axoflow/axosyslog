@@ -189,10 +189,7 @@ _format_and_append_integer(gint64 value, GString *result)
 static gboolean
 _format_and_append_double(gdouble value, GString *result)
 {
-  gsize init_len = result->len;
-  g_string_set_size(result, init_len + G_ASCII_DTOSTR_BUF_SIZE);
-  g_ascii_dtostr(result->str + init_len, G_ASCII_DTOSTR_BUF_SIZE, value);
-  g_string_set_size(result, strchr(result->str + init_len, '\0') - result->str);
+  double_repr(value, result);
   return TRUE;
 }
 
