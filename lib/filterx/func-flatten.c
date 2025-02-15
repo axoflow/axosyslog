@@ -26,6 +26,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
+#include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 
@@ -74,11 +75,14 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
         g_ptr_array_add(top_level_dict_keys, filterx_object_ref(key));
 
       gssize orig_len = key_buffer->len;
-      if (!filterx_object_repr_append(key, key_buffer))
+      const gchar *key_string;
+      gsize key_length;
+      if (!filterx_object_extract_string_ref(key, &key_string, &key_length))
         {
           filterx_eval_push_error("failed to call repr() on key", self->dict_expr, key);
           return FALSE;
         }
+      g_string_append_len(key_buffer, key_string, key_length);
       g_string_append(key_buffer, self->separator);
 
       gpointer inner_user_data[] = { self, flattened_kvs, NULL, key_buffer, GINT_TO_POINTER(FALSE)};
@@ -96,11 +100,14 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
 
   /* Not top level leaf. This KV needs flattening. */
   gssize orig_len = key_buffer->len;
-  if (!filterx_object_repr_append(key, key_buffer))
+  const gchar *key_string;
+  gsize key_length;
+  if (!filterx_object_extract_string_ref(key, &key_string, &key_length))
     {
       filterx_eval_push_error("failed to call repr() on key", self->dict_expr, key);
       return FALSE;
     }
+  g_string_append_len(key_buffer, key_string, key_length);
 
   FilterXObject *flat_key = filterx_string_new(key_buffer->str, (gssize) MIN(key_buffer->len, G_MAXSSIZE));
   FilterXFunctionFlattenKV kv;
