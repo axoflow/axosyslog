@@ -49,7 +49,7 @@ static gchar *
 _format_str_obj(FilterXObject *obj)
 {
   GString *str = scratch_buffers_alloc();
-  return filterx_object_repr(obj, str) ? str->str : NULL;
+  return filterx_object_str(obj, str) ? str->str : NULL;
 }
 
 static gchar *
@@ -61,7 +61,7 @@ _format_value_expr(FilterXExpr *expr)
 
   gchar *result = _format_str_obj(obj);
   if (!result)
-    filterx_eval_push_error("failed to format metrics label value, repr() failed", expr, obj);
+    filterx_eval_push_error("failed to format metrics label value, str() failed", expr, obj);
 
   filterx_object_unref(obj);
   return result;
