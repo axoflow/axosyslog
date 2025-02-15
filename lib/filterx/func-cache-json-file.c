@@ -22,7 +22,7 @@
  */
 
 #include "func-cache-json-file.h"
-#include "filterx/object-json.h"
+#include "filterx/json-repr.h"
 #include "filterx/object-string.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
@@ -164,12 +164,13 @@ _load_json_file(const gchar *filepath, GError **error)
       goto exit;
     }
 
-  result = filterx_json_new_from_object(object);
-  g_assert(result);
-  filterx_object_make_readonly(result);
+  result = filterx_object_from_json_object(object, error);
+  if (result)
+    filterx_object_make_readonly(result);
 
 exit:
   json_tokener_free(tokener);
+  json_object_put(object);
   fclose(file);
   return result;
 }
@@ -214,38 +215,39 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
-static void _deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object);
+static void _deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object);
 
-static void
-_deep_freeze_dict(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object)
+static gboolean
+_deep_freeze_dict_item(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
-  struct json_object_iter itr;
-  json_object_object_foreachC(filterx_json_object_get_value(object), itr)
-  {
-    struct json_object *elem_jso = itr.val;
-    FilterXObject *elem_object = filterx_json_convert_json_to_object(root_object, NULL, elem_jso);
-    _deep_freeze(self, elem_object, root_object);
-    filterx_json_associate_cached_object(elem_jso, elem_object);
-  }
+  FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) user_data;
+  _deep_freeze(self, key);
+  _deep_freeze(self, value);
+  return TRUE;
 }
 
 static void
-_deep_freeze_list(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object)
+_deep_freeze_dict(FilterXFunctionCacheJsonFile *self, FilterXObject *object)
 {
-  struct json_object *jso = filterx_json_array_get_value(object);
-  guint64 len = json_object_array_length(jso);
+  filterx_dict_iter(object, _deep_freeze_dict_item, self);
+}
+
+static void
+_deep_freeze_list(FilterXFunctionCacheJsonFile *self, FilterXObject *object)
+{
+  gsize len;
+  if (!filterx_object_len(object, &len))
+    return;
 
   for (guint64 i = 0; i < len; i++)
     {
-      struct json_object *elem_jso = json_object_array_get_idx(jso, i);
-      FilterXObject *elem_object = filterx_json_convert_json_to_object(root_object, NULL, elem_jso);
-      _deep_freeze(self, elem_object, root_object);
-      filterx_json_associate_cached_object(elem_jso, elem_object);
+      FilterXObject *elem_object = filterx_list_get_subscript(object, i);
+      _deep_freeze(self, elem_object);
     }
 }
 
 static void
-_deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object)
+_deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object)
 {
   if (!object)
     return;
@@ -256,11 +258,11 @@ _deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXO
   filterx_object_make_readonly(object);
 
   object = filterx_ref_unwrap_ro(object);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)))
-    _deep_freeze_dict(self, object, root_object);
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)))
+    _deep_freeze_dict(self, object);
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
-    _deep_freeze_list(self, object, root_object);
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
+    _deep_freeze_list(self, object);
 }
 
 gboolean
@@ -273,7 +275,7 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
     }
   _archive_frozen_objects(self);
   self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unfreeze_and_free);
-  _deep_freeze(self, cached_json, cached_json);
+  _deep_freeze(self, cached_json);
   g_atomic_pointer_set(&self->cached_json, cached_json);
   return TRUE;
 }
