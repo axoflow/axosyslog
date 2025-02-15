@@ -261,7 +261,7 @@ _get_repr(FilterXObject *obj, std::string &str, GString *repr)
   else
     {
       g_string_truncate(repr, 0);
-      if (!filterx_object_repr(obj, repr))
+      if (!filterx_object_str(obj, repr))
         return FALSE;
       str = std::string(repr->str, repr->len);
     }
@@ -271,7 +271,6 @@ _get_repr(FilterXObject *obj, std::string &str, GString *repr)
 gboolean
 _build_map(FilterXObject *key, FilterXObject *val, gpointer user_data)
 {
-
   auto *msg = static_cast<syslogng::grpc::pubsub::filterx::Message *>(static_cast<gpointer *>(user_data)[0]);
   GString *buf = static_cast<GString *>(static_cast<gpointer *>(user_data)[1]);
 
