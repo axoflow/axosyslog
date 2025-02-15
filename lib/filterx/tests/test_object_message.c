@@ -178,10 +178,12 @@ Test(filterx_message, test_filterx_message_type_datetime_repr)
   FilterXObject *fobj = filterx_message_value_new(val, -1, LM_VT_DATETIME);
   GString *repr = scratch_buffers_alloc();
   g_string_assign(repr, "foo");
+  cr_assert(filterx_object_str(fobj, repr));
+  cr_assert_str_eq(repr->str, "1713520972.000000");
   cr_assert(filterx_object_repr(fobj, repr));
-  cr_assert_str_eq("2024-04-19T12:02:52.000+02:00", repr->str);
+  cr_assert_str_eq(repr->str, "2024-04-19T12:02:52.000+02:00");
   cr_assert(filterx_object_repr_append(fobj, repr));
-  cr_assert_str_eq("2024-04-19T12:02:52.000+02:002024-04-19T12:02:52.000+02:00", repr->str);
+  cr_assert_str_eq(repr->str, "2024-04-19T12:02:52.000+02:002024-04-19T12:02:52.000+02:00");
   filterx_object_unref(fobj);
 }
 
