@@ -95,7 +95,7 @@ void filterx_string_global_deinit(void);
   { \
     FILTERX_OBJECT_STACK_INIT(string), \
     .str = (cstr), \
-    .str_len = ((cstr_len) < 0 ? strlen(cstr) : (cstr_len)), \
+    .str_len = (((gssize) cstr_len) == -1 ? strlen(cstr) : (cstr_len)), \
   }
 
 #define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \
