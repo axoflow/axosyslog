@@ -156,25 +156,11 @@ filterx_parse_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   return res;
 }
 
-
 /* JSON formatting */
-
-static void
-_append_comma_if_needed(GString *result)
-{
-  if (result->len &&
-      result->str[result->len - 1] != '[' &&
-      result->str[result->len - 1] != '{' &&
-      result->str[result->len - 1] != ':')
-    {
-      g_string_append_c(result, ',');
-    }
-}
 
 static gboolean
 _append_literal(const gchar *value, gsize len, GString *result)
 {
-  _append_comma_if_needed(result);
   g_string_append_len(result, value, len);
   return TRUE;
 }
@@ -182,7 +168,6 @@ _append_literal(const gchar *value, gsize len, GString *result)
 static gboolean
 _format_and_append_null(GString *result)
 {
-  _append_comma_if_needed(result);
   g_string_append(result, "null");
   return TRUE;
 }
@@ -190,7 +175,6 @@ _format_and_append_null(GString *result)
 static gboolean
 _format_and_append_boolean(gboolean value, GString *result)
 {
-  _append_comma_if_needed(result);
   g_string_append(result, value ? "true" : "false");
   return TRUE;
 }
@@ -198,7 +182,6 @@ _format_and_append_boolean(gboolean value, GString *result)
 static gboolean
 _format_and_append_integer(gint64 value, GString *result)
 {
-  _append_comma_if_needed(result);
   g_string_append_printf(result, "%" G_GINT64_FORMAT, value);
   return TRUE;
 }
@@ -206,8 +189,6 @@ _format_and_append_integer(gint64 value, GString *result)
 static gboolean
 _format_and_append_double(gdouble value, GString *result)
 {
-  _append_comma_if_needed(result);
-
   gsize init_len = result->len;
   g_string_set_size(result, init_len + G_ASCII_DTOSTR_BUF_SIZE);
   g_ascii_dtostr(result->str + init_len, G_ASCII_DTOSTR_BUF_SIZE, value);
@@ -224,7 +205,6 @@ _get_base64_encoded_size(gsize len)
 static gboolean
 _format_and_append_bytes(const gchar *value, gssize value_len, GString *result)
 {
-  _append_comma_if_needed(result);
   g_string_append_c(result, '"');
 
   gint encode_state = 0;
@@ -259,7 +239,6 @@ _format_and_append_protobuf(const gchar *value, gssize value_len, GString *resul
 static gboolean
 _format_and_append_string(const gchar *value, gssize value_len, GString *result)
 {
-  _append_comma_if_needed(result);
   g_string_append_c(result, '"');
   append_unsafe_utf8_as_escaped(result, value, value_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
   g_string_append_c(result, '"');
@@ -269,14 +248,19 @@ _format_and_append_string(const gchar *value, gssize value_len, GString *result)
 static gboolean
 _format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
-  GString *result = (GString *) user_data;
+  gpointer *args = (gpointer *) user_data;
+  GString *result = (GString *) args[0];
+  gboolean *first = (gboolean *) args[1];
 
   const gchar *key_str;
   gsize key_str_len;
   if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
     return FALSE;
 
-  _append_comma_if_needed(result);
+  if (!(*first))
+    g_string_append_c(result, ',');
+  else
+    *first = FALSE;
   g_string_append_c(result, '"');
   append_unsafe_utf8_as_escaped(result, key_str, key_str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
   g_string_append(result, "\":");
@@ -287,10 +271,12 @@ _format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer 
 static gboolean
 _format_and_append_dict(FilterXObject *value, GString *result)
 {
-  _append_comma_if_needed(result);
+  gboolean first = TRUE;
+  gpointer args[] = { result, &first };
+
   g_string_append_c(result, '{');
 
-  if (!filterx_dict_iter(value, _format_and_append_dict_elem, (gpointer) result))
+  if (!filterx_dict_iter(value, _format_and_append_dict_elem, args))
     return FALSE;
 
   g_string_append_c(result, '}');
@@ -300,7 +286,7 @@ _format_and_append_dict(FilterXObject *value, GString *result)
 static gboolean
 _format_and_append_list(FilterXObject *value, GString *result)
 {
-  _append_comma_if_needed(result);
+  gboolean first = TRUE;
   g_string_append_c(result, '[');
 
   guint64 list_len;
@@ -310,6 +296,10 @@ _format_and_append_list(FilterXObject *value, GString *result)
 
   for (guint64 i = 0; i < list_len; i++)
     {
+      if (!first)
+        g_string_append_c(result, ',');
+      else
+        first = FALSE;
       FilterXObject *elem = filterx_list_get_subscript(value, i);
       gboolean success = filterx_object_to_json(elem, result);
       filterx_object_unref(elem);
@@ -332,7 +322,6 @@ _repr_append(FilterXObject *value, GString *result)
   if (!success)
     goto exit;
 
-  _append_comma_if_needed(result);
   g_string_append_c(result, '"');
   append_unsafe_utf8_as_escaped(result, repr->str, repr->len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
   g_string_append_c(result, '"');
@@ -358,7 +347,6 @@ filterx_object_to_json(FilterXObject *value, GString *result)
   const gchar *json_literal = filterx_json_to_json_literal(value);
   if (json_literal)
     {
-      _append_comma_if_needed(result);
       g_string_append(result, json_literal);
       return TRUE;
     }
