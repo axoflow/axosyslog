@@ -155,9 +155,9 @@ Test(filterx_double, test_filterx_double_repr)
   GString *repr = scratch_buffers_alloc();
   g_string_assign(repr, "foo");
   cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq("123.456", repr->str);
+  cr_assert_str_eq(repr->str, "123.456");
   cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq("123.456123.456", repr->str);
+  cr_assert_str_eq(repr->str, "123.456123.456");
   filterx_object_unref(obj);
 }
 

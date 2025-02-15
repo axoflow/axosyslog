@@ -32,8 +32,8 @@
 #include "filterx/filterx-object-istype.h"
 #include "str-utils.h"
 #include "timeutils/misc.h"
-
 #include "compat/json.h"
+#include <math.h>
 
 static gboolean
 _truthy(FilterXObject *s)
@@ -139,12 +139,43 @@ _double_add(FilterXObject *s, FilterXObject *object)
 }
 
 gboolean
-double_repr(double val, GString *repr)
+double_repr(double dbl, GString *repr)
 {
-  gsize init_len = repr->len;
-  g_string_set_size(repr, init_len + G_ASCII_DTOSTR_BUF_SIZE);
-  g_ascii_dtostr(repr->str + init_len, G_ASCII_DTOSTR_BUF_SIZE, val);
-  g_string_set_size(repr, init_len + strlen(repr->str + init_len));
+  if (isnan(dbl))
+    {
+      g_string_append_len(repr, "NaN", 3);
+    }
+  else if (isinf(dbl))
+    {
+      if (dbl < 0)
+        g_string_append_c(repr, '-');
+      g_string_append_len(repr, "Infinity", 8);
+    }
+  else
+    {
+      gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
+
+      g_ascii_dtostr(buf, sizeof(buf), dbl);
+      gchar *dot = strchr(buf, '.');
+      if (!dot && strchr(buf, 'e') == NULL)
+        {
+          /* no fractions, not scientific notation */
+          strcat(buf, ".0");
+        }
+      else if (dot)
+        {
+          gchar *last_useful_digit = NULL;
+          for (gchar *c = dot+1; *c; c++)
+            {
+              if (*c != '0')
+                last_useful_digit = c;
+            }
+          /* truncate trailing zeroes */
+          if (last_useful_digit)
+            *(last_useful_digit+1) = 0;
+        }
+      g_string_append(repr, buf);
+    }
   return TRUE;
 }
 
