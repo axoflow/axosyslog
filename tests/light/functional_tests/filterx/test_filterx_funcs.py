@@ -107,6 +107,21 @@ def test_lower(config, syslog_ng):
     assert file_final.read_log() == """{"literal":"abc","variable":"foobar","host":"hostname"}\n"""
 
 
+def test_repr(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    dt=strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z");
+    $MSG = json();
+    $MSG.repr = repr(dt);
+    $MSG.str = string(dt);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == """{"repr":"2000-01-01T00:00:00.000+00:00","str":"946684800.000000"}\n"""
+
+
 def test_startswith_with_various_arguments(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
