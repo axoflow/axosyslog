@@ -59,6 +59,27 @@ assert_object_json_equals(FilterXObject *obj, const gchar *expected_json_repr)
   filterx_object_unref(assoc_object);
 }
 
+void
+assert_object_repr_equals(FilterXObject *obj, const gchar *expected_repr)
+{
+  GString *repr = g_string_new("foobar");
+  gsize len = repr->len;
+
+  cr_assert(filterx_object_repr_append(obj, repr) == TRUE);
+  cr_assert_str_eq(repr->str + len, expected_repr);
+  g_string_free(repr, TRUE);
+}
+
+void
+assert_object_str_equals(FilterXObject *obj, const gchar *expected_str)
+{
+  GString *str = g_string_new("foobar");
+  gsize len = str->len;
+
+  cr_assert(filterx_object_str_append(obj, str) == TRUE);
+  cr_assert_str_eq(str->str + len, expected_str);
+  g_string_free(str, TRUE);
+}
 
 FilterXObject *
 filterx_test_dict_new(void)

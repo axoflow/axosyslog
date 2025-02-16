@@ -29,6 +29,8 @@
 
 void assert_marshaled_object(FilterXObject *obj, const gchar *repr, LogMessageValueType type);
 void assert_object_json_equals(FilterXObject *obj, const gchar *expected_json_repr);
+void assert_object_repr_equals(FilterXObject *obj, const gchar *expected_repr);
+void assert_object_str_equals(FilterXObject *obj, const gchar *expected_repr);
 
 FILTERX_DECLARE_TYPE(test_dict);
 FILTERX_DECLARE_TYPE(test_list);
