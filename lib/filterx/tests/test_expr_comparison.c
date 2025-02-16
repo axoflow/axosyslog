@@ -466,10 +466,10 @@ Test(expr_comparison, test_string_to_numeric_string_based_comparison)
   _assert_comparison(filterx_string_new("3", 1), filterx_integer_new(3), FCMPX_GT | FCMPX_STRING_BASED, FALSE);
   _assert_comparison(filterx_string_new("3", 1), filterx_integer_new(3), FCMPX_NE | FCMPX_STRING_BASED, FALSE);
 
-  _assert_comparison(filterx_string_new("3", 1), filterx_double_new(3.0), FCMPX_EQ | FCMPX_STRING_BASED, TRUE);
-  _assert_comparison(filterx_string_new("3", 1), filterx_double_new(3.0), FCMPX_LT | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("3", 1), filterx_double_new(3.0), FCMPX_GT | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("3", 1), filterx_double_new(3.0), FCMPX_NE | FCMPX_STRING_BASED, FALSE);
+  _assert_comparison(filterx_string_new("3.0", 3), filterx_double_new(3.0), FCMPX_EQ | FCMPX_STRING_BASED, TRUE);
+  _assert_comparison(filterx_string_new("3.0", 3), filterx_double_new(3.0), FCMPX_LT | FCMPX_STRING_BASED, FALSE);
+  _assert_comparison(filterx_string_new("3.0", 3), filterx_double_new(3.0), FCMPX_GT | FCMPX_STRING_BASED, FALSE);
+  _assert_comparison(filterx_string_new("3.0", 3), filterx_double_new(3.0), FCMPX_NE | FCMPX_STRING_BASED, FALSE);
 
   _assert_comparison(filterx_string_new("3", 1), filterx_double_new(3.1), FCMPX_EQ | FCMPX_STRING_BASED, FALSE);
   _assert_comparison(filterx_string_new("3", 1), filterx_double_new(3.1), FCMPX_LT | FCMPX_STRING_BASED,
