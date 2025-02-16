@@ -208,12 +208,7 @@ Test(filterx_datetime, test_filterx_datetime_repr)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-  g_string_assign(repr, "foo");
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq("2024-03-18T12:34:13.000+09:00", repr->str);
-  cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq("2024-03-18T12:34:13.000+09:002024-03-18T12:34:13.000+09:00", repr->str);
+  assert_object_repr_equals(obj, "2024-03-18T12:34:13.000+09:00");
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -228,10 +223,7 @@ Test(filterx_datetime, test_filterx_datetime_repr_isodate_Z)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-
-  cr_assert(filterx_object_repr(args[0], repr));
-  cr_assert_str_eq(test_time_str, repr->str);
+  assert_object_repr_equals(args[0], test_time_str);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -298,9 +290,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_timefmt)
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "2024-04-08T10:11:12.000+00:00");
+  assert_object_repr_equals(obj, "2024-04-08T10:11:12.000+00:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(func_expr);
@@ -323,9 +313,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_nth_timefmt)
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "2024-04-08T10:11:12.000+01:00");
+  assert_object_repr_equals(obj, "2024-04-08T10:11:12.000+01:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(func_expr);

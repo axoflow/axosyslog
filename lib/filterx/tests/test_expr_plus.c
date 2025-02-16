@@ -118,10 +118,7 @@ Test(expr_plus, test_datetime_add_integer)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *date_repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, date_repr));
-
-  cr_assert_str_eq(date_repr->str, "2020-01-01T01:00:00.000+00:00");
+  assert_object_repr_equals(obj, "2020-01-01T01:00:00.000+00:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -141,10 +138,7 @@ Test(expr_plus, test_datetime_add_double)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *date_repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, date_repr));
-
-  cr_assert_str_eq(date_repr->str, "2020-01-01T01:00:00.000+00:00");
+  assert_object_repr_equals(obj, "2020-01-01T01:00:00.000+00:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -289,10 +283,7 @@ Test(expr_plus, test_list_add_list)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, repr));
-
-  cr_assert_str_eq(repr->str, "[\"foo\",\"bar\",\"tik\",\"tak\"]");
+  assert_object_repr_equals(obj, "[\"foo\",\"bar\",\"tik\",\"tak\"]");
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -324,10 +315,7 @@ Test(expr_plus, test_dict_add_dict)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, repr));
-
-  cr_assert_str_eq(repr->str, "{\"foo\":\"bar\",\"tik\":\"tak\"}");
+  assert_object_repr_equals(obj, "{\"foo\":\"bar\",\"tik\":\"tak\"}");
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
