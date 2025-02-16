@@ -64,12 +64,8 @@ _assert_flatten(GList *args, const gchar *expected_repr)
   FilterXObject *modifiable_object = filterx_expr_eval(modifiable_object_expr);
   cr_assert(modifiable_object);
 
-  GString *repr = g_string_new(NULL);
-  cr_assert(filterx_object_repr(modifiable_object, repr));
-  cr_assert_str_eq(repr->str, expected_repr, "flatten() result is unexpected. Actual: %s Expected: %s", repr->str,
-                   expected_repr);
+  assert_object_repr_equals(modifiable_object, expected_repr);
 
-  g_string_free(repr, TRUE);
   filterx_object_unref(obj);
   filterx_expr_unref(func);
   filterx_object_unref(modifiable_object);

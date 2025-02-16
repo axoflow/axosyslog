@@ -52,6 +52,7 @@ set(FILTERX_HEADERS
     filterx/func-str.h
     filterx/func-unset-empties.h
     filterx/func-vars.h
+    filterx/func-repr.h
     filterx/object-datetime.h
     filterx/object-dict-interface.h
     filterx/object-dict.h
@@ -122,6 +123,7 @@ set(FILTERX_SOURCES
     filterx/func-str.c
     filterx/func-unset-empties.c
     filterx/func-vars.c
+    filterx/func-repr.c
     filterx/object-datetime.c
     filterx/object-dict-interface.c
     filterx/object-dict.c

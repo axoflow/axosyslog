@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,45 +21,26 @@
  * COPYING for details.
  *
  */
-#include <criterion/criterion.h>
-#include "libtest/filterx-lib.h"
-
-#include "filterx/object-null.h"
-#include "apphook.h"
+#include "filterx/func-repr.h"
+#include "filterx/object-string.h"
+#include "filterx/filterx-globals.h"
 #include "scratch-buffers.h"
 
-Test(filterx_null, test_filterx_object_null_marshals_to_the_stored_values)
+FilterXObject *
+filterx_simple_function_repr(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  FilterXObject *fobj = filterx_null_new();
-  assert_marshaled_object(fobj, "", LM_VT_NULL);
-  filterx_object_unref(fobj);
-}
+  FilterXObject *object = filterx_typecast_get_arg(s, args, args_len);
+  if (!object)
+    return NULL;
 
-Test(filterx_null, test_filterx_object_null_maps_to_the_right_json_value)
-{
-  FilterXObject *fobj = filterx_null_new();
-  assert_object_json_equals(fobj, "null");
-  filterx_object_unref(fobj);
-}
+  GString *buf = scratch_buffers_alloc();
+  if (!filterx_object_repr(object, buf))
+    {
+      msg_error("filterx: repr() failed",
+                evt_tag_str("from", object->type->name),
+                evt_tag_str("to", "string"));
+      return NULL;
+    }
 
-Test(filterx_null, test_filterx_object_null_repr)
-{
-  FilterXObject *fobj = filterx_null_new();
-  assert_object_repr_equals(fobj, "null");
-  filterx_object_unref(fobj);
+  return filterx_string_new(buf->str, buf->len);
 }
-
-static void
-setup(void)
-{
-  app_startup();
-}
-
-static void
-teardown(void)
-{
-  scratch_buffers_explicit_gc();
-  app_shutdown();
-}
-
-TestSuite(filterx_null, .init = setup, .fini = teardown);

@@ -103,10 +103,7 @@ Test(filterx_func_keys, valid_input)
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(list)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(res, repr));
-
-  cr_assert_str_eq(repr->str, "[\"foo\",\"bar\",\"baz\"]");
+  assert_object_repr_equals(res, "[\"foo\",\"bar\",\"baz\"]");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
