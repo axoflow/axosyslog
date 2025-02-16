@@ -52,6 +52,7 @@ public:
   Message(Message &&o) = delete;
   std::string marshal(void);
   const google::pubsub::v1::PubsubMessage &get_value() const;
+  std::string repr() const;
 
   bool set_attribute(const std::string &key, const std::string &value);
   bool set_data(const std::string &data);
