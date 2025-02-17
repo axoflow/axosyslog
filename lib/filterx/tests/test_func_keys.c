@@ -28,7 +28,7 @@
 #include "filterx/func-flatten.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-json.h"
+#include "filterx/json-repr.h"
 #include "filterx/expr-literal.h"
 #include "filterx/func-keys.h"
 #include "filterx/filterx-eval.h"
@@ -92,7 +92,7 @@ Test(filterx_func_keys, invalid_arg_type)
 Test(filterx_func_keys, valid_input)
 {
   GList *args = NULL;
-  FilterXObject *dict = filterx_json_new_from_repr("{\"foo\":1,\"bar\":[3,2,1],\"baz\":{\"tik\":\"tak\"}}", -1);
+  FilterXObject *dict = filterx_object_from_json("{\"foo\":1,\"bar\":[3,2,1],\"baz\":{\"tik\":\"tak\"}}", -1, NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(dict)));
 
   GError *error = NULL;
@@ -103,10 +103,7 @@ Test(filterx_func_keys, valid_input)
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(list)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(res, repr));
-
-  cr_assert_str_eq(repr->str, "[\"foo\",\"bar\",\"baz\"]");
+  assert_object_repr_equals(res, "[\"foo\",\"bar\",\"baz\"]");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);

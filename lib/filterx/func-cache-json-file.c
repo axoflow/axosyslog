@@ -1,17 +1,18 @@
 /*
  * Copyright (c) 2024 Attila Szakacs
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation, or (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  * As an additional exemption you are allowed to compile & link against the
@@ -20,8 +21,8 @@
  *
  */
 
-#include "filterx-cache-json-file.h"
-#include "filterx/object-json.h"
+#include "func-cache-json-file.h"
+#include "filterx/json-repr.h"
 #include "filterx/object-string.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
@@ -138,9 +139,9 @@ _load_json_file(const gchar *filepath, GError **error)
       goto exit;
     }
 
-  result = filterx_json_new_from_object(object);
-  g_assert(result);
-  filterx_object_make_readonly(result);
+  result = filterx_object_from_json_object(object, error);
+  if (result)
+    filterx_object_make_readonly(result);
 
 exit:
   json_tokener_free(tokener);
@@ -168,31 +169,32 @@ _free(FilterXExpr *s)
 
 static void _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object);
 
+static gboolean
+_deep_freeze_dict_item(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  FilterXFuntionCacheJsonFile *self = (FilterXFuntionCacheJsonFile *) user_data;
+  _deep_freeze(self, key);
+  _deep_freeze(self, value);
+  return TRUE;
+}
+
 static void
 _deep_freeze_dict(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
 {
-  struct json_object_iter itr;
-  json_object_object_foreachC(filterx_json_object_get_value(object), itr)
-  {
-    struct json_object *elem_jso = itr.val;
-    FilterXObject *elem_object = filterx_json_convert_json_to_object(self->cached_json, NULL, elem_jso);
-    _deep_freeze(self, elem_object);
-    filterx_json_associate_cached_object(elem_jso, elem_object);
-  }
+  filterx_dict_iter(object, _deep_freeze_dict_item, self);
 }
 
 static void
 _deep_freeze_list(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
 {
-  struct json_object *jso = filterx_json_array_get_value(object);
-  guint64 len = json_object_array_length(jso);
+  gsize len;
+  if (!filterx_object_len(object, &len))
+    return;
 
   for (guint64 i = 0; i < len; i++)
     {
-      struct json_object *elem_jso = json_object_array_get_idx(jso, i);
-      FilterXObject *elem_object = filterx_json_convert_json_to_object(self->cached_json, NULL, elem_jso);
+      FilterXObject *elem_object = filterx_list_get_subscript(object, i);
       _deep_freeze(self, elem_object);
-      filterx_json_associate_cached_object(elem_jso, elem_object);
     }
 }
 
@@ -206,10 +208,10 @@ _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
     g_ptr_array_add(self->frozen_objects, object);
 
   object = filterx_ref_unwrap_ro(object);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)))
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)))
     _deep_freeze_dict(self, object);
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
     _deep_freeze_list(self, object);
 }
 
@@ -245,5 +247,3 @@ error:
   filterx_expr_unref(&self->super.super);
   return NULL;
 }
-
-FILTERX_FUNCTION(cache_json_file, filterx_function_cache_json_file_new);

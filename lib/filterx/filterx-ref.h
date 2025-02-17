@@ -25,7 +25,7 @@
 #define FILTERX_REF_H
 
 #include "filterx/filterx-object.h"
-#include "adt/iord_map.h"
+#include "filterx/filterx-weakrefs.h"
 
 /*
  * References are currently not part of the FilterX language (hopefully, they
@@ -46,7 +46,9 @@ typedef struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
-  IOrdMapNode n;
+  FilterXWeakRef root_container;
+  /* this is only maintained for the root ref of a mutable object tree */
+  gboolean is_dirty;
 } FilterXRef;
 
 
@@ -90,6 +92,16 @@ filterx_ref_new(FilterXObject *value)
   if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
     return value;
   return _filterx_ref_new(value);
+}
+
+static inline void
+filterx_ref_propagate_root(FilterXObject *s, const FilterXWeakRef *root_container)
+{
+  FilterXRef *self = (FilterXRef *) s;
+  if (s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      filterx_weakref_copy(&self->root_container, root_container);
+    }
 }
 
 #endif

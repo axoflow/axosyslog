@@ -52,11 +52,10 @@ struct _FilterXType
   FilterXObject *(*list_factory)(FilterXObject *self);
   FilterXObject *(*dict_factory)(FilterXObject *self);
   gboolean (*repr)(FilterXObject *self, GString *repr);
+  gboolean (*str)(FilterXObject *self, GString *str);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*make_readonly)(FilterXObject *self);
-  gboolean (*is_modified_in_place)(FilterXObject *self);
-  void (*set_modified_in_place)(FilterXObject *self, gboolean modified);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -88,15 +87,11 @@ struct _FilterXObject
 
   /* NOTE:
    *
-   *     modified_in_place -- set to TRUE in case the value in this
-   *                          FilterXObject was changed.
-   *                          don't use it directly, use
-   *                          filterx_object_{is,set}_modified_in_place()
    *     readonly          -- marks the object as unmodifiable,
    *                          propagates to the inner elements lazily
    *
    */
-  guint modified_in_place:1, readonly:1, weak_referenced:1;
+  guint readonly:1, weak_referenced:1, is_dirty:1;
   FilterXType *type;
 };
 
@@ -245,6 +240,27 @@ filterx_object_repr_append(FilterXObject *self, GString *repr)
       return self->type->repr(self, repr);
     }
   return FALSE;
+}
+
+static inline gboolean
+filterx_object_str(FilterXObject *self, GString *str)
+{
+  if (self->type->str)
+    {
+      g_string_truncate(str, 0);
+      return self->type->str(self, str);
+    }
+  return filterx_object_repr(self, str);
+}
+
+static inline gboolean
+filterx_object_str_append(FilterXObject *self, GString *str)
+{
+  if (self->type->str)
+    {
+      return self->type->str(self, str);
+    }
+  return filterx_object_repr_append(self, str);
 }
 
 static inline gboolean
@@ -406,30 +422,24 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
 }
 
 static inline gboolean
-filterx_object_is_modified_in_place(FilterXObject *self)
+filterx_object_is_dirty(FilterXObject *self)
 {
-  if (G_UNLIKELY(self->type->is_modified_in_place))
-    return self->type->is_modified_in_place(self);
-
-  return self->modified_in_place;
+  return self->is_dirty;
 }
 
 static inline void
-filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
+filterx_object_set_dirty(FilterXObject *self, gboolean value)
 {
-  if (G_UNLIKELY(self->type->set_modified_in_place))
-    return self->type->set_modified_in_place(self, modified);
-
-  self->modified_in_place = modified;
+  self->is_dirty = value;
 }
 
 #define FILTERX_OBJECT_STACK_INIT(_type) \
   { \
     .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
     .fx_ref_cnt = { .counter = 0 }, \
-    .modified_in_place = FALSE, \
     .readonly = TRUE, \
     .weak_referenced = FALSE, \
+    .is_dirty = FALSE, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
 

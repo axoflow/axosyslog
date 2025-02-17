@@ -21,8 +21,6 @@
  */
 #include "json-parser.h"
 #include "format-json.h"
-#include "filterx-format-json.h"
-#include "filterx-cache-json-file.h"
 #include "json-parser-parser.h"
 #include "plugin.h"
 #include "plugin-types.h"
@@ -39,8 +37,6 @@ static Plugin json_plugins[] =
   },
   TEMPLATE_FUNCTION_PLUGIN(tf_json, "format_json"),
   TEMPLATE_FUNCTION_PLUGIN(tf_flat_json, "format_flat_json"),
-  FILTERX_SIMPLE_FUNCTION_PLUGIN(format_json),
-  FILTERX_FUNCTION_PLUGIN(cache_json_file),
 };
 
 gboolean

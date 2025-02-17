@@ -60,7 +60,6 @@ typedef struct _FilterXWeakRef
 
 void filterx_weakref_set(FilterXWeakRef *self, FilterXObject *object);
 
-
 static inline void
 filterx_weakref_clear(FilterXWeakRef *self)
 {
@@ -82,5 +81,11 @@ filterx_weakref_get(FilterXWeakRef *self)
   return filterx_object_ref(self->object);
 }
 
+static inline void
+filterx_weakref_copy(FilterXWeakRef *self, const FilterXWeakRef *other)
+{
+  /* other is already in a weakref, no need to store it in the weakrefs array */
+  self->object = other->object;
+}
 
 #endif

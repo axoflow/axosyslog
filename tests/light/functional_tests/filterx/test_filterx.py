@@ -294,14 +294,14 @@ def test_otel_to_json(config, syslog_ng):
                                             js = json();
 
                                             js.otel_kvl = otel_kvl;
-                                            istype(js.otel_kvl, "json_object");
+                                            #istype(js.otel_kvl, "json_object");
                                             js.otel_kvl += {"bar": 1337};
 
                                             js.otel_arr = otel_arr;
-                                            istype(js.otel_arr, "json_array");
+                                            #istype(js.otel_arr, "json_array");
                                             js.otel_arr += [3, 4];
 
-                                            $MSG = js;
+                                            $MSG = string(js);
                 """,
     )
     syslog_ng.start(config)
@@ -1764,6 +1764,7 @@ bar/;
 bar/;
             ## escaped characters
             $MSG.escaped_backslash = /foo\\bar/;
+            # slash is not escaped
             $MSG.escaped_slash = /foo\/bar/;
             $MSG.non_escaped_single_quotes = /foo'bar/;
             $MSG.non_escaped_double_quotes = /foo"bar/;
@@ -1878,8 +1879,8 @@ def test_add_operator_for_base_types(config, syslog_ng):
             $MSG = {};
             $MSG.string = ${values.str} + "bar" + "baz";
             $MSG.bytes = string(bytes("\xCA") + bytes("\xFE"));
-            $MSG.datetime_integer = string(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600000000);
-            $MSG.datetime_double = string(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600.0);
+            $MSG.datetime_integer = repr(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600000000);
+            $MSG.datetime_double = repr(strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z") + 3600.0);
             $MSG.integer_integer = 3 + 4 + 5;
             $MSG.integer_double = 3 + 0.5;
             $MSG.double_integer = 3.5 + 2;
@@ -1987,11 +1988,11 @@ def test_plus_equal_grammar_rules(config, syslog_ng):
 
             d = strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z");
             d += 3600000000;
-            $MSG.var_datetime_integer = string(d);
+            $MSG.var_datetime_integer = repr(d);
 
             e = strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z");
             e += 3600.000000;
-            $MSG.var_datetime_double = string(e);
+            $MSG.var_datetime_double = repr(e);
 
             $MSG.attr = "tik";
             $MSG.attr += "tak";

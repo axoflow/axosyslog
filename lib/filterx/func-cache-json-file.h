@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2024 Axoflow
- * Copyright (c) 2024 László Várady
+ * Copyright (c) 2024 Attila Szakacs
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,17 +18,12 @@
  * As an additional exemption you are allowed to compile & link against the
  * OpenSSL libraries as published by the OpenSSL project. See the file
  * COPYING for details.
- *
  */
+#ifndef FILTERX_CACHE_JSON_FILE_H_INCLUDED
+#define FILTERX_CACHE_JSON_FILE_H_INCLUDED
 
-#ifndef FILTERX_OBJECT_DICT_H
-#define FILTERX_OBJECT_DICT_H
+#include "filterx/expr-function.h"
 
-#include "filterx/filterx-object.h"
-
-FILTERX_DECLARE_TYPE(dict_object);
-
-FilterXObject *filterx_dict_new(void);
-FilterXObject *filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXExpr *filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

@@ -32,9 +32,27 @@ _filterx_ref_clone(FilterXObject *s)
   return filterx_ref_new(filterx_object_ref(self->value));
 }
 
+static void
+filterx_ref_make_dirty(FilterXRef *self)
+{
+  FilterXObject *root_container = filterx_weakref_get(&self->root_container);
+  if (root_container)
+    {
+      filterx_object_set_dirty(root_container, TRUE);
+      filterx_object_unref(root_container);
+    }
+  else
+    {
+      /* we are the root ref */
+      filterx_object_set_dirty(&self->super, TRUE);
+    }
+}
+
 void
 _filterx_ref_cow(FilterXRef *self)
 {
+  filterx_ref_make_dirty(self);
+
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
     return;
 
@@ -54,6 +72,7 @@ _filterx_ref_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  filterx_ref_propagate_root(*new_value, &self->root_container);
   _filterx_ref_cow(self);
 
   return filterx_object_setattr(self->value, attr, new_value);
@@ -64,6 +83,7 @@ _filterx_ref_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject *
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  filterx_ref_propagate_root(*new_value, &self->root_container);
   _filterx_ref_cow(self);
 
   return filterx_object_set_subscript(self->value, key, new_value);
@@ -94,20 +114,6 @@ static void
 _prohibit_readonly(FilterXObject *s)
 {
   g_assert_not_reached();
-}
-
-static gboolean
-_is_modified_in_place(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_is_modified_in_place(self->value);
-}
-
-static void
-_set_modified_in_place(FilterXObject *s, gboolean modified)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  filterx_object_set_modified_in_place(self->value, modified);
 }
 
 /* readonly methods */
@@ -195,10 +201,15 @@ _filterx_ref_repr(FilterXObject *s, GString *repr)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  if (self->value->type->repr)
-    return self->value->type->repr(self->value, repr);
+  return filterx_object_repr(self->value, repr);
+}
 
-  return FALSE;
+static gboolean
+_filterx_ref_str(FilterXObject *s, GString *str)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  return filterx_object_str(self->value, str);
 }
 
 static gboolean
@@ -253,10 +264,9 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .list_factory = _filterx_ref_list_factory,
                     .dict_factory = _filterx_ref_dict_factory,
                     .repr = _filterx_ref_repr,
+                    .str = _filterx_ref_str,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
                     .make_readonly = _prohibit_readonly,
-                    .is_modified_in_place = _is_modified_in_place,
-                    .set_modified_in_place = _set_modified_in_place,
                     .free_fn = _filterx_ref_free,
                    );

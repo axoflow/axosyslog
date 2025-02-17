@@ -29,6 +29,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-json.h"
 #include "filterx/object-dict.h"
+#include "filterx/object-list.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
@@ -43,12 +44,15 @@
 #include "filterx/func-str-transform.h"
 #include "filterx/func-flatten.h"
 #include "filterx/func-sdata.h"
+#include "filterx/func-repr.h"
+#include "filterx/func-cache-json-file.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-unset.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/func-keys.h"
+#include "filterx/json-repr.h"
 
 FilterXGlobalCache global_cache;
 
@@ -98,11 +102,15 @@ _simple_init(void)
 {
   filterx_builtin_simple_functions_init_private(&filterx_builtin_simple_functions);
   g_assert(filterx_builtin_simple_function_register("dict", filterx_dict_new_from_args));
-  g_assert(filterx_builtin_simple_function_register("json", filterx_json_new_from_args));
-  g_assert(filterx_builtin_simple_function_register("json_array", filterx_json_array_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("list", filterx_list_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("json", filterx_dict_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("json_array", filterx_list_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("format_json", filterx_format_json_call));
+  g_assert(filterx_builtin_simple_function_register("parse_json", filterx_parse_json_call));
   g_assert(filterx_builtin_simple_function_register("datetime", filterx_typecast_datetime));
   g_assert(filterx_builtin_simple_function_register("isodate", filterx_typecast_datetime_isodate));
   g_assert(filterx_builtin_simple_function_register("string", filterx_typecast_string));
+  g_assert(filterx_builtin_simple_function_register("repr", filterx_simple_function_repr));
   g_assert(filterx_builtin_simple_function_register("bytes", filterx_typecast_bytes));
   g_assert(filterx_builtin_simple_function_register("protobuf", filterx_typecast_protobuf));
   g_assert(filterx_builtin_simple_function_register("bool", filterx_typecast_boolean));
@@ -156,6 +164,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("strftime", filterx_function_strftime_new));
   g_assert(filterx_builtin_function_ctor_register("keys", filterx_function_keys_new));
   g_assert(filterx_builtin_function_ctor_register("vars", filterx_function_vars_new));
+  g_assert(filterx_builtin_function_ctor_register("cache_json_file", filterx_function_cache_json_file_new));
 }
 
 static void
@@ -251,7 +260,8 @@ filterx_global_init(void)
 
   filterx_type_init(&FILTERX_TYPE_NAME(list));
   filterx_type_init(&FILTERX_TYPE_NAME(dict));
-  filterx_type_init(&FILTERX_TYPE_NAME(dictobj));
+  filterx_type_init(&FILTERX_TYPE_NAME(dict_object));
+  filterx_type_init(&FILTERX_TYPE_NAME(list_object));
 
   filterx_type_init(&FILTERX_TYPE_NAME(null));
   filterx_type_init(&FILTERX_TYPE_NAME(integer));

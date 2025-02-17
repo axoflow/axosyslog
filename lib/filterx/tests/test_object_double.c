@@ -152,12 +152,7 @@ Test(filterx_double, test_filterx_double_typecast_from_datetime)
 Test(filterx_double, test_filterx_double_repr)
 {
   FilterXObject *obj = filterx_double_new(123.456);
-  GString *repr = scratch_buffers_alloc();
-  g_string_assign(repr, "foo");
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq("123.456", repr->str);
-  cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq("123.456123.456", repr->str);
+  assert_object_repr_equals(obj, "123.456");
   filterx_object_unref(obj);
 }
 

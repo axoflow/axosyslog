@@ -55,7 +55,7 @@ FilterXObject *filterx_typecast_integer(FilterXExpr *s, FilterXObject *args[], g
 FilterXObject *filterx_typecast_double(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 gboolean bool_repr(gboolean bool_val, GString *repr);
-gboolean double_repr(double val, GString *repr);
+gboolean double_repr(gdouble val, GString *repr);
 gboolean integer_repr(gint64 val, GString *repr);
 
 /* NOTE: Consider using filterx_object_extract_integer() to also support message_value. */
