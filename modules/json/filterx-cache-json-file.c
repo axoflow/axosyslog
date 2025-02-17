@@ -234,10 +234,10 @@ filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
   if (!self->cached_json)
     goto error;
 
+  _deep_freeze(self, self->cached_json);
+
   if (!filterx_function_args_check(args, error))
     goto error;
-
-  _deep_freeze(self, self->cached_json);
 
   filterx_function_args_free(args);
   return &self->super.super;
