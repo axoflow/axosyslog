@@ -23,10 +23,17 @@
  */
 
 #include "func-set-pri.h"
+#include "filterx/object-extractor.h"
+#include "filterx/object-primitive.h"
+#include "filterx/filterx-eval.h"
+
+#define FILTERX_FUNC_SET_PRI_USAGE "Usage: set_pri([value])"
 
 typedef struct FilterXFunctionSetPri_
 {
   FilterXFunction super;
+
+  FilterXExpr *pri_expr;
 } FilterXFunctionSetPri;
 
 static FilterXObject *
@@ -46,6 +53,15 @@ _set_pri_free(FilterXExpr *s)
 static gboolean
 _extract_set_pri_arg(FilterXFunctionSetPri *self, FilterXFunctionArgs *args, GError **error)
 {
+  self->pri_expr = filterx_function_args_get_expr(args, 0);
+
+  if (!self->pri_expr)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be set: pri. " FILTERX_FUNC_SET_PRI_USAGE);
+      return FALSE;
+    }
+
   return TRUE;
 }
 
