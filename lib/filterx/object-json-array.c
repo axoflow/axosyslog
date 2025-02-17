@@ -165,11 +165,11 @@ _append(FilterXList *s, FilterXObject **new_value)
       return FALSE;
     }
 
-  filterx_object_set_modified_in_place(&self->super.super, TRUE);
+  filterx_object_set_dirty(&self->super.super, TRUE);
   FilterXObject *root_container = filterx_weakref_get(&self->root_container);
   if (root_container)
     {
-      filterx_object_set_modified_in_place(root_container, TRUE);
+      filterx_object_set_dirty(root_container, TRUE);
       filterx_object_unref(root_container);
     }
 
@@ -199,11 +199,11 @@ _set_subscript(FilterXList *s, guint64 index, FilterXObject **new_value)
       return FALSE;
     }
 
-  filterx_object_set_modified_in_place(&self->super.super, TRUE);
+  filterx_object_set_dirty(&self->super.super, TRUE);
   FilterXObject *root_container = filterx_weakref_get(&self->root_container);
   if (root_container)
     {
-      filterx_object_set_modified_in_place(root_container, TRUE);
+      filterx_object_set_dirty(root_container, TRUE);
       filterx_object_unref(root_container);
     }
 
@@ -224,11 +224,11 @@ _unset_index(FilterXList *s, guint64 index)
   if (json_object_array_del_idx(self->jso, index, 1) != 0)
     return FALSE;
 
-  filterx_object_set_modified_in_place(&self->super.super, TRUE);
+  filterx_object_set_dirty(&self->super.super, TRUE);
   FilterXObject *root_container = filterx_weakref_get(&self->root_container);
   if (root_container)
     {
-      filterx_object_set_modified_in_place(root_container, TRUE);
+      filterx_object_set_dirty(root_container, TRUE);
       filterx_object_unref(root_container);
     }
 

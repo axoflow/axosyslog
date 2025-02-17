@@ -91,7 +91,7 @@ struct _FilterXObject
    *                          propagates to the inner elements lazily
    *
    */
-  guint readonly:1, weak_referenced:1;
+  guint readonly:1, weak_referenced:1, is_dirty:1;
   FilterXType *type;
 };
 
@@ -422,30 +422,24 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
 }
 
 static inline gboolean
-filterx_object_is_modified_in_place(FilterXObject *self)
+filterx_object_is_dirty(FilterXObject *self)
 {
-  if (G_UNLIKELY(self->type->is_modified_in_place))
-    return self->type->is_modified_in_place(self);
-
-  return self->modified_in_place;
+  return self->is_dirty;
 }
 
 static inline void
-filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
+filterx_object_set_dirty(FilterXObject *self, gboolean value)
 {
-  if (G_UNLIKELY(self->type->set_modified_in_place))
-    return self->type->set_modified_in_place(self, modified);
-
-  self->modified_in_place = modified;
+  self->is_dirty = value;
 }
 
 #define FILTERX_OBJECT_STACK_INIT(_type) \
   { \
     .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
     .fx_ref_cnt = { .counter = 0 }, \
-    .modified_in_place = FALSE, \
     .readonly = TRUE, \
     .weak_referenced = FALSE, \
+    .is_dirty = FALSE, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
 

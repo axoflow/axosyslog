@@ -46,7 +46,9 @@ typedef struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
-  FilterXWeakRef container;
+  FilterXWeakRef root_container;
+  /* this is only maintained for the root ref of a mutable object tree */
+  gboolean is_dirty;
 } FilterXRef;
 
 
@@ -93,12 +95,12 @@ filterx_ref_new(FilterXObject *value)
 }
 
 static inline void
-filterx_ref_set_container(FilterXObject *s, FilterXObject *container)
+filterx_ref_propagate_root(FilterXObject *s, const FilterXWeakRef *root_container)
 {
   FilterXRef *self = (FilterXRef *) s;
   if (s->type == &FILTERX_TYPE_NAME(ref))
     {
-      filterx_weakref_set(&self->container, container);
+      filterx_weakref_copy(&self->root_container, root_container);
     }
 }
 
