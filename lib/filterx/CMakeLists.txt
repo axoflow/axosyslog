@@ -48,6 +48,7 @@ set(FILTERX_HEADERS
     filterx/func-len.h
     filterx/func-sdata.h
     filterx/func-set-fields.h
+    filterx/func-set-pri.h
     filterx/func-set-timestamp.h
     filterx/func-str-transform.h
     filterx/func-str.h
@@ -119,6 +120,7 @@ set(FILTERX_SOURCES
     filterx/func-len.c
     filterx/func-sdata.c
     filterx/func-set-fields.c
+    filterx/func-set-pri.c
     filterx/func-set-timestamp.c
     filterx/func-str-transform.c
     filterx/func-str.c
