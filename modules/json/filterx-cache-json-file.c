@@ -205,6 +205,8 @@ _deep_freeze(FilterXFuntionCacheJsonFile *self, FilterXObject *object)
   if (filterx_object_freeze(object))
     g_ptr_array_add(self->frozen_objects, object);
 
+  filterx_object_make_readonly(object);
+
   object = filterx_ref_unwrap_ro(object);
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)))
     _deep_freeze_dict(self, object);
@@ -232,10 +234,10 @@ filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
   if (!self->cached_json)
     goto error;
 
+  _deep_freeze(self, self->cached_json);
+
   if (!filterx_function_args_check(args, error))
     goto error;
-
-  _deep_freeze(self, self->cached_json);
 
   filterx_function_args_free(args);
   return &self->super.super;
