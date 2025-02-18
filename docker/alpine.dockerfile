@@ -47,6 +47,7 @@ RUN [ $DEBUG = false ] || patch -d axoflow/axosyslog -p1 -i APKBUILD-debug.patch
 RUN mkdir packages \
     && abuild-keygen -n -a -i \
     && printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> .abuild/abuild.conf \
+    && cd axoflow/json-c && abuild -r && cd - \
     && cd axoflow/axosyslog \
     && if [ "$PKG_TYPE" = "snapshot" ]; then \
         tarball_filename="$(ls axosyslog-*.tar.*)"; \
@@ -81,6 +82,7 @@ RUN apk add --repository /tmp/axoflow -U --upgrade --no-cache \
     jemalloc \
     libdbi-drivers \
     tzdata \
+    json-c \
     axosyslog \
     axosyslog-add-contextual-data \
     axosyslog-amqp \
