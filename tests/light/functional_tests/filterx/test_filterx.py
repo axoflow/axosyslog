@@ -1195,6 +1195,7 @@ def test_regexp_search(config, syslog_ng):
     $MSG.force_list = json_array(regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/));
     $MSG.force_dict = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/));
     $MSG.force_dict_list_mode = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/, list_mode=true));
+    $MSG.optimized_pattern = regexp_search("foobarbaz", /(foo)/ + /(bar)/ + /(baz)/);
 
     $MSG.no_match_unnamed = regexp_search("foobarbaz", /(almafa)/);
     if (len($MSG.no_match_unnamed) == 0) {
@@ -1251,6 +1252,7 @@ def test_regexp_search(config, syslog_ng):
         "no_match_named_list_mode_handling": True,
         "full_match": {"0": "foobarbaz"},  # does not suppress grp 0 when it's the only result
         "full_match_list_mode": ["foobarbaz"],  # does not suppress grp 0 when it's the only result
+        "optimized_pattern": {"1": "foo", "2": "bar", "3": "baz"},
     }
 
 

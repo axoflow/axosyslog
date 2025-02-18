@@ -63,6 +63,9 @@ _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
   FilterXExpr *fillable_expr = filterx_literal_new(filterx_expr_eval(cc_expr));
   filterx_generator_set_fillable(expr, fillable_expr);
 
+  expr = filterx_expr_optimize(expr);
+  cr_assert(filterx_expr_init(expr, configuration));
+
   FilterXObject *result_obj = filterx_expr_eval(expr);
   cr_assert(result_obj);
   cr_assert(filterx_object_truthy(result_obj));
@@ -70,6 +73,7 @@ _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
   FilterXObject *fillable = filterx_expr_eval(fillable_expr);
   cr_assert(fillable);
 
+  filterx_expr_deinit(expr, configuration);
   filterx_object_unref(result_obj);
   filterx_expr_unref(cc_expr);
 
@@ -87,11 +91,15 @@ _search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fil
   FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
   filterx_generator_set_fillable(expr, filterx_literal_new(filterx_object_ref(fillable)));
 
+  expr = filterx_expr_optimize(expr);
+  cr_assert(filterx_expr_init(expr, configuration));
+
   FilterXObject *result_obj = filterx_expr_eval(expr);
   cr_assert(result_obj);
   cr_assert(filterx_object_truthy(result_obj));
 
   filterx_object_unref(result_obj);
+  filterx_expr_deinit(expr, configuration);
   filterx_expr_unref(expr);
 }
 
@@ -104,11 +112,13 @@ _assert_search_init_error(const gchar *lhs, const gchar *pattern)
 
   GError *arg_err = NULL;
   GError *func_err = NULL;
-  cr_assert_not(filterx_generator_function_regexp_search_new(filterx_function_args_new(args, &arg_err), &func_err));
+  FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, &arg_err), &func_err);
+  cr_assert(!arg_err && !func_err);
 
-  cr_assert(arg_err || func_err);
-  g_clear_error(&arg_err);
-  g_clear_error(&func_err);
+  expr = filterx_expr_optimize(expr);
+  cr_assert_not(filterx_expr_init(expr, configuration));
+
+  filterx_expr_unref(expr);
 }
 
 static void
