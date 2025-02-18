@@ -1836,6 +1836,7 @@ def test_regexp_subst(config, syslog_ng):
         $MSG.mixed_grps = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "foo:\\3-\\2-\\1:bar:baz");
         $MSG.multi_digit_grps = regexp_subst("010203040506070809101112", /(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "\\10-\\11-\\12");
         $MSG.prefixing_zeros = regexp_subst("foobar", /^(.*)$/, "\\001012345");
+        $MSG.optimized_pattern = regexp_subst("foobarbaz", "o" + "b", "");
     """,
     )
     syslog_ng.start(config)
@@ -1859,7 +1860,8 @@ def test_regexp_subst(config, syslog_ng):
         r""""groups_on":"2022-02-25","""
         r""""mixed_grps":"foo:2022-02-25:bar:baz","""
         r""""multi_digit_grps":"10-11-12","""
-        r""""prefixing_zeros":"foobar012345"}""" + "\n"
+        r""""prefixing_zeros":"foobar012345","""
+        r""""optimized_pattern":"foarbaz"}""" + "\n"
     )
     assert file_true.read_log() == exp
 

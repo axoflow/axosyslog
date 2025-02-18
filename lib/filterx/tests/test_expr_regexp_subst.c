@@ -76,6 +76,10 @@ _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, Fil
   GError *err = NULL;
   FilterXExpr *func = filterx_function_regexp_subst_new(filterx_function_args_new(args, NULL), &err);
   cr_assert_null(err);
+
+  func = filterx_expr_optimize(func);
+  cr_assert(filterx_expr_init(func, configuration));
+
   return func;
 }
 
@@ -85,6 +89,8 @@ _sub(const gchar *pattern, const gchar *repr, const gchar *str, FilterXFuncRegex
   FilterXExpr *func = _build_subst_func(pattern, repr, str, opts);
 
   FilterXObject *res = filterx_expr_eval(func);
+
+  filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
   return res;
 }
@@ -279,12 +285,14 @@ Test(filterx_expr_regexp_subst, regexp_subst_nojit_arg)
   FilterXExpr *func = _build_subst_func("o", "X", "foobarbaz", opts);
   cr_assert_not_null(func);
   cr_assert(filterx_regexp_subst_is_jit_enabled(func));
+  filterx_expr_deinit(func, configuration);
   filterx_expr_unref(func);
 
   FilterXFuncRegexpSubstOpts opts_nojit = {};
   FilterXExpr *func_nojit = _build_subst_func("o", "X", "foobarbaz", opts_nojit);
   cr_assert_not_null(func_nojit);
   cr_assert(!filterx_regexp_subst_is_jit_enabled(func_nojit));
+  filterx_expr_deinit(func_nojit, configuration);
   filterx_expr_unref(func_nojit);
 }
 
