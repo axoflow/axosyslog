@@ -32,8 +32,6 @@
 #include "filterx/object-json.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-message-value.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 #include "utf8utils.h"
 

@@ -39,7 +39,6 @@
 #include "generic-number.h"
 #include "filterx/filterx-eval.h"
 #include "filterx-globals.h"
-#include "filterx/filterx-object-istype.h"
 #include "compat/json.h"
 
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"

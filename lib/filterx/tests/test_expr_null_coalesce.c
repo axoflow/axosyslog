@@ -40,7 +40,6 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/func-len.h"
 #include "filterx/expr-function.h"
-#include "filterx/filterx-object-istype.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"

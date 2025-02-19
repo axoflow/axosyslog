@@ -36,7 +36,6 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-globals.h \
 	lib/filterx/filterx-metrics-labels.h \
 	lib/filterx/filterx-metrics.h \
-	lib/filterx/filterx-object-istype.h \
 	lib/filterx/filterx-object.h \
 	lib/filterx/filterx-parser.h \
 	lib/filterx/filterx-pipe.h \

@@ -24,7 +24,6 @@
 
 #include "filterx-metrics-labels.h"
 #include "filterx-eval.h"
-#include "filterx/filterx-object-istype.h"
 #include "expr-literal.h"
 #include "expr-literal-generator.h"
 #include "object-string.h"

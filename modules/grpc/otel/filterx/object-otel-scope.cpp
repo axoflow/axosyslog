@@ -26,8 +26,6 @@
 #include "compat/cpp-start.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/util/json_util.h>

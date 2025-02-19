@@ -29,8 +29,6 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 
 #include "scanner/list-scanner/list-scanner.h"
 #include "str-repr/encode.h"

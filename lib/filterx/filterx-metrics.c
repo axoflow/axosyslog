@@ -28,7 +28,6 @@
 #include "object-extractor.h"
 #include "object-string.h"
 #include "filterx-eval.h"
-#include "filterx/filterx-object-istype.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-registry.h"
 #include "metrics/dyn-metrics-cache.h"

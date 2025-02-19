@@ -29,8 +29,6 @@
 #include "filterx/object-string.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
 

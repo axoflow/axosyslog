@@ -28,8 +28,6 @@
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 #define FILTERX_FUNC_FLATTEN_USAGE "Usage: flatten(dict, separator=\".\")"

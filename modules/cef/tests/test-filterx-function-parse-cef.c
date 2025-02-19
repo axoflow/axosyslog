@@ -37,7 +37,6 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/filterx-object-istype.h"
 
 #include "test_helpers.h"
 

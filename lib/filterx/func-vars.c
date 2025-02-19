@@ -29,7 +29,6 @@
 #include "object-primitive.h"
 #include "object-message-value.h"
 #include "object-dict-interface.h"
-#include "filterx-object-istype.h"
 
 #include "scratch-buffers.h"
 #include "str-utils.h"

@@ -33,7 +33,6 @@
 #include "filterx/object-list-interface.h"
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "filterx/object-primitive.h"
-#include "filterx/filterx-object-istype.h"
 
 static FilterXObject *
 _generate_string_list(const gchar *elts, ...)

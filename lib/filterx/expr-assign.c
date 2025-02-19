@@ -22,9 +22,7 @@
  */
 #include "filterx/expr-assign.h"
 #include "filterx/object-primitive.h"
-#include "filterx/filterx-ref.h"
 #include "filterx/object-json.h"
-#include "filterx/filterx-object-istype.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
 #include "filterx/object-message-value.h"

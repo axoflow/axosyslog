@@ -27,8 +27,6 @@
 #include "object-string.h"
 #include "object-primitive.h"
 #include "object-extractor.h"
-#include "filterx-object-istype.h"
-#include "filterx-ref.h"
 #include "filterx-eval.h"
 #include "stats/stats-prometheus.h"
 #include "stats/stats-cluster.h"
