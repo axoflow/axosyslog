@@ -27,7 +27,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/object-datetime.h"
-#include "filterx/object-json.h"
+#include "filterx/object-list.h"
+#include "filterx/json-repr.h"
 #include "logmsg/type-hinting.h"
 #include "str-utils.h"
 
@@ -184,7 +185,7 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
     case LM_VT_STRING:
       return filterx_string_new(repr, repr_len);
     case LM_VT_JSON:
-      return filterx_json_new_from_repr(repr, repr_len);
+      return filterx_object_from_json(repr, repr_len, NULL);
     case LM_VT_BOOLEAN:
       if (!type_cast_to_boolean(repr, repr_len, &b, NULL))
         return NULL;
@@ -202,7 +203,7 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
         return NULL;
       return filterx_datetime_new(&ut);
     case LM_VT_LIST:
-      return filterx_json_array_new_from_syslog_ng_list(repr, repr_len);
+      return filterx_list_new_from_syslog_ng_list(repr, repr_len);
     case LM_VT_NULL:
       return filterx_null_new();
     case LM_VT_BYTES:
