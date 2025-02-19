@@ -209,33 +209,10 @@ filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize a
 
   FilterXObject *vars = args[0];
   FilterXObject *vars_unwrapped = filterx_ref_unwrap_ro(vars);
-  FilterXObject *vars_unmarshalled = NULL;
-
-  if (!filterx_object_is_type(vars_unwrapped, &FILTERX_TYPE_NAME(dict)))
-    {
-      if (!filterx_object_is_type(vars_unwrapped, &FILTERX_TYPE_NAME(message_value)))
-        {
-          filterx_simple_function_argument_error(s, g_strdup_printf("Argument must be dict typed, got %s instead",
-                                                                    vars_unwrapped->type->name), TRUE);
-          return NULL;
-        }
-
-      vars_unmarshalled = filterx_object_unmarshal(vars_unwrapped);
-      vars_unwrapped = NULL;
-
-      if (!filterx_object_is_type(vars_unmarshalled, &FILTERX_TYPE_NAME(dict)))
-        {
-          filterx_simple_function_argument_error(s, g_strdup_printf("Argument must be dict typed, got %s instead",
-                                                                    vars_unmarshalled->type->name), TRUE);
-          filterx_object_unref(vars_unmarshalled);
-          return NULL;
-        }
-    }
 
   FilterXScope *scope = filterx_eval_get_scope();
   gpointer user_data[] = { s, scope };
-  gboolean success = filterx_dict_iter(vars_unwrapped ? : vars_unmarshalled, _load_from_dict, user_data);
+  gboolean success = filterx_dict_iter(vars_unwrapped, _load_from_dict, user_data);
 
-  filterx_object_unref(vars_unmarshalled);
   return success ? filterx_boolean_new(TRUE) : NULL;
 }
