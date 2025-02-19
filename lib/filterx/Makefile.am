@@ -52,6 +52,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-len.h \
 	lib/filterx/func-sdata.h \
 	lib/filterx/func-set-fields.h \
+	lib/filterx/func-set-timestamp.h \
 	lib/filterx/func-str-transform.h \
 	lib/filterx/func-str.h \
 	lib/filterx/func-unset-empties.h \
@@ -121,6 +122,7 @@ filterx_sources = 				\
 	lib/filterx/func-len.c \
 	lib/filterx/func-sdata.c \
 	lib/filterx/func-set-fields.c \
+	lib/filterx/func-set-timestamp.c \
 	lib/filterx/func-str-transform.c \
 	lib/filterx/func-str.c \
 	lib/filterx/func-unset-empties.c \

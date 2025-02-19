@@ -39,6 +39,7 @@
 #include "filterx/func-vars.h"
 #include "filterx/func-unset-empties.h"
 #include "filterx/func-set-fields.h"
+#include "filterx/func-set-timestamp.h"
 #include "filterx/func-str.h"
 #include "filterx/func-str-transform.h"
 #include "filterx/func-flatten.h"
@@ -156,6 +157,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("strftime", filterx_function_strftime_new));
   g_assert(filterx_builtin_function_ctor_register("keys", filterx_function_keys_new));
   g_assert(filterx_builtin_function_ctor_register("vars", filterx_function_vars_new));
+  g_assert(filterx_builtin_function_ctor_register("set_timestamp", filterx_function_set_timestamp_new));
 }
 
 static void

@@ -1098,6 +1098,73 @@ def test_strptime_failure_result(config, syslog_ng):
     assert file_true.read_log() == "null\n"
 
 
+def test_set_timestamp_wrong_param_error_result(config, syslog_ng):
+    _ = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        set_timestamp(datetime, bad_param); # wrong parameter
+""",
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
+
+
+def test_set_timestamp_invalid_stamp_value_error_result(config, syslog_ng):
+    _ = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        set_timestamp(datetime, stamp="processed"); # wrong parameter
+""",
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
+
+
+def test_set_timestamp_set_stamp(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        set_timestamp(datetime, stamp="stamp");
+        $MSG = $ISODATE;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "2000-01-01T00:00:00+02:00\n"
+
+
+def test_set_timestamp_set_stamp_default(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        set_timestamp(datetime);
+        $MSG = $ISODATE;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "2000-01-01T00:00:00+02:00\n"
+
+
+def test_set_timestamp_set_recvd(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        set_timestamp(datetime, stamp="recvd");
+        $MSG = $R_ISODATE;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "2000-01-01T00:00:00+02:00\n"
+
+
 def test_len(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
