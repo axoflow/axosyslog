@@ -134,20 +134,6 @@ filterx_message_value_get_null(FilterXObject *s)
 }
 
 gboolean
-filterx_message_value_get_json(FilterXObject *s, struct json_object **value)
-{
-  FilterXMessageValue *self = (FilterXMessageValue *) s;
-
-  if (self->type == LM_VT_JSON)
-    return type_cast_to_json(self->repr, self->repr_len, value, NULL);
-
-  if (self->type == LM_VT_LIST)
-    return type_cast_to_json_from_list(self->repr, self->repr_len, value, NULL);
-
-  return FALSE;
-}
-
-gboolean
 _is_value_type_pair_truthy(const gchar  *repr, gssize repr_len, LogMessageValueType type)
 {
   gboolean b;
