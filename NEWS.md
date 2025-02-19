@@ -1,5 +1,8 @@
-4.10.0
+4.10.1
 ======
+
+_These are news entries of AxoSyslog 4.10.0.
+4.10.1 fixed two crashes related to FilterX strings and JSON objects._
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
 
