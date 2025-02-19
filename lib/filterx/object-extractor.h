@@ -152,34 +152,4 @@ filterx_object_extract_null(FilterXObject *obj)
   return filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null));
 }
 
-static inline gboolean
-filterx_object_extract_json_array(FilterXObject *obj, struct json_object **value)
-{
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
-    {
-      if (!filterx_message_value_get_json(obj, value))
-        return FALSE;
-
-      if (json_object_is_type(*value, json_type_array))
-        return TRUE;
-
-      json_object_put(*value);
-      *value = NULL;
-      return FALSE;
-    }
-
-  *value = filterx_json_array_get_value(obj);
-  return !!(*value);
-}
-
-static inline gboolean
-filterx_object_extract_json_object(FilterXObject *obj, struct json_object **value)
-{
-  if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
-    return filterx_message_value_get_json(obj, value);
-
-  *value = filterx_json_object_get_value(obj);
-  return !!(*value);
-}
-
 #endif

@@ -677,30 +677,10 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       return self;
     }
 
-  struct json_object *jso;
-  if (filterx_object_extract_json_object(arg, &jso))
-    {
-      GError *error = NULL;
-      FilterXObject *self = filterx_object_from_json_object(jso, &error);
-      json_object_put(jso);
-      if (!self)
-        {
-          filterx_eval_push_error_info("Argument converting JSON into dict", s,
-                                       g_strdup_printf("error %s", error->message), TRUE);
-          return NULL;
-        }
-
-      if (!filterx_object_is_type(self, &FILTERX_TYPE_NAME(dict)))
-        {
-          filterx_object_unref(self);
-          return NULL;
-        }
-      return self;
-    }
-
   const gchar *repr;
   gsize repr_len;
-  if (filterx_object_extract_string_ref(arg, &repr, &repr_len))
+  repr = filterx_string_get_value_ref(arg, &repr_len);
+  if (repr)
     {
       GError *error = NULL;
       FilterXObject *self = filterx_object_from_json(repr, repr_len, &error);

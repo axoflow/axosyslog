@@ -112,14 +112,10 @@ Test(filterx_dict, test_dict_function)
   filterx_object_unref(fobj);
 
   fobj = _exec_dict_func(filterx_message_value_new("{\"foo\": 1}", -1, LM_VT_JSON));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(dict_object)));
-  assert_object_json_equals(fobj, "{\"foo\":1}");
-  filterx_object_unref(fobj);
+  cr_assert(fobj == NULL);
 
   fobj = _exec_dict_func(filterx_message_value_new("{\"foo\": 1}", -1, LM_VT_STRING));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(dict_object)));
-  assert_object_json_equals(fobj, "{\"foo\":1}");
-  filterx_object_unref(fobj);
+  cr_assert(fobj == NULL);
 
   fobj = _exec_dict_func(filterx_object_from_json("{\"foo\": 1}", -1, NULL));
   cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(dict_object)));
@@ -157,20 +153,16 @@ Test(filterx_dict, test_list_function)
   assert_object_json_equals(fobj, "[1,2]");
   filterx_object_unref(fobj);
 
+  /* no need to handle MessageValue arguments, those will be unmarshalled at
+   * evaluation before passing them to the list() function */
   fobj = _exec_list_func(filterx_message_value_new("[1, 2]", -1, LM_VT_JSON));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
-  assert_object_json_equals(fobj, "[1,2]");
-  filterx_object_unref(fobj);
+  cr_assert(fobj == NULL);
 
   fobj = _exec_list_func(filterx_message_value_new("foo,bar", -1, LM_VT_LIST));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
-  assert_object_json_equals(fobj, "[\"foo\",\"bar\"]");
-  filterx_object_unref(fobj);
+  cr_assert(fobj == NULL);
 
   fobj = _exec_list_func(filterx_message_value_new("[1, 2]", -1, LM_VT_STRING));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
-  assert_object_json_equals(fobj, "[1,2]");
-  filterx_object_unref(fobj);
+  cr_assert(fobj == NULL);
 
   fobj = _exec_list_func(filterx_object_from_json("[1, 2]", -1, NULL));
   cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
