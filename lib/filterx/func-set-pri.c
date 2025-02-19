@@ -39,7 +39,35 @@ typedef struct FilterXFunctionSetPri_
 static FilterXObject *
 _set_pri_eval(FilterXExpr *s)
 {
-  return NULL;
+  FilterXFunctionSetPri *self = (FilterXFunctionSetPri *) s;
+
+  FilterXObject *pri_obj = filterx_expr_eval(self->pri_expr);
+
+  gint64 pri_val;
+
+  if (!filterx_object_extract_integer(pri_obj, &pri_val))
+    {
+      filterx_object_unref(pri_obj);
+      filterx_eval_push_error("Pri must be of integer type. " FILTERX_FUNC_SET_PRI_USAGE, s, NULL);
+      return NULL;
+    }
+
+  if (pri_val > 191 || pri_val < 0)
+    {
+      filterx_object_unref(pri_obj);
+      filterx_eval_push_error("Failed to set pri, value must be between 0 and 191 inclusive. " FILTERX_FUNC_SET_PRI_USAGE, s,
+                              NULL);
+      return NULL;
+    }
+
+  filterx_object_unref(pri_obj);
+
+  FilterXEvalContext *context = filterx_eval_get_context();
+  LogMessage *msg = context->msg;
+
+  msg->pri = pri_val;
+
+  return filterx_boolean_new(TRUE);
 }
 
 static void
