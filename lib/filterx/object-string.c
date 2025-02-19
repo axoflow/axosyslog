@@ -132,7 +132,7 @@ _string_clone(FilterXObject *s)
 static inline FilterXString *
 _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate)
 {
-  if (str_len < 0)
+  if (str_len == -1)
     str_len = strlen(str);
 
   FilterXString *self = g_malloc(sizeof(FilterXString) + str_len + 1);

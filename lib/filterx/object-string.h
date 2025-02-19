@@ -53,7 +53,11 @@ FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, F
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
-/* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value. */
+/* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value.
+ *
+ * Also NOTE: the returned string may not be NUL terminated, although often
+ * it will be. Generic code should handle the cases where it is not.
+ */
 static inline const gchar *
 filterx_string_get_value_ref(FilterXObject *s, gsize *length)
 {
@@ -64,6 +68,8 @@ filterx_string_get_value_ref(FilterXObject *s, gsize *length)
 
   if (length)
     *length = self->str_len;
+  else
+    g_assert(self->str[self->str_len] == 0);
   return self->str;
 }
 
@@ -89,7 +95,7 @@ void filterx_string_global_deinit(void);
   { \
     FILTERX_OBJECT_STACK_INIT(string), \
     .str = (cstr), \
-    .str_len = ((cstr_len) < 0 ? strlen(cstr) : (cstr_len)), \
+    .str_len = (((gssize) cstr_len) == -1 ? strlen(cstr) : (cstr_len)), \
   }
 
 #define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \
