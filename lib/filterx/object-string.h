@@ -24,7 +24,6 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
-#include "filterx-object-istype.h"
 #include "filterx-globals.h"
 
 typedef struct _FilterXString FilterXString;

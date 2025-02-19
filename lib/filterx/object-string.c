@@ -25,7 +25,6 @@
 #include "str-utils.h"
 #include "scratch-buffers.h"
 #include "filterx-globals.h"
-#include "filterx/filterx-object-istype.h"
 #include "str-format.h"
 #include "str-utils.h"
 

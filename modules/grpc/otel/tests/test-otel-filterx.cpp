@@ -29,7 +29,6 @@
 #include "compat/cpp-start.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
-#include "filterx/filterx-object-istype.h"
 #include "filterx/object-datetime.h"
 #include "apphook.h"
 #include "cfg.h"

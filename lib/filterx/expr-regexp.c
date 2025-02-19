@@ -28,8 +28,6 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/expr-function.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
 #include "filterx/expr-regexp-common.h"

@@ -29,7 +29,6 @@
 #include "filterx/object-extractor.h"
 #include "filterx/expr-literal.h"
 #include "filterx/expr-literal-generator.h"
-#include "filterx/filterx-object-istype.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 

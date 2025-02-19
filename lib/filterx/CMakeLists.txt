@@ -105,7 +105,6 @@ set(FILTERX_SOURCES
     filterx/filterx-globals.c
     filterx/filterx-metrics-labels.c
     filterx/filterx-metrics.c
-    filterx/filterx-object-istype.h
     filterx/filterx-object.c
     filterx/filterx-parser.c
     filterx/filterx-pipe.c

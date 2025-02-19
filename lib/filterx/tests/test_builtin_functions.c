@@ -38,7 +38,6 @@
 #include "filterx/expr-template.h"
 #include "filterx/expr-variable.h"
 #include "filterx/filterx-private.h"
-#include "filterx/filterx-object-istype.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"

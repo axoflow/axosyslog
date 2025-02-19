@@ -32,7 +32,6 @@
 #include "filterx/expr-literal.h"
 #include "filterx/object-json.h"
 #include "filterx-func-parse-kv.h"
-#include "filterx/filterx-object-istype.h"
 
 
 FilterXExpr *

@@ -25,8 +25,6 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-json.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "filterx/object-list-interface.h"
 #include "str-utils.h"
 

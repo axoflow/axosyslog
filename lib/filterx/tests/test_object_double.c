@@ -27,7 +27,6 @@
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-datetime.h"
-#include "filterx/filterx-object-istype.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
 
