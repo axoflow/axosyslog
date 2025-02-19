@@ -358,7 +358,7 @@ exit:
 static gboolean
 _are_field_keys_equal(FilterXObject *key_a, FilterXObject *key_b)
 {
-  gsize len_a, len_b;
+  gsize len_a = 0, len_b = 0;
   const gchar *key_a_str = filterx_string_get_value_ref(key_a, &len_a);
   const gchar *key_b_str = filterx_string_get_value_ref(key_b, &len_b);
 
