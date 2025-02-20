@@ -402,7 +402,7 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
     }
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(string)))
     {
-      gsize len;
+      gsize len = 0;
       const gchar *str = filterx_string_get_value_ref(target, &len);
       if (len == 0)
         {
