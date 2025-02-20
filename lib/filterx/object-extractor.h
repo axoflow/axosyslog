@@ -30,10 +30,8 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-null.h"
-#include "filterx/object-json.h"
 
 #include "generic-number.h"
-#include "compat/json.h"
 
 static inline gboolean
 filterx_object_extract_string_ref(FilterXObject *obj, const gchar **value, gsize *len)
