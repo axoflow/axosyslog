@@ -36,7 +36,6 @@
 #include "scratch-buffers.h"
 #include "generic-number.h"
 #include "filterx/object-message-value.h"
-#include "filterx/object-json.h"
 #include "filterx/object-null.h"
 
 #include "compat/cpp-end.h"

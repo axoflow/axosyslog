@@ -31,7 +31,9 @@
 #include "filterx/object-primitive.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
-#include "filterx/object-json.h"
+#include "filterx/object-list-interface.h"
+#include "filterx/object-dict-interface.h"
+#include "filterx/json-repr.h"
 #include "filterx/object-null.h"
 #include "compat/cpp-end.h"
 
@@ -224,17 +226,19 @@ public:
       }
 
     object = filterx_ref_unwrap_ro(object);
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)) ||
-        filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
+    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)) ||
+        filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
       {
-        str = filterx_json_to_json_literal(object);
-        if (!str)
+        GString *repr = scratch_buffers_alloc();
+
+        if (!filterx_object_to_json(object, repr))
           {
             msg_error("protobuf-field: json marshal error",
                       evt_tag_str("field", reflectors.fieldDescriptor->name().c_str()));
             return false;
           }
-        len = strlen(str);
+        len = repr->len;
+        str = repr->str;
         goto success;
       }
 
