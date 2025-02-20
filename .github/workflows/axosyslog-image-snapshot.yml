@@ -5,12 +5,52 @@ on:
     inputs:
       platforms:
         default: "linux/amd64,linux/arm64"
+      type:
+        description: 'Snapshot type'
+        required: true
+        default: 'branch'
+        type: choice
+        options:
+          - branch
+          - custom
+      custom-tag:
+        description: 'Custom tag name (only used if custom type is selected)'
+        required: false
+        type: string
+        default: 'x.y.z-axoflow.something'
   push:
     branches:
       - main
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    env:
+      IMAGE_NAME: "ghcr.io/${{ github.repository_owner }}/axosyslog"
+    steps:
+      - name: Determine tag
+        id: tag
+        run: |
+          IMAGE_NAME="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+
+          case "${{ inputs.type || 'branch' }}" in
+            branch)
+              tag="dev-${{ github.ref_name }}"
+              ;;
+            custom)
+              if docker manifest inspect "$IMAGE_NAME:${{ inputs.custom-tag }}" > /dev/null 2>&1; then
+                echo "Custom tag '${{ inputs.custom-tag }}' already exists."
+                exit 1
+              fi
+              tag="${{ inputs.custom-tag }}"
+              ;;
+          esac
+          echo "tag=${tag}" >> $GITHUB_OUTPUT
+          echo "tag=${tag}"
   tarball:
+    needs: prepare
     runs-on: ubuntu-latest
     outputs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
@@ -44,10 +84,10 @@ jobs:
   publish-image:
     permissions: write-all
     uses: ./.github/workflows/axosyslog-docker.yml
-    needs: tarball
+    needs: [prepare, tarball]
     with:
       type: snapshot
       platforms: ${{ inputs.platforms || 'linux/amd64,linux/arm64' }}
       snapshot-tarball-artifact: source-tarball
       snapshot-version: ${{ needs.tarball.outputs.snapshot-version }}
-      snapshot-tags: dev-${{ github.ref_name }}
+      snapshot-tags: ${{ needs.prepare.outputs.tag }}
