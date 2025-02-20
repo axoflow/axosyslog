@@ -30,7 +30,6 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
-#include "filterx/object-json.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
 #include "filterx/filterx-object.h"
