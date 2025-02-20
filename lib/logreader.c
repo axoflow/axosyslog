@@ -449,9 +449,19 @@ _log_reader_insert_msg_length_stats(LogReader *self, gsize len)
 static inline void
 _set_addresses(LogReader *self, LogMessage *msg, LogTransportAuxData *aux)
 {
+  static NVHandle peer_addr_key = 0;
+
   GSockAddr *source_addr = self->peer_addr;
   if (aux->peer_addr)
-    source_addr = aux->peer_addr;
+    {
+      source_addr = aux->peer_addr;
+
+      if (!peer_addr_key)
+        peer_addr_key = log_msg_get_value_handle("PEER_ADDR");
+
+      gchar buf[MAX_SOCKADDR_STRING];
+      log_msg_set_value(msg, peer_addr_key, g_sockaddr_format(self->peer_addr, buf, sizeof(buf), GSA_FULL), -1);
+    }
   log_msg_set_saddr(msg, source_addr);
 
   log_msg_set_daddr(msg, aux->local_addr ? : self->local_addr);
