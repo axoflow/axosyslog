@@ -28,11 +28,14 @@ import threading
 import tornado
 import ssl
 import signal
+import json
 from typing import Any
 
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 signal.signal(signal.SIGTERM, signal.SIG_IGN)
-WEBHOOK_QUERY_NV_PREFIX = "webhook.query."
+WEBHOOK_NV_PREFIX = "webhook."
+WEBHOOK_QUERY_NV_PREFIX = WEBHOOK_NV_PREFIX + "query."
+WEBHOOK_HEADERS_KEY = WEBHOOK_NV_PREFIX + "headers"
 
 WEBHOOK_PROXY_SOURCEIP_HEADERS = [
     "x-forwarded-for",
@@ -44,6 +47,7 @@ WEBHOOK_PROXY_SOURCEIP_HEADERS = [
     "x-client-ip",
     "x-forwarded",
 ]
+
 
 class Handler(tornado.web.RequestHandler):
     def initialize(self, source) -> None:
@@ -69,7 +73,7 @@ class Handler(tornado.web.RequestHandler):
             if header and len(header) > 0:
                 # the closest/last IP (the behind_proxy flag implies that the last one can be trusted)
                 msg.set_source_ipaddress(header[-1])
-                msg["webhook.proxy_ip"] = self.request.remote_ip
+                msg[WEBHOOK_NV_PREFIX + "proxy_ip"] = self.request.remote_ip
                 return
 
         msg.set_source_ipaddress(self.request.remote_ip)
@@ -84,6 +88,9 @@ class Handler(tornado.web.RequestHandler):
 
         for key, value in path_arguments.items():
             msg[key] = value
+
+        if self.source.include_request_headers:
+            msg[WEBHOOK_HEADERS_KEY] = json.dumps(list(self.request.headers.get_all()))
 
         if self.source.behind_proxy:
             self._set_proxied_ip(msg)
@@ -211,6 +218,7 @@ class HTTPSource(LogSource):
             self.tls_ca_dir = options.get("tls_ca_dir")
 
             self.behind_proxy = bool(options.get("behind_proxy", False))
+            self.include_request_headers = bool(options.get("include_request_headers", False))
             return True
         except KeyError as e:
             self.logger.error(f"Missing option '{e.args[0]}'")
