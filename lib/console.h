@@ -30,8 +30,8 @@
 void console_printf(const gchar *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 
 gboolean console_is_present(void);
-gboolean console_acquire_from_fds(gint fds[3]);
-void console_release(void);
+gboolean console_acquire_from_fds(gint fds[3], gboolean backup_initial_console);
+void console_release(gboolean restore_initial_console);
 
 void console_global_init(const gchar *console_prefix);
 void console_global_deinit(void);
