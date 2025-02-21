@@ -116,7 +116,7 @@ _wait_until_peer_disappears(ControlConnection *cc, gint max_seconds, gboolean *c
         max_seconds--;
       control_connection_send_batched_reply(cc, g_string_new("ALIVE\n"));
     }
-  console_release();
+  console_release(TRUE);
 }
 
 static void
@@ -181,7 +181,7 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
       goto exit;
     }
 
-  if (!console_acquire_from_fds(fds))
+  if (!console_acquire_from_fds(fds, TRUE))
     {
       g_string_assign(result,
                       "FAIL Error acquiring console");
