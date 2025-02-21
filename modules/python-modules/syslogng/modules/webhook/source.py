@@ -34,6 +34,16 @@ signal.signal(signal.SIGINT, signal.SIG_IGN)
 signal.signal(signal.SIGTERM, signal.SIG_IGN)
 WEBHOOK_QUERY_NV_PREFIX = "webhook.query."
 
+WEBHOOK_PROXY_SOURCEIP_HEADERS = [
+    "x-forwarded-for",
+    "x-real-ip",
+    "cf-connecting-ip",
+    "true-client-ip",
+    "fastly-client-ip",
+    "x-cluster-client-ip",
+    "x-client-ip",
+    "x-forwarded",
+]
 
 class Handler(tornado.web.RequestHandler):
     def initialize(self, source) -> None:
@@ -52,6 +62,18 @@ class Handler(tornado.web.RequestHandler):
 
         await self.finish({"status": "received"})
 
+    def _set_proxied_ip(self, msg: LogMessage) -> None:
+        proxy_header_candidates = [self.request.headers.get_list(header) for header in WEBHOOK_PROXY_SOURCEIP_HEADERS]
+
+        for header in proxy_header_candidates:
+            if header and len(header) > 0:
+                # the closest/last IP (the behind_proxy flag implies that the last one can be trusted)
+                msg.set_source_ipaddress(header[-1])
+                msg["webhook.proxy_ip"] = self.request.remote_ip
+                return
+
+        msg.set_source_ipaddress(self.request.remote_ip)
+
     def _construct_msg(self, request, path_arguments) -> LogMessage:
         msg = LogMessage(self.request.body)
         msg.set_recvd_rawmsg_size(len(self.request.body))
@@ -63,7 +85,10 @@ class Handler(tornado.web.RequestHandler):
         for key, value in path_arguments.items():
             msg[key] = value
 
-        msg.set_source_ipaddress(self.request.remote_ip)
+        if self.source.behind_proxy:
+            self._set_proxied_ip(msg)
+        else:
+            msg.set_source_ipaddress(self.request.remote_ip)
 
         return msg
 
@@ -184,6 +209,8 @@ class HTTPSource(LogSource):
             self.tls_use_system_cert_store = bool(options.get("tls_use_system_cert_store", False))
             self.tls_ca_file = options.get("tls_ca_file")
             self.tls_ca_dir = options.get("tls_ca_dir")
+
+            self.behind_proxy = bool(options.get("behind_proxy", False))
             return True
         except KeyError as e:
             self.logger.error(f"Missing option '{e.args[0]}'")
