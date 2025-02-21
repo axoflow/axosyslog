@@ -1165,6 +1165,56 @@ def test_set_timestamp_set_recvd(config, syslog_ng):
     assert file_true.read_log() == "2000-01-01T00:00:00+02:00\n"
 
 
+def test_set_pri_no_arg_error_result(config, syslog_ng):
+    _ = create_config(
+        config, """
+        set_pri(); # wrong arg set
+""",
+    )
+    with pytest.raises(Exception):
+        syslog_ng.start(config)
+
+
+def test_set_pri_wrong_arg_set_error_result(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        set_pri("test"); # wrong arg set
+        $MSG = $PRI;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_set_pri_wrong_value(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        set_pri(200);
+        $MSG = $PRI;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_set_pri_succes_result(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        set_pri(50);
+        $MSG = $PRI;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "50\n"
+
+
 def test_len(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
