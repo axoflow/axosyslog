@@ -70,6 +70,15 @@ _set_pri_eval(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
+static FilterXExpr *
+_set_pri_optimize(FilterXExpr *s)
+{
+  FilterXFunctionSetPri *self = (FilterXFunctionSetPri *) s;
+
+  self->pri_expr = filterx_expr_optimize(self->pri_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
 static gboolean
 _set_pri_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -121,6 +130,7 @@ filterx_function_set_pri_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "set_pri");
 
   self->super.super.eval = _set_pri_eval;
+  self->super.super.optimize = _set_pri_optimize;
   self->super.super.init = _set_pri_init;
   self->super.super.deinit = _set_pri_deinit;
   self->super.super.free_fn = _set_pri_free;
