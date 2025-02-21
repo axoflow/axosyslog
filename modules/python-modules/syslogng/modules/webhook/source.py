@@ -52,6 +52,17 @@ class Handler(tornado.web.RequestHandler):
 
         await self.finish({"status": "received"})
 
+    def _set_proxied_ip(self, msg: LogMessage) -> None:
+        proxy_headers = self.request.headers.get_list(self.source.proxy_header)
+
+        if proxy_headers and len(proxy_headers) > 0:
+            # the closest/last IP (the proxy_header flag implies that the last one can be trusted)
+            msg.set_source_ipaddress(proxy_headers[-1])
+            msg["PEERIP"] = self.request.remote_ip
+            return
+
+        msg.set_source_ipaddress(self.request.remote_ip)
+
     def _construct_msg(self, request, path_arguments) -> LogMessage:
         msg = LogMessage(self.request.body)
         msg.set_recvd_rawmsg_size(len(self.request.body))
@@ -63,7 +74,10 @@ class Handler(tornado.web.RequestHandler):
         for key, value in path_arguments.items():
             msg[key] = value
 
-        msg.set_source_ipaddress(self.request.remote_ip)
+        if self.source.proxy_header:
+            self._set_proxied_ip(msg)
+        else:
+            msg.set_source_ipaddress(self.request.remote_ip)
 
         return msg
 
@@ -184,6 +198,11 @@ class HTTPSource(LogSource):
             self.tls_use_system_cert_store = bool(options.get("tls_use_system_cert_store", False))
             self.tls_ca_file = options.get("tls_ca_file")
             self.tls_ca_dir = options.get("tls_ca_dir")
+
+            self.proxy_header = options.get("proxy_header")
+            if self.proxy_header == "yes":
+                self.proxy_header = "x-forwarded-for"
+
             return True
         except KeyError as e:
             self.logger.error(f"Missing option '{e.args[0]}'")
