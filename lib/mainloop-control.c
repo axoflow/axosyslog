@@ -107,7 +107,8 @@ exit:
 }
 
 void
-_wait_until_peer_disappears(ControlConnection *cc, gint max_seconds, gboolean *cancelled)
+_wait_until_peer_disappears(ControlConnection *cc, gint max_seconds, gboolean dont_release_console,
+                            gboolean restore_initial_console, gboolean *cancelled)
 {
   while (max_seconds != 0 && !(*cancelled))
     {
@@ -116,29 +117,27 @@ _wait_until_peer_disappears(ControlConnection *cc, gint max_seconds, gboolean *c
         max_seconds--;
       control_connection_send_batched_reply(cc, g_string_new("ALIVE\n"));
     }
-  console_release(TRUE);
+  if (FALSE == dont_release_console)
+    console_release(restore_initial_console);
 }
 
-static void
-control_connection_attach(ControlConnection *cc, GString *command, gpointer user_data, gboolean *cancelled)
+typedef struct _AttachCommandArgs
 {
-  MainLoop *main_loop = (MainLoop *) user_data;
-  gchar **cmds = g_strsplit(command->str, " ", 4);
+  gboolean start_debugger;
+  gboolean restore_console_on_release;
+  gboolean dont_release_console;
+  gint n_seconds;
+  gboolean log_stderr;
+  gint log_level;
+} AttachCommandArgs;
 
-  GString *result = g_string_sized_new(128);
-  gint n_seconds = -1;
-  gboolean start_debugger = FALSE;
-  struct
-  {
-    gboolean log_stderr;
-    gint log_level;
-  } old_values, new_values;
+static gboolean
+_parse_attach_command_args(GString *command, AttachCommandArgs *args, GString *result)
+{
+  gboolean success = FALSE;
+  gchar **cmds = g_strsplit(command->str, " ", 6);
 
-  old_values.log_stderr = log_stderr;
-  old_values.log_level = msg_get_log_level();
-  new_values = old_values;
-
-  if (!cmds[1])
+  if (cmds[1] == NULL)
     {
       g_string_assign(result, "FAIL Invalid arguments received");
       goto exit;
@@ -150,10 +149,10 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
     }
   else if (g_str_equal(cmds[1], "LOGS"))
     {
-      new_values.log_stderr = TRUE;
-      if (cmds[3])
-        new_values.log_level = msg_map_string_to_log_level(cmds[3]);
-      if (new_values.log_level < 0)
+      args->log_stderr = TRUE;
+      if (cmds[5])
+        args->log_level = msg_map_string_to_log_level(cmds[5]);
+      if (args->log_level < 0)
         {
           g_string_assign(result, "FAIL Invalid log level");
           goto exit;
@@ -161,7 +160,7 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
     }
   else if (g_str_equal(cmds[1], "DEBUGGER"))
     {
-      start_debugger = TRUE;
+      args->start_debugger = TRUE;
     }
   else
     {
@@ -170,49 +169,86 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
     }
 
   if (cmds[2])
-    n_seconds = atoi(cmds[2]);
+    args->n_seconds = atoi(cmds[2]);
+
+  if (cmds[3])
+    args->restore_console_on_release = (FALSE == (gboolean) atoi(cmds[3]));
+
+  if (cmds[4])
+    args->dont_release_console = (gboolean) atoi(cmds[4]);
+
+  success = TRUE;
+
+exit:
+  g_strfreev(cmds);
+  return success;
+}
+
+static void
+control_connection_attach(ControlConnection *cc, GString *command, gpointer user_data, gboolean *cancelled)
+{
+  MainLoop *main_loop = (MainLoop *) user_data;
+  GString *result = g_string_sized_new(128);
+  struct
+  {
+    gboolean log_stderr;
+    gint log_level;
+  } old_values =
+  {
+    log_stderr,
+    msg_get_log_level()
+  };
+  AttachCommandArgs cmd_args =
+  {
+    .start_debugger = FALSE,
+    .restore_console_on_release = TRUE,
+    .dont_release_console = FALSE,
+    .n_seconds = -1,
+    .log_stderr = old_values.log_stderr,
+    .log_level = old_values.log_level
+  };
+
+  if (FALSE == _parse_attach_command_args(command, &cmd_args, result))
+    goto exit;
 
   gint fds[3];
   gsize num_fds = G_N_ELEMENTS(fds);
-  if (!control_connection_get_attached_fds(cc, fds, &num_fds) || num_fds != 3)
+  if (FALSE == control_connection_get_attached_fds(cc, fds, &num_fds) || num_fds != 3)
     {
       g_string_assign(result,
                       "FAIL The underlying transport for syslog-ng-ctl does not support fd passing or incorrect number of fds received");
       goto exit;
     }
 
-  if (!console_acquire_from_fds(fds, TRUE))
+  if (FALSE == console_acquire_from_fds(fds, TRUE))
     {
-      g_string_assign(result,
-                      "FAIL Error acquiring console");
+      g_string_assign(result, "FAIL Error acquiring console");
       goto exit;
     }
 
-  log_stderr = new_values.log_stderr;
-  msg_set_log_level(new_values.log_level);
+  log_stderr = cmd_args.log_stderr;
+  msg_set_log_level(cmd_args.log_level);
 
-  if (start_debugger && !debugger_is_running())
+  if (cmd_args.start_debugger && FALSE == debugger_is_running())
     {
       //cfg_load_module(self->current_configuration, "mod-python");
       debugger_start(main_loop, main_loop_get_current_config(main_loop));
     }
 
-  _wait_until_peer_disappears(cc, n_seconds, cancelled);
+  _wait_until_peer_disappears(cc, cmd_args.n_seconds, cmd_args.dont_release_console, cmd_args.restore_console_on_release,
+                              cancelled);
 
-  if (start_debugger && debugger_is_running())
-    {
-      debugger_stop();
-    }
+  if (cmd_args.start_debugger && debugger_is_running())
+    debugger_stop();
 
   log_stderr = old_values.log_stderr;
   msg_set_log_level(old_values.log_level);
 
   g_string_assign(result, "OK [console output ends here]");
-exit:
 
+exit:
   control_connection_send_batched_reply(cc, result);
   control_connection_send_close_batch(cc);
-  g_strfreev(cmds);
 }
 
 static void
