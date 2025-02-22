@@ -680,7 +680,7 @@ g_process_detach_stdio(void)
 {
   if (process_opts.mode != G_PM_FOREGROUND)
     {
-      console_release();
+      console_release(FALSE);
     }
 }
 

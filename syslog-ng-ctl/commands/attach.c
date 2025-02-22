@@ -24,8 +24,10 @@
 #include "ctl-stats.h"
 #include "syslog-ng.h"
 
-static gint attach_options_seconds;
+static gint attach_options_seconds = -1;
 static gchar *attach_options_log_level = NULL;
+static gboolean attach_options_forever = FALSE;
+static gboolean attach_options_dont_release_console = FALSE;
 static gchar **attach_commands = NULL;
 
 static gboolean
@@ -45,8 +47,10 @@ _store_log_level(const gchar *option_name,
 
 GOptionEntry attach_options[] =
 {
-  { "seconds", 0, 0, G_OPTION_ARG_INT, &attach_options_seconds, "amount of time to attach for", NULL },
+  { "seconds", 's', 0, G_OPTION_ARG_INT, &attach_options_seconds, "amount of time to attach for", NULL },
   { "log-level", 0, 0, G_OPTION_ARG_CALLBACK, _store_log_level, "change syslog-ng log level", "<default|verbose|debug|trace>" },
+  { "forever", 'f', 0, G_OPTION_ARG_NONE, &attach_options_forever, "do not pass logs/stdio back to syslog-ng after syslog-ng-ctl is exited", NULL },
+  { "dont-release", 'd', 0, G_OPTION_ARG_NONE, &attach_options_dont_release_console, "do not pass logs/stdio back to syslog-ng after syslog-ng-ctl is exited and keep logging onto the calling console" },
   { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_STRING_ARRAY, &attach_commands, "attach mode: logs, debugger, stdio", NULL },
   { NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
@@ -81,9 +85,12 @@ slng_attach(int argc, char *argv[], const gchar *mode, GOptionContext *ctx)
       return 1;
     }
 
-  g_string_append_printf(command, " %d", attach_options_seconds ? : -1);
+  g_string_append_printf(command, " %d", attach_options_seconds > 0 ? attach_options_seconds : -1);
+  g_string_append_printf(command, " %d", attach_options_forever);
+  g_string_append_printf(command, " %d", attach_options_dont_release_console);
   if (attach_options_log_level)
     g_string_append_printf(command, " %s", attach_options_log_level);
+
   gint result = attach_command(command->str);
   g_string_free(command, TRUE);
   return result;
