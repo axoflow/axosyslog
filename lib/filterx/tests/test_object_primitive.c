@@ -28,10 +28,37 @@
 #include "filterx/object-message-value.h"
 #include "apphook.h"
 
-Test(filterx_object, test_filterx_object_construction_and_free)
+static void
+_assert_repr_equals(FilterXObject *fobj, const gchar *expected)
 {
-  FilterXObject *fobj = filterx_object_new(&FILTERX_TYPE_NAME(object));
+  GString *repr = g_string_sized_new(0);
+  filterx_object_repr(fobj, repr);
+  cr_assert_str_eq(repr->str, expected);
+  g_string_free(repr, TRUE);
+}
 
+Test(filterx_object, test_filterx_double_should_always_have_fraction_part)
+{
+  FilterXObject *fobj = filterx_double_new(4.0);
+  _assert_repr_equals(fobj, "4.0");
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_object, test_filterx_double_trailing_zeroes_are_removed)
+{
+  /* we produce enough granularity when needed but do not produce trailing
+   * zeroes */
+
+  FilterXObject *fobj = filterx_double_new(4.1);
+  _assert_repr_equals(fobj, "4.0999999999999996");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_double_new(4.2);
+  _assert_repr_equals(fobj, "4.2000000000000002");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_double_new(4.5);
+  _assert_repr_equals(fobj, "4.5");
   filterx_object_unref(fobj);
 }
 
