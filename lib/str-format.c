@@ -146,7 +146,7 @@ format_int64_padded(GString *result, gint field_len, gchar pad_char, gint base, 
 
 /* format 32 bit ints */
 
-static inline gint
+gint
 format_uint32_base10_rev(gchar *result, gsize result_len, gint sign, guint32 value)
 {
   gchar *p;
