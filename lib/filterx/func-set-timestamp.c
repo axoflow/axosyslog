@@ -69,6 +69,35 @@ _set_timestamp_eval(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
+static FilterXExpr *
+_set_timestamp_optimize(FilterXExpr *s)
+{
+  FilterXFunctionSetTimestamp *self = (FilterXFunctionSetTimestamp *) s;
+
+  self->datetime_expr = filterx_expr_optimize(self->datetime_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
+static gboolean
+_set_timestamp_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionSetTimestamp *self = (FilterXFunctionSetTimestamp *) s;
+
+  if (!filterx_expr_init(self->datetime_expr, cfg))
+    return FALSE;
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_set_timestamp_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionSetTimestamp *self = (FilterXFunctionSetTimestamp *) s;
+
+  filterx_expr_deinit(self->datetime_expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static void
 _set_timestamp_free(FilterXExpr *s)
 {
@@ -154,6 +183,9 @@ filterx_function_set_timestamp_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "set_timestamp");
 
   self->super.super.eval = _set_timestamp_eval;
+  self->super.super.optimize = _set_timestamp_optimize;
+  self->super.super.init = _set_timestamp_init;
+  self->super.super.deinit = _set_timestamp_deinit;
   self->super.super.free_fn = _set_timestamp_free;
 
   if (!_extract_set_timestamp_args(self, args, error) ||
