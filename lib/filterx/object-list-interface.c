@@ -24,8 +24,6 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-json.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 
 FilterXObject *
 filterx_list_get_subscript(FilterXObject *s, gint64 index)

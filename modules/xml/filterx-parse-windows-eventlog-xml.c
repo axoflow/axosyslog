@@ -24,8 +24,6 @@
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict-interface.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "scratch-buffers.h"
 
 static void _set_error(GError **error, const gchar *format, ...) G_GNUC_PRINTF(2, 0);

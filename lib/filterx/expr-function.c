@@ -31,7 +31,6 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
-#include "filterx/filterx-object-istype.h"
 #include "plugin.h"
 #include "cfg.h"
 #include "mainloop.h"

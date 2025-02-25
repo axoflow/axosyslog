@@ -29,6 +29,7 @@
 
 typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
+typedef struct _FilterXRef FilterXRef;
 typedef struct _FilterXExpr FilterXExpr;
 
 struct _FilterXType
@@ -74,12 +75,17 @@ void _filterx_type_init_methods(FilterXType *type);
       __VA_ARGS__       \
     }
 
+FILTERX_DECLARE_TYPE(object);
+FILTERX_DECLARE_TYPE(ref);
+
+static inline gboolean
+_filterx_type_is_referenceable(FilterXType *t)
+{
+  return t->is_mutable && t != &FILTERX_TYPE_NAME(ref);
+}
 #define FILTERX_OBJECT_REFCOUNT_FROZEN (G_MAXINT32)
 #define FILTERX_OBJECT_REFCOUNT_STACK  (G_MAXINT32-1)
 #define FILTERX_OBJECT_REFCOUNT_OFLOW_MARK (FILTERX_OBJECT_REFCOUNT_STACK-1024)
-
-
-FILTERX_DECLARE_TYPE(object);
 
 struct _FilterXObject
 {
@@ -99,6 +105,30 @@ struct _FilterXObject
   guint modified_in_place:1, readonly:1, weak_referenced:1;
   FilterXType *type;
 };
+
+static inline gboolean
+_filterx_object_is_type(FilterXObject *object, FilterXType *type)
+{
+  FilterXType *self_type = object->type;
+  while (self_type)
+    {
+      if (type == self_type)
+        return TRUE;
+      self_type = self_type->super_type;
+    }
+  return FALSE;
+}
+
+static inline gboolean
+filterx_object_is_type(FilterXObject *object, FilterXType *type)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(!(_filterx_type_is_referenceable(type) && _filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
+           && "filterx_ref_unwrap() must be used before comparing to mutable types");
+#endif
+
+  return _filterx_object_is_type(object, type);
+}
 
 FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *attr_name);
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
@@ -432,5 +462,7 @@ filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
     .weak_referenced = FALSE, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
+
+#include "filterx-ref.h"
 
 #endif

@@ -40,8 +40,6 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/expr-set-subscript.h"
 #include "filterx/expr-get-subscript.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"

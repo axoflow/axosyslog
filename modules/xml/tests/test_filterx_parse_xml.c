@@ -27,7 +27,6 @@
 #include "filterx/object-string.h"
 #include "filterx/object-json.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/filterx-object-istype.h"
 #include "scratch-buffers.h"
 #include "apphook.h"
 #include "cfg.h"

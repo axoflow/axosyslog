@@ -35,8 +35,6 @@
 #include "filterx/func-flags.h"
 #include "filterx/expr-literal-generator.h"
 #include "filterx/expr-literal.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 
 #define FILTERX_FUNC_UNSET_EMPTIES_USAGE "Usage: unset_empties(object, " \
 FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE"=bool, " \

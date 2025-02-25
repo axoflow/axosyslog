@@ -26,7 +26,6 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/object-primitive.h"
-#include "filterx/filterx-object-istype.h"
 #include "filterx/expr-function.h"
 
 #include "apphook.h"

@@ -23,7 +23,6 @@
 #include <criterion/criterion.h>
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
-#include "filterx/filterx-object-istype.h"
 #include "filterx/expr-function.h"
 
 #include "apphook.h"

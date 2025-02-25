@@ -29,8 +29,6 @@
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-object.h"
-#include "filterx/filterx-object-istype.h"
-#include "filterx/filterx-ref.h"
 #include "filterx/filterx-eval.h"
 
 #include "syslog-ng.h"

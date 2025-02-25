@@ -22,7 +22,6 @@
  */
 #include "filterx/expr-getattr.h"
 #include "filterx/object-string.h"
-#include "filterx/filterx-object-istype.h"
 #include "filterx/filterx-eval.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
