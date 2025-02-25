@@ -509,3 +509,46 @@ def test_switch_duplicate_default_case(config, syslog_ng):
     )
     with pytest.raises(Exception):
         syslog_ng.start(config)
+
+
+def test_switch_invalid_selector(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        msg="orig_msg",
+        filterx_expr_1=r"""
+            switch (invalid.expr) {
+              case $MSG:
+                result = "no-no";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+    assert file_false.read_log() == "orig_msg\n"
+
+
+def test_switch_invalid_case(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        msg="string",
+        filterx_expr_1=r"""
+            switch (${values.str}) {
+              case invalid.expr:
+                result = "no-no";
+                break;
+              default:
+                result = "default";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "default\n"
