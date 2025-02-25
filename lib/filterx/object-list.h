@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024 Axoflow
- * Copyright (c) 2024 László Várady
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,14 +22,15 @@
  *
  */
 
-#ifndef FILTERX_OBJECT_DICT_H
-#define FILTERX_OBJECT_DICT_H
+#ifndef FILTERX_OBJECT_LIST_H
+#define FILTERX_OBJECT_LIST_H
 
 #include "filterx/filterx-object.h"
 
-FILTERX_DECLARE_TYPE(dict_object);
+FILTERX_DECLARE_TYPE(list_object);
 
-FilterXObject *filterx_dict_new(void);
-FilterXObject *filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_list_new(void);
+FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
+FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif
