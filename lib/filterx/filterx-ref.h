@@ -28,8 +28,6 @@
 #error "Please include filterx-ref.h through filterx-object.h"
 #endif
 
-#include "adt/iord_map.h"
-
 /*
  * References are currently not part of the FilterX language (hopefully, they
  * never will be). FilterXRef is used to reference the same FilterXObject from
@@ -47,7 +45,6 @@ struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
-  IOrdMapNode n;
 };
 
 #if SYSLOG_NG_ENABLE_DEBUG

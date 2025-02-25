@@ -27,7 +27,9 @@
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-dict.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/object-list.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-json.h"
 #include "filterx/object-extractor.h"
@@ -42,7 +44,7 @@
 static FilterXObject *
 _convert_from_json_array(struct json_object *jso, GError **error)
 {
-  FilterXObject *res = filterx_json_array_new_empty();
+  FilterXObject *res = filterx_list_new();
   for (gsize i = 0; i < json_object_array_length(jso); i++)
     {
       struct json_object *el = json_object_array_get_idx(jso, i);
@@ -67,7 +69,7 @@ error:
 static FilterXObject *
 _convert_from_json_object(struct json_object *jso, GError **error)
 {
-  FilterXObject *res = filterx_json_object_new_empty();
+  FilterXObject *res = filterx_dict_new();
   struct json_object_iter itr;
   json_object_object_foreachC(jso, itr)
   {

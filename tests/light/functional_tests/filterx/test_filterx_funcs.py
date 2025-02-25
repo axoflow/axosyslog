@@ -107,6 +107,30 @@ def test_lower(config, syslog_ng):
     assert file_final.read_log() == """{"literal":"abc","variable":"foobar","host":"hostname"}"""
 
 
+def test_dict_from_message_variable(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+        $MSG = dict(${values.json});
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == """{"emb_key1":"emb_key1 value","emb_key2":"emb_key2 value"}"""
+
+
+def test_list_from_message_variable(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+        $MSG = list(${values.list});
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == """foo,bar,baz"""
+
+
 def test_repr(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
