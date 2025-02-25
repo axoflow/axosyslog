@@ -187,6 +187,8 @@ _find_matching_case(FilterXSwitch *self, FilterXObject *selector)
       FilterXSwitchCase *switch_case = (FilterXSwitchCase *) g_ptr_array_index(self->cases, i);
 
       FilterXObject *value = _eval_switch_case(switch_case);
+      if (!value)
+        continue;
 
       if (filterx_compare_objects(selector, value, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
         {
