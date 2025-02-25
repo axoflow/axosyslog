@@ -205,7 +205,10 @@ static FilterXObject *
 _eval_switch(FilterXExpr *s)
 {
   FilterXSwitch *self = (FilterXSwitch *) s;
+
   FilterXObject *selector = filterx_expr_eval_typed(self->selector);
+  if (!selector)
+    return NULL;
 
   FilterXSwitchCase *switch_case;
 
