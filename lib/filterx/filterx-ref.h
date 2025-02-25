@@ -28,7 +28,6 @@
 #error "Please include filterx-ref.h through filterx-object.h"
 #endif
 
-#include "adt/iord_map.h"
 #include "filterx/filterx-weakrefs.h"
 
 /*
@@ -48,7 +47,6 @@ struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
-  IOrdMapNode n;
   FilterXWeakRef root_container;
 };
 
