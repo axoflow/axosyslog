@@ -1827,6 +1827,7 @@ bar/;
 bar/;
             ## escaped characters
             $MSG.escaped_backslash = /foo\\bar/;
+            # slash is not escaped
             $MSG.escaped_slash = /foo\/bar/;
             $MSG.non_escaped_single_quotes = /foo'bar/;
             $MSG.non_escaped_double_quotes = /foo"bar/;
