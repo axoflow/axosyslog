@@ -43,7 +43,6 @@
 #include "filterx/expr-set-subscript.h"
 #include "filterx/expr-comparison.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-json.h"
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-config.h"
