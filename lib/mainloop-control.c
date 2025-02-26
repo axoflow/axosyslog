@@ -208,19 +208,19 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
     .log_level = old_values.log_level
   };
 
-  if (FALSE == _parse_attach_command_args(command, &cmd_args, result))
+  if (!_parse_attach_command_args(command, &cmd_args, result))
     goto exit;
 
   gint fds[3];
   gsize num_fds = G_N_ELEMENTS(fds);
-  if (FALSE == control_connection_get_attached_fds(cc, fds, &num_fds) || num_fds != 3)
+  if (!control_connection_get_attached_fds(cc, fds, &num_fds) || num_fds != 3)
     {
       g_string_assign(result,
                       "FAIL The underlying transport for syslog-ng-ctl does not support fd passing or incorrect number of fds received");
       goto exit;
     }
 
-  if (FALSE == console_acquire_from_fds(fds, cmd_args.fds_to_steel))
+  if (!console_acquire_from_fds(fds, cmd_args.fds_to_steel))
     {
       g_string_assign(result, "FAIL Error acquiring console");
       goto exit;
@@ -229,7 +229,7 @@ control_connection_attach(ControlConnection *cc, GString *command, gpointer user
   log_stderr = cmd_args.log_stderr;
   msg_set_log_level(cmd_args.log_level);
 
-  if (cmd_args.start_debugger && FALSE == debugger_is_running())
+  if (cmd_args.start_debugger && !debugger_is_running())
     {
       //cfg_load_module(self->current_configuration, "mod-python");
       debugger_start(main_loop, main_loop_get_current_config(main_loop));
