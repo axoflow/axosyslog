@@ -24,8 +24,8 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/object-json.h"
 #include "str-utils.h"
 
 gboolean
