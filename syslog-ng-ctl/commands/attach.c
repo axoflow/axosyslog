@@ -90,7 +90,7 @@ slng_attach(int argc, char *argv[], const gchar *mode, GOptionContext *ctx)
       fprintf(stderr, "Error parsing command line arguments: Unknown attach mode\n");
       return 1;
     }
-  if (FALSE == g_str_equal(attach_mode, "stdio") && attach_options_fds_to_steel > 0)
+  if (!g_str_equal(attach_mode, "stdio") && attach_options_fds_to_steel > 0)
     {
       fprintf(stderr, "Error parsing command line arguments: %s is valid only with %s attach mode\n",
               "fds-to-steel", "stdio");
