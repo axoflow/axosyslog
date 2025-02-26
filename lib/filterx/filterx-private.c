@@ -24,7 +24,6 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
