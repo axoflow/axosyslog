@@ -187,8 +187,15 @@ _find_matching_case(FilterXSwitch *self, FilterXObject *selector)
       FilterXSwitchCase *switch_case = (FilterXSwitchCase *) g_ptr_array_index(self->cases, i);
 
       FilterXObject *value = _eval_switch_case(switch_case);
+      if (!value)
+        continue;
+
       if (filterx_compare_objects(selector, value, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
-        return switch_case;
+        {
+          filterx_object_unref(value);
+          return switch_case;
+        }
+
       filterx_object_unref(value);
     }
   return NULL;
@@ -198,7 +205,10 @@ static FilterXObject *
 _eval_switch(FilterXExpr *s)
 {
   FilterXSwitch *self = (FilterXSwitch *) s;
+
   FilterXObject *selector = filterx_expr_eval_typed(self->selector);
+  if (!selector)
+    return NULL;
 
   FilterXSwitchCase *switch_case;
 
