@@ -371,6 +371,7 @@ set(CORE_INCLUDE_DIRS
     ${JSONC_INCLUDE_DIR}
     ${LIBPCRE_INCLUDE_DIRS}
     ${Libsystemd_INCLUDE_DIRS}
+    ${LIBUNWIND_INCLUDE_DIRS}
 )
 
 add_library(syslog-ng SHARED ${LIB_SOURCES})
@@ -399,6 +400,7 @@ target_link_libraries(
     ${JSONC_LIBRARY}
     ${LIBPCRE_LIBRARIES}
     ${Libsystemd_LIBRARIES}
+    ${LIBUNWIND_LIBRARIES}
     resolv
     libcap
     OpenSSL::SSL
