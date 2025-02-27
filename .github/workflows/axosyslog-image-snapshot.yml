@@ -13,11 +13,11 @@ on:
         options:
           - branch
           - custom
-      custom-tag:
-        description: 'Custom tag name (only used if custom type is selected)'
+      custom-image-tag:
+        description: 'Custom container image tag name (only used if custom type is selected)'
         required: false
         type: string
-        default: 'x.y.z-axoflow.something'
+        default: 'x.y.z-custom-image-tag'
   push:
     branches:
       - main
@@ -40,11 +40,11 @@ jobs:
               tag="dev-${{ github.ref_name }}"
               ;;
             custom)
-              if docker manifest inspect "$IMAGE_NAME:${{ inputs.custom-tag }}" > /dev/null 2>&1; then
-                echo "Custom tag '${{ inputs.custom-tag }}' already exists."
+              if docker manifest inspect "$IMAGE_NAME:${{ inputs.custom-image-tag }}" > /dev/null 2>&1; then
+                echo "Custom tag '${{ inputs.custom-image-tag }}' already exists."
                 exit 1
               fi
-              tag="${{ inputs.custom-tag }}"
+              tag="${{ inputs.custom-image-tag }}"
               ;;
           esac
           echo "tag=${tag}" >> $GITHUB_OUTPUT
