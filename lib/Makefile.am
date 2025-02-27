@@ -114,7 +114,6 @@ pkginclude_HEADERS			+= \
 	lib/cfg-tree.h			\
 	lib/cfg-walker.h		\
 	lib/cfg-persist.h		\
-	lib/cfg-monitor.h		\
 	lib/children.h			\
 	lib/crypto.h			\
 	lib/dnscache.h			\
@@ -122,6 +121,7 @@ pkginclude_HEADERS			+= \
 	lib/dynamic-window-pool.h \
 	lib/dynamic-window.h \
 	lib/fdhelpers.h			\
+	lib/file-monitor.h		\
 	lib/file-perms.h		\
 	lib/find-crlf.h			\
 	lib/generic-number.h		\
@@ -212,13 +212,13 @@ lib_libsyslog_ng_la_SOURCES		= \
 	lib/cfg-tree.c			\
 	lib/cfg-walker.c		\
 	lib/cfg-persist.c		\
-	lib/cfg-monitor.c		\
 	lib/children.c			\
 	lib/dnscache.c			\
 	lib/driver.c			\
 	lib/dynamic-window.c \
 	lib/dynamic-window-pool.c \
 	lib/fdhelpers.c			\
+	lib/file-monitor.c 		\
 	lib/file-perms.c		\
 	lib/find-crlf.c			\
 	lib/generic-number.c		\
