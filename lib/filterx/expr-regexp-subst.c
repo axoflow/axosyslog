@@ -24,6 +24,7 @@
 
 #include "expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
+#include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
@@ -59,6 +60,7 @@ typedef struct FilterXFuncRegexpSubst_
   FilterXFunction super;
   FilterXExpr *string_expr;
   pcre2_code_8 *pattern;
+  FilterXExpr *pattern_expr;
   gchar *replacement;
   FLAGSET flags;
 } FilterXFuncRegexpSubst;
@@ -239,18 +241,35 @@ _create_compile_opts(FLAGSET flags)
 }
 
 static pcre2_code_8 *
-_extract_subst_pattern_arg(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GError **error)
+_init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
 {
-  const gchar *pattern = filterx_function_args_get_literal_string(args, 1, NULL);
-  if (!pattern)
+  if (!filterx_expr_init(self->pattern_expr, cfg))
     {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "argument must be a string literal: pattern. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      msg_error("regexp_subst(): failed to initialize pattern expression. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
       return NULL;
     }
 
-  return filterx_regexp_compile_pattern(pattern, check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT),
-                                        _create_compile_opts(self->flags));
+  if (!filterx_expr_is_literal(self->pattern_expr))
+    {
+      msg_error("regexp_subst(): pattern argument must be a literal string. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      return NULL;
+    }
+
+  gsize pattern_len;
+  FilterXObject *pattern_obj = filterx_expr_eval(self->pattern_expr);
+  const gchar *pattern = filterx_string_get_value_ref(pattern_obj, &pattern_len);
+  if (!pattern)
+    {
+      msg_error("regexp_subst(): pattern argument must be a literal string. " FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      filterx_object_unref(pattern_obj);
+      return NULL;
+    }
+
+  pcre2_code_8 *compiled_pattern = filterx_regexp_compile_pattern(pattern, check_flag(self->flags,
+                                   FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT),
+                                   _create_compile_opts(self->flags));
+  filterx_object_unref(pattern_obj);
+  return compiled_pattern;
 }
 
 static gchar *
@@ -317,9 +336,7 @@ _extract_subst_args(FilterXFuncRegexpSubst *self, FilterXFunctionArgs *args, GEr
   if (!_extract_optional_flags(self, args, error))
     return FALSE;
 
-  self->pattern = _extract_subst_pattern_arg(self, args, error);
-  if (!self->pattern)
-    return FALSE;
+  self->pattern_expr = filterx_function_args_get_expr(args, 1);
 
   self->replacement = _extract_subst_replacement_arg(args, error);
   if (!self->replacement)
@@ -337,6 +354,7 @@ _subst_optimize(FilterXExpr *s)
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
 
   self->string_expr = filterx_expr_optimize(self->string_expr);
+  self->pattern_expr = filterx_expr_optimize(self->pattern_expr);
   return filterx_function_optimize_method(&self->super);
 }
 
@@ -348,6 +366,13 @@ _subst_init(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->string_expr, cfg))
     return FALSE;
 
+  self->pattern = _init_subst_pattern(self, cfg);
+  if (!self->pattern)
+    {
+      filterx_expr_deinit(self->string_expr, cfg);
+      return FALSE;
+    }
+
   return filterx_function_init_method(&self->super, cfg);
 }
 
@@ -356,6 +381,7 @@ _subst_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
   filterx_expr_deinit(self->string_expr, cfg);
+  filterx_expr_deinit(self->pattern_expr, cfg);
   filterx_function_deinit_method(&self->super, cfg);
 }
 
@@ -364,6 +390,7 @@ _subst_free(FilterXExpr *s)
 {
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
   filterx_expr_unref(self->string_expr);
+  filterx_expr_unref(self->pattern_expr);
   if (self->pattern)
     pcre2_code_free(self->pattern);
   g_free(self->replacement);

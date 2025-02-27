@@ -24,6 +24,7 @@
 
 #include "expr-regexp-search.h"
 #include "filterx/expr-regexp.h"
+#include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
@@ -48,6 +49,7 @@ typedef struct FilterXExprRegexpSearchGenerator_
   FilterXGeneratorFunction super;
   FilterXExpr *lhs;
   pcre2_code_8 *pattern;
+  FilterXExpr *pattern_expr;
   FLAGSET flags;
 } FilterXExprRegexpSearchGenerator;
 
@@ -218,6 +220,7 @@ _regexp_search_generator_optimize(FilterXExpr *s)
   FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
 
   self->lhs = filterx_expr_optimize(self->lhs);
+  self->pattern_expr = filterx_expr_optimize(self->pattern_expr);
   return filterx_generator_optimize_method(s);
 }
 
@@ -226,10 +229,44 @@ _regexp_search_generator_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
 
+  FilterXObject *pattern_obj = NULL;
+
   if (!filterx_expr_init(self->lhs, cfg))
-    return FALSE;
+    goto error;
+
+  if (!filterx_expr_init(self->pattern_expr, cfg))
+    goto error;
+
+  if (!filterx_expr_is_literal(self->pattern_expr))
+    {
+      msg_error("regexp_search(): pattern argument must be a literal string. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      goto error;
+    }
+
+  pattern_obj = filterx_expr_eval(self->pattern_expr);
+
+  gsize pattern_len;
+  const gchar *pattern = filterx_string_get_value_ref(pattern_obj, &pattern_len);
+  if (!pattern)
+    {
+      msg_error("regexp_search(): pattern argument must be a literal string. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      goto error;
+    }
+
+  self->pattern = filterx_regexp_compile_pattern_defaults(pattern);
+  if (!self->pattern)
+    {
+      msg_error("regexp_search(): failed to compile pattern. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      goto error;
+    }
 
   return filterx_generator_init_method(s, cfg);
+
+error:
+  filterx_object_unref(pattern_obj);
+  filterx_expr_deinit(self->lhs, cfg);
+  filterx_expr_deinit(self->pattern_expr, cfg);
+  return FALSE;
 }
 
 static void
@@ -238,6 +275,7 @@ _regexp_search_generator_deinit(FilterXExpr *s, GlobalConfig *cfg)
   FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
 
   filterx_expr_deinit(self->lhs, cfg);
+  filterx_expr_deinit(self->pattern_expr, cfg);
   filterx_generator_deinit_method(s, cfg);
 }
 
@@ -247,6 +285,7 @@ _regexp_search_generator_free(FilterXExpr *s)
   FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
 
   filterx_expr_unref(self->lhs);
+  filterx_expr_unref(self->pattern_expr);
   if (self->pattern)
     pcre2_code_free(self->pattern);
   filterx_generator_function_free_method(&self->super);
@@ -271,25 +310,9 @@ _extract_search_args(FilterXExprRegexpSearchGenerator *self, FilterXFunctionArgs
     }
 
   self->lhs = filterx_function_args_get_expr(args, 0);
-
-  const gchar *pattern = filterx_function_args_get_literal_string(args, 1, NULL);
-  if (!pattern)
-    {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "pattern must be string literal. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
-      return FALSE;
-    }
-
-  self->pattern = filterx_regexp_compile_pattern_defaults(pattern);
-  if (!self->pattern)
-    {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "failed to compile pattern. " FILTERX_FUNC_REGEXP_SEARCH_USAGE);
-      return FALSE;
-    }
+  self->pattern_expr = filterx_function_args_get_expr(args, 1);
 
   return TRUE;
-
 }
 
 /* Takes reference of lhs */

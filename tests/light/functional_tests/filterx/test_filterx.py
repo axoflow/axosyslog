@@ -1312,6 +1312,7 @@ def test_regexp_search(config, syslog_ng):
     $MSG.force_list = json_array(regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/));
     $MSG.force_dict = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/));
     $MSG.force_dict_list_mode = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/, list_mode=true));
+    $MSG.optimized_pattern = regexp_search("foobarbaz", /(foo)/ + /(bar)/ + /(baz)/);
 
     $MSG.no_match_unnamed = regexp_search("foobarbaz", /(almafa)/);
     if (len($MSG.no_match_unnamed) == 0) {
@@ -1368,6 +1369,7 @@ def test_regexp_search(config, syslog_ng):
         "no_match_named_list_mode_handling": True,
         "full_match": {"0": "foobarbaz"},  # does not suppress grp 0 when it's the only result
         "full_match_list_mode": ["foobarbaz"],  # does not suppress grp 0 when it's the only result
+        "optimized_pattern": {"1": "foo", "2": "bar", "3": "baz"},
     }
 
 
@@ -1951,6 +1953,7 @@ def test_regexp_subst(config, syslog_ng):
         $MSG.mixed_grps = regexp_subst("25-02-2022", /(\d{2})-(\d{2})-(\d{4})/, "foo:\\3-\\2-\\1:bar:baz");
         $MSG.multi_digit_grps = regexp_subst("010203040506070809101112", /(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, "\\10-\\11-\\12");
         $MSG.prefixing_zeros = regexp_subst("foobar", /^(.*)$/, "\\001012345");
+        $MSG.optimized_pattern = regexp_subst("foobarbaz", "o" + "b", "");
     """,
     )
     syslog_ng.start(config)
@@ -1974,7 +1977,8 @@ def test_regexp_subst(config, syslog_ng):
         r""""groups_on":"2022-02-25","""
         r""""mixed_grps":"foo:2022-02-25:bar:baz","""
         r""""multi_digit_grps":"10-11-12","""
-        r""""prefixing_zeros":"foobar012345"}""" + "\n"
+        r""""prefixing_zeros":"foobar012345","""
+        r""""optimized_pattern":"foarbaz"}""" + "\n"
     )
     assert file_true.read_log() == exp
 
