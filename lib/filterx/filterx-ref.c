@@ -89,9 +89,11 @@ _filterx_ref_free(FilterXObject *s)
 }
 
 static void
-_prohibit_readonly(FilterXObject *s)
+_filterx_make_readonly(FilterXObject *s)
 {
-  g_assert_not_reached();
+  FilterXRef *self = (FilterXRef *) s;
+
+  filterx_object_make_readonly(self->value);
 }
 
 static gboolean
@@ -273,7 +275,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
-                    .make_readonly = _prohibit_readonly,
+                    .make_readonly = _filterx_make_readonly,
                     .is_modified_in_place = _is_modified_in_place,
                     .set_modified_in_place = _set_modified_in_place,
                     .freeze = _filterx_ref_freeze,
