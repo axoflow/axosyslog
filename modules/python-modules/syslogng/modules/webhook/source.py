@@ -21,6 +21,7 @@
 #############################################################################
 
 from syslogng import LogSource, LogMessage
+from collections import defaultdict
 
 import logging
 import asyncio
@@ -28,11 +29,14 @@ import threading
 import tornado
 import ssl
 import signal
+import json
 from typing import Any
 
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 signal.signal(signal.SIGTERM, signal.SIG_IGN)
-WEBHOOK_QUERY_NV_PREFIX = "webhook.query."
+WEBHOOK_NV_PREFIX = "webhook."
+WEBHOOK_QUERY_NV_PREFIX = WEBHOOK_NV_PREFIX + "query."
+WEBHOOK_HEADERS_KEY = WEBHOOK_NV_PREFIX + "headers"
 
 
 class Handler(tornado.web.RequestHandler):
@@ -52,6 +56,26 @@ class Handler(tornado.web.RequestHandler):
 
         await self.finish({"status": "received"})
 
+    def _set_proxied_ip(self, msg: LogMessage) -> None:
+        proxy_headers = self.request.headers.get_list(self.source.proxy_header)
+
+        if proxy_headers and len(proxy_headers) > 0:
+            # the closest/last IP (the proxy_header flag implies that the last one can be trusted)
+            msg.set_source_ipaddress(proxy_headers[-1])
+            msg["PEERIP"] = self.request.remote_ip
+            return
+
+        msg.set_source_ipaddress(self.request.remote_ip)
+
+    def _set_request_headers(self, msg: LogMessage) -> None:
+        headers = defaultdict(list)
+        for h in self.request.headers.get_all():
+            name = h[0]
+            if name:
+                headers[name].append(h[1])
+
+        msg[WEBHOOK_HEADERS_KEY] = json.dumps(headers)
+
     def _construct_msg(self, request, path_arguments) -> LogMessage:
         msg = LogMessage(self.request.body)
         msg.set_recvd_rawmsg_size(len(self.request.body))
@@ -63,7 +87,13 @@ class Handler(tornado.web.RequestHandler):
         for key, value in path_arguments.items():
             msg[key] = value
 
-        msg.set_source_ipaddress(self.request.remote_ip)
+        if self.source.include_request_headers:
+            self._set_request_headers(msg)
+
+        if self.source.proxy_header:
+            self._set_proxied_ip(msg)
+        else:
+            msg.set_source_ipaddress(self.request.remote_ip)
 
         return msg
 
@@ -184,6 +214,13 @@ class HTTPSource(LogSource):
             self.tls_use_system_cert_store = bool(options.get("tls_use_system_cert_store", False))
             self.tls_ca_file = options.get("tls_ca_file")
             self.tls_ca_dir = options.get("tls_ca_dir")
+
+            self.proxy_header = options.get("proxy_header")
+            if self.proxy_header == "yes":
+                self.proxy_header = "x-forwarded-for"
+
+            self.include_request_headers = bool(options.get("include_request_headers", False))
+
             return True
         except KeyError as e:
             self.logger.error(f"Missing option '{e.args[0]}'")
