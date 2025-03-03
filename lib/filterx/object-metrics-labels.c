@@ -103,7 +103,7 @@ _obj_to_string(FilterXObject *obj, gsize *len)
     return str;
 
   GString *buf = scratch_buffers_alloc();
-  if (filterx_object_repr(obj, buf))
+  if (filterx_object_str(obj, buf))
     {
       *len = buf->len;
       return buf->str;

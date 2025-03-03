@@ -190,14 +190,23 @@ _filterx_ref_dict_factory(FilterXObject *s)
 }
 
 static gboolean
-_filterx_ref_repr(FilterXObject *s, GString *repr)
+_filterx_ref_repr_append(FilterXObject *s, GString *repr)
 {
   FilterXRef *self = (FilterXRef *) s;
 
   if (self->value->type->repr)
     return self->value->type->repr(self->value, repr);
-
   return FALSE;
+}
+
+static gboolean
+_filterx_ref_str_append(FilterXObject *s, GString *str)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  if (self->value->type->str)
+    return self->value->type->str(self->value, str);
+  return _filterx_ref_repr_append(s, str);
 }
 
 static gboolean
@@ -251,7 +260,8 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .unset_key = _filterx_ref_unset_key,
                     .list_factory = _filterx_ref_list_factory,
                     .dict_factory = _filterx_ref_dict_factory,
-                    .repr = _filterx_ref_repr,
+                    .repr = _filterx_ref_repr_append,
+                    .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
                     .make_readonly = _prohibit_readonly,

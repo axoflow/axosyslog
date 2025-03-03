@@ -264,9 +264,9 @@ filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 
   GString *buf = scratch_buffers_alloc();
 
-  if (!filterx_object_repr(object, buf))
+  if (!filterx_object_str(object, buf))
     {
-      msg_error("filterx: unable to repr",
+      msg_error("filterx: unable to cast str() failed",
                 evt_tag_str("from", object->type->name),
                 evt_tag_str("to", "string"));
       return NULL;

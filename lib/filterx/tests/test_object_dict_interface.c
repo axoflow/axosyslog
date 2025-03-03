@@ -41,9 +41,7 @@ Test(filterx_dict_interface, test_keys_empty)
   cr_assert(ok);
   cr_assert_not_null(keys);
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(keys, repr));
-  cr_assert_str_eq(repr->str, "[]");
+  assert_object_repr_equals(keys, "[]");
 
   filterx_object_unref(keys);
 }
@@ -60,9 +58,7 @@ Test(filterx_dict_interface, test_keys_single)
   cr_assert(ok);
   cr_assert_not_null(keys);
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(keys, repr));
-  cr_assert_str_eq("[\"foo\"]", repr->str);
+  assert_object_repr_equals(keys, "[\"foo\"]");
 
   filterx_object_unref(keys);
 }
@@ -79,9 +75,7 @@ Test(filterx_dict_interface, test_keys_multi)
   cr_assert(ok);
   cr_assert_not_null(keys);
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(keys, repr));
-  cr_assert_str_eq("[\"foo\",\"bar\"]", repr->str);
+  assert_object_repr_equals(keys, "[\"foo\",\"bar\"]");
 
   filterx_object_unref(keys);
 }
@@ -98,9 +92,7 @@ Test(filterx_dict_interface, test_keys_nested)
   cr_assert(ok);
   cr_assert_not_null(keys);
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(keys, repr));
-  cr_assert_str_eq("[\"foo\",\"bar\"]", repr->str);
+  assert_object_repr_equals(keys, "[\"foo\",\"bar\"]");
 
   filterx_object_unref(keys);
 }

@@ -67,7 +67,7 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
     g_string_append_c(buffer, self->delimiter);
 
   gsize len_before_value = buffer->len;
-  if (!filterx_object_repr_append(value, buffer))
+  if (!filterx_object_str_append(value, buffer))
     return FALSE;
 
   /* TODO: make the characters here configurable. */

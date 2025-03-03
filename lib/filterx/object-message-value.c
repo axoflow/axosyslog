@@ -434,6 +434,25 @@ _repr(FilterXObject *s, GString *repr)
   return FALSE;
 }
 
+static gboolean
+_str(FilterXObject *s, GString *repr)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+  switch (self->type)
+    {
+    case LM_VT_DATETIME:
+    {
+      UnixTime ut = UNIX_TIME_INIT;
+      if (!type_cast_to_datetime_unixtime(self->repr, self->repr_len, &ut, NULL))
+        return FALSE;
+      return datetime_str(&ut, repr);
+    }
+    default:
+      _repr(s, repr);
+      return TRUE;
+    }
+}
+
 FILTERX_DEFINE_TYPE(message_value, FILTERX_TYPE_NAME(object),
                     .free_fn = _free,
                     .truthy = _truthy,
@@ -442,4 +461,5 @@ FILTERX_DEFINE_TYPE(message_value, FILTERX_TYPE_NAME(object),
                     .len = _len,
                     .map_to_json = _map_to_json,
                     .repr = _repr,
+                    .str = _str,
                    );

@@ -182,24 +182,14 @@ Test(filterx_json, test_json_array_function)
 Test(filterx_json, filterx_json_object_repr)
 {
   FilterXObject *obj = filterx_json_object_new_from_repr("{\"foo\": \"foovalue\"}", -1);
-  GString *repr = scratch_buffers_alloc();
-  g_string_assign(repr, "foo");
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq("{\"foo\":\"foovalue\"}", repr->str);
-  cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq("{\"foo\":\"foovalue\"}{\"foo\":\"foovalue\"}", repr->str);
+  assert_object_repr_equals(obj, "{\"foo\":\"foovalue\"}");
   filterx_object_unref(obj);
 }
 
 Test(filterx_json, filterx_json_array_repr)
 {
   FilterXObject *obj = filterx_json_array_new_from_repr("[\"foo\", \"bar\"]", -1);
-  GString *repr = scratch_buffers_alloc();
-  g_string_assign(repr, "foo");
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq("[\"foo\",\"bar\"]", repr->str);
-  cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq("[\"foo\",\"bar\"][\"foo\",\"bar\"]", repr->str);
+  assert_object_repr_equals(obj, "[\"foo\",\"bar\"]");
   filterx_object_unref(obj);
 }
 

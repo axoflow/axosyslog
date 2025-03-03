@@ -40,5 +40,6 @@ FilterXExpr *filterx_function_strptime_new(FilterXFunctionArgs *args, GError **e
 FilterXExpr *filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error);
 
 gboolean datetime_repr(const UnixTime *ut, GString *repr);
+gboolean datetime_str(const UnixTime *ut, GString *repr);
 
 #endif

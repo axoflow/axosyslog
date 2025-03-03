@@ -196,12 +196,28 @@ datetime_repr(const UnixTime *ut, GString *repr)
   return TRUE;
 }
 
+gboolean
+datetime_str(const UnixTime *ut, GString *repr)
+{
+  _convert_unix_time_to_string(ut, repr, FALSE);
+  return TRUE;
+}
+
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
   FilterXDateTime *self = (FilterXDateTime *) s;
 
   return datetime_repr(&self->ut, repr);
+}
+
+static gboolean
+_str(FilterXObject *s, GString *repr)
+{
+  FilterXDateTime *self = (FilterXDateTime *) s;
+
+  _convert_unix_time_to_string(&self->ut, repr, FALSE);
+  return TRUE;
 }
 
 static FilterXObject *
@@ -562,5 +578,6 @@ FILTERX_DEFINE_TYPE(datetime, FILTERX_TYPE_NAME(object),
                     .map_to_json = _map_to_json,
                     .marshal = _marshal,
                     .repr = _repr,
+                    .str = _str,
                     .add = _add,
                    );

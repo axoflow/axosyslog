@@ -52,6 +52,22 @@ Test(filterx_datetime, test_filterx_object_datetime_maps_to_the_right_json_value
   filterx_object_unref(fobj);
 }
 
+Test(filterx_datetime, test_filterx_object_datetime_str_yields_unix_time)
+{
+  UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
+  FilterXObject *fobj = filterx_datetime_new(&ut);
+  assert_object_str_equals(fobj, "1701350398.123000");
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_datetime, test_filterx_object_datetime_repr_yields_isotime)
+{
+  UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
+  FilterXObject *fobj = filterx_datetime_new(&ut);
+  assert_object_repr_equals(fobj, "2023-11-30T14:19:58.123+01:00");
+  filterx_object_unref(fobj);
+}
+
 Test(filterx_datetime, test_filterx_datetime_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_datetime(NULL, NULL, 0);
@@ -192,12 +208,7 @@ Test(filterx_datetime, test_filterx_datetime_repr)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-  g_string_assign(repr, "foo");
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq("2024-03-18T12:34:13.000+09:00", repr->str);
-  cr_assert(filterx_object_repr_append(obj, repr));
-  cr_assert_str_eq("2024-03-18T12:34:13.000+09:002024-03-18T12:34:13.000+09:00", repr->str);
+  assert_object_repr_equals(obj, "2024-03-18T12:34:13.000+09:00");
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -212,10 +223,7 @@ Test(filterx_datetime, test_filterx_datetime_repr_isodate_Z)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-
-  cr_assert(filterx_object_repr(args[0], repr));
-  cr_assert_str_eq(test_time_str, repr->str);
+  assert_object_repr_equals(args[0], test_time_str);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -282,9 +290,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_timefmt)
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "2024-04-08T10:11:12.000+00:00");
+  assert_object_repr_equals(obj, "2024-04-08T10:11:12.000+00:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(func_expr);
@@ -307,9 +313,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_nth_timefmt)
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(obj, repr));
-  cr_assert_str_eq(repr->str, "2024-04-08T10:11:12.000+01:00");
+  assert_object_repr_equals(obj, "2024-04-08T10:11:12.000+01:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(func_expr);

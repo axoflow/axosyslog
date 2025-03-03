@@ -59,13 +59,13 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
   if (buffer->len)
     g_string_append(buffer, self->pair_separator);
 
-  if (!filterx_object_repr_append(key, buffer))
+  if (!filterx_object_str_append(key, buffer))
     return FALSE;
 
   g_string_append_c(buffer, self->value_separator);
 
   gsize len_before_value = buffer->len;
-  if (!filterx_object_repr_append(value, buffer))
+  if (!filterx_object_str_append(value, buffer))
     return FALSE;
 
   /* TODO: make the characters here configurable. */
