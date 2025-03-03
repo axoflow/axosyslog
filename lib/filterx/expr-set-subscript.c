@@ -161,6 +161,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXSetSubscript *self = (FilterXSetSubscript *) s;
 
+  filterx_expr_request_writable(self->object, TRUE);
   if (!filterx_expr_init(self->object, cfg))
     return FALSE;
 

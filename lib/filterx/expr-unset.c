@@ -67,6 +67,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
   for (guint i = 0; i < self->exprs->len; i++)
     {
       FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
+      filterx_expr_request_writable(expr, TRUE);
       if (!filterx_expr_init(expr, cfg))
         {
           for (guint j = 0; j < i; j++)
