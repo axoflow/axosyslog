@@ -55,6 +55,8 @@ _eval_variable(FilterXExpr *s)
         {
           filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
         }
+      if (s->writable_requested)
+        filterx_ref_unwrap_rw(value);
       return value;
     }
 
@@ -69,6 +71,8 @@ _eval_variable(FilterXExpr *s)
             {
               filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
             }
+          if (s->writable_requested)
+            filterx_ref_unwrap_rw(value);
           return value;
         }
     }

@@ -49,6 +49,8 @@ _eval_getattr(FilterXExpr *s)
       filterx_eval_push_error("Attribute lookup failed", s, self->attr);
       goto exit;
     }
+  if (s->writable_requested)
+    filterx_ref_unwrap_rw(attr);
 exit:
   filterx_object_unref(variable);
   return attr;
@@ -105,7 +107,8 @@ static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
-
+  /* propagate writable request */
+  filterx_expr_request_writable(self->operand, s->writable_requested);
   if (!filterx_expr_init(self->operand, cfg))
     return FALSE;
 
