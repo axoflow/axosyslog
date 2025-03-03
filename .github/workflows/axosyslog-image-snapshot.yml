@@ -13,11 +13,11 @@ on:
         options:
           - branch
           - custom
-      custom-tag:
-        description: 'Custom tag name (only used if custom type is selected)'
+      custom-image-tag:
+        description: 'Custom container image tag name (only used if custom type is selected)'
         required: false
         type: string
-        default: 'x.y.z-axoflow.something'
+        default: 'x.y.z-custom-image-tag'
   push:
     branches:
       - main
@@ -40,11 +40,11 @@ jobs:
               tag="dev-${{ github.ref_name }}"
               ;;
             custom)
-              if docker manifest inspect "$IMAGE_NAME:${{ inputs.custom-tag }}" > /dev/null 2>&1; then
-                echo "Custom tag '${{ inputs.custom-tag }}' already exists."
+              if docker manifest inspect "$IMAGE_NAME:${{ inputs.custom-image-tag }}" > /dev/null 2>&1; then
+                echo "Custom tag '${{ inputs.custom-image-tag }}' already exists."
                 exit 1
               fi
-              tag="${{ inputs.custom-tag }}"
+              tag="${{ inputs.custom-image-tag }}"
               ;;
           esac
           echo "tag=${tag}" >> $GITHUB_OUTPUT
@@ -72,7 +72,10 @@ jobs:
           tarball_filename="$(find dbld/build -name '*.tar.*' -printf '%f\n')"
           tarball_name="${tarball_filename/\.tar.*}"
           tarball_version="${tarball_name/axosyslog-}"
-          pkg_version="$(echo $tarball_version | sed -E 's|(([0-9]+\.){2}[0-9]+).*|\1|')_git$(date +%Y%m%d)"
+          pkg_version_prefix="$(echo $tarball_version | sed -En 's|(([0-9]+\.){2}[0-9]+).*|\1|p')"
+          [ -z "$pkg_version_prefix" ] && echo "Error: tarball name contains invalid version prefix" && exit 1
+
+          pkg_version="${pkg_version_prefix}_git$(date +%Y%m%d)"
           echo "SNAPSHOT_VERSION=${pkg_version}" >> $GITHUB_OUTPUT
 
       - name: Store source tarball as artifact

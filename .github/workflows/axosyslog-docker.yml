@@ -93,6 +93,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ needs.prepare.outputs.image-name }}
+          flavor: |
+            latest=false
 
       - name: Build and push production Docker image
         id: build
