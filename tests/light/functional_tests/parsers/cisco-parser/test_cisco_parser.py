@@ -24,7 +24,7 @@ import json
 
 import pytest
 
-from src.common.network_operations import get_hostname
+from axosyslog_light.common.network_operations import get_hostname
 
 
 test_parameters = [

@@ -20,8 +20,8 @@
 # COPYING for details.
 #
 #############################################################################
-from src.message_builder.bsd_format import BSDFormat
-from src.message_builder.log_message import LogMessage
+from axosyslog_light.message_builder.bsd_format import BSDFormat
+from axosyslog_light.message_builder.log_message import LogMessage
 
 
 def test_filter_multiple_reference(config, syslog_ng):

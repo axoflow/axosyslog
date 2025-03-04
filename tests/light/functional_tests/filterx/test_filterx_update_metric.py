@@ -21,9 +21,9 @@
 # COPYING for details.
 #
 #############################################################################
-from src.common.blocking import wait_until_true
-from src.syslog_ng_config.renderer import render_statement
-from src.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
+from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.syslog_ng_config.renderer import render_statement
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
 def create_config(config, port_allocator, filterx, stats_level=0):
