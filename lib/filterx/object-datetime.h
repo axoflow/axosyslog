@@ -41,5 +41,6 @@ FilterXExpr *filterx_function_strftime_new(FilterXFunctionArgs *args, GError **e
 
 gboolean datetime_repr(const UnixTime *ut, GString *repr);
 gboolean datetime_str(const UnixTime *ut, GString *repr);
+gboolean datetime_format_json(const UnixTime *ut, GString *repr);
 
 #endif
