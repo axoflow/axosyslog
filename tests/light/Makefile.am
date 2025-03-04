@@ -9,14 +9,14 @@ EXTRA_DIST += \
 	tests/light/tox.ini
 
 include tests/light/functional_tests/Makefile.am
-include tests/light/src/Makefile.am
+include tests/light/axosyslog_light/Makefile.am
 
 PYTEST_SUBDIR=
 PYTEST_VERBOSE=false
 PYTEST_OPTS=
 
 light-self-check pytest-self-check: python-venv
-	@$(PYTHON_VENV) -m pytest $(top_srcdir)/tests/light/src --showlocals --verbosity=3
+	@$(PYTHON_VENV) -m pytest $(top_srcdir)/tests/light/axosyslog_light --showlocals --verbosity=3
 
 light-check pytest-check: python-venv
 	@$(PYTHON_VENV) -m pytest -o log_cli=$(PYTEST_VERBOSE) $(top_srcdir)/tests/light/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) --installdir=${prefix} --showlocals --verbosity=3 --show-capture=no

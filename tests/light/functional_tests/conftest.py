@@ -27,8 +27,8 @@ from pathlib import Path
 import psutil
 import pytest
 
-from src.common.file import copy_file
-from src.common.pytest_operations import calculate_testcase_name
+from axosyslog_light.common.file import copy_file
+from axosyslog_light.common.pytest_operations import calculate_testcase_name
 
 logger = logging.getLogger(__name__)
 

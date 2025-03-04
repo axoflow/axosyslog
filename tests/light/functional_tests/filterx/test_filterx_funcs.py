@@ -20,7 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
-from src.syslog_ng_config.renderer import render_statement
+from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
 # noqa: E122

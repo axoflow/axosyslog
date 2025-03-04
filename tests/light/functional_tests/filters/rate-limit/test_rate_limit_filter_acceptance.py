@@ -22,8 +22,8 @@
 #############################################################################
 import pytest
 
-from src.common.blocking import wait_until_true
-from src.message_builder.log_message import LogMessage
+from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.message_builder.log_message import LogMessage
 
 
 def generate_messages_with_different_program_fields(bsd_formatter, number_of_all_messages, different_program_fields):

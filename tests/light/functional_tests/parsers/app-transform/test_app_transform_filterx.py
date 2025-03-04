@@ -25,7 +25,7 @@ import json
 
 import pytest
 
-from src.syslog_ng_config.renderer import render_statement
+from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
 def create_config(config, app, app_transform_options):
