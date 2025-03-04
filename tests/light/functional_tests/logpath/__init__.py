@@ -22,7 +22,7 @@
 #############################################################################
 from dataclasses import dataclass
 
-from src.syslog_ng_config.statements.logpath.logpath import LogPath
+from axosyslog_light.syslog_ng_config.statements.logpath.logpath import LogPath
 
 
 @dataclass
