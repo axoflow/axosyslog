@@ -285,6 +285,33 @@ error:
   return FALSE;
 }
 
+static gboolean
+_format_json(FilterXObject *s, GString *json)
+{
+  gboolean first = TRUE;
+
+  guint64 list_len;
+  if (!filterx_object_len(s, &list_len))
+    return FALSE;
+
+  g_string_append_c(json, '[');
+  for (guint64 i = 0; i < list_len; i++)
+    {
+      if (!first)
+        g_string_append_c(json, ',');
+      else
+        first = FALSE;
+      FilterXObject *elem = filterx_list_get_subscript(s, i);
+      gboolean success = filterx_object_format_json_append(elem, json);
+      filterx_object_unref(elem);
+
+      if (!success)
+        return FALSE;
+    }
+  g_string_append_c(json, ']');
+  return TRUE;
+}
+
 void
 filterx_list_init_instance(FilterXList *self, FilterXType *type)
 {
@@ -325,5 +352,6 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(object),
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
                     .map_to_json = _map_to_json,
+                    .format_json = _format_json,
                     .add = _add,
                    );

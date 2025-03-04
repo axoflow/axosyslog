@@ -27,6 +27,7 @@
 #include "filterx-globals.h"
 #include "str-format.h"
 #include "str-utils.h"
+#include "utf8utils.h"
 
 
 /* NOTE: Consider using filterx_object_extract_bytes_ref() to also support message_value. */
@@ -100,6 +101,22 @@ _string_repr(FilterXObject *s, GString *repr)
   FilterXString *self = (FilterXString *) s;
   repr = g_string_append_len(repr, self->str, self->str_len);
   return TRUE;
+}
+
+gboolean
+string_format_json(const gchar *str, gsize str_len, GString *json)
+{
+  g_string_append_c(json, '"');
+  append_unsafe_utf8_as_escaped(json, str, str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  g_string_append_c(json, '"');
+  return TRUE;
+}
+
+static gboolean
+_string_format_json(FilterXObject *s, GString *json)
+{
+  FilterXString *self = (FilterXString *) s;
+  return string_format_json(self->str, self->str_len, json);
 }
 
 static FilterXObject *
@@ -193,6 +210,42 @@ _bytes_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject 
 
   *object = json_object_new_string_len(encode_buffer->str, encode_buffer->len);
   return TRUE;
+}
+
+gboolean
+bytes_format_json(const gchar *str, gsize str_len, GString *json)
+{
+  g_string_append_c(json, '"');
+
+  gint encode_state = 0;
+  gint encode_save = 0;
+  gsize init_len = json->len;
+
+  /* expand the buffer and add space for the base64 encoded string */
+  g_string_set_size(json, init_len + _get_base64_encoded_size(str_len));
+  gsize out_len = g_base64_encode_step((const guchar *) str, str_len, FALSE, json->str + init_len,
+                                       &encode_state, &encode_save);
+  g_string_set_size(json, init_len + out_len + _get_base64_encoded_size(0));
+
+#if !GLIB_CHECK_VERSION(2, 54, 0)
+  /* See modules/basicfuncs/str-funcs.c: tf_base64encode() */
+  if (((unsigned char *) &encode_save)[0] == 1)
+    ((unsigned char *) &encode_save)[2] = 0;
+#endif
+
+  out_len += g_base64_encode_close(FALSE, json->str + init_len + out_len, &encode_state, &encode_save);
+  g_string_set_size(json, init_len + out_len);
+
+  g_string_append_c(json, '"');
+  return TRUE;
+}
+
+static gboolean
+_bytes_format_json(FilterXObject *s, GString *json)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  return bytes_format_json(self->str, self->str_len, json);
 }
 
 static gboolean
@@ -331,6 +384,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .marshal = _marshal,
                     .len = _len,
                     .map_to_json = _map_to_json,
+                    .format_json = _string_format_json,
                     .truthy = _truthy,
                     .repr = _string_repr,
                     .add = _string_add,
@@ -341,6 +395,7 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                     .marshal = _bytes_marshal,
                     .len = _len,
                     .map_to_json = _bytes_map_to_json,
+                    .format_json = _bytes_format_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,
                     .add = _bytes_add,
@@ -350,6 +405,7 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
                     .len = _len,
                     .marshal = _bytes_marshal,
                     .map_to_json = _bytes_map_to_json,
+                    .format_json = _bytes_format_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,
                    );

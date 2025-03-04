@@ -46,10 +46,22 @@ _map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **asso
 }
 
 gboolean
+null_format_json(GString *json)
+{
+  g_string_append_len(json, "null", 4);
+  return TRUE;
+}
+
+gboolean
 null_repr(GString *repr)
 {
-  g_string_append_len(repr, "null", 4);
-  return TRUE;
+  return null_format_json(repr);
+}
+
+static gboolean
+_format_json(FilterXObject *s, GString *json)
+{
+  return null_format_json(json);
 }
 
 static gboolean
@@ -73,6 +85,7 @@ filterx_null_new(void)
 FILTERX_DEFINE_TYPE(null, FILTERX_TYPE_NAME(object),
                     .map_to_json = _map_to_json,
                     .marshal = _marshal,
+                    .format_json = _format_json,
                     .repr = _null_repr,
                     .truthy = _truthy,
                    );
