@@ -148,6 +148,13 @@ _filterx_ref_map_to_json(FilterXObject *s, struct json_object **object, FilterXO
 }
 
 static gboolean
+_filterx_ref_format_json(FilterXObject *s, GString *json)
+{
+  FilterXRef *self = (FilterXRef *) s;
+  return filterx_object_format_json(self->value, json);
+}
+
+static gboolean
 _filterx_ref_truthy(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
@@ -251,6 +258,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .marshal = _filterx_ref_marshal,
                     .clone = _filterx_ref_clone,
                     .map_to_json = _filterx_ref_map_to_json,
+                    .format_json = _filterx_ref_format_json_append,
                     .truthy = _filterx_ref_truthy,
                     .getattr = _filterx_ref_getattr,
                     .setattr = _filterx_ref_setattr,

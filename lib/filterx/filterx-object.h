@@ -52,6 +52,7 @@ struct _FilterXType
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
   FilterXObject *(*list_factory)(FilterXObject *self);
   FilterXObject *(*dict_factory)(FilterXObject *self);
+  gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*str)(FilterXObject *self, GString *str);
   gboolean (*len)(FilterXObject *self, guint64 *len);
@@ -297,6 +298,19 @@ filterx_object_str_append(FilterXObject *self, GString *str)
       return self->type->str(self, str);
     }
   return filterx_object_repr_append(self, str);
+}
+
+static inline gboolean
+filterx_object_format_json(FilterXObject *self, GString *json)
+{
+  g_string_truncate(json, 0);
+  return self->type->format_json(self, json);
+}
+
+static inline gboolean
+filterx_object_format_json_append(FilterXObject *self, GString *json)
+{
+  return self->type->format_json(self, json);
 }
 
 static inline gboolean
