@@ -27,6 +27,8 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-json.h"
 #include "str-utils.h"
+#include "utf8utils.h"
+
 
 gboolean
 filterx_dict_iter(FilterXObject *s, FilterXDictIterFunc func, gpointer user_data)
@@ -226,6 +228,44 @@ _map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **asso
   return TRUE;
 }
 
+static gboolean
+_format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  gpointer *args = (gpointer *) user_data;
+  GString *json = (GString *) args[0];
+  gboolean *first = (gboolean *) args[1];
+
+  const gchar *key_str;
+  gsize key_str_len;
+  if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
+    return FALSE;
+
+  if (!(*first))
+    g_string_append_c(json, ',');
+  else
+    *first = FALSE;
+  g_string_append_c(json, '"');
+  append_unsafe_utf8_as_escaped(json, key_str, key_str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  g_string_append(json, "\":");
+
+  return filterx_object_format_json_append(value, json);
+}
+
+static gboolean
+_format_json(FilterXObject *value, GString *json)
+{
+  gboolean first = TRUE;
+  gpointer args[] = { json, &first };
+
+  g_string_append_c(json, '{');
+
+  if (!filterx_dict_iter(value, _format_and_append_dict_elem, args))
+    return FALSE;
+
+  g_string_append_c(json, '}');
+  return TRUE;
+}
+
 void
 filterx_dict_init_instance(FilterXDict *self, FilterXType *type)
 {
@@ -271,5 +311,6 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(object),
                     .getattr = _getattr,
                     .setattr = _setattr,
                     .map_to_json = _map_to_json,
+                    .format_json = _format_json,
                     .add = _add,
                    );

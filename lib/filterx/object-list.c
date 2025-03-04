@@ -36,6 +36,7 @@
 #include "str-utils.h"
 #include "scratch-buffers.h"
 #include "str-repr/encode.h"
+#include "scanner/list-scanner/list-scanner.h"
 
 typedef gboolean (*FilterXListForeachFunc)(gsize index, FilterXObject **, gpointer);
 typedef struct _FilterXListObject
@@ -209,11 +210,26 @@ _filterx_list_free(FilterXObject *s)
 FilterXObject *
 filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len)
 {
-  struct json_object *jso;
-  if (!type_cast_to_json_from_list(repr, repr_len, &jso, NULL))
-    return NULL;
-
-  return filterx_object_from_json_object(jso, NULL);
+  FilterXObject *list = filterx_list_new();
+  ListScanner scanner;
+  list_scanner_init(&scanner);
+  list_scanner_input_string(&scanner, repr, repr_len);
+  for (gint i = 0; list_scanner_scan_next(&scanner); i++)
+    {
+      FILTERX_STRING_DECLARE_ON_STACK(value,
+                                      list_scanner_get_current_value(&scanner),
+                                      list_scanner_get_current_value_len(&scanner));
+      if (!filterx_list_set_subscript(list, i, &value))
+        {
+          filterx_object_unref(value);
+          filterx_object_unref(list);
+          list = NULL;
+          break;
+        }
+      filterx_object_unref(value);
+    }
+  list_scanner_deinit(&scanner);
+  return list;
 }
 
 FilterXObject *
