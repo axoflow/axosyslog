@@ -56,6 +56,8 @@ dbld/images/.*$
 dbld/(functions\.sh|(build|packages|pip_packages)\.manifest|tarball-changes\.ignore)$
 dbld/\.dockerignore$
 cmake/.*$
+tests/light/poetry.lock
+tests/light/pyproject.toml
 tests/light/pytest.ini
 tests/light/tox.ini
 tests/light/.pre-commit-config.yaml
