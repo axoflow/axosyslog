@@ -38,13 +38,6 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
   return TRUE;
 }
 
-static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  *object = NULL;
-  return TRUE;
-}
-
 gboolean
 null_format_json(GString *json)
 {
@@ -83,7 +76,6 @@ filterx_null_new(void)
 }
 
 FILTERX_DEFINE_TYPE(null, FILTERX_TYPE_NAME(object),
-                    .map_to_json = _map_to_json,
                     .marshal = _marshal,
                     .format_json = _format_json,
                     .repr = _null_repr,

@@ -27,7 +27,6 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
 #include "filterx/object-datetime.h"
@@ -276,8 +275,6 @@ filterx_global_init(void)
   filterx_type_init(&FILTERX_TYPE_NAME(bytes));
   filterx_type_init(&FILTERX_TYPE_NAME(protobuf));
 
-  filterx_type_init(&FILTERX_TYPE_NAME(json_object));
-  filterx_type_init(&FILTERX_TYPE_NAME(json_array));
   filterx_type_init(&FILTERX_TYPE_NAME(datetime));
   filterx_type_init(&FILTERX_TYPE_NAME(message_value));
 

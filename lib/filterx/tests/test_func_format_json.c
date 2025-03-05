@@ -29,7 +29,6 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-list-interface.h"
 
@@ -105,10 +104,10 @@ Test(filterx_format_json, test_filterx_format_json)
   _assert_filterx_format_json_and_unref(filterx_protobuf_new("\4\5\6\7", 4), "\"BAUGBw==\"");
 
   /* json_object */
-  _assert_filterx_format_json_and_unref(filterx_json_object_new_from_repr("{\"foo\": 42}", -1), "{\"foo\":42}");
+  _assert_filterx_format_json_and_unref(filterx_object_from_json("{\"foo\": 42}", -1, NULL), "{\"foo\":42}");
 
   /* json_array */
-  _assert_filterx_format_json_and_unref(filterx_json_array_new_from_repr("[\"foo\", 42]", -1), "[\"foo\",42]");
+  _assert_filterx_format_json_and_unref(filterx_object_from_json("[\"foo\", 42]", -1, NULL), "[\"foo\",42]");
 
   /* message_value */
   _assert_filterx_format_json_and_unref(filterx_message_value_new("T", -1, LM_VT_BOOLEAN), "true");
