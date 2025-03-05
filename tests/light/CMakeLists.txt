@@ -1,3 +1,5 @@
+find_package(Poetry)
+
 add_custom_target(light-self-check
    COMMAND ${PYTHON_VENV_EXECUTABLE} -m pytest ${PROJECT_SOURCE_DIR}/tests/light/axosyslog_light --showlocals --verbosity=3
    DEPENDS BuildPyVirtualEnv)
