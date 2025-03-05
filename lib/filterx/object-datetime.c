@@ -85,18 +85,6 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
   return TRUE;
 }
 
-static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXDateTime *self = (FilterXDateTime *) s;
-  GString *time_stamp = scratch_buffers_alloc();
-
-  _convert_unix_time_to_string(&self->ut, time_stamp, FALSE);
-
-  *object = json_object_new_string_len(time_stamp->str, time_stamp->len);
-  return TRUE;
-}
-
 FilterXObject *
 filterx_datetime_new(const UnixTime *ut)
 {
@@ -591,7 +579,6 @@ error:
 
 FILTERX_DEFINE_TYPE(datetime, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
-                    .map_to_json = _map_to_json,
                     .format_json = _format_json,
                     .marshal = _marshal,
                     .repr = _repr,
