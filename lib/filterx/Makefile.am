@@ -65,8 +65,6 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/object-dict.h \
 	lib/filterx/object-list.h \
 	lib/filterx/object-extractor.h \
-	lib/filterx/object-json-internal.h \
-	lib/filterx/object-json.h \
 	lib/filterx/object-list-interface.h \
 	lib/filterx/object-message-value.h \
 	lib/filterx/object-metrics-labels.h \
@@ -139,9 +137,6 @@ filterx_sources = 				\
 	lib/filterx/object-dict-interface.c \
 	lib/filterx/object-dict.c \
 	lib/filterx/object-list.c \
-	lib/filterx/object-json-array.c \
-	lib/filterx/object-json-object.c \
-	lib/filterx/object-json.c \
 	lib/filterx/object-list-interface.c \
 	lib/filterx/object-message-value.c \
 	lib/filterx/object-metrics-labels.c \

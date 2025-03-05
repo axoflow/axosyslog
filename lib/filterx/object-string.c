@@ -87,15 +87,6 @@ _len(FilterXObject *s, guint64 *len)
 }
 
 static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXString *self = (FilterXString *) s;
-
-  *object = json_object_new_string_len(self->str, self->str_len);
-  return TRUE;
-}
-
-static gboolean
 _string_repr(FilterXObject *s, GString *repr)
 {
   FilterXString *self = (FilterXString *) s;
@@ -182,34 +173,6 @@ static inline gsize
 _get_base64_encoded_size(gsize len)
 {
   return (len / 3 + 1) * 4 + 4;
-}
-
-static gboolean
-_bytes_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXString *self = (FilterXString *) s;
-  GString *encode_buffer = scratch_buffers_alloc();
-
-  gint encode_state = 0;
-  gint encode_save = 0;
-
-  /* expand the buffer and add space for the base64 encoded string */
-  g_string_set_size(encode_buffer, _get_base64_encoded_size(self->str_len));
-  gsize out_len = g_base64_encode_step((const guchar *) self->str, self->str_len, FALSE, encode_buffer->str,
-                                       &encode_state, &encode_save);
-  g_string_set_size(encode_buffer, out_len + _get_base64_encoded_size(0));
-
-#if !GLIB_CHECK_VERSION(2, 54, 0)
-  /* See modules/basicfuncs/str-funcs.c: tf_base64encode() */
-  if (((unsigned char *) &encode_save)[0] == 1)
-    ((unsigned char *) &encode_save)[2] = 0;
-#endif
-
-  out_len += g_base64_encode_close(FALSE, encode_buffer->str + out_len, &encode_state, &encode_save);
-  g_string_set_size(encode_buffer, out_len);
-
-  *object = json_object_new_string_len(encode_buffer->str, encode_buffer->len);
-  return TRUE;
 }
 
 gboolean
@@ -383,7 +346,6 @@ filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .marshal = _marshal,
                     .len = _len,
-                    .map_to_json = _map_to_json,
                     .format_json = _string_format_json,
                     .truthy = _truthy,
                     .repr = _string_repr,
@@ -394,7 +356,6 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
 FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                     .marshal = _bytes_marshal,
                     .len = _len,
-                    .map_to_json = _bytes_map_to_json,
                     .format_json = _bytes_format_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,
@@ -404,7 +365,6 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
 FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
                     .len = _len,
                     .marshal = _bytes_marshal,
-                    .map_to_json = _bytes_map_to_json,
                     .format_json = _bytes_format_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,

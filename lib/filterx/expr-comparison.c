@@ -28,7 +28,6 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
 #include "filterx/expr-literal.h"
@@ -149,10 +148,10 @@ _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
   if (lhs->type == rhs->type &&
       (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
        filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(bytes)) ||
-       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(protobuf)) ||
-       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_object)) || // TODO: we should have generic map and array cmp
-       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(json_array))))
+       filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(protobuf))))
     return _evaluate_as_string(lhs, rhs, operator);
+
+  /* FIXME: add dict/list comparison */
 
   if (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(null)) ||
       filterx_object_is_type(rhs, &FILTERX_TYPE_NAME(null))
