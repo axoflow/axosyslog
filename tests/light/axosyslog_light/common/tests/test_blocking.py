@@ -22,6 +22,7 @@
 #############################################################################
 from axosyslog_light.common.blocking import wait_until_false_custom
 from axosyslog_light.common.blocking import wait_until_true_custom
+from axosyslog_light.self_test_fixtures import *
 
 
 def inner_function_return_true():

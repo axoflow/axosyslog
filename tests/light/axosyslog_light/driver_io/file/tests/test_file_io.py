@@ -21,6 +21,7 @@
 #
 #############################################################################
 from axosyslog_light.driver_io.file.file_io import FileIO
+from axosyslog_light.self_test_fixtures import *
 
 
 def test_file_io_write_read(temp_file, test_message):

@@ -23,6 +23,7 @@
 import pytest
 
 from axosyslog_light.executors.command_executor import CommandExecutor
+from axosyslog_light.self_test_fixtures import *
 
 
 @pytest.mark.parametrize(
