@@ -20,7 +20,10 @@
 # COPYING for details.
 #
 #############################################################################
+# flake8: noqa: F401, F811
 from axosyslog_light.driver_io.file.file_io import FileIO
+from axosyslog_light.self_test_fixtures import temp_file
+from axosyslog_light.self_test_fixtures import test_message
 
 
 def test_file_io_write_read(temp_file, test_message):

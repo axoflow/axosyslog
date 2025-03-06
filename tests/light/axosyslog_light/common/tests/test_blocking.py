@@ -20,6 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
+# flake8: noqa: F401, F811
 from axosyslog_light.common.blocking import wait_until_false_custom
 from axosyslog_light.common.blocking import wait_until_true_custom
 

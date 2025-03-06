@@ -12,7 +12,6 @@ EXTRA_DIST += \
 	tests/light/axosyslog_light/common/random_id.py \
 	tests/light/axosyslog_light/common/tests/__init__.py \
 	tests/light/axosyslog_light/common/tests/test_blocking.py \
-	tests/light/axosyslog_light/conftest.py \
 	tests/light/axosyslog_light/driver_io/file/file_io.py \
 	tests/light/axosyslog_light/driver_io/file/__init__.py \
 	tests/light/axosyslog_light/driver_io/file/tests/__init__.py \
@@ -39,6 +38,7 @@ EXTRA_DIST += \
 	tests/light/axosyslog_light/message_builder/__init__.py \
 	tests/light/axosyslog_light/message_builder/log_message.py \
 	tests/light/axosyslog_light/message_builder/tests/__init__.py \
+	tests/light/axosyslog_light/self_test_fixtures.py \
 	tests/light/axosyslog_light/syslog_ng_config/__init__.py \
 	tests/light/axosyslog_light/syslog_ng_config/renderer.py \
 	tests/light/axosyslog_light/syslog_ng_config/statement_group.py \
