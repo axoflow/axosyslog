@@ -29,6 +29,7 @@ import pytest
 
 from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
+from axosyslog_light.fixtures import *
 
 logger = logging.getLogger(__name__)
 
