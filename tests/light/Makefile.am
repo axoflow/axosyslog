@@ -2,7 +2,6 @@ export abs_top_srcdir
 
 EXTRA_DIST += \
 	tests/light/CMakeLists.txt \
-	tests/light/conftest.py \
 	tests/light/Makefile.am \
 	tests/light/pytest.ini \
 	tests/light/shared_files \
