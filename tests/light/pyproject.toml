@@ -30,3 +30,12 @@ astroid = "^3.3.8"
 logilab-common = "^2.0.0"
 pre-commit = "^4.1.0"
 
+# Only needed for local development
+
+[project]
+name = "axosyslog-light"
+version = "0.0.0-dev"
+
+[tool.setuptools.packages.find]
+include = ["axosyslog_light"]
+namespaces = false
