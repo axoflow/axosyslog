@@ -20,7 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
-from src.message_builder.log_message import LogMessage
+from axosyslog_light.message_builder.log_message import LogMessage
 
 
 def write_msg_with_fields(file_source, bsd_formatter, hostname, program):

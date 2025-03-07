@@ -22,7 +22,7 @@
 #############################################################################
 import pytest
 
-from src.helpers.snmptrapd.conftest import *  # noqa:F403, F401
+from axosyslog_light.helpers.snmptrapd.conftest import *  # noqa:F403, F401
 
 
 @pytest.mark.snmp

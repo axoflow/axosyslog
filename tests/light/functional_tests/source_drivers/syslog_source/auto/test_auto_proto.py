@@ -23,9 +23,9 @@
 #############################################################################
 from pathlib import Path
 
-from src.common.blocking import wait_until_true
-from src.common.file import File
-from src.common.random_id import get_unique_id
+from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.common.file import File
+from axosyslog_light.common.random_id import get_unique_id
 
 
 def _test_auto_detect(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, transport, input_messages, number_of_messages, expected_messages):

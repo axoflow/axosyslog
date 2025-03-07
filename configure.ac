@@ -397,6 +397,14 @@ AC_ARG_WITH(python3-home,
               [  --with-python3-home=path Use path as a hard-coded Python home directory that can not be overwritten by the PYTHONHOME environment variable],
               python3_home_dir=$with_python3_home)
 
+AC_ARG_ENABLE(poetry,
+              [  --disable-poetry       Disable poetry (only needed for E2E tests)]
+              ,,enable_poetry="auto")
+
+AC_ARG_WITH(poetry,
+            AC_HELP_STRING([--with-poetry=PATH],
+                           [use poetry binary at PATH]),,)
+
 AC_ARG_WITH(pylint,
               [  --with-pylint=ABSOLUTE_PATH    Specify pylint location])
 
@@ -498,6 +506,29 @@ if test "${PYTHON}" = ":"; then
 fi
 
 AM_CONDITIONAL([HAVE_PYTHON_INTERPRETER], [test "$PYTHON" != :])
+
+dnl ***************************************************************************
+dnl Poetry (E2E tests and axosyslog-light packaging)
+
+if test "x$enable_poetry" = "xauto" || test "x$enable_poetry" = "xyes"; then
+    if ! test "x$with_poetry" = "x"; then
+        POETRY=$with_poetry
+    else
+        AC_PATH_PROG([POETRY], [poetry])
+    fi
+fi
+
+if test "x$enable_poetry" = "xyes" && test "x$POETRY" = "x"; then
+    AC_MSG_ERROR([Poetry support was explicitly enabled, but poetry binary is not found. Please install poetry or point to an existing poetry binary with --with-poetry=PATH])
+fi
+
+if test "x$enable_poetry" = "xauto"; then
+    if test "x$POETRY" = "x"; then
+        enable_poetry=no
+    else
+        enable_poetry=yes
+    fi
+fi
 
 dnl ***************************************************************************
 dnl C++
@@ -2337,6 +2368,7 @@ AM_CONDITIONAL([HAVE_INOTIFY], [test x$ac_cv_func_inotify_init = xyes])
 AM_CONDITIONAL([HAVE_GETRANDOM], [test x$ac_cv_func_getrandom = xyes])
 AM_CONDITIONAL([HAVE_FMEMOPEN], [test x$ac_cv_func_fmemopen = xyes])
 AM_CONDITIONAL([HAVE_JAVAH], [test -n "$JAVAH_BIN"])
+AM_CONDITIONAL([HAVE_POETRY], [test -n "$POETRY"])
 AM_CONDITIONAL(ENABLE_IPV6, [test $enable_ipv6 = yes])
 
 AM_CONDITIONAL(OS_TYPE_MACOS, [test $ostype = "Darwin"])
@@ -2483,6 +2515,7 @@ echo "  Kafka support (module)      : ${enable_kafka:=no}"
 echo "  Riemann destination (module): ${enable_riemann:=no}, microseconds: ${riemann_micros:=no}"
 echo "  Python                      : ${enable_python:=no} (pkg-config package: ${with_python:=none}, packages: ${with_python_packages})"
 echo "  Python modules              : ${enable_python_modules:=no}"
+echo "  Poetry (E2E tests)          : ${enable_poetry:=no} (poetry bin path: ${POETRY})"
 echo "  Java                        : ${enable_java:=no}"
 echo "  Java modules                : ${enable_java_modules:=no}"
 echo "  afsnmp module               : ${enable_afsnmp:=no}"

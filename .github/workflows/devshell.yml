@@ -10,7 +10,7 @@ jobs:
   general:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
+      image: alltilla/axosyslog-devshell-poetry:latest
       options: --privileged --ulimit core=-1
 
     strategy:
@@ -146,7 +146,7 @@ jobs:
   distcheck:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
+      image: alltilla/axosyslog-devshell-poetry:latest
       options: --security-opt seccomp=unconfined --ulimit core=-1
 
     steps:
@@ -191,7 +191,7 @@ jobs:
   style-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
+      image: alltilla/axosyslog-devshell-poetry:latest
 
     steps:
       - name: Checkout AxoSyslog source
@@ -245,7 +245,7 @@ jobs:
   copyright-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
+      image: alltilla/axosyslog-devshell-poetry:latest
       env:
         COPYRIGHTVERBOSITY: 1
 
@@ -269,7 +269,7 @@ jobs:
   commits-check:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
+      image: alltilla/axosyslog-devshell-poetry:latest
 
     steps:
       - name: Checkout AxoSyslog source

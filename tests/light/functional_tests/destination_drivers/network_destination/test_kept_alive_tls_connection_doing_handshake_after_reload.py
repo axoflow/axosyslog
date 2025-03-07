@@ -20,7 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
-from src.common.file import copy_shared_file
+from axosyslog_light.common.file import copy_shared_file
 
 
 def test_kept_alive_tls_connection_doing_handshake_after_reload(config, syslog_ng, port_allocator, testcase_parameters):
