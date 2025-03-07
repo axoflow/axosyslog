@@ -28,7 +28,7 @@
 typedef struct _AppTransformGenerator
 {
   AppObjectGenerator super;
-  const gchar *flavour;
+  const gchar *topic;
   const gchar *filterx_app_variable;
   GList *included_transforms;
   GList *excluded_transforms;
@@ -38,9 +38,9 @@ typedef struct _AppTransformGenerator
 static gboolean
 _parse_transforms_arg(AppTransformGenerator *self, CfgArgs *args, const gchar *reference)
 {
-  self->flavour = cfg_args_get(args, "flavour");
-  if (!self->flavour)
-    self->flavour = "default";
+  self->topic = cfg_args_get(args, "topic");
+  if (!self->topic)
+    self->topic = "default";
   return TRUE;
 }
 
@@ -131,7 +131,7 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
 {
   AppTransformGenerator *self = (AppTransformGenerator *) user_data;
 
-  if (strcmp(transformation->super.instance, self->flavour) != 0)
+  if (strcmp(transformation->super.instance, self->topic) != 0)
     return;
 
   if (!app_object_generator_is_application_included(&self->super, transformation->super.name))
@@ -162,10 +162,10 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
   AppTransformGenerator *self = (AppTransformGenerator *) s;
 
   self->block = result;
-  g_string_append_printf(result, "## app-transform(flavour(%s))\n"
+  g_string_append_printf(result, "## app-transform(topic(%s))\n"
                          "channel {\n"
                          "    filterx {\n"
-                         "        switch (%s) {\n", self->flavour, self->filterx_app_variable);
+                         "        switch (%s) {\n", self->topic, self->filterx_app_variable);
   appmodel_iter_transformations(cfg, _generate_app_transform, self);
   g_string_append(result, "        }\n"
                   "    };\n"
