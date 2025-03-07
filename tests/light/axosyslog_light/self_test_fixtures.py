@@ -33,15 +33,11 @@ def test_message():
 
 @pytest.fixture
 def fake_testcase_parameters(request, tmpdir):
-    orig_installdir = request.config.option.installdir
-    orig_reportdir = request.config.option.reports
     request.config.option.installdir = tmpdir.join("installdir")
     request.config.option.reports = tmpdir.join("reports")
-    request.config.option.runundertool = ""
+    request.config.option.run_under = ""
 
     yield TestcaseParameters(request)
-    request.config.option.installdir = orig_installdir
-    request.config.option.reports = orig_reportdir
 
 
 @pytest.fixture

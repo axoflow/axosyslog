@@ -34,14 +34,14 @@ class TestcaseParameters(object):
         absolute_framework_dir = Path(__file__).parents[2]
         self.testcase_parameters = {
             "dirs": {
-                "install_dir": Path(pytest_request.config.getoption("--installdir")),
+                "install_dir": Path(pytest_request.config.getoption("installdir")),
                 "shared_dir": Path(absolute_framework_dir, "shared_files"),
             },
             "file_paths": {
                 "testcase_file": Path(pytest_request.fspath),
             },
             "testcase_name": testcase_name,
-            "external_tool": pytest_request.config.getoption("--run-under"),
+            "external_tool": pytest_request.config.getoption("run_under"),
         }
 
     def get_install_dir(self):
