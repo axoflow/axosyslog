@@ -65,21 +65,23 @@ EXTRA_DIST += \
 	tests/light/axosyslog_light/syslog_ng_config/statements/sources/__init__.py \
 	tests/light/axosyslog_light/syslog_ng_config/statements/sources/internal_source.py \
 	tests/light/axosyslog_light/syslog_ng_config/statements/sources/network_source.py \
-	tests/light/axosyslog_light/syslog_ng_config/statements/sources/syslog_source.py \
 	tests/light/axosyslog_light/syslog_ng_config/statements/sources/source_driver.py \
+	tests/light/axosyslog_light/syslog_ng_config/statements/sources/syslog_source.py \
+	tests/light/axosyslog_light/syslog_ng_config/statements/template/__init__.py \
+	tests/light/axosyslog_light/syslog_ng_config/statements/template/template.py \
 	tests/light/axosyslog_light/syslog_ng_config/syslog_ng_config.py \
 	tests/light/axosyslog_light/syslog_ng/console_log_reader.py \
-	tests/light/axosyslog_light/syslog_ng_ctl/legacy_stats_handler.py \
 	tests/light/axosyslog_light/syslog_ng_ctl/__init__.py \
+	tests/light/axosyslog_light/syslog_ng_ctl/legacy_stats_handler.py \
 	tests/light/axosyslog_light/syslog_ng_ctl/prometheus_stats_handler.py \
+	tests/light/axosyslog_light/syslog_ng_ctl/syslog_ng_ctl_docker_executor.py \
 	tests/light/axosyslog_light/syslog_ng_ctl/syslog_ng_ctl_executor.py \
 	tests/light/axosyslog_light/syslog_ng_ctl/syslog_ng_ctl_local_executor.py \
-	tests/light/axosyslog_light/syslog_ng_ctl/syslog_ng_ctl_docker_executor.py \
 	tests/light/axosyslog_light/syslog_ng_ctl/syslog_ng_ctl.py \
 	tests/light/axosyslog_light/syslog_ng/__init__.py \
+	tests/light/axosyslog_light/syslog_ng/syslog_ng_docker_executor.py \
 	tests/light/axosyslog_light/syslog_ng/syslog_ng_executor.py \
 	tests/light/axosyslog_light/syslog_ng/syslog_ng_local_executor.py \
-	tests/light/axosyslog_light/syslog_ng/syslog_ng_docker_executor.py \
 	tests/light/axosyslog_light/syslog_ng/syslog_ng_paths.py \
 	tests/light/axosyslog_light/syslog_ng/syslog_ng.py \
 	tests/light/axosyslog_light/syslog_ng/tests/__init__.py \
