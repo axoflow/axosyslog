@@ -25,6 +25,8 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-json.h"
 
+#define FILTERX_LIST_MAX_LENGTH  65536
+
 FilterXObject *
 filterx_list_get_subscript(FilterXObject *s, gint64 index)
 {
@@ -108,7 +110,7 @@ _normalize_index(FilterXList *self, gint64 index, guint64 *normalized_index, con
       return TRUE;
     }
 
-  if (len > G_MAXINT64)
+  if (len > FILTERX_LIST_MAX_LENGTH)
     {
       *error = "Index exceeds maximal supported value";
       return FALSE;
