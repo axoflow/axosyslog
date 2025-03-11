@@ -175,9 +175,8 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
 
   FilterXObject *cloned_value = filterx_object_clone(value);
-  filterx_scope_set_variable(scope, variable, cloned_value, TRUE);
+  filterx_scope_set_variable(scope, variable, &cloned_value, TRUE);
   filterx_object_unref(cloned_value);
-
 
   if (debug_flag)
     {

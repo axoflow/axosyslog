@@ -97,7 +97,7 @@ filterx_scope_get_variable(FilterXScope *self, FilterXVariable *v)
 }
 
 static inline void
-filterx_scope_set_variable(FilterXScope *self, FilterXVariable *v, FilterXObject *value, gboolean assignment)
+filterx_scope_set_variable(FilterXScope *self, FilterXVariable *v, FilterXObject **value, gboolean assignment)
 {
   if (filterx_variable_is_floating(v))
     {

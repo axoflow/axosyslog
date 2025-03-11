@@ -241,7 +241,7 @@ filterx_scope_register_variable(FilterXScope *self,
       self->syncable = TRUE;
 
       /* NOTE: value may be NULL on an error, in that case the variable becomes an unset one */
-      filterx_variable_set_value(v, value, FALSE, self->msg->generation);
+      filterx_variable_set_value(v, &value, FALSE, self->msg->generation);
       filterx_object_unref(value);
     }
   else

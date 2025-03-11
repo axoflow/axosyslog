@@ -111,11 +111,18 @@ filterx_variable_get_value(FilterXVariable *v)
 }
 
 static inline void
-filterx_variable_set_value(FilterXVariable *v, FilterXObject *new_value, gboolean assignment,
+filterx_variable_set_value(FilterXVariable *v, FilterXObject **new_value, gboolean assignment,
                            FilterXGenCounter generation)
 {
   filterx_object_unref(v->value);
-  v->value = filterx_object_ref(new_value);
+  if (new_value)
+    {
+      v->value = filterx_object_ref(*new_value);
+    }
+  else
+    {
+      v->value = NULL;
+    }
   v->assigned = assignment;
   v->generation = generation;
 }

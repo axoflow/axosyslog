@@ -78,7 +78,7 @@ _eval_variable(FilterXExpr *s)
 }
 
 static void
-_update_repr(FilterXExpr *s, FilterXObject *new_repr)
+_update_repr(FilterXExpr *s, FilterXObject **new_repr)
 {
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
   FilterXEvalContext *context = filterx_eval_get_context();
@@ -108,7 +108,7 @@ _assign(FilterXExpr *s, FilterXObject *new_value)
 
   /* this only clones mutable objects */
   new_value = filterx_object_clone(new_value);
-  filterx_scope_set_variable(scope, variable, new_value, TRUE);
+  filterx_scope_set_variable(scope, variable, &new_value, TRUE);
   filterx_object_unref(new_value);
   return TRUE;
 }
