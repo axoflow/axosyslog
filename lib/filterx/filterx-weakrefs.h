@@ -82,5 +82,10 @@ filterx_weakref_get(FilterXWeakRef *self)
   return filterx_object_ref(self->object);
 }
 
+static inline gboolean
+filterx_weakref_is_set(FilterXWeakRef *self)
+{
+  return self->object != NULL;
+}
 
 #endif
