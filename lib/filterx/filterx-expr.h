@@ -41,7 +41,7 @@ struct _FilterXExpr
 
   /* not to be used except for FilterXMessageRef, replace any cached values
    * with the unmarshaled version */
-  void (*_update_repr)(FilterXExpr *self, FilterXObject *new_repr);
+  void (*_update_repr)(FilterXExpr *self, FilterXObject **new_repr);
 
   /* assign a new value to this expr */
   gboolean (*assign)(FilterXExpr *self, FilterXObject *new_value);
@@ -127,7 +127,7 @@ filterx_expr_eval_typed(FilterXExpr *self)
 
   filterx_object_unref(result);
   if (self->_update_repr)
-    self->_update_repr(self, unmarshalled);
+    self->_update_repr(self, &unmarshalled);
 
   return unmarshalled;
 }
