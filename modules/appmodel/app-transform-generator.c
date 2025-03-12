@@ -32,7 +32,6 @@ typedef struct _AppTransformGenerator
   const gchar *filterx_app_variable;
   GList *included_transforms;
   GList *excluded_transforms;
-  GString *block;
 } AppTransformGenerator;
 
 static gboolean
@@ -99,17 +98,6 @@ app_transform_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, co
   return TRUE;
 }
 
-static void
-_generate_steps(AppTransformGenerator *self, GList *steps)
-{
-  for (GList *l = steps; l; l = l->next)
-    {
-      TransformStep *step = l->data;
-      g_string_append_printf(self->block, "        # step: %s\n", step->name);
-      g_string_append_printf(self->block, "        %s\n", step->filterx_expr);
-    }
-}
-
 static gboolean
 _is_transform_included(AppTransformGenerator *self, const gchar *name)
 {
@@ -126,10 +114,51 @@ _is_transform_excluded(AppTransformGenerator *self, const gchar *name)
   return cfg_is_literal_in_list_of_literals(self->excluded_transforms, name);
 }
 
-static void
-_generate_app_transform(Transformation *transformation, gpointer user_data)
+static gboolean
+_is_transformation_filterx_only(AppTransformGenerator *self, Transformation *transformation)
 {
-  AppTransformGenerator *self = (AppTransformGenerator *) user_data;
+  for (GList *l = transformation->transforms; l; l = l->next)
+    {
+      Transform *transform = l->data;
+
+      if (!_is_transform_included(self, transform->name) || _is_transform_excluded(self, transform->name))
+        continue;
+
+      if (!transform->filterx_only)
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+_generate_non_filterx_only_steps(AppTransformGenerator *self, GString *block, GList *steps)
+{
+  for (GList *l = steps; l; l = l->next)
+    {
+      TransformStep *step = l->data;
+
+      g_string_append_printf(block, "        # step: %s\n", step->name);
+      if (step->parser_expr)
+        {
+          g_string_append(block, "        parser {\n");
+          g_string_append(block, step->parser_expr);
+          g_string_append(block, "\n        };\n");
+        }
+      else if (step->filterx_expr)
+        {
+          g_string_append(block, "        filterx {\n");
+          g_string_append(block, step->filterx_expr);
+          g_string_append(block, "\n        };\n");
+        }
+    }
+}
+
+static void
+_generate_non_filterx_only_app_transform(Transformation *transformation, gpointer user_data)
+{
+  AppTransformGenerator *self = ((gpointer *) user_data)[0];
+  GString *block = ((gpointer *) user_data)[1];
 
   if (strcmp(transformation->super.instance, self->topic) != 0)
     return;
@@ -140,8 +169,23 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
   if (app_object_generator_is_application_excluded(&self->super, transformation->super.name))
     return;
 
-  g_string_append_printf(self->block, "\n#Start Application %s\n", transformation->super.name);
-  g_string_append_printf(self->block,     "    case '%s':\n", transformation->super.name);
+  if (_is_transformation_filterx_only(self, transformation))
+    return;
+
+  gboolean is_first_app = block->len == 0;
+
+  g_string_append_printf(block, "\n#Start Application %s\n", transformation->super.name);
+
+  if (is_first_app)
+    g_string_append(block, "    if {\n");
+  else
+    g_string_append(block, "    elif {\n");
+
+  g_string_append_printf(block,
+                         "        filterx { %s === '%s'; };\n",
+                         self->filterx_app_variable,
+                         transformation->super.name);
+
   for (GList *l = transformation->transforms; l; l = l->next)
     {
       Transform *transform = l->data;
@@ -149,28 +193,131 @@ _generate_app_transform(Transformation *transformation, gpointer user_data)
       if (!_is_transform_included(self, transform->name) || _is_transform_excluded(self, transform->name))
         continue;
 
-      _generate_steps(self, transform->steps);
+      _generate_non_filterx_only_steps(self, block, transform->steps);
     }
-  g_string_append(self->block,            "        break;\n");
-  g_string_append_printf(self->block, "\n#End Application %s\n", transformation->super.name);
+
+  g_string_append(block, "    }\n");
+  g_string_append_printf(block, "#End Application %s\n", transformation->super.name);
 }
 
+static void
+_append_spaces(GString *block, guint spaces)
+{
+  for (guint i = 0; i < spaces; i++)
+    g_string_append_c(block, ' ');
+}
+
+static void
+_generate_filterx_only_steps(AppTransformGenerator *self, GString *block, guint spaces, GList *steps)
+{
+  for (GList *l = steps; l; l = l->next)
+    {
+      TransformStep *step = l->data;
+      g_assert(step->filterx_expr);
+
+      _append_spaces(block, spaces);
+      g_string_append_printf(block, "\n                # step: %s\n", step->name);
+      g_string_append(block, step->filterx_expr);
+    }
+}
+
+static void
+_generate_filterx_only_app_transform_cases(Transformation *transformation, gpointer user_data)
+{
+  AppTransformGenerator *self = ((gpointer *) user_data)[0];
+  GString *block = ((gpointer *) user_data)[1];
+  guint spaces = GPOINTER_TO_UINT(((gpointer *) user_data)[2]);
+
+  if (strcmp(transformation->super.instance, self->topic) != 0)
+    return;
+
+  if (!app_object_generator_is_application_included(&self->super, transformation->super.name))
+    return;
+
+  if (app_object_generator_is_application_excluded(&self->super, transformation->super.name))
+    return;
+
+  if (!_is_transformation_filterx_only(self, transformation))
+    return;
+
+  g_string_append_printf(block, "\n#Start Application %s\n", transformation->super.name);
+  _append_spaces(block, spaces);
+  g_string_append_printf(block, "            case '%s':\n", transformation->super.name);
+
+  for (GList *l = transformation->transforms; l; l = l->next)
+    {
+      Transform *transform = l->data;
+
+      if (!_is_transform_included(self, transform->name) || _is_transform_excluded(self, transform->name))
+        continue;
+
+      _generate_filterx_only_steps(self, block, spaces, transform->steps);
+    }
+
+  g_string_append_c(block, '\n');
+  _append_spaces(block, spaces);
+  g_string_append(block, "                break;\n");
+  g_string_append_printf(block, "#End Application %s\n", transformation->super.name);
+}
 
 static void
 app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString *result)
 {
   AppTransformGenerator *self = (AppTransformGenerator *) s;
 
-  self->block = result;
-  g_string_append_printf(result, "## app-transform(topic(%s))\n"
-                         "channel {\n"
-                         "    filterx {\n"
-                         "        switch (%s) {\n", self->topic, self->filterx_app_variable);
-  appmodel_iter_transformations(cfg, _generate_app_transform, self);
-  g_string_append(result, "        }\n"
-                  "    };\n"
-                  "}");
-  self->block = NULL;
+  GString *block = g_string_new(NULL);
+  guint spaces = 0;
+  gconstpointer user_data[] = { self, block, GUINT_TO_POINTER(spaces) };
+
+  g_string_append_printf(result,
+                         "## app-transform(topic(%s))\n"
+                         "channel {\n",
+                         self->topic);
+
+  appmodel_iter_transformations(cfg, _generate_non_filterx_only_app_transform, user_data);
+  gboolean has_non_filterx = block->len > 0;
+
+  if (has_non_filterx)
+    {
+      g_string_append(result, block->str);
+      g_string_truncate(block, 0);
+      spaces = 4;
+    }
+
+  appmodel_iter_transformations(cfg, _generate_filterx_only_app_transform_cases, user_data);
+  gboolean has_filterx = block->len > 0;
+
+  if (has_non_filterx && !has_filterx)
+    {
+      g_string_append(result, ";\n");
+    }
+  else if (has_non_filterx && has_filterx)
+    {
+      g_string_append_printf(result,
+                             "    else {\n"
+                             "        filterx {\n"
+                             "            switch (%s) {\n"
+                             "%s\n"
+                             "            };\n"
+                             "        };\n"
+                             "    };\n",
+                             self->filterx_app_variable,
+                             block->str);
+    }
+  else if (!has_non_filterx && has_filterx)
+    {
+      g_string_append_printf(result,
+                             "    filterx {\n"
+                             "        switch (%s) {\n"
+                             "%s\n"
+                             "        };\n"
+                             "    };\n",
+                             self->filterx_app_variable,
+                             block->str);
+    }
+
+  g_string_append(result, "};\n");
+  g_string_free(block, TRUE);
 }
 
 static void
