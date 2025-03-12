@@ -211,7 +211,10 @@ class SyslogNg(object):
             raise Exception(f"Unknown external tool: {self.__external_tool}")
 
         if self.start_params.stderr and self.start_params.debug and self.start_params.verbose:
-            self.__wait_for_start()
+            if self.start_params.preprocess_into is None and not self.start_params.syntax_only:
+                self.__wait_for_start()
+            else:
+                self.__process.wait()
 
     def __error_handling(self, error_message: str) -> typing.NoReturn:
         self.__console_log_reader.dump_stderr()
