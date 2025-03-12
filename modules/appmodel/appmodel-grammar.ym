@@ -132,7 +132,7 @@ transform_steps
 transform_step
 	: KW_STEP '[' string ']' _block_content_context_push LL_BLOCK _block_content_context_pop
           {
-	    transform_add_step($<ptr>0, $3, $6); free($3); free($6);
+	    transform_add_filterx_step($<ptr>0, $3, $6); free($3); free($6);
 	  }
 	;
 

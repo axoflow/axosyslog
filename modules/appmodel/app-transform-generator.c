@@ -106,7 +106,7 @@ _generate_steps(AppTransformGenerator *self, GList *steps)
     {
       TransformStep *step = l->data;
       g_string_append_printf(self->block, "        # step: %s\n", step->name);
-      g_string_append_printf(self->block, "        %s\n", step->expr);
+      g_string_append_printf(self->block, "        %s\n", step->filterx_expr);
     }
 }
 

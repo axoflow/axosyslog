@@ -25,11 +25,11 @@
 /* TransformStep: a named filterx block */
 
 TransformStep *
-transform_step_new(const gchar *name, const gchar *expr)
+transform_step_filterx_new(const gchar *name, const gchar *expr)
 {
   TransformStep *self = g_new0(TransformStep, 1);
   self->name = g_strdup(name);
-  self->expr = g_strdup(expr);
+  self->filterx_expr = g_strdup(expr);
   return self;
 }
 
@@ -37,16 +37,16 @@ void
 transform_step_free(TransformStep *self)
 {
   g_free(self->name);
-  g_free(self->expr);
+  g_free(self->filterx_expr);
   g_free(self);
 }
 
 /* Transform: named list of TransformSteps */
 
 void
-transform_add_step(Transform *self, const gchar *name, const gchar *expr)
+transform_add_filterx_step(Transform *self, const gchar *name, const gchar *expr)
 {
-  self->steps = g_list_append(self->steps, transform_step_new(name, expr));
+  self->steps = g_list_append(self->steps, transform_step_filterx_new(name, expr));
 }
 
 Transform *
