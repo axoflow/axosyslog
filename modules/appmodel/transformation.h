@@ -31,9 +31,11 @@ typedef struct _TransformStep
 {
   gchar *name;
   gchar *filterx_expr;
+  gchar *parser_expr;
 } TransformStep;
 
 TransformStep *transform_step_filterx_new(const gchar *name, const gchar *expr);
+TransformStep *transform_step_parser_new(const gchar *name, const gchar *expr);
 void transform_step_free(TransformStep *self);
 
 
@@ -41,9 +43,11 @@ typedef struct _Transform
 {
   gchar *name;
   GList *steps;
+  gboolean filterx_only;
 } Transform;
 
 void transform_add_filterx_step(Transform *self, const gchar *name, const gchar *step);
+void transform_add_parser_step(Transform *self, const gchar *name, const gchar *step);
 Transform *transform_new(const gchar *name);
 void transform_free(Transform *self);
 

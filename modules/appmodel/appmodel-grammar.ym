@@ -134,6 +134,10 @@ transform_step
 	  {
 	    transform_add_filterx_step($<ptr>0, $3, $8); free($3); free($8);
 	  }
+	| KW_STEP '[' string ']' '{' KW_PARSER _block_content_context_push LL_BLOCK _block_content_context_pop semicolons '}'
+	  {
+	    transform_add_parser_step($<ptr>0, $3, $8); free($3); free($8);
+	  }
 	;
 
 /* INCLUDE_RULES */

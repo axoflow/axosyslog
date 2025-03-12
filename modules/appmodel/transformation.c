@@ -33,11 +33,21 @@ transform_step_filterx_new(const gchar *name, const gchar *expr)
   return self;
 }
 
+TransformStep *
+transform_step_parser_new(const gchar *name, const gchar *expr)
+{
+  TransformStep *self = g_new0(TransformStep, 1);
+  self->name = g_strdup(name);
+  self->parser_expr = g_strdup(expr);
+  return self;
+}
+
 void
 transform_step_free(TransformStep *self)
 {
   g_free(self->name);
   g_free(self->filterx_expr);
+  g_free(self->parser_expr);
   g_free(self);
 }
 
@@ -49,11 +59,19 @@ transform_add_filterx_step(Transform *self, const gchar *name, const gchar *expr
   self->steps = g_list_append(self->steps, transform_step_filterx_new(name, expr));
 }
 
+void
+transform_add_parser_step(Transform *self, const gchar *name, const gchar *expr)
+{
+  self->steps = g_list_append(self->steps, transform_step_parser_new(name, expr));
+  self->filterx_only = FALSE;
+}
+
 Transform *
 transform_new(const gchar *name)
 {
   Transform *self = g_new0(Transform, 1);
   self->name = g_strdup(name);
+  self->filterx_only = TRUE;
   return self;
 }
 
