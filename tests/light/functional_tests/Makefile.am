@@ -38,6 +38,9 @@ EXTRA_DIST += \
 	tests/light/functional_tests/logpath/test_named_logpaths_with_fallback_flag.py \
 	tests/light/functional_tests/logpath/test_named_logpaths_with_final_flag.py \
 	tests/light/functional_tests/parsers/app-parser/test_app_parser.py \
+	tests/light/functional_tests/parsers/app-transform/test_app_transform_filterx.py \
+	tests/light/functional_tests/parsers/app-transform/test_app_transform_parser_and_filterx.py \
+	tests/light/functional_tests/parsers/app-transform/test_app_transform_parser.py \
 	tests/light/functional_tests/parsers/app-parser/test_topic_syslog.py \
 	tests/light/functional_tests/parsers/app-parser/test_topic_syslog_raw.py \
 	tests/light/functional_tests/parsers/checkpoint/test_checkpoint.py \
