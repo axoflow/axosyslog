@@ -94,6 +94,7 @@ python3-dev                 [debian-sid, ubuntu-focal, devshell]
 python3-devel               [fedora]
 python3-pip                     [debian, ubuntu]
 python3-venv			[debian, ubuntu, devshell]
+python3-poetry              [devshell]
 
 # libmongoc and libbson packages on various platforms
 # Because we are using fixed version of libmongoc on Bionic, we need to

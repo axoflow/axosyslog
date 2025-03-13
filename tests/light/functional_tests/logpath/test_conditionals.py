@@ -20,8 +20,8 @@
 # COPYING for details.
 #
 #############################################################################
-from src.common.blocking import wait_until_true
-from src.syslog_ng_config.renderer import render_statement
+from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
 def create_config(config, test_config, msg="foobar"):
