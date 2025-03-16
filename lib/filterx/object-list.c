@@ -126,11 +126,10 @@ _filterx_list_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_v
   if (index >= self->array->len)
     g_ptr_array_set_size(self->array, index + 1);
 
-  FilterXObject *stored_object = filterx_ref_new(filterx_object_ref(*new_value));
-
   FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, index);
+  filterx_object_cow_container_clear(*slot);
   filterx_object_unref(*slot);
-  *slot = filterx_object_ref(stored_object);
+  *slot = filterx_object_cow_store(new_value);
   return TRUE;
 }
 
@@ -147,7 +146,10 @@ static gboolean
 _filterx_list_unset_index(FilterXList *s, guint64 index)
 {
   FilterXListObject *self = (FilterXListObject *) s;
+
   g_assert(index <= self->array->len);
+  FilterXObject *v = (FilterXObject *) g_ptr_array_index(self->array, index);
+  filterx_object_cow_container_clear(v);
   g_ptr_array_remove_index(self->array, index);
   return TRUE;
 }

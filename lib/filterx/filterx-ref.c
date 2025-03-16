@@ -28,7 +28,7 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  return filterx_ref_new(filterx_object_ref(self->value));
+  return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
 static void
@@ -74,7 +74,7 @@ _filterx_ref_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_
   _filterx_ref_cow(self);
 
   gboolean result = filterx_object_setattr(self->value, attr, new_value);
-  filterx_ref_propagate_root(*new_value, self);
+  filterx_object_cow_container_set(*new_value, s);
   return result;
 }
 
@@ -86,7 +86,7 @@ _filterx_ref_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject *
   _filterx_ref_cow(self);
 
   gboolean result = filterx_object_set_subscript(self->value, key, new_value);
-  filterx_ref_propagate_root(*new_value, self);
+  filterx_object_cow_container_set(*new_value, s);
   return result;
 }
 

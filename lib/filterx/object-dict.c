@@ -54,6 +54,7 @@ static inline void
 filterx_dict_entry_clear(FilterXDictEntry *entry)
 {
   filterx_object_unref(entry->key);
+  filterx_object_cow_container_clear(entry->value);
   filterx_object_unref(entry->value);
   entry->key = entry->value = NULL;
 }
@@ -306,6 +307,7 @@ _table_lookup_index_slot(FilterXDictTable *table, FilterXObject *key, guint hash
   g_assert_not_reached();
 }
 
+/* NOTE: consumes refs of both key/value */
 static void
 _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
 {
@@ -331,8 +333,8 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
     }
   /* entry is not zero initialized, make sure you will all fields */
   entry->hash = hash;
-  entry->key = filterx_object_ref(key);
-  entry->value = filterx_object_ref(value);
+  entry->key = key;
+  entry->value = value;
 }
 
 static gboolean
@@ -570,10 +572,8 @@ _filterx_dict_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **
   if (!_is_string(key))
     return FALSE;
 
-  FilterXObject *stored_object = filterx_ref_new(filterx_object_ref(*new_value));
-
   self->table = _table_resize_if_needed(self->table);
-  _table_insert(self->table, key, stored_object);
+  _table_insert(self->table, filterx_object_ref(key), filterx_object_cow_store(new_value));
 
   return TRUE;
 }
@@ -629,7 +629,7 @@ _filterx_list_factory(FilterXObject *self)
 }
 
 static FilterXObject *
-filterx_dict_new_with_table(FilterXDictTable *table)
+filterx_dict_new_with_table(FilterXDictTable *table, const gchar *site)
 {
   FilterXDictObject *self = g_new0(FilterXDictObject, 1);
 
@@ -650,14 +650,14 @@ _filterx_dict_clone(FilterXObject *s)
   FilterXDictTable *new_table = _table_new(self->table->size);
 
   _table_copy(new_table, self->table, TRUE);
-  FilterXObject *clone = filterx_dict_new_with_table(new_table);
+  FilterXObject *clone = filterx_dict_new_with_table(new_table, "clone");
   return clone;
 }
 
 FilterXObject *
 filterx_dict_new(void)
 {
-  return filterx_dict_new_with_table(_table_new(32));
+  return filterx_dict_new_with_table(_table_new(32), "new");
 }
 
 static void
