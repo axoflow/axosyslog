@@ -89,25 +89,4 @@ filterx_ref_unwrap_rw(FilterXObject *s)
 
 FilterXObject *_filterx_ref_new(FilterXObject *value);
 
-static inline FilterXObject *
-filterx_ref_new(FilterXObject *value)
-{
-  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
-    return value;
-  return _filterx_ref_new(value);
-}
-
-static inline void
-filterx_ref_propagate_root(FilterXObject *s, FilterXRef *from)
-{
-  if (s->type == &FILTERX_TYPE_NAME(ref))
-    {
-      FilterXRef *self = (FilterXRef *) s;
-
-      filterx_weakref_copy(&self->root_container, &from->root_container);
-      if (!filterx_weakref_is_set(&self->root_container))
-        filterx_weakref_set(&self->root_container, &from->super);
-    }
-}
-
 #endif
