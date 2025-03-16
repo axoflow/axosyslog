@@ -483,4 +483,64 @@ filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
   return _filterx_object_is_type(object, type);
 }
 
+/*
+ * Make sure mutable objects are encapsulated into a FilterXRef.  To be
+ * called as the first thing before an object can be assigned to a variable
+ * or stored in a dict/list.
+ *
+ * NOTE: potentially replaces *value with a FilterXRef, sinking the passed
+ * reference, returning a FilterXRef instead.
+ */
+static inline void
+filterx_object_cow_wrap(FilterXObject **o)
+{
+  FilterXObject *value = *o;
+  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
+    return;
+  *o = _filterx_ref_new(value);
+}
+
+
+/* NOTE: potentially replaces *value with a FilterXRef, sinking the passed
+ * reference.  It replaces the copied object as a return value */
+static inline FilterXObject *
+filterx_object_cow_fork(FilterXObject **o)
+{
+  filterx_object_cow_wrap(o);
+  return filterx_object_clone(*o);
+}
+
+/* */
+static inline FilterXObject *
+filterx_object_cow_store(FilterXObject **o)
+{
+  filterx_object_cow_wrap(o);
+  return filterx_object_ref(*o);
+}
+
+static inline void
+filterx_object_cow_container_set(FilterXObject *s, FilterXObject *f)
+{
+  if (s->type == &FILTERX_TYPE_NAME(ref) && f->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+      FilterXRef *from = (FilterXRef *) f;
+
+      filterx_weakref_copy(&self->root_container, &from->root_container);
+      if (!filterx_weakref_is_set(&self->root_container))
+        filterx_weakref_set(&self->root_container, &from->super);
+    }
+}
+
+static inline void
+filterx_object_cow_container_clear(FilterXObject *s)
+{
+  if (s && s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+
+      filterx_weakref_set(&self->root_container, NULL);
+    }
+}
+
 #endif
