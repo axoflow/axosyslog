@@ -53,6 +53,7 @@
 void
 _assert_cmp_lists(FilterXObject *expected, FilterXObject *provided)
 {
+  expected = filterx_ref_unwrap_ro(expected);
   cr_assert(filterx_object_is_type(expected, &FILTERX_TYPE_NAME(list)));
   cr_assert(filterx_object_is_type(provided, &FILTERX_TYPE_NAME(list)));
   guint64 expected_len, provided_len;
@@ -108,7 +109,6 @@ Test(expr_plus_generator, test_list_add_two_generators_with_post_set_fillable)
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(list)));
 
   FilterXObject *expected = filterx_json_array_new_from_repr("[\"foo\",\"bar\",\"baz\",\"other\"]", -1);
-
   _assert_cmp_lists(expected, res_object);
 
   filterx_expr_unref(expr);
