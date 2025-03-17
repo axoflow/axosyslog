@@ -26,6 +26,7 @@
 void
 filterx_weakref_set(FilterXWeakRef *self, FilterXObject *object)
 {
-  filterx_eval_store_weak_ref(object);
+  if (object)
+    filterx_eval_store_weak_ref(object);
   self->object = object;
 }
