@@ -480,4 +480,12 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
 
 #include "filterx-ref.h"
 
+static inline gboolean
+filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
+{
+  if (_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
+    return _filterx_object_is_type(((FilterXRef *) object)->value, type);
+  return _filterx_object_is_type(object, type);
+}
+
 #endif
