@@ -77,6 +77,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, list_factory);
   INIT_TYPE_METHOD(type, dict_factory);
   INIT_TYPE_METHOD(type, repr);
+  INIT_TYPE_METHOD(type, str);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
   INIT_TYPE_METHOD(type, free_fn);
