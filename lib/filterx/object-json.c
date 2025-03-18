@@ -227,13 +227,10 @@ filterx_json_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       return self;
     }
 
-  struct json_object *jso;
-  if (filterx_object_extract_json_object(arg, &jso))
-    return filterx_json_new_from_object(jso);
-
   const gchar *repr;
   gsize repr_len;
-  if (filterx_object_extract_string_ref(arg, &repr, &repr_len))
+  repr = filterx_string_get_value_ref(arg, &repr_len);
+  if (repr)
     return filterx_json_new_from_repr(repr, repr_len);
 
   filterx_eval_push_error_info("Argument must be a json, a string or a syslog-ng list", s,
