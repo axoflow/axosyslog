@@ -213,14 +213,7 @@ Test(expr_plus_generator, test_nested_dict_add_two_generators_with_post_set_fill
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(dict)));
 
-  struct json_object *jso = NULL;
-  FilterXObject *assoc_object = NULL;
-  cr_assert(filterx_object_map_to_json(res_object, &jso, &assoc_object));
-
-  const gchar *json_repr = json_object_to_json_string_ext(jso, JSON_C_TO_STRING_PLAIN);
-  cr_assert_str_eq(json_repr, "{\"foo\":{\"bar\":\"baz\"},\"tik\":{\"tak\":\"toe\"}}");
-  json_object_put(jso);
-  filterx_object_unref(assoc_object);
+  assert_object_json_equals(res_object, "{\"foo\":{\"bar\":\"baz\"},\"tik\":{\"tak\":\"toe\"}}");
 
   filterx_expr_unref(expr);
   filterx_expr_unref(fillable);

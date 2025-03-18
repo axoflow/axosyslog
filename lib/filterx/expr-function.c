@@ -84,7 +84,7 @@ _get_arg_object(FilterXSimpleFunction *self, guint64 index)
   if (!expr)
     return NULL;
 
-  return filterx_expr_eval(expr);
+  return filterx_expr_eval_typed(expr);
 }
 
 static gboolean

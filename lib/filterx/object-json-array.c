@@ -327,13 +327,10 @@ filterx_json_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
   if (filterx_object_is_type(json_arr, &FILTERX_TYPE_NAME(json_array)))
     return filterx_object_ref(arg);
 
-  struct json_object *jso;
-  if (filterx_object_extract_json_array(arg, &jso))
-    return filterx_json_array_new_sub(jso, NULL);
-
   const gchar *repr;
   gsize repr_len;
-  if (filterx_object_extract_string_ref(arg, &repr, &repr_len))
+  repr = filterx_string_get_value_ref(arg, &repr_len);
+  if (repr)
     return filterx_json_array_new_from_repr(repr, repr_len);
 
   filterx_eval_push_error_info("Argument must be a json array, a string or a syslog-ng list", s,
