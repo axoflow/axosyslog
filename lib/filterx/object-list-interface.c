@@ -23,7 +23,8 @@
 
 #include "filterx/object-list-interface.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-json.h"
+
+#define FILTERX_LIST_MAX_LENGTH  65536
 
 FilterXObject *
 filterx_list_get_subscript(FilterXObject *s, gint64 index)
@@ -92,23 +93,23 @@ _len(FilterXObject *s, guint64 *len)
 }
 
 static inline gboolean
-_normalize_index(FilterXList *self, gint64 index, guint64 *normalized_index, const gchar **error)
+_normalize_index(FilterXList *self, gint64 index, guint64 *normalized_index, gboolean allow_tail, const gchar **error)
 {
   guint64 len = self->len(self);
 
   if (index >= 0)
     {
-      if (index >= len)
+      if (index > len ||
+          (index == len && !allow_tail))
         {
           *error = "Index out of range";
           return FALSE;
         }
-
       *normalized_index = (guint64) index;
       return TRUE;
     }
 
-  if (len > G_MAXINT64)
+  if (len > FILTERX_LIST_MAX_LENGTH)
     {
       *error = "Index exceeds maximal supported value";
       return FALSE;
@@ -140,7 +141,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, &error))
+  if (!_normalize_index(self, index, &normalized_index, FALSE, &error))
     {
       msg_error("FilterX: Failed to get element from list",
                 evt_tag_str("error", error),
@@ -171,7 +172,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, &error))
+  if (!_normalize_index(self, index, &normalized_index, TRUE, &error))
     {
       msg_error("FilterX: Failed to set element of list",
                 evt_tag_str("error", error),
@@ -206,7 +207,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  return _normalize_index(self, index, &normalized_index, &error);
+  return _normalize_index(self, index, &normalized_index, FALSE, &error);
 }
 
 static gboolean
@@ -232,7 +233,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, &error))
+  if (!_normalize_index(self, index, &normalized_index, FALSE, &error))
     {
       msg_error("FilterX: Failed to unset element of list",
                 evt_tag_str("error", error),
@@ -245,42 +246,30 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 }
 
 static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_format_json(FilterXObject *s, GString *json)
 {
-  *object = json_object_new_array();
+  gboolean first = TRUE;
 
-  guint64 len;
-  g_assert(filterx_object_len(s, &len));
+  guint64 list_len;
+  if (!filterx_object_len(s, &list_len))
+    return FALSE;
 
-  for (guint64 i = 0; i < len; i++)
+  g_string_append_c(json, '[');
+  for (guint64 i = 0; i < list_len; i++)
     {
-      FilterXObject *value_obj = filterx_list_get_subscript(s, (gint64) MIN(i, G_MAXINT64));
+      if (!first)
+        g_string_append_c(json, ',');
+      else
+        first = FALSE;
+      FilterXObject *elem = filterx_list_get_subscript(s, i);
+      gboolean success = filterx_object_format_json_append(elem, json);
+      filterx_object_unref(elem);
 
-      struct json_object *value;
-      FilterXObject *elem_assoc_object = NULL;
-      if (!filterx_object_map_to_json(value_obj, &value, &elem_assoc_object))
-        {
-          filterx_object_unref(value_obj);
-          goto error;
-        }
-
-      filterx_object_unref(elem_assoc_object);
-      filterx_object_unref(value_obj);
-
-      if (json_object_array_add(*object, value) != 0)
-        {
-          json_object_put(value);
-          goto error;
-        }
+      if (!success)
+        return FALSE;
     }
-
-  *assoc_object = filterx_json_new_from_object(json_object_get(*object));
+  g_string_append_c(json, ']');
   return TRUE;
-
-error:
-  json_object_put(*object);
-  *object = NULL;
-  return FALSE;
 }
 
 void
@@ -322,6 +311,6 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(object),
                     .set_subscript = _set_subscript,
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
-                    .map_to_json = _map_to_json,
+                    .format_json = _format_json,
                     .add = _add,
                    );

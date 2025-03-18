@@ -66,7 +66,6 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, unmarshal);
   INIT_TYPE_METHOD(type, marshal);
   INIT_TYPE_METHOD(type, clone);
-  INIT_TYPE_METHOD(type, map_to_json);
   INIT_TYPE_METHOD(type, truthy);
   INIT_TYPE_METHOD(type, getattr);
   INIT_TYPE_METHOD(type, setattr);
@@ -78,6 +77,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, dict_factory);
   INIT_TYPE_METHOD(type, repr);
   INIT_TYPE_METHOD(type, str);
+  INIT_TYPE_METHOD(type, format_json);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
   INIT_TYPE_METHOD(type, free_fn);

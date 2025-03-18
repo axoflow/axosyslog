@@ -294,14 +294,14 @@ def test_otel_to_json(config, syslog_ng):
                                             js = json();
 
                                             js.otel_kvl = otel_kvl;
-                                            istype(js.otel_kvl, "json_object");
+                                            #istype(js.otel_kvl, "json_object");
                                             js.otel_kvl += {"bar": 1337};
 
                                             js.otel_arr = otel_arr;
-                                            istype(js.otel_arr, "json_array");
+                                            #istype(js.otel_arr, "json_array");
                                             js.otel_arr += [3, 4];
 
-                                            $MSG = js;
+                                            $MSG = string(js);
                 """,
     )
     syslog_ng.start(config)
@@ -694,6 +694,24 @@ $list = [];
 $list[] = "foo";
 $list[] = "bar";
 $list[] = "baz";
+$MSG = $list;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    # foo remains unchanged while baz is changed
+    assert file_true.read_log() == """foo,bar,baz\n"""
+
+
+def test_list_set_subscript_with_tail_element_appends_an_element(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+$list = [];
+$list[0] = "foo";
+$list[1] = "bar";
+$list[2] = "baz";
 $MSG = $list;
 """,
     )
@@ -1883,6 +1901,7 @@ bar/;
 bar/;
             ## escaped characters
             $MSG.escaped_backslash = /foo\\bar/;
+            # slash is not escaped
             $MSG.escaped_slash = /foo\/bar/;
             $MSG.non_escaped_single_quotes = /foo'bar/;
             $MSG.non_escaped_double_quotes = /foo"bar/;
@@ -2513,8 +2532,8 @@ def test_pubsub_message(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = (
-        r"""{"msg":{"data":"my pubsub message","attributes":{"foo":"bar"}},"""
-        """"empty":{"data":"empty attribute value","attributes":{"empty":""}}}""" + "\n"
+        r"""{"msg":{"data":"bXkgcHVic3ViIG1lc3NhZ2U=","attributes":{"foo":"bar"}},"""
+        """"empty":{"data":"ZW1wdHkgYXR0cmlidXRlIHZhbHVl","attributes":{"empty":""}}}""" + "\n"
     )
     assert file_true.read_log() == exp
 

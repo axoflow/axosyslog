@@ -37,14 +37,14 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1;
+  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, writable_requested:1;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
    * with the unmarshaled version */
-  void (*_update_repr)(FilterXExpr *self, FilterXObject *new_repr);
+  void (*_update_repr)(FilterXExpr *self, FilterXObject **new_repr);
 
   /* assign a new value to this expr */
-  gboolean (*assign)(FilterXExpr *self, FilterXObject *new_value);
+  gboolean (*assign)(FilterXExpr *self, FilterXObject **new_value);
 
   /* is the expression set? */
   gboolean (*is_set)(FilterXExpr *self);
@@ -127,13 +127,13 @@ filterx_expr_eval_typed(FilterXExpr *self)
 
   filterx_object_unref(result);
   if (self->_update_repr)
-    self->_update_repr(self, unmarshalled);
+    self->_update_repr(self, &unmarshalled);
 
   return unmarshalled;
 }
 
 static inline gboolean
-filterx_expr_assign(FilterXExpr *self, FilterXObject *new_value)
+filterx_expr_assign(FilterXExpr *self, FilterXObject **new_value)
 {
   if (self->assign)
     return self->assign(self, new_value);
@@ -199,6 +199,12 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
     self->deinit(self, cfg);
 
   self->inited = FALSE;
+}
+
+static inline void
+filterx_expr_request_writable(FilterXExpr *s, gboolean value)
+{
+  s->writable_requested = value;
 }
 
 typedef struct _FilterXUnaryOp

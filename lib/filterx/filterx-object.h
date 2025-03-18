@@ -42,7 +42,6 @@ struct _FilterXType
   FilterXObject *(*unmarshal)(FilterXObject *self);
   gboolean (*marshal)(FilterXObject *self, GString *repr, LogMessageValueType *t);
   FilterXObject *(*clone)(FilterXObject *self);
-  gboolean (*map_to_json)(FilterXObject *self, struct json_object **object, FilterXObject **assoc_object);
   gboolean (*truthy)(FilterXObject *self);
   FilterXObject *(*getattr)(FilterXObject *self, FilterXObject *attr);
   gboolean (*setattr)(FilterXObject *self, FilterXObject *attr, FilterXObject **new_value);
@@ -52,13 +51,12 @@ struct _FilterXType
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
   FilterXObject *(*list_factory)(FilterXObject *self);
   FilterXObject *(*dict_factory)(FilterXObject *self);
+  gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*str)(FilterXObject *self, GString *str);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*make_readonly)(FilterXObject *self);
-  gboolean (*is_modified_in_place)(FilterXObject *self);
-  void (*set_modified_in_place)(FilterXObject *self, gboolean modified);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -95,15 +93,16 @@ struct _FilterXObject
 
   /* NOTE:
    *
-   *     modified_in_place -- set to TRUE in case the value in this
-   *                          FilterXObject was changed.
-   *                          don't use it directly, use
-   *                          filterx_object_{is,set}_modified_in_place()
    *     readonly          -- marks the object as unmodifiable,
    *                          propagates to the inner elements lazily
    *
+   *     weak_referenced   -- marks that this object is referenced via a at
+   *                          least one weakref already.
+   *
+   *     is_dirty          -- marks that the object was changed (mutable objects only)
+   *
    */
-  guint modified_in_place:1, readonly:1, weak_referenced:1;
+  guint readonly:1, weak_referenced:1, is_dirty:1;
   FilterXType *type;
 };
 
@@ -300,6 +299,19 @@ filterx_object_str_append(FilterXObject *self, GString *str)
 }
 
 static inline gboolean
+filterx_object_format_json(FilterXObject *self, GString *json)
+{
+  g_string_truncate(json, 0);
+  return self->type->format_json(self, json);
+}
+
+static inline gboolean
+filterx_object_format_json_append(FilterXObject *self, GString *json)
+{
+  return self->type->format_json(self, json);
+}
+
+static inline gboolean
 filterx_object_len(FilterXObject *self, guint64 *len)
 {
   if (!self->type->len)
@@ -332,24 +344,6 @@ filterx_object_clone(FilterXObject *self)
   if (self->readonly)
     return filterx_object_ref(self);
   return self->type->clone(self);
-}
-
-static inline gboolean
-filterx_object_map_to_json(FilterXObject *self, struct json_object **object, FilterXObject **assoc_object)
-{
-  *assoc_object = NULL;
-  if (self->type->map_to_json)
-    {
-      gboolean result = self->type->map_to_json(self, object, assoc_object);
-      if (!(*assoc_object))
-        *assoc_object = filterx_object_ref(self);
-
-      if (!self->readonly)
-        filterx_json_associate_cached_object(*object, *assoc_object);
-
-      return result;
-    }
-  return FALSE;
 }
 
 static inline gboolean
@@ -458,33 +452,95 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
 }
 
 static inline gboolean
-filterx_object_is_modified_in_place(FilterXObject *self)
+filterx_object_is_dirty(FilterXObject *self)
 {
-  if (G_UNLIKELY(self->type->is_modified_in_place))
-    return self->type->is_modified_in_place(self);
-
-  return self->modified_in_place;
+  return self->is_dirty;
 }
 
 static inline void
-filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
+filterx_object_set_dirty(FilterXObject *self, gboolean value)
 {
-  if (G_UNLIKELY(self->type->set_modified_in_place))
-    return self->type->set_modified_in_place(self, modified);
-
-  self->modified_in_place = modified;
+  self->is_dirty = value;
 }
 
 #define FILTERX_OBJECT_STACK_INIT(_type) \
   { \
     .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
     .fx_ref_cnt = { .counter = 0 }, \
-    .modified_in_place = FALSE, \
     .readonly = TRUE, \
     .weak_referenced = FALSE, \
+    .is_dirty = FALSE, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
 
 #include "filterx-ref.h"
+
+static inline gboolean
+filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
+{
+  if (_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
+    return _filterx_object_is_type(((FilterXRef *) object)->value, type);
+  return _filterx_object_is_type(object, type);
+}
+
+/*
+ * Make sure mutable objects are encapsulated into a FilterXRef.  To be
+ * called as the first thing before an object can be assigned to a variable
+ * or stored in a dict/list.
+ *
+ * NOTE: potentially replaces *value with a FilterXRef, sinking the passed
+ * reference, returning a FilterXRef instead.
+ */
+static inline void
+filterx_object_cow_wrap(FilterXObject **o)
+{
+  FilterXObject *value = *o;
+  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
+    return;
+  *o = _filterx_ref_new(value);
+}
+
+
+/* NOTE: potentially replaces *value with a FilterXRef, sinking the passed
+ * reference.  It replaces the copied object as a return value */
+static inline FilterXObject *
+filterx_object_cow_fork(FilterXObject **o)
+{
+  filterx_object_cow_wrap(o);
+  return filterx_object_clone(*o);
+}
+
+/* */
+static inline FilterXObject *
+filterx_object_cow_store(FilterXObject **o)
+{
+  filterx_object_cow_wrap(o);
+  return filterx_object_ref(*o);
+}
+
+static inline void
+filterx_object_cow_container_set(FilterXObject *s, FilterXObject *f)
+{
+  if (s->type == &FILTERX_TYPE_NAME(ref) && f->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+      FilterXRef *from = (FilterXRef *) f;
+
+      filterx_weakref_copy(&self->root_container, &from->root_container);
+      if (!filterx_weakref_is_set(&self->root_container))
+        filterx_weakref_set(&self->root_container, &from->super);
+    }
+}
+
+static inline void
+filterx_object_cow_container_clear(FilterXObject *s)
+{
+  if (s && s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+
+      filterx_weakref_set(&self->root_container, NULL);
+    }
+}
 
 #endif

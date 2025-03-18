@@ -32,7 +32,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-literal.h"
-#include "filterx/object-json.h"
+#include "filterx/object-dict.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-primitive.h"
@@ -123,7 +123,7 @@ error:
 FilterXObject *
 _eval_input_inner(GError **error, va_list vargs)
 {
-  FilterXExpr *func = _new_parser(_assert_create_args_inner(vargs), error, filterx_json_object_new_empty());
+  FilterXExpr *func = _new_parser(_assert_create_args_inner(vargs), error, filterx_dict_new());
   cr_assert_not_null(func);
   FilterXObject *obj = filterx_expr_eval(func);
   filterx_expr_unref(func);

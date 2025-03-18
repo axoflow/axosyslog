@@ -1,5 +1,8 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2024 László Várady
+ * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,14 +24,18 @@
  *
  */
 
-/* weakrefs is included into and exposed from filterx-object.h */
-#include "filterx/filterx-object.h"
-#include "filterx/filterx-eval.h"
+#ifndef FILTERX_JSON_REPR_H_INCLUDED
+#define FILTERX_JSON_REPR_H_INCLUDED
 
-void
-filterx_weakref_set(FilterXWeakRef *self, FilterXObject *object)
-{
-  if (object)
-    filterx_eval_store_weak_ref(object);
-  self->object = object;
-}
+#include "filterx/filterx-object.h"
+
+/* C API */
+FilterXObject *filterx_object_from_json_object(struct json_object *jso, GError **error);
+FilterXObject *filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error);
+gboolean filterx_object_to_json(FilterXObject *o, GString *repr);
+
+/* exported filterx functions */
+FilterXObject *filterx_format_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_parse_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+#endif
