@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,14 +22,15 @@
  *
  */
 
-/* weakrefs is included into and exposed from filterx-object.h */
-#include "filterx/filterx-object.h"
-#include "filterx/filterx-eval.h"
+#ifndef FILTERX_OBJECT_LIST_H
+#define FILTERX_OBJECT_LIST_H
 
-void
-filterx_weakref_set(FilterXWeakRef *self, FilterXObject *object)
-{
-  if (object)
-    filterx_eval_store_weak_ref(object);
-  self->object = object;
-}
+#include "filterx/filterx-object.h"
+
+FILTERX_DECLARE_TYPE(list_object);
+
+FilterXObject *filterx_list_new(void);
+FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
+FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+#endif

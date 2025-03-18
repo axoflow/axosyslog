@@ -48,6 +48,8 @@ _eval_get_subscript(FilterXExpr *s)
   result = filterx_object_get_subscript(variable, key);
   if (!result)
     filterx_eval_push_error("Object get-subscript failed", s, key);
+  if (s->writable_requested)
+    filterx_ref_unwrap_rw(result);
 exit:
   filterx_object_unref(key);
   filterx_object_unref(variable);
@@ -120,6 +122,8 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXGetSubscript *self = (FilterXGetSubscript *) s;
 
+  /* propagate writable request */
+  filterx_expr_request_writable(self->operand, s->writable_requested);
   if (!filterx_expr_init(self->operand, cfg))
     return FALSE;
 

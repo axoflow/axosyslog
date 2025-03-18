@@ -41,7 +41,7 @@
 #include "filterx/func-len.h"
 #include "filterx/expr-function.h"
 #include "filterx/expr-plus.h"
-#include "filterx/object-json.h"
+#include "filterx/json-repr.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 
@@ -273,8 +273,8 @@ Test(expr_plus, test_double_add_wrong_type)
 
 Test(expr_plus, test_list_add_list)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_json_array_new_from_repr("[\"foo\",\"bar\"]", -1));
-  FilterXExpr *rhs = filterx_literal_new(filterx_json_array_new_from_repr("[\"tik\",\"tak\"]", -1));
+  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\"]", -1, NULL));
+  FilterXExpr *rhs = filterx_literal_new(filterx_object_from_json("[\"tik\",\"tak\"]", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
@@ -292,7 +292,7 @@ Test(expr_plus, test_list_add_list)
 
 Test(expr_plus, test_list_add_wrong_type)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_json_array_new_from_repr("[\"foo\",\"bar\"]", -1));
+  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\"]", -1, NULL));
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
@@ -305,8 +305,8 @@ Test(expr_plus, test_list_add_wrong_type)
 
 Test(expr_plus, test_dict_add_dict)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_json_object_new_from_repr("{\"foo\":\"bar\"}", -1));
-  FilterXExpr *rhs = filterx_literal_new(filterx_json_object_new_from_repr("{\"tik\":\"tak\"}", -1));
+  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
+  FilterXExpr *rhs = filterx_literal_new(filterx_object_from_json("{\"tik\":\"tak\"}", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
@@ -323,7 +323,7 @@ Test(expr_plus, test_dict_add_dict)
 
 Test(expr_plus, test_dict_add_wrong_type)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_json_object_new_from_repr("{\"foo\":\"bar\"}", -1));
+  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);

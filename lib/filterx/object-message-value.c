@@ -27,7 +27,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/object-datetime.h"
-#include "filterx/object-json.h"
+#include "filterx/object-list.h"
+#include "filterx/json-repr.h"
 #include "logmsg/type-hinting.h"
 #include "str-utils.h"
 
@@ -184,7 +185,7 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
     case LM_VT_STRING:
       return filterx_string_new(repr, repr_len);
     case LM_VT_JSON:
-      return filterx_json_new_from_repr(repr, repr_len);
+      return filterx_object_from_json(repr, repr_len, NULL);
     case LM_VT_BOOLEAN:
       if (!type_cast_to_boolean(repr, repr_len, &b, NULL))
         return NULL;
@@ -202,7 +203,7 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
         return NULL;
       return filterx_datetime_new(&ut);
     case LM_VT_LIST:
-      return filterx_json_array_new_from_syslog_ng_list(repr, repr_len);
+      return filterx_list_new_from_syslog_ng_list(repr, repr_len);
     case LM_VT_NULL:
       return filterx_null_new();
     case LM_VT_BYTES:
@@ -215,24 +216,134 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
   return NULL;
 }
 
-/* NOTE: calling map_to_json() on a FilterXMessageValue is less than ideal as
- * we would unmarshal the value and then drop the result.  The expectation
- * is that the caller would explicitly unmarshall first, cache the result
- * and call map_to_json on the unmarshalled object.
- */
 static gboolean
-_map_to_json(FilterXObject *s, struct json_object **jso, FilterXObject **assoc_object)
+_repr(FilterXObject *s, GString *repr)
 {
-  FilterXObject *unmarshalled_object = filterx_object_unmarshal(s);
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
 
-  if (unmarshalled_object)
+  switch (self->type)
     {
-      gboolean result = filterx_object_map_to_json(unmarshalled_object, jso, assoc_object);
-      filterx_object_unref(unmarshalled_object);
-      return result;
+    case LM_VT_STRING:
+      g_string_append_len(repr, self->repr, self->repr_len);
+      return TRUE;
+    case LM_VT_JSON:
+      g_string_append_len(repr, self->repr, self->repr_len);
+      return TRUE;
+    case LM_VT_BOOLEAN:
+    {
+      gboolean val;
+      if (!type_cast_to_boolean(self->repr, self->repr_len, &val, NULL))
+        return FALSE;
+      return bool_repr(val, repr);
     }
-  else
-    return FALSE;
+    case LM_VT_INTEGER:
+    {
+      gint64 val;
+      if (!type_cast_to_int64(self->repr, self->repr_len, &val, NULL))
+        return FALSE;
+      return integer_repr(val, repr);
+    }
+    case LM_VT_DOUBLE:
+    {
+      double val;
+      if (!type_cast_to_double(self->repr, self->repr_len, &val, NULL))
+        return FALSE;
+      return double_repr(val, repr);
+    }
+    case LM_VT_DATETIME:
+    {
+      UnixTime ut = UNIX_TIME_INIT;
+      if (!type_cast_to_datetime_unixtime(self->repr, self->repr_len, &ut, NULL))
+        return FALSE;
+      return datetime_repr(&ut, repr);
+    }
+    case LM_VT_LIST:
+    {
+      FilterXObject *obj = filterx_object_unmarshal(s);
+      filterx_object_format_json_append(obj, repr);
+      filterx_object_unref(obj);
+      return TRUE;
+    }
+    case LM_VT_NULL:
+      return null_repr(repr);
+    case LM_VT_BYTES:
+      g_string_append_len(repr, self->repr, self->repr_len);
+      return TRUE;
+    case LM_VT_PROTOBUF:
+      g_string_append_len(repr, self->repr, self->repr_len);
+      return TRUE;
+    default:
+      g_assert_not_reached();
+    }
+
+  return FALSE;
+}
+
+static gboolean
+_str(FilterXObject *s, GString *repr)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+  switch (self->type)
+    {
+    case LM_VT_DATETIME:
+    {
+      UnixTime ut = UNIX_TIME_INIT;
+      if (!type_cast_to_datetime_unixtime(self->repr, self->repr_len, &ut, NULL))
+        return FALSE;
+      return datetime_str(&ut, repr);
+    }
+    default:
+      _repr(s, repr);
+      return TRUE;
+    }
+}
+
+static gboolean
+_format_json(FilterXObject *s, GString *json)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  switch (self->type)
+    {
+    case LM_VT_JSON:
+    case LM_VT_INTEGER:
+    case LM_VT_DOUBLE:
+      /* these values can directly be included into the json result */
+      g_string_append_len(json, self->repr, self->repr_len);
+      break;
+
+    case LM_VT_STRING:
+      return string_format_json(self->repr, self->repr_len, json);
+    case LM_VT_BOOLEAN:
+    {
+      gboolean val;
+      if (!type_cast_to_boolean(self->repr, self->repr_len, &val, NULL))
+        return FALSE;
+      return bool_format_json(val, json);
+    }
+    case LM_VT_DATETIME:
+    {
+      UnixTime ut = UNIX_TIME_INIT;
+      if (!type_cast_to_datetime_unixtime(self->repr, self->repr_len, &ut, NULL))
+        return FALSE;
+      return datetime_format_json(&ut, json);
+    }
+    case LM_VT_LIST:
+    {
+      FilterXObject *obj = filterx_object_unmarshal(s);
+      filterx_object_format_json_append(obj, json);
+      filterx_object_unref(obj);
+      return TRUE;
+    }
+    case LM_VT_NULL:
+      return null_format_json(json);
+    case LM_VT_BYTES:
+    case LM_VT_PROTOBUF:
+      return bytes_format_json(self->repr, self->repr_len, json);
+    default:
+      g_assert_not_reached();
+    }
+  return TRUE;
 }
 
 static gboolean
@@ -357,87 +468,6 @@ _free(FilterXObject *s)
   filterx_object_free_method(s);
 }
 
-static gboolean
-_repr(FilterXObject *s, GString *repr)
-{
-  FilterXMessageValue *self = (FilterXMessageValue *) s;
-
-  switch (self->type)
-    {
-    case LM_VT_STRING:
-      g_string_append_len(repr, self->repr, self->repr_len);
-      return TRUE;
-    case LM_VT_JSON:
-      g_string_append_len(repr, self->repr, self->repr_len);
-      return TRUE;
-    case LM_VT_BOOLEAN:
-    {
-      gboolean val;
-      if (!type_cast_to_boolean(self->repr, self->repr_len, &val, NULL))
-        return FALSE;
-      return bool_repr(val, repr);
-    }
-    case LM_VT_INTEGER:
-    {
-      gint64 val;
-      if (!type_cast_to_int64(self->repr, self->repr_len, &val, NULL))
-        return FALSE;
-      return integer_repr(val, repr);
-    }
-    case LM_VT_DOUBLE:
-    {
-      double val;
-      if (!type_cast_to_double(self->repr, self->repr_len, &val, NULL))
-        return FALSE;
-      return double_repr(val, repr);
-    }
-    case LM_VT_DATETIME:
-    {
-      UnixTime ut = UNIX_TIME_INIT;
-      if (!type_cast_to_datetime_unixtime(self->repr, self->repr_len, &ut, NULL))
-        return FALSE;
-      return datetime_repr(&ut, repr);
-    }
-    case LM_VT_LIST:
-    {
-      FilterXObject *obj = filterx_object_unmarshal(s);
-      filterx_object_repr(obj, repr);
-      filterx_object_unref(obj);
-      return TRUE;
-    }
-    case LM_VT_NULL:
-      return null_repr(repr);
-    case LM_VT_BYTES:
-      g_string_append_len(repr, self->repr, self->repr_len);
-      return TRUE;
-    case LM_VT_PROTOBUF:
-      g_string_append_len(repr, self->repr, self->repr_len);
-      return TRUE;
-    default:
-      g_assert_not_reached();
-    }
-
-  return FALSE;
-}
-
-static gboolean
-_str(FilterXObject *s, GString *repr)
-{
-  FilterXMessageValue *self = (FilterXMessageValue *) s;
-  switch (self->type)
-    {
-    case LM_VT_DATETIME:
-    {
-      UnixTime ut = UNIX_TIME_INIT;
-      if (!type_cast_to_datetime_unixtime(self->repr, self->repr_len, &ut, NULL))
-        return FALSE;
-      return datetime_str(&ut, repr);
-    }
-    default:
-      _repr(s, repr);
-      return TRUE;
-    }
-}
 
 FILTERX_DEFINE_TYPE(message_value, FILTERX_TYPE_NAME(object),
                     .free_fn = _free,
@@ -445,7 +475,7 @@ FILTERX_DEFINE_TYPE(message_value, FILTERX_TYPE_NAME(object),
                     .marshal = _marshal,
                     .unmarshal = _unmarshal,
                     .len = _len,
-                    .map_to_json = _map_to_json,
+                    .format_json = _format_json,
                     .repr = _repr,
                     .str = _str,
                    );

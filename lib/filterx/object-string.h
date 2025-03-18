@@ -41,6 +41,9 @@ FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
 FILTERX_DECLARE_TYPE(protobuf);
 
+gboolean string_format_json(const gchar *str, gsize str_len, GString *json);
+gboolean bytes_format_json(const gchar *str, gsize str_len, GString *json);
+
 const gchar *filterx_bytes_get_value_ref(FilterXObject *s, gsize *length);
 const gchar *filterx_protobuf_get_value_ref(FilterXObject *s, gsize *length);
 FilterXObject *filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len);
