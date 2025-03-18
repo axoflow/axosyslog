@@ -25,6 +25,8 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-json.h"
 
+#define FILTERX_LIST_MAX_LENGTH  65536
+
 FilterXObject *
 filterx_list_get_subscript(FilterXObject *s, gint64 index)
 {
@@ -92,23 +94,23 @@ _len(FilterXObject *s, guint64 *len)
 }
 
 static inline gboolean
-_normalize_index(FilterXList *self, gint64 index, guint64 *normalized_index, const gchar **error)
+_normalize_index(FilterXList *self, gint64 index, guint64 *normalized_index, gboolean allow_tail, const gchar **error)
 {
   guint64 len = self->len(self);
 
   if (index >= 0)
     {
-      if (index >= len)
+      if (index > len ||
+          (index == len && !allow_tail))
         {
           *error = "Index out of range";
           return FALSE;
         }
-
       *normalized_index = (guint64) index;
       return TRUE;
     }
 
-  if (len > G_MAXINT64)
+  if (len > FILTERX_LIST_MAX_LENGTH)
     {
       *error = "Index exceeds maximal supported value";
       return FALSE;
@@ -140,7 +142,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, &error))
+  if (!_normalize_index(self, index, &normalized_index, FALSE, &error))
     {
       msg_error("FilterX: Failed to get element from list",
                 evt_tag_str("error", error),
@@ -171,7 +173,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, &error))
+  if (!_normalize_index(self, index, &normalized_index, TRUE, &error))
     {
       msg_error("FilterX: Failed to set element of list",
                 evt_tag_str("error", error),
@@ -206,7 +208,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  return _normalize_index(self, index, &normalized_index, &error);
+  return _normalize_index(self, index, &normalized_index, FALSE, &error);
 }
 
 static gboolean
@@ -232,7 +234,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, &error))
+  if (!_normalize_index(self, index, &normalized_index, FALSE, &error))
     {
       msg_error("FilterX: Failed to unset element of list",
                 evt_tag_str("error", error),

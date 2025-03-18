@@ -705,6 +705,24 @@ $MSG = $list;
     assert file_true.read_log() == """foo,bar,baz\n"""
 
 
+def test_list_set_subscript_with_tail_element_appends_an_element(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+$list = [];
+$list[0] = "foo";
+$list[1] = "bar";
+$list[2] = "baz";
+$MSG = $list;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    # foo remains unchanged while baz is changed
+    assert file_true.read_log() == """foo,bar,baz\n"""
+
+
 def test_literal_generator_assignment(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
