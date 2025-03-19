@@ -103,13 +103,16 @@ Signed-off-by: your name <youremail@address.com>
 
 This format is checked by the CI.
 
+`module` refers to the part of AxoSyslog that the patch intends to change. For example
+python, redis, persist, scratch-buffers, etc.
+
+By signing off your commits (`--signoff`), you certify that you agree to the terms outlined in the
+Developer Certificate of Origin (DCO), as detailed in [DCO](DCO.md).
+
 If you do not want to share your email address due to privacy reasons,
 you can use `some-id+yourgithubusername@users.noreply.github.com`,
 which is automatically generated and tracked by github. You can check the exact
 address in your github settings->email->primary email address, if you enabled email privacy.
-
-`module` refers to the part of AxoSyslog that the patch intends to change. For example
-python, redis, persist, scratch-buffers, etc.
 
 #### Patches
 
