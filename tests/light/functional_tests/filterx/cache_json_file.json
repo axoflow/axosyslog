@@ -1,0 +1,26 @@
+{
+  'foo':{
+    'foo/foo':'foo/foo_value',
+    'foo/bar':'foo/bar_value',
+    'foo':{
+      'foo/foo/foo':'foo/foo/foo_value',
+      'foo/foo/bar':'foo/foo/bar_value',
+    },
+    'bar':{
+      'foo/bar/foo':'foo/bar/foo_value',
+      'foo/bar/bar':'foo/bar/bar_value',
+    },
+  },
+  'bar':{
+    'bar/foo':'bar/foo_value',
+    'bar/bar':'bar/bar_value',
+    'foo':{
+      'bar/foo/foo':'bar/foo/foo_value',
+      'bar/foo/bar':'bar/foo/bar_value',
+    },
+    'bar':{
+      'bar/bar/foo':'bar/bar/foo_value',
+      'bar/bar/bar':'bar/bar/bar_value',
+    },
+  },
+}

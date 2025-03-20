@@ -300,6 +300,19 @@ def test_startswith_endswith_includes(config, syslog_ng):
     assert file_final.read_log() == '{"startswith_foo":true,"contains_bar":true,"endswith_baz":true,"works_with_message_value":true}'
 
 
+def test_cache_json_file(config, syslog_ng, testcase_parameters):
+    (file_final,) = create_config(
+        config, r"""
+    lookup = cache_json_file("{}/cache_json_file.json");
+    $MSG = lookup.foo["foo/foo"];
+    """.format(testcase_parameters.get_testcase_dir()), msg="fooBARbAz",
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == 'foo/foo_value'
+
+
 def test_unset_empties_defaults_dict(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
