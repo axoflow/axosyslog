@@ -119,7 +119,12 @@ filterx_object_freeze(FilterXObject *self)
 {
   if (filterx_object_is_frozen(self))
     return FALSE;
-  g_assert(g_atomic_counter_get(&self->ref_cnt) == 1);
+
+  gint expected_refs = 1;
+  if (self->weak_referenced)
+    expected_refs++;
+
+  g_assert(g_atomic_counter_get(&self->ref_cnt) == expected_refs);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
   return TRUE;
 }
