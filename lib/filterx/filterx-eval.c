@@ -145,8 +145,10 @@ fail:
 }
 
 void
-filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previous_context, FilterXScope *scope,
-                          LogMessage *msg)
+filterx_eval_begin_context(FilterXEvalContext *context,
+                           FilterXEvalContext *previous_context,
+                           FilterXScope *scope,
+                           LogMessage *msg)
 {
   filterx_scope_set_message(scope, msg);
 
@@ -166,7 +168,7 @@ filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previ
 }
 
 void
-filterx_eval_deinit_context(FilterXEvalContext *context)
+filterx_eval_end_context(FilterXEvalContext *context)
 {
   if (!context->previous_context)
     g_ptr_array_free(context->weak_refs, TRUE);
