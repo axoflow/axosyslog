@@ -20,4 +20,5 @@
 # COPYING for details.
 #
 #############################################################################
+# flake8: noqa: F401, F403
 from axosyslog_light.fixtures import *
