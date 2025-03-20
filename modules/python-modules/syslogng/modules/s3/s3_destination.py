@@ -202,6 +202,7 @@ class S3Destination(LogDestination):
             "compresslevel": self.compresslevel,
             "max_object_size": self.max_object_size,
             "canned_acl": self.canned_acl,
+            "content_type": self.content_type,
         }
 
         self.s3_object_ready_queue: S3ObjectQueue = S3ObjectQueue()
