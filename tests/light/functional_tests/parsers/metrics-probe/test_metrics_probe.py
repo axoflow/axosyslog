@@ -20,7 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
-from src.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
 def test_metrics_probe(config, syslog_ng):

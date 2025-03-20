@@ -20,7 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
-from src.syslog_ng_config.statements.parsers.db_parser import DBParserConfig
+from axosyslog_light.syslog_ng_config.statements.parsers.db_parser import DBParserConfig
 
 
 def test_db_parser(config, syslog_ng):

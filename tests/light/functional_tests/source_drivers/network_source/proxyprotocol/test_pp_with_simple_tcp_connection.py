@@ -20,7 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
-from src.common.blocking import wait_until_true
+from axosyslog_light.common.blocking import wait_until_true
 
 NUMBER_OF_MESSAGES = 10
 

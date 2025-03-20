@@ -56,6 +56,8 @@ dbld/images/.*$
 dbld/(functions\.sh|(build|packages|pip_packages)\.manifest|tarball-changes\.ignore)$
 dbld/\.dockerignore$
 cmake/.*$
+tests/light/poetry.lock
+tests/light/pyproject.toml
 tests/light/pytest.ini
 tests/light/tox.ini
 tests/light/.pre-commit-config.yaml
@@ -288,10 +290,10 @@ tests/light/functional_tests/filterx/test_filterx_funcs\.py
 tests/light/functional_tests/filterx/test_filterx_update_metric\.py
 tests/light/functional_tests/parsers/metrics-probe/test_metrics_probe\.py
 tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto\.py
-tests/light/src/syslog_ng/syslog_ng_docker_executor.py
-tests/light/src/syslog_ng_ctl/prometheus_stats_handler.py
-tests/light/src/syslog_ng_config/statements/template/template\.py
-tests/light/src/syslog_ng_config/statements/__init__\.py
+tests/light/axosyslog_light/syslog_ng/syslog_ng_docker_executor.py
+tests/light/axosyslog_light/syslog_ng_ctl/prometheus_stats_handler.py
+tests/light/axosyslog_light/syslog_ng_config/statements/template/template\.py
+tests/light/axosyslog_light/syslog_ng_config/statements/__init__\.py
 tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload\.py
 modules/correlation/id-counter\.[ch]$
 modules/correlation/group-lines.h

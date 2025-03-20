@@ -52,4 +52,6 @@ GPATH
 GRTAGS
 GTAGS
 modules/python-modules/syslogng.egg-info
+tests/light/axosyslog_light.egg-info
+tests/light/dist
 aclocal.m4-e

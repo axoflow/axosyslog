@@ -28,7 +28,7 @@ from datetime import timezone
 
 import pytest
 
-from src.syslog_ng_config.renderer import render_statement
+from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
 def create_config(config, filterx_expr_1, filterx_expr_2=None, msg="foobar", template="'$MSG\n'"):
