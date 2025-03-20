@@ -31,6 +31,7 @@ typedef struct _FilterXConfig
 {
   ModuleConfig super;
   GPtrArray *frozen_objects;
+  GPtrArray *weak_refs;
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);

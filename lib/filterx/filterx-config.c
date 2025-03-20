@@ -30,6 +30,7 @@ filterx_config_free(ModuleConfig *s)
 {
   FilterXConfig *self = (FilterXConfig *) s;
 
+  g_ptr_array_unref(self->weak_refs);
   g_ptr_array_unref(self->frozen_objects);
   module_config_free_method(s);
 }
@@ -41,6 +42,7 @@ filterx_config_new(GlobalConfig *cfg)
 
   self->super.free_fn = filterx_config_free;
   self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unfreeze_and_free);
+  self->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   return self;
 }
 

@@ -23,6 +23,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-expr.h"
+#include "filterx/filterx-config.h"
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
@@ -173,6 +174,25 @@ filterx_eval_end_context(FilterXEvalContext *context)
   if (!context->previous_context)
     g_ptr_array_free(context->weak_refs, TRUE);
   filterx_eval_set_context(context->previous_context);
+}
+
+void
+filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg)
+{
+  FilterXConfig *config = filterx_config_get(cfg);
+
+  g_assert(config != NULL);
+  memset(context, 0, sizeof(*context));
+  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  context->weak_refs = config->weak_refs;
+  context->eval_control_modifier = FXC_UNSET;
+  filterx_eval_set_context(context);
+}
+
+void
+filterx_eval_end_compile(FilterXEvalContext *context)
+{
+  filterx_eval_set_context(NULL);
 }
 
 EVTTAG *
