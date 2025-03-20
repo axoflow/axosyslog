@@ -70,6 +70,7 @@ lib/multi-line/smart-multi-line\.fsm$
 doc/.*\.svg$
 charts/.*$
 docker/.*$
+.editorconfig
 
 ###########################################################################
 # These files are LGPLd and are external contributions _without_ a Balabit
