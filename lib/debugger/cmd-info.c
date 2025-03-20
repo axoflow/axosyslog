@@ -1,5 +1,8 @@
 /*
- * Copyright (c) 2024 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2015 Balabit
+ * Copyright (c) 2015 Balázs Scheidler
+ * Copyright (c) 2024 Balázs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2024 Axoflow
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,15 +24,27 @@
  *
  */
 
-#ifndef CFG_SOURCE_H_INCLUDED
-#define CFG_SOURCE_H_INCLUDED
+static gboolean
+_cmd_info_pipe(Debugger *self, LogPipe *pipe)
+{
+  gchar buf[1024];
 
-#include "cfg-lexer.h"
+  printf("LogPipe %p at %s\n", pipe, log_expr_node_format_location(pipe->expr_node, buf, sizeof(buf)));
+  _display_source_line(self);
 
-gboolean cfg_source_print_source_text(const gchar *filename, gint line, gint column, gint offset);
+  return TRUE;
+}
 
-/* These functions are only available during parsing */
-gboolean cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc);
-gboolean cfg_source_extract_source_text(CfgLexer *lexer, const CFG_LTYPE *yylloc, GString *result);
+static gboolean
+_cmd_info(Debugger *self, gint argc, gchar *argv[])
+{
+  if (argc >= 2)
+    {
+      if (strcmp(argv[1], "pipe") == 0)
+        return _cmd_info_pipe(self, self->breakpoint_site->pipe);
+    }
 
-#endif
+  printf("info: List of info subcommands\n"
+         "info pipe -- display information about the current pipe\n");
+  return TRUE;
+}
