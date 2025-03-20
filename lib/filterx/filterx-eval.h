@@ -76,6 +76,8 @@ EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
+void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
+void filterx_eval_end_compile(FilterXEvalContext *context);
 
 static inline void
 filterx_eval_sync_message(FilterXEvalContext *context, LogMessage **pmsg, const LogPathOptions *path_options)
