@@ -1,17 +1,18 @@
 /*
  * Copyright (c) 2024 Attila Szakacs
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation, or (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  * As an additional exemption you are allowed to compile & link against the
@@ -24,7 +25,7 @@
 #include "libtest/cr_template.h"
 #include "libtest/filterx-lib.h"
 
-#include "filterx-format-json.h"
+#include "filterx/json-repr.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
@@ -54,8 +55,8 @@ static void
 _assert_filterx_format_json_and_unref(FilterXObject *arg, const gchar *expected_json)
 {
   FilterXObject *result = _exec_format_json_and_unref(arg);
-  cr_assert_str_eq(filterx_string_get_value_ref(result, NULL), expected_json, "%s", filterx_string_get_value_ref(result,
-                   NULL));
+  cr_assert_str_eq(filterx_string_get_value_ref(result, NULL), expected_json,
+                   "%s != %s", filterx_string_get_value_ref(result, NULL), expected_json);
   filterx_object_unref(result);
 }
 
@@ -128,7 +129,7 @@ Test(filterx_format_json, test_filterx_format_json)
 
   /* unknown type */
   GString *repr = g_string_new(NULL);
-  g_string_printf(repr, "\"%s\"", filterx_test_unknown_object_repr(NULL));
+  g_string_printf(repr, "\"%s\"", filterx_test_unknown_object_marshaled_repr(NULL));
   _assert_filterx_format_json_and_unref(filterx_test_unknown_object_new(), repr->str);
   g_string_free(repr, TRUE);
 

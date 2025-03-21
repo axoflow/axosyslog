@@ -52,6 +52,7 @@
 #include "filterx/expr-unset.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/func-keys.h"
+#include "filterx/json-repr.h"
 
 FilterXGlobalCache global_cache;
 
@@ -103,6 +104,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("dict", filterx_dict_new_from_args));
   g_assert(filterx_builtin_simple_function_register("json", filterx_json_new_from_args));
   g_assert(filterx_builtin_simple_function_register("json_array", filterx_json_array_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("format_json", filterx_format_json_call));
+  g_assert(filterx_builtin_simple_function_register("parse_json", filterx_parse_json_call));
   g_assert(filterx_builtin_simple_function_register("datetime", filterx_typecast_datetime));
   g_assert(filterx_builtin_simple_function_register("isodate", filterx_typecast_datetime_isodate));
   g_assert(filterx_builtin_simple_function_register("string", filterx_typecast_string));
