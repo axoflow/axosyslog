@@ -39,6 +39,10 @@ class Loggen(object):
     def __init__(self):
         self.loggen_proc = None
         self.loggen_bin_path = tc_parameters.INSTANCE_PATH.get_loggen_bin()
+        if tc_parameters.RUNNER == "local":
+            self.loggen_cmd_prefix = [self.loggen_bin_path]
+        elif tc_parameters.RUNNER == "docker":
+            self.loggen_cmd_prefix = ["docker", "exec", tc_parameters.CONTAINER_NAME, self.loggen_bin_path]
 
     def __decode_start_parameters(
         self, inet, unix, stream, dgram, use_ssl, dont_parse, read_file, skip_tokens, loop_reading,
@@ -165,8 +169,11 @@ class Loggen(object):
             proxy_src_ip, proxy_dst_ip, proxy_src_port, proxy_dst_port,
         )
 
+        # loggen_cmd = ["docker", "exec", "poc_light_container", self.loggen_bin_path] + self.parameters + [target, port]
+
+
         self.loggen_proc = ProcessExecutor().start(
-            [self.loggen_bin_path] + self.parameters + [target, port],
+            self.loggen_cmd_prefix + self.parameters + [target, port],
             self.loggen_stdout_path,
             self.loggen_stderr_path,
         )
