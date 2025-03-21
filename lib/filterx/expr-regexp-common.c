@@ -158,6 +158,5 @@ filterx_regexp_match_eval(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXR
   state->match_data = pcre2_match_data_create_from_pattern(pattern, NULL);
   return filterx_regexp_match(state, pattern, 0);
 error:
-  filterx_expr_rematch_state_cleanup(state);
   return FALSE;
 }
