@@ -27,6 +27,7 @@ from axosyslog_light.common.pytest_operations import calculate_testcase_name
 
 INSTANCE_PATH = None
 RUNNER = None
+CONTAINER_NAME = None
 
 
 class TestcaseParameters(object):

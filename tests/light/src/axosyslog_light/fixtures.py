@@ -182,8 +182,9 @@ def syslog_ng_ctl(request: pytest.FixtureRequest, testcase_parameters, container
 
 @pytest.fixture
 def container_name(request: pytest.FixtureRequest, testcase_parameters: TestcaseParameters):
-    container_name = f"{testcase_parameters.get_testcase_name()}_{tc_parameters.INSTANCE_PATH.get_instance_name()}"
-    return re.sub(r'[^a-zA-Z0-9_.-]', '_', container_name)
+    testcase_name_and_instance = f"{testcase_parameters.get_testcase_name()}_{tc_parameters.INSTANCE_PATH.get_instance_name()}"
+    tc_parameters.CONTAINER_NAME = re.sub(r'[^a-zA-Z0-9_.-]', '_', testcase_name_and_instance)
+    return tc_parameters.CONTAINER_NAME
 
 
 @pytest.fixture
