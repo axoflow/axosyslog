@@ -33,10 +33,12 @@ from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgStartParams
 
 
 class SyslogNgDockerExecutor(SyslogNgExecutor):
-    def __init__(self, container_name: str, image_name: str) -> None:
+    def __init__(self, container_name: str, image_name: str, extra_volume_mounts: typing.Optional[set] = None, extra_env_var: typing.Optional[str] = None) -> None:
         self.__process_executor = ProcessExecutor()
         self.__container_name = container_name
         self.__image_name = image_name
+        self.__extra_volume_mounts = extra_volume_mounts
+        self.__extra_env_var = extra_env_var
 
     def run_process(
         self,
@@ -59,10 +61,17 @@ class SyslogNgDockerExecutor(SyslogNgExecutor):
         command += ["--workdir", str(Path.cwd().absolute())]
         command += ["--user", f"{os.getuid()}:{os.getgid()}"]
         command += ["-e", f"PUID={os.getuid()}", "-e", f"PGID={os.getgid()}"]
-        command += ["--network", "host"]
+
 
         for path in paths:
             command += ["-v", f"{path}:{path}"]
+
+        if self.__extra_env_var:
+            command += ["-e", self.__extra_env_var]
+
+        if self.__extra_volume_mounts:
+            for mount in self.__extra_volume_mounts:
+                command += ["-v", mount]
 
         command += [self.__image_name]
         command += start_params.format()
