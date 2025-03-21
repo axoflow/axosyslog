@@ -143,6 +143,7 @@ filterx_object_freeze(FilterXObject **pself)
   /* type->freeze may change self */
   self = *pself;
 
+  filterx_object_make_readonly(self);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
 }
 
