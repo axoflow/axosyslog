@@ -60,7 +60,7 @@ class InstallDirAction(argparse.Action):
             raise argparse.ArgumentTypeError("{0} is not a valid directory".format(path))
 
         binary = Path(install_dir, "sbin/syslog-ng")
-        if not binary.exists():
+        if namespace.runner == "local" and not binary.exists():
             raise argparse.ArgumentTypeError("{0} not exist".format(binary))
 
         setattr(namespace, self.dest, path)
