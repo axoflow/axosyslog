@@ -66,7 +66,6 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, unmarshal);
   INIT_TYPE_METHOD(type, marshal);
   INIT_TYPE_METHOD(type, clone);
-  INIT_TYPE_METHOD(type, map_to_json);
   INIT_TYPE_METHOD(type, truthy);
   INIT_TYPE_METHOD(type, getattr);
   INIT_TYPE_METHOD(type, setattr);
@@ -78,6 +77,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, dict_factory);
   INIT_TYPE_METHOD(type, repr);
   INIT_TYPE_METHOD(type, str);
+  INIT_TYPE_METHOD(type, format_json);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
   INIT_TYPE_METHOD(type, free_fn);
@@ -119,7 +119,12 @@ filterx_object_freeze(FilterXObject *self)
 {
   if (filterx_object_is_frozen(self))
     return FALSE;
-  g_assert(g_atomic_counter_get(&self->ref_cnt) == 1);
+
+  gint expected_refs = 1;
+  if (self->weak_referenced)
+    expected_refs++;
+
+  g_assert(g_atomic_counter_get(&self->ref_cnt) == expected_refs);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
   return TRUE;
 }

@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
  * Copyright (c) 2024 Attila Szakacs
  *
  * This library is free software; you can redistribute it and/or
@@ -19,20 +18,12 @@
  * As an additional exemption you are allowed to compile & link against the
  * OpenSSL libraries as published by the OpenSSL project. See the file
  * COPYING for details.
- *
  */
-#ifndef OBJECT_JSON_INTERNAL_H_INCLUDED
-#define OBJECT_JSON_INTERNAL_H_INCLUDED
+#ifndef FILTERX_CACHE_JSON_FILE_H_INCLUDED
+#define FILTERX_CACHE_JSON_FILE_H_INCLUDED
 
-#include "object-json.h"
-#include "filterx/filterx-weakrefs.h"
+#include "filterx/expr-function.h"
 
-FilterXObject *filterx_json_convert_json_to_object_cached(FilterXObject *self, FilterXWeakRef *root_container,
-                                                          struct json_object *jso);
-
-struct json_object *filterx_json_deep_copy(struct json_object *jso);
-
-FilterXObject *filterx_json_object_new_sub(struct json_object *jso, FilterXObject *root);
-FilterXObject *filterx_json_array_new_sub(struct json_object *jso, FilterXObject *root);
+FilterXExpr *filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

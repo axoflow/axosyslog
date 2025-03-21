@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,22 +21,16 @@
  * COPYING for details.
  *
  */
-#ifndef FILTERX_CONFIG_H_INCLUDED
-#define FILTERX_CONFIG_H_INCLUDED 1
 
-#include "module-config.h"
+#ifndef FILTERX_OBJECT_LIST_H
+#define FILTERX_OBJECT_LIST_H
+
 #include "filterx/filterx-object.h"
-#include "filterx/object-string.h"
 
-typedef struct _FilterXConfig
-{
-  ModuleConfig super;
-  GPtrArray *frozen_objects;
-  GPtrArray *weak_refs;
-} FilterXConfig;
+FILTERX_DECLARE_TYPE(list_object);
 
-FilterXConfig *filterx_config_get(GlobalConfig *cfg);
-FilterXObject *filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object);
-FilterXObject *filterx_config_frozen_string(GlobalConfig *cfg, const gchar *str);
+FilterXObject *filterx_list_new(void);
+FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
+FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif

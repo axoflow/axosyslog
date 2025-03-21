@@ -24,7 +24,9 @@
 #include <criterion/criterion.h>
 #include "filterx-lib.h"
 #include "cr_template.h"
-#include "filterx/object-json.h"
+#include "filterx/json-repr.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-list.h"
 #include "filterx/object-string.h"
 #include "filterx/expr-compound.h"
 #include "filterx/expr-literal.h"
@@ -48,15 +50,11 @@ assert_marshaled_object(FilterXObject *obj, const gchar *repr, LogMessageValueTy
 void
 assert_object_json_equals(FilterXObject *obj, const gchar *expected_json_repr)
 {
-  struct json_object *jso = NULL;
-  FilterXObject *assoc_object = NULL;
+  GString *b = g_string_sized_new(0);
 
-  cr_assert(filterx_object_map_to_json(obj, &jso, &assoc_object) == TRUE, "error mapping to json, expected json was: %s",
-            expected_json_repr);
-  const gchar *json_repr = json_object_to_json_string_ext(jso, JSON_C_TO_STRING_PLAIN);
-  cr_assert_str_eq(json_repr, expected_json_repr);
-  json_object_put(jso);
-  filterx_object_unref(assoc_object);
+  filterx_object_to_json(obj, b);
+  cr_assert_str_eq(b->str, expected_json_repr);
+  g_string_free(b, TRUE);
 }
 
 void
@@ -84,7 +82,7 @@ assert_object_str_equals(FilterXObject *obj, const gchar *expected_str)
 FilterXObject *
 filterx_test_dict_new(void)
 {
-  FilterXObject *result = filterx_json_object_new_empty();
+  FilterXObject *result = filterx_dict_new();
   result->type = &FILTERX_TYPE_NAME(test_dict);
   return result;
 }
@@ -92,7 +90,7 @@ filterx_test_dict_new(void)
 FilterXObject *
 filterx_test_list_new(void)
 {
-  FilterXObject *result = filterx_json_array_new_empty();
+  FilterXObject *result = filterx_list_new();
   result->type = &FILTERX_TYPE_NAME(test_list);
   return result;
 }
@@ -131,18 +129,16 @@ _unknown_repr(FilterXObject *s, GString *repr)
 }
 
 static gboolean
-_unknown_truthy(FilterXObject *s)
+_unknown_format_json(FilterXObject *s, GString *json)
 {
-  return TRUE;
+  gssize len;
+  const gchar *str = filterx_test_unknown_object_marshaled_repr(&len);
+  return string_format_json(str, len, json);
 }
 
 static gboolean
-_unknown_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_unknown_truthy(FilterXObject *s)
 {
-  gssize len;
-  const gchar *repr = filterx_test_unknown_object_marshaled_repr(&len);
-  *object = json_object_new_string_len(repr, len);
-  *assoc_object = filterx_string_new(repr, len);
   return TRUE;
 }
 
@@ -210,19 +206,19 @@ init_libtest_filterx(void)
   /* These will use the json implementations, but won't be json typed. */
   filterx_type_init(&FILTERX_TYPE_NAME(test_dict));
   filterx_type_init(&FILTERX_TYPE_NAME(test_list));
-  FILTERX_TYPE_NAME(test_dict) = FILTERX_TYPE_NAME(json_object);
-  FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(json_array);
+  FILTERX_TYPE_NAME(test_dict) = FILTERX_TYPE_NAME(dict_object);
+  FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(list_object);
 
   filterx_env.msg = create_sample_message();
   filterx_env.scope = filterx_scope_new(NULL);
-  filterx_eval_init_context(&filterx_env.context, NULL, filterx_env.scope, filterx_env.msg);
+  filterx_eval_begin_context(&filterx_env.context, NULL, filterx_env.scope, filterx_env.msg);
 }
 
 void
 deinit_libtest_filterx(void)
 {
   log_msg_unref(filterx_env.msg);
-  filterx_eval_deinit_context(&filterx_env.context);
+  filterx_eval_end_context(&filterx_env.context);
   filterx_scope_free(filterx_env.scope);
 }
 
@@ -245,6 +241,6 @@ FILTERX_DEFINE_TYPE(test_unknown_object, FILTERX_TYPE_NAME(object),
                     .truthy = _unknown_truthy,
                     .marshal = _unknown_marshal,
                     .repr = _unknown_repr,
-                    .map_to_json = _unknown_map_to_json,
+                    .format_json = _unknown_format_json,
                     .list_factory = _list_factory,
                     .dict_factory = _dict_factory);

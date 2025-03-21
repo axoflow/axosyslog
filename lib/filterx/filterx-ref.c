@@ -28,12 +28,30 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  return filterx_ref_new(filterx_object_ref(self->value));
+  return _filterx_ref_new(filterx_object_ref(self->value));
+}
+
+static void
+filterx_ref_make_dirty(FilterXRef *self)
+{
+  FilterXObject *root_container = filterx_weakref_get(&self->root_container);
+  if (root_container)
+    {
+      filterx_object_set_dirty(root_container, TRUE);
+      filterx_object_unref(root_container);
+    }
+  else
+    {
+      /* we are the root ref */
+      filterx_object_set_dirty(&self->super, TRUE);
+    }
 }
 
 void
 _filterx_ref_cow(FilterXRef *self)
 {
+  filterx_ref_make_dirty(self);
+
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
     return;
 
@@ -55,7 +73,9 @@ _filterx_ref_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_
 
   _filterx_ref_cow(self);
 
-  return filterx_object_setattr(self->value, attr, new_value);
+  gboolean result = filterx_object_setattr(self->value, attr, new_value);
+  filterx_object_cow_container_set(*new_value, s);
+  return result;
 }
 
 static gboolean
@@ -65,7 +85,9 @@ _filterx_ref_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject *
 
   _filterx_ref_cow(self);
 
-  return filterx_object_set_subscript(self->value, key, new_value);
+  gboolean result = filterx_object_set_subscript(self->value, key, new_value);
+  filterx_object_cow_container_set(*new_value, s);
+  return result;
 }
 
 static gboolean
@@ -90,23 +112,10 @@ _filterx_ref_free(FilterXObject *s)
 }
 
 static void
-_prohibit_readonly(FilterXObject *s)
-{
-  g_assert_not_reached();
-}
-
-static gboolean
-_is_modified_in_place(FilterXObject *s)
+_make_readonly(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_is_modified_in_place(self->value);
-}
-
-static void
-_set_modified_in_place(FilterXObject *s, gboolean modified)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  filterx_object_set_modified_in_place(self->value, modified);
+  filterx_object_make_readonly(self->value);
 }
 
 /* readonly methods */
@@ -135,16 +144,10 @@ _filterx_ref_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 static gboolean
-_filterx_ref_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_filterx_ref_format_json_append(FilterXObject *s, GString *json)
 {
   FilterXRef *self = (FilterXRef *) s;
-  gboolean ok = filterx_object_map_to_json(self->value, object, assoc_object);
-  if (*assoc_object != self->value)
-    return ok;
-
-  filterx_object_unref(self->value);
-  *assoc_object = filterx_object_ref(s);
-  return ok;
+  return filterx_object_format_json_append(self->value, json);
 }
 
 static gboolean
@@ -250,7 +253,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .unmarshal = _filterx_ref_unmarshal,
                     .marshal = _filterx_ref_marshal,
                     .clone = _filterx_ref_clone,
-                    .map_to_json = _filterx_ref_map_to_json,
+                    .format_json = _filterx_ref_format_json_append,
                     .truthy = _filterx_ref_truthy,
                     .getattr = _filterx_ref_getattr,
                     .setattr = _filterx_ref_setattr,
@@ -264,8 +267,6 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
-                    .make_readonly = _prohibit_readonly,
-                    .is_modified_in_place = _is_modified_in_place,
-                    .set_modified_in_place = _set_modified_in_place,
+                    .make_readonly = _make_readonly,
                     .free_fn = _filterx_ref_free,
                    );

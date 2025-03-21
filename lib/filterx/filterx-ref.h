@@ -28,7 +28,7 @@
 #error "Please include filterx-ref.h through filterx-object.h"
 #endif
 
-#include "adt/iord_map.h"
+#include "filterx/filterx-weakrefs.h"
 
 /*
  * References are currently not part of the FilterX language (hopefully, they
@@ -47,7 +47,7 @@ struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
-  IOrdMapNode n;
+  FilterXWeakRef root_container;
 };
 
 #if SYSLOG_NG_ENABLE_DEBUG
@@ -88,13 +88,5 @@ filterx_ref_unwrap_rw(FilterXObject *s)
 
 
 FilterXObject *_filterx_ref_new(FilterXObject *value);
-
-static inline FilterXObject *
-filterx_ref_new(FilterXObject *value)
-{
-  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
-    return value;
-  return _filterx_ref_new(value);
-}
 
 #endif
