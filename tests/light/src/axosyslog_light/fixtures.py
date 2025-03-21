@@ -124,6 +124,7 @@ def pytest_runtest_logreport(report):
 def testcase_parameters(request):
     parameters = TestcaseParameters(request)
     tc_parameters.INSTANCE_PATH = SyslogNgPaths(parameters).set_syslog_ng_paths("server")
+    tc_parameters.RUNNER = request.config.getoption("--runner")
     return parameters
 
 
