@@ -1,0 +1,68 @@
+# DO NOT RENAME THIS FILE, THE FILE NAME IS USED BY PYPI for OIDC AUTH!
+# Based on https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/configuring-openid-connect-in-pypi
+name: Release axosyslog-light to PyPi
+
+on:
+  push:
+    tags:
+      - 'light-*.*.*'
+  workflow_dispatch:
+
+jobs:
+  release-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: poetry install
+        working-directory: tests/light
+
+      - name: Check tag matches version
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/light-}
+          SOURCE_VERSION=$(poetry version -s)
+          if [ "$TAG_VERSION" != "$SOURCE_VERSION" ]; then
+            echo "Tag version ($TAG_VERSION) does not match the source's version ($SOURCE_VERSION). Either update the source version or the tag."
+            exit 1
+          fi
+        working-directory: tests/light
+
+      - name: Build package
+        run: poetry build
+        working-directory: tests/light
+
+      - name: Upload dists as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-dists
+          path: tests/light/dist/
+
+  pypi-publish:
+    runs-on: ubuntu-latest
+    needs:
+      - release-build
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v4
+        with:
+          name: release-dists
+          path: dist/
+
+      - name: Publish release distributions to PyPI
+        # https://github.com/pypa/gh-action-pypi-publish/tree/release/v1.12
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc

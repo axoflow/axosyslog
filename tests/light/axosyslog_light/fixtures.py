@@ -26,11 +26,11 @@ import argparse
 import logging
 import os
 import re
-import psutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
 
+import psutil
 import pytest
 
 import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
