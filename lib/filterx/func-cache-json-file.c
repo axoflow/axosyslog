@@ -48,6 +48,7 @@ enum FilterXFunctionCacheJsonFileError
   CACHE_JSON_FILE_ERROR_FILE_OPEN_ERROR,
   CACHE_JSON_FILE_ERROR_FILE_READ_ERROR,
   CACHE_JSON_FILE_ERROR_JSON_PARSE_ERROR,
+  CACHE_JSON_FILE_ERROR_JSON_FREEZE_ERROR,
 };
 
 static GQuark
@@ -215,56 +216,6 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
-static void _deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object);
-
-static gboolean
-_deep_freeze_dict_item(FilterXObject *key, FilterXObject *value, gpointer user_data)
-{
-  FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) user_data;
-  _deep_freeze(self, key);
-  _deep_freeze(self, value);
-  return TRUE;
-}
-
-static void
-_deep_freeze_dict(FilterXFunctionCacheJsonFile *self, FilterXObject *object)
-{
-  filterx_dict_iter(object, _deep_freeze_dict_item, self);
-}
-
-static void
-_deep_freeze_list(FilterXFunctionCacheJsonFile *self, FilterXObject *object)
-{
-  gsize len;
-  if (!filterx_object_len(object, &len))
-    return;
-
-  for (guint64 i = 0; i < len; i++)
-    {
-      FilterXObject *elem_object = filterx_list_get_subscript(object, i);
-      _deep_freeze(self, elem_object);
-    }
-}
-
-static void
-_deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object)
-{
-  if (!object)
-    return;
-
-  if (filterx_object_freeze(object))
-    g_ptr_array_add(self->frozen_objects, object);
-
-  filterx_object_make_readonly(object);
-
-  object = filterx_ref_unwrap_ro(object);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)))
-    _deep_freeze_dict(self, object);
-
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
-    _deep_freeze_list(self, object);
-}
-
 gboolean
 _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 {
@@ -275,7 +226,8 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
     }
   _archive_frozen_objects(self);
   self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unfreeze_and_free);
-  _deep_freeze(self, cached_json);
+  filterx_object_freeze(&cached_json);
+  g_ptr_array_add(self->frozen_objects, cached_json);
   g_atomic_pointer_set(&self->cached_json, cached_json);
   return TRUE;
 }

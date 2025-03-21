@@ -85,7 +85,6 @@ _filterx_ref_free(FilterXObject *s)
 
   g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
   filterx_object_unref(self->value);
-
   filterx_object_free_method(s);
 }
 
@@ -107,6 +106,22 @@ _set_modified_in_place(FilterXObject *s, gboolean modified)
 {
   FilterXRef *self = (FilterXRef *) s;
   filterx_object_set_modified_in_place(self->value, modified);
+}
+
+static void
+_filterx_ref_freeze(FilterXObject **s)
+{
+  FilterXRef *self = (FilterXRef *) *s;
+
+  filterx_object_freeze(&self->value);
+}
+
+static void
+_filterx_ref_unfreeze(FilterXObject *s)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  filterx_object_unfreeze(self->value);
 }
 
 /* readonly methods */
@@ -261,5 +276,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .make_readonly = _prohibit_readonly,
                     .is_modified_in_place = _is_modified_in_place,
                     .set_modified_in_place = _set_modified_in_place,
+                    .freeze = _filterx_ref_freeze,
+                    .unfreeze = _filterx_ref_unfreeze,
                     .free_fn = _filterx_ref_free,
                    );

@@ -59,6 +59,8 @@ struct _FilterXType
   void (*make_readonly)(FilterXObject *self);
   gboolean (*is_modified_in_place)(FilterXObject *self);
   void (*set_modified_in_place)(FilterXObject *self, gboolean modified);
+  void (*freeze)(FilterXObject **self);
+  void (*unfreeze)(FilterXObject *self);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -182,7 +184,8 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
-gboolean filterx_object_freeze(FilterXObject *self);
+void filterx_object_freeze(FilterXObject **pself);
+void filterx_object_unfreeze(FilterXObject *self);
 void filterx_object_unfreeze_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
@@ -192,7 +195,7 @@ void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject
 static inline gboolean
 filterx_object_is_frozen(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_REFCOUNT_FROZEN;
+  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_FROZEN;
 }
 
 static inline FilterXObject *

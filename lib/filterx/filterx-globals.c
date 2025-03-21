@@ -66,7 +66,7 @@ void
 filterx_cache_object(FilterXObject **cache_slot, FilterXObject *object)
 {
   *cache_slot = object;
-  filterx_object_freeze(object);
+  filterx_object_freeze(cache_slot);
 }
 
 void

@@ -114,26 +114,63 @@ filterx_object_new(FilterXType *type)
   return self;
 }
 
-gboolean
-filterx_object_freeze(FilterXObject *self)
+void
+filterx_object_freeze(FilterXObject **pself)
 {
+  FilterXObject *self = *pself;
   if (filterx_object_is_frozen(self))
-    return FALSE;
+    {
+      g_atomic_counter_inc(&self->ref_cnt);
+      return;
+    }
+
+  /* NOTE: some objects may be weak refd at the point it is frozen (e.g.  a
+   * FilterXRef instance with weak_ref towards the root in a dict).  In
+   * those cases our ref_cnt will be 2 and not 1.
+   *
+   * New weak_refs will not be added once frozen.
+   */
 
   gint expected_refs = 1;
   if (self->weak_referenced)
     expected_refs++;
 
   g_assert(g_atomic_counter_get(&self->ref_cnt) == expected_refs);
+
+  if (self->type->freeze)
+    self->type->freeze(pself);
+
+  /* type->freeze may change self */
+  self = *pself;
+
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
-  return TRUE;
+}
+
+void
+filterx_object_unfreeze(FilterXObject *self)
+{
+  g_assert(filterx_object_is_frozen(self));
+
+  gint r = g_atomic_counter_exchange_and_add(&self->ref_cnt, -1);
+  if (r > FILTERX_OBJECT_REFCOUNT_FROZEN)
+    return;
+
+  /* this was the last unfreeze, let's thaw the object */
+  if (self->type->unfreeze)
+    self->type->unfreeze(self);
+
+  /* NOTE: reset our ref count, handle objects that also had a weak ref before being frozen */
+  guint32 ref = 1;
+  if (self->weak_referenced)
+    ref++;
+
+  g_atomic_counter_set(&self->ref_cnt, ref);
 }
 
 void
 filterx_object_unfreeze_and_free(FilterXObject *self)
 {
-  g_assert(filterx_object_is_frozen(self));
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  filterx_object_unfreeze(self);
   filterx_object_unref(self);
 }
 
