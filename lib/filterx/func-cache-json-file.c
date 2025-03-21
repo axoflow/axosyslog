@@ -166,8 +166,6 @@ _load_json_file(const gchar *filepath, GError **error)
     }
 
   result = filterx_object_from_json_object(object, error);
-  if (result)
-    filterx_object_make_readonly(result);
 
 exit:
   json_tokener_free(tokener);
