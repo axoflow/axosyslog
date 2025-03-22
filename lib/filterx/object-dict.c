@@ -45,7 +45,6 @@
 
 typedef struct _FilterXDictEntry
 {
-  guint hash;
   FilterXObject *key;
   FilterXObject *value;
 } FilterXDictEntry;
@@ -230,13 +229,7 @@ _table_hash_str(const gchar *str, gsize str_len)
 static inline guint
 _table_hash_key(FilterXObject *key)
 {
-  const gchar *key_str;
-  gsize key_len;
-
-  if (!filterx_object_extract_string_ref(key, &key_str, &key_len))
-    g_assert_not_reached();
-
-  return _table_hash_str(key_str, key_len);
+  return filterx_string_hash(key);
 }
 
 static inline gboolean
@@ -283,7 +276,7 @@ _table_lookup_index_slot(FilterXDictTable *table, FilterXObject *key, guint hash
           *index_slot = slot;
           return TRUE;
         }
-      if (entry->hash == hash)
+      if (filterx_string_hash(entry->key) == hash)
         {
           /* hash matches, so it's either a hash collision or a match */
           if (_table_key_equals(entry->key, key))
@@ -332,7 +325,6 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
       _table_set_index_entry(table, index_slot, entry_slot);
     }
   /* entry is not zero initialized, make sure you will all fields */
-  entry->hash = hash;
   entry->key = key;
   entry->value = value;
 }
@@ -432,8 +424,9 @@ _table_resize_index_and_clone_elems(FilterXDictTable *target, FilterXDictTable *
   /* iterate over all entries */
   for (FilterXDictEntrySlot entry_slot = 0; entry_slot < max; entry_slot++, ep++)
     {
-      FilterXDictIndexSlot slot = ep->hash & mask;
-      FilterXDictIndexSlot perturb = ep->hash;
+      guint32 hash = filterx_string_hash(ep->key);
+      FilterXDictIndexSlot slot = hash & mask;
+      FilterXDictIndexSlot perturb = hash;
 
       if (!ep->key)
         continue;
