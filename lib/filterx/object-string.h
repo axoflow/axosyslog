@@ -31,7 +31,7 @@ struct _FilterXString
 {
   FilterXObject super;
   const gchar *str;
-  gsize str_len;
+  guint32 str_len;
   gchar storage[];
 };
 
@@ -97,7 +97,7 @@ void filterx_string_global_deinit(void);
   { \
     FILTERX_OBJECT_STACK_INIT(string), \
     .str = (cstr), \
-    .str_len = (((gssize) cstr_len) == -1 ? strlen(cstr) : (cstr_len)), \
+    .str_len = (((gssize) cstr_len) == -1 ? (guint32) strlen(cstr) : (guint32) (cstr_len)), \
   }
 
 #define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \

@@ -146,6 +146,8 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   if (str_len == -1)
     str_len = strlen(str);
 
+  g_assert(str_len < G_MAXUINT);
+
   FilterXString *self = g_malloc(sizeof(FilterXString) + str_len + 1);
   memset(self, 0, sizeof(FilterXString));
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
