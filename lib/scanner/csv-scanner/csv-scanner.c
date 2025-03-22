@@ -104,19 +104,12 @@ csv_scanner_options_set_null_value(CSVScannerOptions *options, const gchar *null
 }
 
 void
-csv_scanner_options_set_expected_columns(CSVScannerOptions *options, gint expected_columns)
-{
-  options->expected_columns = expected_columns;
-}
-
-void
 csv_scanner_options_copy(CSVScannerOptions *dst, CSVScannerOptions *src)
 {
   csv_scanner_options_set_delimiters(dst, src->delimiters);
   csv_scanner_options_set_quotes_start_and_end(dst, src->quotes_start, src->quotes_end);
   csv_scanner_options_set_null_value(dst, src->null_value);
   csv_scanner_options_set_string_delimiters(dst, string_list_clone(src->string_delimiters));
-  csv_scanner_options_set_expected_columns(dst, src->expected_columns);
   dst->dialect = src->dialect;
   dst->flags = src->flags;
 }
@@ -132,9 +125,9 @@ csv_scanner_options_clean(CSVScannerOptions *options)
 }
 
 gboolean
-csv_scanner_options_validate(CSVScannerOptions *options)
+csv_scanner_options_validate(CSVScannerOptions *options, gint expected_columns)
 {
-  if(options->expected_columns == 0 && (options->flags & CSV_SCANNER_GREEDY))
+  if(expected_columns == 0 && (options->flags & CSV_SCANNER_GREEDY))
     {
       msg_error("The greedy flag of csv-parser can not be used without specifying the columns() option");
       return FALSE;
@@ -443,10 +436,10 @@ _translate_value(CSVScanner *self)
 static gboolean
 _is_last_column(CSVScanner *self)
 {
-  if (self->options->expected_columns == 0)
+  if (self->expected_columns == 0)
     return FALSE;
 
-  if (self->current_column == self->options->expected_columns - 1)
+  if (self->current_column == self->expected_columns - 1)
     return TRUE;
 
   return FALSE;
@@ -457,7 +450,7 @@ _switch_to_next_column(CSVScanner *self)
 {
   g_string_truncate(self->current_value, 0);
 
-  if (self->options->expected_columns == 0)
+  if (self->expected_columns == 0)
     return TRUE;
 
   switch (self->state)
@@ -465,14 +458,14 @@ _switch_to_next_column(CSVScanner *self)
     case CSV_STATE_INITIAL:
       self->state = CSV_STATE_COLUMNS;
       self->current_column = 0;
-      if (self->options->expected_columns > 0)
+      if (self->expected_columns > 0)
         return TRUE;
       self->state = CSV_STATE_FINISH;
       return FALSE;
     case CSV_STATE_COLUMNS:
     case CSV_STATE_GREEDY_COLUMN:
       self->current_column++;
-      if (self->current_column <= self->options->expected_columns - 1)
+      if (self->current_column <= self->expected_columns - 1)
         return TRUE;
       self->state = CSV_STATE_FINISH;
       return FALSE;
@@ -509,7 +502,7 @@ csv_scanner_scan_next(CSVScanner *self)
   else if (self->src[0] == 0)
     {
       /* no more input data and a real column, not a greedy one */
-      self->state = self->options->expected_columns == 0 ? CSV_STATE_FINISH : CSV_STATE_PARTIAL_INPUT;
+      self->state = self->expected_columns == 0 ? CSV_STATE_FINISH : CSV_STATE_PARTIAL_INPUT;
       return FALSE;
     }
   else
@@ -547,6 +540,12 @@ csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *i
   scanner->current_value = scratch_buffers_alloc();
   scanner->current_column = 0;
   scanner->options = options;
+}
+
+void
+csv_scanner_set_expected_columns(CSVScanner *scanner, gint expected_columns)
+{
+  scanner->expected_columns = expected_columns;
 }
 
 void
