@@ -65,13 +65,24 @@ static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *
 typedef int (*str_cmp_fn)(const char *, const char *);
 
 static inline gboolean
-_string_compare(FilterXFunctionUnsetEmpties *self, const gchar *str, str_cmp_fn cmp_fn)
+_string_compare(FilterXFunctionUnsetEmpties *self, FilterXObject *str_obj, const gchar *str, gsize str_len, str_cmp_fn cmp_fn)
 {
   guint num_targets = self->targets ? self->targets->len : 0;
   for (guint i = 0; i < num_targets; i++)
     {
-      const gchar *target = g_ptr_array_index(self->targets, i);
-      if (cmp_fn(str, target) == 0)
+      FilterXObject *target = g_ptr_array_index(self->targets, i);
+      
+      if (str_obj)
+        {
+          if (filterx_string_hash(str_obj) != filterx_string_hash(target))
+            continue;
+        }
+
+      gsize target_len = 0;
+      const gchar *target_str = NULL;
+      if (!(target_str = filterx_string_get_value_ref(target, &target_len)))
+        return FALSE;
+      if (cmp_fn(str, target_str) == 0)
         return TRUE;
     }
   return FALSE;
@@ -80,21 +91,23 @@ _string_compare(FilterXFunctionUnsetEmpties *self, const gchar *str, str_cmp_fn 
 static gboolean
 _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
+  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)))
+    return FALSE;
+
   gsize str_len = 0;
   const gchar *str = NULL;
   if (!filterx_object_extract_string_ref(obj, &str, &str_len))
     return FALSE;
-  g_assert(str);
 
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_STRING) && (str_len == 0))
     return TRUE;
 
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
     {
-      gboolean result = _string_compare(self, str, strcasecmp);
+      gboolean result = _string_compare(self, NULL, str, str_len, strcasecmp);
       return result;
     }
-  return _string_compare(self, str, strcmp);
+  return _string_compare(self, obj, str, str_len, strcmp);
 }
 
 static gboolean
@@ -406,10 +419,10 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
         }
       if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
         {
-          g_ptr_array_add(self->targets, g_strndup(str, len));
+          g_ptr_array_add(self->targets, filterx_object_ref(target));
           return TRUE;
         }
-      g_ptr_array_add(self->targets, g_strndup(str, len));
+      g_ptr_array_add(self->targets, filterx_object_ref(target));
     }
   else
     {
@@ -464,7 +477,7 @@ _extract_target_objects(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *
   if (num_targets > 0)
     reset_flags(&self->flags, self->flags & (FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE) |
                                              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE)));
-  self->targets = g_ptr_array_new_full(num_targets, (GDestroyNotify)g_free);
+  self->targets = g_ptr_array_new_full(num_targets, (GDestroyNotify) filterx_object_unref);
 
   gpointer user_data[] = { self, error };
   gboolean result = TRUE;
