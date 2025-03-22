@@ -84,9 +84,56 @@ _filterx_type_is_referenceable(FilterXType *t)
 {
   return t->is_mutable && t != &FILTERX_TYPE_NAME(ref);
 }
-#define FILTERX_OBJECT_REFCOUNT_FROZEN (G_MAXINT32)
-#define FILTERX_OBJECT_REFCOUNT_STACK  (G_MAXINT32-1)
-#define FILTERX_OBJECT_REFCOUNT_OFLOW_MARK (FILTERX_OBJECT_REFCOUNT_STACK-1024)
+
+/* FilterXObject refcount ranges.  The ref count for the objects is special
+ * to allow multiple allocation strategies:
+ *
+ * 1) heap allocated, normal refcounting
+ *
+ *    Most objects will be in this category, ref_cnt starts with 1,
+ *    ref/unref increments and decrements the refcount respectively.
+ *
+ *    The ref_cnt will be in this range: (0, FILTERX_OBJECT_REFCOUNT_OFLOW_MARK)
+ *
+ *    The ref_cnt overflow is detected by leaving a gap between the overflow
+ *    mark and the first special value, which is large enough to avoid races
+ *    stepping through the range
+ *
+ * 2) stack allocated, no refcounting
+ *
+ *    Local values can be stored on the stack, to avoid a heap allocation,
+ *    these values are only used by a single thread.
+ *
+ *    The ref_cnt is always equal to FILTERX_OBJECT_REFCOUNT_STACK
+ *
+ * 3) heap allocated, frozen
+ *
+ *    Objects frozen before the evaluation starts (e.g.  cache_json_file or
+ *    other cached objects).
+ *
+ *    The normal ref/unref operations are noops, e.g.  everything just
+ *    assumes these objects will exist for as long as necessary.
+ *
+ *    The freeze/unfreeze operations increment and decrement the refcount
+ *    but ensure that it remains in this range.  Multi-threaded, read only
+ *    access to frozen objects is possible during evaluation, but
+ *    freeze/unfreeze cannot be used from multiple threads in parallel.
+ *
+ *    The ref_cnt will be in this range: [FILTERX_OBJECT_REFCOUNT_FROZEN, G_MAXINT32]
+ *
+ */
+enum
+{
+  FILTERX_OBJECT_REFCOUNT_OFLOW_MARK=G_MAXINT32/2,
+  FILTERX_OBJECT_REFCOUNT_OFLOW_RANGE_MAX=FILTERX_OBJECT_REFCOUNT_OFLOW_MARK + 1024,
+  /* stack based allocation */
+  FILTERX_OBJECT_REFCOUNT_STACK,
+
+  /* frozen objects have a refcount that is larger than equal to FILTERX_OBJECT_REFCOUNT_FROZEN, normal ref/unref does not change these refcounts
+   * but freeze/unfreeze does */
+  FILTERX_OBJECT_REFCOUNT_FROZEN,
+};
+
 
 struct _FilterXObject
 {
@@ -189,9 +236,6 @@ filterx_object_ref(FilterXObject *self)
       return self;
     }
 
-  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
-    return self;
-
   if (r == FILTERX_OBJECT_REFCOUNT_STACK)
     {
       /* we can't use filterx_object_clone() directly, as that's an inline
@@ -200,6 +244,10 @@ filterx_object_ref(FilterXObject *self)
        * objects on the stack */
       return self->type->clone(self);
     }
+
+  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+    return self;
+
   g_assert_not_reached();
 }
 
@@ -210,8 +258,6 @@ filterx_object_unref(FilterXObject *self)
     return;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
-    return;
   if (r == FILTERX_OBJECT_REFCOUNT_STACK)
     {
       /* NOTE: Normally, stack based allocations are only used by a single
@@ -230,6 +276,8 @@ filterx_object_unref(FilterXObject *self)
       g_atomic_counter_set(&self->ref_cnt, 0);
       return;
     }
+  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+    return;
   if (r <= 0)
     g_assert_not_reached();
 
