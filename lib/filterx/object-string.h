@@ -32,6 +32,7 @@ struct _FilterXString
   FilterXObject super;
   const gchar *str;
   guint32 str_len;
+  volatile guint32 hash;
   gchar storage[];
 };
 
@@ -90,6 +91,29 @@ filterx_string_new(const gchar *str, gssize str_len)
   return _filterx_string_new(str, str_len);
 }
 
+guint
+_filterx_string_hash(FilterXString *self);
+
+static inline guint
+filterx_string_hash(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+  if (self->hash)
+    return self->hash;
+
+  /* although this is racy for parallel access on the same object, it's not
+   * really a problem, as:
+   *
+   * 1) we are only sharing frozen instances of the string, which calculates
+   *    the hash at freeze time
+   *
+   * 2) even if we do share a non-frozen string, the hash algorithm should
+   *    have the same result, so worst case, we calculate the hash 2 times.
+   */
+
+  return _filterx_string_hash(self);
+}
+
 void filterx_string_global_init(void);
 void filterx_string_global_deinit(void);
 
@@ -98,6 +122,7 @@ void filterx_string_global_deinit(void);
     FILTERX_OBJECT_STACK_INIT(string), \
     .str = (cstr), \
     .str_len = (((gssize) cstr_len) == -1 ? (guint32) strlen(cstr) : (guint32) (cstr_len)), \
+    .hash = 0, \
   }
 
 #define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \
