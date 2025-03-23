@@ -71,6 +71,7 @@ doc/.*\.svg$
 charts/.*$
 docker/.*$
 .editorconfig
+tests/light/functional_tests/filterx/cache_json_file\.json
 
 ###########################################################################
 # These files are LGPLd and are external contributions _without_ a Balabit
