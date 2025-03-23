@@ -70,6 +70,7 @@ lib/multi-line/smart-multi-line\.fsm$
 doc/.*\.svg$
 charts/.*$
 docker/.*$
+tests/light/functional_tests/filterx/cache_json_file\.json
 
 ###########################################################################
 # These files are LGPLd and are external contributions _without_ a Balabit
