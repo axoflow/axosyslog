@@ -114,8 +114,8 @@ filterx_eval_prepare_for_fork(FilterXEvalContext *context, LogMessage **pmsg, co
 static inline void
 filterx_eval_store_weak_ref(FilterXObject *object)
 {
-  /* Frozen objects do not need weak refs. */
-  if (object && filterx_object_is_frozen(object))
+  /* Preserved objects do not need weak refs. */
+  if (object && filterx_object_is_preserved(object))
     return;
 
   if (object && !object->weak_referenced)
