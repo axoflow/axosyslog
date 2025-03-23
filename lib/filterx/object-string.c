@@ -175,6 +175,21 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   return self;
 }
 
+static void
+_string_freeze(FilterXObject **pself)
+{
+  FilterXString *self = (FilterXString *) *pself;
+
+  FilterXObject *frozen_string = g_hash_table_lookup(global_cache.string_frozen_cache, self->str);
+  if (frozen_string)
+    {
+      filterx_object_unref(*pself);
+      *pself = frozen_string;
+      return;
+    }
+  g_hash_table_insert(global_cache.string_frozen_cache, (gchar *) self->str, self);
+}
+
 static inline guint
 _hash_str(const gchar *str, gsize str_len)
 {
@@ -417,6 +432,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .repr = _string_repr,
                     .add = _string_add,
                     .clone = _string_clone,
+                    .freeze = _string_freeze,
                     .free_fn = _free,
                    );
 
@@ -442,6 +458,7 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
 void
 filterx_string_global_init(void)
 {
+  global_cache.string_frozen_cache = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
   filterx_cache_object(&global_cache.string_cache[FILTERX_STRING_ZERO_LENGTH], &_string_new("", 0, NULL)->super);
   for (gint i = 0; i < 10; i++)
     {
@@ -453,6 +470,7 @@ filterx_string_global_init(void)
 void
 filterx_string_global_deinit(void)
 {
+  g_hash_table_unref(global_cache.string_frozen_cache);
   for (gint i = 0; i < FILTERX_STRING_CACHE_LIMIT; i++)
     {
       filterx_uncache_object(&global_cache.string_cache[i]);
