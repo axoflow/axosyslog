@@ -73,9 +73,11 @@ EVTTAG *filterx_eval_format_last_error_location_tag(void);
 void filterx_eval_clear_errors(void);
 EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 
-void filterx_eval_init_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
-                               FilterXScope *scope_storage, LogMessage *msg);
-void filterx_eval_deinit_context(FilterXEvalContext *context);
+void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
+                                FilterXScope *scope_storage, LogMessage *msg);
+void filterx_eval_end_context(FilterXEvalContext *context);
+void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
+void filterx_eval_end_compile(FilterXEvalContext *context);
 
 static inline void
 filterx_eval_sync_message(FilterXEvalContext *context, LogMessage **pmsg, const LogPathOptions *path_options)
@@ -113,8 +115,8 @@ filterx_eval_prepare_for_fork(FilterXEvalContext *context, LogMessage **pmsg, co
 static inline void
 filterx_eval_store_weak_ref(FilterXObject *object)
 {
-  /* Frozen objects do not need weak refs. */
-  if (object && filterx_object_is_frozen(object))
+  /* Preserved objects do not need weak refs. */
+  if (object && filterx_object_is_preserved(object))
     return;
 
   if (object && !object->weak_referenced)
@@ -142,13 +144,13 @@ filterx_eval_store_weak_ref(FilterXObject *object)
         filterx_scope_init_instance(scope, alloc_size, path_options->filterx_context ? path_options->filterx_context->scope : NULL); \
         local_scope = TRUE; \
       } \
-    filterx_eval_init_context(&eval_context, path_options->filterx_context, scope, msg); \
+    filterx_eval_begin_context(&eval_context, path_options->filterx_context, scope, msg); \
     do
 
 
 #define FILTERX_EVAL_END_CONTEXT(eval_context) \
     while(0); \
-    filterx_eval_deinit_context(&eval_context); \
+    filterx_eval_end_context(&eval_context); \
     if (local_scope) \
       filterx_scope_clear(scope); \
   } while(0)

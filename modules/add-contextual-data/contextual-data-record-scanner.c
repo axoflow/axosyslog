@@ -182,6 +182,7 @@ _get_next_record(ContextualDataRecordScanner *self, const gchar *input, Contextu
   gboolean result = FALSE;
 
   csv_scanner_init(&self->scanner, &self->options, input);
+  csv_scanner_set_expected_columns(&self->scanner, 3);
 
   if (!_fetch_selector(self, record))
     goto error;
@@ -238,7 +239,6 @@ contextual_data_record_scanner_new(GlobalConfig *cfg, const gchar *name_prefix)
 
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");
-  csv_scanner_options_set_expected_columns(&self->options, 3);
   csv_scanner_options_set_flags(&self->options, CSV_SCANNER_STRIP_WHITESPACE);
   csv_scanner_options_set_dialect(&self->options, CSV_SCANNER_ESCAPE_DOUBLE_CHAR);
   self->name_prefix = g_strdup(name_prefix);

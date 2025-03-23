@@ -51,15 +51,6 @@ filterx_primitive_new(FilterXType *type)
   return self;
 }
 
-static gboolean
-_integer_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXPrimitive *self = (FilterXPrimitive *) s;
-
-  *object = json_object_new_int64(gn_as_int64(&self->value));
-  return TRUE;
-}
-
 static FilterXObject *
 _integer_add(FilterXObject *s, FilterXObject *object)
 {
@@ -91,6 +82,14 @@ integer_repr(gint64 val, GString *repr)
 }
 
 static gboolean
+_integer_format_json(FilterXObject *s, GString *json)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  return integer_repr(gn_as_int64(&self->value), json);
+}
+
+static gboolean
 _integer_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
@@ -110,15 +109,6 @@ FilterXObject *
 _filterx_integer_new(gint64 value)
 {
   return _integer_wrap(value);
-}
-
-static gboolean
-_double_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXPrimitive *self = (FilterXPrimitive *) s;
-
-  *object = json_object_new_double(gn_as_double(&self->value));
-  return TRUE;
 }
 
 static FilterXObject *
@@ -179,6 +169,14 @@ double_repr(double dbl, GString *repr)
 }
 
 static gboolean
+_double_format_json(FilterXObject *s, GString *json)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  return double_repr(gn_as_double(&self->value), json);
+}
+
+static gboolean
 _double_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
@@ -204,21 +202,26 @@ bool_repr(gboolean bool_val, GString *repr)
   return TRUE;
 }
 
+gboolean
+bool_format_json(gboolean bool_val, GString *json)
+{
+  return bool_repr(bool_val, json);
+}
+
+static gboolean
+_bool_format_json(FilterXObject *s, GString *json)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  return bool_repr(!gn_is_zero(&self->value), json);
+}
+
 static gboolean
 _bool_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
   *t = LM_VT_BOOLEAN;
   return bool_repr(!gn_is_zero(&self->value), repr);
-}
-
-static gboolean
-_bool_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXPrimitive *self = (FilterXPrimitive *) s;
-
-  *object = json_object_new_boolean(gn_as_int64(&self->value));
-  return TRUE;
 }
 
 FilterXObject *
@@ -392,20 +395,20 @@ FILTERX_DEFINE_TYPE(primitive, FILTERX_TYPE_NAME(object),
 
 FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(primitive),
                     .marshal = _integer_marshal,
-                    .map_to_json = _integer_map_to_json,
+                    .format_json = _integer_format_json,
                     .add = _integer_add,
                     .clone = _integer_clone,
                    );
 
 FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(primitive),
                     .marshal = _double_marshal,
-                    .map_to_json = _double_map_to_json,
+                    .format_json = _double_format_json,
                     .add = _double_add,
                    );
 
 FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(primitive),
                     .marshal = _bool_marshal,
-                    .map_to_json = _bool_map_to_json,
+                    .format_json = _bool_format_json,
                    );
 
 void

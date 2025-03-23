@@ -30,7 +30,6 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
-#include "filterx/object-json.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
 #include "filterx/filterx-object.h"
@@ -109,7 +108,7 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_
 {
   CSVScannerOptions *opts = &self->options;
 
-  if (string_delimiters || num_of_cols)
+  if (string_delimiters)
     {
       csv_scanner_options_copy(local_opts, &self->options);
       opts = local_opts;
@@ -118,10 +117,9 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_
   if (string_delimiters)
     csv_scanner_options_set_string_delimiters(local_opts, string_delimiters);
 
-  if (num_of_cols)
-    csv_scanner_options_set_expected_columns(local_opts, num_of_cols);
 
   csv_scanner_init(scanner, opts, input);
+  csv_scanner_set_expected_columns(scanner, num_of_cols);
 }
 
 static inline gboolean

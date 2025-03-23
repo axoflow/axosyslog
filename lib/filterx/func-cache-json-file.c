@@ -1,17 +1,18 @@
 /*
  * Copyright (c) 2024 Attila Szakacs
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 as published
- * by the Free Software Foundation, or (at your option) any later version.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful,
+ * This library is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  * As an additional exemption you are allowed to compile & link against the
@@ -20,15 +21,15 @@
  *
  */
 
-#include "filterx-cache-json-file.h"
-#include "filterx/object-json.h"
+#include "func-cache-json-file.h"
+#include "filterx/json-repr.h"
 #include "filterx/object-string.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
-#include "file-monitor.c"
+#include "file-monitor.h"
 #include "mainloop.h"
 #include "mainloop-worker.h"
 
@@ -47,6 +48,7 @@ enum FilterXFunctionCacheJsonFileError
   CACHE_JSON_FILE_ERROR_FILE_OPEN_ERROR,
   CACHE_JSON_FILE_ERROR_FILE_READ_ERROR,
   CACHE_JSON_FILE_ERROR_JSON_PARSE_ERROR,
+  CACHE_JSON_FILE_ERROR_JSON_FREEZE_ERROR,
 };
 
 static GQuark
@@ -163,12 +165,11 @@ _load_json_file(const gchar *filepath, GError **error)
       goto exit;
     }
 
-  result = filterx_json_new_from_object(object);
-  g_assert(result);
-  filterx_object_make_readonly(result);
+  result = filterx_object_from_json_object(object, error);
 
 exit:
   json_tokener_free(tokener);
+  json_object_put(object);
   fclose(file);
   return result;
 }
@@ -213,55 +214,6 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
-static void _deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object);
-
-static void
-_deep_freeze_dict(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object)
-{
-  struct json_object_iter itr;
-  json_object_object_foreachC(filterx_json_object_get_value(object), itr)
-  {
-    struct json_object *elem_jso = itr.val;
-    FilterXObject *elem_object = filterx_json_convert_json_to_object(root_object, NULL, elem_jso);
-    _deep_freeze(self, elem_object, root_object);
-    filterx_json_associate_cached_object(elem_jso, elem_object);
-  }
-}
-
-static void
-_deep_freeze_list(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object)
-{
-  struct json_object *jso = filterx_json_array_get_value(object);
-  guint64 len = json_object_array_length(jso);
-
-  for (guint64 i = 0; i < len; i++)
-    {
-      struct json_object *elem_jso = json_object_array_get_idx(jso, i);
-      FilterXObject *elem_object = filterx_json_convert_json_to_object(root_object, NULL, elem_jso);
-      _deep_freeze(self, elem_object, root_object);
-      filterx_json_associate_cached_object(elem_jso, elem_object);
-    }
-}
-
-static void
-_deep_freeze(FilterXFunctionCacheJsonFile *self, FilterXObject *object, FilterXObject *root_object)
-{
-  if (!object)
-    return;
-
-  if (filterx_object_freeze(object))
-    g_ptr_array_add(self->frozen_objects, object);
-
-  filterx_object_make_readonly(object);
-
-  object = filterx_ref_unwrap_ro(object);
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_object)))
-    _deep_freeze_dict(self, object, root_object);
-
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(json_array)))
-    _deep_freeze_list(self, object, root_object);
-}
-
 gboolean
 _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 {
@@ -272,7 +224,8 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
     }
   _archive_frozen_objects(self);
   self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unfreeze_and_free);
-  _deep_freeze(self, cached_json, cached_json);
+  filterx_object_freeze(&cached_json);
+  g_ptr_array_add(self->frozen_objects, cached_json);
   g_atomic_pointer_set(&self->cached_json, cached_json);
   return TRUE;
 }
@@ -336,5 +289,3 @@ error:
   filterx_expr_unref(&self->super.super);
   return NULL;
 }
-
-FILTERX_FUNCTION(cache_json_file, filterx_function_cache_json_file_new);

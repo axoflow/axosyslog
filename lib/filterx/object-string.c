@@ -27,6 +27,7 @@
 #include "filterx-globals.h"
 #include "str-format.h"
 #include "str-utils.h"
+#include "utf8utils.h"
 
 
 /* NOTE: Consider using filterx_object_extract_bytes_ref() to also support message_value. */
@@ -86,20 +87,27 @@ _len(FilterXObject *s, guint64 *len)
 }
 
 static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXString *self = (FilterXString *) s;
-
-  *object = json_object_new_string_len(self->str, self->str_len);
-  return TRUE;
-}
-
-static gboolean
 _string_repr(FilterXObject *s, GString *repr)
 {
   FilterXString *self = (FilterXString *) s;
   repr = g_string_append_len(repr, self->str, self->str_len);
   return TRUE;
+}
+
+gboolean
+string_format_json(const gchar *str, gsize str_len, GString *json)
+{
+  g_string_append_c(json, '"');
+  append_unsafe_utf8_as_escaped(json, str, str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  g_string_append_c(json, '"');
+  return TRUE;
+}
+
+static gboolean
+_string_format_json(FilterXObject *s, GString *json)
+{
+  FilterXString *self = (FilterXString *) s;
+  return string_format_json(self->str, self->str_len, json);
 }
 
 static FilterXObject *
@@ -134,6 +142,8 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   if (str_len == -1)
     str_len = strlen(str);
 
+  g_assert(str_len < G_MAXUINT);
+
   FilterXString *self = g_malloc(sizeof(FilterXString) + str_len + 1);
   memset(self, 0, sizeof(FilterXString));
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
@@ -147,6 +157,42 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   self->str = self->storage;
 
   return self;
+}
+
+static void
+_string_freeze(FilterXObject **pself)
+{
+  FilterXString *self = (FilterXString *) *pself;
+
+  FilterXObject *frozen_string = g_hash_table_lookup(global_cache.string_frozen_cache, self->str);
+  if (frozen_string)
+    {
+      fprintf(stderr, "found duplicate frozen string: %s\n", self->str);
+      filterx_object_unref(*pself);
+      *pself = frozen_string;
+      return;
+    }
+  self->hash = _filterx_string_hash(self);
+  g_hash_table_insert(global_cache.string_frozen_cache, (gchar *) self->str, self);
+}
+
+static inline guint
+_hash_str(const gchar *str, gsize str_len)
+{
+  const char *p;
+  guint32 h = 5381;
+
+  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
+    h = (h << 5) + h + *p;
+
+  return h;
+}
+
+guint
+_filterx_string_hash(FilterXString *self)
+{
+  self->hash = _hash_str(self->str, self->str_len);
+  return self->hash;
 }
 
 FilterXObject *
@@ -167,20 +213,20 @@ _get_base64_encoded_size(gsize len)
   return (len / 3 + 1) * 4 + 4;
 }
 
-static gboolean
-_bytes_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+gboolean
+bytes_format_json(const gchar *str, gsize str_len, GString *json)
 {
-  FilterXString *self = (FilterXString *) s;
-  GString *encode_buffer = scratch_buffers_alloc();
+  g_string_append_c(json, '"');
 
   gint encode_state = 0;
   gint encode_save = 0;
+  gsize init_len = json->len;
 
   /* expand the buffer and add space for the base64 encoded string */
-  g_string_set_size(encode_buffer, _get_base64_encoded_size(self->str_len));
-  gsize out_len = g_base64_encode_step((const guchar *) self->str, self->str_len, FALSE, encode_buffer->str,
+  g_string_set_size(json, init_len + _get_base64_encoded_size(str_len));
+  gsize out_len = g_base64_encode_step((const guchar *) str, str_len, FALSE, json->str + init_len,
                                        &encode_state, &encode_save);
-  g_string_set_size(encode_buffer, out_len + _get_base64_encoded_size(0));
+  g_string_set_size(json, init_len + out_len + _get_base64_encoded_size(0));
 
 #if !GLIB_CHECK_VERSION(2, 54, 0)
   /* See modules/basicfuncs/str-funcs.c: tf_base64encode() */
@@ -188,11 +234,19 @@ _bytes_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject 
     ((unsigned char *) &encode_save)[2] = 0;
 #endif
 
-  out_len += g_base64_encode_close(FALSE, encode_buffer->str + out_len, &encode_state, &encode_save);
-  g_string_set_size(encode_buffer, out_len);
+  out_len += g_base64_encode_close(FALSE, json->str + init_len + out_len, &encode_state, &encode_save);
+  g_string_set_size(json, init_len + out_len);
 
-  *object = json_object_new_string_len(encode_buffer->str, encode_buffer->len);
+  g_string_append_c(json, '"');
   return TRUE;
+}
+
+static gboolean
+_bytes_format_json(FilterXObject *s, GString *json)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  return bytes_format_json(self->str, self->str_len, json);
 }
 
 static gboolean
@@ -330,17 +384,18 @@ filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .marshal = _marshal,
                     .len = _len,
-                    .map_to_json = _map_to_json,
+                    .format_json = _string_format_json,
                     .truthy = _truthy,
                     .repr = _string_repr,
                     .add = _string_add,
                     .clone = _string_clone,
+                    .freeze = _string_freeze,
                    );
 
 FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                     .marshal = _bytes_marshal,
                     .len = _len,
-                    .map_to_json = _bytes_map_to_json,
+                    .format_json = _bytes_format_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,
                     .add = _bytes_add,
@@ -349,7 +404,7 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
 FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
                     .len = _len,
                     .marshal = _bytes_marshal,
-                    .map_to_json = _bytes_map_to_json,
+                    .format_json = _bytes_format_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,
                    );
@@ -357,6 +412,7 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
 void
 filterx_string_global_init(void)
 {
+  global_cache.string_frozen_cache = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
   filterx_cache_object(&global_cache.string_cache[FILTERX_STRING_ZERO_LENGTH], &_string_new("", 0, NULL)->super);
   for (gint i = 0; i < 10; i++)
     {
@@ -368,6 +424,7 @@ filterx_string_global_init(void)
 void
 filterx_string_global_deinit(void)
 {
+  g_hash_table_unref(global_cache.string_frozen_cache);
   for (gint i = 0; i < FILTERX_STRING_MAX; i++)
     {
       filterx_uncache_object(&global_cache.string_cache[i]);

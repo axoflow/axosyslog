@@ -66,7 +66,6 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, unmarshal);
   INIT_TYPE_METHOD(type, marshal);
   INIT_TYPE_METHOD(type, clone);
-  INIT_TYPE_METHOD(type, map_to_json);
   INIT_TYPE_METHOD(type, truthy);
   INIT_TYPE_METHOD(type, getattr);
   INIT_TYPE_METHOD(type, setattr);
@@ -78,6 +77,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, dict_factory);
   INIT_TYPE_METHOD(type, repr);
   INIT_TYPE_METHOD(type, str);
+  INIT_TYPE_METHOD(type, format_json);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
   INIT_TYPE_METHOD(type, free_fn);
@@ -114,21 +114,116 @@ filterx_object_new(FilterXType *type)
   return self;
 }
 
-gboolean
-filterx_object_freeze(FilterXObject *self)
+static void
+_filterx_object_preserve(FilterXObject **pself, guint32 new_ref)
 {
-  if (filterx_object_is_frozen(self))
-    return FALSE;
-  g_assert(g_atomic_counter_get(&self->ref_cnt) == 1);
-  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
-  return TRUE;
+  FilterXObject *self = *pself;
+
+  /* NOTE: some objects may be weak refd at the point it is frozen (e.g.  a
+   * FilterXRef instance with weak_ref towards the root in a dict).  In
+   * those cases our ref_cnt will be 2 and not 1.
+   *
+   * New weak_refs will not be added once frozen.
+   */
+
+  gint expected_refs = 1;
+  if (self->weak_referenced)
+    expected_refs++;
+
+  g_assert(g_atomic_counter_get(&self->ref_cnt) == expected_refs);
+
+  if (self->type->freeze)
+    self->type->freeze(pself);
+
+  /* NOTE: type->freeze may change self to replace with a frozen/hybernated
+   * version */
+
+  if (self == *pself)
+    {
+      /* no change in the object, so we are freezing self */
+      filterx_object_make_readonly(self);
+      g_atomic_counter_set(&self->ref_cnt, new_ref);
+      return;
+    }
+
+  self = *pself;
+  if (g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+    {
+      /* we get replaced by another frozen (but not hybernated) object */
+      g_atomic_counter_inc(&self->ref_cnt);
+    }
+}
+
+static void
+_filterx_object_thaw(FilterXObject *self)
+{
+  if (self->type->unfreeze)
+    self->type->unfreeze(self);
+
+  guint32 ref = 1;
+  if (self->weak_referenced)
+    ref++;
+
+  g_atomic_counter_set(&self->ref_cnt, ref);
+}
+
+/* NOTE: we expect an exclusive reference, as it is not thread safe to be
+ * called on the same object from multiple threads */
+void
+filterx_object_freeze(FilterXObject **pself)
+{
+  FilterXObject *self = *pself;
+
+  gint r = g_atomic_counter_get(&self->ref_cnt);
+  if (r == FILTERX_OBJECT_REFCOUNT_HYBERNATED)
+    return;
+
+  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+    {
+      g_atomic_counter_inc(&self->ref_cnt);
+      return;
+    }
+  _filterx_object_preserve(pself, FILTERX_OBJECT_REFCOUNT_FROZEN);
 }
 
 void
 filterx_object_unfreeze_and_free(FilterXObject *self)
 {
-  g_assert(filterx_object_is_frozen(self));
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  if (!self)
+    return;
+  gint r = g_atomic_counter_get(&self->ref_cnt);
+  if (r == FILTERX_OBJECT_REFCOUNT_HYBERNATED)
+    return;
+
+  g_assert(r >= FILTERX_OBJECT_REFCOUNT_FROZEN);
+  r = g_atomic_counter_exchange_and_add(&self->ref_cnt, -1);
+  if (r > FILTERX_OBJECT_REFCOUNT_FROZEN)
+    return;
+
+  _filterx_object_thaw(self);
+  filterx_object_unref(self);
+}
+
+void
+filterx_object_hybernate(FilterXObject **pself)
+{
+  FilterXObject *self = *pself;
+
+  gint r = g_atomic_counter_get(&self->ref_cnt);
+  g_assert(r < FILTERX_OBJECT_REFCOUNT_BARRIER);
+
+  _filterx_object_preserve(pself, FILTERX_OBJECT_REFCOUNT_HYBERNATED);
+}
+
+void
+filterx_object_unhybernate_and_free(FilterXObject *self)
+{
+  if (!self)
+    return;
+  gint r = g_atomic_counter_get(&self->ref_cnt);
+  g_assert(r == FILTERX_OBJECT_REFCOUNT_HYBERNATED);
+
+  _filterx_object_thaw(self);
   filterx_object_unref(self);
 }
 

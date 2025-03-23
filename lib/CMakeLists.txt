@@ -38,7 +38,6 @@ add_subdirectory(secret-storage)
 add_subdirectory(logthrsource)
 add_subdirectory(logthrdest)
 add_subdirectory(signal-slot-connector)
-add_subdirectory(adt)
 
 set(LIB_SUBDIR_HEADERS
     ${ACK_TRACKER_HEADERS}
@@ -442,7 +441,6 @@ install(FILES ${CSV_SCANNER_HEADERS} DESTINATION include/syslog-ng/scanner/csv-s
 install(FILES ${LOGTHRDEST_HEADERS} DESTINATION include/syslog-ng/logthrdest)
 install(FILES ${LOGTHRSOURCE_HEADERS} DESTINATION include/syslog-ng/logthrsource)
 install(FILES ${SIGNAL_SLOT_CONNECTOR_HEADERS} DESTINATION include/syslog-ng/signal-slot-connector)
-install(FILES ${ADT_HEADERS} DESTINATION include/syslog-ng/adt)
 
 set(TOOLS
     merge-grammar.py

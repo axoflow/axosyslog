@@ -27,7 +27,6 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
-#include "filterx/object-json.h"
 
 #include <string.h>
 

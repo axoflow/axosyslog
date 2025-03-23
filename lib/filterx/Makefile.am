@@ -47,6 +47,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/json-repr.h \
 	lib/filterx/func-flags.h \
 	lib/filterx/func-flatten.h \
+	lib/filterx/func-cache-json-file.h \
 	lib/filterx/func-istype.h \
 	lib/filterx/func-keys.h	\
 	lib/filterx/func-len.h \
@@ -62,9 +63,8 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/object-datetime.h \
 	lib/filterx/object-dict-interface.h \
 	lib/filterx/object-dict.h \
+	lib/filterx/object-list.h \
 	lib/filterx/object-extractor.h \
-	lib/filterx/object-json-internal.h \
-	lib/filterx/object-json.h \
 	lib/filterx/object-list-interface.h \
 	lib/filterx/object-message-value.h \
 	lib/filterx/object-metrics-labels.h \
@@ -120,6 +120,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-weakrefs.c \
 	lib/filterx/json-repr.c \
 	lib/filterx/func-flatten.c \
+	lib/filterx/func-cache-json-file.c \
 	lib/filterx/func-istype.c \
 	lib/filterx/func-keys.c	\
 	lib/filterx/func-len.c \
@@ -135,9 +136,7 @@ filterx_sources = 				\
 	lib/filterx/object-datetime.c \
 	lib/filterx/object-dict-interface.c \
 	lib/filterx/object-dict.c \
-	lib/filterx/object-json-array.c \
-	lib/filterx/object-json-object.c \
-	lib/filterx/object-json.c \
+	lib/filterx/object-list.c \
 	lib/filterx/object-list-interface.c \
 	lib/filterx/object-message-value.c \
 	lib/filterx/object-metrics-labels.c \

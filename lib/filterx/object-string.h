@@ -31,7 +31,8 @@ struct _FilterXString
 {
   FilterXObject super;
   const gchar *str;
-  gsize str_len;
+  guint32 str_len;
+  guint32 hash;
   gchar storage[];
 };
 
@@ -40,6 +41,9 @@ typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, g
 FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
 FILTERX_DECLARE_TYPE(protobuf);
+
+gboolean string_format_json(const gchar *str, gsize str_len, GString *json);
+gboolean bytes_format_json(const gchar *str, gsize str_len, GString *json);
 
 const gchar *filterx_bytes_get_value_ref(FilterXObject *s, gsize *length);
 const gchar *filterx_protobuf_get_value_ref(FilterXObject *s, gsize *length);
@@ -58,18 +62,23 @@ FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
  * it will be. Generic code should handle the cases where it is not.
  */
 static inline const gchar *
-filterx_string_get_value_ref(FilterXObject *s, gsize *length)
+filterx_string_unchecked_get_value_ref(FilterXObject *s, gsize *length)
 {
   FilterXString *self = (FilterXString *) s;
-
-  if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
-    return NULL;
 
   if (length)
     *length = self->str_len;
   else
     g_assert(self->str[self->str_len] == 0);
   return self->str;
+}
+
+static inline const gchar *
+filterx_string_get_value_ref(FilterXObject *s, gsize *length)
+{
+  if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
+    return NULL;
+  return filterx_string_unchecked_get_value_ref(s, length);
 }
 
 static inline FilterXObject *
@@ -87,6 +96,29 @@ filterx_string_new(const gchar *str, gssize str_len)
   return _filterx_string_new(str, str_len);
 }
 
+guint
+_filterx_string_hash(FilterXString *self);
+
+static inline guint
+filterx_string_hash(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+  if (self->hash)
+    return self->hash;
+
+  /* although this is racy for parallel access on the same object, it's not
+   * really a problem, as:
+   *
+   * 1) we are only sharing frozen instances of the string, which calculates
+   *    the hash at freeze time
+   *
+   * 2) even if we do share a non-frozen string, the hash algorithm should
+   *    have the same result, so worst case, we calculate the hash 2 times.
+   */
+
+  return _filterx_string_hash(self);
+}
+
 void filterx_string_global_init(void);
 void filterx_string_global_deinit(void);
 
@@ -94,7 +126,8 @@ void filterx_string_global_deinit(void);
   { \
     FILTERX_OBJECT_STACK_INIT(string), \
     .str = (cstr), \
-    .str_len = (((gssize) cstr_len) == -1 ? strlen(cstr) : (cstr_len)), \
+    .str_len = (((gssize) cstr_len) == -1 ? (guint32) strlen(cstr) : (guint32) (cstr_len)), \
+    .hash = 0, \
   }
 
 #define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \
