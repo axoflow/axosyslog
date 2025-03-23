@@ -163,6 +163,25 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   return self;
 }
 
+static inline guint
+_hash_str(const gchar *str, gsize str_len)
+{
+  const char *p;
+  guint32 h = 5381;
+
+  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
+    h = (h << 5) + h + *p;
+
+  return h;
+}
+
+guint
+_filterx_string_hash(FilterXString *self)
+{
+  self->hash = _hash_str(self->str, self->str_len);
+  return self->hash;
+}
+
 FilterXObject *
 _filterx_string_new(const gchar *str, gssize str_len)
 {
