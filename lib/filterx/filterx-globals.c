@@ -66,13 +66,13 @@ void
 filterx_cache_object(FilterXObject **cache_slot, FilterXObject *object)
 {
   *cache_slot = object;
-  filterx_object_freeze(cache_slot);
+  filterx_object_hybernate(cache_slot);
 }
 
 void
 filterx_uncache_object(FilterXObject **cache_slot)
 {
-  filterx_object_unfreeze_and_free(*cache_slot);
+  filterx_object_unhybernate_and_free(*cache_slot);
   *cache_slot = NULL;
 }
 

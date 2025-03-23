@@ -762,8 +762,9 @@ _filterx_dict_freeze(FilterXObject **s)
 static gboolean
 _unfreeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
-  filterx_object_unfreeze(*key);
-  filterx_object_unfreeze(*value);
+  filterx_object_unfreeze_and_free(*key);
+  filterx_object_unfreeze_and_free(*value);
+  *key = *value = NULL;
   return TRUE;
 }
 

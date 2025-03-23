@@ -99,8 +99,12 @@ _filterx_ref_free(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
-  filterx_object_unref(self->value);
+  if (self->value)
+    {
+      /* if we were frozen and then unfrozen, self->value will be NULL */
+      g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
+      filterx_object_unref(self->value);
+    }
   filterx_object_free_method(s);
 }
 
@@ -125,7 +129,16 @@ _filterx_ref_unfreeze(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  filterx_object_unfreeze(self->value);
+  /* when we are unfrozen, the next thing is to free self as well (as the
+   * only way to unfreeze is to free too).  This means that even though
+   * self->value may still exist for a short while, its destruction is
+   * inevitable too.  Let's drop our fx_ref_cnt though, to make sure it
+   * reaches 0 properly.  An unfrozen ref is inoperable, as our value will
+   * be NULL */
+
+  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
+  filterx_object_unfreeze_and_free(self->value);
+  self->value = NULL;
 }
 
 /* readonly methods */
