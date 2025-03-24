@@ -130,6 +130,11 @@ filterx_simple_function_has_sdata(FilterXExpr *s, FilterXObject *args[], gsize a
   return filterx_boolean_new(msg->num_sdata != 0);
 }
 
+typedef struct FilterXGenFuncGetSdata_
+{
+  FilterXGeneratorFunction super;
+} FilterXGenFuncGetSdata;
+
 static gboolean
 _should_create_new_dict(const gchar *previous_sd_id, gsize previous_sd_id_len, const gchar *current_sd_id,
                         gsize current_sd_id_len)
