@@ -112,9 +112,6 @@ gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
 void filterx_function_args_free(FilterXFunctionArgs *self);
 
 FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args, GError **error);
-FilterXExpr *filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args,
-                                               GError **error);
-
 
 #define _FILTERX_FUNCTION_PLUGIN(func_name, func_type) \
   { \
@@ -144,10 +141,5 @@ FilterXExpr *filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *f
     return (gpointer) f;                         \
   }
 #define FILTERX_SIMPLE_FUNCTION_PLUGIN(func_name) _FILTERX_FUNCTION_PLUGIN(func_name, LL_CONTEXT_FILTERX_SIMPLE_FUNC)
-
-
-#define FILTERX_GENERATOR_FUNCTION_DECLARE(func_name) FILTERX_FUNCTION_DECLARE(func_name)
-#define FILTERX_GENERATOR_FUNCTION(func_name, ctor) FILTERX_FUNCTION(func_name, ctor)
-#define FILTERX_GENERATOR_FUNCTION_PLUGIN(func_name) _FILTERX_FUNCTION_PLUGIN(func_name, LL_CONTEXT_FILTERX_GEN_FUNC)
 
 #endif
