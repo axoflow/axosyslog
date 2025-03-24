@@ -1326,9 +1326,6 @@ def test_regexp_search(config, syslog_ng):
     $MSG.mixed_keep_zero = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, keep_zero=true);
     $MSG.mixed_list_mode = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, list_mode=true);
     $MSG.mixed_keep_zero_list_mode = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, keep_zero=true, list_mode=true);
-    $MSG.force_list = json_array(regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/));
-    $MSG.force_dict = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/));
-    $MSG.force_dict_list_mode = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/, list_mode=true));
     $MSG.optimized_pattern = regexp_search("foobarbaz", /(foo)/ + /(bar)/ + /(baz)/);
 
     $MSG.no_match_unnamed = regexp_search("foobarbaz", /(almafa)/);
@@ -1373,9 +1370,6 @@ def test_regexp_search(config, syslog_ng):
         "mixed_keep_zero": {"0": "foobarbaz", "first": "foo", "2": "bar", "third": "baz"},
         "mixed_list_mode": ["foo", "bar", "baz"],
         "mixed_keep_zero_list_mode": ["foobarbaz", "foo", "bar", "baz"],
-        "force_list": ["foo", "bar", "baz"],
-        "force_dict": {"1": "foo", "2": "bar", "3": "baz"},
-        "force_dict_list_mode": {"1": "foo", "2": "bar", "3": "baz"},
         "no_match_unnamed": {},
         "no_match_unnamed_handling": True,
         "no_match_unnamed_list_mode": [],

@@ -56,11 +56,7 @@ _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
   _parse_search_flags(args, flags);
 
-  FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
-  FilterXExpr *parent_fillable_expr_new = filterx_literal_new(filterx_test_dict_new());
-  FilterXExpr *cc_expr = filterx_generator_create_container_new(expr, parent_fillable_expr_new);
-  FilterXExpr *fillable_expr = filterx_literal_new(filterx_expr_eval(cc_expr));
-  filterx_generator_set_fillable(expr, fillable_expr);
+  FilterXExpr *expr = filterx_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
 
   expr = filterx_expr_optimize(expr);
   cr_assert(filterx_expr_init(expr, configuration));
@@ -69,37 +65,9 @@ _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
   cr_assert(result_obj);
   cr_assert(filterx_object_truthy(result_obj));
 
-  FilterXObject *fillable = filterx_expr_eval(fillable_expr);
-  cr_assert(fillable);
-
   filterx_expr_deinit(expr, configuration);
-  filterx_object_unref(result_obj);
-  filterx_expr_unref(cc_expr);
 
-  return fillable;
-}
-
-static void
-_search_with_fillable(const gchar *lhs, const gchar *pattern, FilterXObject *fillable, FLAGSET flags)
-{
-  GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
-  _parse_search_flags(args, flags);
-
-  FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, NULL), NULL);
-  filterx_generator_set_fillable(expr, filterx_literal_new(filterx_object_ref(fillable)));
-
-  expr = filterx_expr_optimize(expr);
-  cr_assert(filterx_expr_init(expr, configuration));
-
-  FilterXObject *result_obj = filterx_expr_eval(expr);
-  cr_assert(result_obj);
-  cr_assert(filterx_object_truthy(result_obj));
-
-  filterx_object_unref(result_obj);
-  filterx_expr_deinit(expr, configuration);
-  filterx_expr_unref(expr);
+  return result_obj;
 }
 
 static void
@@ -111,7 +79,7 @@ _assert_search_init_error(const gchar *lhs, const gchar *pattern)
 
   GError *arg_err = NULL;
   GError *func_err = NULL;
-  FilterXExpr *expr = filterx_generator_function_regexp_search_new(filterx_function_args_new(args, &arg_err), &func_err);
+  FilterXExpr *expr = filterx_function_regexp_search_new(filterx_function_args_new(args, &arg_err), &func_err);
   cr_assert(!arg_err && !func_err);
 
   expr = filterx_expr_optimize(expr);
@@ -238,41 +206,6 @@ Test(filterx_expr_regexp_search, mixed)
   _assert_dict_elem(result, "third", "baz");
   filterx_object_unref(result);
 }
-
-Test(filterx_expr_regexp_search, forced_list)
-{
-  FilterXObject *result = filterx_test_list_new();
-  _search_with_fillable("foobarbaz", "(?<first>foo)(bar)(?<third>baz)", result, 0);
-  _assert_len(result, 3);
-  _assert_list_elem(result, 0, "foo");
-  _assert_list_elem(result, 1, "bar");
-  _assert_list_elem(result, 2, "baz");
-  filterx_object_unref(result);
-}
-
-Test(filterx_expr_regexp_search, forced_dict)
-{
-  FilterXObject *result = filterx_test_dict_new();
-  _search_with_fillable("foobarbaz", "(foo)(bar)(baz)", result, 0);
-  _assert_len(result, 3);
-  _assert_dict_elem(result, "1", "foo");
-  _assert_dict_elem(result, "2", "bar");
-  _assert_dict_elem(result, "3", "baz");
-  filterx_object_unref(result);
-}
-
-Test(filterx_expr_regexp_search, forced_dict_list_mode)
-{
-  // list mode overrides the default dict container creation, but still returns dict when fillable type is forced
-  FilterXObject *result = filterx_test_dict_new();
-  _search_with_fillable("foobarbaz", "(foo)(bar)(baz)", result, FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
-  _assert_len(result, 3);
-  _assert_dict_elem(result, "1", "foo");
-  _assert_dict_elem(result, "2", "bar");
-  _assert_dict_elem(result, "3", "baz");
-  filterx_object_unref(result);
-}
-
 
 Test(filterx_expr_regexp_search, unnamed_no_match)
 {

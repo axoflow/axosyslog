@@ -28,7 +28,9 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
+#include "filterx/object-list.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/object-dict.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/expr-function.h"
 #include "filterx/expr-regexp-common.h"
@@ -44,20 +46,21 @@ DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSearchFlags,
 FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO_NAME"=(boolean), "\
 FILTERX_REGEXP_SEARCH_LIST_MODE_NAME"=(boolean))"
 
-typedef struct FilterXExprRegexpSearchGenerator_
+typedef struct FilterXExprRegexpSearch_
 {
-  FilterXGeneratorFunction super;
+  FilterXFunction super;
   FilterXExpr *lhs;
   pcre2_code_8 *pattern;
   FilterXExpr *pattern_expr;
   FLAGSET flags;
-} FilterXExprRegexpSearchGenerator;
+} FilterXExprRegexpSearch;
 
-static gboolean
-_store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state, FilterXObject *fillable)
+static FilterXObject *
+_store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state)
 {
   guint32 num_matches = pcre2_get_ovector_count(state->match_data);
   PCRE2_SIZE *matches = pcre2_get_ovector_pointer(state->match_data);
+  FilterXObject *result = filterx_list_new();
 
   for (gint i = 0; i < num_matches; i++)
     {
@@ -69,25 +72,29 @@ _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
         continue;
 
       FILTERX_STRING_DECLARE_ON_STACK(value, state->lhs_str + begin_index, end_index - begin_index);
-      gboolean success = filterx_list_append(fillable, &value);
+      gboolean success = filterx_list_append(result, &value);
       filterx_object_unref(value);
 
       if (!success)
         {
           msg_error("FilterX: Failed to append regexp match to list", evt_tag_int("index", i));
-          return FALSE;
+          goto error;
         }
     }
 
-  return TRUE;
+  return result;
+error:
+  filterx_object_unref(result);
+  return NULL;
 }
 
-static gboolean
-_store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, FilterXObject *fillable)
+static FilterXObject *
+_store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state)
 {
   PCRE2_SIZE *matches = pcre2_get_ovector_pointer(state->match_data);
   guint32 num_matches = pcre2_get_ovector_count(state->match_data);
   gchar num_str_buf[G_ASCII_DTOSTR_BUF_SIZE];
+  FilterXObject *result = filterx_dict_new();
 
   /* First store all matches with string formatted indexes as keys. */
   for (guint32 i = 0; i < num_matches; i++)
@@ -104,7 +111,7 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
       FILTERX_STRING_DECLARE_ON_STACK(key, num_str_buf, -1);
       FILTERX_STRING_DECLARE_ON_STACK(value, state->lhs_str + begin_index, end_index - begin_index);
 
-      gboolean success = filterx_object_set_subscript(fillable, key, &value);
+      gboolean success = filterx_object_set_subscript(result, key, &value);
 
       filterx_object_unref(key);
       filterx_object_unref(value);
@@ -112,7 +119,7 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
       if (!success)
         {
           msg_error("FilterX: Failed to add regexp match to dict", evt_tag_str("key", num_str_buf));
-          return FALSE;
+          goto error;
         }
     }
 
@@ -137,10 +144,10 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
       g_snprintf(num_str_buf, sizeof(num_str_buf), "%" G_GUINT32_FORMAT, n);
       FILTERX_STRING_DECLARE_ON_STACK(num_key, num_str_buf, -1);
       FILTERX_STRING_DECLARE_ON_STACK(key, namedgroup_name, -1);
-      FilterXObject *value = filterx_object_get_subscript(fillable, num_key);
+      FilterXObject *value = filterx_object_get_subscript(result, num_key);
 
-      gboolean success = filterx_object_set_subscript(fillable, key, &value);
-      g_assert(filterx_object_unset_key(fillable, num_key));
+      gboolean success = filterx_object_set_subscript(result, key, &value);
+      g_assert(filterx_object_unset_key(result, num_key));
 
       filterx_object_unref(key);
       filterx_object_unref(num_key);
@@ -149,85 +156,64 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state, 
       if (!success)
         {
           msg_error("FilterX: Failed to add regexp match to dict", evt_tag_str("key", namedgroup_name));
-          return FALSE;
+          goto error;
         }
     }
 
-  return TRUE;
+  return result;
+error:
+  filterx_object_unref(result);
+  return NULL;
 }
 
-static gboolean
-_store_matches(pcre2_code_8 *pattern, const FilterXReMatchState *state, FilterXObject *fillable)
+static FilterXObject *
+_eval_regexp_search(FilterXExpr *s)
 {
-  fillable = filterx_ref_unwrap_rw(fillable);
-
-  if (filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(list)))
-    return _store_matches_to_list(pattern, state, fillable);
-
-  if (filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(dict)))
-    return _store_matches_to_dict(pattern, state, fillable);
-
-  msg_error("FilterX: Failed to store regexp match data, invalid fillable type",
-            evt_tag_str("type", fillable->type->name));
-  return FALSE;
-}
-
-static gboolean
-_regexp_search_generator_generate(FilterXExprGenerator *s, FilterXObject *fillable)
-{
-  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
-
-  gboolean result;
+  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
+  FilterXObject *result = NULL;
   FilterXReMatchState state;
+
   filterx_expr_rematch_state_init(&state);
   state.flags = self->flags;
 
-  gboolean matched = filterx_regexp_match_eval(self->lhs, self->pattern, &state);
-  if (!matched)
+  gboolean success = filterx_regexp_match_eval(self->lhs, self->pattern, &state);
+  if (!success)
     {
-      result = TRUE;
+      /* not match, return empty dict */
+      if (check_flag(self->flags, FILTERX_REGEXP_SEARCH_LIST_MODE))
+        result = filterx_list_new();
+      else
+        result = filterx_dict_new();
       goto exit;
     }
 
   if (!state.match_data)
-    {
-      /* Error happened during matching. */
-      result = FALSE;
-      goto exit;
-    }
+    goto exit;
 
-  result = _store_matches(self->pattern, &state, fillable);
+  if (check_flag(self->flags, FILTERX_REGEXP_SEARCH_LIST_MODE))
+    result = _store_matches_to_list(self->pattern, &state);
+  else
+    result = _store_matches_to_dict(self->pattern, &state);
 
 exit:
   filterx_expr_rematch_state_cleanup(&state);
   return result;
 }
 
-static FilterXObject *
-_regexp_search_generator_create_container(FilterXExprGenerator *s, FilterXExpr *fillable_parent)
-{
-  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
-
-  if (check_flag(self->flags, FILTERX_REGEXP_SEARCH_LIST_MODE))
-    return filterx_generator_create_list_container(s, fillable_parent);
-
-  return filterx_generator_create_dict_container(s, fillable_parent);
-}
-
 static FilterXExpr *
-_regexp_search_generator_optimize(FilterXExpr *s)
+_regexp_search_optimize(FilterXExpr *s)
 {
-  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
+  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
 
   self->lhs = filterx_expr_optimize(self->lhs);
   self->pattern_expr = filterx_expr_optimize(self->pattern_expr);
-  return filterx_generator_optimize_method(s);
+  return NULL;
 }
 
 static gboolean
-_regexp_search_generator_init(FilterXExpr *s, GlobalConfig *cfg)
+_regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 {
-  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
+  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
 
   FilterXObject *pattern_obj = NULL;
 
@@ -260,7 +246,7 @@ _regexp_search_generator_init(FilterXExpr *s, GlobalConfig *cfg)
       goto error;
     }
 
-  return filterx_generator_init_method(s, cfg);
+  return filterx_expr_init_method(s, cfg);
 
 error:
   filterx_object_unref(pattern_obj);
@@ -270,29 +256,29 @@ error:
 }
 
 static void
-_regexp_search_generator_deinit(FilterXExpr *s, GlobalConfig *cfg)
+_regexp_search_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
-  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
+  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
 
   filterx_expr_deinit(self->lhs, cfg);
   filterx_expr_deinit(self->pattern_expr, cfg);
-  filterx_generator_deinit_method(s, cfg);
+  filterx_expr_deinit_method(s, cfg);
 }
 
 static void
-_regexp_search_generator_free(FilterXExpr *s)
+_regexp_search_free(FilterXExpr *s)
 {
-  FilterXExprRegexpSearchGenerator *self = (FilterXExprRegexpSearchGenerator *) s;
+  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
 
   filterx_expr_unref(self->lhs);
   filterx_expr_unref(self->pattern_expr);
   if (self->pattern)
     pcre2_code_free(self->pattern);
-  filterx_generator_function_free_method(&self->super);
+  filterx_function_free_method(&self->super);
 }
 
 static gboolean
-_extract_optional_arg_flag(FilterXExprRegexpSearchGenerator *self, FilterXRegexpSearchFlags flag,
+_extract_optional_arg_flag(FilterXExprRegexpSearch *self, FilterXRegexpSearchFlags flag,
                            FilterXFunctionArgs *args, GError **error)
 {
   return filterx_regexp_extract_optional_arg_flag(&self->flags, FilterXRegexpSearchFlags_NAMES,
@@ -300,7 +286,7 @@ _extract_optional_arg_flag(FilterXExprRegexpSearchGenerator *self, FilterXRegexp
 }
 
 static gboolean
-_extract_search_args(FilterXExprRegexpSearchGenerator *self, FilterXFunctionArgs *args, GError **error)
+_extract_search_args(FilterXExprRegexpSearch *self, FilterXFunctionArgs *args, GError **error)
 {
   if (filterx_function_args_len(args) != 2)
     {
@@ -317,17 +303,16 @@ _extract_search_args(FilterXExprRegexpSearchGenerator *self, FilterXFunctionArgs
 
 /* Takes reference of lhs */
 FilterXExpr *
-filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
+filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
 {
-  FilterXExprRegexpSearchGenerator *self = g_new0(FilterXExprRegexpSearchGenerator, 1);
+  FilterXExprRegexpSearch *self = g_new0(FilterXExprRegexpSearch, 1);
 
-  filterx_generator_function_init_instance(&self->super, "regexp_search");
-  self->super.super.generate = _regexp_search_generator_generate;
-  self->super.super.super.optimize = _regexp_search_generator_optimize;
-  self->super.super.super.init = _regexp_search_generator_init;
-  self->super.super.super.deinit = _regexp_search_generator_deinit;
-  self->super.super.super.free_fn = _regexp_search_generator_free;
-  self->super.super.create_container = _regexp_search_generator_create_container;
+  filterx_function_init_instance(&self->super, "regexp_search");
+  self->super.super.eval = _eval_regexp_search;
+  self->super.super.optimize = _regexp_search_optimize;
+  self->super.super.init = _regexp_search_init;
+  self->super.super.deinit = _regexp_search_deinit;
+  self->super.super.free_fn = _regexp_search_free;
 
   if (!_extract_optional_arg_flag(self, FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO, args, error))
     goto error;
@@ -340,10 +325,10 @@ filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError *
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super.super.super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super.super);
+  filterx_expr_unref(&self->super.super);
   return NULL;
 }
