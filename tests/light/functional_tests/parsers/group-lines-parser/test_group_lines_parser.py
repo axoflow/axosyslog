@@ -42,6 +42,6 @@ ValueError: This is the exception text at the end
     config.create_logpath(statements=[file_source, group_lines_parser, file_destination])
 
     syslog_ng.start(config)
-    file_source.write_log('\n'.join(map(lambda line: 'python: ' + line, traceback.split('\n'))))
-    file_source.write_log("whatvever: the exception text at the end\n")
+    file_source.write_logs(map(lambda line: 'python: ' + line, traceback.split('\n')))
+    file_source.write_log("whatvever: the exception text at the end")
     assert file_destination.read_log().strip() == 'MESSAGE="' + traceback.strip().replace('"', "\\\"").replace('\n', '\\n') + '"'

@@ -42,13 +42,22 @@ class FileSource(SourceDriver):
     def set_path(self, pathname):
         self.path = Path(pathname)
 
-    def write_log(self, formatted_log, counter=1):
+    def write_log(self, log, counter=1):
         for _ in range(counter):
-            self.io.write(formatted_log)
+            self.io.write_message(log)
         logger.info(
             "Content has been written to\nresource: {}\n"
             "number of times: {}\n"
-            "content: {}\n".format(self.get_path(), counter, formatted_log),
+            "content: {}\n".format(self.get_path(), counter, log),
+        )
+
+    def write_logs(self, logs, counter=1):
+        for _ in range(counter):
+            self.io.write_messages(logs)
+        logger.info(
+            "Content has been written to\nresource: {}\n"
+            "number of times: {}\n"
+            "content: {}\n".format(self.get_path(), counter, logs),
         )
 
     def close_file(self):

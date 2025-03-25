@@ -38,13 +38,14 @@ def test_filter_multiple_reference(config, syslog_ng):
 
     log_msg = LogMessage().program("PROGRAM").message("MESSAGE")
     bsd_msg = BSDFormat.format_message(log_msg.remove_priority())
+    expected_msg = bsd_msg + "\n"
 
     file_source.write_log(bsd_msg)
 
     syslog_ng.start(config)
 
     dest1_logs = file_destination1.read_logs(counter=1)
-    assert bsd_msg in dest1_logs
+    assert expected_msg in dest1_logs
 
     dest2_logs = file_destination2.read_logs(counter=1)
-    assert bsd_msg in dest2_logs
+    assert expected_msg in dest2_logs

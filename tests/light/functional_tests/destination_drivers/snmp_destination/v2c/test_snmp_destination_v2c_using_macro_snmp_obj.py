@@ -30,7 +30,7 @@ def test_snmp_dest_v2c_using_macros_in_snmp_obj(config, syslog_ng, snmptrapd, sn
     default_severity = "0"
     program = "testprogram"
     message = "test message"
-    input_message = "<38>Feb 11 21:27:22 testhost {}[9999]: {}\n".format(program, message)
+    input_message = "<38>Feb 11 21:27:22 testhost {}[9999]: {}".format(program, message)
 
     file_source = config.create_file_source(file_name="input.log")
 
