@@ -216,7 +216,7 @@ def calculate_report_file_path(working_dir):
 
 
 def chdir_to_light_base_dir():
-    absolute_light_base_dir = Path(__file__).parents[1]
+    absolute_light_base_dir = Path(__file__).parents[2]
     os.chdir(absolute_light_base_dir)
 
 

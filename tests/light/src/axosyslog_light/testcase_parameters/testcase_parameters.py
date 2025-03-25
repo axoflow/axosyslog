@@ -31,7 +31,7 @@ INSTANCE_PATH = None
 class TestcaseParameters(object):
     def __init__(self, pytest_request):
         testcase_name = calculate_testcase_name(pytest_request.node.name)
-        absolute_framework_dir = Path(__file__).parents[2]
+        absolute_framework_dir = Path(__file__).parents[3]
         self.testcase_parameters = {
             "dirs": {
                 "install_dir": Path(pytest_request.config.getoption("installdir")),

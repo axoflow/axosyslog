@@ -8,7 +8,7 @@ EXTRA_DIST += \
 	tests/light/tox.ini
 
 include tests/light/functional_tests/Makefile.am
-include tests/light/axosyslog_light/Makefile.am
+include tests/light/src/axosyslog_light/Makefile.am
 
 
 if HAVE_POETRY
@@ -26,7 +26,7 @@ light-venv:
 	@$(LIGHT_POETRY_CMD) install
 
 light-self-check pytest-self-check: light-venv
-	@$(LIGHT_PYTEST_CMD) $(LIGHT_SRC_DIR)/axosyslog_light
+	@$(LIGHT_PYTEST_CMD) $(LIGHT_SRC_DIR)/src/axosyslog_light
 
 light-check pytest-check: light-venv
 	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
