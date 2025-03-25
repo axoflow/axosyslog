@@ -32,7 +32,7 @@ def generate_messages_with_different_program_fields(bsd_formatter, number_of_all
         if program_idx == different_program_fields + 1:
             program_idx = 1
         log_message = LogMessage().program(program_idx).message("message idx: %s" % message_idx)
-        input_messages.append(bsd_formatter.format_message(log_message, add_new_line=False))
+        input_messages.append(bsd_formatter.format_message(log_message))
         program_idx += 1
     return input_messages
 
