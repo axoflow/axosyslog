@@ -24,7 +24,6 @@
 from pathlib import PosixPath
 
 import pytest
-
 from axosyslog_light.self_test_fixtures import fake_testcase_parameters
 from axosyslog_light.syslog_ng.syslog_ng_paths import SyslogNgPaths
 

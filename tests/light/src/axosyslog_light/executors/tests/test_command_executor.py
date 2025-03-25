@@ -21,7 +21,6 @@
 #
 #############################################################################
 import pytest
-
 from axosyslog_light.executors.command_executor import CommandExecutor
 
 

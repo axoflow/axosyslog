@@ -24,7 +24,6 @@
 import json
 
 import pytest
-
 from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 

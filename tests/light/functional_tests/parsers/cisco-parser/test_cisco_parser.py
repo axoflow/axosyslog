@@ -23,7 +23,6 @@
 import json
 
 import pytest
-
 from axosyslog_light.common.network_operations import get_hostname
 
 

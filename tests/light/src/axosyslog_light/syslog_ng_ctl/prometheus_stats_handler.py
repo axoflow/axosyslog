@@ -23,9 +23,8 @@
 import typing
 
 import prometheus_client.parser
-from prometheus_client.samples import Sample
-
 from axosyslog_light.syslog_ng_ctl.syslog_ng_ctl import SyslogNgCtl
+from prometheus_client.samples import Sample
 
 __all__ = ["PrometheusStatsHandler", "MetricFilter", "Sample"]
 

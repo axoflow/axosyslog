@@ -30,10 +30,9 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 import psutil
 import pytest
-
-import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.helpers.loggen.loggen import Loggen

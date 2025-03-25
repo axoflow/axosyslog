@@ -22,10 +22,9 @@
 #############################################################################
 from pathlib import Path
 
-from psutil import TimeoutExpired
-
 import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 from axosyslog_light.executors.process_executor import ProcessExecutor
+from psutil import TimeoutExpired
 
 
 class Loggen(object):

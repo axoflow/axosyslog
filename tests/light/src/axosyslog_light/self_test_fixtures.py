@@ -22,7 +22,6 @@
 #
 #############################################################################
 import pytest
-
 from axosyslog_light.testcase_parameters.testcase_parameters import TestcaseParameters
 
 

@@ -25,11 +25,10 @@ import re
 from pathlib import Path
 
 import pytest
-from psutil import TimeoutExpired
-
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.common.file import File
 from axosyslog_light.executors.process_executor import ProcessExecutor
+from psutil import TimeoutExpired
 
 
 class SNMPtrapd(object):

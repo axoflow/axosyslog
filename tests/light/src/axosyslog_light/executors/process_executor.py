@@ -23,7 +23,6 @@
 import logging
 
 import psutil
-
 from axosyslog_light.executors.command_executor import prepare_executable_command
 from axosyslog_light.executors.command_executor import prepare_printable_command
 from axosyslog_light.executors.command_executor import prepare_std_outputs

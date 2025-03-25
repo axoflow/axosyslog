@@ -23,7 +23,6 @@
 from pathlib import Path
 
 import pytest
-
 from axosyslog_light.common.file import copy_file
 from axosyslog_light.executors.command_executor import CommandExecutor
 from axosyslog_light.syslog_ng.syslog_ng_paths import SyslogNgPaths
