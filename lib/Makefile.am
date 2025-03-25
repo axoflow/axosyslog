@@ -30,7 +30,6 @@ include lib/logthrdest/Makefile.am
 include lib/signal-slot-connector/Makefile.am
 include lib/multi-line/Makefile.am
 include lib/perf/Makefile.am
-include lib/adt/Makefile.am
 
 LSNG_RELEASE		= $(shell echo @PACKAGE_VERSION@ | cut -d. -f1,2)
 
@@ -312,8 +311,7 @@ lib_libsyslog_ng_la_SOURCES		= \
 	$(logthrsource_sources)		\
 	$(logthrdest_sources) \
 	$(signal_slot_connector_sources) \
-	$(perf_sources)			\
-	$(adt_sources)
+	$(perf_sources)
 
 lib_libsyslog_ng_la_CFLAGS		= \
 	$(AM_CFLAGS) \
