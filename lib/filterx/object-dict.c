@@ -670,6 +670,14 @@ filterx_dict_new(void)
   return filterx_dict_new_with_table(_table_new(32));
 }
 
+FilterXObject *
+filterx_dict_sized_new(gsize init_size)
+{
+  if (init_size < 16)
+    init_size = 16;
+  return filterx_dict_new_with_table(_table_new(init_size));
+}
+
 static void
 _filterx_dict_free(FilterXObject *s)
 {
