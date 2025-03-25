@@ -296,6 +296,70 @@ filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
   s->super.free_fn = _function_free;
 }
 
+FilterXExpr *
+filterx_generator_function_optimize_method(FilterXGeneratorFunction *s)
+{
+  return filterx_generator_optimize_method(&s->super.super);
+}
+
+gboolean
+filterx_generator_function_init_method(FilterXGeneratorFunction *s, GlobalConfig *cfg)
+{
+  return filterx_generator_init_method(&s->super.super, cfg);
+}
+
+void
+filterx_generator_function_deinit_method(FilterXGeneratorFunction *s, GlobalConfig *cfg)
+{
+  filterx_generator_deinit_method(&s->super.super, cfg);
+}
+
+void
+filterx_generator_function_free_method(FilterXGeneratorFunction *s)
+{
+  g_free(s->function_name);
+  filterx_generator_free_method(&s->super.super);
+}
+
+static inline FilterXExpr *
+_generator_function_optimize(FilterXExpr *s)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  return filterx_generator_function_optimize_method(self);
+}
+
+static inline gboolean
+_generator_function_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  return filterx_generator_function_init_method(self, cfg);
+}
+
+static inline void
+_generator_function_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  filterx_generator_function_deinit_method(self, cfg);
+}
+
+static inline void
+_generator_function_free(FilterXExpr *s)
+{
+  FilterXGeneratorFunction *self = (FilterXGeneratorFunction *) s;
+  filterx_generator_function_free_method(self);
+}
+
+void
+filterx_generator_function_init_instance(FilterXGeneratorFunction *s, const gchar *function_name)
+{
+  filterx_generator_init_instance(&s->super.super);
+  s->function_name = g_strdup_printf("%s()", function_name);
+  s->super.super.optimize = _generator_function_optimize;
+  s->super.super.init = _generator_function_init;
+  s->super.super.deinit = _generator_function_deinit;
+  s->super.super.free_fn = _generator_function_free;
+}
+
 /* Takes reference of value */
 FilterXFunctionArg *
 filterx_function_arg_new(const gchar *name, FilterXExpr *value)
@@ -663,6 +727,47 @@ filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *ar
     return expr;
 
   expr = _lookup_function(cfg, function_name, args, error);
+  if (expr)
+    return expr;
+
+  if (!(*error))
+    g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND, "function not found");
+  return NULL;
+}
+
+static FilterXExpr *
+_lookup_generator_function(GlobalConfig *cfg, const gchar *function_name, FilterXFunctionArgs *args, GError **error)
+{
+  // Checking filterx builtin generator functions first
+  FilterXFunctionCtor ctor = filterx_builtin_generator_function_ctor_lookup(function_name);
+
+  if (!ctor)
+    {
+      // fallback to plugin lookup
+      Plugin *p = cfg_find_plugin(cfg, LL_CONTEXT_FILTERX_GEN_FUNC, function_name);
+      if (!p)
+        return NULL;
+      ctor = plugin_construct(p);
+    }
+
+  if (!ctor)
+    return NULL;
+
+  FilterXExpr *func = ctor(args, error);
+  g_assert(!func || filterx_expr_is_generator(func));
+
+  return func;
+}
+
+/* NOTE: takes the references of objects passed in "arguments" */
+FilterXExpr *
+filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args_list, GError **error)
+{
+  FilterXFunctionArgs *args = filterx_function_args_new(args_list, error);
+  if (!args)
+    return NULL;
+
+  FilterXExpr *expr = _lookup_generator_function(cfg, function_name, args, error);
   if (expr)
     return expr;
 
