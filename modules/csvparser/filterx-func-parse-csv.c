@@ -218,11 +218,11 @@ _eval_parse_csv(FilterXExpr *s)
                             FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS))
     goto exit;
 
-  if(!_maybe_init_columns(self, &cols, &num_of_columns))
+  if (!_maybe_init_columns(self, &cols, &num_of_columns))
     goto exit;
 
   if (_are_column_names_set(self))
-    result = filterx_dict_new();
+    result = filterx_dict_sized_new(num_of_columns);
   else
     result = filterx_list_new();
 
