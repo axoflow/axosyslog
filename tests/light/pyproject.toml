@@ -9,10 +9,10 @@ homepage = "https://github.com/axoflow/axosyslog/tests/light"
 repository = "https://github.com/axoflow/axosyslog/tests/light"
 keywords = ["axosyslog"]
 classifiers = []
-packages = [{include = "axosyslog_light"}]
+packages = [{include = "axosyslog_light", from = "src"}]
 include = []
 exclude = [
-  "axosyslog_light/Makefile.am",
+  "src/axosyslog_light/Makefile.am",
 ]
 
 [tool.poetry.dependencies]
@@ -29,3 +29,6 @@ pylint = "^3.3.4"
 astroid = "^3.3.8"
 logilab-common = "^2.0.0"
 pre-commit = "^4.1.0"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 #############################################################################
-# Copyright (c) 2015-2018 Balabit
+# Copyright (c) 2015-2019 Balabit
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published
@@ -21,19 +22,23 @@
 #
 #############################################################################
 import pytest
+from axosyslog_light.testcase_parameters.testcase_parameters import TestcaseParameters
 
-from axosyslog_light.executors.command_executor import CommandExecutor
+
+@pytest.fixture
+def test_message():
+    return "test message - öüóőúéáű\n"
 
 
-@pytest.mark.parametrize(
-    "command, expected_stdout, expected_stderr, expected_exit_code",
-    [(["grep", "a", "a"], "", "grep: a: No such file or directory\n", 2), (["echo", "a"], "a\n", "", 0)],
-)
-def test_execute_command(tmpdir, command, expected_stdout, expected_stderr, expected_exit_code):
-    stdout_file = tmpdir.join("stdout.log")
-    stderr_file = tmpdir.join("stderr.log")
-    command_executor = CommandExecutor()
-    result = command_executor.run(command, stdout_file, stderr_file)
-    assert result["stdout"] == expected_stdout
-    assert result["stderr"] == expected_stderr
-    assert result["exit_code"] == expected_exit_code
+@pytest.fixture
+def fake_testcase_parameters(request, tmpdir):
+    request.config.option.installdir = tmpdir.join("installdir")
+    request.config.option.reports = tmpdir.join("reports")
+    request.config.option.run_under = ""
+
+    yield TestcaseParameters(request)
+
+
+@pytest.fixture
+def temp_file(tmpdir):
+    return tmpdir.join("test_file.log")

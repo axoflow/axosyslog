@@ -7,7 +7,7 @@ set(LIGHT_PYTEST_CMD ${LIGHT_PYTHON_CMD} -m pytest --showlocals --verbosity=3)
 
 add_custom_target(light-self-check
    COMMAND ${LIGHT_POETRY_CMD} install
-   COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/axosyslog_light)
+   COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/src/axosyslog_light)
 
 add_custom_target(light-check
    COMMAND ${LIGHT_POETRY_CMD} install

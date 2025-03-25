@@ -23,7 +23,6 @@
 import logging
 
 import psutil
-
 from axosyslog_light.common.file import File
 
 logger = logging.getLogger(__name__)

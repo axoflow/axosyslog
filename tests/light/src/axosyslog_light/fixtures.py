@@ -30,10 +30,9 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 import psutil
 import pytest
-
-import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.helpers.loggen.loggen import Loggen
@@ -216,7 +215,7 @@ def calculate_report_file_path(working_dir):
 
 
 def chdir_to_light_base_dir():
-    absolute_light_base_dir = Path(__file__).parents[1]
+    absolute_light_base_dir = Path(__file__).parents[2]
     os.chdir(absolute_light_base_dir)
 
 

@@ -46,7 +46,7 @@ def copy_shared_file(testcase_parameters, shared_file_name):
 
 
 def get_shared_file(shared_file_name):
-    absolute_framework_dir = Path(__file__).parents[2].resolve()
+    absolute_framework_dir = Path(__file__).parents[3].resolve()
     return absolute_framework_dir / "shared_files" / shared_file_name
 
 

@@ -21,7 +21,6 @@
 #
 #############################################################################
 import pytest
-
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.message_builder.log_message import LogMessage
 

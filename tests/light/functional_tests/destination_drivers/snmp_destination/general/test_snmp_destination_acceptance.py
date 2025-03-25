@@ -21,7 +21,6 @@
 #
 #############################################################################
 import pytest
-
 from axosyslog_light.helpers.snmptrapd.conftest import *  # noqa:F403, F401
 
 
