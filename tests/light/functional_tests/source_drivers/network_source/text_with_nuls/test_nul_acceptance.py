@@ -22,7 +22,7 @@
 #############################################################################
 
 TEMPLATE = r'"${MESSAGE}\n"'
-INPUT_MESSAGES = "prog message\x00embedded\x00nul"
+INPUT_MESSAGE = "prog message\x00embedded\x00nul"
 EXPECTED_MESSAGE0 = "message embedded nul\n"
 
 
@@ -33,6 +33,6 @@ def test_nul_acceptance(config, syslog_ng, loggen, port_allocator):
 
     syslog_ng.start(config)
 
-    network_source.write_log(INPUT_MESSAGES)
+    network_source.write_log(INPUT_MESSAGE)
 
     assert file_destination.read_log() == EXPECTED_MESSAGE0

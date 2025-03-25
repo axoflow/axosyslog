@@ -22,8 +22,12 @@
 #############################################################################
 
 TEMPLATE = r'"${SOURCEIP} ${SOURCEPORT} ${DESTIP} ${DESTPORT} ${IP_PROTO} ${MESSAGE}\n"'
-INPUT_MESSAGES = "PROXY TCP4 1.1.1.1 2.2.2.2 3333 4444\r\n" \
-                 "message 0"
+PROXY_VERSION = 1
+PROXY_SRC_IP = "1.1.1.1"
+PROXY_DST_IP = "2.2.2.2"
+PROXY_SRC_PORT = 3333
+PROXY_DST_PORT = 4444
+INPUT_MESSAGES = ["message 0"]
 EXPECTED_MESSAGE0 = "1.1.1.1 3333 2.2.2.2 4444 4 message 0\n"
 
 
@@ -34,6 +38,6 @@ def test_pp_acceptance(config, syslog_ng, loggen, port_allocator):
 
     syslog_ng.start(config)
 
-    network_source.write_log(INPUT_MESSAGES)
+    network_source.write_logs_with_proxy_header(PROXY_VERSION, PROXY_SRC_IP, PROXY_DST_IP, PROXY_SRC_PORT, PROXY_DST_PORT, INPUT_MESSAGES)
 
     assert file_destination.read_log() == EXPECTED_MESSAGE0

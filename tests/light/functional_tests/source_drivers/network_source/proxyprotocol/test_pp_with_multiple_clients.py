@@ -23,12 +23,19 @@
 
 TEMPLATE = r'"${SOURCEIP} ${SOURCEPORT} ${DESTIP} ${DESTPORT} ${IP_PROTO} ${MESSAGE}\n"'
 
-CLIENT_A_INPUT = "PROXY TCP4 1.1.1.1 2.2.2.2 3333 4444\r\n" \
-                 "message A 0\n" \
-                 "message A 1\n"
-CLIENT_B_INPUT = "PROXY TCP4 5.5.5.5 6.6.6.6 7777 8888\r\n" \
-                 "message B 0\n" \
-                 "message B 1\n"
+PROXY_VERSION = 1
+
+CLIENT_A_PROXY_SRC_IP = "1.1.1.1"
+CLIENT_A_PROXY_DST_IP = "2.2.2.2"
+CLIENT_A_PROXY_SRC_PORT = 3333
+CLIENT_A_PROXY_DST_PORT = 4444
+CLIENT_A_INPUT = ["message A 0", "message A 1"]
+
+CLIENT_B_PROXY_SRC_IP = "5.5.5.5"
+CLIENT_B_PROXY_DST_IP = "6.6.6.6"
+CLIENT_B_PROXY_SRC_PORT = 7777
+CLIENT_B_PROXY_DST_PORT = 8888
+CLIENT_B_INPUT = ["message B 0", "message B 1"]
 
 CLIENT_A_EXPECTED = (
     "1.1.1.1 3333 2.2.2.2 4444 4 message A 0\n",
@@ -48,8 +55,8 @@ def test_pp_with_multiple_clients(config, port_allocator, syslog_ng):
     syslog_ng.start(config)
 
     # These 2 run simultaneously
-    network_source.write_log(CLIENT_A_INPUT, rate=1)
-    network_source.write_log(CLIENT_B_INPUT, rate=1)
+    network_source.write_logs_with_proxy_header(PROXY_VERSION, CLIENT_A_PROXY_SRC_IP, CLIENT_A_PROXY_DST_IP, CLIENT_A_PROXY_SRC_PORT, CLIENT_A_PROXY_DST_PORT, CLIENT_A_INPUT, rate=1)
+    network_source.write_logs_with_proxy_header(PROXY_VERSION, CLIENT_B_PROXY_SRC_IP, CLIENT_B_PROXY_DST_IP, CLIENT_B_PROXY_SRC_PORT, CLIENT_B_PROXY_DST_PORT, CLIENT_B_INPUT, rate=1)
 
     output_messages = file_destination.read_logs(counter=4)
     assert sorted(output_messages) == sorted(CLIENT_A_EXPECTED + CLIENT_B_EXPECTED)

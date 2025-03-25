@@ -54,4 +54,4 @@ class SyslogSource(SourceDriver):
         super(SyslogSource, self).__init__(options=options)
 
     def write_log(self, formatted_content, rate=None):
-        self.io.write(formatted_content, rate=rate)
+        self.io.write_messages(formatted_content, rate=rate)

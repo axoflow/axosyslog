@@ -22,7 +22,7 @@
 #############################################################################
 
 LOG_MSG_SIZE = 65536
-INPUT_MESSAGES = "1" * (LOG_MSG_SIZE + 12) + "\n<167>2022-08-21T00:07:06.7"
+INPUT_MESSAGE = "1" * (LOG_MSG_SIZE + 12) + "\n<167>2022-08-21T00:07:06.7"
 
 
 def test_syslog_parser_timestamp_spinning(config, syslog_ng, port_allocator):
@@ -32,6 +32,6 @@ def test_syslog_parser_timestamp_spinning(config, syslog_ng, port_allocator):
 
     syslog_ng.start(config)
 
-    network_source.write_log(INPUT_MESSAGES)
+    network_source.write_log(INPUT_MESSAGE)
     syslog_ng.stop()
     assert not syslog_ng.is_process_running()

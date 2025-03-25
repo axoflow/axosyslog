@@ -46,13 +46,32 @@ class NetworkIO():
         self.__server = None
         self.__message_reader = None
 
-    def write(self, content, rate=None):
+    def write_raw(self, raw_content, rate=None, extra_loggen_args=None):
+        if extra_loggen_args is None:
+            extra_loggen_args = {}
+
         loggen_input_file_path = Path("loggen_input_{}.txt".format(get_unique_id()))
 
         loggen_input_file = File(loggen_input_file_path)
-        loggen_input_file.write_content_and_close(content)
+        loggen_input_file.write_content_and_close(raw_content)
 
-        Loggen().start(self.__ip, self.__port, read_file=str(loggen_input_file_path), dont_parse=True, permanent=True, rate=rate, **self.__transport.value)
+        Loggen().start(self.__ip, self.__port, read_file=str(loggen_input_file_path), dont_parse=True, permanent=True, rate=rate, **self.__transport.value, **extra_loggen_args)
+
+    def write_messages(self, messages, rate=None):
+        self.write_raw("".join([message + "\n" for message in messages]), rate=rate)
+
+    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None):
+        self.write_raw(
+            [message + "\n" for message in messages],
+            rate=rate,
+            extra_loggen_args={
+                "proxied": proxy_version,
+                "proxy_src_ip": src_ip,
+                "proxy_dst_ip": dst_ip,
+                "proxy_src_port": str(src_port),
+                "proxy_dst_port": str(dst_port),
+            },
+        )
 
     def start_listener(self):
         self.__message_reader, self.__server = self.__transport.construct(self.__port, self.__ip, self.__ip_proto_version)

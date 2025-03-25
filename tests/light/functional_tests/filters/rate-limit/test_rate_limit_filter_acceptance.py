@@ -26,13 +26,13 @@ from axosyslog_light.message_builder.log_message import LogMessage
 
 
 def generate_messages_with_different_program_fields(bsd_formatter, number_of_all_messages, different_program_fields):
-    input_messages = ""
+    input_messages = []
     program_idx = 1
     for message_idx in range(1, number_of_all_messages + 1):
         if program_idx == different_program_fields + 1:
             program_idx = 1
         log_message = LogMessage().program(program_idx).message("message idx: %s" % message_idx)
-        input_messages += bsd_formatter.format_message(log_message, add_new_line=True)
+        input_messages.append(bsd_formatter.format_message(log_message, add_new_line=False))
         program_idx += 1
     return input_messages
 
@@ -59,6 +59,6 @@ def test_rate_limit_filter_acceptance(config, syslog_ng, port_allocator, bsd_for
     syslog_ng.start(config)
 
     input_messages = generate_messages_with_different_program_fields(bsd_formatter=bsd_formatter, number_of_all_messages=message_counter, different_program_fields=different_program_fields)
-    s_network.write_log(input_messages, rate=message_rate_by_sec)
+    s_network.write_logs(input_messages, rate=message_rate_by_sec)
 
     assert wait_until_true(lambda: f_rate_limit.get_stats() == {'matched': expected_number_of_matched_messages, 'not_matched': expected_number_of_not_matched_messages})

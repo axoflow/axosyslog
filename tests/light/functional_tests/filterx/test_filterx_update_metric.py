@@ -121,7 +121,7 @@ def test_filterx_update_metric_increment(config, port_allocator, syslog_ng):
     )
 
     syslog_ng.start(config)
-    network_source.write_log("3\n2\n1\n0\n")
+    network_source.write_logs(["3", "2", "1", "0"])
     file_destination.read_logs(4)
 
     samples = config.get_prometheus_samples([MetricFilter("syslogng_const", {})])
@@ -149,7 +149,7 @@ def test_filterx_update_metric_level(config, port_allocator, syslog_ng):
     )
 
     syslog_ng.start(config)
-    network_source.write_log("foo\n")
+    network_source.write_log("foo")
     file_destination.read_log()
 
     samples = config.get_prometheus_samples([MetricFilter("syslogng_metric", {})])
@@ -167,7 +167,7 @@ def test_filterx_update_metric_level(config, port_allocator, syslog_ng):
     )
 
     syslog_ng.reload(config)
-    network_source.write_log("foo\n")
+    network_source.write_log("foo")
     file_destination.read_log()
 
     # stats(level(2));
@@ -182,7 +182,7 @@ def test_filterx_update_metric_level(config, port_allocator, syslog_ng):
     )
 
     syslog_ng.reload(config)
-    network_source.write_log("foo\n")
+    network_source.write_log("foo")
     file_destination.read_log()
 
     assert wait_until_true(lambda: config.get_prometheus_samples([MetricFilter("syslogng_metric", {})]) != [])

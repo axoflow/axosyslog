@@ -21,8 +21,12 @@
 #
 #############################################################################
 
-PROXY_PROTO_HEADER = "PROXY TCP4 192.168.1.1 192.168.1.2 20000 20001\r\n"
-RFC3164_EXAMPLE = "<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n"
+PROXY_VERSION = 1
+PROXY_SRC_IP = "192.168.1.1"
+PROXY_DST_IP = "192.168.1.2"
+PROXY_SRC_PORT = 20000
+PROXY_DST_PORT = 20001
+RFC3164_EXAMPLE = ["<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8"]
 RFC3164_EXAMPLE_WITHOUT_PRI = "Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n"
 
 
@@ -34,6 +38,6 @@ def test_pp_with_syslog_proto(config, port_allocator, syslog_ng, loggen):
 
     syslog_ng.start(config)
 
-    network_source.write_log(PROXY_PROTO_HEADER + RFC3164_EXAMPLE)
+    network_source.write_logs_with_proxy_header(PROXY_VERSION, PROXY_SRC_IP, PROXY_DST_IP, PROXY_SRC_PORT, PROXY_DST_PORT, RFC3164_EXAMPLE)
 
     assert file_destination.read_log() == RFC3164_EXAMPLE_WITHOUT_PRI

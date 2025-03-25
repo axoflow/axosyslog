@@ -22,10 +22,12 @@
 #############################################################################
 
 TEMPLATE = r'"${SOURCEIP} ${SOURCEPORT} ${DESTIP} ${DESTPORT} ${IP_PROTO} ${MESSAGE}\n"'
-INPUT_MESSAGES = "PROXY TCP4 1.1.1.1 2.2.2.2 3333 4444\r\n" \
-                 "message 0\n" \
-                 "message 1\n" \
-                 "message 2\n"
+PROXY_VERSION = 1
+PROXY_SRC_IP = "1.1.1.1"
+PROXY_DST_IP = "2.2.2.2"
+PROXY_SRC_PORT = 3333
+PROXY_DST_PORT = 4444
+INPUT_MESSAGES = ["message 0", "message 1", "message 2"]
 EXPECTED_MESSAGE0 = "1.1.1.1 3333 2.2.2.2 4444 4 message 0\n"
 EXPECTED_MESSAGE1 = "1.1.1.1 3333 2.2.2.2 4444 4 message 1\n"
 EXPECTED_MESSAGE2 = "1.1.1.1 3333 2.2.2.2 4444 4 message 2\n"
@@ -38,7 +40,7 @@ def test_pp_reload(config, syslog_ng, loggen, port_allocator):
 
     syslog_ng.start(config)
 
-    network_source.write_log(INPUT_MESSAGES, rate=1)
+    network_source.write_logs_with_proxy_header(PROXY_VERSION, PROXY_SRC_IP, PROXY_DST_IP, PROXY_SRC_PORT, PROXY_DST_PORT, INPUT_MESSAGES, rate=1)
 
     # With the current loggen implementation there is no way to properly timing messages.
     # Here I made an assumption that with rate=1, there will be messages which will arrive
