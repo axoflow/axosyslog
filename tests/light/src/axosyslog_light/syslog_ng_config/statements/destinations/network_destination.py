@@ -40,7 +40,7 @@ def map_transport(transport):
 def create_io(ip, options):
     transport = options["transport"] if "transport" in options else "tcp"
 
-    return NetworkIO(ip, options["port"], map_transport(transport))
+    return NetworkIO(ip, options["port"], map_transport(transport), False)
 
 
 class NetworkDestination(DestinationDriver):

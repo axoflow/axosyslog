@@ -43,7 +43,7 @@ def create_io(options):
     ip = options["ip"] if "ip" in options else "localhost"
     transport = options["transport"] if "transport" in options else "tcp"
 
-    return NetworkIO(ip, options["port"], map_transport(transport))
+    return NetworkIO(ip, options["port"], map_transport(transport), True)
 
 
 class SyslogSource(SourceDriver):
@@ -53,5 +53,11 @@ class SyslogSource(SourceDriver):
         self.driver_name = "syslog"
         super(SyslogSource, self).__init__(options=options)
 
-    def write_log(self, formatted_content, rate=None):
-        self.io.write_messages(formatted_content, rate=rate)
+    def write_log(self, message, rate=None):
+        self.io.write_messages([message], rate=rate)
+
+    def write_logs(self, messages, rate=None):
+        self.io.write_messages(messages, rate=rate)
+
+    def write_logs_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None):
+        self.io.write_messages_with_proxy_header(proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=rate)

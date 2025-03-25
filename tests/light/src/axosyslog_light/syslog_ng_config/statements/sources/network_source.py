@@ -44,7 +44,7 @@ def create_io(options):
     ip = options["ip"] if "ip" in options else "localhost"
     transport = options["transport"] if "transport" in options else "tcp"
 
-    return NetworkIO(ip, options["port"], map_transport(transport))
+    return NetworkIO(ip, options["port"], map_transport(transport), False)
 
 
 class NetworkSource(SourceDriver):
