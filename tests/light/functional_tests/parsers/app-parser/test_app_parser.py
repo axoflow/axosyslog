@@ -87,7 +87,7 @@ def test_app_parser_allow_overlaps_causes_all_apps_to_be_traversed(config, syslo
     config.create_logpath(statements=[generator_source, syslog_parser, app_parser, file_destination])
 
     syslog_ng.start(config)
-    assert file_destination.read_log()[:-1] == expected_value
+    assert file_destination.read_log() == expected_value
 
 
 def test_app_parser_dont_match_causes_the_message_to_be_dropped(config, syslog_ng):

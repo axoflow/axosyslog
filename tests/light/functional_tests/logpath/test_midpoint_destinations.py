@@ -103,7 +103,7 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_after.read_log() == "foobar\n"
+    assert file_after.read_log() == "foobar"
 
 
 def test_midpoint_inline_destination_that_drops_all_messages_does_not_cause_message_to_be_unmatched(config, syslog_ng):
@@ -130,7 +130,7 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_after.read_log() == "foobar\n"
+    assert file_after.read_log() == "foobar"
 
 
 def test_filter_between_destinations_that_drops_all_messages_causes_the_message_to_be_unmatched(config, syslog_ng):
@@ -159,8 +159,8 @@ log {
     assert "processed" not in file_after.get_stats()
     assert file_fallback.get_stats()["processed"] == 1
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_fallback.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_fallback.read_log() == "foobar"
 
 
 def test_junction_that_drops_messages_in_all_branches_causes_the_message_to_be_unmatched(config, syslog_ng):
@@ -184,8 +184,8 @@ log {
     assert "processed" not in file_after.get_stats()
     assert file_fallback.get_stats()["processed"] == 1
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_fallback.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_fallback.read_log() == "foobar"
 
 
 def test_junction_that_drops_messages_in_all_branches_causes_the_message_to_be_unmatched_even_if_they_reference_destinations(config, syslog_ng):
@@ -213,8 +213,8 @@ log {
     assert "processed" not in file_after.get_stats()
     assert file_fallback.get_stats()["processed"] == 1
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_fallback.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_fallback.read_log() == "foobar"
 
 
 def test_junction_that_contains_message_dropping_destination_continues_to_deliver_messages_on_the_same_path(config, syslog_ng):
@@ -243,5 +243,5 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"

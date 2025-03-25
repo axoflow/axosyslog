@@ -115,7 +115,7 @@ def test_message_tied_variables_are_propagated_to_the_output(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "kecske\n"
+    assert file_true.read_log() == "kecske"
 
 
 def test_message_tied_variables_in_braces_are_propagated_to_the_output(config, syslog_ng):
@@ -135,7 +135,7 @@ def test_message_tied_variables_in_braces_are_propagated_to_the_output(config, s
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "kecske\n"
+    assert file_true.read_log() == "kecske"
 
 
 def test_message_tied_variables_are_propagated_to_the_output_in_junctions(config, syslog_ng):
@@ -156,7 +156,7 @@ def test_message_tied_variables_are_propagated_to_the_output_in_junctions(config
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "kecske\n"
+    assert file_true.read_log() == "kecske"
 
 
 def test_message_tied_variables_do_not_propagate_to_parallel_branches(config, syslog_ng):
@@ -186,7 +186,7 @@ def test_message_tied_variables_do_not_propagate_to_parallel_branches(config, sy
 
     assert file_false.get_stats()["processed"] == 1
     assert "processed" not in file_true.get_stats()
-    assert file_false.read_log() == "kecske\n"
+    assert file_false.read_log() == "kecske"
 
 
 def test_message_tied_variables_are_invalidated_if_message_is_changed(config, syslog_ng):
@@ -218,7 +218,7 @@ def test_message_tied_variables_are_invalidated_if_message_is_changed(config, sy
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "foobar replacement\n"
+    assert file_true.read_log() == "foobar replacement"
 
 
 def test_message_tied_mutable_objects_are_synced_if_child_object_is_changed(config, syslog_ng):
@@ -237,7 +237,7 @@ def test_message_tied_mutable_objects_are_synced_if_child_object_is_changed(conf
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"foo":{"foo1":"child-changed","foo2":"foo2value"},"bar":{"bar1":"bar1value","bar2":"bar2value"}}\n"""
+    assert file_true.read_log() == """{"foo":{"foo1":"child-changed","foo2":"foo2value"},"bar":{"bar1":"bar1value","bar2":"bar2value"}}"""
 
 
 def test_message_tied_variables_are_not_considered_changed_just_by_unmarshaling(config, syslog_ng):
@@ -290,7 +290,7 @@ def test_floating_variables_are_dropped_at_the_end_of_the_scope(config, syslog_n
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
 
 
 def test_floating_variables_are_dropped_at_the_end_of_the_scope_but_can_be_recreated(config, syslog_ng):
@@ -312,7 +312,7 @@ def test_floating_variables_are_dropped_at_the_end_of_the_scope_but_can_be_recre
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "barka\n"
+    assert file_true.read_log() == "barka"
 
 
 def test_declared_variables_are_retained_across_scopes(config, syslog_ng):
@@ -336,7 +336,7 @@ def test_declared_variables_are_retained_across_scopes(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "barka\n"
+    assert file_true.read_log() == "barka"
 
 
 def test_declared_variables_are_retained_across_scopes_and_junctions(config, syslog_ng):
@@ -361,7 +361,7 @@ def test_declared_variables_are_retained_across_scopes_and_junctions(config, sys
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "barka\n"
+    assert file_true.read_log() == "barka"
 
 
 def test_changes_in_abandoned_branches_are_ignored(config, syslog_ng):
@@ -393,7 +393,7 @@ def test_changes_in_abandoned_branches_are_ignored(config, syslog_ng):
 
     assert file_false.get_stats()["processed"] == 1
     assert "processed" not in file_true.get_stats()
-    assert file_false.read_log() == "foobar\n"
+    assert file_false.read_log() == "foobar"
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"common":"common","iffalse":"false"}\n'
+    assert file_final.read_log() == '{"common":"common","iffalse":"false"}'

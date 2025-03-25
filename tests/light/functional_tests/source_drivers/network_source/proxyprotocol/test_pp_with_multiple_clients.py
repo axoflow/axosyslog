@@ -38,12 +38,12 @@ CLIENT_B_PROXY_DST_PORT = 8888
 CLIENT_B_INPUT = ["message B 0", "message B 1"]
 
 CLIENT_A_EXPECTED = (
-    "1.1.1.1 3333 2.2.2.2 4444 4 message A 0\n",
-    "1.1.1.1 3333 2.2.2.2 4444 4 message A 1\n",
+    "1.1.1.1 3333 2.2.2.2 4444 4 message A 0",
+    "1.1.1.1 3333 2.2.2.2 4444 4 message A 1",
 )
 CLIENT_B_EXPECTED = (
-    "5.5.5.5 7777 6.6.6.6 8888 4 message B 0\n",
-    "5.5.5.5 7777 6.6.6.6 8888 4 message B 1\n",
+    "5.5.5.5 7777 6.6.6.6 8888 4 message B 0",
+    "5.5.5.5 7777 6.6.6.6 8888 4 message B 1",
 )
 
 

@@ -23,7 +23,7 @@
 
 TEMPLATE = r'"${MESSAGE}\n"'
 INPUT_MESSAGE = "prog message\x00embedded\x00nul"
-EXPECTED_MESSAGE0 = "message embedded nul\n"
+EXPECTED_MESSAGE0 = "message embedded nul"
 
 
 def test_nul_acceptance(config, syslog_ng, loggen, port_allocator):

@@ -32,7 +32,7 @@ def test_template_stmt_with_identifier_reference(config, syslog_ng):
     config.create_logpath(statements=[generator_source, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
-    assert log == ["template with test.key1=value1 test.key2=value2\n"]
+    assert log == ["template with test.key1=value1 test.key2=value2"]
 
 
 def test_template_with_non_string_values(config, syslog_ng):
@@ -49,7 +49,7 @@ def test_template_with_non_string_values(config, syslog_ng):
     config.create_logpath(statements=[generator_source, *rewrites, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
-    assert log == ["""{"values_int_literal":10,"values_int_hint":10,"values_float_literal":4.5,"values_float_hint":4.5}\n"""]
+    assert log == ['{"values_int_literal":10,"values_int_hint":10,"values_float_literal":4.5,"values_float_hint":4.5}']
 
 
 def test_template_stmt_with_indirect_invocation(config, syslog_ng):
@@ -62,7 +62,7 @@ def test_template_stmt_with_indirect_invocation(config, syslog_ng):
     config.create_logpath(statements=[generator_source, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
-    assert log == ["template with test.key1=value1 test.key2=value2\n"]
+    assert log == ["template with test.key1=value1 test.key2=value2"]
 
 
 def test_simple_template_stmt_with_identifier_reference(config, syslog_ng):
@@ -75,7 +75,7 @@ def test_simple_template_stmt_with_identifier_reference(config, syslog_ng):
     config.create_logpath(statements=[generator_source, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
-    assert log == ["template with test.key1=value1 test.key2=value2\n"]
+    assert log == ["template with test.key1=value1 test.key2=value2"]
 
 
 def test_template_stmt_with_string_reference(config, syslog_ng):
@@ -88,7 +88,7 @@ def test_template_stmt_with_string_reference(config, syslog_ng):
     config.create_logpath(statements=[generator_source, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
-    assert log == ["template with test.key1=value1 test.key2=value2\n"]
+    assert log == ["template with test.key1=value1 test.key2=value2"]
 
 
 def test_inline_template(config, syslog_ng):
@@ -98,7 +98,7 @@ def test_inline_template(config, syslog_ng):
     config.create_logpath(statements=[generator_source, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
-    assert log == ["template with test.key1=value1 test.key2=value2\n"]
+    assert log == ["template with test.key1=value1 test.key2=value2"]
 
 
 def test_inline_template_hints(config, syslog_ng):
@@ -109,7 +109,7 @@ def test_inline_template_hints(config, syslog_ng):
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
     # NOTE: both key1 and key2 are formatted as integers
-    assert log == ['''template with {"test":{"key2":6,"key1":5}}\n''']
+    assert log == ['template with {"test":{"key2":6,"key1":5}}']
 
 
 def test_value_pair_type_hints(config, syslog_ng):
@@ -120,7 +120,7 @@ def test_value_pair_type_hints(config, syslog_ng):
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
     # NOTE: v1 is formatted as an integer due to the type hint in the format-json option list
-    assert log == ['''template with {"v1":5}\n''']
+    assert log == ['template with {"v1":5}']
 
 
 def test_template_function(config, syslog_ng):
@@ -133,4 +133,4 @@ def test_template_function(config, syslog_ng):
     config.create_logpath(statements=[generator_source, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_logs(1)
-    assert log == ["template with test.key1=value1 test.key2=value2\n"]
+    assert log == ["template with test.key1=value1 test.key2=value2"]

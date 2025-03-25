@@ -26,7 +26,7 @@ from axosyslog_light.message_builder.log_message import LogMessage
 def write_msg_with_fields(file_source, bsd_formatter, hostname, program):
     log_message = LogMessage().hostname(hostname).program(program)
     input_message = bsd_formatter.format_message(log_message)
-    expected_message = bsd_formatter.format_message(log_message.remove_priority()) + "\n"
+    expected_message = bsd_formatter.format_message(log_message.remove_priority())
     file_source.write_log(input_message)
     return expected_message
 

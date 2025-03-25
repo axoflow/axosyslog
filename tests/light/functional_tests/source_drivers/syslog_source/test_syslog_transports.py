@@ -94,7 +94,7 @@ def _test_pp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_
 
 TEMPLATE = r'"${SOURCEIP} ${SOURCEPORT} ${DESTIP} ${DESTPORT} ${MESSAGE}\n"'
 INPUT_MESSAGES = "53 <2>Oct 11 22:14:15 myhostname sshd[1234]: message 0\r\n"
-EXPECTED_MESSAGES = "1.1.1.1 3333 2.2.2.2 4444 <2>Oct 11 22:14:15 myhostname sshd[1234]: message 0\n"
+EXPECTED_MESSAGES = "1.1.1.1 3333 2.2.2.2 4444 <2>Oct 11 22:14:15 myhostname sshd[1234]: message 0"
 NUMBER_OF_MESSAGES = 2
 
 
@@ -116,7 +116,7 @@ def test_pp_syslog_tls_passthrough(config, syslog_ng, syslog_ng_ctl, port_alloca
 
 def test_syslog_tcp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     TEMPLATE = r'"${MESSAGE}\n"'
-    EXPECTED_MESSAGES = "message 0\n"
+    EXPECTED_MESSAGES = "message 0"
     NUMBER_OF_MESSAGES = 1
     # 10 is the octet count
     INPUT_MESSAGES = "10 message 0\n"
@@ -125,7 +125,7 @@ def test_syslog_tcp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, te
 
 def test_syslog_tls(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     TEMPLATE = r'"${MESSAGE}\n"'
-    EXPECTED_MESSAGES = "message 0\n"
+    EXPECTED_MESSAGES = "message 0"
     NUMBER_OF_MESSAGES = 1
     INPUT_MESSAGES = "10 message 0\n"
     _test_pp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"tls"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES, TEMPLATE)
@@ -133,7 +133,7 @@ def test_syslog_tls(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, te
 
 def test_syslog_auto_no_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     TEMPLATE = r'"${MESSAGE}\n"'
-    EXPECTED_MESSAGES = "message 0\n"
+    EXPECTED_MESSAGES = "message 0"
     NUMBER_OF_MESSAGES = 1
     INPUT_MESSAGES = "message 0\n"
     _test_pp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES, TEMPLATE)
@@ -141,7 +141,7 @@ def test_syslog_auto_no_framing(config, syslog_ng, syslog_ng_ctl, port_allocator
 
 def test_syslog_auto_w_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     TEMPLATE = r'"${MESSAGE}\n"'
-    EXPECTED_MESSAGES = "message 0\n"
+    EXPECTED_MESSAGES = "message 0"
     NUMBER_OF_MESSAGES = 1
     INPUT_MESSAGES = "10 message 0\n"
     _test_pp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES, TEMPLATE)
@@ -149,7 +149,7 @@ def test_syslog_auto_w_framing(config, syslog_ng, syslog_ng_ctl, port_allocator,
 
 def test_syslog_auto_tls_no_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     TEMPLATE = r'"${MESSAGE}\n"'
-    EXPECTED_MESSAGES = "message 0\n"
+    EXPECTED_MESSAGES = "message 0"
     NUMBER_OF_MESSAGES = 1
     INPUT_MESSAGES = "message 0\n"
     _test_pp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES, TEMPLATE, use_ssl=True)
@@ -157,7 +157,7 @@ def test_syslog_auto_tls_no_framing(config, syslog_ng, syslog_ng_ctl, port_alloc
 
 def test_syslog_auto_tls_w_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     TEMPLATE = r'"${MESSAGE}\n"'
-    EXPECTED_MESSAGES = "message 0\n"
+    EXPECTED_MESSAGES = "message 0"
     NUMBER_OF_MESSAGES = 1
     INPUT_MESSAGES = "10 message 0\n"
     _test_pp(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES, TEMPLATE, use_ssl=True)

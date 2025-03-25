@@ -29,4 +29,4 @@ def test_generator_source(config, syslog_ng):
     config.create_logpath(statements=[generator_source, file_destination])
     syslog_ng.start(config)
     log = file_destination.read_log()
-    assert log == generator_source.DEFAULT_MESSAGE + "\n"
+    assert log == generator_source.DEFAULT_MESSAGE

@@ -61,13 +61,13 @@ def _test_auto_detect(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, 
 
 def test_auto_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     INPUT_MESSAGES = "53 <2>Oct 11 22:14:15 myhostname sshd[1234]: message 0\r\n" * 10
-    EXPECTED_MESSAGES = "Oct 11 22:14:15 myhostname sshd[1234]: message 0\n"
+    EXPECTED_MESSAGES = "Oct 11 22:14:15 myhostname sshd[1234]: message 0"
     NUMBER_OF_MESSAGES = 10
     _test_auto_detect(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES)
 
 
 def test_auto_no_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
     INPUT_MESSAGES = "<2>Oct 11 22:14:15 myhostname sshd[1234]: message 0\r\n" * 10
-    EXPECTED_MESSAGES = "Oct 11 22:14:15 myhostname sshd[1234]: message 0\n"
+    EXPECTED_MESSAGES = "Oct 11 22:14:15 myhostname sshd[1234]: message 0"
     NUMBER_OF_MESSAGES = 10
     _test_auto_detect(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES)

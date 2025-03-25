@@ -27,7 +27,7 @@ PROXY_DST_IP = "192.168.1.2"
 PROXY_SRC_PORT = 20000
 PROXY_DST_PORT = 20001
 RFC3164_EXAMPLE = ["<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8"]
-RFC3164_EXAMPLE_WITHOUT_PRI = "Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8\n"
+RFC3164_EXAMPLE_WITHOUT_PRI = "Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8"
 
 
 def test_pp_with_syslog_proto(config, port_allocator, syslog_ng, loggen):

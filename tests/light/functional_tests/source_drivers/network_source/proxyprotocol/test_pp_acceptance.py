@@ -28,7 +28,7 @@ PROXY_DST_IP = "2.2.2.2"
 PROXY_SRC_PORT = 3333
 PROXY_DST_PORT = 4444
 INPUT_MESSAGES = ["message 0"]
-EXPECTED_MESSAGE0 = "1.1.1.1 3333 2.2.2.2 4444 4 message 0\n"
+EXPECTED_MESSAGE0 = "1.1.1.1 3333 2.2.2.2 4444 4 message 0"
 
 
 def test_pp_acceptance(config, syslog_ng, loggen, port_allocator):

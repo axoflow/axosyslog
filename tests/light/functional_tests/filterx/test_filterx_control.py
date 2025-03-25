@@ -93,7 +93,7 @@ def test_if_condition_without_else_branch_match(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "matched\n"
+    assert file_true.read_log() == "matched"
 
 
 def test_if_condition_without_else_branch_nomatch(config, syslog_ng):
@@ -110,7 +110,7 @@ def test_if_condition_without_else_branch_nomatch(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default\n"
+    assert file_true.read_log() == "default"
 
 
 def test_if_condition_no_matching_condition(config, syslog_ng):
@@ -129,7 +129,7 @@ def test_if_condition_no_matching_condition(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default\n"
+    assert file_true.read_log() == "default"
 
 
 def test_if_condition_matching_main_condition(config, syslog_ng):
@@ -150,7 +150,7 @@ def test_if_condition_matching_main_condition(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "matched\n"
+    assert file_true.read_log() == "matched"
 
 
 def test_if_condition_matching_elif_condition(config, syslog_ng):
@@ -173,7 +173,7 @@ def test_if_condition_matching_elif_condition(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "elif-matched\n"
+    assert file_true.read_log() == "elif-matched"
 
 
 def test_if_condition_matching_else_condition(config, syslog_ng):
@@ -194,7 +194,7 @@ def test_if_condition_matching_else_condition(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "else-matched\n"
+    assert file_true.read_log() == "else-matched"
 
 
 def test_if_condition_matching_expression(config, syslog_ng):
@@ -211,7 +211,7 @@ def test_if_condition_matching_expression(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "matched\n"
+    assert file_true.read_log() == "matched"
 
 
 def test_if_condition_non_matching_expression(config, syslog_ng):
@@ -228,7 +228,7 @@ def test_if_condition_non_matching_expression(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default\n"
+    assert file_true.read_log() == "default"
 
 
 def test_drop(config, syslog_ng):
@@ -269,7 +269,7 @@ log {{
 
     assert "processed" in file_true.get_stats()
     assert file_true.get_stats()["processed"] == 1
-    assert file_true.read_log() == 'bar\n'
+    assert file_true.read_log() == 'bar'
     assert syslog_ng.wait_for_message_in_console_log("filterx rule evaluation result; result='explicitly dropped'") != []
 
 
@@ -292,7 +292,7 @@ def test_done(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true}\n'
+    assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true}'
 
 
 def test_break(config, syslog_ng):
@@ -316,7 +316,7 @@ def test_break(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true,"new_variable":true}\n'
+    assert file_true.read_log() == '{"$MESSAGE":"foo","var_wont_change":true,"new_variable":true}'
 
 
 def test_switch_right_case_is_picked_from_the_middle(config, syslog_ng):
@@ -345,7 +345,7 @@ def test_switch_right_case_is_picked_from_the_middle(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "that's right\n"
+    assert file_true.read_log() == "that's right"
 
 
 def test_switch_fallthrough(config, syslog_ng):
@@ -370,7 +370,7 @@ def test_switch_fallthrough(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "fallthrough\n"
+    assert file_true.read_log() == "fallthrough"
 
 
 def test_switch_fallthrough_twice(config, syslog_ng):
@@ -395,7 +395,7 @@ def test_switch_fallthrough_twice(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "fallthrough2\n"
+    assert file_true.read_log() == "fallthrough2"
 
 
 def test_switch_default_case(config, syslog_ng):
@@ -420,7 +420,7 @@ def test_switch_default_case(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default-case\n"
+    assert file_true.read_log() == "default-case"
 
 
 def test_switch_no_match_case_no_default_case(config, syslog_ng):
@@ -443,7 +443,7 @@ def test_switch_no_match_case_no_default_case(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "no-match-no-default\n"
+    assert file_true.read_log() == "no-match-no-default"
 
 
 def test_switch_variable_in_case(config, syslog_ng):
@@ -466,7 +466,7 @@ def test_switch_variable_in_case(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "that's right\n"
+    assert file_true.read_log() == "that's right"
 
 
 # Implicitly testing optimized expression caching
@@ -527,7 +527,7 @@ def test_switch_invalid_selector(config, syslog_ng):
 
     assert file_false.get_stats()["processed"] == 1
     assert "processed" not in file_true.get_stats()
-    assert file_false.read_log() == "orig_msg\n"
+    assert file_false.read_log() == "orig_msg"
 
 
 def test_switch_invalid_case(config, syslog_ng):
@@ -550,4 +550,4 @@ def test_switch_invalid_case(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default\n"
+    assert file_true.read_log() == "default"

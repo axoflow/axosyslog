@@ -24,14 +24,14 @@ import pytest
 
 
 test_parameters = [
-    ("$(format-json test.*)\n", """{"test":{"key2":"value2","key1":"value1"}}\n"""),
+    ("$(format-json test.*)\n", r'{"test":{"key2":"value2","key1":"value1"}}'),
     # transformations
-    ("$(format-json test.* --add-prefix foo.)\n", """{"foo":{"test":{"key2":"value2","key1":"value1"}}}\n"""),
-    ("$(format-json test.* --replace-prefix test=foobar)\n", """{"foobar":{"key2":"value2","key1":"value1"}}\n"""),
-    ("$(format-json test.* --shift-levels 1)\n", """{"key2":"value2","key1":"value1"}\n"""),
-    ("$(format-json test.* --shift 2)\n", """{"st":{"key2":"value2","key1":"value1"}}\n"""),
-    ("$(format-json test.* --upper)\n", """{"TEST":{"KEY2":"value2","KEY1":"value1"}}\n"""),
-    ("$(format-json MESSAGE --lower)\n", """{"message":"-- Generated message. --"}\n"""),
+    ("$(format-json test.* --add-prefix foo.)\n", r'{"foo":{"test":{"key2":"value2","key1":"value1"}}}'),
+    ("$(format-json test.* --replace-prefix test=foobar)\n", r'{"foobar":{"key2":"value2","key1":"value1"}}'),
+    ("$(format-json test.* --shift-levels 1)\n", r'{"key2":"value2","key1":"value1"}'),
+    ("$(format-json test.* --shift 2)\n", r'{"st":{"key2":"value2","key1":"value1"}}'),
+    ("$(format-json test.* --upper)\n", r'{"TEST":{"KEY2":"value2","KEY1":"value1"}}'),
+    ("$(format-json MESSAGE --lower)\n", r'{"message":"-- Generated message. --"}'),
 ]
 
 

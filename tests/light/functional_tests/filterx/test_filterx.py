@@ -30,7 +30,7 @@ import pytest
 from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
-def create_config(config, filterx_expr_1, filterx_expr_2=None, msg="foobar", template="'$MSG\n'"):
+def create_config(config, filterx_expr_1, filterx_expr_2=None, msg="foobar", template='"$MSG\n"'):
     file_true = config.create_file_destination(file_name="dest-true.log", template=template)
     file_false = config.create_file_destination(file_name="dest-false.log", template=template)
 
@@ -94,7 +94,7 @@ def test_otel_logrecord_int32_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "5\n"
+    assert file_true.read_log() == "5"
 
 
 def test_otel_logrecord_string_setter_getter(config, syslog_ng):
@@ -108,7 +108,7 @@ def test_otel_logrecord_string_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "string\n"
+    assert file_true.read_log() == "string"
 
 
 def test_otel_logrecord_bytes_setter_getter(config, syslog_ng):
@@ -123,7 +123,7 @@ def test_otel_logrecord_bytes_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "binary whatever\n"
+    assert file_true.read_log() == "binary whatever"
 
 
 def test_otel_logrecord_datetime_setter_getter(config, syslog_ng):
@@ -137,7 +137,7 @@ def test_otel_logrecord_datetime_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "1701350398.123000+00:00\n"
+    assert file_true.read_log() == "1701350398.123000+00:00"
 
 
 def test_otel_logrecord_body_string_setter_getter(config, syslog_ng):
@@ -151,7 +151,7 @@ def test_otel_logrecord_body_string_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "string\n"
+    assert file_true.read_log() == "string"
 
 
 def test_otel_logrecord_body_bool_setter_getter(config, syslog_ng):
@@ -165,7 +165,7 @@ def test_otel_logrecord_body_bool_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "true\n"
+    assert file_true.read_log() == "true"
 
 
 def test_otel_logrecord_body_int_setter_getter(config, syslog_ng):
@@ -179,7 +179,7 @@ def test_otel_logrecord_body_int_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "5\n"
+    assert file_true.read_log() == "5"
 
 
 def test_otel_logrecord_body_double_setter_getter(config, syslog_ng):
@@ -193,7 +193,7 @@ def test_otel_logrecord_body_double_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "32.5\n"
+    assert file_true.read_log() == "32.5"
 
 
 def test_otel_logrecord_body_datetime_setter_getter(config, syslog_ng):
@@ -209,7 +209,7 @@ def test_otel_logrecord_body_datetime_setter_getter(config, syslog_ng):
     # does not distinguish int_value and datetime.
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "1701350398123000\n"
+    assert file_true.read_log() == "1701350398123000"
 
 
 def test_otel_logrecord_body_bytes_setter_getter(config, syslog_ng):
@@ -224,7 +224,7 @@ def test_otel_logrecord_body_bytes_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "binary whatever\n"
+    assert file_true.read_log() == "binary whatever"
 
 
 def test_otel_logrecord_body_protobuf_setter_getter(config, syslog_ng):
@@ -240,7 +240,7 @@ def test_otel_logrecord_body_protobuf_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "this is not a valid protobuf!!\n"
+    assert file_true.read_log() == "this is not a valid protobuf!!"
 
 
 def test_otel_logrecord_body_json_setter_getter(config, syslog_ng):
@@ -255,7 +255,7 @@ def test_otel_logrecord_body_json_setter_getter(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"emb_key1":"emb_key1 value","emb_key2":"emb_key2 value"}\n'
+    assert file_true.read_log() == '{"emb_key1":"emb_key1 value","emb_key2":"emb_key2 value"}'
 
 
 def test_json_to_otel(config, syslog_ng):
@@ -281,7 +281,7 @@ def test_json_to_otel(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"js":{"foo":42,"bar":1337},"js_arr":[1,2,3,4]}\n'
+    assert file_true.read_log() == '{"js":{"foo":42,"bar":1337},"js_arr":[1,2,3,4]}'
 
 
 def test_otel_to_json(config, syslog_ng):
@@ -307,7 +307,7 @@ def test_otel_to_json(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"otel_kvl":{"foo":42,"bar":1337},"otel_arr":[1,2,3,4]}\n'
+    assert file_true.read_log() == '{"otel_kvl":{"foo":42,"bar":1337},"otel_arr":[1,2,3,4]}'
 
 
 def test_otel_resource_scope_log_to_json(config, syslog_ng):
@@ -463,7 +463,7 @@ def test_simple_true_condition(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
 
 
 def test_empty_block(config, syslog_ng):
@@ -472,7 +472,7 @@ def test_empty_block(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
 
 
 def test_simple_false_condition(config, syslog_ng):
@@ -481,7 +481,7 @@ def test_simple_false_condition(config, syslog_ng):
 
     assert "processed" not in file_true.get_stats()
     assert file_false.get_stats()["processed"] == 1
-    assert file_false.read_log() == "foobar\n"
+    assert file_false.read_log() == "foobar"
 
 
 def test_simple_assignment(config, syslog_ng):
@@ -491,7 +491,7 @@ def test_simple_assignment(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "rewritten message!\n"
+    assert file_true.read_log() == "rewritten message!"
 
 
 def test_json_assignment_from_template(config, syslog_ng):
@@ -501,7 +501,7 @@ def test_json_assignment_from_template(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"true_string":"boolean:true","str":"string","null":null,"list":["foo","bar","baz"],"json":{"emb_key1": "emb_key1 value", "emb_key2": "emb_key2 value"},"int":5,"false_string":"boolean:false","double":32.5,"datetime":"1701350398.123000+01:00","bool":true}\n"""
+    assert file_true.read_log() == """{"true_string":"boolean:true","str":"string","null":null,"list":["foo","bar","baz"],"json":{"emb_key1": "emb_key1 value", "emb_key2": "emb_key2 value"},"int":5,"false_string":"boolean:false","double":32.5,"datetime":"1701350398.123000+01:00","bool":true}"""
 
 
 def test_json_assignment_from_another_name_value_pair(config, syslog_ng):
@@ -511,7 +511,7 @@ def test_json_assignment_from_another_name_value_pair(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"emb_key1": "emb_key1 value", "emb_key2": "emb_key2 value"}\n"""
+    assert file_true.read_log() == """{"emb_key1": "emb_key1 value", "emb_key2": "emb_key2 value"}"""
 
 
 def test_json_getattr_returns_the_embedded_json(config, syslog_ng):
@@ -526,7 +526,7 @@ $MSG = $envelope.json.emb_key1;
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """emb_key1 value\n"""
+    assert file_true.read_log() == """emb_key1 value"""
 
 
 def test_json_setattr_sets_the_embedded_json(config, syslog_ng):
@@ -542,7 +542,7 @@ $MSG = $envelope.json;
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"emb_key1":"emb_key1 value","emb_key2":"emb_key2 value","new_key":"this is a new key!"}\n"""
+    assert file_true.read_log() == """{"emb_key1":"emb_key1 value","emb_key2":"emb_key2 value","new_key":"this is a new key!"}"""
 
 
 def test_json_assign_performs_a_deep_copy(config, syslog_ng):
@@ -559,7 +559,7 @@ $envelope.json.another_key = "this is another new key which is not added to $MSG
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"emb_key1":"emb_key1 value","emb_key2":"emb_key2 value","new_key":"this is a new key!"}\n"""
+    assert file_true.read_log() == """{"emb_key1":"emb_key1 value","emb_key2":"emb_key2 value","new_key":"this is a new key!"}"""
 
 
 def test_json_simple_literal_assignment(config, syslog_ng):
@@ -576,7 +576,7 @@ $MSG = json({
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"foo":"foovalue","bar":"barvalue","baz":"bazvalue"}\n"""
+    assert file_true.read_log() == """{"foo":"foovalue","bar":"barvalue","baz":"bazvalue"}"""
 
 
 def test_json_recursive_literal_assignment(config, syslog_ng):
@@ -603,7 +603,7 @@ $MSG = json({
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"foo":"foovalue","bar":"barvalue","baz":"bazvalue","recursive":{"foo":"foovalue","bar":"barvalue","baz":"bazvalue","recursive":{"foo":"foovalue","bar":"barvalue","baz":"bazvalue"}}}\n"""
+    assert file_true.read_log() == """{"foo":"foovalue","bar":"barvalue","baz":"bazvalue","recursive":{"foo":"foovalue","bar":"barvalue","baz":"bazvalue","recursive":{"foo":"foovalue","bar":"barvalue","baz":"bazvalue"}}}"""
 
 
 def test_json_change_recursive_literal(config, syslog_ng):
@@ -636,7 +636,7 @@ $MSG.recursive.recursive.newattr = "newattrvalue";
     assert file_true.read_log() == """\
 {"foo":"foovalue","bar":"barvalue","baz":"bazvalue",\
 "recursive":{"foo":"foovalue","bar":"barvalue","baz":"bazvalue",\
-"recursive":{"foo":"changedfoovalue","bar":"barvalue","baz":"bazvalue","newattr":"newattrvalue"}}}\n"""
+"recursive":{"foo":"changedfoovalue","bar":"barvalue","baz":"bazvalue","newattr":"newattrvalue"}}}"""
 
 
 def test_list_literal_becomes_syslogng_list_as_string(config, syslog_ng):
@@ -649,7 +649,7 @@ $MSG = ["foo", "bar", "baz"];
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """foo,bar,baz\n"""
+    assert file_true.read_log() == """foo,bar,baz"""
 
 
 def test_list_literal_becomes_json_list_as_a_part_of_json(config, syslog_ng):
@@ -666,7 +666,7 @@ $MSG = json({
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"key":"value","list":["foo","bar","baz"]}\n"""
+    assert file_true.read_log() == """{"key":"value","list":["foo","bar","baz"]}"""
 
 
 def test_list_is_cloned_upon_assignment(config, syslog_ng):
@@ -683,7 +683,7 @@ $MSG[2] = "changed baz";
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     # foo remains unchanged while baz is changed
-    assert file_true.read_log() == """foo,bar,"changed baz"\n"""
+    assert file_true.read_log() == 'foo,bar,"changed baz"'
 
 
 def test_list_subscript_without_index_appends_an_element(config, syslog_ng):
@@ -701,7 +701,7 @@ $MSG = $list;
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     # foo remains unchanged while baz is changed
-    assert file_true.read_log() == """foo,bar,baz\n"""
+    assert file_true.read_log() == """foo,bar,baz"""
 
 
 def test_list_set_subscript_with_tail_element_appends_an_element(config, syslog_ng):
@@ -719,7 +719,7 @@ $MSG = $list;
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     # foo remains unchanged while baz is changed
-    assert file_true.read_log() == """foo,bar,baz\n"""
+    assert file_true.read_log() == """foo,bar,baz"""
 
 
 def test_literal_generator_assignment(config, syslog_ng):
@@ -737,7 +737,7 @@ $MSG.list[] = [4, 5, 6];
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"foo":{"answer":42,"leet":1337},"bar":{"answer+1":43,"leet+1":1338},"list":[[1,2,3],[4,5,6]]}\n"""
+    assert file_true.read_log() == """{"foo":{"answer":42,"leet":1337},"bar":{"answer+1":43,"leet+1":1338},"list":[[1,2,3],[4,5,6]]}"""
 
 
 def test_literal_generator_casted_assignment(config, syslog_ng):
@@ -755,7 +755,7 @@ $MSG.list[] = json_array([4, 5, 6]);
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == """{"foo":{"answer":42,"leet":1337},"bar":{"answer+1":43,"leet+1":1338},"list":[[1,2,3],[4,5,6]]}\n"""
+    assert file_true.read_log() == """{"foo":{"answer":42,"leet":1337},"bar":{"answer+1":43,"leet+1":1338},"list":[[1,2,3],[4,5,6]]}"""
 
 
 def test_function_call(config, syslog_ng):
@@ -773,7 +773,7 @@ $MSG = example_echo($list);
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     # foo remains unchanged while baz is changed
-    assert file_true.read_log() == """foo,bar,baz\n"""
+    assert file_true.read_log() == """foo,bar,baz"""
 
 
 def test_ternary_operator_true(config, syslog_ng):
@@ -786,7 +786,7 @@ def test_ternary_operator_true(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "boolean:true\n"
+    assert file_true.read_log() == "boolean:true"
 
 
 def test_ternary_operator_false(config, syslog_ng):
@@ -799,7 +799,7 @@ def test_ternary_operator_false(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "boolean:false\n"
+    assert file_true.read_log() == "boolean:false"
 
 
 def test_ternary_operator_expression_true(config, syslog_ng):
@@ -812,7 +812,7 @@ def test_ternary_operator_expression_true(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "boolean:true\n"
+    assert file_true.read_log() == "boolean:true"
 
 
 def test_ternary_operator_expression_false(config, syslog_ng):
@@ -825,7 +825,7 @@ def test_ternary_operator_expression_false(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "boolean:false\n"
+    assert file_true.read_log() == "boolean:false"
 
 
 def test_ternary_operator_inline_ternary_expression_true(config, syslog_ng):
@@ -838,7 +838,7 @@ def test_ternary_operator_inline_ternary_expression_true(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "boolean:true\n"
+    assert file_true.read_log() == "boolean:true"
 
 
 def test_ternary_operator_inline_ternary_expression_false(config, syslog_ng):
@@ -851,7 +851,7 @@ def test_ternary_operator_inline_ternary_expression_false(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "inner:false\n"
+    assert file_true.read_log() == "inner:false"
 
 
 def test_ternary_return_condition_expression_value_without_true_branch(config, syslog_ng):
@@ -865,7 +865,7 @@ def test_ternary_return_condition_expression_value_without_true_branch(config, s
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "boolean:true\n"
+    assert file_true.read_log() == "boolean:true"
 
 
 def test_isset_existing_value_not_in_scope_yet(config, syslog_ng):
@@ -948,7 +948,7 @@ def test_unset_value_not_in_scope_yet(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "\n"
+    assert file_true.read_log() == ""
 
 
 def test_unset_value_already_in_scope(config, syslog_ng):
@@ -962,7 +962,7 @@ def test_unset_value_already_in_scope(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "\n"
+    assert file_true.read_log() == ""
 
 
 def test_unset_existing_key(config, syslog_ng):
@@ -978,7 +978,7 @@ def test_unset_existing_key(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "{}\n"
+    assert file_true.read_log() == "{}"
 
 
 def test_unset_inexisting_key(config, syslog_ng):
@@ -993,7 +993,7 @@ def test_unset_inexisting_key(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "{}\n"
+    assert file_true.read_log() == "{}"
 
 
 def test_setting_an_unset_key_will_contain_the_right_value(config, syslog_ng):
@@ -1010,7 +1010,7 @@ def test_setting_an_unset_key_will_contain_the_right_value(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"foo":"second"}\n'
+    assert file_true.read_log() == '{"foo":"second"}'
 
 
 def test_unset(config, syslog_ng):
@@ -1037,7 +1037,7 @@ def test_unset(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "\n"
+    assert file_true.read_log() == ""
 
 
 def test_strptime_error_result(config, syslog_ng):
@@ -1070,7 +1070,7 @@ def test_strptime_success_result(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "1712736550.000000+00:00\n"
+    assert file_true.read_log() == "1712736550.000000+00:00"
 
 
 def test_strftime_success_result(config, syslog_ng):
@@ -1084,7 +1084,7 @@ def test_strftime_success_result(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "2000-01-01T00:00:00 +0200\n"
+    assert file_true.read_log() == "2000-01-01T00:00:00 +0200"
 
 
 def test_strptime_guess_missing_year(config, syslog_ng):
@@ -1112,7 +1112,7 @@ def test_strptime_failure_result(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "null\n"
+    assert file_true.read_log() == "null"
 
 
 def test_set_timestamp_wrong_param_error_result(config, syslog_ng):
@@ -1149,7 +1149,7 @@ def test_set_timestamp_set_stamp(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "2000-01-01T00:00:00+02:00\n"
+    assert file_true.read_log() == "2000-01-01T00:00:00+02:00"
 
 
 def test_set_timestamp_set_stamp_default(config, syslog_ng):
@@ -1164,7 +1164,7 @@ def test_set_timestamp_set_stamp_default(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "2000-01-01T00:00:00+02:00\n"
+    assert file_true.read_log() == "2000-01-01T00:00:00+02:00"
 
 
 def test_set_timestamp_set_recvd(config, syslog_ng):
@@ -1179,7 +1179,7 @@ def test_set_timestamp_set_recvd(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "2000-01-01T00:00:00+02:00\n"
+    assert file_true.read_log() == "2000-01-01T00:00:00+02:00"
 
 
 def test_set_pri_no_arg_error_result(config, syslog_ng):
@@ -1229,7 +1229,7 @@ def test_set_pri_succes_result(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "50\n"
+    assert file_true.read_log() == "50"
 
 
 def test_len(config, syslog_ng):
@@ -1254,7 +1254,7 @@ def test_len(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "success\n"
+    assert file_true.read_log() == "success"
 
 
 def test_regexp_match(config, syslog_ng):
@@ -1271,7 +1271,7 @@ def test_regexp_match(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "success\n"
+    assert file_true.read_log() == "success"
 
 
 def test_regexp_nomatch(config, syslog_ng):
@@ -1292,7 +1292,7 @@ def test_regexp_nomatch(config, syslog_ng):
         r""""match_any":false,"""
         r""""nomatch":true,"""
         r""""match_inverse":true,"""
-        r""""nomatch_inverse":false}""" + "\n"
+        r""""nomatch_inverse":false}""" + ""
     )
 
     assert file_true.get_stats()["processed"] == 1
@@ -1410,7 +1410,7 @@ def test_parse_kv_default_option_set_is_skippable(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"foo":"bar","bar":"baz"}\n'
+    assert file_true.read_log() == '{"foo":"bar","bar":"baz"}'
 
 
 def test_parse_kv_value_separator(config, syslog_ng):
@@ -1423,7 +1423,7 @@ def test_parse_kv_value_separator(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\"}\n"
+    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\"}"
 
 
 def test_parse_kv_value_separator_use_first_character(config, syslog_ng):
@@ -1436,7 +1436,7 @@ def test_parse_kv_value_separator_use_first_character(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\"}\n"
+    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\"}"
 
 
 def test_parse_kv_pair_separator(config, syslog_ng):
@@ -1449,7 +1449,7 @@ def test_parse_kv_pair_separator(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\"}\n"
+    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\"}"
 
 
 def test_parse_kv_stray_words_value_name(config, syslog_ng):
@@ -1462,7 +1462,7 @@ def test_parse_kv_stray_words_value_name(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\",\"stray_words\":\"thisisstray\"}\n"
+    assert file_true.read_log() == "{\"foo\":\"bar\",\"bar\":\"baz\",\"stray_words\":\"thisisstray\"}"
 
 
 def test_parse_csv_default_arguments(config, syslog_ng):
@@ -1476,7 +1476,7 @@ def test_parse_csv_default_arguments(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "foo,bar,baz\n"
+    assert file_true.read_log() == "foo,bar,baz"
 
 
 def test_parse_csv_optional_arg_columns(config, syslog_ng):
@@ -1491,7 +1491,7 @@ def test_parse_csv_optional_arg_columns(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz"}\n'
+    assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz"}'
 
 
 def test_parse_csv_optional_arg_delimiters(config, syslog_ng):
@@ -1505,7 +1505,7 @@ def test_parse_csv_optional_arg_delimiters(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == 'foo,bar,baz,tik;tak!toe\n'
+    assert file_true.read_log() == 'foo,bar,baz,tik;tak!toe'
 
 
 def test_parse_csv_optional_arg_non_greedy(config, syslog_ng):
@@ -1520,7 +1520,7 @@ def test_parse_csv_optional_arg_non_greedy(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz"}\n'
+    assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz"}'
 
 
 def test_parse_csv_optional_arg_greedy(config, syslog_ng):
@@ -1535,7 +1535,7 @@ def test_parse_csv_optional_arg_greedy(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz","rest":"tik,tak,toe"}\n'
+    assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz","rest":"tik,tak,toe"}'
 
 
 def test_parse_csv_optional_arg_strip_whitespace(config, syslog_ng):
@@ -1549,7 +1549,7 @@ def test_parse_csv_optional_arg_strip_whitespace(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == 'foo,bar,baz,tik,tak,toe\n'
+    assert file_true.read_log() == 'foo,bar,baz,tik,tak,toe'
 
 
 def test_parse_csv_dialect(config, syslog_ng):
@@ -1563,7 +1563,7 @@ def test_parse_csv_dialect(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "'PTHREAD \"support initialized'\n"
+    assert file_true.read_log() == "'PTHREAD \"support initialized'"
 
 
 def test_vars(config, syslog_ng):
@@ -1584,7 +1584,7 @@ def test_vars(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
+    assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}'
 
 
 def test_load_vars(config, syslog_ng):
@@ -1617,7 +1617,7 @@ def test_load_vars(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}\n'
+    assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}'
 
 
 def test_macro_caching(config, syslog_ng):
@@ -1715,7 +1715,7 @@ def test_unset_empties(config, syslog_ng):
         r""",[]"""
         r""",["do","do","do","do",{"a":{"s":{"d":"do"}}},[["do"]]]"""
         r"""]"""
-        """\n"""
+        """"""
     )
 
     assert file_true.read_log() == exp
@@ -1733,7 +1733,7 @@ def test_null_coalesce_use_default_on_null(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "bar\n"
+    assert file_true.read_log() == "bar"
 
 
 def test_nullv_coalesce_assignment(config, syslog_ng):
@@ -1756,7 +1756,7 @@ def test_nullv_coalesce_assignment(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == 'bar{"b":"bar"}\n'
+    assert file_true.read_log() == 'bar{"b":"bar"}'
 
 
 def test_null_coalesce_use_default_on_error_and_supress_error(config, syslog_ng):
@@ -1770,7 +1770,7 @@ def test_null_coalesce_use_default_on_error_and_supress_error(config, syslog_ng)
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "bar\n"
+    assert file_true.read_log() == "bar"
 
 
 def test_null_coalesce_get_happy_paths(config, syslog_ng):
@@ -1789,7 +1789,7 @@ def test_null_coalesce_get_happy_paths(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"a":"2","b":"bar"}\n'
+    assert file_true.read_log() == '{"a":"2","b":"bar"}'
 
 
 def test_null_coalesce_get_subscript_error(config, syslog_ng):
@@ -1805,7 +1805,7 @@ def test_null_coalesce_get_subscript_error(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default\n"
+    assert file_true.read_log() == "default"
 
 
 def test_null_coalesce_use_nested_coalesce(config, syslog_ng):
@@ -1822,7 +1822,7 @@ def test_null_coalesce_use_nested_coalesce(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default\n"
+    assert file_true.read_log() == "default"
 
 
 def test_null_coalesce_use_nested_coalesce_return_mid_match(config, syslog_ng):
@@ -1839,7 +1839,7 @@ def test_null_coalesce_use_nested_coalesce_return_mid_match(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "3\n"
+    assert file_true.read_log() == "3"
 
 
 def test_null_coalesce_do_not_supress_last_error(config, syslog_ng):
@@ -1887,7 +1887,7 @@ def test_null_coalesce_precedence_versus_ternary(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"a":"default","b":"2","c":"2","d":"3","e":"1"}\n'
+    assert file_true.read_log() == '{"a":"default","b":"2","c":"2","d":"3","e":"1"}'
 
 
 def test_slash_string_features(config, syslog_ng):
@@ -1943,7 +1943,7 @@ bar/;
         r""""backspace":"foo\bbar","""
         r""""alert":"foo\u0007bar","""
         r""""hexadecimal_value":"foo@bar","""
-        r""""octal_value":"foo@bar"}""" + "\n"
+        r""""octal_value":"foo@bar"}""" + ""
     )
     res = file_true.read_log()
     assert res == exp
@@ -1995,7 +1995,7 @@ def test_regexp_subst(config, syslog_ng):
         r""""mixed_grps":"foo:2022-02-25:bar:baz","""
         r""""multi_digit_grps":"10-11-12","""
         r""""prefixing_zeros":"foobar012345","""
-        r""""optimized_pattern":"foarbaz"}""" + "\n"
+        r""""optimized_pattern":"foarbaz"}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2044,7 +2044,7 @@ def test_add_operator_for_base_types(config, syslog_ng):
         r""""double_integer":5.5,"""
         r""""double_double":4.0,"""
         r""""list_list":["foo","bar","baz","other"],"""
-        r""""dict_dict":{"foo":"bar","baz":"other"}}""" + "\n"
+        r""""dict_dict":{"foo":"bar","baz":"other"}}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2070,7 +2070,7 @@ def test_flatten(config, syslog_ng):
     assert file_true.read_log() == '[' \
         '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1},' \
         '{"top_level_field":42,"top_level_dict->inner_field":1337,"top_level_dict->inner_dict->inner_inner_field":1}' \
-        ']\n'
+        ']'
 
 
 def test_add_operator_for_generators(config, syslog_ng):
@@ -2099,7 +2099,7 @@ def test_add_operator_for_generators(config, syslog_ng):
         r""""list_gen_gen":["foo3","bar3","baz3","other3"],"""
         r""""dict_var_gen":{"foo":{"bar":"baz"},"tik1":{"tak1":"toe1"}},"""
         r""""dict_gen_var":{"foo2":{"bar2":"baz2"},"tik":{"tak":"toe"}},"""
-        r""""dict_gen_gen":{"foo3":{"bar3":"baz3"},"tik3":{"tak3":"toe3"}}}""" + "\n"
+        r""""dict_gen_gen":{"foo3":{"bar3":"baz3"},"tik3":{"tak3":"toe3"}}}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2160,14 +2160,14 @@ def test_plus_equal_grammar_rules(config, syslog_ng):
         r""""attr":"tiktak","""
         r""""subs":"barbaz","""
         r""""sub_gen_var":["control","baz","other","wtf","happened"],"""
-        r""""attr_gen_var":["some","basic","foo","bar","and","add","to","plus"]}""" + "\n"
+        r""""attr_gen_var":["some","basic","foo","bar","and","add","to","plus"]}""" + ""
     )
     assert file_true.read_log() == exp
 
 
 def test_get_sdata(config, syslog_ng):
-    file_true = config.create_file_destination(file_name="dest-true.log", template="'$MSG\n'")
-    file_false = config.create_file_destination(file_name="dest-false.log", template="'$MSG\n'")
+    file_true = config.create_file_destination(file_name="dest-true.log", template='"$MSG\n"')
+    file_false = config.create_file_destination(file_name="dest-false.log", template='"$MSG\n"')
 
     raw_conf = f"""
 @version: {config.get_version()}
@@ -2240,7 +2240,7 @@ def test_list_range_check_with_nulls(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"caseA":null,"caseB":null,"caseC":"bar"}\n'
+    assert file_true.read_log() == '{"caseA":null,"caseB":null,"caseC":"bar"}'
 
 
 def test_list_range_check_out_of_range(config, syslog_ng):
@@ -2253,7 +2253,7 @@ def test_list_range_check_out_of_range(config, syslog_ng):
     )
     syslog_ng.start(config)
     assert file_false.get_stats()["processed"] == 1
-    assert file_false.read_log() == "foobar\n"
+    assert file_false.read_log() == "foobar"
 
 
 def test_parse_xml(config, syslog_ng):
@@ -2267,7 +2267,7 @@ def test_parse_xml(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "{\"a\":{\"b\":[{\"@attr\":\"attr_val\",\"#text\":\"c\"},\"e\"]}}\n"
+    assert file_true.read_log() == "{\"a\":{\"b\":[{\"@attr\":\"attr_val\",\"#text\":\"c\"},\"e\"]}}"
 
 
 def test_parse_windows_eventlog_xml(config, syslog_ng):
@@ -2377,7 +2377,7 @@ def test_parse_cef(config, syslog_ng):
         r""""foo":"foo=bar","""
         r""""bar":"bar=baz","""
         r""""baz":"test"}"""
-        r"""}""" + "\n"
+        r"""}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2406,7 +2406,7 @@ def test_parse_leef(config, syslog_ng):
         r""""srcPort":"81","""
         r""""dstPort":"21","""
         r""""usrName":"joe.black"}"""
-        r"""}""" + "\n"
+        r"""}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2460,7 +2460,7 @@ log {{
 
     assert "processed" in file_true.get_stats()
     assert file_true.get_stats()["processed"] == 1
-    assert file_true.read_log() == '{"from_nvtable":"almafa","from_a_macro":"2000-01-01T00:00:00+01:00","unset_then_set":"kortefa"}\n'
+    assert file_true.read_log() == '{"from_nvtable":"almafa","from_a_macro":"2000-01-01T00:00:00+01:00","unset_then_set":"kortefa"}'
 
 
 def test_set_fields(config, syslog_ng):
@@ -2490,7 +2490,7 @@ def test_set_fields(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"foo":"foo_override","bar":"bar_exists","baz":"baz_override","almafa":"almafa_default"}\n'
+    assert file_true.read_log() == '{"foo":"foo_override","bar":"bar_exists","baz":"baz_override","almafa":"almafa_default"}'
 
 
 def test_keys(config, syslog_ng):
@@ -2512,7 +2512,7 @@ def test_keys(config, syslog_ng):
         r"""{"empty":[],"""
         r""""top_level":["foo","tik"],"""
         r""""nested":["bar"],"""
-        r""""direct_access":"foo"}""" + "\n"
+        r""""direct_access":"foo"}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2531,7 +2531,7 @@ def test_pubsub_message(config, syslog_ng):
     assert "processed" not in file_false.get_stats()
     exp = (
         r"""{"msg":{"data":"my pubsub message","attributes":{"foo":"bar"}},"""
-        """"empty":{"data":"empty attribute value","attributes":{"empty":""}}}""" + "\n"
+        """"empty":{"data":"empty attribute value","attributes":{"empty":""}}}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2561,6 +2561,6 @@ def test_otel_repr(config, syslog_ng):
         r""""array":"{\"values\":[{\"stringValue\":\"message\"},{\"stringValue\":\"foobar\"}]}","""
         r""""logrecord":"{\"body\":{\"stringValue\":\"foobar\"},\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}]}","""
         r""""resource":"{\"attributes\":[{\"key\":\"resource\",\"value\":{\"stringValue\":\"foobar\"}}],\"droppedAttributesCount\":444}","""
-        r""""scope":"{\"name\":\"foobar\",\"version\":\"one\",\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}],\"droppedAttributesCount\":333}"}""" + "\n"
+        r""""scope":"{\"name\":\"foobar\",\"version\":\"one\",\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}],\"droppedAttributesCount\":333}"}""" + ""
     )
     assert file_true.read_log() == exp

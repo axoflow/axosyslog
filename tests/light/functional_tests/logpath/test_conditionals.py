@@ -96,8 +96,8 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_simple_if_negated(config, syslog_ng):
@@ -121,8 +121,8 @@ log {
     assert file_false.get_stats()["processed"] == 1
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
-    assert file_false.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_false.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_simple_if_that_drops_in_all_branches(config, syslog_ng):
@@ -148,7 +148,7 @@ log {
     assert "processed" not in file_after.get_stats()
     assert file_fallback.get_stats()["processed"] == 1
 
-    assert file_fallback.read_log() == "foobar\n"
+    assert file_fallback.read_log() == "foobar"
 
 
 def test_compound_if(config, syslog_ng):
@@ -174,8 +174,8 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_compound_if_negated_continues_in_the_false_expr(config, syslog_ng):
@@ -200,8 +200,8 @@ log {
     assert file_false.get_stats()["processed"] == 1
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
-    assert file_false.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_false.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_compound_if_that_drops_in_all_branches(config, syslog_ng):
@@ -228,7 +228,7 @@ log {
     assert "processed" not in file_after.get_stats()
     assert file_fallback.get_stats()["processed"] == 1
 
-    assert file_fallback.read_log() == "foobar\n"
+    assert file_fallback.read_log() == "foobar"
 
 
 def test_compound_if_with_messages_dropped_after_if(config, syslog_ng):
@@ -255,8 +255,8 @@ log {
     assert "processed" not in file_after.get_stats()
     assert file_fallback.get_stats()["processed"] == 1
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_fallback.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_fallback.read_log() == "foobar"
 
 
 def test_three_levels_of_conditionals_drop_after_the_innermost_if(config, syslog_ng):
@@ -289,8 +289,8 @@ log {
     assert "processed" not in file_false.get_stats()
     assert file_after.get_stats()["processed"] == 1
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_three_levels_of_conditionals_drop_after_the_middle_if(config, syslog_ng):
@@ -323,8 +323,8 @@ log {
     assert "processed" not in file_false.get_stats()
     assert file_after.get_stats()["processed"] == 1
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_three_levels_of_simple_conditionals_drop_after_the_middle_if(config, syslog_ng):
@@ -361,8 +361,8 @@ log {
     assert "processed" not in file_false.get_stats()
     assert file_after.get_stats()["processed"] == 1
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_three_levels_of_conditionals_drop_after_the_innermost_junction(config, syslog_ng):
@@ -410,8 +410,8 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_three_levels_of_conditionals_drop_after_the_middle_junction(config, syslog_ng):
@@ -460,8 +460,8 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_true.read_log() == "foobar\n"
-    assert file_after.read_log() == "foobar\n"
+    assert file_true.read_log() == "foobar"
+    assert file_after.read_log() == "foobar"
 
 
 def test_consuming_messages_into_correlation_state_does_not_cause_else_branches_to_be_processed(config, syslog_ng):
@@ -501,5 +501,5 @@ log {
     assert file_after.get_stats()["processed"] == 1
     assert "processed" not in file_fallback.get_stats()
 
-    assert file_true.read_log() == "foobar correlated\n"
-    assert file_after.read_log() == "foobar correlated\n"
+    assert file_true.read_log() == "foobar correlated"
+    assert file_after.read_log() == "foobar correlated"

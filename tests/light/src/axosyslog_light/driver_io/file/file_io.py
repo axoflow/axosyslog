@@ -34,7 +34,7 @@ class FileIO():
                 raise Exception("{} was not created in time.".format(self.__readable_file.path))
             self.__readable_file.open("r")
 
-        return self.__readable_file.wait_for_number_of_lines(counter)
+        return [line.rstrip("\n") for line in self.__readable_file.wait_for_number_of_lines(counter)]
 
     def read_until_messages(self, lines):
         if not self.__readable_file.is_opened():
@@ -42,7 +42,7 @@ class FileIO():
                 raise Exception("{} was not created in time.".format(self.__readable_file.path))
             self.__readable_file.open("r")
 
-        return self.__readable_file.wait_for_lines(lines)
+        return [line.rstrip("\n") for line in self.__readable_file.wait_for_lines(lines)]
 
     def write_raw(self, raw_content):
         if not self.__writeable_file.is_opened():
