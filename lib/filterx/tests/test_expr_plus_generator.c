@@ -84,21 +84,19 @@ _assert_cmp_lists(FilterXObject *expected, FilterXObject *provided)
 
 Test(expr_plus_generator, test_list_add_two_generators_with_post_set_fillable)
 {
-  FilterXExpr *lhs = filterx_literal_list_generator_new();
   GList *lhs_vals = NULL;
   lhs_vals = g_list_append(lhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("foo", -1)), FALSE));
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("foo", -1)), FALSE));
   lhs_vals = g_list_append(lhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("bar", -1)), FALSE));
-  filterx_literal_generator_set_elements(lhs, lhs_vals);
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("bar", -1)), FALSE));
+  FilterXExpr *lhs = filterx_literal_list_new(lhs_vals);
 
-  FilterXExpr *rhs = filterx_literal_list_generator_new();
   GList *rhs_vals = NULL;
   rhs_vals = g_list_append(rhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("baz", -1)), FALSE));
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("baz", -1)), FALSE));
   rhs_vals = g_list_append(rhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("other", -1)), FALSE));
-  filterx_literal_generator_set_elements(rhs, rhs_vals);
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("other", -1)), FALSE));
+  FilterXExpr *rhs = filterx_literal_list_new(rhs_vals);
 
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
@@ -121,13 +119,12 @@ Test(expr_plus_generator, test_list_add_two_generators_with_post_set_fillable)
 
 Test(expr_plus_generator, test_list_add_variable_to_generator_with_post_set_fillable)
 {
-  FilterXExpr *lhs = filterx_literal_list_generator_new();
   GList *lhs_vals = NULL;
   lhs_vals = g_list_append(lhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("foo", -1)), FALSE));
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("foo", -1)), FALSE));
   lhs_vals = g_list_append(lhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("bar", -1)), FALSE));
-  filterx_literal_generator_set_elements(lhs, lhs_vals);
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("bar", -1)), FALSE));
+  FilterXExpr *lhs = filterx_literal_list_new(lhs_vals);
 
   FilterXExpr *rhs = filterx_non_literal_new(filterx_object_from_json("[\"baz\", \"other\"]", -1, NULL));
 
@@ -154,13 +151,12 @@ Test(expr_plus_generator, test_list_add_generator_to_variable_with_post_set_fill
 {
   FilterXExpr *lhs = filterx_non_literal_new(filterx_object_from_json("[\"foo\", \"bar\"]", -1, NULL));
 
-  FilterXExpr *rhs = filterx_literal_list_generator_new();
   GList *rhs_vals = NULL;
   rhs_vals = g_list_append(rhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("baz", -1)), FALSE));
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("baz", -1)), FALSE));
   rhs_vals = g_list_append(rhs_vals,
-                           filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("other", -1)), FALSE));
-  filterx_literal_generator_set_elements(rhs, rhs_vals);
+                           filterx_literal_element_new(NULL, filterx_literal_new(filterx_string_new("other", -1)), FALSE));
+  FilterXExpr *rhs = filterx_literal_list_new(rhs_vals);
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
   FilterXObject *list = filterx_list_new();
@@ -184,27 +180,25 @@ Test(expr_plus_generator, test_list_add_generator_to_variable_with_post_set_fill
 
 Test(expr_plus_generator, test_nested_dict_add_two_generators_with_post_set_fillable)
 {
-  FilterXExpr *lhs = filterx_literal_dict_generator_new();
   GList *lhs_vals = NULL;
   GList *lhs_inner = NULL;
   lhs_inner = g_list_append(lhs_inner,
-                            filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("bar", -1)),
+                            filterx_literal_element_new(filterx_literal_new(filterx_string_new("bar", -1)),
                                 filterx_literal_new(filterx_string_new("baz", -1)), TRUE));
   lhs_vals = g_list_append(lhs_vals,
-                           filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("foo", -1)),
-                                                              filterx_literal_inner_dict_generator_new(lhs, lhs_inner), FALSE));
-  filterx_literal_generator_set_elements(lhs, lhs_vals);
+                           filterx_literal_element_new(filterx_literal_new(filterx_string_new("foo", -1)),
+                                                              filterx_literal_dict_new(lhs_inner), FALSE));
+  FilterXExpr *lhs = filterx_literal_dict_new(lhs_vals);
 
-  FilterXExpr *rhs = filterx_literal_dict_generator_new();
   GList *rhs_vals = NULL;
   GList *rhs_inner = NULL;
   rhs_inner = g_list_append(rhs_inner,
-                            filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("tak", -1)),
+                            filterx_literal_element_new(filterx_literal_new(filterx_string_new("tak", -1)),
                                 filterx_literal_new(filterx_string_new("toe", -1)), TRUE));
   rhs_vals = g_list_append(rhs_vals,
-                           filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("tik", -1)),
-                                                              filterx_literal_inner_dict_generator_new(rhs, rhs_inner), FALSE));
-  filterx_literal_generator_set_elements(rhs, rhs_vals);
+                           filterx_literal_element_new(filterx_literal_new(filterx_string_new("tik", -1)),
+                                                              filterx_literal_dict_new(rhs_inner), FALSE));
+  FilterXExpr *rhs = filterx_literal_dict_new(rhs_vals);
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
   FilterXObject *dict = filterx_dict_new();
@@ -224,16 +218,15 @@ Test(expr_plus_generator, test_nested_dict_add_two_generators_with_post_set_fill
 
 Test(expr_plus_generator, test_nested_dict_add_variable_to_generator_with_post_set_fillable)
 {
-  FilterXExpr *lhs = filterx_literal_dict_generator_new();
   GList *lhs_vals = NULL;
   GList *lhs_inner = NULL;
   lhs_inner = g_list_append(lhs_inner,
-                            filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("bar", -1)),
+                            filterx_literal_element_new(filterx_literal_new(filterx_string_new("bar", -1)),
                                 filterx_literal_new(filterx_string_new("baz", -1)), TRUE));
   lhs_vals = g_list_append(lhs_vals,
-                           filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("foo", -1)),
-                                                              filterx_literal_inner_dict_generator_new(lhs, lhs_inner), FALSE));
-  filterx_literal_generator_set_elements(lhs, lhs_vals);
+                           filterx_literal_element_new(filterx_literal_new(filterx_string_new("foo", -1)),
+                                                              filterx_literal_dict_new(lhs_inner), FALSE));
+  FilterXExpr *lhs = filterx_literal_dict_new(lhs_vals);
 
   FilterXExpr *rhs = filterx_non_literal_new(filterx_object_from_json("{\"tik\":{\"tak\":\"toe\"}}", -1, NULL));
 
@@ -258,16 +251,15 @@ Test(expr_plus_generator, test_nested_dict_add_generator_to_variable_with_post_s
 
   FilterXExpr *lhs = filterx_non_literal_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}}", -1, NULL));
 
-  FilterXExpr *rhs = filterx_literal_dict_generator_new();
   GList *rhs_vals = NULL;
   GList *rhs_inner = NULL;
   rhs_inner = g_list_append(rhs_inner,
-                            filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("tak", -1)),
+                            filterx_literal_element_new(filterx_literal_new(filterx_string_new("tak", -1)),
                                 filterx_literal_new(filterx_string_new("toe", -1)), TRUE));
   rhs_vals = g_list_append(rhs_vals,
-                           filterx_literal_generator_elem_new(filterx_literal_new(filterx_string_new("tik", -1)),
-                                                              filterx_literal_inner_dict_generator_new(rhs, rhs_inner), FALSE));
-  filterx_literal_generator_set_elements(rhs, rhs_vals);
+                           filterx_literal_element_new(filterx_literal_new(filterx_string_new("tik", -1)),
+                                                              filterx_literal_dict_new(rhs_inner), FALSE));
+  FilterXExpr *rhs = filterx_literal_dict_new(rhs_vals);
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
   FilterXObject *dict = filterx_dict_new();

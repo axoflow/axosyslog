@@ -227,10 +227,10 @@ _expr_affix_cache_needle(FilterXExprAffix *self)
         goto error;
       g_ptr_array_add(self->needle.cached_strings, obj_with_cache);
     }
-  else if (filterx_expr_is_literal_list_generator(self->needle.expr))
+  else if (filterx_expr_is_literal_list(self->needle.expr))
     {
       gpointer user_data[] = {&self->ignore_case, self->needle.cached_strings};
-      if (!filterx_literal_list_generator_foreach(self->needle.expr, _cache_needle, user_data))
+      if (!filterx_literal_list_foreach(self->needle.expr, _cache_needle, user_data))
         goto error;
     }
 

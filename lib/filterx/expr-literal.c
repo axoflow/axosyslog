@@ -44,15 +44,24 @@ _free(FilterXExpr *s)
 }
 
 /* NOTE: takes the object reference */
-FilterXExpr *
-filterx_literal_new(FilterXObject *object)
+void
+filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
 {
-  FilterXLiteral *self = g_new0(FilterXLiteral, 1);
+  FilterXLiteral *self = (FilterXLiteral *) s;
 
   filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(literal));
   self->super.eval = _eval_literal;
   self->super.free_fn = _free;
   self->object = object;
+}
+
+/* NOTE: takes the object reference */
+FilterXExpr *
+filterx_literal_new(FilterXObject *object)
+{
+  FilterXLiteral *self = g_new0(FilterXLiteral, 1);
+
+  filterx_literal_init_instance(self, object);
   return &self->super;
 }
 

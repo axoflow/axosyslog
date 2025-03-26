@@ -422,12 +422,12 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
 }
 
 static gboolean
-_target_iterator(FilterXExpr *key, FilterXExpr *value, gpointer user_data)
+_target_iterator(gsize index, FilterXExpr *value, gpointer user_data)
 {
   FilterXFunctionUnsetEmpties *self = ((gpointer *) user_data)[0];
   GError **error = ((gpointer *) user_data)[1];
 
-  if (!filterx_expr_is_literal(value) && !filterx_expr_is_literal_generator(value))
+  if (!filterx_expr_is_literal(value) && !filterx_expr_is_literal_container(value))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS" list members must be literals!" FILTERX_FUNC_UNSET_EMPTIES_USAGE);
@@ -453,14 +453,14 @@ _extract_target_objects(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *
   if (!exists)
     return TRUE;
 
-  if (!filterx_expr_is_literal_list_generator(targets))
+  if (!filterx_expr_is_literal_list(targets))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS" argument must be literal list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE);
       return FALSE;
     }
 
-  guint64 num_targets = filterx_expr_literal_generator_len(targets);
+  guint64 num_targets = filterx_literal_container_len(targets);
   if (num_targets > 0)
     reset_flags(&self->flags, self->flags & (FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE) |
                                              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE)));
@@ -468,7 +468,7 @@ _extract_target_objects(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *
 
   gpointer user_data[] = { self, error };
   gboolean result = TRUE;
-  if (!filterx_literal_dict_generator_foreach(targets, _target_iterator, user_data))
+  if (!filterx_literal_list_foreach(targets, _target_iterator, user_data))
     result = FALSE;
   filterx_expr_unref(targets);
   return result;
