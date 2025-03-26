@@ -58,7 +58,7 @@ file_opener_for_stdin_new(void)
 LogDriver *
 stdin_sd_new(GlobalConfig *cfg)
 {
-  AFFileSourceDriver *self = affile_sd_new_instance("-", cfg);
+  AFFileSourceDriver *self = affile_sd_new_instance("/dev/stdin", cfg);
 
   self->file_reader_options.reader_options.flags |= LR_EXIT_ON_EOF;
   self->file_reader_options.reader_options.super.stats_source = stats_register_type("stdin");
