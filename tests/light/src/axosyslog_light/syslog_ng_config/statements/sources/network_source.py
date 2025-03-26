@@ -22,6 +22,8 @@
 #############################################################################
 from axosyslog_light.driver_io.network.network_io import NetworkIO
 from axosyslog_light.syslog_ng_config.statements.sources.source_driver import SourceDriver
+from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import PrometheusStatsHandler
 
 
 def map_transport(transport):
@@ -48,11 +50,16 @@ def create_io(options):
 
 
 class NetworkSource(SourceDriver):
-    def __init__(self, **options):
+    def __init__(
+        self,
+        stats_handler: LegacyStatsHandler,
+        prometheus_stats_handler: PrometheusStatsHandler,
+        **options,
+    ) -> None:
         self.io = create_io(options)
 
         self.driver_name = "network"
-        super(NetworkSource, self).__init__(options=options)
+        super(NetworkSource, self).__init__(stats_handler, prometheus_stats_handler, options=options)
 
     def write_log(self, message, rate=None, transport=None, framed=None):
         self.io.write_messages([message], rate=rate, transport=transport, framed=framed)

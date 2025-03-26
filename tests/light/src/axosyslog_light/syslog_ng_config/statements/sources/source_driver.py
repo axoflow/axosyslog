@@ -20,15 +20,33 @@
 # COPYING for details.
 #
 #############################################################################
+from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import PrometheusStatsHandler
 
 
 class SourceDriver(object):
     group_type = "source"
+    driver_instance = ""
 
-    def __init__(self, positional_parameters=None, options=None):
+    def __init__(
+        self,
+        stats_handler: LegacyStatsHandler,
+        prometheus_stats_handler: PrometheusStatsHandler,
+        positional_parameters=None,
+        options=None,
+    ) -> None:
+        self.stats_handler = stats_handler
+        self.prometheus_stats_handler = prometheus_stats_handler
+
         if positional_parameters is None:
             positional_parameters = []
         self.positional_parameters = positional_parameters
         if options is None:
             options = {}
         self.options = options
+
+    def get_stats(self):
+        return self.stats_handler.get_stats(self.group_type, self.driver_name, self.driver_instance)
+
+    def get_query(self):
+        return self.stats_handler.get_query(self.group_type, self.driver_name)

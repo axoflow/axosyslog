@@ -21,9 +21,16 @@
 #
 #############################################################################
 from axosyslog_light.syslog_ng_config.statements.sources.source_driver import SourceDriver
+from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import PrometheusStatsHandler
 
 
 class InternalSource(SourceDriver):
-    def __init__(self, **options):
+    def __init__(
+        self,
+        stats_handler: LegacyStatsHandler,
+        prometheus_stats_handler: PrometheusStatsHandler,
+        **options,
+    ) -> None:
         self.driver_name = "internal"
-        super(InternalSource, self).__init__(None, options)
+        super(InternalSource, self).__init__(stats_handler, prometheus_stats_handler, None, options)

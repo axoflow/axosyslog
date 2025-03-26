@@ -129,21 +129,21 @@ class SyslogNgConfig(object):
         self.__syslog_ng_config["templates"].append(template)
 
     def create_file_source(self, **options):
-        file_source = FileSource(**options)
+        file_source = FileSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
         self.teardown.register(file_source.close_file)
         return file_source
 
     def create_example_msg_generator_source(self, **options):
-        return ExampleMsgGeneratorSource(**options)
+        return ExampleMsgGeneratorSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_internal_source(self, **options):
-        return InternalSource(**options)
+        return InternalSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_network_source(self, **options):
-        return NetworkSource(**options)
+        return NetworkSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_syslog_source(self, **options):
-        return SyslogSource(**options)
+        return SyslogSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_rewrite_set(self, template, **options):
         return Set(template, **options)
