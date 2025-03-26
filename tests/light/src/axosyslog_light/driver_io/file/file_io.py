@@ -44,6 +44,14 @@ class FileIO():
 
         return self.__readable_file.wait_for_lines(lines)
 
+    def read_all(self):
+        if not self.__readable_file.is_opened():
+            if not self.__readable_file.wait_for_creation():
+                raise Exception("{} was not created in time.".format(self.__readable_file.path))
+            self.__readable_file.open("r")
+
+        return self.__readable_file.read().splitlines()
+
     def write(self, content):
         if not self.__writeable_file.is_opened():
             self.__writeable_file.open("a+")
