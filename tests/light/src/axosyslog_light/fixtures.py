@@ -26,7 +26,6 @@ import argparse
 import logging
 import os
 import re
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -198,12 +197,9 @@ def log_message():
     return LogMessage()
 
 
-@pytest.fixture(scope="session")
-def version(request):
-    installdir = request.config.getoption("--installdir")
-    binary_path = str(Path(installdir, "sbin", "syslog-ng"))
-    version_output = subprocess.check_output([binary_path, "--version"]).decode()
-    return version_output.splitlines()[1].split()[2]
+@pytest.fixture
+def version(syslog_ng):
+    return syslog_ng.get_version()
 
 
 @pytest.fixture
