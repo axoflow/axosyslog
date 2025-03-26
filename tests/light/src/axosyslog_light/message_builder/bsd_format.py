@@ -25,7 +25,7 @@
 
 class BSDFormat(object):
     @staticmethod
-    def format_message(message, add_new_line=True):
+    def format_message(message):
         formatted_message = ""
         if message.priority_value:
             formatted_message += "<{}>".format(message.priority_value)
@@ -39,6 +39,4 @@ class BSDFormat(object):
             formatted_message += "[{}]:".format(message.pid_value)
         if message.message_value:
             formatted_message += " {}".format(message.message_value)
-        if add_new_line:
-            formatted_message += "\n"
         return formatted_message

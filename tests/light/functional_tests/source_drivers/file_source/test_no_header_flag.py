@@ -32,7 +32,7 @@ def test_no_header_flag(config, syslog_ng, log_message, bsd_formatter):
     file_source.write_log(input_message)
     syslog_ng.start(config)
 
-    expected_msg_value_for_no_header_flag = "%s %s %s[%s]: %s\n" % (
+    expected_msg_value_for_no_header_flag = "%s %s %s[%s]: %s" % (
         log_message.bsd_timestamp_value,
         log_message.hostname_value,
         log_message.program_value,

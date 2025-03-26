@@ -21,53 +21,35 @@
 # COPYING for details.
 #
 #############################################################################
-from pathlib import Path
-
-from axosyslog_light.common.blocking import wait_until_true
-from axosyslog_light.common.file import File
-from axosyslog_light.common.random_id import get_unique_id
+from axosyslog_light.driver_io.network.network_io import NetworkIO
 
 
-def _test_auto_detect(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, transport, input_messages, number_of_messages, expected_messages):
-    output_file = "output.log"
+def _test_auto_detect(config, syslog_ng, port_allocator, framed):
+    NUMBER_OF_MESSAGES = 10
+    INPUT_MESSAGES = ["<2>Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * NUMBER_OF_MESSAGES
+    EXPECTED_MESSAGES = ["Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * NUMBER_OF_MESSAGES
+
+    OUTPUT_FILE = "output.log"
 
     syslog_source = config.create_syslog_source(
         ip="localhost",
         port=port_allocator(),
         keep_hostname="yes",
-        transport=transport,
+        transport="auto",
     )
-    file_destination = config.create_file_destination(file_name=output_file)
+    file_destination = config.create_file_destination(file_name=OUTPUT_FILE)
     config.create_logpath(statements=[syslog_source, file_destination])
 
     syslog_ng.start(config)
 
-    loggen_input_file_path = Path("loggen_input_{}.txt".format(get_unique_id()))
-    loggen_input_file = File(loggen_input_file_path)
-    loggen_input_file.write_content_and_close(input_messages)
-    loggen.start(
-        syslog_source.options["ip"], syslog_source.options["port"],
-        number=number_of_messages,
-        dont_parse=True,
-        read_file=str(loggen_input_file_path),
-        syslog_proto=True,
-        inet=True,
-    )
+    syslog_source.write_logs(INPUT_MESSAGES, transport=NetworkIO.Transport.TCP, framed=framed)
 
-    wait_until_true(lambda: loggen.get_sent_message_count() == number_of_messages)
-
-    assert file_destination.read_log() == expected_messages
+    assert file_destination.read_logs(NUMBER_OF_MESSAGES) == EXPECTED_MESSAGES
 
 
-def test_auto_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
-    INPUT_MESSAGES = "53 <2>Oct 11 22:14:15 myhostname sshd[1234]: message 0\r\n" * 10
-    EXPECTED_MESSAGES = "Oct 11 22:14:15 myhostname sshd[1234]: message 0\n"
-    NUMBER_OF_MESSAGES = 10
-    _test_auto_detect(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES)
+def test_auto_framing(config, syslog_ng, port_allocator):
+    _test_auto_detect(config, syslog_ng, port_allocator, True)
 
 
-def test_auto_no_framing(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters):
-    INPUT_MESSAGES = "<2>Oct 11 22:14:15 myhostname sshd[1234]: message 0\r\n" * 10
-    EXPECTED_MESSAGES = "Oct 11 22:14:15 myhostname sshd[1234]: message 0\n"
-    NUMBER_OF_MESSAGES = 10
-    _test_auto_detect(config, syslog_ng, syslog_ng_ctl, port_allocator, loggen, testcase_parameters, '"auto"', INPUT_MESSAGES, NUMBER_OF_MESSAGES, EXPECTED_MESSAGES)
+def test_auto_no_framing(config, syslog_ng, port_allocator):
+    _test_auto_detect(config, syslog_ng, port_allocator, False)

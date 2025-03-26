@@ -27,7 +27,7 @@ from axosyslog_light.testcase_parameters.testcase_parameters import TestcasePara
 
 @pytest.fixture
 def test_message():
-    return "test message - öüóőúéáű\n"
+    return "test message - öüóőúéáű"
 
 
 @pytest.fixture

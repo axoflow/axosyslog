@@ -22,8 +22,8 @@
 #############################################################################
 import pytest
 
-input_log = "<38>Feb 11 21:27:22 testhost testprogram[9999]: test message\n"
-expected_log = "Feb 11 21:27:22 testhost testprogram[9999]: test message\n"
+input_log = "<38>Feb 11 21:27:22 testhost testprogram[9999]: test message"
+expected_log = "Feb 11 21:27:22 testhost testprogram[9999]: test message"
 
 
 @pytest.mark.parametrize(

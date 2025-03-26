@@ -87,7 +87,7 @@ def test_upper(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == """{"literal":"ABC","variable":"FOOBAR","host":"HOSTNAME"}\n"""
+    assert file_final.read_log() == """{"literal":"ABC","variable":"FOOBAR","host":"HOSTNAME"}"""
 
 
 def test_lower(config, syslog_ng):
@@ -104,7 +104,7 @@ def test_lower(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == """{"literal":"abc","variable":"foobar","host":"hostname"}\n"""
+    assert file_final.read_log() == """{"literal":"abc","variable":"foobar","host":"hostname"}"""
 
 
 def test_repr(config, syslog_ng):
@@ -119,7 +119,7 @@ def test_repr(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == """{"repr":"2000-01-01T00:00:00.000+00:00","str":"946684800.000000"}\n"""
+    assert file_final.read_log() == """{"repr":"2000-01-01T00:00:00.000+00:00","str":"946684800.000000"}"""
 
 
 def test_startswith_with_various_arguments(config, syslog_ng):
@@ -159,7 +159,7 @@ def test_startswith_with_various_arguments(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"startswith_foo1":true,"startswith_foo2":true,"startswith_foo3":true,"startswith_foo4":true}\n'
+    assert file_final.read_log() == '{"startswith_foo1":true,"startswith_foo2":true,"startswith_foo3":true,"startswith_foo4":true}'
 
 
 def test_endswith_with_various_arguments(config, syslog_ng):
@@ -199,7 +199,7 @@ def test_endswith_with_various_arguments(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"endswith_foo1":true,"endswith_foo2":true,"endswith_foo3":true,"endswith_foo4":true}\n'
+    assert file_final.read_log() == '{"endswith_foo1":true,"endswith_foo2":true,"endswith_foo3":true,"endswith_foo4":true}'
 
 
 def test_includes_with_various_arguments(config, syslog_ng):
@@ -239,7 +239,7 @@ def test_includes_with_various_arguments(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"includes_foo1":true,"includes_foo2":true,"includes_foo3":true,"includes_foo4":true}\n'
+    assert file_final.read_log() == '{"includes_foo1":true,"includes_foo2":true,"includes_foo3":true,"includes_foo4":true}'
 
 
 def test_startswith_endswith_includes(config, syslog_ng):
@@ -273,4 +273,4 @@ def test_startswith_endswith_includes(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"startswith_foo":true,"contains_bar":true,"endswith_baz":true,"works_with_message_value":true}\n'
+    assert file_final.read_log() == '{"startswith_foo":true,"contains_bar":true,"endswith_baz":true,"works_with_message_value":true}'

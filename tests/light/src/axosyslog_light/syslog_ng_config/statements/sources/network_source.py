@@ -26,7 +26,7 @@ from axosyslog_light.syslog_ng_config.statements.sources.source_driver import So
 
 def map_transport(transport):
     mapping = {
-        "auto": NetworkIO.Transport.TCP,
+        "auto": NetworkIO.Transport.AUTO,
         "tcp": NetworkIO.Transport.TCP,
         "text-with-nuls": NetworkIO.Transport.TCP,
         "udp": NetworkIO.Transport.UDP,
@@ -44,7 +44,7 @@ def create_io(options):
     ip = options["ip"] if "ip" in options else "localhost"
     transport = options["transport"] if "transport" in options else "tcp"
 
-    return NetworkIO(ip, options["port"], map_transport(transport))
+    return NetworkIO(ip, options["port"], map_transport(transport), False)
 
 
 class NetworkSource(SourceDriver):
@@ -54,5 +54,11 @@ class NetworkSource(SourceDriver):
         self.driver_name = "network"
         super(NetworkSource, self).__init__(options=options)
 
-    def write_log(self, formatted_content, rate=None):
-        self.io.write(formatted_content, rate=rate)
+    def write_log(self, message, rate=None, transport=None, framed=None):
+        self.io.write_messages([message], rate=rate, transport=transport, framed=framed)
+
+    def write_logs(self, messages, rate=None, transport=None, framed=None):
+        self.io.write_messages(messages, rate=rate, transport=transport, framed=framed)
+
+    def write_logs_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None):
+        self.io.write_messages_with_proxy_header(proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=rate, transport=transport, framed=framed)

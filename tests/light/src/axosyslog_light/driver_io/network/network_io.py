@@ -38,24 +38,64 @@ from axosyslog_light.helpers.loggen.loggen import Loggen
 
 
 class NetworkIO():
-    def __init__(self, ip, port, transport, ip_proto_version=None):
+    def __init__(self, ip, port, transport, framed, ip_proto_version=None):
         self.__ip = ip
         self.__port = port
         self.__transport = transport
+        self.__framed = framed
         self.__ip_proto_version = NetworkIO.IPProtoVersion.V4 if ip_proto_version is None else ip_proto_version
         self.__server = None
         self.__message_reader = None
 
-    def write(self, content, rate=None):
+    def write_raw(self, raw_content, rate=None, transport=None, extra_loggen_args=None):
+        if transport is None:
+            transport = self.__transport
+
+        if extra_loggen_args is None:
+            extra_loggen_args = {}
+
         loggen_input_file_path = Path("loggen_input_{}.txt".format(get_unique_id()))
 
         loggen_input_file = File(loggen_input_file_path)
-        loggen_input_file.write_content_and_close(content)
+        loggen_input_file.write_content_and_close(raw_content)
 
-        Loggen().start(self.__ip, self.__port, read_file=str(loggen_input_file_path), dont_parse=True, permanent=True, rate=rate, **self.__transport.value)
+        Loggen().start(
+            self.__ip,
+            self.__port,
+            read_file=str(loggen_input_file_path),
+            dont_parse=True,
+            permanent=True,
+            rate=rate,
+            **transport.value,
+            **extra_loggen_args,
+        )
+
+    def __format_messages(self, messages, framed=None):
+        if framed is None:
+            framed = self.__framed
+        if framed:
+            return "".join([str(len(message)) + " " + message for message in messages])
+        return "".join([message + "\n" for message in messages])
+
+    def write_messages(self, messages, rate=None, transport=None, framed=None):
+        self.write_raw(self.__format_messages(messages, framed=framed), rate=rate, transport=transport)
+
+    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None):
+        self.write_raw(
+            self.__format_messages(messages, framed=framed),
+            rate=rate,
+            transport=transport,
+            extra_loggen_args={
+                "proxied": proxy_version,
+                "proxy_src_ip": src_ip,
+                "proxy_dst_ip": dst_ip,
+                "proxy_src_port": str(src_port),
+                "proxy_dst_port": str(dst_port),
+            },
+        )
 
     def start_listener(self):
-        self.__message_reader, self.__server = self.__transport.construct(self.__port, self.__ip, self.__ip_proto_version)
+        self.__message_reader, self.__server = self.__transport.construct(self.__framed, self.__port, self.__ip, self.__ip_proto_version)
         BackgroundEventLoop().wait_async_result(self.__server.start(), timeout=DEFAULT_TIMEOUT)
 
     def stop_listener(self):
@@ -75,6 +115,7 @@ class NetworkIO():
         V6 = socket.AF_INET6
 
     class Transport(Enum):
+        AUTO = {}
         TCP = {"inet": True, "stream": True}
         UDP = {"dgram": True}
         TLS = {"use_ssl": True}
@@ -82,7 +123,7 @@ class NetworkIO():
         PROXIED_TLS = {"use_ssl": True}
         PROXIED_TLS_PASSTHROUGH = {"use_ssl": True, "proxied_tls_passthrough": True}
 
-        def construct(self, port, host=None, ip_proto_version=None):
+        def construct(self, framed, port, host=None, ip_proto_version=None):
             def _construct(server, reader_class):
                 return reader_class(server), server
 
@@ -90,8 +131,8 @@ class NetworkIO():
             tls.load_cert_chain(get_shared_file("valid-localhost.crt"), get_shared_file("valid-localhost.key"))
 
             transport_mapping = {
-                NetworkIO.Transport.TCP: lambda: _construct(SingleConnectionTCPServer(port, host, ip_proto_version), message_readers.SingleLineStreamReader),
-                NetworkIO.Transport.TLS: lambda: _construct(SingleConnectionTCPServer(port, host, ip_proto_version, tls), message_readers.SingleLineStreamReader),
+                NetworkIO.Transport.TCP: lambda: _construct(SingleConnectionTCPServer(port, host, ip_proto_version), None if framed else message_readers.SingleLineStreamReader),
+                NetworkIO.Transport.TLS: lambda: _construct(SingleConnectionTCPServer(port, host, ip_proto_version, tls), None if framed else message_readers.SingleLineStreamReader),
                 NetworkIO.Transport.UDP: lambda: _construct(UDPServer(port, host, ip_proto_version), message_readers.DatagramReader),
             }
             return transport_mapping[self]()

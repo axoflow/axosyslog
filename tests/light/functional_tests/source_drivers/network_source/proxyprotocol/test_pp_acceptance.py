@@ -22,18 +22,22 @@
 #############################################################################
 
 TEMPLATE = r'"${SOURCEIP} ${SOURCEPORT} ${DESTIP} ${DESTPORT} ${IP_PROTO} ${MESSAGE}\n"'
-INPUT_MESSAGES = "PROXY TCP4 1.1.1.1 2.2.2.2 3333 4444\r\n" \
-                 "message 0"
-EXPECTED_MESSAGE0 = "1.1.1.1 3333 2.2.2.2 4444 4 message 0\n"
+PROXY_VERSION = 1
+PROXY_SRC_IP = "1.1.1.1"
+PROXY_DST_IP = "2.2.2.2"
+PROXY_SRC_PORT = 3333
+PROXY_DST_PORT = 4444
+INPUT_MESSAGES = ["message 0"]
+EXPECTED_MESSAGE0 = "1.1.1.1 3333 2.2.2.2 4444 4 message 0"
 
 
-def test_pp_acceptance(config, syslog_ng, loggen, port_allocator):
+def test_pp_acceptance(config, syslog_ng, port_allocator):
     network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport='"proxied-tcp"', flags="no-parse")
     file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
     config.create_logpath(statements=[network_source, file_destination])
 
     syslog_ng.start(config)
 
-    network_source.write_log(INPUT_MESSAGES)
+    network_source.write_logs_with_proxy_header(PROXY_VERSION, PROXY_SRC_IP, PROXY_DST_IP, PROXY_SRC_PORT, PROXY_DST_PORT, INPUT_MESSAGES)
 
     assert file_destination.read_log() == EXPECTED_MESSAGE0
