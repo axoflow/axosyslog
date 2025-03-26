@@ -47,7 +47,10 @@ class NetworkIO():
         self.__server = None
         self.__message_reader = None
 
-    def write_raw(self, raw_content, rate=None, extra_loggen_args=None):
+    def write_raw(self, raw_content, rate=None, transport=None, extra_loggen_args=None):
+        if transport is None:
+            transport = self.__transport
+
         if extra_loggen_args is None:
             extra_loggen_args = {}
 
@@ -56,20 +59,30 @@ class NetworkIO():
         loggen_input_file = File(loggen_input_file_path)
         loggen_input_file.write_content_and_close(raw_content)
 
-        Loggen().start(self.__ip, self.__port, read_file=str(loggen_input_file_path), dont_parse=True, permanent=True, rate=rate, **self.__transport.value, **extra_loggen_args)
+        Loggen().start(
+            self.__ip,
+            self.__port,
+            read_file=str(loggen_input_file_path),
+            dont_parse=True,
+            permanent=True,
+            rate=rate,
+            **transport.value,
+            **extra_loggen_args,
+        )
 
     def __format_messages(self, messages):
         if self.__framed:
             return "".join([str(len(message)) + " " + message for message in messages])
         return "".join([message + "\n" for message in messages])
 
-    def write_messages(self, messages, rate=None):
-        self.write_raw(self.__format_messages(messages), rate=rate)
+    def write_messages(self, messages, rate=None, transport=None):
+        self.write_raw(self.__format_messages(messages), rate=rate, transport=transport)
 
-    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None):
+    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None):
         self.write_raw(
             self.__format_messages(messages),
             rate=rate,
+            transport=transport,
             extra_loggen_args={
                 "proxied": proxy_version,
                 "proxy_src_ip": src_ip,
@@ -100,6 +113,7 @@ class NetworkIO():
         V6 = socket.AF_INET6
 
     class Transport(Enum):
+        AUTO = {}
         TCP = {"inet": True, "stream": True}
         UDP = {"dgram": True}
         TLS = {"use_ssl": True}
