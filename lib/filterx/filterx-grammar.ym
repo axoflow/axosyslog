@@ -63,8 +63,6 @@
 
 #include "template/templates.h"
 
-FilterXExpr *last_literal_generator;
-
 FilterXExpr *
 construct_template_expr(LogTemplate *template)
 {
@@ -152,19 +150,15 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <ptr> arguments
 %type <ptr> first_argument
 %type <ptr> rest_argument
-%type <ptr> list_argument
-%type <ptr> dict_argument
 %type <node> literal
 %type <ptr> literal_object
 %type <node> variable
 %type <node> filterx_variable
 %type <ptr> template
-%type <ptr> dict_generator
-%type <ptr> inner_dict_generator
+%type <ptr> dict_literal
 %type <ptr> dict_element
 %type <ptr> dict_elements
-%type <ptr> list_generator
-%type <ptr> inner_list_generator
+%type <ptr> list_literal
 %type <ptr> list_element
 %type <ptr> list_elements
 %type <ptr> regexp_match
@@ -474,9 +468,7 @@ expr_generator
         ;
 
 __expr_generator
-	: dict_generator
-	| list_generator
-	| generator_function_call
+	: generator_function_call
 	| expr_plus_generator
 	| '(' expr_generator ')'		{ $$ = $2; }
 	;
@@ -517,39 +509,17 @@ arguments
 first_argument
 	: expr					{ $$ = filterx_function_arg_new(NULL, $1); }
 	| string KW_ASSIGN expr			{ $$ = filterx_function_arg_new($1, $3); free($1); }
-	| string KW_ASSIGN list_argument	{ $$ = filterx_function_arg_new($1, $3); free($1); }
-	| string KW_ASSIGN dict_argument	{ $$ = filterx_function_arg_new($1, $3); free($1); }
 	;
 
 rest_argument
 	: first_argument
-	| dict_argument				{ $$ = filterx_function_arg_new(NULL, $1); }
-	| list_argument				{ $$ = filterx_function_arg_new(NULL, $1); }
 	;
 
-list_argument
-	: list_generator			{
-						  GError *error = NULL;
-						  FilterXExpr *func = filterx_function_lookup(configuration, "list", NULL, &error);
-						  CHECK_FUNCTION_ERROR(func, @1, "list", error);
-
-						  filterx_generator_set_fillable($1, func);
-						  $$ = $1;
-						}
+literal
+	: literal_object				{ $$ = filterx_literal_new(filterx_config_freeze_object(configuration, $1)); }
+	| dict_literal
+	| list_literal
 	;
-
-dict_argument
-	: dict_generator			{
-						  GError *error = NULL;
-						  FilterXExpr *func = filterx_function_lookup(configuration, "dict", NULL, &error);
-						  CHECK_FUNCTION_ERROR(func, @1, "dict", error);
-
-						  filterx_generator_set_fillable($1, func);
-						  $$ = $1;
-						}
-	;
-
-literal: literal_object				{ $$ = filterx_literal_new(filterx_config_freeze_object(configuration, $1)); }
 
 literal_object
 	: LL_NUMBER				{ $$ = filterx_integer_new($1); }
@@ -593,13 +563,11 @@ template
           }
 	;
 
-dict_generator
-	: '{' { last_literal_generator = filterx_literal_dict_generator_new(); } dict_elements '}'
-						{ filterx_literal_generator_set_elements(last_literal_generator, $3); $$ = last_literal_generator; }
-	;
-
-inner_dict_generator
-	: '{' dict_elements '}'			{ $$ = filterx_literal_inner_dict_generator_new(last_literal_generator, $2); }
+dict_literal
+	: '{' dict_elements '}'
+          {
+            $$ = filterx_literal_dict_new($2);
+          }
 	;
 
 dict_elements
@@ -609,18 +577,14 @@ dict_elements
 	;
 
 dict_element
-	: expr ':' expr				{ $$ = filterx_literal_generator_elem_new($1, $3, TRUE); }
-	| expr ':' inner_dict_generator		{ $$ = filterx_literal_generator_elem_new($1, $3, FALSE); }
-	| expr ':' inner_list_generator		{ $$ = filterx_literal_generator_elem_new($1, $3, FALSE); }
+	: expr ':' expr				{ $$ = filterx_literal_element_new($1, $3, TRUE); }
 	;
 
-list_generator
-	: '[' { last_literal_generator = filterx_literal_list_generator_new(); } list_elements ']'
-						{ filterx_literal_generator_set_elements(last_literal_generator, $3); $$ = last_literal_generator; }
-	;
-
-inner_list_generator
-	: '[' list_elements ']'			{ $$ = filterx_literal_inner_list_generator_new(last_literal_generator, $2); }
+list_literal
+	: '[' list_elements ']'
+          {
+            $$ = filterx_literal_list_new($2);
+          }
 	;
 
 list_elements
@@ -630,9 +594,7 @@ list_elements
 	;
 
 list_element
-	: expr					{ $$ = filterx_literal_generator_elem_new(NULL, $1, TRUE); }
-	| inner_dict_generator			{ $$ = filterx_literal_generator_elem_new(NULL, $1, FALSE); }
-	| inner_list_generator			{ $$ = filterx_literal_generator_elem_new(NULL, $1, FALSE); }
+	: expr					{ $$ = filterx_literal_element_new(NULL, $1, TRUE); }
 	;
 
 regexp_match

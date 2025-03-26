@@ -24,65 +24,58 @@
 #ifndef FILTERX_EXPR_LITERAL_GENERATOR_H_INCLUDED
 #define FILTERX_EXPR_LITERAL_GENERATOR_H_INCLUDED
 
-#include "filterx/expr-generator.h"
+#include "filterx/filterx-expr.h"
 
-typedef gboolean (*FilterXLiteralDictGeneratorForeachFunc)(FilterXExpr *, FilterXExpr *, gpointer);
-typedef gboolean (*FilterXLiteralListGeneratorForeachFunc)(gsize, FilterXExpr *, gpointer);
 
-typedef struct FilterXLiteralGeneratorElem_ FilterXLiteralGeneratorElem;
-typedef struct FilterXExprLiteralGenerator_ FilterXExprLiteralGenerator;
+typedef struct FilterXLiteralElement_ FilterXLiteralElement;
+typedef struct FilterXLiteralContainer_ FilterXLiteralContainer;
 
-FilterXLiteralGeneratorElem *filterx_literal_generator_elem_new(FilterXExpr *key, FilterXExpr *value,
+FilterXLiteralElement *filterx_literal_element_new(FilterXExpr *key, FilterXExpr *value,
     gboolean cloneable);
 
-FilterXExpr *filterx_literal_dict_generator_new(void);
-FilterXExpr *filterx_literal_list_generator_new(void);
-void filterx_literal_generator_set_elements(FilterXExpr *s, GList *elements);
-gboolean filterx_literal_dict_generator_foreach(FilterXExpr *s, FilterXLiteralDictGeneratorForeachFunc func,
-                                                gpointer user_data);
-gboolean filterx_literal_list_generator_foreach(FilterXExpr *s, FilterXLiteralListGeneratorForeachFunc func,
-                                                gpointer user_data);
+/* Literal Object expressions */
 
-FilterXExpr *filterx_literal_inner_dict_generator_new(FilterXExpr *root_literal_generator, GList *elements);
-FilterXExpr *filterx_literal_inner_list_generator_new(FilterXExpr *root_literal_generator, GList *elements);
+FILTERX_EXPR_DECLARE_TYPE(literal_container);
+   
+gsize filterx_literal_container_len(FilterXExpr *s);
 
-guint filterx_expr_literal_generator_len(FilterXExpr *s);
 
-FILTERX_EXPR_DECLARE_TYPE(literal_inner_dict_generator);
-FILTERX_EXPR_DECLARE_TYPE(literal_inner_list_generator);
+/* Literal Dict */
+
+FILTERX_EXPR_DECLARE_TYPE(literal_dict);
+
+typedef gboolean (*FilterXLiteralDictForeachFunc)(FilterXExpr *, FilterXExpr *, gpointer);
+gboolean filterx_literal_dict_foreach(FilterXExpr *s, FilterXLiteralDictForeachFunc func, gpointer user_data);
+FilterXExpr *filterx_literal_dict_new(GList *elements);
+
+/* Literal List */
+
+FILTERX_EXPR_DECLARE_TYPE(literal_list);
+
+typedef gboolean (*FilterXLiteralListForeachFunc)(gsize, FilterXExpr *, gpointer);
+
+gboolean filterx_literal_list_foreach(FilterXExpr *s, FilterXLiteralListForeachFunc func, gpointer user_data);
+
+FilterXExpr *filterx_literal_list_new(GList *elements);
+
+/* inline functions */
 
 static inline gboolean
-filterx_expr_is_literal_inner_dict_generator(FilterXExpr *expr)
+filterx_expr_is_literal_dict(FilterXExpr *expr)
 {
-  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal_inner_dict_generator);
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal_dict);
 }
 
 static inline gboolean
-filterx_expr_is_literal_inner_list_generator(FilterXExpr *expr)
+filterx_expr_is_literal_list(FilterXExpr *expr)
 {
-  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal_inner_list_generator);
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal_list);
 }
 
 static inline gboolean
-filterx_expr_is_literal_dict_generator(FilterXExpr *s)
+filterx_expr_is_literal_container(FilterXExpr *s)
 {
-  FilterXExprGenerator *generator = (FilterXExprGenerator *) s;
-  return (filterx_expr_is_generator(s) && generator->create_container == filterx_generator_create_dict_container)
-         || filterx_expr_is_literal_inner_dict_generator(s);
-}
-
-static inline gboolean
-filterx_expr_is_literal_list_generator(FilterXExpr *s)
-{
-  FilterXExprGenerator *generator = (FilterXExprGenerator *) s;
-  return (filterx_expr_is_generator(s) && generator->create_container == filterx_generator_create_list_container)
-         || filterx_expr_is_literal_inner_list_generator(s);
-}
-
-static inline gboolean
-filterx_expr_is_literal_generator(FilterXExpr *s)
-{
-  return filterx_expr_is_literal_list_generator(s) || filterx_expr_is_literal_dict_generator(s);
+  return filterx_expr_is_literal_list(s) || filterx_expr_is_literal_dict(s);
 }
 
 #endif
