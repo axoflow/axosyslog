@@ -20,6 +20,7 @@
 # COPYING for details.
 #
 #############################################################################
+from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 
 NUMBER_OF_MESSAGES = 3
 
@@ -32,8 +33,16 @@ def test_loggen_with_reconnect(config, port_allocator, syslog_ng, loggen):
     syslog_ng.start(config)
 
     loggen.start(
-        network_source.options["ip"], network_source.options["port"], inet=True,
-        rate=1, active_connections=1, reconnect=True, interval=30, number=NUMBER_OF_MESSAGES,
+        LoggenStartParams(
+            target=network_source.options["ip"],
+            port=network_source.options["port"],
+            inet=True,
+            rate=1,
+            active_connections=1,
+            reconnect=True,
+            interval=30,
+            number=NUMBER_OF_MESSAGES,
+        ),
     )
 
     syslog_ng.stop()

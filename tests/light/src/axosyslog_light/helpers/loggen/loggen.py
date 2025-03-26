@@ -20,11 +20,120 @@
 # COPYING for details.
 #
 #############################################################################
+import typing
+from dataclasses import dataclass
 from pathlib import Path
 
 import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 from axosyslog_light.executors.process_executor import ProcessExecutor
+from psutil import Popen
 from psutil import TimeoutExpired
+
+
+@dataclass
+class LoggenStartParams:
+    target: str
+    port: int
+    inet: bool = False
+    unix: bool = False
+    stream: bool = False
+    dgram: bool = False
+    use_ssl: bool = False
+    dont_parse: bool = False
+    read_file: typing.Optional[Path] = None
+    skip_tokens: typing.Optional[str] = None
+    loop_reading: bool = False
+    rate: typing.Optional[int] = None
+    interval: typing.Optional[int] = None
+    permanent: bool = None
+    syslog_proto: bool = None
+    proxied: typing.Optional[int] = None
+    sdata: bool = False
+    no_framing: bool = False
+    active_connections: typing.Optional[int] = None
+    idle_connections: typing.Optional[int] = None
+    ipv6: bool = False
+    debug: bool = False
+    number: typing.Optional[int] = None
+    csv: bool = False
+    quiet: bool = False
+    size: typing.Optional[int] = None
+    reconnect: bool = False
+    proxied_tls_passthrough: bool = False
+    proxy_src_ip: typing.Optional[str] = None
+    proxy_dst_ip: typing.Optional[str] = None
+    proxy_src_port: typing.Optional[int] = None
+    proxy_dst_port: typing.Optional[int] = None
+
+    def format(self) -> typing.List[str]:
+        params = []
+        if self.inet is True:
+            params.append("--inet")
+        if self.unix is True:
+            params.append("--unix")
+        if self.stream is True:
+            params.append("--stream")
+        if self.dgram is True:
+            params.append("--dgram")
+        if self.use_ssl is True:
+            params.append("--use-ssl")
+        if self.dont_parse is True:
+            params.append("--dont-parse")
+        if self.read_file is not None:
+            params.append(f"--read-file={self.read_file}")
+        if self.skip_tokens is not None:
+            params.append(f"--skip-tokens={self.skip_tokens}")
+        if self.loop_reading is True:
+            params.append("--loop-reading")
+        if self.rate is not None:
+            params.append(f"--rate={self.rate}")
+        if self.interval is not None:
+            params.append(f"--interval={self.interval}")
+        if self.permanent is True:
+            params.append("--permanent")
+        if self.syslog_proto is True:
+            params.append("--syslog-proto")
+        if self.proxied is True:
+            params.append("--proxied")
+        if self.proxied is not None:
+            if self.proxied not in {1, 2}:
+                raise ValueError(f"Proxied version must be 1 or 2, got {self.proxied}")
+            params.append(f"--proxied={self.proxied}")
+        if self.proxy_src_ip is not None:
+            params.append(f"--proxy-src-ip={self.proxy_src_ip}")
+        if self.proxy_dst_ip is not None:
+            params.append(f"--proxy-dst-ip={self.proxy_dst_ip}")
+        if self.proxy_src_port is not None:
+            params.append(f"--proxy-src-port={self.proxy_src_port}")
+        if self.proxy_dst_port is not None:
+            params.append(f"--proxy-dst-port={self.proxy_dst_port}")
+        if self.proxied_tls_passthrough is True:
+            params.append("--proxied-tls-passthrough")
+        if self.sdata is True:
+            params.append("--sdata")
+        if self.no_framing is True:
+            params.append("--no-framing")
+        if self.active_connections is not None:
+            params.append(f"--active-connections={self.active_connections}")
+        if self.idle_connections is not None:
+            params.append(f"--idle-connections={self.idle_connections}")
+        if self.ipv6 is True:
+            params.append("--ipv6")
+        if self.debug is True:
+            params.append("--debug")
+        if self.number is not None:
+            params.append(f"--number={self.number}")
+        if self.csv is True:
+            params.append("--csv")
+        if self.quiet is True:
+            params.append("--quiet")
+        if self.size is not None:
+            params.append(f"--size={self.size}")
+        if self.reconnect is True:
+            params.append("--reconnect")
+        params.append(self.target)
+        params.append(str(self.port))
+        return params
 
 
 class Loggen(object):
@@ -40,133 +149,15 @@ class Loggen(object):
         self.loggen_proc = None
         self.loggen_bin_path = tc_parameters.INSTANCE_PATH.get_loggen_bin()
 
-    def __decode_start_parameters(
-        self, inet, unix, stream, dgram, use_ssl, dont_parse, read_file, skip_tokens, loop_reading,
-        rate, interval, permanent, syslog_proto, proxied, sdata, no_framing, active_connections,
-        idle_connections, ipv6, debug, number, csv, quiet, size, reconnect, proxied_tls_passthrough,
-        proxy_src_ip, proxy_dst_ip, proxy_src_port, proxy_dst_port,
-    ):
-
-        start_parameters = []
-
-        if inet is True:
-            start_parameters.append("--inet")
-
-        if unix is True:
-            start_parameters.append("--unix")
-
-        if stream is True:
-            start_parameters.append("--stream")
-
-        if dgram is True:
-            start_parameters.append("--dgram")
-
-        if use_ssl is True:
-            start_parameters.append("--use-ssl")
-
-        if dont_parse is True:
-            start_parameters.append("--dont-parse")
-
-        if read_file is not None:
-            start_parameters.append("--read-file={}".format(read_file))
-
-        if skip_tokens is not None:
-            start_parameters.append("--skip-tokens={}".format(skip_tokens))
-
-        if loop_reading is True:
-            start_parameters.append("--loop-reading")
-
-        if rate is not None:
-            start_parameters.append("--rate={}".format(int(rate)))
-
-        if interval is not None:
-            start_parameters.append("--interval={}".format(interval))
-
-        if permanent is True:
-            start_parameters.append("--permanent")
-
-        if syslog_proto is True:
-            start_parameters.append("--syslog-proto")
-
-        if proxied is True:
-            start_parameters.append("--proxied")
-
-        if proxied == 1 or proxied == 2:
-            start_parameters.append("--proxied={}".format(proxied))
-
-        if proxy_src_ip is not None:
-            start_parameters.append("--proxy-src-ip={}".format(proxy_src_ip))
-
-        if proxy_dst_ip is not None:
-            start_parameters.append("--proxy-dst-ip={}".format(proxy_dst_ip))
-
-        if proxy_src_port is not None:
-            start_parameters.append("--proxy-src-port={}".format(proxy_src_port))
-
-        if proxy_dst_port is not None:
-            start_parameters.append("--proxy-dst-port={}".format(proxy_dst_port))
-
-        if proxied_tls_passthrough is True:
-            start_parameters.append("--proxied-tls-passthrough")
-
-        if sdata is True:
-            start_parameters.append("--sdata")
-
-        if no_framing is True:
-            start_parameters.append("--no-framing")
-
-        if active_connections is not None:
-            start_parameters.append("--active-connections={}".format(active_connections))
-
-        if idle_connections is not None:
-            start_parameters.append("--idle-connections={}".format(idle_connections))
-
-        if ipv6 is True:
-            start_parameters.append("--ipv6")
-
-        if debug is True:
-            start_parameters.append("--debug")
-
-        if number is not None:
-            start_parameters.append("--number={}".format(number))
-
-        if csv is True:
-            start_parameters.append("--csv")
-
-        if quiet is True:
-            start_parameters.append("--quiet")
-
-        if size is not None:
-            start_parameters.append("--size={}".format(size))
-
-        if reconnect is True:
-            start_parameters.append("--reconnect")
-
-        return start_parameters
-
-    def start(
-        self, target, port, inet=None, unix=None, stream=None, dgram=None, use_ssl=None, dont_parse=None, read_file=None, skip_tokens=None, loop_reading=None,
-        rate=None, interval=None, permanent=None, syslog_proto=None, proxied=None, sdata=None, no_framing=None, active_connections=None,
-        idle_connections=None, ipv6=None, debug=None, number=None, csv=None, quiet=None, size=None, reconnect=None, proxied_tls_passthrough=None,
-        proxy_src_ip=None, proxy_dst_ip=None, proxy_src_port=None, proxy_dst_port=None,
-    ):
-
+    def start(self, start_params: LoggenStartParams) -> Popen:
         if self.loggen_proc is not None and self.loggen_proc.is_running():
             raise Exception("Loggen is already running, you shouldn't call start")
 
         instanceIndex = Loggen.__get_new_instance_index()
         self.loggen_stdout_path = Path("loggen_stdout_{}".format(instanceIndex))
         self.loggen_stderr_path = Path("loggen_stderr_{}".format(instanceIndex))
-
-        self.parameters = self.__decode_start_parameters(
-            inet, unix, stream, dgram, use_ssl, dont_parse, read_file, skip_tokens, loop_reading,
-            rate, interval, permanent, syslog_proto, proxied, sdata, no_framing, active_connections,
-            idle_connections, ipv6, debug, number, csv, quiet, size, reconnect, proxied_tls_passthrough,
-            proxy_src_ip, proxy_dst_ip, proxy_src_port, proxy_dst_port,
-        )
-
         self.loggen_proc = ProcessExecutor().start(
-            [self.loggen_bin_path] + self.parameters + [target, port],
+            [self.loggen_bin_path] + start_params.format(),
             self.loggen_stdout_path,
             self.loggen_stderr_path,
         )

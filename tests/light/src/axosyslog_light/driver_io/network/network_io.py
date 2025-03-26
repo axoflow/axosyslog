@@ -35,6 +35,7 @@ from axosyslog_light.common.network import UDPServer
 from axosyslog_light.common.random_id import get_unique_id
 from axosyslog_light.driver_io import message_readers
 from axosyslog_light.helpers.loggen.loggen import Loggen
+from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 
 
 class NetworkIO():
@@ -60,14 +61,16 @@ class NetworkIO():
         loggen_input_file.write_content_and_close(raw_content)
 
         Loggen().start(
-            self.__ip,
-            self.__port,
-            read_file=str(loggen_input_file_path),
-            dont_parse=True,
-            permanent=True,
-            rate=rate,
-            **transport.value,
-            **extra_loggen_args,
+            LoggenStartParams(
+                target=self.__ip,
+                port=self.__port,
+                read_file=str(loggen_input_file_path),
+                dont_parse=True,
+                permanent=True,
+                rate=rate,
+                **transport.value,
+                **extra_loggen_args,
+            ),
         )
 
     def __format_messages(self, messages, framed=None):
