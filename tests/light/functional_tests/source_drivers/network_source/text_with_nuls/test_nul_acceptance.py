@@ -26,7 +26,7 @@ INPUT_MESSAGE = "prog message\x00embedded\x00nul"
 EXPECTED_MESSAGE0 = "message embedded nul"
 
 
-def test_nul_acceptance(config, syslog_ng, loggen, port_allocator):
+def test_nul_acceptance(config, syslog_ng, port_allocator):
     network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport='"text-with-nuls"', flags="no-multi-line")
     file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
     config.create_logpath(statements=[network_source, file_destination])

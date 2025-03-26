@@ -30,7 +30,7 @@ RFC3164_EXAMPLE = ["<34>Oct 11 22:14:15 mymachine su: 'su root' failed for lonvi
 RFC3164_EXAMPLE_WITHOUT_PRI = "Oct 11 22:14:15 mymachine su: 'su root' failed for lonvick on /dev/pts/8"
 
 
-def test_pp_with_syslog_proto(config, port_allocator, syslog_ng, loggen):
+def test_pp_with_syslog_proto(config, port_allocator, syslog_ng):
     network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport="proxied-tcp")
     file_destination = config.create_file_destination(file_name="output.log")
     config.create_logpath(statements=[network_source, file_destination])

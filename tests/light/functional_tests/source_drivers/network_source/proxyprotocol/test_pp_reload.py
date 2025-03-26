@@ -33,7 +33,7 @@ EXPECTED_MESSAGE1 = "1.1.1.1 3333 2.2.2.2 4444 4 message 1"
 EXPECTED_MESSAGE2 = "1.1.1.1 3333 2.2.2.2 4444 4 message 2"
 
 
-def test_pp_reload(config, syslog_ng, loggen, port_allocator):
+def test_pp_reload(config, syslog_ng, port_allocator):
     network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport='"proxied-tcp"', flags="no-parse")
     file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
     config.create_logpath(statements=[network_source, file_destination])
