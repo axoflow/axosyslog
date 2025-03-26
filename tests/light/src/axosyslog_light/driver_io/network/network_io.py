@@ -70,17 +70,19 @@ class NetworkIO():
             **extra_loggen_args,
         )
 
-    def __format_messages(self, messages):
-        if self.__framed:
+    def __format_messages(self, messages, framed=None):
+        if framed is None:
+            framed = self.__framed
+        if framed:
             return "".join([str(len(message)) + " " + message for message in messages])
         return "".join([message + "\n" for message in messages])
 
-    def write_messages(self, messages, rate=None, transport=None):
-        self.write_raw(self.__format_messages(messages), rate=rate, transport=transport)
+    def write_messages(self, messages, rate=None, transport=None, framed=None):
+        self.write_raw(self.__format_messages(messages, framed=framed), rate=rate, transport=transport)
 
-    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None):
+    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None):
         self.write_raw(
-            self.__format_messages(messages),
+            self.__format_messages(messages, framed=framed),
             rate=rate,
             transport=transport,
             extra_loggen_args={

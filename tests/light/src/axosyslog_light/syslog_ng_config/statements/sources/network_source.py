@@ -54,14 +54,14 @@ class NetworkSource(SourceDriver):
         self.driver_name = "network"
         super(NetworkSource, self).__init__(options=options)
 
-    def write_log(self, message, rate=None, transport=None):
-        self.io.write_messages([message], rate=rate, transport=transport)
+    def write_log(self, message, rate=None, transport=None, framed=None):
+        self.io.write_messages([message], rate=rate, transport=transport, framed=framed)
 
-    def write_logs(self, messages, rate=None, transport=None):
-        self.io.write_messages(messages, rate=rate, transport=transport)
+    def write_logs(self, messages, rate=None, transport=None, framed=None):
+        self.io.write_messages(messages, rate=rate, transport=transport, framed=framed)
 
-    def write_logs_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None):
-        self.io.write_messages_with_proxy_header(proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=rate, transport=transport)
+    def write_logs_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None):
+        self.io.write_messages_with_proxy_header(proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=rate, transport=transport, framed=framed)
 
     def write_raw(self, raw_content, rate=None):
         self.io.write_raw(raw_content, rate=rate)
