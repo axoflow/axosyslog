@@ -29,6 +29,9 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/fixtures.py \
 	tests/light/src/axosyslog_light/helpers/__init__.py \
 	tests/light/src/axosyslog_light/helpers/loggen/__init__.py \
+	tests/light/src/axosyslog_light/helpers/loggen/loggen_docker_executor.py \
+	tests/light/src/axosyslog_light/helpers/loggen/loggen_executor.py \
+	tests/light/src/axosyslog_light/helpers/loggen/loggen_local_executor.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen.py \
 	tests/light/src/axosyslog_light/helpers/secure_logging/conftest.py \
 	tests/light/src/axosyslog_light/helpers/secure_logging/__init__.py \

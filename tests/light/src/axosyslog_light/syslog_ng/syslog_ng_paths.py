@@ -35,12 +35,7 @@ class SyslogNgPaths(object):
         if self.__instance_name is not None:
             raise Exception("Instance already configured")
         self.__instance_name = instance_name
-        install_dir = self.__testcase_parameters.get_install_dir()
-        if not install_dir:
-            raise ValueError("Missing --installdir start parameter")
-
         self.__syslog_ng_paths = {
-            "dirs": {"install_dir": Path(install_dir)},
             "file_paths": {
                 "config_path": Path("syslog_ng_{}.conf".format(instance_name)),
                 "persist_path": Path("syslog_ng_{}.persist".format(instance_name)),
@@ -49,14 +44,25 @@ class SyslogNgPaths(object):
                 "stderr": Path("syslog_ng_{}_stderr".format(instance_name)),
                 "stdout": Path("syslog_ng_{}_stdout".format(instance_name)),
             },
-            "binary_file_paths": {
-                "slogkey": Path(install_dir, "bin", "slogkey"),
-                "slogverify": Path(install_dir, "bin", "slogverify"),
-                "syslog_ng_binary": Path(install_dir, "sbin", "syslog-ng"),
-                "syslog_ng_ctl": Path(install_dir, "sbin", "syslog-ng-ctl"),
-                "loggen": Path(install_dir, "bin", "loggen"),
-            },
         }
+
+        try:
+            install_dir = self.__testcase_parameters.get_install_dir()
+            self.__syslog_ng_paths.update(
+                {
+                    "dirs": {"install_dir": install_dir},
+                    "binary_file_paths": {
+                        "slogkey": Path(install_dir, "bin", "slogkey"),
+                        "slogverify": Path(install_dir, "bin", "slogverify"),
+                        "syslog_ng_binary": Path(install_dir, "sbin", "syslog-ng"),
+                        "syslog_ng_ctl": Path(install_dir, "sbin", "syslog-ng-ctl"),
+                        "loggen": Path(install_dir, "bin", "loggen"),
+                    },
+                },
+            )
+        except KeyError:
+            pass
+
         return self
 
     def get_instance_name(self):

@@ -146,6 +146,27 @@ class SyslogNg(object):
                 return version_output_line.split()[2]
         raise Exception("Can not parse 'Config version' from 'syslog-ng --version'")
 
+    def get_version(self) -> str:
+        stdout_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_version_stdout")
+        stderr_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_version_stderr")
+
+        start_params = copy(self.start_params)
+        start_params.version = True
+
+        process = self.__syslog_ng_executor.run_process(
+            start_params=start_params,
+            stderr_path=stderr_path,
+            stdout_path=stdout_path,
+        )
+        returncode = process.wait()
+        if returncode != 0:
+            raise Exception(f"Cannot get syslog-ng version. Process returned with {returncode}. See {stderr_path.absolute()} for details")
+
+        try:
+            return stdout_path.read_text().splitlines()[1].split()[2]
+        except IndexError:
+            raise Exception("Can not parse 'Config version' from 'syslog-ng --version'")
+
     def is_process_running(self) -> bool:
         return self.__process and self.__process.poll() is None
 

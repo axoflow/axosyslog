@@ -20,15 +20,15 @@
 # COPYING for details.
 #
 #############################################################################
+import typing
 from pathlib import Path
 
-import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
-from axosyslog_light.executors.process_executor import ProcessExecutor
-from psutil import TimeoutExpired
+from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
+from axosyslog_light.helpers.loggen.loggen_executor import LoggenStartParams
+from psutil import Popen
 
 
 class Loggen(object):
-
     instanceIndex = -1
 
     @staticmethod
@@ -36,156 +36,25 @@ class Loggen(object):
         Loggen.instanceIndex += 1
         return Loggen.instanceIndex
 
-    def __init__(self):
-        self.loggen_proc = None
-        self.loggen_bin_path = tc_parameters.INSTANCE_PATH.get_loggen_bin()
+    def __init__(self, loggen_executor: typing.Optional[LoggenExecutor] = None):
+        if loggen_executor is None:
+            loggen_executor = LoggenExecutor.get_default_executor()
 
-    def __decode_start_parameters(
-        self, inet, unix, stream, dgram, use_ssl, dont_parse, read_file, skip_tokens, loop_reading,
-        rate, interval, permanent, syslog_proto, proxied, sdata, no_framing, active_connections,
-        idle_connections, ipv6, debug, number, csv, quiet, size, reconnect, proxied_tls_passthrough,
-        proxy_src_ip, proxy_dst_ip, proxy_src_port, proxy_dst_port,
-    ):
+        if not loggen_executor:
+            raise Exception("Loggen executor is not available")
 
-        start_parameters = []
+        self.executor = loggen_executor
 
-        if inet is True:
-            start_parameters.append("--inet")
+    def start(self, start_params: LoggenStartParams) -> Popen:
+        instance_index = Loggen.__get_new_instance_index()
+        self.loggen_stdout_path = Path("loggen_stdout_{}".format(instance_index))
+        self.loggen_stderr_path = Path("loggen_stderr_{}".format(instance_index))
+        return self.executor.start(start_params, self.loggen_stderr_path, self.loggen_stdout_path, instance_index)
 
-        if unix is True:
-            start_parameters.append("--unix")
+    def stop(self) -> None:
+        self.executor.stop()
 
-        if stream is True:
-            start_parameters.append("--stream")
-
-        if dgram is True:
-            start_parameters.append("--dgram")
-
-        if use_ssl is True:
-            start_parameters.append("--use-ssl")
-
-        if dont_parse is True:
-            start_parameters.append("--dont-parse")
-
-        if read_file is not None:
-            start_parameters.append("--read-file={}".format(read_file))
-
-        if skip_tokens is not None:
-            start_parameters.append("--skip-tokens={}".format(skip_tokens))
-
-        if loop_reading is True:
-            start_parameters.append("--loop-reading")
-
-        if rate is not None:
-            start_parameters.append("--rate={}".format(int(rate)))
-
-        if interval is not None:
-            start_parameters.append("--interval={}".format(interval))
-
-        if permanent is True:
-            start_parameters.append("--permanent")
-
-        if syslog_proto is True:
-            start_parameters.append("--syslog-proto")
-
-        if proxied is True:
-            start_parameters.append("--proxied")
-
-        if proxied == 1 or proxied == 2:
-            start_parameters.append("--proxied={}".format(proxied))
-
-        if proxy_src_ip is not None:
-            start_parameters.append("--proxy-src-ip={}".format(proxy_src_ip))
-
-        if proxy_dst_ip is not None:
-            start_parameters.append("--proxy-dst-ip={}".format(proxy_dst_ip))
-
-        if proxy_src_port is not None:
-            start_parameters.append("--proxy-src-port={}".format(proxy_src_port))
-
-        if proxy_dst_port is not None:
-            start_parameters.append("--proxy-dst-port={}".format(proxy_dst_port))
-
-        if proxied_tls_passthrough is True:
-            start_parameters.append("--proxied-tls-passthrough")
-
-        if sdata is True:
-            start_parameters.append("--sdata")
-
-        if no_framing is True:
-            start_parameters.append("--no-framing")
-
-        if active_connections is not None:
-            start_parameters.append("--active-connections={}".format(active_connections))
-
-        if idle_connections is not None:
-            start_parameters.append("--idle-connections={}".format(idle_connections))
-
-        if ipv6 is True:
-            start_parameters.append("--ipv6")
-
-        if debug is True:
-            start_parameters.append("--debug")
-
-        if number is not None:
-            start_parameters.append("--number={}".format(number))
-
-        if csv is True:
-            start_parameters.append("--csv")
-
-        if quiet is True:
-            start_parameters.append("--quiet")
-
-        if size is not None:
-            start_parameters.append("--size={}".format(size))
-
-        if reconnect is True:
-            start_parameters.append("--reconnect")
-
-        return start_parameters
-
-    def start(
-        self, target, port, inet=None, unix=None, stream=None, dgram=None, use_ssl=None, dont_parse=None, read_file=None, skip_tokens=None, loop_reading=None,
-        rate=None, interval=None, permanent=None, syslog_proto=None, proxied=None, sdata=None, no_framing=None, active_connections=None,
-        idle_connections=None, ipv6=None, debug=None, number=None, csv=None, quiet=None, size=None, reconnect=None, proxied_tls_passthrough=None,
-        proxy_src_ip=None, proxy_dst_ip=None, proxy_src_port=None, proxy_dst_port=None,
-    ):
-
-        if self.loggen_proc is not None and self.loggen_proc.is_running():
-            raise Exception("Loggen is already running, you shouldn't call start")
-
-        instanceIndex = Loggen.__get_new_instance_index()
-        self.loggen_stdout_path = Path("loggen_stdout_{}".format(instanceIndex))
-        self.loggen_stderr_path = Path("loggen_stderr_{}".format(instanceIndex))
-
-        self.parameters = self.__decode_start_parameters(
-            inet, unix, stream, dgram, use_ssl, dont_parse, read_file, skip_tokens, loop_reading,
-            rate, interval, permanent, syslog_proto, proxied, sdata, no_framing, active_connections,
-            idle_connections, ipv6, debug, number, csv, quiet, size, reconnect, proxied_tls_passthrough,
-            proxy_src_ip, proxy_dst_ip, proxy_src_port, proxy_dst_port,
-        )
-
-        self.loggen_proc = ProcessExecutor().start(
-            [self.loggen_bin_path] + self.parameters + [target, port],
-            self.loggen_stdout_path,
-            self.loggen_stderr_path,
-        )
-
-        return self.loggen_proc
-
-    def stop(self):
-        if self.loggen_proc is None:
-            return
-
-        self.loggen_proc.terminate()
-        try:
-            self.loggen_proc.wait(4)
-        except TimeoutExpired:
-            self.loggen_proc.kill()
-
-        self.loggen_proc = None
-
-    def get_sent_message_count(self):
+    def get_sent_message_count(self) -> int:
         if not self.loggen_stderr_path.exists():
             return 0
 

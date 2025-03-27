@@ -34,7 +34,6 @@ class TestcaseParameters(object):
         absolute_framework_dir = Path(__file__).parents[3]
         self.testcase_parameters = {
             "dirs": {
-                "install_dir": Path(pytest_request.config.getoption("installdir")),
                 "shared_dir": Path(absolute_framework_dir, "shared_files"),
             },
             "file_paths": {
@@ -43,6 +42,12 @@ class TestcaseParameters(object):
             "testcase_name": testcase_name,
             "external_tool": pytest_request.config.getoption("run_under"),
         }
+
+        try:
+            install_dir = pytest_request.config.getoption("installdir")
+            self.testcase_parameters["dirs"]["install_dir"] = Path(install_dir)
+        except TypeError:
+            pass
 
     def get_install_dir(self):
         return self.testcase_parameters["dirs"]["install_dir"]

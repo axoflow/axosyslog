@@ -26,7 +26,6 @@ import argparse
 import logging
 import os
 import re
-import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -36,6 +35,9 @@ import pytest
 from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.helpers.loggen.loggen import Loggen
+from axosyslog_light.helpers.loggen.loggen_docker_executor import LoggenDockerExecutor
+from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
+from axosyslog_light.helpers.loggen.loggen_local_executor import LoggenLocalExecutor
 from axosyslog_light.message_builder.bsd_format import BSDFormat
 from axosyslog_light.message_builder.log_message import LogMessage
 from axosyslog_light.syslog_ng.syslog_ng import SyslogNg
@@ -195,12 +197,9 @@ def log_message():
     return LogMessage()
 
 
-@pytest.fixture(scope="session")
-def version(request):
-    installdir = request.config.getoption("--installdir")
-    binary_path = str(Path(installdir, "sbin", "syslog-ng"))
-    version_output = subprocess.check_output([binary_path, "--version"]).decode()
-    return version_output.splitlines()[1].split()[2]
+@pytest.fixture
+def version(syslog_ng):
+    return syslog_ng.get_version()
 
 
 @pytest.fixture
@@ -266,6 +265,15 @@ def setup(request):
     copy_file(testcase_parameters.get_testcase_file(), Path.cwd())
     light_extra_files(Path.cwd())
     request.addfinalizer(lambda: logger.info("Report file path\n{}\n".format(calculate_report_file_path(Path.cwd()))))
+
+    if request.config.getoption("--runner") == "docker":
+        LoggenExecutor.set_default_executor(
+            LoggenDockerExecutor(request.config.getoption("--docker-image")),
+        )
+    elif request.config.getoption("--runner") == "local":
+        LoggenExecutor.set_default_executor(
+            LoggenLocalExecutor(Path(request.config.getoption("--installdir"), "bin", "loggen")),
+        )
 
 
 class PortAllocator():

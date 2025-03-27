@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 #############################################################################
+# Copyright (c) 2025 Axoflow
+# Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
 # Copyright (c) 2020 One Identity
 #
 # This program is free software; you can redistribute it and/or modify it
@@ -20,29 +22,23 @@
 # COPYING for details.
 #
 #############################################################################
-from axosyslog_light.common.blocking import wait_until_true
-from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
+from __future__ import annotations
 
-NUMBER_OF_MESSAGES = 10
+from pathlib import Path
+
+from axosyslog_light.executors.process_executor import ProcessExecutor
+from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
+from axosyslog_light.helpers.loggen.loggen_executor import LoggenStartParams
+from psutil import Popen
 
 
-def test_pp_with_simple_tcp_connection(config, port_allocator, syslog_ng, loggen):
-    network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport="proxied-tcp")
-    file_destination = config.create_file_destination(file_name="output.log")
-    config.create_logpath(statements=[network_source, file_destination])
+class LoggenLocalExecutor(LoggenExecutor):
+    def __init__(self, loggen_binary_path: Path) -> None:
+        self.__binary_path = loggen_binary_path
+        super().__init__()
 
-    syslog_ng.start(config)
+    def _start(self, start_params: LoggenStartParams, stderr: Path, stdout: Path, instance_index: int) -> Popen:
+        return ProcessExecutor().start([self.__binary_path] + start_params.format(), stdout, stderr)
 
-    loggen.start(
-        LoggenStartParams(
-            target=network_source.options["ip"],
-            port=network_source.options["port"],
-            inet=True,
-            stream=True,
-            number=NUMBER_OF_MESSAGES,
-        ),
-    )
-    wait_until_true(lambda: loggen.get_sent_message_count() == NUMBER_OF_MESSAGES)
-
-    # We could check the source side stats, too, but it is not yet implemented
-    assert not file_destination.get_path().exists()
+    def _copy(self) -> LoggenExecutor:
+        return LoggenLocalExecutor(self.__binary_path)
