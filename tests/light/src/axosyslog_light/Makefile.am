@@ -56,6 +56,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/unix_stream_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/filters/filter.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/filters/__init__.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/filterx/filterx.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/logpath/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/logpath/logpath.py \

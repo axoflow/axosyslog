@@ -38,6 +38,7 @@ from axosyslog_light.syslog_ng_config.statements.destinations.unix_stream_destin
 from axosyslog_light.syslog_ng_config.statements.filters.filter import Filter
 from axosyslog_light.syslog_ng_config.statements.filters.filter import Match
 from axosyslog_light.syslog_ng_config.statements.filters.filter import RateLimit
+from axosyslog_light.syslog_ng_config.statements.filterx.filterx import FilterX
 from axosyslog_light.syslog_ng_config.statements.logpath.logpath import LogPath
 from axosyslog_light.syslog_ng_config.statements.parsers.db_parser import DBParser
 from axosyslog_light.syslog_ng_config.statements.parsers.parser import Parser
@@ -160,6 +161,9 @@ class SyslogNgConfig(object):
     def create_template_function(self, template, **options):
         return TemplateFunction(template, **options)
 
+    def create_filterx(self, code: str):
+        return FilterX(code)
+
     def create_filter(self, expr=None, **options):
         return Filter("", self.__stats_handler, self.__prometheus_stats_handler, [expr] if expr else [], **options)
 
@@ -257,7 +261,7 @@ class SyslogNgConfig(object):
         return statement_group
 
     def __create_statement_group_if_needed(self, item):
-        if isinstance(item, (StatementGroup, LogPath)):
+        if isinstance(item, (StatementGroup, LogPath, FilterX)):
             return item
         else:
             return self.create_statement_group(item)
