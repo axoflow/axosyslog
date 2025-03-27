@@ -20,6 +20,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/driver_io/message_readers.py \
 	tests/light/src/axosyslog_light/driver_io/network/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/network/network_io.py \
+	tests/light/src/axosyslog_light/driver_io/opentelemetry/opentelemetry_io.py \
 	tests/light/src/axosyslog_light/executors/command_executor.py \
 	tests/light/src/axosyslog_light/executors/__init__.py \
 	tests/light/src/axosyslog_light/executors/process_executor.py \
@@ -70,6 +71,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/internal_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/network_source.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/opentelemetry_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/source_driver.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/syslog_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/template/__init__.py \

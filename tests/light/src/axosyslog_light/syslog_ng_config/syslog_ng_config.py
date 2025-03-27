@@ -51,6 +51,7 @@ from axosyslog_light.syslog_ng_config.statements.sources.example_msg_generator_s
 from axosyslog_light.syslog_ng_config.statements.sources.file_source import FileSource
 from axosyslog_light.syslog_ng_config.statements.sources.internal_source import InternalSource
 from axosyslog_light.syslog_ng_config.statements.sources.network_source import NetworkSource
+from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
 from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import SyslogSource
 from axosyslog_light.syslog_ng_config.statements.template.template import Template
 from axosyslog_light.syslog_ng_config.statements.template.template import TemplateFunction
@@ -145,6 +146,9 @@ class SyslogNgConfig(object):
 
     def create_syslog_source(self, **options):
         return SyslogSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+
+    def create_opentelemetry_source(self, **options):
+        return OpenTelemetrySource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_rewrite_set(self, template, **options):
         return Set(template, **options)
