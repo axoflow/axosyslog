@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "axosyslog-light"
-version = "0.1.0"
+version = "0.2.0"
 description = "Lightweight End-to-End Test Framework for AxoSyslog."
 authors = ["Andras Mitzki <andras.mitzki@axoflow.com>", "Attila Szakacs <attila.szakacs@axoflow.com>"]
 readme = "README.md"
@@ -21,6 +21,8 @@ prometheus-client = "^0.21.1"
 psutil = "^7.0.0"
 pytest = "^8.3.5"
 pytest-mock = "^3.14.0"
+opentelemetry-sdk = "^1.31.1"
+opentelemetry-exporter-otlp-proto-grpc = "^1.31.1"
 
 [tool.poetry.group.dev.dependencies]
 pycodestyle = "^2.12.1"

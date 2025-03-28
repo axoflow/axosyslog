@@ -186,6 +186,11 @@ def render_logpath_groups(logpath_groups, depth=0):
         for statement_group in logpath_group.logpath:
             if statement_group.group_type == "log":
                 config_snippet += render_logpath_groups(logpath_groups=[statement_group], depth=depth + 1)
+            elif statement_group.group_type == "filterx":
+                config_snippet += _indent("filterx {\n", depth + 1)
+                for line in statement_group.code.split("\n"):
+                    config_snippet += _indent(line + "\n", depth + 2)
+                config_snippet += _indent("};\n", depth + 1)
             else:
                 config_snippet += _indent("{}({});\n".format(statement_group.group_type, statement_group.group_id), depth + 1)
         if logpath_group.flags:

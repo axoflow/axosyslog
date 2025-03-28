@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #############################################################################
-# Copyright (c) 2015-2021 Balabit
+# Copyright (c) 2025 Axoflow
+# Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published
@@ -20,17 +21,37 @@
 # COPYING for details.
 #
 #############################################################################
+import typing
+
+from axosyslog_light.driver_io.opentelemetry.opentelemetry_io import OpenTelemetryIO
+from axosyslog_light.driver_io.opentelemetry.opentelemetry_io import OTelLog
+from axosyslog_light.driver_io.opentelemetry.opentelemetry_io import OTelResource
+from axosyslog_light.driver_io.opentelemetry.opentelemetry_io import OTelResourceScopeLog
+from axosyslog_light.driver_io.opentelemetry.opentelemetry_io import OTelScope
 from axosyslog_light.syslog_ng_config.statements.sources.source_driver import SourceDriver
 from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import PrometheusStatsHandler
 
 
-class InternalSource(SourceDriver):
+class OpenTelemetrySource(SourceDriver):
     def __init__(
         self,
         stats_handler: LegacyStatsHandler,
         prometheus_stats_handler: PrometheusStatsHandler,
         **options,
     ) -> None:
-        self.driver_name = "internal"
-        super(InternalSource, self).__init__(stats_handler, prometheus_stats_handler, None, options)
+        self.io = OpenTelemetryIO(options.get("port", 4317))
+
+        self.driver_name = "opentelemetry"
+        super(OpenTelemetrySource, self).__init__(stats_handler, prometheus_stats_handler, options=options)
+
+    def write_log(
+        self,
+        resource: typing.Optional[OTelResource] = None,
+        scope: typing.Optional[OTelScope] = None,
+        log: typing.Optional[OTelLog] = None,
+    ) -> None:
+        self.io.send_logs([OTelResourceScopeLog(resource, scope, log)])
+
+    def write_logs(self, resource_scope_logs: list[OTelResourceScopeLog]) -> None:
+        self.io.send_logs(resource_scope_logs)

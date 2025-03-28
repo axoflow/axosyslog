@@ -27,6 +27,7 @@ NUMBER_OF_MESSAGES = 10
 
 
 def test_pp_with_simple_tcp_connection(config, port_allocator, syslog_ng, loggen):
+    config.update_global_options(stats_level=1)
     network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport="proxied-tcp")
     file_destination = config.create_file_destination(file_name="output.log")
     config.create_logpath(statements=[network_source, file_destination])
@@ -44,5 +45,4 @@ def test_pp_with_simple_tcp_connection(config, port_allocator, syslog_ng, loggen
     )
     wait_until_true(lambda: loggen.get_sent_message_count() == NUMBER_OF_MESSAGES)
 
-    # We could check the source side stats, too, but it is not yet implemented
-    assert not file_destination.get_path().exists()
+    assert network_source.get_stats()["processed"] == 0

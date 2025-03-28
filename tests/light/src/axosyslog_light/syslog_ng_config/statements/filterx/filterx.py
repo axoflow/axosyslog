@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #############################################################################
-# Copyright (c) 2015-2021 Balabit
+# Copyright (c) 2025 Axoflow
+# Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published
@@ -20,17 +21,10 @@
 # COPYING for details.
 #
 #############################################################################
-from axosyslog_light.syslog_ng_config.statements.sources.source_driver import SourceDriver
-from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
-from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import PrometheusStatsHandler
 
 
-class InternalSource(SourceDriver):
-    def __init__(
-        self,
-        stats_handler: LegacyStatsHandler,
-        prometheus_stats_handler: PrometheusStatsHandler,
-        **options,
-    ) -> None:
-        self.driver_name = "internal"
-        super(InternalSource, self).__init__(stats_handler, prometheus_stats_handler, None, options)
+class FilterX(object):
+    group_type = "filterx"
+
+    def __init__(self, code: str) -> None:
+        self.code = code

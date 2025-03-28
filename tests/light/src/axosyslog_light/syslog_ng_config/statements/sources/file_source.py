@@ -25,16 +25,24 @@ from pathlib import Path
 
 from axosyslog_light.driver_io.file.file_io import FileIO
 from axosyslog_light.syslog_ng_config.statements.sources.source_driver import SourceDriver
+from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import PrometheusStatsHandler
 
 logger = logging.getLogger(__name__)
 
 
 class FileSource(SourceDriver):
-    def __init__(self, file_name, **options):
+    def __init__(
+        self,
+        stats_handler: LegacyStatsHandler,
+        prometheus_stats_handler: PrometheusStatsHandler,
+        file_name,
+        **options,
+    ) -> None:
         self.driver_name = "file"
         self.set_path(file_name)
         self.io = FileIO(self.get_path())
-        super(FileSource, self).__init__([self.path], options)
+        super(FileSource, self).__init__(stats_handler, prometheus_stats_handler, [self.path], options)
 
     def get_path(self):
         return self.path

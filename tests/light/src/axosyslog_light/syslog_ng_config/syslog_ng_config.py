@@ -38,6 +38,7 @@ from axosyslog_light.syslog_ng_config.statements.destinations.unix_stream_destin
 from axosyslog_light.syslog_ng_config.statements.filters.filter import Filter
 from axosyslog_light.syslog_ng_config.statements.filters.filter import Match
 from axosyslog_light.syslog_ng_config.statements.filters.filter import RateLimit
+from axosyslog_light.syslog_ng_config.statements.filterx.filterx import FilterX
 from axosyslog_light.syslog_ng_config.statements.logpath.logpath import LogPath
 from axosyslog_light.syslog_ng_config.statements.parsers.db_parser import DBParser
 from axosyslog_light.syslog_ng_config.statements.parsers.parser import Parser
@@ -50,6 +51,7 @@ from axosyslog_light.syslog_ng_config.statements.sources.example_msg_generator_s
 from axosyslog_light.syslog_ng_config.statements.sources.file_source import FileSource
 from axosyslog_light.syslog_ng_config.statements.sources.internal_source import InternalSource
 from axosyslog_light.syslog_ng_config.statements.sources.network_source import NetworkSource
+from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
 from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import SyslogSource
 from axosyslog_light.syslog_ng_config.statements.template.template import Template
 from axosyslog_light.syslog_ng_config.statements.template.template import TemplateFunction
@@ -129,21 +131,24 @@ class SyslogNgConfig(object):
         self.__syslog_ng_config["templates"].append(template)
 
     def create_file_source(self, **options):
-        file_source = FileSource(**options)
+        file_source = FileSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
         self.teardown.register(file_source.close_file)
         return file_source
 
     def create_example_msg_generator_source(self, **options):
-        return ExampleMsgGeneratorSource(**options)
+        return ExampleMsgGeneratorSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_internal_source(self, **options):
-        return InternalSource(**options)
+        return InternalSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_network_source(self, **options):
-        return NetworkSource(**options)
+        return NetworkSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_syslog_source(self, **options):
-        return SyslogSource(**options)
+        return SyslogSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+
+    def create_opentelemetry_source(self, **options):
+        return OpenTelemetrySource(self.__stats_handler, self.__prometheus_stats_handler, **options)
 
     def create_rewrite_set(self, template, **options):
         return Set(template, **options)
@@ -159,6 +164,9 @@ class SyslogNgConfig(object):
 
     def create_template_function(self, template, **options):
         return TemplateFunction(template, **options)
+
+    def create_filterx(self, code: str):
+        return FilterX(code)
 
     def create_filter(self, expr=None, **options):
         return Filter("", self.__stats_handler, self.__prometheus_stats_handler, [expr] if expr else [], **options)
@@ -257,7 +265,7 @@ class SyslogNgConfig(object):
         return statement_group
 
     def __create_statement_group_if_needed(self, item):
-        if isinstance(item, (StatementGroup, LogPath)):
+        if isinstance(item, (StatementGroup, LogPath, FilterX)):
             return item
         else:
             return self.create_statement_group(item)

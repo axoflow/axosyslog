@@ -21,6 +21,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/filters/rate-limit/test_rate_limit_filter_acceptance.py \
 	tests/light/functional_tests/filters/test_filter_reference.py \
 	tests/light/functional_tests/filters/test_multiple_filters.py \
+	tests/light/functional_tests/filterx/test_filterx_control.py \
 	tests/light/functional_tests/filterx/test_filterx_funcs.py \
 	tests/light/functional_tests/filterx/test_filterx.py \
 	tests/light/functional_tests/filterx/test_filterx_scope.py \
@@ -38,11 +39,11 @@ EXTRA_DIST += \
 	tests/light/functional_tests/logpath/test_named_logpaths_with_fallback_flag.py \
 	tests/light/functional_tests/logpath/test_named_logpaths_with_final_flag.py \
 	tests/light/functional_tests/parsers/app-parser/test_app_parser.py \
+	tests/light/functional_tests/parsers/app-parser/test_topic_syslog.py \
+	tests/light/functional_tests/parsers/app-parser/test_topic_syslog_raw.py \
 	tests/light/functional_tests/parsers/app-transform/test_app_transform_filterx.py \
 	tests/light/functional_tests/parsers/app-transform/test_app_transform_parser_and_filterx.py \
 	tests/light/functional_tests/parsers/app-transform/test_app_transform_parser.py \
-	tests/light/functional_tests/parsers/app-parser/test_topic_syslog.py \
-	tests/light/functional_tests/parsers/app-parser/test_topic_syslog_raw.py \
 	tests/light/functional_tests/parsers/checkpoint/test_checkpoint.py \
 	tests/light/functional_tests/parsers/cisco-parser/test_cisco_parser.py \
 	tests/light/functional_tests/parsers/csv-parser/test_csv_parser.py \
@@ -70,6 +71,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/network_source/test_network_transports.py \
 	tests/light/functional_tests/source_drivers/network_source/test_syslog_parser_timestamp_spinning.py \
 	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_nul_acceptance.py \
+	tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_acceptance.py \
 	tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto.py \
 	tests/light/functional_tests/source_drivers/syslog_source/test_syslog_transports.py \
 	tests/light/functional_tests/source_options/test_use_syslogng_pid.py \
