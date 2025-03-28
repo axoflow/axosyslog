@@ -29,7 +29,7 @@ light-self-check pytest-self-check: light-venv
 	@$(LIGHT_PYTEST_CMD) $(LIGHT_SRC_DIR)/src/axosyslog_light
 
 light-check pytest-check: light-venv
-	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
+	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) -n auto $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
 
 light-linters pytest-linters: light-venv
 	find $(abs_top_srcdir)/tests/light/ -name "*.py" \
