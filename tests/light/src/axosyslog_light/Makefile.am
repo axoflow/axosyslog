@@ -10,6 +10,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/common/operations.py \
 	tests/light/src/axosyslog_light/common/pytest_operations.py \
 	tests/light/src/axosyslog_light/common/random_id.py \
+	tests/light/src/axosyslog_light/common/session_data.py \
 	tests/light/src/axosyslog_light/common/tests/__init__.py \
 	tests/light/src/axosyslog_light/common/tests/test_blocking.py \
 	tests/light/src/axosyslog_light/driver_io/file/file_io.py \

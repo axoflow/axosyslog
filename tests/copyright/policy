@@ -293,6 +293,7 @@ tests/light/functional_tests/parsers/metrics-probe/test_metrics_probe\.py
 tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_acceptance\.py
 tests/light/functional_tests/source_drivers/unix_dgram_source/test_unix_dgram_source_acceptance\.py
 tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto\.py
+tests/light/src/axosyslog_light/common/session_data\.py
 tests/light/src/axosyslog_light/driver_io/opentelemetry/opentelemetry_io\.py
 tests/light/src/axosyslog_light/driver_io/unix_dgram/unix_dgram_io\.py
 tests/light/src/axosyslog_light/syslog_ng/syslog_ng_docker_executor.py
