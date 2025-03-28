@@ -284,14 +284,13 @@ def setup(request):
         )
 
 
-class PortAllocator():
-    CURRENT_DYNAMIC_PORT = 30000
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 def port_allocator():
-    def get_next_port():
-        PortAllocator.CURRENT_DYNAMIC_PORT += 1
-        return PortAllocator.CURRENT_DYNAMIC_PORT
+    def get_next_port() -> int:
+        with get_session_data() as session_data:
+            last_port = session_data.get("port_allocator_last_port", 30000)
+            port = last_port + 1
+            session_data["port_allocator_last_port"] = port
+        return port
 
     return get_next_port
