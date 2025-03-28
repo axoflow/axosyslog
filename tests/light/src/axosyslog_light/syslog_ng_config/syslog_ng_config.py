@@ -53,6 +53,7 @@ from axosyslog_light.syslog_ng_config.statements.sources.internal_source import 
 from axosyslog_light.syslog_ng_config.statements.sources.network_source import NetworkSource
 from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
 from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import SyslogSource
+from axosyslog_light.syslog_ng_config.statements.sources.unix_dgram_source import UnixDgramSource
 from axosyslog_light.syslog_ng_config.statements.template.template import Template
 from axosyslog_light.syslog_ng_config.statements.template.template import TemplateFunction
 from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
@@ -134,6 +135,11 @@ class SyslogNgConfig(object):
         file_source = FileSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
         self.teardown.register(file_source.close_file)
         return file_source
+
+    def create_unix_dgram_source(self, **options):
+        unix_dgram_source = UnixDgramSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        self.teardown.register(unix_dgram_source.close_socket)
+        return unix_dgram_source
 
     def create_example_msg_generator_source(self, **options):
         return ExampleMsgGeneratorSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
