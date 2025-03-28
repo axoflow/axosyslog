@@ -23,18 +23,20 @@
 import typing
 from pathlib import Path
 
+from axosyslog_light.common.session_data import get_session_data
 from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
 from axosyslog_light.helpers.loggen.loggen_executor import LoggenStartParams
 from psutil import Popen
 
 
 class Loggen(object):
-    instanceIndex = -1
-
     @staticmethod
     def __get_new_instance_index():
-        Loggen.instanceIndex += 1
-        return Loggen.instanceIndex
+        with get_session_data() as session_data:
+            last_index = session_data.get("loggen_instance_index", 0)
+            index = last_index + 1
+            session_data["loggen_instance_index"] = index
+        return index
 
     def __init__(self, loggen_executor: typing.Optional[LoggenExecutor] = None):
         if loggen_executor is None:
