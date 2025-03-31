@@ -215,12 +215,21 @@ def chdir_to_light_base_dir():
     os.chdir(absolute_light_base_dir)
 
 
+def __calculate_testcase_dir(name):
+    with get_session_data() as session_data:
+        return Path(session_data["reports_dir"], calculate_testcase_name(name))
+
+
+@pytest.fixture
+def testcase_dir(request):
+    return __calculate_testcase_dir(request.node.name)
+
+
 def pytest_runtest_setup(item):
     logging_plugin = item.config.pluginmanager.get_plugin("logging-plugin")
-    with get_session_data() as session_data:
-        working_dir = Path(session_data["reports_dir"], calculate_testcase_name(item.name))
-    logging_plugin.set_log_path(calculate_report_file_path(working_dir))
-    os.chdir(working_dir)
+    testcase_dir = __calculate_testcase_dir(item.name)
+    logging_plugin.set_log_path(calculate_report_file_path(testcase_dir))
+    os.chdir(testcase_dir)
 
 
 def pytest_sessionstart(session):
