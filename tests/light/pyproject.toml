@@ -24,6 +24,7 @@ pytest-mock = "^3.14.0"
 opentelemetry-sdk = "^1.31.1"
 opentelemetry-exporter-otlp-proto-grpc = "^1.31.1"
 pytest-xdist = "^3.6.1"
+filelock = "^3.18.0"
 
 [tool.poetry.group.dev.dependencies]
 pycodestyle = "^2.12.1"
