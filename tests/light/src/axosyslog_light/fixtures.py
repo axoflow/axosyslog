@@ -239,6 +239,8 @@ def pytest_sessionstart(session):
         base_number_of_open_fds = len(psutil.Process().open_files())
 
     with get_session_data() as session_data:
+        session_data["active_workers"] = session_data.get("active_workers", 0) + 1
+
         if session_data.get("session_started", False):
             return
 
@@ -259,7 +261,11 @@ def pytest_sessionstart(session):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    SessionData.cleanup()
+    with get_session_data() as session_data:
+        active_workers = session_data["active_workers"] = session_data["active_workers"] - 1
+
+    if active_workers == 0:
+        SessionData.cleanup()
 
 
 def light_extra_files(target_dir):
