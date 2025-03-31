@@ -191,6 +191,11 @@ def render_logpath_groups(logpath_groups, depth=0):
                 for line in statement_group.code.split("\n"):
                     config_snippet += _indent(line + "\n", depth + 2)
                 config_snippet += _indent("};\n", depth + 1)
+            elif statement_group.group_type == "log_context_scl_block":
+                config_snippet += _indent(statement_group.name + "(\n", depth + 1)
+                for line in render_driver_options(statement_group.options).split("\n"):
+                    config_snippet += _indent(line + "\n", depth + 2)
+                config_snippet += _indent(");\n", depth + 1)
             else:
                 config_snippet += _indent("{}({});\n".format(statement_group.group_type, statement_group.group_id), depth + 1)
         if logpath_group.flags:

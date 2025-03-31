@@ -301,6 +301,7 @@ tests/light/src/axosyslog_light/syslog_ng_ctl/prometheus_stats_handler.py
 tests/light/src/axosyslog_light/syslog_ng_config/statements/template/template\.py
 tests/light/src/axosyslog_light/syslog_ng_config/statements/__init__\.py
 tests/light/src/axosyslog_light/syslog_ng_config/statements/filterx/filterx\.py
+tests/light/src/axosyslog_light/syslog_ng_config/statements/logpath/log_context_scl_block\.py
 tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/opentelemetry_source\.py
 tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_dgram_source\.py
 tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload\.py
