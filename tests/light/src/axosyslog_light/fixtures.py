@@ -245,7 +245,6 @@ def pytest_sessionstart(session):
         try:
             reports_dir = Path(session.config.getoption("--reports")).resolve().absolute()
         except TypeError:
-            chdir_to_light_base_dir()
             reports_dir = Path("reports", get_current_date()).resolve().absolute()
 
         reports_dir.mkdir(parents=True, exist_ok=True)
