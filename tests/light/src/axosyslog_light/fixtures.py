@@ -32,8 +32,11 @@ from pathlib import Path
 import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 import psutil
 import pytest
+import xdist
 from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
+from axosyslog_light.common.session_data import get_session_data
+from axosyslog_light.common.session_data import SessionData
 from axosyslog_light.helpers.loggen.loggen import Loggen
 from axosyslog_light.helpers.loggen.loggen_docker_executor import LoggenDockerExecutor
 from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
@@ -51,7 +54,6 @@ from axosyslog_light.syslog_ng_ctl.syslog_ng_ctl_local_executor import SyslogNgC
 from axosyslog_light.testcase_parameters.testcase_parameters import TestcaseParameters
 
 logger = logging.getLogger(__name__)
-base_number_of_open_fds = 0
 
 
 class InstallDirAction(argparse.Action):
@@ -93,13 +95,8 @@ def pytest_addoption(parser):
     parser.addoption(
         "--reports",
         action="store",
-        default=get_relative_report_dir(),
         help="Path for report files folder. Default form: 'reports/<current_date>'",
     )
-
-
-def get_relative_report_dir():
-    return str(Path("reports/", get_current_date()))
 
 
 def get_current_date():
@@ -218,33 +215,51 @@ def chdir_to_light_base_dir():
     os.chdir(absolute_light_base_dir)
 
 
-def get_report_dir(pytest_config_object):
-    chdir_to_light_base_dir()
-    return Path(pytest_config_object.getoption("--reports")).resolve().absolute()
+def __calculate_testcase_dir(name):
+    with get_session_data() as session_data:
+        return Path(session_data["reports_dir"], calculate_testcase_name(name))
 
 
-def calculate_working_dir(pytest_config_object, testcase_name):
-    report_dir = get_report_dir(pytest_config_object)
-    return Path(report_dir, calculate_testcase_name(testcase_name))
+@pytest.fixture
+def testcase_dir(request):
+    return __calculate_testcase_dir(request.node.name)
 
 
 def pytest_runtest_setup(item):
     logging_plugin = item.config.pluginmanager.get_plugin("logging-plugin")
-    working_dir = calculate_working_dir(item.config, item.name)
-    logging_plugin.set_log_path(calculate_report_file_path(working_dir))
-    os.chdir(working_dir)
+    testcase_dir = __calculate_testcase_dir(item.name)
+    logging_plugin.set_log_path(calculate_report_file_path(testcase_dir))
+    os.chdir(testcase_dir)
 
 
 def pytest_sessionstart(session):
-    global base_number_of_open_fds
-    base_number_of_open_fds = len(psutil.Process().open_files())
+    if xdist.is_xdist_controller(session):
+        base_number_of_open_fds = 0  # with xdist, the current shell's open fds are not inherited
+    else:
+        base_number_of_open_fds = len(psutil.Process().open_files())
 
-    report_dir = get_report_dir(session.config)
-    report_dir.mkdir(parents=True, exist_ok=True)
-    if report_dir.parent.name == "reports":
-        last_report_dir = Path(report_dir.parent, "last")
-        last_report_dir.unlink(True)
-        last_report_dir.symlink_to(report_dir)
+    with get_session_data() as session_data:
+        if session_data.get("session_started", False):
+            return
+
+        try:
+            reports_dir = Path(session.config.getoption("--reports")).resolve().absolute()
+        except TypeError:
+            reports_dir = Path("reports", get_current_date()).resolve().absolute()
+
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        if reports_dir.parent.name == "reports":
+            last_reports_dir = Path(reports_dir.parent, "last")
+            last_reports_dir.unlink(True)
+            last_reports_dir.symlink_to(reports_dir)
+
+        session_data["session_started"] = True
+        session_data["reports_dir"] = reports_dir
+        session_data["base_number_of_open_fds"] = base_number_of_open_fds
+
+
+def pytest_sessionfinish(session, exitstatus):
+    SessionData.cleanup()
 
 
 def light_extra_files(target_dir):
@@ -256,7 +271,8 @@ def light_extra_files(target_dir):
 
 @pytest.fixture(autouse=True)
 def setup(request):
-    global base_number_of_open_fds
+    with get_session_data() as session_data:
+        base_number_of_open_fds = session_data["base_number_of_open_fds"]
     number_of_open_fds = len(psutil.Process().open_files())
     assert base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
     assert len(psutil.Process().net_connections(kind="inet")) == 0, "Previous testcase has unclosed opened sockets"
@@ -276,14 +292,13 @@ def setup(request):
         )
 
 
-class PortAllocator():
-    CURRENT_DYNAMIC_PORT = 30000
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 def port_allocator():
-    def get_next_port():
-        PortAllocator.CURRENT_DYNAMIC_PORT += 1
-        return PortAllocator.CURRENT_DYNAMIC_PORT
+    def get_next_port() -> int:
+        with get_session_data() as session_data:
+            last_port = session_data.get("port_allocator_last_port", 30000)
+            port = last_port + 1
+            session_data["port_allocator_last_port"] = port
+        return port
 
     return get_next_port
