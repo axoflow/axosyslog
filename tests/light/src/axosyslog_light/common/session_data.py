@@ -47,7 +47,7 @@ class SessionData:
             self.__sync_from_file()
 
     @staticmethod
-    def get_singleton() -> None:
+    def get_singleton() -> SessionData:
         if SessionData.SINGLETON is None:
             SessionData.SINGLETON = SessionData()
         return SessionData.SINGLETON
