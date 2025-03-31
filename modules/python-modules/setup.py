@@ -39,6 +39,7 @@ packages_addons=[
   "syslogng.modules.hypr",
   "syslogng.modules.s3",
   "syslogng.modules.webhook",
+  "syslogng.modules.ai",
 ]
 
 requires_addons=[
@@ -50,6 +51,8 @@ requires_addons=[
   "boto3",
   # webhook
   "tornado",
+  # ai
+  "tensorflow",
 ]
 
 packages = packages_builtin

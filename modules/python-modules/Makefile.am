@@ -44,6 +44,8 @@ EXTRA_DIST += \
 	modules/python-modules/syslogng/dest.py \
 	modules/python-modules/syslogng/logger.py \
 	modules/python-modules/syslogng/message.py \
+	modules/python-modules/syslogng/modules/ai/__init__.py \
+	modules/python-modules/syslogng/modules/ai/scl/ai_parser.conf \
 	modules/python-modules/syslogng/modules/example/__init__.py \
 	modules/python-modules/syslogng/modules/example/scl/example.conf \
 	modules/python-modules/syslogng/modules/hypr/__init__.py \
