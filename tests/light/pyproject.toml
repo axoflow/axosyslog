@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "axosyslog-light"
-version = "0.5.0"
+version = "0.6.0"
 description = "Lightweight End-to-End Test Framework for AxoSyslog."
 authors = ["Andras Mitzki <andras.mitzki@axoflow.com>", "Attila Szakacs <attila.szakacs@axoflow.com>"]
 readme = "README.md"

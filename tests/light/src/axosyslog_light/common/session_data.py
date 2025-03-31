@@ -47,7 +47,7 @@ class SessionData:
             self.__sync_from_file()
 
     @staticmethod
-    def get_singleton() -> None:
+    def get_singleton() -> SessionData:
         if SessionData.SINGLETON is None:
             SessionData.SINGLETON = SessionData()
         return SessionData.SINGLETON
@@ -57,8 +57,8 @@ class SessionData:
         if get_session_data().__lock.is_locked:
             raise Exception("SessionData.cleanup() must be used without the 'with' statement")
 
-        SessionData.SESSION_FILE.unlink(missing_ok=True)
-        SessionData.SESSION_LOCK_FILE.unlink(missing_ok=True)
+        SessionData.SESSION_FILE.unlink()
+        SessionData.SESSION_LOCK_FILE.unlink()
 
     def __sync_from_file(self) -> None:
         if not SessionData.SESSION_FILE.exists():

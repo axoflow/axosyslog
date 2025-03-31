@@ -39,6 +39,7 @@ from axosyslog_light.syslog_ng_config.statements.filters.filter import Filter
 from axosyslog_light.syslog_ng_config.statements.filters.filter import Match
 from axosyslog_light.syslog_ng_config.statements.filters.filter import RateLimit
 from axosyslog_light.syslog_ng_config.statements.filterx.filterx import FilterX
+from axosyslog_light.syslog_ng_config.statements.logpath.log_context_scl_block import LogContextSclBlock
 from axosyslog_light.syslog_ng_config.statements.logpath.logpath import LogPath
 from axosyslog_light.syslog_ng_config.statements.parsers.db_parser import DBParser
 from axosyslog_light.syslog_ng_config.statements.parsers.parser import Parser
@@ -271,7 +272,7 @@ class SyslogNgConfig(object):
         return statement_group
 
     def __create_statement_group_if_needed(self, item):
-        if isinstance(item, (StatementGroup, LogPath, FilterX)):
+        if isinstance(item, (StatementGroup, LogPath, FilterX, LogContextSclBlock)):
             return item
         else:
             return self.create_statement_group(item)
