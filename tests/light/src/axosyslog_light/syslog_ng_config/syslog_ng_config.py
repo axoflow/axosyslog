@@ -73,8 +73,8 @@ class SyslogNgConfig(object):
         prometheus_stats_handler: PrometheusStatsHandler,
         teardown,
     ) -> None:
-        self.__raw_config = None
-        self.__syslog_ng_config = {
+        self._raw_config = None
+        self._syslog_ng_config = {
             "version": version,
             "includes": [],
             "global_options": {},
@@ -83,78 +83,78 @@ class SyslogNgConfig(object):
             "statement_groups": [],
             "logpath_groups": [],
         }
-        self.__stats_handler = stats_handler
-        self.__prometheus_stats_handler = prometheus_stats_handler
+        self._stats_handler = stats_handler
+        self._prometheus_stats_handler = prometheus_stats_handler
         self.teardown = teardown
 
     stringify = staticmethod(stringify)
 
     @property
     def stats_handler(self) -> LegacyStatsHandler:
-        return self.__stats_handler
+        return self._stats_handler
 
     @property
     def prometheus_stats_handler(self) -> PrometheusStatsHandler:
-        return self.__prometheus_stats_handler
+        return self._prometheus_stats_handler
 
     def arrowed_options(self, *args, **kwargs):
         return ArrowedOptions(*args, **kwargs)
 
     def set_raw_config(self, raw_config):
-        self.__raw_config = raw_config
+        self._raw_config = raw_config
 
     def write_config(self, config_path):
-        if self.__raw_config:
-            rendered_config = self.__raw_config
+        if self._raw_config:
+            rendered_config = self._raw_config
         else:
-            rendered_config = ConfigRenderer(self.__syslog_ng_config).get_rendered_config()
+            rendered_config = ConfigRenderer(self._syslog_ng_config).get_rendered_config()
         logger.info("Generated syslog-ng config\n{}\n".format(rendered_config))
 
         syslog_ng_config_file = File(config_path)
         syslog_ng_config_file.write_content_and_close(rendered_config)
 
     def set_version(self, version):
-        self.__syslog_ng_config["version"] = version
+        self._syslog_ng_config["version"] = version
 
     def get_version(self):
-        return self.__syslog_ng_config["version"]
+        return self._syslog_ng_config["version"]
 
     def add_include(self, include):
-        self.__syslog_ng_config["includes"].append(include)
+        self._syslog_ng_config["includes"].append(include)
 
     def update_global_options(self, **options):
-        self.__syslog_ng_config["global_options"].update(options)
+        self._syslog_ng_config["global_options"].update(options)
 
     def add_preamble(self, preamble):
-        self.__syslog_ng_config["preamble"] += "\n" + preamble
+        self._syslog_ng_config["preamble"] += "\n" + preamble
 
     def add_template(self, template):
-        self.__syslog_ng_config["templates"].append(template)
+        self._syslog_ng_config["templates"].append(template)
 
     def create_file_source(self, **options):
-        file_source = FileSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        file_source = FileSource(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(file_source.close_file)
         return file_source
 
     def create_unix_dgram_source(self, **options):
-        unix_dgram_source = UnixDgramSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        unix_dgram_source = UnixDgramSource(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(unix_dgram_source.close_socket)
         return unix_dgram_source
 
     def create_example_msg_generator_source(self, **options):
-        return ExampleMsgGeneratorSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return ExampleMsgGeneratorSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_internal_source(self, **options):
-        return InternalSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return InternalSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_network_source(self, **options):
-        return NetworkSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return NetworkSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_syslog_source(self, **options):
-        return SyslogSource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return SyslogSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_opentelemetry_source(self, **options):
-        return OpenTelemetrySource(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return OpenTelemetrySource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_rewrite_set(self, template, **options):
         return Set(template, **options)
@@ -175,80 +175,80 @@ class SyslogNgConfig(object):
         return FilterX(code)
 
     def create_filter(self, expr=None, **options):
-        return Filter("", self.__stats_handler, self.__prometheus_stats_handler, [expr] if expr else [], **options)
+        return Filter("", self._stats_handler, self._prometheus_stats_handler, [expr] if expr else [], **options)
 
     def create_rate_limit_filter(self, **options):
-        return RateLimit(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return RateLimit(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_match_filter(self, **options):
-        return Match(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Match(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_app_parser(self, **options):
-        return Parser("app-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("app-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_checkpoint_parser(self, **options):
-        return Parser("checkpoint-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("checkpoint-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_panos_parser(self, **options):
-        return Parser("panos-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("panos-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_regexp_parser(self, **options):
-        return Parser("regexp-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("regexp-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_csv_parser(self, **options):
-        return Parser("csv-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("csv-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_metrics_probe(self, **options):
-        return Parser("metrics_probe", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("metrics_probe", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_syslog_parser(self, **options):
-        return Parser("syslog-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("syslog-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_sdata_parser(self, **options):
-        return Parser("sdata-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("sdata-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_group_lines_parser(self, **options):
-        return Parser("group-lines", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("group-lines", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_cisco_parser(self, **options):
-        return Parser("cisco-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("cisco-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_mariadb_audit_parser(self, **options):
-        return Parser("mariadb-audit-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("mariadb-audit-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_postgresql_csvlog_parser(self, **options):
-        return Parser("postgresql-csvlog-parser", self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return Parser("postgresql-csvlog-parser", self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_file_destination(self, **options):
-        file_destination = FileDestination(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        file_destination = FileDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(file_destination.close_file)
         return file_destination
 
     def create_example_destination(self, **options):
-        example_destination = ExampleDestination(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        example_destination = ExampleDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(example_destination.close_file)
         return example_destination
 
     def create_snmp_destination(self, **options):
-        return SnmpDestination(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        return SnmpDestination(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_network_destination(self, **options):
-        network_destination = NetworkDestination(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        network_destination = NetworkDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(network_destination.stop_listener)
         return network_destination
 
     def create_unix_dgram_destination(self, **options):
-        unix_dgram_destination = UnixDgramDestination(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        unix_dgram_destination = UnixDgramDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(unix_dgram_destination.stop_listener)
         return unix_dgram_destination
 
     def create_unix_stream_destination(self, **options):
-        unix_stream_source = UnixStreamDestination(self.__stats_handler, self.__prometheus_stats_handler, **options)
+        unix_stream_source = UnixStreamDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(unix_stream_source.stop_listener)
         return unix_stream_source
 
     def create_db_parser(self, config, **options):
-        return DBParser(self.__stats_handler, self.__prometheus_stats_handler, config, **options)
+        return DBParser(self._stats_handler, self._prometheus_stats_handler, config, **options)
 
     def create_rewrite_credit_card_mask(self, **options):
         return CreditCardMask(**options)
@@ -258,7 +258,7 @@ class SyslogNgConfig(object):
 
     def create_logpath(self, name=None, statements=None, flags=None):
         logpath = self.__create_logpath_with_conversion(name, statements, flags)
-        self.__syslog_ng_config["logpath_groups"].append(logpath)
+        self._syslog_ng_config["logpath_groups"].append(logpath)
         return logpath
 
     def create_inner_logpath(self, name=None, statements=None, flags=None):
@@ -267,7 +267,7 @@ class SyslogNgConfig(object):
 
     def create_statement_group(self, statements):
         statement_group = StatementGroup(statements)
-        self.__syslog_ng_config["statement_groups"].append(statement_group)
+        self._syslog_ng_config["statement_groups"].append(statement_group)
         return statement_group
 
     def __create_statement_group_if_needed(self, item):
@@ -284,7 +284,7 @@ class SyslogNgConfig(object):
         )
 
     def __create_logpath_group(self, name=None, statements=None, flags=None):
-        logpath = LogPath(self.__prometheus_stats_handler, name)
+        logpath = LogPath(self._prometheus_stats_handler, name)
         if statements:
             logpath.add_groups(statements)
         if flags:
