@@ -28,7 +28,7 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  return filterx_ref_new(filterx_object_ref(self->value));
+  return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
 void

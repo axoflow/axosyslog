@@ -106,10 +106,7 @@ _assign(FilterXExpr *s, FilterXObject **new_value)
   if (!variable)
     variable = filterx_scope_register_variable(scope, self->variable_type, self->handle);
 
-  /* this only clones mutable objects */
-  *new_value = filterx_object_clone(*new_value);
   filterx_scope_set_variable(scope, variable, new_value, TRUE);
-  filterx_object_unref(*new_value);
   return TRUE;
 }
 

@@ -570,10 +570,8 @@ _filterx_dict_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **
   if (!_is_string(key))
     return FALSE;
 
-  FilterXObject *stored_object = filterx_ref_new(filterx_object_ref(*new_value));
-
   self->table = _table_resize_if_needed(self->table);
-  _table_insert(self->table, key, stored_object);
+  _table_insert(self->table, filterx_object_ref(key), filterx_object_cow_store(new_value));
 
   return TRUE;
 }
