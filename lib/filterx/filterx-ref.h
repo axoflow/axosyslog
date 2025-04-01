@@ -28,6 +28,8 @@
 #error "Please include filterx-ref.h through filterx-object.h"
 #endif
 
+#include "filterx/filterx-weakrefs.h"
+
 /*
  * References are currently not part of the FilterX language (hopefully, they
  * never will be). FilterXRef is used to reference the same FilterXObject from

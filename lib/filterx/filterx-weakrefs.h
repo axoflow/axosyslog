@@ -23,7 +23,9 @@
 #ifndef FILTERX_WEAKREFS_H_INCLUDED
 #define FILTERX_WEAKREFS_H_INCLUDED
 
-#include "filterx/filterx-object.h"
+#ifndef FILTERX_OBJECT_H_INCLUDED
+#error "Please include weakrefs from filterx-object.h"
+#endif
 
 typedef struct _FilterXWeakRef
 {
@@ -59,7 +61,6 @@ typedef struct _FilterXWeakRef
  */
 
 void filterx_weakref_set(FilterXWeakRef *self, FilterXObject *object);
-
 
 static inline void
 filterx_weakref_clear(FilterXWeakRef *self)
