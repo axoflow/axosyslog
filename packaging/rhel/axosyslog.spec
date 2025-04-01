@@ -29,6 +29,10 @@ Source4: syslog-ng.logrotate7
 %bcond_without bpf
 
 
+%if 0%{?rhel} == 10
+%global		python_devel python3.12-devel
+%global         py_ver  3.12
+%else
 %if 0%{?rhel} == 9
 %global		python_devel python3.11-devel
 %global         py_ver  3.11
@@ -43,6 +47,7 @@ Source4: syslog-ng.logrotate7
 %else
 %global		python_devel python3-devel
 %global         py_ver  %{python3_version}
+%endif
 %endif
 %endif
 %endif
