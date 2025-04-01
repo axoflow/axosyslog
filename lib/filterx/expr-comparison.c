@@ -142,8 +142,7 @@ _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
-  filterx_assert_not_ref(lhs);
-  filterx_assert_not_ref(rhs);
+  g_assert(!(filterx_object_is_ref(lhs) || filterx_object_is_ref(rhs)));
 
   if (lhs->type == rhs->type &&
       (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
@@ -169,8 +168,7 @@ _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_and_value_based(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
-  filterx_assert_not_ref(lhs);
-  filterx_assert_not_ref(rhs);
+  g_assert(!(filterx_object_is_ref(lhs) || filterx_object_is_ref(rhs)));
 
   if (operator == FCMPX_EQ)
     {

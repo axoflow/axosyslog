@@ -47,15 +47,11 @@ struct _FilterXRef
   FilterXObject *value;
 };
 
-#if SYSLOG_NG_ENABLE_DEBUG
-static inline void
-filterx_assert_not_ref(FilterXObject *object)
+static inline gboolean
+filterx_object_is_ref(FilterXObject *self)
 {
-  g_assert(!_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)));
+  return self->type == &FILTERX_TYPE_NAME(ref);
 }
-#else
-#define filterx_assert_not_ref(o)
-#endif
 
 void _filterx_ref_cow(FilterXRef *self);
 
