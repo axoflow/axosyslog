@@ -13,6 +13,7 @@ add_unit_test(LIBTEST CRITERION TARGET test_object_protobuf DEPENDS json-plugin 
 add_unit_test(LIBTEST CRITERION TARGET test_object_boolean DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_integer DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_double DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_object_cow DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_type_registry DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_func_istype DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_func_unset_empties DEPENDS json-plugin ${JSONC_LIBRARY})
@@ -29,4 +30,4 @@ add_unit_test(LIBTEST CRITERION TARGET test_object_dict_interface DEPENDS json-p
 add_unit_test(LIBTEST CRITERION TARGET test_object_dict DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_func_keys DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_scope DEPENDS json-plugin ${JSONC_LIBRARY})
-add_unit_test(LIBTEST CRITERION TARGET test_func_format_json json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_func_format_json DEPENDS json-plugin ${JSONC_LIBRARY})

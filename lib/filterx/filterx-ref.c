@@ -31,8 +31,8 @@ _filterx_ref_clone(FilterXObject *s)
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
-void
-_filterx_ref_cow(FilterXRef *self)
+static inline void
+_filterx_ref_clone_value_if_shared(FilterXRef *self, FilterXRef *child_of_interest)
 {
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
     return;
@@ -44,6 +44,27 @@ _filterx_ref_cow(FilterXRef *self)
 
   self->value = cloned;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
+}
+
+static void
+_filterx_ref_cow_parents(FilterXRef *self, FilterXRef *child_of_interest)
+{
+  FilterXRef *parent_container = (FilterXRef *) filterx_weakref_get(&self->parent_container);
+
+  if (parent_container)
+    {
+      _filterx_ref_cow_parents(parent_container, self);
+      filterx_object_unref(&parent_container->super);
+
+    }
+  _filterx_ref_clone_value_if_shared(self, child_of_interest);
+  filterx_object_set_dirty(&self->super, TRUE);
+}
+
+void
+_filterx_ref_cow(FilterXRef *self)
+{
+  _filterx_ref_cow_parents(self, NULL);
 }
 
 /* mutator methods */
