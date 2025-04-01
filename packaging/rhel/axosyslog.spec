@@ -1,5 +1,5 @@
 Name: axosyslog
-Version: 4.10.1
+Version: 4.11.0
 Release: 2%{?dist}
 Summary: Next-generation syslog server
 
@@ -678,6 +678,9 @@ fi
 
 
 %changelog
+* Tue Apr  1 2025 github-actions <41898282+github-actions@users.noreply.github.com> - 4.11.0-1
+- updated to 4.11.0
+
 * Wed Feb 19 2025 github-actions <41898282+github-actions@users.noreply.github.com> - 4.10.1-1
 - updated to 4.10.1
 

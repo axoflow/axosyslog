@@ -45,7 +45,7 @@ A simple example is to ingest syslog traffic on tcp/514 and write it to a
 file:
 
 ```
-@version: 4.10
+@version: 4.11
 @include "scl.conf"
 
 log {
@@ -85,7 +85,7 @@ docker pull ghcr.io/axoflow/axosyslog:nightly
 > Note: These named packages are automatically updated when a new AxoSyslog package is released. To install a specific version, run `docker pull ghcr.io/axoflow/axosyslog:<version-number>`, for example:
 >
 > ```shell
-> docker pull ghcr.io/axoflow/axosyslog:4.10.1
+> docker pull ghcr.io/axoflow/axosyslog:4.11.0
 > ```
 
 The container images contain a default configuration file which you probably
