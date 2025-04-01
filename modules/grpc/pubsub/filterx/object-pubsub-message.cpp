@@ -29,7 +29,6 @@
 #include "filterx/object-string.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-json.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
 
@@ -181,28 +180,34 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_format_json(FilterXObject *s, GString *json)
 {
   FilterXPubSubMessage *self = (FilterXPubSubMessage *) s;
 
-  *object = json_object_new_object();
+  g_string_append_c(json, '{');
+  g_string_append(json, "\"data\":");
+  const std::string data_content = self->cpp->get_value().data();
+  bytes_format_json(data_content.c_str(), data_content.length(), json);
 
-  const std::string data_val = self->cpp->get_value().data();
-
-  json_object_object_add(*object, "data", json_object_new_string(data_val.c_str()));
-
-  struct json_object *attributes = json_object_new_object();
-
+  g_string_append_c(json, ',');
+  g_string_append(json, "\"attributes\":");
+  g_string_append_c(json, '{');
+  bool first = TRUE;
   for (const auto &pair : self->cpp->get_value().attributes())
     {
       const std::string &key = pair.first;
       const std::string &value = pair.second;
-      json_object_object_add(attributes, key.c_str(), json_object_new_string(value.c_str()));
+
+      if (!first)
+        g_string_append_c(json, ',');
+      else
+        first = FALSE;
+      string_format_json(key.c_str(), key.length(), json);
+      g_string_append_c(json, ':');
+      string_format_json(value.c_str(), value.length(), json);
     }
-
-  json_object_object_add(*object, "attributes", attributes);
-
-  *assoc_object = filterx_json_new_from_object(json_object_get(*object));
+  g_string_append_c(json, '}');
+  g_string_append_c(json, '}');
   return TRUE;
 }
 
@@ -364,8 +369,8 @@ FILTERX_DEFINE_TYPE(pubsub_message, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_pubsub_message_clone,
-                    .map_to_json = _map_to_json,
                     .truthy = _truthy,
+                    .format_json = _format_json,
                     .repr = _repr,
                     .free_fn = _free,
                    );

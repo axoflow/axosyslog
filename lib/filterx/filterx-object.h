@@ -42,7 +42,6 @@ struct _FilterXType
   FilterXObject *(*unmarshal)(FilterXObject *self);
   gboolean (*marshal)(FilterXObject *self, GString *repr, LogMessageValueType *t);
   FilterXObject *(*clone)(FilterXObject *self);
-  gboolean (*map_to_json)(FilterXObject *self, struct json_object **object, FilterXObject **assoc_object);
   gboolean (*truthy)(FilterXObject *self);
   FilterXObject *(*getattr)(FilterXObject *self, FilterXObject *attr);
   gboolean (*setattr)(FilterXObject *self, FilterXObject *attr, FilterXObject **new_value);
@@ -346,24 +345,6 @@ filterx_object_clone(FilterXObject *self)
   if (self->readonly)
     return filterx_object_ref(self);
   return self->type->clone(self);
-}
-
-static inline gboolean
-filterx_object_map_to_json(FilterXObject *self, struct json_object **object, FilterXObject **assoc_object)
-{
-  *assoc_object = NULL;
-  if (self->type->map_to_json)
-    {
-      gboolean result = self->type->map_to_json(self, object, assoc_object);
-      if (!(*assoc_object))
-        *assoc_object = filterx_object_ref(self);
-
-      if (!self->readonly)
-        filterx_json_associate_cached_object(*object, *assoc_object);
-
-      return result;
-    }
-  return FALSE;
 }
 
 static inline gboolean
