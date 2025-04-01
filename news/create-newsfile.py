@@ -96,6 +96,13 @@ def create_version():
     return '{}\n{}\n\n'.format(next_version, len(next_version) * '=')
 
 
+def create_prelude():
+    return 'AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.\n\n' \
+           'We provide [cloud-ready container images](https://github.com/axoflow/axosyslog/#container-images) and Helm charts.\n\n' \
+           'Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-packages) and [RPM](https://github.com/axoflow/axosyslog/#rpm-packages) ' \
+           'repositories (Ubuntu, Debian, AlmaLinux, Fedora).\n\n' \
+           'Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.\n\n'
+
 def create_highlights_block():
     return '## Highlights\n' \
            '\n' \
@@ -117,7 +124,8 @@ def check_if_news_entries_are_present():
 
 
 def create_discord_block():
-    return '## Discord\n' \
+    return '\n[1] syslog-ng is a trademark of One Identity.\n\n' \
+           '## Discord\n' \
            '\n' \
            'For a bit more interactive discussion, join our Discord server:\n' \
            '\n' \
@@ -162,6 +170,7 @@ def cleanup():
 
 def create_news_content():
     news = create_version()
+    news += create_prelude()
     news += create_highlights_block()
     news += create_standard_blocks()
     news += create_discord_block()
