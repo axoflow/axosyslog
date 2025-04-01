@@ -1,6 +1,5 @@
 add_unit_test(LIBTEST CRITERION TARGET test_filterx_expr DEPENDS syslogformat json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_datetime DEPENDS json-plugin ${JSONC_LIBRARY})
-add_unit_test(LIBTEST CRITERION TARGET test_object_json DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_message DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_null DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_primitive DEPENDS json-plugin ${JSONC_LIBRARY})

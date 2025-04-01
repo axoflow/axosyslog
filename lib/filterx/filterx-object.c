@@ -66,7 +66,6 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, unmarshal);
   INIT_TYPE_METHOD(type, marshal);
   INIT_TYPE_METHOD(type, clone);
-  INIT_TYPE_METHOD(type, map_to_json);
   INIT_TYPE_METHOD(type, truthy);
   INIT_TYPE_METHOD(type, getattr);
   INIT_TYPE_METHOD(type, setattr);
@@ -91,25 +90,6 @@ filterx_type_init(FilterXType *type)
 
   if (!filterx_type_register(type->name, type))
     msg_error("Reregistering filterx type", evt_tag_str("name", type->name));
-}
-
-static gboolean
-_object_format_json(FilterXObject *s, GString *result)
-{
-  struct json_object *jso = NULL;
-  FilterXObject *assoc_object = NULL;
-  gboolean success = filterx_object_map_to_json(s, &jso, &assoc_object);
-  if (!success)
-    goto exit;
-
-  const gchar *json = json_object_to_json_string_ext(jso, JSON_C_TO_STRING_PLAIN | JSON_C_TO_STRING_NOSLASHESCAPE);
-  g_string_append(result, json);
-
-exit:
-  filterx_object_unref(assoc_object);
-  json_object_put(jso);
-  return success;
-
 }
 
 void
@@ -156,6 +136,5 @@ FilterXType FILTERX_TYPE_NAME(object) =
 {
   .super_type = NULL,
   .name = "object",
-  .format_json = _object_format_json,
   .free_fn = filterx_object_free_method,
 };

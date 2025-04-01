@@ -135,23 +135,10 @@ _filterx_ref_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 static gboolean
-_filterx_ref_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_filterx_ref_format_json_append(FilterXObject *s, GString *json)
 {
   FilterXRef *self = (FilterXRef *) s;
-  gboolean ok = filterx_object_map_to_json(self->value, object, assoc_object);
-  if (*assoc_object != self->value)
-    return ok;
-
-  filterx_object_unref(self->value);
-  *assoc_object = filterx_object_ref(s);
-  return ok;
-}
-
-static gboolean
-_filterx_ref_format_json(FilterXObject *s, GString *json)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_format_json(self->value, json);
+  return filterx_object_format_json_append(self->value, json);
 }
 
 static gboolean
@@ -257,7 +244,6 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .unmarshal = _filterx_ref_unmarshal,
                     .marshal = _filterx_ref_marshal,
                     .clone = _filterx_ref_clone,
-                    .map_to_json = _filterx_ref_map_to_json,
                     .format_json = _filterx_ref_format_json_append,
                     .truthy = _filterx_ref_truthy,
                     .getattr = _filterx_ref_getattr,

@@ -216,26 +216,6 @@ _unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
   return NULL;
 }
 
-/* NOTE: calling map_to_json() on a FilterXMessageValue is less than ideal as
- * we would unmarshal the value and then drop the result.  The expectation
- * is that the caller would explicitly unmarshall first, cache the result
- * and call map_to_json on the unmarshalled object.
- */
-static gboolean
-_map_to_json(FilterXObject *s, struct json_object **jso, FilterXObject **assoc_object)
-{
-  FilterXObject *unmarshalled_object = filterx_object_unmarshal(s);
-
-  if (unmarshalled_object)
-    {
-      gboolean result = filterx_object_map_to_json(unmarshalled_object, jso, assoc_object);
-      filterx_object_unref(unmarshalled_object);
-      return result;
-    }
-  else
-    return FALSE;
-}
-
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
@@ -495,7 +475,6 @@ FILTERX_DEFINE_TYPE(message_value, FILTERX_TYPE_NAME(object),
                     .marshal = _marshal,
                     .unmarshal = _unmarshal,
                     .len = _len,
-                    .map_to_json = _map_to_json,
                     .format_json = _format_json,
                     .repr = _repr,
                     .str = _str,

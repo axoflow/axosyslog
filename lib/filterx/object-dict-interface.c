@@ -25,7 +25,6 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-list-interface.h"
-#include "filterx/object-json.h"
 #include "str-utils.h"
 #include "utf8utils.h"
 
@@ -186,49 +185,6 @@ _setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_value)
 }
 
 static gboolean
-_add_elem_to_json_object(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
-{
-  struct json_object *object = (struct json_object *) user_data;
-
-  const gchar *key;
-  gsize len;
-  if (!filterx_object_extract_string_ref(key_obj, &key, &len))
-    return FALSE;
-
-  APPEND_ZERO(key, key, len);
-
-  struct json_object *value = NULL;
-  FilterXObject *assoc_object = NULL;
-  if (!filterx_object_map_to_json(value_obj, &value, &assoc_object))
-    return FALSE;
-
-  filterx_object_unref(assoc_object);
-
-  if (json_object_object_add(object, key, value) != 0)
-    {
-      json_object_put(value);
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
-static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  *object = json_object_new_object();
-  if (!filterx_dict_iter(s, _add_elem_to_json_object, *object))
-    {
-      json_object_put(*object);
-      *object = NULL;
-      return FALSE;
-    }
-
-  *assoc_object = filterx_json_new_from_object(json_object_get(*object));
-  return TRUE;
-}
-
-static gboolean
 _format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   gpointer *args = (gpointer *) user_data;
@@ -310,7 +266,6 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(object),
                     .unset_key = _unset_key,
                     .getattr = _getattr,
                     .setattr = _setattr,
-                    .map_to_json = _map_to_json,
                     .format_json = _format_json,
                     .add = _add,
                    );

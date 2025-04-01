@@ -129,18 +129,16 @@ _unknown_repr(FilterXObject *s, GString *repr)
 }
 
 static gboolean
-_unknown_truthy(FilterXObject *s)
+_unknown_format_json(FilterXObject *s, GString *json)
 {
-  return TRUE;
+  gssize len;
+  const gchar *str = filterx_test_unknown_object_marshaled_repr(&len);
+  return string_format_json(str, len, json);
 }
 
 static gboolean
-_unknown_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_unknown_truthy(FilterXObject *s)
 {
-  gssize len;
-  const gchar *repr = filterx_test_unknown_object_marshaled_repr(&len);
-  *object = json_object_new_string_len(repr, len);
-  *assoc_object = filterx_string_new(repr, len);
   return TRUE;
 }
 
@@ -243,6 +241,6 @@ FILTERX_DEFINE_TYPE(test_unknown_object, FILTERX_TYPE_NAME(object),
                     .truthy = _unknown_truthy,
                     .marshal = _unknown_marshal,
                     .repr = _unknown_repr,
-                    .map_to_json = _unknown_map_to_json,
+                    .format_json = _unknown_format_json,
                     .list_factory = _list_factory,
                     .dict_factory = _dict_factory);

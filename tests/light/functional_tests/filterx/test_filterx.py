@@ -2458,8 +2458,8 @@ def test_pubsub_message(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = (
-        r"""{"msg":{"data":"my pubsub message","attributes":{"foo":"bar"}},"""
-        """"empty":{"data":"empty attribute value","attributes":{"empty":""}}}""" + ""
+        r"""{"msg":{"data":"bXkgcHVic3ViIG1lc3NhZ2U=","attributes":{"foo":"bar"}},"""
+        """"empty":{"data":"ZW1wdHkgYXR0cmlidXRlIHZhbHVl","attributes":{"empty":""}}}"""
     )
     assert file_true.read_log() == exp
 
