@@ -101,8 +101,6 @@ _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 static gboolean
 _should_unset(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
-  filterx_assert_not_ref(obj);
-
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL) &&
       filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)))
     return TRUE;
