@@ -82,12 +82,4 @@ filterx_ref_unwrap_rw(FilterXObject *s)
 
 FilterXObject *_filterx_ref_new(FilterXObject *value);
 
-static inline FilterXObject *
-filterx_ref_new(FilterXObject *value)
-{
-  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
-    return value;
-  return _filterx_ref_new(value);
-}
-
 #endif

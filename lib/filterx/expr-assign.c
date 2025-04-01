@@ -30,20 +30,15 @@
 static inline FilterXObject *
 _assign(FilterXBinaryOp *self, FilterXObject **value)
 {
-  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
-   * (or after creating our own dict/list repr) */
-  if (!(*value)->weak_referenced)
-    {
-      *value = filterx_ref_new(*value);
-    }
+  FilterXObject *cloned = filterx_object_cow_fork(value);
 
-  if (!filterx_expr_assign(self->lhs, value))
+  if (!filterx_expr_assign(self->lhs, &cloned))
     {
-      filterx_object_unref(*value);
+      filterx_object_unref(cloned);
       return NULL;
     }
 
-  return *value;
+  return cloned;
 }
 
 static inline FilterXObject *

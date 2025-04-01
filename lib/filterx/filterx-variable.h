@@ -117,7 +117,7 @@ filterx_variable_set_value(FilterXVariable *v, FilterXObject **new_value, gboole
   filterx_object_unref(v->value);
   if (new_value)
     {
-      v->value = filterx_object_ref(*new_value);
+      v->value = filterx_object_cow_store(new_value);
     }
   else
     {
