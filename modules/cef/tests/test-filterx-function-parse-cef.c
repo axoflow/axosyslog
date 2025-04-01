@@ -32,7 +32,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-literal.h"
-#include "filterx/object-json.h"
+#include "filterx/object-dict.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-primitive.h"
@@ -50,7 +50,7 @@ Test(filterx_func_parse_cef, test_invalid_input)
   cr_assert_null(args_err);
   g_error_free(args_err);
 
-  FilterXExpr *func = _new_parser(fx_args, &error, filterx_json_object_new_empty());
+  FilterXExpr *func = _new_parser(fx_args, &error, filterx_dict_new());
   cr_assert_null(error);
   FilterXObject *obj = filterx_expr_eval(func);
   cr_assert_null(obj);
@@ -172,7 +172,7 @@ Test(filterx_func_parse_cef, test_forced_empty_value_separator)
   const gchar *input = "CEF:0|Microsoft|MSExchange|4.0 SP1|15345|foo#bar bar#baz baz#tik\\#tak";
   GError *error = NULL;
   FilterXExpr *func = _new_parser(_assert_create_args(0, _create_msg_arg(input), _create_value_separator_arg(""), NULL),
-                                  &error, filterx_json_object_new_empty());
+                                  &error, filterx_dict_new());
   cr_assert_not_null(error);
   cr_assert_null(func);
 

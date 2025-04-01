@@ -28,7 +28,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-literal.h"
-#include "filterx/object-json.h"
+#include "filterx/object-list.h"
+#include "filterx/object-dict.h"
 #include "filterx-func-parse-csv.h"
 #include "filterx/object-list-interface.h"
 #include "scanner/csv-scanner/csv-scanner.h"
@@ -37,7 +38,7 @@
 static FilterXObject *
 _generate_string_list(const gchar *elts, ...)
 {
-  FilterXObject *result = filterx_json_array_new_empty();
+  FilterXObject *result = filterx_list_new();
 
   va_list args;
   va_start(args, elts);
@@ -114,7 +115,7 @@ Test(filterx_func_parse_csv, test_empty_args_error)
 {
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(NULL, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(NULL, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(func);
   cr_assert_not_null(err);
@@ -131,14 +132,14 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -161,14 +162,14 @@ Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -192,14 +193,14 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -222,14 +223,14 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiters)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -252,14 +253,14 @@ Test(filterx_func_parse_csv, test_optional_argument_dialect)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -285,14 +286,14 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -318,14 +319,14 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_object_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_dict_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -351,14 +352,14 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -384,14 +385,14 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -415,14 +416,14 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters)
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -448,14 +449,14 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimi
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -481,14 +482,14 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_null(err);
 
   FilterXObject *obj = filterx_expr_eval(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(json_array)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
   FilterXObject *elt = filterx_list_get_subscript(obj, 1);
 
@@ -512,7 +513,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_unable_to_set_with
 
   GError *err = NULL;
   GError *args_err = NULL;
-  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_json_array_new_empty());
+  FilterXExpr *func = _csv_new(filterx_function_args_new(args, &args_err), &err, filterx_list_new());
   cr_assert_null(args_err);
   cr_assert_not_null(err);
   cr_assert(strcmp(err->message, FILTERX_FUNC_PARSE_ERR_EMPTY_DELIMITER));

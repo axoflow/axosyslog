@@ -28,7 +28,7 @@
 #include "filterx/func-flatten.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-json.h"
+#include "filterx/json-repr.h"
 #include "filterx/expr-literal.h"
 
 #include "apphook.h"
@@ -105,7 +105,7 @@ Test(filterx_func_flatten, default_separator)
   const gchar *input =
     "{\"top_level_field\":42,\"top_level_dict\":{\"inner_field\":1337,\"inner_dict\":{\"inner_inner_field\":1}}}";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_json_new_from_repr(input, -1))));
+                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
   _assert_flatten(args,
                   "{\"top_level_field\":42,\"top_level_dict.inner_field\":1337,\"top_level_dict.inner_dict.inner_inner_field\":1}");
 }
@@ -115,7 +115,7 @@ Test(filterx_func_flatten, custom_separator)
   const gchar *input =
     "{\"top_level_field\":42,\"top_level_dict\":{\"inner_field\":1337,\"inner_dict\":{\"inner_inner_field\":1}}}";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_json_new_from_repr(input, -1))));
+                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new("separator", filterx_literal_new(filterx_string_new("->", -1))));
   _assert_flatten(args,
                   "{\"top_level_field\":42,\"top_level_dict->inner_field\":1337,\"top_level_dict->inner_dict->inner_inner_field\":1}");

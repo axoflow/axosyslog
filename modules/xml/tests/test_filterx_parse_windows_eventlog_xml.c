@@ -25,7 +25,8 @@
 
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-dict-interface.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "apphook.h"
@@ -97,13 +98,13 @@ _create_input_from_event_data(const gchar *event_data_xml)
 static void
 _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_eventdata_json)
 {
-  FilterXExpr *func = _create_expr(_create_input_from_event_data(event_data_xml), filterx_json_object_new_empty());
+  FilterXExpr *func = _create_expr(_create_input_from_event_data(event_data_xml), filterx_dict_new());
 
   FilterXObject *result = filterx_expr_eval(func);
   cr_assert(result);
   cr_assert(!filterx_eval_get_last_error());
 
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
 
   GString *formatted_result = g_string_new(NULL);
   filterx_object_repr(result, formatted_result);
@@ -138,7 +139,7 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
 static void
 _assert_parse_fail(const gchar *xml)
 {
-  FilterXExpr *func = _create_expr(xml, filterx_json_object_new_empty());
+  FilterXExpr *func = _create_expr(xml, filterx_dict_new());
 
   FilterXObject *result = filterx_expr_eval(func);
   cr_assert(!result);
