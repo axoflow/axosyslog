@@ -461,7 +461,8 @@ _table_resize(FilterXDictTable *target, FilterXDictTable *source)
 }
 
 static void
-_table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container, FilterXObject *child_of_interest)
+_table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container,
+                   FilterXObject *child_of_interest)
 {
   memcpy(&target->indices, &source->indices, target->size * _table_index_element_size(target->size));
 
@@ -489,7 +490,8 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
 }
 
 static void
-_table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container, FilterXObject *child_of_interest)
+_table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container,
+             FilterXObject *child_of_interest)
 {
   g_assert(target->size == source->size);
 
