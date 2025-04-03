@@ -533,6 +533,14 @@ filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
 
 #include "filterx-ref.h"
 
+static inline gboolean
+filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
+{
+  if (_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
+    return _filterx_object_is_type(((FilterXRef *) object)->value, type);
+  return _filterx_object_is_type(object, type);
+}
+
 /*
  * Make sure mutable objects are encapsulated into a FilterXRef.  To be
  * called as the first thing before an object can be assigned to a variable

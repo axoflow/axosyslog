@@ -274,7 +274,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
           return NULL;
         }
 
-      if (!filterx_object_is_type(self, &FILTERX_TYPE_NAME(list)))
+      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(list)))
         {
           filterx_object_unref(self);
           return NULL;

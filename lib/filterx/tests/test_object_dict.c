@@ -37,37 +37,37 @@ Test(filterx_dict, test_filterx_object_dict_from_repr)
   FilterXObject *fobj;
 
   fobj = filterx_object_from_json("{\"foo\": \"foovalue\"}", -1, NULL);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(dict_object)));
   assert_object_json_equals(fobj, "{\"foo\":\"foovalue\"}");
   assert_marshaled_object(fobj, "{\"foo\":\"foovalue\"}", LM_VT_JSON);
   filterx_object_unref(fobj);
 
   fobj = filterx_object_from_json("[\"foo\", \"bar\"]", -1, NULL);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[\"foo\",\"bar\"]");
   assert_marshaled_object(fobj, "foo,bar", LM_VT_LIST);
   filterx_object_unref(fobj);
 
   fobj = filterx_object_from_json("[1, 2]", -1, NULL);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[1,2]");
   assert_marshaled_object(fobj, "[1,2]", LM_VT_JSON);
   filterx_object_unref(fobj);
 
   fobj = filterx_list_new_from_syslog_ng_list("\"foo\",bar", -1);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[\"foo\",\"bar\"]");
   assert_marshaled_object(fobj, "foo,bar", LM_VT_LIST);
   filterx_object_unref(fobj);
 
   fobj = filterx_list_new_from_syslog_ng_list("1,2", -1);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[\"1\",\"2\"]");
   assert_marshaled_object(fobj, "1,2", LM_VT_LIST);
   filterx_object_unref(fobj);
 
   fobj = filterx_object_from_json("[1, \"foo\"]", -1, NULL);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[1,\"foo\"]");
   assert_marshaled_object(fobj, "[1,\"foo\"]", LM_VT_JSON);
   filterx_object_unref(fobj);
@@ -102,12 +102,12 @@ Test(filterx_dict, test_dict_function)
   FilterXObject *fobj;
 
   fobj = _exec_dict_func(NULL);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(dict_object)));
   assert_object_json_equals(fobj, "{}");
   filterx_object_unref(fobj);
 
   fobj = _exec_dict_func(filterx_string_new("{\"foo\": 1}", -1));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(dict_object)));
   assert_object_json_equals(fobj, "{\"foo\":1}");
   filterx_object_unref(fobj);
 
@@ -118,7 +118,7 @@ Test(filterx_dict, test_dict_function)
   cr_assert(fobj == NULL);
 
   fobj = _exec_dict_func(filterx_object_from_json("{\"foo\": 1}", -1, NULL));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(dict_object)));
   assert_object_json_equals(fobj, "{\"foo\":1}");
   filterx_object_unref(fobj);
 
@@ -144,12 +144,12 @@ Test(filterx_dict, test_list_function)
   FilterXObject *fobj;
 
   fobj = _exec_list_func(NULL);
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[]");
   filterx_object_unref(fobj);
 
   fobj = _exec_list_func(filterx_string_new("[1, 2]", -1));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[1,2]");
   filterx_object_unref(fobj);
 
@@ -165,7 +165,7 @@ Test(filterx_dict, test_list_function)
   cr_assert(fobj == NULL);
 
   fobj = _exec_list_func(filterx_object_from_json("[1, 2]", -1, NULL));
-  cr_assert(filterx_object_is_type(fobj, &FILTERX_TYPE_NAME(list_object)));
+  cr_assert(filterx_object_is_type_or_ref(fobj, &FILTERX_TYPE_NAME(list_object)));
   assert_object_json_equals(fobj, "[1,2]");
   filterx_object_unref(fobj);
 

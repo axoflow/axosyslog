@@ -55,6 +55,7 @@
 void
 _assert_cmp_lists(FilterXObject *expected, FilterXObject *provided)
 {
+  expected = filterx_ref_unwrap_ro(expected);
   cr_assert(filterx_object_is_type(expected, &FILTERX_TYPE_NAME(list)));
   cr_assert(filterx_object_is_type(provided, &FILTERX_TYPE_NAME(list)));
   guint64 expected_len, provided_len;

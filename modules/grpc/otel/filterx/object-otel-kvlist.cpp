@@ -529,8 +529,9 @@ OtelKVListField::FilterXObjectSetter(google::protobuf::Message *message, ProtoRe
       if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
         {
           FilterXObject *unmarshalled = filterx_object_unmarshal(object);
-          bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(dict)) &&
-                         _set_kvlist_field_from_dict(message, reflectors, unmarshalled, assoc_object);
+          FilterXObject *unwrapped = filterx_ref_unwrap_ro(unmarshalled);
+          bool success = filterx_object_is_type_or_ref(unwrapped, &FILTERX_TYPE_NAME(dict)) &&
+                         _set_kvlist_field_from_dict(message, reflectors, unwrapped, assoc_object);
           filterx_object_unref(unmarshalled);
           return success;
         }
