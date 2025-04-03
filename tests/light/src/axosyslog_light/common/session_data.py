@@ -96,6 +96,10 @@ class SessionData:
         self.__ensure_with()
         return self.__data.get(key, default)
 
+    def clear(self) -> None:
+        self.__ensure_with()
+        self.__data.clear()
+
 
 def get_session_data() -> SessionData:
     return SessionData.get_singleton()
