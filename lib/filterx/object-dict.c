@@ -709,7 +709,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
                                        g_strdup(error->message), TRUE);
           g_clear_error(&error);
         }
-      if (!filterx_object_is_type(self, &FILTERX_TYPE_NAME(dict)))
+      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(dict)))
         {
           filterx_object_unref(self);
           return NULL;

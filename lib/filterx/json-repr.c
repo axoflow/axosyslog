@@ -44,6 +44,8 @@ static FilterXObject *
 _convert_from_json_array(struct json_object *jso, GError **error)
 {
   FilterXObject *res = filterx_list_new();
+
+  filterx_object_cow_wrap(&res);
   for (gsize i = 0; i < json_object_array_length(jso); i++)
     {
       struct json_object *el = json_object_array_get_idx(jso, i);
@@ -69,6 +71,8 @@ static FilterXObject *
 _convert_from_json_object(struct json_object *jso, GError **error)
 {
   FilterXObject *res = filterx_dict_new();
+
+  filterx_object_cow_wrap(&res);
   struct json_object_iter itr;
   json_object_object_foreachC(jso, itr)
   {
