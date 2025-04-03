@@ -352,7 +352,7 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
           filterx_variable_unassign(v);
           v->generation++;
         }
-      else if (filterx_variable_is_assigned(v) || filterx_object_is_modified_in_place(v->value))
+      else if (filterx_variable_is_assigned(v) || filterx_object_is_dirty(v->value))
         {
           LogMessageValueType t;
 
@@ -364,7 +364,7 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
           if (!filterx_object_marshal(v->value, buffer, &t))
             g_assert_not_reached();
           log_msg_set_value_with_type(msg, filterx_variable_get_nv_handle(v), buffer->str, buffer->len, t);
-          filterx_object_set_modified_in_place(v->value, FALSE);
+          filterx_object_set_dirty(v->value, FALSE);
           filterx_variable_unassign(v);
           v->generation++;
         }

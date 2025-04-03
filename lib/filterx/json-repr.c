@@ -61,6 +61,7 @@ _convert_from_json_array(struct json_object *jso, GError **error)
         }
       filterx_object_unref(o);
     }
+  filterx_object_set_dirty(res, FALSE);
   return res;
 error:
   filterx_object_unref(res);
@@ -89,6 +90,7 @@ _convert_from_json_object(struct json_object *jso, GError **error)
       }
     filterx_object_unref(o);
   }
+  filterx_object_set_dirty(res, FALSE);
   return res;
 error:
   filterx_object_unref(res);
