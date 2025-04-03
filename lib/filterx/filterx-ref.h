@@ -47,6 +47,7 @@ struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
+  FilterXWeakRef parent_container;
 };
 
 static inline gboolean
@@ -79,6 +80,39 @@ filterx_ref_unwrap_rw(FilterXObject *s)
   _filterx_ref_cow(self);
 
   return self->value;
+}
+
+static inline gboolean
+filterx_ref_values_equal(FilterXObject *r1, FilterXObject *r2)
+{
+  if (filterx_object_is_ref(r1))
+    r1 = ((FilterXRef *) r1)->value;
+  if (filterx_object_is_ref(r2))
+    r2 = ((FilterXRef *) r2)->value;
+  return r1 == r2;
+}
+
+static inline void
+filterx_ref_set_parent_container(FilterXObject *s, FilterXObject *parent)
+{
+  if (s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+
+      g_assert(!parent || parent->type == &FILTERX_TYPE_NAME(ref));
+      filterx_weakref_set(&self->parent_container, parent);
+    }
+}
+
+static inline void
+filterx_ref_unset_parent_container(FilterXObject *s)
+{
+  if (s && s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+
+      filterx_weakref_set(&self->parent_container, NULL);
+    }
 }
 
 
