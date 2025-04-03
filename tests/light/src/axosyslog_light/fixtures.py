@@ -26,6 +26,7 @@ import argparse
 import logging
 import os
 import re
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -234,11 +235,16 @@ def pytest_runtest_setup(item):
 
 def pytest_sessionstart(session):
     if xdist.is_xdist_controller(session):
-        base_number_of_open_fds = 0  # with xdist, the current shell's open fds are not inherited
-    else:
-        base_number_of_open_fds = len(psutil.Process().open_files())
+        return
+
+    base_number_of_open_fds = len(psutil.Process().open_files())
 
     with get_session_data() as session_data:
+        testrunuid = os.environ.get("PYTEST_XDIST_TESTRUNUID", uuid.uuid4().hex)  # generate one if not running in xdist
+        if session_data.get("testrunuid") != testrunuid:
+            session_data.clear()
+            session_data["testrunuid"] = testrunuid
+
         session_data["active_workers"] = session_data.get("active_workers", 0) + 1
 
         if session_data.get("session_started", False):
@@ -261,6 +267,9 @@ def pytest_sessionstart(session):
 
 
 def pytest_sessionfinish(session, exitstatus):
+    if xdist.is_xdist_controller(session):
+        return
+
     with get_session_data() as session_data:
         active_workers = session_data["active_workers"] = session_data["active_workers"] - 1
 
