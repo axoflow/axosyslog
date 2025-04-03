@@ -59,7 +59,9 @@ _value_string(const gchar *attr)
 
 Test(filterx_cow, test_filterx_cow_child_objects_are_refs_too)
 {
-  FilterXObject *r = filterx_object_from_json("{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}", -1, NULL);
+  FilterXObject *r =
+    filterx_object_from_json("{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}",
+                             -1, NULL);
 
   cr_assert(filterx_object_is_ref(r));
   FilterXObject *c = filterx_object_getattr(r, _attr_string("c"));
@@ -77,7 +79,9 @@ Test(filterx_cow, test_filterx_cow_child_objects_are_refs_too)
 
 Test(filterx_cow, test_filterx_cow_fork_creates_a_second_reference_to_the_same_object)
 {
-  FilterXObject *r = filterx_object_from_json("{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}", -1, NULL);
+  FilterXObject *r =
+    filterx_object_from_json("{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}",
+                             -1, NULL);
 
   cr_assert(filterx_object_is_ref(r));
   FilterXObject *c = filterx_object_getattr(r, _attr_string("c"));
@@ -119,7 +123,9 @@ Test(filterx_cow, test_filterx_cow_fork_creates_a_second_reference_to_the_same_o
 
 Test(filterx_cow, test_filterx_cow_make_immediate_child_writable_creates_an_unshared_dict)
 {
-  FilterXObject *r = filterx_object_from_json("{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}", -1, NULL);
+  FilterXObject *r =
+    filterx_object_from_json("{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}",
+                             -1, NULL);
 
   cr_assert(filterx_object_is_ref(r));
   FilterXObject *c = filterx_object_getattr(r, _attr_string("c"));
@@ -155,7 +161,8 @@ Test(filterx_cow, test_filterx_cow_make_immediate_child_writable_creates_an_unsh
 
 Test(filterx_cow, test_filterx_cow_make_grandchild_writable_creates_an_unshared_tree_of_dicts_from_the_top)
 {
-  const gchar *orig_json = "{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}";
+  const gchar *orig_json =
+    "{\"a\":\"a\",\"b\":\"b\",\"c\":{\"ca\":\"ca\",\"cb\":\"cb\",\"cc\":{\"cca\":\"cca\",\"ccb\":\"ccb\",\"ccc\":\"ccc\"}}}";
   FilterXObject *r = filterx_object_from_json(orig_json, -1, NULL);
 
   cr_assert(filterx_object_is_ref(r));
