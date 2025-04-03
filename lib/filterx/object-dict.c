@@ -54,6 +54,7 @@ static inline void
 filterx_dict_entry_clear(FilterXDictEntry *entry)
 {
   filterx_object_unref(entry->key);
+  filterx_ref_unset_parent_container(entry->value);
   filterx_object_unref(entry->value);
   entry->key = entry->value = NULL;
 }
@@ -306,6 +307,7 @@ _table_lookup_index_slot(FilterXDictTable *table, FilterXObject *key, guint hash
   g_assert_not_reached();
 }
 
+/* NOTE: consumes refs of both key/value */
 static void
 _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
 {
@@ -331,8 +333,8 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
     }
   /* entry is not zero initialized, make sure you will all fields */
   entry->hash = hash;
-  entry->key = filterx_object_ref(key);
-  entry->value = filterx_object_ref(value);
+  entry->key = key;
+  entry->value = value;
 }
 
 static gboolean
@@ -421,7 +423,7 @@ _table_new(gsize initial_size)
 }
 
 static void
-_table_resize_index_and_clone_elems(FilterXDictTable *target, FilterXDictTable *source, gboolean clone)
+_table_resize_index(FilterXDictTable *target, FilterXDictTable *source)
 {
   FilterXDictEntrySlot max = target->entries_num;
   FilterXDictEntry *ep = _table_get_entries(target);
@@ -436,12 +438,6 @@ _table_resize_index_and_clone_elems(FilterXDictTable *target, FilterXDictTable *
       if (!ep->key)
         continue;
 
-      if (clone)
-        {
-          ep->key = filterx_object_clone(ep->key);
-          ep->value = filterx_object_clone(ep->value);
-        }
-
       /* find index slot */
       while (_table_get_index_entry(target, slot) >= 0)
         {
@@ -453,26 +449,7 @@ _table_resize_index_and_clone_elems(FilterXDictTable *target, FilterXDictTable *
 }
 
 static void
-_table_copy_index_and_clone_elems(FilterXDictTable *target, FilterXDictTable *source, gboolean clone)
-{
-  memcpy(&target->indices, &source->indices, target->size * _table_index_element_size(target->size));
-
-  FilterXDictEntrySlot max = target->entries_num;
-  FilterXDictEntry *ep = _table_get_entries(target);
-
-  /* iterate over all entries */
-  for (FilterXDictEntrySlot entry_slot = 0; clone && entry_slot < max; entry_slot++, ep++)
-    {
-      if (!ep->key)
-        continue;
-
-      ep->key = filterx_object_clone(ep->key);
-      ep->value = filterx_object_clone(ep->value);
-    }
-}
-
-static void
-_table_copy(FilterXDictTable *target, FilterXDictTable *source, gboolean clone)
+_table_resize(FilterXDictTable *target, FilterXDictTable *source)
 {
   g_assert(target->size >= source->size);
 
@@ -480,12 +457,48 @@ _table_copy(FilterXDictTable *target, FilterXDictTable *source, gboolean clone)
   target->empty_num = source->empty_num;
   memcpy(_table_get_entries(target), _table_get_entries(source), source->entries_size * sizeof(FilterXDictEntry));
 
-  if (target->size == source->size)
-    _table_copy_index_and_clone_elems(target, source, clone);
-  else
-    _table_resize_index_and_clone_elems(target, source, clone);
+  _table_resize_index(target, source);
 }
 
+static void
+_table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container, FilterXObject *child_of_interest)
+{
+  memcpy(&target->indices, &source->indices, target->size * _table_index_element_size(target->size));
+
+  FilterXDictEntrySlot max = target->entries_num;
+  FilterXDictEntry *ep = _table_get_entries(target);
+  gboolean child_found = FALSE;
+
+  /* iterate over all entries */
+  for (FilterXDictEntrySlot entry_slot = 0; entry_slot < max; entry_slot++, ep++)
+    {
+      if (!ep->key)
+        continue;
+
+      ep->key = filterx_object_clone(ep->key);
+      if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
+        {
+          ep->value = filterx_object_ref(child_of_interest);
+          child_found = TRUE;
+        }
+      else
+        ep->value = filterx_object_clone(ep->value);
+      filterx_ref_set_parent_container(ep->value, container);
+    }
+  g_assert(child_found || child_of_interest == NULL);
+}
+
+static void
+_table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container, FilterXObject *child_of_interest)
+{
+  g_assert(target->size == source->size);
+
+  target->entries_num = source->entries_num;
+  target->empty_num = source->empty_num;
+  memcpy(_table_get_entries(target), _table_get_entries(source), source->entries_size * sizeof(FilterXDictEntry));
+
+  _table_clone_index(target, source, container, child_of_interest);
+}
 
 static void
 _table_free(FilterXDictTable *table, gboolean free_entries)
@@ -508,7 +521,7 @@ _table_resize_if_needed(FilterXDictTable *old_table)
     return old_table;
 
   FilterXDictTable *new_table = _table_new(old_table->size * 2);
-  _table_copy(new_table, old_table, FALSE);
+  _table_resize(new_table, old_table);
   _table_free(old_table, FALSE);
   return new_table;
 }
@@ -642,14 +655,20 @@ filterx_dict_new_with_table(FilterXDictTable *table)
 }
 
 static FilterXObject *
-_filterx_dict_clone(FilterXObject *s)
+_filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, FilterXObject *child_of_interest)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
   FilterXDictTable *new_table = _table_new(self->table->size);
 
-  _table_copy(new_table, self->table, TRUE);
+  _table_clone(new_table, self->table, container, child_of_interest);
   FilterXObject *clone = filterx_dict_new_with_table(new_table);
   return clone;
+}
+
+static FilterXObject *
+_filterx_dict_clone(FilterXObject *s)
+{
+  return _filterx_dict_clone_container(s, NULL, NULL);
 }
 
 FilterXObject *
@@ -764,6 +783,7 @@ FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
                     .marshal = _filterx_dict_marshal,
                     .repr = _filterx_dict_repr,
                     .clone = _filterx_dict_clone,
+                    .clone_container = _filterx_dict_clone_container,
                     .freeze = _filterx_dict_freeze,
                     .unfreeze = _filterx_dict_unfreeze,
                    );

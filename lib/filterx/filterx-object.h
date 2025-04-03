@@ -42,6 +42,7 @@ struct _FilterXType
   FilterXObject *(*unmarshal)(FilterXObject *self);
   gboolean (*marshal)(FilterXObject *self, GString *repr, LogMessageValueType *t);
   FilterXObject *(*clone)(FilterXObject *self);
+  FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest);
   gboolean (*truthy)(FilterXObject *self);
   FilterXObject *(*getattr)(FilterXObject *self, FilterXObject *attr);
   gboolean (*setattr)(FilterXObject *self, FilterXObject *attr, FilterXObject **new_value);
@@ -388,6 +389,14 @@ filterx_object_marshal_append(FilterXObject *self, GString *repr, LogMessageValu
   if (self->type->marshal)
     return self->type->marshal(self, repr, t);
   return FALSE;
+}
+
+static inline FilterXObject *
+filterx_object_clone_container(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest)
+{
+  if (self->type->clone_container)
+    return self->type->clone_container(self, container, child_of_interest);
+  return self->type->clone(self);
 }
 
 static inline FilterXObject *

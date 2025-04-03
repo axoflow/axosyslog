@@ -127,6 +127,7 @@ _filterx_list_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_v
     g_ptr_array_set_size(self->array, index + 1);
 
   FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, index);
+  filterx_ref_unset_parent_container(*slot);
   filterx_object_unref(*slot);
   *slot = filterx_object_cow_store(new_value);
   return TRUE;
@@ -145,7 +146,10 @@ static gboolean
 _filterx_list_unset_index(FilterXList *s, guint64 index)
 {
   FilterXListObject *self = (FilterXListObject *) s;
+
   g_assert(index <= self->array->len);
+  FilterXObject *v = (FilterXObject *) g_ptr_array_index(self->array, index);
+  filterx_ref_unset_parent_container(v);
   g_ptr_array_remove_index(self->array, index);
   return TRUE;
 }
@@ -186,14 +190,34 @@ filterx_list_new(void)
 }
 
 static FilterXObject *
-_filterx_list_clone(FilterXObject *s)
+_filterx_list_clone_container(FilterXObject *s, FilterXObject *container, FilterXObject *child_of_interest)
 {
   FilterXListObject *self = (FilterXListObject *) s;
   FilterXListObject *clone = (FilterXListObject *) filterx_list_new();
+  gboolean child_found = FALSE;
 
   for (gsize i = 0; i < self->array->len; i++)
-    g_ptr_array_add(clone->array, filterx_object_clone(g_ptr_array_index(self->array, i)));
+    {
+      FilterXObject *el = g_ptr_array_index(self->array, i);
+
+      if (child_of_interest && filterx_ref_values_equal(el, child_of_interest))
+        {
+          el = filterx_object_ref(child_of_interest);
+          child_found = TRUE;
+        }
+      else
+        el = filterx_object_clone(el);
+      filterx_ref_set_parent_container(el, container);
+      g_ptr_array_add(clone->array, el);
+    }
+  g_assert(child_found || child_of_interest == NULL);
   return &clone->super.super;
+}
+
+static FilterXObject *
+_filterx_list_clone(FilterXObject *s)
+{
+  return _filterx_list_clone_container(s, NULL, NULL);
 }
 
 static void
@@ -327,6 +351,7 @@ FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
                     .marshal = _filterx_list_marshal,
                     .repr = _filterx_list_repr,
                     .clone = _filterx_list_clone,
+                    .clone_container = _filterx_list_clone_container,
                     .freeze = _filterx_list_freeze,
                     .unfreeze = _filterx_list_unfreeze,
                    );
