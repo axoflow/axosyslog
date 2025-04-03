@@ -100,20 +100,6 @@ _filterx_make_readonly(FilterXObject *s)
   filterx_object_make_readonly(self->value);
 }
 
-static gboolean
-_is_modified_in_place(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_is_modified_in_place(self->value);
-}
-
-static void
-_set_modified_in_place(FilterXObject *s, gboolean modified)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  filterx_object_set_modified_in_place(self->value, modified);
-}
-
 static void
 _filterx_ref_freeze(FilterXObject **s)
 {
@@ -327,8 +313,6 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
                     .make_readonly = _filterx_make_readonly,
-                    .is_modified_in_place = _is_modified_in_place,
-                    .set_modified_in_place = _set_modified_in_place,
                     .freeze = _filterx_ref_freeze,
                     .unfreeze = _filterx_ref_unfreeze,
                     .free_fn = _filterx_ref_free,
