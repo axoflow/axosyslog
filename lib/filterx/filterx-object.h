@@ -42,7 +42,7 @@ struct _FilterXType
   FilterXObject *(*unmarshal)(FilterXObject *self);
   gboolean (*marshal)(FilterXObject *self, GString *repr, LogMessageValueType *t);
   FilterXObject *(*clone)(FilterXObject *self);
-  gboolean (*map_to_json)(FilterXObject *self, struct json_object **object, FilterXObject **assoc_object);
+  FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest);
   gboolean (*truthy)(FilterXObject *self);
   FilterXObject *(*getattr)(FilterXObject *self, FilterXObject *attr);
   gboolean (*setattr)(FilterXObject *self, FilterXObject *attr, FilterXObject **new_value);
@@ -52,13 +52,14 @@ struct _FilterXType
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
   FilterXObject *(*list_factory)(FilterXObject *self);
   FilterXObject *(*dict_factory)(FilterXObject *self);
+  gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*str)(FilterXObject *self, GString *str);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*make_readonly)(FilterXObject *self);
-  gboolean (*is_modified_in_place)(FilterXObject *self);
-  void (*set_modified_in_place)(FilterXObject *self, gboolean modified);
+  void (*freeze)(FilterXObject **self);
+  void (*unfreeze)(FilterXObject *self);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -84,9 +85,56 @@ _filterx_type_is_referenceable(FilterXType *t)
 {
   return t->is_mutable && t != &FILTERX_TYPE_NAME(ref);
 }
-#define FILTERX_OBJECT_REFCOUNT_FROZEN (G_MAXINT32)
-#define FILTERX_OBJECT_REFCOUNT_STACK  (G_MAXINT32-1)
-#define FILTERX_OBJECT_REFCOUNT_OFLOW_MARK (FILTERX_OBJECT_REFCOUNT_STACK-1024)
+
+/* FilterXObject refcount ranges.  The ref count for the objects is special
+ * to allow multiple allocation strategies:
+ *
+ * 1) heap allocated, normal refcounting
+ *
+ *    Most objects will be in this category, ref_cnt starts with 1,
+ *    ref/unref increments and decrements the refcount respectively.
+ *
+ *    The ref_cnt will be in this range: (0, FILTERX_OBJECT_REFCOUNT_OFLOW_MARK)
+ *
+ *    The ref_cnt overflow is detected by leaving a gap between the overflow
+ *    mark and the first special value, which is large enough to avoid races
+ *    stepping through the range
+ *
+ * 2) stack allocated, no refcounting
+ *
+ *    Local values can be stored on the stack, to avoid a heap allocation,
+ *    these values are only used by a single thread.
+ *
+ *    The ref_cnt is always equal to FILTERX_OBJECT_REFCOUNT_STACK
+ *
+ * 3) heap allocated, frozen
+ *
+ *    Objects frozen before the evaluation starts (e.g.  cache_json_file or
+ *    other cached objects).
+ *
+ *    The normal ref/unref operations are noops, e.g.  everything just
+ *    assumes these objects will exist for as long as necessary.
+ *
+ *    The freeze/unfreeze operations increment and decrement the refcount
+ *    but ensure that it remains in this range.  Multi-threaded, read only
+ *    access to frozen objects is possible during evaluation, but
+ *    freeze/unfreeze cannot be used from multiple threads in parallel.
+ *
+ *    The ref_cnt will be in this range: [FILTERX_OBJECT_REFCOUNT_FROZEN, G_MAXINT32]
+ *
+ */
+enum
+{
+  FILTERX_OBJECT_REFCOUNT_OFLOW_MARK=G_MAXINT32/2,
+  FILTERX_OBJECT_REFCOUNT_OFLOW_RANGE_MAX=FILTERX_OBJECT_REFCOUNT_OFLOW_MARK + 1024,
+  /* stack based allocation */
+  FILTERX_OBJECT_REFCOUNT_STACK,
+
+  /* frozen objects have a refcount that is larger than equal to FILTERX_OBJECT_REFCOUNT_FROZEN, normal ref/unref does not change these refcounts
+   * but freeze/unfreeze does */
+  FILTERX_OBJECT_REFCOUNT_FROZEN,
+};
+
 
 struct _FilterXObject
 {
@@ -95,15 +143,16 @@ struct _FilterXObject
 
   /* NOTE:
    *
-   *     modified_in_place -- set to TRUE in case the value in this
-   *                          FilterXObject was changed.
-   *                          don't use it directly, use
-   *                          filterx_object_{is,set}_modified_in_place()
    *     readonly          -- marks the object as unmodifiable,
    *                          propagates to the inner elements lazily
    *
+   *     weak_referenced   -- marks that this object is referenced via a at
+   *                          least one weakref already.
+   *
+   *     is_dirty          -- marks that the object was changed (mutable objects only)
+   *
    */
-  guint modified_in_place:1, readonly:1, weak_referenced:1;
+  guint readonly:1, weak_referenced:1, is_dirty:1;
   FilterXType *type;
 };
 
@@ -135,7 +184,8 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
-gboolean filterx_object_freeze(FilterXObject *self);
+void filterx_object_freeze(FilterXObject **pself);
+void filterx_object_unfreeze(FilterXObject *self);
 void filterx_object_unfreeze_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
@@ -145,7 +195,7 @@ void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject
 static inline gboolean
 filterx_object_is_frozen(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) == FILTERX_OBJECT_REFCOUNT_FROZEN;
+  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_FROZEN;
 }
 
 static inline FilterXObject *
@@ -189,9 +239,6 @@ filterx_object_ref(FilterXObject *self)
       return self;
     }
 
-  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
-    return self;
-
   if (r == FILTERX_OBJECT_REFCOUNT_STACK)
     {
       /* we can't use filterx_object_clone() directly, as that's an inline
@@ -200,6 +247,10 @@ filterx_object_ref(FilterXObject *self)
        * objects on the stack */
       return self->type->clone(self);
     }
+
+  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+    return self;
+
   g_assert_not_reached();
 }
 
@@ -210,8 +261,6 @@ filterx_object_unref(FilterXObject *self)
     return;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_FROZEN)
-    return;
   if (r == FILTERX_OBJECT_REFCOUNT_STACK)
     {
       /* NOTE: Normally, stack based allocations are only used by a single
@@ -230,6 +279,8 @@ filterx_object_unref(FilterXObject *self)
       g_atomic_counter_set(&self->ref_cnt, 0);
       return;
     }
+  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+    return;
   if (r <= 0)
     g_assert_not_reached();
 
@@ -300,6 +351,19 @@ filterx_object_str_append(FilterXObject *self, GString *str)
 }
 
 static inline gboolean
+filterx_object_format_json(FilterXObject *self, GString *json)
+{
+  g_string_truncate(json, 0);
+  return self->type->format_json(self, json);
+}
+
+static inline gboolean
+filterx_object_format_json_append(FilterXObject *self, GString *json)
+{
+  return self->type->format_json(self, json);
+}
+
+static inline gboolean
 filterx_object_len(FilterXObject *self, guint64 *len)
 {
   if (!self->type->len)
@@ -327,29 +391,19 @@ filterx_object_marshal_append(FilterXObject *self, GString *repr, LogMessageValu
 }
 
 static inline FilterXObject *
+filterx_object_clone_container(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest)
+{
+  if (self->type->clone_container)
+    return self->type->clone_container(self, container, child_of_interest);
+  return self->type->clone(self);
+}
+
+static inline FilterXObject *
 filterx_object_clone(FilterXObject *self)
 {
   if (self->readonly)
     return filterx_object_ref(self);
   return self->type->clone(self);
-}
-
-static inline gboolean
-filterx_object_map_to_json(FilterXObject *self, struct json_object **object, FilterXObject **assoc_object)
-{
-  *assoc_object = NULL;
-  if (self->type->map_to_json)
-    {
-      gboolean result = self->type->map_to_json(self, object, assoc_object);
-      if (!(*assoc_object))
-        *assoc_object = filterx_object_ref(self);
-
-      if (!self->readonly)
-        filterx_json_associate_cached_object(*object, *assoc_object);
-
-      return result;
-    }
-  return FALSE;
 }
 
 static inline gboolean
@@ -458,33 +512,70 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
 }
 
 static inline gboolean
-filterx_object_is_modified_in_place(FilterXObject *self)
+filterx_object_is_dirty(FilterXObject *self)
 {
-  if (G_UNLIKELY(self->type->is_modified_in_place))
-    return self->type->is_modified_in_place(self);
-
-  return self->modified_in_place;
+  return self->is_dirty;
 }
 
 static inline void
-filterx_object_set_modified_in_place(FilterXObject *self, gboolean modified)
+filterx_object_set_dirty(FilterXObject *self, gboolean value)
 {
-  if (G_UNLIKELY(self->type->set_modified_in_place))
-    return self->type->set_modified_in_place(self, modified);
-
-  self->modified_in_place = modified;
+  self->is_dirty = value;
 }
 
 #define FILTERX_OBJECT_STACK_INIT(_type) \
   { \
     .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
     .fx_ref_cnt = { .counter = 0 }, \
-    .modified_in_place = FALSE, \
     .readonly = TRUE, \
     .weak_referenced = FALSE, \
+    .is_dirty = FALSE, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
 
 #include "filterx-ref.h"
+
+static inline gboolean
+filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
+{
+  if (_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
+    return _filterx_object_is_type(((FilterXRef *) object)->value, type);
+  return _filterx_object_is_type(object, type);
+}
+
+/*
+ * Make sure mutable objects are encapsulated into a FilterXRef.  To be
+ * called as the first thing before an object can be assigned to a variable
+ * or stored in a dict/list.
+ *
+ * NOTE: potentially replaces *value with a FilterXRef, sinking the passed
+ * reference, returning a FilterXRef instead.
+ */
+static inline void
+filterx_object_cow_wrap(FilterXObject **o)
+{
+  FilterXObject *value = *o;
+  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
+    return;
+  *o = _filterx_ref_new(value);
+}
+
+
+/* NOTE: potentially replaces *value with a FilterXRef, sinking the passed
+ * reference.  It replaces the copied object as a return value */
+static inline FilterXObject *
+filterx_object_cow_fork(FilterXObject **o)
+{
+  filterx_object_cow_wrap(o);
+  return filterx_object_clone(*o);
+}
+
+/* */
+static inline FilterXObject *
+filterx_object_cow_store(FilterXObject **o)
+{
+  filterx_object_cow_wrap(o);
+  return filterx_object_ref(*o);
+}
 
 #endif

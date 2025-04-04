@@ -35,6 +35,7 @@ class TestcaseParameters(object):
         self.testcase_parameters = {
             "dirs": {
                 "shared_dir": Path(absolute_framework_dir, "shared_files"),
+                "testcase_dir": Path(pytest_request.fspath).parents[0],
             },
             "file_paths": {
                 "testcase_file": Path(pytest_request.fspath),
@@ -54,6 +55,9 @@ class TestcaseParameters(object):
 
     def get_shared_dir(self):
         return self.testcase_parameters["dirs"]["shared_dir"]
+
+    def get_testcase_dir(self):
+        return self.testcase_parameters["dirs"]["testcase_dir"]
 
     def get_testcase_file(self):
         return self.testcase_parameters["file_paths"]["testcase_file"]
