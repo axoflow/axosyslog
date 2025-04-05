@@ -503,7 +503,7 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
 {
   if (!self->type->add)
     {
-      msg_error("The add method is not supported for the given type",
+      msg_error("FilterX: The add method is not supported for the given type",
                 evt_tag_str("type", self->type->name));
       return NULL;
     }
