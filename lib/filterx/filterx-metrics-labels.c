@@ -25,7 +25,7 @@
 #include "filterx-metrics-labels.h"
 #include "filterx-eval.h"
 #include "expr-literal.h"
-#include "expr-literal-generator.h"
+#include "expr-literal-container.h"
 #include "object-string.h"
 #include "object-dict-interface.h"
 #include "object-metrics-labels.h"

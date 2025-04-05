@@ -27,7 +27,7 @@
 
 #include "filterx/filterx-metrics-labels.h"
 #include "filterx/expr-literal.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/object-string.h"
 #include "stats/stats-cluster.h"
 #include "metrics/dyn-metrics-cache.h"

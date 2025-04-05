@@ -33,7 +33,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/func-flags.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/expr-literal.h"
 
 #define FILTERX_FUNC_UNSET_EMPTIES_USAGE "Usage: unset_empties(object, " \

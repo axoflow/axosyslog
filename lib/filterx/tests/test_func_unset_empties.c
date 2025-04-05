@@ -31,7 +31,7 @@
 #include "filterx/object-list.h"
 #include "filterx/json-repr.h"
 #include "filterx/expr-literal.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/object-null.h"
 
 #include "apphook.h"

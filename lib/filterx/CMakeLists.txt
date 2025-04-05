@@ -12,7 +12,7 @@ set(FILTERX_HEADERS
     filterx/expr-get-subscript.h
     filterx/expr-getattr.h
     filterx/expr-isset.h
-    filterx/expr-literal-generator.h
+    filterx/expr-literal-container.h
     filterx/expr-literal.h
     filterx/expr-null-coalesce.h
     filterx/expr-plus-generator.h
@@ -86,7 +86,7 @@ set(FILTERX_SOURCES
     filterx/expr-get-subscript.c
     filterx/expr-getattr.c
     filterx/expr-isset.c
-    filterx/expr-literal-generator.c
+    filterx/expr-literal-container.c
     filterx/expr-literal.c
     filterx/expr-null-coalesce.c
     filterx/expr-plus-generator.c

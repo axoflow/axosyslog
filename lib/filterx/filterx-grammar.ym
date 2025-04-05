@@ -51,7 +51,7 @@
 #include "filterx/expr-switch.h"
 #include "filterx/expr-isset.h"
 #include "filterx/expr-unset.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/expr-compound.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-plus.h"
