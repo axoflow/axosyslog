@@ -300,3 +300,26 @@ def test_list_unset_causes_clone(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == """[1,2,3,[4,5,6,{"foo":"foovalue","bar":"barvalue"}]]--[1,2,3,[4,5,6]]"""
+
+
+def test_unmarshalled_json(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                a = dict(${values.json2});
+                b = a.foo;
+                b.newkey = 5;
+                $MSG = string(${values.json2}) + "--" + string(a) + "--" + string(a.foo) + "--" + string(b);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == (
+        """{"foo":{"foo1":"foo1value","foo2":"foo2value"},"bar":{"bar1":"bar1value","bar2":"bar2value"}}--"""
+        """{"foo":{"foo1":"foo1value","foo2":"foo2value"},"bar":{"bar1":"bar1value","bar2":"bar2value"}}--"""
+        """{"foo1":"foo1value","foo2":"foo2value"}--"""
+        """{"foo1":"foo1value","foo2":"foo2value","newkey":5}"""
+    )
