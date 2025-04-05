@@ -28,7 +28,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/expr-literal.h"
 #include "filterx/expr-template.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"

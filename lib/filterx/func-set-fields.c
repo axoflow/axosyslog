@@ -28,7 +28,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-extractor.h"
 #include "filterx/expr-literal.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 

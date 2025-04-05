@@ -36,7 +36,7 @@ FilterXLiteralElement *filterx_literal_element_new(FilterXExpr *key, FilterXExpr
 /* Literal Object expressions */
 
 FILTERX_EXPR_DECLARE_TYPE(literal_container);
-   
+
 gsize filterx_literal_container_len(FilterXExpr *s);
 
 

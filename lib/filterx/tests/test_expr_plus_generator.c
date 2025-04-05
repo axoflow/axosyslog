@@ -47,7 +47,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/json-repr.h"
 #include "filterx/expr-generator.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
