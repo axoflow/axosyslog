@@ -60,7 +60,7 @@ class NetworkIO():
         loggen_input_file = File(loggen_input_file_path)
         loggen_input_file.write_content_and_close(raw_content)
 
-        Loggen().start(
+        loggen_process = Loggen().start(
             LoggenStartParams(
                 target=self.__ip,
                 port=self.__port,
@@ -72,6 +72,7 @@ class NetworkIO():
                 **extra_loggen_args,
             ),
         )
+        return loggen_process
 
     def __format_messages(self, messages, framed=None):
         if framed is None:
@@ -81,10 +82,10 @@ class NetworkIO():
         return "".join([message + "\n" for message in messages])
 
     def write_messages(self, messages, rate=None, transport=None, framed=None):
-        self.write_raw(self.__format_messages(messages, framed=framed), rate=rate, transport=transport)
+        return self.write_raw(self.__format_messages(messages, framed=framed), rate=rate, transport=transport)
 
     def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None):
-        self.write_raw(
+        return self.write_raw(
             self.__format_messages(messages, framed=framed),
             rate=rate,
             transport=transport,
