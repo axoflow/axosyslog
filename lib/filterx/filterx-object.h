@@ -552,30 +552,30 @@ filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
  * reference, returning a FilterXRef instead.
  */
 static inline void
-filterx_object_cow_wrap(FilterXObject **o)
+filterx_object_cow_wrap(FilterXObject **pself)
 {
-  FilterXObject *value = *o;
+  FilterXObject *value = *pself;
   if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
     return;
-  *o = _filterx_ref_new(value);
+  *pself = _filterx_ref_new(value);
 }
 
 
 /* NOTE: potentially replaces *value with a FilterXRef, sinking the passed
  * reference.  It replaces the copied object as a return value */
 static inline FilterXObject *
-filterx_object_cow_fork(FilterXObject **o)
+filterx_object_cow_fork(FilterXObject **pself)
 {
-  filterx_object_cow_wrap(o);
-  return filterx_object_clone(*o);
+  filterx_object_cow_wrap(pself);
+  return filterx_object_clone(*pself);
 }
 
 /* */
 static inline FilterXObject *
-filterx_object_cow_store(FilterXObject **o)
+filterx_object_cow_store(FilterXObject **pself)
 {
-  filterx_object_cow_wrap(o);
-  return filterx_object_ref(*o);
+  filterx_object_cow_wrap(pself);
+  return filterx_object_ref(*pself);
 }
 
 #endif
