@@ -28,10 +28,9 @@
 #include "scratch-buffers.h"
 
 static inline FilterXObject *
-_assign(FilterXBinaryOp *self, FilterXObject **value)
+_assign(FilterXBinaryOp *self, FilterXObject *value)
 {
-  FilterXObject *cloned = filterx_object_cow_fork(value);
-
+  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(value), NULL);
   if (!filterx_expr_assign(self->lhs, &cloned))
     {
       filterx_object_unref(cloned);
@@ -67,7 +66,7 @@ _nullv_assign_eval(FilterXExpr *s)
       return value;
     }
 
-  FilterXObject *result = _assign(self, &value);
+  FilterXObject *result = _assign(self, value);
   filterx_object_unref(value);
   return result;
 }
@@ -82,7 +81,7 @@ _assign_eval(FilterXExpr *s)
   if (!value)
     return NULL;
 
-  FilterXObject *result = _assign(self, &value);
+  FilterXObject *result = _assign(self, value);
   filterx_object_unref(value);
   return result;
 }

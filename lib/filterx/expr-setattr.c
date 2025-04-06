@@ -39,7 +39,7 @@ typedef struct _FilterXSetAttr
 } FilterXSetAttr;
 
 static inline FilterXObject *
-_setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject **new_value)
+_setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject *new_value)
 {
   if (object->readonly)
     {
@@ -47,7 +47,7 @@ _setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject **new_value)
       return NULL;
     }
 
-  FilterXObject *cloned = filterx_object_cow_fork(new_value);
+  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
       filterx_eval_push_error("Attribute set failed", &self->super, self->attr);
@@ -88,7 +88,7 @@ _nullv_setattr_eval(FilterXExpr *s)
   if (!object)
     goto exit;
 
-  result = _setattr(self, object, &new_value);
+  result = _setattr(self, object, new_value);
 
 exit:
   filterx_object_unref(new_value);
@@ -110,7 +110,7 @@ _setattr_eval(FilterXExpr *s)
   if (!object)
     goto exit;
 
-  result = _setattr(self, object, &new_value);
+  result = _setattr(self, object, new_value);
 
 exit:
   filterx_object_unref(new_value);
