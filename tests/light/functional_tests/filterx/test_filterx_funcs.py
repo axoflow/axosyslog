@@ -274,3 +274,195 @@ def test_startswith_endswith_includes(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '{"startswith_foo":true,"contains_bar":true,"endswith_baz":true,"works_with_message_value":true}'
+
+
+def test_unset_empties_defaults_dict(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]};
+            defaults_dict = dict;
+            unset_empties(defaults_dict, recursive=false);
+
+            $MSG = defaults_dict;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"bar":"-","baz":"N/A","kortefa":{"a":{"s":{"d":{}}}},"szilvafa":[[[]]]}"""
+
+
+def test_unset_empties_explicit_dict(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]};
+            explicit_dict = dict;
+            unset_empties(explicit_dict, recursive=true);
+
+            $MSG = explicit_dict;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"bar":"-","baz":"N/A"}"""
+
+
+def test_unset_empties_no_defaults_dict(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]};
+            no_defaults_dict = dict;
+            unset_empties(no_defaults_dict, targets=["n/a", "-"], recursive=true, ignorecase=true);
+
+            $MSG = no_defaults_dict;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"foo":"","almafa":null,"kortefa":{"a":{"s":{"d":{}}}},"szilvafa":[[[]]]}"""
+
+
+def test_unset_empties_target_dict(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]};
+            target_dict = dict;
+            unset_empties(target_dict, targets=["n/a", "-", null, "", {}, []], recursive=true, ignorecase=false);
+
+            $MSG = target_dict;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"baz":"N/A"}"""
+
+
+def test_unset_empties_ignorecase_dict(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]};
+            ignorecase_dict = dict;
+            unset_empties(ignorecase_dict, targets=["n/a", "-", null, "", {}, []], recursive=true, ignorecase=true);
+
+            $MSG = ignorecase_dict;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{}"""
+
+
+def test_unset_empties_replacement_dict(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"foo": "", "bar": "-", "baz": "N/A", "almafa": null, "kortefa": {"a":{"s":{"d":{}}}}, "szilvafa": [[[]]]};
+            replacement_dict = dict;
+            unset_empties(replacement_dict, targets=["n/a", "-", null, "", {}, []], recursive=true, ignorecase=true, replacement="do");
+
+            $MSG = replacement_dict;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"foo":"do","bar":"do","baz":"do","almafa":"do","kortefa":{"a":{"s":{"d":"do"}}},"szilvafa":[["do"]]}"""
+
+
+def test_unset_empties_defaults_list(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            list = ["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]];
+            defaults_list = list;
+            unset_empties(defaults_list, recursive=false);
+
+            $MSG = format_json(defaults_list);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""["-","N/A",{"a":{"s":{"d":{}}}},[[[]]]]"""
+
+
+def test_unset_empties_explicit_list(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            list = ["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]];
+            explicit_list = list;
+            unset_empties(explicit_list, recursive=true);
+
+            $MSG = format_json(explicit_list);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""["-","N/A"]"""
+
+
+def test_unset_empties_no_defaults_list(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            list = ["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]];
+            no_defaults_list = list;
+            unset_empties(no_defaults_list, targets=["n/a", "-"], recursive=true, ignorecase=true);
+
+            $MSG = format_json(no_defaults_list);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""["",null,{"a":{"s":{"d":{}}}},[[[]]]]"""
+
+
+def test_unset_empties_target_list(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            list = ["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]];
+            target_list = list;
+            unset_empties(target_list, targets=["n/a", "-", null, "", {}, []], recursive=true, ignorecase=false);
+
+            $MSG = format_json(target_list);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""["N/A"]"""
+
+
+def test_unset_empties_ignorecase_list(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            list = ["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]];
+            ignorecase_list = list;
+            unset_empties(ignorecase_list, targets=["n/a", "-", null, "", {}, []], recursive=true, ignorecase=true);
+
+            $MSG = format_json(ignorecase_list);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""[]"""
+
+
+def test_unset_empties_replacement_list(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            list = ["", "-", "N/A", null, {"a":{"s":{"d":{}}}}, [[[]]]];
+            replacement_list = list;
+            unset_empties(replacement_list, targets=["n/a", "-", null, "", {}, []], recursive=true, ignorecase=true, replacement="do");
+
+            $MSG = format_json(replacement_list);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""["do","do","do","do",{"a":{"s":{"d":"do"}}},[["do"]]]"""
