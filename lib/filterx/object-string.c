@@ -384,7 +384,7 @@ filterx_string_global_init(void)
 void
 filterx_string_global_deinit(void)
 {
-  for (gint i = 0; i < FILTERX_STRING_MAX; i++)
+  for (gint i = 0; i < FILTERX_STRING_CACHE_LIMIT; i++)
     {
       filterx_uncache_object(&global_cache.string_cache[i]);
     }

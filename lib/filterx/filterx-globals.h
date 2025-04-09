@@ -43,14 +43,14 @@ enum
   FILTERX_STRING_NUMBER7,
   FILTERX_STRING_NUMBER8,
   FILTERX_STRING_NUMBER9,
-  FILTERX_STRING_MAX,
+  FILTERX_STRING_CACHE_LIMIT,
 };
 
 typedef struct _FilterXGlobalCache
 {
   FilterXObject *bool_cache[FILTERX_BOOL_CACHE_LIMIT];
   FilterXObject *integer_cache[FILTERX_INTEGER_CACHE_LIMIT];
-  FilterXObject *string_cache[FILTERX_STRING_MAX];
+  FilterXObject *string_cache[FILTERX_STRING_CACHE_LIMIT];
 } FilterXGlobalCache;
 
 extern FilterXGlobalCache global_cache;
