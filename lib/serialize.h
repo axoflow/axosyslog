@@ -123,10 +123,10 @@ serialize_read_uint32_array(SerializeArchive *archive, guint32 *values, gsize el
 }
 
 static inline gboolean
-serialize_read_uint16_array(SerializeArchive *archive, guint32 *values, gsize elements)
+serialize_read_uint16_array(SerializeArchive *archive, guint32 *values, guint8 elements)
 {
   gboolean ret = FALSE;
-  guint16 *buffer = g_new(guint16, elements);
+  guint16 *buffer = (guint16 *) g_alloca(elements * sizeof(guint16));
 
   if (serialize_archive_read_bytes(archive, (gchar *) buffer, elements * sizeof(guint16)))
     {
@@ -134,7 +134,6 @@ serialize_read_uint16_array(SerializeArchive *archive, guint32 *values, gsize el
         values[i] = GUINT16_FROM_BE(buffer[i]);
       ret = TRUE;
     }
-  g_free(buffer);
   return ret;
 }
 
