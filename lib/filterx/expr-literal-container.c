@@ -22,6 +22,7 @@
  */
 
 #include "filterx/expr-literal-container.h"
+#include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
@@ -33,6 +34,7 @@ struct FilterXLiteralElement_
   FilterXExpr *key;
   FilterXExpr *value;
   gboolean cloneable;
+  gboolean literal;
 };
 
 static gboolean
@@ -55,6 +57,7 @@ _literal_element_optimize(FilterXLiteralElement *self)
 {
   self->key = filterx_expr_optimize(self->key);
   self->value = filterx_expr_optimize(self->value);
+  self->literal = filterx_expr_is_literal(self->key) && filterx_expr_is_literal(self->value);
 }
 
 static void
@@ -156,12 +159,17 @@ _literal_container_optimize(FilterXExpr *s)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
+  gboolean literal = TRUE;
   for (GList *link = self->elements; link; link = link->next)
     {
       FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
 
       _literal_element_optimize(elem);
+      if (!elem->literal)
+        literal = FALSE;
     }
+  if (literal)
+    return filterx_literal_new(_literal_container_eval(s));
 
   return NULL;
 }
