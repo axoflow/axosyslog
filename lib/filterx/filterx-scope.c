@@ -295,9 +295,9 @@ exit:
  * 2) drop undeclared objects
  */
 void
-filterx_scope_sync(FilterXScope *self, LogMessage *msg)
+filterx_scope_sync(FilterXScope *self, LogMessage **pmsg, const LogPathOptions *path_options)
 {
-  filterx_scope_set_message(self, msg);
+  filterx_scope_set_message(self, *pmsg);
   if (!self->dirty)
     {
       msg_trace("Filterx sync: not syncing as scope is not dirty",
@@ -312,9 +312,9 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
       return;
     }
 
-  GString *buffer = scratch_buffers_alloc();
+  GString *buffer = NULL;
 
-  gint msg_generation = msg->generation;
+  gint msg_generation = self->msg->generation;
   FilterXVariable *variables = _get_variable_array(self);
 
   for (gint i = 0; i < self->variables.len; i++)
@@ -344,11 +344,12 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
         }
       else if (v->value == NULL)
         {
+          filterx_scope_set_message(self, log_msg_make_writable(pmsg, path_options));
           g_assert(v->generation == msg_generation);
           msg_trace("Filterx sync: whiteout variable, unsetting in message",
                     evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
           /* we need to unset */
-          log_msg_unset_value(msg, filterx_variable_get_nv_handle(v));
+          log_msg_unset_value(self->msg, filterx_variable_get_nv_handle(v));
           filterx_variable_unassign(v);
           v->generation++;
         }
@@ -356,6 +357,10 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
         {
           LogMessageValueType t;
 
+          if (!buffer)
+            buffer = scratch_buffers_alloc();
+
+          filterx_scope_set_message(self, log_msg_make_writable(pmsg, path_options));
           g_assert(v->generation == msg_generation);
           msg_trace("Filterx sync: changed variable in scope, overwriting in message",
                     evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
@@ -363,7 +368,7 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
           g_string_truncate(buffer, 0);
           if (!filterx_object_marshal(v->value, buffer, &t))
             g_assert_not_reached();
-          log_msg_set_value_with_type(msg, filterx_variable_get_nv_handle(v), buffer->str, buffer->len, t);
+          log_msg_set_value_with_type(self->msg, filterx_variable_get_nv_handle(v), buffer->str, buffer->len, t);
           filterx_object_set_dirty(v->value, FALSE);
           filterx_variable_unassign(v);
           v->generation++;
@@ -376,7 +381,7 @@ filterx_scope_sync(FilterXScope *self, LogMessage *msg)
         }
     }
   /* FIXME: hack ! */
-  msg->generation = msg_generation + 1;
+  self->msg->generation = msg_generation + 1;
   self->dirty = FALSE;
 }
 

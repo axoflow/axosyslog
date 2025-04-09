@@ -29,6 +29,7 @@
 #include "libtest/filterx-lib.h"
 #include "apphook.h"
 #include "logmsg/logmsg.h"
+#include "logpipe.h"
 
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-variable.h"
@@ -62,6 +63,8 @@ Test(filterx_scope, test_scope_stacking)
 
 Test(filterx_scope, test_scope_sync)
 {
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
   gsize alloc_size = filterx_scope_get_alloc_size();
   FilterXScope *s = g_alloca(alloc_size);
   filterx_scope_init_instance(s, alloc_size, NULL);
@@ -76,7 +79,7 @@ Test(filterx_scope, test_scope_sync)
   filterx_object_unref(o);
 
   filterx_scope_set_dirty(s);
-  filterx_scope_sync(s, msg);
+  filterx_scope_sync(s, &msg, &path_options);
 
   LogMessageValueType type;
   const gchar *value = log_msg_get_value_with_type(msg, filterx_variable_get_nv_handle(v), NULL, &type);

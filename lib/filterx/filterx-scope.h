@@ -62,7 +62,7 @@ struct _FilterXScope
 
 typedef gboolean (*FilterXScopeForeachFunc)(FilterXVariable *variable, gpointer user_data);
 
-void filterx_scope_sync(FilterXScope *self, LogMessage *msg);
+void filterx_scope_sync(FilterXScope *self, LogMessage **pmsg, const LogPathOptions *path_options);
 
 FilterXVariable *filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle);
 FilterXVariable *filterx_scope_register_variable(FilterXScope *self,
