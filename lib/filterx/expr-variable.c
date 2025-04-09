@@ -52,10 +52,7 @@ _eval_macro(FilterXVariableExpr *self, FilterXEvalContext *context)
       filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
       return NULL;
     }
-
-  FilterXObject *res = filterx_message_value_new(value, value_len, t);
-  filterx_object_make_readonly(res);
-  return res;
+  return filterx_unmarshal_repr(value, value_len, t);
 }
 
 static FilterXObject *
