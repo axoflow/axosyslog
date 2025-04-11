@@ -22,7 +22,7 @@ DEFAULT_IMAGE ?= ubuntu-noble
 TARBALL_IMAGE ?= tarball
 DEFAULT_DEB_IMAGE=ubuntu-noble
 DEFAULT_RPM_IMAGE=almalinux-8
-DOCKER=docker
+DOCKER ?= docker
 CONTAINER_REGISTRY ?= ghcr.io/axoflow
 MODE ?= snapshot
 VERSION ?= $(shell MODE=${MODE} scripts/version.sh)
