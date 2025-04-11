@@ -75,6 +75,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto.py \
 	tests/light/functional_tests/source_drivers/syslog_source/test_syslog_transports.py \
 	tests/light/functional_tests/source_drivers/unix_dgram_source/test_unix_dgram_source_acceptance.py \
+	tests/light/functional_tests/source_drivers/webhook_source/test_webhook_source_acceptance.py \
 	tests/light/functional_tests/source_options/test_use_syslogng_pid.py \
 	tests/light/functional_tests/template_functions/graphite-output/test_graphite_output.py \
 	tests/light/functional_tests/template_functions/slog/test_secure_logging.py \

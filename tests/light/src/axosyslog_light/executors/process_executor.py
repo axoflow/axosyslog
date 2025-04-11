@@ -38,10 +38,13 @@ class ProcessExecutor(object):
         printable_command = prepare_printable_command(command)
         executable_command = prepare_executable_command(command)
         stdout, stderr = prepare_std_outputs(stdout_path, stderr_path)
+        env = psutil.Process().environ()
+        if "VIRTUAL_ENV" in env:
+            del env["VIRTUAL_ENV"]
         logger.info("Following process will be started:\n{}\n".format(printable_command))
         try:
             self.process = psutil.Popen(
-                executable_command, stdout=stdout.open(mode="a"), stderr=stderr.open(mode="a"),
+                executable_command, stdout=stdout.open(mode="a"), stderr=stderr.open(mode="a"), env=env,
             )
         except (OSError, psutil.Error):
             stdout.close()

@@ -26,7 +26,7 @@ from collections import defaultdict
 import logging
 import asyncio
 import threading
-import tornado
+import tornado.web
 import ssl
 import signal
 import json

@@ -55,6 +55,8 @@ from axosyslog_light.syslog_ng_config.statements.sources.network_source import N
 from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
 from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import SyslogSource
 from axosyslog_light.syslog_ng_config.statements.sources.unix_dgram_source import UnixDgramSource
+from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookJsonSource
+from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookSource
 from axosyslog_light.syslog_ng_config.statements.template.template import Template
 from axosyslog_light.syslog_ng_config.statements.template.template import TemplateFunction
 from axosyslog_light.syslog_ng_ctl.legacy_stats_handler import LegacyStatsHandler
@@ -156,6 +158,12 @@ class SyslogNgConfig(object):
 
     def create_opentelemetry_source(self, **options):
         return OpenTelemetrySource(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_webhook_source(self, **options):
+        return WebhookSource(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_webhook_json_source(self, **options):
+        return WebhookJsonSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_rewrite_set(self, template, **options):
         return Set(template, **options)
