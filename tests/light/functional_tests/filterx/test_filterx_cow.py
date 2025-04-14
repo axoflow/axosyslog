@@ -227,6 +227,31 @@ def test_dict_child_of_child_of_child_writes_cause_clone(config, syslog_ng):
     assert file_true.read_log() == ("""barvalue--bar-changed""")
 
 
+def test_dict_storing_another_dict_variable_unshares_values(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d2 = {
+                    'foo':'foovalue',
+                    'bar':'barvalue'
+                };
+                d = {
+                    'foo':'foovalue',
+                    'bar':'barvalue',
+                    'stored_variable':d2,
+                };
+                d2.baz = "changed-key";
+                $MSG = string(d.stored_variable) + '--' + d2.baz;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == ("""{"foo":"foovalue","bar":"barvalue"}--changed-key""")
+
+
 def test_list_writes_cause_clone(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [
