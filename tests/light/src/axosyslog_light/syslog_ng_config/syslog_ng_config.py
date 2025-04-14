@@ -284,7 +284,11 @@ class SyslogNgConfig(object):
         if isinstance(item, (StatementGroup, LogPath, FilterX, LogContextSclBlock)):
             return item
         else:
-            return self.__implicit_statement_groups.setdefault(id(item), self.create_statement_group(item))
+            item_id = id(item)
+            group = self.__implicit_statement_groups.get(item_id)
+            if group is None:
+                group = self.__implicit_statement_groups[item_id] = self.create_statement_group(item)
+            return group
 
     def __create_logpath_with_conversion(self, name, items, flags):
         return self.__create_logpath_group(
