@@ -96,16 +96,13 @@ Test(filterx_expr, test_filterx_literal_list_with_inmutable_values)
   // [42];
   values = g_list_append(values,
                          filterx_literal_element_new(NULL,
-                                                     filterx_literal_new(filterx_integer_new(42)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(42))));
   values = g_list_append(values,
                          filterx_literal_element_new(NULL,
-                                                     filterx_literal_new(filterx_integer_new(43)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(43))));
   values = g_list_append(values,
                          filterx_literal_element_new(NULL,
-                                                     filterx_literal_new(filterx_integer_new(44)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(44))));
   list_expr = filterx_literal_list_new(values);
 
   // result = [42,43,44];
@@ -131,12 +128,10 @@ Test(filterx_expr, test_filterx_literal_list_with_embedded_list)
   // [[1337]];
   inner_values = g_list_append(NULL,
                                filterx_literal_element_new(NULL,
-                                                           filterx_literal_new(filterx_integer_new(1337)),
-                                                           TRUE));
+                                                           filterx_literal_new(filterx_integer_new(1337))));
   values = g_list_append(NULL,
                          filterx_literal_element_new(NULL,
-                                                     filterx_literal_list_new(inner_values),
-                                                     TRUE));
+                                                     filterx_literal_list_new(inner_values)));
   list_expr = filterx_literal_list_new(values);
 
   // result = [[1337]];
@@ -172,16 +167,13 @@ Test(filterx_expr, test_filterx_dict_immutable_values)
 
   values = g_list_append(values,
                          filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
-                                                     filterx_literal_new(filterx_integer_new(42)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(42))));
   values = g_list_append(values,
                          filterx_literal_element_new(filterx_literal_new(filterx_object_ref(bar)),
-                                                     filterx_literal_new(filterx_integer_new(43)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(43))));
   values = g_list_append(values,
                          filterx_literal_element_new(filterx_literal_new(filterx_object_ref(baz)),
-                                                     filterx_literal_new(filterx_integer_new(44)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(44))));
   dict_expr = filterx_literal_dict_new(values);
 
   // result = {"foo": 42, "bar": 43, "baz": 44};
@@ -214,21 +206,17 @@ Test(filterx_expr, test_filterx_dict_with_embedded_dict)
   // {"foo": 1};
   inner_values = g_list_append(inner_values,
                                filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
-                                                           filterx_literal_new(filterx_integer_new(1)),
-                                                           TRUE));
+                                                           filterx_literal_new(filterx_integer_new(1))));
   // result = {"foo": 420, "bar": 1337", "baz": {"foo":1}};
   values = g_list_append(values,
                          filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
-                                                     filterx_literal_new(filterx_integer_new(420)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(420))));
   values = g_list_append(values,
                          filterx_literal_element_new(filterx_literal_new(filterx_object_ref(bar)),
-                                                     filterx_literal_new(filterx_integer_new(1337)),
-                                                     TRUE));
+                                                     filterx_literal_new(filterx_integer_new(1337))));
   values = g_list_append(values,
                          filterx_literal_element_new(filterx_literal_new(filterx_object_ref(baz)),
-                                                     filterx_literal_dict_new(inner_values),
-                                                     FALSE));
+                                                     filterx_literal_dict_new(inner_values)));
 
   dict_expr = filterx_literal_dict_new(values);
 

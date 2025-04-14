@@ -85,7 +85,7 @@ _list_generator_helper(FilterXObject *first, ...)
   FilterXObject *arg = first;
   while (arg)
     {
-      target_vals = g_list_append(target_vals, filterx_literal_element_new(NULL, filterx_literal_new(arg), FALSE));
+      target_vals = g_list_append(target_vals, filterx_literal_element_new(NULL, filterx_literal_new(arg)));
       arg = va_arg(va, FilterXObject *);
     }
   va_end(va);
