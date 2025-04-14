@@ -71,7 +71,9 @@ Test(filterx_scope, test_scope_sync)
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("$var", FX_VAR_MESSAGE_TIED);
   FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_MESSAGE_TIED, var);
-  filterx_scope_set_variable(s, v, filterx_boolean_new(TRUE), TRUE);
+  FilterXObject *o = filterx_boolean_new(TRUE);
+  filterx_scope_set_variable(s, v, &o, TRUE);
+  filterx_object_unref(o);
 
   filterx_scope_set_dirty(s);
   filterx_scope_sync(s, msg);
@@ -105,13 +107,17 @@ Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
   FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
-  filterx_scope_set_variable(s, v, filterx_boolean_new(TRUE), TRUE);
+  FilterXObject *o = filterx_boolean_new(TRUE);
+  filterx_scope_set_variable(s, v, &o, TRUE);
+  filterx_object_unref(o);
 
   FilterXScope *s2 = g_alloca(alloc_size);
   filterx_scope_init_instance(s2, alloc_size, s);
 
   v = filterx_scope_register_variable(s2, FX_VAR_DECLARED_FLOATING, var);
-  filterx_scope_set_variable(s, v, filterx_boolean_new(FALSE), TRUE);
+  o = filterx_boolean_new(FALSE);
+  filterx_scope_set_variable(s, v, &o, TRUE);
+  filterx_object_unref(o);
 
   cr_assert(filterx_scope_foreach_variable_readonly(s2, _assert_var_false, NULL));
 

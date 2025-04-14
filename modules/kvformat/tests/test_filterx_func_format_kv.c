@@ -27,7 +27,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
-#include "filterx/object-json.h"
+#include "filterx/object-dict.h"
+#include "filterx/json-repr.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -137,7 +138,7 @@ Test(filterx_func_format_kv, test_invalid_args)
 
 Test(filterx_func_format_kv, test_full)
 {
-  FilterXExpr *kvs = filterx_literal_new(filterx_json_object_new_from_repr("{\"foo\":\"bar\",\"bar\":\"baz\"}", -1));
+  FilterXExpr *kvs = filterx_literal_new(filterx_object_from_json("{\"foo\":\"bar\",\"bar\":\"baz\"}", -1, NULL));
   GList *args = NULL;
 
   args = g_list_append(args, filterx_function_arg_new(NULL, kvs));
@@ -151,7 +152,7 @@ Test(filterx_func_format_kv, test_full)
 Test(filterx_func_format_kv, test_inner_dict_and_list_is_skipped)
 {
   FilterXExpr *kvs = filterx_literal_new(
-                       filterx_json_object_new_from_repr("{\"foo\":\"bar\",\"x\":{},\"y\":[],\"bar\":\"baz\"}", -1));
+                       filterx_object_from_json("{\"foo\":\"bar\",\"x\":{},\"y\":[],\"bar\":\"baz\"}", -1, NULL));
   GList *args = NULL;
 
   args = g_list_append(args, filterx_function_arg_new(NULL, kvs));
@@ -161,7 +162,7 @@ Test(filterx_func_format_kv, test_inner_dict_and_list_is_skipped)
 Test(filterx_func_format_kv, test_space_gets_double_quoted)
 {
   FilterXExpr *kvs = filterx_literal_new(
-                       filterx_json_object_new_from_repr("{\"foo\":\"bar\",\"bar\": \"almafa korte\\\"fa\"}", -1));
+                       filterx_object_from_json("{\"foo\":\"bar\",\"bar\": \"almafa korte\\\"fa\"}", -1, NULL));
   GList *args = NULL;
 
   args = g_list_append(args, filterx_function_arg_new(NULL, kvs));

@@ -23,7 +23,9 @@
 #ifndef FILTERX_WEAKREFS_H_INCLUDED
 #define FILTERX_WEAKREFS_H_INCLUDED
 
-#include "filterx/filterx-object.h"
+#ifndef FILTERX_OBJECT_H_INCLUDED
+#error "Please include weakrefs from filterx-object.h"
+#endif
 
 typedef struct _FilterXWeakRef
 {
@@ -60,7 +62,6 @@ typedef struct _FilterXWeakRef
 
 void filterx_weakref_set(FilterXWeakRef *self, FilterXObject *object);
 
-
 static inline void
 filterx_weakref_clear(FilterXWeakRef *self)
 {
@@ -82,5 +83,23 @@ filterx_weakref_get(FilterXWeakRef *self)
   return filterx_object_ref(self->object);
 }
 
+static inline gboolean
+filterx_weakref_is_set(FilterXWeakRef *self)
+{
+  return self->object != NULL;
+}
+
+static inline gboolean
+filterx_weakref_is_set_to(FilterXWeakRef *self, FilterXObject *object)
+{
+  return self->object == object;
+}
+
+static inline void
+filterx_weakref_copy(FilterXWeakRef *self, const FilterXWeakRef *other)
+{
+  /* other is already in a weakref, no need to store it in the weakrefs array */
+  self->object = other->object;
+}
 
 #endif

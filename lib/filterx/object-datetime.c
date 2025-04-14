@@ -85,18 +85,6 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
   return TRUE;
 }
 
-static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
-{
-  FilterXDateTime *self = (FilterXDateTime *) s;
-  GString *time_stamp = scratch_buffers_alloc();
-
-  _convert_unix_time_to_string(&self->ut, time_stamp, FALSE);
-
-  *object = json_object_new_string_len(time_stamp->str, time_stamp->len);
-  return TRUE;
-}
-
 FilterXObject *
 filterx_datetime_new(const UnixTime *ut)
 {
@@ -197,6 +185,15 @@ datetime_repr(const UnixTime *ut, GString *repr)
 }
 
 gboolean
+datetime_format_json(const UnixTime *ut, GString *repr)
+{
+  g_string_append_c(repr, '"');
+  _convert_unix_time_to_string(ut, repr, FALSE);
+  g_string_append_c(repr, '"');
+  return TRUE;
+}
+
+gboolean
 datetime_str(const UnixTime *ut, GString *repr)
 {
   _convert_unix_time_to_string(ut, repr, FALSE);
@@ -216,8 +213,15 @@ _str(FilterXObject *s, GString *repr)
 {
   FilterXDateTime *self = (FilterXDateTime *) s;
 
-  _convert_unix_time_to_string(&self->ut, repr, FALSE);
-  return TRUE;
+  return datetime_str(&self->ut, repr);
+}
+
+static gboolean
+_format_json(FilterXObject *s, GString *repr)
+{
+  FilterXDateTime *self = (FilterXDateTime *) s;
+
+  return datetime_format_json(&self->ut, repr);
 }
 
 static FilterXObject *
@@ -575,7 +579,7 @@ error:
 
 FILTERX_DEFINE_TYPE(datetime, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
-                    .map_to_json = _map_to_json,
+                    .format_json = _format_json,
                     .marshal = _marshal,
                     .repr = _repr,
                     .str = _str,

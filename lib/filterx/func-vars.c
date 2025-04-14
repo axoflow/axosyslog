@@ -24,7 +24,7 @@
 
 #include "func-vars.h"
 #include "filterx-eval.h"
-#include "object-json.h"
+#include "object-dict.h"
 #include "object-string.h"
 #include "object-primitive.h"
 #include "object-message-value.h"
@@ -78,7 +78,7 @@ _filterx_function_vars_eval(FilterXExpr *s)
 {
   FilterXFunctionVars *self = (FilterXFunctionVars *) s;
   FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXObject *vars = filterx_json_object_new_empty();
+  FilterXObject *vars = filterx_dict_new();
 
   ScratchBuffersMarker marker;
   GString *name_buf = scratch_buffers_alloc_and_mark(&marker);
@@ -175,9 +175,8 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
 
   FilterXObject *cloned_value = filterx_object_clone(value);
-  filterx_scope_set_variable(scope, variable, cloned_value, TRUE);
+  filterx_scope_set_variable(scope, variable, &cloned_value, TRUE);
   filterx_object_unref(cloned_value);
-
 
   if (debug_flag)
     {

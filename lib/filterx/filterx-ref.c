@@ -28,22 +28,43 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  return filterx_ref_new(filterx_object_ref(self->value));
+  return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
-void
-_filterx_ref_cow(FilterXRef *self)
+static inline void
+_filterx_ref_clone_value_if_shared(FilterXRef *self, FilterXRef *child_of_interest)
 {
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
     return;
 
-  FilterXObject *cloned = filterx_object_clone(self->value);
+  FilterXObject *cloned = filterx_object_clone_container(self->value, &self->super, &child_of_interest->super);
 
   g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
   filterx_object_unref(self->value);
 
   self->value = cloned;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
+}
+
+static void
+_filterx_ref_cow_parents(FilterXRef *self, FilterXRef *child_of_interest)
+{
+  FilterXRef *parent_container = (FilterXRef *) filterx_weakref_get(&self->parent_container);
+
+  if (parent_container)
+    {
+      _filterx_ref_cow_parents(parent_container, self);
+      filterx_object_unref(&parent_container->super);
+
+    }
+  _filterx_ref_clone_value_if_shared(self, child_of_interest);
+  filterx_object_set_dirty(&self->super, TRUE);
+}
+
+void
+_filterx_ref_cow(FilterXRef *self)
+{
+  _filterx_ref_cow_parents(self, NULL);
 }
 
 /* mutator methods */
@@ -55,7 +76,9 @@ _filterx_ref_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_
 
   _filterx_ref_cow(self);
 
-  return filterx_object_setattr(self->value, attr, new_value);
+  gboolean result = filterx_object_setattr(self->value, attr, new_value);
+  filterx_ref_set_parent_container(*new_value, s);
+  return result;
 }
 
 static gboolean
@@ -65,7 +88,9 @@ _filterx_ref_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject *
 
   _filterx_ref_cow(self);
 
-  return filterx_object_set_subscript(self->value, key, new_value);
+  gboolean result = filterx_object_set_subscript(self->value, key, new_value);
+  filterx_ref_set_parent_container(*new_value, s);
+  return result;
 }
 
 static gboolean
@@ -85,28 +110,31 @@ _filterx_ref_free(FilterXObject *s)
 
   g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
   filterx_object_unref(self->value);
-
   filterx_object_free_method(s);
 }
 
 static void
-_prohibit_readonly(FilterXObject *s)
-{
-  g_assert_not_reached();
-}
-
-static gboolean
-_is_modified_in_place(FilterXObject *s)
+_filterx_make_readonly(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_is_modified_in_place(self->value);
+
+  filterx_object_make_readonly(self->value);
 }
 
 static void
-_set_modified_in_place(FilterXObject *s, gboolean modified)
+_filterx_ref_freeze(FilterXObject **s)
+{
+  FilterXRef *self = (FilterXRef *) *s;
+
+  filterx_object_freeze(&self->value);
+}
+
+static void
+_filterx_ref_unfreeze(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
-  filterx_object_set_modified_in_place(self->value, modified);
+
+  filterx_object_unfreeze(self->value);
 }
 
 /* readonly methods */
@@ -135,16 +163,10 @@ _filterx_ref_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 static gboolean
-_filterx_ref_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_filterx_ref_format_json_append(FilterXObject *s, GString *json)
 {
   FilterXRef *self = (FilterXRef *) s;
-  gboolean ok = filterx_object_map_to_json(self->value, object, assoc_object);
-  if (*assoc_object != self->value)
-    return ok;
-
-  filterx_object_unref(self->value);
-  *assoc_object = filterx_object_ref(s);
-  return ok;
+  return filterx_object_format_json_append(self->value, json);
 }
 
 static gboolean
@@ -154,18 +176,59 @@ _filterx_ref_truthy(FilterXObject *s)
   return filterx_object_truthy(self->value);
 }
 
+/*
+ * Sometimes we are looking up values from a dict still shared between
+ * multiple, independent copy-on-write hierarchies.  In these cases, the ref
+ * we retrieve as a result of the lookup points outside of our current
+ * structure.
+ *
+ * In these cases, we need a new ref instance, which has the proper
+ * parent_container value, while still cotinuing to share the dict (e.g.
+ * self->value).
+ *
+ * In case we are just using the values in a read-only manner, the dicts
+ * will not be cloned, the ref will be freed once we are done using it.
+ *
+ * In case we are actually mutating the dict, the new "floating" ref will
+ * cause the dict to be cloned and by that time our floating ref will find
+ * its proper home: in the parent dict.  This is exactly the
+ * "child_of_interest" we are passing to clone_container().
+ */
+static void
+_filterx_ref_replace_foreign_ref_with_a_floating_one(FilterXObject **ps, FilterXObject *container)
+{
+  if (!(*ps))
+    return;
+
+  if (!filterx_object_is_ref(*ps))
+    return;
+
+  FilterXRef *self = (FilterXRef *) *ps;
+
+  if (filterx_weakref_is_set_to(&self->parent_container, container))
+    return;
+
+  *ps = _filterx_ref_new(filterx_object_ref(self->value));
+  filterx_object_unref(&self->super);
+  filterx_ref_set_parent_container(*ps, container);
+}
+
 static FilterXObject *
 _filterx_ref_getattr(FilterXObject *s, FilterXObject *attr)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_getattr(self->value, attr);
+  FilterXObject *result = filterx_object_getattr(self->value, attr);
+  _filterx_ref_replace_foreign_ref_with_a_floating_one(&result, s);
+  return result;
 }
 
 static FilterXObject *
 _filterx_ref_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_get_subscript(self->value, key);
+  FilterXObject *result = filterx_object_get_subscript(self->value, key);
+  _filterx_ref_replace_foreign_ref_with_a_floating_one(&result, s);
+  return result;
 }
 
 static gboolean
@@ -179,14 +242,20 @@ static FilterXObject *
 _filterx_ref_list_factory(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_create_list(self->value);
+  FilterXObject *list = filterx_object_create_list(self->value);
+  filterx_object_cow_wrap(&list);
+  filterx_ref_set_parent_container(list, s);
+  return list;
 }
 
 static FilterXObject *
 _filterx_ref_dict_factory(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_create_dict(self->value);
+  FilterXObject *dict = filterx_object_create_dict(self->value);
+  filterx_object_cow_wrap(&dict);
+  filterx_ref_set_parent_container(dict, s);
+  return dict;
 }
 
 static gboolean
@@ -250,7 +319,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .unmarshal = _filterx_ref_unmarshal,
                     .marshal = _filterx_ref_marshal,
                     .clone = _filterx_ref_clone,
-                    .map_to_json = _filterx_ref_map_to_json,
+                    .format_json = _filterx_ref_format_json_append,
                     .truthy = _filterx_ref_truthy,
                     .getattr = _filterx_ref_getattr,
                     .setattr = _filterx_ref_setattr,
@@ -264,8 +333,8 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
-                    .make_readonly = _prohibit_readonly,
-                    .is_modified_in_place = _is_modified_in_place,
-                    .set_modified_in_place = _set_modified_in_place,
+                    .make_readonly = _filterx_make_readonly,
+                    .freeze = _filterx_ref_freeze,
+                    .unfreeze = _filterx_ref_unfreeze,
                     .free_fn = _filterx_ref_free,
                    );

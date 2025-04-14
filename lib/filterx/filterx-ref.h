@@ -28,7 +28,7 @@
 #error "Please include filterx-ref.h through filterx-object.h"
 #endif
 
-#include "adt/iord_map.h"
+#include "filterx/filterx-weakrefs.h"
 
 /*
  * References are currently not part of the FilterX language (hopefully, they
@@ -47,18 +47,14 @@ struct _FilterXRef
 {
   FilterXObject super;
   FilterXObject *value;
-  IOrdMapNode n;
+  FilterXWeakRef parent_container;
 };
 
-#if SYSLOG_NG_ENABLE_DEBUG
-static inline void
-filterx_assert_not_ref(FilterXObject *object)
+static inline gboolean
+filterx_object_is_ref(FilterXObject *self)
 {
-  g_assert(!_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)));
+  return self->type == &FILTERX_TYPE_NAME(ref);
 }
-#else
-#define filterx_assert_not_ref(o)
-#endif
 
 void _filterx_ref_cow(FilterXRef *self);
 
@@ -86,15 +82,40 @@ filterx_ref_unwrap_rw(FilterXObject *s)
   return self->value;
 }
 
+static inline gboolean
+filterx_ref_values_equal(FilterXObject *r1, FilterXObject *r2)
+{
+  if (filterx_object_is_ref(r1))
+    r1 = ((FilterXRef *) r1)->value;
+  if (filterx_object_is_ref(r2))
+    r2 = ((FilterXRef *) r2)->value;
+  return r1 == r2;
+}
+
+static inline void
+filterx_ref_set_parent_container(FilterXObject *s, FilterXObject *parent)
+{
+  if (s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+
+      g_assert(!parent || parent->type == &FILTERX_TYPE_NAME(ref));
+      filterx_weakref_set(&self->parent_container, parent);
+    }
+}
+
+static inline void
+filterx_ref_unset_parent_container(FilterXObject *s)
+{
+  if (s && s->type == &FILTERX_TYPE_NAME(ref))
+    {
+      FilterXRef *self = (FilterXRef *) s;
+
+      filterx_weakref_set(&self->parent_container, NULL);
+    }
+}
+
 
 FilterXObject *_filterx_ref_new(FilterXObject *value);
-
-static inline FilterXObject *
-filterx_ref_new(FilterXObject *value)
-{
-  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
-    return value;
-  return _filterx_ref_new(value);
-}
 
 #endif

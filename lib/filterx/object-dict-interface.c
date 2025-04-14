@@ -24,9 +24,10 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
 #include "filterx/object-list-interface.h"
 #include "str-utils.h"
+#include "utf8utils.h"
+
 
 gboolean
 filterx_dict_iter(FilterXObject *s, FilterXDictIterFunc func, gpointer user_data)
@@ -184,45 +185,40 @@ _setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_value)
 }
 
 static gboolean
-_add_elem_to_json_object(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
+_format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
-  struct json_object *object = (struct json_object *) user_data;
+  gpointer *args = (gpointer *) user_data;
+  GString *json = (GString *) args[0];
+  gboolean *first = (gboolean *) args[1];
 
-  const gchar *key;
-  gsize len;
-  if (!filterx_object_extract_string_ref(key_obj, &key, &len))
+  const gchar *key_str;
+  gsize key_str_len;
+  if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
     return FALSE;
 
-  APPEND_ZERO(key, key, len);
+  if (!(*first))
+    g_string_append_c(json, ',');
+  else
+    *first = FALSE;
+  g_string_append_c(json, '"');
+  append_unsafe_utf8_as_escaped(json, key_str, key_str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  g_string_append(json, "\":");
 
-  struct json_object *value = NULL;
-  FilterXObject *assoc_object = NULL;
-  if (!filterx_object_map_to_json(value_obj, &value, &assoc_object))
-    return FALSE;
-
-  filterx_object_unref(assoc_object);
-
-  if (json_object_object_add(object, key, value) != 0)
-    {
-      json_object_put(value);
-      return FALSE;
-    }
-
-  return TRUE;
+  return filterx_object_format_json_append(value, json);
 }
 
 static gboolean
-_map_to_json(FilterXObject *s, struct json_object **object, FilterXObject **assoc_object)
+_format_json(FilterXObject *value, GString *json)
 {
-  *object = json_object_new_object();
-  if (!filterx_dict_iter(s, _add_elem_to_json_object, *object))
-    {
-      json_object_put(*object);
-      *object = NULL;
-      return FALSE;
-    }
+  gboolean first = TRUE;
+  gpointer args[] = { json, &first };
 
-  *assoc_object = filterx_json_new_from_object(json_object_get(*object));
+  g_string_append_c(json, '{');
+
+  if (!filterx_dict_iter(value, _format_and_append_dict_elem, args))
+    return FALSE;
+
+  g_string_append_c(json, '}');
   return TRUE;
 }
 
@@ -270,6 +266,6 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(object),
                     .unset_key = _unset_key,
                     .getattr = _getattr,
                     .setattr = _setattr,
-                    .map_to_json = _map_to_json,
+                    .format_json = _format_json,
                     .add = _add,
                    );

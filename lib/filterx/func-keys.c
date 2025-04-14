@@ -27,7 +27,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/object-json.h"
+#include "filterx/object-list.h"
 
 typedef struct FilterXFunctionKeys_
 {
@@ -47,7 +47,7 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
-  FilterXObject *result = filterx_json_array_new_empty();
+  FilterXObject *result = filterx_list_new();
   if (!filterx_dict_keys(object, &result))
     {
       filterx_eval_push_error(FILTERX_FUNC_KEYS_ERR_NONDICT FILTERX_FUNC_KEYS_USAGE, s, NULL);

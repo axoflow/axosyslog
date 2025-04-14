@@ -27,9 +27,7 @@
 
 #include "filterx/filterx-object.h"
 
-typedef struct _FilterXDictObj FilterXDictObj;
-
-FILTERX_DECLARE_TYPE(dictobj);
+FILTERX_DECLARE_TYPE(dict_object);
 
 FilterXObject *filterx_dict_new(void);
 FilterXObject *filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);

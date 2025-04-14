@@ -2,7 +2,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_object_primitive	\
 		lib/filterx/tests/test_object_message	\
 		lib/filterx/tests/test_object_datetime	\
-		lib/filterx/tests/test_object_json	\
+		lib/filterx/tests/test_object_dict	\
 		lib/filterx/tests/test_object_null	\
 		lib/filterx/tests/test_object_string	\
 		lib/filterx/tests/test_object_protobuf	\
@@ -10,6 +10,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_object_boolean	\
 		lib/filterx/tests/test_object_integer	\
 		lib/filterx/tests/test_object_bytes	\
+		lib/filterx/tests/test_object_cow	\
 		lib/filterx/tests/test_filterx_expr	\
 		lib/filterx/tests/test_expr_function	\
 		lib/filterx/tests/test_expr_comparison \
@@ -47,8 +48,8 @@ lib_filterx_tests_test_object_message_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 lib_filterx_tests_test_object_datetime_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_object_datetime_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
-lib_filterx_tests_test_object_json_CFLAGS  = $(TEST_CFLAGS)
-lib_filterx_tests_test_object_json_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+lib_filterx_tests_test_object_dict_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_object_dict_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_object_null_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_object_null_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
@@ -73,6 +74,9 @@ lib_filterx_tests_test_builtin_functions_LDADD = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_object_bytes_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_object_bytes_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_object_cow_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_object_cow_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_object_protobuf_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_object_protobuf_LDADD   = $(TEST_LDADD) $(JSON_LIBS)

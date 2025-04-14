@@ -41,9 +41,11 @@
 #include "filterx/func-len.h"
 #include "filterx/expr-function.h"
 #include "filterx/expr-plus-generator.h"
-#include "filterx/object-json.h"
+#include "filterx/object-list.h"
+#include "filterx/object-dict.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/json-repr.h"
 #include "filterx/expr-generator.h"
 #include "filterx/expr-literal-generator.h"
 
@@ -53,6 +55,7 @@
 void
 _assert_cmp_lists(FilterXObject *expected, FilterXObject *provided)
 {
+  expected = filterx_ref_unwrap_ro(expected);
   cr_assert(filterx_object_is_type(expected, &FILTERX_TYPE_NAME(list)));
   cr_assert(filterx_object_is_type(provided, &FILTERX_TYPE_NAME(list)));
   guint64 expected_len, provided_len;
@@ -99,22 +102,21 @@ Test(expr_plus_generator, test_list_add_two_generators_with_post_set_fillable)
 
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
-  FilterXObject *json_array = filterx_json_array_new_empty();
-  FilterXExpr *fillable = filterx_literal_new(json_array);
+  FilterXObject *list = filterx_list_new();
+  FilterXExpr *fillable = filterx_literal_new(list);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
   FilterXObject *res_object = filterx_expr_eval(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(list)));
 
-  FilterXObject *expected = filterx_json_array_new_from_repr("[\"foo\",\"bar\",\"baz\",\"other\"]", -1);
-
+  FilterXObject *expected = filterx_object_from_json("[\"foo\",\"bar\",\"baz\",\"other\"]", -1, NULL);
   _assert_cmp_lists(expected, res_object);
 
   filterx_expr_unref(expr);
   filterx_expr_unref(fillable);
   filterx_object_unref(expected);
-  filterx_object_unref(json_array);
+  filterx_object_unref(list);
 }
 
 Test(expr_plus_generator, test_list_add_variable_to_generator_with_post_set_fillable)
@@ -127,30 +129,30 @@ Test(expr_plus_generator, test_list_add_variable_to_generator_with_post_set_fill
                            filterx_literal_generator_elem_new(NULL, filterx_literal_new(filterx_string_new("bar", -1)), FALSE));
   filterx_literal_generator_set_elements(lhs, lhs_vals);
 
-  FilterXExpr *rhs = filterx_non_literal_new(filterx_json_array_new_from_repr("[\"baz\", \"other\"]", -1));
+  FilterXExpr *rhs = filterx_non_literal_new(filterx_object_from_json("[\"baz\", \"other\"]", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
-  FilterXObject *json_array = filterx_json_array_new_empty();
-  FilterXExpr *fillable = filterx_literal_new(json_array);
+  FilterXObject *list = filterx_list_new();
+  FilterXExpr *fillable = filterx_literal_new(list);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
   FilterXObject *res_object = filterx_expr_eval(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(list)));
 
-  FilterXObject *expected = filterx_json_array_new_from_repr("[\"foo\",\"bar\",\"baz\",\"other\"]", -1);
+  FilterXObject *expected = filterx_object_from_json("[\"foo\",\"bar\",\"baz\",\"other\"]", -1, NULL);
 
   _assert_cmp_lists(expected, res_object);
 
   filterx_expr_unref(expr);
   filterx_expr_unref(fillable);
   filterx_object_unref(expected);
-  filterx_object_unref(json_array);
+  filterx_object_unref(list);
 }
 
 Test(expr_plus_generator, test_list_add_generator_to_variable_with_post_set_fillable)
 {
-  FilterXExpr *lhs = filterx_non_literal_new(filterx_json_array_new_from_repr("[\"foo\", \"bar\"]", -1));
+  FilterXExpr *lhs = filterx_non_literal_new(filterx_object_from_json("[\"foo\", \"bar\"]", -1, NULL));
 
   FilterXExpr *rhs = filterx_literal_list_generator_new();
   GList *rhs_vals = NULL;
@@ -161,22 +163,22 @@ Test(expr_plus_generator, test_list_add_generator_to_variable_with_post_set_fill
   filterx_literal_generator_set_elements(rhs, rhs_vals);
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
-  FilterXObject *json_array = filterx_json_array_new_empty();
-  FilterXExpr *fillable = filterx_literal_new(json_array);
+  FilterXObject *list = filterx_list_new();
+  FilterXExpr *fillable = filterx_literal_new(list);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
   FilterXObject *res_object = filterx_expr_eval(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(list)));
 
-  FilterXObject *expected = filterx_json_array_new_from_repr("[\"foo\",\"bar\",\"baz\",\"other\"]", -1);
+  FilterXObject *expected = filterx_object_from_json("[\"foo\",\"bar\",\"baz\",\"other\"]", -1, NULL);
 
   _assert_cmp_lists(expected, res_object);
 
   filterx_expr_unref(expr);
   filterx_expr_unref(fillable);
   filterx_object_unref(expected);
-  filterx_object_unref(json_array);
+  filterx_object_unref(list);
 }
 
 
@@ -205,8 +207,8 @@ Test(expr_plus_generator, test_nested_dict_add_two_generators_with_post_set_fill
   filterx_literal_generator_set_elements(rhs, rhs_vals);
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
-  FilterXObject *json_dict = filterx_json_object_new_empty();
-  FilterXExpr *fillable = filterx_literal_new(json_dict);
+  FilterXObject *dict = filterx_dict_new();
+  FilterXExpr *fillable = filterx_literal_new(dict);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
   FilterXObject *res_object = filterx_expr_eval(expr);
@@ -217,7 +219,7 @@ Test(expr_plus_generator, test_nested_dict_add_two_generators_with_post_set_fill
 
   filterx_expr_unref(expr);
   filterx_expr_unref(fillable);
-  filterx_object_unref(json_dict);
+  filterx_object_unref(dict);
 }
 
 Test(expr_plus_generator, test_nested_dict_add_variable_to_generator_with_post_set_fillable)
@@ -233,35 +235,28 @@ Test(expr_plus_generator, test_nested_dict_add_variable_to_generator_with_post_s
                                                               filterx_literal_inner_dict_generator_new(lhs, lhs_inner), FALSE));
   filterx_literal_generator_set_elements(lhs, lhs_vals);
 
-  FilterXExpr *rhs = filterx_non_literal_new(filterx_json_object_new_from_repr("{\"tik\":{\"tak\":\"toe\"}}", -1));
+  FilterXExpr *rhs = filterx_non_literal_new(filterx_object_from_json("{\"tik\":{\"tak\":\"toe\"}}", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
-  FilterXObject *json_dict = filterx_json_object_new_empty();
-  FilterXExpr *fillable = filterx_literal_new(json_dict);
+  FilterXObject *dict = filterx_dict_new();
+  FilterXExpr *fillable = filterx_literal_new(dict);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
   FilterXObject *res_object = filterx_expr_eval(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(dict)));
 
-  struct json_object *jso = NULL;
-  FilterXObject *assoc_object = NULL;
-  cr_assert(filterx_object_map_to_json(res_object, &jso, &assoc_object));
-
-  const gchar *json_repr = json_object_to_json_string_ext(jso, JSON_C_TO_STRING_PLAIN);
-  cr_assert_str_eq(json_repr, "{\"foo\":{\"bar\":\"baz\"},\"tik\":{\"tak\":\"toe\"}}");
-  json_object_put(jso);
-  filterx_object_unref(assoc_object);
+  assert_object_json_equals(res_object, "{\"foo\":{\"bar\":\"baz\"},\"tik\":{\"tak\":\"toe\"}}");
 
   filterx_expr_unref(expr);
   filterx_expr_unref(fillable);
-  filterx_object_unref(json_dict);
+  filterx_object_unref(dict);
 }
 
 Test(expr_plus_generator, test_nested_dict_add_generator_to_variable_with_post_set_fillable)
 {
 
-  FilterXExpr *lhs = filterx_non_literal_new(filterx_json_object_new_from_repr("{\"foo\":{\"bar\":\"baz\"}}", -1));
+  FilterXExpr *lhs = filterx_non_literal_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}}", -1, NULL));
 
   FilterXExpr *rhs = filterx_literal_dict_generator_new();
   GList *rhs_vals = NULL;
@@ -275,26 +270,19 @@ Test(expr_plus_generator, test_nested_dict_add_generator_to_variable_with_post_s
   filterx_literal_generator_set_elements(rhs, rhs_vals);
 
   FilterXExpr *expr = filterx_operator_plus_generator_new(lhs, rhs);
-  FilterXObject *json_dict = filterx_json_object_new_empty();
-  FilterXExpr *fillable = filterx_literal_new(json_dict);
+  FilterXObject *dict = filterx_dict_new();
+  FilterXExpr *fillable = filterx_literal_new(dict);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
   FilterXObject *res_object = filterx_expr_eval(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(dict)));
 
-  struct json_object *jso = NULL;
-  FilterXObject *assoc_object = NULL;
-  cr_assert(filterx_object_map_to_json(res_object, &jso, &assoc_object));
-
-  const gchar *json_repr = json_object_to_json_string_ext(jso, JSON_C_TO_STRING_PLAIN);
-  cr_assert_str_eq(json_repr, "{\"foo\":{\"bar\":\"baz\"},\"tik\":{\"tak\":\"toe\"}}");
-  json_object_put(jso);
-  filterx_object_unref(assoc_object);
+  assert_object_json_equals(res_object, "{\"foo\":{\"bar\":\"baz\"},\"tik\":{\"tak\":\"toe\"}}");
 
   filterx_expr_unref(expr);
   filterx_expr_unref(fillable);
-  filterx_object_unref(json_dict);
+  filterx_object_unref(dict);
 }
 
 static void

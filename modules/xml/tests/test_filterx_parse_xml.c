@@ -25,7 +25,9 @@
 
 #include "filterx-parse-xml.h"
 #include "filterx/object-string.h"
-#include "filterx/object-json.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-dict-interface.h"
+#include "filterx/json-repr.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "apphook.h"
@@ -55,7 +57,7 @@ _create_parse_xml_expr(const gchar *raw_xml, FilterXObject *fillable)
 static void
 _assert_parse_xml_fail(const gchar *raw_xml)
 {
-  FilterXExpr *func = _create_parse_xml_expr(raw_xml, filterx_json_object_new_empty());
+  FilterXExpr *func = _create_parse_xml_expr(raw_xml, filterx_dict_new());
 
   FilterXObject *result = filterx_expr_eval(func);
   cr_assert(!result);
@@ -74,7 +76,7 @@ _assert_parse_xml_with_fillable(const gchar *raw_xml, const gchar *expected_json
   cr_assert(result);
   cr_assert(!filterx_eval_get_last_error());
 
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(json_object)));
+  cr_assert(filterx_object_is_type_or_ref(result, &FILTERX_TYPE_NAME(dict)));
 
   GString *formatted_result = g_string_new(NULL);
   filterx_object_repr(result, formatted_result);
@@ -88,7 +90,7 @@ _assert_parse_xml_with_fillable(const gchar *raw_xml, const gchar *expected_json
 static void
 _assert_parse_xml(const gchar *raw_xml, const gchar *expected_json)
 {
-  _assert_parse_xml_with_fillable(raw_xml, expected_json, filterx_json_object_new_empty());
+  _assert_parse_xml_with_fillable(raw_xml, expected_json, filterx_dict_new());
 }
 
 Test(filterx_parse_xml, invalid_inputs)
@@ -153,7 +155,7 @@ Test(filterx_parse_xml, valid_inputs)
 
 Test(filterx_parse_xml, overwrite_existing_invalid_value)
 {
-  FilterXObject *fillable = filterx_json_object_new_from_repr("{\"a\":42}", -1);
+  FilterXObject *fillable = filterx_object_from_json("{\"a\":42}", -1, NULL);
   _assert_parse_xml_with_fillable("<a><b>foo</b></a>", "{\"a\":{\"b\":\"foo\"}}", fillable);
 }
 

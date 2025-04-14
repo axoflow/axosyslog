@@ -20,12 +20,15 @@
  * COPYING for details.
  *
  */
-#include "filterx/filterx-weakrefs.h"
+
+/* weakrefs is included into and exposed from filterx-object.h */
+#include "filterx/filterx-object.h"
 #include "filterx/filterx-eval.h"
 
 void
 filterx_weakref_set(FilterXWeakRef *self, FilterXObject *object)
 {
-  filterx_eval_store_weak_ref(object);
+  if (object)
+    filterx_eval_store_weak_ref(object);
   self->object = object;
 }

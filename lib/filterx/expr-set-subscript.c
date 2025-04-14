@@ -46,17 +46,7 @@ _set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *
       return NULL;
     }
 
-  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
-   * (or after creating our own dict/list repr) */
-  if (!(*new_value)->weak_referenced)
-    {
-      *new_value = filterx_ref_new(*new_value);
-    }
-
-  FilterXObject *cloned = filterx_object_clone(*new_value);
-  filterx_object_unref(*new_value);
-  *new_value = NULL;
-
+  FilterXObject *cloned = filterx_object_cow_fork(new_value);
   if (!filterx_object_set_subscript(object, key, &cloned))
     {
       filterx_eval_push_error("Object set-subscript failed", &self->super, key);

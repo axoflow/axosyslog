@@ -45,6 +45,7 @@ set(FILTERX_HEADERS
     filterx/json-repr.h
     filterx/func-flags.h
     filterx/func-flatten.h
+    filterx/func-cache-json-file.h
     filterx/func-istype.h
     filterx/func-len.h
     filterx/func-sdata.h
@@ -60,9 +61,8 @@ set(FILTERX_HEADERS
     filterx/object-dict-interface.h
     filterx/object-dict.h
     filterx/object-extractor.h
-    filterx/object-json-internal.h
-    filterx/object-json.h
     filterx/object-list-interface.h
+    filterx/object-list.h
     filterx/object-message-value.h
     filterx/object-metrics-labels.h
     filterx/object-null.h
@@ -118,6 +118,7 @@ set(FILTERX_SOURCES
     filterx/filterx-weakrefs.c
     filterx/json-repr.c
     filterx/func-flatten.c
+    filterx/func-cache-json-file.c
     filterx/func-istype.c
     filterx/func-len.c
     filterx/func-sdata.c
@@ -132,10 +133,8 @@ set(FILTERX_SOURCES
     filterx/object-datetime.c
     filterx/object-dict-interface.c
     filterx/object-dict.c
-    filterx/object-json-array.c
-    filterx/object-json-object.c
-    filterx/object-json.c
     filterx/object-list-interface.c
+    filterx/object-list.c
     filterx/object-message-value.c
     filterx/object-metrics-labels.c
     filterx/object-null.c

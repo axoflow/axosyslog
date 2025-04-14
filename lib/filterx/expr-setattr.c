@@ -47,17 +47,7 @@ _setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject **new_value)
       return NULL;
     }
 
-  /* TODO: create ref unconditionally after implementing hierarchical CoW for JSON types
-   * (or after creating our own dict/list repr) */
-  if (!(*new_value)->weak_referenced)
-    {
-      *new_value = filterx_ref_new(*new_value);
-    }
-
-  FilterXObject *cloned = filterx_object_clone(*new_value);
-  filterx_object_unref(*new_value);
-  *new_value = NULL;
-
+  FilterXObject *cloned = filterx_object_cow_fork(new_value);
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
       filterx_eval_push_error("Attribute set failed", &self->super, self->attr);
