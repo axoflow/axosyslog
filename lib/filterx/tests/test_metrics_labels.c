@@ -37,7 +37,7 @@
 static GList *
 _add_label_expr(GList *label_exprs, FilterXExpr *key, FilterXExpr *value)
 {
-  return g_list_append(label_exprs, filterx_literal_element_new(key, value, TRUE));
+  return g_list_append(label_exprs, filterx_literal_element_new(key, value));
 }
 
 Test(filterx_metrics_labels, null_labels)

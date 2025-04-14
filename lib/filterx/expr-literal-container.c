@@ -33,7 +33,6 @@ struct FilterXLiteralElement_
 {
   FilterXExpr *key;
   FilterXExpr *value;
-  gboolean cloneable;
   gboolean literal;
 };
 
@@ -76,13 +75,12 @@ _literal_element_free(FilterXLiteralElement *self)
 }
 
 FilterXLiteralElement *
-filterx_literal_element_new(FilterXExpr *key, FilterXExpr *value, gboolean cloneable)
+filterx_literal_element_new(FilterXExpr *key, FilterXExpr *value)
 {
   FilterXLiteralElement *self = g_new0(FilterXLiteralElement, 1);
 
   self->key = key;
   self->value = value;
-  self->cloneable = cloneable;
 
   return self;
 }
@@ -131,14 +129,7 @@ _literal_container_eval(FilterXExpr *s)
           goto error;
         }
 
-      if (elem->cloneable)
-        {
-          /* FIXME: check this! */
-          FilterXObject *cloned_value = filterx_object_clone(value);
-          filterx_object_unref(value);
-          value = cloned_value;
-        }
-
+      value = filterx_object_cow_fork2(value, NULL);
       gboolean success = filterx_object_set_subscript(result, key, &value);
 
       filterx_object_unref(key);
