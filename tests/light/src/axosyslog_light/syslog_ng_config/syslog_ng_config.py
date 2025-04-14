@@ -88,6 +88,7 @@ class SyslogNgConfig(object):
         }
         self._stats_handler = stats_handler
         self._prometheus_stats_handler = prometheus_stats_handler
+        self.__implicit_statement_groups: typing.Dict[int, StatementGroup] = {}
         self.teardown = teardown
 
     stringify = staticmethod(stringify)
@@ -283,7 +284,7 @@ class SyslogNgConfig(object):
         if isinstance(item, (StatementGroup, LogPath, FilterX, LogContextSclBlock)):
             return item
         else:
-            return self.create_statement_group(item)
+            return self.__implicit_statement_groups.setdefault(id(item), self.create_statement_group(item))
 
     def __create_logpath_with_conversion(self, name, items, flags):
         return self.__create_logpath_group(
