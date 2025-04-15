@@ -57,6 +57,7 @@ typedef struct _CSVParser
   LogParser super;
   CSVScannerOptions options;
   GList *columns;
+  gint expected_columns;
   gchar *prefix;
   gint prefix_len;
   gint on_error;
@@ -286,6 +287,7 @@ csv_parser_process(LogParser *s, LogMessage **pmsg, const LogPathOptions *path_o
             evt_tag_msg_reference(msg));
   CSVScanner scanner;
   csv_scanner_init(&scanner, &self->options, input);
+  csv_scanner_set_expected_columns(&scanner, self->expected_columns);
 
   gboolean result = TRUE;
 
@@ -338,8 +340,8 @@ csv_parser_init(LogPipe *s)
 {
   CSVParser *self = (CSVParser *) s;
 
-  csv_scanner_options_set_expected_columns(&self->options, g_list_length(self->columns));
-  if (!csv_scanner_options_validate(&self->options))
+  self->expected_columns = g_list_length(self->columns);
+  if (!csv_scanner_options_validate(&self->options, self->expected_columns))
     return FALSE;
 
   return log_parser_init_method(s);

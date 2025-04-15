@@ -48,17 +48,15 @@ typedef struct _CSVScannerOptions
   gchar *null_value;
   GList *string_delimiters;
   CSVScannerDialect dialect;
-  gint expected_columns;
   guint32 flags;
 } CSVScannerOptions;
 
 void csv_scanner_options_clean(CSVScannerOptions *options);
 void csv_scanner_options_copy(CSVScannerOptions *dst, CSVScannerOptions *src);
-gboolean csv_scanner_options_validate(CSVScannerOptions *options);
+gboolean csv_scanner_options_validate(CSVScannerOptions *options, gint expected_columns);
 
 void csv_scanner_options_set_dialect(CSVScannerOptions *options, CSVScannerDialect dialect);
 void csv_scanner_options_set_flags(CSVScannerOptions *options, guint32 flags);
-void csv_scanner_options_set_expected_columns(CSVScannerOptions *options, gint expected_columns);
 void csv_scanner_options_set_delimiters(CSVScannerOptions *options, const gchar *delimiters);
 void csv_scanner_options_set_string_delimiters(CSVScannerOptions *options, GList *string_delimiters);
 void csv_scanner_options_set_quotes_start_and_end(CSVScannerOptions *options, const gchar *quotes_start,
@@ -81,6 +79,7 @@ typedef struct
   const gchar *src;
   GString *current_value;
   gint current_column;
+  gint expected_columns;
   gchar current_quote;
 } CSVScanner;
 
@@ -90,6 +89,7 @@ gint csv_scanner_get_current_value_len(CSVScanner *self);
 gboolean csv_scanner_scan_next(CSVScanner *pstate);
 gboolean csv_scanner_is_scan_complete(CSVScanner *pstate);
 gchar *csv_scanner_dup_current_value(CSVScanner *self);
+void csv_scanner_set_expected_columns(CSVScanner *scanner, gint expected_columns);
 
 void csv_scanner_init(CSVScanner *pstate, CSVScannerOptions *options, const gchar *input);
 void csv_scanner_deinit(CSVScanner *pstate);

@@ -38,7 +38,6 @@ _construct_parser(gint max_columns, gint dialect, gchar *delimiters, gchar *quot
 
   p = csv_parser_new(NULL);
   csv_scanner_options_set_dialect(csv_parser_get_scanner_options(p), dialect);
-  csv_scanner_options_set_expected_columns(csv_parser_get_scanner_options(p), max_columns < 0 ? 30 : max_columns);
   if (delimiters)
     csv_scanner_options_set_delimiters(csv_parser_get_scanner_options(p), delimiters);
   if (quotes)
