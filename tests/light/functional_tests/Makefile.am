@@ -22,6 +22,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/filters/test_filter_reference.py \
 	tests/light/functional_tests/filters/test_multiple_filters.py \
 	tests/light/functional_tests/filterx/test_filterx_control.py \
+	tests/light/functional_tests/filterx/test_filterx_dict.py \
 	tests/light/functional_tests/filterx/test_filterx_funcs.py \
 	tests/light/functional_tests/filterx/test_filterx.py \
 	tests/light/functional_tests/filterx/test_filterx_scope.py \
