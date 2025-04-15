@@ -71,6 +71,7 @@ enum
 };
 
 #define FILTERX_DICT_MAX_SIZE G_MAXINT32
+#define FILTERX_DICT_INDEX_SLOT_NONE G_MAXUINT32
 
 typedef gboolean (*FilterXDictForeachFunc)(FilterXObject **, FilterXObject **, gpointer);
 typedef struct _FilterXDictTable
@@ -266,33 +267,42 @@ _table_lookup_index_slot(FilterXDictTable *table, FilterXObject *key, guint hash
 {
   FilterXDictIndexSlot slot = hash & table->mask;
   FilterXDictIndexSlot perturb = hash;
+  FilterXDictIndexSlot first_dummy_slot = FILTERX_DICT_INDEX_SLOT_NONE;
 
   for (guint32 i = 0; i < table->size; i++)
     {
       FilterXDictEntrySlot entry_slot = _table_get_index_entry(table, slot);
-      if (entry_slot < 0)
+      if (entry_slot == FXD_IX_DUMMY && first_dummy_slot == FILTERX_DICT_INDEX_SLOT_NONE)
+        {
+          /* we should reuse the dummy slot instead of creating a new at the first empty. */
+          first_dummy_slot = slot;
+        }
+      if (entry_slot == FXD_IX_EMPTY)
         {
           /* we found an empty slot, e.g.  we did not find the key but we
            * found where it could be inserted */
-          *index_slot = slot;
+          *index_slot = (first_dummy_slot != FILTERX_DICT_INDEX_SLOT_NONE) ? first_dummy_slot : slot;
           return FALSE;
         }
-      FilterXDictEntry *entry = _table_get_entry(table, entry_slot);
-      if (entry->key == key)
+      else if (entry_slot >= 0)
         {
-          *index_slot = slot;
-          return TRUE;
-        }
-      if (entry->hash == hash)
-        {
-          /* hash matches, so it's either a hash collision or a match */
-          if (_table_key_equals(entry->key, key))
+          FilterXDictEntry *entry = _table_get_entry(table, entry_slot);
+          if (entry->key == key)
             {
-              /* it's a match! */
               *index_slot = slot;
               return TRUE;
             }
-          /* hash collision, let's move to the next item */
+          if (entry->hash == hash)
+            {
+              /* hash matches, so it's either a hash collision or a match */
+              if (_table_key_equals(entry->key, key))
+                {
+                  /* it's a match! */
+                  *index_slot = slot;
+                  return TRUE;
+                }
+              /* hash collision, let's move to the next item */
+            }
         }
       perturb >>= PERTURB_SHIFT;
       /* move 5 slots away in a step. We will eventually visit all possible slots. */
