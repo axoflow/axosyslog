@@ -527,6 +527,7 @@ _strcasecmp_eval(FilterXExpr *s)
   FilterXObject *result = NULL;
   FilterXObject *a_obj = NULL, *b_obj = NULL;
 
+  gsize a_str_len = 0;
   const gchar *a_str = NULL;
   if (!self->a_literal)
     {
@@ -534,7 +535,6 @@ _strcasecmp_eval(FilterXExpr *s)
       if (!a_obj)
         goto exit;
 
-      gsize a_str_len = 0;
       if (!filterx_object_extract_string_ref(a_obj, &a_str, &a_str_len))
         {
           filterx_eval_push_error("failed to extract string value", self->a.expr, a_obj);
@@ -542,10 +542,13 @@ _strcasecmp_eval(FilterXExpr *s)
         }
     }
   else
-    a_str = self->a.literal->str;
-
+    {
+      a_str = self->a.literal->str;
+      a_str_len = self->a.literal->len;
+    }
 
   const gchar *b_str = NULL;
+  gsize b_str_len = 0;
   if (!self->b_literal)
     {
       b_obj = filterx_expr_eval(self->b.expr);
@@ -553,7 +556,6 @@ _strcasecmp_eval(FilterXExpr *s)
       if (!b_obj)
         goto exit;
 
-      gsize b_str_len = 0;
       if (!filterx_object_extract_string_ref(b_obj, &b_str, &b_str_len))
         {
           filterx_eval_push_error("failed to extract string value", self->b.expr, b_obj);
@@ -562,10 +564,17 @@ _strcasecmp_eval(FilterXExpr *s)
         }
     }
   else
-    b_str = self->b.literal->str;
+    {
+      b_str = self->b.literal->str;
+      b_str_len = self->b.literal->len;
+    }
+
+  gsize cmp_len = MIN(a_str_len, b_str_len);
 
   /* TODO: utf-8 support together with all func-str-transform */
-  gint cmp = g_ascii_strcasecmp(a_str, b_str);
+  gint cmp = g_ascii_strncasecmp(a_str, b_str, cmp_len);
+  if (cmp == 0)
+    cmp = a_str_len - b_str_len;
   result = filterx_integer_new(cmp);
 
   filterx_object_unref(b_obj);
