@@ -621,6 +621,7 @@ _strcasecmp_optimize(FilterXExpr *s)
       if (!literal)
         goto exit;
 
+      filterx_expr_unref(self->a.expr);
       self->a.literal = literal;
       self->a_literal = TRUE;
       goto exit;
@@ -632,6 +633,7 @@ _strcasecmp_optimize(FilterXExpr *s)
       if (!literal)
         goto exit;
 
+      filterx_expr_unref(self->b.expr);
       self->b.literal = literal;
       self->b_literal = TRUE;
     }
