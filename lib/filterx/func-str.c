@@ -43,6 +43,8 @@
 #define FILTERX_FUNC_INCLUDES_USAGE "Usage: includes(string, substring, ignorecase=true)" \
 "or includes(string, [substring_1, substring_2, ..], ignorecase=true)"
 
+#define FILTERX_FUNC_STRCASECMP_USAGE "Usage: strcasecmp(string, string)"
+
 typedef struct _FilterXStringWithCache
 {
   FilterXExpr *expr;
@@ -64,6 +66,26 @@ typedef struct _FilterXExprAffix
   } needle;
   FilterXExprAffixProcessFunc process;
 } FilterXExprAffix;
+
+typedef struct _FilterXStrcasecmp
+{
+  FilterXFunction super;
+
+  union
+  {
+    GString *literal;
+    FilterXExpr *expr;
+  } a;
+  guint8 a_literal:1;
+
+  union
+  {
+    GString *literal;
+    FilterXExpr *expr;
+  } b;
+  guint8 b_literal:1;
+
+} FilterXStrcasecmp;
 
 static gboolean
 _format_str_obj(FilterXObject *obj, const gchar **str, gsize *str_len)
@@ -129,8 +151,8 @@ _string_with_cache_fill_cache(FilterXStringWithCache *self, gboolean ignore_case
   if (!filterx_expr_is_literal(self->expr))
     return TRUE;
 
-  const gchar *str;
-  gsize str_len;
+  const gchar *str = NULL;
+  gsize str_len = 0;
   if (!_expr_format(self->expr, &str, &str_len, ignore_case))
     return FALSE;
 
@@ -496,4 +518,210 @@ filterx_function_includes_new(FilterXFunctionArgs *args, GError **error)
 {
   return _function_affix_new(args, "includes", _function_includes_process, FILTERX_FUNC_INCLUDES_USAGE,
                              error);
+}
+
+static FilterXObject *
+_strcasecmp_eval(FilterXExpr *s)
+{
+  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
+  FilterXObject *result = NULL;
+  FilterXObject *a_obj = NULL, *b_obj = NULL;
+
+  gsize a_str_len = 0;
+  const gchar *a_str = NULL;
+  if (!self->a_literal)
+    {
+      a_obj = filterx_expr_eval(self->a.expr);
+      if (!a_obj)
+        goto exit;
+
+      if (!filterx_object_extract_string_ref(a_obj, &a_str, &a_str_len))
+        {
+          filterx_eval_push_error("failed to extract string value", self->a.expr, a_obj);
+          goto exit;
+        }
+    }
+  else
+    {
+      a_str = self->a.literal->str;
+      a_str_len = self->a.literal->len;
+    }
+
+  const gchar *b_str = NULL;
+  gsize b_str_len = 0;
+  if (!self->b_literal)
+    {
+      b_obj = filterx_expr_eval(self->b.expr);
+
+      if (!b_obj)
+        goto exit;
+
+      if (!filterx_object_extract_string_ref(b_obj, &b_str, &b_str_len))
+        {
+          filterx_eval_push_error("failed to extract string value", self->b.expr, b_obj);
+          filterx_object_unref(b_obj);
+          goto exit;
+        }
+    }
+  else
+    {
+      b_str = self->b.literal->str;
+      b_str_len = self->b.literal->len;
+    }
+
+  gsize cmp_len = MIN(a_str_len, b_str_len);
+
+  /* TODO: utf-8 support together with all func-str-transform */
+  gint cmp = g_ascii_strncasecmp(a_str, b_str, cmp_len);
+  if (cmp == 0)
+    cmp = a_str_len - b_str_len;
+  result = filterx_integer_new(cmp);
+
+  filterx_object_unref(b_obj);
+
+exit:
+  filterx_object_unref(a_obj);
+  return result;
+}
+
+static inline GString *
+_extract_literal(FilterXExpr *expr)
+{
+  FilterXObject *literal = filterx_expr_eval(expr);
+  g_assert(literal);
+
+  const gchar *str = NULL;
+  gsize str_len = 0;
+  if (!filterx_object_extract_string_ref(literal, &str, &str_len))
+    return NULL;
+
+  return g_string_new_len(str, str_len);
+}
+
+static FilterXExpr *
+_strcasecmp_optimize(FilterXExpr *s)
+{
+  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
+
+  self->a.expr = filterx_expr_optimize(self->a.expr);
+  self->b.expr = filterx_expr_optimize(self->b.expr);
+
+  if (filterx_expr_is_literal(self->a.expr) && filterx_expr_is_literal(self->b.expr))
+    {
+      FilterXObject *result = _strcasecmp_eval(s);
+      if (!result)
+        goto exit;
+
+      return filterx_literal_new(result);
+    }
+
+  if (filterx_expr_is_literal(self->a.expr))
+    {
+      GString *literal = _extract_literal(self->a.expr);
+      if (!literal)
+        goto exit;
+
+      filterx_expr_unref(self->a.expr);
+      self->a.literal = literal;
+      self->a_literal = TRUE;
+      goto exit;
+    }
+
+  if (filterx_expr_is_literal(self->b.expr))
+    {
+      GString *literal = _extract_literal(self->b.expr);
+      if (!literal)
+        goto exit;
+
+      filterx_expr_unref(self->b.expr);
+      self->b.literal = literal;
+      self->b_literal = TRUE;
+    }
+
+exit:
+  return filterx_function_optimize_method(&self->super);
+}
+
+static gboolean
+_strcasecmp_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
+
+  if (!self->a_literal && !filterx_expr_init(self->a.expr, cfg))
+    return FALSE;
+
+  if (!self->b_literal && !filterx_expr_init(self->b.expr, cfg))
+    {
+      filterx_expr_deinit(self->a.expr, cfg);
+      return FALSE;
+    }
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_strcasecmp_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
+
+  if (!self->a_literal)
+    filterx_expr_deinit(self->a.expr, cfg);
+  if (!self->b_literal)
+    filterx_expr_deinit(self->b.expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
+static void
+_strcasecmp_free(FilterXExpr *s)
+{
+  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
+  if (self->a_literal)
+    g_string_free(self->a.literal, TRUE);
+  else
+    filterx_expr_unref(self->a.expr);
+
+  if (self->b_literal)
+    g_string_free(self->b.literal, TRUE);
+  else
+    filterx_expr_unref(self->b.expr);
+
+  filterx_function_free_method(&self->super);
+}
+
+FilterXExpr *
+filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXStrcasecmp *self = g_new0(FilterXStrcasecmp, 1);
+
+  filterx_function_init_instance(&self->super, "strcasecmp");
+  self->super.super.eval = _strcasecmp_eval;
+  self->super.super.optimize = _strcasecmp_optimize;
+  self->super.super.init = _strcasecmp_init;
+  self->super.super.deinit = _strcasecmp_deinit;
+  self->super.super.free_fn = _strcasecmp_free;
+
+  if (filterx_function_args_len(args) != 2)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. %s", FILTERX_FUNC_STRCASECMP_USAGE);
+      goto error;
+    }
+
+  self->a.expr = filterx_function_args_get_expr(args, 0);
+  g_assert(self->a.expr);
+
+  self->b.expr = filterx_function_args_get_expr(args, 1);
+  g_assert(self->b.expr);
+
+  if(!filterx_function_args_check(args, error))
+    goto error;
+
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
 }

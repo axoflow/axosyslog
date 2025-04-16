@@ -162,6 +162,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("startswith", filterx_function_startswith_new));
   g_assert(filterx_builtin_function_ctor_register("endswith", filterx_function_endswith_new));
   g_assert(filterx_builtin_function_ctor_register("includes", filterx_function_includes_new));
+  g_assert(filterx_builtin_function_ctor_register("strcasecmp", filterx_function_strcasecmp_new));
   g_assert(filterx_builtin_function_ctor_register("strftime", filterx_function_strftime_new));
   g_assert(filterx_builtin_function_ctor_register("keys", filterx_function_keys_new));
   g_assert(filterx_builtin_function_ctor_register("vars", filterx_function_vars_new));
