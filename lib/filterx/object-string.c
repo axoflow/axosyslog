@@ -187,6 +187,7 @@ _string_freeze(FilterXObject **pself)
       *pself = frozen_string;
       return;
     }
+  self->hash = _filterx_string_hash(self);
   g_hash_table_insert(global_cache.string_frozen_cache, (gchar *) self->str, self);
 }
 
