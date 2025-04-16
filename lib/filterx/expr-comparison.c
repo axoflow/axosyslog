@@ -244,6 +244,8 @@ _optimize(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
 
+  g_assert(!filterx_binary_op_optimize_method(s));
+
   gint compare_mode = self->operator & FCMPX_MODE_MASK;
   if (filterx_expr_is_literal(self->super.lhs))
     self->literal_lhs = _eval_based_on_compare_mode(self->super.lhs, compare_mode);
