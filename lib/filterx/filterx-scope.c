@@ -209,20 +209,6 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
   return NULL;
 }
 
-FilterXObject *_unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t);
-
-/* should we unmarshal objects immediately instead of bouncing them via
- * FilterXMessageValue */
-static gboolean
-_should_unmarshal_message_value_immediately(const gchar *repr, gssize repr_len, LogMessageValueType t)
-{
-  if (t == LM_VT_JSON || t == LM_VT_LIST)
-    return FALSE;
-  if (repr_len > 16)
-    return FALSE;
-  return TRUE;
-}
-
 static FilterXObject *
 _pull_variable_from_message(FilterXScope *self, NVHandle handle)
 {
@@ -233,10 +219,9 @@ _pull_variable_from_message(FilterXScope *self, NVHandle handle)
   if (!value)
     return NULL;
 
-  if (_should_unmarshal_message_value_immediately(value, value_len, t))
-    return _unmarshal_repr(value, value_len, t);
   return filterx_message_value_new_borrowed(value, value_len, t);
 }
+
 
 FilterXVariable *
 filterx_scope_register_variable(FilterXScope *self,
