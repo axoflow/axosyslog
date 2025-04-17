@@ -22,7 +22,7 @@
  *
  */
 
-#include "func-set-timestamp.h"
+#include "func-timestamp.h"
 #include "object-datetime.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-primitive.h"

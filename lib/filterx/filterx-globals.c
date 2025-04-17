@@ -40,7 +40,7 @@
 #include "filterx/func-unset-empties.h"
 #include "filterx/func-set-fields.h"
 #include "filterx/func-set-pri.h"
-#include "filterx/func-set-timestamp.h"
+#include "filterx/func-timestamp.h"
 #include "filterx/func-str.h"
 #include "filterx/func-str-transform.h"
 #include "filterx/func-flatten.h"
