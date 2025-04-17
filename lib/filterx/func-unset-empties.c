@@ -81,7 +81,7 @@ _string_compare(FilterXFunctionUnsetEmpties *self, FilterXObject *str_obj, const
 
       gsize target_len = 0;
       const gchar *target_str = NULL;
-      if (!(target_str = filterx_string_get_value_ref(target, &target_len)))
+      if (!(target_str = filterx_string_unchecked_get_value_ref(target, &target_len)))
         return FALSE;
       if (cmp_fn(str, target_str) == 0)
         return TRUE;
