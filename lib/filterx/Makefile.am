@@ -54,7 +54,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-sdata.h \
 	lib/filterx/func-set-fields.h \
 	lib/filterx/func-set-pri.h \
-	lib/filterx/func-set-timestamp.h \
+	lib/filterx/func-timestamp.h \
 	lib/filterx/func-str-transform.h \
 	lib/filterx/func-str.h \
 	lib/filterx/func-unset-empties.h \
@@ -127,7 +127,7 @@ filterx_sources = 				\
 	lib/filterx/func-sdata.c \
 	lib/filterx/func-set-fields.c \
 	lib/filterx/func-set-pri.c \
-	lib/filterx/func-set-timestamp.c \
+	lib/filterx/func-timestamp.c \
 	lib/filterx/func-str-transform.c \
 	lib/filterx/func-str.c \
 	lib/filterx/func-unset-empties.c \

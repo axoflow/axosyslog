@@ -22,7 +22,7 @@
  *
  */
 
-#include "func-set-timestamp.h"
+#include "func-timestamp.h"
 #include "object-datetime.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-primitive.h"
@@ -165,7 +165,7 @@ _extract_set_timestamp_args(FilterXFunctionSetTimestamp *self, FilterXFunctionAr
 
   self->timestamp_idx = log_msg_lookup_time_stamp_name(idx_str);
 
-  if ((self->timestamp_idx != LM_TS_STAMP) && (self->timestamp_idx != LM_TS_RECVD))
+  if (self->timestamp_idx < 0)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "Invalid timestamp type " FILTERX_FUNC_SET_TIMESTAMP_USAGE);
@@ -189,6 +189,94 @@ filterx_function_set_timestamp_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.free_fn = _set_timestamp_free;
 
   if (!_extract_set_timestamp_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+#define FILTERX_FUNC_GET_TIMESTAMP_USAGE "Usage: get_timestamp(datetime, stamp=[\"stamp\", \"recvd\"])"
+
+typedef struct FilterXFunctionGetTimestamp_
+{
+  FilterXFunction super;
+
+  LogMessageTimeStamp timestamp_idx;
+} FilterXFunctionGetTimestamp;
+
+
+static FilterXObject *
+_get_timestamp_eval(FilterXExpr *s)
+{
+  FilterXFunctionGetTimestamp *self = (FilterXFunctionGetTimestamp *) s;
+  FilterXEvalContext *context = filterx_eval_get_context();
+  LogMessage *msg = context->msg;
+
+  return filterx_datetime_new(&msg->timestamps[self->timestamp_idx]);
+}
+
+static const gchar *
+_extract_get_timestamp_idx_str(FilterXFunctionArgs *args, GError **error)
+{
+  gboolean exists;
+  const gchar *idx_str = filterx_function_args_get_named_literal_string(args, "stamp", NULL, &exists);
+
+  if (!exists)
+    {
+      return "stamp";
+    }
+
+  return idx_str;
+}
+
+static gboolean
+_extract_get_timestamp_args(FilterXFunctionGetTimestamp *self, FilterXFunctionArgs *args, GError **error)
+{
+  gsize len = filterx_function_args_len(args);
+
+  if (len > 0)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_GET_TIMESTAMP_USAGE);
+      return FALSE;
+    }
+
+  const gchar *idx_str = _extract_get_timestamp_idx_str(args, error);
+  if (!idx_str)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "Second argument must be string type. " FILTERX_FUNC_GET_TIMESTAMP_USAGE);
+      return FALSE;
+    }
+
+  self->timestamp_idx = log_msg_lookup_time_stamp_name(idx_str);
+
+  if (self->timestamp_idx < 0)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "Invalid timestamp type " FILTERX_FUNC_GET_TIMESTAMP_USAGE);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+/* Takes reference of args */
+FilterXExpr *
+filterx_function_get_timestamp_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionGetTimestamp *self = g_new0(FilterXFunctionGetTimestamp, 1);
+  filterx_function_init_instance(&self->super, "get_timestamp");
+
+  self->super.super.eval = _get_timestamp_eval;
+
+  if (!_extract_get_timestamp_args(self, args, error) ||
       !filterx_function_args_check(args, error))
     goto error;
 

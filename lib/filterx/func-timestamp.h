@@ -28,6 +28,7 @@
 #include "filterx-object.h"
 #include "filterx/expr-function.h"
 
+FilterXExpr *filterx_function_get_timestamp_new(FilterXFunctionArgs *args, GError **error);
 FilterXExpr *filterx_function_set_timestamp_new(FilterXFunctionArgs *args, GError **error);
 
 #endif
