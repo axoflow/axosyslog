@@ -28,6 +28,7 @@
 
 #define FILTERX_BOOL_CACHE_LIMIT 2
 #define FILTERX_INTEGER_CACHE_LIMIT 100
+#define FILTERX_DATETIME_CACHE_LIMIT 1
 
 /* cache indices */
 enum
@@ -51,6 +52,7 @@ typedef struct _FilterXGlobalCache
   FilterXObject *bool_cache[FILTERX_BOOL_CACHE_LIMIT];
   FilterXObject *integer_cache[FILTERX_INTEGER_CACHE_LIMIT];
   FilterXObject *string_cache[FILTERX_STRING_CACHE_LIMIT];
+  FilterXObject *datetime_cache[FILTERX_DATETIME_CACHE_LIMIT];
 } FilterXGlobalCache;
 
 extern FilterXGlobalCache global_cache;
