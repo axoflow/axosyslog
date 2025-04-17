@@ -81,9 +81,16 @@ FILTERX_DECLARE_TYPE(object);
 FILTERX_DECLARE_TYPE(ref);
 
 static inline gboolean
-_filterx_type_is_referenceable(FilterXType *t)
+filterx_type_is_ref(FilterXType *type)
 {
-  return t->is_mutable && t != &FILTERX_TYPE_NAME(ref);
+  return type == &FILTERX_TYPE_NAME(ref);
+}
+
+/* can instances of this type support copy-on-write (cow)? */
+static inline gboolean
+filterx_type_is_cowable(FilterXType *type)
+{
+  return type->is_mutable && !filterx_type_is_ref(type);
 }
 
 /* FilterXObject refcount ranges.  The ref count for the objects is special
@@ -135,7 +142,6 @@ enum
   FILTERX_OBJECT_REFCOUNT_FROZEN,
 };
 
-
 struct _FilterXObject
 {
   GAtomicCounter ref_cnt;
@@ -159,6 +165,18 @@ struct _FilterXObject
 };
 
 static inline gboolean
+filterx_object_is_ref(FilterXObject *self)
+{
+  return filterx_type_is_ref(self->type);
+}
+
+static inline gboolean
+filterx_object_is_cowable(FilterXObject *object)
+{
+  return filterx_type_is_cowable(object->type);
+}
+
+static inline gboolean
 _filterx_object_is_type(FilterXObject *object, FilterXType *type)
 {
   FilterXType *self_type = object->type;
@@ -175,8 +193,8 @@ static inline gboolean
 filterx_object_is_type(FilterXObject *object, FilterXType *type)
 {
 #if SYSLOG_NG_ENABLE_DEBUG
-  g_assert(!(_filterx_type_is_referenceable(type) && _filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
-           && "filterx_ref_unwrap() must be used before comparing to mutable types");
+  if (filterx_type_is_cowable(type) && filterx_object_is_ref(object))
+    g_assert("filterx_ref_unwrap() must be used before comparing to mutable types" && FALSE);
 #endif
 
   return _filterx_object_is_type(object, type);
@@ -537,27 +555,45 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
 
 #include "filterx-ref.h"
 
+
+/* NOTE: only use this to validate the type of a potentially ref wrapped
+ * object, object is still not going to be compatible with the target type!
+ * To be able to cast down to a more specific type, please use
+ * filterx_ref_unwrap_*() family of functions */
 static inline gboolean
 filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
 {
-  if (_filterx_object_is_type(object, &FILTERX_TYPE_NAME(ref)))
+  if (filterx_object_is_ref(object))
     return _filterx_object_is_type(((FilterXRef *) object)->value, type);
   return _filterx_object_is_type(object, type);
 }
 
 /*
- * Make sure mutable objects are encapsulated into a FilterXRef.  To be
- * called as the first thing before an object can be assigned to a variable
- * or stored in a dict/list.
+ * Initialize copy-on-write on the specific object.  This function is
+ * idempotent and can potentially be called multiple times, subsequent calls
+ * will do nothing.
  *
- * NOTE: potentially replaces *value with a FilterXRef, sinking the passed
+ * Copy-on-write only makes sense for mutable objects.  In case object is
+ * not mutable, we just return the original object.
+ *
+ * Mutable objects are wrapped into a FilterXRef here so that we can track
+ * the number of potential writers.  An object that have multiple potential
+ * writers will be cloned upon the first write (e.g.  copied on write, aka
+ * cow).
+ *
+ * This function needs to be called after initializing the underlying
+ * mutable object and before the first real "fork" happens.  "Fork" here
+ * means that the same object is shared between two distinct places, at
+ * least as long it is unchanged.
+ *
+ * NOTE: potentially replaces *pself with a FilterXRef, sinking the passed
  * reference, returning a FilterXRef instead.
  */
 static inline void
-filterx_object_cow_wrap(FilterXObject **pself)
+filterx_object_cow_prepare(FilterXObject **pself)
 {
   FilterXObject *value = *pself;
-  if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
+  if (!value || !filterx_object_is_cowable(value))
     return;
   *pself = _filterx_ref_new(value);
 }
@@ -581,7 +617,7 @@ static inline FilterXObject *
 filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
 {
   FilterXObject *saved_self = self;
-  filterx_object_cow_wrap(&self);
+  filterx_object_cow_prepare(&self);
 
   if (pself)
     {
@@ -610,7 +646,7 @@ filterx_object_cow_fork(FilterXObject **pself)
 static inline FilterXObject *
 filterx_object_cow_store(FilterXObject **pself)
 {
-  filterx_object_cow_wrap(pself);
+  filterx_object_cow_prepare(pself);
   return filterx_object_ref(*pself);
 }
 
