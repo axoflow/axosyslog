@@ -126,6 +126,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
+  g_assert(filterx_builtin_simple_function_register("get_sdata",
+                                                    filterx_simple_function_get_sdata));
 }
 
 static void
@@ -201,8 +203,6 @@ _generator_ctors_init(void)
   filterx_builtin_function_ctors_init_private(&filterx_builtin_generator_function_ctors);
   g_assert(filterx_builtin_generator_function_ctor_register("regexp_search",
                                                             filterx_generator_function_regexp_search_new));
-  g_assert(filterx_builtin_generator_function_ctor_register("get_sdata",
-                                                            filterx_generator_function_get_sdata_new));
 }
 
 static void

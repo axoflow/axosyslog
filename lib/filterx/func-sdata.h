@@ -29,10 +29,6 @@
 
 FilterXExpr *filterx_function_is_sdata_from_enterprise_new(FilterXFunctionArgs *args, GError **error);
 FilterXObject *filterx_simple_function_has_sdata(FilterXExpr *s, FilterXObject *args[], gsize args_len);
-FilterXExpr *filterx_generator_function_get_sdata_new(FilterXFunctionArgs *args, GError **error);
-typedef struct FilterXGenFuncGetSdata_
-{
-  FilterXGeneratorFunction super;
-} FilterXGenFuncGetSdata;
+FilterXObject *filterx_simple_function_get_sdata(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif

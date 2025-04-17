@@ -27,6 +27,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
+#include "filterx/object-dict.h"
 
 #include <string.h>
 
@@ -130,6 +131,8 @@ filterx_simple_function_has_sdata(FilterXExpr *s, FilterXObject *args[], gsize a
   return filterx_boolean_new(msg->num_sdata != 0);
 }
 
+/* get_sdata() function implementation */
+
 static gboolean
 _should_create_new_dict(const gchar *previous_sd_id, gsize previous_sd_id_len, const gchar *current_sd_id,
                         gsize current_sd_id_len)
@@ -150,7 +153,7 @@ _extract_sd_components(const gchar *key, gssize key_len, const gchar **sd_id_sta
     return FALSE;
 
   const gchar *last_dot = NULL;
-  for(gsize i = key_len; i > 0 && !last_dot; i--)
+  for (gsize i = key_len; i > 0 && !last_dot; i--)
     {
       if (key[i-1] == '.')
         last_dot = key + i - 1;
@@ -166,7 +169,6 @@ _extract_sd_components(const gchar *key, gssize key_len, const gchar **sd_id_sta
 
   return TRUE;
 }
-
 
 static gboolean
 _insert_into_dict(FilterXObject *dict, const gchar *key, gssize key_len, const gchar *value, gssize value_len)
@@ -220,8 +222,8 @@ _insert_while_same_sd_id(LogMessage *msg, guint8 index, guint8 num_sdata, guint8
   return TRUE;
 }
 
-static gboolean
-_generate(FilterXExprGenerator *s, FilterXObject *fillable)
+static FilterXObject *
+_build_sdata_dict(FilterXExpr *s)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
   LogMessage *msg = context->msg;
@@ -231,6 +233,8 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   const gchar *param_name_start;
   gsize param_name_len;
 
+  FilterXObject *root_dict = filterx_dict_new();
+  filterx_object_cow_wrap(&root_dict);
   for (guint8 i = 0; i < msg->num_sdata;)
     {
       gssize name_len;
@@ -240,57 +244,45 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
 
       if (!_extract_sd_components(name, name_len, &current_sd_id_start, &current_sd_id_len, &param_name_start,
                                   &param_name_len))
+        goto error;
+
+      FilterXObject *inner_dict = filterx_dict_new();
+      if (!_insert_into_dict(inner_dict, param_name_start, param_name_len, value, value_len))
         {
-          return FALSE;
+          filterx_object_unref(inner_dict);
+          goto error;
         }
 
-      FilterXObject *inner_dict = filterx_object_create_dict(fillable);
-      if (!_insert_into_dict(inner_dict, param_name_start, param_name_len, value, value_len))
-        return FALSE;
-
       guint8 num_insertions;
-      if(!_insert_while_same_sd_id(msg, i, msg->num_sdata, &num_insertions, inner_dict, current_sd_id_start,
-                                   current_sd_id_len))
-        return FALSE;
+      if (!_insert_while_same_sd_id(msg, i, msg->num_sdata, &num_insertions, inner_dict, current_sd_id_start,
+                                    current_sd_id_len))
+        {
+          filterx_object_unref(inner_dict);
+          goto error;
+        }
       i += num_insertions + 1;
 
       FILTERX_STRING_DECLARE_ON_STACK(sd_id_key, current_sd_id_start, current_sd_id_len);
-      filterx_object_set_subscript(fillable, sd_id_key, &inner_dict);
+      filterx_object_set_subscript(root_dict, sd_id_key, &inner_dict);
       filterx_object_unref(inner_dict);
       filterx_object_unref(sd_id_key);
     }
 
-  return TRUE;
+  return root_dict;
+error:
+  filterx_object_unref(root_dict);
+  filterx_simple_function_argument_error(s, "Error building sdata dict", FALSE);
+  return NULL;
 }
 
-static void
-_get_sdata_free(FilterXExpr *s)
+FilterXObject *
+filterx_simple_function_get_sdata(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  FilterXGenFuncGetSdata *self = (FilterXGenFuncGetSdata *) s;
-  filterx_generator_function_free_method(&self->super);
-}
-
-FilterXExpr *
-filterx_generator_function_get_sdata_new(FilterXFunctionArgs *args, GError **error)
-{
-  FilterXGenFuncGetSdata *self = g_new0(FilterXGenFuncGetSdata, 1);
-
-  filterx_generator_function_init_instance(&self->super, "get_sdata");
-  self->super.super.generate = _generate;
-  self->super.super.super.free_fn = _get_sdata_free;
-  self->super.super.create_container = filterx_generator_create_dict_container;
-
-  if (filterx_function_args_len(args) != 0)
+  if (args && args_len != 0)
     {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL, "invalid number of arguments.");
-      goto error;
+      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
+      return NULL;
     }
 
-  filterx_function_args_free(args);
-  return &self->super.super.super;
-
-error:
-  filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super.super);
-  return NULL;
+  return _build_sdata_dict(s);
 }
