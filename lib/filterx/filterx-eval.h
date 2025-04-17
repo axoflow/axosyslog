@@ -88,8 +88,7 @@ filterx_eval_sync_message(FilterXEvalContext *context, LogMessage **pmsg, const 
   if (!filterx_scope_is_dirty(context->scope))
     return;
 
-  log_msg_make_writable(pmsg, path_options);
-  filterx_scope_sync(context->scope, *pmsg);
+  filterx_scope_sync(context->scope, pmsg, path_options);
 }
 
 static inline void
