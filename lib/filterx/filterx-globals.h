@@ -52,6 +52,7 @@ typedef struct _FilterXGlobalCache
   FilterXObject *bool_cache[FILTERX_BOOL_CACHE_LIMIT];
   FilterXObject *integer_cache[FILTERX_INTEGER_CACHE_LIMIT];
   FilterXObject *string_cache[FILTERX_STRING_CACHE_LIMIT];
+  GHashTable *string_frozen_cache;
   FilterXObject *datetime_cache[FILTERX_DATETIME_CACHE_LIMIT];
 } FilterXGlobalCache;
 
