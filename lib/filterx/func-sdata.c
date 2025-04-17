@@ -234,7 +234,7 @@ _build_sdata_dict(FilterXExpr *s)
   gsize param_name_len;
 
   FilterXObject *root_dict = filterx_dict_new();
-  filterx_object_cow_wrap(&root_dict);
+  filterx_object_cow_prepare(&root_dict);
   for (guint8 i = 0; i < msg->num_sdata;)
     {
       gssize name_len;

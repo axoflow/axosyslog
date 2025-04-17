@@ -109,7 +109,7 @@ _literal_container_eval(FilterXExpr *s)
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
   FilterXObject *result = self->create_container(self);
-  filterx_object_cow_wrap(&result);
+  filterx_object_cow_prepare(&result);
   for (GList *link = self->elements; link; link = link->next)
     {
       FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
