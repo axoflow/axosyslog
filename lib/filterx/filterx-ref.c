@@ -139,18 +139,6 @@ _filterx_ref_unfreeze(FilterXObject *s)
 
 /* readonly methods */
 
-static FilterXObject *
-_filterx_ref_unmarshal(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  FilterXObject *unmarshalled = filterx_object_unmarshal(self->value);
-  if (unmarshalled != self->value)
-    return unmarshalled;
-
-  filterx_object_unref(self->value);
-  return filterx_object_ref(s);
-}
-
 static gboolean
 _filterx_ref_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 {
@@ -316,7 +304,6 @@ _filterx_ref_new(FilterXObject *value)
 
 FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
-                    .unmarshal = _filterx_ref_unmarshal,
                     .marshal = _filterx_ref_marshal,
                     .clone = _filterx_ref_clone,
                     .format_json = _filterx_ref_format_json_append,
