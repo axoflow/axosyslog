@@ -32,6 +32,8 @@ typedef struct _FilterXWeakRef
   FilterXObject *object;
 } FilterXWeakRef;
 
+typedef gboolean (*FilterXWeakRefInvokeFunc)(FilterXObject *s, gpointer user_data);
+
 /*
  * Weakrefs can be used to break up circular references between objects
  * without having to do expensive loop discovery.  Although we are not
@@ -76,11 +78,19 @@ filterx_weakref_get(FilterXWeakRef *self)
   /* deref is now just returning the pointer, we don't have a means to
    * validate if it's valid, we just assume it is until our Scope  has not
    * been terminated yet */
-
-  if (!self)
-    return NULL;
-
   return filterx_object_ref(self->object);
+}
+
+/*
+ * This function avoids taking a ref, at least compared to weakref_get(), do
+ * something, unref, as it can build on the implementation details of FilterXWeakRef.
+ */
+static inline gboolean
+filterx_weakref_invoke(FilterXWeakRef *self, FilterXWeakRefInvokeFunc func, gpointer user_data)
+{
+  if (self->object)
+    return func(self->object, user_data);
+  return FALSE;
 }
 
 static inline gboolean
