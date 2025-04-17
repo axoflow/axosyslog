@@ -43,4 +43,7 @@ gboolean datetime_repr(const UnixTime *ut, GString *repr);
 gboolean datetime_str(const UnixTime *ut, GString *repr);
 gboolean datetime_format_json(const UnixTime *ut, GString *repr);
 
+void filterx_datetime_global_init(void);
+void filterx_datetime_global_deinit(void);
+
 #endif

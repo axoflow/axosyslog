@@ -284,6 +284,7 @@ filterx_global_init(void)
 
   filterx_primitive_global_init();
   filterx_null_global_init();
+  filterx_datetime_global_init();
   filterx_builtin_functions_init();
 }
 
@@ -291,6 +292,7 @@ void
 filterx_global_deinit(void)
 {
   filterx_builtin_functions_deinit();
+  filterx_datetime_global_deinit();
   filterx_null_global_deinit();
   filterx_primitive_global_deinit();
   filterx_string_global_deinit();

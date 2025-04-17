@@ -86,13 +86,21 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 FilterXObject *
-filterx_datetime_new(const UnixTime *ut)
+_datetime_new(const UnixTime *ut)
 {
   FilterXDateTime *self = g_new0(FilterXDateTime, 1);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(datetime));
   self->ut = *ut;
   return &self->super;
+}
+
+FilterXObject *
+filterx_datetime_new(const UnixTime *ut)
+{
+  if (ut->ut_sec == 0 && ut->ut_usec == 0)
+    return global_cache.datetime_cache[0];
+  return _datetime_new(ut);
 }
 
 /* NOTE: Consider using filterx_object_extract_datetime() to also support message_value. */
@@ -585,3 +593,20 @@ FILTERX_DEFINE_TYPE(datetime, FILTERX_TYPE_NAME(object),
                     .str = _str,
                     .add = _add,
                    );
+
+void
+filterx_datetime_global_init(void)
+{
+  UnixTime zero = {0};
+
+  filterx_cache_object(&global_cache.datetime_cache[0], _datetime_new(&zero));
+}
+
+void
+filterx_datetime_global_deinit(void)
+{
+  for (gint i = 0; i < FILTERX_DATETIME_CACHE_LIMIT; i++)
+    {
+      filterx_uncache_object(&global_cache.datetime_cache[i]);
+    }
+}
