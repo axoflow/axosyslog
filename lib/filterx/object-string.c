@@ -118,7 +118,11 @@ _string_add(FilterXObject *s, FilterXObject *object)
   const gchar *other_str;
   gsize other_str_len;
   if (!filterx_object_extract_string_ref(object, &other_str, &other_str_len))
-    return NULL;
+    {
+      msg_error("FilterX: the argument of the add method is not a string",
+                evt_tag_str("type", object->type->name));
+      return NULL;
+    }
 
   GString *buffer = scratch_buffers_alloc();
   g_string_append_len(buffer, self->str, self->str_len);
