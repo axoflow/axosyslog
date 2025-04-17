@@ -46,25 +46,16 @@ _filterx_ref_clone_value_if_shared(FilterXRef *self, FilterXRef *child_of_intere
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
 }
 
-static void
-_filterx_ref_cow_parents(FilterXRef *self, FilterXRef *child_of_interest)
+gboolean
+_filterx_ref_cow_parents(FilterXObject *s, gpointer user_data)
 {
-  FilterXRef *parent_container = (FilterXRef *) filterx_weakref_get(&self->parent_container);
+  FilterXRef *self = (FilterXRef *) s;
+  FilterXRef *child_of_interest = (FilterXRef *) user_data;
 
-  if (parent_container)
-    {
-      _filterx_ref_cow_parents(parent_container, self);
-      filterx_object_unref(&parent_container->super);
-
-    }
+  filterx_weakref_invoke(&self->parent_container, _filterx_ref_cow_parents, self);
   _filterx_ref_clone_value_if_shared(self, child_of_interest);
   filterx_object_set_dirty(&self->super, TRUE);
-}
-
-void
-_filterx_ref_cow(FilterXRef *self)
-{
-  _filterx_ref_cow_parents(self, NULL);
+  return TRUE;
 }
 
 /* mutator methods */
