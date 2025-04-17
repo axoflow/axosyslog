@@ -81,18 +81,23 @@ FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
  * it will be. Generic code should handle the cases where it is not.
  */
 static inline const gchar *
-filterx_string_get_value_ref(FilterXObject *s, gsize *length)
+filterx_string_unchecked_get_value_ref(FilterXObject *s, gsize *length)
 {
   FilterXString *self = (FilterXString *) s;
-
-  if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
-    return NULL;
 
   if (length)
     *length = self->str_len;
   else
     g_assert(self->str[self->str_len] == 0);
   return self->str;
+}
+
+static inline const gchar *
+filterx_string_get_value_ref(FilterXObject *s, gsize *length)
+{
+  if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
+    return NULL;
+  return filterx_string_unchecked_get_value_ref(s, length);
 }
 
 static inline FilterXObject *

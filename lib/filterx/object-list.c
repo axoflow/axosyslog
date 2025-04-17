@@ -87,7 +87,7 @@ _filterx_list_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 
       const gchar *str;
       gsize str_len;
-      str = filterx_string_get_value_ref(el, &str_len);
+      str = filterx_string_unchecked_get_value_ref(el, &str_len);
       if (!str)
         g_assert_not_reached();
       str_repr_encode_append(repr, str, str_len, NULL);
