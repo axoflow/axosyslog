@@ -38,7 +38,7 @@ typedef struct _FilterXSetSubscript
 } FilterXSetSubscript;
 
 static inline FilterXObject *
-_set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *key, FilterXObject **new_value)
+_set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *key, FilterXObject *new_value)
 {
   if (object->readonly)
     {
@@ -46,7 +46,7 @@ _set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *
       return NULL;
     }
 
-  FilterXObject *cloned = filterx_object_cow_fork(new_value);
+  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
   if (!filterx_object_set_subscript(object, key, &cloned))
     {
       filterx_eval_push_error("Object set-subscript failed", &self->super, key);
@@ -95,7 +95,7 @@ _nullv_set_subscript_eval(FilterXExpr *s)
         goto exit;
     }
 
-  result = _set_subscript(self, object, key, &new_value);
+  result = _set_subscript(self, object, key, new_value);
 
 exit:
   filterx_object_unref(new_value);
@@ -126,7 +126,7 @@ _set_subscript_eval(FilterXExpr *s)
         goto exit;
     }
 
-  result = _set_subscript(self, object, key, &new_value);
+  result = _set_subscript(self, object, key, new_value);
 
 exit:
   filterx_object_unref(new_value);

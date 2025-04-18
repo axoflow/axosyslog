@@ -552,30 +552,64 @@ filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
  * reference, returning a FilterXRef instead.
  */
 static inline void
-filterx_object_cow_wrap(FilterXObject **o)
+filterx_object_cow_wrap(FilterXObject **pself)
 {
-  FilterXObject *value = *o;
+  FilterXObject *value = *pself;
   if (!value || value->readonly || !_filterx_type_is_referenceable(value->type))
     return;
-  *o = _filterx_ref_new(value);
+  *pself = _filterx_ref_new(value);
 }
 
 
-/* NOTE: potentially replaces *value with a FilterXRef, sinking the passed
- * reference.  It replaces the copied object as a return value */
+/* Perform a lazy copy (e.g.  copy-on-write) of @self and return the new
+ * copy. This function does nothing for inmutable data types.
+ *
+ * For copy-on-write to work, all references to @self need to be done
+ * through refs, but our @self argument may still point to a bare, but
+ * mutable object.
+ *
+ * In this case, @self is automatically wrapped into a ref here.  This ref
+ * is returned using the @pself output argument.  In case @pself is NULL, we
+ * assume the caller is not interested, and we either never create a ref to
+ * the old copy or we destroy it.
+ *
+ * The return value is the ref to the new copy.
+ */
 static inline FilterXObject *
-filterx_object_cow_fork(FilterXObject **o)
+filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
 {
-  filterx_object_cow_wrap(o);
-  return filterx_object_clone(*o);
+  FilterXObject *saved_self = self;
+  filterx_object_cow_wrap(&self);
+
+  if (pself)
+    {
+      *pself = self;
+      return filterx_object_clone(self);
+    }
+  else
+    {
+      if (self != saved_self)
+        return self;
+
+      FilterXObject *result = filterx_object_clone(self);
+      filterx_object_unref(self);
+      return result;
+    }
+}
+
+/* Same as filterx_object_cow_fork2() with an input/output argument */
+static inline FilterXObject *
+filterx_object_cow_fork(FilterXObject **pself)
+{
+  return filterx_object_cow_fork2(*pself, pself);
 }
 
 /* */
 static inline FilterXObject *
-filterx_object_cow_store(FilterXObject **o)
+filterx_object_cow_store(FilterXObject **pself)
 {
-  filterx_object_cow_wrap(o);
-  return filterx_object_ref(*o);
+  filterx_object_cow_wrap(pself);
+  return filterx_object_ref(*pself);
 }
 
 #endif
