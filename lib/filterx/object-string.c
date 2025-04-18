@@ -29,6 +29,7 @@
 #include "str-utils.h"
 #include "utf8utils.h"
 
+#define FILTERX_STRING_FLAG_STR_ALLOCATED 0x01
 
 /* NOTE: Consider using filterx_object_extract_bytes_ref() to also support message_value. */
 const gchar *
@@ -84,6 +85,15 @@ _len(FilterXObject *s, guint64 *len)
 
   *len = self->str_len;
   return TRUE;
+}
+
+static void
+_free(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+  if (self->super.flags & FILTERX_STRING_FLAG_STR_ALLOCATED)
+    g_free((gchar *) self->str);
+  filterx_object_free_method(s);
 }
 
 static gboolean
@@ -171,6 +181,20 @@ FilterXObject *
 filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate)
 {
   return &_string_new(str, str_len, translate)->super;
+}
+
+FilterXObject *
+filterx_string_new_take(gchar *str, gssize str_len)
+{
+  g_assert(str_len != -1);
+  FilterXString *self = g_new0(FilterXString, 1);
+  filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
+
+  self->str_len = str_len;
+  self->str = str;
+  self->super.flags |= FILTERX_STRING_FLAG_STR_ALLOCATED;
+
+  return &self->super;
 }
 
 static inline gsize
@@ -261,6 +285,14 @@ filterx_bytes_new(const gchar *mem, gssize mem_len)
   FilterXString *self = (FilterXString *) _string_new(mem, mem_len, NULL);
   self->super.type = &FILTERX_TYPE_NAME(bytes);
   return &self->super;
+}
+
+FilterXObject *
+filterx_bytes_new_take(gchar *mem, gssize mem_len)
+{
+  FilterXObject *s = filterx_string_new_take(mem, mem_len);
+  s->type = &FILTERX_TYPE_NAME(bytes);
+  return s;
 }
 
 FilterXObject *
@@ -355,6 +387,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .repr = _string_repr,
                     .add = _string_add,
                     .clone = _string_clone,
+                    .free_fn = _free,
                    );
 
 FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
@@ -364,6 +397,7 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
                     .repr = _bytes_repr,
                     .add = _bytes_add,
+                    .free_fn = _free,
                    );
 
 FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
@@ -372,6 +406,7 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
                     .format_json = _bytes_format_json,
                     .truthy = _truthy,
                     .repr = _bytes_repr,
+                    .free_fn = _free,
                    );
 
 void

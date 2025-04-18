@@ -151,8 +151,10 @@ struct _FilterXObject
    *
    *     is_dirty          -- marks that the object was changed (mutable objects only)
    *
+   *     flags             -- to be used by descendant types
+   *
    */
-  guint readonly:1, weak_referenced:1, is_dirty:1;
+  guint readonly:1, weak_referenced:1, is_dirty:1, flags:5;
   FilterXType *type;
 };
 
