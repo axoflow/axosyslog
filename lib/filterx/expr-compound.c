@@ -57,7 +57,7 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
       GString *buf = scratch_buffers_alloc_and_mark(&mark);
       GString *type_buffer = scratch_buffers_alloc();
 
-      if (res->type == &FILTERX_TYPE_NAME(ref))
+      if (filterx_object_is_ref(res))
         {
           FilterXRef *ref = (FilterXRef *) res;
           g_string_append(type_buffer, "ref/");

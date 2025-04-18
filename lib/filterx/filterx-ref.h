@@ -50,12 +50,6 @@ struct _FilterXRef
   FilterXWeakRef parent_container;
 };
 
-static inline gboolean
-filterx_object_is_ref(FilterXObject *self)
-{
-  return self->type == &FILTERX_TYPE_NAME(ref);
-}
-
 gboolean _filterx_ref_cow_parents(FilterXObject *s, gpointer user_data);
 
 static inline void
@@ -68,7 +62,7 @@ _filterx_ref_cow(FilterXRef *self)
 static inline FilterXObject *
 filterx_ref_unwrap_ro(FilterXObject *s)
 {
-  if (!s || !(s->type == &FILTERX_TYPE_NAME(ref)))
+  if (!s || !filterx_object_is_ref(s))
     return s;
 
   FilterXRef *self = (FilterXRef *) s;
@@ -78,7 +72,7 @@ filterx_ref_unwrap_ro(FilterXObject *s)
 static inline FilterXObject *
 filterx_ref_unwrap_rw(FilterXObject *s)
 {
-  if (!s || !(s->type == &FILTERX_TYPE_NAME(ref)))
+  if (!s || !filterx_object_is_ref(s))
     return s;
 
   FilterXRef *self = (FilterXRef *) s;
@@ -101,11 +95,11 @@ filterx_ref_values_equal(FilterXObject *r1, FilterXObject *r2)
 static inline void
 filterx_ref_set_parent_container(FilterXObject *s, FilterXObject *parent)
 {
-  if (s->type == &FILTERX_TYPE_NAME(ref))
+  if (filterx_object_is_ref(s))
     {
       FilterXRef *self = (FilterXRef *) s;
 
-      g_assert(!parent || parent->type == &FILTERX_TYPE_NAME(ref));
+      g_assert(!parent || filterx_object_is_ref(parent));
       filterx_weakref_set(&self->parent_container, parent);
     }
 }
@@ -113,7 +107,7 @@ filterx_ref_set_parent_container(FilterXObject *s, FilterXObject *parent)
 static inline void
 filterx_ref_unset_parent_container(FilterXObject *s)
 {
-  if (s && s->type == &FILTERX_TYPE_NAME(ref))
+  if (s && filterx_object_is_ref(s))
     {
       FilterXRef *self = (FilterXRef *) s;
 
