@@ -134,11 +134,13 @@ _string_add(FilterXObject *s, FilterXObject *object)
       return NULL;
     }
 
-  GString *buffer = scratch_buffers_alloc();
-  g_string_append_len(buffer, self->str, self->str_len);
-  g_string_append_len(buffer, other_str, other_str_len);
-  /* FIXME: support taking over the already allocated space */
-  return filterx_string_new(buffer->str, buffer->len);
+  gsize buffer_len = self->str_len + other_str_len;
+  gchar *buffer = g_malloc(buffer_len + 1);
+  memcpy(buffer, self->str, self->str_len);
+  memcpy(buffer + self->str_len, other_str, other_str_len);
+  buffer[buffer_len] = 0;
+  FilterXObject *result = filterx_string_new_take(buffer, buffer_len);
+  return result;
 }
 
 /* we support clone of stack allocated strings */
@@ -271,11 +273,12 @@ _bytes_add(FilterXObject *s, FilterXObject *object)
   if (!filterx_object_extract_bytes_ref(object, &other_str, &other_str_len))
     return NULL;
 
-  GString *buffer = scratch_buffers_alloc();
-  g_string_append_len(buffer, self->str, self->str_len);
-  g_string_append_len(buffer, other_str, other_str_len);
-  /* FIXME: support taking over the already allocated space */
-  return filterx_bytes_new(buffer->str, buffer->len);
+  gsize buffer_len = self->str_len + other_str_len;
+  gchar *buffer = g_malloc(buffer_len);
+  memcpy(buffer, self->str, self->str_len);
+  memcpy(buffer + self->str_len, other_str, other_str_len);
+  FilterXObject *result = filterx_bytes_new_take(buffer, buffer_len);
+  return result;
 }
 
 FilterXObject *
