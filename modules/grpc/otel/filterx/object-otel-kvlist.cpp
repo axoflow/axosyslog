@@ -537,8 +537,8 @@ OtelKVListField::FilterXObjectSetter(google::protobuf::Message *message, ProtoRe
         }
 
       msg_error("otel-kvlist: Failed to convert field, type is unsupported",
-                evt_tag_str("field", reflectors.fieldDescriptor->name().c_str()),
-                evt_tag_str("expected_type", reflectors.fieldDescriptor->type_name()),
+                evt_tag_str("field", reflectors.fieldDescriptor->name().data()),
+                evt_tag_str("expected_type", reflectors.field_type_name()),
                 evt_tag_str("type", object->type->name));
       return false;
     }

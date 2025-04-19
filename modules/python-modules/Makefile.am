@@ -110,7 +110,7 @@ pymodules-install: pymodules-install-requirements python-venv
 	$(install_sh_DATA) $(top_srcdir)/requirements.txt "$(PYTHON_ROOT)/$(python_moduledir)/requirements.txt"
 
 pymodules-install-requirements: python-venv
-	if [ "$(with_python_packages)" != "none" ]; then \
+	if [ "$(with_python_packages)" == "venv" ]; then \
 		(cd $(PYMODULES_SRCDIR) && \
 		 mkdir -p $(PYMODULES_BUILDDIR) && \
 	         $(PYTHON_VENV) setup.py egg_info --egg-base="$(PYMODULES_BUILDDIR)"  && \

@@ -49,7 +49,8 @@ struct ProtoReflectors
     this->descriptor = message.GetDescriptor();
     if (!this->reflection || !this->descriptor)
       {
-        std::string error_msg = "unable to access reflector for protobuf message: " + message.GetTypeName();
+        std::string error_msg = "unable to access reflector for protobuf message: "
+                                + std::string(message.GetTypeName());
         throw std::invalid_argument(error_msg);
       }
     this->fieldDescriptor = this->descriptor->FindFieldByName(fieldName);
@@ -66,6 +67,16 @@ struct ProtoReflectors
         throw std::invalid_argument(error_msg);
       }
   };
+
+  const char *
+  field_type_name() const
+  {
+#if GOOGLE_PROTOBUF_VERSION >= 6030000
+    return this->fieldDescriptor->type_name().data();
+#else
+    return this->fieldDescriptor->type_name();
+#endif
+  }
 };
 
 class ProtobufField
