@@ -215,14 +215,7 @@ _pull_variable_from_message(FilterXScope *self, NVHandle handle)
   if (!value)
     return NULL;
 
-  if (log_msg_is_handle_macro(handle))
-    {
-      FilterXObject *res = filterx_message_value_new(value, value_len, t);
-      filterx_object_make_readonly(res);
-      return res;
-    }
-  else
-    return filterx_message_value_new_borrowed(value, value_len, t);
+  return filterx_message_value_new_borrowed(value, value_len, t);
 }
 
 

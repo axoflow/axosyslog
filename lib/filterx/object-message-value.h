@@ -44,4 +44,7 @@ gboolean filterx_message_value_get_datetime(FilterXObject *s, UnixTime *value);
 gboolean filterx_message_value_get_null(FilterXObject *s);
 gboolean filterx_message_value_get_json(FilterXObject *s, struct json_object **value);
 
+/* unmarshal a message representation into a FilterXObject */
+FilterXObject *filterx_unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t);
+
 #endif

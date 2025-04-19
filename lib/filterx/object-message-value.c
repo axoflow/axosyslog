@@ -173,7 +173,7 @@ _is_value_type_pair_truthy(const gchar  *repr, gssize repr_len, LogMessageValueT
 }
 
 FilterXObject *
-_unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
+filterx_unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t)
 {
   gdouble dbl;
   gint64 i64;
@@ -368,7 +368,7 @@ static FilterXObject *
 _unmarshal(FilterXObject *s)
 {
   FilterXMessageValue *self = (FilterXMessageValue *) s;
-  return _unmarshal_repr(self->repr, self->repr_len, self->type);
+  return filterx_unmarshal_repr(self->repr, self->repr_len, self->type);
 }
 
 static gboolean

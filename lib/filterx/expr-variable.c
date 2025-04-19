@@ -41,11 +41,29 @@ typedef struct _FilterXVariableExpr
 } FilterXVariableExpr;
 
 static FilterXObject *
+_eval_macro(FilterXVariableExpr *self, FilterXEvalContext *context)
+{
+  gssize value_len;
+  LogMessageValueType t = LM_VT_NONE;
+
+  const gchar *value = log_msg_get_value_if_set_with_type(context->msg, self->handle, &value_len, &t);
+  if (!value)
+    {
+      filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+      return NULL;
+    }
+  return filterx_unmarshal_repr(value, value_len, t);
+}
+
+static FilterXObject *
 _eval_variable(FilterXExpr *s)
 {
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXVariable *variable;
+
+  if (self->handle_is_macro)
+    return _eval_macro(self, context);
 
   variable = filterx_scope_lookup_variable(context->scope, self->handle);
   if (variable)
