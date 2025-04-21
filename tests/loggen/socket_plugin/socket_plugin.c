@@ -286,8 +286,8 @@ idle_thread_func(gpointer user_data)
     }
   g_mutex_unlock(&thread_lock);
 
-  DEBUG("thread (%s,%p) started. (r=%d,c=%d)\n", socket_loggen_plugin_info.name, g_thread_self(), option->rate,
-        option->number_of_messages);
+  DEBUG("thread (%s,%p) started. (r=%"G_GINT64_FORMAT",c=%d)\n", socket_loggen_plugin_info.name, g_thread_self(),
+        option->rate, option->number_of_messages);
 
   while (fd > 0 && thread_run && active_thread_count > 0)
     {
@@ -352,10 +352,10 @@ active_thread_func(gpointer user_data)
     }
   g_mutex_unlock(&thread_lock);
 
-  DEBUG("thread (%s,%p) started. (r=%d,c=%d)\n", socket_loggen_plugin_info.name, g_thread_self(), option->rate,
-        option->number_of_messages);
+  DEBUG("thread (%s,%p) started. (r=%"G_GINT64_FORMAT",c=%d)\n", socket_loggen_plugin_info.name, g_thread_self(),
+        option->rate, option->number_of_messages);
 
-  unsigned long count = 0;
+  gsize count = 0;
 
   gettimeofday(&thread_context->start_time, NULL);
   thread_context->last_throttle_check = thread_context->start_time;

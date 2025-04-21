@@ -86,7 +86,7 @@ _process_proxied_arg(const gchar *option_name,
 
 static GOptionEntry loggen_options[] =
 {
-  { "rate", 'r', 0, G_OPTION_ARG_INT, &global_plugin_option.rate, "Number of messages to generate per second per connection [default: 1000]", "<msg/sec/active connection>" },
+  { "rate", 'r', 0, G_OPTION_ARG_INT64, &global_plugin_option.rate, "Number of messages to generate per second per connection [default: 1000]", "<msg/sec/active connection>" },
   { "size", 's', 0, G_OPTION_ARG_INT, &global_plugin_option.message_length, "The size of the syslog message [default: 256]", "<size>" },
   { "interval", 'I', 0, G_OPTION_ARG_INT, &global_plugin_option.interval, "Number of seconds to run the test for [default: 10]", "<sec>" },
   { "permanent", 'T', 0, G_OPTION_ARG_NONE, &global_plugin_option.permanent, "Send logs without time limit, --interval is ignored", NULL},
@@ -111,7 +111,7 @@ static GOptionEntry loggen_options[] =
 /* This is the callback function called by plugins when
  * they need a new log line */
 int
-generate_message(char *buffer, int buffer_size, ThreadData *thread_context, unsigned long seq)
+generate_message(char *buffer, int buffer_size, ThreadData *thread_context, gsize seq)
 {
   int str_len;
 
@@ -439,7 +439,7 @@ rate_change_handler(int signum)
       break;
     case SIGUSR2:
     {
-      int proposed_new_rate = global_plugin_option.rate / 2;
+      gint64 proposed_new_rate = global_plugin_option.rate / 2;
       global_plugin_option.rate = proposed_new_rate > 0 ? proposed_new_rate: 1;
       break;
     }

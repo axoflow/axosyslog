@@ -102,8 +102,8 @@ generate_log_line(ThreadData *thread_context,
                   char *buffer, int buffer_length,
                   int syslog_proto,
                   int thread_id,
-                  unsigned long rate,
-                  unsigned long seq)
+                  gint64 rate,
+                  gsize seq)
 {
   if (!buffer)
     {
@@ -119,7 +119,7 @@ generate_log_line(ThreadData *thread_context,
   struct tm tm;
   static int len;
 
-  int check_seq = rate / 10;
+  gint64 check_seq = rate / 10;
   if (check_seq > 1000)
     check_seq = 1000;
   if (check_seq <= 1 || (seq % check_seq) == 0)
@@ -151,4 +151,3 @@ generate_log_line(ThreadData *thread_context,
 
   return strlen(buffer);
 }
-

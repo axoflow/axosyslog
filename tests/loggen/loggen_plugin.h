@@ -44,7 +44,7 @@ typedef struct _plugin_option
   int use_ipv6;
   char *target; /* command line argument */
   char *port;
-  int  rate;
+  gint64 rate;
   int reconnect;
   gboolean proxied;
   gint proxy_version;
@@ -61,11 +61,11 @@ typedef struct _thread_data
 {
   PluginOption *option;
   int index;
-  guint32 sent_messages;
+  gsize sent_messages;
   guint64 sent_bytes;
   struct timeval start_time;
   struct timeval last_throttle_check;
-  long buckets;
+  gint64 buckets;
   gboolean proxy_header_sent;
 
   /* timestamp  cache for logline generator */
@@ -76,7 +76,7 @@ typedef struct _thread_data
 typedef GOptionEntry *(*get_option_func)(void);
 typedef gboolean (*start_plugin_func)(PluginOption *option);
 typedef void (*stop_plugin_func)(PluginOption *option);
-typedef int (*generate_message_func)(char *buffer, int buffer_size, ThreadData *thread_context, unsigned long seq);
+typedef int (*generate_message_func)(char *buffer, int buffer_size, ThreadData *thread_context, gsize seq);
 typedef void (*set_generate_message_func)(generate_message_func gen_message);
 typedef int (*get_thread_count_func)(void);
 typedef gboolean (*is_plugin_activated_func)(void);

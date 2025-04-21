@@ -42,7 +42,7 @@ thread_check_exit_criteria(ThreadData *thread_context)
       return TRUE;
     }
 
-  long seq_check;
+  gint64 seq_check;
 
   /* 0.1 sec */
   seq_check = thread_context->option->rate / 10;
@@ -79,7 +79,7 @@ thread_check_time_bucket(ThreadData *thread_context)
   gettimeofday(&now, NULL);
 
   double diff_usec = time_val_diff_in_usec(&now, &thread_context->last_throttle_check);
-  long new_buckets = (long)((thread_context->option->rate * diff_usec) / USEC_PER_SEC);
+  gint64 new_buckets = (gint64)((thread_context->option->rate * diff_usec) / USEC_PER_SEC);
   if (new_buckets)
     {
       thread_context->buckets = (thread_context->option->rate < thread_context->buckets + new_buckets) ?
@@ -103,4 +103,3 @@ thread_check_time_bucket(ThreadData *thread_context)
 
   return FALSE;
 }
-
