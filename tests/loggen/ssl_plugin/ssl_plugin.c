@@ -490,9 +490,9 @@ active_thread_func(gpointer user_data)
   shutdown(sock_fd, SHUT_RDWR);
   close(sock_fd);
 
-  option->global_sent_bytes += thread_context->sent_bytes;
 
   g_mutex_lock(&thread_wait_lock);
+  option->global_sent_bytes += thread_context->sent_bytes;
   threads_finished++;
 
   if (threads_finished == option->active_connections + option->idle_connections)
