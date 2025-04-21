@@ -203,6 +203,12 @@ time_val_diff_in_usec(struct timeval *t1, struct timeval *t2)
   return (t1->tv_sec - t2->tv_sec) * ((guint64)USEC_PER_SEC) + (t1->tv_usec - t2->tv_usec);
 }
 
+guint64
+time_val_diff_in_msec(struct timeval *t1, struct timeval *t2)
+{
+  return (t1->tv_sec - t2->tv_sec) * ((guint64)1000) + ((t1->tv_usec - t2->tv_usec) / 1000);
+}
+
 void
 time_val_diff_in_timeval(struct timeval *res, const struct timeval *t1, const struct timeval *t2)
 {

@@ -357,7 +357,7 @@ start_plugins(GPtrArray *plugin_array)
 }
 
 void
-print_statistic(struct timeval *start_time)
+print_statistic(struct timeval start_time, gboolean final)
 {
   static gsize last_count = 0;
   static struct timeval last_ts_format = {0};
@@ -366,25 +366,20 @@ print_statistic(struct timeval *start_time)
   gettimeofday(&now, NULL);
 
   if (!last_ts_format.tv_sec)
-    {
-      last_ts_format = now;
-      return;
-    }
+    last_ts_format = start_time;
 
-  if (!quiet)
-    {
-      guint64 diff_usec = time_val_diff_in_usec(&now, &last_ts_format);
-      if (diff_usec > 0)
-        {
-          gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
+  guint64 diff_msec = time_val_diff_in_msec(&now, &last_ts_format);
+  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
 
-          fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate = %.2lf msg/sec\n",
-                  count,
-                  ((double) (count - last_count) * USEC_PER_SEC) / diff_usec);
+  if (final && last_count == count)
+    return;
 
-          last_count = count;
-        }
-    }
+  gdouble rate = 0;
+  if (diff_msec)
+    rate = (count - last_count) * (1000.0 / diff_msec);
+
+  fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate = %.2lf msg/sec\n", count, rate);
+  last_count = count;
   last_ts_format = now;
 }
 
@@ -404,13 +399,14 @@ void wait_all_plugin_to_finish(GPtrArray *plugin_array)
 
       while (plugin->get_thread_count() > 0)
         {
-          g_usleep(500*1000);
-          print_statistic(&start_time);
+          if (!quiet)
+            print_statistic(start_time, FALSE);
+
+          g_usleep(1000*1000);
         }
     }
 
-  /* print final statistic: */
-  print_statistic(&start_time);
+  print_statistic(start_time, TRUE);
   gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
   struct timeval now;
   gettimeofday(&now, NULL);

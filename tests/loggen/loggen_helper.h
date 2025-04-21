@@ -43,6 +43,7 @@
 int get_debug_level(void);
 void set_debug_level(int new_debug);
 guint64 time_val_diff_in_usec(struct timeval *t1, struct timeval *t2);
+guint64 time_val_diff_in_msec(struct timeval *t1, struct timeval *t2);
 double time_val_diff_in_sec(struct timeval *t1, struct timeval *t2);
 void time_val_diff_in_timeval(struct timeval *res, const struct timeval *t1, const struct timeval *t2);
 size_t get_now_timestamp(char *stamp, gsize stamp_size);
