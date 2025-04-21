@@ -93,26 +93,26 @@ _process_proxied_arg(const gchar *option_name,
 
 static GOptionEntry loggen_options[] =
 {
-  { "rate", 'r', 0, G_OPTION_ARG_INT, &global_plugin_option.rate, "Number of messages to generate per second", "<msg/sec/active connection>" },
-  { "size", 's', 0, G_OPTION_ARG_INT, &global_plugin_option.message_length, "Specify the size of the syslog message", "<size>" },
-  { "interval", 'I', 0, G_OPTION_ARG_INT, &global_plugin_option.interval, "Number of seconds to run the test for", "<sec>" },
-  { "permanent", 'T', 0, G_OPTION_ARG_NONE, &global_plugin_option.permanent, "Send logs without time limit", NULL},
+  { "rate", 'r', 0, G_OPTION_ARG_INT, &global_plugin_option.rate, "Number of messages to generate per second per connection [default: 1000]", "<msg/sec/active connection>" },
+  { "size", 's', 0, G_OPTION_ARG_INT, &global_plugin_option.message_length, "The size of the syslog message [default: 256]", "<size>" },
+  { "interval", 'I', 0, G_OPTION_ARG_INT, &global_plugin_option.interval, "Number of seconds to run the test for [default: 10]", "<sec>" },
+  { "permanent", 'T', 0, G_OPTION_ARG_NONE, &global_plugin_option.permanent, "Send logs without time limit, --interval is ignored", NULL},
+  { "number", 'n', 0, G_OPTION_ARG_INT, &global_plugin_option.number_of_messages, "Number of messages to generate per connection", "<number/active connection>" },
+  { "active-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.active_connections, "Number of active connections to the server [default: 1]", "<number>" },
+  { "idle-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.idle_connections, "Number of inactive connections to the server [default: 0]", "<number>" },
+  { "reconnect", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.reconnect, "Attempt to reconnect when destination connections are lost", NULL},
+  { "ipv6",    '6', 0, G_OPTION_ARG_NONE, &global_plugin_option.use_ipv6, "Use AF_INET6 sockets instead of AF_INET (can use both IPv4 & IPv6)", NULL },
   { "syslog-proto", 'P', 0, G_OPTION_ARG_NONE, &syslog_proto, "Use the new syslog-protocol message format (see also framing)", NULL },
+  { "no-framing", 'F', G_OPTION_ARG_NONE, G_OPTION_ARG_NONE, &noframing, "Don't use syslog-protocol style framing, even if syslog-proto is set", NULL },
   { "proxied", 'H', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, _process_proxied_arg, "Generate PROXY protocol header", "<protocol version 1 or 2>" },
   { "proxy-src-ip", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_src_ip, "Source IP for the PROXY protocol header", "<ip address>" },
   { "proxy-dst-ip", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_dst_ip, "Destination IP for the PROXY protocol header", "<ip address>" },
   { "proxy-src-port", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_src_port, "Source port for the PROXY protocol header", "<port>" },
   { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_dst_port, "Destination port for the PROXY protocol header", "<port>" },
   { "sdata", 'p', 0, G_OPTION_ARG_STRING, &sdata_value, "Send the given sdata (e.g. \"[test name=\\\"value\\\"]\") in case of syslog-proto", NULL },
-  { "no-framing", 'F', G_OPTION_ARG_NONE, G_OPTION_ARG_NONE, &noframing, "Don't use syslog-protocol style framing, even if syslog-proto is set", NULL },
-  { "active-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.active_connections, "Number of active connections to the server (default = 1)", "<number>" },
-  { "idle-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.idle_connections, "Number of inactive connections to the server (default = 0)", "<number>" },
-  { "ipv6",    '6', 0, G_OPTION_ARG_NONE, &global_plugin_option.use_ipv6, "Use AF_INET6 sockets instead of AF_INET (can use both IPv4 & IPv6)", NULL },
   { "csv", 'C', 0, G_OPTION_ARG_NONE, &csv, "Produce CSV output", NULL },
-  { "number", 'n', 0, G_OPTION_ARG_INT, &global_plugin_option.number_of_messages, "Number of messages to generate", "<number>" },
-  { "quiet", 'Q', 0, G_OPTION_ARG_NONE, &quiet, "Don't print the msg/sec data", NULL },
+  { "quiet", 'Q', 0, G_OPTION_ARG_NONE, &quiet, "Don't print periodic statistics", NULL },
   { "debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Enable loggen debug messages", NULL },
-  { "reconnect", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.reconnect, "Attempt to reconnect when destination connections are lost", NULL},
   { NULL }
 };
 
@@ -231,9 +231,6 @@ enumerate_plugins(const gchar *plugin_path, GPtrArray *plugin_array, GOptionCont
     }
 
   DEBUG("search for plugins in directory %s\n", plugin_path);
-
-  /* add common options to help context: */
-  g_option_context_add_main_entries(ctx, loggen_options, 0);
 
   while ((fname = g_dir_read_name(dir)))
     {
@@ -533,9 +530,9 @@ setup_rate_change_signals(void)
 int
 main(int argc, char *argv[])
 {
-
   GPtrArray *plugin_array = g_ptr_array_new();
   GOptionContext *ctx = g_option_context_new(" target port");
+  g_option_context_add_main_entries(ctx, loggen_options, 0);
 
   signal(SIGPIPE, signal_callback_handler);
   setup_rate_change_signals();
