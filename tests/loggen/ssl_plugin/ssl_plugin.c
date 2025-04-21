@@ -362,10 +362,10 @@ active_thread_func(gpointer user_data)
         option->number_of_messages);
 
   unsigned long count = 0;
-  thread_context->buckets = thread_context->option->rate - (thread_context->option->rate / 10);
 
   gettimeofday(&thread_context->start_time, NULL);
   thread_context->last_throttle_check = thread_context->start_time;
+  thread_context->buckets = option->rate;
 
   gboolean connection_error = FALSE;
 
