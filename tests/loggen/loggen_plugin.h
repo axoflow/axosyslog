@@ -25,6 +25,7 @@
 #define LOGGEN_PLUGIN_H_INCLUDED
 
 #include "compat/glib.h"
+#include "atomic-gssize.h"
 #include <gmodule.h>
 #include <sys/time.h>
 
@@ -51,13 +52,17 @@ typedef struct _plugin_option
   char *proxy_dst_ip;
   char *proxy_src_port;
   char *proxy_dst_port;
+
+  atomic_gssize global_sent_messages;
+  guint64 global_sent_bytes;
 } PluginOption;
 
 typedef struct _thread_data
 {
   PluginOption *option;
   int index;
-  int sent_messages;
+  guint32 sent_messages;
+  guint64 sent_bytes;
   struct timeval start_time;
   struct timeval last_throttle_check;
   long buckets;

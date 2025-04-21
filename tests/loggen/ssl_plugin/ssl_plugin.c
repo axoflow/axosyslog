@@ -364,8 +364,8 @@ active_thread_func(gpointer user_data)
   unsigned long count = 0;
   thread_context->buckets = thread_context->option->rate - (thread_context->option->rate / 10);
 
-  gettimeofday(&thread_context->last_throttle_check, NULL);
   gettimeofday(&thread_context->start_time, NULL);
+  thread_context->last_throttle_check = thread_context->start_time;
 
   gboolean connection_error = FALSE;
 
@@ -408,7 +408,9 @@ active_thread_func(gpointer user_data)
       if(!connection_error)
         {
           thread_context->sent_messages++;
+          thread_context->sent_bytes += str_len;
           thread_context->buckets--;
+          atomic_gssize_add(&option->global_sent_messages, 1);
         }
 
       if(connection_error && option->reconnect)
@@ -452,6 +454,7 @@ active_thread_func(gpointer user_data)
   shutdown(sock_fd, SHUT_RDWR);
   close(sock_fd);
 
+  option->global_sent_bytes += thread_context->sent_bytes;
   g_free(thread_context);
   g_thread_exit(NULL);
   return NULL;

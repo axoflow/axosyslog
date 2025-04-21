@@ -71,11 +71,7 @@ static int noframing = 0;
 static int syslog_proto = 0;
 static int quiet = 0;
 static int debug = 0;
-static unsigned long sent_messages_num = 0;
 static int read_from_file = 0;
-static gint64 raw_message_length = 0;
-
-static GMutex message_counter_lock;
 
 static gboolean
 _process_proxied_arg(const gchar *option_name,
@@ -139,13 +135,6 @@ generate_message(char *buffer, int buffer_size, ThreadData *thread_context, unsi
 
   if (str_len < 0)
     return -1;
-
-  g_mutex_lock(&message_counter_lock);
-  sent_messages_num++;
-  raw_message_length += str_len;
-
-
-  g_mutex_unlock(&message_counter_lock);
 
   return str_len;
 }
@@ -370,8 +359,7 @@ start_plugins(GPtrArray *plugin_array)
 void
 print_statistic(struct timeval *start_time)
 {
-  gint64 count;
-  static gint64 last_count = 0;
+  static gsize last_count = 0;
   static struct timeval last_ts_format = {0};
 
   struct timeval now;
@@ -388,16 +376,12 @@ print_statistic(struct timeval *start_time)
       guint64 diff_usec = time_val_diff_in_usec(&now, &last_ts_format);
       if (diff_usec > 0)
         {
-          g_mutex_lock(&message_counter_lock);
-          count = sent_messages_num;
-          g_mutex_unlock(&message_counter_lock);
+          gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
 
-          if (count > last_count)
-            {
-              fprintf(stderr, "count=%"G_GINT64_FORMAT", rate = %.2lf msg/sec\n",
-                      count,
-                      ((double) (count - last_count) * USEC_PER_SEC) / diff_usec);
-            }
+          fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate = %.2lf msg/sec\n",
+                  count,
+                  ((double) (count - last_count) * USEC_PER_SEC) / diff_usec);
+
           last_count = count;
         }
     }
@@ -427,20 +411,20 @@ void wait_all_plugin_to_finish(GPtrArray *plugin_array)
 
   /* print final statistic: */
   print_statistic(&start_time);
-  unsigned long count = sent_messages_num;
+  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
   struct timeval now;
   gettimeofday(&now, NULL);
   double total_runtime_sec = time_val_diff_in_sec(&now, &start_time);
   if (total_runtime_sec > 0 && count > 0)
     fprintf(stderr,
-            "average rate = %.2lf msg/sec, count=%ld, time=%g, (average) msg size=%"G_GINT64_FORMAT", bandwidth=%.2f kB/sec\n",
+            "average rate = %.2lf msg/sec, count=%"G_GSIZE_FORMAT", time=%g, (average) msg size=%"G_GUINT64_FORMAT", bandwidth=%.2f kB/sec\n",
             (double)count/total_runtime_sec,
             count,
             total_runtime_sec,
-            (gint64)raw_message_length/count,
-            (double)raw_message_length/(total_runtime_sec*1024) );
+            (guint64)global_plugin_option.global_sent_bytes/count,
+            (double)global_plugin_option.global_sent_bytes/(total_runtime_sec*1024) );
   else
-    fprintf(stderr, "Total runtime = %g, count = %ld\n", total_runtime_sec, count);
+    fprintf(stderr, "Total runtime = %g, count = %"G_GSIZE_FORMAT"\n", total_runtime_sec, count);
 }
 
 static void
@@ -545,8 +529,6 @@ main(int argc, char *argv[])
       return 1;
     }
 
-  g_mutex_init(&message_counter_lock);
-
   init_logline_generator(plugin_array);
 
   if (start_plugins(plugin_array) > 0)
@@ -557,7 +539,6 @@ main(int argc, char *argv[])
 
   close_file_reader(global_plugin_option.active_connections);
 
-  g_mutex_clear(&message_counter_lock);
   g_free((gpointer)global_plugin_option.target);
   g_free((gpointer)global_plugin_option.port);
   g_option_context_free(ctx);

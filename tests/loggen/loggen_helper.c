@@ -197,10 +197,10 @@ int connect_unix_domain_socket(int sock_type, const char *path)
   return connect_to_server(dest_addr, dest_addr_len, sock_type);
 }
 
-unsigned long
+guint64
 time_val_diff_in_usec(struct timeval *t1, struct timeval *t2)
 {
-  return (t1->tv_sec - t2->tv_sec) * USEC_PER_SEC + (t1->tv_usec - t2->tv_usec);
+  return (t1->tv_sec - t2->tv_sec) * ((guint64)USEC_PER_SEC) + (t1->tv_usec - t2->tv_usec);
 }
 
 void
