@@ -195,7 +195,8 @@ start(PluginOption *option)
       if (! g_cond_wait_until(&thread_connected, &thread_lock, end_time))
         {
           ERROR("timeout occurred while waiting for connections\n");
-          break;
+          g_mutex_unlock(&thread_lock);
+          return FALSE;
         }
     }
 
