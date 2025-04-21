@@ -369,6 +369,7 @@ print_statistic(struct timeval start_time, gboolean final)
     last_ts_format = start_time;
 
   guint64 diff_msec = time_val_diff_in_msec(&now, &last_ts_format);
+  gdouble current_runtime_sec = time_val_diff_in_sec(&now, &start_time);
   gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
 
   if (final && last_count == count)
@@ -378,7 +379,13 @@ print_statistic(struct timeval start_time, gboolean final)
   if (diff_msec)
     rate = (count - last_count) * (1000.0 / diff_msec);
 
-  fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate = %.2lf msg/sec\n", count, rate);
+  gdouble average_rate = 0;
+  if (current_runtime_sec > 0)
+    average_rate = count / current_runtime_sec;
+
+  fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate=%.2lf msg/s, avg_rate=%.2lf msg/s\n",
+          count, rate, average_rate);
+
   last_count = count;
   last_ts_format = now;
 }
@@ -406,21 +413,24 @@ void wait_all_plugin_to_finish(GPtrArray *plugin_array)
         }
     }
 
-  print_statistic(start_time, TRUE);
-  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
   struct timeval now;
   gettimeofday(&now, NULL);
+
+  if (!quiet)
+    print_statistic(start_time, TRUE);
+
+  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
   double total_runtime_sec = time_val_diff_in_sec(&now, &start_time);
   if (total_runtime_sec > 0 && count > 0)
     fprintf(stderr,
-            "average rate = %.2lf msg/sec, count=%"G_GSIZE_FORMAT", time=%g, (average) msg size=%"G_GUINT64_FORMAT", bandwidth=%.2f kB/sec\n",
+            "avg_rate=%.2lf msg/s, count=%"G_GSIZE_FORMAT", time=%g, avg_msg_size=%"G_GUINT64_FORMAT", bandwidth=%.2f KiB/s\n",
             (double)count/total_runtime_sec,
             count,
             total_runtime_sec,
             (guint64)global_plugin_option.global_sent_bytes/count,
             (double)global_plugin_option.global_sent_bytes/(total_runtime_sec*1024) );
   else
-    fprintf(stderr, "Total runtime = %g, count = %"G_GSIZE_FORMAT"\n", total_runtime_sec, count);
+    fprintf(stderr, "count=%"G_GSIZE_FORMAT", time=%g\n", count, total_runtime_sec);
 }
 
 static void
