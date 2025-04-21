@@ -71,31 +71,32 @@ thread_check_exit_criteria(ThreadData *thread_context)
 gboolean
 thread_check_time_bucket(ThreadData *thread_context)
 {
-  struct timeval now;
-
   if (thread_context->buckets > 0)
     return FALSE;
 
-  gettimeofday(&now, NULL);
+  struct timespec now;
+  fast_gettime(&now);
 
-  double diff_usec = time_val_diff_in_usec(&now, &thread_context->last_throttle_check);
+  double diff_usec = time_spec_diff_in_usec(&now, &thread_context->last_throttle_check);
   gint64 new_buckets = (gint64)((thread_context->option->rate * diff_usec) / USEC_PER_SEC);
   if (new_buckets)
     {
-      thread_context->buckets = (thread_context->option->rate < thread_context->buckets + new_buckets) ?
-                                thread_context->option->rate : thread_context->buckets + new_buckets;
+      /* allow 2 * rate bursts */
+      thread_context->buckets = MIN(thread_context->option->rate * 2, thread_context->buckets + new_buckets);
       thread_context->last_throttle_check = now;
     }
 
   if (thread_context->buckets == 0)
     {
-      struct timespec tspec;
+      /* to avoid aliasing when showing periodic stats */
+      guint32 max_sleep_nsec = (PERIODIC_STAT_USEC * 1000) / 2;
 
-      /* wait at least 3 messages worth of time but not more than 1s */
+      /* wait at least 3 messages worth of time but not more than max_sleep_nsec (calculating 'now' is expensive) */
+      struct timespec tspec;
       tspec.tv_sec = 0;
-      tspec.tv_nsec = 3 * (1000000000LL / thread_context->option->rate);
-      if (tspec.tv_nsec >= 100000000)
-        tspec.tv_nsec = 100000000;
+      tspec.tv_nsec = MIN(3 * (1000000000LL / thread_context->option->rate), max_sleep_nsec);
+      g_assert(tspec.tv_nsec < 1000000000);
+
       while (nanosleep(&tspec, &tspec) < 0 && errno == EINTR)
         ;
       return TRUE;

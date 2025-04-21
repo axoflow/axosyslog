@@ -402,7 +402,7 @@ void wait_all_plugin_to_finish(GPtrArray *plugin_array)
           if (!quiet)
             print_statistic(start_time, FALSE);
 
-          g_usleep(1000*1000);
+          g_usleep(PERIODIC_STAT_USEC);
         }
     }
 

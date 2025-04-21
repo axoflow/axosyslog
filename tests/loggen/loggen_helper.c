@@ -198,6 +198,12 @@ int connect_unix_domain_socket(int sock_type, const char *path)
 }
 
 guint64
+time_spec_diff_in_usec(struct timespec *t1, struct timespec *t2)
+{
+  return (t1->tv_sec - t2->tv_sec) * ((guint64)USEC_PER_SEC) + (t1->tv_nsec - t2->tv_nsec) / 1000;
+}
+
+guint64
 time_val_diff_in_usec(struct timeval *t1, struct timeval *t2)
 {
   return (t1->tv_sec - t2->tv_sec) * ((guint64)USEC_PER_SEC) + (t1->tv_usec - t2->tv_usec);

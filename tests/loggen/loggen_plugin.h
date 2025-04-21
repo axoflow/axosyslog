@@ -64,7 +64,7 @@ typedef struct _thread_data
   gsize sent_messages;
   guint64 sent_bytes;
   struct timeval start_time;
-  struct timeval last_throttle_check;
+  struct timespec last_throttle_check;
   gint64 buckets;
   gboolean proxy_header_sent;
 
