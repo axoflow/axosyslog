@@ -42,8 +42,8 @@ typedef struct _plugin_option
   int active_connections;
   int idle_connections;
   int use_ipv6;
-  const char *target; /* command line argument */
-  const char *port;
+  char *target; /* command line argument */
+  char *port;
   int  rate;
   int reconnect;
   gboolean proxied;

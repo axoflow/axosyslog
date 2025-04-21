@@ -268,7 +268,7 @@ stop_plugins(GPtrArray *plugin_array)
 
       DEBUG("stop plugin (%s:%d)\n", plugin->name, i);
       if (plugin->stop_plugin)
-        plugin->stop_plugin((gpointer)&global_plugin_option);
+        plugin->stop_plugin(&global_plugin_option);
     }
 
   DEBUG("all plugins have been stopped\n");
@@ -346,7 +346,7 @@ start_plugins(GPtrArray *plugin_array)
 
       if (plugin->start_plugin && plugin->is_plugin_activated())
         {
-          if (!plugin->start_plugin((gpointer)&global_plugin_option))
+          if (!plugin->start_plugin(&global_plugin_option))
             return 0;
 
           break;
@@ -539,8 +539,8 @@ main(int argc, char *argv[])
 
   close_file_reader(global_plugin_option.active_connections);
 
-  g_free((gpointer)global_plugin_option.target);
-  g_free((gpointer)global_plugin_option.port);
+  g_free(global_plugin_option.target);
+  g_free(global_plugin_option.port);
   g_option_context_free(ctx);
   g_ptr_array_free(plugin_array, TRUE);
   return 0;
