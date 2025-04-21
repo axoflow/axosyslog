@@ -70,13 +70,10 @@ static char *sdata_value = NULL;
 static int noframing = 0;
 static int syslog_proto = 0;
 static int quiet = 0;
-static int csv = 0;
 static int debug = 0;
 static unsigned long sent_messages_num = 0;
 static int read_from_file = 0;
 static gint64 raw_message_length = 0;
-static gint64 *thread_stat_count = NULL;
-static gint64 *thread_stat_count_last = NULL;
 
 static GMutex message_counter_lock;
 
@@ -110,7 +107,6 @@ static GOptionEntry loggen_options[] =
   { "proxy-src-port", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_src_port, "Source port for the PROXY protocol header", "<port>" },
   { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_dst_port, "Destination port for the PROXY protocol header", "<port>" },
   { "sdata", 'p', 0, G_OPTION_ARG_STRING, &sdata_value, "Send the given sdata (e.g. \"[test name=\\\"value\\\"]\") in case of syslog-proto", NULL },
-  { "csv", 'C', 0, G_OPTION_ARG_NONE, &csv, "Produce CSV output", NULL },
   { "quiet", 'Q', 0, G_OPTION_ARG_NONE, &quiet, "Don't print periodic statistics", NULL },
   { "debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Enable loggen debug messages", NULL },
   { NULL }
@@ -148,8 +144,6 @@ generate_message(char *buffer, int buffer_size, ThreadData *thread_context, unsi
   sent_messages_num++;
   raw_message_length += str_len;
 
-  if (thread_stat_count && csv)
-    thread_stat_count[thread_context->index]+=1;
 
   g_mutex_unlock(&message_counter_lock);
 
@@ -327,23 +321,6 @@ init_logline_generator(GPtrArray *plugin_array)
     sdata_value);
 }
 
-static void
-init_csv_statistics(void)
-{
-  /* message counter for csv output */
-  thread_stat_count = (gint64 *) g_malloc0(global_plugin_option.active_connections * sizeof(gint64));
-  thread_stat_count_last = (gint64 *) g_malloc0(global_plugin_option.active_connections * sizeof(gint64));
-  if (csv)
-    {
-      /* print CSV header and initial line about time zero */
-      printf("ThreadId;Time;Rate;Count\n");
-      for (int j=0; j < global_plugin_option.active_connections; j++)
-        {
-          fprintf(stderr, "%d;%lu.%06lu;%.2lf;%lu\n", j, (long) 0, (long) 0, (double) 0, (long)0);
-        }
-    }
-}
-
 static int
 start_plugins(GPtrArray *plugin_array)
 {
@@ -406,7 +383,7 @@ print_statistic(struct timeval *start_time)
       return;
     }
 
-  if (!quiet && !csv)
+  if (!quiet)
     {
       guint64 diff_usec = time_val_diff_in_usec(&now, &last_ts_format);
       if (diff_usec > 0)
@@ -422,30 +399,6 @@ print_statistic(struct timeval *start_time)
                       ((double) (count - last_count) * USEC_PER_SEC) / diff_usec);
             }
           last_count = count;
-        }
-    }
-
-  if (thread_stat_count && thread_stat_count_last && csv)
-    {
-      struct timeval diff_tv;
-      time_val_diff_in_timeval(&diff_tv, &now, start_time);
-      guint64 diff_usec = time_val_diff_in_usec(&now, &last_ts_format);
-
-      for (int j=0; j < global_plugin_option.active_connections; j++)
-        {
-          g_mutex_lock(&message_counter_lock);
-          double msg_count_diff = ((double) (thread_stat_count[j]-thread_stat_count_last[j]) * USEC_PER_SEC) / diff_usec;
-          thread_stat_count_last[j] = thread_stat_count[j];
-          count = thread_stat_count[j];
-          g_mutex_unlock(&message_counter_lock);
-
-          fprintf(stderr, "%d;%lu.%06lu;%.2lf;%"G_GINT64_FORMAT"\n",
-                  j,
-                  (long) diff_tv.tv_sec,
-                  (long) diff_tv.tv_usec,
-                  msg_count_diff,
-                  count
-                 );
         }
     }
   last_ts_format = now;
@@ -595,7 +548,6 @@ main(int argc, char *argv[])
   g_mutex_init(&message_counter_lock);
 
   init_logline_generator(plugin_array);
-  init_csv_statistics();
 
   if (start_plugins(plugin_array) > 0)
     {
@@ -610,7 +562,5 @@ main(int argc, char *argv[])
   g_free((gpointer)global_plugin_option.port);
   g_option_context_free(ctx);
   g_ptr_array_free(plugin_array, TRUE);
-  g_free(thread_stat_count_last);
-  g_free(thread_stat_count);
   return 0;
 }
