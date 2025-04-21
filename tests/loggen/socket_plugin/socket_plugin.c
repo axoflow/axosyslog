@@ -43,6 +43,7 @@
 
 static gboolean       start(PluginOption *option);
 static void           stop(PluginOption *option);
+static gboolean wait_with_timeout(PluginOption *option, gint timeout_usec);
 static gpointer       active_thread_func(gpointer user_data);
 static gpointer       idle_thread_func(gpointer user_data);
 static gboolean       send_msg(int fd, char *msg, size_t msg_len);
@@ -61,6 +62,10 @@ static GCond thread_connected;
 static gint connect_finished;
 static gint active_thread_count;
 static gint idle_thread_count;
+
+static GMutex thread_wait_lock;
+static GCond thread_finished;
+static gint threads_finished;
 
 static int inet_socket_i = 0;
 static int unix_socket_x = 0;
@@ -82,6 +87,7 @@ PluginInfo socket_loggen_plugin_info =
   .get_options_list = get_options,
   .start_plugin = start,
   .stop_plugin = stop,
+  .wait_with_timeout = wait_with_timeout,
   .get_thread_count = get_thread_count,
   .set_generate_message = set_generate_message,
   .is_plugin_activated = is_plugin_activated,
@@ -157,8 +163,10 @@ start(PluginOption *option)
   thread_array = g_ptr_array_new();
 
   g_mutex_init(&thread_lock);
+  g_mutex_init(&thread_wait_lock);
   g_cond_init(&thread_start);
   g_cond_init(&thread_connected);
+  g_cond_init(&thread_finished);
 
   active_thread_count  = option->active_connections;
   idle_thread_count = option->idle_connections;
@@ -201,8 +209,8 @@ start(PluginOption *option)
     }
 
   /* start all threads */
-  g_cond_broadcast(&thread_start);
   thread_run = TRUE;
+  g_cond_broadcast(&thread_start);
   g_mutex_unlock(&thread_lock);
 
   return TRUE;
@@ -234,12 +242,34 @@ stop(PluginOption *option)
     }
 
   g_mutex_clear(&thread_lock);
+  g_mutex_clear(&thread_wait_lock);
   g_cond_clear(&thread_start);
   g_cond_clear(&thread_connected);
+  g_cond_clear(&thread_finished);
 
   DEBUG("all %d+%d threads have been stopped\n",
         option->active_connections,
         option->idle_connections);
+}
+
+static gboolean
+wait_with_timeout(PluginOption *option, gint timeout_usec)
+{
+  gint64 end_time;
+  end_time = g_get_monotonic_time () + timeout_usec;
+
+  g_mutex_lock(&thread_wait_lock);
+  while (threads_finished != option->active_connections + option->idle_connections)
+    {
+      if (!g_cond_wait_until(&thread_finished, &thread_wait_lock, end_time))
+        {
+          g_mutex_unlock(&thread_wait_lock);
+          return FALSE;
+        }
+    }
+
+  g_mutex_unlock(&thread_wait_lock);
+  return TRUE;
 }
 
 gpointer
@@ -302,8 +332,15 @@ idle_thread_func(gpointer user_data)
   shutdown(fd, SHUT_RDWR);
   close(fd);
 
+  g_mutex_lock(&thread_wait_lock);
+  threads_finished++;
+
+  if (threads_finished == option->active_connections + option->idle_connections)
+    g_cond_broadcast(&thread_finished);
+
+  g_mutex_unlock(&thread_wait_lock);
+
   g_free(thread_context);
-  g_thread_exit(NULL);
   return NULL;
 }
 
@@ -437,8 +474,16 @@ active_thread_func(gpointer user_data)
   close(fd);
 
   option->global_sent_bytes += thread_context->sent_bytes;
+
+  g_mutex_lock(&thread_wait_lock);
+  threads_finished++;
+
+  if (threads_finished == option->active_connections + option->idle_connections)
+    g_cond_broadcast(&thread_finished);
+
+  g_mutex_unlock(&thread_wait_lock);
+
   g_free(thread_context);
-  g_thread_exit(NULL);
   return NULL;
 }
 

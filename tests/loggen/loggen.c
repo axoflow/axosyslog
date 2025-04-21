@@ -401,16 +401,15 @@ void wait_all_plugin_to_finish(GPtrArray *plugin_array)
   for (int i=0; i < plugin_array->len; i++)
     {
       PluginInfo *plugin = g_ptr_array_index(plugin_array, i);
-      if (!plugin)
+      if (!plugin || !plugin->is_plugin_activated())
         continue;
 
-      while (plugin->get_thread_count() > 0)
+      do
         {
           if (!quiet)
             print_statistic(start_time, FALSE);
-
-          g_usleep(PERIODIC_STAT_USEC);
         }
+      while (!plugin->wait_with_timeout(&global_plugin_option, PERIODIC_STAT_USEC));
     }
 
   struct timeval now;

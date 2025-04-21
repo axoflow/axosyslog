@@ -76,6 +76,7 @@ typedef struct _thread_data
 typedef GOptionEntry *(*get_option_func)(void);
 typedef gboolean (*start_plugin_func)(PluginOption *option);
 typedef void (*stop_plugin_func)(PluginOption *option);
+typedef gboolean (*wait_with_timeout_func)(PluginOption *option, gint timeout_usec);
 typedef int (*generate_message_func)(char *buffer, int buffer_size, ThreadData *thread_context, gsize seq);
 typedef void (*set_generate_message_func)(generate_message_func gen_message);
 typedef int (*get_thread_count_func)(void);
@@ -88,6 +89,7 @@ typedef struct _plugin_info
   get_thread_count_func  get_thread_count;
   stop_plugin_func   stop_plugin;
   start_plugin_func  start_plugin;
+  wait_with_timeout_func wait_with_timeout;
   set_generate_message_func set_generate_message;
   gboolean  require_framing; /* plugin can indicates that framing is mandatory in message lines */
   is_plugin_activated_func is_plugin_activated;
