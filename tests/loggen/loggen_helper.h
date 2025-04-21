@@ -40,7 +40,7 @@
 #define MAX_MESSAGE_LENGTH 8192
 #define USEC_PER_SEC      1000000
 #define CONNECTION_TIMEOUT_SEC 5
-#define PERIODIC_STAT_USEC (1 * USEC_PER_SEC)
+#define PERIODIC_STAT_USEC (500 * 1000)
 
 int get_debug_level(void);
 void set_debug_level(int new_debug);
