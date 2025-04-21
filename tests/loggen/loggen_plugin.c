@@ -42,6 +42,9 @@ thread_check_exit_criteria(ThreadData *thread_context)
       return TRUE;
     }
 
+  if (thread_context->option->permanent)
+    return FALSE;
+
   gint64 seq_check;
 
   /* 0.1 sec */
@@ -58,8 +61,7 @@ thread_check_exit_criteria(ThreadData *thread_context)
   struct timeval now;
   gettimeofday(&now, NULL);
 
-  if ( !thread_context->option->permanent &&
-       time_val_diff_in_sec(&now, &thread_context->start_time) > thread_context->option->interval )
+  if (time_val_diff_in_sec(&now, &thread_context->start_time) > thread_context->option->interval )
     {
       DEBUG("(thread %d) defined time (%d sec) ellapsed\n", thread_context->index, thread_context->option->interval);
       return TRUE;
@@ -71,7 +73,7 @@ thread_check_exit_criteria(ThreadData *thread_context)
 gboolean
 thread_check_time_bucket(ThreadData *thread_context)
 {
-  if (thread_context->buckets > 0)
+  if (thread_context->option->perf || thread_context->buckets > 0)
     return FALSE;
 
   struct timespec now;

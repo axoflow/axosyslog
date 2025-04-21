@@ -39,6 +39,7 @@ typedef struct _plugin_option
   int interval;
   int number_of_messages;
   int permanent;
+  int perf;
   int active_connections;
   int idle_connections;
   int use_ipv6;
