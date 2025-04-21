@@ -80,23 +80,29 @@ thread_check_time_bucket(ThreadData *thread_context)
   fast_gettime(&now);
 
   double diff_usec = time_spec_diff_in_usec(&now, &thread_context->last_throttle_check);
-  gint64 new_buckets = (gint64)((thread_context->option->rate * diff_usec) / USEC_PER_SEC);
+  gdouble current_buckets = (thread_context->option->rate * diff_usec) / USEC_PER_SEC;
+
+  gdouble total_buckets = current_buckets + thread_context->bucket_remainder;
+  gint64 new_buckets = (gint64)total_buckets;
+  thread_context->bucket_remainder = total_buckets - new_buckets;
+
   if (new_buckets)
     {
       /* allow 2 * rate bursts */
       thread_context->buckets = MIN(thread_context->option->rate * 2, thread_context->buckets + new_buckets);
-      thread_context->last_throttle_check = now;
     }
+
+  thread_context->last_throttle_check = now;
 
   if (thread_context->buckets == 0)
     {
       /* to avoid aliasing when showing periodic stats */
       guint32 max_sleep_nsec = (PERIODIC_STAT_USEC * 1000) / 2;
 
-      /* wait at least 3 messages worth of time but not more than max_sleep_nsec (calculating 'now' is expensive) */
+      /* wait at least 4 messages worth of time but not more than max_sleep_nsec */
       struct timespec tspec;
       tspec.tv_sec = 0;
-      tspec.tv_nsec = MIN(3 * (1000000000LL / thread_context->option->rate), max_sleep_nsec);
+      tspec.tv_nsec = MIN(4 * (1000000000LL / thread_context->option->rate), max_sleep_nsec);
       g_assert(tspec.tv_nsec < 1000000000);
 
       while (nanosleep(&tspec, &tspec) < 0 && errno == EINTR)

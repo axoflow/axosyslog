@@ -67,6 +67,7 @@ typedef struct _thread_data
   struct timeval start_time;
   struct timespec last_throttle_check;
   gint64 buckets;
+  gdouble bucket_remainder;
   gboolean proxy_header_sent;
 
   /* timestamp  cache for logline generator */
