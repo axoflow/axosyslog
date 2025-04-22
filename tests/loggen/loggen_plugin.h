@@ -46,6 +46,7 @@ typedef struct _plugin_option
   char *target; /* command line argument */
   char *port;
   gint64 rate;
+  int rate_burst_start;
   int reconnect;
   gboolean proxied;
   gint proxy_version;

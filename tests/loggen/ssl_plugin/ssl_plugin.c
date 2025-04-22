@@ -402,6 +402,8 @@ active_thread_func(gpointer user_data)
 
   gettimeofday(&thread_context->start_time, NULL);
   fast_gettime(&thread_context->last_throttle_check);
+  if (option->rate_burst_start)
+    thread_context->buckets = option->rate;
 
   gboolean connection_error = FALSE;
 
