@@ -59,6 +59,6 @@ def test_rate_limit_filter_acceptance(config, syslog_ng, port_allocator, bsd_for
     syslog_ng.start(config)
 
     input_messages = generate_messages_with_different_program_fields(bsd_formatter=bsd_formatter, number_of_all_messages=message_counter, different_program_fields=different_program_fields)
-    s_network.write_logs(input_messages, rate=message_rate_by_sec)
+    s_network.write_logs(input_messages, rate=message_rate_by_sec, rate_burst_start=True)
 
     assert wait_until_true(lambda: f_rate_limit.get_stats() == {'matched': expected_number_of_matched_messages, 'not_matched': expected_number_of_not_matched_messages})
