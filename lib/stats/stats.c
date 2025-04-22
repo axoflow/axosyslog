@@ -290,7 +290,7 @@ void
 stats_options_defaults(StatsOptions *options)
 {
   options->level = 0;
-  options->log_freq = 600;
+  options->log_freq = 0;
   options->lifetime = 600;
   options->max_dynamic = -1;
   options->syslog_stats = CYNA_AUTO;
