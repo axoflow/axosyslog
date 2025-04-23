@@ -24,20 +24,8 @@
 #ifndef CFG_WALKER_H_INCLUDED
 #define CFG_WALKER_H_INCLUDED
 
-#include "logpipe.h"
-
-typedef struct
-{
-  LogPipe *from;
-  LogPipe *to;
-  LogPathConnectionType type;
-} Arc;
-
-void cfg_walker_get_graph(GPtrArray *start_nodes, GHashTable **nodes, GHashTable **arcs);
-Arc *arc_new(LogPipe *from, LogPipe *to, LogPathConnectionType type);
-void arc_free(Arc *self);
+#include "cfg.h"
 
 GString *cfg_walker_generate_graph(GlobalConfig *cfg);
-
 
 #endif

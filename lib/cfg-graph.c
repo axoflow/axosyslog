@@ -24,6 +24,13 @@
 #include "cfg-graph.h"
 #include "logpipe.h"
 
+typedef struct
+{
+  LogPipe *from;
+  LogPipe *to;
+  LogPathConnectionType type;
+} Arc;
+
 Arc *
 arc_new(LogPipe *from, LogPipe *to, LogPathConnectionType type)
 {
