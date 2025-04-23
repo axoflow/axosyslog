@@ -21,7 +21,7 @@
  *
  */
 
-#include "cfg-walker.h"
+#include "cfg-graph.h"
 #include "logpipe.h"
 
 Arc *

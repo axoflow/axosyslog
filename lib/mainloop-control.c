@@ -29,7 +29,7 @@
 #include "cfg-path.h"
 #include "apphook.h"
 #include "secret-storage/secret-storage.h"
-#include "cfg-walker.h"
+#include "cfg-graph.h"
 #include "logpipe.h"
 #include "console.h"
 #include "debugger/debugger-main.h"

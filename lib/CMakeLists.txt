@@ -93,7 +93,7 @@ set (LIB_HEADERS
     cfg-path.h
     cfg-source.h
     cfg-tree.h
-    cfg-walker.h
+    cfg-graph.h
     cfg-persist.h
     children.h
     crypto.h
@@ -194,7 +194,7 @@ set(LIB_SOURCES
     cfg-path.c
     cfg-source.c
     cfg-tree.c
-    cfg-walker.c
+    cfg-graph.c
     cfg-persist.c
     children.c
     dnscache.c
