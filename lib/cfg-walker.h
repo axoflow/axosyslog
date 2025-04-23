@@ -37,4 +37,7 @@ void cfg_walker_get_graph(GPtrArray *start_nodes, GHashTable **nodes, GHashTable
 Arc *arc_new(LogPipe *from, LogPipe *to, LogPathConnectionType type);
 void arc_free(Arc *self);
 
+GString *cfg_walker_generate_graph(GlobalConfig *cfg);
+
+
 #endif
