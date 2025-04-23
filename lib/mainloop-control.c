@@ -436,7 +436,7 @@ _append_arc(Arc *self, gpointer dummy, GPtrArray *arcs)
 {
   g_ptr_array_add(arcs, g_strdup_printf("{\"from\" : \"%p\", \"to\" : \"%p\", \"type\" : \"%s\"}",
                                         self->from, self->to,
-                                        self->arc_type == ARC_TYPE_NEXT_HOP ? "next_hop" : "pipe_next"));
+                                        self->type == PIW_NEXT_HOP ? "next_hop" : "pipe_next"));
 };
 
 static gchar *

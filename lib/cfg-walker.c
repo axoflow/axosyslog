@@ -25,12 +25,12 @@
 #include "logpipe.h"
 
 Arc *
-arc_new(LogPipe *from, LogPipe *to, ArcType arc_type)
+arc_new(LogPipe *from, LogPipe *to, LogPathConnectionType type)
 {
   Arc *self = g_new0(Arc, 1);
   self->from = from;
   self->to = to;
-  self->arc_type = arc_type;
+  self->type = type;
 
   return self;
 };
@@ -55,28 +55,27 @@ arc_equal(Arc *arc1, Arc *arc2)
 
 static void walk_pipe(LogPipe *self, gpointer *user_data);
 
-static void
-_add_arc_and_walk(Arc *arc, gpointer *user_data)
+static gboolean
+_add_arc_and_walk(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data)
 {
-  GHashTable **arcs = user_data[1];
-  g_hash_table_insert(*arcs, arc, NULL);
-  walk_pipe(arc->to, user_data);
+  GHashTable *arcs = ((gpointer *) user_data)[1];
+
+  Arc *arc = arc_new(from, to, type);
+  g_hash_table_insert(arcs, arc, NULL);
+  return TRUE;
 }
 
 static void
-walk_pipe(LogPipe *self, gpointer *user_data)
+_walk_from_start_pipe(LogPipe *pipe, gpointer user_data)
 {
+  GHashTable *nodes = ((gpointer *) user_data)[0];
 
-  GHashTable **nodes = user_data[0];
-
-  if (g_hash_table_contains(*nodes, self))
+  if (g_hash_table_contains(nodes, pipe))
     return;
 
-  g_hash_table_insert(*nodes, self, NULL);
+  g_hash_table_insert(nodes, pipe, NULL);
 
-  GList *new_arcs = log_pipe_get_arcs(self);
-  g_list_foreach(new_arcs, (GFunc)_add_arc_and_walk, user_data);
-  g_list_free(new_arcs);
+  log_pipe_walk(pipe, _add_arc_and_walk, user_data);
 }
 
 void
@@ -85,8 +84,8 @@ cfg_walker_get_graph(GPtrArray *start_nodes, GHashTable **nodes, GHashTable **ar
   *nodes = g_hash_table_new(g_direct_hash, g_direct_equal);
   *arcs = g_hash_table_new_full((GHashFunc)arc_hash, (GEqualFunc)arc_equal, (GDestroyNotify)arc_free, NULL);
 
-  g_ptr_array_foreach(start_nodes, (GFunc)walk_pipe, (gpointer [])
+  g_ptr_array_foreach(start_nodes, (GFunc) _walk_from_start_pipe, (gpointer [])
   {
-    nodes, arcs
+    *nodes, *arcs
   });
 }
