@@ -387,7 +387,7 @@ get_welford_variance(WelfordVariance *variance)
 }
 
 static inline void
-update_stats(struct timeval start_time, WelfordVariance *variance, gboolean final, gboolean print)
+update_stats(struct timeval start_time, WelfordVariance *variance, gboolean print)
 {
   static gsize last_count = 0;
   static struct timeval last_ts_format = {0};
@@ -395,8 +395,6 @@ update_stats(struct timeval start_time, WelfordVariance *variance, gboolean fina
   struct timeval now;
   gettimeofday(&now, NULL);
   gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
-  if (final && last_count == count)
-    return;
 
   gboolean first = FALSE;
   if (!last_ts_format.tv_sec)
@@ -445,15 +443,13 @@ periodic_stats(GPtrArray *plugin_array)
 
       do
         {
-          update_stats(start_time, &variance, FALSE, !quiet);
+          update_stats(start_time, &variance, !quiet);
         }
       while (!plugin->wait_with_timeout(&global_plugin_option, PERIODIC_STAT_USEC));
     }
 
   struct timeval now;
   gettimeofday(&now, NULL);
-
-  update_stats(start_time, &variance, TRUE, !quiet);
 
   gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
   double total_runtime_sec = time_val_diff_in_sec(&now, &start_time);
