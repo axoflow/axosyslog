@@ -372,7 +372,7 @@ print_statistic(struct timeval start_time, gboolean final)
   if (!last_ts_format.tv_sec)
     last_ts_format = start_time;
 
-  guint64 diff_msec = time_val_diff_in_msec(&now, &last_ts_format);
+  gint64 diff_msec = time_val_diff_in_msec(&now, &last_ts_format);
   gdouble current_runtime_sec = time_val_diff_in_sec(&now, &start_time);
   gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
 
