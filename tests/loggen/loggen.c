@@ -394,7 +394,8 @@ print_statistic(struct timeval start_time, gboolean final)
   last_ts_format = now;
 }
 
-void wait_all_plugin_to_finish(GPtrArray *plugin_array)
+void
+periodic_stats(GPtrArray *plugin_array)
 {
   if (!plugin_array)
     return;
@@ -542,7 +543,7 @@ main(int argc, char *argv[])
 
   if (start_plugins(plugin_array) > 0)
     {
-      wait_all_plugin_to_finish(plugin_array);
+      periodic_stats(plugin_array);
       stop_plugins(plugin_array);
     }
 
