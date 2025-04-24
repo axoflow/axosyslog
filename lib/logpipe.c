@@ -24,6 +24,7 @@
 
 #include "logpipe.h"
 #include "cfg-tree.h"
+#include "filterx/filterx-eval.h"
 #include "perf/perf.h"
 
 gboolean (*pipe_single_step_hook)(LogPipe *pipe, LogMessage *msg, const LogPathOptions *path_options);

@@ -23,7 +23,7 @@
  */
 
 #include "logmpx.h"
-
+#include "filterx/filterx-eval.h"
 
 void
 log_multiplexer_add_next_hop(LogMultiplexer *self, LogPipe *next_hop)

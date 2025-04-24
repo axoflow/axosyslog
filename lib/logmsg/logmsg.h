@@ -25,7 +25,7 @@
 #ifndef LOGMSG_H_INCLUDED
 #define LOGMSG_H_INCLUDED
 
-#include "syslog-ng.h"
+#include "logpath.h"
 #include "gsockaddr.h"
 #include "atomic.h"
 #include "serialize.h"
@@ -57,8 +57,6 @@ typedef enum
 #define IS_SUSPENDFLAG_ON(x) ((x) == 1 ? TRUE : FALSE)
 
 #define STRICT_ROUND_TO_NEXT_EIGHT(x)  ((x + 8) & ~7)
-
-typedef struct _LogPathOptions LogPathOptions;
 
 typedef void (*LMAckFunc)(LogMessage *lm, AckType ack_type);
 
