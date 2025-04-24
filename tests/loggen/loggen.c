@@ -30,6 +30,7 @@
 #include "reloc.h"
 
 #include <stdio.h>
+#include <math.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -111,6 +112,13 @@ static GOptionEntry loggen_options[] =
   { "debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Enable loggen debug messages", NULL },
   { NULL }
 };
+
+typedef struct _WelfordVariance
+{
+  gdouble m;
+  gdouble s;
+  gsize samples_count;
+} WelfordVariance;
 
 /* This is the callback function called by plugins when
  * they need a new log line */
@@ -360,35 +368,60 @@ start_plugins(GPtrArray *plugin_array)
   return number_of_active_plugins;
 }
 
-void
-print_statistic(struct timeval start_time, gboolean final)
+static inline void
+update_welford_variance(WelfordVariance *variance, gdouble value)
+{
+  variance->samples_count++;
+  gdouble prev_m = variance->m;
+  variance->m += (value - variance->m) / variance->samples_count;
+  variance->s += (value - variance->m) * (value - prev_m);
+}
+
+static inline gdouble
+get_welford_variance(WelfordVariance *variance)
+{
+  if (variance->samples_count < 2)
+    return nan("");
+
+  return variance->s / (variance->samples_count - 1);
+}
+
+static inline void
+update_stats(struct timeval start_time, WelfordVariance *variance, gboolean final, gboolean print)
 {
   static gsize last_count = 0;
   static struct timeval last_ts_format = {0};
 
   struct timeval now;
   gettimeofday(&now, NULL);
+  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
+  if (final && last_count == count)
+    return;
 
+  gboolean first = FALSE;
   if (!last_ts_format.tv_sec)
-    last_ts_format = start_time;
+    {
+      last_ts_format = start_time;
+      first = TRUE;
+    }
 
   gint64 diff_msec = time_val_diff_in_msec(&now, &last_ts_format);
   gdouble current_runtime_sec = time_val_diff_in_sec(&now, &start_time);
-  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
-
-  if (final && last_count == count)
-    return;
 
   gdouble rate = 0;
   if (diff_msec)
     rate = (count - last_count) * (1000.0 / diff_msec);
 
+  /* skip first sample from variance calculation (slow start) */
+  if (!first)
+    update_welford_variance(variance, rate);
+
   gdouble average_rate = 0;
   if (current_runtime_sec > 0)
     average_rate = count / current_runtime_sec;
 
-  fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate=%.2lf msg/s, avg_rate=%.2lf msg/s\n",
-          count, rate, average_rate);
+  if (print)
+    fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate=%.2lf msg/s, avg_rate=%.2lf msg/s\n", count, rate, average_rate);
 
   last_count = count;
   last_ts_format = now;
@@ -400,6 +433,7 @@ periodic_stats(GPtrArray *plugin_array)
   if (!plugin_array)
     return;
 
+  WelfordVariance variance = {0};
   struct timeval start_time;
   gettimeofday(&start_time, NULL);
 
@@ -411,8 +445,7 @@ periodic_stats(GPtrArray *plugin_array)
 
       do
         {
-          if (!quiet)
-            print_statistic(start_time, FALSE);
+          update_stats(start_time, &variance, FALSE, !quiet);
         }
       while (!plugin->wait_with_timeout(&global_plugin_option, PERIODIC_STAT_USEC));
     }
@@ -420,19 +453,24 @@ periodic_stats(GPtrArray *plugin_array)
   struct timeval now;
   gettimeofday(&now, NULL);
 
-  if (!quiet)
-    print_statistic(start_time, TRUE);
+  update_stats(start_time, &variance, TRUE, !quiet);
 
   gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
   double total_runtime_sec = time_val_diff_in_sec(&now, &start_time);
   if (total_runtime_sec > 0 && count > 0)
-    fprintf(stderr,
-            "avg_rate=%.2lf msg/s, count=%"G_GSIZE_FORMAT", time=%g, avg_msg_size=%"G_GUINT64_FORMAT", bandwidth=%.2f KiB/s\n",
-            (double)count/total_runtime_sec,
-            count,
-            total_runtime_sec,
-            (guint64)global_plugin_option.global_sent_bytes/count,
-            (double)global_plugin_option.global_sent_bytes/(total_runtime_sec*1024) );
+    {
+      gdouble avg_rate = (gdouble) count / total_runtime_sec;
+      gdouble stdev_rate = sqrt(get_welford_variance(&variance)) / avg_rate * 100.0;
+
+      fprintf(stderr,
+              "avg_rate=%.2lf msg/s, stdev_rate=%.2lf%%, count=%"G_GSIZE_FORMAT", time=%g, avg_msg_size=%"G_GUINT64_FORMAT", bandwidth=%.2f KiB/s\n",
+              avg_rate,
+              stdev_rate,
+              count,
+              total_runtime_sec,
+              (guint64)global_plugin_option.global_sent_bytes/count,
+              (double)global_plugin_option.global_sent_bytes/(total_runtime_sec*1024) );
+    }
   else
     fprintf(stderr, "count=%"G_GSIZE_FORMAT", time=%g\n", count, total_runtime_sec);
 }

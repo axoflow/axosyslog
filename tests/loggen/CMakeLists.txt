@@ -65,7 +65,8 @@ target_compile_definitions(loggen PUBLIC
 
 target_link_libraries(
   loggen
-  loggen_helper)
+  loggen_helper
+  m)
 
 install(TARGETS loggen RUNTIME DESTINATION bin)
 
