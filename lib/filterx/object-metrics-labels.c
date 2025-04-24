@@ -85,6 +85,9 @@ _get_subscript(FilterXDict *s, FilterXObject *key)
   if (!filterx_object_extract_string_ref(key, &key_str, NULL))
     return NULL;
 
+  if (!self->labels->len)
+    return NULL;
+
   for (guint i = self->labels->len - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
