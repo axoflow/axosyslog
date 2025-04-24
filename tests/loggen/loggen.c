@@ -92,7 +92,7 @@ static GOptionEntry loggen_options[] =
   { "size", 's', 0, G_OPTION_ARG_INT, &global_plugin_option.message_length, "The size of the syslog message [default: 256]", "<size>" },
   { "interval", 'I', 0, G_OPTION_ARG_INT, &global_plugin_option.interval, "Number of seconds to run the test for [default: 10]", "<sec>" },
   { "permanent", 'T', 0, G_OPTION_ARG_NONE, &global_plugin_option.permanent, "Send logs without time limit, --interval is ignored", NULL},
-  { "number", 'n', 0, G_OPTION_ARG_INT, &global_plugin_option.number_of_messages, "Number of messages to generate per connection", "<number/active connection>" },
+  { "number", 'n', 0, G_OPTION_ARG_INT, &global_plugin_option.number_of_messages, "Number of messages to generate per connection, --interval is ignored", "<number/active connection>" },
   { "perf", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.perf, "Perf mode, --rate is ignored", NULL },
   { "active-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.active_connections, "Number of active connections to the server [default: 1]", "<number>" },
   { "idle-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.idle_connections, "Number of inactive connections to the server [default: 0]", "<number>" },

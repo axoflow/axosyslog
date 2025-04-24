@@ -42,7 +42,7 @@ thread_check_exit_criteria(ThreadData *thread_context)
       return TRUE;
     }
 
-  if (thread_context->option->permanent)
+  if (thread_context->option->permanent || thread_context->option->number_of_messages != 0)
     return FALSE;
 
   gint64 seq_check;
