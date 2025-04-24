@@ -48,6 +48,7 @@ class LoggenStartParams:
     skip_tokens: typing.Optional[str] = None
     loop_reading: bool = False
     rate: typing.Optional[int] = None
+    perf: bool = False
     rate_burst_start: bool = False
     interval: typing.Optional[int] = None
     permanent: bool = None
@@ -92,6 +93,8 @@ class LoggenStartParams:
             params.append("--loop-reading")
         if self.rate is not None:
             params.append(f"--rate={self.rate}")
+        if self.perf:
+            params.append("--perf")
         if self.rate_burst_start:
             params.append("--rate-burst-start")
         if self.interval is not None:
