@@ -92,9 +92,8 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
 /* return value indicates if the list of expessions ran through.  *result
  * contains the value of the last expression (even if we bailed out) */
 static gboolean
-_eval_exprs(FilterXCompoundExpr *self, FilterXObject **result, gsize start_index)
+_eval_exprs(FilterXCompoundExpr *self, FilterXEvalContext *context, FilterXObject **result, gsize start_index)
 {
-  FilterXEvalContext *context = filterx_eval_get_context();
 
   *result = NULL;
   gsize len = self->exprs->len;
@@ -125,13 +124,14 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result, gsize start_index
 static FilterXObject *
 _eval_compound_start(FilterXCompoundExpr *self, gsize start_index)
 {
+  FilterXEvalContext *context = filterx_eval_get_context();
   FilterXObject *result = NULL;
 
-  if (!_eval_exprs(self, &result, start_index))
+  if (!_eval_exprs(self, context, &result, start_index))
     {
       if (result)
         {
-          filterx_eval_push_falsy_error("bailing out due to a falsy expr", &self->super, result);
+          filterx_eval_context_push_falsy_error(context, "bailing out due to a falsy expr", &self->super, result);
           filterx_object_unref(result);
           result = NULL;
         }
