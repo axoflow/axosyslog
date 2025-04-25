@@ -41,7 +41,6 @@ _init(AckRecord *self)
   self->acked = FALSE;
   log_msg_ref(self->original);
 
-  log_msg_refcache_start_producer(self->original);
   log_msg_add_ack(self->original, &self->path_options);
   log_msg_ref(self->original);
   log_msg_write_protect(self->original);
@@ -51,7 +50,6 @@ static void
 _deinit(AckRecord *self)
 {
   log_msg_drop(self->original, &self->path_options, AT_PROCESSED);
-  log_msg_refcache_stop();
 }
 
 static void

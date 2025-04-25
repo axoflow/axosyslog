@@ -484,7 +484,6 @@ _perform_inserts(LogThreadedDestWorker *self)
         }
 
       msg_set_context(msg);
-      log_msg_refcache_start_consumer(msg, &path_options);
 
       self->batch_size++;
       result = log_threaded_dest_worker_insert(self, msg);
@@ -496,7 +495,6 @@ _perform_inserts(LogThreadedDestWorker *self)
 
       log_msg_unref(msg);
       msg_set_context(NULL);
-      log_msg_refcache_stop();
 
 flush_error:
       scratch_buffers_reclaim_marked(mark);

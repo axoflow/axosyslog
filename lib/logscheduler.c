@@ -93,10 +93,8 @@ _work(gpointer s, gpointer arg)
 
           log_msg_free_queue_node(node);
 
-          log_msg_refcache_start_consumer(msg, &path_options);
           _reinject_message(partition->front_pipe, msg, &path_options);
           log_msg_unref(msg);
-          log_msg_refcache_stop();
         }
         _batch_free(batch);
       }
