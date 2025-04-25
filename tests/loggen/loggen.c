@@ -406,6 +406,10 @@ update_stats(struct timeval start_time, WelfordVariance *variance, gboolean prin
   gint64 diff_msec = time_val_diff_in_msec(&now, &last_ts_format);
   gdouble current_runtime_sec = time_val_diff_in_sec(&now, &start_time);
 
+  /* skip samples that would produce inaccurate rate/variance (last one) */
+  if (diff_msec < 100 && !first)
+    return;
+
   gdouble rate = 0;
   if (diff_msec)
     rate = (count - last_count) * (1000.0 / diff_msec);
