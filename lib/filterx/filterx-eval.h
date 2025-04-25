@@ -61,16 +61,27 @@ struct _FilterXEvalContext
   FilterXEvalContext *previous_context;
 };
 
+static inline void
+filterx_eval_context_push_error(FilterXEvalContext *context, const gchar *message, FilterXExpr *expr, FilterXObject *object)
+{
+  filterx_error_clear(&context->error);
+  filterx_error_set_values(&context->error, message, expr, object);
+}
+
+static inline void
+filterx_eval_context_push_error_info(FilterXEvalContext *context, const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
+{
+  filterx_error_clear(&context->error);
+  filterx_error_set_values(&context->error, message, expr, NULL);
+  filterx_error_set_info(&context->error, info, free_info);
+}
+
+/* High level eval layer, uses the thread-local context */
+
+void filterx_eval_set_context(FilterXEvalContext *context);
 FilterXEvalContext *filterx_eval_get_context(void);
 FilterXScope *filterx_eval_get_scope(void);
-void filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
-void filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info);
-void filterx_eval_set_context(FilterXEvalContext *context);
 FilterXEvalResult filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr);
-const gchar *filterx_eval_get_last_error(void);
-EVTTAG *filterx_eval_format_last_error_tag(void);
-EVTTAG *filterx_eval_format_last_error_location_tag(void);
-void filterx_eval_clear_errors(void);
 EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
@@ -78,6 +89,62 @@ void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext 
 void filterx_eval_end_context(FilterXEvalContext *context);
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
+
+static inline void
+filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (context)
+    filterx_eval_context_push_error(context, message, expr, object);
+}
+
+/* takes ownership of info */
+static inline void
+filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (!context)
+    {
+      if (free_info)
+        g_free(info);
+      return;
+    }
+  filterx_eval_context_push_error_info(context, message, expr, info, free_info);
+}
+
+static inline void
+filterx_eval_clear_errors(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  filterx_error_clear(&context->error);
+}
+
+static inline const gchar *
+filterx_eval_get_last_error(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  return filterx_error_format(&context->error);
+}
+
+static inline EVTTAG *
+filterx_eval_format_last_error_tag(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  return filterx_error_format_tag(&context->error);
+}
+
+static inline EVTTAG *
+filterx_eval_format_last_error_location_tag(void)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  return filterx_error_format_location_tag(&context->error);
+}
 
 static inline void
 filterx_eval_sync_message(FilterXEvalContext *context, LogMessage **pmsg, const LogPathOptions *path_options)
