@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include "libtest/cr_template.h"
 
 #include "apphook.h"
 #include "wildcard-file-reader.h"
@@ -135,7 +136,7 @@ Test(test_wildcard_file_reader, constructor)
 
 Test(test_wildcard_file_reader, notif_deleted)
 {
-  log_pipe_queue(&reader->super.super, NULL, &path_options);
+  log_pipe_queue(&reader->super.super, create_empty_message(), &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
   cr_assert_eq(reader->file_state.deleted, TRUE);
 }
@@ -143,14 +144,14 @@ Test(test_wildcard_file_reader, notif_deleted)
 
 Test(test_wildcard_file_reader, eof_without_deletion_should_not_change_last_eof_state)
 {
-  log_pipe_queue(&reader->super.super, NULL, &path_options);
+  log_pipe_queue(&reader->super.super, create_empty_message(), &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_EOF, NULL);
   cr_assert_eq(reader->file_state.last_eof, FALSE);
 }
 
 Test(test_wildcard_file_reader, status_change_deleted_not_eof)
 {
-  log_pipe_queue(&reader->super.super, NULL, &path_options);
+  log_pipe_queue(&reader->super.super, create_empty_message(), &path_options);
   log_pipe_notify(&reader->super.super, NC_FILE_DELETED, NULL);
   cr_assert_eq(test_event->deleted_eof_called, FALSE);
 }
