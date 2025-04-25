@@ -503,3 +503,23 @@ def test_unset_empties_replacement_list(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == r"""["do","do","do","do",{"a":{"s":{"d":"do"}}},[["do"]]]"""
+
+
+def test_metrics_labels_get(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            $MSG = {};
+
+            labels = metrics_labels();
+            $MSG.empty_labels_does_not_exist = labels["empty-labels-does-not-exist"] ?? "fallback";
+
+            labels["foo"] = "bar";
+            $MSG.does_not_exist = labels["does-not-exist"] ?? "fallback";
+
+            $MSG.exists = labels["foo"] ?? "fallback";
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"empty_labels_does_not_exist":"fallback","does_not_exist":"fallback","exists":"bar"}"""
