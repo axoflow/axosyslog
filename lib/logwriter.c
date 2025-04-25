@@ -1217,7 +1217,6 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
 
   *write_error = FALSE;
 
-  log_msg_refcache_start_consumer(msg, path_options);
   msg_set_context(msg);
 
   log_writer_format_log(self, msg, self->line_buffer);
@@ -1274,7 +1273,6 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
       stats_byte_counter_add(&self->metrics.written_bytes, msg_len);
       log_msg_unref(msg);
       msg_set_context(NULL);
-      log_msg_refcache_stop();
 
       return TRUE;
     }
@@ -1287,7 +1285,6 @@ log_writer_write_message(LogWriter *self, LogMessage *msg, LogPathOptions *path_
 
       log_msg_unref(msg);
       msg_set_context(NULL);
-      log_msg_refcache_stop();
 
       return FALSE;
     }
