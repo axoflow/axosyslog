@@ -223,6 +223,7 @@ filterx_scope_register_variable(FilterXScope *self,
                                 FilterXVariableType variable_type,
                                 FilterXVariableHandle handle)
 {
+  g_assert(self->write_protected == FALSE);
   FilterXVariable *v = _register_variable(self, variable_type, handle);
 
   /* the scope needs to be synced with the message if it holds a
