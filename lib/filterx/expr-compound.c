@@ -134,7 +134,7 @@ _eval_compound_start(FilterXCompoundExpr *self, gsize start_index)
     {
       if (result)
         {
-          filterx_eval_push_error("bailing out due to a falsy expr", &self->super, result);
+          filterx_eval_context_push_error(context, "bailing out due to a falsy expr", &self->super, result);
           filterx_object_unref(result);
           result = NULL;
         }
