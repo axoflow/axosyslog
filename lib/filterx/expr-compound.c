@@ -43,6 +43,17 @@ static gboolean
 _eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
   FilterXObject *res = NULL;
+
+
+  /* NOTE: this is feature envy and should be implemented within
+   * filterx_expr_eval(), however that function does not depend on the
+   * FilterXEvalContext layer and introducing that dependency would make the
+   * whole dependency chain circular.
+   */
+
+  if (filterx_expr_has_effect(expr, FXE_WRITE))
+    filterx_eval_context_make_writable(NULL);
+
   *result = res = filterx_expr_eval(expr);
 
   if (!res)

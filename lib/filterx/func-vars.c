@@ -251,6 +251,7 @@ _load_vars_eval(FilterXExpr *s)
 
   FilterXObject *vars_unwrapped = filterx_ref_unwrap_ro(vars);
 
+  filterx_eval_context_make_writable(NULL);
   FilterXScope *scope = filterx_eval_get_scope();
   gpointer user_data[] = { s, scope };
   gboolean success = filterx_object_iter(vars_unwrapped, _load_from_dict, user_data);
