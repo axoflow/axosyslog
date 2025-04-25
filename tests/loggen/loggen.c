@@ -508,6 +508,33 @@ setup_rate_change_signals(void)
   sigaction(SIGUSR2, &sa, NULL);
 }
 
+static void
+show_options_summary(void)
+{
+  GString *summary = g_string_new("options: ");
+
+  if (global_plugin_option.perf)
+    g_string_append(summary, "rate=max, ");
+  else
+    g_string_append_printf(summary, "rate=%"G_GINT64_FORMAT", ", global_plugin_option.rate);
+
+  if (global_plugin_option.permanent || global_plugin_option.number_of_messages)
+    g_string_append(summary, "interval=disabled, ");
+  else
+    g_string_append_printf(summary, "interval=%d, ", global_plugin_option.interval);
+
+
+  if (global_plugin_option.number_of_messages)
+    g_string_append_printf(summary, "number=%d, ", global_plugin_option.number_of_messages);
+
+  g_string_append_printf(summary, "active_connections=%d, idle_connections=%d\n",
+                         global_plugin_option.active_connections, global_plugin_option.idle_connections);
+
+  printf("%s", summary->str);
+  fflush(stdout);
+  g_string_free(summary, TRUE);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -536,6 +563,11 @@ main(int argc, char *argv[])
         g_error_free(error);
       return 1;
     }
+
+  if (global_plugin_option.rate == 0)
+    global_plugin_option.perf = TRUE;
+
+  show_options_summary();
 
   /* debug option defined by --debug command line option */
   set_debug_level(debug);
