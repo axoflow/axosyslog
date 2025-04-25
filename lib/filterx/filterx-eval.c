@@ -56,69 +56,6 @@ filterx_eval_set_context(FilterXEvalContext *context)
   eval_context = context;
 }
 
-void
-filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
-{
-  FilterXEvalContext *context = filterx_eval_get_context();
-
-  if (context)
-    {
-      filterx_error_clear(&context->error);
-      filterx_error_set_values(&context->error, message, expr, object);
-    }
-}
-
-/* takes ownership of info */
-void
-filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
-{
-  FilterXEvalContext *context = filterx_eval_get_context();
-
-  if (context)
-    {
-      filterx_error_clear(&context->error);
-      filterx_error_set_values(&context->error, message, expr, NULL);
-      filterx_error_set_info(&context->error, info, free_info);
-    }
-  else
-    {
-      if (free_info)
-        g_free(info);
-    }
-}
-
-void
-filterx_eval_clear_errors(void)
-{
-  FilterXEvalContext *context = filterx_eval_get_context();
-
-  filterx_error_clear(&context->error);
-}
-
-const gchar *
-filterx_eval_get_last_error(void)
-{
-  FilterXEvalContext *context = filterx_eval_get_context();
-
-  return filterx_error_format(&context->error);
-}
-
-EVTTAG *
-filterx_eval_format_last_error_tag(void)
-{
-  FilterXEvalContext *context = filterx_eval_get_context();
-
-  return filterx_error_format_tag(&context->error);
-}
-
-EVTTAG *
-filterx_eval_format_last_error_location_tag(void)
-{
-  FilterXEvalContext *context = filterx_eval_get_context();
-
-  return filterx_error_format_location_tag(&context->error);
-}
-
 FilterXEvalResult
 filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
 {
@@ -130,7 +67,7 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
       msg_debug("FILTERX ERROR",
                 filterx_eval_format_last_error_location_tag(),
                 filterx_eval_format_last_error_tag());
-      filterx_eval_clear_errors();
+      filterx_error_clear(&context->error);
       goto fail;
     }
 
