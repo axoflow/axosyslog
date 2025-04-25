@@ -46,6 +46,8 @@ static gboolean
 _eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
   FilterXObject *res = NULL;
+  if (expr->mutates_scope)
+    filterx_eval_context_make_writable(NULL);
   *result = res = filterx_expr_eval(expr);
 
   if (!res)

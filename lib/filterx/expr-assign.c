@@ -101,6 +101,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_binary_op_init_instance(self, "assign", lhs, rhs);
   self->super.eval = _assign_eval;
   self->super.ignore_falsy_result = TRUE;
+  self->super.mutates_scope = TRUE;
   return &self->super;
 }
 

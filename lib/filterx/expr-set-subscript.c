@@ -223,6 +223,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->key = key;
   self->new_value = new_value;
   self->super.ignore_falsy_result = TRUE;
+  self->super.mutates_scope = TRUE;
   return &self->super;
 }
 

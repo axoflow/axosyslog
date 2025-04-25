@@ -339,6 +339,57 @@ def test_declared_variables_are_retained_across_scopes(config, syslog_ng):
     assert file_true.read_log() == "barka"
 
 
+def test_mutable_variables_are_inherited_and_cowed_in_parallel_branches(config, syslog_ng):
+    (file_true, file_false, file_final) = create_config(
+        config,
+        # initialize foo in the prelude, dict in dict
+        init_exprs=[
+            """
+            declare foo = {"foo":{"foo2":"foovalue"}};
+            isset(foo);
+            """,
+        ],
+        # in the true branch, inherit the variables from the parent scope and then change "foo"
+        # after changing foo, bail out to the false branch
+        true_exprs=[
+            """
+            isset(foo);
+            foo.foo.foo2 == "foovalue";
+            foo.foo.bar2 = "barvalue";
+            """,
+            """
+            isset(foo);
+            foo.foo.foo2 == "foovalue";
+            foo.foo.bar2 == "barvalue";
+            false;
+            """,
+        ],
+        # the original foo is still intact
+        false_exprs=[
+            """
+            isset(foo);
+            foo.foo.foo2 == "foovalue";
+            not isset(foo.foo.bar2);
+            $MSG = "done";
+            """,
+        ],
+        final_exprs=[
+            """
+            isset(foo);
+            foo.foo.foo2 == "foovalue";
+            not isset(foo.foo.bar2);
+            $MSG == "done";
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+    assert file_false.read_log() == "done"
+    assert file_final.read_log() == "done"
+
+
 def test_declared_variables_are_retained_across_scopes_and_junctions(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, init_exprs=[

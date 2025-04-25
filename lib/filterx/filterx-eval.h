@@ -174,6 +174,11 @@ filterx_eval_store_weak_ref(FilterXObject *object)
         scope = g_alloca(alloc_size); \
         filterx_scope_init_instance(scope, alloc_size, previous_context ? previous_context->scope : NULL); \
         local_scope = TRUE; \
+        if (previous_context) \
+          { \
+            /* we start being write protected */ \
+            filterx_scope_write_protect(scope); \
+          } \
       } \
     filterx_eval_begin_context(&eval_context, previous_context, scope, msg); \
     do
@@ -185,5 +190,16 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     if (local_scope) \
       filterx_scope_clear(scope); \
   } while(0)
+  
+static inline void
+filterx_eval_context_make_writable(FilterXEvalContext *context)
+{
+  if (!context)
+    context = filterx_eval_get_context();
+  if (filterx_scope_is_write_protected(context->scope))
+    {
+      filterx_scope_make_writable(context->scope);
+    }
+}
 
 #endif

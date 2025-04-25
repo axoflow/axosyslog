@@ -208,6 +208,7 @@ filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize a
   FilterXObject *vars = args[0];
   FilterXObject *vars_unwrapped = filterx_ref_unwrap_ro(vars);
 
+  filterx_eval_context_make_writable(NULL);
   FilterXScope *scope = filterx_eval_get_scope();
   gpointer user_data[] = { s, scope };
   gboolean success = filterx_dict_iter(vars_unwrapped, _load_from_dict, user_data);

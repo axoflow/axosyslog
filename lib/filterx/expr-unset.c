@@ -109,6 +109,7 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
   FilterXExprUnset *self = g_new0(FilterXExprUnset, 1);
   filterx_function_init_instance(&self->super, "unset");
 
+  self->super.super.mutates_scope = TRUE;
   self->super.super.eval = _eval_unset;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;

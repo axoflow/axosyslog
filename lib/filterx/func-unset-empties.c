@@ -509,6 +509,7 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionUnsetEmpties *self = g_new0(FilterXFunctionUnsetEmpties, 1);
   filterx_function_init_instance(&self->super, "unset_empties");
+  self->super.super.mutates_scope = TRUE;
   self->super.super.eval = _eval_fx_unset_empties;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
