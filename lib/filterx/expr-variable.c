@@ -79,6 +79,7 @@ _eval_variable(FilterXExpr *s)
   if (self->variable_type == FX_VAR_MESSAGE_TIED)
     {
       /* auto register message tied variables */
+      filterx_eval_context_make_writable(context);
       variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle);
       if (variable)
         {
@@ -102,6 +103,7 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXScope *scope = context->scope;
 
+  filterx_eval_context_make_writable(context);
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
   filterx_scope_set_variable(scope, variable, new_repr, FALSE);
 }
@@ -118,11 +120,14 @@ _assign(FilterXExpr *s, FilterXObject **new_value)
       return FALSE;
     }
 
+  filterx_eval_context_make_writable(context);
   FilterXScope *scope = context->scope;
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
 
   if (!variable)
-    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle);
+    {
+      variable = filterx_scope_register_variable(scope, self->variable_type, self->handle);
+    }
 
   filterx_scope_set_variable(scope, variable, new_value, TRUE);
   return TRUE;
@@ -157,6 +162,7 @@ _unset(FilterXExpr *s)
       return FALSE;
     }
 
+  filterx_eval_context_make_writable(context);
   FilterXScope *scope = context->scope;
   LogMessage *msg = context->msg;
 
