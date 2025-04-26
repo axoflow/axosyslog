@@ -25,6 +25,7 @@
 #define LOGGEN_PLUGIN_H_INCLUDED
 
 #include "compat/glib.h"
+#include "atomic-gssize.h"
 #include <gmodule.h>
 #include <sys/time.h>
 
@@ -38,12 +39,14 @@ typedef struct _plugin_option
   int interval;
   int number_of_messages;
   int permanent;
+  int perf;
   int active_connections;
   int idle_connections;
   int use_ipv6;
-  const char *target; /* command line argument */
-  const char *port;
-  int  rate;
+  char *target; /* command line argument */
+  char *port;
+  gint64 rate;
+  int rate_burst_start;
   int reconnect;
   gboolean proxied;
   gint proxy_version;
@@ -51,16 +54,21 @@ typedef struct _plugin_option
   char *proxy_dst_ip;
   char *proxy_src_port;
   char *proxy_dst_port;
+
+  atomic_gssize global_sent_messages;
+  guint64 global_sent_bytes;
 } PluginOption;
 
 typedef struct _thread_data
 {
   PluginOption *option;
   int index;
-  int sent_messages;
+  gsize sent_messages;
+  guint64 sent_bytes;
   struct timeval start_time;
-  struct timeval last_throttle_check;
-  long buckets;
+  struct timespec last_throttle_check;
+  gint64 buckets;
+  gdouble bucket_remainder;
   gboolean proxy_header_sent;
 
   /* timestamp  cache for logline generator */
@@ -71,7 +79,8 @@ typedef struct _thread_data
 typedef GOptionEntry *(*get_option_func)(void);
 typedef gboolean (*start_plugin_func)(PluginOption *option);
 typedef void (*stop_plugin_func)(PluginOption *option);
-typedef int (*generate_message_func)(char *buffer, int buffer_size, ThreadData *thread_context, unsigned long seq);
+typedef gboolean (*wait_with_timeout_func)(PluginOption *option, gint timeout_usec);
+typedef int (*generate_message_func)(char *buffer, int buffer_size, ThreadData *thread_context, gsize seq);
 typedef void (*set_generate_message_func)(generate_message_func gen_message);
 typedef int (*get_thread_count_func)(void);
 typedef gboolean (*is_plugin_activated_func)(void);
@@ -83,6 +92,7 @@ typedef struct _plugin_info
   get_thread_count_func  get_thread_count;
   stop_plugin_func   stop_plugin;
   start_plugin_func  start_plugin;
+  wait_with_timeout_func wait_with_timeout;
   set_generate_message_func set_generate_message;
   gboolean  require_framing; /* plugin can indicates that framing is mandatory in message lines */
   is_plugin_activated_func is_plugin_activated;

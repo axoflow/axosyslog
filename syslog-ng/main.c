@@ -249,7 +249,7 @@ main(int argc, char *argv[])
   resolved_configurable_paths_init(&resolved_configurable_paths);
   resolve_paths_in_help_texts();
 
-  ctx = g_option_context_new("syslog-ng");
+  ctx = g_option_context_new(NULL);
   g_process_add_option_group(ctx);
   msg_add_option_group(ctx);
   g_option_context_add_main_entries(ctx, syslogng_options, NULL);

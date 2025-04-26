@@ -5,7 +5,6 @@ EXTRA_DIST +=	\
 	tests/loggen/tests/CMakeLists.txt	\
 	tests/loggen/CMakeLists.txt
 
-# lib loggen helper common static lib
 lib_LTLIBRARIES		+= tests/loggen/libloggen_helper.la
 tests_loggen_libloggen_helper_la_SOURCES	=	\
 	tests/loggen/loggen_helper.c \
@@ -24,7 +23,6 @@ tests_loggen_libloggen_helper_la_LDFLAGS	=	\
 tests_loggen_libloggen_helper_la_LIBADD = \
 	@BASE_LIBS@ @OPENSSL_LIBS@ @GLIB_LIBS@
 
-# lib loggen plugin common static lib
 lib_LTLIBRARIES		+= tests/loggen/libloggen_plugin.la
 tests_loggen_libloggen_plugin_la_SOURCES	=	\
 	tests/loggen/loggen_plugin.c \

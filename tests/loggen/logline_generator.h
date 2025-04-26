@@ -30,8 +30,8 @@ int generate_log_line(ThreadData *thread_context,
                       char *buffer, int buffer_length,
                       int syslog_proto,
                       int thread_id,
-                      unsigned long rate,
-                      unsigned long seq);
+                      gint64 rate,
+                      gsize seq);
 int prepare_log_line_template(int syslog_proto, int framing, int message_length, char *sdata_value);
 
 #endif

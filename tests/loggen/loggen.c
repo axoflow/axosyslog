@@ -51,12 +51,14 @@ static PluginOption global_plugin_option =
   .interval = 10,
   .number_of_messages = 0,
   .permanent = 0,
+  .perf = 0,
   .active_connections = 1,
   .idle_connections = 0,
   .use_ipv6 = 0,
   .target = NULL,
   .port = NULL,
   .rate = 1000,
+  .rate_burst_start = 0,
   .reconnect = 0,
   .proxied = FALSE,
   .proxy_version = 1,
@@ -70,15 +72,8 @@ static char *sdata_value = NULL;
 static int noframing = 0;
 static int syslog_proto = 0;
 static int quiet = 0;
-static int csv = 0;
 static int debug = 0;
-static unsigned long sent_messages_num = 0;
 static int read_from_file = 0;
-static gint64 raw_message_length = 0;
-static gint64 *thread_stat_count = NULL;
-static gint64 *thread_stat_count_last = NULL;
-
-static GMutex message_counter_lock;
 
 static gboolean
 _process_proxied_arg(const gchar *option_name,
@@ -93,33 +88,34 @@ _process_proxied_arg(const gchar *option_name,
 
 static GOptionEntry loggen_options[] =
 {
-  { "rate", 'r', 0, G_OPTION_ARG_INT, &global_plugin_option.rate, "Number of messages to generate per second", "<msg/sec/active connection>" },
-  { "size", 's', 0, G_OPTION_ARG_INT, &global_plugin_option.message_length, "Specify the size of the syslog message", "<size>" },
-  { "interval", 'I', 0, G_OPTION_ARG_INT, &global_plugin_option.interval, "Number of seconds to run the test for", "<sec>" },
-  { "permanent", 'T', 0, G_OPTION_ARG_NONE, &global_plugin_option.permanent, "Send logs without time limit", NULL},
+  { "rate", 'r', 0, G_OPTION_ARG_INT64, &global_plugin_option.rate, "Number of messages to generate per second per connection [default: 1000]", "<msg/sec/active connection>" },
+  { "size", 's', 0, G_OPTION_ARG_INT, &global_plugin_option.message_length, "The size of the syslog message [default: 256]", "<size>" },
+  { "interval", 'I', 0, G_OPTION_ARG_INT, &global_plugin_option.interval, "Number of seconds to run the test for [default: 10]", "<sec>" },
+  { "permanent", 'T', 0, G_OPTION_ARG_NONE, &global_plugin_option.permanent, "Send logs without time limit, --interval is ignored", NULL},
+  { "number", 'n', 0, G_OPTION_ARG_INT, &global_plugin_option.number_of_messages, "Number of messages to generate per connection, --interval is ignored", "<number/active connection>" },
+  { "perf", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.perf, "Perf mode, --rate is ignored", NULL },
+  { "active-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.active_connections, "Number of active connections to the server [default: 1]", "<number>" },
+  { "idle-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.idle_connections, "Number of inactive connections to the server [default: 0]", "<number>" },
+  { "reconnect", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.reconnect, "Attempt to reconnect when destination connections are lost", NULL},
+  { "ipv6",    '6', 0, G_OPTION_ARG_NONE, &global_plugin_option.use_ipv6, "Use AF_INET6 sockets instead of AF_INET (can use both IPv4 & IPv6)", NULL },
   { "syslog-proto", 'P', 0, G_OPTION_ARG_NONE, &syslog_proto, "Use the new syslog-protocol message format (see also framing)", NULL },
+  { "no-framing", 'F', G_OPTION_ARG_NONE, G_OPTION_ARG_NONE, &noframing, "Don't use syslog-protocol style framing, even if syslog-proto is set", NULL },
   { "proxied", 'H', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, _process_proxied_arg, "Generate PROXY protocol header", "<protocol version 1 or 2>" },
   { "proxy-src-ip", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_src_ip, "Source IP for the PROXY protocol header", "<ip address>" },
   { "proxy-dst-ip", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_dst_ip, "Destination IP for the PROXY protocol header", "<ip address>" },
   { "proxy-src-port", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_src_port, "Source port for the PROXY protocol header", "<port>" },
   { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_dst_port, "Destination port for the PROXY protocol header", "<port>" },
   { "sdata", 'p', 0, G_OPTION_ARG_STRING, &sdata_value, "Send the given sdata (e.g. \"[test name=\\\"value\\\"]\") in case of syslog-proto", NULL },
-  { "no-framing", 'F', G_OPTION_ARG_NONE, G_OPTION_ARG_NONE, &noframing, "Don't use syslog-protocol style framing, even if syslog-proto is set", NULL },
-  { "active-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.active_connections, "Number of active connections to the server (default = 1)", "<number>" },
-  { "idle-connections", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.idle_connections, "Number of inactive connections to the server (default = 0)", "<number>" },
-  { "ipv6",    '6', 0, G_OPTION_ARG_NONE, &global_plugin_option.use_ipv6, "Use AF_INET6 sockets instead of AF_INET (can use both IPv4 & IPv6)", NULL },
-  { "csv", 'C', 0, G_OPTION_ARG_NONE, &csv, "Produce CSV output", NULL },
-  { "number", 'n', 0, G_OPTION_ARG_INT, &global_plugin_option.number_of_messages, "Number of messages to generate", "<number>" },
-  { "quiet", 'Q', 0, G_OPTION_ARG_NONE, &quiet, "Don't print the msg/sec data", NULL },
+  { "rate-burst-start", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.rate_burst_start, "Do not start slow (for rate limit testing)", NULL },
+  { "quiet", 'Q', 0, G_OPTION_ARG_NONE, &quiet, "Don't print periodic statistics", NULL },
   { "debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Enable loggen debug messages", NULL },
-  { "reconnect", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.reconnect, "Attempt to reconnect when destination connections are lost", NULL},
   { NULL }
 };
 
 /* This is the callback function called by plugins when
  * they need a new log line */
 int
-generate_message(char *buffer, int buffer_size, ThreadData *thread_context, unsigned long seq)
+generate_message(char *buffer, int buffer_size, ThreadData *thread_context, gsize seq)
 {
   int str_len;
 
@@ -143,15 +139,6 @@ generate_message(char *buffer, int buffer_size, ThreadData *thread_context, unsi
 
   if (str_len < 0)
     return -1;
-
-  g_mutex_lock(&message_counter_lock);
-  sent_messages_num++;
-  raw_message_length += str_len;
-
-  if (thread_stat_count && csv)
-    thread_stat_count[thread_context->index]+=1;
-
-  g_mutex_unlock(&message_counter_lock);
 
   return str_len;
 }
@@ -232,9 +219,6 @@ enumerate_plugins(const gchar *plugin_path, GPtrArray *plugin_array, GOptionCont
 
   DEBUG("search for plugins in directory %s\n", plugin_path);
 
-  /* add common options to help context: */
-  g_option_context_add_main_entries(ctx, loggen_options, 0);
-
   while ((fname = g_dir_read_name(dir)))
     {
       PluginInfo *plugin = load_plugin_info_with_fname(plugin_path, fname);
@@ -288,7 +272,7 @@ stop_plugins(GPtrArray *plugin_array)
 
       DEBUG("stop plugin (%s:%d)\n", plugin->name, i);
       if (plugin->stop_plugin)
-        plugin->stop_plugin((gpointer)&global_plugin_option);
+        plugin->stop_plugin(&global_plugin_option);
     }
 
   DEBUG("all plugins have been stopped\n");
@@ -330,23 +314,6 @@ init_logline_generator(GPtrArray *plugin_array)
     sdata_value);
 }
 
-static void
-init_csv_statistics(void)
-{
-  /* message counter for csv output */
-  thread_stat_count = (gint64 *) g_malloc0(global_plugin_option.active_connections * sizeof(gint64));
-  thread_stat_count_last = (gint64 *) g_malloc0(global_plugin_option.active_connections * sizeof(gint64));
-  if (csv)
-    {
-      /* print CSV header and initial line about time zero */
-      printf("ThreadId;Time;Rate;Count\n");
-      for (int j=0; j < global_plugin_option.active_connections; j++)
-        {
-          fprintf(stderr, "%d;%lu.%06lu;%.2lf;%lu\n", j, (long) 0, (long) 0, (double) 0, (long)0);
-        }
-    }
-}
-
 static int
 start_plugins(GPtrArray *plugin_array)
 {
@@ -383,7 +350,7 @@ start_plugins(GPtrArray *plugin_array)
 
       if (plugin->start_plugin && plugin->is_plugin_activated())
         {
-          if (!plugin->start_plugin((gpointer)&global_plugin_option))
+          if (!plugin->start_plugin(&global_plugin_option))
             return 0;
 
           break;
@@ -394,63 +361,36 @@ start_plugins(GPtrArray *plugin_array)
 }
 
 void
-print_statistic(struct timeval *start_time)
+print_statistic(struct timeval start_time, gboolean final)
 {
-  gint64 count;
-  static gint64 last_count = 0;
+  static gsize last_count = 0;
   static struct timeval last_ts_format = {0};
 
   struct timeval now;
   gettimeofday(&now, NULL);
 
   if (!last_ts_format.tv_sec)
-    {
-      last_ts_format = now;
-      return;
-    }
+    last_ts_format = start_time;
 
-  if (!quiet && !csv)
-    {
-      guint64 diff_usec = time_val_diff_in_usec(&now, &last_ts_format);
-      if (diff_usec > 0)
-        {
-          g_mutex_lock(&message_counter_lock);
-          count = sent_messages_num;
-          g_mutex_unlock(&message_counter_lock);
+  gint64 diff_msec = time_val_diff_in_msec(&now, &last_ts_format);
+  gdouble current_runtime_sec = time_val_diff_in_sec(&now, &start_time);
+  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
 
-          if (count > last_count)
-            {
-              fprintf(stderr, "count=%"G_GINT64_FORMAT", rate = %.2lf msg/sec\n",
-                      count,
-                      ((double) (count - last_count) * USEC_PER_SEC) / diff_usec);
-            }
-          last_count = count;
-        }
-    }
+  if (final && last_count == count)
+    return;
 
-  if (thread_stat_count && thread_stat_count_last && csv)
-    {
-      struct timeval diff_tv;
-      time_val_diff_in_timeval(&diff_tv, &now, start_time);
-      guint64 diff_usec = time_val_diff_in_usec(&now, &last_ts_format);
+  gdouble rate = 0;
+  if (diff_msec)
+    rate = (count - last_count) * (1000.0 / diff_msec);
 
-      for (int j=0; j < global_plugin_option.active_connections; j++)
-        {
-          g_mutex_lock(&message_counter_lock);
-          double msg_count_diff = ((double) (thread_stat_count[j]-thread_stat_count_last[j]) * USEC_PER_SEC) / diff_usec;
-          thread_stat_count_last[j] = thread_stat_count[j];
-          count = thread_stat_count[j];
-          g_mutex_unlock(&message_counter_lock);
+  gdouble average_rate = 0;
+  if (current_runtime_sec > 0)
+    average_rate = count / current_runtime_sec;
 
-          fprintf(stderr, "%d;%lu.%06lu;%.2lf;%"G_GINT64_FORMAT"\n",
-                  j,
-                  (long) diff_tv.tv_sec,
-                  (long) diff_tv.tv_usec,
-                  msg_count_diff,
-                  count
-                 );
-        }
-    }
+  fprintf(stderr, "count=%"G_GSIZE_FORMAT", rate=%.2lf msg/s, avg_rate=%.2lf msg/s\n",
+          count, rate, average_rate);
+
+  last_count = count;
   last_ts_format = now;
 }
 
@@ -465,32 +405,35 @@ void wait_all_plugin_to_finish(GPtrArray *plugin_array)
   for (int i=0; i < plugin_array->len; i++)
     {
       PluginInfo *plugin = g_ptr_array_index(plugin_array, i);
-      if (!plugin)
+      if (!plugin || !plugin->is_plugin_activated())
         continue;
 
-      while (plugin->get_thread_count() > 0)
+      do
         {
-          g_usleep(500*1000);
-          print_statistic(&start_time);
+          if (!quiet)
+            print_statistic(start_time, FALSE);
         }
+      while (!plugin->wait_with_timeout(&global_plugin_option, PERIODIC_STAT_USEC));
     }
 
-  /* print final statistic: */
-  print_statistic(&start_time);
-  unsigned long count = sent_messages_num;
   struct timeval now;
   gettimeofday(&now, NULL);
+
+  if (!quiet)
+    print_statistic(start_time, TRUE);
+
+  gsize count = atomic_gssize_get_unsigned(&global_plugin_option.global_sent_messages);
   double total_runtime_sec = time_val_diff_in_sec(&now, &start_time);
   if (total_runtime_sec > 0 && count > 0)
     fprintf(stderr,
-            "average rate = %.2lf msg/sec, count=%ld, time=%g, (average) msg size=%"G_GINT64_FORMAT", bandwidth=%.2f kB/sec\n",
+            "avg_rate=%.2lf msg/s, count=%"G_GSIZE_FORMAT", time=%g, avg_msg_size=%"G_GUINT64_FORMAT", bandwidth=%.2f KiB/s\n",
             (double)count/total_runtime_sec,
             count,
             total_runtime_sec,
-            (gint64)raw_message_length/count,
-            (double)raw_message_length/(total_runtime_sec*1024) );
+            (guint64)global_plugin_option.global_sent_bytes/count,
+            (double)global_plugin_option.global_sent_bytes/(total_runtime_sec*1024) );
   else
-    fprintf(stderr, "Total runtime = %g, count = %ld\n", total_runtime_sec, count);
+    fprintf(stderr, "count=%"G_GSIZE_FORMAT", time=%g\n", count, total_runtime_sec);
 }
 
 static void
@@ -509,7 +452,7 @@ rate_change_handler(int signum)
       break;
     case SIGUSR2:
     {
-      int proposed_new_rate = global_plugin_option.rate / 2;
+      gint64 proposed_new_rate = global_plugin_option.rate / 2;
       global_plugin_option.rate = proposed_new_rate > 0 ? proposed_new_rate: 1;
       break;
     }
@@ -533,9 +476,9 @@ setup_rate_change_signals(void)
 int
 main(int argc, char *argv[])
 {
-
   GPtrArray *plugin_array = g_ptr_array_new();
   GOptionContext *ctx = g_option_context_new(" target port");
+  g_option_context_add_main_entries(ctx, loggen_options, 0);
 
   signal(SIGPIPE, signal_callback_handler);
   setup_rate_change_signals();
@@ -595,10 +538,7 @@ main(int argc, char *argv[])
       return 1;
     }
 
-  g_mutex_init(&message_counter_lock);
-
   init_logline_generator(plugin_array);
-  init_csv_statistics();
 
   if (start_plugins(plugin_array) > 0)
     {
@@ -608,12 +548,9 @@ main(int argc, char *argv[])
 
   close_file_reader(global_plugin_option.active_connections);
 
-  g_mutex_clear(&message_counter_lock);
-  g_free((gpointer)global_plugin_option.target);
-  g_free((gpointer)global_plugin_option.port);
+  g_free(global_plugin_option.target);
+  g_free(global_plugin_option.port);
   g_option_context_free(ctx);
   g_ptr_array_free(plugin_array, TRUE);
-  g_free(thread_stat_count_last);
-  g_free(thread_stat_count);
   return 0;
 }
