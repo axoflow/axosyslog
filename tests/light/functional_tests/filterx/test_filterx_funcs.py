@@ -552,6 +552,8 @@ def test_set_fields(config, syslog_ng):
     $MSG = {
         "foo": "foo_exists",
         "bar": "bar_exists",
+        "bax": "to-be-replaced",
+        "bax2": "to-be-replaced",
     };
     set_fields(
         $MSG,
@@ -565,6 +567,10 @@ def test_set_fields(config, syslog_ng):
             "bar": "bar_default",  # Should not have any effect, "bar" already has value in the dict.
             "almafa": "almafa_default",
             "kortefa": [invalid_expr_1, null],  # Should not have any effect, as there is no valid expr or non-null here.
+        },
+        replacements={
+            "bax": "",
+            "bax2": [invalid_expr, null, "non-null"],
         }
     );
     """,
@@ -572,4 +578,4 @@ def test_set_fields(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"foo":"foo_override","bar":"bar_exists","baz":"baz_override","almafa":"almafa_default"}'
+    assert file_final.read_log() == '{"foo":"foo_override","bar":"bar_exists","bax":"","bax2":"non-null","baz":"baz_override","almafa":"almafa_default"}'
