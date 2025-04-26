@@ -146,6 +146,8 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   if (str_len == -1)
     str_len = strlen(str);
 
+  g_assert(str_len < G_MAXUINT);
+
   FilterXString *self = g_malloc(sizeof(FilterXString) + str_len + 1);
   memset(self, 0, sizeof(FilterXString));
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
@@ -159,6 +161,31 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   self->str = self->storage;
 
   return self;
+}
+
+static inline guint
+_hash_str(const gchar *str, gsize str_len)
+{
+  const char *p;
+  guint32 h = 5381;
+
+  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
+    h = (h << 5) + h + *p;
+
+  return h;
+}
+
+guint
+_filterx_string_hash(FilterXString *self)
+{
+  /* NOTE: this is a data race, as self->hash is written without atomics and
+   * also without mutexes.  Since self->hash is aligned, and is just 32
+   * bits, torn writes do not happen in modern architectures (x86, x86_64,
+   * arm).  */
+
+  G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
+  self->hash = _hash_str(self->str, self->str_len);
+  return self->hash;
 }
 
 FilterXObject *
