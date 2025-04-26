@@ -53,7 +53,9 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], 
 
 FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
+FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
+FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value.

@@ -66,6 +66,7 @@ Test(expr_plus, test_string_success)
   const gchar *res = filterx_string_get_value_ref(obj, &size);
 
   cr_assert_str_eq(res, "foobar");
+  cr_assert_eq(size, 6);
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
