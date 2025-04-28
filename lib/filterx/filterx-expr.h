@@ -31,7 +31,9 @@
 
 struct _FilterXExpr
 {
+#if 0
   StatsCounterItem *eval_count;
+#endif
   /* evaluate expression */
   FilterXObject *(*eval)(FilterXExpr *self);
 
@@ -93,7 +95,9 @@ struct _FilterXExpr
 static inline FilterXObject *
 filterx_expr_eval(FilterXExpr *self)
 {
+#if 0
   stats_counter_inc(self->eval_count);
+#endif
   return self->eval(self);
 }
 
