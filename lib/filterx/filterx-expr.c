@@ -141,6 +141,7 @@ filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg)
 {
   gchar buf[256];
 
+#if 0
   _init_sc_key_name(self, buf, sizeof(buf));
   stats_lock();
   StatsClusterKey sc_key;
@@ -150,8 +151,9 @@ filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg)
   if (self->name)
     labels[labels_len++] = stats_cluster_label("name", self->name);
   stats_cluster_single_key_set(&sc_key, buf, labels, labels_len);
-  stats_register_counter(STATS_LEVEL3, &sc_key, SC_TYPE_SINGLE_VALUE, &self->eval_count);
+  stats_register_counter(STATS_LEVEL3  +1, &sc_key, SC_TYPE_SINGLE_VALUE, &self->eval_count);
   stats_unlock();
+#endif
 
   if (perf_is_enabled())
     {
@@ -170,6 +172,7 @@ filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
 {
   gchar buf[64];
 
+#if 0
   _init_sc_key_name(self, buf, sizeof(buf));
   stats_lock();
   StatsClusterKey sc_key;
@@ -181,6 +184,7 @@ filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
   stats_cluster_single_key_set(&sc_key, buf, labels, labels_len);
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->eval_count);
   stats_unlock();
+#endif
 }
 
 void
