@@ -64,9 +64,9 @@ class SyslogNg(object):
         self._syslog_ng_executor = syslog_ng_executor
         self._process: typing.Optional[Popen] = None
 
-    def create_config(self, version: str, teardown) -> SyslogNgConfig:
+    def create_config(self, config_version: str, teardown) -> SyslogNgConfig:
         return SyslogNgConfig(
-            version,
+            config_version,
             LegacyStatsHandler(self._syslog_ng_ctl),
             PrometheusStatsHandler(self._syslog_ng_ctl),
             teardown,
