@@ -25,7 +25,8 @@
 #define SYSLOG_NG_H_INCLUDED
 
 #include <syslog-ng-config.h>
-
+#undef SYSLOG_NG_ENABLE_DEBUG
+#define SYSLOG_NG_ENABLE_DEBUG 0
 #if SYSLOG_NG_ENABLE_DEBUG
 #undef YYDEBUG
 #define YYDEBUG 1
