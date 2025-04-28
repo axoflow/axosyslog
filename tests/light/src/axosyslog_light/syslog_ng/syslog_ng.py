@@ -163,9 +163,9 @@ class SyslogNg(object):
             raise Exception(f"Cannot get syslog-ng version. Process returned with {returncode}. See {stderr_path.absolute()} for details")
 
         try:
-            return stdout_path.read_text().splitlines()[1].split()[2]
+            return stdout_path.read_text().splitlines()[2].split()[1]
         except IndexError:
-            raise Exception("Can not parse 'Config version' from 'syslog-ng --version'")
+            raise Exception("Can not parse 'Installer version' from 'syslog-ng --version'")
 
     def is_process_running(self) -> bool:
         return self._process and self._process.poll() is None
