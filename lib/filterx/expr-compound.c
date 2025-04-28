@@ -23,6 +23,7 @@
  */
 
 #include "filterx/expr-compound.h"
+#include "filterx/filterx-expr-list.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-primitive.h"
 #include "scratch-buffers.h"
@@ -34,12 +35,9 @@
 typedef struct _FilterXCompoundExpr
 {
   FilterXExpr super;
-  FilterXExpr **exprs;
-  gsize exprs_len;
+  FilterXExprList exprs;
   /* whether this is a statement expression */
   gboolean return_value_of_last_expr;
-  GPtrArray *parsed_exprs;
-
 } FilterXCompoundExpr;
 
 static gboolean
@@ -98,13 +96,13 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
 static gboolean
 _eval_exprs(FilterXCompoundExpr *self, FilterXEvalContext *context, FilterXObject **result, gsize start_index)
 {
-
   *result = NULL;
-  for (gsize i = start_index; i < self->exprs_len; i++)
+  gsize exprs_len = filterx_expr_list_get_length(&self->exprs);
+  for (gsize i = start_index; i < exprs_len; i++)
     {
       filterx_object_unref(*result);
 
-      FilterXExpr *expr = self->exprs[i];
+      FilterXExpr *expr = filterx_expr_list_index_fast(&self->exprs, i);
       if (!_eval_expr(expr, result))
         return FALSE;
 
@@ -170,16 +168,19 @@ filterx_compound_expr_eval_ext(FilterXExpr *s, gsize start_index)
   return _eval_compound_start(self, start_index);
 }
 
+static gboolean
+_optimize_expr(FilterXExpr **pexpr, gpointer user_data)
+{
+  *pexpr = filterx_expr_optimize(*pexpr);
+  return TRUE;
+}
+
 static FilterXExpr *
 _optimize(FilterXExpr *s)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  for (gint i = 0; i < self->parsed_exprs->len; i++)
-    {
-      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->parsed_exprs, i);
-      *expr = filterx_expr_optimize(*expr);
-    }
+  filterx_expr_list_foreach_ref(&self->exprs, _optimize_expr, NULL);
   return NULL;
 }
 
@@ -188,23 +189,13 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  /* unbox list of expressions into a simple array to avoid double deref */
-  self->exprs_len = self->parsed_exprs->len;
-  self->exprs = (FilterXExpr **) g_ptr_array_free(self->parsed_exprs, FALSE);
-  self->parsed_exprs = NULL;
+  filterx_expr_list_seal(&self->exprs);
 
-  for (gint i = 0; i < self->exprs_len; i++)
+  if (!filterx_expr_list_foreach(&self->exprs, (FilterXExprListForeachFunc) filterx_expr_init, cfg))
     {
-      if (!filterx_expr_init(self->exprs[i], cfg))
-        {
-          for (gint j = 0; j < i; j++)
-            {
-              filterx_expr_deinit(self->exprs[j], cfg);
-            }
-          return FALSE;
-        }
+      filterx_expr_list_foreach(&self->exprs, (FilterXExprListForeachFunc) filterx_expr_deinit, cfg);
+      return FALSE;
     }
-
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -213,11 +204,7 @@ _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  for (gint i = 0; i < self->exprs_len; i++)
-    {
-      filterx_expr_deinit(self->exprs[i], cfg);
-    }
-
+  filterx_expr_list_foreach(&self->exprs, (FilterXExprListForeachFunc) filterx_expr_deinit, cfg);
   filterx_expr_deinit_method(s, cfg);
 }
 
@@ -226,12 +213,7 @@ _free(FilterXExpr *s)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  for (gint i = 0; i < self->exprs_len; i++)
-    {
-      filterx_expr_unref(self->exprs[i]);
-    }
-  if (self->parsed_exprs)
-    g_ptr_array_free(self->parsed_exprs, TRUE);
+  filterx_expr_list_clear(&self->exprs);
   filterx_expr_free_method(s);
 }
 
@@ -241,10 +223,7 @@ gsize
 filterx_compound_expr_get_count(FilterXExpr *s)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-  if (self->parsed_exprs)
-    return self->parsed_exprs->len;
-  else
-    return self->exprs_len;
+  return filterx_expr_list_get_length(&self->exprs);
 }
 
 void
@@ -252,7 +231,7 @@ filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  g_ptr_array_add(self->parsed_exprs, expr);
+  filterx_expr_list_add(&self->exprs, expr);
 }
 
 /* Takes reference of expr_list */
@@ -277,8 +256,8 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.free_fn = _free;
-  self->parsed_exprs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->return_value_of_last_expr = return_value_of_last_expr;
+  filterx_expr_list_init(&self->exprs);
 
   return &self->super;
 }
