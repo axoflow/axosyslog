@@ -40,6 +40,7 @@ struct _AppObjectGenerator
 };
 
 gboolean app_object_generator_is_application_included(AppObjectGenerator *self, const gchar *app_name);
+gboolean app_object_generator_has_applications_included(AppObjectGenerator *self);
 gboolean app_object_generator_is_application_excluded(AppObjectGenerator *self, const gchar *app_name);
 
 gboolean app_object_generator_parse_arguments_method(AppObjectGenerator *self, CfgArgs *args, const gchar *reference);

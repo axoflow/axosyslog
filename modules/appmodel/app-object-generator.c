@@ -37,6 +37,12 @@ app_object_generator_is_application_included(AppObjectGenerator *self, const gch
 }
 
 gboolean
+app_object_generator_has_applications_included(AppObjectGenerator *self)
+{
+  return !!self->included_apps;
+}
+
+gboolean
 app_object_generator_is_application_excluded(AppObjectGenerator *self, const gchar *app_name)
 {
   if (!self->excluded_apps)

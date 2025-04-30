@@ -181,10 +181,13 @@ _generate_non_filterx_only_app_transform(Transformation *transformation, gpointe
   else
     g_string_append(block, "    elif {\n");
 
-  g_string_append_printf(block,
-                         "        filterx { %s === '%s'; };\n",
-                         self->filterx_app_variable,
-                         transformation->super.name);
+  if (!app_object_generator_has_applications_included(&self->super))
+    {
+      g_string_append_printf(block,
+                             "        filterx { %s === '%s'; };\n",
+                             self->filterx_app_variable,
+                             transformation->super.name);
+    }
 
   for (GList *l = transformation->transforms; l; l = l->next)
     {
