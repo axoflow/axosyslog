@@ -29,6 +29,7 @@ typedef struct _FilterXPointerList
 
 gboolean filterx_pointer_list_foreach_ref(FilterXPointerList *self, FilterXPointerListForeachRefFunc func, gpointer user_data);
 gboolean filterx_pointer_list_foreach(FilterXPointerList *self, FilterXPointerListForeachFunc func, gpointer user_data);
+void filterx_pointer_list_add_list(FilterXPointerList *self, GList *elements);
 
 void filterx_pointer_list_init(FilterXPointerList *self);
 void filterx_pointer_list_clear(FilterXPointerList *self, GDestroyNotify destroy);
@@ -42,9 +43,12 @@ filterx_pointer_list_is_sealed(FilterXPointerList *self)
 static inline void
 filterx_pointer_list_seal(FilterXPointerList *self)
 {
-  self->is_sealed = TRUE;
-  self->sealed.pointers_len = self->mut.pointers->len;
-  self->sealed.pointers = g_ptr_array_free(self->mut.pointers, FALSE);
+  if (!self->is_sealed)
+    {
+      self->is_sealed = TRUE;
+      self->sealed.pointers_len = self->mut.pointers->len;
+      self->sealed.pointers = g_ptr_array_free(self->mut.pointers, FALSE);
+    }
 }
 
 static inline void

@@ -26,6 +26,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "filterx/filterx-expr-list.h"
 
 /* Object Members (e.g. key-value) */
 
@@ -91,16 +92,14 @@ struct FilterXLiteralContainer_
 {
   FilterXExpr super;
   FilterXObject *(*create_container)(FilterXLiteralContainer *self);
-  GList *elements;
+  FilterXPointerList elements;
 };
 
 gsize
 filterx_literal_container_len(FilterXExpr *s)
 {
-  GList *elements = NULL;
-
-  elements = ((FilterXLiteralContainer *) s)->elements;
-  return g_list_length(elements);
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+  return filterx_pointer_list_get_length(&self->elements);
 }
 
 static FilterXObject *
@@ -110,9 +109,11 @@ _literal_container_eval(FilterXExpr *s)
 
   FilterXObject *result = self->create_container(self);
   filterx_object_cow_prepare(&result);
-  for (GList *link = self->elements; link; link = link->next)
+
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
     {
-      FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
 
       FilterXObject *key = NULL;
       if (elem->key)
@@ -150,10 +151,13 @@ _literal_container_optimize(FilterXExpr *s)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
+  filterx_pointer_list_seal(&self->elements);
+
   gboolean literal = TRUE;
-  for (GList *link = self->elements; link; link = link->next)
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
     {
-      FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
 
       _literal_element_optimize(elem);
       if (!elem->literal)
@@ -170,21 +174,12 @@ _literal_container_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  for (GList *link = self->elements; link; link = link->next)
+  filterx_pointer_list_seal(&self->elements);
+  if (!filterx_pointer_list_foreach(&self->elements, (FilterXPointerListForeachFunc) _literal_element_init, cfg))
     {
-      FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
-
-      if (!_literal_element_init(elem, cfg))
-        {
-          for (GList *deinit_link = self->elements; deinit_link != link; deinit_link = deinit_link->next)
-            {
-              elem = (FilterXLiteralElement *) deinit_link->data;
-              _literal_element_deinit(elem, cfg);
-            }
-          return FALSE;
-        }
+      filterx_pointer_list_foreach(&self->elements, (FilterXPointerListForeachFunc) _literal_element_deinit, cfg);
+      return FALSE;
     }
-
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -193,12 +188,7 @@ _literal_container_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  for (GList *link = self->elements; link; link = link->next)
-    {
-      FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
-      _literal_element_deinit(elem, cfg);
-    }
-
+  filterx_pointer_list_foreach(&self->elements, (FilterXPointerListForeachFunc) _literal_element_deinit, cfg);
   filterx_expr_deinit_method(s, cfg);
 }
 
@@ -207,7 +197,7 @@ _literal_container_free(FilterXExpr *s)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  g_list_free_full(self->elements, (GDestroyNotify) _literal_element_free);
+  filterx_pointer_list_clear(&self->elements, (GDestroyNotify) _literal_element_free);
   filterx_expr_free_method(s);
 }
 
@@ -220,6 +210,7 @@ _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *typ
   self->super.init = _literal_container_init;
   self->super.deinit = _literal_container_deinit;
   self->super.free_fn = _literal_container_free;
+  filterx_pointer_list_init(&self->elements);
 }
 
 /* Literal dict objects */
@@ -227,11 +218,12 @@ _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *typ
 gboolean
 filterx_literal_dict_foreach(FilterXExpr *s, FilterXLiteralDictForeachFunc func, gpointer user_data)
 {
-  GList *elements = ((FilterXLiteralContainer *) s)->elements;
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  for (GList *link = elements; link; link = link->next)
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
     {
-      FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
 
       if (!func(elem->key, elem->value, user_data))
         return FALSE;
@@ -253,7 +245,7 @@ filterx_literal_dict_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_dict));
   self->create_container = _literal_dict_create;
-  self->elements = elements;
+  filterx_pointer_list_add_list(&self->elements, elements);
 
   return &self->super;
 }
@@ -263,12 +255,12 @@ filterx_literal_dict_new(GList *elements)
 gboolean
 filterx_literal_list_foreach(FilterXExpr *s, FilterXLiteralListForeachFunc func, gpointer user_data)
 {
-  GList *elements = ((FilterXLiteralContainer *) s)->elements;
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  gsize i = 0;
-  for (GList *link = elements; link; link = link->next)
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
     {
-      FilterXLiteralElement *elem = (FilterXLiteralElement *) link->data;
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
 
       if (!func(i, elem->value, user_data))
         return FALSE;
@@ -292,7 +284,7 @@ filterx_literal_list_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_list));
   self->create_container = _literal_list_create;
-  self->elements = elements;
+  filterx_pointer_list_add_list(&self->elements, elements);
 
   return &self->super;
 }

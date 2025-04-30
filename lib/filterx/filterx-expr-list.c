@@ -1,5 +1,17 @@
 #include "filterx-expr-list.h"
 
+void
+filterx_pointer_list_add_list(FilterXPointerList *self, GList *elements)
+{
+  g_assert(self->is_sealed == FALSE);
+
+  for (GList *link = elements; link; link = link->next)
+    {
+      filterx_pointer_list_add(self, link->data);
+    }
+  g_list_free(elements);
+}
+
 gboolean
 filterx_pointer_list_foreach_ref(FilterXPointerList *self, FilterXPointerListForeachRefFunc func, gpointer user_data)
 {
