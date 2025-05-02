@@ -929,7 +929,7 @@ cfg_tree_propagate_expr_node_properties_to_pipe(CfgTree *self, LogExprNode *node
 
   if (_is_log_path(node))
     {
-      if (node->flags & LC_FLOW_CONTROL)
+      if (node->flags & LC_FLOW_CONTROL || (self->cfg->flow_control && !(node->flags & LC_NO_FLOW_CONTROL)))
         pipe->flags |= PIF_HARD_FLOW_CONTROL;
     }
 
