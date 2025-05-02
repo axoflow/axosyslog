@@ -387,12 +387,6 @@ log_expr_node_new_log(LogExprNode *children, guint32 flags, CFG_LTYPE *yylloc)
 }
 
 LogExprNode *
-log_expr_node_new_sequence(LogExprNode *children, CFG_LTYPE *yylloc)
-{
-  return log_expr_node_new(ENL_SEQUENCE, ENC_PIPE, NULL, children, 0, yylloc);
-}
-
-LogExprNode *
 log_expr_node_new_junction(LogExprNode *children, CFG_LTYPE *yylloc)
 {
   return log_expr_node_new(ENL_JUNCTION, ENC_PIPE, NULL, children, 0, yylloc);

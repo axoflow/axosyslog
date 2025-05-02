@@ -152,7 +152,6 @@ LogExprNode *log_expr_node_new_parser_reference(const gchar *name, CFG_LTYPE *yy
 LogExprNode *log_expr_node_new_rewrite(const gchar *name, LogExprNode *children, CFG_LTYPE *yylloc);
 LogExprNode *log_expr_node_new_rewrite_reference(const gchar *name, CFG_LTYPE *yylloc);
 LogExprNode *log_expr_node_new_log(LogExprNode *children, guint32 flags, CFG_LTYPE *yylloc);
-LogExprNode *log_expr_node_new_sequence(LogExprNode *children, CFG_LTYPE *yylloc);
 LogExprNode *log_expr_node_new_junction(LogExprNode *children, CFG_LTYPE *yylloc);
 LogExprNode *log_expr_node_new_source_junction(LogExprNode *children, CFG_LTYPE *yylloc);
 LogExprNode *log_expr_node_new_destination_junction(LogExprNode *children, CFG_LTYPE *yylloc);
