@@ -913,7 +913,7 @@ log_content
         ;
 
 log_flags
-	: KW_FLAGS '(' log_flags_items ')' semicolons	{ $$ = $3; }
+	: KW_FLAGS '(' log_flags_items ')' semicolons	{ CHECK_ERROR(log_expr_node_validate_flags($3), @3, "incompatible flags were specified"); $$ = $3; }
 	|					{ $$ = 0; }
 	;
 
