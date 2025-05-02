@@ -551,8 +551,13 @@ log_source_deinit(LogPipe *s)
 void
 log_source_post(LogSource *self, LogMessage *msg)
 {
+  GlobalConfig *cfg = log_pipe_get_config(&self->super);
+
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-  gint old_window_size;
+  path_options.flow_control_requested = cfg->flow_control;
+
+  if (path_options.flow_control_requested)
+    msg_trace("Enabling flow control", log_pipe_location_tag(&self->super));
 
   ack_tracker_track_msg(self->ack_tracker, msg);
 
@@ -562,7 +567,7 @@ log_source_post(LogSource *self, LogMessage *msg)
   log_msg_add_ack(msg, &path_options);
   msg->ack_func = log_source_msg_ack;
 
-  old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
+  gint old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
   stats_counter_sub(self->metrics.stat_window_size, 1);
 
   if (G_UNLIKELY(old_window_size == 1))

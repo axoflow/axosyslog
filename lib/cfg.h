@@ -95,6 +95,7 @@ struct _GlobalConfig
 
   gint log_fifo_size;
   gint log_msg_size;
+  gboolean flow_control;
   gboolean trim_large_messages;
   gint log_level;
 
