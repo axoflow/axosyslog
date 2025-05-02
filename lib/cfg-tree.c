@@ -635,6 +635,8 @@ log_expr_node_lookup_flag(const gchar *flag)
     return LC_FINAL;
   else if (strcmp(flag, "flow-control") == 0)
     return LC_FLOW_CONTROL;
+  else if (strcmp(flag, "no-flow-control") == 0)
+    return LC_NO_FLOW_CONTROL;
   else if (strcmp(flag, "drop-unmatched") == 0)
     {
       msg_warning_once("WARNING: The drop-unmatched flag has been removed starting with " VERSION_4_1 ". "
@@ -643,6 +645,12 @@ log_expr_node_lookup_flag(const gchar *flag)
     }
   msg_error("Unknown log statement flag", evt_tag_str("flag", flag));
   return 0;
+}
+
+gboolean
+log_expr_node_validate_flags(gint flags)
+{
+  return !(flags & LC_FLOW_CONTROL && flags & LC_NO_FLOW_CONTROL);
 }
 
 static LogPipe *

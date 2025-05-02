@@ -37,6 +37,7 @@ const gchar *log_expr_node_get_content_name(gint content);
 #define LC_FALLBACK       2
 #define LC_FINAL          4
 #define LC_FLOW_CONTROL   8
+#define LC_NO_FLOW_CONTROL 16
 
 enum
 {
@@ -127,6 +128,7 @@ struct _LogExprNode
 };
 
 gint log_expr_node_lookup_flag(const gchar *flag);
+gboolean log_expr_node_validate_flags(gint flags);
 
 LogExprNode *log_expr_node_append_tail(LogExprNode *a, LogExprNode *b);
 void log_expr_node_set_object(LogExprNode *self, gpointer object, GDestroyNotify destroy);
