@@ -618,6 +618,12 @@ log_expr_node_new_compound_conditional(LogExprNode *block, CFG_LTYPE *yylloc)
 
 /****************************************************************************/
 
+static inline gboolean
+_is_log_path(LogExprNode *node)
+{
+  return node->layout == ENL_SEQUENCE && node->content == ENC_PIPE;
+}
+
 gint
 log_expr_node_lookup_flag(const gchar *flag)
 {
@@ -913,8 +919,11 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
   if (node->flags & LC_FINAL)
     pipe->flags |= PIF_BRANCH_FINAL;
 
-  if (node->flags & LC_FLOW_CONTROL)
-    pipe->flags |= PIF_HARD_FLOW_CONTROL;
+  if (_is_log_path(node))
+    {
+      if (node->flags & LC_FLOW_CONTROL)
+        pipe->flags |= PIF_HARD_FLOW_CONTROL;
+    }
 
   if (!pipe->expr_node)
     pipe->expr_node = node;
