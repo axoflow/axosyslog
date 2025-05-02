@@ -618,6 +618,12 @@ log_expr_node_new_compound_conditional(LogExprNode *block, CFG_LTYPE *yylloc)
 
 /****************************************************************************/
 
+static inline gboolean
+_is_log_path(LogExprNode *node)
+{
+  return node->layout == ENL_SEQUENCE && node->content == ENC_PIPE;
+}
+
 gint
 log_expr_node_lookup_flag(const gchar *flag)
 {
@@ -905,7 +911,7 @@ error:
 }
 
 static void
-cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe)
+cfg_tree_propagate_expr_node_properties_to_pipe(CfgTree *self, LogExprNode *node, LogPipe *pipe)
 {
   if (node->flags & LC_FALLBACK)
     pipe->flags |= PIF_BRANCH_FALLBACK;
@@ -913,8 +919,11 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
   if (node->flags & LC_FINAL)
     pipe->flags |= PIF_BRANCH_FINAL;
 
-  if (node->flags & LC_FLOW_CONTROL)
-    pipe->flags |= PIF_HARD_FLOW_CONTROL;
+  if (_is_log_path(node))
+    {
+      if (node->flags & LC_FLOW_CONTROL)
+        pipe->flags |= PIF_HARD_FLOW_CONTROL;
+    }
 
   if (!pipe->expr_node)
     pipe->expr_node = node;
@@ -1018,7 +1027,7 @@ cfg_tree_compile_sequence(CfgTree *self, LogExprNode *node,
         {
           if (!node_properties_propagated)
             {
-              cfg_tree_propagate_expr_node_properties_to_pipe(node, sub_pipe_head);
+              cfg_tree_propagate_expr_node_properties_to_pipe(self, node, sub_pipe_head);
               node_properties_propagated = TRUE;
             }
           if (!first_pipe && !last_pipe)
@@ -1110,7 +1119,7 @@ cfg_tree_compile_sequence(CfgTree *self, LogExprNode *node,
        * pipe_next list and is not forked off at a LogMultiplexer.
        * */
 
-      cfg_tree_propagate_expr_node_properties_to_pipe(node, last_pipe);
+      cfg_tree_propagate_expr_node_properties_to_pipe(self, node, last_pipe);
       node_properties_propagated = TRUE;
     }
 
