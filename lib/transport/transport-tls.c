@@ -197,9 +197,7 @@ log_transport_tls_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTr
   if (G_UNLIKELY(self->sending_shutdown))
     return (log_transport_tls_send_shutdown(self) >= 0) ? 0 : -1;
 
-  /* assume that we need to poll our input for reading unless
-   * SSL_ERROR_WANT_WRITE is specified by libssl */
-  self->super.super.cond = G_IO_IN;
+  self->super.super.cond = 0;
 
   if (aux)
     {
@@ -256,9 +254,6 @@ log_transport_tls_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTr
     }
   while (rc == -1 && errno == EINTR);
 
-  if (rc > 0)
-    self->super.super.cond = 0;
-
   return rc;
 tls_error:
 
@@ -279,10 +274,7 @@ log_transport_tls_write_method(LogTransport *s, const gpointer buf, gsize buflen
   gint ssl_error;
   gint rc;
 
-  /* assume that we need to poll our output for writing unless
-   * SSL_ERROR_WANT_READ is specified by libssl */
-
-  self->super.super.cond = G_IO_OUT;
+  self->super.super.cond = 0;
 
   rc = SSL_write(self->tls_session->ssl, buf, buflen);
 
@@ -298,6 +290,7 @@ log_transport_tls_write_method(LogTransport *s, const gpointer buf, gsize buflen
           errno = EAGAIN;
           break;
         case SSL_ERROR_WANT_WRITE:
+          self->super.super.cond = G_IO_OUT;
           errno = EAGAIN;
           break;
         case SSL_ERROR_SYSCALL:
@@ -316,10 +309,6 @@ log_transport_tls_write_method(LogTransport *s, const gpointer buf, gsize buflen
         default:
           goto tls_error;
         }
-    }
-  else
-    {
-      self->super.super.cond = 0;
     }
 
   return rc;
