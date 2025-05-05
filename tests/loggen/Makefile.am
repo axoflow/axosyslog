@@ -65,6 +65,7 @@ tests_loggen_loggen_LDADD	= \
 	@GLIB_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@BASE_LIBS@ \
+	-lm \
 	tests/loggen/libloggen_helper.la
 
 include tests/loggen/socket_plugin/Makefile.am
