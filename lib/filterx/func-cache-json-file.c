@@ -178,7 +178,8 @@ static FilterXObject *
 _eval(FilterXExpr *s)
 {
   FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
-  return filterx_object_ref(self->cached_json);
+  FilterXObject *cached_json = g_atomic_pointer_get(&self->cached_json);
+  return filterx_object_ref(cached_json);
 }
 
 static void
