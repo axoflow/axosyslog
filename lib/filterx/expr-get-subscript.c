@@ -42,7 +42,7 @@ _eval_get_subscript(FilterXExpr *s)
   if (!variable)
     return NULL;
 
-  FilterXObject *key = filterx_expr_eval(self->key);
+  FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
     goto exit;
   result = filterx_object_get_subscript(variable, key);

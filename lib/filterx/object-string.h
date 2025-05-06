@@ -99,6 +99,8 @@ _filterx_string_hash(FilterXString *self);
 static inline guint
 filterx_string_hash(FilterXObject *s)
 {
+  g_assert(filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)));
+
   FilterXString *self = (FilterXString *) s;
   if (self->hash)
     return self->hash;

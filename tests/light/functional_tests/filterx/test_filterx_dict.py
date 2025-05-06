@@ -2,6 +2,7 @@
 #############################################################################
 # Copyright (c) 2025 Axoflow
 # Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
+# Copyright (c) 2025 László Várady
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License version 2 as published
@@ -36,3 +37,18 @@ def test_filterx_dict_unset_key_with_hash_collision(syslog_ng, config):
 
     syslog_ng.start(config)
     assert destination.read_log() == "b"
+
+
+def test_filterx_dict_message_value_key(syslog_ng, config):
+    source = config.create_example_msg_generator_source(num=1, template='test_key')
+    filterx = config.create_filterx(r"""
+        d = {};
+        d["test_key"] = "test_value";
+        $MSG = d[$MSG];
+""")
+    destination = config.create_file_destination(file_name="output.log", template='"$MSG\n"')
+
+    config.create_logpath(statements=[source, filterx, destination])
+
+    syslog_ng.start(config)
+    assert destination.read_log() == "test_value"
