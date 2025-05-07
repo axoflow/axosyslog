@@ -172,6 +172,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("set_timestamp", filterx_function_set_timestamp_new));
   g_assert(filterx_builtin_function_ctor_register("set_pri", filterx_function_set_pri_new));
   g_assert(filterx_builtin_function_ctor_register("cache_json_file", filterx_function_cache_json_file_new));
+  g_assert(filterx_builtin_function_ctor_register("regexp_search", filterx_function_regexp_search_new));
 }
 
 static void
@@ -202,8 +203,6 @@ static void
 _generator_ctors_init(void)
 {
   filterx_builtin_function_ctors_init_private(&filterx_builtin_generator_function_ctors);
-  g_assert(filterx_builtin_generator_function_ctor_register("regexp_search",
-                                                            filterx_generator_function_regexp_search_new));
 }
 
 static void
