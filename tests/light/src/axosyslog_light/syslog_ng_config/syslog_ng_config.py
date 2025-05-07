@@ -71,14 +71,14 @@ logger = logging.getLogger(__name__)
 class SyslogNgConfig(object):
     def __init__(
         self,
-        version: str,
+        config_version: str,
         stats_handler: LegacyStatsHandler,
         prometheus_stats_handler: PrometheusStatsHandler,
         teardown,
     ) -> None:
         self._raw_config = None
         self._syslog_ng_config = {
-            "version": version,
+            "version": config_version,
             "includes": [],
             "global_options": {},
             "preamble": "",

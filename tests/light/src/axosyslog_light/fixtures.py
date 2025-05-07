@@ -129,7 +129,7 @@ def testcase_parameters(request):
 
 @pytest.fixture
 def config(request, syslog_ng, teardown) -> SyslogNgConfig:
-    return syslog_ng.create_config(request.getfixturevalue("version"), teardown)
+    return syslog_ng.create_config(request.getfixturevalue("config_version"), teardown)
 
 
 @pytest.fixture
@@ -198,6 +198,11 @@ def log_message():
 @pytest.fixture
 def version(syslog_ng):
     return syslog_ng.get_version()
+
+
+@pytest.fixture
+def config_version(syslog_ng):
+    return syslog_ng.get_config_version()
 
 
 @pytest.fixture
