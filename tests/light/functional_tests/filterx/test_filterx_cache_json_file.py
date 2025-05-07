@@ -21,10 +21,12 @@
 # COPYING for details.
 #
 #############################################################################
+import os
 
 
 def test_filterx_cache_json_file_reloads_its_content_automatically(syslog_ng, config):
     cache_json_file_path = "./c.json"
+    cache_json_file_path_tmp = "./c.json.tmp"
 
     source = config.create_example_msg_generator_source(num=10)
     filterx = config.create_filterx(f"""
@@ -45,3 +47,10 @@ def test_filterx_cache_json_file_reloads_its_content_automatically(syslog_ng, co
         file.write('{"msg": "autoupdated"}')
 
     assert destination.read_until_logs(["autoupdated"])
+
+    with open(cache_json_file_path_tmp, "w") as file:
+        file.write('{"msg": "atomic write"}')
+
+    os.rename(cache_json_file_path_tmp, cache_json_file_path)
+
+    assert destination.read_until_logs(["atomic write"])
