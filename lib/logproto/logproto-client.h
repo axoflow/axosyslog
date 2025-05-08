@@ -134,6 +134,12 @@ log_proto_client_poll_prepare(LogProtoClient *self, GIOCondition *cond, GIOCondi
 
   result = self->poll_prepare(self, cond, idle_cond, timeout);
 
+  /* Protos are not allowed to set both IN and OUT because of "transport_reversed_io_direction" and TLS requirements:
+   * "If you get SSL_ERROR_WANT_WRITE from SSL_write() then you should not do any other operation that could trigger
+   * IO other than to repeat the previous SSL_write() call."
+   */
+  g_assert(!((*cond & G_IO_IN) && (*cond & G_IO_OUT)));
+
   if (!result && *timeout < 0)
     *timeout = self->options->idle_timeout;
 

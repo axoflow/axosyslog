@@ -33,7 +33,7 @@ log_proto_text_client_poll_prepare(LogProtoClient *s, GIOCondition *cond, GIOCon
 {
   LogProtoTextClient *self = (LogProtoTextClient *) s;
 
-  *cond = G_IO_OUT | G_IO_IN;
+  *cond = G_IO_OUT;
   *idle_cond = G_IO_IN;
 
   return self->partial != NULL;
