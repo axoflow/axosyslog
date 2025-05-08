@@ -29,6 +29,17 @@ from axosyslog_light.helpers.loggen.loggen_executor import LoggenStartParams
 from psutil import Popen
 
 
+class LoggenStats:
+    def __init__(self, loggen_stderr_file: Path) -> None:
+        loggen_stderr_last_line = loggen_stderr_file.read_text(encoding="utf8").splitlines()[-1].strip()
+        self.msg_per_second = float(loggen_stderr_last_line.split("avg_rate=")[1].split(" msg/s")[0])
+        self.stdev_rate = float(loggen_stderr_last_line.split("stdev_rate=")[1].split("%")[0].replace(",", "."))
+        self.total_msg_count = int(loggen_stderr_last_line.split("count=")[1].split(",")[0])
+        self.run_time = float(loggen_stderr_last_line.split("time=")[1].split(",")[0])
+        self.avg_msg_size = int(loggen_stderr_last_line.split("avg_msg_size=")[1].split(",")[0])
+        self.bandwidth = float(loggen_stderr_last_line.split("bandwidth=")[1].split(" KiB/s")[0])
+
+
 class Loggen(object):
     @staticmethod
     def __get_new_instance_index():
@@ -52,6 +63,12 @@ class Loggen(object):
         self.loggen_stdout_path = Path("loggen_stdout_{}".format(instance_index))
         self.loggen_stderr_path = Path("loggen_stderr_{}".format(instance_index))
         return self.executor.start(start_params, self.loggen_stderr_path, self.loggen_stdout_path, instance_index)
+
+    def get_loggen_stats(self) -> LoggenStats:
+        if not self.loggen_stderr_path.exists():
+            raise RuntimeError("Loggen stderr file does not exist")
+
+        return LoggenStats(self.loggen_stderr_path)
 
     def stop(self) -> None:
         self.executor.stop()
