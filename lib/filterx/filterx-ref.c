@@ -222,7 +222,7 @@ _filterx_ref_list_factory(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *list = filterx_object_create_list(self->value);
-  filterx_object_cow_wrap(&list);
+  filterx_object_cow_prepare(&list);
   filterx_ref_set_parent_container(list, s);
   return list;
 }
@@ -232,7 +232,7 @@ _filterx_ref_dict_factory(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *dict = filterx_object_create_dict(self->value);
-  filterx_object_cow_wrap(&dict);
+  filterx_object_cow_prepare(&dict);
   filterx_ref_set_parent_container(dict, s);
   return dict;
 }
@@ -275,13 +275,10 @@ _filterx_ref_add(FilterXObject *s, FilterXObject *object)
 FilterXObject *
 _filterx_ref_new(FilterXObject *value)
 {
-  if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(ref)))
-    {
-      FilterXRef *absorbed_ref = (FilterXRef *) value;
-      value = filterx_object_ref(absorbed_ref->value);
-      filterx_object_unref(&absorbed_ref->super);
-    }
-
+#if SYSLOG_NG_ENABLE_DEBUG
+  if (!filterx_object_is_cowable(value) || filterx_object_is_ref(value))
+    g_assert("filterx_ref_new() must only be used for a cowable object" && FALSE);
+#endif
   FilterXRef *self = g_new0(FilterXRef, 1);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
