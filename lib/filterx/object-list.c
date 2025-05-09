@@ -329,7 +329,8 @@ _filterx_list_freeze(FilterXObject **s)
 static gboolean
 _unfreeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
 {
-  filterx_object_unfreeze(*value);
+  filterx_object_unfreeze_and_free(*value);
+  *value = NULL;
   return TRUE;
 }
 

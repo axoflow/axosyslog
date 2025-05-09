@@ -141,6 +141,14 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
   filterx_object_unref(obj);
 }
 
+Test(filterx_string, test_filterx_string_freeze_and_unfreeze)
+{
+  FilterXObject *o = filterx_string_new("foobar", 6);
+
+  filterx_object_freeze(&o);
+  filterx_object_unfreeze_and_free(o);
+}
+
 static void
 setup(void)
 {

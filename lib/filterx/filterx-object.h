@@ -96,7 +96,7 @@ filterx_type_is_cowable(FilterXType *type)
 /* FilterXObject refcount ranges.  The ref count for the objects is special
  * to allow multiple allocation strategies:
  *
- * 1) heap allocated, normal refcounting
+ * 1) normal objects (allocated on heap, normal refcounting)
  *
  *    Most objects will be in this category, ref_cnt starts with 1,
  *    ref/unref increments and decrements the refcount respectively.
@@ -107,38 +107,71 @@ filterx_type_is_cowable(FilterXType *type)
  *    mark and the first special value, which is large enough to avoid races
  *    stepping through the range
  *
- * 2) stack allocated, no refcounting
+ * 2) read-only, local values (allocated on stack, no refcounting)
  *
  *    Local values can be stored on the stack, to avoid a heap allocation,
  *    these values are only used by a single thread.
  *
+ *    If you need another reference to a stack based allocation, you need to
+ *    clone it and that's exactly what filterx_object_ref() does for stack
+ *    allocated objects.
+ *
  *    The ref_cnt is always equal to FILTERX_OBJECT_REFCOUNT_STACK
  *
- * 3) heap allocated, frozen
+ * 3) hybernated objects
  *
- *    Objects frozen before the evaluation starts (e.g.  cache_json_file or
- *    other cached objects).
+ *    Hybernated objects are preserved for the entire lifecycle of a
+ *    filterx-based configuration.  They are allocated at startup or when
+ *    the config is initialized and freed once the configuration finishes or syslog-ng exits.
  *
- *    The normal ref/unref operations are noops, e.g.  everything just
- *    assumes these objects will exist for as long as necessary.
+ *    Both the normal ref/unref and the freeze/unfreeze operations are
+ *    noops. Hybernated objects simply exist as long as necessary.
  *
- *    The freeze/unfreeze operations increment and decrement the refcount
- *    but ensure that it remains in this range.  Multi-threaded, read only
- *    access to frozen objects is possible during evaluation, but
- *    freeze/unfreeze cannot be used from multiple threads in parallel.
+ *    Hybernated objects can be used in place of any normal objects, e.g.
+ *    these objects can be replace the unfrozen version of the same object by
+ *    filterx_object_freeze() (e.g. when they represent the same string).
+ *
+ *    The ref_cnt will always be: FILTERX_OBJECT_REFCOUNT_HYBERNATED
+ *
+ *    NOTE: hybernated objects are considered "preserved"
+ *
+ * 4) frozen objects
+ *
+ *    Frozen objects are also preserved and have their own lifecycle.  But
+ *    instead of being tracked by the configuration or by the syslog-ng
+ *    startup/teardown mechanism, they get allocated and freed during the
+ *    runtime of a configuration.
+ *
+ *    An example is cache_json_file(), which allocates the representation of
+ *    the JSON data structure at configuration compilation and can reload it
+ *    if the file changes, even if the configuration itself remains the
+ *    same.  We want to be able to free a previous version of the JSON, even
+ *    without a complete configuration reload.
+ *
+ *    The ref/unref operations are noops.  The freeze/unfreeze operations
+ *    have a reference counting nature, and the object will be freed at the
+ *    last unfreeze.
  *
  *    The ref_cnt will be in this range: [FILTERX_OBJECT_REFCOUNT_FROZEN, G_MAXINT32]
  *
+ *    NOTE: frozen objects are considered "preserved"
  */
 enum
 {
-  FILTERX_OBJECT_REFCOUNT_OFLOW_MARK=G_MAXINT32/2,
-  FILTERX_OBJECT_REFCOUNT_OFLOW_RANGE_MAX=FILTERX_OBJECT_REFCOUNT_OFLOW_MARK + 1024,
+  FILTERX_OBJECT_REFCOUNT_BARRIER=G_MAXINT32/2,
+
+  /* the distance between BARRIER and BARRIER_MAX protects against a race
+   * condition and a resulting overflow, see the comment in filterx_object_ref() */
+  FILTERX_OBJECT_REFCOUNT_BARRIER_MAX=FILTERX_OBJECT_REFCOUNT_BARRIER + 1023,
   /* stack based allocation */
   FILTERX_OBJECT_REFCOUNT_STACK,
+  /* anything above this point is preserved: either hybernated or frozen */
+  FILTERX_OBJECT_REFCOUNT_PRESERVED,
 
-  /* frozen objects have a refcount that is larger than equal to FILTERX_OBJECT_REFCOUNT_FROZEN, normal ref/unref does not change these refcounts
-   * but freeze/unfreeze does */
+  /* hybernated object (considered preserved) */
+  FILTERX_OBJECT_REFCOUNT_HYBERNATED=FILTERX_OBJECT_REFCOUNT_PRESERVED,
+
+  /* hybernated object (considered preserved) */
   FILTERX_OBJECT_REFCOUNT_FROZEN,
 };
 
@@ -205,17 +238,18 @@ gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_na
 
 FilterXObject *filterx_object_new(FilterXType *type);
 void filterx_object_freeze(FilterXObject **pself);
-void filterx_object_unfreeze(FilterXObject *self);
 void filterx_object_unfreeze_and_free(FilterXObject *self);
+void filterx_object_hybernate(FilterXObject **pself);
+void filterx_object_unhybernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
 
 void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
 
 static inline gboolean
-filterx_object_is_frozen(FilterXObject *self)
+filterx_object_is_preserved(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_FROZEN;
+  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_HYBERNATED;
 }
 
 static inline FilterXObject *
@@ -225,7 +259,7 @@ filterx_object_ref(FilterXObject *self)
     return NULL;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r < FILTERX_OBJECT_REFCOUNT_OFLOW_MARK && r > 0)
+  if (r < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0)
     {
       /* NOTE: getting into this path is racy, as two threads might be
        * checking the overflow mark in parallel and then decide we need to
@@ -268,7 +302,7 @@ filterx_object_ref(FilterXObject *self)
       return self->type->clone(self);
     }
 
-  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+  if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return self;
 
   g_assert_not_reached();
@@ -299,7 +333,7 @@ filterx_object_unref(FilterXObject *self)
       g_atomic_counter_set(&self->ref_cnt, 0);
       return;
     }
-  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+  if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return;
   if (r <= 0)
     g_assert_not_reached();
