@@ -60,6 +60,7 @@
 #include "filterx/expr-drop.h"
 #include "filterx/expr-done.h"
 #include "filterx/expr-break.h"
+#include "filterx/expr-membership.h"
 
 #include "template/templates.h"
 
@@ -143,6 +144,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <node> expr_operator
 %type <node> boolalg_operator
 %type <node> comparison_operator
+%type <node> membership_operator
 %type <node> arithmetic_operator
 %type <node> expr_generator
 %type <node> __expr_generator
@@ -423,6 +425,7 @@ __expr
 
 expr_operator
 	: boolalg_operator
+	| membership_operator
 	| comparison_operator
 	| arithmetic_operator
 	| ternary
@@ -454,6 +457,11 @@ comparison_operator
 	| expr KW_TAV_EQ expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ); }
 	| expr KW_TAV_NE expr { $$ = filterx_comparison_new($1, $3, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_NE ); }
 	| regexp_match
+	;
+
+membership_operator
+	: expr KW_IN expr { $$ = filterx_membership_in_new($1, $3); }
+	| expr KW_NOT KW_IN expr {$$ = filterx_unary_not_new(filterx_membership_in_new($1, $4)); }
 	;
 
 arithmetic_operator
