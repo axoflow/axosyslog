@@ -40,6 +40,6 @@ DEFINE_FUNC_FLAGS(FilterXRegexpSearchFlags,
 
 extern const char *FilterXRegexpSearchFlags_NAMES[];
 
-FilterXExpr *filterx_generator_function_regexp_search_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

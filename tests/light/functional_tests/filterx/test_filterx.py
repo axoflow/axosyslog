@@ -1326,9 +1326,6 @@ def test_regexp_search(config, syslog_ng):
     $MSG.mixed_keep_zero = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, keep_zero=true);
     $MSG.mixed_list_mode = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, list_mode=true);
     $MSG.mixed_keep_zero_list_mode = regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/, keep_zero=true, list_mode=true);
-    $MSG.force_list = json_array(regexp_search("foobarbaz", /(?<first>foo)(bar)(?<third>baz)/));
-    $MSG.force_dict = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/));
-    $MSG.force_dict_list_mode = json(regexp_search("foobarbaz", /(foo)(bar)(baz)/, list_mode=true));
     $MSG.optimized_pattern = regexp_search("foobarbaz", /(foo)/ + /(bar)/ + /(baz)/);
 
     $MSG.no_match_unnamed = regexp_search("foobarbaz", /(almafa)/);
@@ -1373,9 +1370,6 @@ def test_regexp_search(config, syslog_ng):
         "mixed_keep_zero": {"0": "foobarbaz", "first": "foo", "2": "bar", "third": "baz"},
         "mixed_list_mode": ["foo", "bar", "baz"],
         "mixed_keep_zero_list_mode": ["foobarbaz", "foo", "bar", "baz"],
-        "force_list": ["foo", "bar", "baz"],
-        "force_dict": {"1": "foo", "2": "bar", "3": "baz"},
-        "force_dict_list_mode": {"1": "foo", "2": "bar", "3": "baz"},
         "no_match_unnamed": {},
         "no_match_unnamed_handling": True,
         "no_match_unnamed_list_mode": [],
@@ -2389,36 +2383,6 @@ log {{
     assert "processed" in file_true.get_stats()
     assert file_true.get_stats()["processed"] == 1
     assert file_true.read_log() == '{"from_nvtable":"almafa","from_a_macro":"2000-01-01T00:00:00+01:00","unset_then_set":"kortefa"}'
-
-
-def test_set_fields(config, syslog_ng):
-    (file_true, file_false) = create_config(
-        config, r"""
-    $MSG = {
-        "foo": "foo_exists",
-        "bar": "bar_exists",
-    };
-    set_fields(
-        $MSG,
-        overrides={
-            "foo": [invalid_expr, "foo_override"],
-            "baz": "baz_override",
-            "almafa": [invalid_expr_1, null],  # Should not have any effect, as there is no valid expr or non-null here.
-        },
-        defaults={
-            "foo": [invalid_expr, "foo_default"],  # Should not have any effect, "foo" is handled by overrides.
-            "bar": "bar_default",  # Should not have any effect, "bar" already has value in the dict.
-            "almafa": "almafa_default",
-            "kortefa": [invalid_expr_1, null],  # Should not have any effect, as there is no valid expr or non-null here.
-        }
-    );
-    """,
-    )
-    syslog_ng.start(config)
-
-    assert file_true.get_stats()["processed"] == 1
-    assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"foo":"foo_override","bar":"bar_exists","baz":"baz_override","almafa":"almafa_default"}'
 
 
 def test_keys(config, syslog_ng):

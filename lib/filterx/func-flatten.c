@@ -296,6 +296,7 @@ filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFlatten *self = g_new0(FilterXFunctionFlatten, 1);
   filterx_function_init_instance(&self->super, "flatten");
+  self->super.super.mutates_scope = TRUE;
   self->super.super.eval = _eval_fx_flatten;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;

@@ -49,7 +49,7 @@ _eval_macro(FilterXVariableExpr *self, FilterXEvalContext *context)
   const gchar *value = log_msg_get_value_if_set_with_type(context->msg, self->handle, &value_len, &t);
   if (!value)
     {
-      filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+      filterx_eval_context_push_error(context, "Variable is unset", &self->super, self->variable_name);
       return NULL;
     }
   return filterx_unmarshal_repr(value, value_len, t);
@@ -71,7 +71,7 @@ _eval_variable(FilterXExpr *s)
       FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
       if (!value)
         {
-          filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+          filterx_eval_context_push_error(context, "Variable is unset", &self->super, self->variable_name);
         }
       return value;
     }
@@ -79,19 +79,20 @@ _eval_variable(FilterXExpr *s)
   if (self->variable_type == FX_VAR_MESSAGE_TIED)
     {
       /* auto register message tied variables */
+      filterx_eval_context_make_writable();
       variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle);
       if (variable)
         {
           FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
           if (!value)
             {
-              filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+              filterx_eval_context_push_error(context, "Variable is unset", &self->super, self->variable_name);
             }
           return value;
         }
     }
 
-  filterx_eval_push_error("No such variable", s, self->variable_name);
+  filterx_eval_context_push_error(context, "No such variable", s, self->variable_name);
   return NULL;
 }
 
@@ -102,6 +103,7 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXScope *scope = context->scope;
 
+  filterx_eval_context_make_writable();
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
   filterx_scope_set_variable(scope, variable, new_repr, FALSE);
 }
@@ -110,19 +112,22 @@ static gboolean
 _assign(FilterXExpr *s, FilterXObject **new_value)
 {
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  FilterXEvalContext *context = filterx_eval_get_context();
 
   if (self->handle_is_macro)
     {
-      filterx_eval_push_error("Macro based variable cannot be changed", &self->super, self->variable_name);
+      filterx_eval_context_push_error(context, "Macro based variable cannot be changed", &self->super, self->variable_name);
       return FALSE;
     }
 
-  FilterXEvalContext *context = filterx_eval_get_context();
+  filterx_eval_context_make_writable();
   FilterXScope *scope = context->scope;
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
 
   if (!variable)
-    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle);
+    {
+      variable = filterx_scope_register_variable(scope, self->variable_type, self->handle);
+    }
 
   filterx_scope_set_variable(scope, variable, new_value, TRUE);
   return TRUE;
@@ -150,13 +155,14 @@ _unset(FilterXExpr *s)
 {
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
 
+  FilterXEvalContext *context = filterx_eval_get_context();
   if (self->handle_is_macro)
     {
-      filterx_eval_push_error("Macro based variable cannot be changed", &self->super, self->variable_name);
+      filterx_eval_context_push_error(context, "Macro based variable cannot be changed", &self->super, self->variable_name);
       return FALSE;
     }
 
-  FilterXEvalContext *context = filterx_eval_get_context();
+  filterx_eval_context_make_writable();
   FilterXScope *scope = context->scope;
   LogMessage *msg = context->msg;
 
