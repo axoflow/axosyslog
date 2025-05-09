@@ -1,5 +1,5 @@
-4.11.0
-======
+9.99.99
+=======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
 
@@ -9,136 +9,51 @@ Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-pa
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
 
-## Features
+## Highlights
 
-  * `webhook()`: headers support
+<Fill this block manually from the blocks below>
 
-    `include-request-headers(yes)` stores request headers under the `${webhook.headers}` key,
-    allowing further processing, for example, in FilterX:
+## Bugfixes
 
-    ```
-    filterx {
-      headers = json(${webhook.headers});
-      $type = headers["Content-Type"][-1];
-    };
-    ```
+  * `metrics`: fix `syslogng_last_config_file_modification_timestamp_seconds`
+    ([#612](https://github.com/axoflow/axosyslog/pull/612))
 
-    `proxy-header("x-forwarded-for")` helps retain the sender's original IP and the proxy's IP address
-    (`$SOURCEIP`, `$PEERIP`).
-    ([#524](https://github.com/axoflow/axosyslog/pull/524))
-
-  * `network()`, `syslog()` sources: add `$PEERIP` and `$PEERPORT` macros
-
-    The `$PEERIP` and `$PEERPORT` macros always display the address and port of the direct sender.
-    In most cases, these values are identical to `$SOURCEIP` and `$SOURCEPORT`.
-    However, when dealing with proxied protocols, `$PEERIP` and `$PEERPORT` reflect the proxy's address and port,
-    while `$SOURCEIP` and `$SOURCEPORT` indicate the original source of the message.
-    ([#523](https://github.com/axoflow/axosyslog/pull/523))
-
-  * gRPC based destinations: Added `response-action()` option
-
-    With this option, it is possible to fine tune how AxoSyslog
-    behaves in case of different gRPC results.
-
-    Supported by the following destination drivers:
-      * `opentelemetry()`
-      * `loki()`
-      * `bigquery()`
-      * `clickhouse()`
-      * `google-pubsub-grpc()`
-
-    Supported gRPC results:
-      * ok
-      * unavailable
-      * cancelled
-      * deadline-exceeded
-      * aborted
-      * out-of-range
-      * data-loss
-      * unknown
-      * invalid-argument
-      * not-found
-      * already-exists
-      * permission-denied
-      * unauthenticated
-      * failed-precondition
-      * unimplemented
-      * internal
-      * resource-exhausted
-
-    Supported actions:
-      * disconnect
-      * drop
-      * retry
-      * success
-
-    Usage:
-    ```
-    google-pubsub-grpc(
-      project("my-project")
-      topic("my-topic")
-      response-action(
-        not-found => disconnect
-        unavailable => drop
-      )
-    );
-    ```
-    ([#561](https://github.com/axoflow/axosyslog/pull/561))
+  * `rate-limit()`: fix precision issue that could occur at a very low message rate
+    ([#599](https://github.com/axoflow/axosyslog/pull/599))
 
 
 ## FilterX features
 
-  * `set_pri()`: Added new filterx function to set the message priority value.
+  * `strcasecmp()`: case insensitive string comparison
+    ([#580](https://github.com/axoflow/axosyslog/pull/580))
 
-    Example usage:
-    ```
-    set_pri(pri=100);
-    ```
-
-    Note: Second argument must be between 0 and 191 inclusive.
-    ([#521](https://github.com/axoflow/axosyslog/pull/521))
-
-  * `set_timestamp()`: Added new filterx function to set the message timestamps.
-
-    Example usage:
-    ```
-    set_timestamp(datetime, stamp="stamp");
-    ```
-
-    Note: Second argument can be "stamp" or "recvd", based on the timestamp to be set.
-    Default is "stamp".
-    ([#510](https://github.com/axoflow/axosyslog/pull/510))
-
-  * `cache_json_file()`: inotify-based reloading of JSON file
-    ([#517](https://github.com/axoflow/axosyslog/pull/517))
 
 ## FilterX bugfixes
 
-  * `switch`: Fixed a crash that occurred when the selector or case failed to evaluate.
-    ([#527](https://github.com/axoflow/axosyslog/pull/527))
+  * `cache_json_file()`: fix updating json content on file changes
+    ([#612](https://github.com/axoflow/axosyslog/pull/612))
 
-
-## Notes to developers
-
-  * editorconfig: configure supported editors for the project's style
-    ([#550](https://github.com/axoflow/axosyslog/pull/550))
-
-  * We have clarified the meaning of the required "Signed-off-by" line in commit messages
-    ([CONTRIBUTING.md](CONTRIBUTING.md))
-
-  * Light, AxoSyslog's lightweight end-to-end testing framework is available as a PyPi package:
-    https://pypi.org/project/axosyslog-light/
-
-    It allows you to extend the framework and the test suite out-of-tree (licensed under GPL-2.0-or-later).
+  * `metrics_labels`: Fixed a crash that occurred when trying to get a label from an empty object.
+    ([#601](https://github.com/axoflow/axosyslog/pull/601))
 
 
 ## Other changes
 
-  * `azure-monitor()`: unified destination
+  * `stats()`: `freq()` now defaults to 0
 
-    The `azure-monitor-builtin()` and `azure-monitor-custom()` destinations are deprecated in favor of `azure-monitor()`.
-    `azure-monitor()` requires the `stream-name()` option instead of the table name.
-    ([#531](https://github.com/axoflow/axosyslog/pull/531))
+    Internal statistic messages were produced every 10 minutes by default.
+    Metrics are available through `syslog-ng-ctl`, we believe modern monitoring and
+    observability render this periodic message obsolete.
+    ([#600](https://github.com/axoflow/axosyslog/pull/600))
+
+  * `loggen`: statistics output has slightly changed
+
+    The new `--perf` option can be used to measure the log throughput of AxoSyslog.
+    ([#598](https://github.com/axoflow/axosyslog/pull/598))
+
+
+
+[1] syslog-ng is a trademark of One Identity.
 
 ## Discord
 
@@ -157,6 +72,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Attila Szakacs, Balazs Scheidler, David Mandelberg,
-Hofi, Janos Szigetvari, László Várady, Szilard Parrag, Tamás Kosztyu,
-shifter
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, Bálint Horváth,
+Christian Heusel, Hofi, László Várady, Mate Ory
