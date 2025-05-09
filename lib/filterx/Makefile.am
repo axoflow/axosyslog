@@ -16,6 +16,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-isset.h \
 	lib/filterx/expr-literal-generator.h \
 	lib/filterx/expr-literal.h \
+	lib/filterx/expr-membership.h \
 	lib/filterx/expr-null-coalesce.h \
 	lib/filterx/expr-plus-generator.h \
 	lib/filterx/expr-plus.h \
@@ -89,6 +90,7 @@ filterx_sources = 				\
 	lib/filterx/expr-isset.c \
 	lib/filterx/expr-literal-generator.c \
 	lib/filterx/expr-literal.c \
+	lib/filterx/expr-membership.c \
 	lib/filterx/expr-null-coalesce.c \
 	lib/filterx/expr-plus-generator.c \
 	lib/filterx/expr-plus.c \
