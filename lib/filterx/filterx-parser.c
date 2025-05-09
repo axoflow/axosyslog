@@ -31,6 +31,7 @@ static CfgLexerKeyword filterx_keywords[] =
 {
   { "or",                 KW_OR },
   { "and",                KW_AND },
+  { "in",                 KW_IN },
   { "not",                KW_NOT },
   { "lt",                 KW_STR_LT },
   { "le",                 KW_STR_LE },

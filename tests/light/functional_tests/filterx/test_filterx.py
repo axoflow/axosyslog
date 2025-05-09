@@ -2492,3 +2492,77 @@ def test_otel_repr(config, syslog_ng):
         r""""scope":"{\"name\":\"foobar\",\"version\":\"one\",\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}],\"droppedAttributesCount\":333}"}""" + ""
     )
     assert file_true.read_log() == exp
+
+
+def test_in_operator_true(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        s_arr = ['foo', 'bar', 'asd'];
+        $MSG = "foo";
+        if ($MSG in s_arr) {
+            $MSG = "found";
+        } else {
+            $MSG = "not found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "found"
+
+
+def test_in_operator_false(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        s_arr = ['foo', 'bar', 'asd'];
+        $MSG = "test";
+        if ($MSG in s_arr) {
+            $MSG = "found";
+        } else {
+            $MSG = "not found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "not found"
+
+
+def test_not_in_true(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        s_arr = [1, 2, 3];
+        if (5 not in s_arr) {
+            $MSG = "not found";
+        } else {
+            $MSG = "found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "not found"
+
+
+def test_not_in_operator_false(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        s_arr = [1, 2, 3];
+        if (1 not in s_arr) {
+            $MSG = "not found";
+        } else {
+            $MSG = "found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "found"

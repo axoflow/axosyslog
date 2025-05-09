@@ -9,7 +9,7 @@ How to create a newsfile entry
      * `packaging`: Packaging related change.
      * `developer-note`: Changes, that are only interesting to developers. (internal API change, etc...)
      * `other`: Other important, but not categorized change.
-    You can query the next PR ID with the `next_pr_id.py` script, but it could be a good practice to add the commit,
+    You can query the next PR ID with the `next-pr-id.py` script, but it could be a good practice to add the commit,
     containing the news entry, after you have opened your PR, as you will know your PR ID then.
     Multiple news entries can be created for a single PR, if necessary. The file name is numbered in that case:
     `<type>-<pr-id>-<n>.md`.

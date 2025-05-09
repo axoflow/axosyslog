@@ -14,6 +14,7 @@ set(FILTERX_HEADERS
     filterx/expr-isset.h
     filterx/expr-literal-generator.h
     filterx/expr-literal.h
+    filterx/expr-membership.h
     filterx/expr-null-coalesce.h
     filterx/expr-plus-generator.h
     filterx/expr-plus.h
@@ -88,6 +89,7 @@ set(FILTERX_SOURCES
     filterx/expr-isset.c
     filterx/expr-literal-generator.c
     filterx/expr-literal.c
+    filterx/expr-membership.c
     filterx/expr-null-coalesce.c
     filterx/expr-plus-generator.c
     filterx/expr-plus.c
