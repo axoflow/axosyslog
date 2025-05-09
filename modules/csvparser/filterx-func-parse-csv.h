@@ -46,7 +46,7 @@
     FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER"' cannot be empty if '" \
     FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRING_DELIMITERS"' is unset"
 
-FILTERX_GENERATOR_FUNCTION_DECLARE(parse_csv);
+FILTERX_FUNCTION_DECLARE(parse_csv);
 
 FilterXExpr *filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error);
 
