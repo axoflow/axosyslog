@@ -27,7 +27,7 @@
 
 #include "filterx/filterx-metrics-labels.h"
 #include "filterx/expr-literal.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/object-string.h"
 #include "stats/stats-cluster.h"
 #include "metrics/dyn-metrics-cache.h"
@@ -37,7 +37,7 @@
 static GList *
 _add_label_expr(GList *label_exprs, FilterXExpr *key, FilterXExpr *value)
 {
-  return g_list_append(label_exprs, filterx_literal_generator_elem_new(key, value, TRUE));
+  return g_list_append(label_exprs, filterx_literal_element_new(key, value));
 }
 
 Test(filterx_metrics_labels, null_labels)
@@ -61,7 +61,7 @@ Test(filterx_metrics_labels, null_labels)
 
 Test(filterx_metrics_labels, const_literal_generator_empty_labels)
 {
-  FilterXExpr *labels_expr = filterx_literal_dict_generator_new();
+  FilterXExpr *labels_expr = filterx_literal_dict_new(NULL);
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
   cr_assert(metrics_labels);
@@ -111,8 +111,7 @@ Test(filterx_metrics_labels, const_literal_generator_labels)
                                 filterx_literal_new(filterx_string_new("bar", -1)),
                                 filterx_literal_new(filterx_string_new("barvalue", -1)));
 
-  FilterXExpr *labels_expr = filterx_literal_dict_generator_new();
-  filterx_literal_generator_set_elements(labels_expr, label_exprs);
+  FilterXExpr *labels_expr = filterx_literal_dict_new(label_exprs);
 
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
@@ -147,8 +146,7 @@ Test(filterx_metrics_labels, non_const_literal_generator_labels)
                                 filterx_literal_new(filterx_string_new("bar", -1)),
                                 filterx_literal_new(filterx_string_new("barvalue", -1)));
 
-  FilterXExpr *labels_expr = filterx_literal_dict_generator_new();
-  filterx_literal_generator_set_elements(labels_expr, label_exprs);
+  FilterXExpr *labels_expr = filterx_literal_dict_new(label_exprs);
 
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
@@ -180,8 +178,7 @@ Test(filterx_metrics_labels, non_literal_key_in_literal_generator_labels)
                                 filterx_non_literal_new(filterx_string_new("foo", -1)),
                                 filterx_literal_new(filterx_string_new("foovalue", -1)));
 
-  FilterXExpr *labels_expr = filterx_literal_dict_generator_new();
-  filterx_literal_generator_set_elements(labels_expr, label_exprs);
+  FilterXExpr *labels_expr = filterx_literal_dict_new(label_exprs);
 
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);

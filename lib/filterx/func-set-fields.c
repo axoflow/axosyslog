@@ -28,7 +28,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-extractor.h"
 #include "filterx/expr-literal.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 
@@ -384,8 +384,8 @@ _load_override(FilterXExpr *key, FilterXExpr *value, gpointer user_data)
   if (!field.key)
     return FALSE;
 
-  if (filterx_expr_is_literal_list_generator(value))
-    g_assert(filterx_literal_list_generator_foreach(value, _add_override, &field));
+  if (filterx_expr_is_literal_list(value))
+    g_assert(filterx_literal_list_foreach(value, _add_override, &field));
   else
     _field_add_override(&field, value);
 
@@ -402,7 +402,7 @@ _extract_overrides_arg(FilterXFunctionSetFields *self, FilterXFunctionArgs *args
 
   gboolean success = FALSE;
 
-  if (!filterx_expr_is_literal_dict_generator(overrides))
+  if (!filterx_expr_is_literal_dict(overrides))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "overrides argument must a literal dict. " FILTERX_FUNC_SET_FIELDS_USAGE);
@@ -410,7 +410,7 @@ _extract_overrides_arg(FilterXFunctionSetFields *self, FilterXFunctionArgs *args
     }
 
   gpointer user_data[] = { self, error };
-  success = filterx_literal_dict_generator_foreach(overrides, _load_override, user_data);
+  success = filterx_literal_dict_foreach(overrides, _load_override, user_data);
 
 exit:
   filterx_expr_unref(overrides);
@@ -455,8 +455,8 @@ _load_default(FilterXExpr *key, FilterXExpr *value, gpointer user_data)
       field->key = filterx_object_ref(key_obj);
     }
 
-  if (filterx_expr_is_literal_list_generator(value))
-    g_assert(filterx_literal_list_generator_foreach(value, _add_default, field));
+  if (filterx_expr_is_literal_list(value))
+    g_assert(filterx_literal_list_foreach(value, _add_default, field));
   else
     _field_add_default(field, value);
 
@@ -473,7 +473,7 @@ _extract_defaults_arg(FilterXFunctionSetFields *self, FilterXFunctionArgs *args,
 
   gboolean success = FALSE;
 
-  if (!filterx_expr_is_literal_dict_generator(defaults))
+  if (!filterx_expr_is_literal_dict(defaults))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "defaults argument must be a literal dict. " FILTERX_FUNC_SET_FIELDS_USAGE);
@@ -481,7 +481,7 @@ _extract_defaults_arg(FilterXFunctionSetFields *self, FilterXFunctionArgs *args,
     }
 
   gpointer user_data[] = { self, error };
-  success = filterx_literal_dict_generator_foreach(defaults, _load_default, user_data);
+  success = filterx_literal_dict_foreach(defaults, _load_default, user_data);
 
 exit:
   filterx_expr_unref(defaults);

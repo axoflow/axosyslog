@@ -28,7 +28,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/expr-literal.h"
 #include "filterx/expr-template.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
@@ -85,66 +85,63 @@ Test(filterx_expr, test_filterx_template_evaluates_to_the_expanded_value)
   filterx_object_unref(fobj);
 }
 
-Test(filterx_expr, test_filterx_list_merge)
+Test(filterx_expr, test_filterx_literal_list_with_inmutable_values)
 {
-  // $fillable = json_array();
-  FilterXObject *list = filterx_list_new();
-  FilterXExpr *fillable = filterx_literal_new(list);
+  FilterXExpr *list_expr = NULL;
+  FilterXObject *result = NULL;
+  GList *values = NULL;
+  guint64 len;
+
+
+  // [42];
+  values = g_list_append(values,
+                         filterx_literal_element_new(NULL,
+                                                     filterx_literal_new(filterx_integer_new(42))));
+  values = g_list_append(values,
+                         filterx_literal_element_new(NULL,
+                                                     filterx_literal_new(filterx_integer_new(43))));
+  values = g_list_append(values,
+                         filterx_literal_element_new(NULL,
+                                                     filterx_literal_new(filterx_integer_new(44))));
+  list_expr = filterx_literal_list_new(values);
+
+  // result = [42,43,44];
+  result = filterx_expr_eval(list_expr);
+  cr_assert(result);
+  cr_assert(filterx_object_truthy(result));
+  cr_assert(filterx_object_len(result, &len));
+  cr_assert_eq(len, 3);
+  _assert_int_value_and_unref(filterx_list_get_subscript(result, 0), 42);
+  _assert_int_value_and_unref(filterx_list_get_subscript(result, 1), 43);
+  _assert_int_value_and_unref(filterx_list_get_subscript(result, 2), 44);
+  filterx_object_unref(result);
+  filterx_expr_unref(list_expr);
+}
+
+Test(filterx_expr, test_filterx_literal_list_with_embedded_list)
+{
   FilterXExpr *list_expr = NULL;
   FilterXObject *result = NULL;
   GList *values = NULL, *inner_values = NULL;
   guint64 len;
 
-
-  // [42];
-  values = g_list_append(NULL, filterx_literal_generator_elem_new(NULL,
-                         filterx_literal_new(filterx_integer_new(42)),
-                         TRUE));
-  list_expr = filterx_literal_list_generator_new();
-  filterx_generator_set_fillable(list_expr, filterx_expr_ref(fillable));
-  filterx_literal_generator_set_elements(list_expr, values);
-
-  // $fillable += [42];
-  result = filterx_expr_eval(list_expr);
-  cr_assert(result);
-  cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(list, &len));
-  cr_assert_eq(len, 1);
-  _assert_int_value_and_unref(filterx_list_get_subscript(list, 0), 42);
-  filterx_object_unref(result);
-
-  // $fillable += [42];
-  result = filterx_expr_eval(list_expr);
-  cr_assert(result);
-  cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(list, &len));
-  cr_assert_eq(len, 2);
-  _assert_int_value_and_unref(filterx_list_get_subscript(list, 0), 42);
-  _assert_int_value_and_unref(filterx_list_get_subscript(list, 1), 42);
-  filterx_object_unref(result);
-
-  filterx_expr_unref(list_expr);
-
-
   // [[1337]];
-  list_expr = filterx_literal_list_generator_new();
-  filterx_generator_set_fillable(list_expr, filterx_expr_ref(fillable));
-  inner_values = g_list_append(NULL, filterx_literal_generator_elem_new(NULL,
-                               filterx_literal_new(filterx_integer_new(1337)),
-                               TRUE));
-  values = g_list_append(NULL, filterx_literal_generator_elem_new(NULL,
-                         filterx_literal_inner_list_generator_new(list_expr, inner_values),
-                         FALSE));
-  filterx_literal_generator_set_elements(list_expr, values);
+  inner_values = g_list_append(NULL,
+                               filterx_literal_element_new(NULL,
+                                                           filterx_literal_new(filterx_integer_new(1337))));
+  values = g_list_append(NULL,
+                         filterx_literal_element_new(NULL,
+                                                     filterx_literal_list_new(inner_values)));
+  list_expr = filterx_literal_list_new(values);
 
-  // $fillable += [[1337]];
+  // result = [[1337]];
   result = filterx_expr_eval(list_expr);
   cr_assert(result);
   cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(list, &len));
-  cr_assert_eq(len, 3);
+  cr_assert(filterx_object_len(result, &len));
+  cr_assert_eq(len, 1);
 
-  FilterXObject *stored_inner_list = filterx_list_get_subscript(list, 2);
+  FilterXObject *stored_inner_list = filterx_list_get_subscript(result, 0);
   cr_assert(stored_inner_list);
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_list), &FILTERX_TYPE_NAME(list)));
   cr_assert(filterx_object_len(stored_inner_list, &len));
@@ -154,16 +151,49 @@ Test(filterx_expr, test_filterx_list_merge)
 
   filterx_object_unref(result);
   filterx_expr_unref(list_expr);
-
-
-  filterx_expr_unref(fillable);
 }
 
-Test(filterx_expr, test_filterx_dict_merge)
+Test(filterx_expr, test_filterx_dict_immutable_values)
 {
-  // $fillable = json();
-  FilterXObject *dict = filterx_dict_new();
-  FilterXExpr *fillable = filterx_literal_new(dict);
+  FilterXExpr *dict_expr = NULL;
+  FilterXObject *result = NULL;
+  GList *values = NULL;
+  guint64 len;
+
+  FilterXObject *foo = filterx_string_new("foo", -1);
+  FilterXObject *bar = filterx_string_new("bar", -1);
+  FilterXObject *baz = filterx_string_new("baz", -1);
+
+
+  values = g_list_append(values,
+                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
+                                                     filterx_literal_new(filterx_integer_new(42))));
+  values = g_list_append(values,
+                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(bar)),
+                                                     filterx_literal_new(filterx_integer_new(43))));
+  values = g_list_append(values,
+                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(baz)),
+                                                     filterx_literal_new(filterx_integer_new(44))));
+  dict_expr = filterx_literal_dict_new(values);
+
+  // result = {"foo": 42, "bar": 43, "baz": 44};
+  result = filterx_expr_eval(dict_expr);
+  cr_assert(result);
+  cr_assert(filterx_object_truthy(result));
+  cr_assert(filterx_object_len(result, &len));
+  cr_assert_eq(len, 3);
+  _assert_int_value_and_unref(filterx_object_get_subscript(result, foo), 42);
+  _assert_int_value_and_unref(filterx_object_get_subscript(result, bar), 43);
+  _assert_int_value_and_unref(filterx_object_get_subscript(result, baz), 44);
+  filterx_object_unref(result);
+  filterx_object_unref(baz);
+  filterx_object_unref(bar);
+  filterx_object_unref(foo);
+  filterx_expr_unref(dict_expr);
+}
+
+Test(filterx_expr, test_filterx_dict_with_embedded_dict)
+{
   FilterXExpr *dict_expr = NULL;
   FilterXObject *result = NULL;
   GList *values = NULL, *inner_values = NULL;
@@ -173,96 +203,32 @@ Test(filterx_expr, test_filterx_dict_merge)
   FilterXObject *bar = filterx_string_new("bar", -1);
   FilterXObject *baz = filterx_string_new("baz", -1);
 
+  // {"foo": 1};
+  inner_values = g_list_append(inner_values,
+                               filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
+                                                           filterx_literal_new(filterx_integer_new(1))));
+  // result = {"foo": 420, "bar": 1337", "baz": {"foo":1}};
+  values = g_list_append(values,
+                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(foo)),
+                                                     filterx_literal_new(filterx_integer_new(420))));
+  values = g_list_append(values,
+                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(bar)),
+                                                     filterx_literal_new(filterx_integer_new(1337))));
+  values = g_list_append(values,
+                         filterx_literal_element_new(filterx_literal_new(filterx_object_ref(baz)),
+                                                     filterx_literal_dict_new(inner_values)));
 
-  // {"foo": 42};
-  values = g_list_append(NULL, filterx_literal_generator_elem_new(filterx_literal_new(filterx_object_ref(foo)),
-                         filterx_literal_new(filterx_integer_new(42)),
-                         TRUE));
-  dict_expr = filterx_literal_dict_generator_new();
-  filterx_generator_set_fillable(dict_expr, filterx_expr_ref(fillable));
-  filterx_literal_generator_set_elements(dict_expr, values);
+  dict_expr = filterx_literal_dict_new(values);
 
-  // $fillable += {"foo": 42};
   result = filterx_expr_eval(dict_expr);
   cr_assert(result);
   cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(dict, &len));
-  cr_assert_eq(len, 1);
-  _assert_int_value_and_unref(filterx_object_get_subscript(dict, foo), 42);
-  filterx_object_unref(result);
-
-  // $fillable += {"foo": 42};
-  result = filterx_expr_eval(dict_expr);
-  cr_assert(result);
-  cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(dict, &len));
-  cr_assert_eq(len, 1);
-  _assert_int_value_and_unref(filterx_object_get_subscript(dict, foo), 42);
-  filterx_object_unref(result);
-
-  filterx_expr_unref(dict_expr);
-
-
-  // {"foo": 420};
-  values = g_list_append(NULL, filterx_literal_generator_elem_new(filterx_literal_new(filterx_object_ref(foo)),
-                         filterx_literal_new(filterx_integer_new(420)),
-                         TRUE));
-  dict_expr = filterx_literal_dict_generator_new();
-  filterx_generator_set_fillable(dict_expr, filterx_expr_ref(fillable));
-  filterx_literal_generator_set_elements(dict_expr, values);
-
-  // $fillable += {"foo": 420};
-  result = filterx_expr_eval(dict_expr);
-  cr_assert(result);
-  cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(dict, &len));
-  cr_assert_eq(len, 1);
-  _assert_int_value_and_unref(filterx_object_get_subscript(dict, foo), 420);
-  filterx_object_unref(result);
-
-  filterx_expr_unref(dict_expr);
-
-
-  // {"bar": 1337};
-  values = g_list_append(NULL, filterx_literal_generator_elem_new(filterx_literal_new(filterx_object_ref(bar)),
-                         filterx_literal_new(filterx_integer_new(1337)),
-                         TRUE));
-  dict_expr = filterx_literal_dict_generator_new();
-  filterx_generator_set_fillable(dict_expr, filterx_expr_ref(fillable));
-  filterx_literal_generator_set_elements(dict_expr, values);
-
-  // $fillable += {"bar": 1337};
-  result = filterx_expr_eval(dict_expr);
-  cr_assert(result);
-  cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(dict, &len));
-  cr_assert_eq(len, 2);
-  _assert_int_value_and_unref(filterx_object_get_subscript(dict, foo), 420);
-  _assert_int_value_and_unref(filterx_object_get_subscript(dict, bar), 1337);
-  filterx_object_unref(result);
-
-  filterx_expr_unref(dict_expr);
-
-
-  // {"baz": {"foo": 1}};
-  dict_expr = filterx_literal_dict_generator_new();
-  filterx_generator_set_fillable(dict_expr, filterx_expr_ref(fillable));
-  inner_values = g_list_append(NULL, filterx_literal_generator_elem_new(filterx_literal_new(filterx_object_ref(foo)),
-                               filterx_literal_new(filterx_integer_new(1)),
-                               TRUE));
-  values = g_list_append(NULL, filterx_literal_generator_elem_new(filterx_literal_new(filterx_object_ref(baz)),
-                         filterx_literal_inner_dict_generator_new(dict_expr, inner_values),
-                         FALSE));
-  filterx_literal_generator_set_elements(dict_expr, values);
-
-  // $fillable += {"baz": {"foo": 1}};
-  result = filterx_expr_eval(dict_expr);
-  cr_assert(result);
-  cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(dict, &len));
+  cr_assert(filterx_object_len(result, &len));
   cr_assert_eq(len, 3);
+  _assert_int_value_and_unref(filterx_object_get_subscript(result, foo), 420);
+  _assert_int_value_and_unref(filterx_object_get_subscript(result, bar), 1337);
 
-  FilterXObject *stored_inner_dict = filterx_object_get_subscript(dict, baz);
+  FilterXObject *stored_inner_dict = filterx_object_get_subscript(result, baz);
   cr_assert(stored_inner_dict);
   cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_dict), &FILTERX_TYPE_NAME(dict)));
   cr_assert_eq(filterx_object_len(stored_inner_dict, &len), 1);
@@ -270,31 +236,11 @@ Test(filterx_expr, test_filterx_dict_merge)
   filterx_object_unref(stored_inner_dict);
 
   filterx_object_unref(result);
-
-  // $fillable += {"foo": 1}};
-  // Shallow merge.
-  result = filterx_expr_eval(dict_expr);
-  cr_assert(result);
-  cr_assert(filterx_object_truthy(result));
-  cr_assert(filterx_object_len(dict, &len));
-  cr_assert_eq(len, 3);
-
-  stored_inner_dict = filterx_object_get_subscript(dict, baz);
-  cr_assert(stored_inner_dict);
-  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_dict), &FILTERX_TYPE_NAME(dict)));
-  cr_assert(filterx_object_len(stored_inner_dict, &len));
-  cr_assert_eq(len, 1);
-  _assert_int_value_and_unref(filterx_object_get_subscript(stored_inner_dict, foo), 1);
-  filterx_object_unref(stored_inner_dict);
-
-  filterx_object_unref(result);
   filterx_expr_unref(dict_expr);
-
 
   filterx_object_unref(baz);
   filterx_object_unref(bar);
   filterx_object_unref(foo);
-  filterx_expr_unref(fillable);
 }
 
 Test(filterx_expr, test_filterx_assign)

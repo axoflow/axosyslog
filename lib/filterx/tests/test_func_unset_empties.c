@@ -31,7 +31,7 @@
 #include "filterx/object-list.h"
 #include "filterx/json-repr.h"
 #include "filterx/expr-literal.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/object-null.h"
 
 #include "apphook.h"
@@ -78,7 +78,6 @@ _assert_unset_empties(GList *args, const gchar *expected_repr)
 FilterXExpr *
 _list_generator_helper(FilterXObject *first, ...)
 {
-  FilterXExpr *result = filterx_literal_list_generator_new();
   GList *target_vals = NULL;
   va_list va;
 
@@ -86,14 +85,12 @@ _list_generator_helper(FilterXObject *first, ...)
   FilterXObject *arg = first;
   while (arg)
     {
-      target_vals = g_list_append(target_vals, filterx_literal_generator_elem_new(NULL, filterx_literal_new(arg), FALSE));
+      target_vals = g_list_append(target_vals, filterx_literal_element_new(NULL, filterx_literal_new(arg)));
       arg = va_arg(va, FilterXObject *);
     }
   va_end(va);
 
-
-  filterx_literal_generator_set_elements(result, target_vals);
-  return result;
+  return filterx_literal_list_new(target_vals);
 }
 
 Test(filterx_func_unset_empties, invalid_args)

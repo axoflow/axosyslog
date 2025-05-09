@@ -26,7 +26,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
-#include "filterx/expr-literal-generator.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
@@ -488,7 +488,7 @@ _extract_literal_columns(FilterXFunctionParseCSV *self, FilterXExpr *columns)
 {
   GPtrArray *literal_columns = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
 
-  if (!filterx_literal_list_generator_foreach(columns, _add_literal_column, literal_columns))
+  if (!filterx_literal_list_foreach(columns, _add_literal_column, literal_columns))
     {
       g_ptr_array_unref(literal_columns);
       return FALSE;
@@ -514,7 +514,7 @@ _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
     return FALSE;
 
   FilterXExpr *columns = _extract_columns_expr(args, error);
-  if (filterx_expr_is_literal_list_generator(columns) && _extract_literal_columns(self, columns))
+  if (filterx_expr_is_literal_list(columns) && _extract_literal_columns(self, columns))
     filterx_expr_unref(columns);
   else
     self->columns.expr = columns;

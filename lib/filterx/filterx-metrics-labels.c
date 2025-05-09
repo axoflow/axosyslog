@@ -25,7 +25,7 @@
 #include "filterx-metrics-labels.h"
 #include "filterx-eval.h"
 #include "expr-literal.h"
-#include "expr-literal-generator.h"
+#include "expr-literal-container.h"
 #include "object-string.h"
 #include "object-dict-interface.h"
 #include "object-metrics-labels.h"
@@ -413,7 +413,7 @@ _init_literal_labels(FilterXExpr *labels_expr)
 {
   GPtrArray *literal_labels = g_ptr_array_new_with_free_func((GDestroyNotify) _label_free);
 
-  if (!filterx_literal_dict_generator_foreach(labels_expr, _add_literal_label, literal_labels))
+  if (!filterx_literal_dict_foreach(labels_expr, _add_literal_label, literal_labels))
     {
       g_ptr_array_unref(literal_labels);
       literal_labels = NULL;
@@ -435,7 +435,7 @@ _init_labels(FilterXMetricsLabels *self, FilterXExpr *labels)
       return TRUE;
     }
 
-  if (filterx_expr_is_literal_dict_generator(labels))
+  if (filterx_expr_is_literal_dict(labels))
     {
       self->literal_labels = _init_literal_labels(labels);
       return !!self->literal_labels;
