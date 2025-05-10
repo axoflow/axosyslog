@@ -33,6 +33,7 @@ RUN apk add --update-cache \
       alpine-conf \
       alpine-sdk \
       sudo \
+      git \
     && apk upgrade -a \
     && adduser -D builder \
     && addgroup builder abuild \
@@ -40,11 +41,18 @@ RUN apk add --update-cache \
 
 USER builder
 WORKDIR /home/builder
+
+RUN mkdir packages || true \
+    && abuild-keygen -n -a -i \
+    && git clone --depth 1 --branch v3.21.3 git://git.alpinelinux.org/aports \
+    && cd aports/main/musl \
+    && CFLAGS=-fno-omit-frame-pointer abuild -r
+
 ADD --chown=builder:builder apkbuild .
 
 RUN [ $DEBUG = false ] || patch -d axoflow/axosyslog -p1 -i APKBUILD-debug.patch
 
-RUN mkdir packages \
+RUN mkdir packages || true \
     && abuild-keygen -n -a -i \
     && printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> .abuild/abuild.conf \
     && cd axoflow/json-c && abuild -r && cd - \
@@ -78,11 +86,14 @@ LABEL org.opencontainers.image.url="https://axoflow.io/"
 COPY --from=apkbuilder /home/builder/packages/ /tmp/
 COPY --from=apkbuilder /home/builder/.abuild/*.pub /etc/apk/keys/
 
-RUN apk add --repository /tmp/axoflow -U --upgrade --no-cache \
+RUN apk fix --repository /tmp/axoflow -U --upgrade --no-cache musl \
+    && apk add --repository /tmp/axoflow -U --upgrade --no-cache \
     jemalloc \
     libdbi-drivers \
     tzdata \
     json-c \
+    musl \
+    musl-dbg \
     axosyslog \
     axosyslog-add-contextual-data \
     axosyslog-amqp \
