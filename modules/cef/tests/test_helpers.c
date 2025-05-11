@@ -120,7 +120,7 @@ _eval_input_inner(GError **error, va_list vargs)
 {
   FilterXExpr *func = _new_parser(_assert_create_args_inner(vargs), error);
   cr_assert_not_null(func);
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
   filterx_expr_unref(func);
   return obj;
 }

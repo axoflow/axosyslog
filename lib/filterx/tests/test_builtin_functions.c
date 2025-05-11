@@ -22,6 +22,7 @@
 
 #include <criterion/criterion.h>
 #include "libtest/cr_template.h"
+#include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-object.h"
 #include "filterx/object-primitive.h"
@@ -145,7 +146,7 @@ Test(builtin_functions, test_builtin_function_ctors_lookup)
   FilterXExpr *func_expr = ctor(filterx_function_args_new(NULL, NULL), NULL);
   cr_assert(func_expr != NULL);
 
-  FilterXObject *res = filterx_expr_eval(func_expr);
+  FilterXObject *res = init_and_eval_expr(func_expr);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   gsize len;
   const gchar *str = filterx_string_get_value_ref(res, &len);

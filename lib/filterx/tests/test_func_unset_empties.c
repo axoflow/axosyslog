@@ -57,13 +57,13 @@ _assert_unset_empties(GList *args, const gchar *expected_repr)
   FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
   cr_assert(!err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
   cr_assert(obj);
   gboolean success;
   cr_assert(filterx_boolean_unwrap(obj, &success));
   cr_assert(success);
 
-  FilterXObject *modifiable_object = filterx_expr_eval(modifiable_object_expr);
+  FilterXObject *modifiable_object = init_and_eval_expr(modifiable_object_expr);
   cr_assert(modifiable_object);
 
   assert_object_repr_equals(modifiable_object, expected_repr);

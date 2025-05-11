@@ -52,7 +52,7 @@ _assert_format_kv(GList *args, const gchar *expected_output)
   FilterXExpr *func = filterx_function_format_kv_new(filterx_function_args_new(args, &args_err), &err);
   cr_assert(!err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
   cr_assert(obj);
 
   const gchar *output = filterx_string_get_value_ref(obj, NULL);

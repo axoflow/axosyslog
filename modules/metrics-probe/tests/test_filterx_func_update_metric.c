@@ -39,7 +39,7 @@ _add_label(FilterXExpr *labels_expr, const gchar *name, const gchar *value)
 {
   FilterXObject *name_obj = filterx_string_new(name, -1);
   FilterXObject *value_obj = filterx_string_new(value, -1);
-  FilterXObject *labels_obj = filterx_expr_eval(labels_expr);
+  FilterXObject *labels_obj = init_and_eval_expr(labels_expr);
 
   cr_assert(filterx_object_set_subscript(labels_obj, name_obj, &value_obj));
 
@@ -76,7 +76,7 @@ _create_func(FilterXExpr *key, FilterXExpr *labels, FilterXExpr *increment, Filt
 static gboolean
 _eval(FilterXExpr *func)
 {
-  FilterXObject *result = filterx_expr_eval(func);
+  FilterXObject *result = init_and_eval_expr(func);
 
   if (!result)
     return FALSE;

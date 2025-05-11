@@ -56,10 +56,9 @@ Test(expr_plus, test_string_success)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
-
 
   gsize size;
   const gchar *res = filterx_string_get_value_ref(obj, &size);
@@ -79,7 +78,7 @@ Test(expr_plus, test_string_add_wrong_type)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_null(obj);
   filterx_expr_unref(expr);
 }
@@ -97,7 +96,7 @@ Test(expr_plus, test_datetime_add_datetime)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_null(obj); // datetime + datetime operation is not supported currently
 
   filterx_object_unref(obj);
@@ -114,7 +113,7 @@ Test(expr_plus, test_datetime_add_integer)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -134,7 +133,7 @@ Test(expr_plus, test_datetime_add_double)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -153,7 +152,7 @@ Test(expr_plus, test_datetime_add_wrong_type)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_null(obj);
   filterx_expr_unref(expr);
 }
@@ -166,7 +165,7 @@ Test(expr_plus, test_integer_add_integer)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(integer)));
 
@@ -186,7 +185,7 @@ Test(expr_plus, test_integer_add_double)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
@@ -208,7 +207,7 @@ Test(expr_plus, test_integer_add_wrong_type)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_null(obj);
   filterx_expr_unref(expr);
 }
@@ -221,7 +220,7 @@ Test(expr_plus, test_double_add_double)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
@@ -243,7 +242,7 @@ Test(expr_plus, test_double_add_integer)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(double)));
 
@@ -266,7 +265,7 @@ Test(expr_plus, test_double_add_wrong_type)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_null(obj);
   filterx_expr_unref(expr);
 }
@@ -279,7 +278,7 @@ Test(expr_plus, test_list_add_list)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
 
@@ -298,7 +297,7 @@ Test(expr_plus, test_list_add_wrong_type)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_null(obj);
   filterx_expr_unref(expr);
 }
@@ -311,7 +310,7 @@ Test(expr_plus, test_dict_add_dict)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
@@ -329,7 +328,7 @@ Test(expr_plus, test_dict_add_wrong_type)
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_null(obj);
   filterx_expr_unref(expr);
 }
