@@ -44,7 +44,7 @@ typedef struct _FilterXComparison
   FilterXObject *literal_rhs;
 } FilterXComparison;
 
-static void
+static inline void
 _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
 {
   if (filterx_object_extract_generic_number(obj, gn))
@@ -75,7 +75,7 @@ _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
   gn_set_nan(gn);
 }
 
-static const gchar *
+static inline const gchar *
 _convert_filterx_object_to_string(FilterXObject *obj, gsize *len)
 {
   const gchar *str;
@@ -95,7 +95,7 @@ _convert_filterx_object_to_string(FilterXObject *obj, gsize *len)
   return buffer->str;
 }
 
-static gboolean
+static inline gboolean
 _evaluate_comparison(gint cmp, gint operator)
 {
   gboolean result = FALSE;
@@ -114,7 +114,7 @@ _evaluate_comparison(gint cmp, gint operator)
   return result;
 }
 
-static gboolean
+static inline gboolean
 _evaluate_as_string(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
   gsize lhs_len, rhs_len;
@@ -127,7 +127,7 @@ _evaluate_as_string(FilterXObject *lhs, FilterXObject *rhs, gint operator)
   return _evaluate_comparison(result, operator);
 }
 
-static gboolean
+static inline gboolean
 _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
   GenericNumber lhs_number, rhs_number;
