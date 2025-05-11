@@ -36,6 +36,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-eval.h \
 	lib/filterx/filterx-expr.h \
 	lib/filterx/filterx-plist.h \
+	lib/filterx/filterx-function-args.h \
 	lib/filterx/filterx-function-error.h \
 	lib/filterx/filterx-globals.h \
 	lib/filterx/filterx-metrics-labels.h \
@@ -114,6 +115,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-eval.c \
 	lib/filterx/filterx-expr.c \
 	lib/filterx/filterx-plist.c \
+	lib/filterx/filterx-function-args.c \
 	lib/filterx/filterx-function-error.c \
 	lib/filterx/filterx-globals.c \
 	lib/filterx/filterx-grammar.y \

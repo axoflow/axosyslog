@@ -27,6 +27,7 @@
 
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-function-args.h"
 #include "filterx/expr-generator.h"
 #include "stats/stats-registry.h"
 #include "generic-number.h"
@@ -55,13 +56,6 @@ typedef struct _FilterXGeneratorFunction
   gchar *function_name;
 } FilterXGeneratorFunction;
 
-typedef struct _FilterXFunctionArgs FilterXFunctionArgs;
-typedef struct _FilterXFunctionArg
-{
-  gchar *name;
-  FilterXExpr *value;
-  gboolean retrieved;
-} FilterXFunctionArg;
 
 typedef FilterXExpr *(*FilterXFunctionCtor)(FilterXFunctionArgs *, GError **);
 
@@ -76,29 +70,6 @@ gboolean filterx_generator_function_init_method(FilterXGeneratorFunction *s, Glo
 void filterx_generator_function_deinit_method(FilterXGeneratorFunction *s, GlobalConfig *cfg);
 void filterx_generator_function_init_instance(FilterXGeneratorFunction *s, const gchar *function_name);
 void filterx_generator_function_free_method(FilterXGeneratorFunction *s);
-
-FilterXFunctionArg *filterx_function_arg_new(const gchar *name, FilterXExpr *value);
-FilterXFunctionArgs *filterx_function_args_new(GList *args, GError **error);
-guint64 filterx_function_args_len(FilterXFunctionArgs *self);
-gboolean filterx_function_args_empty(FilterXFunctionArgs *self);
-FilterXExpr *filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index);
-const gchar *filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 index, gsize *len);
-gboolean filterx_function_args_is_literal_null(FilterXFunctionArgs *self, guint64 index);
-FilterXExpr *filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name);
-FilterXObject *filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const gchar *name,
-    gboolean *exists);
-const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name,
-                                                            gsize *len, gboolean *exists);
-gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
-                                                         gboolean *exists, gboolean *error);
-gint64 filterx_function_args_get_named_literal_integer(FilterXFunctionArgs *self, const gchar *name,
-                                                       gboolean *exists, gboolean *error);
-gdouble filterx_function_args_get_named_literal_double(FilterXFunctionArgs *self, const gchar *name,
-                                                       gboolean *exists, gboolean *error);
-GenericNumber filterx_function_args_get_named_literal_generic_number(FilterXFunctionArgs *self, const gchar *name,
-    gboolean *exists, gboolean *error);
-gboolean filterx_function_args_check(FilterXFunctionArgs *self, GError **error);
-void filterx_function_args_free(FilterXFunctionArgs *self);
 
 FilterXExpr *filterx_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args, GError **error);
 FilterXExpr *filterx_generator_function_lookup(GlobalConfig *cfg, const gchar *function_name, GList *args,
