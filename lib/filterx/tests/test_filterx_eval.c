@@ -54,7 +54,7 @@ _create_embedded_exprs(gint depth, gboolean set_location)
       if (set_location)
         filterx_test_expr_set_location_with_text(fx_root, "syslog-ng.conf", i + 1, 0, i + 1, text->len - 1, text->str);
     }
-
+  filterx_expr_init(fx_root, configuration);
   return fx_root;
 }
 
@@ -90,6 +90,7 @@ Test(filterx_eval, test_filterx_eval_full_error_stack)
     for (gint i = 0; i < FILTERX_CONTEXT_ERROR_STACK_SIZE; i++)
       _assert_error_in_logs(i);
 
+    filterx_expr_deinit(expr, configuration);
     filterx_expr_unref(expr);
   }
   FILTERX_EVAL_END_CONTEXT(eval_context);
@@ -113,6 +114,7 @@ Test(filterx_eval, test_filterx_eval_error_stack_overflow)
     for (gint i = 0; i < FILTERX_CONTEXT_ERROR_STACK_SIZE; i++)
       _assert_error_in_logs(i);
 
+    filterx_expr_deinit(expr, configuration);
     filterx_expr_unref(expr);
   }
   FILTERX_EVAL_END_CONTEXT(eval_context);
@@ -144,6 +146,7 @@ Test(filterx_eval, test_filterx_eval_error_stack_location_backfill)
         assert_grabbed_log_contains(error_log->str);
       }
 
+    filterx_expr_deinit(expr, configuration);
     filterx_expr_unref(expr);
   }
   FILTERX_EVAL_END_CONTEXT(eval_context);

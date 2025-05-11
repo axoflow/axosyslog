@@ -91,8 +91,7 @@ Test(expr_compound, test_compound_all_the_statements_must_execute_and_return_tru
                                                        _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")),
                                                        NULL);
 
-
-  FilterXObject *res = filterx_expr_eval(compound);
+  FilterXObject *res = init_and_eval_expr(compound);
   cr_assert(res != NULL);
   cr_assert(filterx_object_truthy(res));
   filterx_object_unref(res);
@@ -118,8 +117,7 @@ Test(expr_compound, test_compound_all_the_statements_must_execute_and_return_the
                                                        _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")),
                                                        NULL);
 
-
-  FilterXObject *res = filterx_expr_eval(compound);
+  FilterXObject *res = init_and_eval_expr(compound);
   cr_assert(res != NULL);
   cr_assert(filterx_object_truthy(res));
   cr_assert_eq(0, _assert_cmp_string_to_filterx_object("matching3", res));

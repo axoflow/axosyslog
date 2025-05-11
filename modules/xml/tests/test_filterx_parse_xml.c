@@ -59,7 +59,7 @@ _assert_parse_xml_fail(const gchar *raw_xml)
 {
   FilterXExpr *func = _create_parse_xml_expr(raw_xml, filterx_dict_new());
 
-  FilterXObject *result = filterx_expr_eval(func);
+  FilterXObject *result = init_and_eval_expr(func);
   cr_assert(!result);
   cr_assert(filterx_eval_get_last_error());
 
@@ -72,7 +72,7 @@ _assert_parse_xml_with_fillable(const gchar *raw_xml, const gchar *expected_json
 {
   FilterXExpr *func = _create_parse_xml_expr(raw_xml, fillable);
 
-  FilterXObject *result = filterx_expr_eval(func);
+  FilterXObject *result = init_and_eval_expr(func);
   cr_assert(result);
   cr_assert(filterx_eval_get_error_count() == 0);
 
