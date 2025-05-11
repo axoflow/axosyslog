@@ -142,7 +142,10 @@ _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
+  /* we already unwrapped the ref in filterx_compare_objects() by the time we got here */
   g_assert(!(filterx_object_is_ref(lhs) || filterx_object_is_ref(rhs)));
+#endif
 
   if (lhs->type == rhs->type &&
       (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
@@ -168,7 +171,10 @@ _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_and_value_based(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
+  /* we already unwrapped the ref in filterx_compare_objects() by the time we got here */
   g_assert(!(filterx_object_is_ref(lhs) || filterx_object_is_ref(rhs)));
+#endif
 
   switch (operator)
     {
