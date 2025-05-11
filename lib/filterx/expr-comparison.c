@@ -209,34 +209,49 @@ filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp)
     g_assert_not_reached();
 }
 
+static gboolean
+_eval_compare_lhs_rhs(FilterXComparison *self, FilterXObject *lhs_object, FilterXObject *rhs_object)
+{
+  FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_object);
+  FilterXObject *rhs = filterx_ref_unwrap_ro(rhs_object);
+
+  return filterx_compare_objects(lhs, rhs, self->operator);
+}
+
 static FilterXObject *
 _eval_comparison(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
+  FilterXObject *result = NULL;
 
   gint compare_mode = self->operator & FCMPX_MODE_MASK;
 
-  FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
-                              : _eval_based_on_compare_mode(self->super.lhs, compare_mode);
+  FilterXObject *lhs_ref = NULL, *lhs_object;
+  FilterXObject *rhs_ref = NULL, *rhs_object;
+
+  if (self->literal_lhs)
+    lhs_object = self->literal_lhs;
+  else
+    lhs_object = lhs_ref = _eval_based_on_compare_mode(self->super.lhs, compare_mode);
+
   if (!lhs_object)
-    return NULL;
+    goto exit;
 
-  FilterXObject *rhs_object = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
-                              : _eval_based_on_compare_mode(self->super.rhs, compare_mode);
+
+  if (self->literal_rhs)
+    rhs_object = self->literal_rhs;
+  else
+    rhs_object = rhs_ref = _eval_based_on_compare_mode(self->super.rhs, compare_mode);
+
   if (!rhs_object)
-    {
-      filterx_object_unref(lhs_object);
-      return NULL;
-    }
+    goto exit;
 
-  FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_object);
-  FilterXObject *rhs = filterx_ref_unwrap_ro(rhs_object);
+  result = filterx_boolean_new(_eval_compare_lhs_rhs(self, lhs_object, rhs_object));
 
-  gboolean result = filterx_compare_objects(lhs, rhs, self->operator);
-
-  filterx_object_unref(lhs_object);
-  filterx_object_unref(rhs_object);
-  return filterx_boolean_new(result);
+exit:
+  filterx_object_unref(lhs_ref);
+  filterx_object_unref(rhs_ref);
+  return result;
 }
 
 static FilterXExpr *
