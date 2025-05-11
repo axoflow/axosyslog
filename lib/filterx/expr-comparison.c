@@ -188,8 +188,9 @@ _evaluate_type_and_value_based(FilterXObject *lhs, FilterXObject *rhs, gint oper
 static inline FilterXObject *
 _eval_based_on_compare_mode(FilterXExpr *expr, gint compare_mode)
 {
-  gboolean typed_eval_needed = compare_mode & FCMPX_TYPE_AWARE || compare_mode & FCMPX_TYPE_AND_VALUE_BASED;
-  return typed_eval_needed ? filterx_expr_eval_typed(expr) : filterx_expr_eval(expr);
+  if (compare_mode & (FCMPX_TYPE_AWARE + FCMPX_TYPE_AND_VALUE_BASED))
+    return filterx_expr_eval_typed(expr);
+  return filterx_expr_eval(expr);
 }
 
 gboolean
