@@ -38,7 +38,7 @@ _check_match(const gchar *lhs, const gchar *pattern)
 {
   FilterXExpr *expr = filterx_expr_regexp_match_new(filterx_literal_new(filterx_string_new(lhs, -1)), pattern);
 
-  FilterXObject *result_obj = filterx_expr_eval(expr);
+  FilterXObject *result_obj = init_and_eval_expr(expr);
   cr_assert(result_obj);
   gboolean result;
   cr_assert(filterx_boolean_unwrap(result_obj, &result));

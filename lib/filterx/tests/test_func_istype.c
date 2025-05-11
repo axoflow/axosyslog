@@ -113,7 +113,7 @@ Test(filterx_func_istype, non_matching_type)
   FilterXExpr *func_expr = filterx_function_istype_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *result_obj = filterx_expr_eval(func_expr);
+  FilterXObject *result_obj = init_and_eval_expr(func_expr);
   cr_assert(result_obj);
 
   gboolean result;
@@ -134,7 +134,7 @@ Test(filterx_func_istype, matching_type)
   FilterXExpr *func_expr = filterx_function_istype_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *result_obj = filterx_expr_eval(func_expr);
+  FilterXObject *result_obj = init_and_eval_expr(func_expr);
   cr_assert(result_obj);
 
   gboolean result;
@@ -155,7 +155,7 @@ Test(filterx_func_istype, matching_type_for_super_type)
   FilterXExpr *func_expr = filterx_function_istype_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *result_obj = filterx_expr_eval(func_expr);
+  FilterXObject *result_obj = init_and_eval_expr(func_expr);
   cr_assert(result_obj);
 
   gboolean result;
@@ -176,7 +176,7 @@ Test(filterx_func_istype, matching_type_for_root_type)
   FilterXExpr *func_expr = filterx_function_istype_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *result_obj = filterx_expr_eval(func_expr);
+  FilterXObject *result_obj = init_and_eval_expr(func_expr);
   cr_assert(result_obj);
 
   gboolean result;
