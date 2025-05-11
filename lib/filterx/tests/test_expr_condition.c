@@ -110,7 +110,7 @@ Test(expr_condition, test_condition_matching_expression)
   filterx_conditional_set_true_branch(cond,
                                       filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
 
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
 
@@ -129,7 +129,7 @@ Test(expr_condition, test_condition_non_matching_expression)
   FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_boolean_new(false)));
   filterx_conditional_set_true_branch(cond,
                                       filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("matching")), NULL));
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
 
@@ -161,7 +161,7 @@ Test(expr_condition, test_condition_matching_elif_expression)
 
   filterx_conditional_set_false_branch(cond, elif_cond);
 
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
 
@@ -192,7 +192,7 @@ Test(expr_condition, test_condition_non_matching_elif_expression)
 
   filterx_conditional_set_false_branch(cond, elif_cond);
 
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
 
@@ -231,7 +231,7 @@ Test(expr_condition, test_condition_matching_else_expression)
                                        filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("else-matching")),
                                            NULL));
 
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
 
@@ -280,7 +280,7 @@ Test(expr_condition, test_condition_subsequent_conditions_must_create_nested_con
                                        filterx_compound_expr_new_va(FALSE, _assert_assign_var("$control-value", _string_to_filterXExpr("else-matching")),
                                            NULL));
 
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   cr_assert(cond_eval != NULL);
   cr_assert(filterx_object_truthy(cond_eval) == TRUE);
 
@@ -304,7 +304,7 @@ Test(expr_condition, test_condition_falsey_statement_must_interrupt_sequential_c
                                           _assert_assign_var("$control-value3", _string_to_filterXExpr("matching3")),
                                           NULL));
 
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   /* a false statement is converted into an error return */
   cr_assert_null(cond_eval);
 
@@ -330,7 +330,7 @@ Test(expr_condition, test_condition_error_statement_must_return_null)
                                           NULL));
 
 
-  FilterXObject *cond_eval = filterx_expr_eval(cond);
+  FilterXObject *cond_eval = init_and_eval_expr(cond);
   cr_assert_null(cond_eval);
 
   FilterXObject *control_value = _assert_get_test_variable("$control-value");
@@ -357,7 +357,8 @@ Test(expr_condition, test_condition_return_expr_result_on_missing_stmts)
   g_clear_error(&error);
 
   FilterXExpr *cond = filterx_conditional_new(func);
-  FilterXObject *res = filterx_expr_eval(cond);
+
+  FilterXObject *res = init_and_eval_expr(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *strval = filterx_string_get_value_ref(res, NULL);
@@ -374,7 +375,7 @@ Test(expr_condition, test_condition_must_not_fail_on_empty_else_block)
 
   filterx_conditional_set_false_branch(cond,
                                        filterx_compound_expr_new(FALSE));
-  FilterXObject *res = filterx_expr_eval(cond);
+  FilterXObject *res = init_and_eval_expr(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(boolean)));
   cr_assert(filterx_object_truthy(res));
@@ -393,7 +394,7 @@ Test(expr_condition, test_condition_with_complex_expression_to_check_memory_leak
                                        filterx_compound_expr_new_va(TRUE,
                                            filterx_literal_new(filterx_string_new("foobar", -1)),
                                            NULL));
-  FilterXObject *res = filterx_expr_eval(cond);
+  FilterXObject *res = init_and_eval_expr(cond);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_ref(res, NULL);
