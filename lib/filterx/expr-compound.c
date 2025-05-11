@@ -34,9 +34,12 @@
 typedef struct _FilterXCompoundExpr
 {
   FilterXExpr super;
-  FilterXExprList exprs;
   /* whether this is a statement expression */
   gboolean return_value_of_last_expr;
+
+  /* needs to come last, as this may inline the list of expressions into an
+   * array piggybacked at the end of this struct */
+  FilterXExprList exprs;
 } FilterXCompoundExpr;
 
 static gboolean
@@ -169,7 +172,19 @@ _optimize(FilterXExpr *s)
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
   filterx_expr_list_foreach_ref(&self->exprs, _optimize_expr, NULL);
-  return NULL;
+
+  /* reallocate self so we can store the list of expressions inline */
+  gsize new_size = FILTERX_POINTER_LIST_ALLOC_SIZE(self, exprs);
+  FilterXCompoundExpr *optimized = (FilterXCompoundExpr *) g_malloc(new_size);
+
+  memcpy(optimized, self, sizeof(*self));
+  optimized->super.ref_cnt = 1;
+  optimized->super.lloc = NULL;
+  optimized->super.expr_text = NULL;
+  filterx_expr_set_location_with_text(&optimized->super, s->lloc, s->expr_text);
+
+  filterx_pointer_list_seal_inline(&optimized->exprs, &self->exprs);
+  return &optimized->super;
 }
 
 static gboolean
