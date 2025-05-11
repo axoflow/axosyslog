@@ -170,18 +170,19 @@ _evaluate_type_and_value_based(FilterXObject *lhs, FilterXObject *rhs, gint oper
 {
   g_assert(!(filterx_object_is_ref(lhs) || filterx_object_is_ref(rhs)));
 
-  if (operator == FCMPX_EQ)
+  switch (operator)
     {
+    case FCMPX_EQ:
       if (lhs->type != rhs->type)
         return FALSE;
-    }
-  else if (operator == FCMPX_NE)
-    {
+      break;
+    case FCMPX_NE:
       if (lhs->type != rhs->type)
         return TRUE;
+      break;
+    default:
+      g_assert_not_reached();
     }
-  else
-    g_assert_not_reached();
   return _evaluate_type_aware(lhs, rhs, operator);
 }
 
