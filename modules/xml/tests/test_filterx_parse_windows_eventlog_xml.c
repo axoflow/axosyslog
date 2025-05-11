@@ -100,7 +100,7 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
 {
   FilterXExpr *func = _create_expr(_create_input_from_event_data(event_data_xml), filterx_dict_new());
 
-  FilterXObject *result = filterx_expr_eval(func);
+  FilterXObject *result = init_and_eval_expr(func);
   cr_assert(result);
   cr_assert(filterx_eval_get_error_count() == 0);
 
@@ -141,7 +141,7 @@ _assert_parse_fail(const gchar *xml)
 {
   FilterXExpr *func = _create_expr(xml, filterx_dict_new());
 
-  FilterXObject *result = filterx_expr_eval(func);
+  FilterXObject *result = init_and_eval_expr(func);
   cr_assert(!result);
   cr_assert(filterx_eval_get_last_error());
 

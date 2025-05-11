@@ -53,4 +53,6 @@ void filterx_test_expr_set_location_with_text(FilterXExpr *expr, const gchar *fi
 void init_libtest_filterx(void);
 void deinit_libtest_filterx(void);
 
+FilterXObject *init_and_eval_expr(FilterXExpr *expr);
+
 #endif
