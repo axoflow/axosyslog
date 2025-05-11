@@ -35,12 +35,6 @@
 #include "mainloop.h"
 #include "stats/stats-cluster-single.h"
 
-GQuark
-filterx_function_error_quark(void)
-{
-  return g_quark_from_static_string("filterx-function-error-quark");
-}
-
 typedef struct _FilterXSimpleFunction
 {
   FilterXFunction super;

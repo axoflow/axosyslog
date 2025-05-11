@@ -1,0 +1,17 @@
+#ifndef FILTERX_FUNCTION_ERRORS_H_INCLUDED
+#define FILTERX_FUNCTION_ERRORS_H_INCLUDED 1
+
+#include "syslog-ng.h"
+
+#define FILTERX_FUNCTION_ERROR filterx_function_error_quark()
+GQuark filterx_function_error_quark(void);
+
+enum FilterXFunctionError
+{
+  FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND,
+  FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+  FILTERX_FUNCTION_ERROR_UNEXPECTED_ARGS,
+  FILTERX_FUNCTION_ERROR_EVAL_ERROR,
+};
+
+#endif
