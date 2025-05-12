@@ -13,5 +13,12 @@ echo -e "source dir.\n"
 if [ "$IMAGE_PLATFORM" != "devshell" ]; then
 	echo -e "NOTE: the 'devshell' dbld image is more developer friendly, you might want to use that"
 fi
+
+if [ "$IMAGE_PLATFORM" = "alpine" ] ; then
+    export HOME=/build
+    abuild-keygen -n -a -i
+    printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> ~/.abuild/abuild.conf
+fi
+
 cd /source
 debian_chroot="dbld" HOME=/build exec bash -c "$*"
