@@ -235,6 +235,8 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 void
 _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
 {
+  MainLoop *main_loop = main_loop_get_instance();
+
   FilterXFunctionCacheJsonFile *self = user_data;
   if (event->event == DELETED)
     {
@@ -246,9 +248,13 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
   main_loop_assert_main_thread();
   if (self->history_index >= FROZEN_OBJECTS_HISTORY_SIZE)
     {
-      main_loop_reload_config(main_loop_get_instance());
+      main_loop_reload_config(main_loop);
       return;
     }
+
+  /* needed for parent tracking of temporary non-frozen objects */
+  FilterXEvalContext json_reload_context;
+  filterx_eval_begin_compile(&json_reload_context, main_loop_get_current_config(main_loop));
 
   GError *error = NULL;
   if (!_load_json_file_version(self, &error) && error)
@@ -257,6 +263,8 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
                 evt_tag_str("file_name", self->filepath),
                 evt_tag_str("error_message", error->message));
     }
+
+  filterx_eval_end_compile(&json_reload_context);
 }
 
 FilterXExpr *

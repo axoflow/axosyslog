@@ -73,3 +73,27 @@ def test_filterx_cache_json_file_reloads_its_content_automatically_on_atomic_wri
     os.rename(cache_json_file_path_tmp, cache_json_file_path)
 
     assert destination.read_until_logs(["atomic write"])
+
+
+def test_filterx_cache_json_file_reload_with_nested_object(syslog_ng, config):
+    cache_json_file_path = "./c.json"
+
+    source = config.create_example_msg_generator_source(num=10)
+    filterx = config.create_filterx(f"""
+        cached = cache_json_file("{cache_json_file_path}");
+        $MSG = cached.nested.msg;
+""")
+    destination = config.create_file_destination(file_name="output.log", template='"$MSG\n"')
+
+    config.create_logpath(statements=[source, filterx, destination])
+
+    with open(cache_json_file_path, "w") as file:
+        file.write('{"nested": {"msg": "orig"}}')
+
+    syslog_ng.start(config)
+    assert destination.read_until_logs(["orig"])
+
+    with open(cache_json_file_path, "w") as file:
+        file.write('{"nested": {"msg": "autoupdated"}}')
+
+    assert destination.read_until_logs(["autoupdated"])
