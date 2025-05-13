@@ -232,7 +232,7 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 }
 
 // This function may trigger a configuration reload. Ensure proper handling of the configuration on the caller side.
-void
+gboolean
 _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
 {
   MainLoop *main_loop = main_loop_get_instance();
@@ -242,14 +242,14 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
     {
       msg_error("FilterX: Backend file of cache-json-file was deleted, keeping current json version.",
                 evt_tag_str("file_name", self->filepath));
-      return;
+      return TRUE;
     }
 
   main_loop_assert_main_thread();
   if (self->history_index >= FROZEN_OBJECTS_HISTORY_SIZE)
     {
       main_loop_reload_config(main_loop);
-      return;
+      return FALSE;
     }
 
   /* needed for parent tracking of temporary non-frozen objects */
@@ -265,6 +265,7 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
     }
 
   filterx_eval_end_compile(&json_reload_context);
+  return TRUE;
 }
 
 FilterXExpr *
