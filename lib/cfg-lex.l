@@ -273,7 +273,6 @@ odigit  [0-7]
 alpha		[a-zA-Z]
 alphanum	[a-zA-Z0-9]
 word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
-filterx_word	[^ \#'"/\(\)\{\}\[\]\\;\r\n\t,|\.@:]
 
 /* block related states must be last, as we use this fact in YY_INPUT */
 %x filterx
@@ -362,10 +361,7 @@ filterx_word	[^ \#'"/\(\)\{\}\[\]\\;\r\n\t,|\.@:]
 			     g_string_truncate(yyextra->string_buffer, 0);
 			     yy_push_state(qstring, yyscanner);
 			   }
-<filterx>\/		   {
-			     g_string_truncate(yyextra->string_buffer, 0);
-			     yy_push_state(slash_string, yyscanner);
-			   }
+<filterx>\/		   { return KW_SLASH; }
 <INITIAL,filterx>.         { return (unsigned char) yytext[0]; }
 
     /* continuation line within a string: just move the location and skip the newline character as if it was never there */
@@ -611,6 +607,13 @@ void
 cfg_lexer_push_filterx_state(CfgLexer *self)
 {
   yy_push_state(filterx, self->state);
+}
+
+void
+cfg_lexer_push_slashstring_state(CfgLexer *self)
+{
+  g_string_truncate(self->string_buffer, 0);
+  yy_push_state(slash_string, self->state);
 }
 
 void

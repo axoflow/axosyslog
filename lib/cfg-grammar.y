@@ -216,7 +216,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %left  KW_STR_LT 9040, KW_STR_LE 9041, KW_STR_GE, 9042 KW_STR_GT, 9043, KW_TA_LT 9044, KW_TA_LE 9045, KW_TA_GE 9046, KW_TA_GT 9047
 
 %left  '+' '-'
-%left  '*'
+%left  '*' KW_SLASH
 %left '.' '[' ']'
 
 /* statements */
