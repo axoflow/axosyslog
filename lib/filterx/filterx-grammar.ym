@@ -154,6 +154,8 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <ptr> rest_argument
 %type <node> literal
 %type <ptr> literal_object
+%type <cptr> slash_string
+%type <cptr> fx_string
 %type <node> variable
 %type <node> filterx_variable
 %type <ptr> template
@@ -534,6 +536,14 @@ literal_object
 	| LL_FLOAT				{ $$ = filterx_double_new($1); }
 	| KW_NULL				{ $$ = filterx_null_new(); }
 	| boolean				{ $$ = filterx_boolean_new($1); }
+	| slash_string
+	  {
+	    /* should be fx_string but we currently support templates as strings */
+
+	    FilterXObject *str = filterx_string_new($1, -1);
+	    free($1);
+	    $$ = str;
+	  }
 	| KW_ENUM '(' string '.' string ')'	{
 							FilterXObject *res = filterx_enum_new(configuration, $3, $5);
 							CHECK_ERROR(res, @1, "enum %s.%s not found", $3, $5);
@@ -541,6 +551,15 @@ literal_object
 							free($5);
 							$$ = res;
 						}
+	;
+
+fx_string
+	: slash_string
+	| string
+	;
+
+slash_string
+	: KW_SLASH { cfg_lexer_push_slashstring_state(lexer); } LL_STRING { $$ = $3; }
 	;
 
 variable
@@ -606,8 +625,8 @@ list_element
 	;
 
 regexp_match
-	: expr KW_REGEXP_MATCH string		{ $$ = filterx_expr_regexp_match_new($1, $3); free($3); }
-	| expr KW_REGEXP_NOMATCH string		{ $$ = filterx_expr_regexp_nomatch_new($1, $3); free($3); }
+	: expr KW_REGEXP_MATCH fx_string		{ $$ = filterx_expr_regexp_match_new($1, $3); free($3); }
+	| expr KW_REGEXP_NOMATCH fx_string		{ $$ = filterx_expr_regexp_nomatch_new($1, $3); free($3); }
 	;
 
 conditional
