@@ -21,6 +21,7 @@
 #
 #############################################################################
 from axosyslog_light.syslog_ng_config.renderer import render_statement
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
 # noqa: E122
@@ -503,6 +504,26 @@ def test_unset_empties_replacement_list(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == r"""["do","do","do","do",{"a":{"s":{"d":"do"}}},[["do"]]]"""
+
+
+def test_metrics_labels_ctor_with_dict(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            labels = metrics_labels({
+                "foo": "bar",
+                "baz": {"inner_key": "inner_value"},
+            });
+
+            update_metric("test", labels=labels);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+
+    metric_filters = [MetricFilter("syslogng_test", {"foo": "bar", "baz": '{"inner_key":"inner_value"}'})]
+    samples = config.prometheus_stats_handler.get_samples(metric_filters)
+    assert len(samples) == 1
 
 
 def test_metrics_labels_get(config, syslog_ng):

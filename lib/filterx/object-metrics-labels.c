@@ -34,6 +34,7 @@
 
 #include <string.h>
 
+#define METRICS_LABELS_USAGE "Usage: metrics_labels() or metrics_labels({...}})"
 #define DEDUP_METRICS_LABELS_USAGE "Usage: dedup_metrics_labels(my_metrics_labels)"
 
 typedef struct _FilterXObjectMetricsLabels
@@ -296,13 +297,42 @@ filterx_object_metrics_labels_new(guint reserved_size)
 FilterXObject *
 filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  if (args && args_len)
+  if (!args || !args_len)
+    return filterx_object_metrics_labels_new(16);
+
+  if (args_len != 1)
     {
-      filterx_simple_function_argument_error(s, "unexpected argument.", FALSE);
+      filterx_simple_function_argument_error(s, "unexpected number of arguments. "
+                                             METRICS_LABELS_USAGE, FALSE);
       return NULL;
     }
 
-  return filterx_object_metrics_labels_new(16);
+  FilterXObject *obj = args[0];
+  FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
+
+  if (filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(metrics_labels)))
+    return filterx_object_ref(obj);
+
+  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(dict)))
+    {
+      filterx_simple_function_argument_error(s, "unexpected type of argument. "
+                                             METRICS_LABELS_USAGE, FALSE);
+      return NULL;
+    }
+
+  guint64 len;
+  g_assert(filterx_object_len(typed_obj, &len));
+  FilterXObject *metrics_labels = filterx_object_metrics_labels_new(MIN(len, (guint64) G_MAXUINT));
+
+  if (!filterx_dict_merge(metrics_labels, typed_obj))
+    {
+      filterx_object_unref(metrics_labels);
+      filterx_simple_function_argument_error(s, "failed to cast dict into metrics_labels. "
+                                             METRICS_LABELS_USAGE, FALSE);
+      return NULL;
+    }
+
+  return metrics_labels;
 }
 
 static FilterXObject *
