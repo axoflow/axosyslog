@@ -1,6 +1,7 @@
 filterxincludedir			= ${pkgincludedir}/filterx
 
 filterxinclude_HEADERS = 			\
+	lib/filterx/expr-arithmetic-operators.h \
 	lib/filterx/expr-assign.h \
 	lib/filterx/expr-boolalg.h \
 	lib/filterx/expr-comparison.h \
@@ -75,6 +76,7 @@ filterxinclude_HEADERS = 			\
 
 
 filterx_sources = 				\
+	lib/filterx/expr-arithmetic-operators.c \
 	lib/filterx/expr-assign.c \
 	lib/filterx/expr-boolalg.c \
 	lib/filterx/expr-comparison.c \
