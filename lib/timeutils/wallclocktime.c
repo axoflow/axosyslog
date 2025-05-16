@@ -862,8 +862,8 @@ out:
         {
           /* calculate day of week */
           i = 0;
-          week_offset = first_wday_of(wct->tm.tm_year);
-          while (i++ <= wct->tm.tm_yday)
+          week_offset = first_wday_of(wct->tm.tm_year + TM_YEAR_BASE);
+          while (i++ < wct->tm.tm_yday)
             {
               if (week_offset++ >= 6)
                 week_offset = 0;
@@ -1133,9 +1133,12 @@ __strftime_fmt_1(WallClockTime *wct, char (*s)[100], size_t *l, int f, int pad)
       fmt = "%H:%M";
       goto recu_strftime;
     case 's':
-      val = cached_mktime(&wct->tm);
+    {
+      WallClockTime wct_copy = *wct;
+      val = cached_mktime(&wct_copy.tm);
       width = 1;
       goto number;
+    }
     case 'S':
       val = wct->wct_sec;
       goto number;
@@ -1198,7 +1201,7 @@ __strftime_fmt_1(WallClockTime *wct, char (*s)[100], size_t *l, int f, int pad)
         }
       *l = snprintf(*s, sizeof *s, "%c%02ld:%02ld",
                     wct->wct_gmtoff < 0 ? '-' : '+',
-                    wct->wct_gmtoff/3600, wct->wct_gmtoff%3600/60);
+                    (wct->wct_gmtoff > 0 ? wct->wct_gmtoff : -wct->wct_gmtoff)/3600, wct->wct_gmtoff%3600/60);
       return *s;
     case '%':
       *l = 1;
