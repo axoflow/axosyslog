@@ -41,6 +41,11 @@ typedef struct _FilterXPointerList
     /* sealed mode unwraps the elements from the GPtrArray for faster,
      * read-only access */
     FPL_SEALED,
+
+    /* sealed inline mode unwraps the elements and piggybacks them to the
+     * end of the struct to avoid another indirection, see
+     * filterx_plist_seal_inline() */
+    FPL_SEALED_INLINE,
   } mode;
   union
   {
@@ -52,6 +57,7 @@ typedef struct _FilterXPointerList
     {
       gpointer *pointers;
       guint32 pointers_len;
+      gpointer inline_storage[];
     } sealed;
   };
 } FilterXPointerList;
@@ -62,6 +68,9 @@ void filterx_pointer_list_add(FilterXPointerList *self, gpointer value);
 void filterx_pointer_list_add_list(FilterXPointerList *self, GList *elements);
 
 void filterx_pointer_list_seal(FilterXPointerList *self);
+gsize filterx_pointer_list_get_inline_size(FilterXPointerList *self);
+void filterx_pointer_list_seal_inline(FilterXPointerList *target, FilterXPointerList *source);
+
 void filterx_pointer_list_init(FilterXPointerList *self);
 void filterx_pointer_list_clear(FilterXPointerList *self, GDestroyNotify destroy);
 
@@ -73,6 +82,9 @@ filterx_pointer_list_index(FilterXPointerList *self, gsize index)
     case FPL_SEALED:
       g_assert(index < self->sealed.pointers_len);
       return self->sealed.pointers[index];
+    case FPL_SEALED_INLINE:
+      g_assert(index < self->sealed.pointers_len);
+      return self->sealed.inline_storage[index];
     case FPL_MUTABLE:
       return g_ptr_array_index(self->mut.pointers, index);
     default:
@@ -87,7 +99,28 @@ filterx_pointer_list_index_fast(FilterXPointerList *self, gsize index)
 #if SYSLOG_NG_ENABLE_DEBUG
   g_assert(self->mode != FPL_MUTABLE);
 #endif
+
+  /* NOTE: measure access through pointers vs checking if mode is
+   * SEALED_INLINE and then going directly to inline_pointers */
+
   return self->sealed.pointers[index];
+}
+
+static inline gpointer *
+filterx_pointer_list_get_pdata(FilterXPointerList *self)
+{
+  switch (self->mode)
+    {
+    case FPL_SEALED:
+      return self->sealed.pointers;
+    case FPL_SEALED_INLINE:
+      return self->sealed.inline_storage;
+    case FPL_MUTABLE:
+      return self->mut.pointers->pdata;
+    default:
+      g_assert_not_reached();
+      break;
+    }
 }
 
 static inline gsize
@@ -98,6 +131,8 @@ filterx_pointer_list_get_length(FilterXPointerList *self)
   else
     return self->sealed.pointers_len;
 }
+
+#define FILTERX_POINTER_LIST_ALLOC_SIZE(object, plist) (sizeof(*(object)) + filterx_pointer_list_get_inline_size(&(object)->plist))
 
 typedef gboolean (*FilterXExprListForeachRefFunc)(FilterXExpr **pvalue, gpointer user_data);
 typedef gboolean (*FilterXExprListForeachFunc)(FilterXExpr *value, gpointer user_data);
