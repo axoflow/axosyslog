@@ -1133,9 +1133,12 @@ __strftime_fmt_1(WallClockTime *wct, char (*s)[100], size_t *l, int f, int pad)
       fmt = "%H:%M";
       goto recu_strftime;
     case 's':
-      val = cached_mktime(&wct->tm);
+    {
+      WallClockTime wct_copy = *wct;
+      val = cached_mktime(&wct_copy.tm);
       width = 1;
       goto number;
+    }
     case 'S':
       val = wct->wct_sec;
       goto number;
