@@ -94,6 +94,37 @@ filterx_pointer_list_seal(FilterXPointerList *self)
     }
 }
 
+gsize
+filterx_pointer_list_get_inline_size(FilterXPointerList *self)
+{
+  return filterx_pointer_list_get_length(self) * sizeof(gpointer);
+}
+
+/* release references to all elements, as they are moved */
+static void
+filterx_pointer_list_drop_refs(FilterXPointerList *self)
+{
+  if (self->mode == FPL_MUTABLE)
+    g_ptr_array_set_size(self->mut.pointers, 0);
+  else
+    self->sealed.pointers_len = 0;
+}
+
+/*
+ * Relocate pointer elements in source to target in sealed-inline mode.  It
+ * is assumed that the caller is allocating enough memory to store all
+ * pointers piggy-backed to the end of the FilterXPointerList struct.
+ */
+void
+filterx_pointer_list_seal_inline(FilterXPointerList *target, FilterXPointerList *source)
+{
+  target->mode = FPL_SEALED_INLINE;
+  target->sealed.pointers_len = filterx_pointer_list_get_length(source);
+  target->sealed.pointers = target->sealed.inline_storage;
+  memcpy(target->sealed.inline_storage, filterx_pointer_list_get_pdata(source), target->sealed.pointers_len * sizeof(gpointer));
+  filterx_pointer_list_drop_refs(source);
+}
+
 void
 filterx_pointer_list_init(FilterXPointerList *self)
 {
@@ -114,6 +145,9 @@ filterx_pointer_list_clear(FilterXPointerList *self, GDestroyNotify destroy)
       break;
     case FPL_SEALED:
       g_free(self->sealed.pointers);
+      break;
+    case FPL_SEALED_INLINE:
+      /* the wrapping object contains our pointers */
       break;
     default:
       g_assert_not_reached();

@@ -83,6 +83,34 @@ Test(filterx_plist, test_elements_can_be_added_and_iterated_in_sealed_mode)
   filterx_pointer_list_clear(&plist, _destroy_ptr);
 }
 
+Test(filterx_plist, test_elements_can_be_added_and_iterated_in_sealed_inline_mode)
+{
+  struct
+  {
+    FilterXPointerList plist;
+  } obj, *sealed_obj;
+  gint i;
+
+  filterx_pointer_list_init(&obj.plist);
+  for (i = 0; i < 10; i++)
+    {
+      filterx_pointer_list_add(&obj.plist, GUINT_TO_POINTER(i));
+    }
+
+  gsize n = FILTERX_POINTER_LIST_ALLOC_SIZE(&obj, plist);
+  sealed_obj = g_malloc(n);
+  filterx_pointer_list_seal_inline(&sealed_obj->plist, &obj.plist);
+  filterx_pointer_list_clear(&obj.plist, _destroy_ptr);
+
+  cr_assert(filterx_pointer_list_get_length(&sealed_obj->plist) == i);
+  for (i = 0; i < 10; i++)
+    {
+      gpointer p = filterx_pointer_list_index(&sealed_obj->plist, i);
+      cr_assert_eq(p, GUINT_TO_POINTER(i));
+    }
+  filterx_pointer_list_clear(&sealed_obj->plist, _destroy_ptr);
+}
+
 static void
 setup(void)
 {
