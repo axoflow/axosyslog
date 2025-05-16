@@ -1,4 +1,5 @@
 set(FILTERX_HEADERS
+    filterx/expr-arithmetic-operators.h
     filterx/expr-assign.h
     filterx/expr-boolalg.h
     filterx/expr-break.h
@@ -74,6 +75,7 @@ set(FILTERX_HEADERS
     )
 
 set(FILTERX_SOURCES
+    filterx/expr-arithmetic-operators.c
     filterx/expr-assign.c
     filterx/expr-boolalg.c
     filterx/expr-break.c

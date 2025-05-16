@@ -61,6 +61,7 @@
 #include "filterx/expr-done.h"
 #include "filterx/expr-break.h"
 #include "filterx/expr-membership.h"
+#include "filterx/expr-arithmetic-operators.h"
 
 #include "template/templates.h"
 
@@ -462,6 +463,10 @@ membership_operator
 
 arithmetic_operator
 	: expr '+' expr { $$ = filterx_operator_plus_new($1, $3); }
+	| expr '-' expr { $$ = filterx_arithmetic_operator_substraction_new($1, $3); }
+	| expr '*' expr { $$ = filterx_arithmetic_operator_multiplication_new($1, $3); }
+	| expr KW_SLASH expr { $$ = filterx_arithmetic_operator_division_new($1, $3); }
+	| expr '%' expr { $$ = filterx_arithmetic_operator_modulo_new($1, $3); }
 	;
 
 expr_value
