@@ -1,6 +1,7 @@
 EXTRA_DIST += \
     docker/tests/smoke.sh \
-    docker/alpine.dockerfile \
+    docker/axosyslog.dockerfile \
+    docker/axosyslog-builder.dockerfile \
     docker/apkbuild/axoflow/rootbld-repositories \
     docker/apkbuild/axoflow/axosyslog/APKBUILD \
     docker/apkbuild/axoflow/axosyslog/APKBUILD-debug.patch \
