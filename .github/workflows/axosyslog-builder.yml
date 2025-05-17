@@ -9,8 +9,8 @@ on:
   push:
     paths:
       - '.github/workflows/axosyslog-builder.yml'
-    branches:
-      - main
+#    branches:
+#      - main
   schedule:
     # run weekly to regenerate the build container
     - cron: '00 23 * * 6'
