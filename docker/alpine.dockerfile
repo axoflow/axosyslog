@@ -23,31 +23,22 @@
 
 ARG DEBUG=false
 
-FROM alpine:3.21 as apkbuilder
+FROM ghcr.io/axoflow/axosyslog-builder:latest AS apkbuilder
+
+# NOTE:
+# an alpine system with SDK and dev packages plus a few packages built under
+# /home/builder/packages
+# user builder, home directory /home/builder
 
 ARG PKG_TYPE=stable
 ARG SNAPSHOT_VERSION
 ARG DEBUG
 
-RUN apk add --update-cache \
-      alpine-conf \
-      alpine-sdk \
-      sudo \
-    && apk upgrade -a \
-    && adduser -D builder \
-    && addgroup builder abuild \
-    && echo 'builder ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
-
-USER builder
-WORKDIR /home/builder
 ADD --chown=builder:builder apkbuild .
 
 RUN [ $DEBUG = false ] || patch -d axoflow/axosyslog -p1 -i APKBUILD-debug.patch
 
-RUN mkdir packages \
-    && abuild-keygen -n -a -i \
-    && printf 'export JOBS=$(nproc)\nexport MAKEFLAGS=-j$JOBS\n' >> .abuild/abuild.conf \
-    && cd axoflow/json-c && abuild -r && cd - \
+RUN mkdir packages || true \
     && cd axoflow/axosyslog \
     && if [ "$PKG_TYPE" = "snapshot" ]; then \
         tarball_filename="$(ls axosyslog-*.tar.*)"; \
@@ -75,10 +66,18 @@ LABEL org.opencontainers.image.source="https://github.com/axoflow/axosyslog"
 LABEL org.opencontainers.image.documentation="https://axoflow.com/docs/axosyslog/docs/"
 LABEL org.opencontainers.image.url="https://axoflow.io/"
 
-COPY --from=apkbuilder /home/builder/packages/ /tmp/
+RUN cp /etc/apk/repositories /etc/apk/repositories.bak
+
+# copy packages from builder image (both the base image and the previous
+# stage)
+COPY --from=apkbuilder /home/builder/packages/ /tmp/packages
 COPY --from=apkbuilder /home/builder/.abuild/*.pub /etc/apk/keys/
 
-RUN apk add --repository /tmp/axoflow -U --upgrade --no-cache \
+# add our custom repos
+RUN cd /tmp/packages && ls | sed 's,^,/tmp/packages/,' >> /etc/apk/repositories && cat /etc/apk/repositories  && ls  -lR /tmp/packages
+
+RUN apk upgrade  --no-cache --available && \
+    apk add --upgrade --no-cache \
     jemalloc \
     libdbi-drivers \
     tzdata \
@@ -108,7 +107,8 @@ RUN apk add --repository /tmp/axoflow -U --upgrade --no-cache \
     axosyslog-stomp \
     axosyslog-tags-parser \
     axosyslog-xml && \
-    rm -rf /tmp/axoflow
+    rm -rf /tmp/packages && \
+    mv /etc/apk/repositories.bak /etc/apk/repositories
 
 RUN [ $DEBUG = false ] || apk add -U --upgrade --no-cache \
     gdb \
