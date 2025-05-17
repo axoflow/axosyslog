@@ -101,7 +101,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: docker
-          file: docker/alpine.dockerfile
+          file: docker/axosyslog.dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
           outputs: type=image,name=${{ needs.prepare.outputs.image-name }},push-by-digest=true,name-canonical=true,push=true,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata.outputs.json).labels['org.opencontainers.image.description'] }}
@@ -239,7 +239,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: docker
-          file: docker/alpine.dockerfile
+          file: docker/axosyslog.dockerfile
           platforms: ${{ env.DEBUG_PLATFORM }}
           push: true
           tags: ${{ steps.tags.outputs.DEBUG_TAGS }}
