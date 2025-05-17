@@ -16,6 +16,9 @@ function create_user() {
         useradd dockerguest --uid=$USER_ID --gid=$GROUP_ID &>/dev/null || \
         echo "Failed to add user $USER_NAME/$USER_ID in docker entrypoint-debian.sh";
     usermod -a -G sudo $USER_NAME || usermod -a -G wheel $USER_NAME
+    usermod -a -G abuild $USER_NAME || true
+    sed -i -e '/^# %wheel\s/s,^# *,,' /etc/sudoers
+    sed -i -e '/^# %sudo\s/s,^# *,,' /etc/sudoers
     sed -i -e '/^%sudo\s\+ALL=/s,ALL$,NOPASSWD: ALL,' /etc/sudoers
     sed -i -e '/^%wheel\s\+ALL=/s,ALL$,NOPASSWD: ALL,' /etc/sudoers
     mkdir -p /home/$USER_NAME
