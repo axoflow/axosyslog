@@ -78,7 +78,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: docker
-          file: docker/alpine-base.dockerfile
+          file: docker/axosyslog-builder.dockerfile
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ needs.prepare.outputs.image-name }},push-by-digest=true,name-canonical=true,push=true
 
