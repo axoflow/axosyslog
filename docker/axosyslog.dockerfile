@@ -41,7 +41,7 @@ RUN [ $DEBUG = false ] || patch -d axoflow/axosyslog -p1 -i APKBUILD-debug.patch
 RUN mkdir packages || true \
     && cd axoflow/axosyslog \
     && if [ "$PKG_TYPE" = "snapshot" ]; then \
-        tarball_filename="$(ls axosyslog-*.tar.*)"; \
+        tarball_filename="$(ls -tr axosyslog-*.tar.* | head -1)"; \
         [ -z "$tarball_filename" ] && echo "Tarball for snapshot can not be found" && exit 1; \
         tarball_name="${tarball_filename/\.tar.*}"; \
         sed -i -e "s|^pkgver=.*|pkgver=$SNAPSHOT_VERSION|" -e "s|^builddir=.*|builddir=\"\$srcdir/$tarball_name\"|" APKBUILD; \

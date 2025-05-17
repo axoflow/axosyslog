@@ -75,8 +75,9 @@ help:
 	@echo "  rpm: generate RPMs in dbld/build for $(DEFAULT_RPM_IMAGE)"
 	@echo "  deb-<os>: generate debs in dbld/build for the specified OS"
 	@echo "  rpm-<os>: generate rpms in dbld/build for the specified OS"
+	@echo "  docker: generate a production docker image from the current source tree"
 	@echo ""
-	@echo "Docker images:"
+	@echo "DBLD images:"
 	@echo "  image: generate the default docker image"
 	@echo "  image-<os>: generate docker image with a specific OS for building syslog-ng"
 	@echo "  images: generate all docker images"
@@ -149,6 +150,13 @@ pkg-tarball-%: tarball-%
 package: package-$(DEFAULT_IMAGE)
 package-%: pkg-tarball
 	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm -i  ${CONTAINER_REGISTRY}/axosyslog-dbld-$* /dbld/package
+
+docker-builder:
+	$(DOCKER) build $(DOCKER_BUILD_ARGS) --progress=plain -t ${CONTAINER_REGISTRY}/axosyslog-builder -f docker/axosyslog-builder.dockerfile docker
+
+docker: pkg-tarball
+	cp $(TARBALL) docker/apkbuild/axoflow/axosyslog
+	$(DOCKER) build $(DOCKER_BUILD_ARGS) --progress=plain --build-arg=SNAPSHOT_VERSION=$$(cat VERSION.txt)_git$$(date +%Y%m%d) --build-arg=PKG_TYPE=snapshot -t ${CONTAINER_REGISTRY}/axosyslog -f docker/axosyslog.dockerfile docker
 
 deb: deb-$(DEFAULT_DEB_IMAGE)
 deb-%: pkg-tarball
