@@ -82,6 +82,10 @@ RUN apk upgrade  --no-cache --available && \
     libdbi-drivers \
     tzdata \
     json-c \
+    musl musl-dbg \
+    gdb \
+    strace \
+    perf \
     axosyslog \
     axosyslog-add-contextual-data \
     axosyslog-amqp \
@@ -109,14 +113,6 @@ RUN apk upgrade  --no-cache --available && \
     axosyslog-xml && \
     rm -rf /tmp/packages && \
     mv /etc/apk/repositories.bak /etc/apk/repositories
-
-RUN [ $DEBUG = false ] || apk add -U --upgrade --no-cache \
-    gdb \
-    valgrind \
-    strace \
-    perf \
-    vim \
-    musl-dbg
 
 EXPOSE 514/udp
 EXPOSE 601/tcp
