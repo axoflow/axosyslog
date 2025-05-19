@@ -47,6 +47,7 @@
 #include "filterx/func-sdata.h"
 #include "filterx/func-repr.h"
 #include "filterx/func-cache-json-file.h"
+#include "filterx/func-failure-info.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
@@ -173,6 +174,10 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("set_pri", filterx_function_set_pri_new));
   g_assert(filterx_builtin_function_ctor_register("cache_json_file", filterx_function_cache_json_file_new));
   g_assert(filterx_builtin_function_ctor_register("regexp_search", filterx_function_regexp_search_new));
+  g_assert(filterx_builtin_function_ctor_register("failure_info_enable", filterx_fn_failure_info_enable_new));
+  g_assert(filterx_builtin_function_ctor_register("failure_info_clear", filterx_fn_failure_info_clear_new));
+  g_assert(filterx_builtin_function_ctor_register("failure_info", filterx_fn_failure_info_new));
+  g_assert(filterx_builtin_function_ctor_register("failure_info_meta", filterx_fn_failure_info_meta_new));
 }
 
 static void
