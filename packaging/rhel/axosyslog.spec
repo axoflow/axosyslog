@@ -10,7 +10,7 @@ Source0: https://github.com/axoflow/axosyslog/releases/download/%{name}-%{versio
 Source1: syslog-ng.conf
 Source2: syslog-ng.logrotate
 Source3: syslog-ng.service
-# keeping the original logrotate file for RHEL/CentOS 7
+# keeping the original logrotate file for RHEL
 # under a new name
 Source4: syslog-ng.logrotate7
 
@@ -661,7 +661,7 @@ fi
 %if 0%{?_dbld}
 
 # without criterion we don't have the test lib.  On dbld we do have it, on
-# upstream CentOS/Fedora we don't.
+# upstream Fedora we don't.
 
 %{_libdir}/syslog-ng/libtest/libsyslog-ng-test.a
 %{_libdir}/pkgconfig/syslog-ng-test.pc

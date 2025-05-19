@@ -7,9 +7,9 @@
 #
 #       OS  env-list  cmdline-options
 #
-#   OS              -- either Linux distribution name (e.g.  ubuntu, centos
+#   OS              -- either Linux distribution name (e.g.  ubuntu, fedora
 #                      etc), or a distro + version combination separated by
-#                      a dash (e.g.  ubuntu-bionic, centos-8, etc). If used
+#                      a dash (e.g.  ubuntu-bionic, fedora-41, etc). If used
 #                      without version number, it denotes a wildcard (e.g.
 #                      applied to any versions of the distro).
 #
@@ -19,7 +19,7 @@
 #                      command.
 #
 #   The build command depends on the packaging system that specific Linux
-#   distribution uses, e.g. rpmbuild for Fedora/CentOS, dpkg-buildpackage
+#   distribution uses, e.g. rpmbuild for Fedora/AlmaLinux, dpkg-buildpackage
 #   for Debian based distros). env-list and cmdline-options can be used to
 #   customize a build in cases where an optional feature is not available
 #   there.

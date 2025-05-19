@@ -7,7 +7,7 @@ package_type() {
       ubuntu-*|debian-*)
          echo deb
          ;;
-      centos-*|almalinux-*|rhel-*|fedora-*)
+      almalinux-*|rhel-*|fedora-*)
          echo rpm
          ;;
     esac

@@ -12,7 +12,7 @@ set -x
 
 function update_packages() {
     case "${OS_DISTRIBUTION}" in
-        centos|almalinux)
+        almalinux)
             yum update -y
             ;;
         debian|ubuntu)
@@ -45,7 +45,7 @@ function workaround_rpm_repos() {
 function install_dbld_dependencies()
 {
     case "${OS_DISTRIBUTION}" in
-        centos|almalinux)
+        almalinux)
             $YUM_INSTALL wget yum-utils
             ;;
         debian|ubuntu)
@@ -127,7 +127,7 @@ function add_copr_repo {
     # install a couple of Python dependencies which then conflict with our
     # PIP installation later.
     case "${OS_DISTRIBUTION}" in
-        centos|almalinux)
+        almalinux)
             case "${OS_DISTRIBUTION_CODE_NAME}" in
                 8)
                     $YUM_INSTALL yum-plugin-copr
@@ -170,7 +170,7 @@ function install_rpm_build_deps {
     fi
 
     case "${OS_DISTRIBUTION}" in
-        centos|almalinux)
+        almalinux)
             rpm_run_build_command yum-builddep -y ${RPM_SPEC_FILE}
             ;;
         fedora)

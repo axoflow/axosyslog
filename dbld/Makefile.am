@@ -24,7 +24,6 @@ EXTRA_DIST += \
 	dbld/images/almalinux.prepare.sh \
 	dbld/images/debian.prepare.sh \
 	dbld/images/ubuntu.prepare.sh \
-	dbld/images/centos.prepare.sh \
 	dbld/images/fedora.prepare.sh \
 	dbld/images/almalinux-8.dockerfile \
 	dbld/images/almalinux-9.dockerfile \

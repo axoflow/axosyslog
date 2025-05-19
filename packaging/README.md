@@ -107,7 +107,7 @@ build dependency.  This term would be mapped into a Debian profile named
 
 ### RHEL
 
-To add a new build dependency in case of RPM based distros (centos, fedora),
+To add a new build dependency in case of RPM based distros (almalinux, fedora),
 you need to change the file `packaging/rhel/axosyslog.spec`. You need to add
 a BuildRequires line like this:
 
