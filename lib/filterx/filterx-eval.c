@@ -68,6 +68,18 @@ filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *
     }
 }
 
+void
+filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (!context)
+    return;
+
+  filterx_error_clear(&context->error);
+  filterx_falsy_error_set_values(&context->error, message, expr, object);
+}
+
 /* takes ownership of info */
 void
 filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
