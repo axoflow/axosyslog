@@ -302,7 +302,7 @@ filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
 
-  if (!_extract_args(self, args, error))
+  if (!_extract_args(self, args, error) || !filterx_function_args_check(args, error))
     goto error;
 
   filterx_function_args_free(args);
