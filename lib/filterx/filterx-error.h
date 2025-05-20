@@ -35,7 +35,7 @@ typedef struct _FilterXError
   FilterXExpr *expr;
   FilterXObject *object;
   gchar *info;
-  gboolean free_info;
+  guint8 free_info:1, falsy:1;
 } FilterXError;
 
 void filterx_error_clear(FilterXError *error);
@@ -45,6 +45,8 @@ EVTTAG *filterx_error_format_tag(FilterXError *error);
 EVTTAG *filterx_error_format_location_tag(FilterXError *error);
 void filterx_error_set_info(FilterXError *error, gchar *info, gboolean free_info);
 void filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object);
+void filterx_falsy_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr,
+                                    FilterXObject *object);
 
 
 #endif
