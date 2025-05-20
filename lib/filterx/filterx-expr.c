@@ -28,6 +28,7 @@
 #include "mainloop.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "scratch-buffers.h"
 #include "perf/perf.h"
 
 static inline gboolean
@@ -74,6 +75,28 @@ filterx_expr_format_location_tag(FilterXExpr *self)
                           self->expr_text ? : "n/a");
   else
     return evt_tag_str("expr", "n/a");
+}
+
+GString *
+filterx_expr_format_location(FilterXExpr *self)
+{
+  GString *location = scratch_buffers_alloc();
+
+  if (self && self->lloc)
+    g_string_printf(location, "%s:%d:%d", self->lloc->name, self->lloc->first_line, self->lloc->first_column);
+  else
+    g_string_assign(location, "n/a");
+
+  return location;
+}
+
+const gchar *
+filterx_expr_get_text(FilterXExpr *self)
+{
+  if (self && self->expr_text)
+    return self->expr_text;
+
+  return "n/a";
 }
 
 FilterXExpr *
