@@ -264,7 +264,8 @@ modules/ebpf/.*
 modules/python-modules/syslogng/modules/hypr/.*
 modules/python-modules/syslogng/modules/example/.*
 modules/python-modules/syslogng/modules/s3/.*
-modules/python-modules/syslogng/modules/webhook/.*
+modules/python-modules/syslogng/modules/webhook/scl/.*
+modules/python-modules/syslogng/modules/webhook/__init__.py
 modules/python-modules/setup\.py
 scripts/build-python-venv\.sh
 modules/syslogformat/sdata-parser\.[ch]
@@ -329,8 +330,6 @@ modules/kvformat/tests/test_filterx_func_format_kv.c
 modules/appmodel/app-transform-generator\.[ch]$
 modules/appmodel/tests/test_app_transform_generator.c
 modules/appmodel/transformation\.[ch]$
-docker/python-modules/webhook/scl/webhook.conf
-docker/python-modules/webhook/source.py
 packaging/package-indexer/remote_storage_synchronizer/s3_bucket_synchronizer.py
 packaging/package-indexer/cdn/cloudflare_cdn.py
 packaging/package-indexer/indexer/rpm_indexer.py
@@ -380,3 +379,4 @@ modules/http/http\.[ch]
 modules/http/http-parser.c
 modules/http/http-grammar.ym
 modules/correlation/group-lines.c
+modules/python-modules/syslogng/modules/webhook/source.py
