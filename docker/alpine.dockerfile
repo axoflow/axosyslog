@@ -23,7 +23,7 @@
 
 ARG DEBUG=false
 
-FROM alpine:3.21 as apkbuilder
+FROM alpine:3.21 AS apkbuilder
 
 ARG PKG_TYPE=stable
 ARG SNAPSHOT_VERSION
@@ -123,5 +123,5 @@ EXPOSE 601/tcp
 EXPOSE 6514/tcp
 
 HEALTHCHECK --interval=2m --timeout=5s --start-period=30s CMD /usr/sbin/syslog-ng-ctl healthcheck --timeout 5
-ENV LD_PRELOAD /usr/lib/libjemalloc.so.2
+ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 ENTRYPOINT ["/usr/sbin/syslog-ng", "-F"]
