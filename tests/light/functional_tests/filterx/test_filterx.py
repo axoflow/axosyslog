@@ -2566,3 +2566,69 @@ def test_not_in_operator_false(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "found"
+
+
+def test_arithmetic_operators_precedence(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = {};
+        $MSG.substraction = 10 - 2 - 5;
+        $MSG.multiplication = 10 * 2 * 5;
+        $MSG.division = 66 / 2 / 3;
+        $MSG.modulo = 60 % 5;
+        $MSG.multiplication_substraction = 10 - 2 * 5;
+        $MSG.division_substraction = 50 - 3 * 5;
+        $MSG.modulo_substraction = 10 % 6 - 2;
+        $MSG.modulo_multiplication = 10 % 6 * 2;
+        $MSG.modulo_division = 10 % 6 / 2;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"substraction":3,"""
+        r""""multiplication":100,"""
+        r""""division":11,"""
+        r""""modulo":0,"""
+        r""""multiplication_substraction":0,"""
+        r""""division_substraction":35,"""
+        r""""modulo_substraction":2,"""
+        r""""modulo_multiplication":8,"""
+        r""""modulo_division":2}"""
+    )
+    assert file_true.read_log() == exp
+
+
+def test_arithmetic_operators_type(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = {};
+        $MSG.substraction1 = 10 - 2.5;
+        $MSG.substraction2 = 10.0 - 2;
+        $MSG.substraction3 = 10.0 - 2.0;
+        $MSG.multiplication1 = 10 * 2.5;
+        $MSG.multiplication2 = 10.0 * 2;
+        $MSG.multiplication3 = 10.0 * 2.5;
+        $MSG.division1 = 66 / 2.0;
+        $MSG.division2 = 66.0 / 2;
+        $MSG.division3 = 66.0 / 2.0;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"substraction1":7.5,"""
+        r""""substraction2":8.0,"""
+        r""""substraction3":8.0,"""
+        r""""multiplication1":25.0,"""
+        r""""multiplication2":20.0,"""
+        r""""multiplication3":25.0,"""
+        r""""division1":33.0,"""
+        r""""division2":33.0,"""
+        r""""division3":33.0}"""
+    )
+    assert file_true.read_log() == exp
