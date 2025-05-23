@@ -126,7 +126,8 @@ log_transport_stack_init(LogTransportStack *self, LogTransport *initial_transpor
 void
 log_transport_stack_deinit(LogTransportStack *self)
 {
-  for (gint i = 0; i < LOG_TRANSPORT__MAX; i++)
+  /* reverse order as log_transport_free() may call into dependent transports */
+  for (gint i = LOG_TRANSPORT__MAX - 1; i >= 0; --i)
     {
       if (self->transports[i])
         log_transport_free(self->transports[i]);
