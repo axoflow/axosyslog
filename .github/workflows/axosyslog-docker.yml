@@ -101,7 +101,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: docker
-          file: docker/alpine.dockerfile
+          file: docker/axosyslog.dockerfile
           platforms: ${{ matrix.platform }}
           labels: ${{ steps.docker-metadata.outputs.labels }}
           outputs: type=image,name=${{ needs.prepare.outputs.image-name }},push-by-digest=true,name-canonical=true,push=true,annotation-index.org.opencontainers.image.description=${{ fromJSON(steps.docker-metadata.outputs.json).labels['org.opencontainers.image.description'] }}
@@ -224,26 +224,3 @@ jobs:
         run: |
           TAG_FLAGS="$(echo "$TAGS" | sed "s|[^,]*|-t &|g" | tr ',' ' ')"
           docker buildx imagetools create $TAG_FLAGS $(printf "$IMAGE_NAME@sha256:%s " *)
-
-      - name: Checkout source
-        uses: actions/checkout@v4
-
-      - name: Download source tarball artifact
-        if: inputs.snapshot-tarball-artifact != ''
-        uses: actions/download-artifact@v4
-        with:
-          name: ${{ inputs.snapshot-tarball-artifact }}
-          path: docker/apkbuild/axoflow/axosyslog
-
-      - name: Build and push debug Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: docker
-          file: docker/alpine.dockerfile
-          platforms: ${{ env.DEBUG_PLATFORM }}
-          push: true
-          tags: ${{ steps.tags.outputs.DEBUG_TAGS }}
-          build-args: |
-            PKG_TYPE=${{ inputs.type }}
-            SNAPSHOT_VERSION=${{ inputs.snapshot-version }}
-            DEBUG=true
