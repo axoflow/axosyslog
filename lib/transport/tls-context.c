@@ -25,6 +25,7 @@
 #include "messages.h"
 #include "compat/openssl_support.h"
 #include "secret-storage/secret-storage.h"
+#include "string-list.h"
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -749,7 +750,7 @@ tls_context_set_ssl_options_by_name(TLSContext *self, GList *options)
       else
         return FALSE;
     }
-
+  string_list_free(options);
   return TRUE;
 }
 
