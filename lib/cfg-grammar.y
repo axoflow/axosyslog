@@ -269,6 +269,8 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_HEALTHCHECK_FREQ            10406
 %token KW_WORKER_PARTITION_KEY        10407
 
+%token KW_LOG_FLOW_CONTROL            10408
+
 %token KW_CHAIN_HOSTNAMES             10090
 %token KW_NORMALIZE_HOSTNAMES         10091
 %token KW_KEEP_HOSTNAME               10092
@@ -913,7 +915,7 @@ log_content
         ;
 
 log_flags
-	: KW_FLAGS '(' log_flags_items ')' semicolons	{ $$ = $3; }
+	: KW_FLAGS '(' log_flags_items ')' semicolons	{ CHECK_ERROR(log_expr_node_validate_flags($3), @3, "incompatible flags were specified"); $$ = $3; }
 	|					{ $$ = 0; }
 	;
 
@@ -1121,6 +1123,7 @@ options_item
 	| KW_LOG_IW_SIZE '(' positive_integer ')'	{ msg_warning("WARNING: Support for the global log-iw-size() option was removed, please use a per-source log-iw-size()", cfg_lexer_format_location_tag(lexer, &@1)); }
 	| KW_LOG_FETCH_LIMIT '(' positive_integer ')'	{ msg_warning("WARNING: Support for the global log-fetch-limit() option was removed, please use a per-source log-fetch-limit()", cfg_lexer_format_location_tag(lexer, &@1)); }
 	| KW_LOG_MSG_SIZE '(' positive_integer ')'	{ configuration->log_msg_size = $3; }
+	| KW_LOG_FLOW_CONTROL '(' yesno ')' { configuration->flow_control = $3; }
 	| KW_TRIM_LARGE_MESSAGES '(' yesno ')'	{ configuration->trim_large_messages = $3; }
 	| KW_KEEP_TIMESTAMP '(' yesno ')'	{ configuration->keep_timestamp = $3; }
 	| KW_CREATE_DIRS '(' yesno ')'		{ configuration->create_dirs = $3; }
