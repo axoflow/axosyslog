@@ -62,6 +62,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-unset-empties.h \
 	lib/filterx/func-repr.h \
 	lib/filterx/func-vars.h \
+	lib/filterx/func-failure-info.h \
 	lib/filterx/object-datetime.h \
 	lib/filterx/object-dict-interface.h \
 	lib/filterx/object-dict.h \
@@ -137,6 +138,7 @@ filterx_sources = 				\
 	lib/filterx/func-unset-empties.c \
 	lib/filterx/func-vars.c \
 	lib/filterx/func-repr.c \
+	lib/filterx/func-failure-info.c \
 	lib/filterx/object-datetime.c \
 	lib/filterx/object-dict-interface.c \
 	lib/filterx/object-dict.c \

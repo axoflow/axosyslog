@@ -165,6 +165,8 @@ filterx_expr_unset_available(FilterXExpr *self)
 void filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc);
 void filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gchar *text);
 EVTTAG *filterx_expr_format_location_tag(FilterXExpr *self);
+GString *filterx_expr_format_location(FilterXExpr *self);
+const gchar *filterx_expr_get_text(FilterXExpr *self);
 FilterXExpr *filterx_expr_optimize(FilterXExpr *self);
 void filterx_expr_init_instance(FilterXExpr *self, const gchar *type);
 FilterXExpr *filterx_expr_new(void);

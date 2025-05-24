@@ -28,13 +28,8 @@
 #include "mainloop.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "scratch-buffers.h"
 #include "perf/perf.h"
-
-static inline gboolean
-_extract_source_text(void)
-{
-  return debug_flag || perf_is_enabled();
-}
 
 void
 filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gchar *text)
@@ -43,7 +38,7 @@ filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gc
     self->lloc = g_new0(CFG_LTYPE, 1);
   *self->lloc = *lloc;
 
-  if (_extract_source_text() && text && text != self->expr_text)
+  if (text && text != self->expr_text)
     {
       g_free(self->expr_text);
       self->expr_text = g_strdup(text);
@@ -56,13 +51,11 @@ filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
   if (!self->lloc)
     self->lloc = g_new0(CFG_LTYPE, 1);
   *self->lloc = *lloc;
-  if (_extract_source_text())
-    {
-      g_free(self->expr_text);
-      GString *res = g_string_sized_new(0);
-      cfg_source_extract_source_text(lexer, lloc, res);
-      self->expr_text = g_string_free(res, FALSE);
-    }
+
+  g_free(self->expr_text);
+  GString *res = g_string_sized_new(0);
+  cfg_source_extract_source_text(lexer, lloc, res);
+  self->expr_text = g_string_free(res, FALSE);
 }
 
 EVTTAG *
@@ -74,6 +67,28 @@ filterx_expr_format_location_tag(FilterXExpr *self)
                           self->expr_text ? : "n/a");
   else
     return evt_tag_str("expr", "n/a");
+}
+
+GString *
+filterx_expr_format_location(FilterXExpr *self)
+{
+  GString *location = scratch_buffers_alloc();
+
+  if (self && self->lloc)
+    g_string_printf(location, "%s:%d:%d", self->lloc->name, self->lloc->first_line, self->lloc->first_column);
+  else
+    g_string_assign(location, "n/a");
+
+  return location;
+}
+
+const gchar *
+filterx_expr_get_text(FilterXExpr *self)
+{
+  if (self && self->expr_text)
+    return self->expr_text;
+
+  return "n/a";
 }
 
 FilterXExpr *

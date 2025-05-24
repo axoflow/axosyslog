@@ -26,6 +26,7 @@
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-error.h"
+#include "filterx/filterx-object.h"
 #include "template/eval.h"
 
 
@@ -49,21 +50,32 @@ typedef enum _FilterXEvalControl
   FXC_BREAK,
 } FilterXEvalControl;
 
+typedef struct _FilterXFailureInfo
+{
+  FilterXObject *meta;
+  FilterXError error;
+} FilterXFailureInfo;
+
 typedef struct _FilterXEvalContext FilterXEvalContext;
 struct _FilterXEvalContext
 {
   LogMessage *msg;
   FilterXScope *scope;
   FilterXError error;
+  FilterXObject *current_frame_meta;
   LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
   FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
+
+  guint8 failure_info_collect_falsy:1;
+  GArray *failure_info;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
 FilterXScope *filterx_eval_get_scope(void);
 void filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
+void filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
 void filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info);
 void filterx_eval_set_context(FilterXEvalContext *context);
 FilterXEvalResult filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr);
@@ -78,6 +90,17 @@ void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext 
 void filterx_eval_end_context(FilterXEvalContext *context);
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
+
+void filterx_eval_enable_failure_info(FilterXEvalContext *context, gboolean collect_falsy);
+void filterx_eval_clear_failure_info(FilterXEvalContext *context);
+GArray *filterx_eval_get_failure_info(FilterXEvalContext *context);
+
+static inline void
+filterx_eval_set_current_frame_meta(FilterXEvalContext *context, FilterXObject *meta)
+{
+  filterx_object_unref(context->current_frame_meta);
+  context->current_frame_meta = filterx_object_ref(meta);
+}
 
 static inline void
 filterx_eval_sync_message(FilterXEvalContext *context, LogMessage **pmsg, const LogPathOptions *path_options)
