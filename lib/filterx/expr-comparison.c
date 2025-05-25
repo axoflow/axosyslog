@@ -209,17 +209,10 @@ filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp)
     g_assert_not_reached();
 }
 
-static gboolean
-_eval_compare_lhs_rhs(FilterXComparison *self, FilterXObject *lhs_object, FilterXObject *rhs_object)
-{
-  FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_object);
-  FilterXObject *rhs = filterx_ref_unwrap_ro(rhs_object);
-
-  return filterx_compare_objects(lhs, rhs, self->operator);
-}
-
 static inline gboolean
-_eval_operand(FilterXComparison *self, FilterXObject *literal_operand, FilterXExpr *operand_expr, FilterXObject **ref, FilterXObject **borrowed)
+_eval_operand(FilterXComparison *self,
+              FilterXObject *literal_operand, FilterXExpr *operand_expr,
+              FilterXObject **ref, FilterXObject **borrowed)
 {
   if (literal_operand)
     {
@@ -244,7 +237,12 @@ _eval_comparison(FilterXExpr *s)
 
   if (_eval_operand(self, self->literal_lhs, self->super.lhs, &lhs_ref, &lhs) &&
       _eval_operand(self, self->literal_rhs, self->super.rhs, &rhs_ref, &rhs))
-    result = filterx_boolean_new(_eval_compare_lhs_rhs(self, lhs, rhs));
+    {
+      result = filterx_boolean_new(
+                 filterx_compare_objects(filterx_ref_unwrap_ro(lhs),
+                                         filterx_ref_unwrap_ro(rhs),
+                                         self->operator));
+    }
 
   filterx_object_unref(lhs_ref);
   filterx_object_unref(rhs_ref);
