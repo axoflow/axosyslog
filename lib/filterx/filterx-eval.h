@@ -140,10 +140,10 @@ filterx_eval_store_weak_ref(FilterXObject *object)
       { \
         gsize alloc_size = filterx_scope_get_alloc_size(); \
         scope = g_alloca(alloc_size); \
-        filterx_scope_init_instance(scope, alloc_size, path_options->filterx_context ? path_options->filterx_context->scope : NULL); \
+        filterx_scope_init_instance(scope, alloc_size, previous_context ? previous_context->scope : NULL); \
         local_scope = TRUE; \
       } \
-    filterx_eval_begin_context(&eval_context, path_options->filterx_context, scope, msg); \
+    filterx_eval_begin_context(&eval_context, previous_context, scope, msg); \
     do
 
 
