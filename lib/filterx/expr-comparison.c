@@ -218,37 +218,34 @@ _eval_compare_lhs_rhs(FilterXComparison *self, FilterXObject *lhs_object, Filter
   return filterx_compare_objects(lhs, rhs, self->operator);
 }
 
+static inline gboolean
+_eval_operand(FilterXComparison *self, FilterXObject *literal_operand, FilterXExpr *operand_expr, FilterXObject **ref, FilterXObject **borrowed)
+{
+  if (literal_operand)
+    {
+      *ref = NULL;
+      *borrowed = literal_operand;
+    }
+  else
+    {
+      *ref = *borrowed = _eval_based_on_compare_mode(operand_expr, self->operator & FCMPX_MODE_MASK);
+    }
+  return borrowed != NULL;
+}
+
 static FilterXObject *
 _eval_comparison(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
   FilterXObject *result = NULL;
 
-  gint compare_mode = self->operator & FCMPX_MODE_MASK;
+  FilterXObject *lhs_ref = NULL, *lhs;
+  FilterXObject *rhs_ref = NULL, *rhs;
 
-  FilterXObject *lhs_ref = NULL, *lhs_object;
-  FilterXObject *rhs_ref = NULL, *rhs_object;
+  if (_eval_operand(self, self->literal_lhs, self->super.lhs, &lhs_ref, &lhs) &&
+      _eval_operand(self, self->literal_rhs, self->super.rhs, &rhs_ref, &rhs))
+    result = filterx_boolean_new(_eval_compare_lhs_rhs(self, lhs, rhs));
 
-  if (self->literal_lhs)
-    lhs_object = self->literal_lhs;
-  else
-    lhs_object = lhs_ref = _eval_based_on_compare_mode(self->super.lhs, compare_mode);
-
-  if (!lhs_object)
-    goto exit;
-
-
-  if (self->literal_rhs)
-    rhs_object = self->literal_rhs;
-  else
-    rhs_object = rhs_ref = _eval_based_on_compare_mode(self->super.rhs, compare_mode);
-
-  if (!rhs_object)
-    goto exit;
-
-  result = filterx_boolean_new(_eval_compare_lhs_rhs(self, lhs_object, rhs_object));
-
-exit:
   filterx_object_unref(lhs_ref);
   filterx_object_unref(rhs_ref);
   return result;
