@@ -103,7 +103,16 @@ class SingleConnectionStreamServer(ABC):
             if not self._connection_accepted.is_set():
                 return
             self._writer.close()
-            await self._writer.wait_closed()
+            try:
+                await self._writer.wait_closed()
+            except BrokenPipeError as e:
+
+                # In case of TLS, we might want to send a connection close
+                # alert to the peer, which may have already gone away.  In
+                # that case we would receive an EPIPE, which is best
+                # ignored.
+
+                logger.warning("SingleConnectionStreamServer, ignoring BrokenPipeError in Client.close(): {}".format(e))
             self._connection_accepted.clear()
 
 

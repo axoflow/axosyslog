@@ -91,7 +91,7 @@ class SyslogNgLocalExecutor(SyslogNgExecutor):
             "gdb",
             "-ex",
             f"r {shlex.join(start_params.format())} > {str(stdout_path)} 2> {str(stderr_path)}",
-            str(self.__syslog_ng_binary_path()),
+            str(self.__syslog_ng_binary_path),
         ]
         return self.__process_executor.start(
             command=["xterm", "-fa", "Monospace", "-fs", "18", "-e", shlex.join(gdb_command_args)],

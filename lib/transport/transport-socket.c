@@ -270,19 +270,18 @@ log_transport_dgram_socket_new(gint fd)
   return &self->super;
 }
 
-void
-log_transport_stream_socket_free_method(LogTransport *s)
+static void
+log_transport_stream_socket_shutdown(LogTransport *s)
 {
   if (s->fd != -1)
     shutdown(s->fd, SHUT_RDWR);
-  log_transport_free_method(s);
 }
 
 void
 log_transport_stream_socket_init_instance(LogTransportSocket *self, gint fd)
 {
   log_transport_socket_init_instance(self, "stream-socket", fd);
-  self->super.free_fn = log_transport_stream_socket_free_method;
+  self->super.shutdown = log_transport_stream_socket_shutdown;
 }
 
 LogTransport *
