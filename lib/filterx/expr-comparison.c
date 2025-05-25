@@ -197,16 +197,19 @@ filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp)
 {
   gint op = cmp & FCMPX_OP_MASK;
 
-  if (cmp & FCMPX_TYPE_AWARE)
-    return _evaluate_type_aware(lhs, rhs, op);
-  else if (cmp & FCMPX_STRING_BASED)
-    return _evaluate_as_string(lhs, rhs, op);
-  else if (cmp & FCMPX_NUM_BASED)
-    return _evaluate_as_num(lhs, rhs, op);
-  else if (cmp & FCMPX_TYPE_AND_VALUE_BASED)
-    return _evaluate_type_and_value_based(lhs, rhs, op);
-  else
-    g_assert_not_reached();
+  switch (cmp & FCMPX_MODE_MASK)
+    {
+    case FCMPX_TYPE_AWARE:
+      return _evaluate_type_aware(lhs, rhs, op);
+    case FCMPX_STRING_BASED:
+      return _evaluate_as_string(lhs, rhs, op);
+    case FCMPX_NUM_BASED:
+      return _evaluate_as_num(lhs, rhs, op);
+    case FCMPX_TYPE_AND_VALUE_BASED:
+      return _evaluate_type_and_value_based(lhs, rhs, op);
+    default:
+      g_assert_not_reached();
+    }
 }
 
 static inline gboolean
