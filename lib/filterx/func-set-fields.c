@@ -34,13 +34,17 @@
 
 #include <string.h>
 
-#define FILTERX_FUNC_SET_FIELDS_USAGE "set_fields(dict, overrides={\"field\":[...], ...}, defaults={\"field\":[...], ...})"
+#define FILTERX_FUNC_SET_FIELDS_USAGE "set_fields(dict, overrides={\"field\":[...], ...}, defaults={\"field\":[...], ...}, replacements={\"field\":[...], ...})"
 
 typedef struct Field_
 {
   FilterXObject *key;
+  /* set the value to the first valid expression in overrides regardless whether it was set or not */
   GPtrArray *overrides;
+  /* set the value to the first valid expression in defaults but only if it was unset */
   GPtrArray *defaults;
+  /* set the value to the first valid expression in defaults but only if it was set */
+  GPtrArray *replacements;
 } Field;
 
 static void
@@ -63,6 +67,14 @@ _field_optimize(Field *self)
           g_ptr_array_index(self->defaults, i) = filterx_expr_optimize(def);
         }
     }
+  if (self->replacements)
+    {
+      for (guint i = 0; i < self->replacements->len; i++)
+        {
+          FilterXExpr *def = g_ptr_array_index(self->replacements, i);
+          g_ptr_array_index(self->replacements, i) = filterx_expr_optimize(def);
+        }
+    }
 }
 
 static void
@@ -83,6 +95,14 @@ _field_deinit(Field *self, GlobalConfig *cfg)
         {
           FilterXExpr *def = g_ptr_array_index(self->defaults, i);
           filterx_expr_deinit(def, cfg);
+        }
+    }
+  if (self->replacements)
+    {
+      for (guint i = 0; i < self->replacements->len; i++)
+        {
+          FilterXExpr *replacement = g_ptr_array_index(self->replacements, i);
+          filterx_expr_deinit(replacement, cfg);
         }
     }
 }
@@ -110,6 +130,16 @@ _field_init(Field *self, GlobalConfig *cfg)
         }
     }
 
+  if (self->replacements)
+    {
+      for (guint i = 0; i < self->replacements->len; i++)
+        {
+          FilterXExpr *replacement = g_ptr_array_index(self->replacements, i);
+          if (!filterx_expr_init(replacement, cfg))
+            goto error;
+        }
+    }
+
   return TRUE;
 
 error:
@@ -125,6 +155,8 @@ _field_destroy(Field *self)
     g_ptr_array_free(self->overrides, TRUE);
   if (self->defaults)
     g_ptr_array_free(self->defaults, TRUE);
+  if (self->replacements)
+    g_ptr_array_free(self->replacements, TRUE);
 }
 
 static void
@@ -143,6 +175,13 @@ _field_add_default(Field *self, FilterXExpr *def)
   g_ptr_array_add(self->defaults, filterx_expr_ref(def));
 }
 
+static void
+_field_add_replacement(Field *self, FilterXExpr *def)
+{
+  if (!self->replacements)
+    self->replacements = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
+  g_ptr_array_add(self->replacements, filterx_expr_ref(def));
+}
 
 typedef struct FilterXFunctionSetFields_
 {
@@ -222,9 +261,9 @@ _process_field(Field *field, FilterXObject *dict)
     return;
 
   if (filterx_object_is_key_set(dict, field->key))
-    return;
-
-  _set_with_fallbacks(dict, field->key, field->defaults);
+    _set_with_fallbacks(dict, field->key, field->replacements);
+  else
+    _set_with_fallbacks(dict, field->key, field->defaults);
 }
 
 static FilterXObject *
@@ -489,6 +528,77 @@ exit:
 }
 
 static gboolean
+_add_replacement(gsize index, FilterXExpr *value, gpointer user_data)
+{
+  Field *field = (Field *) user_data;
+  _field_add_replacement(field, value);
+  return TRUE;
+}
+
+static gboolean
+_load_replacement(FilterXExpr *key, FilterXExpr *value, gpointer user_data)
+{
+  FilterXFunctionSetFields *self = ((gpointer *) user_data)[0];
+  GError **error = ((gpointer *) user_data)[1];
+
+  FilterXObject *key_obj = _extract_field_key_obj(key, error);
+  if (!key_obj)
+    return FALSE;
+
+  Field *field = NULL;
+
+  for (guint i = 0; i < self->fields->len; i++)
+    {
+      Field *possible_field = &g_array_index(self->fields, Field, i);
+      if (_are_field_keys_equal(key_obj, possible_field->key))
+        {
+          field = possible_field;
+          break;
+        }
+    }
+
+  if (!field)
+    {
+      Field new_field = { 0 };
+      g_array_append_val(self->fields, new_field);
+      field = &g_array_index(self->fields, Field, self->fields->len - 1);
+      field->key = filterx_object_ref(key_obj);
+    }
+
+  if (filterx_expr_is_literal_list(value))
+    g_assert(filterx_literal_list_foreach(value, _add_replacement, field));
+  else
+    _field_add_replacement(field, value);
+
+  filterx_object_unref(key_obj);
+  return TRUE;
+}
+
+static gboolean
+_extract_replacements_arg(FilterXFunctionSetFields *self, FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExpr *replacements = filterx_function_args_get_named_expr(args, "replacements");
+  if (!replacements)
+    return TRUE;
+
+  gboolean success = FALSE;
+
+  if (!filterx_expr_is_literal_dict(replacements))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "replacements argument must be a literal dict. " FILTERX_FUNC_SET_FIELDS_USAGE);
+      goto exit;
+    }
+
+  gpointer user_data[] = { self, error };
+  success = filterx_literal_dict_foreach(replacements, _load_replacement, user_data);
+
+exit:
+  filterx_expr_unref(replacements);
+  return success;
+}
+
+static gboolean
 _extract_args(FilterXFunctionSetFields *self, FilterXFunctionArgs *args, GError **error)
 {
   if (filterx_function_args_len(args) != 1)
@@ -504,6 +614,9 @@ _extract_args(FilterXFunctionSetFields *self, FilterXFunctionArgs *args, GError 
     return FALSE;
 
   if (!_extract_defaults_arg(self, args, error))
+    return FALSE;
+
+  if (!_extract_replacements_arg(self, args, error))
     return FALSE;
 
   return TRUE;

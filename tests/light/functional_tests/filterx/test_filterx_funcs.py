@@ -544,3 +544,38 @@ def test_metrics_labels_get(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == r"""{"empty_labels_does_not_exist":"fallback","does_not_exist":"fallback","exists":"bar"}"""
+
+
+def test_set_fields(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "foo": "foo_exists",
+        "bar": "bar_exists",
+        "bax": "to-be-replaced",
+        "bax2": "to-be-replaced",
+    };
+    set_fields(
+        $MSG,
+        overrides={
+            "foo": [invalid_expr, "foo_override"],
+            "baz": "baz_override",
+            "almafa": [invalid_expr_1, null],  # Should not have any effect, as there is no valid expr or non-null here.
+        },
+        defaults={
+            "foo": [invalid_expr, "foo_default"],  # Should not have any effect, "foo" is handled by overrides.
+            "bar": "bar_default",  # Should not have any effect, "bar" already has value in the dict.
+            "almafa": "almafa_default",
+            "kortefa": [invalid_expr_1, null],  # Should not have any effect, as there is no valid expr or non-null here.
+        },
+        replacements={
+            "bax": "",
+            "bax2": [invalid_expr, null, "non-null"],
+        }
+    );
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"foo":"foo_override","bar":"bar_exists","bax":"","bax2":"non-null","baz":"baz_override","almafa":"almafa_default"}'

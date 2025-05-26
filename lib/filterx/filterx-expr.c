@@ -212,6 +212,7 @@ filterx_expr_unref(FilterXExpr *self)
 
   if (--self->ref_cnt == 0)
     {
+      g_assert(!self->inited);
       self->free_fn(self);
       g_free(self);
     }
