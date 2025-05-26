@@ -17,7 +17,7 @@ on:
       platforms:
         required: false
         type: string
-        default: linux/amd64,linux/arm64
+        default: linux/amd64,linux/arm64,linux/arm/v7
 
 jobs:
   prepare:
@@ -29,7 +29,7 @@ jobs:
       - id: platforms
         name: platform
         env:
-          PLATFORMS: ${{ inputs.platforms || 'linux/amd64,linux/arm64' }}
+          PLATFORMS: ${{ inputs.platforms || 'linux/amd64,linux/arm64,linux/arm/v7' }}
         run: |
           PLATFORM_MATRIX="$(echo "$PLATFORMS" | jq 'split(",")' -Rc)"
           echo "platform-matrix=$PLATFORM_MATRIX" >> $GITHUB_OUTPUT
