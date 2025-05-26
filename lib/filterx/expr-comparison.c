@@ -44,7 +44,7 @@ typedef struct _FilterXComparison
   FilterXObject *literal_rhs;
 } FilterXComparison;
 
-static void
+static inline void
 _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
 {
   if (filterx_object_extract_generic_number(obj, gn))
@@ -75,7 +75,7 @@ _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
   gn_set_nan(gn);
 }
 
-static const gchar *
+static inline const gchar *
 _convert_filterx_object_to_string(FilterXObject *obj, gsize *len)
 {
   const gchar *str;
@@ -95,7 +95,7 @@ _convert_filterx_object_to_string(FilterXObject *obj, gsize *len)
   return buffer->str;
 }
 
-static gboolean
+static inline gboolean
 _evaluate_comparison(gint cmp, gint operator)
 {
   gboolean result = FALSE;
@@ -114,7 +114,7 @@ _evaluate_comparison(gint cmp, gint operator)
   return result;
 }
 
-static gboolean
+static inline gboolean
 _evaluate_as_string(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
   gsize lhs_len, rhs_len;
@@ -127,7 +127,7 @@ _evaluate_as_string(FilterXObject *lhs, FilterXObject *rhs, gint operator)
   return _evaluate_comparison(result, operator);
 }
 
-static gboolean
+static inline gboolean
 _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
   GenericNumber lhs_number, rhs_number;
@@ -142,7 +142,10 @@ _evaluate_as_num(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
+  /* we already unwrapped the ref in filterx_compare_objects() by the time we got here */
   g_assert(!(filterx_object_is_ref(lhs) || filterx_object_is_ref(rhs)));
+#endif
 
   if (lhs->type == rhs->type &&
       (filterx_object_is_type(lhs, &FILTERX_TYPE_NAME(string)) ||
@@ -168,28 +171,33 @@ _evaluate_type_aware(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 static gboolean
 _evaluate_type_and_value_based(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
+  /* we already unwrapped the ref in filterx_compare_objects() by the time we got here */
   g_assert(!(filterx_object_is_ref(lhs) || filterx_object_is_ref(rhs)));
+#endif
 
-  if (operator == FCMPX_EQ)
+  switch (operator)
     {
+    case FCMPX_EQ:
       if (lhs->type != rhs->type)
         return FALSE;
-    }
-  else if (operator == FCMPX_NE)
-    {
+      break;
+    case FCMPX_NE:
       if (lhs->type != rhs->type)
         return TRUE;
+      break;
+    default:
+      g_assert_not_reached();
     }
-  else
-    g_assert_not_reached();
   return _evaluate_type_aware(lhs, rhs, operator);
 }
 
 static inline FilterXObject *
 _eval_based_on_compare_mode(FilterXExpr *expr, gint compare_mode)
 {
-  gboolean typed_eval_needed = compare_mode & FCMPX_TYPE_AWARE || compare_mode & FCMPX_TYPE_AND_VALUE_BASED;
-  return typed_eval_needed ? filterx_expr_eval_typed(expr) : filterx_expr_eval(expr);
+  if (compare_mode & (FCMPX_TYPE_AWARE + FCMPX_TYPE_AND_VALUE_BASED))
+    return filterx_expr_eval_typed(expr);
+  return filterx_expr_eval(expr);
 }
 
 gboolean
@@ -197,46 +205,59 @@ filterx_compare_objects(FilterXObject *lhs, FilterXObject *rhs, gint cmp)
 {
   gint op = cmp & FCMPX_OP_MASK;
 
-  if (cmp & FCMPX_TYPE_AWARE)
-    return _evaluate_type_aware(lhs, rhs, op);
-  else if (cmp & FCMPX_STRING_BASED)
-    return _evaluate_as_string(lhs, rhs, op);
-  else if (cmp & FCMPX_NUM_BASED)
-    return _evaluate_as_num(lhs, rhs, op);
-  else if (cmp & FCMPX_TYPE_AND_VALUE_BASED)
-    return _evaluate_type_and_value_based(lhs, rhs, op);
+  switch (cmp & FCMPX_MODE_MASK)
+    {
+    case FCMPX_TYPE_AWARE:
+      return _evaluate_type_aware(lhs, rhs, op);
+    case FCMPX_STRING_BASED:
+      return _evaluate_as_string(lhs, rhs, op);
+    case FCMPX_NUM_BASED:
+      return _evaluate_as_num(lhs, rhs, op);
+    case FCMPX_TYPE_AND_VALUE_BASED:
+      return _evaluate_type_and_value_based(lhs, rhs, op);
+    default:
+      g_assert_not_reached();
+    }
+}
+
+static inline gboolean
+_eval_operand(FilterXComparison *self,
+              FilterXObject *literal_operand, FilterXExpr *operand_expr,
+              FilterXObject **ref, FilterXObject **borrowed)
+{
+  if (literal_operand)
+    {
+      *ref = NULL;
+      *borrowed = literal_operand;
+    }
   else
-    g_assert_not_reached();
+    {
+      *ref = *borrowed = _eval_based_on_compare_mode(operand_expr, self->operator & FCMPX_MODE_MASK);
+    }
+  return borrowed != NULL;
 }
 
 static FilterXObject *
 _eval_comparison(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
+  FilterXObject *result = NULL;
 
-  gint compare_mode = self->operator & FCMPX_MODE_MASK;
+  FilterXObject *lhs_ref = NULL, *lhs;
+  FilterXObject *rhs_ref = NULL, *rhs;
 
-  FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
-                              : _eval_based_on_compare_mode(self->super.lhs, compare_mode);
-  if (!lhs_object)
-    return NULL;
-
-  FilterXObject *rhs_object = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
-                              : _eval_based_on_compare_mode(self->super.rhs, compare_mode);
-  if (!rhs_object)
+  if (_eval_operand(self, self->literal_lhs, self->super.lhs, &lhs_ref, &lhs) &&
+      _eval_operand(self, self->literal_rhs, self->super.rhs, &rhs_ref, &rhs))
     {
-      filterx_object_unref(lhs_object);
-      return NULL;
+      result = filterx_boolean_new(
+                 filterx_compare_objects(filterx_ref_unwrap_ro(lhs),
+                                         filterx_ref_unwrap_ro(rhs),
+                                         self->operator));
     }
 
-  FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_object);
-  FilterXObject *rhs = filterx_ref_unwrap_ro(rhs_object);
-
-  gboolean result = filterx_compare_objects(lhs, rhs, self->operator);
-
-  filterx_object_unref(lhs_object);
-  filterx_object_unref(rhs_object);
-  return filterx_boolean_new(result);
+  filterx_object_unref(lhs_ref);
+  filterx_object_unref(rhs_ref);
+  return result;
 }
 
 static FilterXExpr *
