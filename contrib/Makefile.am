@@ -7,18 +7,6 @@ EXTRA_DIST += \
 	contrib/README.syslog-ng-debun \
 	contrib/syslog-ng-debun \
 	\
-	contrib/init.d.solaris \
-	contrib/init.d.HP-UX \
-	contrib/init.d.RedHat \
-	contrib/init.d.SuSE \
-	contrib/init.d.SunOS \
-	contrib/init.d.solaris \
-	contrib/init.d.RedHat-7.3 \
-	\
-	contrib/syslog-ng.conf.HP-UX \
-	contrib/syslog-ng.conf.RedHat \
-	contrib/syslog-ng.conf.SunOS \
-	\
 	contrib/syslog2ng \
 	contrib/syslog-mc \
 	\
@@ -27,19 +15,7 @@ EXTRA_DIST += \
 	\
 	contrib/Brewfile \
 	\
-	contrib/fedora-packaging/syslog-ng.conf	\
-	contrib/fedora-packaging/syslog-ng.init	\
-	contrib/fedora-packaging/syslog-ng.sysconfig	\
-	contrib/fedora-packaging/syslog-ng.logrotate    \
-	\
-	contrib/rhel-packaging/syslog-ng.conf  \
-	contrib/rhel-packaging/syslog-ng.init  \
-	contrib/rhel-packaging/syslog-ng.logrotate \
-	\
 	contrib/aix-packaging/syslog-ng.conf \
-	\
-	contrib/hpux-packaging/syslog-ng.conf \
-	contrib/hpux-packaging/syslog-ng.init \
 	\
 	contrib/lfs-packaging/Makefile.lfs \
 	contrib/lfs-packaging/README.lfs \
@@ -48,12 +24,6 @@ EXTRA_DIST += \
 	contrib/cygwin-packaging/cygwin-postinstall \
 	contrib/cygwin-packaging/syslog-ng-config \
 	contrib/cygwin-packaging/syslog-ng.sh \
-	\
-	contrib/solaris-packaging/solaris10_install.txt \
-	contrib/solaris-packaging/syslog-ng.example.xml \
-	contrib/solaris-packaging/syslog-ng@default \
-	contrib/solaris-packaging/syslog-ng-sol11-smf.example.xml \
-	contrib/solaris-packaging/syslog-ng.method \
 	\
 	contrib/freebsd-packaging/syslog-ng.rc.d \
 	contrib/freebsd-packaging/syslog-ng.conf.example \
@@ -78,13 +48,10 @@ EXTRA_DIST += \
 	\
 	contrib/apparmor/opt.syslog-ng.sbin.syslog-ng \
 	\
-	contrib/upstart/syslog-ng.conf.upstart	\
 	contrib/systemd/syslog-ng@.service \
 	contrib/systemd/syslog-ng@default \
 	\
-	contrib/scripts/config-graph-json-to-dot.py \
-	\
-	contrib/valgrind/syslog-ng.supp
+	contrib/scripts/config-graph-json-to-dot.py
 
 if ENABLE_SYSTEMD_UNIT_INSTALL
 systemdsystemunit_DATA = contrib/systemd/syslog-ng@.service
