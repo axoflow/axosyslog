@@ -533,13 +533,6 @@ fi
 dnl ***************************************************************************
 dnl C++
 
-# This one is useful for checking the available compilers
-# AC_MSG_RESULT(gcc = $(which gcc) - g++ = $(which g++) - clang = $(which clang))
-# AC_MSG_RESULT(Paths: gcc = $(ls -Al $(which gcc)) - g++ = $(ls -Al $(which g++)) - clang = $(ls -Al $(which clang)))
-# AC_MSG_RESULT($(gcc -v))
-# AC_MSG_RESULT($(g++ -v))
-# AC_MSG_RESULT($(clang -v))
-# AC_MSG_RESULT(C++ compilers to be used $CPP_COMPILER)
 AC_PROG_CXX([$CPP_COMPILER])
 
 if test "x$enable_cpp" = "xyes"; then
