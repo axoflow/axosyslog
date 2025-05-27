@@ -55,8 +55,14 @@ jobs:
       - name: Prepare
         env:
           PLATFORM: ${{ matrix.platform }}
+          REBUILD_DEPS: main/musl main/jemalloc main/json-c main/glib community/grpc main/python3
         run: |
           echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
+          if [ $PLATFORM = "linux/arm/v7" ]; then
+              # on armv7 we only do a minimal rebuild
+              REBUILD_DEPS=main/json-c
+          fi
+          echo "REBUILD_DEPS=$REBUILD_DEPS" >> $GITHUB_ENV
 
       - name: Checkout source
         uses: actions/checkout@v4
@@ -81,6 +87,8 @@ jobs:
           file: docker/axosyslog-builder.dockerfile
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=${{ needs.prepare.outputs.image-name }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            REBUILD_DEPS=${{ env.REBUILD_DEPS }}
 
       - name: Export digest
         env:
