@@ -234,7 +234,7 @@ _eval_operand(FilterXComparison *self,
     {
       *ref = *borrowed = _eval_based_on_compare_mode(operand_expr, self->operator & FCMPX_MODE_MASK);
     }
-  return borrowed != NULL;
+  return *borrowed != NULL;
 }
 
 static FilterXObject *
