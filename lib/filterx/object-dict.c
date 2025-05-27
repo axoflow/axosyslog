@@ -422,12 +422,12 @@ _table_resize_index(FilterXDictTable *target, FilterXDictTable *source)
   /* iterate over all entries */
   for (FilterXDictEntrySlot entry_slot = 0; entry_slot < max; entry_slot++, ep++)
     {
+      if (!ep->key)
+        continue;
+
       guint32 hash = filterx_string_hash(ep->key);
       FilterXDictIndexSlot slot = hash & mask;
       FilterXDictIndexSlot perturb = hash;
-
-      if (!ep->key)
-        continue;
 
       /* find index slot */
       while (_table_get_index_entry(target, slot) >= 0)
