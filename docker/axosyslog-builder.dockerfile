@@ -23,8 +23,15 @@
 
 ARG ALPINE_VERSION=3.21
 
+# json-c is required (as we enable threading mode, which is not enabled by
+# the Alpine package)
+# the rest will just improve perf output (due to -fno-omit-frame-pointer
+# compilation)
+ARG REBUILD_DEPS="main/musl main/jemalloc main/json-c main/glib community/grpc main/python3"
+
 FROM alpine:$ALPINE_VERSION
 ARG ALPINE_VERSION
+ARG REBUILD_DEPS
 
 RUN apk add --update-cache \
       alpine-conf \
@@ -49,36 +56,18 @@ ADD --chown=builder:builder apkbuild .
 
 ENV CFLAGS=-fno-omit-frame-pointer
 ENV CXXFLAGS=-fno-omit-frame-pointer
+ENV REBUILD_DEPS=$REBUILD_DEPS
 
+# ENABLE_THREADING needs to be enabled for json-c as we will be crashing
+# otherwise
 RUN \
-    cd aports/main/musl && \
-    sed -i -e '/^pkgrel/s,[0-9]*$,999,' APKBUILD && \
-    abuild -r
-
-RUN \
-    cd aports/main/jemalloc && \
-    sed -i -e '/^pkgrel/s,[0-9]*$,999,' APKBUILD && \
-    abuild -r
-
-RUN \
-    cd aports/main/json-c && \
-    sed -i -e '/^pkgrel/s,[0-9]*$,999,' -e '/\$CMAKE_CROSSOPTS/s,$, -DENABLE_THREADING=ON,' APKBUILD && \
-    abuild -r
-
-RUN \
-    cd aports/main/glib && \
-    sed -i -e '/^pkgrel/s,[0-9]*$,999,' APKBUILD  && \
-    abuild -r
-
-RUN \
-    cd aports/community/grpc && \
-    sed -i -e '/^pkgrel/s,[0-9]*$,999,' APKBUILD  && \
-    abuild -r
-
-RUN \
-    cd aports/main/python3 && \
-    sed -i -e '/^pkgrel/s,[0-9]*$,999,' APKBUILD  && \
-    abuild -r
+    sed -i -e '/\$CMAKE_CROSSOPTS/s,$, -DENABLE_THREADING=ON,' aports/main/json-c/APKBUILD && \
+    echo $REBUILD_DEPS && \
+    for pkg in $REBUILD_DEPS; do \
+	(cd aports/$pkg && \
+        sed -i -e '/^pkgrel/s,[0-9]*$,999,' APKBUILD && \
+        abuild -r); \
+    done
 
 RUN \
     cd axoflow/axosyslog \
