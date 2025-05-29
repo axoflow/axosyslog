@@ -62,10 +62,10 @@ public:
     this->data = log_template_ref(d);
   }
 
-  void set_protovar(LogTemplate *d)
+  void set_protovar(LogTemplate *p)
   {
-    log_template_unref(this->data);
-    this->protovar = log_template_ref(d);
+    log_template_unref(this->protovar);
+    this->protovar = log_template_ref(p);
   }
 
   void add_attribute(const std::string &name, LogTemplate *value)
