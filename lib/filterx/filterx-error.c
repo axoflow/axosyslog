@@ -93,8 +93,29 @@ filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr 
 }
 
 void
+filterx_falsy_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
+{
+  error->message = message;
+  error->expr = expr;
+  error->object = filterx_object_ref(object);
+  error->falsy = TRUE;
+}
+
+void
 filterx_error_set_info(FilterXError *error, gchar *info, gboolean free_info)
 {
   error->info = info;
   error->free_info = free_info;
+}
+
+void
+filterx_error_copy(FilterXError *src, FilterXError *dst)
+{
+  g_assert(!dst->message);
+
+  dst->message = src->message;
+  dst->expr = src->expr;
+  dst->object = filterx_object_ref(src->object);
+  dst->info = g_strdup(src->info);
+  dst->free_info = TRUE;
 }
