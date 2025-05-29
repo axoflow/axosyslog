@@ -111,8 +111,8 @@ filterx_boolean_new(gboolean value)
 static inline FilterXObject *
 filterx_integer_new(gint64 value)
 {
-  if (value >= -1 && value < FILTERX_INTEGER_CACHE_LIMIT - 1)
-    return filterx_object_ref(global_cache.integer_cache[value + 1]);
+  if (value >= -FILTERX_INTEGER_CACHE_OFFSET && value < FILTERX_INTEGER_CACHE_LIMIT - FILTERX_INTEGER_CACHE_OFFSET)
+    return filterx_object_ref(global_cache.integer_cache[value + FILTERX_INTEGER_CACHE_OFFSET]);
   return _filterx_integer_new(value);
 }
 
