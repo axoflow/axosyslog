@@ -21,6 +21,8 @@
 #
 #############################################################################
 
+# must be in sync with axosyslog-builder
+ARG ALPINE_VERSION=3.21
 ARG DEBUG=false
 
 FROM ghcr.io/axoflow/axosyslog-builder:latest AS apkbuilder
@@ -51,7 +53,7 @@ RUN mkdir packages || true \
     && abuild -r
 
 
-FROM alpine:3.21
+FROM alpine:$ALPINE_VERSION
 
 ARG DEBUG
 

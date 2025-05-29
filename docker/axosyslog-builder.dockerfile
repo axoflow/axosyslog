@@ -21,7 +21,10 @@
 #
 #############################################################################
 
-FROM alpine:3.21
+ARG ALPINE_VERSION=3.21
+
+FROM alpine:$ALPINE_VERSION
+ARG ALPINE_VERSION
 
 RUN apk add --update-cache \
       alpine-conf \
@@ -39,7 +42,7 @@ WORKDIR /home/builder
 
 RUN mkdir packages || true \
     && USER=builder abuild-keygen -n -a -i \
-    && git clone --depth 1 --branch 3.21-stable git://git.alpinelinux.org/aports
+    && git clone --depth 1 --branch "$ALPINE_VERSION-stable" git://git.alpinelinux.org/aports
 
 
 ADD --chown=builder:builder apkbuild .
