@@ -27,7 +27,8 @@
 #include "filterx/expr-function.h"
 
 #define FILTERX_BOOL_CACHE_LIMIT 2
-#define FILTERX_INTEGER_CACHE_LIMIT 100
+#define FILTERX_INTEGER_CACHE_LIMIT 256
+#define FILTERX_INTEGER_CACHE_OFFSET 128
 #define FILTERX_DATETIME_CACHE_LIMIT 1
 
 /* cache indices */

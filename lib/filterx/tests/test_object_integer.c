@@ -47,6 +47,39 @@ Test(filterx_integer, test_filterx_primitive_int_is_mapped_to_a_json_int)
   filterx_object_unref(fobj);
 }
 
+Test(filterx_integer, test_filterx_primitive_small_int_is_cached)
+{
+  FilterXObject *fobj = filterx_integer_new(127);
+  FilterXObject *fobj2 = filterx_integer_new(127);
+  assert_object_json_equals(fobj, "127");
+  assert_object_json_equals(fobj2, "127");
+  cr_assert(fobj == fobj2);
+  filterx_object_unref(fobj);
+  filterx_object_unref(fobj2);
+}
+
+Test(filterx_integer, test_filterx_primitive_small_negative_int_is_cached)
+{
+  FilterXObject *fobj = filterx_integer_new(-128);
+  FilterXObject *fobj2 = filterx_integer_new(-128);
+  assert_object_json_equals(fobj, "-128");
+  assert_object_json_equals(fobj2, "-128");
+  cr_assert(fobj == fobj2);
+  filterx_object_unref(fobj);
+  filterx_object_unref(fobj2);
+}
+
+Test(filterx_integer, test_filterx_primitive_larger_int_is_not_cached)
+{
+  FilterXObject *fobj = filterx_integer_new(128);
+  FilterXObject *fobj2 = filterx_integer_new(128);
+  assert_object_json_equals(fobj, "128");
+  assert_object_json_equals(fobj2, "128");
+  cr_assert(fobj != fobj2);
+  filterx_object_unref(fobj);
+  filterx_object_unref(fobj2);
+}
+
 Test(filterx_integer, test_filterx_primitive_int_is_truthy_if_nonzero)
 {
   FilterXObject *fobj = filterx_integer_new(36);
