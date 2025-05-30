@@ -115,7 +115,7 @@ filterx_object_new(FilterXType *type)
 }
 
 static void
-_filterx_object_preserve(FilterXObject **pself, guint32 new_ref)
+_filterx_object_preserve(FilterXObject **pself, FilterXObjectRefcountRange ref_type)
 {
   FilterXObject *self = *pself;
 
@@ -142,7 +142,7 @@ _filterx_object_preserve(FilterXObject **pself, guint32 new_ref)
     {
       /* no change in the object, so we are freezing self */
       filterx_object_make_readonly(self);
-      g_atomic_counter_set(&self->ref_cnt, new_ref);
+      g_atomic_counter_set(&self->ref_cnt, ref_type);
       return;
     }
 
