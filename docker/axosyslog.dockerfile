@@ -53,20 +53,7 @@ RUN mkdir packages || true \
     && abuild -r
 
 
-FROM alpine:$ALPINE_VERSION
-
-ARG DEBUG
-
-# https://github.com/opencontainers/image-spec/blob/main/annotations.md
-LABEL maintainer="axoflow.io"
-LABEL org.opencontainers.image.title="AxoSyslog"
-LABEL org.opencontainers.image.description="The scalable security data processor by Axoflow"
-LABEL org.opencontainers.image.authors="Axoflow"
-LABEL org.opencontainers.image.vendor="Axoflow"
-LABEL org.opencontainers.image.licenses="GPL-3.0-only"
-LABEL org.opencontainers.image.source="https://github.com/axoflow/axosyslog"
-LABEL org.opencontainers.image.documentation="https://axoflow.com/docs/axosyslog/docs/"
-LABEL org.opencontainers.image.url="https://axoflow.io/"
+FROM alpine:$ALPINE_VERSION AS prod
 
 RUN cp /etc/apk/repositories /etc/apk/repositories.bak
 
@@ -115,6 +102,22 @@ RUN apk upgrade  --no-cache --available && \
     axosyslog-xml && \
     rm -rf /tmp/packages && \
     mv /etc/apk/repositories.bak /etc/apk/repositories
+
+# flatten out prod image
+FROM scratch
+COPY --from=prod / /
+
+# https://github.com/opencontainers/image-spec/blob/main/annotations.md
+LABEL maintainer="axoflow.io"
+LABEL org.opencontainers.image.title="AxoSyslog"
+LABEL org.opencontainers.image.description="The scalable security data processor by Axoflow"
+LABEL org.opencontainers.image.authors="Axoflow"
+LABEL org.opencontainers.image.vendor="Axoflow"
+LABEL org.opencontainers.image.licenses="GPL-3.0-only"
+LABEL org.opencontainers.image.source="https://github.com/axoflow/axosyslog"
+LABEL org.opencontainers.image.documentation="https://axoflow.com/docs/axosyslog/docs/"
+LABEL org.opencontainers.image.url="https://axoflow.io/"
+
 
 EXPOSE 514/udp
 EXPOSE 601/tcp
