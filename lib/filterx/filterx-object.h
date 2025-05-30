@@ -118,7 +118,7 @@ filterx_type_is_cowable(FilterXType *type)
  *
  *    The ref_cnt is always equal to FILTERX_OBJECT_REFCOUNT_STACK
  *
- * 3) hybernated objects
+ * 3) hibernated objects
  *
  *    Hybernated objects are preserved for the entire lifecycle of a
  *    filterx-based configuration.  They are allocated at startup or when
@@ -131,9 +131,9 @@ filterx_type_is_cowable(FilterXType *type)
  *    these objects can be replace the unfrozen version of the same object by
  *    filterx_object_freeze() (e.g. when they represent the same string).
  *
- *    The ref_cnt will always be: FILTERX_OBJECT_REFCOUNT_HYBERNATED
+ *    The ref_cnt will always be: FILTERX_OBJECT_REFCOUNT_HIBERNATED
  *
- *    NOTE: hybernated objects are considered "preserved"
+ *    NOTE: hibernated objects are considered "preserved"
  *
  * 4) frozen objects
  *
@@ -165,13 +165,13 @@ enum
   FILTERX_OBJECT_REFCOUNT_BARRIER_MAX=FILTERX_OBJECT_REFCOUNT_BARRIER + 1023,
   /* stack based allocation */
   FILTERX_OBJECT_REFCOUNT_STACK,
-  /* anything above this point is preserved: either hybernated or frozen */
+  /* anything above this point is preserved: either hibernated or frozen */
   FILTERX_OBJECT_REFCOUNT_PRESERVED,
 
-  /* hybernated object (considered preserved) */
-  FILTERX_OBJECT_REFCOUNT_HYBERNATED=FILTERX_OBJECT_REFCOUNT_PRESERVED,
+  /* hibernated object (considered preserved) */
+  FILTERX_OBJECT_REFCOUNT_HIBERNATED=FILTERX_OBJECT_REFCOUNT_PRESERVED,
 
-  /* hybernated object (considered preserved) */
+  /* hibernated object (considered preserved) */
   FILTERX_OBJECT_REFCOUNT_FROZEN,
 };
 
@@ -237,8 +237,8 @@ gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_na
 FilterXObject *filterx_object_new(FilterXType *type);
 void filterx_object_freeze(FilterXObject **pself);
 void filterx_object_unfreeze_and_free(FilterXObject *self);
-void filterx_object_hybernate(FilterXObject **pself);
-void filterx_object_unhybernate_and_free(FilterXObject *self);
+void filterx_object_hibernate(FilterXObject **pself);
+void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
 

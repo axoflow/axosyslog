@@ -135,7 +135,7 @@ _filterx_object_preserve(FilterXObject **pself, guint32 new_ref)
   if (self->type->freeze)
     self->type->freeze(pself);
 
-  /* NOTE: type->freeze may change self to replace with a frozen/hybernated
+  /* NOTE: type->freeze may change self to replace with a frozen/hibernated
    * version */
 
   if (self == *pself)
@@ -149,7 +149,7 @@ _filterx_object_preserve(FilterXObject **pself, guint32 new_ref)
   self = *pself;
   if (g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_FROZEN)
     {
-      /* we get replaced by another frozen (but not hybernated) object */
+      /* we get replaced by another frozen (but not hibernated) object */
       g_atomic_counter_inc(&self->ref_cnt);
     }
 }
@@ -175,7 +175,7 @@ filterx_object_freeze(FilterXObject **pself)
   FilterXObject *self = *pself;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_HYBERNATED)
+  if (r == FILTERX_OBJECT_REFCOUNT_HIBERNATED)
     return;
 
   if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
@@ -192,7 +192,7 @@ filterx_object_unfreeze_and_free(FilterXObject *self)
   if (!self)
     return;
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_HYBERNATED)
+  if (r == FILTERX_OBJECT_REFCOUNT_HIBERNATED)
     return;
 
   g_assert(r >= FILTERX_OBJECT_REFCOUNT_FROZEN);
@@ -205,23 +205,23 @@ filterx_object_unfreeze_and_free(FilterXObject *self)
 }
 
 void
-filterx_object_hybernate(FilterXObject **pself)
+filterx_object_hibernate(FilterXObject **pself)
 {
   FilterXObject *self = *pself;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
   g_assert(r < FILTERX_OBJECT_REFCOUNT_BARRIER);
 
-  _filterx_object_preserve(pself, FILTERX_OBJECT_REFCOUNT_HYBERNATED);
+  _filterx_object_preserve(pself, FILTERX_OBJECT_REFCOUNT_HIBERNATED);
 }
 
 void
-filterx_object_unhybernate_and_free(FilterXObject *self)
+filterx_object_unhibernate_and_free(FilterXObject *self)
 {
   if (!self)
     return;
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  g_assert(r == FILTERX_OBJECT_REFCOUNT_HYBERNATED);
+  g_assert(r == FILTERX_OBJECT_REFCOUNT_HIBERNATED);
 
   _filterx_object_thaw(self);
   filterx_object_unref(self);
