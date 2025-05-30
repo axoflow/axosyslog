@@ -247,7 +247,7 @@ void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject
 static inline gboolean
 filterx_object_is_preserved(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_HYBERNATED;
+  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
 static inline FilterXObject *
