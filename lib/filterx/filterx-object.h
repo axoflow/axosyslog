@@ -156,7 +156,7 @@ filterx_type_is_cowable(FilterXType *type)
  *
  *    NOTE: frozen objects are considered "preserved"
  */
-enum
+typedef enum _FilterXObjectRefcountRange
 {
   FILTERX_OBJECT_REFCOUNT_BARRIER=G_MAXINT32/2,
 
@@ -173,7 +173,7 @@ enum
 
   /* hibernated object (considered preserved) */
   FILTERX_OBJECT_REFCOUNT_FROZEN,
-};
+} FilterXObjectRefcountRange;
 
 struct _FilterXObject
 {
