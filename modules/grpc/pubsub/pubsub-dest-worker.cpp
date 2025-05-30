@@ -105,14 +105,14 @@ DestWorker::handle_data_attributes(LogMessage *msg, ::google::pubsub::v1::Pubsub
 
   buf_slice = this->format_template(owner_->data, msg, buf, NULL, this->super->super.seq_num);
   message->set_data(buf_slice.str, buf_slice.len);
-  message_bytes += buf_slice.len;
+  *message_bytes += buf_slice.len;
 
   auto attributes = message->mutable_attributes();
   for (const auto &attribute : owner_->attributes)
     {
       buf_slice = this->format_template(attribute.value, msg, buf, NULL, this->super->super.seq_num);
       attributes->insert({attribute.name, buf_slice.str});
-      message_bytes += buf_slice.len;
+      *message_bytes += buf_slice.len;
     }
 
   scratch_buffers_reclaim_marked(m);
@@ -142,14 +142,14 @@ DestWorker::handle_protovar(LogMessage *msg, ::google::pubsub::v1::PubsubMessage
       return false;
     }
 
-  message_bytes += message->data().length();
+  *message_bytes += message->data().length();
 
   for (const auto &pair : message->attributes())
     {
       const std::string &key = pair.first;
       const std::string &value = pair.second;
 
-      message_bytes += key.length() + value.length();
+      *message_bytes += key.length() + value.length();
     }
   return true;
 }
