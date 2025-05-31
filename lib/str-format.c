@@ -146,118 +146,15 @@ format_int64_padded(GString *result, gint field_len, gchar pad_char, gint base, 
 /* format 32 bit ints */
 
 gint
-format_uint32_base10_rev(gchar *result, gsize result_len, gint sign, guint32 value)
-{
-  gchar *p;
-  gboolean negative = 0;
-  gboolean first = TRUE;
-
-  if (sign && ((gint32) value) < 0)
-    {
-      value = -((gint32) value);
-      negative = 1;
-    }
-
-  p = result;
-  while (first || (result_len > 0 && value > 0))
-    {
-      *p = digits[value % 10];
-      value /= 10;
-      p++;
-      result_len--;
-      first = FALSE;
-    }
-  if (negative && result_len > 0)
-    {
-      *p = '-';
-      p++;
-    }
-  return p - result;
-}
-
-static inline gint
-format_uint32_base16_rev(gchar *result, gsize result_len, guint32 value)
-{
-  gchar *p;
-  gboolean first = TRUE;
-
-  p = result;
-  while (first || (result_len > 0 && value > 0))
-    {
-      *p = digits[value & 0x0F];
-      value >>= 4;
-      p++;
-      result_len--;
-      first = FALSE;
-    }
-  return p - result;
-}
-
-static inline gint
-format_uint32_base8_rev(gchar *result, gsize result_len, guint32 value)
-{
-  gchar *p;
-  gboolean first = TRUE;
-
-  p = result;
-  while (first || (result_len > 0 && value > 0))
-    {
-      *p = digits[value & 0x07];
-      value >>= 3;
-      p++;
-      result_len--;
-      first = FALSE;
-    }
-  return p - result;
-}
-
-static gint
-format_padded_int32(GString *result, gint field_len, gchar pad_char, gint sign, gint base, guint32 value)
-{
-  gchar num[32];
-  gint len, i, pos;
-
-  if (base == 10)
-    len = format_uint32_base10_rev(num, sizeof(num), sign, value);
-  else if (base == 16)
-    len = format_uint32_base16_rev(num, sizeof(num), value);
-  else if (base == 8)
-    len = format_uint32_base8_rev(num, sizeof(num), value);
-  else
-    g_assert_not_reached();
-
-  if (field_len == 0 || field_len < len)
-    field_len = len;
-
-  pos = result->len;
-  if (G_UNLIKELY(result->allocated_len < pos + field_len + 1))
-    {
-      g_string_set_size(result, pos + field_len);
-    }
-  else
-    {
-      result->len += field_len;
-      result->str[pos + field_len] = 0;
-    }
-
-  memset(result->str + pos, pad_char, field_len - len);
-  for (i = 0; i < len; i++)
-    {
-      result->str[pos + field_len - i - 1] = num[i];
-    }
-  return field_len;
-}
-
-gint
 format_uint32_padded(GString *result, gint field_len, gchar pad_char, gint base, guint32 value)
 {
-  return format_padded_int32(result, field_len, pad_char, 0, base, value);
+  return format_padded_int64(result, field_len, pad_char, 0, base, (guint64) value);
 }
 
 gint
 format_int32_padded(GString *result, gint field_len, gchar pad_char, gint base, gint32 value)
 {
-  return format_padded_int32(result, field_len, pad_char, 1, base, value);
+  return format_padded_int64(result, field_len, pad_char, 1, base, (gint64) value);
 }
 
 gchar *
