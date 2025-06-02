@@ -118,12 +118,21 @@ filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *inf
     g_free(info);
 }
 
+static void
+_clear_errors(FilterXEvalContext *context)
+{
+  filterx_error_clear(&context->error);
+}
+
 void
 filterx_eval_clear_errors(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  filterx_error_clear(&context->error);
+  if (!context)
+    return;
+
+  _clear_errors(context);
 }
 
 const gchar *
@@ -206,7 +215,7 @@ exit:
   if (result == FXE_FAILURE)
     _fill_failure_info(context, expr, res);
 
-  filterx_error_clear(&context->error);
+  _clear_errors(context);
   filterx_object_unref(res);
   filterx_scope_set_dirty(context->scope);
   return result;
