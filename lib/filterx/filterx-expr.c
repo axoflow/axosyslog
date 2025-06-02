@@ -311,7 +311,10 @@ filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
     return FALSE;
 
   if (!filterx_expr_init(self->rhs, cfg))
-    return FALSE;
+    {
+      filterx_expr_deinit(self->lhs, cfg);
+      return FALSE;
+    }
 
   return filterx_expr_init_method(s, cfg);
 }
