@@ -24,6 +24,7 @@
 #include "filterx/filterx-grammar.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
+#include "filterx/filterx-eval.h"
 #include "generic-number.h"
 #include "str-format.h"
 #include "plugin.h"
@@ -339,9 +340,8 @@ filterx_typecast_integer(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   if (filterx_object_extract_datetime(object, &ut))
     return filterx_integer_new(ut.ut_sec * USEC_PER_SEC + ut.ut_usec);
 
-  msg_error("filterx: invalid typecast",
-            evt_tag_str("from", object->type->name),
-            evt_tag_str("to", "integer"));
+  filterx_eval_push_error_info("Failed to typecast", s,
+                               g_strdup_printf("from_type: %s, to_type: integer", object->type->name), TRUE);
   return NULL;
 }
 
@@ -375,9 +375,8 @@ filterx_typecast_double(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   if (filterx_object_extract_datetime(object, &ut))
     return filterx_double_new(ut.ut_sec + (gdouble) ut.ut_usec / USEC_PER_SEC);
 
-  msg_error("filterx: invalid typecast",
-            evt_tag_str("from", object->type->name),
-            evt_tag_str("to", "double"));
+  filterx_eval_push_error_info("Failed to typecast", s,
+                               g_strdup_printf("from_type: %s, to_type: double", object->type->name), TRUE);
   return NULL;
 }
 
