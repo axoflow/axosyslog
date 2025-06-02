@@ -195,20 +195,36 @@ filterx_eval_get_last_error(void)
   return filterx_error_format(&context->errors[context->error_count - 1]);
 }
 
-EVTTAG *
-filterx_eval_format_last_error_tag(void)
+gint
+filterx_eval_get_error_count(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  return filterx_error_format_tag(&context->errors[context->error_count - 1]);
+  return context ? context->error_count : 0;
 }
 
 EVTTAG *
-filterx_eval_format_last_error_location_tag(void)
+filterx_eval_format_error_tag(gint index)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  return filterx_error_format_location_tag(&context->errors[context->error_count - 1]);
+  g_assert(context);
+  g_assert(context->error_count);
+  g_assert(index < context->error_count);
+
+  return filterx_error_format_tag(&context->errors[index]);
+}
+
+EVTTAG *
+filterx_eval_format_error_location_tag(gint index)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  g_assert(context);
+  g_assert(context->error_count);
+  g_assert(index < context->error_count);
+
+  return filterx_error_format_location_tag(&context->errors[index]);
 }
 
 static inline FilterXFailureInfo *
@@ -258,9 +274,20 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
   FilterXObject *res = filterx_expr_eval(expr);
   if (!res)
     {
-      msg_debug("FILTERX ERROR",
-                filterx_eval_format_last_error_location_tag(),
-                filterx_eval_format_last_error_tag());
+      if (debug_flag)
+        {
+          gint error_count = context->error_count;
+          gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
+
+          for (gint err_idx = 0; err_idx < error_count; err_idx++)
+            {
+              msg_debug("FILTERX ERROR",
+                        filterx_eval_format_error_index_tag(err_idx, buf),
+                        filterx_eval_format_error_location_tag(err_idx),
+                        filterx_eval_format_error_tag(err_idx));
+            }
+        }
+
       goto exit;
     }
 
@@ -394,6 +421,17 @@ GArray *
 filterx_eval_get_failure_info(FilterXEvalContext *context)
 {
   return context->failure_info;
+}
+
+EVTTAG *
+filterx_eval_format_error_index_tag(gint index, gchar *buf)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  g_assert(context);
+
+  g_snprintf(buf, FILTERX_EVAL_ERROR_IDX_FMT_SIZE, "[%d/%d]", index + 1, context->error_count);
+  return evt_tag_str("err_idx", buf);
 }
 
 EVTTAG *
