@@ -28,6 +28,7 @@
 #include "filterx/filterx-object.h"
 #include "template/eval.h"
 
+#define FILTERX_CONTEXT_ERROR_STACK_SIZE (8)
 
 typedef enum _FilterXEvalResult
 {
@@ -60,7 +61,8 @@ struct _FilterXEvalContext
 {
   LogMessage *msg;
   FilterXScope *scope;
-  FilterXError error;
+  FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
+  gint error_count;
   FilterXObject *current_frame_meta;
   LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
