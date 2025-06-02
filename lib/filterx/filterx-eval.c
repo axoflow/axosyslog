@@ -57,28 +57,48 @@ filterx_eval_set_context(FilterXEvalContext *context)
   eval_context = context;
 }
 
+static FilterXError *
+_init_local_or_context_error(FilterXEvalContext *context, FilterXError *local_error)
+{
+  if (context)
+    {
+      filterx_error_clear(&context->error);
+      return &context->error;
+    }
+
+  *local_error = { 0 };
+  return local_error;
+}
+
+static void
+_log_to_stderr_if_needed(FilterXEvalContext *context, FilterXError *error)
+{
+  if (!context)
+    msg_error("FILTERX ERROR", filterx_error_format_location_tag(error), filterx_error_format_tag(error));
+}
+
 void
 filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXError local_error;
+  FilterXError *error = _init_local_or_context_error(context, &local_error);
 
-  if (context)
-    {
-      filterx_error_clear(&context->error);
-      filterx_error_set_values(&context->error, message, expr, object);
-    }
+  filterx_error_set_values(error, message, expr, object);
+
+  _log_to_stderr_if_needed(context, error);
 }
 
 void
 filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXError local_error;
+  FilterXError *error = _init_local_or_context_error(context, &local_error);
 
-  if (!context)
-    return;
+  filterx_falsy_error_set_values(error, message, expr, object);
 
-  filterx_error_clear(&context->error);
-  filterx_falsy_error_set_values(&context->error, message, expr, object);
+  _log_to_stderr_if_needed(context, error);
 }
 
 /* takes ownership of info */
@@ -86,18 +106,16 @@ void
 filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXError local_error;
+  FilterXError *error = _init_local_or_context_error(context, &local_error);
 
-  if (context)
-    {
-      filterx_error_clear(&context->error);
-      filterx_error_set_values(&context->error, message, expr, NULL);
-      filterx_error_set_info(&context->error, info, free_info);
-    }
-  else
-    {
-      if (free_info)
-        g_free(info);
-    }
+  filterx_error_set_values(error, message, expr, NULL);
+  filterx_error_set_info(error, info, free_info);
+
+  _log_to_stderr_if_needed(context, error);
+
+  if (!context && free_info)
+    g_free(info);
 }
 
 void
