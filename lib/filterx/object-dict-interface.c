@@ -24,6 +24,7 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-eval.h"
 #include "str-utils.h"
 #include "utf8utils.h"
 
@@ -105,7 +106,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      msg_error("FilterX: Failed to get element of dict, key is mandatory");
+      filterx_eval_push_error_info("Failed to get element of dict", NULL, "Key is mandatory", FALSE);
       return NULL;
     }
 
@@ -119,7 +120,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 
   if (!key)
     {
-      msg_error("FilterX: Failed to set element of dict, key is mandatory");
+      filterx_eval_push_error_info("Failed to set element of dict", NULL, "Key is mandatory", FALSE);
       return FALSE;
     }
 
@@ -133,7 +134,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      msg_error("FilterX: Failed to check key of dict, key is mandatory");
+      filterx_eval_push_error_info("Failed to check key of dict", NULL, "Key is mandatory", FALSE);
       return FALSE;
     }
 
@@ -152,7 +153,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      msg_error("FilterX: Failed to unset element of dict, key is mandatory");
+      filterx_eval_push_error_info("Failed to unset element of dict", NULL, "Key is mandatory", FALSE);
       return FALSE;
     }
 

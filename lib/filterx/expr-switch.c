@@ -26,6 +26,7 @@
 #include "expr-literal.h"
 #include "object-string.h"
 #include "object-primitive.h"
+#include "filterx-eval.h"
 
 typedef struct _FilterXSwitch FilterXSwitch;
 typedef struct _FilterXSwitchCase FilterXSwitchCase;
@@ -234,9 +235,8 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 
   if (self->_caching_error_msg)
     {
-      msg_error("Error during switch-case initialization",
-                evt_tag_str("error", self->_caching_error_msg->str),
-                filterx_expr_format_location_tag(s));
+      filterx_eval_push_error_info("Failed to initialize switch-case", s,
+                                   g_strdup(self->_caching_error_msg->str), TRUE);
       return FALSE;
     }
 

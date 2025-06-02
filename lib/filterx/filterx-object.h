@@ -521,13 +521,14 @@ filterx_object_create_dict(FilterXObject *self)
   return self->type->dict_factory(self);
 }
 
+void _filterx_object_log_add_object_error(FilterXObject *self);
+
 static inline FilterXObject *
 filterx_object_add_object(FilterXObject *self, FilterXObject *object)
 {
   if (!self->type->add)
     {
-      msg_error("FilterX: The add method is not supported for the given type",
-                evt_tag_str("type", self->type->name));
+      _filterx_object_log_add_object_error(self);
       return NULL;
     }
 
