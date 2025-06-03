@@ -151,8 +151,9 @@ filterx_regexp_match_eval(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXR
 
   if (!filterx_object_extract_string_ref(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
     {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       gchar *info = g_strdup_printf("Left hand side must be string type, got: %s",
-                                    state->lhs_obj->type->name);
+                                    filterx_object_format_type_name(state->lhs_obj, type_name_buf));
       filterx_eval_push_error_info("Failed to match regexp", NULL, info, TRUE);
       goto error;
     }

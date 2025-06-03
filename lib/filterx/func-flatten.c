@@ -201,8 +201,10 @@ _eval_fx_flatten(FilterXExpr *s)
   FilterXObject *dict = filterx_ref_unwrap_rw(obj);
   if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
-      filterx_eval_push_error_info("object must be a dict", self->dict_expr,
-                                   g_strdup_printf("got %s instead", dict->type->name), TRUE);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Object must be a dict, got: %s",
+                                    filterx_object_format_type_name(obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to flatten object", self->dict_expr, info, TRUE);
       goto exit;
     }
 

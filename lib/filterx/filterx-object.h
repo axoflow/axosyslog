@@ -572,6 +572,18 @@ filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
   return _filterx_object_is_type(object, type);
 }
 
+#define FILTERX_OBJECT_TYPE_NAME_BUF_SIZE (64)
+
+static inline const gchar *
+filterx_object_format_type_name(FilterXObject *self, gchar *buf)
+{
+  if (!filterx_object_is_ref(self))
+    return self->type->name;
+
+  g_snprintf(buf, FILTERX_OBJECT_TYPE_NAME_BUF_SIZE, "ref/%s", filterx_ref_unwrap_ro(self)->type->name);
+  return buf;
+}
+
 /*
  * Initialize copy-on-write on the specific object.  This function is
  * idempotent and can potentially be called multiple times, subsequent calls

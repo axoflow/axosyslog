@@ -244,8 +244,10 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
   const gchar *pattern = filterx_string_get_value_ref(pattern_obj, &pattern_len);
   if (!pattern)
     {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       gchar *info = g_strdup_printf("Pattern argument must be a literal string, got: %s. "
-                                    FILTERX_FUNC_REGEXP_SEARCH_USAGE, pattern_obj->type->name);
+                                    FILTERX_FUNC_REGEXP_SEARCH_USAGE,
+                                    filterx_object_format_type_name(pattern_obj, type_name_buf));
       filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super, info, TRUE);
       goto error;
     }

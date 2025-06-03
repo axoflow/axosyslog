@@ -54,16 +54,9 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
     {
       ScratchBuffersMarker mark;
       GString *buf = scratch_buffers_alloc_and_mark(&mark);
-      GString *type_buffer = scratch_buffers_alloc();
 
-      if (filterx_object_is_ref(res))
-        {
-          FilterXRef *ref = (FilterXRef *) res;
-          g_string_append(type_buffer, "ref/");
-          g_string_append(type_buffer, ref->value->type->name);
-        }
-      else
-        g_string_append(type_buffer, res->type->name);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      const gchar *type_name = filterx_object_format_type_name(res, type_name_buf);
 
       if (!filterx_object_repr(res, buf))
         {
@@ -76,13 +69,13 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
         msg_debug("FILTERX FALSY",
                   filterx_expr_format_location_tag(expr),
                   evt_tag_mem("value", buf->str, buf->len),
-                  evt_tag_str("type", type_buffer->str));
+                  evt_tag_str("type", type_name));
       else
         msg_trace("FILTERX ESTEP",
                   filterx_expr_format_location_tag(expr),
                   evt_tag_mem("value", buf->str, buf->len),
                   evt_tag_int("truthy", filterx_object_truthy(res)),
-                  evt_tag_str("type", type_buffer->str));
+                  evt_tag_str("type", type_name));
       scratch_buffers_reclaim_marked(mark);
     }
   return success;
