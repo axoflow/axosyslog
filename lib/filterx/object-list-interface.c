@@ -134,7 +134,9 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      gchar *info = g_strdup_printf("Index must be integer, got: %s", key->type->name);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Index must be integer, got: %s",
+                                    filterx_object_format_type_name(key, type_name_buf));
       filterx_eval_push_error_info("Failed to get element from list", NULL, info, TRUE);
       return NULL;
     }
@@ -163,8 +165,10 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      filterx_eval_push_error_info("Failed to set element of list", NULL,
-                                   g_strdup_printf("Index must be integer, got: %s", key->type->name), TRUE);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Index must be integer, got: %s",
+                                    filterx_object_format_type_name(key, type_name_buf));
+      filterx_eval_push_error_info("Failed to set element of list", NULL, info, TRUE);
       return FALSE;
     }
 
@@ -195,8 +199,10 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      filterx_eval_push_error_info("Failed to check index of list", NULL,
-                                   g_strdup_printf("Index must be integer, got: %s", key->type->name), TRUE);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Index must be integer, got: %s",
+                                    filterx_object_format_type_name(key, type_name_buf));
+      filterx_eval_push_error_info("Failed to check index of list", NULL, info, TRUE);
       return FALSE;
     }
 
@@ -219,8 +225,10 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      filterx_eval_push_error_info("Failed to unset element of list", NULL,
-                                   g_strdup_printf("Index must be integer, got: %s", key->type->name), TRUE);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Index must be integer, got: %s",
+                                    filterx_object_format_type_name(key, type_name_buf));
+      filterx_eval_push_error_info("Failed to unset element of list", NULL, info, TRUE);
       return FALSE;
     }
 
