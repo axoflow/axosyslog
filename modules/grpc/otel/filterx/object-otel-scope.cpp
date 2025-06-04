@@ -26,6 +26,7 @@
 #include "compat/cpp-start.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
+#include "filterx/filterx-eval.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/util/json_util.h>
@@ -305,7 +306,7 @@ filterx_otel_scope_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
     }
   catch (const std::runtime_error &e)
     {
-      msg_error("FilterX: Failed to create OTel Scope object", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Failed to create OTel Scope object", NULL, g_strdup(e.what()), TRUE);
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -337,7 +338,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      msg_error("FilterX: Failed to repr OTel Scope object", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Failed to call repr() on OTel Scope object", NULL, g_strdup(e.what()), TRUE);
       return FALSE;
     }
 
