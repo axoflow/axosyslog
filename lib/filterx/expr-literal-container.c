@@ -26,6 +26,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "filterx/filterx-eval.h"
 
 /* Object Members (e.g. key-value) */
 
@@ -119,12 +120,16 @@ _literal_container_eval(FilterXExpr *s)
         {
           key = filterx_expr_eval(elem->key);
           if (!key)
-            goto error;
+            {
+              filterx_eval_push_error_info("Failed create literal container", s, "Failed to evaluate key", FALSE);
+              goto error;
+            }
         }
 
       FilterXObject *value = filterx_expr_eval(elem->value);
       if (!value)
         {
+          filterx_eval_push_error_info("Failed create literal container", s, "Failed to evaluate value", FALSE);
           filterx_object_unref(key);
           goto error;
         }
@@ -136,7 +141,10 @@ _literal_container_eval(FilterXExpr *s)
       filterx_object_unref(value);
 
       if (!success)
-        goto error;
+        {
+          filterx_eval_push_error_info("Failed create literal container", s, "Failed to set value in container", FALSE);
+          goto error;
+        }
     }
 
   return result;
