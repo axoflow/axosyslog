@@ -66,7 +66,7 @@ _format_sck_name(FilterXMetrics *self)
   const gchar *name;
   if (!filterx_object_extract_string_ref(key_obj, &name, &len) || len == 0)
     {
-      filterx_eval_push_error("failed to format metrics key: key must be a non-empty string", self->key.expr, key_obj);
+      filterx_eval_push_error("Failed to format metrics key: Key must be a non-empty string", self->key.expr, key_obj);
       goto exit;
     }
 

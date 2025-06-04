@@ -78,7 +78,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
       gsize key_length;
       if (!filterx_object_extract_string_ref(key, &key_string, &key_length))
         {
-          filterx_eval_push_error("failed to call repr() on key", self->dict_expr, key);
+          filterx_eval_push_error("Failed to flatten object: Failed to call repr() on key", self->dict_expr, key);
           return FALSE;
         }
       g_string_append_len(key_buffer, key_string, key_length);
@@ -103,7 +103,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   gsize key_length;
   if (!filterx_object_extract_string_ref(key, &key_string, &key_length))
     {
-      filterx_eval_push_error("failed to call repr() on key", self->dict_expr, key);
+      filterx_eval_push_error("Failed to flatten object: Failed to call repr() on key", self->dict_expr, key);
       return FALSE;
     }
   g_string_append_len(key_buffer, key_string, key_length);
@@ -153,7 +153,7 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
 
       if (!success)
         {
-          filterx_eval_push_error("failed to set dict value", self->dict_expr, kv->key);
+          filterx_eval_push_error("Failed to flatten object: Failed to set dict value", self->dict_expr, kv->key);
           return FALSE;
         }
     }
