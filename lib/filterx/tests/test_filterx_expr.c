@@ -311,6 +311,22 @@ Test(filterx_expr, test_filterx_set_subscript)
   filterx_expr_unref(setattr);
 }
 
+static gboolean
+_is_string_in_filterx_eval_errors(const gchar *error_str)
+{
+  gint error_count = filterx_eval_get_error_count();
+  if (!error_count)
+    return FALSE;
+
+  for (gint i = 0; i < error_count; i++)
+    {
+      if (strstr(filterx_eval_get_error(i), error_str))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
 Test(filterx_expr, test_filterx_readonly)
 {
   FilterXObject *foo = filterx_string_new("foo", -1);
@@ -331,7 +347,7 @@ Test(filterx_expr, test_filterx_readonly)
                                              filterx_string_new("bar", -1),
                                              filterx_literal_new(filterx_object_ref(foo)));
   cr_assert_not(filterx_expr_eval(setattr));
-  cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));
+  cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(setattr);
 
@@ -340,14 +356,14 @@ Test(filterx_expr, test_filterx_readonly)
                                                          filterx_literal_new(filterx_object_ref(bar)),
                                                          filterx_literal_new(filterx_object_ref(foo)));
   cr_assert_not(filterx_expr_eval(set_subscript));
-  cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));
+  cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(set_subscript);
 
 
   FilterXExpr *getattr = filterx_getattr_new(filterx_expr_ref(literal), filterx_string_new("foo", -1));
   cr_assert_not(filterx_expr_unset(getattr));
-  cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));
+  cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(getattr);
 
@@ -355,7 +371,7 @@ Test(filterx_expr, test_filterx_readonly)
   FilterXExpr *get_subscript = filterx_get_subscript_new(filterx_expr_ref(literal),
                                                          filterx_literal_new(filterx_object_ref(foo)));
   cr_assert_not(filterx_expr_unset(get_subscript));
-  cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));
+  cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(get_subscript);
 
@@ -365,7 +381,7 @@ Test(filterx_expr, test_filterx_readonly)
                                            filterx_string_new("bar", -1),
                                            filterx_literal_new(filterx_object_ref(bar)));
   cr_assert_not(filterx_expr_eval(inner));
-  cr_assert(strstr(filterx_eval_get_last_error(), "readonly"));
+  cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(inner);
 

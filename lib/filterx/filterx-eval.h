@@ -83,6 +83,7 @@ void filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar
 void filterx_eval_set_context(FilterXEvalContext *context);
 FilterXEvalResult filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr);
 const gchar *filterx_eval_get_last_error(void);
+const gchar *filterx_eval_get_error(gint index);
 gint filterx_eval_get_error_count(void);
 EVTTAG *filterx_eval_format_error_tag(gint index);
 EVTTAG *filterx_eval_format_error_location_tag(gint index);

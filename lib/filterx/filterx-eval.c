@@ -192,7 +192,19 @@ filterx_eval_get_last_error(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  return filterx_error_format(&context->errors[context->error_count - 1]);
+  return filterx_eval_get_error(context->error_count - 1);
+}
+
+const gchar *
+filterx_eval_get_error(gint index)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  g_assert(context);
+  g_assert(context->error_count);
+  g_assert(index < context->error_count);
+
+  return filterx_error_format(&context->errors[index]);
 }
 
 gint
