@@ -227,8 +227,6 @@ void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
 
-void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
-
 static inline gboolean
 filterx_object_is_readonly(FilterXObject *self)
 {
