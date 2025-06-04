@@ -40,14 +40,18 @@ _eval_getattr(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
 
   if (!variable)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to get-attribute from object", s, "Failed to evaluate expression", FALSE);
+      return NULL;
+    }
 
   FilterXObject *attr = filterx_object_getattr(variable, self->attr);
   if (!attr)
     {
-      filterx_eval_push_error("Attribute lookup failed", s, self->attr);
+      filterx_eval_push_error_info("Failed to get-attribute from object", s, "Failed to evaluate key", FALSE);
       goto exit;
     }
+
 exit:
   filterx_object_unref(variable);
   return attr;
@@ -62,11 +66,14 @@ _unset(FilterXExpr *s)
 
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to unset from object", s, "Failed to evaluate expression", FALSE);
+      return FALSE;
+    }
 
   if (variable->readonly)
     {
-      filterx_eval_push_error("Object unset-attr failed, object is readonly", s, self->attr);
+      filterx_eval_push_error_info("Failed to unset from object", s, "Object is readonly", FALSE);
       goto exit;
     }
 
@@ -83,7 +90,10 @@ _isset(FilterXExpr *s)
   FilterXGetAttr *self = (FilterXGetAttr *) s;
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to check element of object", s, "Failed to evaluate expression", FALSE);
+      return FALSE;
+    }
 
   gboolean result = filterx_object_is_key_set(variable, self->attr);
 

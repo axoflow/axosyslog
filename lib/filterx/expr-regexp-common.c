@@ -147,7 +147,10 @@ filterx_regexp_match_eval(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXR
 {
   state->lhs_obj = filterx_expr_eval(lhs_expr);
   if (!state->lhs_obj)
-    goto error;
+    {
+      filterx_eval_push_error_info("Failed match regexp", NULL, "Failed to evaluate left hand side", FALSE);
+      goto error;
+    }
 
   if (!filterx_object_extract_string_ref(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
     {

@@ -63,7 +63,10 @@ _eval_in(FilterXExpr *s)
   guint64 size;
 
   if (!filterx_object_len(list_obj, &size))
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate 'in' operator", s, "len() method failed", FALSE);
+      return NULL;
+    }
 
   for (guint64 i = 0; i < size; i++)
     {

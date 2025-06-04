@@ -209,6 +209,7 @@ _subst_eval(FilterXExpr *s)
   if (!state.match_data)
     {
       /* Error happened during matching. */
+      filterx_eval_push_error_info("Failed to evaluate regexp_subst()", s, "Error happened during matching", FALSE);
       result = NULL;
       goto exit;
     }

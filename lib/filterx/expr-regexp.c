@@ -27,6 +27,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/expr-function.h"
+#include "filterx/filterx-eval.h"
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
 #include "filterx/expr-regexp-common.h"
@@ -52,6 +53,7 @@ _regexp_match_eval(FilterXExpr *s)
   if (!state.match_data)
     {
       /* Error happened during matching. */
+      filterx_eval_push_error_info("Failed to match regexp", s, "Error happened during matching", FALSE);
       goto exit;
     }
 

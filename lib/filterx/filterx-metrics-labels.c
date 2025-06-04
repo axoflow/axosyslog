@@ -76,6 +76,8 @@ _format_value_expr(FilterXExpr *expr, gchar **formatted_value)
   if (!obj)
     {
       success = FALSE;
+      filterx_eval_push_error_info("Failed to format metrics label value", expr,
+                                   "Failed to evaluate expression", FALSE);
       goto exit;
     }
 
@@ -317,7 +319,11 @@ _format_expr(FilterXExpr *expr, DynMetricsStore *store, StatsClusterLabel **labe
 {
   FilterXObject *obj = filterx_expr_eval_typed(expr);
   if (!obj)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to format metrics labels", expr,
+                                   "Failed to evaluate expression", FALSE);
+      return FALSE;
+    }
 
   gboolean success = TRUE;
 

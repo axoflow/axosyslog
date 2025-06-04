@@ -23,6 +23,7 @@
 #include "filterx/expr-condition.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
@@ -92,7 +93,10 @@ _eval_conditional(FilterXExpr *s)
   FilterXObject *result = NULL;
 
   if (!condition_value)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate condition", FALSE);
+      return NULL;
+    }
 
   if (trace_flag)
     {
@@ -121,6 +125,9 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_expr_eval(self->true_branch);
       else
         result = filterx_object_ref(condition_value);
+
+      if (!result)
+        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate true branch", FALSE);
     }
   else
     {
@@ -128,6 +135,9 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_expr_eval(self->false_branch);
       else
         result = filterx_boolean_new(TRUE);
+
+      if (!result)
+        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate false branch", FALSE);
     }
 
   filterx_object_unref(condition_value);

@@ -60,7 +60,11 @@ _format_sck_name(FilterXMetrics *self)
 
   FilterXObject *key_obj = filterx_expr_eval(self->key.expr);
   if (!key_obj)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to format metrics key", self->key.expr,
+                                   "Failed to evaluate key", FALSE);
+      return NULL;
+    }
 
   gsize len;
   const gchar *name;

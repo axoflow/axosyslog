@@ -39,14 +39,22 @@ _eval_get_subscript(FilterXExpr *s)
 
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to get-subscript from object", s, "Failed to evaluate expression", FALSE);
+      return NULL;
+    }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to get-subscript from object", s, "Failed to evaluate key", FALSE);
+      goto exit;
+    }
+
   result = filterx_object_get_subscript(variable, key);
   if (!result)
-    filterx_eval_push_error("Object get-subscript failed", s, key);
+    filterx_eval_push_error("Failed to get-subscript from object", s, key);
+
 exit:
   filterx_object_unref(key);
   filterx_object_unref(variable);
@@ -59,11 +67,15 @@ _isset(FilterXExpr *s)
   FilterXGetSubscript *self = (FilterXGetSubscript *) s;
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to check element of object", s, "Failed to evaluate expression", FALSE);
+      return FALSE;
+    }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
     {
+      filterx_eval_push_error_info("Failed to check element of object", s, "Failed to evaluate key", FALSE);
       filterx_object_unref(variable);
       return FALSE;
     }
@@ -84,15 +96,21 @@ _unset(FilterXExpr *s)
 
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to unset from object", s, "Failed to evaluate expression", FALSE);
+      return FALSE;
+    }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to unset from object", s, "Failed to evaluate key", FALSE);
+      goto exit;
+    }
 
   if (variable->readonly)
     {
-      filterx_eval_push_error("Object unset-subscript failed, object is readonly", s, key);
+      filterx_eval_push_error_info("Failed to unset from object", s, "Object is readonly", FALSE);
       goto exit;
     }
 

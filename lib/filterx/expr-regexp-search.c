@@ -161,7 +161,7 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state)
 
       if (!success)
         {
-          filterx_eval_push_error_info("FilterX: Error adding named group to dict", NULL,
+          filterx_eval_push_error_info("Failed to add regexp match named group to dict", NULL,
                                        g_strdup_printf("key: %s", namedgroup_name), TRUE);
           goto error;
         }
@@ -195,7 +195,10 @@ _eval_regexp_search(FilterXExpr *s)
     }
 
   if (!state.match_data)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to evaluate regexp_search()", s, "Error happened during matching", FALSE);
+      goto exit;
+    }
 
   if (check_flag(self->flags, FILTERX_REGEXP_SEARCH_LIST_MODE))
     result = _store_matches_to_list(self->pattern, &state);

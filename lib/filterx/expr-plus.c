@@ -40,12 +40,16 @@ _eval_plus(FilterXExpr *s)
   FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
                               : filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to add values", s, "Failed to evaluate left hand side", FALSE);
+      return NULL;
+    }
 
   FilterXObject *rhs_object = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
                               : filterx_expr_eval(self->super.rhs);
   if (!rhs_object)
     {
+      filterx_eval_push_error_info("Failed to add values", s, "Failed to evaluate right hand side", FALSE);
       filterx_object_unref(lhs_object);
       return NULL;
     }
@@ -53,6 +57,10 @@ _eval_plus(FilterXExpr *s)
   FilterXObject *res = filterx_object_add_object(lhs_object, rhs_object);
   filterx_object_unref(lhs_object);
   filterx_object_unref(rhs_object);
+
+  if (!res)
+    filterx_eval_push_error_info("Failed to add values", s, "add() method failed", FALSE);
+
   return res;
 }
 

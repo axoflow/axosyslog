@@ -208,7 +208,10 @@ _eval_switch(FilterXExpr *s)
 
   FilterXObject *selector = filterx_expr_eval_typed(self->selector);
   if (!selector)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate switch", &self->super, "Failed to evaluate selector", FALSE);
+      return NULL;
+    }
 
   FilterXSwitchCase *switch_case;
 

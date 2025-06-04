@@ -23,6 +23,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-extractor.h"
+#include "filterx/filterx-eval.h"
 
 /* If you want to make these operators support other types,
  * remove these implementations, look at expr-plus.c
@@ -42,10 +43,18 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
   FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
                               : filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
-    return FALSE;
-
-  if(!filterx_object_extract_generic_number(lhs_object, lhs_number))
     {
+      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super,
+                                   "Failed to evaluate left hand side", FALSE);
+      return FALSE;
+    }
+
+  if (!filterx_object_extract_generic_number(lhs_object, lhs_number))
+    {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Left hand side must be a double or integer, got: %s",
+                                    filterx_object_format_type_name(lhs_object, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super, info, TRUE);
       filterx_object_unref(lhs_object);
       return FALSE;
     }
@@ -55,11 +64,19 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
                               : filterx_expr_eval(self->super.rhs);
 
   if (!rhs_object)
-    return FALSE;
-
-  if(!filterx_object_extract_generic_number(rhs_object, rhs_number))
     {
-      filterx_object_unref(rhs_object);
+      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super,
+                                   "Failed to evaluate right hand side", FALSE);
+      return FALSE;
+    }
+
+  if (!filterx_object_extract_generic_number(rhs_object, rhs_number))
+    {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("right hand side must be a double or integer, got: %s. ",
+                                    filterx_object_format_type_name(lhs_object, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super, info, TRUE);
+      filterx_object_unref(lhs_object);
       return FALSE;
     }
   filterx_object_unref(rhs_object);
@@ -234,10 +251,18 @@ _eval_modulo(FilterXExpr *s)
   FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
                               : filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super,
+                                   "Failed to evaluate left hand side", FALSE);
+      return NULL;
+    }
 
   if(!filterx_object_extract_integer(lhs_object, &lhs_number))
     {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Left hand side must be an integer, got: %s",
+                                    filterx_object_format_type_name(lhs_object, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super, info, TRUE);
       filterx_object_unref(lhs_object);
       return NULL;
     }
@@ -247,10 +272,18 @@ _eval_modulo(FilterXExpr *s)
                               : filterx_expr_eval(self->super.rhs);
 
   if (!rhs_object)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super,
+                                   "Failed to evaluate right hand side", FALSE);
+      return NULL;
+    }
 
   if(!filterx_object_extract_integer(rhs_object, &rhs_number))
     {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Right hand side must be an integer, got: %s",
+                                    filterx_object_format_type_name(rhs_object, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super, info, TRUE);
       filterx_object_unref(rhs_object);
       return NULL;
     }
