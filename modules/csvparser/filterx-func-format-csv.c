@@ -68,7 +68,11 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
 
   gsize len_before_value = buffer->len;
   if (!filterx_object_str_append(value, buffer))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super,
+                                   "str_append() method failed", FALSE);
+      return FALSE;
+    }
 
   /* TODO: make the characters here configurable. */
   if (memchr(buffer->str + len_before_value, self->delimiter, buffer->len - len_before_value) != NULL)
@@ -93,7 +97,10 @@ _handle_list_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
 {
   guint64 size;
   if (!filterx_object_len(csv_data, &size))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super, "len() method failed", FALSE);
+      return FALSE;
+    }
 
   gpointer user_data[] = { self, formatted };
   gboolean success = TRUE;
@@ -148,7 +155,11 @@ _eval(FilterXExpr *s)
 
   FilterXObject *csv_data = filterx_expr_eval_typed(self->input);
   if (!csv_data)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super,
+                                   "Failed to evaluate expression", FALSE);
+      return NULL;
+    }
 
   gboolean success = FALSE;
   GString *formatted = scratch_buffers_alloc();

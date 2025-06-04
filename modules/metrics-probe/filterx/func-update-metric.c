@@ -55,7 +55,11 @@ _get_increment(FilterXFunctionUpdateMetric *self, gint64 *increment)
 
   FilterXObject *increment_obj = filterx_expr_eval_typed(self->increment.expr);
   if (!increment_obj)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate update_metric()", &self->super.super,
+                                   "Failed to evaluate increment argument", FALSE);
+      return FALSE;
+    }
 
   gboolean success = filterx_integer_unwrap(increment_obj, increment);
   if (!success)
