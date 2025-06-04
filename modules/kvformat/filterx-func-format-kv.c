@@ -60,13 +60,21 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
     g_string_append(buffer, self->pair_separator);
 
   if (!filterx_object_str_append(key, buffer))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
+                                   "str_append() method failed on key", FALSE);
+      return FALSE;
+    }
 
   g_string_append_c(buffer, self->value_separator);
 
   gsize len_before_value = buffer->len;
   if (!filterx_object_str_append(value, buffer))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
+                                   "str_append() method failed on value", FALSE);
+      return FALSE;
+    }
 
   /* TODO: make the characters here configurable. */
   if (memchr(buffer->str + len_before_value, ' ', buffer->len - len_before_value) != NULL)
