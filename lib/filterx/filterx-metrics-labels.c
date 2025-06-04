@@ -90,7 +90,7 @@ _format_value_expr(FilterXExpr *expr, gchar **formatted_value)
   if (!(*formatted_value))
     {
       success = FALSE;
-      filterx_eval_push_error("failed to format metrics label value, str() failed", expr, obj);
+      filterx_eval_push_error("Failed to format metrics label value: str() failed", expr, obj);
       goto exit;
     }
 
@@ -189,7 +189,8 @@ _init_label_name(FilterXExpr *name)
 {
   if (!filterx_expr_is_literal(name))
     {
-      filterx_eval_push_error("failed to initialize metrics label name, name must be a string literal", name, NULL);
+      filterx_eval_push_error_info("Failed to initialize metrics label name", name,
+                                   "Name must be a string literal, got an expression", FALSE);
       return NULL;
     }
 
