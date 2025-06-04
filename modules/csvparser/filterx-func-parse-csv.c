@@ -77,9 +77,10 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
   FilterXObject *list_obj = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
-      msg_error("list object argument must be a type of list.",
-                evt_tag_str("current_type", list_obj->type->name ),
-                evt_tag_str("argument_name", arg_name));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Argument %s must be a list, got: %s",
+                                    arg_name, filterx_object_format_type_name(obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super, info, TRUE);
       goto exit;
     }
 
@@ -145,9 +146,10 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
   FilterXObject *cols_unwrapped = filterx_ref_unwrap_ro(*columns);
   if (!filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
-      msg_error("list object argument must be a type of list.",
-                evt_tag_str("current_type", cols_unwrapped->type->name),
-                evt_tag_str("argument_name", FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Argument " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " must be a list, got: %s",
+                                    filterx_object_format_type_name(*columns, type_name_buf));
+      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super, info, TRUE);
       return FALSE;
     }
 
