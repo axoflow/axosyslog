@@ -56,11 +56,14 @@ def test_filterx_failure_info(syslog_ng, config):
     assert len(actual_failure_info) == 2
 
     actual_error = actual_failure_info[0]
-    assert "No such variable" in actual_error["error"]
+    assert actual_error["errors"] == [
+        {"location": "syslog_ng_server.conf:31:21", "line": "nonexisting", "error": "No such variable: nonexisting"},
+        {"location": "syslog_ng_server.conf:31:21", "line": "nonexisting.key = a", "error": "Failed to set-attribute to object: Failed to evaluate expression"},
+    ]
     assert actual_error["meta"]["step"] == "step_2"
-    assert "line" in actual_error and "location" in actual_error
 
     actual_falsy = actual_failure_info[1]
-    assert "falsy expr" in actual_falsy["error"]
+    assert actual_falsy["errors"] == [
+        {"location": "syslog_ng_server.conf:37:17", "line": "{ ... }", "error": "bailing out due to a falsy expr: false"},
+    ]
     assert actual_falsy["meta"]["step"] == "falsy_block"
-    assert "line" in actual_falsy and "location" in actual_falsy
