@@ -163,14 +163,16 @@ _extract_set_timestamp_args(FilterXFunctionSetTimestamp *self, FilterXFunctionAr
       return FALSE;
     }
 
-  self->timestamp_idx = log_msg_lookup_time_stamp_name(idx_str);
+  gint timestamp_idx = log_msg_lookup_time_stamp_name(idx_str);
 
-  if (self->timestamp_idx < 0)
+  if (timestamp_idx < 0)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "Invalid timestamp type " FILTERX_FUNC_SET_TIMESTAMP_USAGE);
       return FALSE;
     }
+
+  self->timestamp_idx = timestamp_idx;
 
   return TRUE;
 }
@@ -255,14 +257,16 @@ _extract_get_timestamp_args(FilterXFunctionGetTimestamp *self, FilterXFunctionAr
       return FALSE;
     }
 
-  self->timestamp_idx = log_msg_lookup_time_stamp_name(idx_str);
+  gint timestamp_idx = log_msg_lookup_time_stamp_name(idx_str);
 
-  if (self->timestamp_idx < 0)
+  if (timestamp_idx < 0)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "Invalid timestamp type " FILTERX_FUNC_GET_TIMESTAMP_USAGE);
       return FALSE;
     }
+
+  self->timestamp_idx = timestamp_idx;
 
   return TRUE;
 }
