@@ -140,7 +140,7 @@ _extract_set_timestamp_args(FilterXFunctionSetTimestamp *self, FilterXFunctionAr
 {
   gsize len = filterx_function_args_len(args);
 
-  if (len != 1 && len != 2)
+  if (len != 1)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "invalid number of arguments. " FILTERX_FUNC_SET_TIMESTAMP_USAGE);
