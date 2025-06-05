@@ -46,6 +46,10 @@ FilterXExpr *filterx_non_literal_new(FilterXObject *object);
 FilterXExpr *filterx_non_literal_new_from_expr(FilterXExpr *expr);
 FilterXExpr *filterx_dummy_error_new(const gchar *msg);
 
+void filterx_test_expr_set_location_with_text(FilterXExpr *expr, const gchar *filename,
+                                              gint first_line, gint first_column, gint last_line, gint last_column,
+                                              const gchar *text);
+
 void init_libtest_filterx(void);
 void deinit_libtest_filterx(void);
 

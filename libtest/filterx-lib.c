@@ -258,6 +258,22 @@ filterx_dummy_error_new(const gchar *msg)
   return &self->super;
 }
 
+void
+filterx_test_expr_set_location_with_text(FilterXExpr *expr, const gchar *filename,
+                                         gint first_line, gint first_column, gint last_line, gint last_column,
+                                         const gchar *text)
+{
+  CFG_LTYPE lloc =
+  {
+    .name = filename,
+    .first_line = first_line,
+    .first_column = first_column,
+    .last_line = last_line,
+    .last_column = last_column
+  };
+  filterx_expr_set_location_with_text(expr, &lloc, text);
+}
+
 static struct
 {
   LogMessage *msg;
