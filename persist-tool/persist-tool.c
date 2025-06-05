@@ -66,7 +66,7 @@ persist_tool_start_state(PersistTool *self)
       break;
 
     default:
-      fprintf(stderr, "Invalid perist mode: %d\n", self->mode);
+      fprintf(stderr, "Invalid persist mode: %d\n", self->mode);
       start_result = FALSE;
       break;
     }
