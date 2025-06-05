@@ -147,12 +147,80 @@ filterx_test_unknown_object_new(void)
   return filterx_object_new(&FILTERX_TYPE_NAME(test_unknown_object));
 }
 
+typedef struct _FilterXNonLiteralExpr
+{
+  FilterXExpr super;
+  FilterXExpr *block;
+} FilterXNonLiteralExpr;
+
+static FilterXObject *
+_non_literal_eval(FilterXExpr *s)
+{
+  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  FilterXObject *result = filterx_expr_eval(self->block);
+  if (!result)
+    {
+      filterx_eval_push_error_info("Failed to evaluate non-literal", s, "Failed to evaluate expression", FALSE);
+      return NULL;
+    }
+  return result;
+}
+
+static FilterXExpr *
+_non_literal_optimize(FilterXExpr *s)
+{
+  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  self->block = filterx_expr_optimize(self->block);
+  return NULL;
+}
+
+static gboolean
+_non_literal_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  if (!filterx_expr_init(self->block, cfg))
+    return FALSE;
+  return filterx_expr_init_method(s, cfg);
+}
+
+static void
+_non_literal_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  filterx_expr_deinit(self->block, cfg);
+  filterx_expr_deinit_method(s, cfg);
+}
+
+static void
+_non_literal_free(FilterXExpr *s)
+{
+  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  filterx_expr_unref(self->block);
+  filterx_expr_free_method(s);
+}
+
+FilterXExpr *
+filterx_non_literal_new_from_expr(FilterXExpr *expr)
+{
+  FilterXNonLiteralExpr *self = g_new0(FilterXNonLiteralExpr, 1);
+
+  filterx_expr_init_instance(&self->super, "non-literal");
+  self->super.eval = _non_literal_eval;
+  self->super.init = _non_literal_init;
+  self->super.deinit = _non_literal_deinit;
+  self->super.optimize = _non_literal_optimize;
+  self->super.free_fn = _non_literal_free;
+
+  self->block = filterx_compound_expr_new(TRUE);
+  filterx_compound_expr_add(self->block, expr);
+
+  return &self->super;
+}
+
 FilterXExpr *
 filterx_non_literal_new(FilterXObject *object)
 {
-  FilterXExpr *block = filterx_compound_expr_new(TRUE);
-  filterx_compound_expr_add(block, filterx_literal_new(object));
-  return block;
+  return filterx_non_literal_new_from_expr(filterx_literal_new(object));
 }
 
 typedef struct _FilterXDummyError FilterXDummyError;

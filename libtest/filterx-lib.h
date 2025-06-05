@@ -43,6 +43,7 @@ const gchar *filterx_test_unknown_object_marshaled_repr(gssize *len);
 const gchar *filterx_test_unknown_object_repr(gssize *len);
 
 FilterXExpr *filterx_non_literal_new(FilterXObject *object);
+FilterXExpr *filterx_non_literal_new_from_expr(FilterXExpr *expr);
 FilterXExpr *filterx_dummy_error_new(const gchar *msg);
 
 void init_libtest_filterx(void);
