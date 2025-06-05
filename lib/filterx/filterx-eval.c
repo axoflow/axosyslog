@@ -240,11 +240,14 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
 
   if (!error->message && context->failure_info_collect_falsy)
     {
-      filterx_falsy_error_set_values(&failure_info->error, "Falsy expression", block, block_res);
+      filterx_falsy_error_set_values(&failure_info->errors[0], "Falsy expression", block, block_res);
+      failure_info->error_count = 1;
       return;
     }
 
-  filterx_error_copy(error, &failure_info->error);
+  for (gint i = 0; i < context->error_count; i++)
+    filterx_error_copy(&context->errors[i], &failure_info->errors[i]);
+  failure_info->error_count = context->error_count;
 }
 
 FilterXEvalResult
@@ -307,7 +310,8 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 static void
 _failure_info_clear_entry(FilterXFailureInfo *failure_info)
 {
-  filterx_error_clear(&failure_info->error);
+  for (gint i = 0; i < failure_info->error_count; i++)
+    filterx_error_clear(&failure_info->errors[i]);
   filterx_object_unref(failure_info->meta);
 }
 

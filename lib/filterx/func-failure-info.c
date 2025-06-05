@@ -75,9 +75,26 @@ _create_dict_from_failure_info_entry(FilterXFailureInfo *fi)
       filterx_object_unref(meta_key);
     }
 
-  _set_subscript_cstr(fx_finfo_entry, "location", filterx_expr_format_location(fi->error.expr)->str);
-  _set_subscript_cstr(fx_finfo_entry, "line", filterx_expr_get_text(fi->error.expr));
-  _set_subscript_cstr(fx_finfo_entry, "error", filterx_error_format(&fi->error));
+  FilterXObject *fx_errors = filterx_list_new();
+  filterx_object_cow_prepare(&fx_errors);
+
+  for (gint i = 0; i < fi->error_count; i++)
+    {
+      FilterXError *error = &fi->errors[i];
+      FilterXObject *fx_error_entry = filterx_dict_new();
+      filterx_object_cow_prepare(&fx_error_entry);
+
+      _set_subscript_cstr(fx_error_entry, "location", filterx_expr_format_location(error->expr)->str);
+      _set_subscript_cstr(fx_error_entry, "line", filterx_expr_get_text(error->expr));
+      _set_subscript_cstr(fx_error_entry, "error", filterx_error_format(error));
+
+      filterx_list_set_subscript(fx_errors, i, &fx_error_entry);
+      filterx_object_unref(fx_error_entry);
+    }
+
+  FILTERX_STRING_DECLARE_ON_STACK(errors_key, "errors", -1);
+  filterx_object_set_subscript(fx_finfo_entry, errors_key, &fx_errors);
+  filterx_object_unref(errors_key);
 
   return fx_finfo_entry;
 }

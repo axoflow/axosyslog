@@ -53,7 +53,8 @@ typedef enum _FilterXEvalControl
 typedef struct _FilterXFailureInfo
 {
   FilterXObject *meta;
-  FilterXError error;
+  FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
+  gint error_count;
 } FilterXFailureInfo;
 
 typedef struct _FilterXEvalContext FilterXEvalContext;
