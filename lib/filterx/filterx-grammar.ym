@@ -83,6 +83,9 @@ construct_template_expr(LogTemplate *template)
 static FilterXExpr *
 _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 {
+  if (!expr)
+    return NULL;
+
   filterx_expr_set_location(expr, lexer, lloc);
   return expr;
 }
