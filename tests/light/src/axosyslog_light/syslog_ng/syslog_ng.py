@@ -103,6 +103,8 @@ class SyslogNg(object):
             if self._external_tool == "valgrind":
                 self._console_log_reader.handle_valgrind_log(Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_valgrind_output"))
             logger.info("syslog-ng process has been stopped with PID: {}\n".format(saved_pid))
+        else:
+            self._console_log_reader.check_for_unexpected_messages(unexpected_messages)
         self._process = None
 
     def reload(self, config: SyslogNgConfig) -> None:

@@ -21,6 +21,7 @@
 #
 #############################################################################
 import logging
+import re
 
 from axosyslog_light.common.file import File
 
@@ -29,8 +30,13 @@ logger = logging.getLogger(__name__)
 
 class ConsoleLogReader(object):
     def __init__(self, instance_paths, teardown):
-        self.__stderr_path = instance_paths.get_stderr_path()
-        self.__stderr_file = File(self.__stderr_path)
+
+        self.console_log_files = {
+            "stderr": {"path": instance_paths.get_stderr_path(), "file": File(instance_paths.get_stderr_path())},
+            "stdout": {"path": instance_paths.get_stdout_path(), "file": File(instance_paths.get_stdout_path())},
+            "syntax_only_stderr": {"path": instance_paths.get_syntax_only_stderr_path(), "file": File(instance_paths.get_syntax_only_stderr_path())},
+            "syntax_only_stdout": {"path": instance_paths.get_syntax_only_stdout_path(), "file": File(instance_paths.get_syntax_only_stdout_path())},
+        }
         self.__teardown = teardown
 
     def wait_for_start_message(self):
@@ -53,35 +59,40 @@ class ConsoleLogReader(object):
         return self.wait_for_messages_in_console_log(self, [expected_message])
 
     def wait_for_messages_in_console_log(self, expected_messages):
-        if not self.__stderr_file.is_opened():
-            self.__stderr_file.wait_for_creation()
-            self.__stderr_file.open("r")
-            self.__teardown.register(self.__stderr_file.close)
-        return self.__stderr_file.wait_for_lines(expected_messages, timeout=5)
+        stderr_file = self.console_log_files["stderr"]["file"]
+        if not stderr_file.is_opened():
+            stderr_file.wait_for_creation()
+            stderr_file.open("r")
+            self.__teardown.register(stderr_file.close)
+        return stderr_file.wait_for_lines(expected_messages, timeout=5)
 
     def check_for_unexpected_messages(self, unexpected_messages=None):
-        unexpected_patterns = ["Plugin module not found", "assertion"]
+        unexpected_patterns = ["Plugin module not found", "assertion failed", "^Bail out!", "CRITICAL"]
         if unexpected_messages is not None:
             unexpected_patterns.extend(unexpected_messages)
 
-        stderr = self.__read_all_from_stderr_file()
-
+        console_logs = self.__get_all_console_logs()
         for unexpected_pattern in unexpected_patterns:
-            for console_log_message in stderr.split("\n"):
-                if unexpected_pattern in console_log_message:
+            for console_log_message in console_logs.split("\n"):
+                if re.search(unexpected_pattern, console_log_message) is not None:
                     logger.error("Found unexpected message in console log: {}".format(console_log_message))
                     raise Exception("Unexpected error log in console", console_log_message)
 
     def dump_stderr(self, last_n_lines=10):
-        stderr = self.__read_all_from_stderr_file()
+        stderr = self.__get_all_console_logs()
         logger.error("\n".join(stderr.split("\n")[-last_n_lines:]))
 
-    def __read_all_from_stderr_file(self):
-        stderr_file_from_the_beginning = File(self.__stderr_path)
-        stderr_file_from_the_beginning.open("r")
-        stderr = stderr_file_from_the_beginning.read()
-        stderr_file_from_the_beginning.close()
-        return stderr
+    def __get_all_console_logs(self):
+        console_logs = ""
+        for log_type, log_path in self.console_log_files.items():
+            if not log_path["path"].exists():
+                logger.warning("Console log file {} does not exist".format(log_path))
+                continue
+            console_log_file = File(log_path["path"])
+            console_log_file.open("r")
+            console_logs += console_log_file.read()
+            console_log_file.close()
+        return console_logs
 
     @staticmethod
     def handle_valgrind_log(valgrind_log_path):
