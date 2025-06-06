@@ -64,29 +64,8 @@ typedef struct FilterXFunctionCacheJsonFile_
   FilterXFunction super;
   gchar *filepath;
   gpointer cached_json;
-  GPtrArray *frozen_objects;
-  GPtrArray *frozen_objects_history[FROZEN_OBJECTS_HISTORY_SIZE];
-  gint history_index;
   FileMonitor *file_monitor;
 } FilterXFunctionCacheJsonFile;
-
-static void
-_free_all_frozen_objects(FilterXFunctionCacheJsonFile *self);
-
-static void
-_archive_frozen_objects(FilterXFunctionCacheJsonFile *self)
-{
-  if (!self->frozen_objects)
-    return;
-
-  // in case of reload fails somehow
-  if (self->history_index >= FROZEN_OBJECTS_HISTORY_SIZE)
-    _free_all_frozen_objects(self);
-
-  self->frozen_objects_history[self->history_index] = self->frozen_objects;
-  self->history_index++;
-  self->frozen_objects = NULL;
-}
 
 static gchar *
 _extract_filepath(FilterXFunctionArgs *args, GError **error)
@@ -183,22 +162,6 @@ _eval(FilterXExpr *s)
 }
 
 static void
-_free_all_frozen_objects(FilterXFunctionCacheJsonFile *self)
-{
-  main_loop_assert_main_thread();
-  for (int i = 0; i < FROZEN_OBJECTS_HISTORY_SIZE; i++)
-    {
-      if (self->frozen_objects_history[i])
-        {
-          g_ptr_array_unref(self->frozen_objects_history[i]);
-          self->frozen_objects_history[i] = NULL;
-        }
-    }
-
-  self->history_index = 0;
-}
-
-static void
 _free(FilterXExpr *s)
 {
   FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
@@ -209,9 +172,6 @@ _free(FilterXExpr *s)
       file_monitor_stop(self->file_monitor);
       file_monitor_free(self->file_monitor);
     }
-  _free_all_frozen_objects(self);
-  if (self->frozen_objects)
-    g_ptr_array_unref(self->frozen_objects);
   filterx_function_free_method(&self->super);
 }
 
@@ -223,15 +183,11 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
     {
       return FALSE;
     }
-  _archive_frozen_objects(self);
-  self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unfreeze_and_free);
-  filterx_object_freeze(&cached_json);
-  g_ptr_array_add(self->frozen_objects, cached_json);
+  filterx_object_make_readonly(cached_json);
   g_atomic_pointer_set(&self->cached_json, cached_json);
   return TRUE;
 }
 
-// This function may trigger a configuration reload. Ensure proper handling of the configuration on the caller side.
 gboolean
 _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
 {
@@ -246,11 +202,6 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
     }
 
   main_loop_assert_main_thread();
-  if (self->history_index >= FROZEN_OBJECTS_HISTORY_SIZE)
-    {
-      main_loop_reload_config(main_loop);
-      return FALSE;
-    }
 
   /* needed for parent tracking of temporary non-frozen objects */
   FilterXEvalContext json_reload_context;
