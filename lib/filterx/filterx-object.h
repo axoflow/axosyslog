@@ -101,13 +101,7 @@ filterx_type_is_cowable(FilterXType *type)
  *    Most objects will be in this category, ref_cnt starts with 1,
  *    ref/unref increments and decrements the refcount respectively.
  *
- *    The ref_cnt will be in this range: (0, FILTERX_OBJECT_REFCOUNT_OFLOW_MARK)
- *
- *    The ref_cnt overflow is detected by leaving a gap between the overflow
- *    mark and the first special value, which is large enough to avoid races
- *    stepping through the range
- *
- * 2) read-only, local values (allocated on stack, no refcounting)
+ * 2) local values (allocated on stack, no refcounting)
  *
  *    Local values can be stored on the stack, to avoid a heap allocation,
  *    these values are only used by a single thread.
@@ -120,16 +114,11 @@ filterx_type_is_cowable(FilterXType *type)
  *
  * 3) hibernated objects
  *
- *    Hybernated objects are preserved for the entire lifecycle of a
- *    filterx-based configuration.  They are allocated at startup or when
- *    the config is initialized and freed once the configuration finishes or syslog-ng exits.
+ *    Hibernated objects are preserved for the entire lifecycle of the process.
+ *    The caller is responsible for providing efficient storage and deallocation
+ *    before shutdown.
  *
- *    Both the normal ref/unref and the freeze/unfreeze operations are
- *    noops. Hybernated objects simply exist as long as necessary.
- *
- *    Hybernated objects can be used in place of any normal objects, e.g.
- *    these objects can be replace the unfrozen version of the same object by
- *    filterx_object_freeze() (e.g. when they represent the same string).
+ *    Both the normal ref/unref and the freeze operations are noops.
  *
  *    The ref_cnt will always be: FILTERX_OBJECT_REFCOUNT_HIBERNATED
  *
@@ -137,43 +126,36 @@ filterx_type_is_cowable(FilterXType *type)
  *
  * 4) frozen objects
  *
- *    Frozen objects are also preserved and have their own lifecycle.  But
- *    instead of being tracked by the configuration or by the syslog-ng
- *    startup/teardown mechanism, they get allocated and freed during the
- *    runtime of a configuration.
+ *    Frozen objects are preserved for the entire lifecycle of a
+ *    filterx-based configuration.  They are allocated when
+ *    the config is initialized and freed once the configuration finishes.
  *
- *    An example is cache_json_file(), which allocates the representation of
- *    the JSON data structure at configuration compilation and can reload it
- *    if the file changes, even if the configuration itself remains the
- *    same.  We want to be able to free a previous version of the JSON, even
- *    without a complete configuration reload.
+ *    The storage and deallocation is taken care of by the freeze() call.
+ *    Frozen objects may be deduplicated if they support such operation.
  *
- *    The ref/unref operations are noops.  The freeze/unfreeze operations
- *    have a reference counting nature, and the object will be freed at the
- *    last unfreeze.
+ *    The ref/unref operations are noops.
  *
- *    The ref_cnt will be in this range: [FILTERX_OBJECT_REFCOUNT_FROZEN, G_MAXINT32]
+ *    The ref_cnt will always be: FILTERX_OBJECT_REFCOUNT_FROZEN
  *
  *    NOTE: frozen objects are considered "preserved"
  */
 typedef enum _FilterXObjectRefcountRange
 {
-  FILTERX_OBJECT_REFCOUNT_BARRIER=G_MAXINT32/2,
+  FILTERX_OBJECT_REFCOUNT_BARRIER = G_MAXINT32-3,
 
-  /* the distance between BARRIER and BARRIER_MAX protects against a race
-   * condition and a resulting overflow, see the comment in filterx_object_ref() */
-  FILTERX_OBJECT_REFCOUNT_BARRIER_MAX=FILTERX_OBJECT_REFCOUNT_BARRIER + 1023,
   /* stack based allocation */
-  FILTERX_OBJECT_REFCOUNT_STACK,
+  FILTERX_OBJECT_REFCOUNT_STACK = FILTERX_OBJECT_REFCOUNT_BARRIER,
+
   /* anything above this point is preserved: either hibernated or frozen */
   FILTERX_OBJECT_REFCOUNT_PRESERVED,
 
-  /* hibernated object (considered preserved) */
   FILTERX_OBJECT_REFCOUNT_HIBERNATED=FILTERX_OBJECT_REFCOUNT_PRESERVED,
-
-  /* hibernated object (considered preserved) */
   FILTERX_OBJECT_REFCOUNT_FROZEN,
+
+  __FILTERX_OBJECT_REFCOUNT_MAX
 } FilterXObjectRefcountRange;
+
+G_STATIC_ASSERT(__FILTERX_OBJECT_REFCOUNT_MAX == G_MAXINT32);
 
 struct _FilterXObject
 {
@@ -237,7 +219,7 @@ gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_na
 FilterXObject *filterx_object_new(FilterXType *type);
 void filterx_object_freeze(FilterXObject **pself);
 void filterx_object_unfreeze_and_free(FilterXObject *self);
-void filterx_object_hibernate(FilterXObject **pself);
+void filterx_object_hibernate(FilterXObject *self);
 void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
@@ -257,41 +239,8 @@ filterx_object_ref(FilterXObject *self)
     return NULL;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0)
-    {
-      /* NOTE: getting into this path is racy, as two threads might be
-       * checking the overflow mark in parallel and then decide we need to
-       * run this (normal) path.  In this case, the race could cause ref_cnt
-       * to reach FILTERX_OBJECT_REFCOUNT_OFLOW_MARK, without triggering the
-       * overflow assert below.
-       *
-       * To mitigate this, FILTERX_OBJECT_REFCOUNT_OFLOW_MARK is set to 1024
-       * less than the first value that we handle specially.  This means
-       * that even if the race is lost, we would need 1024 competing CPUs
-       * concurrently losing the race and incrementing ref_cnt here.  And
-       * even in this case the only issue is that we don't detect an actual
-       * overflow at runtime that should never occur in the first place.
-       *
-       * This is _really_ unlikely, and we will detect ref_cnt overflows in
-       * non-doom scenarios first, so we can address the actual issue (which
-       * might be a reference counting bug somewhere).
-       *
-       * If less than 1024 CPUs lose the race, then the refcount would end
-       * up in the range between FILTERX_OBJECT_REFCOUNT_OFLOW_MARK and
-       * FILTERX_OBJECT_REFCOUNT_STACK, causing the assertion at the end of
-       * this function to trigger an abort.
-       *
-       * The non-racy solution would be to use a
-       * g_atomic_int_exchange_and_add() call and checking the old_value
-       * against FILTERX_OBJECT_REFCOUNT_OFLOW_MARK another time, but that's
-       * an extra conditional in a hot-path.
-       */
 
-      g_atomic_counter_inc(&self->ref_cnt);
-      return self;
-    }
-
-  if (r == FILTERX_OBJECT_REFCOUNT_STACK)
+  if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
       /* we can't use filterx_object_clone() directly, as that's an inline
        * function declared further below.  Also, filterx_object_clone() does
@@ -303,7 +252,10 @@ filterx_object_ref(FilterXObject *self)
   if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return self;
 
-  g_assert_not_reached();
+  g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
+
+  g_atomic_counter_inc(&self->ref_cnt);
+  return self;
 }
 
 static inline void
@@ -313,7 +265,7 @@ filterx_object_unref(FilterXObject *self)
     return;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_STACK)
+  if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
       /* NOTE: Normally, stack based allocations are only used by a single
        * thread.  Furthermore, code where we use this object will only have
@@ -331,10 +283,11 @@ filterx_object_unref(FilterXObject *self)
       g_atomic_counter_set(&self->ref_cnt, 0);
       return;
     }
+
   if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return;
-  if (r <= 0)
-    g_assert_not_reached();
+
+  g_assert(r > 0);
 
   if (g_atomic_counter_dec_and_test(&self->ref_cnt))
     {
