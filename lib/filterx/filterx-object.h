@@ -59,7 +59,6 @@ struct _FilterXType
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*make_readonly)(FilterXObject *self);
   void (*freeze)(FilterXObject **self);
-  void (*unfreeze)(FilterXObject *self);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -118,6 +117,8 @@ filterx_type_is_cowable(FilterXType *type)
  *    The caller is responsible for providing efficient storage and deallocation
  *    before shutdown.
  *
+ *    Only immutable, non-recursive objects can be hibernated.
+ *
  *    Both the normal ref/unref and the freeze operations are noops.
  *
  *    The ref_cnt will always be: FILTERX_OBJECT_REFCOUNT_HIBERNATED
@@ -132,6 +133,8 @@ filterx_type_is_cowable(FilterXType *type)
  *
  *    The storage and deallocation is taken care of by the freeze() call.
  *    Frozen objects may be deduplicated if they support such operation.
+ *
+ *    Only immutable, non-recursive objects can be frozen.
  *
  *    The ref/unref operations are noops.
  *
