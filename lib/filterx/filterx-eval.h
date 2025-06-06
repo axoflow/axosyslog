@@ -138,7 +138,7 @@ static inline void
 filterx_eval_store_weak_ref(FilterXObject *object)
 {
   /* Preserved objects do not need weak refs. */
-  if (object && filterx_object_is_preserved(object))
+  if (object && (filterx_object_is_preserved(object) || filterx_object_is_readonly(object)))
     return;
 
   if (object && !object->weak_referenced)
