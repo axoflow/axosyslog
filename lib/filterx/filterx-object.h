@@ -227,6 +227,12 @@ void filterx_object_free_method(FilterXObject *self);
 void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
 
 static inline gboolean
+filterx_object_is_readonly(FilterXObject *self)
+{
+  return self->readonly;
+}
+
+static inline gboolean
 filterx_object_is_preserved(FilterXObject *self)
 {
   return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
