@@ -330,7 +330,8 @@ _strptime_free(FilterXExpr *s)
   FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
 
   filterx_expr_unref(self->time_str_expr);
-  g_ptr_array_free(self->formats, TRUE);
+  if (self->formats)
+    g_ptr_array_free(self->formats, TRUE);
   filterx_function_free_method(&self->super);
 }
 
