@@ -151,7 +151,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
-#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context) \
+#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg) \
   do { \
     FilterXScope *scope = NULL; \
     gboolean local_scope = FALSE; \

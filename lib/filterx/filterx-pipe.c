@@ -71,7 +71,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
   FilterXEvalContext *previous_context = path_options->filterx_context;
 
   NVTable *payload = nv_table_ref(msg->payload);
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg)
   {
     FilterXEvalResult eval_res;
     LogPathOptions local_path_options;
