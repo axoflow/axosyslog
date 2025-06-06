@@ -24,7 +24,25 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
-#include "filterx-globals.h"
+
+/* cache indices */
+enum
+{
+  FILTERX_STRING_ZERO_LENGTH,
+  FILTERX_STRING_NUMBER0,
+  FILTERX_STRING_NUMBER1,
+  FILTERX_STRING_NUMBER2,
+  FILTERX_STRING_NUMBER3,
+  FILTERX_STRING_NUMBER4,
+  FILTERX_STRING_NUMBER5,
+  FILTERX_STRING_NUMBER6,
+  FILTERX_STRING_NUMBER7,
+  FILTERX_STRING_NUMBER8,
+  FILTERX_STRING_NUMBER9,
+  FILTERX_STRING_CACHE_SIZE,
+};
+
+extern FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
 typedef struct _FilterXString FilterXString;
 struct _FilterXString
@@ -83,14 +101,22 @@ filterx_string_new(const gchar *str, gssize str_len)
 {
   if (str_len == 0 || str[0] == 0)
     {
-      return filterx_object_ref(global_cache.string_cache[FILTERX_STRING_ZERO_LENGTH]);
+      return filterx_object_ref(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
     }
   else if (str[0] >= '0' && str[0] < '9' && (str_len == 1 || str[1] == 0))
     {
       gint index = str[0] - '0';
-      return filterx_object_ref(global_cache.string_cache[FILTERX_STRING_NUMBER0 + index]);
+      return filterx_object_ref(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
     }
   return _filterx_string_new(str, str_len);
+}
+
+static inline FilterXObject *
+filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
+{
+  FilterXObject *self = filterx_string_new(str, -1);
+  filterx_object_freeze(&self, cfg);
+  return self;
 }
 
 guint
@@ -106,13 +132,8 @@ filterx_string_hash(FilterXObject *s)
     return self->hash;
 
   /* although this is racy for parallel access on the same object, it's not
-   * really a problem, as:
-   *
-   * 1) we are only sharing frozen instances of the string, which calculates
-   *    the hash at freeze time
-   *
-   * 2) even if we do share a non-frozen string, the hash algorithm should
-   *    have the same result, so worst case, we calculate the hash 2 times.
+   * really a problem, as the hash algorithm should have the same result,
+   * so worst case, we calculate the hash 2 times.
    */
 
   return _filterx_string_hash(self);
