@@ -24,8 +24,16 @@
 #define FILTERX_PRIMITIVE_H_INCLUDED
 
 #include "filterx/filterx-object.h"
-#include "filterx/filterx-globals.h"
 #include "generic-number.h"
+
+#define FILTERX_BOOL_CACHE_SIZE 2
+extern FilterXObject *fx_bool_cache[FILTERX_BOOL_CACHE_SIZE];
+
+#define FILTERX_INTEGER_CACHE_MIN -128
+#define FILTERX_INTEGER_CACHE_MAX 128
+#define FILTERX_INTEGER_CACHE_SIZE (FILTERX_INTEGER_CACHE_MAX - FILTERX_INTEGER_CACHE_MIN + 1)
+#define FILTERX_INTEGER_CACHE_IDX(v) ((v) - FILTERX_INTEGER_CACHE_MIN)
+extern FilterXObject *fx_integer_cache[FILTERX_INTEGER_CACHE_SIZE];
 
 FILTERX_DECLARE_TYPE(primitive);
 FILTERX_DECLARE_TYPE(integer);
@@ -105,14 +113,15 @@ filterx_boolean_unwrap(FilterXObject *s, gboolean *value)
 static inline FilterXObject *
 filterx_boolean_new(gboolean value)
 {
-  return filterx_object_ref(global_cache.bool_cache[!!(value)]);
+  return filterx_object_ref(fx_bool_cache[!!(value)]);
 }
 
 static inline FilterXObject *
 filterx_integer_new(gint64 value)
 {
-  if (value >= -FILTERX_INTEGER_CACHE_OFFSET && value < FILTERX_INTEGER_CACHE_LIMIT - FILTERX_INTEGER_CACHE_OFFSET)
-    return filterx_object_ref(global_cache.integer_cache[value + FILTERX_INTEGER_CACHE_OFFSET]);
+  if (value >= FILTERX_INTEGER_CACHE_MIN && value <= FILTERX_INTEGER_CACHE_MAX)
+    return filterx_object_ref(fx_integer_cache[(FILTERX_INTEGER_CACHE_IDX(value))]);
+
   return _filterx_integer_new(value);
 }
 

@@ -24,7 +24,25 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
-#include "filterx-globals.h"
+
+/* cache indices */
+enum
+{
+  FILTERX_STRING_ZERO_LENGTH,
+  FILTERX_STRING_NUMBER0,
+  FILTERX_STRING_NUMBER1,
+  FILTERX_STRING_NUMBER2,
+  FILTERX_STRING_NUMBER3,
+  FILTERX_STRING_NUMBER4,
+  FILTERX_STRING_NUMBER5,
+  FILTERX_STRING_NUMBER6,
+  FILTERX_STRING_NUMBER7,
+  FILTERX_STRING_NUMBER8,
+  FILTERX_STRING_NUMBER9,
+  FILTERX_STRING_CACHE_SIZE,
+};
+
+extern FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
 typedef struct _FilterXString FilterXString;
 struct _FilterXString
@@ -83,12 +101,12 @@ filterx_string_new(const gchar *str, gssize str_len)
 {
   if (str_len == 0 || str[0] == 0)
     {
-      return filterx_object_ref(global_cache.string_cache[FILTERX_STRING_ZERO_LENGTH]);
+      return filterx_object_ref(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
     }
   else if (str[0] >= '0' && str[0] < '9' && (str_len == 1 || str[1] == 0))
     {
       gint index = str[0] - '0';
-      return filterx_object_ref(global_cache.string_cache[FILTERX_STRING_NUMBER0 + index]);
+      return filterx_object_ref(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
     }
   return _filterx_string_new(str, str_len);
 }
