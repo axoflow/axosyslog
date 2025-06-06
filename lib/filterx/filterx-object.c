@@ -26,6 +26,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/filterx-config.h"
 
 FilterXObject *
 filterx_object_getattr_string(FilterXObject *self, const gchar *attr_name)
@@ -117,9 +118,10 @@ filterx_object_new(FilterXType *type)
 /* NOTE: we expect an exclusive reference, as it is not thread safe to be
  * called on the same object from multiple threads */
 void
-filterx_object_freeze(FilterXObject **pself)
+filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg)
 {
   FilterXObject *self = *pself;
+  FilterXConfig *fx_cfg = filterx_config_get(cfg);
 
   if (filterx_object_is_preserved(self))
     return;
@@ -135,10 +137,11 @@ filterx_object_freeze(FilterXObject **pself)
   /* no change in the object, so we are freezing self */
   filterx_object_make_readonly(self);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
+  g_ptr_array_add(fx_cfg->frozen_objects, self);
 }
 
 void
-filterx_object_unfreeze_and_free(FilterXObject *self)
+_filterx_object_unfreeze_and_free(FilterXObject *self)
 {
   if (!self)
     return;

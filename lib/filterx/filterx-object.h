@@ -217,8 +217,8 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
-void filterx_object_freeze(FilterXObject **pself);
-void filterx_object_unfreeze_and_free(FilterXObject *self);
+void filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg);
+void _filterx_object_unfreeze_and_free(FilterXObject *self);
 void filterx_object_hibernate(FilterXObject *self);
 void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);

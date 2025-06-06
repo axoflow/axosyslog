@@ -35,7 +35,5 @@ typedef struct _FilterXConfig
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);
-FilterXObject *filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object);
-FilterXObject *filterx_config_frozen_string(GlobalConfig *cfg, const gchar *str);
 
 #endif
