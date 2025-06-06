@@ -22,14 +22,17 @@
  */
 #include "object-string.h"
 #include "object-extractor.h"
+#include "filterx/filterx-globals.h"
 #include "str-utils.h"
 #include "scratch-buffers.h"
-#include "filterx-globals.h"
 #include "str-format.h"
 #include "str-utils.h"
 #include "utf8utils.h"
 
 #define FILTERX_STRING_FLAG_STR_ALLOCATED 0x01
+
+FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
+GHashTable *fx_string_dedup_store;
 
 /* NOTE: Consider using filterx_object_extract_bytes_ref() to also support message_value. */
 const gchar *
@@ -180,7 +183,7 @@ _string_freeze(FilterXObject **pself)
 {
   FilterXString *self = (FilterXString *) *pself;
 
-  FilterXObject *frozen_string = g_hash_table_lookup(global_cache.string_frozen_cache, self->str);
+  FilterXObject *frozen_string = g_hash_table_lookup(fx_string_dedup_store, self->str);
   if (frozen_string)
     {
       filterx_object_unref(*pself);
@@ -188,7 +191,7 @@ _string_freeze(FilterXObject **pself)
       return;
     }
   _filterx_string_hash(self);
-  g_hash_table_insert(global_cache.string_frozen_cache, (gchar *) self->str, self);
+  g_hash_table_insert(fx_string_dedup_store, (gchar *) self->str, self);
 }
 
 static inline guint
@@ -459,21 +462,26 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
 void
 filterx_string_global_init(void)
 {
-  global_cache.string_frozen_cache = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
-  filterx_cache_object(&global_cache.string_cache[FILTERX_STRING_ZERO_LENGTH], &_string_new("", 0, NULL)->super);
+  fx_string_dedup_store = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+
+  fx_string_cache[FILTERX_STRING_ZERO_LENGTH] = &_string_new("", 0, NULL)->super;
+  filterx_object_hibernate(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+
   for (gint i = 0; i < 10; i++)
     {
       gchar number[2] = { i+'0', 0 };
-      filterx_cache_object(&global_cache.string_cache[FILTERX_STRING_NUMBER0+i], &_string_new(number, 1, NULL)->super);
+      fx_string_cache[FILTERX_STRING_NUMBER0+i] = &_string_new(number, 1, NULL)->super;
+      filterx_object_hibernate(fx_string_cache[FILTERX_STRING_NUMBER0+i]);
     }
 }
 
 void
 filterx_string_global_deinit(void)
 {
-  g_hash_table_unref(global_cache.string_frozen_cache);
-  for (gint i = 0; i < FILTERX_STRING_CACHE_LIMIT; i++)
+  g_hash_table_unref(fx_string_dedup_store);
+
+  for (gint i = 0; i < FILTERX_STRING_CACHE_SIZE; i++)
     {
-      filterx_uncache_object(&global_cache.string_cache[i]);
+      filterx_object_unhibernate_and_free(fx_string_cache[i]);
     }
 }
