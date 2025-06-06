@@ -58,7 +58,8 @@ struct _FilterXType
   gboolean (*len)(FilterXObject *self, guint64 *len);
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   void (*make_readonly)(FilterXObject *self);
-  void (*freeze)(FilterXObject **self);
+  /* return values indicates if deduplication is supported */
+  gboolean (*dedup)(FilterXObject **pself, GHashTable *dedup_storage);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -132,7 +133,7 @@ filterx_type_is_cowable(FilterXType *type)
  *    the config is initialized and freed once the configuration finishes.
  *
  *    The storage and deallocation is taken care of by the freeze() call.
- *    Frozen objects may be deduplicated if they support such operation.
+ *    Frozen objects will be deduplicated if they support such operation.
  *
  *    Only immutable, non-recursive objects can be frozen.
  *
@@ -312,6 +313,17 @@ filterx_object_make_readonly(FilterXObject *self)
     self->type->make_readonly(self);
 
   self->readonly = TRUE;
+}
+
+static inline gboolean
+filterx_object_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+{
+  FilterXObject *self = *pself;
+
+  if (!self->type->dedup)
+    return FALSE;
+
+  return self->type->dedup(pself, dedup_storage);
 }
 
 static inline FilterXObject *

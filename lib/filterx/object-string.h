@@ -132,13 +132,8 @@ filterx_string_hash(FilterXObject *s)
     return self->hash;
 
   /* although this is racy for parallel access on the same object, it's not
-   * really a problem, as:
-   *
-   * 1) we are only sharing frozen instances of the string, which calculates
-   *    the hash at freeze time
-   *
-   * 2) even if we do share a non-frozen string, the hash algorithm should
-   *    have the same result, so worst case, we calculate the hash 2 times.
+   * really a problem, as the hash algorithm should have the same result,
+   * so worst case, we calculate the hash 2 times.
    */
 
   return _filterx_string_hash(self);

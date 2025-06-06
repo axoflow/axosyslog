@@ -29,6 +29,7 @@
 
 #include "apphook.h"
 #include "scratch-buffers.h"
+#include "cfg.h"
 
 Test(filterx_string, test_filterx_object_string_marshals_to_the_stored_values)
 {
@@ -42,6 +43,16 @@ Test(filterx_string, test_filterx_object_string_maps_to_the_right_json_value)
   FilterXObject *fobj = filterx_string_new("foobarXXXNOTPARTOFTHESTRING", 6);
   assert_object_json_equals(fobj, "\"foobar\"");
   filterx_object_unref(fobj);
+}
+
+Test(filterx_string, test_frozen_string_deduplication)
+{
+  FilterXObject *str = filterx_string_new_frozen("abcd", configuration);
+  FilterXObject *str2 = filterx_string_new_frozen("abcd", configuration);
+  FilterXObject *str3 = filterx_string_new_frozen("abcde", configuration);
+
+  cr_assert_eq(str, str2);
+  cr_assert_neq(str, str3);
 }
 
 static void
@@ -145,11 +156,13 @@ static void
 setup(void)
 {
   app_startup();
+  configuration = cfg_new_snippet();
 }
 
 static void
 teardown(void)
 {
+  cfg_free(configuration);
   scratch_buffers_explicit_gc();
   app_shutdown();
 }

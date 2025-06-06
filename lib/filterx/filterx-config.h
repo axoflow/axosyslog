@@ -31,6 +31,7 @@ typedef struct _FilterXConfig
 {
   ModuleConfig super;
   GPtrArray *frozen_objects;
+  GHashTable *frozen_deduplicated_objects;
   GPtrArray *weak_refs;
 } FilterXConfig;
 

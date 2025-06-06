@@ -131,17 +131,18 @@ filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg)
   if (filterx_object_is_preserved(self))
     return;
 
-  if (self->type->freeze)
-    self->type->freeze(pself);
-
-  /* NOTE: type->freeze may change self to replace with an already frozen version (deduplication) */
-  if (self != *pself)
-    return;
+  if (filterx_object_dedup(pself, fx_cfg->frozen_deduplicated_objects))
+    {
+      /* NOTE: filterx_object_dedup() may change self to replace with an already frozen version */
+      if (self != *pself)
+        return;
+    }
+  else
+    g_ptr_array_add(fx_cfg->frozen_objects, self);
 
   /* no change in the object, so we are freezing self */
   filterx_object_make_readonly(self);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
-  g_ptr_array_add(fx_cfg->frozen_objects, self);
 }
 
 void
