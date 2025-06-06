@@ -41,7 +41,7 @@ filterx_config_new(GlobalConfig *cfg)
   FilterXConfig *self = g_new0(FilterXConfig, 1);
 
   self->super.free_fn = filterx_config_free;
-  self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unfreeze_and_free);
+  self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) _filterx_object_unfreeze_and_free);
   self->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   return self;
 }
@@ -56,25 +56,4 @@ filterx_config_get(GlobalConfig *cfg)
       g_hash_table_insert(cfg->module_config, g_strdup(MODULE_CONFIG_KEY), fxc);
     }
   return fxc;
-}
-
-/* NOTE: consumes object reference */
-FilterXObject *
-filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object)
-{
-  FilterXConfig *fxc = filterx_config_get(cfg);
-
-  FilterXObject *orig = object;
-  filterx_object_freeze(&object);
-
-  if (orig == object)
-    g_ptr_array_add(fxc->frozen_objects, object);
-
-  return object;
-}
-
-FilterXObject *
-filterx_config_frozen_string(GlobalConfig *cfg, const gchar *str)
-{
-  return filterx_config_freeze_object(cfg, filterx_string_new(str, -1));
 }
