@@ -63,8 +63,13 @@ FilterXObject *
 filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object)
 {
   FilterXConfig *fxc = filterx_config_get(cfg);
+
+  FilterXObject *orig = object;
   filterx_object_freeze(&object);
-  g_ptr_array_add(fxc->frozen_objects, object);
+
+  if (orig == object)
+    g_ptr_array_add(fxc->frozen_objects, object);
+
   return object;
 }
 
