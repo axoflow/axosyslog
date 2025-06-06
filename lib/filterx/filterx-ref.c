@@ -289,7 +289,7 @@ FilterXObject *
 _filterx_ref_new(FilterXObject *value)
 {
 #if SYSLOG_NG_ENABLE_DEBUG
-  if (!filterx_object_is_cowable(value) || filterx_object_is_ref(value))
+  if (!value->type->is_mutable || filterx_object_is_ref(value))
     g_assert("filterx_ref_new() must only be used for a cowable object" && FALSE);
 #endif
   FilterXRef *self = g_new0(FilterXRef, 1);
