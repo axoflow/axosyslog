@@ -743,40 +743,6 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
-static gboolean
-_freeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_freeze(key);
-  filterx_object_freeze(value);
-  return TRUE;
-}
-
-static void
-_filterx_dict_freeze(FilterXObject **s)
-{
-  FilterXDictObject *self = (FilterXDictObject *) *s;
-
-  /* dicts need to be freezable, if they are not we are ending in an abort */
-  g_assert(_table_foreach(self->table, _freeze_dict_item, NULL) == TRUE);
-}
-
-static gboolean
-_unfreeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_unfreeze_and_free(*key);
-  filterx_object_unfreeze_and_free(*value);
-  *key = *value = NULL;
-  return TRUE;
-}
-
-static void
-_filterx_dict_unfreeze(FilterXObject *s)
-{
-  FilterXDictObject *self = (FilterXDictObject *) s;
-
-  g_assert(_table_foreach(self->table, _unfreeze_dict_item, NULL) == TRUE);
-}
-
 FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,
                     .truthy = _filterx_dict_truthy,
@@ -787,6 +753,4 @@ FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
                     .repr = _filterx_dict_repr,
                     .clone = _filterx_dict_clone,
                     .clone_container = _filterx_dict_clone_container,
-                    .freeze = _filterx_dict_freeze,
-                    .unfreeze = _filterx_dict_unfreeze,
                    );
