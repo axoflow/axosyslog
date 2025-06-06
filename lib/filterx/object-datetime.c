@@ -44,6 +44,9 @@
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"
 #define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(format_str, datetime)"
 
+#define FILTERX_DATETIME_CACHE_SIZE 1
+FilterXObject *fx_datetime_cache[FILTERX_DATETIME_CACHE_SIZE];
+
 typedef struct _FilterXDateTime
 {
   FilterXObject super;
@@ -99,7 +102,7 @@ FilterXObject *
 filterx_datetime_new(const UnixTime *ut)
 {
   if (ut->ut_sec == 0 && ut->ut_usec == 0)
-    return global_cache.datetime_cache[0];
+    return fx_datetime_cache[0];
   return _datetime_new(ut);
 }
 
@@ -600,14 +603,15 @@ filterx_datetime_global_init(void)
 {
   UnixTime zero = {0};
 
-  filterx_cache_object(&global_cache.datetime_cache[0], _datetime_new(&zero));
+  fx_datetime_cache[0] = _datetime_new(&zero);
+  filterx_object_hibernate(fx_datetime_cache[0]);
 }
 
 void
 filterx_datetime_global_deinit(void)
 {
-  for (gint i = 0; i < FILTERX_DATETIME_CACHE_LIMIT; i++)
+  for (gint i = 0; i < FILTERX_DATETIME_CACHE_SIZE; i++)
     {
-      filterx_uncache_object(&global_cache.datetime_cache[i]);
+      filterx_object_unhibernate_and_free(fx_datetime_cache[i]);
     }
 }
