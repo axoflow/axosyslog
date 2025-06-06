@@ -29,6 +29,8 @@
 #include "filterx/filterx-object.h"
 #include "template/eval.h"
 
+#define FILTERX_CONTEXT_ERROR_STACK_SIZE (8)
+#define FILTERX_EVAL_ERROR_IDX_FMT_SIZE (8)
 
 typedef enum _FilterXEvalResult
 {
@@ -53,7 +55,8 @@ typedef enum _FilterXEvalControl
 typedef struct _FilterXFailureInfo
 {
   FilterXObject *meta;
-  FilterXError error;
+  FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
+  gint error_count;
 } FilterXFailureInfo;
 
 typedef struct _FilterXEvalContext FilterXEvalContext;
@@ -61,7 +64,8 @@ struct _FilterXEvalContext
 {
   LogMessage *msg;
   FilterXScope *scope;
-  FilterXError error;
+  FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
+  gint error_count;
   FilterXObject *current_frame_meta;
   LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
@@ -80,9 +84,12 @@ void filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar
 void filterx_eval_set_context(FilterXEvalContext *context);
 FilterXEvalResult filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr);
 const gchar *filterx_eval_get_last_error(void);
-EVTTAG *filterx_eval_format_last_error_tag(void);
-EVTTAG *filterx_eval_format_last_error_location_tag(void);
+const gchar *filterx_eval_get_error(gint index);
+gint filterx_eval_get_error_count(void);
+EVTTAG *filterx_eval_format_error_tag(gint index);
+EVTTAG *filterx_eval_format_error_location_tag(gint index);
 void filterx_eval_clear_errors(void);
+EVTTAG *filterx_eval_format_error_index_tag(gint index, gchar *buf);
 EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,

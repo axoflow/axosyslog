@@ -27,6 +27,7 @@
 
 #include "compat/cpp-start.h"
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-eval.h"
 #include "compat/cpp-end.h"
 
 #include "opentelemetry/proto/logs/v1/logs.pb.h"
@@ -91,7 +92,7 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to get field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to get protobuf field", NULL, g_strdup(ex.what()), TRUE);
         return nullptr;
       }
   };
@@ -111,7 +112,7 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to set field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to set protobuf field", NULL, g_strdup(ex.what()), TRUE);
         return false;
       }
   }
@@ -125,7 +126,7 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to unset field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to unset protobuf field", NULL, g_strdup(ex.what()), TRUE);
         return false;
       }
   }
@@ -138,7 +139,7 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to check field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to check protobuf field", NULL, g_strdup(ex.what()), TRUE);
         return false;
       }
   }
