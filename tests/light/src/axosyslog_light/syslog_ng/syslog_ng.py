@@ -163,8 +163,8 @@ class SyslogNg(object):
         return self.wait_for_messages_in_console_log([expected_message])
 
     def __syntax_check(self) -> None:
-        stdout_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_syntax_only_stdout")
-        stderr_path = Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_syntax_only_stderr")
+        stdout_path = Path(self.instance_paths.get_syntax_only_stdout_path())
+        stderr_path = Path(self.instance_paths.get_syntax_only_stderr_path())
 
         start_params = copy(self.start_params)
         start_params.syntax_only = True
