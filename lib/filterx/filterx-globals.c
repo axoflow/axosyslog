@@ -186,6 +186,12 @@ _ctors_deinit(void)
   filterx_builtin_function_ctors_deinit_private(filterx_builtin_function_ctors);
 }
 
+static gboolean
+filterx_builtin_generator_function_ctor_register(const gchar *fn_name, FilterXFunctionCtor ctor)
+{
+  return filterx_builtin_function_ctor_register_private(filterx_builtin_generator_function_ctors, fn_name, ctor);
+}
+
 FilterXFunctionCtor
 filterx_builtin_generator_function_ctor_lookup(const gchar *function_name)
 {

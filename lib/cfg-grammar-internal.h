@@ -45,6 +45,7 @@
 #include "filterx/filterx-parser.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-pipe.h"
+#include "filterx/filterx-eval.h"
 #include "parser/parser-expr-parser.h"
 #include "rewrite/rewrite-expr-parser.h"
 #include "block-ref-parser.h"
