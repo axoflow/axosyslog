@@ -122,7 +122,7 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
@@ -152,7 +152,7 @@ Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
@@ -183,7 +183,7 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
@@ -213,7 +213,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiters)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
@@ -243,7 +243,7 @@ Test(filterx_func_parse_csv, test_optional_argument_dialect)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
@@ -276,7 +276,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
@@ -309,7 +309,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
@@ -342,7 +342,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
@@ -375,7 +375,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
@@ -406,7 +406,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
@@ -439,7 +439,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimi
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
@@ -472,7 +472,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));

@@ -76,7 +76,7 @@ Test(filterx_func_parse_kv, test_skipped_opts_causes_default_behaviour)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
@@ -109,7 +109,7 @@ Test(filterx_func_parse_kv, test_optional_value_separator_option_first_character
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
@@ -163,7 +163,7 @@ Test(filterx_func_parse_kv, test_optional_pair_separator_option)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
@@ -197,7 +197,7 @@ Test(filterx_func_parse_kv, test_optional_stray_words_key_option)
   cr_assert_null(args_err);
   cr_assert_null(err);
 
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));

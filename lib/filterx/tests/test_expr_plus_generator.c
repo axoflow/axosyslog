@@ -104,7 +104,7 @@ Test(expr_plus_generator, test_list_add_two_generators_with_post_set_fillable)
   FilterXExpr *fillable = filterx_literal_new(list);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
-  FilterXObject *res_object = filterx_expr_eval(expr);
+  FilterXObject *res_object = init_and_eval_expr(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(list)));
 
@@ -133,7 +133,7 @@ Test(expr_plus_generator, test_list_add_variable_to_generator_with_post_set_fill
   FilterXExpr *fillable = filterx_literal_new(list);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
-  FilterXObject *res_object = filterx_expr_eval(expr);
+  FilterXObject *res_object = init_and_eval_expr(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(list)));
 
@@ -163,7 +163,7 @@ Test(expr_plus_generator, test_list_add_generator_to_variable_with_post_set_fill
   FilterXExpr *fillable = filterx_literal_new(list);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
-  FilterXObject *res_object = filterx_expr_eval(expr);
+  FilterXObject *res_object = init_and_eval_expr(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(list)));
 
@@ -205,7 +205,7 @@ Test(expr_plus_generator, test_nested_dict_add_two_generators_with_post_set_fill
   FilterXExpr *fillable = filterx_literal_new(dict);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
-  FilterXObject *res_object = filterx_expr_eval(expr);
+  FilterXObject *res_object = init_and_eval_expr(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(dict)));
 
@@ -235,7 +235,7 @@ Test(expr_plus_generator, test_nested_dict_add_variable_to_generator_with_post_s
   FilterXExpr *fillable = filterx_literal_new(dict);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
-  FilterXObject *res_object = filterx_expr_eval(expr);
+  FilterXObject *res_object = init_and_eval_expr(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(dict)));
 
@@ -266,7 +266,7 @@ Test(expr_plus_generator, test_nested_dict_add_generator_to_variable_with_post_s
   FilterXExpr *fillable = filterx_literal_new(dict);
   filterx_generator_set_fillable(expr, filterx_expr_ref(fillable));
 
-  FilterXObject *res_object = filterx_expr_eval(expr);
+  FilterXObject *res_object = init_and_eval_expr(expr);
   cr_assert_not_null(res_object);
   cr_assert(filterx_object_is_type(res_object, &FILTERX_TYPE_NAME(dict)));
 
