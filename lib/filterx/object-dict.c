@@ -664,6 +664,31 @@ _filterx_dict_clone(FilterXObject *s)
   return _filterx_dict_clone_container(s, NULL, NULL);
 }
 
+static gboolean
+_dedup_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
+{
+  GHashTable *dedup_storage = (GHashTable *) user_data;
+
+  filterx_object_dedup(key, dedup_storage);
+  filterx_object_dedup(value, dedup_storage);
+
+  return TRUE;
+}
+
+static gboolean
+_filterx_dict_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+{
+  FilterXDictObject *self = (FilterXDictObject *) *pself;
+
+  g_assert(_table_foreach(self->table, _dedup_dict_item, dedup_storage));
+
+  /* Mutable objects themselves should never be deduplicated,
+   * only immutable values INSIDE those recursive mutable objects.
+   */
+  g_assert(*pself == &self->super.super);
+  return TRUE;
+}
+
 FilterXObject *
 filterx_dict_new(void)
 {
@@ -753,4 +778,5 @@ FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
                     .repr = _filterx_dict_repr,
                     .clone = _filterx_dict_clone,
                     .clone_container = _filterx_dict_clone_container,
+                    .dedup = _filterx_dict_dedup,
                    );
