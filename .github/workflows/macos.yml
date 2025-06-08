@@ -44,7 +44,7 @@ jobs:
 
           HOMEBREW_PREFIX="$(brew --prefix)"
           PYTHONUSERBASE="${HOME}/python_packages"
-          PKG_CONFIG_PATH="${HOMEBREW_PREFIX}/opt/openssl@3/lib/pkgconfig:${HOMEBREW_PREFIX}/opt/net-snmp/lib/pkgconfig:${HOMEBREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+          PKG_CONFIG_PATH="${HOMEBREW_PREFIX}/opt/mongo-c-driver@1/lib/pkgconfig:${HOMEBREW_PREFIX}/opt/openssl@3/lib/pkgconfig:${HOMEBREW_PREFIX}/opt/net-snmp/lib/pkgconfig:${HOMEBREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
           CFLAGS="-I${HOMEBREW_PREFIX}/include/"
           CXXFLAGS="-std=c++17"
 

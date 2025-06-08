@@ -19,7 +19,7 @@ brew "libdbi"
 brew "libmaxminddb"
 brew "libnet"
 brew "librdkafka"
-brew "mongo-c-driver"
+brew "mongo-c-driver@1"
 brew "net-snmp"
 brew "python@3", link: true, force: true
 brew "rabbitmq-c"
