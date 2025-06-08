@@ -124,11 +124,7 @@ _filterx_ref_dedup(FilterXObject **pself, GHashTable *dedup_storage)
     return FALSE;
 
   /* Mutable objects themselves should never be deduplicated,
-   * only the values INSIDE those recursive mutable objects.
-   *
-   * In case one wants to support mutable object deduplication
-   * this assert should be removed and the fx_ref_cnt of the new value should
-   * be adjusted.
+   * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(orig_value == self->value);
 
