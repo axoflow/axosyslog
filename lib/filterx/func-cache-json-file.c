@@ -219,7 +219,7 @@ gboolean
 _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 {
   FilterXObject *cached_json = _load_json_file(self->filepath, error);
-  if (!cached_json && *error)
+  if (!cached_json)
     {
       return FALSE;
     }
@@ -262,6 +262,7 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
       msg_error("FilterX: Error while loading json file, keeping current json version.",
                 evt_tag_str("file_name", self->filepath),
                 evt_tag_str("error_message", error->message));
+      g_clear_error(&error);
     }
 
   filterx_eval_end_compile(&json_reload_context);
