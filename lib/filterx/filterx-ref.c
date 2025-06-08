@@ -106,7 +106,7 @@ _filterx_ref_free(FilterXObject *s)
 }
 
 static void
-_filterx_make_readonly(FilterXObject *s)
+_filterx_ref_make_readonly(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
@@ -114,7 +114,7 @@ _filterx_make_readonly(FilterXObject *s)
 }
 
 static gboolean
-_filterx_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+_filterx_ref_dedup(FilterXObject **pself, GHashTable *dedup_storage)
 {
   FilterXRef *self = (FilterXRef *) *pself;
 
@@ -124,7 +124,7 @@ _filterx_dedup(FilterXObject **pself, GHashTable *dedup_storage)
     return FALSE;
 
   /* Mutable objects themselves should never be deduplicated,
-   * only the values INSIDE those recursive mutable objects
+   * only the values INSIDE those recursive mutable objects.
    *
    * In case one wants to support mutable object deduplication
    * this assert should be removed and the fx_ref_cnt of the new value should
@@ -315,7 +315,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
-                    .make_readonly = _filterx_make_readonly,
-                    .dedup = _filterx_dedup,
+                    .make_readonly = _filterx_ref_make_readonly,
+                    .dedup = _filterx_ref_dedup,
                     .free_fn = _filterx_ref_free,
                    );
