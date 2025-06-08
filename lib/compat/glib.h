@@ -74,4 +74,9 @@ gboolean slng_g_hash_table_steal_extended(GHashTable *hash_table, gconstpointer 
                                           gpointer *stolen_key, gpointer *stolen_value);
 #endif
 
+#if !GLIB_CHECK_VERSION(2, 74, 0)
+#define g_atomic_pointer_exchange slng_g_atomic_pointer_exchange
+gpointer slng_g_atomic_pointer_exchange(gpointer *atomic, gpointer newval);
+#endif
+
 #endif
