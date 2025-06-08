@@ -176,6 +176,14 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static inline void
+_deduplicate_key_values(FilterXObject **cached_json)
+{
+  GHashTable *dedup_store = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  filterx_object_dedup(cached_json, dedup_store);
+  g_hash_table_unref(dedup_store);
+}
+
 gboolean
 _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 {
@@ -186,6 +194,8 @@ _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
     }
 
   filterx_object_make_readonly(cached_json);
+  _deduplicate_key_values(&cached_json);
+
   FilterXObject *old_cached_json = g_atomic_pointer_exchange(&self->cached_json, cached_json);
   filterx_object_unref(old_cached_json);
   return TRUE;
