@@ -461,8 +461,8 @@ afprogram_dd_reopen(AFProgramDestDriver *self)
       fd < 0)
     return FALSE;
 
-  log_writer_reopen(self->writer, log_proto_text_client_new(log_transport_pipe_new(fd),
-                                                            &self->writer_options.proto_options.super));
+  log_writer_reopen(self->writer, log_proto_unidirectional_text_client_new(log_transport_pipe_new(fd),
+                    &self->writer_options.proto_options.super));
   return TRUE;
 }
 
