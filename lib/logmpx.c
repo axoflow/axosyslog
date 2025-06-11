@@ -23,7 +23,6 @@
  */
 
 #include "logmpx.h"
-#include "cfg-walker.h"
 
 
 void
@@ -191,28 +190,17 @@ log_multiplexer_free(LogPipe *s)
 }
 
 static void
-_append(LogPipe *to, gpointer *user_data)
+log_multiplexer_walk(LogPipe *s, LogPathWalkFunc func, gpointer user_data)
 {
-  LogPipe *from = user_data[0];
-  GList **list = user_data[1];
-
-  Arc *arc = arc_new(from, to, ARC_TYPE_NEXT_HOP);
-  *list = g_list_append(*list, arc);
+  LogMultiplexer *self = (LogMultiplexer *) s;
+  for (gsize i = 0; i < self->next_hops->len; i++)
+    {
+      LogPipe *next_hop = (LogPipe *) g_ptr_array_index(self->next_hops, i);
+      if (func(s, PIW_NEXT_HOP, next_hop, user_data))
+        log_pipe_walk(next_hop, func, user_data);
+    }
+  return log_pipe_walk_method(s, func, user_data);
 }
-
-static GList *
-_arcs(LogPipe *s)
-{
-  LogMultiplexer *self = (LogMultiplexer *)s;
-  GList *list = NULL;
-  g_ptr_array_foreach(self->next_hops, (GFunc)_append, (gpointer[2])
-  {
-    self, &list
-  });
-  if (s->pipe_next)
-    list = g_list_append(list, arc_new((LogPipe *)self, s->pipe_next, ARC_TYPE_PIPE_NEXT));
-  return list;
-};
 
 LogMultiplexer *
 log_multiplexer_new(GlobalConfig *cfg)
@@ -223,9 +211,9 @@ log_multiplexer_new(GlobalConfig *cfg)
   self->super.init = log_multiplexer_init;
   self->super.deinit = log_multiplexer_deinit;
   self->super.queue = log_multiplexer_queue;
+  self->super.walk = log_multiplexer_walk;
   self->super.free_fn = log_multiplexer_free;
   self->next_hops = g_ptr_array_new();
-  self->super.arcs = _arcs;
   self->delivery_propagation = TRUE;
   log_pipe_add_info(&self->super, "multiplexer");
   return self;

@@ -221,6 +221,14 @@ struct _LogPathOptions
   FilterXEvalContext *filterx_context;
 };
 
+typedef enum
+{
+  PIW_PIPE_NEXT,
+  PIW_NEXT_HOP,
+} LogPathConnectionType;
+
+typedef gboolean (*LogPathWalkFunc)(LogPipe *from, LogPathConnectionType type, LogPipe *to, gpointer user_data);
+
 #define LOG_PATH_OPTIONS_INIT { TRUE, FALSE, NULL, NULL, NULL}
 #define LOG_PATH_OPTIONS_INIT_NOACK { FALSE, FALSE, NULL, NULL, NULL }
 
@@ -321,7 +329,7 @@ struct _LogPipe
   gboolean (*post_config_init)(LogPipe *self);
 
   const gchar *(*generate_persist_name)(const LogPipe *self);
-  GList *(*arcs)(LogPipe *self);
+  void (*walk)(LogPipe *self, LogPathWalkFunc func, gpointer user_data);
 
   /* clone this pipe when used in multiple locations in the processing
    * pipe-line. If it contains state, it should behave as if it was
@@ -351,6 +359,7 @@ gboolean log_pipe_unref(LogPipe *self);
 LogPipe *log_pipe_new(GlobalConfig *cfg);
 gboolean log_pipe_pre_config_init_method(LogPipe *self);
 gboolean log_pipe_post_config_init_method(LogPipe *self);
+void log_pipe_walk_method(LogPipe *self, LogPathWalkFunc func, gpointer user_data);
 void log_pipe_init_instance(LogPipe *self, GlobalConfig *cfg);
 void log_pipe_clone_method(LogPipe *dst, const LogPipe *src);
 void log_pipe_forward_notify(LogPipe *self, gint notify_code, gpointer user_data);
@@ -460,10 +469,10 @@ gboolean log_pipe_is_internal(const LogPipe *self);
 
 void log_pipe_free_method(LogPipe *s);
 
-static inline GList *
-log_pipe_get_arcs(LogPipe *s)
+static inline void
+log_pipe_walk(LogPipe *s, LogPathWalkFunc func, gpointer user_data)
 {
-  return s->arcs(s);
+  return s->walk(s, func, user_data);
 }
 
 void log_pipe_add_info(LogPipe *self, const gchar *info);
