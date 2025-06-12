@@ -62,6 +62,11 @@ public:
     this->password = p;
   }
 
+  void set_server_side_schema(const std::string &s)
+  {
+    this->server_side_schema = s;
+  }
+
   const std::string &get_database()
   {
     return this->database;
@@ -104,6 +109,7 @@ private:
   std::string table;
   std::string user;
   std::string password;
+  std::string server_side_schema;
   std::string query;
 
   Schema schema;

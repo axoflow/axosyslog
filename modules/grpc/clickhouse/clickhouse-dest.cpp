@@ -57,7 +57,10 @@ DestDriver::init()
   if (!this->quote_identifier(this->table, quoted_table))
     return false;
 
-  this->query = "INSERT INTO " + quoted_table + " FORMAT Protobuf";
+  this->query = "INSERT INTO " + quoted_table;
+  if (!this->server_side_schema.empty())
+    this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
+  this->query += " FORMAT Protobuf";
 
   if (!this->schema.init())
     return false;
@@ -339,6 +342,14 @@ clickhouse_dd_set_password(LogDriver *d, const gchar *password)
   GrpcDestDriver *self = (GrpcDestDriver *) d;
   DestDriver *cpp = clickhouse_dd_get_cpp(self);
   cpp->set_password(password);
+}
+
+void
+clickhouse_dd_set_server_side_schema(LogDriver *d, const gchar *server_side_schema)
+{
+  GrpcDestDriver *self = (GrpcDestDriver *) d;
+  DestDriver *cpp = clickhouse_dd_get_cpp(self);
+  cpp->set_server_side_schema(server_side_schema);
 }
 
 LogDriver *

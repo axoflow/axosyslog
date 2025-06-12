@@ -38,6 +38,7 @@ static CfgLexerKeyword clickhouse_keywords[] =
   { "table", KW_TABLE },
   { "user", KW_USER },
   { "password", KW_PASSWORD },
+  { "server_side_schema", KW_SERVER_SIDE_SCHEMA },
   { NULL }
 };
 
