@@ -60,7 +60,20 @@ _set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *
 static inline FilterXObject *
 _suppress_error(void)
 {
-  msg_debug("FILTERX null coalesce assignment supressing error", filterx_eval_format_last_error_tag());
+  if (trace_flag)
+    {
+      gint error_count = filterx_eval_get_error_count();
+      gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
+
+      for (gint err_idx = 0; err_idx < error_count; err_idx++)
+        {
+          msg_debug("FilterX: null coalesce assignment suppressing error",
+                    filterx_eval_format_error_index_tag(err_idx, buf),
+                    filterx_eval_format_error_location_tag(err_idx),
+                    filterx_eval_format_error_tag(err_idx));
+        }
+    }
+
   filterx_eval_clear_errors();
 
   return filterx_null_new();
@@ -86,10 +99,14 @@ _nullv_set_subscript_eval(FilterXExpr *s)
 
   FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to set element of object", s, "Failed to evaluate expression", FALSE);
+      goto exit;
+    }
 
   if (self->key)
     {
+      filterx_eval_push_error_info("Failed to set element of object", s, "Failed to evaluate key", FALSE);
       key = filterx_expr_eval(self->key);
       if (!key)
         goto exit;
@@ -113,20 +130,34 @@ _set_subscript_eval(FilterXExpr *s)
 
   FilterXObject *new_value = filterx_expr_eval(self->new_value);
   if (!new_value)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to set element of object", s, "Failed to evaluate right hand side", FALSE);
+      return NULL;
+    }
 
   FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to set element of object", s, "Failed to evaluate expression", FALSE);
+      goto exit;
+    }
 
   if (self->key)
     {
       key = filterx_expr_eval(self->key);
       if (!key)
-        goto exit;
+        {
+          filterx_eval_push_error_info("Failed to set element of object", s, "Failed to evaluate key", FALSE);
+          goto exit;
+        }
     }
 
   result = _set_subscript(self, object, key, new_value);
+  if (!result)
+    {
+      filterx_eval_push_error_info("Failed to set element of object", s, "set-subscript() method failed", FALSE);
+      goto exit;
+    }
 
 exit:
   filterx_object_unref(new_value);

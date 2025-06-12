@@ -43,7 +43,20 @@ _assign(FilterXBinaryOp *self, FilterXObject *value)
 static inline FilterXObject *
 _suppress_error(void)
 {
-  msg_debug("FILTERX null coalesce assignment supressing error", filterx_eval_format_last_error_tag());
+  if (trace_flag)
+    {
+      gint error_count = filterx_eval_get_error_count();
+      gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
+
+      for (gint err_idx = 0; err_idx < error_count; err_idx++)
+        {
+          msg_debug("FilterX: null coalesce assignment suppressing error",
+                    filterx_eval_format_error_index_tag(err_idx, buf),
+                    filterx_eval_format_error_location_tag(err_idx),
+                    filterx_eval_format_error_tag(err_idx));
+        }
+    }
+
   filterx_eval_clear_errors();
 
   return filterx_null_new();
@@ -79,10 +92,17 @@ _assign_eval(FilterXExpr *s)
   FilterXObject *value = filterx_expr_eval(self->rhs);
 
   if (!value)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to assign value", s, "Failed to evaluate right hand side", FALSE);
+      return NULL;
+    }
 
   FilterXObject *result = _assign(self, value);
   filterx_object_unref(value);
+
+  if (!result)
+    filterx_eval_push_error_info("Failed to assign value", s, "assign() method failed", FALSE);
+
   return result;
 }
 

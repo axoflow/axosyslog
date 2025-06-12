@@ -569,11 +569,13 @@ exit:
 static gboolean
 _validate_fillable(FilterXGeneratorFunctionParseXml *self, FilterXObject *fillable)
 {
-  fillable = filterx_ref_unwrap_ro(fillable);
-  if (!filterx_object_is_type(fillable, &FILTERX_TYPE_NAME(dict)))
+  FilterXObject *fillable_unwrapped = filterx_ref_unwrap_ro(fillable);
+  if (!filterx_object_is_type(fillable_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
-      filterx_eval_push_error_info("fillable must be dict", &self->super.super.super,
-                                   g_strdup_printf("got %s instead", fillable->type->name), TRUE);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Fillable must be a dict, got: %s",
+                                    filterx_object_format_type_name(fillable, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate parse_xml()", &self->super.super.super, info, TRUE);
       return FALSE;
     }
   return TRUE;
@@ -585,8 +587,10 @@ _extract_raw_xml(FilterXGeneratorFunctionParseXml *self, FilterXObject *xml_obj,
   const gchar *raw_xml;
   if (!filterx_object_extract_string_ref(xml_obj, &raw_xml, len))
     {
-      filterx_eval_push_error_info("input must be string", &self->super.super.super,
-                                   g_strdup_printf("got %s instead", xml_obj->type->name), TRUE);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Input must be a string, got: %s",
+                                    filterx_object_format_type_name(xml_obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate parse_xml()", &self->super.super.super, info, TRUE);
       filterx_object_unref(xml_obj);
       return NULL;
     }
@@ -649,8 +653,8 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
                      g_markup_parse_context_end_parse(context, &error);
   if (!success)
     {
-      gchar *error_info = g_strdup(error ? error->message : "unknown error");
-      filterx_eval_push_error_info("failed to parse xml", &self->super.super.super, error_info, TRUE);
+      gchar *info = g_strdup(error ? error->message : "unknown error");
+      filterx_eval_push_error_info("Failed to evaluate parse_xml()", &self->super.super.super, info, TRUE);
       if (error)
         g_error_free(error);
       goto exit;

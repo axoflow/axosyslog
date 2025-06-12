@@ -68,7 +68,11 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
 
   gsize len_before_value = buffer->len;
   if (!filterx_object_str_append(value, buffer))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super,
+                                   "str_append() method failed", FALSE);
+      return FALSE;
+    }
 
   /* TODO: make the characters here configurable. */
   if (memchr(buffer->str + len_before_value, self->delimiter, buffer->len - len_before_value) != NULL)
@@ -93,7 +97,10 @@ _handle_list_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
 {
   guint64 size;
   if (!filterx_object_len(csv_data, &size))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super, "len() method failed", FALSE);
+      return FALSE;
+    }
 
   gpointer user_data[] = { self, formatted };
   gboolean success = TRUE;
@@ -118,7 +125,10 @@ _handle_dict_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
       if (!cols || !filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)) || !filterx_object_len(cols, &size))
         {
           filterx_object_unref(cols);
-          filterx_eval_push_error("Columns must represented as list. " FILTERX_FUNC_FORMAT_CSV_USAGE, &self->super.super, NULL);
+          gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+          gchar *info = g_strdup_printf("Columns must be a list, got: %s. " FILTERX_FUNC_FORMAT_CSV_USAGE,
+                                        filterx_object_format_type_name(cols, type_name_buf));
+          filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super, info, TRUE);
           return FALSE;
         }
 
@@ -145,7 +155,11 @@ _eval(FilterXExpr *s)
 
   FilterXObject *csv_data = filterx_expr_eval_typed(self->input);
   if (!csv_data)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super,
+                                   "Failed to evaluate expression", FALSE);
+      return NULL;
+    }
 
   gboolean success = FALSE;
   GString *formatted = scratch_buffers_alloc();
@@ -156,7 +170,12 @@ _eval(FilterXExpr *s)
   else if (filterx_object_is_type(csv_data_unwrapped, &FILTERX_TYPE_NAME(dict)))
     success = _handle_dict_input(self, csv_data_unwrapped, formatted);
   else
-    filterx_eval_push_error("input must be a dict or list. " FILTERX_FUNC_FORMAT_CSV_USAGE, s, csv_data);
+    {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Object must be a dict or list, got: %s. " FILTERX_FUNC_FORMAT_CSV_USAGE,
+                                    filterx_object_format_type_name(csv_data, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate format_csv()", &self->super.super, info, TRUE);
+    }
 
   filterx_object_unref(csv_data);
   return success ? filterx_string_new(formatted->str, formatted->len) : NULL;
