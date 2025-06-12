@@ -170,14 +170,14 @@ _setup_static_options_in_curl(HTTPDestinationWorker *self)
 
   if (owner->accept_redirects)
     {
-      curl_easy_setopt(self->curl, CURLOPT_FOLLOWLOCATION, 1);
-      curl_easy_setopt(self->curl, CURLOPT_POSTREDIR, CURL_REDIR_POST_ALL);
+      curl_easy_setopt(self->curl, CURLOPT_FOLLOWLOCATION, 1L);
+      curl_easy_setopt(self->curl, CURLOPT_POSTREDIR, (long)(CURL_REDIR_POST_ALL));
 #if SYSLOG_NG_HAVE_DECL_CURLOPT_REDIR_PROTOCOLS_STR
       curl_easy_setopt(self->curl, CURLOPT_REDIR_PROTOCOLS_STR, "http,https");
 #else
-      curl_easy_setopt(self->curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+      curl_easy_setopt(self->curl, CURLOPT_REDIR_PROTOCOLS, (long)(CURLPROTO_HTTP | CURLPROTO_HTTPS));
 #endif
-      curl_easy_setopt(self->curl, CURLOPT_MAXREDIRS, 3);
+      curl_easy_setopt(self->curl, CURLOPT_MAXREDIRS, 3L);
     }
   curl_easy_setopt(self->curl, CURLOPT_TIMEOUT, owner->timeout);
 

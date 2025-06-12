@@ -55,7 +55,7 @@ typedef struct
   GString *body_prefix;
   GString *body_suffix;
   GString *delimiter;
-  int ssl_version;
+  long ssl_version;
   GString *accept_encoding;
   gint8 content_compression;
   gboolean peer_verify;
