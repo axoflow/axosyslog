@@ -42,5 +42,6 @@ def test_follow_freq_value(config, syslog_ng, follow_freq, expected):
     if expected is True:
         syslog_ng.start(config)
     else:
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exec_info:
             syslog_ng.start(config)
+        assert "syslog-ng config syntax error" in str(exec_info.value)

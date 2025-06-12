@@ -36,5 +36,6 @@ def test_snmp_dest_wrong_version(config, syslog_ng, snmptrapd, snmp_test_params)
     )
     config.create_logpath(statements=[generator_source, snmp_destination])
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)

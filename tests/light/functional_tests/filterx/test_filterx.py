@@ -1046,8 +1046,9 @@ def test_strptime_error_result(config, syslog_ng):
         $MSG = strptime("2024-04-10T08:09:10Z"); # wrong arg set
 """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
 def test_strftime_error_result(config, syslog_ng):
@@ -1056,8 +1057,9 @@ def test_strftime_error_result(config, syslog_ng):
         $MSG = strftime("2024-04-10T08:09:10Z"); # wrong arg set
 """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
 def test_strptime_success_result(config, syslog_ng):
@@ -1122,8 +1124,9 @@ def test_set_timestamp_wrong_param_error_result(config, syslog_ng):
         set_timestamp(datetime, bad_param); # wrong parameter
 """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
 def test_set_timestamp_invalid_stamp_value_error_result(config, syslog_ng):
@@ -1133,8 +1136,9 @@ def test_set_timestamp_invalid_stamp_value_error_result(config, syslog_ng):
         set_timestamp(datetime, stamp="processed"); # wrong parameter
 """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
 def test_set_timestamp_set_stamp(config, syslog_ng):
@@ -1188,8 +1192,9 @@ def test_set_pri_no_arg_error_result(config, syslog_ng):
         set_pri(); # wrong arg set
 """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
 def test_set_pri_wrong_arg_set_error_result(config, syslog_ng):
@@ -1306,8 +1311,9 @@ def test_regexp_match_error_in_pattern(config, syslog_ng):
     "foo" =~ /(/;
 """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
 def test_regexp_search(config, syslog_ng):
@@ -1390,8 +1396,9 @@ def test_regexp_search_error_in_pattern(config, syslog_ng):
     $MSG = regexp_search("foo", /(/);
 """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng is not running" in str(exec_info.value)
 
 
 def test_parse_kv_default_option_set_is_skippable(config, syslog_ng):
@@ -1928,8 +1935,9 @@ def test_regexp_subst_all_args_are_mandatory(config, syslog_ng):
         $MSG = regexp_subst("foobarbaz", "(fo|az)");
     """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
 def test_add_operator_for_base_types(config, syslog_ng):
