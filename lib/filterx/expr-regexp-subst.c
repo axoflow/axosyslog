@@ -132,7 +132,7 @@ _build_replacement_stirng_with_match_groups(const FilterXFuncRegexpSubst *self, 
         {
           PCRE2_SIZE start = ovector[2 * idx];
           PCRE2_SIZE end = ovector[2 * idx + 1];
-          if (start != PCRE2_UNSET)
+          if (start != PCRE2_UNSET && end != PCRE2_UNSET)
             {
               g_string_append_len(replacement_string, last, pos - last);
               last = close;
