@@ -483,6 +483,35 @@ Test(matcher, test_matcher_matches_are_captured_directly_if_source_handle_change
   log_msg_unref(msg);
 }
 
+Test(matcher, test_matcher_optional_matches_are_unset)
+{
+  LogMatcherOptions matcher_options;
+  LogMessage *msg;
+  gboolean result;
+
+  const gchar *input = "bar";
+
+  msg = create_empty_message();
+  log_msg_set_value_with_type(msg, LM_V_FILE_NAME, input, -1, LM_VT_STRING);
+
+  log_matcher_options_defaults(&matcher_options);
+  matcher_options.flags = LMF_STORE_MATCHES;
+  LogMatcher *m = log_matcher_pcre_re_new(&matcher_options);
+  log_matcher_compile(m, "(foo)?(bar)?", NULL);
+
+  result = log_matcher_match(m, msg, LM_V_FILE_NAME, input, strlen(input));
+  cr_assert(result);
+
+  LogMessageValueType type;
+  log_msg_get_match_with_type(msg, 1, NULL, &type);
+  cr_assert_eq(type, LM_VT_NULL);
+
+  assert_log_message_match_value(msg, 2, "bar");
+
+  log_matcher_unref(m);
+  log_msg_unref(msg);
+}
+
 Test(matcher, test_replace_works_correctly_if_capture_group_overwrites_the_input_in_a_match_variable)
 {
   gssize value_len;

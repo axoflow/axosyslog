@@ -66,10 +66,14 @@ _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state)
     {
       if (num_matches > 1 && i==0 && !check_flag(state->flags, FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO))
         continue;
-      gint begin_index = matches[2 * i];
-      gint end_index = matches[2 * i + 1];
-      if (begin_index < 0 || end_index < 0)
-        continue;
+      PCRE2_SIZE begin_index = matches[2 * i];
+      PCRE2_SIZE end_index = matches[2 * i + 1];
+      if (begin_index == PCRE2_UNSET || end_index == PCRE2_UNSET)
+        {
+          FilterXObject *null = filterx_null_new();
+          filterx_list_append(result, &null);
+          continue;
+        }
 
       FILTERX_STRING_DECLARE_ON_STACK(value, state->lhs_str + begin_index, end_index - begin_index);
       gboolean success = filterx_list_append(result, &value);
@@ -104,7 +108,7 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state)
 
       PCRE2_SIZE begin_index = matches[2 * i];
       PCRE2_SIZE end_index = matches[2 * i + 1];
-      if (begin_index < 0 || end_index < 0)
+      if (begin_index == PCRE2_UNSET || end_index == PCRE2_UNSET)
         continue;
 
       g_snprintf(num_str_buf, sizeof(num_str_buf), "%" G_GUINT32_FORMAT, i);

@@ -31,6 +31,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/object-null.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
 #include "compat/pcre.h"
@@ -193,6 +194,32 @@ Test(filterx_expr_regexp_search, named_grp_zero_list_mode)
   _assert_list_elem(result, 1, "foo");
   _assert_list_elem(result, 2, "bar");
   _assert_list_elem(result, 3, "baz");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp_search, optional_group_list_mode)
+{
+  FilterXObject *result = _search("bar", "(foo)?(bar)?", FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
+
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  _assert_len(result, 2);
+
+  cr_assert_eq(filterx_list_get_subscript(result, 0), filterx_null_new());
+  _assert_list_elem(result, 1, "bar");
+
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp_search, optional_group_dict_mode)
+{
+  FilterXObject *result = _search("bar", "(?<f>foo)?(?<b>bar)?", 0);
+
+  _assert_dict_elem(result, "b", "bar");
+
+  FilterXObject *key = filterx_string_new("f", -1);
+  cr_assert_not(filterx_object_is_key_set(result, key));
+  filterx_object_unref(key);
+
   filterx_object_unref(result);
 }
 
