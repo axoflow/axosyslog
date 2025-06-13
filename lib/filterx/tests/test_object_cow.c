@@ -24,7 +24,7 @@
 #include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-eval.h"
-#include "filterx/filterx-config.h"
+#include "filterx/object-string.h"
 #include "filterx/object-dict.h"
 #include "filterx/json-repr.h"
 #include "scratch-buffers.h"
@@ -48,13 +48,13 @@ Test(filterx_cow, test_filterx_cow_wrap_adds_an_xref_wrapper)
 static FilterXObject *
 _attr_string(const gchar *attr)
 {
-  return filterx_config_frozen_string(configuration, attr);
+  return filterx_string_new_frozen(attr, configuration);
 }
 
 static FilterXObject *
 _value_string(const gchar *attr)
 {
-  return filterx_config_frozen_string(configuration, attr);
+  return filterx_string_new_frozen(attr, configuration);
 }
 
 Test(filterx_cow, test_filterx_cow_child_objects_are_refs_too)

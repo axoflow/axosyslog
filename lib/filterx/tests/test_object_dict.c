@@ -25,6 +25,7 @@
 
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "filterx/object-list-interface.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
 #include "filterx/expr-function.h"
@@ -180,6 +181,47 @@ Test(filterx_dict, test_list_function)
 
   fobj = _exec_list_func(filterx_message_value_new("{\"foo\":\"bar\"}", -1, LM_VT_JSON));
   cr_assert(fobj == NULL);
+}
+
+Test(filterx_dict, test_list_dedup)
+{
+  FilterXObject *list = _exec_list_func(filterx_string_new("[\"a\", \"b\", \"a\"]", -1));
+  FilterXObject *orig_list = list;
+
+  GHashTable *dedup_store = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  filterx_object_dedup(&list, dedup_store);
+  g_hash_table_unref(dedup_store);
+
+  cr_assert_eq(list, orig_list);
+
+  cr_assert_eq(filterx_list_get_subscript(list, 0), filterx_list_get_subscript(list, 2));
+  cr_assert_neq(filterx_list_get_subscript(list, 0), filterx_list_get_subscript(list, 1));
+
+  filterx_object_unref(list);
+}
+
+Test(filterx_dict, test_dict_dedup)
+{
+  FilterXObject *dict = filterx_object_from_json("{\"a\": \"a\", \"b\": \"b\", \"c\": \"a\"}", -1, NULL);
+  FilterXObject *orig_dict = dict;
+
+  GHashTable *dedup_store = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  filterx_object_dedup(&dict, dedup_store);
+  g_hash_table_unref(dedup_store);
+
+  cr_assert_eq(dict, orig_dict);
+
+  FilterXObject *a = filterx_string_new("a", -1);
+  FilterXObject *b = filterx_string_new("b", -1);
+  FilterXObject *c = filterx_string_new("c", -1);
+
+  cr_assert_eq(filterx_object_get_subscript(dict, a), filterx_object_get_subscript(dict, c));
+  cr_assert_neq(filterx_object_get_subscript(dict, a), filterx_object_get_subscript(dict, b));
+
+  filterx_object_unref(c);
+  filterx_object_unref(b);
+  filterx_object_unref(a);
+  filterx_object_unref(dict);
 }
 
 Test(filterx_dict, filterx_dict_object_repr)

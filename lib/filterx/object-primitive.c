@@ -22,17 +22,20 @@
  */
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-grammar.h"
+#include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "generic-number.h"
 #include "str-format.h"
 #include "plugin.h"
 #include "cfg.h"
-#include "filterx-globals.h"
 #include "str-utils.h"
 #include "timeutils/misc.h"
 #include "compat/json.h"
 #include <math.h>
+
+FilterXObject *fx_bool_cache[FILTERX_BOOL_CACHE_SIZE];
+FilterXObject *fx_integer_cache[FILTERX_INTEGER_CACHE_SIZE];
 
 static gboolean
 _truthy(FilterXObject *s)
@@ -414,17 +417,25 @@ FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(primitive),
 void
 filterx_primitive_global_init(void)
 {
-  filterx_cache_object(&global_cache.bool_cache[FALSE], _bool_wrap(FALSE));
-  filterx_cache_object(&global_cache.bool_cache[TRUE], _bool_wrap(TRUE));
-  for (guint64 i = 0; i < FILTERX_INTEGER_CACHE_LIMIT; i++)
-    filterx_cache_object(&global_cache.integer_cache[i], _integer_wrap(i - FILTERX_INTEGER_CACHE_OFFSET));
+  fx_bool_cache[FALSE] = _bool_wrap(FALSE);
+  filterx_object_hibernate(fx_bool_cache[FALSE]);
+
+  fx_bool_cache[TRUE] = _bool_wrap(TRUE);
+  filterx_object_hibernate(fx_bool_cache[TRUE]);
+
+  for (gint64 i = FILTERX_INTEGER_CACHE_MIN; i <= FILTERX_INTEGER_CACHE_MAX; i++)
+    {
+      fx_integer_cache[FILTERX_INTEGER_CACHE_IDX(i)] = _integer_wrap(i);
+      filterx_object_hibernate(fx_integer_cache[FILTERX_INTEGER_CACHE_IDX(i)]);
+    }
 }
 
 void
 filterx_primitive_global_deinit(void)
 {
-  filterx_uncache_object(&global_cache.bool_cache[FALSE]);
-  filterx_uncache_object(&global_cache.bool_cache[TRUE]);
-  for (guint64 i = 0; i < FILTERX_INTEGER_CACHE_LIMIT; i++)
-    filterx_uncache_object(&global_cache.integer_cache[i]);
+  filterx_object_unhibernate_and_free(fx_bool_cache[FALSE]);
+  filterx_object_unhibernate_and_free(fx_bool_cache[TRUE]);
+
+  for (gint64 i = FILTERX_INTEGER_CACHE_MIN; i <= FILTERX_INTEGER_CACHE_MAX; i++)
+    filterx_object_unhibernate_and_free(fx_integer_cache[FILTERX_INTEGER_CACHE_IDX(i)]);
 }

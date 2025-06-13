@@ -308,3 +308,19 @@ slng_g_hash_table_steal_extended(GHashTable *hash_table, gconstpointer lookup_ke
   return g_hash_table_steal(hash_table, lookup_key);
 }
 #endif
+
+
+#if !GLIB_CHECK_VERSION(2, 74, 0)
+gpointer
+slng_g_atomic_pointer_exchange(gpointer *atomic, gpointer newval)
+{
+  gpointer oldval;
+  do
+    {
+      oldval = g_atomic_pointer_get(atomic);
+    }
+  while (!g_atomic_pointer_compare_and_exchange(atomic, oldval, newval));
+
+  return oldval;
+}
+#endif
