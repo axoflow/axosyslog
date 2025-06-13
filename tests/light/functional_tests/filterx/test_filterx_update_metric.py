@@ -191,3 +191,48 @@ def test_filterx_update_metric_level(config, port_allocator, syslog_ng):
     assert int(samples[0].value) == 1
 
     syslog_ng.stop()
+
+
+def test_filterx_update_metric_skip_empty_labels(config, port_allocator, syslog_ng):
+    network_source, file_destination = create_config(
+        config,
+        port_allocator,
+        r"""
+            update_metric("const", labels={"null": null, "emptystring": "", "valid": "validvalue"});
+
+            nullvalue = null;
+            emptyvalue = "";
+            update_metric("values_from_vars", labels={"null": nullvalue, "emptystring": emptyvalue, "valid": "validvalue"});
+
+            labels = {
+                "null": null,
+                "emptystring": "",
+                "valid": "validvalue",
+            };
+            update_metric("labels_from_dict", labels=labels);
+        """,
+    )
+
+    syslog_ng.start(config)
+    network_source.write_log("msg1")
+    file_destination.read_logs(1)
+
+    # const
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_const", {"valid": "validvalue"})])
+    assert len(samples) == 1
+    assert int(samples[0].value) == 1
+
+    # values_from_vars
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_values_from_vars", {"valid": "validvalue"})])
+    assert len(samples) == 1
+    assert int(samples[0].value) == 1
+
+    # labels_from_dict
+
+    samples = config.get_prometheus_samples([MetricFilter("syslogng_labels_from_dict", {"valid": "validvalue"})])
+    assert len(samples) == 1
+    assert int(samples[0].value) == 1
+
+    syslog_ng.stop()
