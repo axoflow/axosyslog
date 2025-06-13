@@ -86,12 +86,15 @@ regexp_parser_compile(LogParser *s, GError **error)
         }
     }
 
-  if (result)
-    self->matchers = g_list_reverse(self->matchers);
-  else
-    g_list_free_full(self->matchers, (GDestroyNotify) log_matcher_unref);
+  if (!result)
+    {
+      g_list_free_full(self->matchers, (GDestroyNotify) log_matcher_unref);
+      self->matchers = NULL;
+      return FALSE;
+    }
 
-  return result;
+  self->matchers = g_list_reverse(self->matchers);
+  return TRUE;
 }
 
 static gboolean
