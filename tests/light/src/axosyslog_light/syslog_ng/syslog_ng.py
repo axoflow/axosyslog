@@ -28,7 +28,6 @@ from subprocess import Popen
 
 from axosyslog_light.common.blocking import wait_until_false
 from axosyslog_light.common.blocking import wait_until_true
-from axosyslog_light.common.random_id import get_unique_id
 from axosyslog_light.syslog_ng.console_log_reader import ConsoleLogReader
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgExecutor
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgStartParams
@@ -92,8 +91,7 @@ class SyslogNg(object):
             result = self._syslog_ng_ctl.stop()
 
             # wait for stop and check stop result
-            if result["exit_code"] != 0:
-                self.__error_handling("Control socket fails to stop syslog-ng")
+            self.__validate_returncode(result["exit_code"])
             if not wait_until_false(self.is_process_running):
                 self.__error_handling("syslog-ng did not stop")
             if self.start_params.stderr and self.start_params.debug and self.start_params.verbose:
@@ -114,8 +112,7 @@ class SyslogNg(object):
         result = self._syslog_ng_ctl.reload()
 
         # wait for reload and check reload result
-        if result["exit_code"] != 0:
-            self.__error_handling("Control socket fails to reload syslog-ng")
+        self.__validate_returncode(result["exit_code"])
         if not self.__wait_for_control_socket_alive():
             self.__error_handling("Control socket not alive")
         if self.start_params.stderr and self.start_params.debug and self.start_params.verbose:
@@ -177,12 +174,17 @@ class SyslogNg(object):
             stdout_path=stdout_path,
         )
         returncode = process.wait()
-        if returncode != 0:
-            raise Exception(f"syslog-ng syntax error. See {stderr_path.absolute()} for details")
+        if returncode == 0:
+            logger.info("syslog-ng config syntax check passed")
+        elif returncode == 1:
+            raise Exception(f"syslog-ng config syntax error. See {stderr_path.absolute()} for details")
+        else:
+            self.__validate_returncode(returncode)
 
     def __wait_for_control_socket_alive(self) -> bool:
         def is_alive(s: SyslogNg) -> bool:
             if not s.is_process_running():
+                self.__validate_returncode(self._process.returncode)
                 self.__error_handling("syslog-ng is not running")
             return s._syslog_ng_ctl.is_control_socket_alive()
         return wait_until_true(is_alive, self)
@@ -226,29 +228,10 @@ class SyslogNg(object):
 
     def __error_handling(self, error_message: str) -> typing.NoReturn:
         self._console_log_reader.dump_stderr()
-        self.__handle_core_file()
         raise Exception(error_message)
 
-    def __handle_core_file(self) -> None:
-        if not self.is_process_running():
-            core_file_found = False
-            for core_file in Path(".").glob("*core*"):
-                core_file_found = True
-                self._process = None
-
-                core_postfix = "gdb_core_{}".format(get_unique_id())
-                stderr_path = self.instance_paths.get_stderr_path_with_postfix(core_postfix)
-                stdout_path = self.instance_paths.get_stdout_path_with_postfix(core_postfix)
-
-                self._syslog_ng_executor.get_backtrace_from_core(
-                    core_file,
-                    stderr_path,
-                    stdout_path,
-                )
-                core_file.replace(Path(core_file))
-            if core_file_found:
-                raise Exception("syslog-ng core file was found and processed")
-            if self._process.returncode in [-6, -9, -11]:
-                ret_code = self._process.returncode
-                self._process = None
-                raise Exception("syslog-ng process crashed with signal {}".format(ret_code))
+    def __validate_returncode(self, returncode: int):
+        if returncode not in [0, 1, 2]:
+            # return code 1 is a directed way of termination (syntax error), it should not handle as a crash
+            # return code 2 is a directed way of termination, it should not handle as a crash
+            assert False, "syslog-ng has crashed with return code: %s" % returncode

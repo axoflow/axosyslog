@@ -486,8 +486,9 @@ def test_switch_duplicate_literal_case(config, syslog_ng):
             $MSG=result;
         """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng is not running" in str(exec_info.value)
 
 
 def test_switch_duplicate_default_case(config, syslog_ng):
@@ -506,8 +507,9 @@ def test_switch_duplicate_default_case(config, syslog_ng):
             $MSG=result;
         """,
     )
-    with pytest.raises(Exception):
+    with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)
+    assert "syslog-ng is not running" in str(exec_info.value)
 
 
 def test_switch_invalid_selector(config, syslog_ng):

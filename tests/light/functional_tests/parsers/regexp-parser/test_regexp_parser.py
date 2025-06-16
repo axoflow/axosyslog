@@ -63,5 +63,6 @@ def test_regexp_parser(config, syslog_ng, input_message, prefix, patterns, flags
         else:
             assert regexp_parser.get_query().get('discarded', -1) == 1
     else:
-        with pytest.raises(Exception):
+        with pytest.raises(Exception) as exec_info:
             syslog_ng.start(config)
+        assert "syslog-ng config syntax error" in str(exec_info.value)
