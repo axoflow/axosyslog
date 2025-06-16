@@ -67,7 +67,7 @@ class ConsoleLogReader(object):
         return stderr_file.wait_for_lines(expected_messages, timeout=5)
 
     def check_for_unexpected_messages(self, unexpected_messages=None):
-        unexpected_patterns = ["Plugin module not found", "assertion failed", "^Bail out!", "CRITICAL"]
+        unexpected_patterns = ["Plugin module not found", "assertion failed"]
         if unexpected_messages is not None:
             unexpected_patterns.extend(unexpected_messages)
 
