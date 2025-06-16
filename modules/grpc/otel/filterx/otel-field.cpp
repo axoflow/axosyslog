@@ -326,7 +326,8 @@ public:
 
 static SeverityNumberFieldConverter severity_number_field;
 
-ProtobufFieldConverter *syslogng::grpc::otel::get_otel_protobuf_field_converter(FieldDescriptor::Type fieldType)
+ProtobufFieldConverter *
+syslogng::grpc::otel::get_otel_protobuf_field_converter(FieldDescriptor::Type fieldType)
 {
   g_assert(fieldType <= FieldDescriptor::MAX_TYPE && fieldType > 0);
   if (fieldType == FieldDescriptor::TYPE_MESSAGE)
@@ -336,7 +337,8 @@ ProtobufFieldConverter *syslogng::grpc::otel::get_otel_protobuf_field_converter(
   return all_protobuf_converters()[fieldType - 1].get();
 }
 
-ProtobufFieldConverter *syslogng::grpc::otel::get_otel_protobuf_field_converter(const FieldDescriptor *fd)
+ProtobufFieldConverter *
+syslogng::grpc::otel::get_otel_protobuf_field_converter(const FieldDescriptor *fd)
 {
   const auto &fieldName = fd->name();
   if (fieldName.compare("time_unix_nano") == 0 ||

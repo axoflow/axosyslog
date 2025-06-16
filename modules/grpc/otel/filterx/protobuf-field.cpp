@@ -338,7 +338,8 @@ public:
   }
 };
 
-std::unique_ptr<ProtobufFieldConverter> *syslogng::grpc::otel::all_protobuf_converters()
+std::unique_ptr<ProtobufFieldConverter> *
+syslogng::grpc::otel::all_protobuf_converters()
 {
   static std::unique_ptr<ProtobufFieldConverter> Converters[google::protobuf::FieldDescriptor::MAX_TYPE] =
   {
@@ -368,8 +369,8 @@ std::unique_ptr<ProtobufFieldConverter> *syslogng::grpc::otel::all_protobuf_conv
   return Converters;
 };
 
-ProtobufFieldConverter *syslogng::grpc::otel::get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type
-    field_type)
+ProtobufFieldConverter *
+syslogng::grpc::otel::get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type field_type)
 {
   g_assert(field_type <= google::protobuf::FieldDescriptor::MAX_TYPE && field_type > 0);
   return all_protobuf_converters()[field_type - 1].get();
