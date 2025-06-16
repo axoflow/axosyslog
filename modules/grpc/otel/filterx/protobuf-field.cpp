@@ -43,6 +43,7 @@
 #include <memory>
 
 using namespace syslogng::grpc::otel;
+using google::protobuf::Message;
 
 void
 log_type_error(ProtoReflectors reflectors, const char *type)
@@ -69,12 +70,12 @@ double_to_float_safe(double val)
 class BoolField : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
     return filterx_boolean_new(reflectors.reflection->GetBool(*message, reflectors.fieldDescriptor));
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     gboolean truthy = filterx_object_truthy(object);
     reflectors.reflection->SetBool(message, reflectors.fieldDescriptor, truthy);
@@ -85,12 +86,12 @@ public:
 class i32Field : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
     return filterx_integer_new(gint32(reflectors.reflection->GetInt32(*message, reflectors.fieldDescriptor)));
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     gint64 i;
     if (!filterx_object_extract_integer(object, &i))
@@ -108,12 +109,12 @@ public:
 class i64Field : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
     return filterx_integer_new(gint64(reflectors.reflection->GetInt64(*message, reflectors.fieldDescriptor)));
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     gint64 i;
     if (filterx_object_extract_integer(object, &i))
@@ -138,12 +139,12 @@ public:
 class u32Field : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
     return filterx_integer_new(guint32(reflectors.reflection->GetUInt32(*message, reflectors.fieldDescriptor)));
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     gint64 i;
     if (!filterx_object_extract_integer(object, &i))
@@ -161,7 +162,7 @@ public:
 class u64Field : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
     uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.fieldDescriptor);
     if (val > INT64_MAX)
@@ -175,8 +176,8 @@ public:
       }
     return filterx_integer_new(guint64(val));
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     gint64 i;
     if (filterx_object_extract_integer(object, &i))
@@ -202,15 +203,15 @@ public:
 class StringField : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
-    std::string bytesBuffer;
-    const std::string &bytesRef = reflectors.reflection->GetStringReference(*message, reflectors.fieldDescriptor,
-                                  &bytesBuffer);
-    return filterx_string_new(bytesRef.c_str(), bytesRef.length());
+    std::string bytes_buffer;
+    const google::protobuf::Reflection *reflection = reflectors.reflection;
+    const std::string &bytes_ref = reflection->GetStringReference(*message, reflectors.fieldDescriptor, &bytes_buffer);
+    return filterx_string_new(bytes_ref.c_str(), bytes_ref.length());
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     const gchar *str;
     gsize len;
@@ -254,12 +255,12 @@ success:
 class DoubleField : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
     return filterx_double_new(gdouble(reflectors.reflection->GetDouble(*message, reflectors.fieldDescriptor)));
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     gint64 i;
     if (filterx_object_extract_integer(object, &i))
@@ -283,12 +284,12 @@ public:
 class FloatField : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
     return filterx_double_new(gdouble(reflectors.reflection->GetFloat(*message, reflectors.fieldDescriptor)));
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     gint64 i;
     if (filterx_object_extract_integer(object, &i))
@@ -312,15 +313,15 @@ public:
 class BytesField : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
-    std::string bytesBuffer;
-    const std::string &bytesRef = reflectors.reflection->GetStringReference(*message, reflectors.fieldDescriptor,
-                                  &bytesBuffer);
-    return filterx_bytes_new(bytesRef.c_str(), bytesRef.length());
+    std::string bytes_buffer;
+    const google::protobuf::Reflection *reflection = reflectors.reflection;
+    const std::string &bytes_ref = reflection->GetStringReference(*message, reflectors.fieldDescriptor, &bytes_buffer);
+    return filterx_bytes_new(bytes_ref.c_str(), bytes_ref.length());
   }
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object)
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
     const gchar *str;
     gsize len;
@@ -367,10 +368,10 @@ std::unique_ptr<ProtobufField> *syslogng::grpc::otel::all_protobuf_converters()
   return Converters;
 };
 
-ProtobufField *syslogng::grpc::otel::protobuf_converter_by_type(google::protobuf::FieldDescriptor::Type fieldType)
+ProtobufField *syslogng::grpc::otel::protobuf_converter_by_type(google::protobuf::FieldDescriptor::Type field_type)
 {
-  g_assert(fieldType <= google::protobuf::FieldDescriptor::MAX_TYPE && fieldType > 0);
-  return all_protobuf_converters()[fieldType - 1].get();
+  g_assert(field_type <= google::protobuf::FieldDescriptor::MAX_TYPE && field_type > 0);
+  return all_protobuf_converters()[field_type - 1].get();
 }
 
 std::string
@@ -386,7 +387,7 @@ syslogng::grpc::otel::extract_string_from_object(FilterXObject *object)
 }
 
 uint64_t
-syslogng::grpc::otel::get_protobuf_message_set_field_count(const google::protobuf::Message &message)
+syslogng::grpc::otel::get_protobuf_message_set_field_count(const Message &message)
 {
   const google::protobuf::Reflection *reflection = message.GetReflection();
   std::vector<const google::protobuf::FieldDescriptor *> fields;

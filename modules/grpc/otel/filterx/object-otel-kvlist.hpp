@@ -88,9 +88,9 @@ protected:
 class OtelKVListField : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors);
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object);
+  FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
+  bool set(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
+           FilterXObject **assoc_object);
 };
 
 extern OtelKVListField otel_kvlist_converter;

@@ -70,7 +70,7 @@ Resource::set_subscript(FilterXObject *key, FilterXObject **value)
       ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
 
       FilterXObject *assoc_object = NULL;
-      if (!converter->Set(&resource, key_str, *value, &assoc_object))
+      if (!converter->set(&resource, key_str, *value, &assoc_object))
         return false;
 
       filterx_object_unref(*value);
@@ -92,7 +92,7 @@ Resource::get_subscript(FilterXObject *key)
       ProtoReflectors reflectors(resource, key_str);
       ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
 
-      return converter->Get(&resource, key_str);
+      return converter->get(&resource, key_str);
     }
   catch(const std::exception &ex)
     {
@@ -109,7 +109,7 @@ Resource::unset_key(FilterXObject *key)
       ProtoReflectors reflectors(resource, key_str);
       ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
 
-      return converter->Unset(&resource, key_str);
+      return converter->unset(&resource, key_str);
     }
   catch(const std::exception &ex)
     {
@@ -126,7 +126,7 @@ Resource::is_key_set(FilterXObject *key)
       ProtoReflectors reflectors(resource, key_str);
       ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
 
-      return converter->IsSet(&resource, key_str);
+      return converter->is_set(&resource, key_str);
     }
   catch(const std::exception &ex)
     {

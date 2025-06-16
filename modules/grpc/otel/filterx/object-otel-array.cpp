@@ -97,7 +97,7 @@ bool
 Array::set_subscript(guint64 index, FilterXObject **value)
 {
   FilterXObject *assoc_object = NULL;
-  if (!any_field_converter.FilterXObjectDirectSetter(array->mutable_values(index), *value, &assoc_object))
+  if (!any_field_converter.direct_set(array->mutable_values(index), *value, &assoc_object))
     return false;
 
   filterx_object_unref(*value);
@@ -109,7 +109,7 @@ bool
 Array::append(FilterXObject **value)
 {
   FilterXObject *assoc_object = NULL;
-  if (!any_field_converter.FilterXObjectDirectSetter(array->add_values(), *value, &assoc_object))
+  if (!any_field_converter.direct_set(array->add_values(), *value, &assoc_object))
     return false;
 
   filterx_object_unref(*value);
@@ -128,7 +128,7 @@ FilterXObject *
 Array::get_subscript(guint64 index)
 {
   AnyValue *any_value = array->mutable_values(index);
-  return any_field_converter.FilterXObjectDirectGetter(any_value);
+  return any_field_converter.direct_get(any_value);
 }
 
 guint64
@@ -310,7 +310,7 @@ _new_borrowed(ArrayValue *array)
 FILTERX_SIMPLE_FUNCTION(otel_array, filterx_otel_array_new_from_args);
 
 FilterXObject *
-OtelArrayField::FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+OtelArrayField::get(google::protobuf::Message *message, ProtoReflectors reflectors)
 {
   try
     {
@@ -353,7 +353,7 @@ _set_array_field_from_list(google::protobuf::Message *message, syslogng::grpc::o
       AnyValue *any_value = array->add_values();
 
       FilterXObject *elem_assoc_object = NULL;
-      if (!syslogng::grpc::otel::any_field_converter.FilterXObjectDirectSetter(any_value, value_obj, &elem_assoc_object))
+      if (!syslogng::grpc::otel::any_field_converter.direct_set(any_value, value_obj, &elem_assoc_object))
         {
           filterx_object_unref(value_obj);
           return false;
@@ -368,8 +368,8 @@ _set_array_field_from_list(google::protobuf::Message *message, syslogng::grpc::o
 }
 
 bool
-OtelArrayField::FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors,
-                                    FilterXObject *object, FilterXObject **assoc_object)
+OtelArrayField::set(google::protobuf::Message *message, ProtoReflectors reflectors,
+                    FilterXObject *object, FilterXObject **assoc_object)
 {
   object = filterx_ref_unwrap_rw(object);
   if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(otel_array)))

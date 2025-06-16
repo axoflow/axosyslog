@@ -81,9 +81,9 @@ protected:
 class OtelArrayField : public ProtobufField
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors);
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object);
+  FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
+  bool set(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
+           FilterXObject **assoc_object);
 };
 
 extern OtelArrayField otel_array_converter;

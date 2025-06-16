@@ -41,17 +41,16 @@ class AnyField : public ProtobufField
   using AnyValue = opentelemetry::proto::common::v1::AnyValue;
 
 public:
-  FilterXObject *FilterXObjectGetter(Message *message, ProtoReflectors reflectors);
-  bool FilterXObjectSetter(Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object);
+  FilterXObject *get(Message *message, ProtoReflectors reflectors);
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object);
 
-  FilterXObject *FilterXObjectDirectGetter(AnyValue *anyValue);
-  bool FilterXObjectDirectSetter(AnyValue *anyValue, FilterXObject *object, FilterXObject **assoc_object);
+  FilterXObject *direct_get(AnyValue *any_value);
+  bool direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject **assoc_object);
 };
 
 extern AnyField any_field_converter;
 
-ProtobufField *otel_converter_by_type(FieldDescriptor::Type fieldType);
+ProtobufField *otel_converter_by_type(FieldDescriptor::Type field_type);
 ProtobufField *otel_converter_by_field_descriptor(const FieldDescriptor *fd);
 
 bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXDictIterFunc func,

@@ -82,12 +82,12 @@ struct ProtoReflectors
 class ProtobufField
 {
 public:
-  FilterXObject *Get(google::protobuf::Message *message, const std::string &fieldName)
+  FilterXObject *get(google::protobuf::Message *message, const std::string &fieldName)
   {
     try
       {
         ProtoReflectors reflectors(*message, fieldName);
-        return this->FilterXObjectGetter(message, reflectors);
+        return this->get(message, reflectors);
       }
     catch(const std::exception &ex)
       {
@@ -95,13 +95,14 @@ public:
         return nullptr;
       }
   };
-  bool Set(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+
+  bool set(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
            FilterXObject **assoc_object)
   {
     try
       {
         ProtoReflectors reflectors(*message, fieldName);
-        if (this->FilterXObjectSetter(message, reflectors, object, assoc_object))
+        if (this->set(message, reflectors, object, assoc_object))
           {
             if (!(*assoc_object))
               *assoc_object = filterx_object_ref(object);
@@ -115,7 +116,8 @@ public:
         return false;
       }
   }
-  bool Unset(google::protobuf::Message *message, const std::string &fieldName)
+
+  bool unset(google::protobuf::Message *message, const std::string &fieldName)
   {
     try
       {
@@ -129,7 +131,8 @@ public:
         return false;
       }
   }
-  bool IsSet(google::protobuf::Message *message, const std::string &fieldName)
+
+  bool is_set(google::protobuf::Message *message, const std::string &fieldName)
   {
     try
       {
@@ -144,10 +147,11 @@ public:
   }
 
   virtual ~ProtobufField() {}
+
 protected:
-  virtual FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors) = 0;
-  virtual bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors,
-                                   FilterXObject *object, FilterXObject **assoc_object) = 0;
+  virtual FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors) = 0;
+  virtual bool set(google::protobuf::Message *message, ProtoReflectors reflectors,
+                   FilterXObject *object, FilterXObject **assoc_object) = 0;
 };
 
 std::unique_ptr<ProtobufField> *all_protobuf_converters();

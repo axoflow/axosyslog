@@ -145,7 +145,7 @@ KVList::set_subscript(FilterXObject *key, FilterXObject **value)
     }
 
   FilterXObject *assoc_object = NULL;
-  if (!converter->Set(kv, "value", *value, &assoc_object))
+  if (!converter->set(kv, "value", *value, &assoc_object))
     return false;
 
   filterx_object_unref(*value);
@@ -173,7 +173,7 @@ KVList::get_subscript(FilterXObject *key)
   if (!kv)
     return nullptr;
 
-  return converter->Get(kv, "value");
+  return converter->get(kv, "value");
 }
 
 bool
@@ -235,7 +235,7 @@ KVList::iter(FilterXDictIterFunc func, gpointer user_data) const
       KeyValue &kv = repeated_kv->at(i);
 
       FILTERX_STRING_DECLARE_ON_STACK(key, kv.key().c_str(), kv.key().length());
-      FilterXObject *value = converter->Get(&kv, "value");
+      FilterXObject *value = converter->get(&kv, "value");
 
       bool result = func(key, value, user_data);
 
@@ -430,7 +430,7 @@ _new_borrowed(RepeatedPtrField<KeyValue> *kvlist)
 FILTERX_SIMPLE_FUNCTION(otel_kvlist, filterx_otel_kvlist_new_from_args);
 
 FilterXObject *
-OtelKVListField::FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors)
+OtelKVListField::get(google::protobuf::Message *message, ProtoReflectors reflectors)
 {
   if (reflectors.fieldDescriptor->is_repeated())
     {
@@ -497,7 +497,7 @@ _add_elem_to_repeated_kv(FilterXObject *key_obj, FilterXObject *value_obj, gpoin
   kv->set_key(key, key_len);
 
   FilterXObject *assoc_object = NULL;
-  if (!syslogng::grpc::otel::any_field_converter.FilterXObjectDirectSetter(kv->mutable_value(), value_obj, &assoc_object))
+  if (!syslogng::grpc::otel::any_field_converter.direct_set(kv->mutable_value(), value_obj, &assoc_object))
     return false;
 
   filterx_object_unref(assoc_object);
@@ -517,8 +517,8 @@ _set_kvlist_field_from_dict(google::protobuf::Message *message, syslogng::grpc::
 }
 
 bool
-OtelKVListField::FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors,
-                                     FilterXObject *object, FilterXObject **assoc_object)
+OtelKVListField::set(google::protobuf::Message *message, ProtoReflectors reflectors,
+                     FilterXObject *object, FilterXObject **assoc_object)
 {
   object = filterx_ref_unwrap_rw(object);
   if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(otel_kvlist)))
