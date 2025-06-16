@@ -564,6 +564,12 @@ KVListFieldConverter::set(google::protobuf::Message *message, ProtoReflectors re
   return true;
 }
 
+bool
+KVListFieldConverter::add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object)
+{
+  throw std::runtime_error("DatetimeFieldConverter: add operation is not supported");
+}
+
 KVListFieldConverter syslogng::grpc::otel::filterx::kvlist_field_converter;
 
 static FilterXObject *

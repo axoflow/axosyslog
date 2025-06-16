@@ -27,6 +27,7 @@
 
 #include "compat/cpp-start.h"
 #include "filterx/filterx-object.h"
+#include "filterx/object-list-interface.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/message.h>
@@ -116,6 +117,59 @@ public:
       }
   }
 
+  bool set_repeated(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+                    FilterXObject **assoc_object)
+  {
+    try
+      {
+        ProtoReflectors reflectors(*message, fieldName);
+        if (!reflectors.fieldDescriptor->is_repeated())
+          {
+            msg_error("protobuf-field: Failed to set repeated field, field is not repeated",
+                      evt_tag_str("field", reflectors.field_type_name()));
+            return false;
+          }
+
+        FilterXObject *list = filterx_ref_unwrap_ro(object);
+        if (!filterx_object_is_type(list, &FILTERX_TYPE_NAME(list)))
+          {
+            msg_error("protobuf-field: Failed to set repeated field, object is not a list",
+                      evt_tag_str("field", reflectors.field_type_name()),
+                      evt_tag_str("type", list->type->name));
+            return false;
+          }
+
+        reflectors.reflection->ClearField(message, reflectors.fieldDescriptor);
+
+        guint64 len;
+        g_assert(filterx_object_len(list, &len));
+
+        for (gsize i = 0; i < len; i++)
+          {
+            FilterXObject *elem = filterx_list_get_subscript(list, i);
+
+            if (!this->add(message, reflectors, elem))
+              {
+                msg_error("protobuf-field: Failed to add element to repeated field",
+                          evt_tag_str("field", reflectors.field_type_name()),
+                          evt_tag_str("type", elem->type->name));
+                filterx_object_unref(elem);
+                return false;
+              }
+
+            filterx_object_unref(elem);
+          }
+
+        *assoc_object = filterx_object_ref(object);
+        return true;
+      }
+    catch(const std::exception &ex)
+      {
+        msg_error("protobuf-field: Failed to set repeated field:", evt_tag_str("message", ex.what()));
+        return false;
+      }
+  }
+
   bool unset(google::protobuf::Message *message, const std::string &fieldName)
   {
     try
@@ -151,6 +205,7 @@ protected:
   virtual FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors) = 0;
   virtual bool set(google::protobuf::Message *message, ProtoReflectors reflectors,
                    FilterXObject *object, FilterXObject **assoc_object) = 0;
+  virtual bool add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object) = 0;
 };
 
 std::unique_ptr<ProtobufFieldConverter> *all_protobuf_converters();

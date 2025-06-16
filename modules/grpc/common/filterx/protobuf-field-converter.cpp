@@ -86,6 +86,12 @@ public:
     reflectors.reflection->SetBool(message, reflectors.fieldDescriptor, this->extract(object));
     return true;
   }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    reflectors.reflection->AddBool(message, reflectors.fieldDescriptor, this->extract(object));
+    return true;
+  }
 };
 
 class i32FieldConverter : public ProtobufFieldConverter
@@ -110,6 +116,20 @@ public:
     try
       {
         reflectors.reflection->SetInt32(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddInt32(message, reflectors.fieldDescriptor, this->extract(object));
       }
     catch (const std::exception &e)
       {
@@ -155,6 +175,20 @@ public:
       }
     return true;
   }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddInt64(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
 };
 
 class u32FieldConverter : public ProtobufFieldConverter
@@ -179,6 +213,20 @@ public:
     try
       {
         reflectors.reflection->SetUInt32(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddUInt32(message, reflectors.fieldDescriptor, this->extract(object));
       }
     catch (const std::exception &e)
       {
@@ -221,6 +269,20 @@ public:
     try
       {
         reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddUInt64(message, reflectors.fieldDescriptor, this->extract(object));
       }
     catch (const std::exception &e)
       {
@@ -284,6 +346,20 @@ public:
       }
     return true;
   }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddString(message, reflectors.fieldDescriptor, this->extract(object, reflectors));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
 };
 
 class DoubleFieldConverter : public ProtobufFieldConverter
@@ -313,6 +389,20 @@ public:
     try
       {
         reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddDouble(message, reflectors.fieldDescriptor, this->extract(object));
       }
     catch (const std::exception &e)
       {
@@ -358,6 +448,20 @@ public:
       }
     return true;
   }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddFloat(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
 };
 
 class BytesFieldConverter : public ProtobufFieldConverter
@@ -389,6 +493,20 @@ public:
     try
       {
         reflectors.reflection->SetString(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
+  }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    try
+      {
+        reflectors.reflection->AddString(message, reflectors.fieldDescriptor, this->extract(object));
       }
     catch (const std::exception &e)
       {

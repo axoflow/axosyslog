@@ -127,6 +127,12 @@ AnyValueFieldConverter::set(Message *message, ProtoReflectors reflectors, Filter
   return direct_set(any_value, object, assoc_object);
 }
 
+bool
+AnyValueFieldConverter::add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+{
+  throw std::runtime_error("AnyValueFieldConverter: add operation is not supported");
+}
+
 FilterXObject *
 AnyValueFieldConverter::direct_get(AnyValue *any_value)
 {
@@ -287,6 +293,11 @@ public:
     return get_protobuf_field_converter(reflectors.fieldDescriptor->type())->set(message,
            std::string(reflectors.fieldDescriptor->name()), object, assoc_object);
   }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+    {
+      throw std::runtime_error("DatetimeFieldConverter: add operation is not supported");
+    }
 };
 
 static DatetimeFieldConverter datetime_field;
@@ -323,6 +334,11 @@ public:
               evt_tag_str("type", object->type->name));
     return false;
   }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+    {
+      throw std::runtime_error("SeverityNumberFieldConverter: add operation is not supported");
+    }
 };
 
 static SeverityNumberFieldConverter severity_number_field;

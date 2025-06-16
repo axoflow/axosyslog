@@ -91,6 +91,7 @@ public:
   FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
   bool set(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
            FilterXObject **assoc_object);
+  bool add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object);
 };
 
 extern KVListFieldConverter kvlist_field_converter;

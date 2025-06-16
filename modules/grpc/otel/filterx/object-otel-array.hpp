@@ -84,6 +84,7 @@ public:
   FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
   bool set(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
            FilterXObject **assoc_object);
+  bool add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object);
 };
 
 extern ArrayFieldConverter array_field_converter;

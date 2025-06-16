@@ -46,6 +46,7 @@ class AnyValueFieldConverter : public ProtobufFieldConverter
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors);
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object);
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object);
 
   FilterXObject *direct_get(AnyValue *any_value);
   bool direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject **assoc_object);

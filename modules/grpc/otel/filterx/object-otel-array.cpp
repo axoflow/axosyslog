@@ -414,6 +414,12 @@ ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors ref
   return true;
 }
 
+bool
+ArrayFieldConverter::add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object)
+{
+  throw std::runtime_error("DatetimeFieldConverter: add operation is not supported");
+}
+
 ArrayFieldConverter syslogng::grpc::otel::filterx::array_field_converter;
 
 static FilterXObject *
