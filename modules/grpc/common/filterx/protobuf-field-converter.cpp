@@ -69,6 +69,12 @@ double_to_float_safe(double val)
 // ProtoReflectors reflectors
 class BoolFieldConverter : public ProtobufFieldConverter
 {
+private:
+  static gboolean extract(FilterXObject *object)
+  {
+    return filterx_object_truthy(object);
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -77,14 +83,22 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    gboolean truthy = filterx_object_truthy(object);
-    reflectors.reflection->SetBool(message, reflectors.fieldDescriptor, truthy);
+    reflectors.reflection->SetBool(message, reflectors.fieldDescriptor, this->extract(object));
     return true;
   }
 };
 
 class i32FieldConverter : public ProtobufFieldConverter
 {
+private:
+  static int32_t extract(FilterXObject *object)
+  {
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
+      return MAX(INT32_MIN, MIN(INT32_MAX, i));
+    throw std::runtime_error("i32FieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -93,21 +107,35 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    gint64 i;
-    if (!filterx_object_extract_integer(object, &i))
+    try
+      {
+        reflectors.reflection->SetInt32(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
       {
         log_type_error(reflectors, object->type->name);
         return false;
       }
-
-    int32_t val = MAX(INT32_MIN, MIN(INT32_MAX, i));
-    reflectors.reflection->SetInt32(message, reflectors.fieldDescriptor, val);
     return true;
   }
 };
 
 class i64FieldConverter : public ProtobufFieldConverter
 {
+private:
+  static int64_t extract(FilterXObject *object)
+  {
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
+      return i;
+
+    UnixTime utime;
+    if (filterx_object_extract_datetime(object, &utime))
+      return (int64_t)unix_time_to_unix_epoch_usec(utime);
+
+    throw std::runtime_error("i64FieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -116,28 +144,30 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    gint64 i;
-    if (filterx_object_extract_integer(object, &i))
+    try
       {
-        reflectors.reflection->SetInt64(message, reflectors.fieldDescriptor, i);
-        return true;
+        reflectors.reflection->SetInt64(message, reflectors.fieldDescriptor, this->extract(object));
       }
-
-    UnixTime utime;
-    if (filterx_object_extract_datetime(object, &utime))
+    catch (const std::exception &e)
       {
-        uint64_t unix_epoch = unix_time_to_unix_epoch_usec(utime);
-        reflectors.reflection->SetInt64(message, reflectors.fieldDescriptor, (int64_t)(unix_epoch));
-        return true;
+        log_type_error(reflectors, object->type->name);
+        return false;
       }
-
-    log_type_error(reflectors, object->type->name);
-    return false;
+    return true;
   }
 };
 
 class u32FieldConverter : public ProtobufFieldConverter
 {
+private:
+  static uint32_t extract(FilterXObject *object)
+  {
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
+      return MAX(0, MIN(UINT32_MAX, i));
+    throw std::runtime_error("u32FieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -146,21 +176,30 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    gint64 i;
-    if (!filterx_object_extract_integer(object, &i))
+    try
+      {
+        reflectors.reflection->SetUInt32(message, reflectors.fieldDescriptor, this->extract(object));
+      }
+    catch (const std::exception &e)
       {
         log_type_error(reflectors, object->type->name);
         return false;
       }
-
-    uint32_t val = MAX(0, MIN(UINT32_MAX, i));
-    reflectors.reflection->SetUInt32(message, reflectors.fieldDescriptor, val);
     return true;
   }
 };
 
 class u64FieldConverter : public ProtobufFieldConverter
 {
+private:
+  static uint64_t extract(FilterXObject *object)
+  {
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
+      return MAX(0, MIN(UINT64_MAX, (uint64_t)i));
+    throw std::runtime_error("u64FieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -179,29 +218,50 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    gint64 i;
-    if (filterx_object_extract_integer(object, &i))
+    try
       {
-        uint64_t val = MAX(0, MIN(UINT64_MAX, (uint64_t) i));
-        reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, val);
-        return true;
+        reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, this->extract(object));
       }
-
-    UnixTime utime;
-    if (filterx_object_extract_datetime(object, &utime))
+    catch (const std::exception &e)
       {
-        uint64_t unix_epoch = unix_time_to_unix_epoch_usec(utime);
-        reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, unix_epoch);
-        return true;
+        log_type_error(reflectors, object->type->name);
+        return false;
       }
-
-    log_type_error(reflectors, object->type->name);
-    return false;
+    return true;
   }
 };
 
 class StringFieldConverter : public ProtobufFieldConverter
 {
+private:
+  static std::string extract(FilterXObject *object, ProtoReflectors reflectors)
+  {
+    const gchar *str;
+    gsize len;
+
+    if (filterx_object_extract_string_ref(object, &str, &len))
+      return std::string(str, len);
+
+    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
+        filterx_message_value_get_type(object) == LM_VT_JSON)
+      {
+        str = filterx_message_value_get_value(object, &len);
+        return std::string(str, len);
+      }
+
+    object = filterx_ref_unwrap_ro(object);
+    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)) ||
+        filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
+      {
+        GString *repr = scratch_buffers_alloc();
+        if (!filterx_object_to_json(object, repr))
+          throw std::runtime_error("StringFieldConverter: json marshal error");
+        return std::string(repr->str, repr->len);
+      }
+
+    throw std::runtime_error("StringFieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -213,47 +273,35 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    const gchar *str;
-    gsize len;
-
-    if (filterx_object_extract_string_ref(object, &str, &len))
-      goto success;
-
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
-        filterx_message_value_get_type(object) == LM_VT_JSON)
+    try
       {
-        str = filterx_message_value_get_value(object, &len);
-        goto success;
+        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, this->extract(object, reflectors));
       }
-
-    object = filterx_ref_unwrap_ro(object);
-    if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)) ||
-        filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
+    catch (const std::exception &e)
       {
-        GString *repr = scratch_buffers_alloc();
-
-        if (!filterx_object_to_json(object, repr))
-          {
-            msg_error("protobuf-field: json marshal error",
-                      evt_tag_str("field", reflectors.fieldDescriptor->name().data()));
-            return false;
-          }
-        len = repr->len;
-        str = repr->str;
-        goto success;
+        log_type_error(reflectors, object->type->name);
+        return false;
       }
-
-    log_type_error(reflectors, object->type->name);
-    return false;
-
-success:
-    reflectors.reflection->SetString(message, reflectors.fieldDescriptor, std::string{str, len});
     return true;
   }
 };
 
 class DoubleFieldConverter : public ProtobufFieldConverter
 {
+private:
+  static double extract(FilterXObject *object)
+  {
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
+      return static_cast<double>(i);
+
+    gdouble d;
+    if (filterx_object_extract_double(object, &d))
+      return d;
+
+    throw std::runtime_error("DoubleFieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -262,27 +310,35 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    gint64 i;
-    if (filterx_object_extract_integer(object, &i))
+    try
       {
-        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, i);
-        return true;
+        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, this->extract(object));
       }
-
-    gdouble d;
-    if (filterx_object_extract_double(object, &d))
+    catch (const std::exception &e)
       {
-        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, d);
-        return true;
+        log_type_error(reflectors, object->type->name);
+        return false;
       }
-
-    log_type_error(reflectors, object->type->name);
-    return false;
+    return true;
   }
 };
 
 class FloatFieldConverter : public ProtobufFieldConverter
 {
+private:
+  static float extract(FilterXObject *object)
+  {
+    gint64 i;
+    if (filterx_object_extract_integer(object, &i))
+      return double_to_float_safe(static_cast<double>(i));
+
+    gdouble d;
+    if (filterx_object_extract_double(object, &d))
+      return double_to_float_safe(d);
+
+    throw std::runtime_error("FloatFieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -291,27 +347,34 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    gint64 i;
-    if (filterx_object_extract_integer(object, &i))
+    try
       {
-        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, double_to_float_safe(i));
-        return true;
+        reflectors.reflection->SetFloat(message, reflectors.fieldDescriptor, this->extract(object));
       }
-
-    gdouble d;
-    if (filterx_object_extract_double(object, &d))
+    catch (const std::exception &e)
       {
-        reflectors.reflection->SetDouble(message, reflectors.fieldDescriptor, double_to_float_safe(d));
-        return true;
+        log_type_error(reflectors, object->type->name);
+        return false;
       }
-
-    log_type_error(reflectors, object->type->name);
-    return false;
+    return true;
   }
 };
 
 class BytesFieldConverter : public ProtobufFieldConverter
 {
+private:
+  static std::string extract(FilterXObject *object)
+  {
+    const gchar *str;
+    gsize len;
+
+    if (filterx_object_extract_bytes_ref(object, &str, &len) ||
+        filterx_object_extract_protobuf_ref(object, &str, &len))
+      return std::string{str, len};
+
+    throw std::runtime_error("BytesFieldConverter: unsupported type");
+  }
+
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
@@ -323,18 +386,16 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    const gchar *str;
-    gsize len;
-
-    if (filterx_object_extract_bytes_ref(object, &str, &len) ||
-        filterx_object_extract_protobuf_ref(object, &str, &len))
+    try
       {
-        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, std::string{str, len});
-        return true;
+        reflectors.reflection->SetString(message, reflectors.fieldDescriptor, this->extract(object));
       }
-
-    log_type_error(reflectors, object->type->name);
-    return false;
+    catch (const std::exception &e)
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+    return true;
   }
 };
 
