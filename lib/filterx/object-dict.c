@@ -573,6 +573,8 @@ _filterx_dict_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
+  g_assert(*new_value);
+
   if (!_is_string(key))
     return FALSE;
 
