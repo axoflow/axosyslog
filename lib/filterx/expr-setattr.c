@@ -43,14 +43,14 @@ _setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject *new_value)
 {
   if (object->readonly)
     {
-      filterx_eval_push_error("Attribute set failed, object is readonly", &self->super, self->attr);
+      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super, "Object is readonly", FALSE);
       return NULL;
     }
 
   FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
-      filterx_eval_push_error("Attribute set failed", &self->super, self->attr);
+      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super, "setattr() method failed", FALSE);
       filterx_object_unref(cloned);
       return NULL;
     }
@@ -61,7 +61,20 @@ _setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject *new_value)
 static inline FilterXObject *
 _suppress_error(void)
 {
-  msg_debug("FILTERX null coalesce assignment supressing error", filterx_eval_format_last_error_tag());
+  if (trace_flag)
+    {
+      gint error_count = filterx_eval_get_error_count();
+      gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
+
+      for (gint err_idx = 0; err_idx < error_count; err_idx++)
+        {
+          msg_debug("FilterX: null coalesce assignment suppressing error",
+                    filterx_eval_format_error_index_tag(err_idx, buf),
+                    filterx_eval_format_error_location_tag(err_idx),
+                    filterx_eval_format_error_tag(err_idx));
+        }
+    }
+
   filterx_eval_clear_errors();
 
   return filterx_null_new();
@@ -86,7 +99,11 @@ _nullv_setattr_eval(FilterXExpr *s)
 
   FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super,
+                                   "Failed to evaluate expression", FALSE);
+      goto exit;
+    }
 
   result = _setattr(self, object, new_value);
 
@@ -104,11 +121,19 @@ _setattr_eval(FilterXExpr *s)
 
   FilterXObject *new_value = filterx_expr_eval(self->new_value);
   if (!new_value)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super,
+                                   "Failed to evaluate right hand side", FALSE);
+      return NULL;
+    }
 
   FilterXObject *object = filterx_expr_eval_typed(self->object);
   if (!object)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super,
+                                   "Failed to evaluate expression", FALSE);
+      goto exit;
+    }
 
   result = _setattr(self, object, new_value);
 

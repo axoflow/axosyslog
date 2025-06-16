@@ -29,6 +29,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
 
@@ -113,7 +114,7 @@ Message::set_attribute(const std::string &key, const std::string &value)
     }
   catch (const std::exception &e)
     {
-      msg_error("FilterX: Unable to set Pub/Sub attribute", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Unable to set Pub/Sub attribute", NULL, g_strdup(e.what()), TRUE);
       return false;
     }
   return true;
@@ -129,7 +130,7 @@ Message::set_data(const std::string &data)
     }
   catch (const std::exception &e)
     {
-      msg_error("FilterX: Unable to set Pub/Sub data", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Unable to set Pub/Sub data", NULL, g_strdup(e.what()), TRUE);
       return false;
     }
   return true;
@@ -249,7 +250,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      msg_error("FilterX: Failed to repr OTel Logrecord object", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Failet to call repr() on Pub/Sub object", NULL, g_strdup(e.what()), TRUE);
       return FALSE;
     }
   return TRUE;
@@ -354,7 +355,7 @@ filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsiz
   catch (const std::runtime_error &e)
     {
       scratch_buffers_reclaim_marked(m);
-      msg_error("FilterX: Failed to create Pub/Sub Message object", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Failed to create Pub/Sub Message object", NULL, g_strdup(e.what()), TRUE);
       filterx_object_unref(&self->super);
       return NULL;
     }

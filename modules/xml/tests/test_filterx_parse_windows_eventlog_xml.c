@@ -102,7 +102,7 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
 
   FilterXObject *result = filterx_expr_eval(func);
   cr_assert(result);
-  cr_assert(!filterx_eval_get_last_error());
+  cr_assert(filterx_eval_get_error_count() == 0);
 
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
 

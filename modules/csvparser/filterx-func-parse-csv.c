@@ -77,15 +77,20 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
   FilterXObject *list_obj = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
-      msg_error("list object argument must be a type of list.",
-                evt_tag_str("current_type", list_obj->type->name ),
-                evt_tag_str("argument_name", arg_name));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Argument %s must be a list, got: %s",
+                                    arg_name, filterx_object_format_type_name(obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super, info, TRUE);
       goto exit;
     }
 
   guint64 size;
   if (!filterx_object_len(list_obj, &size))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to initialize parse_csv()",
+                                   &self->super.super, "len() method failed", FALSE);
+      return FALSE;
+    }
 
   for (guint64 i = 0; i < size; i++)
     {
@@ -140,19 +145,29 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
 
   *columns = filterx_expr_eval(self->columns.expr);
   if (!*columns)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super,
+                                   "Failed to evaluate " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " argument", FALSE);
+      return FALSE;
+    }
 
   FilterXObject *cols_unwrapped = filterx_ref_unwrap_ro(*columns);
   if (!filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
-      msg_error("list object argument must be a type of list.",
-                evt_tag_str("current_type", cols_unwrapped->type->name),
-                evt_tag_str("argument_name", FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Argument " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " must be a list, got: %s",
+                                    filterx_object_format_type_name(*columns, type_name_buf));
+      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super, info, TRUE);
       return FALSE;
     }
 
   if (!filterx_object_len(cols_unwrapped, num_of_columns))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super,
+                                   "len() method failed on " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " argument",
+                                   FALSE);
+      return FALSE;
+    }
 
   return TRUE;
 }
@@ -172,6 +187,11 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
                                   csv_scanner_get_current_value_len(scanner));
 
   gboolean ok = filterx_object_set_subscript(result, col, &val);
+  if (!ok)
+    {
+      filterx_eval_push_error_info("Failed to evaluate parse_csv()", &self->super.super,
+                                   "set-subscript() method failed", FALSE);
+    }
 
   filterx_object_unref(val);
   filterx_object_unref(col);
@@ -187,6 +207,11 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
                                   csv_scanner_get_current_value_len(scanner));
 
   gboolean ok = filterx_list_append(result, &val);
+  if (!ok)
+    {
+      filterx_eval_push_error_info("Failed to evaluate parse_csv()", NULL,
+                                   "append() method failed", FALSE);
+    }
 
   filterx_object_unref(val);
 
@@ -205,12 +230,22 @@ _eval_parse_csv(FilterXExpr *s)
 
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
-    goto exit;
+    {
+      filterx_eval_push_error_info("Failed to evaluate parse_csv()", &self->super.super,
+                                   "Failed to evaluate expression", FALSE);
+      goto exit;
+    }
 
   gsize len;
   const gchar *input;
   if (!filterx_object_extract_string_ref(obj, &input, &len))
-    goto exit;
+    {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Input must be a string, got: %s. " FILTERX_FUNC_PARSE_CSV_USAGE,
+                                    filterx_object_format_type_name(obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate parse_csv()", &self->super.super, info, TRUE);
+      goto exit;
+    }
 
   APPEND_ZERO(input, input, len);
 

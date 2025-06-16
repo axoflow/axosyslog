@@ -45,12 +45,13 @@
 using namespace syslogng::grpc::otel;
 
 void
-log_type_error(ProtoReflectors reflectors, const char *type)
+log_type_error(ProtoReflectors reflectors, FilterXObject *object)
 {
-  msg_error("protobuf-field: Failed to convert field, type is unsupported",
-            evt_tag_str("field", reflectors.fieldDescriptor->name().data()),
-            evt_tag_str("expected_type", reflectors.field_type_name()),
-            evt_tag_str("type", type));
+  gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+  gchar *info = g_strdup_printf("Type for field %s is unsupported: %s",
+                                reflectors.fieldDescriptor->name().data(),
+                                filterx_object_format_type_name(object, type_name_buf));
+  filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
 }
 
 float
@@ -95,7 +96,7 @@ public:
     gint64 i;
     if (!filterx_object_extract_integer(object, &i))
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
 
@@ -130,7 +131,7 @@ public:
         return true;
       }
 
-    log_type_error(reflectors, object->type->name);
+    log_type_error(reflectors, object);
     return false;
   }
 };
@@ -148,7 +149,7 @@ public:
     gint64 i;
     if (!filterx_object_extract_integer(object, &i))
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
 
@@ -166,11 +167,11 @@ public:
     uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.fieldDescriptor);
     if (val > INT64_MAX)
       {
-        msg_error("protobuf-field: exceeding FilterX number value range",
-                  evt_tag_str("field", reflectors.fieldDescriptor->name().data()),
-                  evt_tag_long("range_min", INT64_MIN),
-                  evt_tag_long("range_max", INT64_MAX),
-                  evt_tag_printf("current", "%" G_GUINT64_FORMAT, val));
+        gchar *info = g_strdup_printf("Value of field %s is exceeding FilterX integer value range: "
+                                      "min: %ld, max: %ld, value: %" G_GUINT64_FORMAT,
+                                      reflectors.fieldDescriptor->name().data(), INT64_MIN, INT64_MAX, val);
+        filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
+
         return NULL;
       }
     return filterx_integer_new(guint64(val));
@@ -194,7 +195,7 @@ public:
         return true;
       }
 
-    log_type_error(reflectors, object->type->name);
+    log_type_error(reflectors, object);
     return false;
   }
 };
@@ -233,8 +234,9 @@ public:
 
         if (!filterx_object_to_json(object, repr))
           {
-            msg_error("protobuf-field: json marshal error",
-                      evt_tag_str("field", reflectors.fieldDescriptor->name().data()));
+            gchar *info = g_strdup_printf("JSON marshaling for field %s failed",
+                                          reflectors.fieldDescriptor->name().data());
+            filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
             return false;
           }
         len = repr->len;
@@ -242,7 +244,7 @@ public:
         goto success;
       }
 
-    log_type_error(reflectors, object->type->name);
+    log_type_error(reflectors, object);
     return false;
 
 success:
@@ -275,7 +277,7 @@ public:
         return true;
       }
 
-    log_type_error(reflectors, object->type->name);
+    log_type_error(reflectors, object);
     return false;
   }
 };
@@ -304,7 +306,7 @@ public:
         return true;
       }
 
-    log_type_error(reflectors, object->type->name);
+    log_type_error(reflectors, object);
     return false;
   }
 };
@@ -332,7 +334,7 @@ public:
         return true;
       }
 
-    log_type_error(reflectors, object->type->name);
+    log_type_error(reflectors, object);
     return false;
   }
 };
