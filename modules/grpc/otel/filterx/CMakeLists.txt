@@ -18,10 +18,10 @@ set(OTEL_LOGRECORD_CPP_SOURCES
   object-otel-kvlist.hpp
   object-otel-array.cpp
   object-otel-array.hpp
-  protobuf-field.cpp
-  protobuf-field.hpp
-  otel-field.hpp
-  otel-field.cpp
+  protobuf-field-converter.cpp
+  protobuf-field-converter.hpp
+  otel-field-converter.hpp
+  otel-field-converter.cpp
 )
 
 add_module(

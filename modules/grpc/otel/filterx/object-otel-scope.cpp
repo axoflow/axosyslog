@@ -21,7 +21,7 @@
  */
 
 #include "object-otel-scope.hpp"
-#include "otel-field.hpp"
+#include "otel-field-converter.hpp"
 
 #include "compat/cpp-start.h"
 #include "filterx/object-extractor.h"

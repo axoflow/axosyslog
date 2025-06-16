@@ -20,7 +20,7 @@
  *
  */
 
-#include "protobuf-field.hpp"
+#include "protobuf-field-converter.hpp"
 
 #include "compat/cpp-start.h"
 

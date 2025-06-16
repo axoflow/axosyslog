@@ -30,7 +30,7 @@
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
-#include "protobuf-field.hpp"
+#include "protobuf-field-converter.hpp"
 #include "object-otel-base.hpp"
 #include "opentelemetry/proto/common/v1/common.pb.h"
 #include <mutex>

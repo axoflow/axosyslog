@@ -22,7 +22,7 @@
 
 #include "syslog-ng.h"
 
-#include "otel-field.hpp"
+#include "otel-field-converter.hpp"
 #include "object-otel-kvlist.hpp"
 #include "object-otel-array.hpp"
 

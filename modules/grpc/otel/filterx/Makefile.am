@@ -17,10 +17,10 @@ modules_grpc_otel_filterx_libfilterx_la_SOURCES = \
   modules/grpc/otel/filterx/object-otel-kvlist.hpp \
   modules/grpc/otel/filterx/object-otel-array.cpp \
   modules/grpc/otel/filterx/object-otel-array.hpp \
-  modules/grpc/otel/filterx/protobuf-field.cpp \
-  modules/grpc/otel/filterx/protobuf-field.hpp \
-  modules/grpc/otel/filterx/otel-field.cpp \
-  modules/grpc/otel/filterx/otel-field.hpp
+  modules/grpc/otel/filterx/protobuf-field-converter.cpp \
+  modules/grpc/otel/filterx/protobuf-field-converter.hpp \
+  modules/grpc/otel/filterx/otel-field-converter.cpp \
+  modules/grpc/otel/filterx/otel-field-converter.hpp
 
 modules_grpc_otel_filterx_libfilterx_la_CXXFLAGS = \
   $(AM_CXXFLAGS) \

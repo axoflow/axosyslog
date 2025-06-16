@@ -21,8 +21,8 @@
  */
 
 #include "object-otel-logrecord.hpp"
-#include "protobuf-field.hpp"
-#include "otel-field.hpp"
+#include "protobuf-field-converter.hpp"
+#include "otel-field-converter.hpp"
 
 #include "compat/cpp-start.h"
 
