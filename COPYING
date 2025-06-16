@@ -1,46 +1,9 @@
 Copyright (c) 2002-2015 Balabit
 Copyright (c) 1996-2015 Balázs Scheidler
-Copyright (c) 2023-2024 Axoflow
+Copyright (c) 2023-2025 Axoflow
 
-AxoSyslog is licensed under the combination of the GPL and LGPL licenses.
-
-Our intention with the choice of our licenses is to:
- 1) license reusable/extendable code under the LGPL,
- 2) license code implementing a specific function, not intended to be extended, under the GPL
-
-Although the location of a file wthin the source tree is closely related to
-how it is licensed (lib/ is LGPL by default, for instance), there are
-exceptions.  One example is: some of the tests are GPLed while they are
-related to LGPLed library code.
-
-With that in mind, before assuming the licensing of a specific file based
-solely on its location, please check its licensing in its copyright header, i.e.
-the very first comment block of the source code file.
-
-Alternatively, you can also use the contents of the `tests/copyright/policy`
-file, this is an input to our automated test suite that checks licenses
-against our intents.
-
-The AxoSyslog core contained in the following subdirectories
-is free software; you can redistribute it and/or
-modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
-version 2.1 of the License, or (at your option) any later version
-(please refer to the file LGPL.txt for more details):
-
-lib/
-libtest/
-syslog-ng/
-syslog-ng-ctl/
-persist-tool/
-tests/loggen/
-
-The AxoSyslog modules (modules/, docker/, charts/, and scl/ subdirectories,
-except the ones that declare LGPL-2.1-or-later in their license notices)
-is free software; you can redistribute it and/or modify it under the terms of
-the GNU General Public License version 2 as published by the
-Free Software Foundation, or (at your option) any later version
-(please refer to the file GPL.txt for more details).
+AxoSyslog is licensed under the terms of the GNU General Public License v3.0
+or later (SPDX: GPL-3.0-or-later).
 
 FAQ:
 ====
@@ -48,31 +11,17 @@ FAQ:
 The questions and answers below try to summarize the intentions behind this
 licensing scheme.
 
-Q: Is it possible to create derived works of AxoSyslog/syslog-ng under the
-GPL/LGPL licenses?
-
-A: Yes, that's exactly the point of open source. Works derived from the
-plugins will have to use the GPL license, but you can choose to use LGPL for
-them as well.
-
 Q: Do I need to sign a Contributory License Agreement in order for my
 contribution to be accepted?
 
-A: No, starting with syslog-ng 3.2, you don't need to sign a CLA in order to
-have your contributions accepted.
+A: No, you don't need to sign a CLA in order to have your contributions
+accepted. All copyrights are retained by their respective authors.
 
-Q: Is it possible to create non-free plugins for AxoSyslog/syslog-ng?
+Q: Is it possible to create non-free plugins for AxoSyslog?
 
-A: Yes. It is our understanding that plugins are derived works of the
-AxoSyslog core but not derived works of other plugins.  Thus, non-free
-plugins are possible, provided they do not link to any of the GPLd plugins
-explicitly and the only connection between two plugins is via the AxoSyslog
-core.
-
-Q: Who is permitted to create non-free plugins for AxoSyslog/syslog-ng?
-Is it just BalaBit (the current copyright holder as of the initial 3.2 release)?
-
-A: No, everyone including BalaBit.
+A: No. AxoSyslog is under the terms of the GPLv3. It is our
+understanding that plugins are derived works of the core and thus
+plugins need to be licensed under GPLv3.
 
 PORTIONS WERE CONTRIBUTED UNDER THE FOLLOWING LICENSES:
 ======================================================

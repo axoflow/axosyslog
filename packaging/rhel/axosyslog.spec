@@ -4,7 +4,7 @@ Release: 2%{?dist}
 Summary: Next-generation syslog server
 
 Group: System Environment/Daemons
-License: GPLv2+
+License: GPLv3+
 URL: https://axoflow.com/docs/axosyslog-core/
 Source0: https://github.com/axoflow/axosyslog/releases/download/%{name}-%{version}/%{name}-%{version}.tar.gz
 Source1: syslog-ng.conf
