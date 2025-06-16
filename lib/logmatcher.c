@@ -437,11 +437,14 @@ log_matcher_pcre_re_feed_backrefs(LogMatcherPcreRe *self, LogMessage *msg, LogMa
 
   for (i = 0; i < (LOGMSG_MAX_MATCHES) && i < num_matches; i++)
     {
-      gint begin_index = matches[2 * i];
-      gint end_index = matches[2 * i + 1];
+      PCRE2_SIZE begin_index = matches[2 * i];
+      PCRE2_SIZE end_index = matches[2 * i + 1];
 
-      if (begin_index < 0 || end_index < 0)
-        continue;
+      if (begin_index == PCRE2_UNSET || end_index == PCRE2_UNSET)
+        {
+          log_msg_unset_match(msg, i);
+          continue;
+        }
 
       log_matcher_pcre_re_feed_value(self, msg, log_msg_get_match_handle(i), result, begin_index, end_index);
     }
@@ -482,11 +485,11 @@ log_matcher_pcre_re_feed_named_substrings(LogMatcherPcreRe *self, LogMessage *ms
       for (i = 0; i < namecount; i++, tabptr += name_entry_size)
         {
           int n = (tabptr[0] << 8) | tabptr[1];
-          gint begin_index = matches[2 * n];
-          gint end_index = matches[2 * n + 1];
+          PCRE2_SIZE begin_index = matches[2 * n];
+          PCRE2_SIZE end_index = matches[2 * n + 1];
           const gchar *namedgroup_name = tabptr + 2;
 
-          if (begin_index < 0 || end_index < 0)
+          if (begin_index == PCRE2_UNSET || end_index == PCRE2_UNSET)
             continue;
 
           g_string_truncate(formatted_name, self->nv_prefix_len);
