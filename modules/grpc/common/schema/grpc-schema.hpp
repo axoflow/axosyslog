@@ -75,24 +75,93 @@ struct NameValueTemplatePair
 struct Field
 {
   NameValueTemplatePair nv;
-  google::protobuf::FieldDescriptorProto::Type type;
   const google::protobuf::FieldDescriptor *field_desc;
 
-  Field(std::string name_, google::protobuf::FieldDescriptorProto::Type type_, LogTemplate *value_)
-    : nv(name_, value_), type(type_), field_desc(nullptr) {}
+  Field(LogTemplate *value_)
+    : nv("", value_) {}
 
   Field(const Field &a)
-    : nv(a.nv), type(a.type), field_desc(a.field_desc) {}
+    : nv(a.nv), field_desc(a.field_desc) {}
 
   Field &operator=(const Field &a)
   {
     nv = a.nv;
-    type = a.type;
     field_desc = a.field_desc;
 
     return *this;
   }
 
+};
+
+class ProtoSchemaProvider
+{
+public:
+  virtual bool init() = 0;
+
+  const google::protobuf::Message &get_schema_prototype() const
+  {
+    return *this->schema_prototype;
+  }
+
+  const google::protobuf::Descriptor &get_schema_descriptor() const
+  {
+    return *this->schema_descriptor;
+  }
+
+protected:
+  const google::protobuf::Descriptor *schema_descriptor = nullptr;
+  const google::protobuf::Message *schema_prototype = nullptr;
+};
+
+class ProtoSchemaFileLoader : public ProtoSchemaProvider
+{
+public:
+  ProtoSchemaFileLoader() {};
+
+  bool init();
+
+  void set_proto_file_path(const std::string &proto_file_path_)
+  {
+    this->proto_file_path = proto_file_path_;
+  }
+
+private:
+  bool loaded = false;
+  std::string proto_file_path;
+  std::unique_ptr<google::protobuf::compiler::Importer> importer = nullptr;
+
+  /* A given descriptor_pool/importer instance should outlive msg_factory, as msg_factory caches prototypes */
+  std::unique_ptr<google::protobuf::DynamicMessageFactory> msg_factory = nullptr;
+
+  std::unique_ptr<google::protobuf::compiler::DiskSourceTree> src_tree = nullptr;
+  std::unique_ptr<google::protobuf::compiler::MultiFileErrorCollector> error_coll = nullptr;
+};
+
+class ProtoSchemaBuilder: public ProtoSchemaProvider
+{
+public:
+  using MapTypeFn =
+    std::function<bool (const std::string &type_in, google::protobuf::FieldDescriptorProto::Type &type_out)>;
+
+public:
+  ProtoSchemaBuilder(MapTypeFn map_type, int proto_version, const std::string &file_descriptor_proto_name,
+                     const std::string &descriptor_proto_name);
+
+  bool init();
+
+  bool add_field(const std::string &name, const std::string &type);
+
+private:
+  MapTypeFn map_type;
+  google::protobuf::DescriptorPool descriptor_pool;
+
+  /* A given descriptor_pool/importer instance should outlive msg_factory, as msg_factory caches prototypes */
+  std::unique_ptr<google::protobuf::DynamicMessageFactory> msg_factory = nullptr;
+
+  google::protobuf::FileDescriptorProto file_descriptor_proto;
+  google::protobuf::DescriptorProto *descriptor_proto = nullptr;
+
+  int field_id = 1;
 };
 
 class LogMessageProtobufFormatter
@@ -105,14 +174,8 @@ private:
   };
 
 public:
-  using MapTypeFn =
-    std::function<bool (const std::string &type_in, google::protobuf::FieldDescriptorProto::Type &type_out)>;
-
-public:
-  LogMessageProtobufFormatter(int proto_version, const std::string &file_descriptor_proto_name,
-                              const std::string &descriptor_proto_name,
-                              MapTypeFn map_type, LogTemplateOptions *template_options, LogPipe *log_pipe);
-  ~LogMessageProtobufFormatter();
+  LogMessageProtobufFormatter(std::unique_ptr<ProtoSchemaBuilder> schema_builder,
+                              LogTemplateOptions *template_options, LogPipe *log_pipe);
 
   bool init();
   google::protobuf::Message *format(LogMessage *msg, gint seq_num) const;
@@ -124,7 +187,7 @@ public:
 
   const google::protobuf::Descriptor &get_schema_descriptor() const
   {
-    return *this->schema_descriptor;
+    return this->protobuf_schema.provider->get_schema_descriptor();
   }
 
   /* For grammar. */
@@ -132,41 +195,23 @@ public:
   void set_protobuf_schema(std::string proto_path, GList *values);
 
 private:
-  void construct_schema_prototype();
-  bool load_protobuf_schema();
   Slice format_template(LogTemplate *tmpl, LogMessage *msg, GString *value, LogMessageValueType *type,
                         gint seq_num) const;
   bool insert_field(const google::protobuf::Reflection *reflection, const Field &field, gint seq_num,
                     LogMessage *msg, google::protobuf::Message *message) const;
 
 private:
-  LogPipe *log_pipe;
-  MapTypeFn map_type;
   LogTemplateOptions *template_options;
-
-  std::string syntax;
-  std::string file_descriptor_proto_name;
-  std::string descriptor_proto_name;
+  LogPipe *log_pipe;
 
   struct
   {
-    std::string proto_path;
-    GList *values = nullptr;
-
-    std::unique_ptr<google::protobuf::compiler::DiskSourceTree> src_tree;
-    std::unique_ptr<google::protobuf::compiler::MultiFileErrorCollector> error_coll;
-    std::unique_ptr<google::protobuf::compiler::Importer> importer;
-    bool loaded = false;
+    ProtoSchemaProvider *provider;
+    std::unique_ptr<ProtoSchemaBuilder> builder;
+    ProtoSchemaFileLoader file_loader;
   } protobuf_schema;
 
   std::vector<Field> fields;
-
-  google::protobuf::DescriptorPool descriptor_pool;
-
-  /* A given descriptor_pool/importer instance should outlive msg_factory, as msg_factory caches prototypes */
-  std::unique_ptr<google::protobuf::DynamicMessageFactory> msg_factory;
-  const google::protobuf::Descriptor *schema_descriptor = nullptr;
-  const google::protobuf::Message *schema_prototype  = nullptr;
 };
 
 }

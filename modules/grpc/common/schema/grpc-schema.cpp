@@ -82,159 +82,151 @@ private:
 };
 }
 
-LogMessageProtobufFormatter::LogMessageProtobufFormatter(int proto_version,
-                                                         const std::string &file_descriptor_proto_name_,
-                                                         const std::string &descriptor_proto_name_,
-                                                         MapTypeFn map_type_,
-                                                         LogTemplateOptions *template_options_,
-                                                         LogPipe *log_pipe_) :
-  log_pipe(log_pipe_),
-  map_type(map_type_),
-  template_options(template_options_),
-  syntax("proto" + std::to_string(proto_version)),
-  file_descriptor_proto_name(file_descriptor_proto_name_),
-  descriptor_proto_name(descriptor_proto_name_)
+bool
+ProtoSchemaFileLoader::init()
 {
+  if (this->loaded)
+    return true;
+
+  this->msg_factory = std::make_unique<google::protobuf::DynamicMessageFactory>();
+  this->importer.reset(nullptr);
+
+  this->src_tree = std::make_unique<google::protobuf::compiler::DiskSourceTree>();
+  this->src_tree->MapPath(this->proto_file_path, this->proto_file_path);
+
+  this->error_coll = std::make_unique<ErrorCollector>();
+
+  this->importer = std::make_unique<google::protobuf::compiler::Importer>(this->src_tree.get(), this->error_coll.get());
+
+  const google::protobuf::FileDescriptor *file_descriptor = this->importer->Import(this->proto_file_path);
+
+  if (!file_descriptor || file_descriptor->message_type_count() == 0)
+    {
+      msg_error("Error initializing gRPC based destination, protobuf-schema() file can't be loaded");
+      return false;
+    }
+
+  this->schema_descriptor = file_descriptor->message_type(0);
+  this->schema_prototype = this->msg_factory->GetPrototype(this->schema_descriptor);
+  this->loaded = true;
+
+  return true;
 }
 
-LogMessageProtobufFormatter::~LogMessageProtobufFormatter()
+ProtoSchemaBuilder::ProtoSchemaBuilder(MapTypeFn map_type_, int proto_version,
+                                       const std::string &file_descriptor_proto_name,
+                                       const std::string &descriptor_proto_name) :
+  map_type(map_type_)
 {
-  g_list_free_full(this->protobuf_schema.values, _template_unref);
+  this->msg_factory = std::make_unique<google::protobuf::DynamicMessageFactory>();
+
+  this->file_descriptor_proto.set_name(file_descriptor_proto_name);
+  this->file_descriptor_proto.set_syntax(proto_version == 2 ? "proto2" : "proto3");
+
+  this->descriptor_proto = this->file_descriptor_proto.add_message_type();
+  this->descriptor_proto->set_name(descriptor_proto_name);
+}
+
+bool
+ProtoSchemaBuilder::init()
+{
+  const google::protobuf::FileDescriptor *file_descriptor = this->descriptor_pool.BuildFile(this->file_descriptor_proto);
+  this->schema_descriptor = file_descriptor->message_type(0);
+  this->schema_prototype = this->msg_factory->GetPrototype(this->schema_descriptor);
+
+  return true;
+}
+
+bool
+ProtoSchemaBuilder::add_field(const std::string &name, const std::string &type)
+{
+  google::protobuf::FieldDescriptorProto::Type proto_type;
+
+  if (!this->map_type(type, proto_type))
+    return false;
+
+  google::protobuf::FieldDescriptorProto *field_desc_proto = this->descriptor_proto->add_field();
+  field_desc_proto->set_name(name);
+  field_desc_proto->set_type(proto_type);
+  field_desc_proto->set_number(this->field_id++);
+
+  return true;
+}
+
+LogMessageProtobufFormatter::LogMessageProtobufFormatter(std::unique_ptr<ProtoSchemaBuilder> schema_builder_,
+                                                         LogTemplateOptions *template_options_,
+                                                         LogPipe *log_pipe_) :
+  template_options(template_options_),
+  log_pipe(log_pipe_),
+  protobuf_schema{nullptr, std::move(schema_builder_)}
+{
 }
 
 bool
 LogMessageProtobufFormatter::init()
 {
-  if (!this->protobuf_schema.proto_path.empty())
-    return this->protobuf_schema.loaded || this->load_protobuf_schema();
-
-  this->construct_schema_prototype();
-  return true;
-}
-
-void
-LogMessageProtobufFormatter::construct_schema_prototype()
-{
-  this->msg_factory = std::make_unique<google::protobuf::DynamicMessageFactory>();
-  this->descriptor_pool.~DescriptorPool();
-  new (&this->descriptor_pool) google::protobuf::DescriptorPool();
-
-  google::protobuf::FileDescriptorProto file_descriptor_proto;
-  file_descriptor_proto.set_name(this->file_descriptor_proto_name);
-  file_descriptor_proto.set_syntax(this->syntax);
-  google::protobuf::DescriptorProto *descriptor_proto = file_descriptor_proto.add_message_type();
-  descriptor_proto->set_name(this->descriptor_proto_name);
-
-  int32_t num = 1;
-  for (auto &field : this->fields)
+  if (!this->protobuf_schema.provider)
     {
-      google::protobuf::FieldDescriptorProto *field_desc_proto = descriptor_proto->add_field();
-      field_desc_proto->set_name(field.nv.name);
-      field_desc_proto->set_type(field.type);
-      field_desc_proto->set_number(num++);
-    }
-
-  const google::protobuf::FileDescriptor *file_descriptor = this->descriptor_pool.BuildFile(file_descriptor_proto);
-  this->schema_descriptor = file_descriptor->message_type(0);
-
-  for (int i = 0; i < this->schema_descriptor->field_count(); ++i)
-    {
-      this->fields[i].field_desc = this->schema_descriptor->field(i);
-    }
-
-  this->schema_prototype = this->msg_factory->GetPrototype(this->schema_descriptor);
-}
-
-bool
-LogMessageProtobufFormatter::load_protobuf_schema()
-{
-  this->protobuf_schema.loaded = false;
-  this->msg_factory = std::make_unique<google::protobuf::DynamicMessageFactory>();
-  this->protobuf_schema.importer.reset(nullptr);
-
-  this->protobuf_schema.src_tree = std::make_unique<google::protobuf::compiler::DiskSourceTree>();
-  this->protobuf_schema.src_tree->MapPath(this->protobuf_schema.proto_path, this->protobuf_schema.proto_path);
-
-  this->protobuf_schema.error_coll = std::make_unique<ErrorCollector>();
-
-  this->protobuf_schema.importer =
-    std::make_unique<google::protobuf::compiler::Importer>(this->protobuf_schema.src_tree.get(),
-                                                           this->protobuf_schema.error_coll.get());
-
-  const google::protobuf::FileDescriptor *file_descriptor =
-    this->protobuf_schema.importer->Import(this->protobuf_schema.proto_path);
-
-  if (!file_descriptor || file_descriptor->message_type_count() == 0)
-    {
-      msg_error("Error initializing gRPC based destination, protobuf-schema() file can't be loaded",
+      msg_error("Error initializing gRPC based destination, schema() or protobuf-schema() must be set",
                 log_pipe_location_tag(this->log_pipe));
       return false;
     }
 
-  this->schema_descriptor = file_descriptor->message_type(0);
+  if (!this->protobuf_schema.provider->init())
+    return false;
 
-  this->fields.clear();
+  const google::protobuf::Descriptor &schema_descriptor = this->protobuf_schema.provider->get_schema_descriptor();
+  size_t field_count = (size_t) schema_descriptor.field_count();
 
-  GList *current_value = this->protobuf_schema.values;
-  for (int i = 0; i < this->schema_descriptor->field_count(); ++i)
+  if (this->fields.size() != field_count)
     {
-      auto field = this->schema_descriptor->field(i);
-
-      if (!current_value)
-        {
-          msg_error("Error initializing gRPC based destination, protobuf-schema() file has more fields than "
-                    "values listed in the config",
-                    log_pipe_location_tag(this->log_pipe));
-          return false;
-        }
-
-      LogTemplate *value = (LogTemplate *) current_value->data;
-
-      this->fields.push_back(Field{std::string(field->name()),
-                                   (google::protobuf::FieldDescriptorProto::Type) field->type(), value});
-      this->fields[i].field_desc = field;
-
-      current_value = current_value->next;
-    }
-
-  if (current_value)
-    {
-      msg_error("Error initializing gRPC based destination, protobuf-schema() file has less fields than "
+      msg_error("Error initializing gRPC based destination, protobuf schema has different number of fields than "
                 "values listed in the config",
                 log_pipe_location_tag(this->log_pipe));
       return false;
     }
 
+  for (size_t i = 0; i < field_count; i++)
+    {
+      Field &field = this->fields[i];
+      field.field_desc = schema_descriptor.field(i);
+      field.nv.name = field.field_desc->name();
+    }
 
-  this->schema_prototype = this->msg_factory->GetPrototype(this->schema_descriptor);
-  this->protobuf_schema.loaded = true;
   return true;
 }
 
 bool
 LogMessageProtobufFormatter::add_field(std::string name, std::string type, LogTemplate *value)
 {
-  google::protobuf::FieldDescriptorProto::Type proto_type;
-  if (!this->map_type(type, proto_type))
+  this->protobuf_schema.provider = this->protobuf_schema.builder.get();
+
+  if (!this->protobuf_schema.builder->add_field(name, type))
     return false;
 
-  this->fields.push_back(Field{name, proto_type, value});
+  this->fields.push_back(Field(value));
   return true;
 }
 
 void
 LogMessageProtobufFormatter::set_protobuf_schema(std::string proto_path, GList *values)
 {
-  this->protobuf_schema.proto_path = proto_path;
+  this->protobuf_schema.provider = &this->protobuf_schema.file_loader;
+  this->protobuf_schema.file_loader.set_proto_file_path(proto_path);
 
-  g_list_free_full(this->protobuf_schema.values, _template_unref);
-  this->protobuf_schema.values = values;
+  for (GList *current_value = values; current_value; current_value = current_value->next)
+    {
+      LogTemplate *value = (LogTemplate *) current_value->data;
+      this->fields.push_back(Field(value));
+    }
+
+  g_list_free_full(values, _template_unref);
 }
 
 google::protobuf::Message *
 LogMessageProtobufFormatter::format(LogMessage *msg, gint seq_num) const
 {
-  google::protobuf::Message *message = schema_prototype->New();
+  google::protobuf::Message *message = this->protobuf_schema.provider->get_schema_prototype().New();
   const google::protobuf::Reflection *reflection = message->GetReflection();
 
   bool msg_has_field = false;

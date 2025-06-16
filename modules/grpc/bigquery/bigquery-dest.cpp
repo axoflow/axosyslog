@@ -38,8 +38,9 @@ using syslogng::grpc::bigquery::DestinationDriver;
 
 DestinationDriver::DestinationDriver(GrpcDestDriver *s)
   : syslogng::grpc::DestDriver(s),
-    log_message_protobuf_formatter(2, "bigquery_record.proto", "BigQueryRecord", map_schema_type,
-           &this->template_options, &this->super->super.super.super.super)
+    log_message_protobuf_formatter(std::make_unique<ProtoSchemaBuilder>(map_schema_type, 2, "bigquery_record.proto",
+                                   "BigQueryRecord"),
+                                   &this->template_options, &this->super->super.super.super.super)
 {
   this->url = "bigquerystorage.googleapis.com";
   this->credentials_builder.set_mode(GCAM_ADC);

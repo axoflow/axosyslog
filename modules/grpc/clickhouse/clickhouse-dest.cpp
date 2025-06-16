@@ -36,8 +36,9 @@ using google::protobuf::FieldDescriptorProto;
 
 DestDriver::DestDriver(GrpcDestDriver *s)
   : syslogng::grpc::DestDriver(s),
-    log_message_protobuf_formatter(2, "clickhouse_message.proto", "MessageType", map_schema_type,
-           &this->template_options, &this->super->super.super.super.super)
+    log_message_protobuf_formatter(std::make_unique<ProtoSchemaBuilder>(map_schema_type, 2, "clickhouse_message.proto",
+                                   "ClickHouseMessage"),
+                                   &this->template_options, &this->super->super.super.super.super)
 {
   this->url = "localhost:9100";
   this->enable_dynamic_headers();
