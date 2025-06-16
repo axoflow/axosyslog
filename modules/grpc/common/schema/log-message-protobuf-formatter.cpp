@@ -22,7 +22,7 @@
  *
  */
 
-#include "grpc-schema.hpp"
+#include "log-message-protobuf-formatter.hpp"
 
 #include "compat/cpp-start.h"
 #include "scratch-buffers.h"

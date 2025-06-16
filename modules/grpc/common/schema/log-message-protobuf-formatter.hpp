@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef GRPC_SCHEMA_HPP
-#define GRPC_SCHEMA_HPP
+#ifndef LOG_MESSAGE_PROTOBUF_FORMATTER_HPP
+#define LOG_MESSAGE_PROTOBUF_FORMATTER_HPP
 
 #include "syslog-ng.h"
 

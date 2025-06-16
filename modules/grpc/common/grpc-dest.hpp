@@ -33,7 +33,7 @@
 
 #include "credentials/grpc-credentials-builder.hpp"
 #include "metrics/grpc-metrics.hpp"
-#include "schema/grpc-schema.hpp"
+#include "schema/log-message-protobuf-formatter.hpp"
 
 #include <grpcpp/server.h>
 
