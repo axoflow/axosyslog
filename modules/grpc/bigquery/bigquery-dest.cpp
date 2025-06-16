@@ -38,7 +38,7 @@ using syslogng::grpc::bigquery::DestinationDriver;
 
 DestinationDriver::DestinationDriver(GrpcDestDriver *s)
   : syslogng::grpc::DestDriver(s),
-    schema(2, "bigquery_record.proto", "BigQueryRecord", map_schema_type,
+    log_message_protobuf_formatter(2, "bigquery_record.proto", "BigQueryRecord", map_schema_type,
            &this->template_options, &this->super->super.super.super.super)
 {
   this->url = "bigquerystorage.googleapis.com";
@@ -97,10 +97,10 @@ DestinationDriver::init()
       return false;
     }
 
-  if (!this->schema.init())
+  if (!this->log_message_protobuf_formatter.init())
     return false;
 
-  if (this->schema.empty())
+  if (this->log_message_protobuf_formatter.empty())
     {
       msg_error("Error initializing BigQuery destination, schema() or protobuf-schema() is empty",
                 log_pipe_location_tag(&this->super->super.super.super.super));

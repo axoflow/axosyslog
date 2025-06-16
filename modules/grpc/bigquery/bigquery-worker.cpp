@@ -139,7 +139,7 @@ DestinationWorker::prepare_batch()
   google::cloud::bigquery::storage::v1::AppendRowsRequest_ProtoData *proto_rows =
     this->current_batch.mutable_proto_rows();
   google::cloud::bigquery::storage::v1::ProtoSchema *schema = proto_rows->mutable_writer_schema();
-  this->get_owner()->schema.get_schema_descriptor().CopyTo(schema->mutable_proto_descriptor());
+  this->get_owner()->log_message_protobuf_formatter.get_schema_descriptor().CopyTo(schema->mutable_proto_descriptor());
 }
 
 bool
@@ -157,7 +157,7 @@ DestinationWorker::insert(LogMessage *msg)
 
   google::cloud::bigquery::storage::v1::ProtoRows *rows = this->current_batch.mutable_proto_rows()->mutable_rows();
 
-  google::protobuf::Message *message = owner_->schema.format(msg, this->super->super.seq_num);
+  google::protobuf::Message *message = owner_->log_message_protobuf_formatter.format(msg, this->super->super.seq_num);
   if (!message)
     goto drop;
 

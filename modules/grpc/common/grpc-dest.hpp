@@ -151,7 +151,7 @@ public:
     this->flush_on_key_change = true;
   }
 
-  virtual Schema *get_schema()
+  virtual LogMessageProtobufFormatter *get_log_message_protobuf_formatter()
   {
     return nullptr;
   }

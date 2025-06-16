@@ -82,12 +82,12 @@ private:
 };
 }
 
-Schema::Schema(int proto_version,
-               const std::string &file_descriptor_proto_name_,
-               const std::string &descriptor_proto_name_,
-               MapTypeFn map_type_,
-               LogTemplateOptions *template_options_,
-               LogPipe *log_pipe_) :
+LogMessageProtobufFormatter::LogMessageProtobufFormatter(int proto_version,
+                                                         const std::string &file_descriptor_proto_name_,
+                                                         const std::string &descriptor_proto_name_,
+                                                         MapTypeFn map_type_,
+                                                         LogTemplateOptions *template_options_,
+                                                         LogPipe *log_pipe_) :
   log_pipe(log_pipe_),
   map_type(map_type_),
   template_options(template_options_),
@@ -97,13 +97,13 @@ Schema::Schema(int proto_version,
 {
 }
 
-Schema::~Schema()
+LogMessageProtobufFormatter::~LogMessageProtobufFormatter()
 {
   g_list_free_full(this->protobuf_schema.values, _template_unref);
 }
 
 bool
-Schema::init()
+LogMessageProtobufFormatter::init()
 {
   if (!this->protobuf_schema.proto_path.empty())
     return this->protobuf_schema.loaded || this->load_protobuf_schema();
@@ -113,7 +113,7 @@ Schema::init()
 }
 
 void
-Schema::construct_schema_prototype()
+LogMessageProtobufFormatter::construct_schema_prototype()
 {
   this->msg_factory = std::make_unique<google::protobuf::DynamicMessageFactory>();
   this->descriptor_pool.~DescriptorPool();
@@ -146,7 +146,7 @@ Schema::construct_schema_prototype()
 }
 
 bool
-Schema::load_protobuf_schema()
+LogMessageProtobufFormatter::load_protobuf_schema()
 {
   this->protobuf_schema.loaded = false;
   this->msg_factory = std::make_unique<google::protobuf::DynamicMessageFactory>();
@@ -212,7 +212,7 @@ Schema::load_protobuf_schema()
 }
 
 bool
-Schema::add_field(std::string name, std::string type, LogTemplate *value)
+LogMessageProtobufFormatter::add_field(std::string name, std::string type, LogTemplate *value)
 {
   google::protobuf::FieldDescriptorProto::Type proto_type;
   if (!this->map_type(type, proto_type))
@@ -223,7 +223,7 @@ Schema::add_field(std::string name, std::string type, LogTemplate *value)
 }
 
 void
-Schema::set_protobuf_schema(std::string proto_path, GList *values)
+LogMessageProtobufFormatter::set_protobuf_schema(std::string proto_path, GList *values)
 {
   this->protobuf_schema.proto_path = proto_path;
 
@@ -232,7 +232,7 @@ Schema::set_protobuf_schema(std::string proto_path, GList *values)
 }
 
 google::protobuf::Message *
-Schema::format(LogMessage *msg, gint seq_num) const
+LogMessageProtobufFormatter::format(LogMessage *msg, gint seq_num) const
 {
   google::protobuf::Message *message = schema_prototype->New();
   const google::protobuf::Reflection *reflection = message->GetReflection();
@@ -257,9 +257,10 @@ drop:
   return nullptr;
 }
 
-Schema::Slice
-Schema::format_template(LogTemplate *tmpl, LogMessage *msg, GString *value, LogMessageValueType *type,
-                        gint seq_num) const
+LogMessageProtobufFormatter::Slice
+LogMessageProtobufFormatter::format_template(LogTemplate *tmpl, LogMessage *msg, GString *value,
+                                             LogMessageValueType *type,
+                                             gint seq_num) const
 {
   if (log_template_is_trivial(tmpl))
     {
@@ -278,8 +279,9 @@ Schema::format_template(LogTemplate *tmpl, LogMessage *msg, GString *value, LogM
 }
 
 bool
-Schema::insert_field(const google::protobuf::Reflection *reflection, const Field &field, gint seq_num,
-                     LogMessage *msg, google::protobuf::Message *message) const
+LogMessageProtobufFormatter::insert_field(const google::protobuf::Reflection *reflection, const Field &field,
+                                          gint seq_num,
+                                          LogMessage *msg, google::protobuf::Message *message) const
 {
   ScratchBuffersMarker m;
   GString *buf = scratch_buffers_alloc_and_mark(&m);

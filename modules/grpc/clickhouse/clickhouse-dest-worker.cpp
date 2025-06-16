@@ -60,7 +60,7 @@ DestWorker::insert(LogMessage *msg)
   std::streampos last_pos = this->query_data.tellp();
   size_t row_bytes = 0;
 
-  google::protobuf::Message *message = owner_->schema.format(msg, this->super->super.seq_num);
+  google::protobuf::Message *message = owner_->log_message_protobuf_formatter.format(msg, this->super->super.seq_num);
   if (!message)
     goto drop;
 

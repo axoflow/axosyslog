@@ -36,7 +36,7 @@ using google::protobuf::FieldDescriptorProto;
 
 DestDriver::DestDriver(GrpcDestDriver *s)
   : syslogng::grpc::DestDriver(s),
-    schema(2, "clickhouse_message.proto", "MessageType", map_schema_type,
+    log_message_protobuf_formatter(2, "clickhouse_message.proto", "MessageType", map_schema_type,
            &this->template_options, &this->super->super.super.super.super)
 {
   this->url = "localhost:9100";
@@ -62,10 +62,10 @@ DestDriver::init()
     this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
   this->query += " FORMAT Protobuf";
 
-  if (!this->schema.init())
+  if (!this->log_message_protobuf_formatter.init())
     return false;
 
-  if (this->schema.empty())
+  if (this->log_message_protobuf_formatter.empty())
     {
       msg_error("Error initializing ClickHouse destination, schema() or protobuf-schema() is empty",
                 log_pipe_location_tag(&this->super->super.super.super.super));

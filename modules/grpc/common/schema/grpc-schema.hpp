@@ -95,7 +95,7 @@ struct Field
 
 };
 
-class Schema
+class LogMessageProtobufFormatter
 {
 private:
   struct Slice
@@ -109,9 +109,10 @@ public:
     std::function<bool (const std::string &type_in, google::protobuf::FieldDescriptorProto::Type &type_out)>;
 
 public:
-  Schema(int proto_version, const std::string &file_descriptor_proto_name, const std::string &descriptor_proto_name,
-         MapTypeFn map_type, LogTemplateOptions *template_options, LogPipe *log_pipe);
-  ~Schema();
+  LogMessageProtobufFormatter(int proto_version, const std::string &file_descriptor_proto_name,
+                              const std::string &descriptor_proto_name,
+                              MapTypeFn map_type, LogTemplateOptions *template_options, LogPipe *log_pipe);
+  ~LogMessageProtobufFormatter();
 
   bool init();
   google::protobuf::Message *format(LogMessage *msg, gint seq_num) const;

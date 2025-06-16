@@ -295,9 +295,9 @@ public:
   }
 
   bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
-    {
-      throw std::runtime_error("DatetimeFieldConverter: add operation is not supported");
-    }
+  {
+    throw std::runtime_error("DatetimeFieldConverter: add operation is not supported");
+  }
 };
 
 static DatetimeFieldConverter datetime_field;
@@ -336,9 +336,9 @@ public:
   }
 
   bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
-    {
-      throw std::runtime_error("SeverityNumberFieldConverter: add operation is not supported");
-    }
+  {
+    throw std::runtime_error("SeverityNumberFieldConverter: add operation is not supported");
+  }
 };
 
 static SeverityNumberFieldConverter severity_number_field;
