@@ -29,13 +29,13 @@
 #include "filterx/filterx-object.h"
 #include "compat/cpp-end.h"
 
-#include "opentelemetry/proto/logs/v1/logs.pb.h"
+#include <google/protobuf/message.h>
+#include <google/protobuf/reflection.h>
+#include <google/protobuf/descriptor.h>
 
 namespace syslogng {
 namespace grpc {
 namespace otel {
-
-using opentelemetry::proto::logs::v1::LogRecord;
 
 struct ProtoReflectors
 {

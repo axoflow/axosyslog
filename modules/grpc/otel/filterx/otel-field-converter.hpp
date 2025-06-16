@@ -30,11 +30,14 @@
 #include "filterx/object-dict-interface.h"
 #include "compat/cpp-end.h"
 
+#include "opentelemetry/proto/logs/v1/logs.pb.h"
+
 namespace syslogng {
 namespace grpc {
 namespace otel {
 
 using namespace google::protobuf;
+using opentelemetry::proto::logs::v1::LogRecord;
 
 class AnyValueFieldConverter : public ProtobufFieldConverter
 {
