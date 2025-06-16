@@ -343,28 +343,28 @@ syslogng::grpc::otel::all_protobuf_converters()
 {
   static std::unique_ptr<ProtobufFieldConverter> Converters[google::protobuf::FieldDescriptor::MAX_TYPE] =
   {
-    std::make_unique<DoubleFieldConverter>(),  //TYPE_DOUBLE = 1,    // double, exactly eight bytes on the wire.
-    std::make_unique<FloatFieldConverter>(),   //TYPE_FLOAT = 2,     // float, exactly four bytes on the wire.
-    std::make_unique<i64FieldConverter>(),     //TYPE_INT64 = 3,     // int64, varint on the wire.  Negative numbers
-    // take 10 bytes.  Use TYPE_SINT64 if negative
-    // values are likely.
-    std::make_unique<u64FieldConverter>(),     //TYPE_UINT64 = 4,    // uint64, varint on the wire.
-    std::make_unique<i32FieldConverter>(),     //TYPE_INT32 = 5,     // int32, varint on the wire.  Negative numbers
-    // take 10 bytes.  Use TYPE_SINT32 if negative
-    // values are likely.
-    std::make_unique<u64FieldConverter>(),     //TYPE_FIXED64 = 6,   // uint64, exactly eight bytes on the wire.
-    std::make_unique<u32FieldConverter>(),     //TYPE_FIXED32 = 7,   // uint32, exactly four bytes on the wire.
-    std::make_unique<BoolFieldConverter>(),    //TYPE_BOOL = 8,      // bool, varint on the wire.
-    std::make_unique<StringFieldConverter>(),  //TYPE_STRING = 9,    // UTF-8 text.
-    nullptr,                                   //TYPE_GROUP = 10,    // Tag-delimited message.  Deprecated.
-    nullptr,                                   //TYPE_MESSAGE = 11,  // Length-delimited message.
-    std::make_unique<BytesFieldConverter>(),   //TYPE_BYTES = 12,     // Arbitrary byte array.
-    std::make_unique<u32FieldConverter>(),     //TYPE_UINT32 = 13,    // uint32, varint on the wire
-    nullptr,                                   //TYPE_ENUM = 14,      // Enum, varint on the wire
-    std::make_unique<i32FieldConverter>(),     //TYPE_SFIXED32 = 15,  // int32, exactly four bytes on the wire
-    std::make_unique<i64FieldConverter>(),     //TYPE_SFIXED64 = 16,  // int64, exactly eight bytes on the wire
-    std::make_unique<i32FieldConverter>(),     //TYPE_SINT32 = 17,    // int32, ZigZag-encoded varint on the wire
-    std::make_unique<i64FieldConverter>(),     //TYPE_SINT64 = 18,    // int64, ZigZag-encoded varint on the wire
+    std::make_unique<DoubleFieldConverter>(),  // TYPE_DOUBLE = 1,       double, exactly eight bytes on the wire.
+    std::make_unique<FloatFieldConverter>(),   // TYPE_FLOAT = 2,        float, exactly four bytes on the wire.
+    std::make_unique<i64FieldConverter>(),     // TYPE_INT64 = 3,        int64, varint on the wire.
+    //                                                                   Negative numbers take 10 bytes.
+    //                                                                   Use TYPE_SINT64 if negative values are likely.
+    std::make_unique<u64FieldConverter>(),     // TYPE_UINT64 = 4,       uint64, varint on the wire.
+    std::make_unique<i32FieldConverter>(),     // TYPE_INT32 = 5,        int32, varint on the wire.
+    //                                                                   Negative numbers take 10 bytes.
+    //                                                                   Use TYPE_SINT32 if negative values are likely.
+    std::make_unique<u64FieldConverter>(),     // TYPE_FIXED64 = 6,      uint64, exactly eight bytes on the wire.
+    std::make_unique<u32FieldConverter>(),     // TYPE_FIXED32 = 7,      uint32, exactly four bytes on the wire.
+    std::make_unique<BoolFieldConverter>(),    // TYPE_BOOL = 8,         bool, varint on the wire.
+    std::make_unique<StringFieldConverter>(),  // TYPE_STRING = 9,       UTF-8 text.
+    nullptr,                                   // TYPE_GROUP = 10,       Tag-delimited message.  Deprecated.
+    nullptr,                                   // TYPE_MESSAGE = 11,     Length-delimited message.
+    std::make_unique<BytesFieldConverter>(),   // TYPE_BYTES = 12,       Arbitrary byte array.
+    std::make_unique<u32FieldConverter>(),     // TYPE_UINT32 = 13,      uint32, varint on the wire
+    nullptr,                                   // TYPE_ENUM = 14,        Enum, varint on the wire
+    std::make_unique<i32FieldConverter>(),     // TYPE_SFIXED32 = 15,    int32, exactly four bytes on the wire
+    std::make_unique<i64FieldConverter>(),     // TYPE_SFIXED64 = 16,    int64, exactly eight bytes on the wire
+    std::make_unique<i32FieldConverter>(),     // TYPE_SINT32 = 17,      int32, ZigZag-encoded varint on the wire
+    std::make_unique<i64FieldConverter>(),     // TYPE_SINT64 = 18,      int64, ZigZag-encoded varint on the wire
   };
   return Converters;
 };
