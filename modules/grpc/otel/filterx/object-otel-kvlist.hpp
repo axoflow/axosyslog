@@ -79,13 +79,13 @@ private:
   bool borrowed;
   thread_local static KeyValueList cached_value;
 
-  friend class OtelKVListField;
+  friend class KVListFieldConverter;
 
 protected:
   const google::protobuf::Message &get_protobuf_value() const override;
 };
 
-class OtelKVListField : public ProtobufField
+class KVListFieldConverter : public ProtobufFieldConverter
 {
 public:
   FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
@@ -93,7 +93,7 @@ public:
            FilterXObject **assoc_object);
 };
 
-extern OtelKVListField otel_kvlist_converter;
+extern KVListFieldConverter kvlist_field_converter;
 
 }
 }

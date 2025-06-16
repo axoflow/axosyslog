@@ -72,13 +72,13 @@ private:
   ArrayValue *array;
   bool borrowed;
 
-  friend class OtelArrayField;
+  friend class ArrayFieldConverter;
 
 protected:
   const google::protobuf::Message &get_protobuf_value() const override;
 };
 
-class OtelArrayField : public ProtobufField
+class ArrayFieldConverter : public ProtobufFieldConverter
 {
 public:
   FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
@@ -86,7 +86,7 @@ public:
            FilterXObject **assoc_object);
 };
 
-extern OtelArrayField otel_array_converter;
+extern ArrayFieldConverter array_field_converter;
 
 }
 }

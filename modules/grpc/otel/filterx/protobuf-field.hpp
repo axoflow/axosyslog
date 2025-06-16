@@ -79,7 +79,7 @@ struct ProtoReflectors
   }
 };
 
-class ProtobufField
+class ProtobufFieldConverter
 {
 public:
   FilterXObject *get(google::protobuf::Message *message, const std::string &fieldName)
@@ -146,7 +146,7 @@ public:
       }
   }
 
-  virtual ~ProtobufField() {}
+  virtual ~ProtobufFieldConverter() {}
 
 protected:
   virtual FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors) = 0;
@@ -154,8 +154,8 @@ protected:
                    FilterXObject *object, FilterXObject **assoc_object) = 0;
 };
 
-std::unique_ptr<ProtobufField> *all_protobuf_converters();
-ProtobufField *protobuf_converter_by_type(google::protobuf::FieldDescriptor::Type fieldType);
+std::unique_ptr<ProtobufFieldConverter> *all_protobuf_converters();
+ProtobufFieldConverter *get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type fieldType);
 
 std::string extract_string_from_object(FilterXObject *object);
 

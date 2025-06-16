@@ -81,7 +81,7 @@ LogRecord::set_subscript(FilterXObject *key, FilterXObject **value)
     {
       std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
-      ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
+      ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.fieldDescriptor);
 
       FilterXObject *assoc_object = NULL;
       if (!converter->set(&this->logRecord, key_str, *value, &assoc_object))
@@ -104,7 +104,7 @@ LogRecord::get_subscript(FilterXObject *key)
     {
       std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
-      ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
+      ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.fieldDescriptor);
 
       return converter->get(&this->logRecord, key_str);
     }
@@ -121,7 +121,7 @@ LogRecord::unset_key(FilterXObject *key)
     {
       std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
-      ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
+      ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.fieldDescriptor);
 
       return converter->unset(&this->logRecord, key_str);
     }
@@ -138,7 +138,7 @@ LogRecord::is_key_set(FilterXObject *key)
     {
       std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
-      ProtobufField *converter = otel_converter_by_field_descriptor(reflectors.fieldDescriptor);
+      ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.fieldDescriptor);
 
       return converter->is_set(&this->logRecord, key_str);
     }

@@ -84,7 +84,7 @@ grpc_otel_filterx_enum_construct(Plugin *self)
 }
 
 FilterXObject *
-AnyField::get(Message *message, ProtoReflectors reflectors)
+AnyValueFieldConverter::get(Message *message, ProtoReflectors reflectors)
 {
   if (reflectors.fieldDescriptor->type() == FieldDescriptor::TYPE_MESSAGE)
     {
@@ -110,7 +110,8 @@ AnyField::get(Message *message, ProtoReflectors reflectors)
 }
 
 bool
-AnyField::set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
+AnyValueFieldConverter::set(Message *message, ProtoReflectors reflectors, FilterXObject *object,
+                            FilterXObject **assoc_object)
 {
   AnyValue *any_value;
   try
@@ -126,40 +127,40 @@ AnyField::set(Message *message, ProtoReflectors reflectors, FilterXObject *objec
 }
 
 FilterXObject *
-AnyField::direct_get(AnyValue *any_value)
+AnyValueFieldConverter::direct_get(AnyValue *any_value)
 {
-  ProtobufField *converter = nullptr;
+  ProtobufFieldConverter *converter = nullptr;
   std::string type_field_name;
   AnyValue::ValueCase valueCase = any_value->value_case();
 
   switch (valueCase)
     {
     case AnyValue::kStringValue:
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_STRING);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_STRING);
       type_field_name = "string_value";
       break;
     case AnyValue::kBoolValue:
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BOOL);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_BOOL);
       type_field_name = "bool_value";
       break;
     case AnyValue::kIntValue:
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_INT64);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_INT64);
       type_field_name = "int_value";
       break;
     case AnyValue::kDoubleValue:
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_DOUBLE);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_DOUBLE);
       type_field_name = "double_value";
       break;
     case AnyValue::kBytesValue:
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BYTES);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_BYTES);
       type_field_name = "bytes_value";
       break;
     case AnyValue::kKvlistValue:
-      converter = &filterx::otel_kvlist_converter;
+      converter = &filterx::kvlist_field_converter;
       type_field_name = "kvlist_value";
       break;
     case AnyValue::kArrayValue:
-      converter = &filterx::otel_array_converter;
+      converter = &filterx::array_field_converter;
       type_field_name = "array_value";
       break;
     case AnyValue::VALUE_NOT_SET:
@@ -172,9 +173,9 @@ AnyField::direct_get(AnyValue *any_value)
 }
 
 bool
-AnyField::direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject **assoc_object)
+AnyValueFieldConverter::direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject **assoc_object)
 {
-  ProtobufField *converter = nullptr;
+  ProtobufFieldConverter *converter = nullptr;
   const char *type_field_name;
 
   FilterXObject *object_unwrapped = filterx_ref_unwrap_ro(object);
@@ -182,56 +183,56 @@ AnyField::direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject *
       (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
        filterx_message_value_get_type(object) == LM_VT_BOOLEAN))
     {
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BOOL);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_BOOL);
       type_field_name = "bool_value";
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(integer))||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_INTEGER))
     {
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_INT64);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_INT64);
       type_field_name = "int_value";
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(double)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_DOUBLE))
     {
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_DOUBLE);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_DOUBLE);
       type_field_name = "double_value";
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_STRING))
     {
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_STRING);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_STRING);
       type_field_name = "string_value";
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_BYTES))
     {
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BYTES);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_BYTES);
       type_field_name = "bytes_value";
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(protobuf)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_PROTOBUF))
     {
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_BYTES);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_BYTES);
       type_field_name = "bytes_value";
     }
   else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(dict)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_JSON))
     {
-      converter = &filterx::otel_kvlist_converter;
+      converter = &filterx::kvlist_field_converter;
       type_field_name = "kvlist_value";
     }
   else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(list)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_LIST))
     {
-      converter = &filterx::otel_array_converter;
+      converter = &filterx::array_field_converter;
       type_field_name = "array_value";
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(datetime)) ||
@@ -239,7 +240,7 @@ AnyField::direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject *
             filterx_message_value_get_type(object) == LM_VT_DATETIME))
     {
       // notice int64_t (sfixed64) instead of uint64_t (fixed64) since anyvalue's int_value is int64_t
-      converter = protobuf_converter_by_type(FieldDescriptor::TYPE_SFIXED64);
+      converter = get_protobuf_field_converter(FieldDescriptor::TYPE_SFIXED64);
       type_field_name = "int_value";
     }
   else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(null)) ||
@@ -260,9 +261,9 @@ AnyField::direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject *
   return converter->set(any_value, type_field_name, object, assoc_object);
 }
 
-AnyField syslogng::grpc::otel::any_field_converter;
+AnyValueFieldConverter syslogng::grpc::otel::any_value_field;
 
-class OtelDatetimeConverter : public ProtobufField
+class DatetimeFieldConverter : public ProtobufFieldConverter
 {
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
@@ -282,14 +283,14 @@ public:
         return true;
       }
 
-    return protobuf_converter_by_type(reflectors.fieldDescriptor->type())->set(message,
+    return get_protobuf_field_converter(reflectors.fieldDescriptor->type())->set(message,
            std::string(reflectors.fieldDescriptor->name()), object, assoc_object);
   }
 };
 
-static OtelDatetimeConverter otel_datetime_converter;
+static DatetimeFieldConverter datetime_field;
 
-class OtelSeverityNumberEnumConverter : public ProtobufField
+class SeverityNumberFieldConverter : public ProtobufFieldConverter
 {
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
@@ -323,39 +324,39 @@ public:
   }
 };
 
-static OtelSeverityNumberEnumConverter otel_severity_number_enum_converter;
+static SeverityNumberFieldConverter severity_number_field;
 
-ProtobufField *syslogng::grpc::otel::otel_converter_by_type(FieldDescriptor::Type fieldType)
+ProtobufFieldConverter *syslogng::grpc::otel::get_otel_protobuf_field_converter(FieldDescriptor::Type fieldType)
 {
   g_assert(fieldType <= FieldDescriptor::MAX_TYPE && fieldType > 0);
   if (fieldType == FieldDescriptor::TYPE_MESSAGE)
     {
-      return &any_field_converter;
+      return &any_value_field;
     }
   return all_protobuf_converters()[fieldType - 1].get();
 }
 
-ProtobufField *syslogng::grpc::otel::otel_converter_by_field_descriptor(const FieldDescriptor *fd)
+ProtobufFieldConverter *syslogng::grpc::otel::get_otel_protobuf_field_converter(const FieldDescriptor *fd)
 {
   const auto &fieldName = fd->name();
   if (fieldName.compare("time_unix_nano") == 0 ||
       fieldName.compare("observed_time_unix_nano") == 0)
     {
-      return &otel_datetime_converter;
+      return &datetime_field;
     }
 
   if (fieldName.compare("attributes") == 0)
     {
-      return &filterx::otel_kvlist_converter;
+      return &filterx::kvlist_field_converter;
     }
 
   if (fd->type() == FieldDescriptor::TYPE_ENUM)
     {
-      return &otel_severity_number_enum_converter;
+      return &severity_number_field;
     }
 
   const FieldDescriptor::Type fieldType = fd->type();
-  return otel_converter_by_type(fieldType);
+  return get_otel_protobuf_field_converter(fieldType);
 }
 
 bool
@@ -372,7 +373,8 @@ syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Mes
         {
           const std::string name = std::string(field->name());
           ProtoReflectors field_reflectors(message, name);
-          ProtobufField *converter = syslogng::grpc::otel::otel_converter_by_field_descriptor(field_reflectors.fieldDescriptor);
+          ProtobufFieldConverter *converter = syslogng::grpc::otel::get_otel_protobuf_field_converter(
+                                                field_reflectors.fieldDescriptor);
 
           FILTERX_STRING_DECLARE_ON_STACK(key, name.c_str(), name.size());
           FilterXObject *value = converter->get(&message, name);

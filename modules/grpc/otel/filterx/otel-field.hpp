@@ -36,7 +36,7 @@ namespace otel {
 
 using namespace google::protobuf;
 
-class AnyField : public ProtobufField
+class AnyValueFieldConverter : public ProtobufFieldConverter
 {
   using AnyValue = opentelemetry::proto::common::v1::AnyValue;
 
@@ -48,10 +48,10 @@ public:
   bool direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject **assoc_object);
 };
 
-extern AnyField any_field_converter;
+extern AnyValueFieldConverter any_value_field;
 
-ProtobufField *otel_converter_by_type(FieldDescriptor::Type field_type);
-ProtobufField *otel_converter_by_field_descriptor(const FieldDescriptor *fd);
+ProtobufFieldConverter *get_otel_protobuf_field_converter(FieldDescriptor::Type field_type);
+ProtobufFieldConverter *get_otel_protobuf_field_converter(const FieldDescriptor *fd);
 
 bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXDictIterFunc func,
                                           void *user_data);
