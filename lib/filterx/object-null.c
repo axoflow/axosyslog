@@ -85,11 +85,12 @@ FILTERX_DEFINE_TYPE(null, FILTERX_TYPE_NAME(object),
 void
 filterx_null_global_init(void)
 {
-  filterx_cache_object(&null_object, _null_wrap());
+  null_object = _null_wrap();
+  filterx_object_hibernate(null_object);
 }
 
 void
 filterx_null_global_deinit(void)
 {
-  filterx_uncache_object(&null_object);
+  filterx_object_unhibernate_and_free(null_object);
 }

@@ -71,10 +71,10 @@ Test(filterx_integer, test_filterx_primitive_small_negative_int_is_cached)
 
 Test(filterx_integer, test_filterx_primitive_larger_int_is_not_cached)
 {
-  FilterXObject *fobj = filterx_integer_new(128);
-  FilterXObject *fobj2 = filterx_integer_new(128);
-  assert_object_json_equals(fobj, "128");
-  assert_object_json_equals(fobj2, "128");
+  FilterXObject *fobj = filterx_integer_new(1024);
+  FilterXObject *fobj2 = filterx_integer_new(1024);
+  assert_object_json_equals(fobj, "1024");
+  assert_object_json_equals(fobj2, "1024");
   cr_assert(fobj != fobj2);
   filterx_object_unref(fobj);
   filterx_object_unref(fobj2);

@@ -31,11 +31,10 @@ typedef struct _FilterXConfig
 {
   ModuleConfig super;
   GPtrArray *frozen_objects;
+  GHashTable *frozen_deduplicated_objects;
   GPtrArray *weak_refs;
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);
-FilterXObject *filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject *object);
-FilterXObject *filterx_config_frozen_string(GlobalConfig *cfg, const gchar *str);
 
 #endif

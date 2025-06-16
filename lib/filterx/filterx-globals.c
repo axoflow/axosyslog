@@ -56,29 +56,11 @@
 #include "filterx/func-keys.h"
 #include "filterx/json-repr.h"
 
-FilterXGlobalCache global_cache;
-
 static GHashTable *filterx_builtin_simple_functions = NULL;
 static GHashTable *filterx_builtin_function_ctors = NULL;
 static GHashTable *filterx_builtin_generator_function_ctors = NULL;
 static GHashTable *filterx_types = NULL;
 
-void
-filterx_cache_object(FilterXObject **cache_slot, FilterXObject *object)
-{
-  *cache_slot = object;
-  filterx_object_hybernate(cache_slot);
-}
-
-void
-filterx_uncache_object(FilterXObject **cache_slot)
-{
-  filterx_object_unhybernate_and_free(*cache_slot);
-  *cache_slot = NULL;
-}
-
-
-// Builtin functions
 
 gboolean
 filterx_builtin_simple_function_register(const gchar *fn_name, FilterXSimpleFunctionProto func)

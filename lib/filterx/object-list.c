@@ -220,6 +220,30 @@ _filterx_list_clone(FilterXObject *s)
   return _filterx_list_clone_container(s, NULL, NULL);
 }
 
+static gboolean
+_dedup_list_item(gsize index, FilterXObject **value, gpointer user_data)
+{
+  GHashTable *dedup_storage = (GHashTable *) user_data;
+
+  filterx_object_dedup(value, dedup_storage);
+
+  return TRUE;
+}
+
+static gboolean
+_filterx_list_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+{
+  FilterXListObject *self = (FilterXListObject *) *pself;
+
+  g_assert(filterx_list_foreach(self, _dedup_list_item, dedup_storage));
+
+  /* Mutable objects themselves should never be deduplicated,
+   * only immutable values INSIDE those recursive mutable objects.
+   */
+  g_assert(*pself == &self->super.super);
+  return TRUE;
+}
+
 static void
 _filterx_list_free(FilterXObject *s)
 {
@@ -311,38 +335,6 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
-static gboolean
-_freeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_freeze(value);
-  return TRUE;
-}
-
-static void
-_filterx_list_freeze(FilterXObject **s)
-{
-  FilterXListObject *self = (FilterXListObject *) *s;
-
-  filterx_list_foreach(self, _freeze_list_item, NULL);
-}
-
-static gboolean
-_unfreeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_unfreeze_and_free(*value);
-  *value = NULL;
-  return TRUE;
-}
-
-static void
-_filterx_list_unfreeze(FilterXObject *s)
-{
-  FilterXListObject *self = (FilterXListObject *) s;
-
-  filterx_list_foreach(self, _unfreeze_list_item, NULL);
-}
-
-
 FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
                     .is_mutable = TRUE,
                     .truthy = _filterx_list_truthy,
@@ -353,6 +345,5 @@ FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
                     .repr = _filterx_list_repr,
                     .clone = _filterx_list_clone,
                     .clone_container = _filterx_list_clone_container,
-                    .freeze = _filterx_list_freeze,
-                    .unfreeze = _filterx_list_unfreeze,
+                    .dedup = _filterx_list_dedup,
                    );

@@ -26,6 +26,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/filterx-config.h"
 
 FilterXObject *
 filterx_object_getattr_string(FilterXObject *self, const gchar *attr_name)
@@ -114,116 +115,77 @@ filterx_object_new(FilterXType *type)
   return self;
 }
 
-static void
-_filterx_object_preserve(FilterXObject **pself, guint32 new_ref)
-{
-  FilterXObject *self = *pself;
-
-  /* NOTE: some objects may be weak refd at the point it is frozen (e.g.  a
-   * FilterXRef instance with weak_ref towards the root in a dict).  In
-   * those cases our ref_cnt will be 2 and not 1.
-   *
-   * New weak_refs will not be added once frozen.
-   */
-
-  gint expected_refs = 1;
-  if (self->weak_referenced)
-    expected_refs++;
-
-  g_assert(g_atomic_counter_get(&self->ref_cnt) == expected_refs);
-
-  if (self->type->freeze)
-    self->type->freeze(pself);
-
-  /* NOTE: type->freeze may change self to replace with a frozen/hybernated
-   * version */
-
-  if (self == *pself)
-    {
-      /* no change in the object, so we are freezing self */
-      filterx_object_make_readonly(self);
-      g_atomic_counter_set(&self->ref_cnt, new_ref);
-      return;
-    }
-
-  self = *pself;
-  if (g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_FROZEN)
-    {
-      /* we get replaced by another frozen (but not hybernated) object */
-      g_atomic_counter_inc(&self->ref_cnt);
-    }
-}
-
-static void
-_filterx_object_thaw(FilterXObject *self)
-{
-  if (self->type->unfreeze)
-    self->type->unfreeze(self);
-
-  guint32 ref = 1;
-  if (self->weak_referenced)
-    ref++;
-
-  g_atomic_counter_set(&self->ref_cnt, ref);
-}
-
 /* NOTE: we expect an exclusive reference, as it is not thread safe to be
  * called on the same object from multiple threads */
 void
-filterx_object_freeze(FilterXObject **pself)
+filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg)
 {
   FilterXObject *self = *pself;
+  FilterXConfig *fx_cfg = filterx_config_get(cfg);
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_HYBERNATED)
+  /* Mutable or recursive objects should never be frozen.
+   * Use filterx_object_make_readonly() instead, that is enough to avoid clones.
+   */
+  g_assert(!filterx_object_is_ref(self) && !self->type->is_mutable);
+
+  if (filterx_object_is_preserved(self))
     return;
 
-  if (r >= FILTERX_OBJECT_REFCOUNT_FROZEN)
+  if (filterx_object_dedup(pself, fx_cfg->frozen_deduplicated_objects))
     {
-      g_atomic_counter_inc(&self->ref_cnt);
-      return;
+      /* NOTE: filterx_object_dedup() may change self to replace with an already frozen version */
+      if (self != *pself)
+        return;
     }
-  _filterx_object_preserve(pself, FILTERX_OBJECT_REFCOUNT_FROZEN);
+  else
+    g_ptr_array_add(fx_cfg->frozen_objects, self);
+
+  /* no change in the object, so we are freezing self */
+  filterx_object_make_readonly(self);
+  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
 }
 
 void
-filterx_object_unfreeze_and_free(FilterXObject *self)
+_filterx_object_unfreeze_and_free(FilterXObject *self)
 {
   if (!self)
     return;
+
   gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_HYBERNATED)
+  if (r == FILTERX_OBJECT_REFCOUNT_HIBERNATED)
     return;
 
-  g_assert(r >= FILTERX_OBJECT_REFCOUNT_FROZEN);
-  r = g_atomic_counter_exchange_and_add(&self->ref_cnt, -1);
-  if (r > FILTERX_OBJECT_REFCOUNT_FROZEN)
-    return;
+  g_assert(r == FILTERX_OBJECT_REFCOUNT_FROZEN);
 
-  _filterx_object_thaw(self);
+  g_atomic_counter_set(&self->ref_cnt, 1);
   filterx_object_unref(self);
 }
 
 void
-filterx_object_hybernate(FilterXObject **pself)
+filterx_object_hibernate(FilterXObject *self)
 {
-  FilterXObject *self = *pself;
+  /* do not allow already preserved objects */
+  g_assert(!filterx_object_is_preserved(self));
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
-  g_assert(r < FILTERX_OBJECT_REFCOUNT_BARRIER);
+  /* Mutable or recursive objects should never be hibernated.
+   * Use filterx_object_make_readonly() instead, that is enough to avoid clones.
+   */
+  g_assert(!filterx_object_is_ref(self) && !self->type->is_mutable);
 
-  _filterx_object_preserve(pself, FILTERX_OBJECT_REFCOUNT_HYBERNATED);
+  filterx_object_make_readonly(self);
+  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_HIBERNATED);
 }
 
 void
-filterx_object_unhybernate_and_free(FilterXObject *self)
+filterx_object_unhibernate_and_free(FilterXObject *self)
 {
   if (!self)
     return;
-  gint r = g_atomic_counter_get(&self->ref_cnt);
-  g_assert(r == FILTERX_OBJECT_REFCOUNT_HYBERNATED);
 
-  _filterx_object_thaw(self);
+  gint r = g_atomic_counter_get(&self->ref_cnt);
+  g_assert(r == FILTERX_OBJECT_REFCOUNT_HIBERNATED);
+
+  g_atomic_counter_set(&self->ref_cnt, 1);
   filterx_object_unref(self);
 }
 

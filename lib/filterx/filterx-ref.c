@@ -99,46 +99,36 @@ _filterx_ref_free(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  if (self->value)
-    {
-      /* if we were frozen and then unfrozen, self->value will be NULL */
-      g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
-      filterx_object_unref(self->value);
-    }
+  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
+  filterx_object_unref(self->value);
+
   filterx_object_free_method(s);
 }
 
 static void
-_filterx_make_readonly(FilterXObject *s)
+_filterx_ref_make_readonly(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
   filterx_object_make_readonly(self->value);
 }
 
-static void
-_filterx_ref_freeze(FilterXObject **s)
+static gboolean
+_filterx_ref_dedup(FilterXObject **pself, GHashTable *dedup_storage)
 {
-  FilterXRef *self = (FilterXRef *) *s;
+  FilterXRef *self = (FilterXRef *) *pself;
 
-  filterx_object_freeze(&self->value);
-}
+  FilterXObject *orig_value = self->value;
 
-static void
-_filterx_ref_unfreeze(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
+  if (!filterx_object_dedup(&self->value, dedup_storage))
+    return FALSE;
 
-  /* when we are unfrozen, the next thing is to free self as well (as the
-   * only way to unfreeze is to free too).  This means that even though
-   * self->value may still exist for a short while, its destruction is
-   * inevitable too.  Let's drop our fx_ref_cnt though, to make sure it
-   * reaches 0 properly.  An unfrozen ref is inoperable, as our value will
-   * be NULL */
+  /* Mutable objects themselves should never be deduplicated,
+   * only immutable values INSIDE those recursive mutable objects.
+   */
+  g_assert(orig_value == self->value);
 
-  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
-  filterx_object_unfreeze_and_free(self->value);
-  self->value = NULL;
+  return TRUE;
 }
 
 /* readonly methods */
@@ -289,7 +279,7 @@ FilterXObject *
 _filterx_ref_new(FilterXObject *value)
 {
 #if SYSLOG_NG_ENABLE_DEBUG
-  if (!filterx_object_is_cowable(value) || filterx_object_is_ref(value))
+  if (!value->type->is_mutable || filterx_object_is_ref(value))
     g_assert("filterx_ref_new() must only be used for a cowable object" && FALSE);
 #endif
   FilterXRef *self = g_new0(FilterXRef, 1);
@@ -321,8 +311,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
-                    .make_readonly = _filterx_make_readonly,
-                    .freeze = _filterx_ref_freeze,
-                    .unfreeze = _filterx_ref_unfreeze,
+                    .make_readonly = _filterx_ref_make_readonly,
+                    .dedup = _filterx_ref_dedup,
                     .free_fn = _filterx_ref_free,
                    );
