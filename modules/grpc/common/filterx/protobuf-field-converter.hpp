@@ -35,7 +35,6 @@
 
 namespace syslogng {
 namespace grpc {
-namespace otel {
 
 struct ProtoReflectors
 {
@@ -161,7 +160,6 @@ std::string extract_string_from_object(FilterXObject *object);
 
 uint64_t get_protobuf_message_set_field_count(const google::protobuf::Message &message);
 
-}
 }
 }
 

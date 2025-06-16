@@ -44,6 +44,7 @@
 
 #include <string.h>
 
+using namespace syslogng::grpc;
 using namespace syslogng::grpc::otel;
 using namespace google::protobuf;
 using namespace opentelemetry::proto::logs::v1;

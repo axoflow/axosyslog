@@ -58,7 +58,6 @@ modules_grpc_otel_libotel_la_CPPFLAGS = \
 
 modules_grpc_otel_libotel_la_LIBADD = \
   $(MODULE_DEPS_LIBS) \
-  $(GRPC_COMMON_LIBS) \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la \
   $(top_builddir)/modules/grpc/otel/libotel_cpp.la \
   $(top_builddir)/modules/grpc/otel/filterx/libfilterx.la

@@ -24,7 +24,7 @@
 #define OTEL_FIELD_HPP
 
 #include "syslog-ng.h"
-#include "protobuf-field-converter.hpp"
+#include "filterx/protobuf-field-converter.hpp"
 
 #include "compat/cpp-start.h"
 #include "filterx/object-dict-interface.h"

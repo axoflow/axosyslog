@@ -451,7 +451,7 @@ KVListFieldConverter::get(google::protobuf::Message *message, ProtoReflectors re
 }
 
 static RepeatedPtrField<KeyValue> *
-_get_repeated_kv(google::protobuf::Message *message, syslogng::grpc::otel::ProtoReflectors reflectors)
+_get_repeated_kv(google::protobuf::Message *message, syslogng::grpc::ProtoReflectors reflectors)
 {
   RepeatedPtrField<KeyValue> *repeated_kv;
 
@@ -505,7 +505,7 @@ _add_elem_to_repeated_kv(FilterXObject *key_obj, FilterXObject *value_obj, gpoin
 }
 
 static bool
-_set_kvlist_field_from_dict(google::protobuf::Message *message, syslogng::grpc::otel::ProtoReflectors reflectors,
+_set_kvlist_field_from_dict(google::protobuf::Message *message, syslogng::grpc::ProtoReflectors reflectors,
                             FilterXObject *object, FilterXObject **assoc_object)
 {
   RepeatedPtrField<KeyValue> *repeated_kv = _get_repeated_kv(message, reflectors);

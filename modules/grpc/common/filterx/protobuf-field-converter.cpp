@@ -42,7 +42,7 @@
 #include <cstring>
 #include <memory>
 
-using namespace syslogng::grpc::otel;
+using namespace syslogng::grpc;
 using google::protobuf::Message;
 
 void
@@ -339,7 +339,7 @@ public:
 };
 
 std::unique_ptr<ProtobufFieldConverter> *
-syslogng::grpc::otel::all_protobuf_converters()
+syslogng::grpc::all_protobuf_converters()
 {
   static std::unique_ptr<ProtobufFieldConverter> Converters[google::protobuf::FieldDescriptor::MAX_TYPE] =
   {
@@ -370,14 +370,14 @@ syslogng::grpc::otel::all_protobuf_converters()
 };
 
 ProtobufFieldConverter *
-syslogng::grpc::otel::get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type field_type)
+syslogng::grpc::get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type field_type)
 {
   g_assert(field_type <= google::protobuf::FieldDescriptor::MAX_TYPE && field_type > 0);
   return all_protobuf_converters()[field_type - 1].get();
 }
 
 std::string
-syslogng::grpc::otel::extract_string_from_object(FilterXObject *object)
+syslogng::grpc::extract_string_from_object(FilterXObject *object)
 {
   const gchar *key_c_str;
   gsize len;
@@ -389,7 +389,7 @@ syslogng::grpc::otel::extract_string_from_object(FilterXObject *object)
 }
 
 uint64_t
-syslogng::grpc::otel::get_protobuf_message_set_field_count(const Message &message)
+syslogng::grpc::get_protobuf_message_set_field_count(const Message &message)
 {
   const google::protobuf::Reflection *reflection = message.GetReflection();
   std::vector<const google::protobuf::FieldDescriptor *> fields;

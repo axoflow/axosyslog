@@ -325,7 +325,7 @@ ArrayFieldConverter::get(google::protobuf::Message *message, ProtoReflectors ref
 }
 
 static ArrayValue *
-_get_array_value(google::protobuf::Message *message, syslogng::grpc::otel::ProtoReflectors reflectors)
+_get_array_value(google::protobuf::Message *message, syslogng::grpc::ProtoReflectors reflectors)
 {
   try
     {
@@ -338,7 +338,7 @@ _get_array_value(google::protobuf::Message *message, syslogng::grpc::otel::Proto
 }
 
 static bool
-_set_array_field_from_list(google::protobuf::Message *message, syslogng::grpc::otel::ProtoReflectors reflectors,
+_set_array_field_from_list(google::protobuf::Message *message, syslogng::grpc::ProtoReflectors reflectors,
                            FilterXObject *object, FilterXObject **assoc_object)
 {
   ArrayValue *array = _get_array_value(message, reflectors);

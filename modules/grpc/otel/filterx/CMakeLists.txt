@@ -18,8 +18,6 @@ set(OTEL_LOGRECORD_CPP_SOURCES
   object-otel-kvlist.hpp
   object-otel-array.cpp
   object-otel-array.hpp
-  protobuf-field-converter.cpp
-  protobuf-field-converter.hpp
   otel-field-converter.hpp
   otel-field-converter.cpp
 )
@@ -27,7 +25,7 @@ set(OTEL_LOGRECORD_CPP_SOURCES
 add_module(
   TARGET otel_filterx_logrecord_cpp
   SOURCES ${OTEL_LOGRECORD_CPP_SOURCES}
-  DEPENDS ${MODULE_GRPC_LIBS} grpc-protos
+  DEPENDS ${MODULE_GRPC_LIBS} grpc-protos grpc-common-cpp
   INCLUDES ${OTEL_PROTO_BUILDDIR} ${PROJECT_SOURCE_DIR}/modules/grpc
   LIBRARY_TYPE STATIC
 )
