@@ -592,6 +592,7 @@ fi
 %files grpc
 %{_libdir}/libgrpc-protos.so
 %{_libdir}/libgrpc-protos.so.*
+%{_libdir}/syslog-ng/libgrpc-filterx.so
 %{_libdir}/syslog-ng/libotel.so
 %{_libdir}/syslog-ng/libloki.so
 %{_libdir}/syslog-ng/libbigquery.so
