@@ -605,6 +605,10 @@ _syslog_format_parse_sd(LogMessage *msg, const guchar **data, gint *length, cons
     {
       _skip_char(&src, &left);
       open_sd++;
+
+      if (left && *src == ' ')
+        _skip_char(&src, &left);
+
       do
         {
           if (!left || !ch_isascii(*src) || *src == '=' || *src == ' ' || *src == ']' || *src == '"')
@@ -640,8 +644,11 @@ _syslog_format_parse_sd(LogMessage *msg, const guchar **data, gint *length, cons
           strcpy(sd_value_name, options->sdata_prefix);
           g_strlcpy(sd_value_name + options->sdata_prefix_len, sd_id_name, sizeof(sd_value_name) - options->sdata_prefix_len);
 
-          if (left && *src == ']')
+          if ((left && *src == ']') || (left > 1 && *src == ' ' && *(src + 1) == ']'))
             {
+              if (*src == ' ')
+                _skip_char(&src, &left);
+
               log_msg_set_value_by_name(msg, sd_value_name, "", 0);
             }
           else
@@ -766,6 +773,9 @@ _syslog_format_parse_sd(LogMessage *msg, const guchar **data, gint *length, cons
                 }
 
               log_msg_set_value_by_name(msg, sd_value_name, sd_param_value, sd_param_value_len);
+
+              if (left > 1 && (*src == ' ' && *(src + 1) == ']'))
+                _skip_char(&src, &left);
             }
 
           if (left && *src == ']')
@@ -784,6 +794,9 @@ _syslog_format_parse_sd(LogMessage *msg, const guchar **data, gint *length, cons
               /* new structured data begins, thus continue iteration */
               _skip_char(&src, &left);
               open_sd++;
+
+              if (left && *src == ' ')
+                _skip_char(&src, &left);
             }
         }
       while (left && open_sd != 0);
