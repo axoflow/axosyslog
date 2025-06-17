@@ -142,7 +142,7 @@ _store_matches_to_dict(pcre2_code_8 *pattern, const FilterXReMatchState *state)
       PCRE2_SIZE end_index = matches[2 * n + 1];
       const gchar *namedgroup_name = name_table + 2;
 
-      if (begin_index < 0 || end_index < 0)
+      if (begin_index == PCRE2_UNSET || end_index == PCRE2_UNSET)
         continue;
 
       g_snprintf(num_str_buf, sizeof(num_str_buf), "%" G_GUINT32_FORMAT, n);
