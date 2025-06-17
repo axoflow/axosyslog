@@ -117,8 +117,8 @@ public:
       }
   }
 
-  bool set_repeated(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
-                    FilterXObject **assoc_object)
+  virtual bool set_repeated(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+                            FilterXObject **assoc_object)
   {
     try
       {
@@ -208,12 +208,27 @@ protected:
   virtual bool add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object) = 0;
 };
 
+class MapFieldConverter : public ProtobufFieldConverter
+{
+public:
+  bool set_repeated(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+                    FilterXObject **assoc_object);
+
+  FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
+  bool set(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
+           FilterXObject **assoc_object);
+  bool add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object);
+};
+
+extern MapFieldConverter map_field_converter;
+
 std::unique_ptr<ProtobufFieldConverter> *all_protobuf_converters();
 ProtobufFieldConverter *get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type fieldType);
 
 std::string extract_string_from_object(FilterXObject *object);
 
 uint64_t get_protobuf_message_set_field_count(const google::protobuf::Message &message);
+
 
 }
 }

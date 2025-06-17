@@ -29,6 +29,7 @@
 #include "filterx/object-message-value.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
+#include "filterx/object-dict.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
 #include "filterx/object-list-interface.h"
@@ -517,6 +518,156 @@ public:
   }
 };
 
+FilterXObject *
+MapFieldConverter::get(Message *message, ProtoReflectors reflectors)
+{
+  const gchar *key_name = "key";
+  const gchar *value_name = "value";
+
+  FilterXObject *dict = filterx_dict_new();
+
+  int len = reflectors.reflection->FieldSize(*message, reflectors.fieldDescriptor);
+  for (int i = 0; i < len; i++)
+    {
+      Message *elem_message = reflectors.reflection->MutableRepeatedMessage(message, reflectors.fieldDescriptor, i);
+      ProtoReflectors key_reflectors(*elem_message, key_name);
+      ProtoReflectors value_reflectors(*elem_message, value_name);
+
+      ProtobufFieldConverter *key_converter = get_protobuf_field_converter(key_reflectors.fieldType);
+      ProtobufFieldConverter *value_converter = get_protobuf_field_converter(value_reflectors.fieldType);
+
+      FilterXObject *key_object = key_converter->get(elem_message, key_name);
+      if (!key_object)
+        return NULL;
+
+      FilterXObject *value_object = value_converter->get(elem_message, value_name);
+      if (!value_object)
+        {
+          filterx_object_unref(key_object);
+          return NULL;
+        }
+
+      if (!filterx_object_set_subscript(dict, key_object, &value_object))
+        {
+          filterx_object_unref(key_object);
+          filterx_object_unref(value_object);
+          return NULL;
+        }
+
+      filterx_object_unref(key_object);
+      filterx_object_unref(value_object);
+    }
+
+  return dict;
+}
+
+static gboolean
+_map_add_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  google::protobuf::Message *message = static_cast<google::protobuf::Message *>(((gpointer *) user_data)[0]);
+  ProtoReflectors *reflectors = static_cast<ProtoReflectors *>(((gpointer *) user_data)[1]);
+
+  const gchar *key_name = "key";
+  const gchar *value_name = "value";
+
+  try
+    {
+      Message *elem_message = reflectors->reflection->AddMessage(message, reflectors->fieldDescriptor);
+      ProtoReflectors key_reflectors(*elem_message, key_name);
+      ProtoReflectors value_reflectors(*elem_message, value_name);
+
+      ProtobufFieldConverter *key_converter = get_protobuf_field_converter(key_reflectors.fieldType);
+      ProtobufFieldConverter *value_converter = get_protobuf_field_converter(value_reflectors.fieldType);
+
+      FilterXObject *assoc_key_object = NULL;
+      if (!key_converter->set(elem_message, key_name, key, &assoc_key_object))
+        return FALSE;
+
+      filterx_object_unref(assoc_key_object);
+
+      FilterXObject *assoc_val_object = NULL;
+      if (!value_converter->set(elem_message, value_name, value, &assoc_val_object))
+        return FALSE;
+
+      filterx_object_unref(assoc_val_object);
+    }
+  catch (const std::exception &e)
+    {
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+bool
+MapFieldConverter::set_repeated(Message *message, const std::string &field_name, FilterXObject *object,
+                                FilterXObject **assoc_object)
+{
+  ProtoReflectors reflectors(*message, field_name);
+
+  FilterXObject *dict = filterx_ref_unwrap_ro(object);
+  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+    {
+      log_type_error(reflectors, object->type->name);
+      return false;
+    }
+
+  gpointer user_data[] = { message, &reflectors };
+  return filterx_dict_iter(dict, _map_add_elem, user_data);
+}
+
+bool
+MapFieldConverter::set(Message *message, ProtoReflectors reflectors, FilterXObject *object,
+                       FilterXObject **assoc_object)
+{
+  /* Map is always repeated. */
+  g_assert_not_reached();
+}
+
+bool
+MapFieldConverter::add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+{
+  /* Map has its own set_repeated implementation. */
+  g_assert_not_reached();
+}
+
+class MessageFieldConverter : public ProtobufFieldConverter
+{
+public:
+  FilterXObject *get(Message *message, ProtoReflectors reflectors)
+  {
+    if (reflectors.fieldDescriptor->is_map())
+      return map_field_converter.get(message, reflectors);
+
+    return NULL;
+  }
+
+  bool set_repeated(Message *message, const std::string &field_name, FilterXObject *object,
+                    FilterXObject **assoc_object)
+  {
+    ProtoReflectors reflectors(*message, field_name);
+
+    if (reflectors.fieldDescriptor->is_map())
+      return map_field_converter.set_repeated(message, field_name, object, assoc_object);
+
+    return ProtobufFieldConverter::set_repeated(message, field_name, object, assoc_object);
+  }
+
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
+  {
+    log_type_error(reflectors, object->type->name);
+    return false;
+  }
+
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
+  {
+    log_type_error(reflectors, object->type->name);
+    return false;
+  }
+};
+
+MapFieldConverter syslogng::grpc::map_field_converter;
+
 std::unique_ptr<ProtobufFieldConverter> *
 syslogng::grpc::all_protobuf_converters()
 {
@@ -536,7 +687,7 @@ syslogng::grpc::all_protobuf_converters()
     std::make_unique<BoolFieldConverter>(),    // TYPE_BOOL = 8,         bool, varint on the wire.
     std::make_unique<StringFieldConverter>(),  // TYPE_STRING = 9,       UTF-8 text.
     nullptr,                                   // TYPE_GROUP = 10,       Tag-delimited message.  Deprecated.
-    nullptr,                                   // TYPE_MESSAGE = 11,     Length-delimited message.
+    std::make_unique<MessageFieldConverter>(), // TYPE_MESSAGE = 11,     Length-delimited message.
     std::make_unique<BytesFieldConverter>(),   // TYPE_BYTES = 12,       Arbitrary byte array.
     std::make_unique<u32FieldConverter>(),     // TYPE_UINT32 = 13,      uint32, varint on the wire
     nullptr,                                   // TYPE_ENUM = 14,        Enum, varint on the wire
