@@ -2,6 +2,7 @@
 #############################################################################
 # Copyright (c) 2022 One Identity LLC.
 # Copyright (c) 2016 Balabit
+# Copyright (c) 2025 Axoflow
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -263,30 +264,17 @@ got_both_holder_and_license() {
 }
 
 compare_expected_detected() {
-    if is_balabit_copyright "$HOLDER"
-    then
-     local LICTEXTMATCHB="$LICTEXTMATCH"
-    else
-     local LICTEXTMATCHB="$LICTEXTMATCH,non-balabit"
-    fi
+    local LICTEXTMATCHB="$LICTEXTMATCH"
     if [ "$PATHMATCH" = "$LICTEXTMATCHB" ]; then
      if [ "0$COPYRIGHTVERBOSITY" -ge 3 ]; then
       echo "debug: match $FILE expected $PATHMATCH = detected $LICTEXTMATCHB" >&2
      fi
     else
-     if
-      is_license_compatible "$PATHMATCH" "$LICTEXTMATCHB"
-     then
-      if [ 0$COPYRIGHTVERBOSITY -ge 1 ]; then
-       printf "%s\n" "warning: compatible $FILE expected:$PATHMATCH detected:$LICTEXTMATCHB" >&2
-      fi
-     else
       printf "%s" "error: mismatch $FILE" >&2
       if [ 0$COPYRIGHTVERBOSITY -ge 1 ]; then
        printf " expected:$PATHMATCH detected:$LICTEXTMATCHB" >&2
       fi
       printf "\n" >&2
-     fi
     fi
 }
 
@@ -373,17 +361,6 @@ t success
 "
 }
 
-is_balabit_copyright() {
- echo "$@" |
- grep --quiet --extended-regexp "\
-^\
-(Copyright \(c\) ([0-9, -]+) [^ <][^<]*<br>)*\
-Copyright \(c\) ([0-9, -]+) (Bala[bB]it)|((One Identity)( LLC\.)?)<br>\
-(Copyright \(c\) ([0-9, -]+) [^ <][^<]*<br>)*\
-$"
- return $?
-}
-
 parse_expected_licenses() {
  generate_known_licenses || return 1
 
@@ -408,7 +385,7 @@ parse_expected_licenses() {
     local LICENSE="`
      echo "$LINE" |
      sed -rn "
-      s~^(ignore|((GPLv2\+|LGPLv2\.1\+)(_SSL)?|4-BSD)(,non-balabit)?)$~&~
+      s~^(ignore|((GPLv3\+)(_SSL)?|4-BSD))$~&~
       T e
       p
       :e
@@ -442,23 +419,6 @@ parse_expected_licenses() {
 
  return $ERR
  }
-}
-
-is_license_compatible() {
- local EXPECTED="$1"
- local SUBMITTED="$2"
-
- if [ "$EXPECTED" = "$SUBMITTED" ]; then
-  return 0
- fi
-
- case "$EXPECTED" in
-  GPLv2+_SSL)
-   [ "$SUBMITTED" = "LGPLv2.1+_SSL" ]
-   ;;
-  *)
-   false
- esac
 }
 
 generate_known_licenses() {
