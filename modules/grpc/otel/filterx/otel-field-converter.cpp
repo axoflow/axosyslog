@@ -87,9 +87,9 @@ grpc_otel_filterx_enum_construct(Plugin *self)
 FilterXObject *
 AnyValueFieldConverter::get(Message *message, ProtoReflectors reflectors)
 {
-  if (reflectors.fieldDescriptor->type() == FieldDescriptor::TYPE_MESSAGE)
+  if (reflectors.field_descriptor->type() == FieldDescriptor::TYPE_MESSAGE)
     {
-      Message *nestedMessage = reflectors.reflection->MutableMessage(message, reflectors.fieldDescriptor);
+      Message *nestedMessage = reflectors.reflection->MutableMessage(message, reflectors.field_descriptor);
 
       AnyValue *any_value;
       try
@@ -105,8 +105,8 @@ AnyValueFieldConverter::get(Message *message, ProtoReflectors reflectors)
     }
 
   msg_error("otel-field: Unexpected protobuf field type",
-            evt_tag_str("name", reflectors.fieldDescriptor->name().data()),
-            evt_tag_int("type", reflectors.fieldType));
+            evt_tag_str("name", reflectors.field_descriptor->name().data()),
+            evt_tag_int("type", reflectors.field_type));
   return nullptr;
 }
 
@@ -117,7 +117,7 @@ AnyValueFieldConverter::set(Message *message, ProtoReflectors reflectors, Filter
   AnyValue *any_value;
   try
     {
-      any_value = dynamic_cast<AnyValue *>(reflectors.reflection->MutableMessage(message, reflectors.fieldDescriptor));
+      any_value = dynamic_cast<AnyValue *>(reflectors.reflection->MutableMessage(message, reflectors.field_descriptor));
     }
   catch(const std::bad_cast &e)
     {
@@ -275,7 +275,7 @@ class DatetimeFieldConverter : public ProtobufFieldConverter
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
-    uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.fieldDescriptor);
+    uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.field_descriptor);
     UnixTime utime = unix_time_from_unix_epoch_nsec(val);
     return filterx_datetime_new(&utime);
   }
@@ -286,12 +286,12 @@ public:
     if (filterx_object_extract_datetime(object, &utime))
       {
         uint64_t unix_epoch = unix_time_to_unix_epoch_nsec(utime);
-        reflectors.reflection->SetUInt64(message, reflectors.fieldDescriptor, unix_epoch);
+        reflectors.reflection->SetUInt64(message, reflectors.field_descriptor, unix_epoch);
         return true;
       }
 
-    return get_protobuf_field_converter(reflectors.fieldDescriptor->type())->set(message,
-           std::string(reflectors.fieldDescriptor->name()), object, assoc_object);
+    return get_protobuf_field_converter(reflectors.field_descriptor->type())->set(message,
+           std::string(reflectors.field_descriptor->name()), object, assoc_object);
   }
 
   bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
@@ -307,7 +307,7 @@ class SeverityNumberFieldConverter : public ProtobufFieldConverter
 public:
   FilterXObject *get(Message *message, ProtoReflectors reflectors)
   {
-    int value = reflectors.reflection->GetEnumValue(*message, reflectors.fieldDescriptor);
+    int value = reflectors.reflection->GetEnumValue(*message, reflectors.field_descriptor);
     return filterx_integer_new(value);
   }
 
@@ -325,7 +325,7 @@ public:
             return false;
           }
 
-        reflectors.reflection->SetEnumValue(message, reflectors.fieldDescriptor, (int) value);
+        reflectors.reflection->SetEnumValue(message, reflectors.field_descriptor, (int) value);
         return true;
       }
 
@@ -344,27 +344,27 @@ public:
 static SeverityNumberFieldConverter severity_number_field;
 
 ProtobufFieldConverter *
-syslogng::grpc::otel::get_otel_protobuf_field_converter(FieldDescriptor::Type fieldType)
+syslogng::grpc::otel::get_otel_protobuf_field_converter(FieldDescriptor::Type field_type)
 {
-  g_assert(fieldType <= FieldDescriptor::MAX_TYPE && fieldType > 0);
-  if (fieldType == FieldDescriptor::TYPE_MESSAGE)
+  g_assert(field_type <= FieldDescriptor::MAX_TYPE && field_type > 0);
+  if (field_type == FieldDescriptor::TYPE_MESSAGE)
     {
       return &any_value_field;
     }
-  return all_protobuf_converters()[fieldType - 1].get();
+  return all_protobuf_converters()[field_type - 1].get();
 }
 
 ProtobufFieldConverter *
 syslogng::grpc::otel::get_otel_protobuf_field_converter(const FieldDescriptor *fd)
 {
-  const auto &fieldName = fd->name();
-  if (fieldName.compare("time_unix_nano") == 0 ||
-      fieldName.compare("observed_time_unix_nano") == 0)
+  const auto &field_name = fd->name();
+  if (field_name.compare("time_unix_nano") == 0 ||
+      field_name.compare("observed_time_unix_nano") == 0)
     {
       return &datetime_field;
     }
 
-  if (fieldName.compare("attributes") == 0)
+  if (field_name.compare("attributes") == 0)
     {
       return &filterx::kvlist_field_converter;
     }
@@ -374,8 +374,8 @@ syslogng::grpc::otel::get_otel_protobuf_field_converter(const FieldDescriptor *f
       return &severity_number_field;
     }
 
-  const FieldDescriptor::Type fieldType = fd->type();
-  return get_otel_protobuf_field_converter(fieldType);
+  const FieldDescriptor::Type field_type = fd->type();
+  return get_otel_protobuf_field_converter(field_type);
 }
 
 bool
@@ -393,7 +393,7 @@ syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Mes
           const std::string name = std::string(field->name());
           ProtoReflectors field_reflectors(message, name);
           ProtobufFieldConverter *converter = syslogng::grpc::otel::get_otel_protobuf_field_converter(
-                                                field_reflectors.fieldDescriptor);
+                                                field_reflectors.field_descriptor);
 
           FILTERX_STRING_DECLARE_ON_STACK(key, name.c_str(), name.size());
           FilterXObject *value = converter->get(&message, name);

@@ -41,9 +41,9 @@ struct ProtoReflectors
 {
   const google::protobuf::Reflection *reflection;
   const google::protobuf::Descriptor *descriptor;
-  const google::protobuf::FieldDescriptor *fieldDescriptor;
-  google::protobuf::FieldDescriptor::Type fieldType;
-  ProtoReflectors(const google::protobuf::Message &message, const std::string &fieldName)
+  const google::protobuf::FieldDescriptor *field_descriptor;
+  google::protobuf::FieldDescriptor::Type field_type;
+  ProtoReflectors(const google::protobuf::Message &message, const std::string &field_name)
   {
     this->reflection = message.GetReflection();
     this->descriptor = message.GetDescriptor();
@@ -53,17 +53,17 @@ struct ProtoReflectors
                                 + std::string(message.GetTypeName());
         throw std::invalid_argument(error_msg);
       }
-    this->fieldDescriptor = this->descriptor->FindFieldByName(fieldName);
-    if (!this->fieldDescriptor)
+    this->field_descriptor = this->descriptor->FindFieldByName(field_name);
+    if (!this->field_descriptor)
       {
-        std::string error_msg = "unknown field name: " + fieldName;
+        std::string error_msg = "unknown field name: " + field_name;
         throw std::invalid_argument(error_msg);
       }
-    this->fieldType = this->fieldDescriptor->type();
-    if (this->fieldType >= google::protobuf::FieldDescriptor::MAX_TYPE ||
-        this->fieldType < 1)
+    this->field_type = this->field_descriptor->type();
+    if (this->field_type >= google::protobuf::FieldDescriptor::MAX_TYPE ||
+        this->field_type < 1)
       {
-        std::string error_msg = "unknown field type: " + fieldName + ", " +  std::to_string(this->fieldType);
+        std::string error_msg = "unknown field type: " + field_name + ", " +  std::to_string(this->field_type);
         throw std::invalid_argument(error_msg);
       }
   };
@@ -72,9 +72,9 @@ struct ProtoReflectors
   field_type_name() const
   {
 #if GOOGLE_PROTOBUF_VERSION >= 6030000
-    return this->fieldDescriptor->type_name().data();
+    return this->field_descriptor->type_name().data();
 #else
-    return this->fieldDescriptor->type_name();
+    return this->field_descriptor->type_name();
 #endif
   }
 };
@@ -82,11 +82,11 @@ struct ProtoReflectors
 class ProtobufFieldConverter
 {
 public:
-  FilterXObject *get(google::protobuf::Message *message, const std::string &fieldName)
+  FilterXObject *get(google::protobuf::Message *message, const std::string &field_name)
   {
     try
       {
-        ProtoReflectors reflectors(*message, fieldName);
+        ProtoReflectors reflectors(*message, field_name);
         return this->get(message, reflectors);
       }
     catch(const std::exception &ex)
@@ -96,12 +96,12 @@ public:
       }
   };
 
-  bool set(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+  bool set(google::protobuf::Message *message, const std::string &field_name, FilterXObject *object,
            FilterXObject **assoc_object)
   {
     try
       {
-        ProtoReflectors reflectors(*message, fieldName);
+        ProtoReflectors reflectors(*message, field_name);
         if (this->set(message, reflectors, object, assoc_object))
           {
             if (!(*assoc_object))
@@ -117,13 +117,13 @@ public:
       }
   }
 
-  virtual bool set_repeated(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+  virtual bool set_repeated(google::protobuf::Message *message, const std::string &field_name, FilterXObject *object,
                             FilterXObject **assoc_object)
   {
     try
       {
-        ProtoReflectors reflectors(*message, fieldName);
-        if (!reflectors.fieldDescriptor->is_repeated())
+        ProtoReflectors reflectors(*message, field_name);
+        if (!reflectors.field_descriptor->is_repeated())
           {
             msg_error("protobuf-field: Failed to set repeated field, field is not repeated",
                       evt_tag_str("field", reflectors.field_type_name()));
@@ -139,7 +139,7 @@ public:
             return false;
           }
 
-        reflectors.reflection->ClearField(message, reflectors.fieldDescriptor);
+        reflectors.reflection->ClearField(message, reflectors.field_descriptor);
 
         guint64 len;
         g_assert(filterx_object_len(list, &len));
@@ -170,12 +170,12 @@ public:
       }
   }
 
-  bool unset(google::protobuf::Message *message, const std::string &fieldName)
+  bool unset(google::protobuf::Message *message, const std::string &field_name)
   {
     try
       {
-        ProtoReflectors reflectors(*message, fieldName);
-        reflectors.reflection->ClearField(message, reflectors.fieldDescriptor);
+        ProtoReflectors reflectors(*message, field_name);
+        reflectors.reflection->ClearField(message, reflectors.field_descriptor);
         return true;
       }
     catch(const std::exception &ex)
@@ -185,12 +185,12 @@ public:
       }
   }
 
-  bool is_set(google::protobuf::Message *message, const std::string &fieldName)
+  bool is_set(google::protobuf::Message *message, const std::string &field_name)
   {
     try
       {
-        ProtoReflectors reflectors(*message, fieldName);
-        return reflectors.reflection->HasField(*message, reflectors.fieldDescriptor);
+        ProtoReflectors reflectors(*message, field_name);
+        return reflectors.reflection->HasField(*message, reflectors.field_descriptor);
       }
     catch(const std::exception &ex)
       {
@@ -211,7 +211,7 @@ protected:
 class MapFieldConverter : public ProtobufFieldConverter
 {
 public:
-  bool set_repeated(google::protobuf::Message *message, const std::string &fieldName, FilterXObject *object,
+  bool set_repeated(google::protobuf::Message *message, const std::string &field_name, FilterXObject *object,
                     FilterXObject **assoc_object);
 
   FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
@@ -223,7 +223,7 @@ public:
 extern MapFieldConverter map_field_converter;
 
 std::unique_ptr<ProtobufFieldConverter> *all_protobuf_converters();
-ProtobufFieldConverter *get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type fieldType);
+ProtobufFieldConverter *get_protobuf_field_converter(google::protobuf::FieldDescriptor::Type field_type);
 
 std::string extract_string_from_object(FilterXObject *object);
 

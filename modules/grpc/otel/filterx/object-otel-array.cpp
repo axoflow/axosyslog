@@ -314,7 +314,7 @@ ArrayFieldConverter::get(google::protobuf::Message *message, ProtoReflectors ref
 {
   try
     {
-      Message *nestedMessage = reflectors.reflection->MutableMessage(message, reflectors.fieldDescriptor);
+      Message *nestedMessage = reflectors.reflection->MutableMessage(message, reflectors.field_descriptor);
       ArrayValue *array = dynamic_cast<ArrayValue *>(nestedMessage);
       return _new_borrowed(array);
     }
@@ -329,7 +329,7 @@ _get_array_value(google::protobuf::Message *message, syslogng::grpc::ProtoReflec
 {
   try
     {
-      return dynamic_cast<ArrayValue *>(reflectors.reflection->MutableMessage(message, reflectors.fieldDescriptor));
+      return dynamic_cast<ArrayValue *>(reflectors.reflection->MutableMessage(message, reflectors.field_descriptor));
     }
   catch(const std::bad_cast &e)
     {
@@ -387,7 +387,7 @@ ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors ref
         }
 
       msg_error("otel-array: Failed to convert field, type is unsupported",
-                evt_tag_str("field", reflectors.fieldDescriptor->name().data()),
+                evt_tag_str("field", reflectors.field_descriptor->name().data()),
                 evt_tag_str("expected_type", reflectors.field_type_name()),
                 evt_tag_str("type", object->type->name));
       return false;

@@ -432,15 +432,15 @@ FILTERX_SIMPLE_FUNCTION(otel_kvlist, filterx_otel_kvlist_new_from_args);
 FilterXObject *
 KVListFieldConverter::get(google::protobuf::Message *message, ProtoReflectors reflectors)
 {
-  if (reflectors.fieldDescriptor->is_repeated())
+  if (reflectors.field_descriptor->is_repeated())
     {
-      auto repeated_fields = reflectors.reflection->MutableRepeatedPtrField<KeyValue>(message, reflectors.fieldDescriptor);
+      auto repeated_fields = reflectors.reflection->MutableRepeatedPtrField<KeyValue>(message, reflectors.field_descriptor);
       return _new_borrowed(repeated_fields);
     }
 
   try
     {
-      Message *nestedMessage = reflectors.reflection->MutableMessage(message, reflectors.fieldDescriptor);
+      Message *nestedMessage = reflectors.reflection->MutableMessage(message, reflectors.field_descriptor);
       KeyValueList *kvlist = dynamic_cast<KeyValueList *>(nestedMessage);
       return _new_borrowed(kvlist->mutable_values());
     }
@@ -455,11 +455,11 @@ _get_repeated_kv(google::protobuf::Message *message, syslogng::grpc::ProtoReflec
 {
   RepeatedPtrField<KeyValue> *repeated_kv;
 
-  if (reflectors.fieldDescriptor->is_repeated())
+  if (reflectors.field_descriptor->is_repeated())
     {
       try
         {
-          repeated_kv = reflectors.reflection->MutableRepeatedPtrField<KeyValue>(message, reflectors.fieldDescriptor);
+          repeated_kv = reflectors.reflection->MutableRepeatedPtrField<KeyValue>(message, reflectors.field_descriptor);
         }
       catch(const std::bad_cast &e)
         {
@@ -471,7 +471,7 @@ _get_repeated_kv(google::protobuf::Message *message, syslogng::grpc::ProtoReflec
       KeyValueList *kvlist;
       try
         {
-          kvlist = dynamic_cast<KeyValueList *>(reflectors.reflection->MutableMessage(message, reflectors.fieldDescriptor));
+          kvlist = dynamic_cast<KeyValueList *>(reflectors.reflection->MutableMessage(message, reflectors.field_descriptor));
           repeated_kv = kvlist->mutable_values();
         }
       catch(const std::bad_cast &e)
@@ -537,7 +537,7 @@ KVListFieldConverter::set(google::protobuf::Message *message, ProtoReflectors re
         }
 
       msg_error("otel-kvlist: Failed to convert field, type is unsupported",
-                evt_tag_str("field", reflectors.fieldDescriptor->name().data()),
+                evt_tag_str("field", reflectors.field_descriptor->name().data()),
                 evt_tag_str("expected_type", reflectors.field_type_name()),
                 evt_tag_str("type", object->type->name));
       return false;

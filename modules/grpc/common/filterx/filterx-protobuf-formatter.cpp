@@ -49,10 +49,10 @@ _format_element(FilterXObject *key, FilterXObject *value, gpointer user_data)
 
       std::string field_name = extract_string_from_object(key);
       ProtoReflectors reflectors(*message, field_name);
-      ProtobufFieldConverter *converter = get_protobuf_field_converter(reflectors.fieldType);
+      ProtobufFieldConverter *converter = get_protobuf_field_converter(reflectors.field_type);
 
       FilterXObject *assoc_object = NULL;
-      if (reflectors.fieldDescriptor->is_repeated())
+      if (reflectors.field_descriptor->is_repeated())
         {
           if (!converter->set_repeated(message, field_name, value, &assoc_object))
             return FALSE;
