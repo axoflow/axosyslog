@@ -54,3 +54,5 @@ EXTRA_DIST += \
   modules/grpc/filterx/CMakeLists.txt
 
 .PHONY: modules/grpc/filterx/ mod-grpc-filterx
+
+include modules/grpc/filterx/tests/Makefile.am

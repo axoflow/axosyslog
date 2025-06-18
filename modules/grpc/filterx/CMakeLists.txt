@@ -27,3 +27,5 @@ add_module(
 )
 
 set_target_properties(grpc-filterx PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_INSTALL_PREFIX}/lib/syslog-ng")
+
+add_test_subdirectory(tests)
