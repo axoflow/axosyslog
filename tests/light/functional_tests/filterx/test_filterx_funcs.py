@@ -20,9 +20,20 @@
 # COPYING for details.
 #
 #############################################################################
+import base64
+import json
+import math
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+from axosyslog_light.common.file import File
 from axosyslog_light.syslog_ng_config.renderer import render_statement
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
-
+from google.protobuf import descriptor_pb2
+from google.protobuf import message_factory
+from google.protobuf.message import Message
 
 # noqa: E122
 
@@ -579,3 +590,171 @@ def test_set_fields(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '{"foo":"foo_override","bar":"bar_exists","bax":"","bax2":"non-null","baz":"baz_override","almafa":"almafa_default"}'
+
+
+def compile_protobuf_schema(testcase_dir: Path, schema_file_path: Path) -> Path:
+    descriptor_set_path = testcase_dir / "schema.pb"
+    subprocess.run(
+        [
+            "protoc",
+            f"--proto_path={testcase_dir}",
+            f"--descriptor_set_out={descriptor_set_path}",
+            str(schema_file_path),
+        ],
+        check=True,
+    )
+    return descriptor_set_path
+
+
+def load_protobuf_data(testcase_dir: Path, schema_file_path: Path, protobuf_data: bytes) -> Message:
+    descriptor_set_path = compile_protobuf_schema(testcase_dir, schema_file_path)
+
+    with open(descriptor_set_path, "rb") as f:
+        descriptor_set = descriptor_pb2.FileDescriptorSet()
+        descriptor_set.ParseFromString(f.read())
+
+    file_descriptor = descriptor_set.file[0]
+    factory = message_factory.MessageFactory()
+    message_descriptor = factory.pool.AddSerializedFile(file_descriptor.SerializeToString())
+    TestMessage = message_factory.GetMessageClass(message_descriptor.message_types_by_name["TestMessage"])
+
+    return TestMessage.FromString(protobuf_data)
+
+
+@pytest.mark.skipif(shutil.which("protoc") is None, reason="protoc binary is not available")
+def test_protobuf_message(testcase_dir, config, syslog_ng):
+    schema_file_path = testcase_dir / "schema.proto"
+    schema_file = File(schema_file_path)
+    schema_file.write_content_and_close("""
+    syntax = "proto3";
+
+    message TestMessage {
+        message InnerMessage {
+            string inner_field = 1;
+            sint64 inner_sint64_field = 2;
+        }
+
+        string string_field = 1;
+        bytes bytes_field = 2;
+        fixed32 fixed32_field = 3;
+        fixed64 fixed64_field = 4;
+        sfixed32 sfixed32_field = 5;
+        sfixed64 sfixed64_field = 6;
+        sint32 sint32_field = 7;
+        sint64 sint64_field = 8;
+        uint32 uint32_field = 9;
+        uint64 uint64_field = 10;
+        double double_field = 11;
+        float float_field = 12;
+        bool bool_field = 13;
+        map<string, string> map_string_string_field = 14;
+        InnerMessage inner_message_field = 15;
+
+        repeated string repeated_string_field = 16;
+        repeated bytes repeated_bytes_field = 17;
+        repeated fixed32 repeated_fixed32_field = 18;
+        repeated fixed64 repeated_fixed64_field = 19;
+        repeated sfixed32 repeated_sfixed32_field = 20;
+        repeated sfixed64 repeated_sfixed64_field = 21;
+        repeated sint32 repeated_sint32_field = 22;
+        repeated sint64 repeated_sint64_field = 23;
+        repeated uint32 repeated_uint32_field = 24;
+        repeated uint64 repeated_uint64_field = 25;
+        repeated double repeated_double_field = 26;
+        repeated float repeated_float_field = 27;
+        repeated bool repeated_bool_field = 28;
+        repeated InnerMessage repeated_inner_message_field = 29;
+    }
+    """)
+
+    (file_final,) = create_config(
+        config, r"""
+    dict = {
+        "string_field": "foo",
+        "bytes_field": bytes("\x01\x02\x03\x04\x05"),
+        "fixed32_field": 2147483647,
+        "fixed64_field": 9223372036854775807,
+        "sfixed32_field": -2147483648,
+        "sfixed64_field": -9223372036854775808,
+        "sint32_field": -2147483648,
+        "sint64_field": -9223372036854775808,
+        "uint32_field": 4294967295,
+        "uint64_field": 9223372036854775807,
+        "double_field": 17976931348623157.123456,
+        "float_field": 123.456,
+        "bool_field": true,
+        "map_string_string_field": {"key1": "value1", "key2": "value2"},
+        "inner_message_field": {
+            "inner_field": "inner_value",
+            "inner_sint64_field": -9223372036854775808,
+        },
+
+        "repeated_string_field": ["item1", "item2", "item3"],
+        "repeated_bytes_field": [bytes("\x01\x02"), bytes("\x03\x04")],
+        "repeated_fixed32_field": [1, 2, 3],
+        "repeated_fixed64_field": [4, 5, 6],
+        "repeated_sfixed32_field": [-1, -2, -3],
+        "repeated_sfixed64_field": [-4, -5, -6],
+        "repeated_sint32_field": [-7, -8, -9],
+        "repeated_sint64_field": [-10, -11, -12],
+        "repeated_uint32_field": [7, 8, 9],
+        "repeated_uint64_field": [10, 11, 12],
+        "repeated_double_field": [1.1, 2.2, 3.3],
+        "repeated_float_field": [4.4, 5.5, 6.6],
+        "repeated_bool_field": [true, false, true],
+        "repeated_inner_message_field": [
+            {"inner_field": "a", "inner_sint64_field": 1},
+            {"inner_field": "b", "inner_sint64_field": 2},
+        ],
+    };
+
+    """ + f'protobuf_data = protobuf_message(dict, schema_file="{str(schema_file_path)}");' + r"""
+
+    $MSG = {
+        "protobuf_data": protobuf_data,
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    protobuf_data = base64.b64decode(json.loads(file_final.read_log())["protobuf_data"])
+
+    protobuf_message = load_protobuf_data(testcase_dir, schema_file_path, protobuf_data)
+
+    assert protobuf_message.string_field == "foo"
+    assert protobuf_message.bytes_field == b"\x01\x02\x03\x04\x05"
+    assert protobuf_message.fixed32_field == 2147483647
+    assert protobuf_message.fixed64_field == 9223372036854775807
+    assert protobuf_message.sfixed32_field == -2147483648
+    assert protobuf_message.sfixed64_field == -9223372036854775808
+    assert protobuf_message.sint32_field == -2147483648
+    assert protobuf_message.sint64_field == -9223372036854775808
+    assert protobuf_message.uint32_field == 4294967295
+    assert protobuf_message.uint64_field == 9223372036854775807
+    assert math.isclose(protobuf_message.float_field, 123.456, rel_tol=1e-6)
+    assert math.isclose(protobuf_message.double_field, 17976931348623157.123456, rel_tol=1e-6)
+    assert protobuf_message.bool_field is True
+    assert protobuf_message.map_string_string_field["key1"] == "value1"
+    assert protobuf_message.map_string_string_field["key2"] == "value2"
+    assert protobuf_message.inner_message_field.inner_field == "inner_value"
+    assert protobuf_message.inner_message_field.inner_sint64_field == -9223372036854775808
+
+    assert protobuf_message.repeated_string_field == ["item1", "item2", "item3"]
+    assert list(protobuf_message.repeated_bytes_field) == [b"\x01\x02", b"\x03\x04"]
+    assert list(protobuf_message.repeated_fixed32_field) == [1, 2, 3]
+    assert list(protobuf_message.repeated_fixed64_field) == [4, 5, 6]
+    assert list(protobuf_message.repeated_sfixed32_field) == [-1, -2, -3]
+    assert list(protobuf_message.repeated_sfixed64_field) == [-4, -5, -6]
+    assert list(protobuf_message.repeated_sint32_field) == [-7, -8, -9]
+    assert list(protobuf_message.repeated_sint64_field) == [-10, -11, -12]
+    assert list(protobuf_message.repeated_uint32_field) == [7, 8, 9]
+    assert list(protobuf_message.repeated_uint64_field) == [10, 11, 12]
+    assert all(math.isclose(a, b, rel_tol=1e-6) for a, b in zip(protobuf_message.repeated_double_field, [1.1, 2.2, 3.3]))
+    assert all(math.isclose(a, b, rel_tol=1e-6) for a, b in zip(protobuf_message.repeated_float_field, [4.4, 5.5, 6.6]))
+    assert list(protobuf_message.repeated_bool_field) == [True, False, True]
+    assert len(protobuf_message.repeated_inner_message_field) == 2
+    assert protobuf_message.repeated_inner_message_field[0].inner_field == "a"
+    assert protobuf_message.repeated_inner_message_field[0].inner_sint64_field == 1
+    assert protobuf_message.repeated_inner_message_field[1].inner_field == "b"
+    assert protobuf_message.repeated_inner_message_field[1].inner_sint64_field == 2
