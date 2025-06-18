@@ -60,7 +60,7 @@ struct ProtoReflectors
         throw std::invalid_argument(error_msg);
       }
     this->field_type = this->field_descriptor->type();
-    if (this->field_type >= google::protobuf::FieldDescriptor::MAX_TYPE ||
+    if (this->field_type > google::protobuf::FieldDescriptor::MAX_TYPE ||
         this->field_type < 1)
       {
         std::string error_msg = "unknown field type: " + field_name + ", " +  std::to_string(this->field_type);
