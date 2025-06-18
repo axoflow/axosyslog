@@ -631,6 +631,44 @@ MapFieldConverter::add(Message *message, ProtoReflectors reflectors, FilterXObje
   g_assert_not_reached();
 }
 
+static gboolean
+_message_add_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  google::protobuf::Message *message = static_cast<google::protobuf::Message *>(user_data);
+
+  const gchar *key_c_str;
+  gsize key_len;
+  if (!filterx_object_extract_string_ref(key, &key_c_str, &key_len))
+    return FALSE;
+
+  std::string key_string{key_c_str, key_len};
+
+  try
+    {
+      ProtoReflectors elem_reflectors(*message, key_string);
+      ProtobufFieldConverter *converter = get_protobuf_field_converter(elem_reflectors.field_type);
+
+      FilterXObject *assoc_key_object = NULL;
+      if (!converter->set(message, key_string, value, &assoc_key_object))
+        {
+          filterx_object_unref(assoc_key_object);
+          return FALSE;
+        }
+
+      filterx_object_unref(assoc_key_object);
+    }
+  catch (const std::exception &e)
+    {
+      msg_error("protobuf-field: Failed to add element to message field",
+                evt_tag_str("key", key_string.c_str()),
+                evt_tag_str("value", value->type->name),
+                evt_tag_str("error", e.what()));
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 class MessageFieldConverter : public ProtobufFieldConverter
 {
 public:
@@ -639,7 +677,34 @@ public:
     if (reflectors.field_descriptor->is_map())
       return map_field_converter.get(message, reflectors);
 
-    return NULL;
+    FilterXObject *dict = filterx_dict_new();
+
+    int len = reflectors.reflection->FieldSize(*message, reflectors.field_descriptor);
+    for (int i = 0; i < len; i++)
+      {
+        Message *elem_message = reflectors.reflection->MutableRepeatedMessage(message, reflectors.field_descriptor, i);
+
+        const std::string &field_name = reflectors.field_descriptor->name();
+        ProtoReflectors elem_reflectors(*message, field_name);
+        ProtobufFieldConverter *converter = get_protobuf_field_converter(elem_reflectors.field_type);
+
+        FilterXObject *value_object = converter->get(elem_message, field_name);
+        if (!value_object)
+          return NULL;
+
+        FilterXObject *key_object = filterx_string_new(field_name.c_str(), field_name.length());
+        if (!filterx_object_set_subscript(dict, key_object, &value_object))
+          {
+            filterx_object_unref(key_object);
+            filterx_object_unref(value_object);
+            return NULL;
+          }
+
+        filterx_object_unref(key_object);
+        filterx_object_unref(value_object);
+      }
+
+    return dict;
   }
 
   bool set_repeated(Message *message, const std::string &field_name, FilterXObject *object,
@@ -655,14 +720,30 @@ public:
 
   bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object)
   {
-    log_type_error(reflectors, object->type->name);
-    return false;
+    FilterXObject *dict = filterx_ref_unwrap_ro(object);
+    if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+
+    Message *inner_message = reflectors.reflection->MutableMessage(message, reflectors.field_descriptor);
+    gpointer user_data = inner_message;
+    return filterx_dict_iter(dict, _message_add_elem, user_data);
   }
 
   bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
   {
-    log_type_error(reflectors, object->type->name);
-    return false;
+    FilterXObject *dict = filterx_ref_unwrap_ro(object);
+    if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+      {
+        log_type_error(reflectors, object->type->name);
+        return false;
+      }
+
+    Message *inner_message = reflectors.reflection->AddMessage(message, reflectors.field_descriptor);
+    gpointer user_data = inner_message;
+    return filterx_dict_iter(dict, _message_add_elem, user_data);
   }
 };
 
