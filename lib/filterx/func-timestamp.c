@@ -202,7 +202,7 @@ error:
   return NULL;
 }
 
-#define FILTERX_FUNC_GET_TIMESTAMP_USAGE "Usage: get_timestamp(datetime, stamp=[\"stamp\", \"recvd\"])"
+#define FILTERX_FUNC_GET_TIMESTAMP_USAGE "Usage: get_timestamp(stamp=[\"stamp\", \"recvd\"])"
 
 typedef struct FilterXFunctionGetTimestamp_
 {
