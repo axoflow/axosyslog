@@ -387,12 +387,6 @@ log_expr_node_new_log(LogExprNode *children, guint32 flags, CFG_LTYPE *yylloc)
 }
 
 LogExprNode *
-log_expr_node_new_sequence(LogExprNode *children, CFG_LTYPE *yylloc)
-{
-  return log_expr_node_new(ENL_SEQUENCE, ENC_PIPE, NULL, children, 0, yylloc);
-}
-
-LogExprNode *
 log_expr_node_new_junction(LogExprNode *children, CFG_LTYPE *yylloc)
 {
   return log_expr_node_new(ENL_JUNCTION, ENC_PIPE, NULL, children, 0, yylloc);
@@ -624,6 +618,12 @@ log_expr_node_new_compound_conditional(LogExprNode *block, CFG_LTYPE *yylloc)
 
 /****************************************************************************/
 
+static inline gboolean
+_is_log_path(LogExprNode *node)
+{
+  return node->layout == ENL_SEQUENCE && node->content == ENC_PIPE;
+}
+
 gint
 log_expr_node_lookup_flag(const gchar *flag)
 {
@@ -635,6 +635,8 @@ log_expr_node_lookup_flag(const gchar *flag)
     return LC_FINAL;
   else if (strcmp(flag, "flow-control") == 0)
     return LC_FLOW_CONTROL;
+  else if (strcmp(flag, "no-flow-control") == 0)
+    return LC_NO_FLOW_CONTROL;
   else if (strcmp(flag, "drop-unmatched") == 0)
     {
       msg_warning_once("WARNING: The drop-unmatched flag has been removed starting with " VERSION_4_1 ". "
@@ -643,6 +645,12 @@ log_expr_node_lookup_flag(const gchar *flag)
     }
   msg_error("Unknown log statement flag", evt_tag_str("flag", flag));
   return 0;
+}
+
+gboolean
+log_expr_node_validate_flags(gint flags)
+{
+  return !(flags & LC_FLOW_CONTROL && flags & LC_NO_FLOW_CONTROL);
 }
 
 static LogPipe *
@@ -919,8 +927,14 @@ cfg_tree_propagate_expr_node_properties_to_pipe(LogExprNode *node, LogPipe *pipe
   if (node->flags & LC_FINAL)
     pipe->flags |= PIF_BRANCH_FINAL;
 
-  if (node->flags & LC_FLOW_CONTROL)
-    pipe->flags |= PIF_HARD_FLOW_CONTROL;
+  if (_is_log_path(node))
+    {
+      if (node->flags & LC_FLOW_CONTROL)
+        pipe->flags |= PIF_HARD_FLOW_CONTROL;
+
+      if (node->flags & LC_NO_FLOW_CONTROL)
+        pipe->flags |= PIF_NO_HARD_FLOW_CONTROL;
+    }
 
   if (!pipe->expr_node)
     pipe->expr_node = node;

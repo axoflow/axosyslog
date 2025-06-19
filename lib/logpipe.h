@@ -59,20 +59,21 @@
 #define PIF_BRANCH_FALLBACK   0x0010
 #define PIF_BRANCH_PROPERTIES (PIF_BRANCH_FINAL + PIF_BRANCH_FALLBACK)
 
-/* branch starting with this pipe wants hard flow control */
+/* branch starting with this pipe wants to enable/disable hard flow control */
 #define PIF_HARD_FLOW_CONTROL 0x0020
+#define PIF_NO_HARD_FLOW_CONTROL 0x0040
 
 /* LogPipe right after the filter in an "if (filter)" expression */
-#define PIF_CONDITIONAL_MIDPOINT  0x0040
+#define PIF_CONDITIONAL_MIDPOINT  0x0080
 
 /* LogPipe as the joining element of a junction */
-#define PIF_JUNCTION_END          0x0080
+#define PIF_JUNCTION_END          0x0100
 
 /* node created directly by the user */
-#define PIF_CONFIG_RELATED    0x0100
+#define PIF_CONFIG_RELATED    0x0200
 
 /* sync filterx state to message in right before calling queue() */
-#define PIF_SYNC_FILTERX_TO_MSG      0x0200
+#define PIF_SYNC_FILTERX_TO_MSG      0x0400
 
 /* private flags range, to be used by other LogPipe instances for their own purposes */
 
@@ -209,9 +210,9 @@ struct _LogPathOptions
    * supports that). If flow-control is not requested, destinations
    * are permitted to call log_msg_ack() early (e.g. at queue time).
    *
-   * This is initially FALSE and can be set to TRUE anywhere _before_
-   * the destination driver, which will actually carry out the
-   * required action.
+   * This is initially set to the value of the global log-flow-control
+   * option and can be set to TRUE/FALSE anywhere _before_ the destination
+   * driver, which will actually carry out the required action.
    */
 
   gboolean flow_control_requested;

@@ -52,13 +52,19 @@ log_pipe_queue_slow_path(LogPipe *self, LogMessage *msg, const LogPathOptions *p
   if ((self->flags & PIF_SYNC_FILTERX_TO_MSG))
     filterx_eval_sync_message(path_options->filterx_context, &msg, path_options);
 
-  if (G_UNLIKELY(self->flags & (PIF_HARD_FLOW_CONTROL | PIF_JUNCTION_END | PIF_CONDITIONAL_MIDPOINT)))
+  if (G_UNLIKELY(self->flags &
+                 (PIF_HARD_FLOW_CONTROL | PIF_NO_HARD_FLOW_CONTROL | PIF_JUNCTION_END | PIF_CONDITIONAL_MIDPOINT)))
     {
       path_options = log_path_options_chain(&local_path_options, path_options);
       if (self->flags & PIF_HARD_FLOW_CONTROL)
         {
-          local_path_options.flow_control_requested = 1;
-          msg_trace("Requesting flow control", log_pipe_location_tag(self));
+          local_path_options.flow_control_requested = TRUE;
+          msg_trace("Enabling flow control", log_pipe_location_tag(self), evt_tag_msg_reference(msg));
+        }
+      if (self->flags & PIF_NO_HARD_FLOW_CONTROL)
+        {
+          local_path_options.flow_control_requested = FALSE;
+          msg_trace("Disabling flow control", log_pipe_location_tag(self), evt_tag_msg_reference(msg));
         }
       if (self->flags & PIF_JUNCTION_END)
         {
@@ -78,7 +84,7 @@ _is_fastpath(LogPipe *self)
   if (self->flags & PIF_SYNC_FILTERX_TO_MSG)
     return FALSE;
 
-  if (self->flags & (PIF_HARD_FLOW_CONTROL | PIF_JUNCTION_END | PIF_CONDITIONAL_MIDPOINT))
+  if (self->flags & (PIF_HARD_FLOW_CONTROL | PIF_NO_HARD_FLOW_CONTROL | PIF_JUNCTION_END | PIF_CONDITIONAL_MIDPOINT))
     return FALSE;
 
   return TRUE;
