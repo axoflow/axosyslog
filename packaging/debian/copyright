@@ -8,7 +8,7 @@ Copyright: Copyright (C) Balázs Scheidler
 Files: *
 Copyright: Copyright (C) Balázs Scheidler
            Copyright (C) BalaBit IT Security Ltd.
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/*
        libtest/*
@@ -16,7 +16,7 @@ Files: lib/*
        syslog-ng-ctl/*
 Copyright: Copyright (C) Balázs Scheidler
            Copyright (C) BalaBit IT Security Ltd.
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/ack-tracker.h
        lib/bookmark.h
@@ -27,7 +27,7 @@ Files: lib/ack-tracker.h
        lib/template/common-template-typedefs.h
 Copyright: Copyright (C) BalaBit IT Ltd.
            Copyright (C) Laszlo Budai
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/compat/time.h
        lib/filter/filter-in-list.*
@@ -41,7 +41,7 @@ Files: lib/compat/time.h
        scl/graphite/*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Gergely Nagy
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/pathutils.*
        lib/persistable-state-presenter.*
@@ -55,26 +55,26 @@ Files: lib/pathutils.*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Viktor Tusa
            Copyright (C) Viktor Juhasz
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/persistable-state-header.h
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Viktor Tusa
            Copyright (C) Viktor Juhasz
            Copyright (C) Balázs Scheidler
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/rewrite/rewrite-groupset.h
        libtest/persist_lib.*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Viktor Tusa
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/uuid.*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Balázs Scheidler
            Copyright (C) Gergely Nagy
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/cache.*
        lib/compat/glib.h
@@ -104,11 +104,11 @@ Files: lib/cache.*
        lib/versioning.h
        scl/nodejs/*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
-License: LGPL-2.1+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/ivykis/*
 Copyright: Copyright (C) Lennert Buytenhek <buytenh@wantstofly.org>
-License: LGPL-2.1+
+License: GPL-3+ with OpenSSL exception
 
 Files: lib/ivykis/lib/man3/* lib/ivykis/modules/man3/*
 Copyright: Copyright (C) Lennert Buytenhek <buytenh@wantstofly.org>
@@ -121,13 +121,13 @@ License: ivykis-man
 Files: modules/*
 Copyright: Copyright (C) Balázs Scheidler
            Copyright (C) BalaBit IT Security Ltd.
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/afamqp/*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Nagy, Attila <bra@fsn.hu>
            Copyright (C) Gergely Nagy
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/afamqp/rabbitmq-c/*
 Copyright: Copyright (C) VMWare, Inc. and Tony Garnock-Jones
@@ -159,7 +159,7 @@ Files: modules/afmongodb/*
        modules/system-source/*
 Copyright: Copyright (c) BalaBit IT Ltd.
            Copyright (C) Gergely Nagy
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/afmongodb/libmongo-client/*
 Copyright: Copyright (C) Gergely Nagy
@@ -169,176 +169,136 @@ Files: modules/afsocket/systemd-syslog-source.*
 Copyright: Copyright (C) BalaBit IT Ltd.
            Copyright (C) Tibor Benke
            Copyright (C) Balázs Scheidler
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/afsocket/transport-unix-socket.c
        modules/basicfuncs/cond-funcs.c
 Copyright: Copyright (C) BalaBit IT Ltd.
            Copyright (C) Gergely Nagy
            Copyright (C) Balázs Scheidler
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/afstomp/*
 Copyright: Copyright (C) Nagy, Attila <bra@fsn.hu>
            Copyright (C) BalaBit IT Ltd.
            Copyright (C) Viktor Tusa
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/afstomp/stomp.*
 Copyright: Copyright (C) Viktor Tusa
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/basicfuncs/str-funcs.c
 Copyright: Copyright (C) BalaBit IT Ltd.
            Copyright (C) Viktor Tusa
            Copyright (C) Balázs Scheidler
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/redis/*
 Copyright: Copyright (C) Tihamer Petrovics <tihameri@gmail.com>
            Copyright (C) BalaBit IT Ltd.
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/cryptofuncs/*
 Copyright: Copyright (c) BalaBit IT Ltd.
            Copyright (C) Gergely Nagy
            Copyright (C) Peter Gyongyosi
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/dbparser/patternize.*
 Copyright: Copyright (C) Péter Gyöngyösi
            Copyright (C) BalaBit IT Security Ltd.
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/geoip/*
        scl/*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/geoip/geoip-parser.*
        modules/geoip/geoip-parser-parser.*
        modules/geoip/geoip-plugin.c
 Copyright: Copyright (C) Gergely Nagy
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/graphite/*
 Copyright: Copyright (C) BalaBit IT Ltd.
            Copyright (C) Viktor Tusa
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/java-modules/http/src/main/java/org/syslog_ng/http/HTTPDestinationOptions.java
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Adam Arsenault
            Copyright (C) Viktor Juhasz
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/json/format-json.c
 Copyright: Copyright (c) BalaBit IT Ltd.
            Copyright (C) Balint Kovacs
            Copyright (C) Gergely Nagy
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/systemd-journal/*
        modules/java-modules/*
        modules/java/*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
            Copyright (C) Viktor Juhasz
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: modules/kvformat/*
 Copyright: Copyright (C) BalaBit IT Security Ltd.
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: scl/syslogconf/convert-syslogconf.awk
 Copyright: Jonathan W. Marks <j-marks@uiuc.edu>
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: scl/rewrite/cc-mask.conf
 Copyright: Copyright (C) Márton Illés
-License: GPL-2+ with OpenSSL exception
+License: GPL-3+ with OpenSSL exception
 
 Files: debian/*
 Copyright: Copyright (C) 2011-2015 Gergely Nagy <algernon@madhouse-project.org>,
            Copyright (C) 2010-     Laszlo Boszormenyi (GCS) <gcs@debian.org>
-License: GPL-2+
+License: GPL-3+
 
-License: GPL-2+
- This program is free software; you can redistribute it and/or modify it
- under the terms of the GNU General Public License version 2 as published
- by the Free Software Foundation, or (at your option) any later version.
+License: GPL-3+
+ This program is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
  .
- This library is distributed in the hope that it will be useful,
+ This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Lesser General Public License for more details.
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
  .
- You should have received a copy of the GNU Lesser General Public
- License along with this library; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
  .
  On Debian systems, the complete text of the GNU General Public
- License can be found in the file `/usr/share/common-licenses/GPL-2'.
+ License can be found in the file `/usr/share/common-licenses/GPL-3'.
 
-License: GPL-2+ with OpenSSL exception
- This program is free software; you can redistribute it and/or modify it
- under the terms of the GNU General Public License version 2 as published
- by the Free Software Foundation, or (at your option) any later version.
+License: GPL-3+ with OpenSSL exception
+ This program is free software: you can redistribute it and/or modify it
+ under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
  .
- This library is distributed in the hope that it will be useful,
+ This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Lesser General Public License for more details.
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
  .
- You should have received a copy of the GNU Lesser General Public
- License along with this library; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ You should have received a copy of the GNU General Public License
+ along with this program.  If not, see <https://www.gnu.org/licenses/>.
  .
  As an additional exemption you are allowed to compile & link against the
  OpenSSL libraries as published by the OpenSSL project. See the file
  COPYING for details.
  .
  On Debian systems, the complete text of the GNU General Public
- License can be found in the file `/usr/share/common-licenses/GPL-2'.
-
-License: LGPL-2.1+
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Lesser General Public
- License as published by the Free Software Foundation; either
- version 2.1 of the License, or (at your option) any later version.
- .
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Lesser General Public License for more details.
- .
- You should have received a copy of the GNU Lesser General Public
- License along with this library; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- .
- On Debian systems, the complete text of the GNU Lesser General Public
- License can be found in the file `/usr/share/common-licenses/LGPL-2.1'.
-
-License: LGPL-2.1+ with OpenSSL exception
- This library is free software; you can redistribute it and/or
- modify it under the terms of the GNU Lesser General Public
- License as published by the Free Software Foundation; either
- version 2.1 of the License, or (at your option) any later version.
- .
- This library is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- Lesser General Public License for more details.
- .
- You should have received a copy of the GNU Lesser General Public
- License along with this library; if not, write to the Free Software
- Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
- .
- As an additional exemption you are allowed to compile & link against the
- OpenSSL libraries as published by the OpenSSL project. See the file
- COPYING for details.
- .
- On Debian systems, the complete text of the GNU Lesser General Public
- License can be found in the file `/usr/share/common-licenses/LGPL-2.1'.
+ License can be found in the file `/usr/share/common-licenses/GPL-3'.
 
 License: Apache-2.0
  Licensed under the Apache License, Version 2.0 (the "License");

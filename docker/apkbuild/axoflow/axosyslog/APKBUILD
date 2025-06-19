@@ -10,7 +10,7 @@ pkgrel=0
 pkgdesc="Next generation logging daemon"
 url="https://axoflow.com/docs/axosyslog/"
 arch="all"
-license="GPL-2.0-or-later"
+license="GPL-3.0-or-later"
 options="!check" # unit tests require https://github.com/Snaipe/Criterion with deps
 makedepends="
 	bison
