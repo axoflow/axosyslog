@@ -557,7 +557,7 @@ log_source_post(LogSource *self, LogMessage *msg)
   path_options.flow_control_requested = cfg->flow_control;
 
   if (path_options.flow_control_requested)
-    msg_trace("Enabling flow control", log_pipe_location_tag(&self->super));
+    msg_trace("Enabling flow control", log_pipe_location_tag(&self->super), evt_tag_msg_reference(msg));
 
   ack_tracker_track_msg(self->ack_tracker, msg);
 

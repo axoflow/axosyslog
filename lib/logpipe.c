@@ -59,12 +59,12 @@ log_pipe_queue_slow_path(LogPipe *self, LogMessage *msg, const LogPathOptions *p
       if (self->flags & PIF_HARD_FLOW_CONTROL)
         {
           local_path_options.flow_control_requested = TRUE;
-          msg_trace("Enabling flow control", log_pipe_location_tag(self));
+          msg_trace("Enabling flow control", log_pipe_location_tag(self), evt_tag_msg_reference(msg));
         }
       if (self->flags & PIF_NO_HARD_FLOW_CONTROL)
         {
           local_path_options.flow_control_requested = FALSE;
-          msg_trace("Disabling flow control", log_pipe_location_tag(self));
+          msg_trace("Disabling flow control", log_pipe_location_tag(self), evt_tag_msg_reference(msg));
         }
       if (self->flags & PIF_JUNCTION_END)
         {
