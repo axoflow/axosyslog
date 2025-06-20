@@ -31,6 +31,56 @@
 
 static gboolean _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data);
 
+static void
+_append_inner_dict_start_tag(const char *key_str, GString *buffer)
+{
+  g_string_append_printf(buffer, "<%s>", key_str);
+}
+
+static void
+_append_inner_dict_end_tag(const char *key_str, gpointer user_data)
+{
+  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+  GString *buffer = ((gpointer *) user_data)[1];
+
+  if(self->has_just_attribute)
+    {
+      g_string_overwrite(buffer, buffer->len - 1, "/");
+      g_string_append_c(buffer, '>');
+      self->has_just_attribute = FALSE;
+    }
+  else
+    {
+      if (buffer->str[buffer->len - 1] == '\"' || buffer->str[buffer->len - 1] == '\'')
+        g_string_append(buffer, "/>");
+      else
+        {
+          g_string_append_printf(buffer, "</%s>", key_str);
+        }
+    }
+}
+
+static gboolean
+_append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
+{
+  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+  GString *buffer = ((gpointer *) user_data)[1];
+  const gchar *key_str;
+  gsize key_str_len;
+
+  if(!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
+    return FALSE;
+
+  _append_inner_dict_start_tag(key_str, buffer);
+
+  self->has_just_attribute = FALSE;
+  if(!filterx_dict_iter(dict, _append_to_buffer, user_data))
+    return FALSE;
+
+  _append_inner_dict_end_tag(key_str, user_data);
+  return TRUE;
+}
+
 static gboolean
 _append_list(FilterXObject *key, FilterXObject *list, gpointer user_data)
 {
@@ -122,6 +172,13 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
       if (!_append_list(key, value_unwrapped, user_data))
+        return FALSE;
+
+      return TRUE;
+    }
+  else if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)))
+    {
+      if (!_append_inner_dict(key, value_unwrapped, user_data))
         return FALSE;
 
       return TRUE;
