@@ -25,9 +25,32 @@
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/object-list-interface.h"
 
 #define FILTERX_FUNC_FORMAT_XML_USAGE "Usage: format_xml([dict])"
 const char *XML_ERROR_STR = "Failed to convert to xml";
+
+static gboolean _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data);
+
+static gboolean
+_append_list(FilterXObject *key, FilterXObject *list, gpointer user_data)
+{
+  guint64 len;
+  g_assert(filterx_object_len(list, &len));
+
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXObject *elem = filterx_list_get_subscript(list, i);
+
+      if(!append_object(key, elem, user_data))
+        {
+          filterx_object_unref(elem);
+          return FALSE;
+        }
+      filterx_object_unref(elem);
+    }
+  return TRUE;
+}
 
 static void
 _append_attribute(const char *key_str, const char *value_str, GString *buffer)
@@ -102,6 +125,15 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
 static gboolean
 _append_object(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
+  FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
+
+  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
+    {
+      if (!_append_list(key, value_unwrapped, user_data))
+        return FALSE;
+
+      return TRUE;
+    }
 
   if(!_append_entry(key, value, user_data))
     return FALSE;
