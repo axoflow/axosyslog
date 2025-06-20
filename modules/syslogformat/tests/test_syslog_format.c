@@ -467,6 +467,19 @@ Test(syslog_format, test_sdata_enterprise_qualified_id_with_and_multiple_params)
   log_msg_unref(msg);
 }
 
+Test(syslog_format, test_sdata_whitespace_around_brackets)
+{
+  LogMessage *msg;
+  cr_assert(_extract_sdata_into_message("[ foo@1.2.3.4 bar=\"baz\" chew=\"chow\" peek=\"poke\" ][bar another=1 ]", &msg));
+  assert_log_message_value_by_name(msg, "SDATA",
+                                   "[bar another=\"1\"][foo@1.2.3.4 bar=\"baz\" chew=\"chow\" peek=\"poke\"]");
+  assert_log_message_value_by_name(msg, ".SDATA.foo@1.2.3.4.bar", "baz");
+  assert_log_message_value_by_name(msg, ".SDATA.foo@1.2.3.4.chew", "chow");
+  assert_log_message_value_by_name(msg, ".SDATA.foo@1.2.3.4.peek", "poke");
+  assert_log_message_value_by_name(msg, ".SDATA.bar.another", "1");
+  log_msg_unref(msg);
+}
+
 Test(syslog_format, test_sdata_missing_closing_bracket)
 {
   cr_assert_not(_extract_sdata_into_message("[foo bar=\"baz\"", NULL));

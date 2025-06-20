@@ -696,15 +696,28 @@ Test(msgparse, test_expected_sd_pairs_1)
     {
       "<7>1 2006-10-29T01:59:59.156Z mymachine.example.com evntslog - ID47 [ exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] \xEF\xBB\xBF" "An application event log entry...",
       LP_PIGGYBACK_ERRORS | LP_SYSLOG_PROTOCOL, NULL,
-      43,             // pri
-      0, 0, 0,    // timestamp (sec/usec/zone)
-      NULL,        // host
-      "syslog-ng", //app
-      "Error processing log message: <7>1 2006-10-29T01:59:59.156Z mymachine.example.com evntslog - ID47 >@<[ exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] \xEF\xBB\xBF" "An application event log entry...", // msg
-      "",
-      NULL,//processid
-      NULL,//msgid
-      empty_sdata_pairs
+      7,             // pri
+      1162087199, 156000, 0,    // timestamp (sec/usec/zone)
+      "mymachine.example.com",        // host
+      "evntslog", //app
+      "An application event log entry...", // msg
+      "[exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"]", //sd_str
+      "",//processid
+      "ID47",//msgid
+      expected_sd_pairs_test_1
+    },
+    {
+      "<7>1 2006-10-29T01:59:59.156Z mymachine.example.com evntslog - ID47 [exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\" ] \xEF\xBB\xBF" "An application event log entry...",
+      LP_PIGGYBACK_ERRORS | LP_SYSLOG_PROTOCOL, NULL,
+      7,             // pri
+      1162087199, 156000, 0,    // timestamp (sec/usec/zone)
+      "mymachine.example.com",        // host
+      "evntslog", //app
+      "An application event log entry...", // msg
+      "[exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"]", //sd_str
+      "",//processid
+      "ID47",//msgid
+      expected_sd_pairs_test_1
     },
     {
       "<34>1 1987-01-01T12:00:27.000087+00:20 192.0.2.1 myproc 8710 - - %% It's time to make the do-nuts.", LP_SYSLOG_PROTOCOL, NULL,
