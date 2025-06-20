@@ -139,11 +139,12 @@ jobs:
 
             console.log(`Removing the following images: ${oldSnapshotTags}`)
 
+            const bearerToken = btoa('${{ secrets.GITHUB_TOKEN }}')
             const manifestsRequests = oldSnapshotTags.map((t) => {
                 const manifest = fetch(`https://ghcr.io/v2/${image}/manifests/${t}`, {
                     method: "GET",
                     headers: {
-                        "Authorization": "Bearer ${{ secrets.GITHUB_TOKEN }}",
+                        "Authorization": `Bearer ${bearerToken}`,
                         "Accept": "application/vnd.docker.distribution.manifest.list.v2+json",
                         "Accept": "application/vnd.docker.distribution.manifest.v2+json",
                         "Accept": "application/vnd.oci.image.manifest.v1+json",
@@ -157,6 +158,9 @@ jobs:
             const manifestsResponse = await Promise.all(manifestsRequests)
 
             const manifestsToDelete = manifestsResponse.filter((m) => m.manifests).flatMap((m) => m.manifests)
+
+            if (manifestsToDelete.length == 0)
+              throw new Error('Failed to fetch manifests');
 
             await Promise.all(manifestsToDelete.map((m) => {
                 const version = allPackageVersions.find((p) => p.name === m.digest)
