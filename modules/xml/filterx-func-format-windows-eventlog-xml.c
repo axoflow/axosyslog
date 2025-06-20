@@ -22,6 +22,11 @@
  */
 #include "filterx-func-format-windows-eventlog-xml.h"
 
+static gboolean
+_append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
+{
+  return TRUE;
+}
 
 FilterXExpr *
 filterx_function_format_windows_eventlog_xml_new(FilterXFunctionArgs *args, GError **error)
@@ -31,6 +36,7 @@ filterx_function_format_windows_eventlog_xml_new(FilterXFunctionArgs *args, GErr
 
   if (!self)
     return NULL;
+  self->append_inner_dict = _append_inner_dict;
 
   return s;
 }
