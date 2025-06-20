@@ -62,6 +62,7 @@ DestDriver::DestDriver(GrpcDestDriver *s)
 
 DestDriver::~DestDriver()
 {
+  log_template_unref(this->proto_var);
   log_template_options_destroy(&this->template_options);
 }
 
@@ -286,6 +287,13 @@ grpc_dd_set_protobuf_schema(LogDriver *d, const gchar *proto_path, GList *values
   LogMessageProtobufFormatter *schema = self->cpp->get_log_message_protobuf_formatter();
   g_assert(schema);
   schema->set_protobuf_schema(proto_path, values);
+}
+
+void
+grpc_dd_set_proto_var(LogDriver *d, LogTemplate *proto_var)
+{
+  GrpcDestDriver *self = (GrpcDestDriver *) d;
+  self->cpp->set_proto_var(proto_var);
 }
 
 void

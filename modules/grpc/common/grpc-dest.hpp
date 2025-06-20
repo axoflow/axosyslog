@@ -151,6 +151,38 @@ public:
     this->flush_on_key_change = true;
   }
 
+  void set_proto_var(LogTemplate *proto_var_)
+  {
+    log_template_unref(this->proto_var);
+    this->proto_var = log_template_ref(proto_var_);
+  }
+
+  bool format_proto_var(LogMessage *log_msg, ::google::protobuf::Message *proto_msg)
+  {
+    if (!this->proto_var)
+      return false;
+
+    LogMessageValueType lmvt;
+    gssize len;
+    const gchar *proto = log_template_get_trivial_value_and_type(this->proto_var, log_msg, &len, &lmvt);
+    if (lmvt != LM_VT_PROTOBUF)
+      {
+        msg_error("Error LogMessage type is not protobuf",
+                  evt_tag_int("expected_type", LM_VT_PROTOBUF),
+                  evt_tag_int("current_type", lmvt));
+        return false;
+      }
+
+    if (!proto_msg->ParsePartialFromArray(proto, len))
+      {
+        msg_error("Unable to deserialize protobuf message",
+                  evt_tag_int("proto_size", len));
+        return false;
+      }
+
+    return true;
+  }
+
   virtual LogMessageProtobufFormatter *get_log_message_protobuf_formatter()
   {
     return nullptr;
@@ -196,6 +228,7 @@ protected:
 
   std::array<GrpcDestResponseAction, GRPC_DEST_RESPONSE_ACTIONS_ARRAY_LEN> response_actions;
 
+  LogTemplate *proto_var = nullptr;
   LogTemplateOptions template_options;
 
   GrpcClientCredentialsBuilderW credentials_builder_wrapper;

@@ -44,6 +44,7 @@
   { "headers",                   KW_HEADERS }, \
   { "schema",                    KW_SCHEMA }, \
   { "protobuf_schema",           KW_PROTOBUF_SCHEMA }, \
+  { "proto_var",                 KW_PROTO_VAR }, \
   { "keep_alive",                KW_KEEP_ALIVE }, \
   { "time",                      KW_TIME }, \
   { "timeout",                   KW_TIMEOUT }, \

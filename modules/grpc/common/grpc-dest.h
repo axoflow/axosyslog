@@ -75,6 +75,7 @@ void grpc_dd_add_string_channel_arg(LogDriver *s, const gchar *name, const gchar
 gboolean grpc_dd_add_header(LogDriver *s, const gchar *name, LogTemplate *value);
 gboolean grpc_dd_add_schema_field(LogDriver *d, const gchar *name, const gchar *type, LogTemplate *value);
 void grpc_dd_set_protobuf_schema(LogDriver *d, const gchar *proto_path, GList *values);
+void grpc_dd_set_proto_var(LogDriver *d, LogTemplate *protovar);
 void grpc_dd_set_response_action(LogDriver *d, GrpcDestResponse response, GrpcDestResponseAction action);
 
 LogTemplateOptions *grpc_dd_get_template_options(LogDriver *d);

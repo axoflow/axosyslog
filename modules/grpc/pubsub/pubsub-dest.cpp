@@ -56,7 +56,6 @@ DestDriver::~DestDriver()
   log_template_unref(this->project);
   log_template_unref(this->topic);
   log_template_unref(this->data);
-  log_template_unref(this->protovar);
   log_template_unref(this->default_data_template);
 }
 
@@ -78,9 +77,9 @@ DestDriver::init()
                 log_pipe_location_tag(&this->super->super.super.super.super));
       return false;
     }
-  if ((!this->attributes.empty() || this->data != this->default_data_template) && this->protovar != nullptr)
+  if ((!this->attributes.empty() || this->data != this->default_data_template) && this->proto_var != nullptr)
     {
-      msg_error("Error initializing Google Pub/Sub destination: 'attributes()' and 'data()' cannot be used together with 'protovar()'. Please use either 'attributes()' and 'data()', or 'protovar()', but not both.",
+      msg_error("Error initializing Google Pub/Sub destination: 'attributes()' and 'data()' cannot be used together with 'proto_var()'. Please use either 'attributes()' and 'data()', or 'proto_var()', but not both.",
                 log_pipe_location_tag(&this->super->super.super.super.super));
       return false;
     }
@@ -156,18 +155,6 @@ pubsub_dd_set_data(LogDriver *d, LogTemplate *data)
   GrpcDestDriver *self = (GrpcDestDriver *) d;
   DestDriver *cpp = pubsub_dd_get_cpp(self);
   cpp->set_data(data);
-}
-
-gboolean
-pubsub_dd_set_protovar(LogDriver *d, LogTemplate *proto)
-{
-  if (!log_template_is_trivial(proto))
-    return FALSE;
-
-  GrpcDestDriver *self = (GrpcDestDriver *) d;
-  DestDriver *cpp = pubsub_dd_get_cpp(self);
-  cpp->set_protovar(proto);
-  return TRUE;
 }
 
 void
