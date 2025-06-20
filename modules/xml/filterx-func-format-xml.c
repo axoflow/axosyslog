@@ -181,6 +181,7 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
 static gboolean
 _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
+  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
 
   if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
@@ -192,7 +193,7 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   else if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
-      if (!_append_inner_dict(key, value_unwrapped, user_data))
+      if (!self->append_inner_dict(key, value_unwrapped, user_data))
         return FALSE;
 
       return TRUE;
@@ -306,6 +307,7 @@ filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
+  self->append_inner_dict = _append_inner_dict;
 
   if (!_extract_argument(self, args, error) ||
       !filterx_function_args_check(args, error))
