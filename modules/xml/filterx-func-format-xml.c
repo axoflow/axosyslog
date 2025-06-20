@@ -30,6 +30,26 @@
 const char *XML_ERROR_STR = "Failed to convert to xml";
 
 static void
+_append_attribute(const char *key_str, const char *value_str, GString *buffer)
+{
+  if (buffer->str[buffer->len - 1] == '>')
+    g_string_overwrite(buffer, buffer->len - 1, " ");
+  else
+    g_string_append_c(buffer, ' ');
+
+  g_string_append_printf(buffer, "%s='%s'>", &key_str[1], value_str);
+}
+
+static void
+_append_text(const char *value_str, GString *buffer)
+{
+  if (buffer->str[buffer->len - 1] != '>')
+    g_string_append_c(buffer, '>');
+
+  g_string_append(buffer, value_str);
+}
+
+static void
 _append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
 {
   if(value_str_len)
@@ -46,6 +66,7 @@ static gboolean
 _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   GString *buffer = ((gpointer *) user_data)[1];
+  gboolean *is_only_attribute_present = ((gpointer *) user_data)[2];
   const gchar *key_str;
   gsize key_str_len;
 
@@ -60,6 +81,19 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
                                     filterx_object_format_type_name(value, type_name_buf));
       filterx_eval_push_error_info(XML_ERROR_STR, &self->super.super, info, TRUE);
       return FALSE;
+    }
+
+  if (key_str_len && (key_str[0] == '@'))
+    {
+      *is_only_attribute_present = TRUE;
+      _append_attribute(key_str, val_buf->str, buffer);
+      return TRUE;
+    }
+  if (key_str_len && (key_str[0] == '#'))
+    {
+      *is_only_attribute_present = FALSE;
+      _append_text(val_buf->str, buffer);
+      return TRUE;
     }
 
   append_leaf(key_str, val_buf->str, val_buf->len, buffer);
@@ -94,7 +128,8 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
-  gpointer user_data[] = { self, formatted };
+  gboolean is_only_attribute_present = FALSE;
+  gpointer user_data[] = { self, formatted, &is_only_attribute_present };
 
   if (!filterx_dict_iter(input_dict_unwrapped, append_to_buffer, user_data))
     {
