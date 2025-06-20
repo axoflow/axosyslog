@@ -30,16 +30,14 @@
 #define FILTERX_FUNC_FORMAT_XML_USAGE "Usage: format_xml([dict])"
 const char *XML_ERROR_STR = "Failed to convert to xml";
 
-static gboolean _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data);
-
-static void
-_append_inner_dict_start_tag(const char *key_str, GString *buffer)
+void
+append_inner_dict_start_tag(const char *key_str, GString *buffer)
 {
   g_string_append_printf(buffer, "<%s>", key_str);
 }
 
-static void
-_append_inner_dict_end_tag(const char *key_str, gpointer user_data, gsize prev_buffer_len)
+void
+append_inner_dict_end_tag(const char *key_str, gpointer user_data, gsize prev_buffer_len)
 {
   GString *buffer = ((gpointer *) user_data)[1];
   gboolean *is_only_attribute_present = ((gpointer *) user_data)[2];
@@ -76,19 +74,19 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
 
   g_assert(filterx_object_extract_string_ref(key, &key_str, &key_str_len));
 
-  _append_inner_dict_start_tag(key_str, buffer);
+  append_inner_dict_start_tag(key_str, buffer);
 
   gsize prev_buffer_len = buffer->len;
   *is_only_attribute_present = FALSE;
   if(!filterx_dict_iter(dict, append_object, user_data))
     return FALSE;
 
-  _append_inner_dict_end_tag(key_str, user_data, prev_buffer_len);
+  append_inner_dict_end_tag(key_str, user_data, prev_buffer_len);
   return TRUE;
 }
 
-static gboolean
-_append_list(FilterXObject *key, FilterXObject *list, gpointer user_data)
+gboolean
+append_list(FilterXObject *key, FilterXObject *list, gpointer user_data)
 {
   guint64 len;
   g_assert(filterx_object_len(list, &len));
@@ -127,8 +125,8 @@ _append_text(const char *value_str, GString *buffer)
   g_string_append(buffer, value_str);
 }
 
-static void
-_append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
+void
+append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
 {
   if(value_str_len)
     {
@@ -177,15 +175,15 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
   return TRUE;
 }
 
-static gboolean
-_append_object(FilterXObject *key, FilterXObject *value, gpointer user_data)
+gboolean
+append_object(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
 
   if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
-      if (!_append_list(key, value_unwrapped, user_data))
+      if (!append_list(key, value_unwrapped, user_data))
         return FALSE;
 
       return TRUE;
