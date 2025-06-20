@@ -33,7 +33,7 @@
 
 #include "credentials/grpc-credentials-builder.hpp"
 #include "metrics/grpc-metrics.hpp"
-#include "schema/grpc-schema.hpp"
+#include "schema/log-message-protobuf-formatter.hpp"
 
 #include <grpcpp/server.h>
 
@@ -151,7 +151,48 @@ public:
     this->flush_on_key_change = true;
   }
 
-  virtual Schema *get_schema()
+  void set_proto_var(LogTemplate *proto_var_)
+  {
+    log_template_unref(this->proto_var);
+    this->proto_var = log_template_ref(proto_var_);
+  }
+
+  const char *format_proto_var(LogMessage *log_msg, ssize_t *len)
+  {
+    if (!this->proto_var)
+      return nullptr;
+
+    LogMessageValueType lmvt;
+    const gchar *serialized = log_template_get_trivial_value_and_type(this->proto_var, log_msg, len, &lmvt);
+    if (lmvt != LM_VT_PROTOBUF)
+      {
+        msg_error("Error LogMessage type is not protobuf",
+                  evt_tag_int("expected_type", LM_VT_PROTOBUF),
+                  evt_tag_int("current_type", lmvt));
+        return nullptr;
+      }
+
+    return serialized;
+  }
+
+  bool format_proto_var(LogMessage *log_msg, ::google::protobuf::Message *proto_msg)
+  {
+    ssize_t len;
+    const gchar *serialized = this->format_proto_var(log_msg, &len);
+    if (!serialized)
+      return false;
+
+    if (!proto_msg->ParsePartialFromArray(serialized, len))
+      {
+        msg_error("Unable to deserialize protobuf message",
+                  evt_tag_int("proto_size", len));
+        return false;
+      }
+
+    return true;
+  }
+
+  virtual LogMessageProtobufFormatter *get_log_message_protobuf_formatter()
   {
     return nullptr;
   }
@@ -196,6 +237,7 @@ protected:
 
   std::array<GrpcDestResponseAction, GRPC_DEST_RESPONSE_ACTIONS_ARRAY_LEN> response_actions;
 
+  LogTemplate *proto_var = nullptr;
   LogTemplateOptions template_options;
 
   GrpcClientCredentialsBuilderW credentials_builder_wrapper;
@@ -204,6 +246,8 @@ protected:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct GrpcDestDriver_
 {
   LogThreadedDestDriver super;
@@ -211,6 +255,8 @@ struct GrpcDestDriver_
 };
 
 GrpcDestDriver *grpc_dd_new(GlobalConfig *cfg, const gchar *stats_name);
+
+#include "compat/cpp-end.h"
 
 #endif
 

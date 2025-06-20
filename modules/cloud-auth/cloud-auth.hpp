@@ -38,6 +38,8 @@ public:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct _CloudAuthenticator
 {
   syslogng::cloud_auth::Authenticator *cpp;
@@ -45,5 +47,7 @@ struct _CloudAuthenticator
   gboolean (*init)(CloudAuthenticator *s);
   void (*free_fn)(CloudAuthenticator *s);
 };
+
+#include "compat/cpp-end.h"
 
 #endif

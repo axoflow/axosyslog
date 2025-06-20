@@ -36,8 +36,9 @@ using google::protobuf::FieldDescriptorProto;
 
 DestDriver::DestDriver(GrpcDestDriver *s)
   : syslogng::grpc::DestDriver(s),
-    schema(2, "clickhouse_message.proto", "MessageType", map_schema_type,
-           &this->template_options, &this->super->super.super.super.super)
+    log_message_protobuf_formatter(std::make_unique<ProtoSchemaBuilder>(map_schema_type, 2, "clickhouse_message.proto",
+                                   "ClickHouseMessage"),
+                                   &this->template_options, &this->super->super.super.super.super)
 {
   this->url = "localhost:9100";
   this->enable_dynamic_headers();
@@ -62,15 +63,24 @@ DestDriver::init()
     this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
   this->query += " FORMAT Protobuf";
 
-  if (!this->schema.init())
-    return false;
-
-  if (this->schema.empty())
+  if (this->proto_var && !this->log_message_protobuf_formatter.empty())
     {
-      msg_error("Error initializing ClickHouse destination, schema() or protobuf-schema() is empty",
+      msg_error("Error initializing ClickHouse destination: 'proto-var()' cannot be used together with 'schema()' "
+                "or 'protobuf-schema()'. Please use either 'proto-var()', or 'schema()'/'protobuf-schema()', "
+                "but not both.",
                 log_pipe_location_tag(&this->super->super.super.super.super));
       return false;
     }
+
+  if (!this->proto_var && this->log_message_protobuf_formatter.empty())
+    {
+      msg_error("Error initializing ClickHouse destination, schema() or protobuf-schema() must be set",
+                log_pipe_location_tag(&this->super->super.super.super.super));
+      return false;
+    }
+
+  if (!this->proto_var && !this->log_message_protobuf_formatter.init())
+    return false;
 
   return syslogng::grpc::DestDriver::init();
 }

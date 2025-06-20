@@ -76,10 +76,14 @@ protected:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct FilterXOtelScope_
 {
   FilterXDict super;
   syslogng::grpc::otel::filterx::Scope *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

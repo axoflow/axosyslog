@@ -124,21 +124,10 @@ DestWorker::handle_protovar(LogMessage *msg, ::google::pubsub::v1::PubsubMessage
 {
   DestDriver *owner_ = this->get_owner();
 
-  LogMessageValueType lmvt;
-  gssize len;
-  const gchar *proto = log_template_get_trivial_value_and_type(owner_->protovar, msg, &len, &lmvt);
-  if (lmvt != LM_VT_PROTOBUF)
+  if (!owner_->format_proto_var(msg, message))
     {
-      msg_error("Error loggmessage type is not protobuf",
-                evt_tag_int("expected_type", LM_VT_PROTOBUF),
-                evt_tag_int("current_type", lmvt));
-      return false;
-    }
-
-  if (!message->ParsePartialFromArray(proto, len))
-    {
-      msg_error("Unable to deserialize protobuf message",
-                evt_tag_int("proto_size", len));
+      msg_error("Error formatting protobuf message",
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
       return false;
     }
 
@@ -163,7 +152,7 @@ DestWorker::insert(LogMessage *msg)
 
   ::google::pubsub::v1::PubsubMessage *message = this->request.add_messages();
 
-  if (owner_->protovar)
+  if (owner_->proto_var)
     {
       if (!this->handle_protovar(msg, message, &message_bytes))
         return LTR_ERROR;

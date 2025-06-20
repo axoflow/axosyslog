@@ -72,10 +72,14 @@ protected:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct FilterXOtelLogRecord_
 {
   FilterXDict super;
   syslogng::grpc::otel::filterx::LogRecord *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

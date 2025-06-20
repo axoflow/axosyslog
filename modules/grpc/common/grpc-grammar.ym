@@ -89,6 +89,7 @@ GrpcClientCredentialsBuilderW *last_grpc_client_credentials_builder;
 %token KW_UNIMPLEMENTED
 %token KW_INTERNAL
 %token KW_RESOURCE_EXHAUSTED
+%token KW_PROTO_VAR
 
 %type <num> grpc_server_credentials_builder_tls_peer_verify
 %type <num> grpc_dest_response
@@ -156,6 +157,14 @@ grpc_dest_schema_field
       free($1);
       free($2);
       log_template_unref($4);
+    }
+  ;
+
+grpc_dest_proto_var_option
+  : KW_PROTO_VAR '(' template_name_or_content ')'
+    {
+      grpc_dd_set_proto_var(last_driver, $3);
+      log_template_unref($3);
     }
   ;
 

@@ -60,22 +60,39 @@ DestWorker::insert(LogMessage *msg)
   std::streampos last_pos = this->query_data.tellp();
   size_t row_bytes = 0;
 
-  google::protobuf::Message *message = owner_->schema.format(msg, this->super->super.seq_num);
-  if (!message)
-    goto drop;
+  google::protobuf::Message *message = nullptr;
+
+  if (owner_->proto_var)
+    {
+      ssize_t len;
+      const gchar *serialized = owner_->format_proto_var(msg, &len);
+      if (!serialized)
+        goto drop;
+
+      google::protobuf::io::OstreamOutputStream zero_copy_output(&this->query_data);
+      google::protobuf::io::CodedOutputStream coded_output(&zero_copy_output);
+      coded_output.WriteVarint32(len);
+      coded_output.WriteRaw(serialized, len);
+    }
+  else
+    {
+      message = owner_->log_message_protobuf_formatter.format(msg, this->super->super.seq_num);
+      if (!message)
+        goto drop;
+
+      bool success = google::protobuf::util::SerializeDelimitedToOstream(*message, &this->query_data);
+      delete message;
+      if (!success)
+        goto drop;
+    }
 
   this->batch_size++;
-
-  if (!google::protobuf::util::SerializeDelimitedToOstream(*message, &this->query_data))
-    goto drop;
 
   row_bytes = this->query_data.tellp() - last_pos;
   this->current_batch_bytes += row_bytes;
   log_threaded_dest_driver_insert_msg_length_stats(this->super->super.owner, row_bytes);
 
   msg_trace("Message added to ClickHouse batch", log_pipe_location_tag(&this->super->super.owner->super.super.super));
-
-  delete message;
 
   if (!this->client_context.get())
     {

@@ -124,6 +124,8 @@ private:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct GrpcSourceDriver_
 {
   LogThreadedSourceDriver super;
@@ -131,5 +133,7 @@ struct GrpcSourceDriver_
 };
 
 GrpcSourceDriver *grpc_sd_new(GlobalConfig *cfg, const gchar *stats_name, const gchar *transport_name);
+
+#include "compat/cpp-end.h"
 
 #endif

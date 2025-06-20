@@ -20,6 +20,7 @@ EXTRA_modules_grpc_otel_tests_test_otel_protobuf_parser_DEPENDENCIES = \
 modules_grpc_otel_tests_test_otel_protobuf_parser_CXXFLAGS = \
   $(TEST_CXXFLAGS) \
   $(PROTOBUF_CFLAGS) $(GRPCPP_CFLAGS) \
+  $(GRPC_COMMON_CFLAGS) \
   -I$(OPENTELEMETRY_PROTO_BUILDDIR) \
   -I$(top_srcdir)/modules/grpc/otel \
   -I$(top_builddir)/modules/grpc/otel
@@ -39,6 +40,7 @@ EXTRA_modules_grpc_otel_tests_test_otel_protobuf_formatter_DEPENDENCIES = \
 modules_grpc_otel_tests_test_otel_protobuf_formatter_CXXFLAGS = \
   $(TEST_CXXFLAGS) \
   $(PROTOBUF_CFLAGS) $(GRPCPP_CFLAGS) \
+  $(GRPC_COMMON_CFLAGS) \
   -I$(OPENTELEMETRY_PROTO_BUILDDIR) \
   -I$(top_srcdir)/modules/grpc/otel \
   -I$(top_builddir)/modules/grpc/otel
@@ -58,6 +60,7 @@ EXTRA_modules_grpc_otel_tests_test_syslog_ng_otlp_DEPENDENCIES = \
 modules_grpc_otel_tests_test_syslog_ng_otlp_CXXFLAGS = \
   $(TEST_CXXFLAGS) \
   $(PROTOBUF_CFLAGS) $(GRPCPP_CFLAGS) \
+  $(GRPC_COMMON_CFLAGS) \
   -I$(OPENTELEMETRY_PROTO_BUILDDIR) \
   -I$(top_srcdir)/modules/grpc/otel \
   -I$(top_builddir)/modules/grpc/otel
@@ -77,6 +80,7 @@ EXTRA_modules_grpc_otel_tests_test_otel_filterx_DEPENDENCIES = \
 modules_grpc_otel_tests_test_otel_filterx_CXXFLAGS = \
   $(TEST_CXXFLAGS) \
   $(PROTOBUF_CFLAGS) $(GRPCPP_CFLAGS) \
+  $(GRPC_COMMON_CFLAGS) \
   -I$(OPENTELEMETRY_PROTO_BUILDDIR) \
   -I$(top_srcdir)/modules/grpc/otel \
   -I$(top_builddir)/modules/grpc/otel

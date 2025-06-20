@@ -68,10 +68,14 @@ private:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct FilterXPubSubMessage_
 {
   FilterXObject super;
   syslogng::grpc::pubsub::filterx::Message *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

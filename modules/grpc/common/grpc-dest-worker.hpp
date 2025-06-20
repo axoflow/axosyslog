@@ -63,6 +63,8 @@ protected:
 }
 }
 
+#include "compat/cpp-start.h"
+
 GrpcDestWorker *grpc_dw_new(GrpcDestDriver *o, gint worker_index);
 
 struct GrpcDestWorker_
@@ -70,5 +72,7 @@ struct GrpcDestWorker_
   LogThreadedDestWorker super;
   syslogng::grpc::DestWorker *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

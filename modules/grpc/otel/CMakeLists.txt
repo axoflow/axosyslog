@@ -37,7 +37,7 @@ add_module(
   TARGET otel-cpp
   SOURCES ${OTEL_CPP_SOURCES}
   DEPENDS ${MODULE_GRPC_LIBS} grpc-protos grpc-common-cpp
-  INCLUDES ${OTEL_PROTO_BUILDDIR} ${PROJECT_SOURCE_DIR}/modules/grpc
+  INCLUDES ${OTEL_PROTO_BUILDDIR} ${PROJECT_SOURCE_DIR}/modules/grpc ${PROJECT_SOURCE_DIR}/modules/grpc/common
   LIBRARY_TYPE STATIC
 )
 

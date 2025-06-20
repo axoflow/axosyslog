@@ -49,6 +49,8 @@ public:
 }
 }
 
+#include "compat/cpp-start.h"
+
 GrpcSourceWorker *grpc_sw_new(GrpcSourceDriver *o, gint worker_index);
 
 struct GrpcSourceWorker_
@@ -56,5 +58,7 @@ struct GrpcSourceWorker_
   LogThreadedSourceWorker super;
   syslogng::grpc::SourceWorker *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

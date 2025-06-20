@@ -210,6 +210,7 @@ modules/grpc/bigquery
 modules/grpc/pubsub
 modules/grpc/clickhouse
 modules/grpc/common
+modules/grpc/filterx
 modules/grpc/protos/apphook\.(cpp|h)$
 modules/cloud-auth/cloud-auth(|-grammar|-parser|-plugin)\.(c|h|cpp|hpp|ym)$
 modules/cloud-auth/google-auth\.(h|cpp|hpp)$

@@ -39,7 +39,6 @@ static CfgLexerKeyword pubsub_keywords[] =
   { "topic", KW_TOPIC },
   { "data", KW_DATA },
   { "attributes", KW_ATTRIBUTES },
-  { "proto_var", KW_PROTOVAR },
   { NULL }
 };
 

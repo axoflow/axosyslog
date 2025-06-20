@@ -76,10 +76,14 @@ protected:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct FilterXOtelResource_
 {
   FilterXDict super;
   syslogng::grpc::otel::filterx::Resource *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif
