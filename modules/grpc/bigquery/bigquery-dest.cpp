@@ -98,15 +98,24 @@ DestinationDriver::init()
       return false;
     }
 
-  if (!this->log_message_protobuf_formatter.init())
-    return false;
-
-  if (this->log_message_protobuf_formatter.empty())
+  if (this->proto_var && !this->log_message_protobuf_formatter.empty())
     {
-      msg_error("Error initializing BigQuery destination, schema() or protobuf-schema() is empty",
+      msg_error("Error initializing BigQuery destination: 'proto-var()' cannot be used together with 'schema()' "
+                "or 'protobuf-schema()'. Please use either 'proto-var()', or 'schema()'/'protobuf-schema()', "
+                "but not both.",
                 log_pipe_location_tag(&this->super->super.super.super.super));
       return false;
     }
+
+  if (!this->proto_var && this->log_message_protobuf_formatter.empty())
+    {
+      msg_error("Error initializing BigQuery destination, schema() or protobuf-schema() must be set",
+                log_pipe_location_tag(&this->super->super.super.super.super));
+      return false;
+    }
+
+  if (!this->proto_var && !this->log_message_protobuf_formatter.init())
+    return false;
 
   if (this->get_project().empty() || this->get_dataset().empty() || this->get_table().empty())
     {
