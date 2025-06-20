@@ -30,6 +30,7 @@ FILTERX_FUNCTION_DECLARE(format_xml);
 typedef struct FilterXFunctionFormatXML_
 {
   FilterXFunction super;
+  gboolean has_just_attribute;
   FilterXExpr *input;
 } FilterXFunctionFormatXML;
 

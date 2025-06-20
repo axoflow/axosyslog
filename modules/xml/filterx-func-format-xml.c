@@ -29,6 +29,26 @@
 #define FILTERX_FUNC_FORMAT_XML_USAGE "Usage: format_xml([dict])"
 
 static void
+_append_attribute(const char *key_str, const char *value_str, GString *buffer)
+{
+  if (buffer->str[buffer->len - 1] == '>')
+    g_string_overwrite(buffer, buffer->len - 1, " ");
+  else
+    g_string_append_c(buffer, ' ');
+
+  g_string_append_printf(buffer, "%s=\'%s\'>", &key_str[1], value_str);
+}
+
+static void
+_append_text(const char *value_str, GString *buffer)
+{
+  if (buffer->str[buffer->len - 1] != '>')
+    g_string_append_c(buffer, '>');
+
+  g_string_append(buffer, value_str);
+}
+
+static void
 _append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
 {
   if(value_str_len)
@@ -44,6 +64,7 @@ _append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GS
 static gboolean
 _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
+  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   GString *buffer = ((gpointer *) user_data)[1];
   const gchar *key_str;
   gsize key_str_len;
@@ -56,6 +77,19 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
 
   if (!filterx_object_extract_string_ref(value, &value_str, &value_str_len))
     return FALSE;
+
+  if (key_str_len && (key_str[0] == '@'))
+    {
+      self->has_just_attribute = TRUE;
+      _append_attribute(key_str, value_str, buffer);
+      return TRUE;
+    }
+  if (key_str_len && (key_str[0] == '#'))
+    {
+      self->has_just_attribute = FALSE;
+      _append_text(value_str, buffer);
+      return TRUE;
+    }
 
   _append_leaf(key_str, value_str, value_str_len, buffer);
   return TRUE;
@@ -163,6 +197,7 @@ filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionFormatXML *self = g_new0(FilterXFunctionFormatXML, 1);
   filterx_function_init_instance(&self->super, "format_xml");
 
+  self->has_just_attribute = FALSE;
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
