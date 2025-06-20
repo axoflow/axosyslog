@@ -13,4 +13,4 @@ It is designed to facilitate the testing of AxoSyslog components and ensure thei
 
 ## License
 
-This project is licensed under the GNU General Public License version 2.
+This project is licensed under the GNU General Public License version 3 or later.
