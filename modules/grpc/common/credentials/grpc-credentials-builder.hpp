@@ -97,6 +97,8 @@ private:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct GrpcServerCredentialsBuilderW_
 {
   syslogng::grpc::ServerCredentialsBuilder *self;
@@ -106,5 +108,7 @@ struct GrpcClientCredentialsBuilderW_
 {
   syslogng::grpc::ClientCredentialsBuilder *self;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

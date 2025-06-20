@@ -246,6 +246,8 @@ protected:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct GrpcDestDriver_
 {
   LogThreadedDestDriver super;
@@ -253,6 +255,8 @@ struct GrpcDestDriver_
 };
 
 GrpcDestDriver *grpc_dd_new(GlobalConfig *cfg, const gchar *stats_name);
+
+#include "compat/cpp-end.h"
 
 #endif
 

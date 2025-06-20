@@ -94,10 +94,14 @@ extern ArrayFieldConverter array_field_converter;
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct FilterXOtelArray_
 {
   FilterXList super;
   syslogng::grpc::otel::filterx::Array *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif
