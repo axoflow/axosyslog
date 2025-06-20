@@ -2600,3 +2600,228 @@ def test_arithmetic_operators_type(config, syslog_ng):
         r""""division3":33.0}"""
     )
     assert file_true.read_log() == exp
+
+
+def test_format_xml_invalid_arg_number(config, syslog_ng):
+    _ = create_config(
+        config, """
+        $MSG = format_xml("test", 2);
+""",
+    )
+    with pytest.raises(Exception) as exec_info:
+        syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
+
+
+@pytest.mark.parametrize(
+    "input, expected_error_message", [
+        ('$MSG = format_xml({"?test":""});', "Dict key must begin with a letter or \\'_\\' character"),
+        ('$MSG = format_xml({"t?est":""});', "Dict key can\\'t contain special characters, except \\'.\\', \\'_\\', and \\'-\\'"),
+    ],
+)
+def test_format_xml_invalid_tag(config, syslog_ng, input, expected_error_message):
+    _ = create_config(
+        config, f"{input}",
+    )
+    syslog_ng.start(config)
+    assert syslog_ng.wait_for_message_in_console_log(expected_error_message) != []
+
+
+def test_format_xml_valid_input(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = {};
+        $MSG.empty = format_xml({"a":""});
+        $MSG.empty_dict = format_xml({"a":{}});
+        $MSG.empty_nested = format_xml({"a":{"b":""}});
+        $MSG.xml_1 = format_xml({"a":{"b":"foo"}});
+        $MSG.xml_2 = format_xml({"a":{"b":"foo","c":"bar"}});
+        $MSG.attribute_text_1 = format_xml({"a":{"@attr":"attr_val","#text":"foo"}});
+        $MSG.attribute = format_xml({"a":{"@attr":"attr_val"}});
+        $MSG.dict_1 = format_xml({"a":{"b":["c","d"]}});
+        $MSG.dict_2 = format_xml({"a":{"b":["c","d","e"]}});
+        $MSG.dict_attribute_text_1 = format_xml({"a":{"b":[{"@attr":"attr_val","#text":"c"},"e"]}});
+        $MSG.dict_attribute_text_2 = format_xml({"a":{"b":[{"@attr":"attr_val","#text":"c"},"e"]}});
+        $MSG.dict_attribute_text_3 = format_xml({"a":{"b":["c",{"@attr":"attr_val","#text":"e"}]}});
+        $MSG.xml_3 = format_xml({"a":{"b":["c","d",{"e":"f"}]}});
+        $MSG.xml_4 = format_xml({"a":{"b":[{"c":"d"},{"e":"f"}]}});
+        $MSG.xml_5 = format_xml({"a":{"b":[{"c":"d"},{"g":"h"}],"e":"f"}});
+        $MSG.text_1 = format_xml({"a":{"#text":"b","c":"d"}});
+        $MSG.text_2 = format_xml({"a":{"#text":"bd","c":""}});
+        $MSG.multiple_root = format_xml({"a":["b","c"]});
+        $MSG.integer_leaf = format_xml({"a":100});
+        $MSG.float_leaf = format_xml({"a":100.0});
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        $MSG.datetime_leaf = format_xml({"a":datetime});
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = (
+        r"""{"empty":"<a/>","""
+        r""""empty_dict":"<a/>","""
+        r""""empty_nested":"<a><b/></a>","""
+        r""""xml_1":"<a><b>foo</b></a>","""
+        r""""xml_2":"<a><b>foo</b><c>bar</c></a>","""
+        r""""attribute_text_1":"<a attr='attr_val'>foo</a>","""
+        r""""attribute":"<a attr='attr_val'/>","""
+        r""""dict_1":"<a><b>c</b><b>d</b></a>","""
+        r""""dict_2":"<a><b>c</b><b>d</b><b>e</b></a>","""
+        r""""dict_attribute_text_1":"<a><b attr='attr_val'>c</b><b>e</b></a>","""
+        r""""dict_attribute_text_2":"<a><b attr='attr_val'>c</b><b>e</b></a>","""
+        r""""dict_attribute_text_3":"<a><b>c</b><b attr='attr_val'>e</b></a>","""
+        r""""xml_3":"<a><b>c</b><b>d</b><b><e>f</e></b></a>","""
+        r""""xml_4":"<a><b><c>d</c></b><b><e>f</e></b></a>","""
+        r""""xml_5":"<a><b><c>d</c></b><b><g>h</g></b><e>f</e></a>","""
+        r""""text_1":"<a>b<c>d</c></a>","""
+        r""""text_2":"<a>bd<c/></a>","""
+        r""""multiple_root":"<a>b</a><a>c</a>","""
+        r""""integer_leaf":"<a>100</a>","""
+        r""""float_leaf":"<a>100.0</a>","""
+        r""""datetime_leaf":"<a>946677600.000000</a>"}"""
+    )
+    assert file_true.read_log() == exp
+
+
+def test_parse_xml_format_xml(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    custom_message = "<a><b attr=\"attr_val\">c</b><b>e</b></a>";
+    dict = json(parse_xml(custom_message));
+    $MSG = format_xml(dict);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "<a><b attr=\'attr_val\'>c</b><b>e</b></a>"
+
+
+windows_eventlog_dict = """
+    $MSG = format_windows_eventlog_xml({
+        "Event": {
+            "@xmlns": "http://schemas.microsoft.com/win/2004/08/events/event",
+            "System": {
+                "Provider": {"@Name": "EventCreate"},
+                "EventID": {"@Qualifiers": "0", "#text": "999"},
+                "Version": "0",
+                "Level": "2",
+                "Task": "0",
+                "Opcode": "0",
+                "Keywords": "0x80000000000000",
+                "TimeCreated": {"@SystemTime": "2024-01-12T09:30:12.1566754Z"},
+                "EventRecordID": "934",
+                "Correlation": "",
+                "Execution": {"@ProcessID": "0", "@ThreadID": "0"},
+                "Channel": "Application",
+                "Computer": "DESKTOP-2MBFIV7",
+                "Security": {"@UserID": "S-1-5-21-3714454296-2738353472-899133108-1001"},
+            },
+            "RenderingInfo": {
+                "@Culture": "en-US",
+                "Message": "foobar",
+                "Level": "Error",
+                "Task": "",
+                "Opcode": "Info",
+                "Channel": "",
+                "Provider": "",
+                "Keywords": {"Keyword": "Classic"},
+            },
+            "EventData":
+                {eventdata}
+        }});"""
+
+
+def test_parse_format_windows_eventlog_xml(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    xml = "
+        <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
+            <System>
+                <Provider Name='EventCreate'/>
+                <EventID Qualifiers='0'>999</EventID>
+                <Version>0</Version>
+                <Level>2</Level>
+                <Task>0</Task>
+                <Opcode>0</Opcode>
+                <Keywords>0x80000000000000</Keywords>
+                <TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/>
+                <EventRecordID>934</EventRecordID>
+                <Correlation/>
+                <Execution ProcessID='0' ThreadID='0'/>
+                <Channel>Application</Channel>
+                <Computer>DESKTOP-2MBFIV7</Computer>
+                <Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/>
+            </System>
+            <RenderingInfo Culture='en-US'>
+                <Message>foobar</Message>
+                <Level>Error</Level>
+                <Task></Task>
+                <Opcode>Info</Opcode>
+                <Channel></Channel>
+                <Provider></Provider>
+                <Keywords>
+                    <Keyword>Classic</Keyword>
+                </Keywords>
+            </RenderingInfo>
+            <EventData>
+                <Data Name='param1'>foo</Data>
+                <Data Name='param2'>bar</Data>
+            </EventData>
+        </Event>
+    ";
+    dict = json(parse_windows_eventlog_xml(xml));
+    $MSG = format_windows_eventlog_xml(dict);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == r"""<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='EventCreate'/><EventID Qualifiers='0'>999</EventID><Version>0</Version><Level>2</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/><EventRecordID>934</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Application</Channel><Computer>DESKTOP-2MBFIV7</Computer><Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/></System><RenderingInfo Culture='en-US'><Message>foobar</Message><Level>Error</Level><Task/><Opcode>Info</Opcode><Channel/><Provider/><Keywords><Keyword>Classic</Keyword></Keywords></RenderingInfo><EventData><Data Name='param1'>foo</Data><Data Name='param2'>bar</Data></EventData></Event>"""
+
+
+def test_format_windows_eventlog_xml_dict_1_elem(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":{"param1":"foo"}}"""),
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert file_true.read_log() == r"""<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='EventCreate'/><EventID Qualifiers='0'>999</EventID><Version>0</Version><Level>2</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/><EventRecordID>934</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Application</Channel><Computer>DESKTOP-2MBFIV7</Computer><Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/></System><RenderingInfo Culture='en-US'><Message>foobar</Message><Level>Error</Level><Task/><Opcode>Info</Opcode><Channel/><Provider/><Keywords><Keyword>Classic</Keyword></Keywords></RenderingInfo><EventData><Data Name='param1'>foo</Data></EventData></Event>"""
+
+
+def test_format_windows_eventlog_dict_2_elems(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":{"param1":"foo","param2":"bar"}}"""),
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == r"""<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='EventCreate'/><EventID Qualifiers='0'>999</EventID><Version>0</Version><Level>2</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/><EventRecordID>934</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Application</Channel><Computer>DESKTOP-2MBFIV7</Computer><Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/></System><RenderingInfo Culture='en-US'><Message>foobar</Message><Level>Error</Level><Task/><Opcode>Info</Opcode><Channel/><Provider/><Keywords><Keyword>Classic</Keyword></Keywords></RenderingInfo><EventData><Data Name='param1'>foo</Data><Data Name='param2'>bar</Data></EventData></Event>"""
+
+
+def test_format_windows_eventlog_single_elem(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":"foo"}"""),
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == r"""<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='EventCreate'/><EventID Qualifiers='0'>999</EventID><Version>0</Version><Level>2</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/><EventRecordID>934</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Application</Channel><Computer>DESKTOP-2MBFIV7</Computer><Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/></System><RenderingInfo Culture='en-US'><Message>foobar</Message><Level>Error</Level><Task/><Opcode>Info</Opcode><Channel/><Provider/><Keywords><Keyword>Classic</Keyword></Keywords></RenderingInfo><EventData><Data>foo</Data></EventData></Event>"""
+
+
+def test_format_windows_eventlog_list(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":["foo","bar"]}"""),
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == r"""<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='EventCreate'/><EventID Qualifiers='0'>999</EventID><Version>0</Version><Level>2</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/><EventRecordID>934</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Application</Channel><Computer>DESKTOP-2MBFIV7</Computer><Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/></System><RenderingInfo Culture='en-US'><Message>foobar</Message><Level>Error</Level><Task/><Opcode>Info</Opcode><Channel/><Provider/><Keywords><Keyword>Classic</Keyword></Keywords></RenderingInfo><EventData><Data>foo</Data><Data>bar</Data></EventData></Event>"""
