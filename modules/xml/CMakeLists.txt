@@ -11,6 +11,7 @@ set(xml_SOURCES
     "windows-eventlog-xml-parser.h"
     "filterx-parse-xml.h"
     "filterx-parse-windows-eventlog-xml.h"
+    "filterx-func-format-xml.h"
 
     "xml-plugin.c"
     "xml-parser.c"
@@ -18,6 +19,7 @@ set(xml_SOURCES
     "windows-eventlog-xml-parser.c"
     "filterx-parse-xml.c"
     "filterx-parse-windows-eventlog-xml.c"
+    "filterx-func-format-xml.c"
 )
 
 
