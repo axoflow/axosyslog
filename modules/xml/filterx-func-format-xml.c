@@ -21,11 +21,92 @@
  *
  */
 #include "filterx-func-format-xml.h"
+#include "filterx/object-extractor.h"
+#include "filterx/filterx-eval.h"
+#include "scratch-buffers.h"
+#include "filterx/object-dict-interface.h"
+
+#define FILTERX_FUNC_FORMAT_XML_USAGE "Usage: format_xml([dict])"
+const char *XML_ERROR_STR = "Failed to convert to xml";
+
+static void
+_append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
+{
+  if(value_str_len)
+    {
+      g_string_append_printf(buffer, "<%s>%s</%s>", key_str, value_str, key_str);
+    }
+  else
+    {
+      g_string_append_printf(buffer, "<%s/>", key_str);
+    }
+}
+
+static gboolean
+_append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  GString *buffer = ((gpointer *) user_data)[1];
+  const gchar *key_str;
+  gsize key_str_len;
+
+  g_assert(filterx_object_extract_string_ref(key, &key_str, &key_str_len));
+
+  GString *val_buf = scratch_buffers_alloc();
+  if (!filterx_object_str(value, val_buf))
+    {
+      FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+                                          "Couldn't convert value to string, type: %s",
+                                          filterx_object_get_type_name(value));
+      return FALSE;
+    }
+
+  append_leaf(key_str, val_buf->str, val_buf->len, buffer);
+  return TRUE;
+}
+
+static gboolean
+_append_object(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+
+  if(!_append_entry(key, value, user_data))
+    return FALSE;
+
+  return TRUE;
+}
 
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
-  return NULL;
+  FilterXFunctionFormatXML *self = (FilterXFunctionFormatXML *) s;
+
+  FilterXObject *input_dict = filterx_expr_eval_typed(self->input);
+  if (!input_dict)
+    return NULL;
+
+  ScratchBuffersMarker marker;
+  GString *formatted = scratch_buffers_alloc_and_mark(&marker);
+  FilterXObject *input_dict_unwrapped = filterx_ref_unwrap_ro(input_dict);
+  if (!filterx_object_is_type(input_dict_unwrapped, &FILTERX_TYPE_NAME(dict)))
+    {
+      scratch_buffers_reclaim_marked(marker);
+      filterx_object_unref(input_dict);
+      filterx_eval_push_error("input must be a dict. " FILTERX_FUNC_FORMAT_XML_USAGE, s, input_dict);
+      return NULL;
+    }
+
+  gpointer user_data[] = { self, formatted };
+
+  if (!filterx_dict_iter(input_dict_unwrapped, append_object, user_data))
+    {
+      scratch_buffers_reclaim_marked(marker);
+      filterx_object_unref(input_dict);
+      return NULL;
+    }
+
+  scratch_buffers_reclaim_marked(marker);
+  filterx_object_unref(input_dict);
+  return filterx_string_new(formatted->str, formatted->len);
 }
 
 static FilterXExpr *
