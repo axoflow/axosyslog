@@ -14,7 +14,9 @@ modules_xml_libxml_la_SOURCES = \
   modules/xml/filterx-parse-windows-eventlog-xml.h \
   modules/xml/filterx-parse-windows-eventlog-xml.c \
   modules/xml/filterx-func-format-xml.h \
-  modules/xml/filterx-func-format-xml.c
+  modules/xml/filterx-func-format-xml.c \
+  modules/xml/filterx-func-format-windows-eventlog-xml.h \
+  modules/xml/filterx-func-format-windows-eventlog-xml.c
 
 
 
