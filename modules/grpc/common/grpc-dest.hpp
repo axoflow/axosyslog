@@ -157,23 +157,32 @@ public:
     this->proto_var = log_template_ref(proto_var_);
   }
 
-  bool format_proto_var(LogMessage *log_msg, ::google::protobuf::Message *proto_msg)
+  const char *format_proto_var(LogMessage *log_msg, ssize_t *len)
   {
     if (!this->proto_var)
-      return false;
+      return nullptr;
 
     LogMessageValueType lmvt;
-    gssize len;
-    const gchar *proto = log_template_get_trivial_value_and_type(this->proto_var, log_msg, &len, &lmvt);
+    const gchar *serialized = log_template_get_trivial_value_and_type(this->proto_var, log_msg, len, &lmvt);
     if (lmvt != LM_VT_PROTOBUF)
       {
         msg_error("Error LogMessage type is not protobuf",
                   evt_tag_int("expected_type", LM_VT_PROTOBUF),
                   evt_tag_int("current_type", lmvt));
-        return false;
+        return nullptr;
       }
 
-    if (!proto_msg->ParsePartialFromArray(proto, len))
+    return serialized;
+  }
+
+  bool format_proto_var(LogMessage *log_msg, ::google::protobuf::Message *proto_msg)
+  {
+    ssize_t len;
+    const gchar *serialized = this->format_proto_var(log_msg, &len);
+    if (!serialized)
+      return false;
+
+    if (!proto_msg->ParsePartialFromArray(serialized, len))
       {
         msg_error("Unable to deserialize protobuf message",
                   evt_tag_int("proto_size", len));

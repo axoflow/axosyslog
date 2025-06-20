@@ -86,6 +86,7 @@ clickhouse_dest_option
   | KW_SERVER_SIDE_SCHEMA '(' string ')'{ clickhouse_dd_set_server_side_schema(last_driver, $3); free($3); }
   | grpc_dest_general_option
   | grpc_dest_schema_option
+  | grpc_dest_proto_var_option
   ;
 
 /* INCLUDE_RULES */
