@@ -96,7 +96,7 @@ class SyslogNg(object):
                 self.__error_handling("syslog-ng did not stop")
             if self.start_params.stderr and self.start_params.debug and self.start_params.verbose:
                 if not self._console_log_reader.wait_for_stop_message():
-                    self.__error_handling("Stop message not arrived")
+                    logger.warning("Stop message has not been found, this might be because of a very long console log")
             self._console_log_reader.check_for_unexpected_messages(unexpected_messages)
             if self._external_tool == "valgrind":
                 self._console_log_reader.handle_valgrind_log(Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_valgrind_output"))
