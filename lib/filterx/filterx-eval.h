@@ -90,6 +90,7 @@ EVTTAG *filterx_eval_format_error_location_tag(gint index);
 void filterx_eval_clear_errors(void);
 EVTTAG *filterx_eval_format_error_index_tag(gint index, gchar *buf);
 EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
+void filterx_eval_dump_errors(const gchar *message);
 
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
                                 FilterXScope *scope_storage, LogMessage *msg);

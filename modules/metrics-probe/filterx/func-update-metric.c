@@ -96,21 +96,7 @@ exit:
   if (!success)
     {
       /* It would be nice to introduce a counter for this. */
-      if (debug_flag)
-        {
-          gint error_count = filterx_eval_get_error_count();
-          gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
-
-          for (gint err_idx = 0; err_idx < error_count; err_idx++)
-            {
-              msg_debug("FilterX: update_metric(): eval error, skipping",
-                        filterx_eval_format_error_index_tag(err_idx, buf),
-                        filterx_eval_format_error_location_tag(err_idx),
-                        filterx_eval_format_error_tag(err_idx));
-            }
-        }
-
-      filterx_eval_clear_errors();
+      filterx_eval_dump_errors("FilterX: update_metric() eval error, skipping");
     }
 
   return filterx_boolean_new(TRUE);

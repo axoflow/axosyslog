@@ -45,23 +45,7 @@ _eval_null_coalesce(FilterXExpr *s)
           && filterx_message_value_get_type(lhs_object) == LM_VT_NULL))
     {
       if (!lhs_object)
-        {
-          if (debug_flag)
-            {
-              gint error_count = filterx_eval_get_error_count();
-              gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
-
-              for (gint err_idx = 0; err_idx < error_count; err_idx++)
-                {
-                  msg_debug("FilterX: null coalesce suppressing error",
-                            filterx_eval_format_error_index_tag(err_idx, buf),
-                            filterx_eval_format_error_location_tag(err_idx),
-                            filterx_eval_format_error_tag(err_idx));
-                }
-            }
-
-          filterx_eval_clear_errors();
-        }
+        filterx_eval_dump_errors("FilterX: null coalesce suppressing error");
 
       FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
       if (!rhs_object)

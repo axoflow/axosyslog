@@ -253,6 +253,26 @@ filterx_eval_format_error_location_tag(gint index)
   return filterx_error_format_location_tag(&context->errors[index]);
 }
 
+void
+filterx_eval_dump_errors(const gchar *message)
+{
+  if (debug_flag)
+    {
+      gint error_count = filterx_eval_get_error_count();
+      gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
+
+      for (gint err_idx = 0; err_idx < error_count; err_idx++)
+        {
+          msg_debug(message,
+                    filterx_eval_format_error_index_tag(err_idx, buf),
+                    filterx_eval_format_error_location_tag(err_idx),
+                    filterx_eval_format_error_tag(err_idx));
+        }
+    }
+
+  filterx_eval_clear_errors();
+}
+
 static inline FilterXFailureInfo *
 _new_failure_info_entry(FilterXEvalContext *context)
 {
@@ -300,6 +320,7 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
   FilterXObject *res = filterx_expr_eval(expr);
   if (!res)
     {
+      /* Open coded as this function is context specific. */
       if (debug_flag)
         {
           gint error_count = context->error_count;
