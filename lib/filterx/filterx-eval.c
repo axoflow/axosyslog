@@ -114,6 +114,17 @@ _log_to_stderr_if_needed(FilterXEvalContext *context, FilterXError *error)
     msg_error("FILTERX ERROR", filterx_error_format_location_tag(error), filterx_error_format_tag(error));
 }
 
+static void
+_clear_local_error(FilterXEvalContext *context, FilterXError *error)
+{
+  if (!error)
+    return;
+
+  gboolean is_error_local = !context;
+  if (is_error_local)
+    filterx_error_clear(error);
+}
+
 void
 filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
@@ -127,6 +138,7 @@ filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *
 
   _backfill_error_expr(context);
   _log_to_stderr_if_needed(context, error);
+  _clear_local_error(context, error);
 }
 
 void
@@ -142,6 +154,7 @@ filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXOb
 
   _backfill_error_expr(context);
   _log_to_stderr_if_needed(context, error);
+  _clear_local_error(context, error);
 }
 
 /* takes ownership of info */
@@ -152,17 +165,18 @@ filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *inf
   FilterXError local_error;
   FilterXError *error = _init_local_or_context_error(context, &local_error);
   if (!error)
-    goto exit;
+    {
+      if (free_info)
+        g_free(info);
+      return;
+    }
 
   filterx_error_set_values(error, message, expr, NULL);
   filterx_error_set_info(error, info, free_info);
 
   _backfill_error_expr(context);
   _log_to_stderr_if_needed(context, error);
-
-exit:
-  if ((!error || !context) && free_info)
-    g_free(info);
+  _clear_local_error(context, error);
 }
 
 static void
