@@ -92,9 +92,9 @@ public:
     return this->query;
   }
 
-  Schema *get_schema()
+  LogMessageProtobufFormatter *get_log_message_protobuf_formatter()
   {
-    return &this->schema;
+    return &this->log_message_protobuf_formatter;
   }
 
 private:
@@ -112,7 +112,7 @@ private:
   std::string server_side_schema;
   std::string query;
 
-  Schema schema;
+  LogMessageProtobufFormatter log_message_protobuf_formatter;
 };
 
 

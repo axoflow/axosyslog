@@ -30,7 +30,7 @@
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
-#include "protobuf-field.hpp"
+#include "filterx/protobuf-field-converter.hpp"
 #include "object-otel-base.hpp"
 #include "opentelemetry/proto/common/v1/common.pb.h"
 
@@ -72,31 +72,36 @@ private:
   ArrayValue *array;
   bool borrowed;
 
-  friend class OtelArrayField;
+  friend class ArrayFieldConverter;
 
 protected:
   const google::protobuf::Message &get_protobuf_value() const override;
 };
 
-class OtelArrayField : public ProtobufField
+class ArrayFieldConverter : public ProtobufFieldConverter
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors);
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object);
+  FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
+  bool set(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
+           FilterXObject **assoc_object);
+  bool add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object);
 };
 
-extern OtelArrayField otel_array_converter;
+extern ArrayFieldConverter array_field_converter;
 
 }
 }
 }
 }
+
+#include "compat/cpp-start.h"
 
 struct FilterXOtelArray_
 {
   FilterXList super;
   syslogng::grpc::otel::filterx::Array *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

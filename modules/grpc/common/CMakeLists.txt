@@ -1,11 +1,13 @@
 add_subdirectory(credentials)
 add_subdirectory(metrics)
 add_subdirectory(schema)
+add_subdirectory(filterx)
 
 set(GRPC_COMMON_CPP_SOURCES
   ${GRPC_CREDENTIALS_SOURCES}
   ${GRPC_METRICS_SOURCES}
   ${GRPC_SCHEMA_SOURCES}
+  ${GRPC_FILTERX_SOURCES}
   grpc-parser.h
   grpc-dest.hpp
   grpc-dest.cpp

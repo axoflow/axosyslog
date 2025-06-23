@@ -24,35 +24,38 @@
 #define OTEL_FIELD_HPP
 
 #include "syslog-ng.h"
-#include "protobuf-field.hpp"
+#include "filterx/protobuf-field-converter.hpp"
 
 #include "compat/cpp-start.h"
 #include "filterx/object-dict-interface.h"
 #include "compat/cpp-end.h"
+
+#include "opentelemetry/proto/logs/v1/logs.pb.h"
 
 namespace syslogng {
 namespace grpc {
 namespace otel {
 
 using namespace google::protobuf;
+using opentelemetry::proto::logs::v1::LogRecord;
 
-class AnyField : public ProtobufField
+class AnyValueFieldConverter : public ProtobufFieldConverter
 {
   using AnyValue = opentelemetry::proto::common::v1::AnyValue;
 
 public:
-  FilterXObject *FilterXObjectGetter(Message *message, ProtoReflectors reflectors);
-  bool FilterXObjectSetter(Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object);
+  FilterXObject *get(Message *message, ProtoReflectors reflectors);
+  bool set(Message *message, ProtoReflectors reflectors, FilterXObject *object, FilterXObject **assoc_object);
+  bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object);
 
-  FilterXObject *FilterXObjectDirectGetter(AnyValue *anyValue);
-  bool FilterXObjectDirectSetter(AnyValue *anyValue, FilterXObject *object, FilterXObject **assoc_object);
+  FilterXObject *direct_get(AnyValue *any_value);
+  bool direct_set(AnyValue *any_value, FilterXObject *object, FilterXObject **assoc_object);
 };
 
-extern AnyField any_field_converter;
+extern AnyValueFieldConverter any_value_field;
 
-ProtobufField *otel_converter_by_type(FieldDescriptor::Type fieldType);
-ProtobufField *otel_converter_by_field_descriptor(const FieldDescriptor *fd);
+ProtobufFieldConverter *get_otel_protobuf_field_converter(FieldDescriptor::Type field_type);
+ProtobufFieldConverter *get_otel_protobuf_field_converter(const FieldDescriptor *fd);
 
 bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXDictIterFunc func,
                                           void *user_data);

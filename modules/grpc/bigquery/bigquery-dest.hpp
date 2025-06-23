@@ -78,9 +78,9 @@ public:
     return this->table;
   }
 
-  Schema *get_schema()
+  LogMessageProtobufFormatter *get_log_message_protobuf_formatter()
   {
-    return &this->schema;
+    return &this->log_message_protobuf_formatter;
   }
 
 private:
@@ -90,7 +90,7 @@ private:
   friend class DestinationWorker;
 
 private:
-  Schema schema;
+  LogMessageProtobufFormatter log_message_protobuf_formatter;
 
   std::string project;
   std::string dataset;

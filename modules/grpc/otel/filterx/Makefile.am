@@ -17,15 +17,14 @@ modules_grpc_otel_filterx_libfilterx_la_SOURCES = \
   modules/grpc/otel/filterx/object-otel-kvlist.hpp \
   modules/grpc/otel/filterx/object-otel-array.cpp \
   modules/grpc/otel/filterx/object-otel-array.hpp \
-  modules/grpc/otel/filterx/protobuf-field.cpp \
-  modules/grpc/otel/filterx/protobuf-field.hpp \
-  modules/grpc/otel/filterx/otel-field.cpp \
-  modules/grpc/otel/filterx/otel-field.hpp
+  modules/grpc/otel/filterx/otel-field-converter.cpp \
+  modules/grpc/otel/filterx/otel-field-converter.hpp
 
 modules_grpc_otel_filterx_libfilterx_la_CXXFLAGS = \
   $(AM_CXXFLAGS) \
   $(PROTOBUF_CFLAGS) \
   $(GRPCPP_CFLAGS) \
+  $(GRPC_COMMON_CFLAGS) \
   -I$(OPENTELEMETRY_PROTO_BUILDDIR) \
   -I$(top_srcdir)/modules/grpc/otel/filterx \
   -I$(top_builddir)/modules/grpc/otel/filterx \
@@ -33,7 +32,7 @@ modules_grpc_otel_filterx_libfilterx_la_CXXFLAGS = \
 
 modules_grpc_otel_filterx_libfilterx_la_LIBADD = \
   $(MODULE_DEPS_LIBS) \
-  $(PROTOBUF_LIBS) \
+  $(GRPC_COMMON_LIBS) \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la
 
 modules_grpc_otel_filterx_libfilterx_la_LDFLAGS = $(MODULE_LDFLAGS)

@@ -30,7 +30,7 @@
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
-#include "protobuf-field.hpp"
+#include "filterx/protobuf-field-converter.hpp"
 #include "object-otel-base.hpp"
 #include "opentelemetry/proto/common/v1/common.pb.h"
 #include <mutex>
@@ -79,31 +79,36 @@ private:
   bool borrowed;
   thread_local static KeyValueList cached_value;
 
-  friend class OtelKVListField;
+  friend class KVListFieldConverter;
 
 protected:
   const google::protobuf::Message &get_protobuf_value() const override;
 };
 
-class OtelKVListField : public ProtobufField
+class KVListFieldConverter : public ProtobufFieldConverter
 {
 public:
-  FilterXObject *FilterXObjectGetter(google::protobuf::Message *message, ProtoReflectors reflectors);
-  bool FilterXObjectSetter(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
-                           FilterXObject **assoc_object);
+  FilterXObject *get(google::protobuf::Message *message, ProtoReflectors reflectors);
+  bool set(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object,
+           FilterXObject **assoc_object);
+  bool add(google::protobuf::Message *message, ProtoReflectors reflectors, FilterXObject *object);
 };
 
-extern OtelKVListField otel_kvlist_converter;
+extern KVListFieldConverter kvlist_field_converter;
 
 }
 }
 }
 }
+
+#include "compat/cpp-start.h"
 
 struct FilterXOtelKVList_
 {
   FilterXDict super;
   syslogng::grpc::otel::filterx::KVList *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

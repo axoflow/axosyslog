@@ -81,6 +81,8 @@ private:
 }
 }
 
+#include "compat/cpp-start.h"
+
 struct RandomChoiceGeneratorSourceWorker_
 {
   LogThreadedSourceWorker super;
@@ -92,5 +94,7 @@ struct RandomChoiceGeneratorSourceDriver_
   LogThreadedSourceDriver super;
   syslogng::examples::random_choice_generator::SourceDriver *cpp;
 };
+
+#include "compat/cpp-end.h"
 
 #endif

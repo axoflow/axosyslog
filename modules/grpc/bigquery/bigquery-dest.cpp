@@ -38,8 +38,9 @@ using syslogng::grpc::bigquery::DestinationDriver;
 
 DestinationDriver::DestinationDriver(GrpcDestDriver *s)
   : syslogng::grpc::DestDriver(s),
-    schema(2, "bigquery_record.proto", "BigQueryRecord", map_schema_type,
-           &this->template_options, &this->super->super.super.super.super)
+    log_message_protobuf_formatter(std::make_unique<ProtoSchemaBuilder>(map_schema_type, 2, "bigquery_record.proto",
+                                   "BigQueryRecord"),
+                                   &this->template_options, &this->super->super.super.super.super)
 {
   this->url = "bigquerystorage.googleapis.com";
   this->credentials_builder.set_mode(GCAM_ADC);
@@ -97,15 +98,24 @@ DestinationDriver::init()
       return false;
     }
 
-  if (!this->schema.init())
-    return false;
-
-  if (this->schema.empty())
+  if (this->proto_var && !this->log_message_protobuf_formatter.empty())
     {
-      msg_error("Error initializing BigQuery destination, schema() or protobuf-schema() is empty",
+      msg_error("Error initializing BigQuery destination: 'proto-var()' cannot be used together with 'schema()' "
+                "or 'protobuf-schema()'. Please use either 'proto-var()', or 'schema()'/'protobuf-schema()', "
+                "but not both.",
                 log_pipe_location_tag(&this->super->super.super.super.super));
       return false;
     }
+
+  if (!this->proto_var && this->log_message_protobuf_formatter.empty())
+    {
+      msg_error("Error initializing BigQuery destination, schema() or protobuf-schema() must be set",
+                log_pipe_location_tag(&this->super->super.super.super.super));
+      return false;
+    }
+
+  if (!this->proto_var && !this->log_message_protobuf_formatter.init())
+    return false;
 
   if (this->get_project().empty() || this->get_dataset().empty() || this->get_table().empty())
     {

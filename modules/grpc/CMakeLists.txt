@@ -77,6 +77,7 @@ endif()
 # These are intentionally not inside the above if (ENABLE_GRPC) block
 # Let any other possible module_switch-es take effect and is being always visible
 # (both modules are protected via ENABLE_GRPC as well)
+add_subdirectory(filterx)
 add_subdirectory(loki)
 add_subdirectory(otel)
 add_subdirectory(bigquery)
