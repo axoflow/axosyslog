@@ -51,15 +51,16 @@ field_by_index(FilterXFunctionEventFormatParser *self, int index)
   return self->config.header.fields[index];
 }
 
-static FilterXObject *
-parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GError **error,
+static gboolean
+parse_default(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
               gpointer user_data)
 {
-  return filterx_string_new(value, value_len);
+  *result = filterx_string_new(value, value_len);
+  return *result != NULL;
 }
 
-FilterXObject *
-parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error,
+gboolean
+parse_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
               gpointer user_data)
 {
   const gchar *log_signature = ctx->parser->config.signature;
@@ -77,7 +78,8 @@ parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GErro
                   EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG, value, log_signature);
       return FALSE;
     }
-  return filterx_string_new(++colon_pos, value_len - sign_len - 1);
+  *result = filterx_string_new(++colon_pos, value_len - sign_len - 1);
+  return *result != NULL;
 }
 
 gboolean
@@ -113,12 +115,14 @@ _unescape_value_separators(KVScanner *self)
   return TRUE;
 }
 
-FilterXObject *
-parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error,
+gboolean
+parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result, GError **error,
                  gpointer user_data)
 {
   FilterXObject *fillable = (FilterXObject *)user_data;
-  FilterXObject *output = filterx_object_create_dict(fillable);
+  FilterXObject *dict_to_fill = filterx_object_create_dict(fillable);
+
+  gboolean success = FALSE;
 
   KVScanner kv_scanner;
   kv_scanner_init(&kv_scanner, ctx->kv_parser_value_separator, ctx->kv_parser_pair_separator, FALSE);
@@ -131,13 +135,16 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GE
       const gchar *value = kv_scanner_get_current_value(&kv_scanner);
       gsize value_len = kv_scanner_get_current_value_len(&kv_scanner);
 
-      if (!_set_dict_value(output, name, name_len, value, value_len))
+      if (!_set_dict_value(dict_to_fill, name, name_len, value, value_len))
         goto exit;
     }
 
+  success = TRUE;
+
 exit:
   kv_scanner_deinit(&kv_scanner);
-  return output;
+  *result = dict_to_fill;
+  return success;
 }
 
 static inline gboolean
@@ -146,14 +153,14 @@ _match_field_to_column(EventParserContext *ctx, Field *field, const gchar *input
                        GError **error)
 {
   FilterXObject *val = NULL;
+  gboolean ok = FALSE;
 
   if (!field->field_parser)
-    val = parse_default(ctx, input, input_len, error, fillable);
+    ok = parse_default(ctx, input, input_len, &val, error, fillable);
   else
-    val = field->field_parser(ctx, input, input_len, error, fillable);
+    ok = field->field_parser(ctx, input, input_len, &val, error, fillable);
 
-  gboolean ok = FALSE;
-  if (!*error && val)
+  if (!*error && ok && val)
     {
       FILTERX_STRING_DECLARE_ON_STACK(key, field->name, -1);
       ok = filterx_object_set_subscript(fillable, key, &val);

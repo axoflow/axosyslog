@@ -30,9 +30,8 @@ typedef struct _FilterXFunctionEventFormatParser FilterXFunctionEventFormatParse
 typedef struct _EventParserContext EventParserContext;
 typedef struct _EventFormatterContext EventFormatterContext;
 
-typedef FilterXObject *(*FieldParser)(EventParserContext *ctx, const gchar *value, gint value_len,
-                                      GError **error,
-                                      gpointer user_data);
+typedef gboolean(*FieldParser)(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result,
+                               GError **error, gpointer user_data);
 
 typedef gboolean(*FieldFormatter)(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict);
 

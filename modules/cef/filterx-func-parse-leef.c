@@ -86,32 +86,38 @@ _is_delmiter_empty(gchar delimiter)
   return delimiter == 0;
 }
 
-FilterXObject *
-parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, gpointer user_data)
+gboolean
+parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result, GError **error,
+                gpointer user_data)
 {
   if (!check_flag(ctx->flags, FILTERX_FUNC_PARSE_LEEF_FLAG_20))
-    return NULL;
+    return FALSE;
   gchar delimiter = 0;
   if (_delimiter_multi_parser(input, input_len, &delimiter, error))
     {
       if (_is_delmiter_empty(delimiter))
-        return filterx_string_new("", 0);
+        {
+          *result = filterx_string_new("", 0);
+          return TRUE;
+        }
       if (!_is_pair_separator_forced(ctx))
         {
           ctx->kv_parser_pair_separator[0] = delimiter;
           ctx->kv_parser_pair_separator[1] = 0;
         }
-      return filterx_string_new(&delimiter, 1);
+      *result = filterx_string_new(&delimiter, 1);
+      return TRUE;
     }
-  return NULL;
+  return FALSE;
 }
 
-FilterXObject *
-parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, gpointer user_data)
+gboolean
+parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
+                   gpointer user_data)
 {
   if (g_strstr_len(value, value_len, "2.0"))
     set_flag(&ctx->flags, FILTERX_FUNC_PARSE_LEEF_FLAG_20, TRUE);
-  return parse_version(ctx, value, value_len, error, user_data); // call base class parser
+  return parse_version(ctx, value, value_len, result, error, user_data); // call base class parser
 }
 
 Field leef_fields[] =
