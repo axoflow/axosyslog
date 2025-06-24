@@ -21,8 +21,8 @@
  *
  */
 
-#ifndef EVENT_FORMAT_PARSER_CFG_H_INCLUDED
-#define EVENT_FORMAT_PARSER_CFG_H_INCLUDED
+#ifndef EVENT_FORMAT_CFG_H_INCLUDED
+#define EVENT_FORMAT_CFG_H_INCLUDED
 
 #include "filterx/filterx-object.h"
 

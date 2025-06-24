@@ -33,7 +33,7 @@
 #include "parser/parser-expr.h"
 #include "scanner/kv-scanner/kv-scanner.h"
 
-#include "event-format-parser-cfg.h"
+#include "event-format-cfg.h"
 
 #define EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG "no log signature %s found"
 #define EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG "the log signature differs. actual:%s expected:%s"
