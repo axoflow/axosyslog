@@ -180,6 +180,41 @@ _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
 }
 
 static gboolean
+_append_non_separate_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  EventFormatterContext *ctx = ((gpointer *) user_data)[0];
+  gsize *fields_to_find = ((gpointer *) user_data)[3];
+
+  const gchar *key_str;
+  gsize key_len;
+  if (!filterx_object_extract_string_ref(key, &key_str, &key_len))
+    {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Extension key must be a string, got: %s",
+                                    filterx_object_format_type_name(key, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate event formatter function",
+                                   &ctx->formatter->super.super, info, TRUE);
+      return FALSE;
+    }
+
+  if (*fields_to_find)
+    {
+      /* -1: don't look for the extensions field */
+      for (gsize i = 0; i < ctx->formatter->config.header.num_fields - 1; i++)
+        {
+          const Field *field = &ctx->formatter->config.header.fields[i];
+          if (strcmp(field->name, key_str) == 0)
+            {
+              (*fields_to_find)--;
+              return TRUE;
+            }
+        }
+    }
+
+  return _append_extension(key, value, user_data);
+}
+
+static gboolean
 _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict)
 {
   gboolean success = FALSE;
@@ -187,10 +222,15 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
   FilterXObject *extensions = filterx_object_getattr_string(dict, "extensions");
   if (!extensions)
     {
-      filterx_eval_push_error_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                   "Failed to get extensions", FALSE);
+      /* -1: non-separate extensions -> extensions field will not be available */
+      gsize fields_to_find = ctx->formatter->config.header.num_fields - 1;
+      gboolean first = TRUE;
+      gpointer user_data[] = { ctx, formatted, &first, &fields_to_find };
+      success = filterx_dict_iter(dict, _append_non_separate_extension, user_data);
       goto exit;
     }
+
+  /* separated extensions */
 
   FilterXObject *extensions_dict = filterx_ref_unwrap_ro(extensions);
   if (!filterx_object_is_type(extensions_dict, &FILTERX_TYPE_NAME(dict)))
