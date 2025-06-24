@@ -38,6 +38,8 @@
 
 struct _Debugger
 {
+  /* debugger_get_mode() assumes this comes as the first field */
+  DebuggerMode mode;
   Tracer *tracer;
   struct iv_signal sigint;
   MainLoop *main_loop;
@@ -45,6 +47,7 @@ struct _Debugger
   GThread *debugger_thread;
   BreakpointSite *breakpoint_site;
   struct timespec last_trace_event;
+  gboolean starting_up;
 
   /* user interface related state */
   gchar *command_buffer;
@@ -164,8 +167,10 @@ _cmd_help(Debugger *self, gint argc, gchar *argv[])
              "  info, i                  Display information about the current execution state\n"
              "  list, l                  Display source code at the current location\n"
              "  continue, c              Continue until the next breakpoint\n"
+             "  step, s                  Single step\n"
+             "  follow, f                Follow this message, ignoring any other breakpoints\n"
              "  display                  Set the displayed message template\n"
-             "  trace, t                 Display timing information as the message traverses the config\n"
+             "  trace, t                 Trace this message along the configuration\n"
              "  print, p                 Print the current log message\n"
              "  drop, d                  Drop the current message\n"
              "  quit, q                  Tell syslog-ng to exit\n"
@@ -185,11 +190,6 @@ _cmd_help(Debugger *self, gint argc, gchar *argv[])
   return TRUE;
 }
 
-static gboolean
-_cmd_continue(Debugger *self, gint argc, gchar *argv[])
-{
-  return FALSE;
-}
 
 static gboolean
 _cmd_print(Debugger *self, gint argc, gchar *argv[])
@@ -234,21 +234,6 @@ _cmd_drop(Debugger *self, gint argc, gchar *argv[])
   return FALSE;
 }
 
-static gboolean
-_cmd_trace(Debugger *self, gint argc, gchar *argv[])
-{
-  self->breakpoint_site->msg->flags |= LF_STATE_TRACING;
-  return FALSE;
-}
-
-static gboolean
-_cmd_quit(Debugger *self, gint argc, gchar *argv[])
-{
-  main_loop_exit(self->main_loop);
-  if (self->breakpoint_site)
-    self->breakpoint_site->drop = TRUE;
-  return FALSE;
-}
 
 static gboolean
 _cmd_info_pipe(Debugger *self, LogPipe *pipe)
@@ -307,6 +292,58 @@ _cmd_list(Debugger *self, gint argc, gchar *argv[])
   return TRUE;
 }
 
+static inline void
+_set_mode(Debugger *self, DebuggerMode new_mode, gboolean trace_message)
+{
+  self->mode = new_mode;
+  if (self->breakpoint_site)
+    {
+      if (trace_message)
+        self->breakpoint_site->msg->flags |= LF_STATE_TRACING;
+      else
+        self->breakpoint_site->msg->flags &= ~LF_STATE_TRACING;
+    }
+}
+
+static gboolean
+_cmd_continue(Debugger *self, gint argc, gchar *argv[])
+{
+  _set_mode(self, DBG_WAITING_FOR_BREAKPOINT, FALSE);
+  return FALSE;
+}
+
+static gboolean
+_cmd_step(Debugger *self, gint argc, gchar *argv[])
+{
+  _set_mode(self, DBG_WAITING_FOR_STEP, FALSE);
+  return FALSE;
+}
+
+static gboolean
+_cmd_trace(Debugger *self, gint argc, gchar *argv[])
+{
+  clock_gettime(CLOCK_MONOTONIC, &self->last_trace_event);
+  _set_mode(self, DBG_FOLLOW_AND_TRACE, TRUE);
+  return FALSE;
+}
+
+static gboolean
+_cmd_follow(Debugger *self, gint argc, gchar *argv[])
+{
+  _set_mode(self, DBG_FOLLOW_AND_BREAK, TRUE);
+  return FALSE;
+}
+
+static gboolean
+_cmd_quit(Debugger *self, gint argc, gchar *argv[])
+{
+  _set_mode(self, DBG_QUIT, FALSE);
+  if (self->breakpoint_site)
+    self->breakpoint_site->drop = TRUE;
+  main_loop_exit(self->main_loop);
+  return FALSE;
+}
+
 typedef gboolean (*DebuggerCommandFunc)(Debugger *self, gint argc, gchar *argv[]);
 
 struct
@@ -321,6 +358,10 @@ struct
   { "?",        _cmd_help },
   { "continue", _cmd_continue },
   { "c",        _cmd_continue },
+  { "step",     _cmd_step },
+  { "s",        _cmd_step },
+  { "follow",   _cmd_follow, .requires_breakpoint_site = TRUE },
+  { "f",        _cmd_follow, .requires_breakpoint_site = TRUE },
   { "print",    _cmd_print, .requires_breakpoint_site = TRUE },
   { "p",        _cmd_print, .requires_breakpoint_site = TRUE },
   { "list",     _cmd_list, },
@@ -433,10 +474,10 @@ _handle_interactive_prompt(Debugger *self)
       _display_source_line(self);
       _display_msg_with_template(self, self->breakpoint_site->msg, self->display_template);
     }
-  else
+  else if (!self->starting_up)
     {
       _set_current_location(self, NULL);
-      printf("Stopping on interrupt, message related commands are unavailable...\n");
+      printf("  Stopping on Interrupt...\n");
     }
   while (1)
     {
@@ -449,20 +490,64 @@ _handle_interactive_prompt(Debugger *self)
   printf("(continuing)\n");
 }
 
+static gboolean
+_debugger_wait_for_event(Debugger *self)
+{
+  while (1)
+    {
+      if (!tracer_wait_for_event(self->tracer, &self->breakpoint_site))
+        return FALSE;
+
+      /* this is an interrupt, let's handle it now */
+      if (!self->breakpoint_site)
+        return TRUE;
+
+      /* is this an event we are still interested in? */
+      if (debugger_is_to_stop(self, self->breakpoint_site->pipe, self->breakpoint_site->msg))
+        return TRUE;
+
+      /* not interesting now, let's resume and wait for another */
+      tracer_resume_after_event(self->tracer, self->breakpoint_site);
+    }
+  return TRUE;
+}
+
+static void
+_debugger_ack_event(Debugger *self)
+{
+  tracer_resume_after_event(self->tracer, self->breakpoint_site);
+}
+
 static gpointer
 _debugger_thread_func(Debugger *self)
 {
   app_thread_start();
-  printf("Waiting for breakpoint...\n");
+  self->breakpoint_site = NULL;
+
+  printf("axosyslog interactive debugger\n"
+         "Copyright (c) 2024 Axoflow and contributors\n\n"
+
+         "This program comes with ABSOLUTELY NO WARRANTY;\n"
+         "This is free software, and you are welcome to redistribute it\n"
+         "under certain conditions;\n"
+         "See https://github.com/axoflow/axosyslog/blob/main/COPYING\n"
+         "License LGPLV2.1+ and GPLv2+\n\n"
+
+         "For help, type \"help\".\n");
+
+  self->starting_up = TRUE;
+  _handle_interactive_prompt(self);
+  self->starting_up = FALSE;
   while (1)
     {
-      self->breakpoint_site = NULL;
-      if (!tracer_wait_for_event(self->tracer, &self->breakpoint_site))
+      if (!_debugger_wait_for_event(self))
         break;
 
       _handle_interactive_prompt(self);
-      tracer_resume_after_event(self->tracer, self->breakpoint_site);
+
+      _debugger_ack_event(self);
     }
+
   scratch_buffers_explicit_gc();
   app_thread_stop();
   return NULL;
