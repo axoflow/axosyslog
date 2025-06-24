@@ -336,12 +336,16 @@ filterx_scope_sync(FilterXScope *self, LogMessage **pmsg, const LogPathOptions *
         }
       else if (v->value == NULL)
         {
-          filterx_scope_set_message(self, log_msg_make_writable(pmsg, path_options));
-          g_assert(v->generation == msg_generation);
-          msg_trace("Filterx sync: whiteout variable, unsetting in message",
-                    evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
-          /* we need to unset */
-          log_msg_unset_value(self->msg, filterx_variable_get_nv_handle(v));
+          if (log_msg_is_value_set(self->msg, filterx_variable_get_nv_handle(v)))
+            {
+              filterx_scope_set_message(self, log_msg_make_writable(pmsg, path_options));
+              g_assert(v->generation == msg_generation);
+
+              msg_trace("Filterx sync: whiteout variable, unsetting in message",
+                        evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
+              log_msg_unset_value(self->msg, filterx_variable_get_nv_handle(v));
+            }
+
           filterx_variable_unassign(v);
           v->generation++;
         }
