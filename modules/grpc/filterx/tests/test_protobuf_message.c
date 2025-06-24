@@ -38,12 +38,12 @@
 
 #include <criterion/criterion.h>
 
-#define TEST_PB_MSG_FILEPATH "pb_msg_test.proto"
+static const gchar *test_pb_msg_filepath = NULL;
 
 static void
 _helper_create_proto_file(const gchar *proto_content)
 {
-  FILE *f = fopen(TEST_PB_MSG_FILEPATH, "wb");
+  FILE *f = fopen(test_pb_msg_filepath, "wb");
   cr_assert_not_null(f);
 
   size_t len = strlen(proto_content);
@@ -114,6 +114,7 @@ Test(filterx_protobuf_message, invalid_args)
 
 Test(filterx_protobuf_message, load_proto_from_file)
 {
+  test_pb_msg_filepath = "load_proto_from_file.proto";
   const gchar *test_proto =
     "syntax = \"proto3\";"
     "package test.pkg;"
@@ -126,7 +127,7 @@ Test(filterx_protobuf_message, load_proto_from_file)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PROTOBUF_MESSAGE_ARG_NAME_SCHEMA_FILE,
-                                                      filterx_literal_new(filterx_string_new(TEST_PB_MSG_FILEPATH, -1))));
+                                                      filterx_literal_new(filterx_string_new(test_pb_msg_filepath, -1))));
 
   FilterXExpr *func = _assert_protobuf_message_init_success(args);
 
@@ -135,6 +136,7 @@ Test(filterx_protobuf_message, load_proto_from_file)
 
 Test(filterx_protobuf_message, assign_vars)
 {
+  test_pb_msg_filepath = "assign_vars.proto";
   const gchar *test_proto =
     "syntax = \"proto3\";"
     "package test.pkg;"
@@ -176,7 +178,7 @@ Test(filterx_protobuf_message, assign_vars)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, expr));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PROTOBUF_MESSAGE_ARG_NAME_SCHEMA_FILE,
-                                                      filterx_literal_new(filterx_string_new(TEST_PB_MSG_FILEPATH, -1))));
+                                                      filterx_literal_new(filterx_string_new(test_pb_msg_filepath, -1))));
 
   FilterXExpr *func = _assert_protobuf_message_init_success(args);
 
@@ -199,7 +201,7 @@ setup(void)
 static void
 teardown(void)
 {
-  remove(TEST_PB_MSG_FILEPATH);
+  remove(test_pb_msg_filepath);
   scratch_buffers_explicit_gc();
   deinit_libtest_filterx();
   app_shutdown();
