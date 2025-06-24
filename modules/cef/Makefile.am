@@ -8,6 +8,8 @@ modules_cef_libcef_la_SOURCES	=	\
 	modules/cef/event-format-cfg.h	\
 	modules/cef/event-format-parser.c	\
 	modules/cef/event-format-parser.h	\
+	modules/cef/event-format-formatter.c	\
+	modules/cef/event-format-formatter.h	\
 	modules/cef/filterx-func-parse-cef.c	\
 	modules/cef/filterx-func-parse-cef.h	\
 	modules/cef/filterx-func-parse-leef.c	\
