@@ -2303,11 +2303,9 @@ def test_parse_cef(config, syslog_ng):
         r""""device_event_class_id":"KLPRCI_TaskState","""
         r""""name":"Completed successfully","""
         r""""agent_severity":"1","""
-        r""""extensions":{"""
         r""""foo":"foo=bar","""
         r""""bar":"bar=baz","""
         r""""baz":"test"}"""
-        r"""}""" + ""
     )
     assert file_true.read_log() == exp
 
@@ -2329,14 +2327,12 @@ def test_parse_leef(config, syslog_ng):
         r""""product_name":"MSExchange","""
         r""""product_version":"4.0 SP1","""
         r""""event_id":"15345","""
-        r""""extensions":{"""
         r""""src":"192.0.2.0","""
         r""""dst":"172.50.123.1","""
         r""""sev":"5cat=anomaly","""
         r""""srcPort":"81","""
         r""""dstPort":"21","""
         r""""usrName":"joe.black"}"""
-        r"""}""" + ""
     )
     assert file_true.read_log() == exp
 
