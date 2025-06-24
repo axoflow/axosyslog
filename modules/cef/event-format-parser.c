@@ -120,7 +120,7 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
                  gpointer user_data)
 {
   FilterXObject *fillable = (FilterXObject *)user_data;
-  FilterXObject *dict_to_fill = filterx_object_create_dict(fillable);
+  FilterXObject *dict_to_fill = ctx->separate_extensions ? filterx_object_create_dict(fillable) : fillable;
 
   gboolean success = FALSE;
 
@@ -143,7 +143,7 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
 
 exit:
   kv_scanner_deinit(&kv_scanner);
-  *result = dict_to_fill;
+  *result = ctx->separate_extensions ? dict_to_fill : NULL;
   return success;
 }
 
@@ -202,6 +202,7 @@ _new_context(FilterXFunctionEventFormatParser *self,  CSVScanner *csv_scanner)
     .csv_scanner = csv_scanner,
     .flags = 0,
     .kv_parser_value_separator = self->kv_value_separator != 0 ? self->kv_value_separator : self->config.extensions.value_separator,
+    .separate_extensions = self->separate_extensions,
   };
   g_strlcpy(ctx.kv_parser_pair_separator, self->kv_pair_separator ? : self->config.extensions.pair_separator,
             EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN);
@@ -343,6 +344,8 @@ _extract_optional_args(FilterXFunctionEventFormatParser *self, FilterXFunctionAr
   gboolean exists;
   gsize len;
   const gchar *value;
+  gboolean bool_value;
+  gboolean arg_error;
 
   value = filterx_function_args_get_named_literal_string(args, EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR, &len,
                                                          &exists);
@@ -373,6 +376,18 @@ _extract_optional_args(FilterXFunctionEventFormatParser *self, FilterXFunctionAr
           goto error;
         }
       self->kv_value_separator = value[0];
+    }
+  bool_value = filterx_function_args_get_named_literal_boolean(args, EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS,
+               &exists, &arg_error);
+  if (exists)
+    {
+      if (arg_error)
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                      EVENT_FORMAT_PARSER_ERR_MUST_BE_BOOLEAN, EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS);
+          goto error;
+        }
+      self->separate_extensions = bool_value;
     }
   return TRUE;
 error:
