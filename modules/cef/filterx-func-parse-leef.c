@@ -113,7 +113,7 @@ parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, 
   return parse_version(ctx, value, value_len, error, user_data); // call base class parser
 }
 
-static Field leef_fields[] =
+Field leef_fields[] =
 {
   { .name = "version", .field_parser = parse_leef_version},
   { .name = "vendor"},
@@ -122,6 +122,20 @@ static Field leef_fields[] =
   { .name = "event_id"},
   { .name = "delimiter", .optional=TRUE, .field_parser = parse_delimiter},
   { .name = "extensions", .field_parser = parse_extensions},
+};
+
+Config leef_cfg =
+{
+  .signature = "LEEF",
+  .header = {
+    .num_fields = 7,
+    .delimiters = "|",
+    .fields = leef_fields,
+  },
+  .extensions = {
+    .pair_separator = "\t",
+    .value_separator = '=',
+  },
 };
 
 typedef struct FilterXFunctionParseLEEF_
@@ -135,21 +149,7 @@ filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **err)
 {
   FilterXFunctionParseLEEF *self = g_new0(FilterXFunctionParseLEEF, 1);
 
-  Config cfg =
-  {
-    .signature = "LEEF",
-    .header = {
-      .num_fields = 7,
-      .delimiters = "|",
-      .fields = leef_fields,
-    },
-    .extensions = {
-      .pair_separator = "\t",
-      .value_separator = '=',
-    },
-  };
-
-  if (!filterx_function_parser_init_instance(&self->super, "parse_leef", args, &cfg, err))
+  if (!filterx_function_parser_init_instance(&self->super, "parse_leef", args, &leef_cfg, err))
     goto error;
 
   filterx_function_args_free(args);
