@@ -35,8 +35,14 @@ typedef struct _FilterXFunctionEventFormatFormatter
   Config config;
 } FilterXFunctionEventFormatFormatter;
 
+struct _EventFormatterContext
+{
+  FilterXFunctionEventFormatFormatter *formatter;
+  gchar extension_pair_separator;
+};
+
 gboolean filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormatFormatter *self,
-                                                               const gchar *fn_name, FilterXFunctionArgs *args,
-                                                               GError **error);
+    const gchar *fn_name, FilterXFunctionArgs *args,
+    Config *config, GError **error);
 
 #endif
