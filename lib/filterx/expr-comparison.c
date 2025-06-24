@@ -30,6 +30,7 @@
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-eval.h"
 #include "object-primitive.h"
 #include "generic-number.h"
 #include "parse-number.h"
@@ -240,23 +241,30 @@ static FilterXObject *
 _eval_comparison(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
-  FilterXObject *result = NULL;
+  FilterXObject *result_obj = NULL;
 
   FilterXObject *lhs_ref = NULL, *lhs;
   FilterXObject *rhs_ref = NULL, *rhs;
 
-  if (_eval_operand(self, self->literal_lhs, self->super.lhs, &lhs_ref, &lhs) &&
-      _eval_operand(self, self->literal_rhs, self->super.rhs, &rhs_ref, &rhs))
+  if (!_eval_operand(self, self->literal_lhs, self->super.lhs, &lhs_ref, &lhs))
     {
-      result = filterx_boolean_new(
-                 filterx_compare_objects(filterx_ref_unwrap_ro(lhs),
-                                         filterx_ref_unwrap_ro(rhs),
-                                         self->operator));
+      filterx_eval_push_error_info("Failed to compare values", s, "Failed to evaluate left hand side", FALSE);
+      goto exit;
     }
 
+  if (!_eval_operand(self, self->literal_rhs, self->super.rhs, &rhs_ref, &rhs))
+    {
+      filterx_eval_push_error_info("Failed to compare values", s, "Failed to evaluate right hand side", FALSE);
+      goto exit;
+    }
+
+  gboolean result = filterx_compare_objects(filterx_ref_unwrap_ro(lhs), filterx_ref_unwrap_ro(rhs), self->operator);
+  result_obj = filterx_boolean_new(result);
+
+exit:
   filterx_object_unref(lhs_ref);
   filterx_object_unref(rhs_ref);
-  return result;
+  return result_obj;
 }
 
 static FilterXExpr *

@@ -45,13 +45,14 @@ _eval_null_coalesce(FilterXExpr *s)
           && filterx_message_value_get_type(lhs_object) == LM_VT_NULL))
     {
       if (!lhs_object)
-        {
-          msg_debug("FILTERX null coalesce supressing error",
-                    filterx_expr_format_location_tag(s),
-                    filterx_eval_format_last_error_tag());
-          filterx_eval_clear_errors();
-        }
+        filterx_eval_dump_errors("FilterX: null coalesce suppressing error");
+
       FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
+      if (!rhs_object)
+        {
+          filterx_eval_push_error_info("Failed evaluate null-coalescing operator", s,
+                                       "Failed to evaluate right hand side", FALSE);
+        }
       filterx_object_unref(lhs_object);
       return rhs_object;
     }

@@ -227,8 +227,6 @@ void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
 
-void filterx_json_associate_cached_object(struct json_object *jso, FilterXObject *filterx_object);
-
 static inline gboolean
 filterx_object_is_readonly(FilterXObject *self)
 {
@@ -523,13 +521,14 @@ filterx_object_create_dict(FilterXObject *self)
   return self->type->dict_factory(self);
 }
 
+void _filterx_object_log_add_object_error(FilterXObject *self);
+
 static inline FilterXObject *
 filterx_object_add_object(FilterXObject *self, FilterXObject *object)
 {
   if (!self->type->add)
     {
-      msg_error("FilterX: The add method is not supported for the given type",
-                evt_tag_str("type", self->type->name));
+      _filterx_object_log_add_object_error(self);
       return NULL;
     }
 
@@ -571,6 +570,18 @@ filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
   if (filterx_object_is_ref(object))
     return _filterx_object_is_type(((FilterXRef *) object)->value, type);
   return _filterx_object_is_type(object, type);
+}
+
+#define FILTERX_OBJECT_TYPE_NAME_BUF_SIZE (64)
+
+static inline const gchar *
+filterx_object_format_type_name(FilterXObject *self, gchar *buf)
+{
+  if (!filterx_object_is_ref(self))
+    return self->type->name;
+
+  g_snprintf(buf, FILTERX_OBJECT_TYPE_NAME_BUF_SIZE, "ref/%s", filterx_ref_unwrap_ro(self)->type->name);
+  return buf;
 }
 
 /*

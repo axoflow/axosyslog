@@ -47,12 +47,13 @@ using namespace syslogng::grpc;
 using google::protobuf::Message;
 
 void
-log_type_error(ProtoReflectors reflectors, const char *type)
+log_type_error(ProtoReflectors reflectors, FilterXObject *object)
 {
-  msg_error("protobuf-field: Failed to convert field, type is unsupported",
-            evt_tag_str("field", reflectors.field_descriptor->name().data()),
-            evt_tag_str("expected_type", reflectors.field_type_name()),
-            evt_tag_str("type", type));
+  gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+  gchar *info = g_strdup_printf("Type for field %s is unsupported: %s",
+                                reflectors.field_descriptor->name().data(),
+                                filterx_object_format_type_name(object, type_name_buf));
+  filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
 }
 
 float
@@ -120,7 +121,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -134,7 +135,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -171,7 +172,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -185,7 +186,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -217,7 +218,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -231,7 +232,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -255,11 +256,10 @@ public:
     uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.field_descriptor);
     if (val > INT64_MAX)
       {
-        msg_error("protobuf-field: exceeding FilterX number value range",
-                  evt_tag_str("field", reflectors.field_descriptor->name().data()),
-                  evt_tag_long("range_min", INT64_MIN),
-                  evt_tag_long("range_max", INT64_MAX),
-                  evt_tag_printf("current", "%" G_GUINT64_FORMAT, val));
+        gchar *info = g_strdup_printf("Value of field %s is exceeding FilterX integer value range: "
+                                      "min: %ld, max: %ld, value: %" G_GUINT64_FORMAT,
+                                      reflectors.field_descriptor->name().data(), INT64_MIN, INT64_MAX, val);
+        filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
         return NULL;
       }
     return filterx_integer_new(guint64(val));
@@ -273,7 +273,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -287,7 +287,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -342,7 +342,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -356,7 +356,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -393,7 +393,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -407,7 +407,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -444,7 +444,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -458,7 +458,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -497,7 +497,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -511,7 +511,7 @@ public:
       }
     catch (const std::exception &e)
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
     return true;
@@ -608,7 +608,7 @@ MapFieldConverter::set_repeated(Message *message, const std::string &field_name,
   FilterXObject *dict = filterx_ref_unwrap_ro(object);
   if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
-      log_type_error(reflectors, object->type->name);
+      log_type_error(reflectors, object);
       return false;
     }
 
@@ -659,10 +659,10 @@ _message_add_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   catch (const std::exception &e)
     {
-      msg_error("protobuf-field: Failed to add element to message field",
-                evt_tag_str("key", key_string.c_str()),
-                evt_tag_str("value", value->type->name),
-                evt_tag_str("error", e.what()));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("key: %s, value type: %s, error: %s",
+                                    key_c_str, filterx_object_format_type_name(value, type_name_buf), e.what());
+      filterx_eval_push_error_info("Failed to add element to message field", NULL, info, TRUE);
       return FALSE;
     }
 
@@ -723,7 +723,7 @@ public:
     FilterXObject *dict = filterx_ref_unwrap_ro(object);
     if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
 
@@ -737,7 +737,7 @@ public:
     FilterXObject *dict = filterx_ref_unwrap_ro(object);
     if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
       {
-        log_type_error(reflectors, object->type->name);
+        log_type_error(reflectors, object);
         return false;
       }
 

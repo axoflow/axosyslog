@@ -78,7 +78,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
       gsize key_length;
       if (!filterx_object_extract_string_ref(key, &key_string, &key_length))
         {
-          filterx_eval_push_error("failed to call repr() on key", self->dict_expr, key);
+          filterx_eval_push_error("Failed to flatten object: Failed to call repr() on key", self->dict_expr, key);
           return FALSE;
         }
       g_string_append_len(key_buffer, key_string, key_length);
@@ -103,7 +103,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   gsize key_length;
   if (!filterx_object_extract_string_ref(key, &key_string, &key_length))
     {
-      filterx_eval_push_error("failed to call repr() on key", self->dict_expr, key);
+      filterx_eval_push_error("Failed to flatten object: Failed to call repr() on key", self->dict_expr, key);
       return FALSE;
     }
   g_string_append_len(key_buffer, key_string, key_length);
@@ -153,7 +153,7 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
 
       if (!success)
         {
-          filterx_eval_push_error("failed to set dict value", self->dict_expr, kv->key);
+          filterx_eval_push_error("Failed to flatten object: Failed to set dict value", self->dict_expr, kv->key);
           return FALSE;
         }
     }
@@ -201,8 +201,10 @@ _eval_fx_flatten(FilterXExpr *s)
   FilterXObject *dict = filterx_ref_unwrap_rw(obj);
   if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
-      filterx_eval_push_error_info("object must be a dict", self->dict_expr,
-                                   g_strdup_printf("got %s instead", dict->type->name), TRUE);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Object must be a dict, got: %s",
+                                    filterx_object_format_type_name(obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to flatten object", self->dict_expr, info, TRUE);
       goto exit;
     }
 

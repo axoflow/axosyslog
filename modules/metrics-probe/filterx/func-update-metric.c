@@ -55,11 +55,20 @@ _get_increment(FilterXFunctionUpdateMetric *self, gint64 *increment)
 
   FilterXObject *increment_obj = filterx_expr_eval_typed(self->increment.expr);
   if (!increment_obj)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate update_metric()", &self->super.super,
+                                   "Failed to evaluate increment argument", FALSE);
+      return FALSE;
+    }
 
   gboolean success = filterx_integer_unwrap(increment_obj, increment);
   if (!success)
-    filterx_eval_push_error("metric increment must be an integer", self->increment.expr, increment_obj);
+    {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Metric increment must be an integer, got: %s",
+                                    filterx_object_format_type_name(increment_obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate update_metric()", &self->super.super, info, TRUE);
+    }
 
   filterx_object_unref(increment_obj);
   return success;
@@ -87,8 +96,7 @@ exit:
   if (!success)
     {
       /* It would be nice to introduce a counter for this. */
-      msg_debug("FilterX: Failed to process update_metric()", filterx_eval_format_last_error_tag());
-      filterx_eval_clear_errors();
+      filterx_eval_dump_errors("FilterX: update_metric() eval error, skipping");
     }
 
   return filterx_boolean_new(TRUE);

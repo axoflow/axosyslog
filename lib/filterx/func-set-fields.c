@@ -213,10 +213,7 @@ _set_with_fallbacks(FilterXObject *dict, FilterXObject *key, GPtrArray *values)
       FilterXObject *value_obj = filterx_expr_eval(value);
       if (!value_obj)
         {
-          msg_debug("FilterX: set_fields(): eval error, skipping",
-                    evt_tag_str("key", _object_to_string(key)),
-                    filterx_eval_format_last_error_tag());
-          filterx_eval_clear_errors();
+          filterx_eval_dump_errors("FilterX: set_fields(): eval error, skipping");
           continue;
         }
 

@@ -45,6 +45,15 @@ filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, Filte
   return res;
 }
 
+void
+_filterx_object_log_add_object_error(FilterXObject *self)
+{
+  gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+  gchar *info = g_strdup_printf("The add method is not supported for the given type: %s",
+                                filterx_object_format_type_name(self, type_name_buf));
+  filterx_eval_push_error_info("Failed to evaluate addition", NULL, info, TRUE);
+}
+
 #define INIT_TYPE_METHOD(type, method_name) do { \
     if (type->method_name) \
       break; \

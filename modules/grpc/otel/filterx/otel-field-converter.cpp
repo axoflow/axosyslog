@@ -33,6 +33,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "generic-number.h"
 #include "filterx/object-message-value.h"
@@ -104,9 +105,9 @@ AnyValueFieldConverter::get(Message *message, ProtoReflectors reflectors)
       return this->direct_get(any_value);
     }
 
-  msg_error("otel-field: Unexpected protobuf field type",
-            evt_tag_str("name", reflectors.field_descriptor->name().data()),
-            evt_tag_int("type", reflectors.field_type));
+  gchar *info = g_strdup_printf("Unsupported protobuf field: %s, type: %s",
+                                reflectors.field_descriptor->name().data(), reflectors.field_type_name());
+  filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
   return nullptr;
 }
 
@@ -260,8 +261,10 @@ AnyValueFieldConverter::direct_set(AnyValue *any_value, FilterXObject *object, F
 
   if (!converter)
     {
-      msg_error("otel-field: FilterX type -> AnyValue field type conversion not yet implemented",
-                evt_tag_str("type", object->type->name));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Converting FilterX type: %s to AnyValue is not yet implemented",
+                                    filterx_object_format_type_name(object, type_name_buf));
+      filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
       return false;
     }
 
@@ -319,9 +322,8 @@ public:
         g_assert(filterx_integer_unwrap(object, &value));
         if (!SeverityNumber_IsValid((int) value))
           {
-            msg_error("otel-field: Failed to set severity_number",
-                      evt_tag_str("error", "Value is invalid"),
-                      evt_tag_int("value", value));
+            gchar *info = g_strdup_printf("Invalid value: %ld", value);
+            filterx_eval_push_error_info("Failed to set severity_number", NULL, info, TRUE);
             return false;
           }
 
@@ -329,9 +331,10 @@ public:
         return true;
       }
 
-    msg_error("otel-field: Failed to set severity_number",
-              evt_tag_str("error", "Value type is invalid"),
-              evt_tag_str("type", object->type->name));
+    gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+    gchar *info = g_strdup_printf("Value must be integer type, got: %s",
+                                  filterx_object_format_type_name(object, type_name_buf));
+    filterx_eval_push_error_info("Failed to set severity_number", NULL, info, TRUE);
     return false;
   }
 

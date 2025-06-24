@@ -60,13 +60,21 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
     g_string_append(buffer, self->pair_separator);
 
   if (!filterx_object_str_append(key, buffer))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
+                                   "str_append() method failed on key", FALSE);
+      return FALSE;
+    }
 
   g_string_append_c(buffer, self->value_separator);
 
   gsize len_before_value = buffer->len;
   if (!filterx_object_str_append(value, buffer))
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
+                                   "str_append() method failed on value", FALSE);
+      return FALSE;
+    }
 
   /* TODO: make the characters here configurable. */
   if (memchr(buffer->str + len_before_value, ' ', buffer->len - len_before_value) != NULL)
@@ -94,14 +102,18 @@ _eval(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval_typed(self->kvs);
   if (!obj)
     {
-      filterx_eval_push_error("Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE, s, NULL);
+      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
+                                   "Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE, FALSE);
       return NULL;
     }
 
   FilterXObject *kvs = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(kvs, &FILTERX_TYPE_NAME(dict)))
     {
-      filterx_eval_push_error("kvs_dict must be a dict. " FILTERX_FUNC_FORMAT_KV_USAGE, s, obj);
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Object must be a dict, got: %s. " FILTERX_FUNC_FORMAT_KV_USAGE,
+                                    filterx_object_format_type_name(obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super, info, TRUE);
       filterx_object_unref(obj);
       return NULL;
     }

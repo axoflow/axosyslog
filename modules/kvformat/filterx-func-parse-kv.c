@@ -84,6 +84,11 @@ _set_dict_value(FilterXObject *out,
   FILTERX_STRING_DECLARE_ON_STACK(dict_val, value, value_len);
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
+  if (!ok)
+    {
+      filterx_eval_push_error_info("Failed to evaluate parse_kv()", NULL,
+                                   "set-subscript() method failed", FALSE);
+    }
 
   filterx_object_unref(dict_key);
   filterx_object_unref(dict_val);
@@ -127,14 +132,24 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
 
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
-    return FALSE;
+    {
+      filterx_eval_push_error_info("Failed to evaluate parse_kv()", &self->super.super.super,
+                                   "Failed to evaluate expression", FALSE);
+      return FALSE;
+    }
 
   gsize len;
   const gchar *input;
 
   gboolean result = FALSE;
   if (!filterx_object_extract_string_ref(obj, &input, &len))
-    goto exit;
+    {
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Input must be string, got: %s",
+                                    filterx_object_format_type_name(obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate parse_kv()", &self->super.super.super, info, TRUE);
+      goto exit;
+    }
 
   APPEND_ZERO(input, input, len);
 

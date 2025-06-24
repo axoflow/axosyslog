@@ -23,6 +23,7 @@
 #include "filterx/func-repr.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-globals.h"
+#include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 
 FilterXObject *
@@ -35,9 +36,10 @@ filterx_simple_function_repr(FilterXExpr *s, FilterXObject *args[], gsize args_l
   GString *buf = scratch_buffers_alloc();
   if (!filterx_object_repr(object, buf))
     {
-      msg_error("filterx: repr() failed",
-                evt_tag_str("from", object->type->name),
-                evt_tag_str("to", "string"));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("repr() failed on object of type: %s",
+                                    filterx_object_format_type_name(object, type_name_buf));
+      filterx_eval_push_error_info("Failed to convert object to string", s, info, TRUE);
       return NULL;
     }
 

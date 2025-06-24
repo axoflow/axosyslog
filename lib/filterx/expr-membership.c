@@ -23,6 +23,8 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-eval.h"
+#include "filterx/filterx-object.h"
 #include "expr-comparison.h"
 
 typedef struct FilterXOperatorIn_
@@ -51,15 +53,20 @@ _eval_in(FilterXExpr *s)
   filterx_object_unref(rhs_obj);
   if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
-      msg_error("FilterX: in operator right hand side must be list type",
-                evt_tag_str("type", list_obj->type->name));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Right hand side must be list type, got: %s",
+                                    filterx_object_format_type_name(list_obj, type_name_buf));
+      filterx_eval_push_error_info("Failed to evaluate 'in' operator", &self->super.super, info, TRUE);
       return NULL;
     }
 
   guint64 size;
 
   if (!filterx_object_len(list_obj, &size))
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate 'in' operator", s, "len() method failed", FALSE);
+      return NULL;
+    }
 
   for (guint64 i = 0; i < size; i++)
     {

@@ -22,6 +22,7 @@
 #include "filterx/expr-boolalg.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-eval.h"
 
 static inline gboolean
 _literal_expr_truthy(FilterXExpr *expr)
@@ -56,7 +57,10 @@ _eval_not(FilterXExpr *s)
 
   FilterXObject *result = filterx_expr_eval(self->operand);
   if (!result)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to negate expression", s, "Failed to evaluate expression", FALSE);
+      return NULL;
+    }
 
   gboolean truthy = filterx_object_truthy(result);
   filterx_object_unref(result);
@@ -117,7 +121,11 @@ _eval_and(FilterXExpr *s)
     {
       FilterXObject *result = filterx_expr_eval(self->lhs);
       if (!result)
-        return NULL;
+        {
+          filterx_eval_push_error_info("Failed to evaluate logical AND operation", s,
+                                       "Failed to evaluate left hand side", FALSE);
+          return NULL;
+        }
 
       gboolean lhs_truthy = filterx_object_truthy(result);
       filterx_object_unref(result);
@@ -128,7 +136,11 @@ _eval_and(FilterXExpr *s)
 
   FilterXObject *result = filterx_expr_eval(self->rhs);
   if (!result)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate logical AND operation", s,
+                                   "Failed to evaluate right hand side", FALSE);
+      return NULL;
+    }
 
   gboolean rhs_truthy = filterx_object_truthy(result);
   filterx_object_unref(result);
@@ -192,7 +204,11 @@ _eval_or(FilterXExpr *s)
     {
       FilterXObject *result = filterx_expr_eval(self->lhs);
       if (!result)
-        return NULL;
+        {
+          filterx_eval_push_error_info("Failed to evaluate logical OR operation", s,
+                                       "Failed to evaluate left hand side", FALSE);
+          return NULL;
+        }
 
       gboolean lhs_truthy = filterx_object_truthy(result);
       filterx_object_unref(result);
@@ -203,7 +219,11 @@ _eval_or(FilterXExpr *s)
 
   FilterXObject *result = filterx_expr_eval(self->rhs);
   if (!result)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate logical OR operation", s,
+                                   "Failed to evaluate right hand side", FALSE);
+      return NULL;
+    }
 
   gboolean rhs_truthy = filterx_object_truthy(result);
   filterx_object_unref(result);

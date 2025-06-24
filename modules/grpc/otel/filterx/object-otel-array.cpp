@@ -28,6 +28,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
+#include "filterx/filterx-eval.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/reflection.h>
@@ -288,7 +289,7 @@ filterx_otel_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
     }
   catch (const std::runtime_error &e)
     {
-      msg_error("FilterX: Failed to create OTel Array object", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Failed to create OTel Array object", s, g_strdup(e.what()), TRUE);
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -371,29 +372,30 @@ bool
 ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors reflectors,
                          FilterXObject *object, FilterXObject **assoc_object)
 {
-  object = filterx_ref_unwrap_rw(object);
-  if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(otel_array)))
+  FilterXObject *object_unwrapped = filterx_ref_unwrap_rw(object);
+  if (!filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(otel_array)))
     {
-      if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(list)))
-        return _set_array_field_from_list(message, reflectors, object, assoc_object);
+      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(list)))
+        return _set_array_field_from_list(message, reflectors, object_unwrapped, assoc_object);
 
-      if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
+      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(message_value)))
         {
-          FilterXObject *unmarshalled = filterx_object_unmarshal(object);
+          FilterXObject *unmarshalled = filterx_object_unmarshal(object_unwrapped);
           bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(list)) &&
                          _set_array_field_from_list(message, reflectors, unmarshalled, assoc_object);
           filterx_object_unref(unmarshalled);
           return success;
         }
 
-      msg_error("otel-array: Failed to convert field, type is unsupported",
-                evt_tag_str("field", reflectors.field_descriptor->name().data()),
-                evt_tag_str("expected_type", reflectors.field_type_name()),
-                evt_tag_str("type", object->type->name));
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Type for field %s must be list or otel_array, got: %s",
+                                    reflectors.field_type_name(),
+                                    filterx_object_format_type_name(object, type_name_buf));
+      filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
       return false;
     }
 
-  FilterXOtelArray *filterx_array = (FilterXOtelArray *) object;
+  FilterXOtelArray *filterx_array = (FilterXOtelArray *) object_unwrapped;
 
   ArrayValue *array_value = _get_array_value(message, reflectors);
   array_value->CopyFrom(filterx_array->cpp->get_value());
@@ -446,7 +448,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      msg_error("FilterX: Failed to repr OTel Array object", evt_tag_str("error", e.what()));
+      filterx_eval_push_error_info("Failed to call repr() on OTel Array object", NULL, g_strdup(e.what()), TRUE);
       return FALSE;
     }
 

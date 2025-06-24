@@ -23,6 +23,7 @@
 #include "filterx/expr-condition.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-primitive.h"
+#include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
@@ -92,7 +93,10 @@ _eval_conditional(FilterXExpr *s)
   FilterXObject *result = NULL;
 
   if (!condition_value)
-    return NULL;
+    {
+      filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate condition", FALSE);
+      return NULL;
+    }
 
   if (trace_flag)
     {
@@ -106,11 +110,12 @@ _eval_conditional(FilterXExpr *s)
             g_assert_not_reached();
         }
 
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       msg_trace(filterx_object_truthy(condition_value) ? "FILTERX CONDT" : "FILTERX CONDF",
                 filterx_expr_format_location_tag(self->condition),
                 evt_tag_mem("value", buf->str, buf->len),
                 evt_tag_int("truthy", filterx_object_truthy(condition_value)),
-                evt_tag_str("type", condition_value->type->name));
+                evt_tag_str("type", filterx_object_format_type_name(condition_value, type_name_buf)));
       scratch_buffers_reclaim_marked(mark);
     }
 
@@ -120,6 +125,9 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_expr_eval(self->true_branch);
       else
         result = filterx_object_ref(condition_value);
+
+      if (!result)
+        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate true branch", FALSE);
     }
   else
     {
@@ -127,6 +135,9 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_expr_eval(self->false_branch);
       else
         result = filterx_boolean_new(TRUE);
+
+      if (!result)
+        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate false branch", FALSE);
     }
 
   filterx_object_unref(condition_value);

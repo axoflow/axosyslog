@@ -33,7 +33,8 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_object_dict_interface \
 		lib/filterx/tests/test_func_keys \
 		lib/filterx/tests/test_func_format_json \
-		lib/filterx/tests/test_scope
+		lib/filterx/tests/test_scope \
+		lib/filterx/tests/test_filterx_eval
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
 
@@ -137,3 +138,6 @@ lib_filterx_tests_test_scope_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_func_format_json_CFLAGS	= $(TEST_CFLAGS)
 lib_filterx_tests_test_func_format_json_LDADD	= $(TEST_LDADD)
+
+lib_filterx_tests_test_filterx_eval_CFLAGS	= $(TEST_CFLAGS)
+lib_filterx_tests_test_filterx_eval_LDADD	= $(TEST_LDADD)

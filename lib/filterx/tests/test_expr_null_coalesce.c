@@ -70,8 +70,7 @@ Test(expr_null_coalesce, test_coalescing_supressing_lhs_eval_error)
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(test_unknown_object)));
 
   // lhs expr eval errors must supressed by null_coalesce
-  const gchar *last_error = filterx_eval_get_last_error();
-  cr_assert_null(last_error);
+  cr_assert(filterx_eval_get_error_count() == 0);
 
   filterx_expr_unref(coalesce);
   filterx_object_unref(res);
@@ -79,7 +78,7 @@ Test(expr_null_coalesce, test_coalescing_supressing_lhs_eval_error)
 
 Test(expr_null_coalesce, test_coalescing_keep_rhs_eval_error)
 {
-  const gchar *error_msg = "rhs error";
+  const gchar *error_msg = "Failed evaluate null-coalescing operator: Failed to evaluate right hand side";
   FilterXExpr *err_expr = filterx_dummy_error_new(error_msg);
 
   // passing errorous expression as rhs
@@ -104,7 +103,7 @@ Test(expr_null_coalesce, test_coalescing_keep_rhs_eval_error_on_double_fail)
 {
   FilterXExpr *err_expr_lhs = filterx_dummy_error_new("lhs error");
 
-  const gchar *error_msg = "rhs error";
+  const gchar *error_msg = "Failed evaluate null-coalescing operator: Failed to evaluate right hand side";
   FilterXExpr *err_expr_rhs = filterx_dummy_error_new(error_msg);
 
   // passing errorous expressions

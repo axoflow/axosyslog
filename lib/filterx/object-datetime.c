@@ -162,22 +162,16 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
 
   if (len == 0)
     {
-      msg_error("filterx: empty time string",
-                evt_tag_str("from", object->type->name),
-                evt_tag_str("to", "datetime"),
-                evt_tag_str("format", "isodate"));
+      filterx_eval_push_error_info("Failed to cast string to datetime", s, "Argument is an empty string", FALSE);
       return NULL;
     }
 
   gchar *end = wall_clock_time_strptime(&wct, datefmt_isodate, str);
   if (end && *end != 0)
     {
-      msg_error("filterx: unable to parse time",
-                evt_tag_str("from", object->type->name),
-                evt_tag_str("to", "datetime"),
-                evt_tag_str("format", "isodate"),
-                evt_tag_str("time_string", str),
-                evt_tag_str("end", end));
+      filterx_eval_push_error_info("Failed to cast string to datetime", s,
+                                   g_strdup_printf("Unable to parse ISO 8601 format. str: '%s', end: '%s'", str, end),
+                                   TRUE);
       return NULL;
     }
 

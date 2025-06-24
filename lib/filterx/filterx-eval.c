@@ -57,28 +57,104 @@ filterx_eval_set_context(FilterXEvalContext *context)
   eval_context = context;
 }
 
+static void
+_backfill_error_expr(FilterXEvalContext *context)
+{
+  if (!context)
+    return;
+
+  if (context->error_count < 2)
+    return;
+
+  FilterXError *last_error = &context->errors[context->error_count - 1];
+  FilterXExpr *last_error_expr = last_error->expr;
+  if (!last_error_expr || !last_error_expr->lloc)
+    return;
+
+  for (gint i = context->error_count - 2; i >= 0; i--)
+    {
+      FilterXError *error = &context->errors[i];
+      if (error->expr && error->expr->lloc)
+        break;
+
+      error->expr = last_error_expr;
+    }
+}
+
+static FilterXError *
+_push_new_error(FilterXEvalContext *context)
+{
+  if (context->error_count == FILTERX_CONTEXT_ERROR_STACK_SIZE)
+    {
+      msg_warning_once("FilterX: Reached maximum error stack size. "
+                       "Increase this number and recompile or contact the AxoSyslog authors",
+                       evt_tag_int("max_error_stack_size", FILTERX_CONTEXT_ERROR_STACK_SIZE));
+      return NULL;
+    }
+
+  context->error_count++;
+
+  return &context->errors[context->error_count - 1];
+}
+
+static FilterXError *
+_init_local_or_context_error(FilterXEvalContext *context, FilterXError *local_error)
+{
+  if (context)
+    return _push_new_error(context);
+
+  memset(local_error, 0, sizeof(*local_error));
+  return local_error;
+}
+
+static void
+_log_to_stderr_if_needed(FilterXEvalContext *context, FilterXError *error)
+{
+  if (!context)
+    msg_error("FILTERX ERROR", filterx_error_format_location_tag(error), filterx_error_format_tag(error));
+}
+
+static void
+_clear_local_error(FilterXEvalContext *context, FilterXError *error)
+{
+  if (!error)
+    return;
+
+  gboolean is_error_local = !context;
+  if (is_error_local)
+    filterx_error_clear(error);
+}
+
 void
 filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXError local_error;
+  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  if (!error)
+    return;
 
-  if (context)
-    {
-      filterx_error_clear(&context->error);
-      filterx_error_set_values(&context->error, message, expr, object);
-    }
+  filterx_error_set_values(error, message, expr, object);
+
+  _backfill_error_expr(context);
+  _log_to_stderr_if_needed(context, error);
+  _clear_local_error(context, error);
 }
 
 void
 filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
-
-  if (!context)
+  FilterXError local_error;
+  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  if (!error)
     return;
 
-  filterx_error_clear(&context->error);
-  filterx_falsy_error_set_values(&context->error, message, expr, object);
+  filterx_falsy_error_set_values(error, message, expr, object);
+
+  _backfill_error_expr(context);
+  _log_to_stderr_if_needed(context, error);
+  _clear_local_error(context, error);
 }
 
 /* takes ownership of info */
@@ -86,18 +162,32 @@ void
 filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
-
-  if (context)
-    {
-      filterx_error_clear(&context->error);
-      filterx_error_set_values(&context->error, message, expr, NULL);
-      filterx_error_set_info(&context->error, info, free_info);
-    }
-  else
+  FilterXError local_error;
+  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  if (!error)
     {
       if (free_info)
         g_free(info);
+      return;
     }
+
+  filterx_error_set_values(error, message, expr, NULL);
+  filterx_error_set_info(error, info, free_info);
+
+  _backfill_error_expr(context);
+  _log_to_stderr_if_needed(context, error);
+  _clear_local_error(context, error);
+}
+
+static void
+_clear_errors(FilterXEvalContext *context)
+{
+  for (gint i = 0; i < context->error_count; i++)
+    {
+      filterx_error_clear(&context->errors[i]);
+    }
+
+  context->error_count = 0;
 }
 
 void
@@ -105,7 +195,10 @@ filterx_eval_clear_errors(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  filterx_error_clear(&context->error);
+  if (!context)
+    return;
+
+  _clear_errors(context);
 }
 
 const gchar *
@@ -113,23 +206,71 @@ filterx_eval_get_last_error(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  return filterx_error_format(&context->error);
+  return filterx_eval_get_error(context->error_count - 1);
 }
 
-EVTTAG *
-filterx_eval_format_last_error_tag(void)
+const gchar *
+filterx_eval_get_error(gint index)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  return filterx_error_format_tag(&context->error);
+  g_assert(context);
+  g_assert(context->error_count);
+  g_assert(index < context->error_count);
+
+  return filterx_error_format(&context->errors[index]);
 }
 
-EVTTAG *
-filterx_eval_format_last_error_location_tag(void)
+gint
+filterx_eval_get_error_count(void)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
 
-  return filterx_error_format_location_tag(&context->error);
+  return context ? context->error_count : 0;
+}
+
+EVTTAG *
+filterx_eval_format_error_tag(gint index)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  g_assert(context);
+  g_assert(context->error_count);
+  g_assert(index < context->error_count);
+
+  return filterx_error_format_tag(&context->errors[index]);
+}
+
+EVTTAG *
+filterx_eval_format_error_location_tag(gint index)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  g_assert(context);
+  g_assert(context->error_count);
+  g_assert(index < context->error_count);
+
+  return filterx_error_format_location_tag(&context->errors[index]);
+}
+
+void
+filterx_eval_dump_errors(const gchar *message)
+{
+  if (debug_flag)
+    {
+      gint error_count = filterx_eval_get_error_count();
+      gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
+
+      for (gint err_idx = 0; err_idx < error_count; err_idx++)
+        {
+          msg_debug(message,
+                    filterx_eval_format_error_index_tag(err_idx, buf),
+                    filterx_eval_format_error_location_tag(err_idx),
+                    filterx_eval_format_error_tag(err_idx));
+        }
+    }
+
+  filterx_eval_clear_errors();
 }
 
 static inline FilterXFailureInfo *
@@ -149,19 +290,26 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
   if (!context->failure_info)
     return;
 
-  if (context->error.falsy && !context->failure_info_collect_falsy)
+  g_assert(context->error_count);
+
+  FilterXError *error = &context->errors[context->error_count - 1];
+
+  if (error->falsy && !context->failure_info_collect_falsy)
     return;
 
   FilterXFailureInfo *failure_info = _new_failure_info_entry(context);
   failure_info->meta = filterx_object_ref(context->current_frame_meta);
 
-  if (!context->error.message && context->failure_info_collect_falsy)
+  if (!error->message && context->failure_info_collect_falsy)
     {
-      filterx_falsy_error_set_values(&failure_info->error, "Falsy expression", block, block_res);
+      filterx_falsy_error_set_values(&failure_info->errors[0], "Falsy expression", block, block_res);
+      failure_info->error_count = 1;
       return;
     }
 
-  filterx_error_copy(&context->error, &failure_info->error);
+  for (gint i = 0; i < context->error_count; i++)
+    filterx_error_copy(&context->errors[i], &failure_info->errors[i]);
+  failure_info->error_count = context->error_count;
 }
 
 FilterXEvalResult
@@ -172,9 +320,21 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
   FilterXObject *res = filterx_expr_eval(expr);
   if (!res)
     {
-      msg_debug("FILTERX ERROR",
-                filterx_eval_format_last_error_location_tag(),
-                filterx_eval_format_last_error_tag());
+      /* Open coded as this function is context specific. */
+      if (debug_flag)
+        {
+          gint error_count = context->error_count;
+          gchar buf[FILTERX_EVAL_ERROR_IDX_FMT_SIZE];
+
+          for (gint err_idx = 0; err_idx < error_count; err_idx++)
+            {
+              msg_debug("FILTERX ERROR",
+                        filterx_eval_format_error_index_tag(err_idx, buf),
+                        filterx_eval_format_error_location_tag(err_idx),
+                        filterx_eval_format_error_tag(err_idx));
+            }
+        }
+
       goto exit;
     }
 
@@ -188,7 +348,7 @@ exit:
   if (result == FXE_FAILURE)
     _fill_failure_info(context, expr, res);
 
-  filterx_error_clear(&context->error);
+  _clear_errors(context);
   filterx_object_unref(res);
   filterx_scope_set_dirty(context->scope);
   return result;
@@ -224,7 +384,8 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 static void
 _failure_info_clear_entry(FilterXFailureInfo *failure_info)
 {
-  filterx_error_clear(&failure_info->error);
+  for (gint i = 0; i < failure_info->error_count; i++)
+    filterx_error_clear(&failure_info->errors[i]);
   filterx_object_unref(failure_info->meta);
 }
 
@@ -307,6 +468,17 @@ GArray *
 filterx_eval_get_failure_info(FilterXEvalContext *context)
 {
   return context->failure_info;
+}
+
+EVTTAG *
+filterx_eval_format_error_index_tag(gint index, gchar *buf)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  g_assert(context);
+
+  g_snprintf(buf, FILTERX_EVAL_ERROR_IDX_FMT_SIZE, "[%d/%d]", index + 1, context->error_count);
+  return evt_tag_str("err_idx", buf);
 }
 
 EVTTAG *

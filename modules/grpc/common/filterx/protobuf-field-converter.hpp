@@ -28,6 +28,7 @@
 #include "compat/cpp-start.h"
 #include "filterx/filterx-object.h"
 #include "filterx/object-list-interface.h"
+#include "filterx/filterx-eval.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/message.h>
@@ -91,7 +92,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to get field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to get field", NULL,
+                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
+                                     TRUE);
         return nullptr;
       }
   };
@@ -112,7 +115,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to set field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to set field", NULL,
+                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
+                                     TRUE);
         return false;
       }
   }
@@ -125,17 +130,18 @@ public:
         ProtoReflectors reflectors(*message, field_name);
         if (!reflectors.field_descriptor->is_repeated())
           {
-            msg_error("protobuf-field: Failed to set repeated field, field is not repeated",
-                      evt_tag_str("field", reflectors.field_type_name()));
+            gchar *info = g_strdup_printf("field name: %s, error: field is not repeated", field_name.c_str());
+            filterx_eval_push_error_info("Failed to set repeated field", NULL, info, TRUE);
             return false;
           }
 
         FilterXObject *list = filterx_ref_unwrap_ro(object);
         if (!filterx_object_is_type(list, &FILTERX_TYPE_NAME(list)))
           {
-            msg_error("protobuf-field: Failed to set repeated field, object is not a list",
-                      evt_tag_str("field", reflectors.field_type_name()),
-                      evt_tag_str("type", list->type->name));
+            gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+            gchar *info = g_strdup_printf("field name: %s, object type: %s, error: object is not a list",
+                                          field_name.c_str(), filterx_object_format_type_name(list, type_name_buf));
+            filterx_eval_push_error_info("Failed to set repeated field", NULL, info, TRUE);
             return false;
           }
 
@@ -150,9 +156,11 @@ public:
 
             if (!this->add(message, reflectors, elem))
               {
-                msg_error("protobuf-field: Failed to add element to repeated field",
-                          evt_tag_str("field", reflectors.field_type_name()),
-                          evt_tag_str("type", elem->type->name));
+                gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+                filterx_eval_push_error_info("Failed to add element to repeated field", NULL,
+                                             g_strdup_printf("element index: %lu, element type: %s", i,
+                                                             filterx_object_format_type_name(elem, type_name_buf)),
+                                             TRUE);
                 filterx_object_unref(elem);
                 return false;
               }
@@ -165,7 +173,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to set repeated field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to set repeated field", NULL,
+                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
+                                     TRUE);
         return false;
       }
   }
@@ -180,7 +190,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to unset field:", evt_tag_str("message", ex.what()));
+        filterx_eval_push_error_info("Failed to unset field", NULL,
+                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
+                                     TRUE);
         return false;
       }
   }
@@ -194,7 +206,7 @@ public:
       }
     catch(const std::exception &ex)
       {
-        msg_error("protobuf-field: Failed to check field:", evt_tag_str("message", ex.what()));
+        msg_error("Failed to check field:", evt_tag_str("message", ex.what()));
         return false;
       }
   }
