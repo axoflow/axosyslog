@@ -11,6 +11,10 @@ set(CEF_SOURCES
     filterx-func-parse-cef.h
     filterx-func-parse-leef.c
     filterx-func-parse-leef.h
+    filterx-func-format-cef.c
+    filterx-func-format-cef.h
+    filterx-func-format-leef.c
+    filterx-func-format-leef.h
 )
 
 add_module(

@@ -27,6 +27,7 @@
 
 #include "filterx-func-parse-leef.h"
 #include "event-format-parser.h"
+#include "filterx-func-format-leef.h"
 
 #include "filterx/object-string.h"
 
@@ -120,7 +121,7 @@ Field leef_fields[] =
   { .name = "product_name"},
   { .name = "product_version"},
   { .name = "event_id"},
-  { .name = "delimiter", .optional=TRUE, .field_parser = parse_delimiter},
+  { .name = "delimiter", .optional=TRUE, .field_parser = parse_delimiter, .field_formatter = filterx_function_format_leef_format_delimiter},
   { .name = "extensions", .field_parser = parse_extensions},
 };
 
