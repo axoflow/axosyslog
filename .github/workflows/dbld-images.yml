@@ -37,9 +37,8 @@ jobs:
         image:
           - almalinux-9
           - almalinux-8
-          - fedora-39
-          - fedora-40
           - fedora-41
+          - fedora-42
           - debian-bullseye
           - debian-bookworm
           - debian-sid

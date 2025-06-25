@@ -174,13 +174,12 @@ The following x86-64 distros are supported:
 
 | Distro          | axosyslog.repo component |
 |-----------------|--------------------------|
-| Fedora 39       | fedora                   |
-| Fedora 40       | fedora                   |
 | Fedora 41       | fedora                   |
+| Fedora 42       | fedora                   |
 | AlmaLinux 8     | almalinux                |
 | AlmaLinux 9     | almalinux                |
 
-To add the RPM repo (e.g. Fedora 41):
+To add the RPM repo (e.g. Fedora 42):
 
 ```
 yum install -y epel-release

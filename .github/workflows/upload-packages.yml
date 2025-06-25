@@ -23,9 +23,8 @@ on:
 
             {"type": "rpm", "name": "almalinux-8"},
             {"type": "rpm", "name": "almalinux-9"},
-            {"type": "rpm", "name": "fedora-39"},
-            {"type": "rpm", "name": "fedora-40"},
-            {"type": "rpm", "name": "fedora-41"}
+            {"type": "rpm", "name": "fedora-41"},
+            {"type": "rpm", "name": "fedora-42"}
           ]
     secrets:
       r2-access-key:
