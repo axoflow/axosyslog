@@ -10,6 +10,10 @@ on:
       - "packaging/package-indexer/**"
       - ".github/workflows/package-indexer-checks.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     working-directory: packaging/package-indexer

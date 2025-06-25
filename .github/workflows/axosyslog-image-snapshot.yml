@@ -22,6 +22,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.type || 'branch' }}-${{ inputs.custom-image-tag || '' }}
+  cancel-in-progress: true
+
 jobs:
   prepare:
     runs-on: ubuntu-latest

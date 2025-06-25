@@ -3,6 +3,10 @@ name: Check config grammar changes (PR)
 on:
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-cfg-grammar-changes:
     runs-on: ubuntu-latest
