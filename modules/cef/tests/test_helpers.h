@@ -35,6 +35,7 @@ FilterXFunctionArg *_create_arg(const gchar *key, FilterXExpr *val);
 FilterXFunctionArg *_create_msg_arg(const gchar *input);
 FilterXFunctionArg *_create_pair_separator_arg(const gchar *pair_separator);
 FilterXFunctionArg *_create_value_separator_arg(const gchar *value_separator);
+FilterXFunctionArg *_create_separate_extensions_arg(gboolean value);
 
 FilterXFunctionArgs *_assert_create_args_inner(va_list vargs);
 FilterXFunctionArgs *_assert_create_args(int count, ...);

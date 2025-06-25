@@ -27,6 +27,7 @@
 
 #include "filterx-func-parse-leef.h"
 #include "event-format-parser.h"
+#include "filterx-func-format-leef.h"
 
 #include "filterx/object-string.h"
 
@@ -85,43 +86,63 @@ _is_delmiter_empty(gchar delimiter)
   return delimiter == 0;
 }
 
-FilterXObject *
-parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, gpointer user_data)
+gboolean
+parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result, GError **error,
+                gpointer user_data)
 {
   if (!check_flag(ctx->flags, FILTERX_FUNC_PARSE_LEEF_FLAG_20))
-    return NULL;
+    return FALSE;
   gchar delimiter = 0;
   if (_delimiter_multi_parser(input, input_len, &delimiter, error))
     {
       if (_is_delmiter_empty(delimiter))
-        return filterx_string_new("", 0);
+        {
+          *result = filterx_string_new("", 0);
+          return TRUE;
+        }
       if (!_is_pair_separator_forced(ctx))
         {
           ctx->kv_parser_pair_separator[0] = delimiter;
           ctx->kv_parser_pair_separator[1] = 0;
         }
-      return filterx_string_new(&delimiter, 1);
+      *result = filterx_string_new(&delimiter, 1);
+      return TRUE;
     }
-  return NULL;
+  return FALSE;
 }
 
-FilterXObject *
-parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, gpointer user_data)
+gboolean
+parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
+                   gpointer user_data)
 {
   if (g_strstr_len(value, value_len, "2.0"))
     set_flag(&ctx->flags, FILTERX_FUNC_PARSE_LEEF_FLAG_20, TRUE);
-  return parse_version(ctx, value, value_len, error, user_data); // call base class parser
+  return parse_version(ctx, value, value_len, result, error, user_data); // call base class parser
 }
 
-static Field leef_fields[] =
+Field leef_fields[] =
 {
   { .name = "version", .field_parser = parse_leef_version},
   { .name = "vendor"},
   { .name = "product_name"},
   { .name = "product_version"},
   { .name = "event_id"},
-  { .name = "delimiter", .optional=TRUE, .field_parser = parse_delimiter},
+  { .name = "delimiter", .optional=TRUE, .field_parser = parse_delimiter, .field_formatter = filterx_function_format_leef_format_delimiter},
   { .name = "extensions", .field_parser = parse_extensions},
+};
+
+Config leef_cfg =
+{
+  .signature = "LEEF",
+  .header = {
+    .num_fields = 7,
+    .delimiters = "|",
+    .fields = leef_fields,
+  },
+  .extensions = {
+    .pair_separator = "\t",
+    .value_separator = '=',
+  },
 };
 
 typedef struct FilterXFunctionParseLEEF_
@@ -135,21 +156,7 @@ filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **err)
 {
   FilterXFunctionParseLEEF *self = g_new0(FilterXFunctionParseLEEF, 1);
 
-  Config cfg =
-  {
-    .signature = "LEEF",
-    .header = {
-      .num_fields = 7,
-      .delimiters = "|",
-      .fields = leef_fields,
-    },
-    .extensions = {
-      .pair_separator = "\t",
-      .value_separator = '=',
-    },
-  };
-
-  if (!filterx_function_parser_init_instance(&self->super, "parse_leef", args, &cfg, err))
+  if (!filterx_function_parser_init_instance(&self->super, "parse_leef", args, &leef_cfg, err))
     goto error;
 
   filterx_function_args_free(args);

@@ -105,57 +105,66 @@ Test(filterx_func_parse_cef, test_header_missing_field)
 Test(filterx_func_parse_cef, test_basic_cef_message)
 {
   _assert_parser_result("CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|rt=1647626887000 cs9=site location Bldg cs9Label=GroupName dhost=WS6465 dst=10.55.203.12 cs2=KES cs2Label=ProductName cs3=11.0.0.0 cs3Label=ProductVersion cs10=Uninstall EDR cs10Label=TaskName cs4=885 cs4Label=TaskId cn2=4 cn2Label=TaskNewState cn1=0 cn1Label=TaskOldState",
-                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"rt\":\"1647626887000\",\"cs9\":\"site location Bldg\",\"cs9Label\":\"GroupName\",\"dhost\":\"WS6465\",\"dst\":\"10.55.203.12\",\"cs2\":\"KES\",\"cs2Label\":\"ProductName\",\"cs3\":\"11.0.0.0\",\"cs3Label\":\"ProductVersion\",\"cs10\":\"Uninstall EDR\",\"cs10Label\":\"TaskName\",\"cs4\":\"885\",\"cs4Label\":\"TaskId\",\"cn2\":\"4\",\"cn2Label\":\"TaskNewState\",\"cn1\":\"0\",\"cn1Label\":\"TaskOldState\"}}");
+                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"rt\":\"1647626887000\",\"cs9\":\"site location Bldg\",\"cs9Label\":\"GroupName\",\"dhost\":\"WS6465\",\"dst\":\"10.55.203.12\",\"cs2\":\"KES\",\"cs2Label\":\"ProductName\",\"cs3\":\"11.0.0.0\",\"cs3Label\":\"ProductVersion\",\"cs10\":\"Uninstall EDR\",\"cs10Label\":\"TaskName\",\"cs4\":\"885\",\"cs4Label\":\"TaskId\",\"cn2\":\"4\",\"cn2Label\":\"TaskNewState\",\"cn1\":\"0\",\"cn1Label\":\"TaskOldState\"}");
+}
+
+Test(filterx_func_parse_cef, test_separate_extensions)
+{
+  const gchar *input =
+    "CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|rt=1647626887000 cs9=site location Bldg cs9Label=GroupName dhost=WS6465 dst=10.55.203.12 cs2=KES cs2Label=ProductName cs3=11.0.0.0 cs3Label=ProductVersion cs10=Uninstall EDR cs10Label=TaskName cs4=885 cs4Label=TaskId cn2=4 cn2Label=TaskNewState cn1=0 cn1Label=TaskOldState";
+
+  _assert_parser_result_inner("{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"rt\":\"1647626887000\",\"cs9\":\"site location Bldg\",\"cs9Label\":\"GroupName\",\"dhost\":\"WS6465\",\"dst\":\"10.55.203.12\",\"cs2\":\"KES\",\"cs2Label\":\"ProductName\",\"cs3\":\"11.0.0.0\",\"cs3Label\":\"ProductVersion\",\"cs10\":\"Uninstall EDR\",\"cs10Label\":\"TaskName\",\"cs4\":\"885\",\"cs4Label\":\"TaskId\",\"cn2\":\"4\",\"cn2Label\":\"TaskNewState\",\"cn1\":\"0\",\"cn1Label\":\"TaskOldState\"}}",
+                              _create_msg_arg(input), _create_separate_extensions_arg(TRUE), NULL);
 }
 
 Test(filterx_func_parse_cef, test_extensions_empty)
 {
   _assert_parser_result("CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|",
-                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{}}");
+                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\"}");
 }
 
 Test(filterx_func_parse_cef, test_header_escaped_delimiter)
 {
   _assert_parser_result("CEF:0|Kaspers\\|kyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|rt=1647626887000",
-                        "{\"version\":\"0\",\"device_vendor\":\"Kaspers|kyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"rt\":\"1647626887000\"}}");
+                        "{\"version\":\"0\",\"device_vendor\":\"Kaspers|kyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"rt\":\"1647626887000\"}");
 }
 
 
 Test(filterx_func_parse_cef, test_exteansion_escaped_delimiter)
 {
   _assert_parser_result("CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|escaped=foo\\=bar\\=baz",
-                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"escaped\":\"foo=bar=baz\"}}");
+                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"escaped\":\"foo=bar=baz\"}");
 }
 
 Test(filterx_func_parse_cef, test_header_do_not_strip_whitespaces)
 {
   _assert_parser_result("CEF:0| KasperskyLab |  SecurityCenter  |   13.2.0.1511   |    KLPRCI_TaskState    |     Completed successfully     |      1      |",
-                        "{\"version\":\"0\",\"device_vendor\":\" KasperskyLab \",\"device_product\":\"  SecurityCenter  \",\"device_version\":\"   13.2.0.1511   \",\"device_event_class_id\":\"    KLPRCI_TaskState    \",\"name\":\"     Completed successfully     \",\"agent_severity\":\"      1      \",\"extensions\":{}}");
+                        "{\"version\":\"0\",\"device_vendor\":\" KasperskyLab \",\"device_product\":\"  SecurityCenter  \",\"device_version\":\"   13.2.0.1511   \",\"device_event_class_id\":\"    KLPRCI_TaskState    \",\"name\":\"     Completed successfully     \",\"agent_severity\":\"      1      \"}");
 }
 
 Test(filterx_func_parse_cef, test_extensions_space_in_value)
 {
   _assert_parser_result("CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|foo=bar baz tik=tak toe",
-                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"foo\":\"bar baz\",\"tik\":\"tak toe\"}}");
+                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"foo\":\"bar baz\",\"tik\":\"tak toe\"}");
 }
 
 Test(filterx_func_parse_cef, test_header_whitespaces)
 {
   _assert_parser_result("CEF:0|Kasper sky  Lab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|",
-                        "{\"version\":\"0\",\"device_vendor\":\"Kasper sky  Lab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{}}");
+                        "{\"version\":\"0\",\"device_vendor\":\"Kasper sky  Lab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\"}");
 }
 
 Test(filterx_func_parse_cef, test_header_leading_trailing_whitespaces)
 {
   _assert_parser_result("CEF:0|  KasperskyLab |SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|",
-                        "{\"version\":\"0\",\"device_vendor\":\"  KasperskyLab \",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{}}");
+                        "{\"version\":\"0\",\"device_vendor\":\"  KasperskyLab \",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\"}");
 }
 
 Test(filterx_func_parse_cef, test_forced_pair_separator)
 {
   const gchar *input =
     "CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|foo=bar@bar=baz@baz=tik\\=tak";
-  _assert_parser_result_inner("{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}}",
+  _assert_parser_result_inner("{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
                               _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
 }
 
@@ -163,7 +172,7 @@ Test(filterx_func_parse_cef, test_forced_value_separator)
 {
   const gchar *input =
     "CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|foo#bar bar#baz baz#tik\\#tak";
-  _assert_parser_result_inner("{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik#tak\"}}",
+  _assert_parser_result_inner("{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik#tak\"}",
                               _create_msg_arg(input), _create_value_separator_arg("#"), NULL);
 }
 

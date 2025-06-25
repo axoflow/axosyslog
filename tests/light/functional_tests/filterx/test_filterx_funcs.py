@@ -758,3 +758,177 @@ def test_protobuf_message(testcase_dir, config, syslog_ng):
     assert protobuf_message.repeated_inner_message_field[0].inner_sint64_field == 1
     assert protobuf_message.repeated_inner_message_field[1].inner_field == "b"
     assert protobuf_message.repeated_inner_message_field[1].inner_sint64_field == 2
+
+
+def test_format_cef(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    parsed_cef = {
+        "version": "0",
+        "device_vendor": "dummy|device|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "device_product": "dummy\\device\\product\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "device_version": "dummy device version containing extension pair separator that does not need to be escaped",
+        "device_event_class_id": "1234",
+        "name": "dummy=name=containing=extension=value=separator=that=does=not=need=to=be=escaped",
+        "agent_severity": "5",
+        "dummy_key1": "value",
+        "dummy_key2": "value containing pair separators that does not need to be escaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+    };
+    $MSG = format_cef(parsed_cef);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == (
+        "CEF:0|"
+        "dummy\\|device\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|"
+        "dummy\\\\device\\\\product\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|"
+        "dummy device version containing extension pair separator that does not need to be escaped|"
+        "1234|"
+        "dummy=name=containing=extension=value=separator=that=does=not=need=to=be=escaped|"
+        "5|"
+        "dummy_key1=value "
+        "dummy_key2=value containing pair separators that does not need to be escaped "
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped "
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped"
+    )
+
+
+def test_format_leef_version_1(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    parsed_leef = {
+        "version": "1.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "dummy_key1": "value",
+        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+    };
+    $MSG = format_leef(parsed_leef);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == (
+        "LEEF:1.0|"
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|"
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|"
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|"
+        "1234|"
+        "dummy_key1=value\t"
+        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t"
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t"
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped"
+    )
+
+
+def test_format_leef_version_2_no_delimiter(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    parsed_leef = {
+        "version": "2.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "dummy_key1": "value",
+        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+    };
+    $MSG = format_leef(parsed_leef);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == (
+        "LEEF:2.0|"
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|"
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|"
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|"
+        "1234|"
+        "|"
+        "dummy_key1=value\t"
+        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t"
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t"
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped"
+    )
+
+
+def test_format_leef_version_2_empty_delimiter(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    parsed_leef = {
+        "version": "2.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "delimiter": "",
+        "dummy_key1": "value",
+        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+    };
+    $MSG = format_leef(parsed_leef);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == (
+        "LEEF:2.0|"
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|"
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|"
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|"
+        "1234|"
+        "|"
+        "dummy_key1=value\t"
+        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t"
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t"
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped"
+    )
+
+
+def test_format_leef_version_2_space_delimiter(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    parsed_leef = {
+        "version": "2.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "delimiter": " ",
+        "dummy_key1": "value",
+        "dummy_key2": "value containing pair separators that does not need to be escaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+    };
+    $MSG = format_leef(parsed_leef);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == (
+        "LEEF:2.0|"
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|"
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|"
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|"
+        "1234|"
+        " |"
+        "dummy_key1=value "
+        "dummy_key2=value containing pair separators that does not need to be escaped "
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped "
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped"
+    )

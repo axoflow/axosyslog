@@ -24,6 +24,8 @@
 #include "plugin-types.h"
 #include "filterx-func-parse-cef.h"
 #include "filterx-func-parse-leef.h"
+#include "filterx-func-format-cef.h"
+#include "filterx-func-format-leef.h"
 #include "filterx/expr-function.h"
 
 static Plugin cef_plugins[] =
@@ -31,6 +33,8 @@ static Plugin cef_plugins[] =
   TEMPLATE_FUNCTION_PLUGIN(tf_cef, "format-cef-extension"),
   FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_cef),
   FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_leef),
+  FILTERX_FUNCTION_PLUGIN(format_cef),
+  FILTERX_FUNCTION_PLUGIN(format_leef),
 };
 
 gboolean

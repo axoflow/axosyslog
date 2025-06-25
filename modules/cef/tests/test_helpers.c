@@ -71,6 +71,12 @@ _create_value_separator_arg(const gchar *value_separator)
                      -1)));
 }
 
+FilterXFunctionArg *
+_create_separate_extensions_arg(gboolean value)
+{
+  return _create_arg(EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS, filterx_literal_new(filterx_boolean_new(value)));
+}
+
 FilterXFunctionArgs *
 _assert_create_args_inner(va_list vargs)
 {
