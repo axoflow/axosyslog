@@ -22,6 +22,7 @@ on:
           "ubuntu-jammy",
           "ubuntu-noble",
           "ubuntu-oracular",
+          "ubuntu-plucky",
           "almalinux-8",
           "almalinux-9",
           "fedora-41",

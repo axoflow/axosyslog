@@ -135,14 +135,15 @@ The following x86-64 distros are supported:
 
 | Distro          | sources.list component |
 |-----------------|------------------------|
-| Debian 12       | debian-bookworm        |
-| Debian 11       | debian-bullseye        |
-| Debian Unstable | debian-sid             |
-| Debian Testing  | debian-testing         |
+| Ubuntu 25.04    | ubuntu-plucky          |
 | Ubuntu 24.10    | ubuntu-oracular        |
 | Ubuntu 24.04    | ubuntu-noble           |
 | Ubuntu 22.04    | ubuntu-jammy           |
 | Ubuntu 20.04    | ubuntu-focal           |
+| Debian 12       | debian-bookworm        |
+| Debian 11       | debian-bullseye        |
+| Debian Unstable | debian-sid             |
+| Debian Testing  | debian-testing         |
 
 To add the APT repo (e.g. Ubuntu 24.04):
 
