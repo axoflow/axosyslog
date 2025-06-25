@@ -2,18 +2,24 @@ name: AxoSyslog image registry cleanup
 
 on:
   workflow_dispatch:
+    inputs:
+      image_name:
+        description: 'Image name'
+        required: true
+        default: 'axosyslog'
+        type: string
 
 jobs:
   cleanup-untagged-images:
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
-      - uses: MrAnno/delete-untagged-ghcr-action@dry-run
+      - uses: MrAnno/delete-untagged-ghcr-action@v6
         with:
           token: ${{ github.token }}
           repository_owner: ${{ github.repository_owner }}
           repository: ${{ github.repository }}
-          package_name: axosyslog
+          package_name: ${{ inputs.image_name }}
           untagged_only: true
           owner_type: org
           except_untagged_multiplatform: true
