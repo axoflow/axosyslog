@@ -38,6 +38,7 @@ debian-sid		python3,nojava
 ubuntu-focal		python3,nocriterion,nomqtt,nogrpc,notzdatalegacy,nobpf
 ubuntu-jammy		python3,notzdatalegacy,nobpf
 ubuntu-noble		python3
+ubuntu-plucky		python3
 ubuntu-oracular 	python3
 ubuntu-lunar		python3
 

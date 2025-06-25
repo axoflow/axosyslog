@@ -22,11 +22,11 @@ on:
           "ubuntu-jammy",
           "ubuntu-noble",
           "ubuntu-oracular",
+          "ubuntu-plucky",
           "almalinux-8",
           "almalinux-9",
-          "fedora-39",
-          "fedora-40",
-          "fedora-41"
+          "fedora-41",
+          "fedora-42"
         ]'
 
 

@@ -24,6 +24,10 @@ on:
         required: false
         default: "false"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   build:
@@ -33,9 +37,8 @@ jobs:
         image:
           - almalinux-9
           - almalinux-8
-          - fedora-39
-          - fedora-40
           - fedora-41
+          - fedora-42
           - debian-bullseye
           - debian-bookworm
           - debian-sid
@@ -44,6 +47,7 @@ jobs:
           - ubuntu-jammy
           - ubuntu-noble
           - ubuntu-oracular
+          - ubuntu-plucky
           - devshell
           - tarball
       fail-fast: false
