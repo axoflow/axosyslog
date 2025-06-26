@@ -52,7 +52,7 @@ Test(filterx_func_parse_cef, test_invalid_input)
 
   FilterXExpr *func = _new_parser(fx_args, &error, filterx_dict_new());
   cr_assert_null(error);
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
   cr_assert_null(obj);
 
   cr_assert_str_eq(EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG, filterx_eval_get_last_error());

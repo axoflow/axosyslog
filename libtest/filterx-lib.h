@@ -53,4 +53,13 @@ void filterx_test_expr_set_location_with_text(FilterXExpr *expr, const gchar *fi
 void init_libtest_filterx(void);
 void deinit_libtest_filterx(void);
 
+static inline FilterXObject *
+init_and_eval_expr(FilterXExpr *expr)
+{
+  cr_assert(filterx_expr_init(expr, configuration));
+  FilterXObject *result = filterx_expr_eval(expr);
+  filterx_expr_deinit(expr, configuration);
+  return result;
+}
+
 #endif
