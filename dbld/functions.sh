@@ -80,6 +80,7 @@ function _map_feature_flags_to_deb_build_profiles()
     done
 
     echo -n "sng-${OS_DISTRIBUTION} "
+    echo -n "sng-${OS_DISTRIBUTION}-${OS_DISTRIBUTION_CODE_NAME} "
     echo
 }
 
