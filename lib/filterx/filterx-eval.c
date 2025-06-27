@@ -157,22 +157,38 @@ filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXOb
   _clear_local_error(context, error);
 }
 
-/* takes ownership of info */
 void
-filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, gchar *info, gboolean free_info)
+filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, const gchar *info)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXError local_error;
   FilterXError *error = _init_local_or_context_error(context, &local_error);
   if (!error)
-    {
-      if (free_info)
-        g_free(info);
-      return;
-    }
+    return;
 
   filterx_error_set_values(error, message, expr, NULL);
-  filterx_error_set_info(error, info, free_info);
+  filterx_error_set_info(error, info);
+
+  _backfill_error_expr(context);
+  _log_to_stderr_if_needed(context, error);
+  _clear_local_error(context, error);
+}
+
+void
+filterx_eval_push_error_info_printf(const gchar *message, FilterXExpr *expr, const gchar *fmt, ...)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXError local_error;
+  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  if (!error)
+    return;
+
+  filterx_error_set_values(error, message, expr, NULL);
+
+  va_list args;
+  va_start(args, fmt);
+  filterx_error_set_vinfo(error, fmt, args);
+  va_end(args);
 
   _backfill_error_expr(context);
   _log_to_stderr_if_needed(context, error);

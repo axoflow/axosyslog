@@ -248,13 +248,13 @@ _eval_comparison(FilterXExpr *s)
 
   if (!_eval_operand(self, self->literal_lhs, self->super.lhs, &lhs_ref, &lhs))
     {
-      filterx_eval_push_error_info("Failed to compare values", s, "Failed to evaluate left hand side", FALSE);
+      filterx_eval_push_error_info("Failed to compare values", s, "Failed to evaluate left hand side");
       goto exit;
     }
 
   if (!_eval_operand(self, self->literal_rhs, self->super.rhs, &rhs_ref, &rhs))
     {
-      filterx_eval_push_error_info("Failed to compare values", s, "Failed to evaluate right hand side", FALSE);
+      filterx_eval_push_error_info("Failed to compare values", s, "Failed to evaluate right hand side");
       goto exit;
     }
 

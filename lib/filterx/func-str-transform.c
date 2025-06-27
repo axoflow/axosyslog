@@ -32,7 +32,7 @@ _extract_str_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len, gssize *
 {
   if (args == NULL || args_len != 1)
     {
-      filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
       return NULL;
     }
 
@@ -42,7 +42,7 @@ _extract_str_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len, gssize *
 
   if (!filterx_object_extract_string_ref(object, &str, &inner_len))
     {
-      filterx_simple_function_argument_error(s, "Object must be string", FALSE);
+      filterx_simple_function_argument_error(s, "Object must be string");
       return NULL;
     }
 

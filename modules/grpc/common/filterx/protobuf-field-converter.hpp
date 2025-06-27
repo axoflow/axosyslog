@@ -92,9 +92,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        filterx_eval_push_error_info("Failed to get field", NULL,
-                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
-                                     TRUE);
+        filterx_eval_push_error_info_printf("Failed to get field", NULL,
+                                            "field name: %s, error: %s",
+                                            field_name.c_str(), ex.what());
         return nullptr;
       }
   };
@@ -115,9 +115,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        filterx_eval_push_error_info("Failed to set field", NULL,
-                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
-                                     TRUE);
+        filterx_eval_push_error_info_printf("Failed to set field", NULL,
+                                            "field name: %s, error: %s",
+                                            field_name.c_str(), ex.what());
         return false;
       }
   }
@@ -130,8 +130,9 @@ public:
         ProtoReflectors reflectors(*message, field_name);
         if (!reflectors.field_descriptor->is_repeated())
           {
-            gchar *info = g_strdup_printf("field name: %s, error: field is not repeated", field_name.c_str());
-            filterx_eval_push_error_info("Failed to set repeated field", NULL, info, TRUE);
+            filterx_eval_push_error_info_printf("Failed to set repeated field", NULL,
+                                                "field name: %s, error: field is not repeated",
+                                                field_name.c_str());
             return false;
           }
 
@@ -139,9 +140,9 @@ public:
         if (!filterx_object_is_type(list, &FILTERX_TYPE_NAME(list)))
           {
             gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-            gchar *info = g_strdup_printf("field name: %s, object type: %s, error: object is not a list",
-                                          field_name.c_str(), filterx_object_format_type_name(list, type_name_buf));
-            filterx_eval_push_error_info("Failed to set repeated field", NULL, info, TRUE);
+            filterx_eval_push_error_info_printf("Failed to set repeated field", NULL,
+                                                "field name: %s, object type: %s, error: object is not a list",
+                                                field_name.c_str(), filterx_object_format_type_name(list, type_name_buf));
             return false;
           }
 
@@ -157,10 +158,9 @@ public:
             if (!this->add(message, reflectors, elem))
               {
                 gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-                filterx_eval_push_error_info("Failed to add element to repeated field", NULL,
-                                             g_strdup_printf("element index: %lu, element type: %s", i,
-                                                             filterx_object_format_type_name(elem, type_name_buf)),
-                                             TRUE);
+                filterx_eval_push_error_info_printf("Failed to add element to repeated field", NULL,
+                                                    "element index: %lu, element type: %s", i,
+                                                    filterx_object_format_type_name(elem, type_name_buf));
                 filterx_object_unref(elem);
                 return false;
               }
@@ -173,9 +173,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        filterx_eval_push_error_info("Failed to set repeated field", NULL,
-                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
-                                     TRUE);
+        filterx_eval_push_error_info_printf("Failed to set repeated field", NULL,
+                                            "field name: %s, error: %s",
+                                            field_name.c_str(), ex.what());
         return false;
       }
   }
@@ -190,9 +190,9 @@ public:
       }
     catch(const std::exception &ex)
       {
-        filterx_eval_push_error_info("Failed to unset field", NULL,
-                                     g_strdup_printf("field name: %s, error: %s", field_name.c_str(), ex.what()),
-                                     TRUE);
+        filterx_eval_push_error_info_printf("Failed to unset field", NULL,
+                                            "field name: %s, error: %s",
+                                            field_name.c_str(), ex.what());
         return false;
       }
   }

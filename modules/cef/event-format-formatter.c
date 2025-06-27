@@ -45,7 +45,7 @@ _append_signature(EventFormatterContext *ctx, GString *formatted, FilterXObject 
   if (!version_obj)
     {
       filterx_eval_push_error_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                   "Failed to get version", FALSE);
+                                   "Failed to get version");
       goto exit;
     }
 
@@ -54,10 +54,9 @@ _append_signature(EventFormatterContext *ctx, GString *formatted, FilterXObject 
   if (!filterx_object_extract_string_ref(version_obj, &version_str, &version_len))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("version must be a string, got: %s",
-                                    filterx_object_format_type_name(version_obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate event formatter function",
-                                   &ctx->formatter->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "version must be a string, got: %s",
+                                          filterx_object_format_type_name(version_obj, type_name_buf));
       goto exit;
     }
 
@@ -80,8 +79,9 @@ _append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *di
   FilterXObject *value = filterx_object_getattr_string(dict, field->name);
   if (!value)
     {
-      filterx_eval_push_error_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                   g_strdup_printf("Failed to get value for header: %s", field->name), TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "Failed to get value for header: %s",
+                                          field->name);
       goto exit;
     }
 
@@ -90,10 +90,9 @@ _append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *di
   if (!filterx_object_extract_string_ref(value, &value_str, &value_len))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Header value for must be a string, got: %s, header: %s",
-                                    filterx_object_format_type_name(value, type_name_buf), field->name);
-      filterx_eval_push_error_info("Failed to evaluate event formatter function",
-                                   &ctx->formatter->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "Header value for must be a string, got: %s, header: %s",
+                                          filterx_object_format_type_name(value, type_name_buf), field->name);
       goto exit;
     }
 
@@ -149,10 +148,9 @@ _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (!filterx_object_extract_string_ref(key, &key_str, &key_len))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Extension key must be a string, got: %s",
-                                    filterx_object_format_type_name(key, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate event formatter function",
-                                   &ctx->formatter->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "Extension key must be a string, got: %s",
+                                          filterx_object_format_type_name(key, type_name_buf));
       return FALSE;
     }
 
@@ -166,7 +164,7 @@ _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (!filterx_object_str_append(value, formatted))
     {
       filterx_eval_push_error_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                   "Failed to evaluate str() method", FALSE);
+                                   "Failed to evaluate str() method");
       return FALSE;
     }
   for (gsize i = len_before_value; i < formatted->len; i++)
@@ -190,10 +188,9 @@ _append_non_separate_extension(FilterXObject *key, FilterXObject *value, gpointe
   if (!filterx_object_extract_string_ref(key, &key_str, &key_len))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Extension key must be a string, got: %s",
-                                    filterx_object_format_type_name(key, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate event formatter function",
-                                   &ctx->formatter->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "Extension key must be a string, got: %s",
+                                          filterx_object_format_type_name(key, type_name_buf));
       return FALSE;
     }
 
@@ -236,10 +233,9 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
   if (!filterx_object_is_type(extensions_dict, &FILTERX_TYPE_NAME(dict)))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("extensions must be a dict, got: %s",
-                                    filterx_object_format_type_name(extensions, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate event formatter function",
-                                   &ctx->formatter->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "extensions must be a dict, got: %s",
+                                          filterx_object_format_type_name(extensions, type_name_buf));
       goto exit;
     }
 
@@ -276,7 +272,7 @@ _eval(FilterXExpr *s)
   if (!msg)
     {
       filterx_eval_push_error_info("Failed to evaluate event formatter function", s,
-                                   "Failed to evaluate msg_dict", FALSE);
+                                   "Failed to evaluate msg_dict");
       goto exit;
     }
 
@@ -284,9 +280,9 @@ _eval(FilterXExpr *s)
   if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("msg_dict must be a dict, got: %s",
-                                    filterx_object_format_type_name(msg, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate event formatter function", s, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", s,
+                                          "msg_dict must be a dict, got: %s",
+                                          filterx_object_format_type_name(msg, type_name_buf));
       goto exit;
     }
 

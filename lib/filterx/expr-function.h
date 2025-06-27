@@ -34,7 +34,7 @@
 
 typedef FilterXObject *(*FilterXSimpleFunctionProto)(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
-void filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info);
+void filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info);
 
 static inline void
 filterx_simple_function_free_args(FilterXObject *args[], gsize args_len)

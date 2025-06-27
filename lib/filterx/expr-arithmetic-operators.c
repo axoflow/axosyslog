@@ -45,16 +45,16 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
   if (!lhs_object)
     {
       filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super,
-                                   "Failed to evaluate left hand side", FALSE);
+                                   "Failed to evaluate left hand side");
       return FALSE;
     }
 
   if (!filterx_object_extract_generic_number(lhs_object, lhs_number))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Left hand side must be a double or integer, got: %s",
-                                    filterx_object_format_type_name(lhs_object, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super.super,
+                                          "Left hand side must be a double or integer, got: %s",
+                                          filterx_object_format_type_name(lhs_object, type_name_buf));
       filterx_object_unref(lhs_object);
       return FALSE;
     }
@@ -66,16 +66,16 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
   if (!rhs_object)
     {
       filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super,
-                                   "Failed to evaluate right hand side", FALSE);
+                                   "Failed to evaluate right hand side");
       return FALSE;
     }
 
   if (!filterx_object_extract_generic_number(rhs_object, rhs_number))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("right hand side must be a double or integer, got: %s. ",
-                                    filterx_object_format_type_name(lhs_object, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super.super,
+                                          "right hand side must be a double or integer, got: %s",
+                                          filterx_object_format_type_name(rhs_object, type_name_buf));
       filterx_object_unref(lhs_object);
       return FALSE;
     }
@@ -253,16 +253,16 @@ _eval_modulo(FilterXExpr *s)
   if (!lhs_object)
     {
       filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super,
-                                   "Failed to evaluate left hand side", FALSE);
+                                   "Failed to evaluate left hand side");
       return NULL;
     }
 
   if(!filterx_object_extract_integer(lhs_object, &lhs_number))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Left hand side must be an integer, got: %s",
-                                    filterx_object_format_type_name(lhs_object, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", &self->super.super,
+                                          "Left hand side must be an integer, got: %s",
+                                          filterx_object_format_type_name(lhs_object, type_name_buf));
       filterx_object_unref(lhs_object);
       return NULL;
     }
@@ -274,16 +274,16 @@ _eval_modulo(FilterXExpr *s)
   if (!rhs_object)
     {
       filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super,
-                                   "Failed to evaluate right hand side", FALSE);
+                                   "Failed to evaluate right hand side");
       return NULL;
     }
 
   if(!filterx_object_extract_integer(rhs_object, &rhs_number))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Right hand side must be an integer, got: %s",
-                                    filterx_object_format_type_name(rhs_object, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", &self->super.super,
+                                          "Right hand side must be an integer, got: %s",
+                                          filterx_object_format_type_name(rhs_object, type_name_buf));
       filterx_object_unref(rhs_object);
       return NULL;
     }

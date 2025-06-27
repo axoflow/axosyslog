@@ -62,7 +62,7 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
   if (!filterx_object_str_append(key, buffer))
     {
       filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
-                                   "str_append() method failed on key", FALSE);
+                                   "str_append() method failed on key");
       return FALSE;
     }
 
@@ -72,7 +72,7 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
   if (!filterx_object_str_append(value, buffer))
     {
       filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
-                                   "str_append() method failed on value", FALSE);
+                                   "str_append() method failed on value");
       return FALSE;
     }
 
@@ -103,7 +103,7 @@ _eval(FilterXExpr *s)
   if (!obj)
     {
       filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
-                                   "Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE, FALSE);
+                                   "Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE);
       return NULL;
     }
 
@@ -111,9 +111,9 @@ _eval(FilterXExpr *s)
   if (!filterx_object_is_type(kvs, &FILTERX_TYPE_NAME(dict)))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Object must be a dict, got: %s. " FILTERX_FUNC_FORMAT_KV_USAGE,
-                                    filterx_object_format_type_name(obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate format_kv()", &self->super.super,
+                                          "Object must be a dict, got: %s. " FILTERX_FUNC_FORMAT_KV_USAGE,
+                                          filterx_object_format_type_name(obj, type_name_buf));
       filterx_object_unref(obj);
       return NULL;
     }

@@ -141,7 +141,7 @@ filterx_parse_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   if (!args || args_len != 1)
     {
-      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
+      filterx_simple_function_argument_error(s, "Incorrect number of arguments");
       return NULL;
     }
   FilterXObject *arg = args[0];
@@ -149,14 +149,14 @@ filterx_parse_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   gsize repr_len;
   if (!filterx_object_extract_string_ref(arg, &repr, &repr_len))
     {
-      filterx_simple_function_argument_error(s, "Argument must be a string", FALSE);
+      filterx_simple_function_argument_error(s, "Argument must be a string");
       return NULL;
     }
   GError *error = NULL;
   FilterXObject *res = filterx_object_from_json(repr, repr_len, &error);
   if (!res)
     {
-      filterx_simple_function_argument_error(s, "Argument must be a parseable JSON string", FALSE);
+      filterx_simple_function_argument_error(s, "Argument must be a parseable JSON string");
       return NULL;
     }
   return res;
@@ -192,7 +192,7 @@ filterx_format_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   if (!args || args_len != 1)
     {
-      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
+      filterx_simple_function_argument_error(s, "Incorrect number of arguments");
       return NULL;
     }
 

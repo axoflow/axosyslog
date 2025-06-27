@@ -302,7 +302,7 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gs
   if (args_len != 1)
     {
       filterx_simple_function_argument_error(s, "unexpected number of arguments. "
-                                             METRICS_LABELS_USAGE, FALSE);
+                                             METRICS_LABELS_USAGE);
       return NULL;
     }
 
@@ -315,7 +315,7 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gs
   if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(dict)))
     {
       filterx_simple_function_argument_error(s, "unexpected type of argument. "
-                                             METRICS_LABELS_USAGE, FALSE);
+                                             METRICS_LABELS_USAGE);
       return NULL;
     }
 
@@ -327,7 +327,7 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gs
     {
       filterx_object_unref(metrics_labels);
       filterx_simple_function_argument_error(s, "failed to cast dict into metrics_labels. "
-                                             METRICS_LABELS_USAGE, FALSE);
+                                             METRICS_LABELS_USAGE);
       return NULL;
     }
 
@@ -340,7 +340,7 @@ _dedup_extract_obj_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   if (!args || args_len != 1)
     {
       filterx_simple_function_argument_error(s, "unexpected number of arguments. "
-                                             DEDUP_METRICS_LABELS_USAGE, FALSE);
+                                             DEDUP_METRICS_LABELS_USAGE);
       return NULL;
     }
 
@@ -349,7 +349,7 @@ _dedup_extract_obj_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(metrics_labels)))
     {
       filterx_simple_function_argument_error(s, "unexpected argument type. "
-                                             DEDUP_METRICS_LABELS_USAGE, FALSE);
+                                             DEDUP_METRICS_LABELS_USAGE);
       return NULL;
     }
 

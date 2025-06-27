@@ -47,15 +47,16 @@ _eval(FilterXExpr *s)
   if (!input)
     {
       filterx_eval_push_error_info("Failed to evaluate protobuf_message()", self->input,
-                                   (gchar *) "Failed to evaluate input", FALSE);
+                                   (gchar *) "Failed to evaluate input");
       return NULL;
     }
 
   FilterXObject *dict = filterx_ref_unwrap_ro(input);
   if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
     {
-      filterx_eval_push_error_info("Failed to evaluate protobuf_message()", self->input,
-                                   g_strdup_printf("Input must be a dict, got: %s", input->type->name), TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate protobuf_message()", self->input,
+                                          "Input must be a dict, got: %s",
+                                          input->type->name);
       filterx_object_unref(input);
       return NULL;
     }
@@ -67,8 +68,9 @@ _eval(FilterXExpr *s)
     }
   catch (const std::exception &ex)
     {
-      filterx_eval_push_error_info("Failed to evaluate protobuf_message()", self->input,
-                                   g_strdup_printf("Failed to format dict to protobuf message: %s", ex.what()), TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate protobuf_message()", self->input,
+                                          "Failed to format dict to protobuf message: %s",
+                                          ex.what());
       filterx_object_unref(input);
       return NULL;
     }

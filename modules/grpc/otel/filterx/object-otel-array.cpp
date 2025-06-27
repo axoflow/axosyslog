@@ -289,7 +289,7 @@ filterx_otel_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to create OTel Array object", s, g_strdup(e.what()), TRUE);
+      filterx_eval_push_error_info("Failed to create OTel Array object", s, e.what());
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -388,10 +388,10 @@ ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors ref
         }
 
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Type for field %s must be list or otel_array, got: %s",
-                                    reflectors.field_type_name(),
-                                    filterx_object_format_type_name(object, type_name_buf));
-      filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+                                          "Type for field %s must be list or otel_array, got: %s",
+                                          reflectors.field_type_name(),
+                                          filterx_object_format_type_name(object, type_name_buf));
       return false;
     }
 
@@ -448,7 +448,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to call repr() on OTel Array object", NULL, g_strdup(e.what()), TRUE);
+      filterx_eval_push_error_info("Failed to call repr() on OTel Array object", NULL, e.what());
       return FALSE;
     }
 

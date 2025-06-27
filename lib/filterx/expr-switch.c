@@ -209,7 +209,7 @@ _eval_switch(FilterXExpr *s)
   FilterXObject *selector = filterx_expr_eval_typed(self->selector);
   if (!selector)
     {
-      filterx_eval_push_error_info("Failed to evaluate switch", &self->super, "Failed to evaluate selector", FALSE);
+      filterx_eval_push_error_info("Failed to evaluate switch", &self->super, "Failed to evaluate selector");
       return NULL;
     }
 
@@ -238,8 +238,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 
   if (self->_caching_error_msg)
     {
-      filterx_eval_push_error_info("Failed to initialize switch-case", s,
-                                   g_strdup(self->_caching_error_msg->str), TRUE);
+      filterx_eval_push_error_info_printf("Failed to initialize switch-case", s, "%s", self->_caching_error_msg->str);
       return FALSE;
     }
 

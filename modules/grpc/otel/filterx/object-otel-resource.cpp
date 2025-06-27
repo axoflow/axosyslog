@@ -306,7 +306,7 @@ filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to create OTel Resource object", NULL, g_strdup(e.what()), TRUE);
+      filterx_eval_push_error_info("Failed to create OTel Resource object", NULL, e.what());
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -338,7 +338,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to call repr() on OTel Resource object", NULL, g_strdup(e.what()), TRUE);
+      filterx_eval_push_error_info("Failed to call repr() on OTel Resource object", NULL, e.what());
       return FALSE;
     }
 

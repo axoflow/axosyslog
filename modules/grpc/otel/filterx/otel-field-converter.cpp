@@ -105,9 +105,9 @@ AnyValueFieldConverter::get(Message *message, ProtoReflectors reflectors)
       return this->direct_get(any_value);
     }
 
-  gchar *info = g_strdup_printf("Unsupported protobuf field: %s, type: %s",
-                                reflectors.field_descriptor->name().data(), reflectors.field_type_name());
-  filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
+  filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+                                      "Unsupported protobuf field: %s, type: %s",
+                                      reflectors.field_descriptor->name().data(), reflectors.field_type_name());
   return nullptr;
 }
 
@@ -262,9 +262,9 @@ AnyValueFieldConverter::direct_set(AnyValue *any_value, FilterXObject *object, F
   if (!converter)
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Converting FilterX type: %s to AnyValue is not yet implemented",
-                                    filterx_object_format_type_name(object, type_name_buf));
-      filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+                                          "Converting FilterX type: %s to AnyValue is not yet implemented",
+                                          filterx_object_format_type_name(object, type_name_buf));
       return false;
     }
 
@@ -322,8 +322,7 @@ public:
         g_assert(filterx_integer_unwrap(object, &value));
         if (!SeverityNumber_IsValid((int) value))
           {
-            gchar *info = g_strdup_printf("Invalid value: %ld", value);
-            filterx_eval_push_error_info("Failed to set severity_number", NULL, info, TRUE);
+            filterx_eval_push_error_info_printf("Failed to set severity_number", NULL, "Invalid value: %ld", value);
             return false;
           }
 
@@ -332,9 +331,9 @@ public:
       }
 
     gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-    gchar *info = g_strdup_printf("Value must be integer type, got: %s",
-                                  filterx_object_format_type_name(object, type_name_buf));
-    filterx_eval_push_error_info("Failed to set severity_number", NULL, info, TRUE);
+    filterx_eval_push_error_info_printf("Failed to set severity_number", NULL,
+                                        "Value must be integer type, got: %s",
+                                        filterx_object_format_type_name(object, type_name_buf));
     return false;
   }
 
