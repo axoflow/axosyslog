@@ -78,7 +78,7 @@ _assign_eval(FilterXExpr *s)
 
   if (!value)
     {
-      filterx_eval_push_error_info("Failed to assign value", s, "Failed to evaluate right hand side", FALSE);
+      filterx_eval_push_error_info("Failed to assign value", s, "Failed to evaluate right hand side");
       return NULL;
     }
 
@@ -86,7 +86,7 @@ _assign_eval(FilterXExpr *s)
   filterx_object_unref(value);
 
   if (!result)
-    filterx_eval_push_error_info("Failed to assign value", s, "assign() method failed", FALSE);
+    filterx_eval_push_error_info("Failed to assign value", s, "assign() method failed");
 
   return result;
 }

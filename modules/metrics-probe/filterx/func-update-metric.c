@@ -57,7 +57,7 @@ _get_increment(FilterXFunctionUpdateMetric *self, gint64 *increment)
   if (!increment_obj)
     {
       filterx_eval_push_error_info("Failed to evaluate update_metric()", &self->super.super,
-                                   "Failed to evaluate increment argument", FALSE);
+                                   "Failed to evaluate increment argument");
       return FALSE;
     }
 
@@ -65,9 +65,9 @@ _get_increment(FilterXFunctionUpdateMetric *self, gint64 *increment)
   if (!success)
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Metric increment must be an integer, got: %s",
-                                    filterx_object_format_type_name(increment_obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate update_metric()", &self->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate update_metric()", &self->super.super,
+                                          "Metric increment must be an integer, got: %s",
+                                          filterx_object_format_type_name(increment_obj, type_name_buf));
     }
 
   filterx_object_unref(increment_obj);

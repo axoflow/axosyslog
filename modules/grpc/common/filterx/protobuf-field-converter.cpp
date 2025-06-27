@@ -50,10 +50,10 @@ void
 log_type_error(ProtoReflectors reflectors, FilterXObject *object)
 {
   gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-  gchar *info = g_strdup_printf("Type for field %s is unsupported: %s",
-                                reflectors.field_descriptor->name().data(),
-                                filterx_object_format_type_name(object, type_name_buf));
-  filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
+  filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+                                      "Type for field %s is unsupported: %s",
+                                      reflectors.field_descriptor->name().data(),
+                                      filterx_object_format_type_name(object, type_name_buf));
 }
 
 float
@@ -256,10 +256,10 @@ public:
     uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.field_descriptor);
     if (val > INT64_MAX)
       {
-        gchar *info = g_strdup_printf("Value of field %s is exceeding FilterX integer value range: "
-                                      "min: %ld, max: %ld, value: %" G_GUINT64_FORMAT,
-                                      reflectors.field_descriptor->name().data(), INT64_MIN, INT64_MAX, val);
-        filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
+        filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+                                            "Value of field %s is exceeding FilterX integer value range: "
+                                            "min: %ld, max: %ld, value: %" G_GUINT64_FORMAT,
+                                            reflectors.field_descriptor->name().data(), INT64_MIN, INT64_MAX, val);
         return NULL;
       }
     return filterx_integer_new(guint64(val));
@@ -660,9 +660,9 @@ _message_add_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
   catch (const std::exception &e)
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("key: %s, value type: %s, error: %s",
-                                    key_c_str, filterx_object_format_type_name(value, type_name_buf), e.what());
-      filterx_eval_push_error_info("Failed to add element to message field", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to add element to message field", NULL,
+                                          "key: %s, value type: %s, error: %s",
+                                          key_c_str, filterx_object_format_type_name(value, type_name_buf), e.what());
       return FALSE;
     }
 

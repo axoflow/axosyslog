@@ -133,9 +133,9 @@ _string_add(FilterXObject *s, FilterXObject *object)
   if (!filterx_object_extract_string_ref(object, &other_str, &other_str_len))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Right hand side must be string, got: %s",
-                                    filterx_object_format_type_name(object, type_name_buf));
-      filterx_eval_push_error_info("Failed to add object to string", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to add object to string", NULL,
+                                          "Right hand side must be string, got: %s",
+                                          filterx_object_format_type_name(object, type_name_buf));
       return NULL;
     }
 
@@ -385,9 +385,9 @@ filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   if (!filterx_object_str(object, buf))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("from_type: %s, to_type: string",
-                                    filterx_object_format_type_name(object, type_name_buf));
-      filterx_eval_push_error_info("Failed to typecast", s, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to typecast", s,
+                                          "from_type: %s, to_type: string",
+                                          filterx_object_format_type_name(object, type_name_buf));
       return NULL;
     }
 
@@ -413,9 +413,9 @@ filterx_typecast_bytes(FilterXExpr *s, FilterXObject *args[], gsize args_len)
     }
 
   gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-  gchar *info = g_strdup_printf("from_type: %s, to_type: bytes",
-                                filterx_object_format_type_name(object, type_name_buf));
-  filterx_eval_push_error_info("Failed to typecast", s, info, TRUE);
+  filterx_eval_push_error_info_printf("Failed to typecast", s,
+                                      "from_type: %s, to_type: bytes",
+                                      filterx_object_format_type_name(object, type_name_buf));
   return NULL;
 }
 
@@ -439,9 +439,9 @@ filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len)
     return filterx_protobuf_new(data, size);
 
   gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-  gchar *info = g_strdup_printf("from_type: %s, to_type: protobuf",
-                                filterx_object_format_type_name(object, type_name_buf));
-  filterx_eval_push_error_info("Failed to typecast", s, info, TRUE);
+  filterx_eval_push_error_info_printf("Failed to typecast", s,
+                                      "from_type: %s, to_type: protobuf",
+                                      filterx_object_format_type_name(object, type_name_buf));
 
   return NULL;
 }

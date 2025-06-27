@@ -121,7 +121,7 @@ filterx_simple_function_has_sdata(FilterXExpr *s, FilterXObject *args[], gsize a
 {
   if (args && args_len != 0)
     {
-      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
+      filterx_simple_function_argument_error(s, "Incorrect number of arguments");
       return NULL;
     }
 
@@ -270,7 +270,7 @@ _build_sdata_dict(FilterXExpr *s)
   return root_dict;
 error:
   filterx_object_unref(root_dict);
-  filterx_simple_function_argument_error(s, "Error building sdata dict", FALSE);
+  filterx_simple_function_argument_error(s, "Error building sdata dict");
   return NULL;
 }
 
@@ -279,7 +279,7 @@ filterx_simple_function_get_sdata(FilterXExpr *s, FilterXObject *args[], gsize a
 {
   if (args && args_len != 0)
     {
-      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
+      filterx_simple_function_argument_error(s, "Incorrect number of arguments");
       return NULL;
     }
 

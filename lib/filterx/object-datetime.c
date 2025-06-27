@@ -162,16 +162,16 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
 
   if (len == 0)
     {
-      filterx_eval_push_error_info("Failed to cast string to datetime", s, "Argument is an empty string", FALSE);
+      filterx_eval_push_error_info("Failed to cast string to datetime", s, "Argument is an empty string");
       return NULL;
     }
 
   gchar *end = wall_clock_time_strptime(&wct, datefmt_isodate, str);
   if (end && *end != 0)
     {
-      filterx_eval_push_error_info("Failed to cast string to datetime", s,
-                                   g_strdup_printf("Unable to parse ISO 8601 format. str: '%s', end: '%s'", str, end),
-                                   TRUE);
+      filterx_eval_push_error_info_printf("Failed to cast string to datetime", s,
+                                          "Unable to parse ISO 8601 format. str: '%s', end: '%s'",
+                                          str, end);
       return NULL;
     }
 

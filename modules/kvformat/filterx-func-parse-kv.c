@@ -85,10 +85,7 @@ _set_dict_value(FilterXObject *out,
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
   if (!ok)
-    {
-      filterx_eval_push_error_info("Failed to evaluate parse_kv()", NULL,
-                                   "set-subscript() method failed", FALSE);
-    }
+    filterx_eval_push_error_info("Failed to evaluate parse_kv()", NULL, "set-subscript() method failed");
 
   filterx_object_unref(dict_key);
   filterx_object_unref(dict_val);
@@ -134,7 +131,7 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   if (!obj)
     {
       filterx_eval_push_error_info("Failed to evaluate parse_kv()", &self->super.super.super,
-                                   "Failed to evaluate expression", FALSE);
+                                   "Failed to evaluate expression");
       return FALSE;
     }
 
@@ -145,9 +142,9 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   if (!filterx_object_extract_string_ref(obj, &input, &len))
     {
       gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Input must be string, got: %s",
-                                    filterx_object_format_type_name(obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate parse_kv()", &self->super.super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()", &self->super.super.super,
+                                          "Input must be string, got: %s",
+                                          filterx_object_format_type_name(obj, type_name_buf));
       goto exit;
     }
 

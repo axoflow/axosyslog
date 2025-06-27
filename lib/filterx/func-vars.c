@@ -202,7 +202,7 @@ filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize a
 {
   if (!args || args_len != 1)
     {
-      filterx_simple_function_argument_error(s, "Incorrect number of arguments", FALSE);
+      filterx_simple_function_argument_error(s, "Incorrect number of arguments");
       return NULL;
     }
 

@@ -55,7 +55,8 @@ Test(filterx_func_parse_cef, test_invalid_input)
   FilterXObject *obj = filterx_expr_eval(func);
   cr_assert_null(obj);
 
-  cr_assert_str_eq(EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG, filterx_eval_get_last_error());
+  cr_assert_str_eq("Failed to evaluate event format parser: " EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG,
+                   filterx_eval_get_last_error());
 
   filterx_expr_unref(func);
   g_error_free(error);
@@ -71,7 +72,8 @@ Test(filterx_func_parse_cef, test_invalid_version)
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg, EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG, "CEF");
+  g_string_append_printf(expected_err_msg,
+                         "Failed to evaluate event format parser: " EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG, "CEF");
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
@@ -85,7 +87,8 @@ Test(filterx_func_parse_cef, test_invalid_log_signature)
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg, EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG, "BAD_SIGN:0", "CEF");
+  g_string_append_printf(expected_err_msg,
+                         "Failed to evaluate event format parser: " EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG, "BAD_SIGN:0", "CEF");
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
@@ -98,7 +101,8 @@ Test(filterx_func_parse_cef, test_header_missing_field)
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, (guint64)3, (guint64)8);
+  g_string_append_printf(expected_err_msg,
+                         "Failed to evaluate event format parser: " EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, (guint64)3, (guint64)8);
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
