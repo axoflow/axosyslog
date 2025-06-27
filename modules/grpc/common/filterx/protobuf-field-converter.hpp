@@ -139,10 +139,9 @@ public:
         FilterXObject *list = filterx_ref_unwrap_ro(object);
         if (!filterx_object_is_type(list, &FILTERX_TYPE_NAME(list)))
           {
-            gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
             filterx_eval_push_error_info_printf("Failed to set repeated field", NULL,
                                                 "field name: %s, object type: %s, error: object is not a list",
-                                                field_name.c_str(), filterx_object_format_type_name(list, type_name_buf));
+                                                field_name.c_str(), filterx_object_get_type_name(object));
             return false;
           }
 
@@ -157,10 +156,9 @@ public:
 
             if (!this->add(message, reflectors, elem))
               {
-                gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
                 filterx_eval_push_error_info_printf("Failed to add element to repeated field", NULL,
                                                     "element index: %lu, element type: %s", i,
-                                                    filterx_object_format_type_name(elem, type_name_buf));
+                                                    filterx_object_get_type_name(elem));
                 filterx_object_unref(elem);
                 return false;
               }

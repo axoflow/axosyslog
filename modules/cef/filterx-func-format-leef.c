@@ -47,10 +47,9 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   gsize version_len;
   if (!filterx_object_extract_string_ref(version_obj, &version_str, &version_len))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate format_leef()", &ctx->formatter->super.super,
                                           "version must be a string, got: %s",
-                                          filterx_object_format_type_name(version_obj, type_name_buf));
+                                          filterx_object_get_type_name(version_obj));
       goto exit;
     }
 
@@ -76,10 +75,9 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
       gsize delimiter_len;
       if (!filterx_object_extract_string_ref(delimiter_obj, &delimiter_str, &delimiter_len))
         {
-          gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
           filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
                                               "Header value for must be a string, got: %s, header: delimiter",
-                                              filterx_object_format_type_name(delimiter_obj, type_name_buf));
+                                              filterx_object_get_type_name(delimiter_obj));
           goto exit;
         }
 

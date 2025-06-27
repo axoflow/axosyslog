@@ -133,10 +133,9 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to get element from list", NULL,
                                           "Index must be integer, got: %s",
-                                          filterx_object_format_type_name(key, type_name_buf));
+                                          filterx_object_get_type_name(key));
       return NULL;
     }
 
@@ -164,10 +163,9 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to set element of list", NULL,
                                           "Index must be integer, got: %s",
-                                          filterx_object_format_type_name(key, type_name_buf));
+                                          filterx_object_get_type_name(key));
       return FALSE;
     }
 
@@ -198,10 +196,9 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to check index of list", NULL,
                                           "Index must be integer, got: %s",
-                                          filterx_object_format_type_name(key, type_name_buf));
+                                          filterx_object_get_type_name(key));
       return FALSE;
     }
 
@@ -224,10 +221,9 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   gint64 index;
   if (!filterx_integer_unwrap(key, &index))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to unset element of list", NULL,
                                           "Index must be integer, got: %s",
-                                          filterx_object_format_type_name(key, type_name_buf));
+                                          filterx_object_get_type_name(key));
       return FALSE;
     }
 

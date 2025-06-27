@@ -261,10 +261,9 @@ AnyValueFieldConverter::direct_set(AnyValue *any_value, FilterXObject *object, F
 
   if (!converter)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to convert field", NULL,
                                           "Converting FilterX type: %s to AnyValue is not yet implemented",
-                                          filterx_object_format_type_name(object, type_name_buf));
+                                          filterx_object_get_type_name(object));
       return false;
     }
 
@@ -330,10 +329,9 @@ public:
         return true;
       }
 
-    gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
     filterx_eval_push_error_info_printf("Failed to set severity_number", NULL,
                                         "Value must be integer type, got: %s",
-                                        filterx_object_format_type_name(object, type_name_buf));
+                                        filterx_object_get_type_name(object));
     return false;
   }
 

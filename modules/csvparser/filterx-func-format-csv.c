@@ -59,7 +59,7 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
       filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
       msg_debug("FilterX: format_csv(): skipping object, type not supported",
-                evt_tag_str("type", value_unwrapped->type->name));
+                evt_tag_str("type", filterx_object_get_type_name(value)));
       return TRUE;
     }
 
@@ -125,10 +125,9 @@ _handle_dict_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
       if (!cols || !filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)) || !filterx_object_len(cols, &size))
         {
           filterx_object_unref(cols);
-          gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
           filterx_eval_push_error_info_printf("Failed to evaluate format_csv()", &self->super.super,
                                               "Columns must be a list, got: %s. " FILTERX_FUNC_FORMAT_CSV_USAGE,
-                                              filterx_object_format_type_name(cols, type_name_buf));
+                                              filterx_object_get_type_name(cols));
           return FALSE;
         }
 
@@ -171,10 +170,9 @@ _eval(FilterXExpr *s)
     success = _handle_dict_input(self, csv_data_unwrapped, formatted);
   else
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate format_csv()", &self->super.super,
                                           "Object must be a dict or list, got: %s. " FILTERX_FUNC_FORMAT_CSV_USAGE,
-                                          filterx_object_format_type_name(csv_data, type_name_buf));
+                                          filterx_object_get_type_name(csv_data));
     }
 
   filterx_object_unref(csv_data);

@@ -141,10 +141,9 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   gboolean result = FALSE;
   if (!filterx_object_extract_string_ref(obj, &input, &len))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()", &self->super.super.super,
                                           "Input must be string, got: %s",
-                                          filterx_object_format_type_name(obj, type_name_buf));
+                                          filterx_object_get_type_name(obj));
       goto exit;
     }
 

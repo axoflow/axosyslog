@@ -185,12 +185,11 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
       if (!filterx_object_repr(value, repr))
         filterx_object_marshal_append(value, repr, &type);
 
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       msg_trace("FILTERX LOADV",
                 filterx_expr_format_location_tag(s),
                 evt_tag_str("key", key_str),
                 evt_tag_str("value", repr->str),
-                evt_tag_str("type", filterx_object_format_type_name(value, type_name_buf)),
+                evt_tag_str("type", filterx_object_get_type_name(value)),
                 evt_tag_int("variable_type", variable_type));
     }
 

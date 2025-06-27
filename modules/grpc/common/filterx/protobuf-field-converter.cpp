@@ -49,11 +49,10 @@ using google::protobuf::Message;
 void
 log_type_error(ProtoReflectors reflectors, FilterXObject *object)
 {
-  gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
   filterx_eval_push_error_info_printf("Failed to convert field", NULL,
                                       "Type for field %s is unsupported: %s",
                                       reflectors.field_descriptor->name().data(),
-                                      filterx_object_format_type_name(object, type_name_buf));
+                                      filterx_object_get_type_name(object));
 }
 
 float
@@ -659,10 +658,9 @@ _message_add_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   catch (const std::exception &e)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to add element to message field", NULL,
                                           "key: %s, value type: %s, error: %s",
-                                          key_c_str, filterx_object_format_type_name(value, type_name_buf), e.what());
+                                          key_c_str, filterx_object_get_type_name(value), e.what());
       return FALSE;
     }
 

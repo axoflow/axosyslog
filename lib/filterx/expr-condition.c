@@ -110,12 +110,11 @@ _eval_conditional(FilterXExpr *s)
             g_assert_not_reached();
         }
 
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       msg_trace(filterx_object_truthy(condition_value) ? "FILTERX CONDT" : "FILTERX CONDF",
                 filterx_expr_format_location_tag(self->condition),
                 evt_tag_mem("value", buf->str, buf->len),
                 evt_tag_int("truthy", filterx_object_truthy(condition_value)),
-                evt_tag_str("type", filterx_object_format_type_name(condition_value, type_name_buf)));
+                evt_tag_str("type", filterx_object_get_type_name(condition_value)));
       scratch_buffers_reclaim_marked(mark);
     }
 

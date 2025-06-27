@@ -53,10 +53,9 @@ _eval_in(FilterXExpr *s)
   filterx_object_unref(rhs_obj);
   if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
                                           "Right hand side must be list type, got: %s",
-                                          filterx_object_format_type_name(list_obj, type_name_buf));
+                                          filterx_object_get_type_name(list_obj));
       return NULL;
     }
 

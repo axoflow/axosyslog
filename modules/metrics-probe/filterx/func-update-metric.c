@@ -64,10 +64,9 @@ _get_increment(FilterXFunctionUpdateMetric *self, gint64 *increment)
   gboolean success = filterx_integer_unwrap(increment_obj, increment);
   if (!success)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate update_metric()", &self->super.super,
                                           "Metric increment must be an integer, got: %s",
-                                          filterx_object_format_type_name(increment_obj, type_name_buf));
+                                          filterx_object_get_type_name(increment_obj));
     }
 
   filterx_object_unref(increment_obj);
