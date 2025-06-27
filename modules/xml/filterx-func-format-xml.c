@@ -20,6 +20,7 @@
  * COPYING for details.
  *
  */
+#include <ctype.h>
 #include "filterx-func-format-xml.h"
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
@@ -176,11 +177,64 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
   return TRUE;
 }
 
+static gboolean
+_is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
+{
+  const gchar *tag_str;
+  gsize tag_str_len;
+
+  if (!filterx_object_extract_string_ref(tag, &tag_str, &tag_str_len))
+    {
+      FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
+      gchar *info = g_strdup_printf("Dict key must be a string, got %s",
+                                    filterx_object_format_type_name(tag, type_name_buf));
+      filterx_eval_push_error_info(XML_ERROR_STR, &self->super.super, info, TRUE);
+      return FALSE;
+    }
+
+  if (tag_str_len > 2 &&
+      (tolower(tag_str[0]) == 'x' &&
+       tolower(tag_str[1]) == 'm' &&
+       tolower(tag_str[2]) == 'l'))
+    {
+      FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+      filterx_eval_push_error_info(XML_ERROR_STR, &self->super.super,
+                                   "Dict key can't start with with \"xml\" string", FALSE);
+      return FALSE;
+    }
+
+  // '@' and '#' characters are reserved for attributes and text, so we consider them valid
+  if (!(isalpha(tag_str[0]) || tag_str[0] == '_' || tag_str[0] == '@' || tag_str[0] == '#'))
+    {
+      FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+      filterx_eval_push_error_info(XML_ERROR_STR, &self->super.super,
+                                   "Dict key must begin with a letter or '_' character", FALSE);
+      return FALSE;
+    }
+
+  for(gint i = 1; i < tag_str_len -1; ++i)
+    {
+      if (!(isalnum(tag_str[i])) || tag_str[i]=='.' || tag_str[i] == '_' || tag_str[i] == '-')
+        {
+          FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+          filterx_eval_push_error_info(XML_ERROR_STR, &self->super.super,
+                                       "Dict key can't contain special characters, except '.', '_', and '-'", FALSE);
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 gboolean
 append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
+
+  if(!_is_valid_xml_tag_name(key, user_data))
+    return FALSE;
 
   if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
