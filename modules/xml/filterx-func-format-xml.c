@@ -20,6 +20,7 @@
  * COPYING for details.
  *
  */
+#include <ctype.h>
 #include "filterx-func-format-xml.h"
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
@@ -175,11 +176,58 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
   return TRUE;
 }
 
+static gboolean
+_is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
+{
+  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
+  const gchar *tag_str;
+  gsize tag_str_len;
+
+  if (!filterx_object_extract_string_ref(tag, &tag_str, &tag_str_len))
+    {
+      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+                                          "Dict key must be a string, got %s",
+                                          filterx_object_get_type_name(tag));
+      return FALSE;
+    }
+
+  if(tag_str_len == 0)
+    {
+      filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
+                                          "XML tag name can't be empty");
+      return FALSE;
+    }
+
+  // '@' character and "#text" string are reserved for attributes and text respectively,
+  // so we consider them valid
+  if (!(isalpha(tag_str[0]) || tag_str[0] == '_' || tag_str[0] == '@' || (g_strcmp0(tag_str, "#text") == 0)))
+    {
+      filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
+                                          "Dict key must begin with a letter or '_' character");
+      return FALSE;
+    }
+
+  for(gint i = 1; i < tag_str_len -1; ++i)
+    {
+      if (!(isalnum(tag_str[i])) || tag_str[i]=='.' || tag_str[i] == '_' || tag_str[i] == '-')
+        {
+          filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
+                                              "Dict key can't contain special characters, except '.', '_', and '-'");
+          return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 gboolean
 append_object(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
+
+  if(!_is_valid_xml_tag_name(key, user_data))
+    return FALSE;
 
   if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
