@@ -56,7 +56,7 @@ _eval(FilterXExpr *s)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate protobuf_message()", self->input,
                                           "Input must be a dict, got: %s",
-                                          input->type->name);
+                                          filterx_object_get_type_name(input));
       filterx_object_unref(input);
       return NULL;
     }

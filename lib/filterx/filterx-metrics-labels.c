@@ -199,10 +199,9 @@ _init_label_name(FilterXExpr *name)
   gchar *str = g_strdup(filterx_string_get_value_ref(obj, NULL));
   if (!str)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to initialize metrics label name", name,
                                           "Name must be a string literal, got: %s",
-                                          filterx_object_format_type_name(obj, type_name_buf));
+                                          filterx_object_get_type_name(obj));
     }
 
   filterx_object_unref(obj);
@@ -262,10 +261,9 @@ _format_dict_elem_to_store(FilterXObject *key, FilterXObject *value, gpointer us
   const gchar *name_str = _format_str_obj(key);
   if (!name_str)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to format label name", NULL,
                                           "Name must be string, got: %s",
-                                          filterx_object_format_type_name(key, type_name_buf));
+                                          filterx_object_get_type_name(key));
       return FALSE;
     }
 
@@ -296,10 +294,9 @@ _format_dict_to_store(FilterXObject *obj, DynMetricsStore *store, StatsClusterLa
   FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(dict)))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to format metrics labels", NULL,
                                           "Labels must be a dict, got: %s",
-                                          filterx_object_format_type_name(obj, type_name_buf));
+                                          filterx_object_get_type_name(obj));
       return FALSE;
     }
 

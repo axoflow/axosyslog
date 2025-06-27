@@ -77,10 +77,9 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
   FilterXObject *list_obj = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to initialize parse_csv()", &self->super.super,
                                           "Argument %s must be a list, got: %s",
-                                          arg_name, filterx_object_format_type_name(obj, type_name_buf));
+                                          arg_name, filterx_object_get_type_name(obj));
       goto exit;
     }
 
@@ -154,10 +153,9 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
   FilterXObject *cols_unwrapped = filterx_ref_unwrap_ro(*columns);
   if (!filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to initialize parse_csv()", &self->super.super,
                                           "Argument " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " must be a list, got: %s",
-                                          filterx_object_format_type_name(*columns, type_name_buf));
+                                          filterx_object_get_type_name(*columns));
       return FALSE;
     }
 
@@ -239,10 +237,9 @@ _eval_parse_csv(FilterXExpr *s)
   const gchar *input;
   if (!filterx_object_extract_string_ref(obj, &input, &len))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate parse_csv()", &self->super.super,
                                           "Input must be a string, got: %s. " FILTERX_FUNC_PARSE_CSV_USAGE,
-                                          filterx_object_format_type_name(obj, type_name_buf));
+                                          filterx_object_get_type_name(obj));
       goto exit;
     }
 

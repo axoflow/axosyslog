@@ -51,10 +51,9 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
 
   if (!filterx_object_extract_generic_number(lhs_object, lhs_number))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super.super,
                                           "Left hand side must be a double or integer, got: %s",
-                                          filterx_object_format_type_name(lhs_object, type_name_buf));
+                                          filterx_object_get_type_name(lhs_object));
       filterx_object_unref(lhs_object);
       return FALSE;
     }
@@ -72,10 +71,9 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
 
   if (!filterx_object_extract_generic_number(rhs_object, rhs_number))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super.super,
                                           "right hand side must be a double or integer, got: %s",
-                                          filterx_object_format_type_name(rhs_object, type_name_buf));
+                                          filterx_object_get_type_name(rhs_object));
       filterx_object_unref(lhs_object);
       return FALSE;
     }
@@ -259,10 +257,9 @@ _eval_modulo(FilterXExpr *s)
 
   if(!filterx_object_extract_integer(lhs_object, &lhs_number))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", &self->super.super,
                                           "Left hand side must be an integer, got: %s",
-                                          filterx_object_format_type_name(lhs_object, type_name_buf));
+                                          filterx_object_get_type_name(lhs_object));
       filterx_object_unref(lhs_object);
       return NULL;
     }
@@ -280,10 +277,9 @@ _eval_modulo(FilterXExpr *s)
 
   if(!filterx_object_extract_integer(rhs_object, &rhs_number))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", &self->super.super,
                                           "Right hand side must be an integer, got: %s",
-                                          filterx_object_format_type_name(rhs_object, type_name_buf));
+                                          filterx_object_get_type_name(rhs_object));
       filterx_object_unref(rhs_object);
       return NULL;
     }

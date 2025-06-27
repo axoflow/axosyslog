@@ -387,11 +387,10 @@ ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors ref
           return success;
         }
 
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       filterx_eval_push_error_info_printf("Failed to convert field", NULL,
                                           "Type for field %s must be list or otel_array, got: %s",
                                           reflectors.field_type_name(),
-                                          filterx_object_format_type_name(object, type_name_buf));
+                                          filterx_object_get_type_name(object));
       return false;
     }
 

@@ -764,10 +764,9 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       return self;
     }
 
-  gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
   filterx_eval_push_error_info_printf("Failed to create dict", s,
                                       "Argument must be a dict or a string, got: %s",
-                                      filterx_object_format_type_name(arg, type_name_buf));
+                                      filterx_object_get_type_name(arg));
   return NULL;
 }
 
