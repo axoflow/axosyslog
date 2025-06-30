@@ -26,13 +26,17 @@
 
 #include "plugin.h"
 #include "filterx/expr-function.h"
+#include "event-format-parser.h"
 
 #define FILTERX_FUNC_PARSE_LEEF_USAGE "Usage: parse_leef(str " \
         EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR"=string, " \
-        EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=string)"
+        EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=string, " \
+        EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS"=boolean)"
 
 FILTERX_GENERATOR_FUNCTION_DECLARE(parse_leef);
 
 FilterXExpr *filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **error);
+
+extern Config leef_cfg;
 
 #endif

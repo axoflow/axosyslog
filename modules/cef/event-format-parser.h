@@ -33,13 +33,14 @@
 #include "parser/parser-expr.h"
 #include "scanner/kv-scanner/kv-scanner.h"
 
-#include "event-format-parser-cfg.h"
+#include "event-format-cfg.h"
 
 #define EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG "no log signature %s found"
 #define EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG "the log signature differs. actual:%s expected:%s"
 #define EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG "not enough header columns provided. actual:%ld expected:%ld"
 #define EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG "input argument must be string"
 #define EVENT_FORMAT_PARSER_ERR_EMPTY_STRING "%s must be a non-empty string literal"
+#define EVENT_FORMAT_PARSER_ERR_MUST_BE_BOOLEAN "%s must be a boolean"
 #define EVENT_FORMAT_PARSER_ERR_SEPARATOR_MAX_LENGTH_EXCEEDED "%s max length exceeded"
 
 #define EVENT_FORMAT_PARSER_ERROR event_format_parser_error_quark()
@@ -49,6 +50,7 @@ GQuark event_format_parser_error_quark(void);
 
 #define EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR "pair_separator"
 #define EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR "value_separator"
+#define EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS "separate_extensions"
 
 enum EventFormatParserError
 {
@@ -66,6 +68,7 @@ struct _FilterXFunctionEventFormatParser
   Config config;
   gchar *kv_pair_separator;
   gchar kv_value_separator;
+  gboolean separate_extensions;
 };
 
 struct _EventParserContext
@@ -78,17 +81,18 @@ struct _EventParserContext
   guint64 flags;
   gchar kv_parser_pair_separator[EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN];
   gchar kv_parser_value_separator;
+  gboolean separate_extensions;
 };
 
 gboolean filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *s, const gchar *fn_name,
                                                FilterXFunctionArgs *args, Config *cfg, GError **error);
 
-FilterXObject *parse_version(EventParserContext *ctx, const gchar *value, gint value_len,
-                             GError **error,
-                             gpointer user_data);
-FilterXObject *parse_extensions(EventParserContext *ctx, const gchar *value, gint value_len,
-                                GError **error,
-                                gpointer user_data);
+gboolean parse_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result,
+                       GError **error,
+                       gpointer user_data);
+gboolean parse_extensions(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result,
+                          GError **error,
+                          gpointer user_data);
 
 static inline void append_error_message(GError **error, const char *extra_info)
 {

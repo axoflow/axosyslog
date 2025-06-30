@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023 Axoflow
- * Copyright (c) 2024 shifter
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -21,22 +21,22 @@
  *
  */
 
-#ifndef FILTERX_FUNC_PARSE_CEF_H_INCLUDED
-#define FILTERX_FUNC_PARSE_CEF_H_INCLUDED
+#include "filterx-func-format-cef.h"
+#include "filterx-func-parse-cef.h"
+#include "event-format-formatter.h"
 
-#include "plugin.h"
-#include "filterx/expr-function.h"
-#include "event-format-parser.h"
+FilterXExpr *
+filterx_function_format_cef_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionEventFormatFormatter *self = g_new0(FilterXFunctionEventFormatFormatter, 1);
 
-#define FILTERX_FUNC_PARSE_CEF_USAGE "Usage: parse_cef(str " \
-        EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR"=string, " \
-        EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=string, " \
-        EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS"=boolean)"
+  if (!filterx_function_event_format_formatter_init_instance(self, "format_cef", args, &cef_cfg, error))
+    {
+      g_free(self);
+      return NULL;
+    }
 
-FILTERX_GENERATOR_FUNCTION_DECLARE(parse_cef);
+  return &self->super.super;
+}
 
-FilterXExpr *filterx_function_parse_cef_new(FilterXFunctionArgs *args, GError **error);
-
-extern Config cef_cfg;
-
-#endif
+FILTERX_FUNCTION(format_cef, filterx_function_format_cef_new);

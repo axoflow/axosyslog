@@ -23,12 +23,11 @@
  */
 
 #include "filterx-func-parse-cef.h"
-#include "event-format-parser.h"
 
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "scanner/kv-scanner/kv-scanner.h"
 
-static Field cef_fields[] =
+Field cef_fields[] =
 {
   { .name = "version", .field_parser = parse_version},
   { .name = "device_vendor"},
@@ -38,6 +37,20 @@ static Field cef_fields[] =
   { .name = "name"},
   { .name = "agent_severity"},
   { .name = "extensions", .field_parser = parse_extensions},
+};
+
+Config cef_cfg =
+{
+  .signature = "CEF",
+  .header = {
+    .num_fields = 8,
+    .delimiters = "|",
+    .fields = cef_fields,
+  },
+  .extensions = {
+    .pair_separator = "  ",
+    .value_separator = '=',
+  },
 };
 
 typedef struct FilterXFunctionParseCEF_
@@ -50,21 +63,7 @@ filterx_function_parse_cef_new(FilterXFunctionArgs *args, GError **err)
 {
   FilterXFunctionParseCEF *self = g_new0(FilterXFunctionParseCEF, 1);
 
-  Config cfg =
-  {
-    .signature = "CEF",
-    .header = {
-      .num_fields = 8,
-      .delimiters = "|",
-      .fields = cef_fields,
-    },
-    .extensions = {
-      .pair_separator = "  ",
-      .value_separator = '=',
-    },
-  };
-
-  if (!filterx_function_parser_init_instance(&self->super, "parse_cef", args, &cfg, err))
+  if (!filterx_function_parser_init_instance(&self->super, "parse_cef", args, &cef_cfg, err))
     goto error;
 
   filterx_function_args_free(args);

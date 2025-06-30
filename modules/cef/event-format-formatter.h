@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2023 Axoflow
- * Copyright (c) 2024 shifter
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -21,22 +21,28 @@
  *
  */
 
-#ifndef FILTERX_FUNC_PARSE_CEF_H_INCLUDED
-#define FILTERX_FUNC_PARSE_CEF_H_INCLUDED
+#ifndef EVENT_FORMAT_FORMATTER_H_INCLUDED
+#define EVENT_FORMAT_FORMATTER_H_INCLUDED
 
-#include "plugin.h"
+#include "event-format-cfg.h"
 #include "filterx/expr-function.h"
-#include "event-format-parser.h"
 
-#define FILTERX_FUNC_PARSE_CEF_USAGE "Usage: parse_cef(str " \
-        EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR"=string, " \
-        EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=string, " \
-        EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS"=boolean)"
 
-FILTERX_GENERATOR_FUNCTION_DECLARE(parse_cef);
+typedef struct _FilterXFunctionEventFormatFormatter
+{
+  FilterXFunction super;
+  FilterXExpr *msg;
+  Config config;
+} FilterXFunctionEventFormatFormatter;
 
-FilterXExpr *filterx_function_parse_cef_new(FilterXFunctionArgs *args, GError **error);
+struct _EventFormatterContext
+{
+  FilterXFunctionEventFormatFormatter *formatter;
+  gchar extension_pair_separator;
+};
 
-extern Config cef_cfg;
+gboolean filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormatFormatter *self,
+    const gchar *fn_name, FilterXFunctionArgs *args,
+    Config *config, GError **error);
 
 #endif
