@@ -31,7 +31,7 @@ filterx_simple_function_len(FilterXExpr *s, FilterXObject *args[], gsize args_le
 {
   if (args == NULL || args_len != 1)
     {
-      filterx_simple_function_argument_error(s, "Requires exactly one argument", FALSE);
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
       return NULL;
     }
 

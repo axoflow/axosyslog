@@ -94,7 +94,7 @@ _eval_conditional(FilterXExpr *s)
 
   if (!condition_value)
     {
-      filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate condition", FALSE);
+      filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate condition");
       return NULL;
     }
 
@@ -110,12 +110,11 @@ _eval_conditional(FilterXExpr *s)
             g_assert_not_reached();
         }
 
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       msg_trace(filterx_object_truthy(condition_value) ? "FILTERX CONDT" : "FILTERX CONDF",
                 filterx_expr_format_location_tag(self->condition),
                 evt_tag_mem("value", buf->str, buf->len),
                 evt_tag_int("truthy", filterx_object_truthy(condition_value)),
-                evt_tag_str("type", filterx_object_format_type_name(condition_value, type_name_buf)));
+                evt_tag_str("type", filterx_object_get_type_name(condition_value)));
       scratch_buffers_reclaim_marked(mark);
     }
 
@@ -127,7 +126,7 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_object_ref(condition_value);
 
       if (!result)
-        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate true branch", FALSE);
+        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate true branch");
     }
   else
     {
@@ -137,7 +136,7 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_boolean_new(TRUE);
 
       if (!result)
-        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate false branch", FALSE);
+        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate false branch");
     }
 
   filterx_object_unref(condition_value);

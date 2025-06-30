@@ -36,10 +36,9 @@ filterx_simple_function_repr(FilterXExpr *s, FilterXObject *args[], gsize args_l
   GString *buf = scratch_buffers_alloc();
   if (!filterx_object_repr(object, buf))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("repr() failed on object of type: %s",
-                                    filterx_object_format_type_name(object, type_name_buf));
-      filterx_eval_push_error_info("Failed to convert object to string", s, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to convert object to string", s,
+                                          "repr() failed on object of type: %s",
+                                          filterx_object_get_type_name(object));
       return NULL;
     }
 

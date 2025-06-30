@@ -42,14 +42,14 @@ _setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject *new_value)
 {
   if (object->readonly)
     {
-      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super, "Object is readonly", FALSE);
+      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super, "Object is readonly");
       return NULL;
     }
 
   FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
-      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super, "setattr() method failed", FALSE);
+      filterx_eval_push_error_info("Failed to set-attribute to object", &self->super, "setattr() method failed");
       filterx_object_unref(cloned);
       return NULL;
     }
@@ -86,7 +86,7 @@ _nullv_setattr_eval(FilterXExpr *s)
   if (!object)
     {
       filterx_eval_push_error_info("Failed to set-attribute to object", &self->super,
-                                   "Failed to evaluate expression", FALSE);
+                                   "Failed to evaluate expression");
       goto exit;
     }
 
@@ -108,7 +108,7 @@ _setattr_eval(FilterXExpr *s)
   if (!new_value)
     {
       filterx_eval_push_error_info("Failed to set-attribute to object", &self->super,
-                                   "Failed to evaluate right hand side", FALSE);
+                                   "Failed to evaluate right hand side");
       return NULL;
     }
 
@@ -116,7 +116,7 @@ _setattr_eval(FilterXExpr *s)
   if (!object)
     {
       filterx_eval_push_error_info("Failed to set-attribute to object", &self->super,
-                                   "Failed to evaluate expression", FALSE);
+                                   "Failed to evaluate expression");
       goto exit;
     }
 

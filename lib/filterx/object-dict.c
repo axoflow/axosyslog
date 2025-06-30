@@ -751,9 +751,9 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       FilterXObject *self = filterx_object_from_json(repr, repr_len, &error);
       if (!self)
         {
-          gchar *info = g_strdup_printf("Argument must be a valid JSON string: %s", error->message);
-          filterx_eval_push_error_info("Failed to create dict", s, info, TRUE);
-          g_clear_error(&error);
+          filterx_eval_push_error_info_printf("Failed to create dict", s,
+                                              "Argument must be a valid JSON string: %s",
+                                              error->message);
           return NULL;
         }
       if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(dict)))
@@ -764,10 +764,9 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       return self;
     }
 
-  gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-  gchar *info = g_strdup_printf("Argument must be a dict or a string, got: %s",
-                                filterx_object_format_type_name(arg, type_name_buf));
-  filterx_eval_push_error_info("Failed to create dict", s, info, TRUE);
+  filterx_eval_push_error_info_printf("Failed to create dict", s,
+                                      "Argument must be a dict or a string, got: %s",
+                                      filterx_object_get_type_name(arg));
   return NULL;
 }
 

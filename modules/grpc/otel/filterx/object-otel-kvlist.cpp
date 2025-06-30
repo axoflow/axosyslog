@@ -131,10 +131,9 @@ KVList::set_subscript(FilterXObject *key, FilterXObject **value)
     }
   catch (const std::runtime_error &)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Key must be string type, got: %s",
-                                    filterx_object_format_type_name(key, type_name_buf));
-      filterx_eval_push_error_info("Failed to set OTel KVList element", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to set OTel KVList element", NULL,
+                                          "Key must be string type, got: %s",
+                                          filterx_object_get_type_name(key));
       return false;
     }
 
@@ -166,10 +165,9 @@ KVList::get_subscript(FilterXObject *key)
     }
   catch (const std::runtime_error &)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Key must be string type, got: %s",
-                                    filterx_object_format_type_name(key, type_name_buf));
-      filterx_eval_push_error_info("Failed to get OTel KVList element", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to get OTel KVList element", NULL,
+                                          "Key must be string type, got: %s",
+                                          filterx_object_get_type_name(key));
       return nullptr;
     }
 
@@ -190,10 +188,9 @@ KVList::is_key_set(FilterXObject *key) const
     }
   catch (const std::runtime_error &)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Key must be string type, got: %s",
-                                    filterx_object_format_type_name(key, type_name_buf));
-      filterx_eval_push_error_info("Failed to check OTel KVList element", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to check OTel KVList element", NULL,
+                                          "Key must be string type, got: %s",
+                                          filterx_object_get_type_name(key));
       return false;
     }
 }
@@ -208,10 +205,9 @@ KVList::unset_key(FilterXObject *key)
     }
   catch (const std::runtime_error &)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Key must be string type, got: %s",
-                                    filterx_object_format_type_name(key, type_name_buf));
-      filterx_eval_push_error_info("Failed to unset OTel KVList element", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to unset OTel KVList element", NULL,
+                                          "Key must be string type, got: %s",
+                                          filterx_object_get_type_name(key));
       return false;
     }
 
@@ -417,7 +413,7 @@ filterx_otel_kvlist_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize a
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to create OTel KVList object", NULL, g_strdup(e.what()), TRUE);
+      filterx_eval_push_error_info("Failed to create OTel KVList object", NULL, e.what());
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -545,11 +541,10 @@ KVListFieldConverter::set(google::protobuf::Message *message, ProtoReflectors re
           return success;
         }
 
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Type for field %s must be dict or otel_kvlist, got: %s",
-                                    reflectors.field_type_name(),
-                                    filterx_object_format_type_name(object, type_name_buf));
-      filterx_eval_push_error_info("Failed to convert field", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+                                          "Type for field %s must be dict or otel_kvlist, got: %s",
+                                          reflectors.field_type_name(),
+                                          filterx_object_get_type_name(object));
       return false;
     }
 
@@ -606,7 +601,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to call repr() on OTel KVList object", NULL, g_strdup(e.what()), TRUE);
+      filterx_eval_push_error_info("Failed to call repr() on OTel KVList object", NULL, e.what());
       return FALSE;
     }
 

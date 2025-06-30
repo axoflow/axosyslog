@@ -413,10 +413,9 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
     }
   else
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS" has unknown target type: %s",
-                  filterx_object_format_type_name(target, type_name_buf));
+                  filterx_object_get_type_name(target));
       return FALSE;
     }
   return TRUE;

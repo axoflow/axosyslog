@@ -270,7 +270,8 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gbo
       goto exit;
     }
 
-  msg_debug("FilterX: parse_xml(): Unexpected node type, overwriting", evt_tag_str("type", existing_obj->type->name));
+  msg_debug("FilterX: parse_xml(): Unexpected node type, overwriting",
+            evt_tag_str("type", filterx_object_get_type_name(existing_obj)));
   if (!filterx_object_unset_key(new_elem_context->parent_obj, new_elem_key))
     {
       _set_error(error, "failed to unset existing unexpected node");
@@ -493,7 +494,7 @@ _concatenate_text_value(FilterXObject *dict, FilterXObject *existing_text_key, c
       if (!filterx_object_extract_string_ref(existing_obj, &existing_value, &existing_value_len))
         {
           msg_debug("FilterX: parse_xml(): Unexpected node type, overwriting",
-                    evt_tag_str("type", existing_obj->type->name));
+                    evt_tag_str("type", filterx_object_get_type_name(existing_obj)));
         }
       else if (existing_value_len)
         {
@@ -572,10 +573,9 @@ _validate_fillable(FilterXGeneratorFunctionParseXml *self, FilterXObject *fillab
   FilterXObject *fillable_unwrapped = filterx_ref_unwrap_ro(fillable);
   if (!filterx_object_is_type(fillable_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Fillable must be a dict, got: %s",
-                                    filterx_object_format_type_name(fillable, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate parse_xml()", &self->super.super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super.super,
+                                          "Fillable must be a dict, got: %s",
+                                          filterx_object_get_type_name(fillable));
       return FALSE;
     }
   return TRUE;
@@ -587,10 +587,9 @@ _extract_raw_xml(FilterXGeneratorFunctionParseXml *self, FilterXObject *xml_obj,
   const gchar *raw_xml;
   if (!filterx_object_extract_string_ref(xml_obj, &raw_xml, len))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Input must be a string, got: %s",
-                                    filterx_object_format_type_name(xml_obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate parse_xml()", &self->super.super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super.super,
+                                          "Input must be a string, got: %s",
+                                          filterx_object_get_type_name(xml_obj));
       filterx_object_unref(xml_obj);
       return NULL;
     }
@@ -653,8 +652,8 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
                      g_markup_parse_context_end_parse(context, &error);
   if (!success)
     {
-      gchar *info = g_strdup(error ? error->message : "unknown error");
-      filterx_eval_push_error_info("Failed to evaluate parse_xml()", &self->super.super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super.super,
+                                          "%s", error ? error->message : "unknown error");
       if (error)
         g_error_free(error);
       goto exit;
