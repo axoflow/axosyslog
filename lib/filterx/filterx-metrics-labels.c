@@ -77,7 +77,7 @@ _format_value_expr(FilterXExpr *expr, gchar **formatted_value)
     {
       success = FALSE;
       filterx_eval_push_error_info("Failed to format metrics label value", expr,
-                                   "Failed to evaluate expression", FALSE);
+                                   "Failed to evaluate expression");
       goto exit;
     }
 
@@ -191,7 +191,7 @@ _init_label_name(FilterXExpr *name)
   if (!filterx_expr_is_literal(name))
     {
       filterx_eval_push_error_info("Failed to initialize metrics label name", name,
-                                   "Name must be a string literal, got an expression", FALSE);
+                                   "Name must be a string literal, got an expression");
       return NULL;
     }
 
@@ -199,10 +199,9 @@ _init_label_name(FilterXExpr *name)
   gchar *str = g_strdup(filterx_string_get_value_ref(obj, NULL));
   if (!str)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Name must be a string literal, got: %s",
-                                    filterx_object_format_type_name(obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to initialize metrics label name", name, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to initialize metrics label name", name,
+                                          "Name must be a string literal, got: %s",
+                                          filterx_object_get_type_name(obj));
     }
 
   filterx_object_unref(obj);
@@ -262,10 +261,9 @@ _format_dict_elem_to_store(FilterXObject *key, FilterXObject *value, gpointer us
   const gchar *name_str = _format_str_obj(key);
   if (!name_str)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Name must be string, got: %s",
-                                    filterx_object_format_type_name(key, type_name_buf));
-      filterx_eval_push_error_info("Failed to format label name", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to format label name", NULL,
+                                          "Name must be string, got: %s",
+                                          filterx_object_get_type_name(key));
       return FALSE;
     }
 
@@ -279,7 +277,7 @@ _format_dict_elem_to_store(FilterXObject *key, FilterXObject *value, gpointer us
   if (!value_str)
     {
       filterx_eval_push_error_info("Failed to format label value", NULL,
-                                   "Object does not support string casting", FALSE);
+                                   "Object does not support string casting");
       return FALSE;
     }
 
@@ -296,10 +294,9 @@ _format_dict_to_store(FilterXObject *obj, DynMetricsStore *store, StatsClusterLa
   FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
   if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(dict)))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Labels must be a dict, got: %s",
-                                    filterx_object_format_type_name(obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to format metrics labels", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to format metrics labels", NULL,
+                                          "Labels must be a dict, got: %s",
+                                          filterx_object_get_type_name(obj));
       return FALSE;
     }
 
@@ -321,7 +318,7 @@ _format_expr(FilterXExpr *expr, DynMetricsStore *store, StatsClusterLabel **labe
   if (!obj)
     {
       filterx_eval_push_error_info("Failed to format metrics labels", expr,
-                                   "Failed to evaluate expression", FALSE);
+                                   "Failed to evaluate expression");
       return FALSE;
     }
 

@@ -209,7 +209,7 @@ _subst_eval(FilterXExpr *s)
   if (!state.match_data)
     {
       /* Error happened during matching. */
-      filterx_eval_push_error_info("Failed to evaluate regexp_subst()", s, "Error happened during matching", FALSE);
+      filterx_eval_push_error_info("Failed to evaluate regexp_subst()", s, "Error happened during matching");
       result = NULL;
       goto exit;
     }
@@ -247,7 +247,7 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
   if (!filterx_expr_init(self->pattern_expr, cfg))
     {
       filterx_eval_push_error_info("Failed to initialize pattern expression", &self->super.super,
-                                   FILTERX_FUNC_REGEXP_SUBST_USAGE, FALSE);
+                                   FILTERX_FUNC_REGEXP_SUBST_USAGE);
       return NULL;
     }
 
@@ -255,7 +255,7 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
     {
       filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super,
                                    "Pattern argument must be a literal string, got an expression. "
-                                   FILTERX_FUNC_REGEXP_SUBST_USAGE, FALSE);
+                                   FILTERX_FUNC_REGEXP_SUBST_USAGE);
       return NULL;
     }
 
@@ -264,11 +264,10 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
   const gchar *pattern = filterx_string_get_value_ref(pattern_obj, &pattern_len);
   if (!pattern)
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Pattern argument must be a literal string, got: %s. "
-                                    FILTERX_FUNC_REGEXP_SUBST_USAGE,
-                                    filterx_object_format_type_name(pattern_obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to compile regexp pattern", &self->super.super,
+                                          "Pattern argument must be a literal string, got: %s. "
+                                          FILTERX_FUNC_REGEXP_SUBST_USAGE,
+                                          filterx_object_get_type_name(pattern_obj));
       filterx_object_unref(pattern_obj);
       return NULL;
     }
@@ -279,7 +278,7 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
   if (!compiled_pattern)
     {
       filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super,
-                                   FILTERX_FUNC_REGEXP_SUBST_USAGE, FALSE);
+                                   FILTERX_FUNC_REGEXP_SUBST_USAGE);
     }
 
   filterx_object_unref(pattern_obj);

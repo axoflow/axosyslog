@@ -315,8 +315,9 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       FilterXObject *self = filterx_object_from_json(repr, repr_len, &error);
       if (!self)
         {
-          gchar *info = g_strdup_printf("Argument must be a valid JSON string: %s", error->message);
-          filterx_eval_push_error_info("Failed to create list", s, info, TRUE);
+          filterx_eval_push_error_info_printf("Failed to create list", s,
+                                              "Argument must be a valid JSON string: %s",
+                                              error->message);
           g_clear_error(&error);
           return NULL;
         }
@@ -329,10 +330,9 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       return self;
     }
 
-  gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-  gchar *info = g_strdup_printf("Argument must be a list or a string, got: %s",
-                                filterx_object_format_type_name(arg, type_name_buf));
-  filterx_eval_push_error_info("Failed to create list", s, info, TRUE);
+  filterx_eval_push_error_info_printf("Failed to create list", s,
+                                      "Argument must be a list or a string, got: %s",
+                                      filterx_object_get_type_name(arg));
   return NULL;
 }
 

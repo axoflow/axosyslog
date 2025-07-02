@@ -123,7 +123,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
   if (!filterx_object_is_type(existing_obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
       _set_error(error, "failed to prepare dict for named param, parent must be dict, got \"%s\"",
-                 existing_obj_unwrapped->type->name);
+                 filterx_object_get_type_name(existing_obj));
       goto exit;
     }
 

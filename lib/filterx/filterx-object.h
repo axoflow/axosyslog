@@ -35,6 +35,7 @@ struct _FilterXType
 {
   FilterXType *super_type;
   const gchar *name;
+  const gchar *ref_name;
   gboolean is_mutable;
 
   /* WARNING: adding a new method here requires an implementation in FilterXRef as well */
@@ -73,6 +74,7 @@ void _filterx_type_init_methods(FilterXType *type);
     {           \
       .super_type = &_super_type,   \
       .name = # _name,        \
+      .ref_name = "ref/" # _name, \
       __VA_ARGS__       \
     }
 
@@ -572,16 +574,10 @@ filterx_object_is_type_or_ref(FilterXObject *object, FilterXType *type)
   return _filterx_object_is_type(object, type);
 }
 
-#define FILTERX_OBJECT_TYPE_NAME_BUF_SIZE (64)
-
 static inline const gchar *
-filterx_object_format_type_name(FilterXObject *self, gchar *buf)
+filterx_object_get_type_name(FilterXObject *self)
 {
-  if (!filterx_object_is_ref(self))
-    return self->type->name;
-
-  g_snprintf(buf, FILTERX_OBJECT_TYPE_NAME_BUF_SIZE, "ref/%s", filterx_ref_unwrap_ro(self)->type->name);
-  return buf;
+  return filterx_object_is_ref(self) ? filterx_ref_unwrap_ro(self)->type->ref_name : self->type->name;
 }
 
 /*

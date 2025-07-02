@@ -39,7 +39,7 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   if (!version_obj)
     {
       filterx_eval_push_error_info("Failed to evaluate format_leef()", &ctx->formatter->super.super,
-                                   "Failed to get version", FALSE);
+                                   "Failed to get version");
       goto exit;
     }
 
@@ -47,10 +47,9 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   gsize version_len;
   if (!filterx_object_extract_string_ref(version_obj, &version_str, &version_len))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("version must be a string, got: %s",
-                                    filterx_object_format_type_name(version_obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to evaluate format_leef()", &ctx->formatter->super.super, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate format_leef()", &ctx->formatter->super.super,
+                                          "version must be a string, got: %s",
+                                          filterx_object_get_type_name(version_obj));
       goto exit;
     }
 
@@ -63,8 +62,9 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
 
   if (strcmp(version_str, "2.0") != 0)
     {
-      filterx_eval_push_error_info("Failed to evaluate format_leef()", &ctx->formatter->super.super,
-                                   g_strdup_printf("Unsupported version: %s", version_str), TRUE);
+      filterx_eval_push_error_info_printf("Failed to evaluate format_leef()", &ctx->formatter->super.super,
+                                          "Unsupported version: %s",
+                                          version_str);
       goto exit;
     }
 
@@ -75,11 +75,9 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
       gsize delimiter_len;
       if (!filterx_object_extract_string_ref(delimiter_obj, &delimiter_str, &delimiter_len))
         {
-          gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-          gchar *info = g_strdup_printf("Header value for must be a string, got: %s, header: delimiter",
-                                        filterx_object_format_type_name(delimiter_obj, type_name_buf));
-          filterx_eval_push_error_info("Failed to evaluate event formatter function",
-                                       &ctx->formatter->super.super, info, TRUE);
+          filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                              "Header value for must be a string, got: %s, header: delimiter",
+                                              filterx_object_get_type_name(delimiter_obj));
           goto exit;
         }
 

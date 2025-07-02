@@ -62,7 +62,7 @@ _format_sck_name(FilterXMetrics *self)
   if (!key_obj)
     {
       filterx_eval_push_error_info("Failed to format metrics key", self->key.expr,
-                                   "Failed to evaluate key", FALSE);
+                                   "Failed to evaluate key");
       return NULL;
     }
 

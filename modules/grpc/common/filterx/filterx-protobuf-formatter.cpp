@@ -67,13 +67,11 @@ _format_element(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   catch (const std::exception &e)
     {
-      gchar key_type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar value_type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("key type: %s, value type: %s, error: %s",
-                                    filterx_object_format_type_name(key, key_type_name_buf),
-                                    filterx_object_format_type_name(value, value_type_name_buf),
-                                    e.what());
-      filterx_eval_push_error_info("Failed to format element", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to format element", NULL,
+                                          "key type: %s, value type: %s, error: %s",
+                                          filterx_object_get_type_name(key),
+                                          filterx_object_get_type_name(value),
+                                          e.what());
       return FALSE;
     }
 

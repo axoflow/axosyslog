@@ -66,7 +66,7 @@ _assert_cmp_lists(FilterXObject *expected, FilterXObject *provided)
       FilterXObject *expected_value_obj = filterx_list_get_subscript(expected, i);
       FilterXObject *provided_value_obj = filterx_list_get_subscript(provided, i);
       cr_assert(expected_value_obj->type == provided_value_obj->type, "expected type:%s provided type:%s",
-                expected_value_obj->type->name, provided_value_obj->type->name);
+                filterx_object_get_type_name(expected_value_obj), filterx_object_get_type_name(provided_value_obj));
 
       GString *expected_val = scratch_buffers_alloc();
       GString *provided_val = scratch_buffers_alloc();

@@ -37,9 +37,9 @@ filterx_regexp_compile_pattern(const gchar *pattern, gboolean jit_enabled, gint 
     {
       PCRE2_UCHAR error_message[128];
       pcre2_get_error_message(rc, error_message, sizeof(error_message));
-      gchar *info = g_strdup_printf("pattern: %s, error: %s, error_offset: %d",
-                                    pattern, (const gchar *) error_message, (gint) error_offset);
-      filterx_eval_push_error_info("Failed to compile regexp pattern", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to compile regexp pattern", NULL,
+                                          "pattern: %s, error: %s, error_offset: %d",
+                                          pattern, (const gchar *) error_message, (gint) error_offset);
       return NULL;
     }
 
@@ -120,15 +120,14 @@ filterx_regexp_match(FilterXReMatchState *state, pcre2_code_8 *pattern, gint sta
           return FALSE;
         default:
           /* Handle other special cases */
-          filterx_eval_push_error_info("Failed to match regexp", NULL,
-                                       g_strdup_printf("error_code: %d", rc), TRUE);
+          filterx_eval_push_error_info_printf("Failed to match regexp", NULL, "error_code: %d", rc);
           goto error;
         }
     }
   else if (rc == 0)
     {
       filterx_eval_push_error_info("Error while storing matching substrings", NULL,
-                                   "More than 256 capture groups encountered", FALSE);
+                                   "More than 256 capture groups encountered");
       goto error;
     }
 
@@ -148,16 +147,15 @@ filterx_regexp_match_eval(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXR
   state->lhs_obj = filterx_expr_eval(lhs_expr);
   if (!state->lhs_obj)
     {
-      filterx_eval_push_error_info("Failed match regexp", NULL, "Failed to evaluate left hand side", FALSE);
+      filterx_eval_push_error_info("Failed match regexp", NULL, "Failed to evaluate left hand side");
       goto error;
     }
 
   if (!filterx_object_extract_string_ref(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
     {
-      gchar type_name_buf[FILTERX_OBJECT_TYPE_NAME_BUF_SIZE];
-      gchar *info = g_strdup_printf("Left hand side must be string type, got: %s",
-                                    filterx_object_format_type_name(state->lhs_obj, type_name_buf));
-      filterx_eval_push_error_info("Failed to match regexp", NULL, info, TRUE);
+      filterx_eval_push_error_info_printf("Failed to match regexp", NULL,
+                                          "Left hand side must be string type, got: %s",
+                                          filterx_object_get_type_name(state->lhs_obj));
       goto error;
     }
 

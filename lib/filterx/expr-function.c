@@ -55,11 +55,11 @@ struct _FilterXFunctionArgs
 };
 
 void
-filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info, gboolean free_info)
+filterx_simple_function_argument_error(FilterXExpr *s, gchar *error_info)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
 
-  filterx_eval_push_error_info(self ? self->super.function_name : "n/a", s, error_info, free_info);
+  filterx_eval_push_error_info(self ? self->super.function_name : "n/a", s, error_info);
 }
 
 static inline FilterXExpr *
