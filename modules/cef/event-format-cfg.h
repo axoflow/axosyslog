@@ -42,7 +42,6 @@ typedef struct _Field
   const gchar *name;
   FieldParser field_parser;
   FieldFormatter field_formatter;
-  gboolean optional;
 } Field;
 
 typedef struct _Header

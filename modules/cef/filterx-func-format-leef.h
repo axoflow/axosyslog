@@ -32,6 +32,8 @@ FILTERX_FUNCTION_DECLARE(format_leef);
 
 FilterXExpr *filterx_function_format_leef_new(FilterXFunctionArgs *args, GError **error);
 
+gboolean filterx_function_format_leef_format_version(EventFormatterContext *ctx, GString *formatted,
+                                                     FilterXObject *dict);
 gboolean filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GString *formatted,
                                                        FilterXObject *dict);
 

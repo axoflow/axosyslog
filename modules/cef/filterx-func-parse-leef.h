@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Axoflow
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2024 shifter
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -37,6 +38,7 @@ FILTERX_GENERATOR_FUNCTION_DECLARE(parse_leef);
 
 FilterXExpr *filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **error);
 
-extern Config leef_cfg;
+extern Config leef_v1_cfg;
+extern Config leef_v2_cfg;
 
 #endif
