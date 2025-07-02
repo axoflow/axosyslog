@@ -59,9 +59,19 @@ _append_signature(EventFormatterContext *ctx, GString *formatted, FilterXObject 
       goto exit;
     }
 
-  g_string_append_printf(formatted, "%s:", ctx->formatter->config.signature);
-  g_string_append_len(formatted, version_str, version_len);
-  g_string_append_c(formatted, _header_delimiter(ctx->formatter));
+  g_string_append_printf(formatted, "%s:", ctx->config.signature);
+
+  Field *field = &ctx->config.header.fields[0];
+  if (field->field_formatter)
+    {
+      if (!field->field_formatter(ctx, formatted, dict))
+        goto exit;
+    }
+  else
+    {
+      g_string_append_len(formatted, version_str, version_len);
+      g_string_append_c(formatted, _header_delimiter(ctx->formatter));
+    }
 
   success = TRUE;
 
