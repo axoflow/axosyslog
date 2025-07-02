@@ -51,11 +51,40 @@ _get_current_field(EventParserContext *ctx)
   return &ctx->config.header.fields[ctx->field_index];
 }
 
+static FilterXObject *
+_create_unescaped_string_obj(const gchar *value, gint value_len, const gchar *chars_to_unescape)
+{
+  GString *unescaped = g_string_new_len(NULL, value_len);
+
+  for (gint i = 0; i < value_len; i++)
+    {
+      if (value[i] == '\\' && i + 1 < value_len && strchr(chars_to_unescape, value[i + 1]))
+        {
+          g_string_append_c(unescaped, value[i + 1]);
+          i++;
+          continue;
+        }
+
+      g_string_append_c(unescaped, value[i]);
+    }
+
+  gssize unascaped_len = unescaped->len;
+  gchar *unescaped_cstr = g_string_free(unescaped, FALSE);
+  return filterx_string_new_take(unescaped_cstr, unascaped_len);
+}
+
 static gboolean
 parse_default(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
               gpointer user_data)
 {
-  *result = filterx_string_new(value, value_len);
+  if (!value || value_len <= 0)
+    {
+      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT,
+                  "Header '%s' is empty", _get_current_field(ctx)->name);
+      return FALSE;
+    }
+
+  *result = _create_unescaped_string_obj(value, value_len, "\\");
   return *result != NULL;
 }
 
@@ -83,12 +112,14 @@ parse_version(EventParserContext *ctx, const gchar *value, gint value_len, Filte
 }
 
 gboolean
-_set_dict_value(FilterXObject *out,
+_set_dict_value(EventParserContext *ctx, FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)
 {
+  const gchar chars_to_unescape[] = { '\\', ctx->config.extensions.value_separator, '\0' };
+
   FILTERX_STRING_DECLARE_ON_STACK(dict_key, key, key_len);
-  FILTERX_STRING_DECLARE_ON_STACK(dict_val, value, value_len);
+  FilterXObject *dict_val = _create_unescaped_string_obj(value, value_len, chars_to_unescape);
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
 
@@ -135,7 +166,7 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
       const gchar *value = kv_scanner_get_current_value(&kv_scanner);
       gsize value_len = kv_scanner_get_current_value_len(&kv_scanner);
 
-      if (!_set_dict_value(dict_to_fill, name, name_len, value, value_len))
+      if (!_set_dict_value(ctx, dict_to_fill, name, name_len, value, value_len))
         goto exit;
     }
 
