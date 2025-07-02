@@ -70,8 +70,9 @@ exit:
   return success;
 }
 
-static gboolean
-_append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict, const Field *field)
+gboolean
+event_format_formatter_append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict,
+                                     const Field *field)
 {
   gboolean success = FALSE;
 
@@ -127,7 +128,7 @@ _append_headers(EventFormatterContext *ctx, GString *formatted, FilterXObject *d
           continue;
         }
 
-      if (!_append_header(ctx, formatted, dict, field))
+      if (!event_format_formatter_append_header(ctx, formatted, dict, field))
         return FALSE;
     }
 

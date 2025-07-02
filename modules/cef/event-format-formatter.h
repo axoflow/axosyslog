@@ -41,6 +41,9 @@ struct _EventFormatterContext
   Config config;
 };
 
+gboolean event_format_formatter_append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict,
+                                              const Field *field);
+
 gboolean filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormatFormatter *self,
     const gchar *fn_name, FilterXFunctionArgs *args,
     Config *config, GError **error);
