@@ -84,7 +84,8 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
       if (delimiter_len)
         {
           append_unsafe_utf8_as_escaped(formatted, delimiter_str, delimiter_len, 0, "\\x%02x", "\\x%02x");
-          ctx->extension_pair_separator = delimiter_str[0];
+          ctx->config.extensions.pair_separator[0] = delimiter_str[0];
+          ctx->config.extensions.pair_separator[1] = '\0';
         }
     }
 
