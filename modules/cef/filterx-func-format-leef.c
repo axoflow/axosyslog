@@ -71,6 +71,7 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   delimiter_obj = filterx_object_getattr_string(dict, "delimiter");
   if (!delimiter_obj)
     {
+      g_string_append_c(formatted, '\t');
       goto success;
     }
 
@@ -85,7 +86,10 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
     }
 
   if (!delimiter_len)
-    goto success;
+    {
+      g_string_append_c(formatted, '\t');
+      goto success;
+    }
 
   append_unsafe_utf8_as_escaped(formatted, delimiter_str, delimiter_len, 0, "\\x%02x", "\\x%02x");
   ctx->config.extensions.pair_separator[0] = delimiter_str[0];
