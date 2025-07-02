@@ -44,11 +44,11 @@ event_format_parser_error_quark(void)
   return g_quark_from_static_string("event-parser-error-quark");
 }
 
-Field
-field_by_index(FilterXFunctionEventFormatParser *self, int index)
+static Field *
+_get_current_field(EventParserContext *ctx)
 {
-  g_assert(index >= 0 && index < self->config.header.num_fields);
-  return self->config.header.fields[index];
+  g_assert(ctx->field_index >= 0 && ctx->field_index < ctx->config.header.num_fields);
+  return &ctx->config.header.fields[ctx->field_index];
 }
 
 static gboolean
@@ -125,7 +125,7 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
   gboolean success = FALSE;
 
   KVScanner kv_scanner;
-  kv_scanner_init(&kv_scanner, ctx->kv_parser_value_separator, ctx->kv_parser_pair_separator, KVSSWM_DROP);
+  kv_scanner_init(&kv_scanner, ctx->config.extensions.value_separator, ctx->config.extensions.pair_separator, KVSSWM_DROP);
   kv_scanner_set_transform_value(&kv_scanner, _unescape_value_separators);
   kv_scanner_input(&kv_scanner, input);
   while (kv_scanner_scan_next(&kv_scanner))
@@ -178,14 +178,14 @@ _parse_column(EventParserContext *ctx, FilterXObject *fillable, GError **error)
   const gchar *input = csv_scanner_get_current_value(csv_scanner);
   gint input_len = csv_scanner_get_current_value_len(csv_scanner);
 
-  Field field = field_by_index(ctx->parser, ctx->field_index);
+  Field *field = _get_current_field(ctx);
 
   while (!_match_field_to_column(ctx, &field, input, input_len, fillable, error) && !*error && field.optional)
     {
       ctx->field_index++;
-      if (ctx->field_index >= ctx->num_fields)
+      if (ctx->field_index >= ctx->config.header.num_fields)
         return FALSE;
-      field = field_by_index(ctx->parser, ctx->field_index);
+      field = _get_current_field(ctx);
     }
   ctx->column_index++;
   return TRUE;
@@ -197,15 +197,19 @@ _new_context(FilterXFunctionEventFormatParser *self,  CSVScanner *csv_scanner)
   EventParserContext ctx =
   {
     .parser = self,
-    .num_fields = self->config.header.num_fields,
+    .config = self->config,
     .field_index = 0,
     .csv_scanner = csv_scanner,
-    .flags = 0,
-    .kv_parser_value_separator = self->kv_value_separator != 0 ? self->kv_value_separator : self->config.extensions.value_separator,
     .separate_extensions = self->separate_extensions,
   };
-  g_strlcpy(ctx.kv_parser_pair_separator, self->kv_pair_separator ? : self->config.extensions.pair_separator,
-            EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN);
+
+  if (self->kv_value_separator != 0)
+    ctx.config.extensions.value_separator = self->kv_value_separator;
+
+  if (self->kv_pair_separator)
+    g_strlcpy(ctx.config.extensions.pair_separator, self->kv_pair_separator,
+              EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN);
+
   return ctx;
 }
 
@@ -221,7 +225,7 @@ parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, Filte
 
   while (csv_scanner_scan_next(&csv_scanner))
     {
-      if (ctx.field_index >= ctx.num_fields)
+      if (ctx.field_index >= ctx.config.header.num_fields)
         break;
       ok = _parse_column(&ctx, fillable, error);
       if(!ok || *error)
@@ -230,7 +234,7 @@ parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, Filte
     }
 
 
-  if (ctx.field_index <= ctx.num_fields - 1)
+  if (ctx.field_index <= ctx.config.header.num_fields - 1)
     {
       csv_scanner_take_rest(&csv_scanner);
       ok = _parse_column(&ctx, fillable, error);
@@ -238,10 +242,10 @@ parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, Filte
         goto exit;
     }
 
-  if (ctx.column_index < ctx.num_fields-1)
+  if (ctx.column_index < ctx.config.header.num_fields-1)
     {
       g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS,
-                  EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, ctx.field_index, ctx.num_fields);
+                  EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, ctx.field_index, ctx.config.header.num_fields);
     }
 exit:
   csv_scanner_deinit(&csv_scanner);

@@ -26,6 +26,8 @@
 
 #include "filterx/filterx-object.h"
 
+#define EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN (0x05)
+
 typedef struct _FilterXFunctionEventFormatParser FilterXFunctionEventFormatParser;
 typedef struct _EventParserContext EventParserContext;
 typedef struct _EventFormatterContext EventFormatterContext;
@@ -53,7 +55,7 @@ typedef struct _Header
 typedef struct _Extensions
 {
   gchar value_separator;
-  const gchar *pair_separator;
+  gchar pair_separator[EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN];
 } Extensions;
 
 typedef struct _Config

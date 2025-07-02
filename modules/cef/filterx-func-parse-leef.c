@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2024 shifter
  *
  *
@@ -102,8 +103,8 @@ parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, Fil
         }
       if (!_is_pair_separator_forced(ctx))
         {
-          ctx->kv_parser_pair_separator[0] = delimiter;
-          ctx->kv_parser_pair_separator[1] = 0;
+          ctx->config.extensions.pair_separator[0] = delimiter;
+          ctx->config.extensions.pair_separator[1] = 0;
         }
       *result = filterx_string_new(&delimiter, 1);
       return TRUE;
