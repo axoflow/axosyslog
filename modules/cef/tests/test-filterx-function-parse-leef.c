@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Axoflow
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2024 shifter
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -66,7 +67,7 @@ Test(filterx_func_parse_leef, test_invalid_version)
 {
   GError *init_err = NULL;
   const gchar *input =
-    "INVALID|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black";
+    "INVALID|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black";
   cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
   cr_assert_null(init_err);
   const gchar *last_error = filterx_eval_get_last_error();
@@ -81,7 +82,7 @@ Test(filterx_func_parse_leef, test_invalid_log_signature)
 {
   GError *init_err = NULL;
   const gchar *input =
-    "BAD_SIGN:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black";
+    "BAD_SIGN:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black";
   cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
   cr_assert_null(init_err);
   const gchar *last_error = filterx_eval_get_last_error();
@@ -101,22 +102,21 @@ Test(filterx_func_parse_leef, test_header_missing_field)
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg,
-                         "Failed to evaluate event format parser: " EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, (guint64)3, (guint64)7);
+  g_string_append_printf(expected_err_msg, "Failed to evaluate event format parser: Header 'product_version' is empty");
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
 Test(filterx_func_parse_leef, test_basic_leef_message)
 {
-  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
-                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5cat=anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black",
+                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
 }
 
 Test(filterx_func_parse_leef, test_separate_extensions)
 {
   const gchar *input =
-    "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black";
-  _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5cat=anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}",
+    "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black";
+  _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}",
                               _create_msg_arg(input), _create_separate_extensions_arg(TRUE), NULL);
 }
 
@@ -128,14 +128,13 @@ Test(filterx_func_parse_leef, test_extensions_empty)
 
 Test(filterx_func_parse_leef, test_header_escaped_delimiter)
 {
-  _assert_parser_result("LEEF:1.0|Micro\\|soft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black",
-                        "{\"version\":\"1.0\",\"vendor\":\"Micro|soft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5cat=anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
+  _assert_parser_result("LEEF:1.0|Micro\\|soft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black",
+                        "{\"version\":\"1.0\",\"vendor\":\"Micro|soft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
 }
-
 
 Test(filterx_func_parse_leef, test_extension_escaped_delimiter)
 {
-  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz tik=tik\\=tak\\=toe",
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz\ttik=tik\\=tak\\=toe",
                         "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}");
 }
 
@@ -147,7 +146,7 @@ Test(filterx_func_parse_leef, test_header_do_not_strip_whitespaces)
 
 Test(filterx_func_parse_leef, test_extensions_space_in_value)
 {
-  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar baz tik=tak toe",
+  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar baz\ttik=tak toe",
                         "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar baz\",\"tik\":\"tak toe\"}");
 }
 
@@ -159,7 +158,7 @@ Test(filterx_func_parse_leef, test_header_whitespaces)
 
 Test(filterx_func_parse_leef, test_header_leading_trailing_whitespaces)
 {
-  _assert_parser_result("LEEF:1.0|  Microsoft |MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz tik=tik\\=tak\\=toe",
+  _assert_parser_result("LEEF:1.0|  Microsoft |MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz\ttik=tik\\=tak\\=toe",
                         "{\"version\":\"1.0\",\"vendor\":\"  Microsoft \",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}");
 }
 
@@ -167,12 +166,6 @@ Test(filterx_func_parse_leef, test_header_optional_field_set)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar",
                         "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"^\",\"foo\":\"bar\"}");
-}
-
-Test(filterx_func_parse_leef, test_header_optional_field_unset)
-{
-  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_custom_delimiter)
@@ -195,19 +188,18 @@ Test(filterx_func_parse_leef, test_header_custom_nonstandard_hex_delimiter)
 
 Test(filterx_func_parse_leef, test_header_custom_invalid_delimiter)
 {
-  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|INVALID|foo=bar^bar=baz^baz=tik\\=tak",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
-}
-
-Test(filterx_func_parse_leef, test_header_custom_delimiter_v1)
-{
-  _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar^bar=baz^baz=tik\\=tak",
-                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
+  GError *init_err = NULL;
+  const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|INVALID|foo=bar^bar=baz^baz=tik\\=tak";
+  cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
+  cr_assert_null(init_err);
+  const gchar *last_error = filterx_eval_get_last_error();
+  cr_assert_not_null(last_error);
+  cr_assert_str_eq("Failed to evaluate event format parser: Invalid delimiter: 'INVALID'", last_error);
 }
 
 Test(filterx_func_parse_leef, test_header_empty_delimiter)
 {
-  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345||foo=bar bar=baz baz=tik\\=tak",
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345||foo=bar\tbar=baz\tbaz=tik\\=tak",
                         "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
 }
 
@@ -220,9 +212,14 @@ Test(filterx_func_parse_leef, test_forced_pair_separator_v1_no_delimiter_field)
 
 Test(filterx_func_parse_leef, test_forced_pair_separator_v2_no_delimiter_field)
 {
+  GError *init_err = NULL;
   const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar@bar=baz@baz=tik\\=tak";
-  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
-                              _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
+  cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
+  cr_assert_null(init_err);
+  const gchar *last_error = filterx_eval_get_last_error();
+  cr_assert_not_null(last_error);
+  cr_assert_str_eq("Failed to evaluate event format parser: Invalid delimiter: 'foo=bar@bar=baz@baz=tik\\=tak'",
+                   last_error);
 }
 
 Test(filterx_func_parse_leef, test_forced_pair_separator_v2_with_delimiter_field)

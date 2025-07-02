@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Axoflow
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2024 shifter
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -101,8 +102,7 @@ Test(filterx_func_parse_cef, test_header_missing_field)
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg,
-                         "Failed to evaluate event format parser: " EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, (guint64)3, (guint64)8);
+  g_string_append_printf(expected_err_msg, "Failed to evaluate event format parser: Header 'device_version' is empty");
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
