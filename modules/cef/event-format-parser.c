@@ -51,6 +51,14 @@ _get_current_field(EventParserContext *ctx)
   return &ctx->config.header.fields[ctx->field_index];
 }
 
+void
+event_format_parser_context_set_header(EventParserContext *ctx, Header *new_header)
+{
+  ctx->config.header.fields = new_header->fields;
+  ctx->config.header.num_fields = new_header->num_fields;
+  csv_scanner_set_expected_columns(ctx->csv_scanner, new_header->num_fields);
+}
+
 static FilterXObject *
 _create_unescaped_string_obj(const gchar *value, gint value_len, const gchar *chars_to_unescape)
 {

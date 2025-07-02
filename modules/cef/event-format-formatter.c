@@ -30,6 +30,13 @@
 
 #define FILTERX_FUNC_EVENT_FORMAT_FORMATTER_USAGE "Usage: %s(msg_dict)"
 
+void
+event_format_formatter_context_set_header(EventFormatterContext *ctx, Header *new_header)
+{
+  ctx->config.header.fields = new_header->fields;
+  ctx->config.header.num_fields = new_header->num_fields;
+}
+
 static gchar
 _header_delimiter(FilterXFunctionEventFormatFormatter *self)
 {

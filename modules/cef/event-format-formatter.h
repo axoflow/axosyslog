@@ -41,6 +41,7 @@ struct _EventFormatterContext
   Config config;
 };
 
+void event_format_formatter_context_set_header(EventFormatterContext *ctx, Header *new_header);
 gboolean event_format_formatter_append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict,
                                               const Field *field);
 

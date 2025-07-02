@@ -91,6 +91,8 @@ gboolean parse_extensions(EventParserContext *ctx, const gchar *value, gint valu
                           GError **error,
                           gpointer user_data);
 
+void event_format_parser_context_set_header(EventParserContext *ctx, Header *new_header);
+
 static inline void append_error_message(GError **error, const char *extra_info)
 {
   if (error == NULL || *error == NULL)
