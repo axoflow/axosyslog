@@ -93,6 +93,4 @@ void csv_scanner_set_expected_columns(CSVScanner *scanner, gint expected_columns
 void csv_scanner_init(CSVScanner *pstate, CSVScannerOptions *options, const gchar *input);
 void csv_scanner_deinit(CSVScanner *pstate);
 
-gboolean csv_scanner_take_rest(CSVScanner *self);
-
 #endif

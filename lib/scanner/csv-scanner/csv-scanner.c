@@ -477,8 +477,8 @@ _switch_to_next_column(CSVScanner *self)
   g_assert_not_reached();
 }
 
-gboolean
-csv_scanner_take_rest(CSVScanner *self)
+static gboolean
+_take_rest(CSVScanner *self)
 {
   _parse_left_whitespace(self);
   g_string_assign(self->current_value, self->src);
@@ -496,7 +496,7 @@ csv_scanner_scan_next(CSVScanner *self)
 
   if (_is_last_column(self) && (self->options->flags & CSV_SCANNER_GREEDY))
     {
-      return csv_scanner_take_rest(self);
+      return _take_rest(self);
     }
   else if (self->src[0] == 0)
     {
