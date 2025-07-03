@@ -45,7 +45,7 @@ _set_timestamp_eval(FilterXExpr *s)
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_SET_TIMESTAMP_USAGE, s, NULL);
+      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_SET_TIMESTAMP_USAGE, s, NULL);
       return NULL;
     }
 
@@ -54,7 +54,7 @@ _set_timestamp_eval(FilterXExpr *s)
   if (!filterx_object_extract_datetime(datetime_obj, &datetime))
     {
       filterx_object_unref(datetime_obj);
-      filterx_eval_push_error("Second argument must be of datetime type. " FILTERX_FUNC_SET_TIMESTAMP_USAGE, s, NULL);
+      filterx_eval_push_error("First argument must be of datetime type. " FILTERX_FUNC_SET_TIMESTAMP_USAGE, s, NULL);
       return NULL;
     }
 
