@@ -85,7 +85,7 @@ _set_dict_value(FilterXObject *out,
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
   if (!ok)
-    filterx_eval_push_error_info("Failed to evaluate parse_kv()", NULL, "set-subscript() method failed");
+    filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", NULL, "set-subscript() method failed");
 
   filterx_object_unref(dict_key);
   filterx_object_unref(dict_val);
@@ -130,8 +130,8 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
     {
-      filterx_eval_push_error_info("Failed to evaluate parse_kv()", &self->super.super.super,
-                                   "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", &self->super.super.super,
+                                          "Failed to evaluate expression");
       return FALSE;
     }
 

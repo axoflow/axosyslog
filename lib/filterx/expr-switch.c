@@ -209,7 +209,7 @@ _eval_switch(FilterXExpr *s)
   FilterXObject *selector = filterx_expr_eval_typed(self->selector);
   if (!selector)
     {
-      filterx_eval_push_error_info("Failed to evaluate switch", &self->super, "Failed to evaluate selector");
+      filterx_eval_push_error_static_info("Failed to evaluate switch", &self->super, "Failed to evaluate selector");
       return NULL;
     }
 

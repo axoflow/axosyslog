@@ -79,7 +79,7 @@ FilterXEvalContext *filterx_eval_get_context(void);
 FilterXScope *filterx_eval_get_scope(void);
 void filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
 void filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
-void filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, const gchar *info);
+void filterx_eval_push_error_static_info(const gchar *message, FilterXExpr *expr, const gchar *info);
 void filterx_eval_push_error_info_printf(const gchar *message, FilterXExpr *expr, const gchar *fmt,
                                          ...) G_GNUC_PRINTF(3, 4);
 void filterx_eval_set_context(FilterXEvalContext *context);

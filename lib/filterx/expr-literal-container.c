@@ -120,7 +120,7 @@ _literal_container_eval(FilterXExpr *s)
           key = filterx_expr_eval(elem->key);
           if (!key)
             {
-              filterx_eval_push_error_info("Failed create literal container", s, "Failed to evaluate key");
+              filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate key");
               goto error;
             }
         }
@@ -128,7 +128,7 @@ _literal_container_eval(FilterXExpr *s)
       FilterXObject *value = filterx_expr_eval(elem->value);
       if (!value)
         {
-          filterx_eval_push_error_info("Failed create literal container", s, "Failed to evaluate value");
+          filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate value");
           filterx_object_unref(key);
           goto error;
         }
@@ -141,7 +141,7 @@ _literal_container_eval(FilterXExpr *s)
 
       if (!success)
         {
-          filterx_eval_push_error_info("Failed create literal container", s, "Failed to set value in container");
+          filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to set value in container");
           goto error;
         }
     }

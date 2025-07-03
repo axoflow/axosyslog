@@ -53,7 +53,7 @@ _regexp_match_eval(FilterXExpr *s)
   if (!state.match_data)
     {
       /* Error happened during matching. */
-      filterx_eval_push_error_info("Failed to match regexp", s, "Error happened during matching");
+      filterx_eval_push_error_static_info("Failed to match regexp", s, "Error happened during matching");
       goto exit;
     }
 

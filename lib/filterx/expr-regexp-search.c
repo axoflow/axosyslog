@@ -195,7 +195,7 @@ _eval_regexp_search(FilterXExpr *s)
 
   if (!state.match_data)
     {
-      filterx_eval_push_error_info("Failed to evaluate regexp_search()", s, "Error happened during matching");
+      filterx_eval_push_error_static_info("Failed to evaluate regexp_search()", s, "Error happened during matching");
       goto exit;
     }
 
@@ -234,9 +234,9 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 
   if (!filterx_expr_is_literal(self->pattern_expr))
     {
-      filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super,
-                                   "Pattern argument must be a literal string, got an expression. "
-                                   FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
+                                          "Pattern argument must be a literal string, got an expression. "
+                                          FILTERX_FUNC_REGEXP_SEARCH_USAGE);
       goto error;
     }
 
@@ -256,8 +256,8 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
   self->pattern = filterx_regexp_compile_pattern_defaults(pattern);
   if (!self->pattern)
     {
-      filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super,
-                                   FILTERX_FUNC_REGEXP_SEARCH_USAGE);
+      filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
+                                          FILTERX_FUNC_REGEXP_SEARCH_USAGE);
       goto error;
     }
 

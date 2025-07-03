@@ -158,7 +158,7 @@ filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXOb
 }
 
 void
-filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, const gchar *info)
+filterx_eval_push_error_static_info(const gchar *message, FilterXExpr *expr, const gchar *info)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXError local_error;
@@ -167,7 +167,7 @@ filterx_eval_push_error_info(const gchar *message, FilterXExpr *expr, const gcha
     return;
 
   filterx_error_set_values(error, message, expr, NULL);
-  filterx_error_set_info(error, info);
+  filterx_error_set_static_info(error, info);
 
   _backfill_error_expr(context);
   _log_to_stderr_if_needed(context, error);

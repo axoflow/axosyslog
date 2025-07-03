@@ -126,8 +126,8 @@ filterx_regexp_match(FilterXReMatchState *state, pcre2_code_8 *pattern, gint sta
     }
   else if (rc == 0)
     {
-      filterx_eval_push_error_info("Error while storing matching substrings", NULL,
-                                   "More than 256 capture groups encountered");
+      filterx_eval_push_error_static_info("Error while storing matching substrings", NULL,
+                                          "More than 256 capture groups encountered");
       goto error;
     }
 
@@ -147,7 +147,7 @@ filterx_regexp_match_eval(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXR
   state->lhs_obj = filterx_expr_eval(lhs_expr);
   if (!state->lhs_obj)
     {
-      filterx_eval_push_error_info("Failed match regexp", NULL, "Failed to evaluate left hand side");
+      filterx_eval_push_error_static_info("Failed match regexp", NULL, "Failed to evaluate left hand side");
       goto error;
     }
 

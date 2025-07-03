@@ -209,7 +209,7 @@ _subst_eval(FilterXExpr *s)
   if (!state.match_data)
     {
       /* Error happened during matching. */
-      filterx_eval_push_error_info("Failed to evaluate regexp_subst()", s, "Error happened during matching");
+      filterx_eval_push_error_static_info("Failed to evaluate regexp_subst()", s, "Error happened during matching");
       result = NULL;
       goto exit;
     }
@@ -246,16 +246,16 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
 {
   if (!filterx_expr_init(self->pattern_expr, cfg))
     {
-      filterx_eval_push_error_info("Failed to initialize pattern expression", &self->super.super,
-                                   FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      filterx_eval_push_error_static_info("Failed to initialize pattern expression", &self->super.super,
+                                          FILTERX_FUNC_REGEXP_SUBST_USAGE);
       return NULL;
     }
 
   if (!filterx_expr_is_literal(self->pattern_expr))
     {
-      filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super,
-                                   "Pattern argument must be a literal string, got an expression. "
-                                   FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
+                                          "Pattern argument must be a literal string, got an expression. "
+                                          FILTERX_FUNC_REGEXP_SUBST_USAGE);
       return NULL;
     }
 
@@ -277,8 +277,8 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
                                    _create_compile_opts(self->flags));
   if (!compiled_pattern)
     {
-      filterx_eval_push_error_info("Failed to compile regexp pattern", &self->super.super,
-                                   FILTERX_FUNC_REGEXP_SUBST_USAGE);
+      filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
+                                          FILTERX_FUNC_REGEXP_SUBST_USAGE);
     }
 
   filterx_object_unref(pattern_obj);

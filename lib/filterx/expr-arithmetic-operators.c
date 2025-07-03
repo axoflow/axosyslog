@@ -44,8 +44,8 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
                               : filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
     {
-      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super,
-                                   "Failed to evaluate left hand side");
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", &self->super.super,
+                                          "Failed to evaluate left hand side");
       return FALSE;
     }
 
@@ -64,8 +64,8 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
 
   if (!rhs_object)
     {
-      filterx_eval_push_error_info("Failed to evaluate arithmetic operator", &self->super.super,
-                                   "Failed to evaluate right hand side");
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", &self->super.super,
+                                          "Failed to evaluate right hand side");
       return FALSE;
     }
 
@@ -250,8 +250,8 @@ _eval_modulo(FilterXExpr *s)
                               : filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_object)
     {
-      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super,
-                                   "Failed to evaluate left hand side");
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", &self->super.super,
+                                          "Failed to evaluate left hand side");
       return NULL;
     }
 
@@ -270,8 +270,8 @@ _eval_modulo(FilterXExpr *s)
 
   if (!rhs_object)
     {
-      filterx_eval_push_error_info("Failed to evaluate modulo operator", &self->super.super,
-                                   "Failed to evaluate right hand side");
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", &self->super.super,
+                                          "Failed to evaluate right hand side");
       return NULL;
     }
 

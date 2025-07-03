@@ -189,7 +189,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      filterx_eval_push_error_info("Failed to check index of list", NULL, "Index must be set");
+      filterx_eval_push_error_static_info("Failed to check index of list", NULL, "Index must be set");
       return FALSE;
     }
 
@@ -214,7 +214,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      filterx_eval_push_error_info("Failed to unset element of list", NULL, "Index must be set");
+      filterx_eval_push_error_static_info("Failed to unset element of list", NULL, "Index must be set");
       return FALSE;
     }
 

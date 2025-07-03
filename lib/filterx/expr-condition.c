@@ -94,7 +94,7 @@ _eval_conditional(FilterXExpr *s)
 
   if (!condition_value)
     {
-      filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate condition");
+      filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate condition");
       return NULL;
     }
 
@@ -126,7 +126,7 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_object_ref(condition_value);
 
       if (!result)
-        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate true branch");
+        filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate true branch");
     }
   else
     {
@@ -136,7 +136,7 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_boolean_new(TRUE);
 
       if (!result)
-        filterx_eval_push_error_info("Failed to evaluate conditional", s, "Failed to evaluate false branch");
+        filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate false branch");
     }
 
   filterx_object_unref(condition_value);

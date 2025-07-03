@@ -101,7 +101,7 @@ filterx_falsy_error_set_values(FilterXError *error, const gchar *message, Filter
 }
 
 void
-filterx_error_set_info(FilterXError *error, const gchar *info)
+filterx_error_set_static_info(FilterXError *error, const gchar *info)
 {
   error->info = (gchar *) info;
   error->free_info = FALSE;

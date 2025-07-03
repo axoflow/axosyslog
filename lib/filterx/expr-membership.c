@@ -63,7 +63,7 @@ _eval_in(FilterXExpr *s)
 
   if (!filterx_object_len(list_obj, &size))
     {
-      filterx_eval_push_error_info("Failed to evaluate 'in' operator", s, "len() method failed");
+      filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", s, "len() method failed");
       return NULL;
     }
 
