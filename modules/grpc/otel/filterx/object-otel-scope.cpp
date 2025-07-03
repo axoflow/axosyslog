@@ -306,7 +306,7 @@ filterx_otel_scope_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to create OTel Scope object", NULL, e.what());
+      filterx_eval_push_error_info_printf("Failed to create OTel Scope object", NULL, "%s", e.what());
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -338,7 +338,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info("Failed to call repr() on OTel Scope object", NULL, e.what());
+      filterx_eval_push_error_info_printf("Failed to call repr() on OTel Scope object", NULL, "%s", e.what());
       return FALSE;
     }
 
