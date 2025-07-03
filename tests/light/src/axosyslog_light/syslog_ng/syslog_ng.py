@@ -102,6 +102,8 @@ class SyslogNg(object):
                 self._console_log_reader.handle_valgrind_log(Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_valgrind_output"))
             logger.info("syslog-ng process has been stopped with PID: {}\n".format(saved_pid))
         else:
+            if self._process is not None:
+                self.__validate_returncode(self._process.returncode)
             self._console_log_reader.check_for_unexpected_messages(unexpected_messages)
         self._process = None
 
