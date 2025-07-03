@@ -28,14 +28,13 @@
 #include "filterx/filterx-expr.h"
 #include "template/eval.h"
 
-#define FILTERX_ERROR_INFO_LEN (1024)
-
 typedef struct _FilterXError
 {
   const gchar *message;
   FilterXExpr *expr;
   FilterXObject *object;
-  gchar info[FILTERX_ERROR_INFO_LEN];
+  gchar *info;
+  gboolean free_info;
   guint8 falsy:1;
 } FilterXError;
 
@@ -44,7 +43,7 @@ void filterx_error_copy(FilterXError *src, FilterXError *dst);
 const gchar *filterx_error_format(FilterXError *error);
 EVTTAG *filterx_error_format_tag(FilterXError *error);
 EVTTAG *filterx_error_format_location_tag(FilterXError *error);
-void filterx_error_set_info(FilterXError *error, const gchar *info);
+void filterx_error_set_static_info(FilterXError *error, const gchar *info);
 void filterx_error_set_info_printf(FilterXError *error, const gchar *fmt, ...) G_GNUC_PRINTF(2, 3);
 void filterx_error_set_vinfo(FilterXError *error, const gchar *fmt, va_list args) G_GNUC_PRINTF(2, 0);
 void filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object);

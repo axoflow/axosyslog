@@ -106,7 +106,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      filterx_eval_push_error_info("Failed to get element of dict", NULL, "Key is mandatory");
+      filterx_eval_push_error_static_info("Failed to get element of dict", NULL, "Key is mandatory");
       return NULL;
     }
 
@@ -120,7 +120,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 
   if (!key)
     {
-      filterx_eval_push_error_info("Failed to set element of dict", NULL, "Key is mandatory");
+      filterx_eval_push_error_static_info("Failed to set element of dict", NULL, "Key is mandatory");
       return FALSE;
     }
 
@@ -134,7 +134,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      filterx_eval_push_error_info("Failed to check key of dict", NULL, "Key is mandatory");
+      filterx_eval_push_error_static_info("Failed to check key of dict", NULL, "Key is mandatory");
       return FALSE;
     }
 
@@ -153,7 +153,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 
   if (!key)
     {
-      filterx_eval_push_error_info("Failed to unset element of dict", NULL, "Key is mandatory");
+      filterx_eval_push_error_static_info("Failed to unset element of dict", NULL, "Key is mandatory");
       return FALSE;
     }
 

@@ -263,8 +263,8 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
   const gchar *input;
   if (!filterx_object_extract_string_ref(obj, &input, &len))
     {
-      filterx_eval_push_error_info("Failed to evaluate event format parser", &self->super.super.super,
-                                   EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG);
+      filterx_eval_push_error_static_info("Failed to evaluate event format parser", &self->super.super.super,
+                                          EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG);
       ok = FALSE;
       goto exit;
     }

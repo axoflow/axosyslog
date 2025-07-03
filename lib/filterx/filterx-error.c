@@ -27,6 +27,8 @@ void
 filterx_error_clear(FilterXError *error)
 {
   filterx_object_unref(error->object);
+  if (error->free_info)
+    g_free(error->info);
   memset(error, 0, sizeof(*error));
 }
 
@@ -39,7 +41,7 @@ filterx_error_format(FilterXError *error)
   GString *error_buffer = scratch_buffers_alloc();
   const gchar *extra_info = NULL;
 
-  if (error->info[0] != '\0')
+  if (error->info)
     {
       extra_info = error->info;
     }
@@ -99,9 +101,10 @@ filterx_falsy_error_set_values(FilterXError *error, const gchar *message, Filter
 }
 
 void
-filterx_error_set_info(FilterXError *error, const gchar *info)
+filterx_error_set_static_info(FilterXError *error, const gchar *info)
 {
-  g_strlcpy(error->info, info, FILTERX_ERROR_INFO_LEN);
+  error->info = (gchar *) info;
+  error->free_info = FALSE;
 }
 
 void
@@ -116,7 +119,8 @@ filterx_error_set_info_printf(FilterXError *error, const gchar *fmt, ...)
 void
 filterx_error_set_vinfo(FilterXError *error, const gchar *fmt, va_list args)
 {
-  g_vsnprintf(error->info, FILTERX_ERROR_INFO_LEN, fmt, args);
+  error->info = g_strdup_vprintf(fmt, args);
+  error->free_info = TRUE;
 }
 
 void
@@ -127,5 +131,7 @@ filterx_error_copy(FilterXError *src, FilterXError *dst)
   dst->message = src->message;
   dst->expr = src->expr;
   dst->object = filterx_object_ref(src->object);
-  memcpy(dst->info, src->info, FILTERX_ERROR_INFO_LEN);
+
+  dst->info = g_strdup(src->info);
+  dst->free_info = TRUE;
 }

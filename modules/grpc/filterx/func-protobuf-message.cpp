@@ -46,8 +46,8 @@ _eval(FilterXExpr *s)
   FilterXObject *input = filterx_expr_eval(self->input);
   if (!input)
     {
-      filterx_eval_push_error_info("Failed to evaluate protobuf_message()", self->input,
-                                   (gchar *) "Failed to evaluate input");
+      filterx_eval_push_error_static_info("Failed to evaluate protobuf_message()", self->input,
+                                          (gchar *) "Failed to evaluate input");
       return NULL;
     }
 

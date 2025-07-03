@@ -44,8 +44,8 @@ _append_signature(EventFormatterContext *ctx, GString *formatted, FilterXObject 
   FilterXObject *version_obj = filterx_object_getattr_string(dict, "version");
   if (!version_obj)
     {
-      filterx_eval_push_error_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                   "Failed to get version");
+      filterx_eval_push_error_static_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "Failed to get version");
       goto exit;
     }
 
@@ -160,8 +160,8 @@ _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
   gsize len_before_value = formatted->len;
   if (!filterx_object_str_append(value, formatted))
     {
-      filterx_eval_push_error_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                   "Failed to evaluate str() method");
+      filterx_eval_push_error_static_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "Failed to evaluate str() method");
       return FALSE;
     }
   for (gsize i = len_before_value; i < formatted->len; i++)
@@ -266,8 +266,8 @@ _eval(FilterXExpr *s)
   FilterXObject *msg = filterx_expr_eval_typed(self->msg);
   if (!msg)
     {
-      filterx_eval_push_error_info("Failed to evaluate event formatter function", s,
-                                   "Failed to evaluate msg_dict");
+      filterx_eval_push_error_static_info("Failed to evaluate event formatter function", s,
+                                          "Failed to evaluate msg_dict");
       goto exit;
     }
 

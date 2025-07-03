@@ -38,8 +38,8 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   FilterXObject *version_obj = filterx_object_getattr_string(dict, "version");
   if (!version_obj)
     {
-      filterx_eval_push_error_info("Failed to evaluate format_leef()", &ctx->formatter->super.super,
-                                   "Failed to get version");
+      filterx_eval_push_error_static_info("Failed to evaluate format_leef()", &ctx->formatter->super.super,
+                                          "Failed to get version");
       goto exit;
     }
 

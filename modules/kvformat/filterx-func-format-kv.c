@@ -61,8 +61,8 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
 
   if (!filterx_object_str_append(key, buffer))
     {
-      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
-                                   "str_append() method failed on key");
+      filterx_eval_push_error_static_info("Failed to evaluate format_kv()", &self->super.super,
+                                          "str_append() method failed on key");
       return FALSE;
     }
 
@@ -71,8 +71,8 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
   gsize len_before_value = buffer->len;
   if (!filterx_object_str_append(value, buffer))
     {
-      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
-                                   "str_append() method failed on value");
+      filterx_eval_push_error_static_info("Failed to evaluate format_kv()", &self->super.super,
+                                          "str_append() method failed on value");
       return FALSE;
     }
 
@@ -102,8 +102,8 @@ _eval(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval_typed(self->kvs);
   if (!obj)
     {
-      filterx_eval_push_error_info("Failed to evaluate format_kv()", &self->super.super,
-                                   "Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE);
+      filterx_eval_push_error_static_info("Failed to evaluate format_kv()", &self->super.super,
+                                          "Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE);
       return NULL;
     }
 

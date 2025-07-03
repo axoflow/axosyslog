@@ -162,7 +162,7 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
 
   if (len == 0)
     {
-      filterx_eval_push_error_info("Failed to cast string to datetime", s, "Argument is an empty string");
+      filterx_eval_push_error_static_info("Failed to cast string to datetime", s, "Argument is an empty string");
       return NULL;
     }
 

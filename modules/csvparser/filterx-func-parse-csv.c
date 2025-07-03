@@ -86,8 +86,8 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
   guint64 size;
   if (!filterx_object_len(list_obj, &size))
     {
-      filterx_eval_push_error_info("Failed to initialize parse_csv()",
-                                   &self->super.super, "len() method failed");
+      filterx_eval_push_error_static_info("Failed to initialize parse_csv()",
+                                          &self->super.super, "len() method failed");
       return FALSE;
     }
 
@@ -145,8 +145,8 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
   *columns = filterx_expr_eval(self->columns.expr);
   if (!*columns)
     {
-      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super,
-                                   "Failed to evaluate " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " argument");
+      filterx_eval_push_error_static_info("Failed to initialize parse_csv()", &self->super.super,
+                                          "Failed to evaluate " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " argument");
       return FALSE;
     }
 
@@ -161,8 +161,8 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
 
   if (!filterx_object_len(cols_unwrapped, num_of_columns))
     {
-      filterx_eval_push_error_info("Failed to initialize parse_csv()", &self->super.super,
-                                   "len() method failed on " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " argument");
+      filterx_eval_push_error_static_info("Failed to initialize parse_csv()", &self->super.super,
+                                          "len() method failed on " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " argument");
       return FALSE;
     }
 
@@ -186,8 +186,8 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
   gboolean ok = filterx_object_set_subscript(result, col, &val);
   if (!ok)
     {
-      filterx_eval_push_error_info("Failed to evaluate parse_csv()", &self->super.super,
-                                   "set-subscript() method failed");
+      filterx_eval_push_error_static_info("Failed to evaluate parse_csv()", &self->super.super,
+                                          "set-subscript() method failed");
     }
 
   filterx_object_unref(val);
@@ -206,8 +206,8 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
   gboolean ok = filterx_list_append(result, &val);
   if (!ok)
     {
-      filterx_eval_push_error_info("Failed to evaluate parse_csv()", NULL,
-                                   "append() method failed");
+      filterx_eval_push_error_static_info("Failed to evaluate parse_csv()", NULL,
+                                          "append() method failed");
     }
 
   filterx_object_unref(val);
@@ -228,8 +228,8 @@ _eval_parse_csv(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
     {
-      filterx_eval_push_error_info("Failed to evaluate parse_csv()", &self->super.super,
-                                   "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to evaluate parse_csv()", &self->super.super,
+                                          "Failed to evaluate expression");
       goto exit;
     }
 
