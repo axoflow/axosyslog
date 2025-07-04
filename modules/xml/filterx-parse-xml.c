@@ -236,9 +236,9 @@ _store_nth_elem(XmlElemContext *new_elem_context, FilterXObject *existing_obj, F
   xml_elem_context_set_parent_obj(new_elem_context, existing_obj);
 }
 
-static gboolean
-_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gboolean has_attrs,
-              XmlElemContext *new_elem_context, GError **error)
+gboolean
+filterx_parse_xml_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gboolean has_attrs,
+                               XmlElemContext *new_elem_context, GError **error)
 {
   FilterXObject *current_obj = filterx_ref_unwrap_ro(last_elem_context->current_obj);
   g_assert(filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)));
@@ -277,7 +277,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gbo
       _set_error(error, "failed to unset existing unexpected node");
       goto exit;
     }
-  _prepare_elem(new_elem_name, last_elem_context, has_attrs, new_elem_context, error);
+  filterx_parse_xml_prepare_elem(new_elem_name, last_elem_context, has_attrs, new_elem_context, error);
 
 exit:
   filterx_object_unref(new_elem_key);
@@ -299,7 +299,7 @@ _collect_attrs(const gchar *element_name, XmlElemContext *elem_context,
                GError **error)
 {
   FilterXObject *current_obj = filterx_ref_unwrap_ro(elem_context->current_obj);
-  /* Ensured by _prepare_elem() and _create_object_for_new_elem(). */
+  /* Ensured by filterx_parse_xml_prepare_elem() and _create_object_for_new_elem(). */
   g_assert(filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)));
 
   ScratchBuffersMarker marker;
@@ -341,7 +341,7 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   if (!dict_obj)
     goto exit;
 
-  /* current_obj is either a dict or a string, ensured by _prepare_elem() and _text_cb(). */
+  /* current_obj is either a dict or a string, ensured by filterx_parse_xml_prepare_elem() and _text_cb(). */
   gsize existing_value_len;
   const gchar *existing_value;
   g_assert(filterx_object_extract_string_ref(elem_context->current_obj, &existing_value, &existing_value_len));
@@ -409,7 +409,7 @@ filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
   gboolean has_attrs = !!attribute_names[0];
 
   XmlElemContext new_elem_context = { 0 };
-  if (!_prepare_elem(element_name, last_elem_context, has_attrs, &new_elem_context, error))
+  if (!filterx_parse_xml_prepare_elem(element_name, last_elem_context, has_attrs, &new_elem_context, error))
     return;
 
   xml_elem_context_stack_push(state->xml_elem_context_stack, &new_elem_context);
@@ -442,9 +442,9 @@ _strip(const gchar *text, gsize text_len, gsize *new_text_len)
   return stripped_text;
 }
 
-static void
-_replace_string_text(XmlElemContext *elem_context, const gchar *element_name, const gchar *text, gsize text_len,
-                     GError **error)
+void
+filterx_parse_xml_replace_string_text(XmlElemContext *elem_context, const gchar *element_name, const gchar *text, gsize text_len,
+                                      GError **error)
 {
   FILTERX_STRING_DECLARE_ON_STACK(text_obj, text, text_len);
 
@@ -542,7 +542,7 @@ filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
   if (!stripped_text)
     {
       /*
-       * We already stored an empty value in _prepare_elem() and _create_object_for_new_elem().
+       * We already stored an empty value in filterx_parse_xml_prepare_elem() and _create_object_for_new_elem().
        * There's nothing to do here.
        */
       return;
@@ -550,7 +550,7 @@ filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
 
   if (filterx_object_is_type(elem_context->current_obj, &FILTERX_TYPE_NAME(string)))
     {
-      _replace_string_text(elem_context, element_name, stripped_text, stripped_text_len, error);
+      filterx_parse_xml_replace_string_text(elem_context, element_name, stripped_text, stripped_text_len, error);
       goto exit;
     }
 
