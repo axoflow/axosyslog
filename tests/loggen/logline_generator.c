@@ -140,7 +140,7 @@ generate_log_line(ThreadData *thread_context,
 
   /* print sequence number to logline */
   char intbuf[16];
-  snprintf(intbuf, sizeof(intbuf), "%010ld", seq);
+  snprintf(intbuf, sizeof(intbuf), "%010" G_GSIZE_FORMAT, seq);
   memcpy(&buffer[pos_seq], intbuf, 10);
 
   /* print thread id */

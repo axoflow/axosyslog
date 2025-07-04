@@ -55,7 +55,7 @@ _convert_from_json_array(struct json_object *jso, GError **error)
       if (!filterx_list_append(res, &o))
         {
           filterx_object_unref(o);
-          g_set_error(error, 0, 0, "appending to list failed, index=%ld", i);
+          g_set_error(error, 0, 0, "appending to list failed, index=%" G_GSIZE_FORMAT, i);
           goto error;
         }
       filterx_object_unref(o);
