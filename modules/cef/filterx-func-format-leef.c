@@ -80,7 +80,7 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   if (!filterx_object_extract_string_ref(delimiter_obj, &delimiter_str, &delimiter_len))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                          "Header value for must be a string, got: %s, header: delimiter",
+                                          "Header value must be a string, got: %s, header: delimiter",
                                           filterx_object_get_type_name(delimiter_obj));
       goto error;
     }

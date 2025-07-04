@@ -107,7 +107,7 @@ event_format_formatter_append_header(EventFormatterContext *ctx, GString *format
   if (!filterx_object_extract_string_ref(value, &value_str, &value_len))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                          "Header value for must be a string, got: %s, header: %s",
+                                          "Header value must be a string, got: %s, header: %s",
                                           filterx_object_get_type_name(value), field->name);
       goto exit;
     }
