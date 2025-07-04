@@ -110,8 +110,8 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
   filterx_object_repr(result, formatted_result);
 
   const gchar *prefix = "{\"Event\":{\"@xmlns\":\"http://schemas.microsoft.com/win/2004/08/events/event\""
-                        ",\"System\":{\"Provider\":{\"@Name\":\"EventCreate\"},\"EventID\":{\"@Qualifiers\":\"0\",\"#te"
-                        "xt\":\"999\"},\"Version\":\"0\",\"Level\":\"2\",\"Task\":\"0\",\"Opcode\":\"0\",\"Keywords\":"
+                        ",\"System\":{\"Provider\":{\"@Name\":\"EventCreate\"},\"EventID\":\"999\","
+                        "\"EventIDQualifiers\":\"0\",\"Version\":\"0\",\"Level\":\"2\",\"Task\":\"0\",\"Opcode\":\"0\",\"Keywords\":"
                         "\"0x80000000000000\",\"TimeCreated\":{\"@SystemTime\":\"2024-01-12T09:30:12.1566754Z\"},\"Even"
                         "tRecordID\":\"934\",\"Correlation\":\"\",\"Execution\":{\"@ProcessID\":\"0\",\"@ThreadID\":\"0"
                         "\"},\"Channel\":\"Application\",\"Computer\":\"DESKTOP-2MBFIV7\",\"Security\":{\"@UserID\":\"S"
