@@ -321,7 +321,9 @@ public:
         g_assert(filterx_integer_unwrap(object, &value));
         if (!SeverityNumber_IsValid((int) value))
           {
-            filterx_eval_push_error_info_printf("Failed to set severity_number", NULL, "Invalid value: %ld", value);
+            filterx_eval_push_error_info_printf("Failed to set severity_number", NULL,
+                                                "Invalid value: %" G_GINT64_FORMAT,
+                                                value);
             return false;
           }
 

@@ -257,7 +257,9 @@ public:
       {
         filterx_eval_push_error_info_printf("Failed to convert field", NULL,
                                             "Value of field %s is exceeding FilterX integer value range: "
-                                            "min: %ld, max: %ld, value: %" G_GUINT64_FORMAT,
+                                            "min: %" G_GINT64_FORMAT ", "
+                                            "max: %" G_GINT64_FORMAT ", "
+                                            "value: %" G_GUINT64_FORMAT,
                                             reflectors.field_descriptor->name().data(), INT64_MIN, INT64_MAX, val);
         return NULL;
       }

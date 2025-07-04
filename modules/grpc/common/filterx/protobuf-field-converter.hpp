@@ -157,8 +157,8 @@ public:
             if (!this->add(message, reflectors, elem))
               {
                 filterx_eval_push_error_info_printf("Failed to add element to repeated field", NULL,
-                                                    "element index: %lu, element type: %s", i,
-                                                    filterx_object_get_type_name(elem));
+                                                    "element index: %" G_GSIZE_FORMAT ", element type: %s",
+                                                    i, filterx_object_get_type_name(elem));
                 filterx_object_unref(elem);
                 return false;
               }
