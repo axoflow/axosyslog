@@ -39,6 +39,7 @@ namespace grpc {
 class ProtoSchemaProvider
 {
 public:
+  virtual ~ProtoSchemaProvider() {}
   virtual bool init() = 0;
 
   const google::protobuf::Message &get_schema_prototype() const
