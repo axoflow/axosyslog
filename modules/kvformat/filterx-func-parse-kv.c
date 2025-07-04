@@ -98,7 +98,8 @@ _extract_key_values(FilterXFunctionParseKV *self, const gchar *input, gsize inpu
   KVScanner scanner;
   gboolean result = FALSE;
 
-  kv_scanner_init(&scanner, self->value_separator, self->pair_separator, self->stray_words_key != NULL);
+  kv_scanner_init(&scanner, self->value_separator, self->pair_separator,
+                  self->stray_words_key != NULL ? KVSSWM_COLLECT : KVSSWM_DROP);
   kv_scanner_input(&scanner, input);
   while (kv_scanner_scan_next(&scanner))
     {

@@ -125,7 +125,7 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
   gboolean success = FALSE;
 
   KVScanner kv_scanner;
-  kv_scanner_init(&kv_scanner, ctx->kv_parser_value_separator, ctx->kv_parser_pair_separator, FALSE);
+  kv_scanner_init(&kv_scanner, ctx->kv_parser_value_separator, ctx->kv_parser_pair_separator, KVSSWM_DROP);
   kv_scanner_set_transform_value(&kv_scanner, _unescape_value_separators);
   kv_scanner_input(&kv_scanner, input);
   while (kv_scanner_scan_next(&kv_scanner))

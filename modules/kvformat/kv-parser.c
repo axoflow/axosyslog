@@ -97,7 +97,8 @@ _get_formatted_key(KVParser *self, const gchar *key, GString *formatted_key)
 void
 kv_parser_init_scanner_method(KVParser *self, KVScanner *kv_scanner)
 {
-  kv_scanner_init(kv_scanner, self->value_separator, self->pair_separator, self->stray_words_value_name != NULL);
+  kv_scanner_init(kv_scanner, self->value_separator, self->pair_separator,
+                  self->stray_words_value_name != NULL ? KVSSWM_COLLECT : KVSSWM_DROP);
 }
 
 static gboolean

@@ -91,7 +91,7 @@ _extract_stray_word(KVScanner *self, const gchar *stray_word, gssize len)
 {
   if (len < 0)
     len = strlen(stray_word);
-  if (self->stray_words && len > 0)
+  if (len > 0)
     {
       while (len > 0 && stray_word[len - 1] == ' ')
         len--;
@@ -132,13 +132,18 @@ _extract_key(KVScanner *self)
 
       if (_extract_key_from_positions(self, start_of_key, end_of_key))
         {
-          _extract_stray_word(self, input, start_of_key - input);
+          if (self->stray_words_mode == KVSSWM_COLLECT)
+            _extract_stray_word(self, input, start_of_key - input);
+
           self->input_pos = separator - self->input + 1;
           return TRUE;
         }
       separator = _locate_separator(self, separator + 1);
     }
-  _extract_stray_word(self, input, -1);
+
+  if (self->stray_words_mode == KVSSWM_COLLECT)
+    _extract_stray_word(self, input, -1);
+
   return FALSE;
 }
 
@@ -328,13 +333,14 @@ kv_scanner_deinit(KVScanner *self)
 
 void
 kv_scanner_init(KVScanner *self, gchar value_separator, const gchar *pair_separator,
-                gboolean extract_stray_words)
+                KVScannerStrayWordsMode stray_words_mode)
 {
   memset(self, 0, sizeof(*self));
   self->key = scratch_buffers_alloc();
   self->value = scratch_buffers_alloc();
   self->decoded_value = scratch_buffers_alloc();
-  if (extract_stray_words)
+  self->stray_words_mode = stray_words_mode;
+  if (self->stray_words_mode == KVSSWM_COLLECT)
     self->stray_words = scratch_buffers_alloc();
   self->value_separator = value_separator;
   self->pair_separator = pair_separator ? : ", ";
