@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2015-2017 Balabit
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -104,7 +106,7 @@ typedef struct _ScannerConfig
 {
   gchar kv_separator;
   const gchar *pair_separator;
-  gboolean extract_stray_words;
+  KVScannerStrayWordsMode stray_words_mode;
   KVTransformValueFunc transform_value;
 } ScannerConfig;
 
@@ -143,7 +145,7 @@ static KVScanner *
 create_kv_scanner(const ScannerConfig *config)
 {
   KVScanner *scanner = g_new(KVScanner, 1);
-  kv_scanner_init(scanner, config->kv_separator, config->pair_separator, config->extract_stray_words);
+  kv_scanner_init(scanner, config->kv_separator, config->pair_separator, config->stray_words_mode);
   kv_scanner_set_transform_value(scanner, config->transform_value);
   return scanner;
 }
@@ -245,7 +247,7 @@ _expect_kvq_triplets(KVScanner *scanner, KVQContainer args, gchar **error)
   do { \
     KVScanner *scanner = create_kv_scanner(&((ScannerConfig) {     \
       .kv_separator = '=',              \
-      .extract_stray_words=TRUE})); \
+      .stray_words_mode=KVSSWM_COLLECT})); \
     gchar *error = NULL; \
     \
     kv_scanner_input(scanner, INPUT);            \
@@ -770,14 +772,38 @@ Test(kv_scanner, spaces_are_trimmed_from_key_names)
 
   _EXPECT_KV_PAIRS("k===  a",
   {"k", "==  a"});
-
 }
 
 Test(kv_scanner, initial_spaces_are_trimmed_from_values)
 {
   _EXPECT_KV_PAIRS(" k= b",
   {"k", "b"});
+}
 
+Test(kv_scanner, append_stray_words_to_last_value)
+{
+  ScannerConfig config =
+  {
+    .kv_separator = '=',
+    .pair_separator = " ",
+    .stray_words_mode = KVSSWM_APPEND_TO_LAST_VALUE,
+  };
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1 y1 z1 k2=x2 y2 z2",
+  { "k1", "x1 y1 z1" },
+  { "k2", "x2 y2 z2" });
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1=y1=z1 k2=x2=y2=z2",
+  { "k1", "x1=y1=z1" },
+  { "k2", "x2=y2=z2" });
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1\\=y1\\=z1\\= k2=x2\\=y2\\=z2\\=",
+  { "k1", "x1\\=y1\\=z1\\=" },
+  { "k2", "x2\\=y2\\=z2\\=" });
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1 \\= y1 \\= z1 \\= k2=x2 \\= y2 \\= z2 \\=",
+  { "k1", "x1 \\= y1 \\= z1 \\=" },
+  { "k2", "x2 \\= y2 \\= z2 \\=" });
 }
 
 Test(kv_scanner, stray_words_are_stored)

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2024 shifter
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -44,18 +45,55 @@ event_format_parser_error_quark(void)
   return g_quark_from_static_string("event-parser-error-quark");
 }
 
-Field
-field_by_index(FilterXFunctionEventFormatParser *self, int index)
+static Field *
+_get_current_field(EventParserContext *ctx)
 {
-  g_assert(index >= 0 && index < self->config.header.num_fields);
-  return self->config.header.fields[index];
+  g_assert(ctx->field_index >= 0 && ctx->field_index < ctx->config.header.num_fields);
+  return &ctx->config.header.fields[ctx->field_index];
+}
+
+void
+event_format_parser_context_set_header(EventParserContext *ctx, Header *new_header)
+{
+  ctx->config.header.fields = new_header->fields;
+  ctx->config.header.num_fields = new_header->num_fields;
+  csv_scanner_set_expected_columns(ctx->csv_scanner, new_header->num_fields);
+}
+
+static FilterXObject *
+_create_unescaped_string_obj(const gchar *value, gint value_len, const gchar *chars_to_unescape)
+{
+  GString *unescaped = g_string_new_len(NULL, value_len);
+
+  for (gint i = 0; i < value_len; i++)
+    {
+      if (value[i] == '\\' && i + 1 < value_len && strchr(chars_to_unescape, value[i + 1]))
+        {
+          g_string_append_c(unescaped, value[i + 1]);
+          i++;
+          continue;
+        }
+
+      g_string_append_c(unescaped, value[i]);
+    }
+
+  gssize unascaped_len = unescaped->len;
+  gchar *unescaped_cstr = g_string_free(unescaped, FALSE);
+  return filterx_string_new_take(unescaped_cstr, unascaped_len);
 }
 
 static gboolean
 parse_default(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
               gpointer user_data)
 {
-  *result = filterx_string_new(value, value_len);
+  if ((!value || value_len <= 0) && !csv_scanner_has_input_left(ctx->csv_scanner))
+    {
+      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS,
+                  "Header '%s' is missing", _get_current_field(ctx)->name);
+      return FALSE;
+    }
+
+  *result = _create_unescaped_string_obj(value, value_len, "\\");
   return *result != NULL;
 }
 
@@ -82,37 +120,21 @@ parse_version(EventParserContext *ctx, const gchar *value, gint value_len, Filte
   return *result != NULL;
 }
 
-gboolean
-_set_dict_value(FilterXObject *out,
+static gboolean
+_set_dict_value(EventParserContext *ctx, FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)
 {
+  const gchar chars_to_unescape[] = { '\\', ctx->config.extensions.value_separator, '\0' };
+
   FILTERX_STRING_DECLARE_ON_STACK(dict_key, key, key_len);
-  FILTERX_STRING_DECLARE_ON_STACK(dict_val, value, value_len);
+  FilterXObject *dict_val = _create_unescaped_string_obj(value, value_len, chars_to_unescape);
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
 
   filterx_object_unref(dict_key);
   filterx_object_unref(dict_val);
   return ok;
-}
-
-static gboolean
-_unescape_value_separators(KVScanner *self)
-{
-  gchar escaped_separator[3] = {'\\', self->value_separator, 0};
-
-  const gchar *start = self->value->str;
-  const gchar *pos = start;
-
-  while ((pos = g_strstr_len(start, self->value->len - (pos - start), escaped_separator)) != NULL)
-    {
-      g_string_append_len(self->decoded_value, start, pos - start);
-      g_string_append_c(self->decoded_value, self->value_separator);
-      start = pos + 2;
-    }
-  g_string_append(self->decoded_value, start);
-  return TRUE;
 }
 
 gboolean
@@ -125,8 +147,8 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
   gboolean success = FALSE;
 
   KVScanner kv_scanner;
-  kv_scanner_init(&kv_scanner, ctx->kv_parser_value_separator, ctx->kv_parser_pair_separator, FALSE);
-  kv_scanner_set_transform_value(&kv_scanner, _unescape_value_separators);
+  kv_scanner_init(&kv_scanner, ctx->config.extensions.value_separator, ctx->config.extensions.pair_separator,
+                  KVSSWM_APPEND_TO_LAST_VALUE);
   kv_scanner_input(&kv_scanner, input);
   while (kv_scanner_scan_next(&kv_scanner))
     {
@@ -135,7 +157,7 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
       const gchar *value = kv_scanner_get_current_value(&kv_scanner);
       gsize value_len = kv_scanner_get_current_value_len(&kv_scanner);
 
-      if (!_set_dict_value(dict_to_fill, name, name_len, value, value_len))
+      if (!_set_dict_value(ctx, dict_to_fill, name, name_len, value, value_len))
         goto exit;
     }
 
@@ -174,21 +196,11 @@ _match_field_to_column(EventParserContext *ctx, Field *field, const gchar *input
 static gboolean
 _parse_column(EventParserContext *ctx, FilterXObject *fillable, GError **error)
 {
-  CSVScanner *csv_scanner = ctx->csv_scanner;
-  const gchar *input = csv_scanner_get_current_value(csv_scanner);
-  gint input_len = csv_scanner_get_current_value_len(csv_scanner);
+  const gchar *input = csv_scanner_get_current_value(ctx->csv_scanner);
+  gint input_len = csv_scanner_get_current_value_len(ctx->csv_scanner);
+  Field *field = _get_current_field(ctx);
 
-  Field field = field_by_index(ctx->parser, ctx->field_index);
-
-  while (!_match_field_to_column(ctx, &field, input, input_len, fillable, error) && !*error && field.optional)
-    {
-      ctx->field_index++;
-      if (ctx->field_index >= ctx->num_fields)
-        return FALSE;
-      field = field_by_index(ctx->parser, ctx->field_index);
-    }
-  ctx->column_index++;
-  return TRUE;
+  return _match_field_to_column(ctx, field, input, input_len, fillable, error);
 }
 
 static EventParserContext
@@ -197,15 +209,19 @@ _new_context(FilterXFunctionEventFormatParser *self,  CSVScanner *csv_scanner)
   EventParserContext ctx =
   {
     .parser = self,
-    .num_fields = self->config.header.num_fields,
+    .config = self->config,
     .field_index = 0,
     .csv_scanner = csv_scanner,
-    .flags = 0,
-    .kv_parser_value_separator = self->kv_value_separator != 0 ? self->kv_value_separator : self->config.extensions.value_separator,
     .separate_extensions = self->separate_extensions,
   };
-  g_strlcpy(ctx.kv_parser_pair_separator, self->kv_pair_separator ? : self->config.extensions.pair_separator,
-            EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN);
+
+  if (self->kv_value_separator != 0)
+    ctx.config.extensions.value_separator = self->kv_value_separator;
+
+  if (self->kv_pair_separator)
+    g_strlcpy(ctx.config.extensions.pair_separator, self->kv_pair_separator,
+              EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN);
+
   return ctx;
 }
 
@@ -216,36 +232,21 @@ parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, Filte
 
   CSVScanner csv_scanner;
   csv_scanner_init(&csv_scanner, &self->csv_opts, log);
-
+  csv_scanner_set_expected_columns(&csv_scanner, self->config.header.num_fields);
   EventParserContext ctx = _new_context(self, &csv_scanner);
 
-  while (csv_scanner_scan_next(&csv_scanner))
+  while (ctx.field_index < ctx.config.header.num_fields && !csv_scanner_is_scan_complete(&csv_scanner))
     {
-      if (ctx.field_index >= ctx.num_fields)
-        break;
+      csv_scanner_scan_next(&csv_scanner);
+
       ok = _parse_column(&ctx, fillable, error);
-      if(!ok || *error)
-        goto exit;
+      if (!ok || *error)
+        break;
+
       ctx.field_index++;
     }
 
-
-  if (ctx.field_index <= ctx.num_fields - 1)
-    {
-      csv_scanner_take_rest(&csv_scanner);
-      ok = _parse_column(&ctx, fillable, error);
-      if(!ok || *error)
-        goto exit;
-    }
-
-  if (ctx.column_index < ctx.num_fields-1)
-    {
-      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS,
-                  EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG, ctx.field_index, ctx.num_fields);
-    }
-exit:
   csv_scanner_deinit(&csv_scanner);
-
   return ok;
 }
 
@@ -423,6 +424,7 @@ _set_config(FilterXFunctionEventFormatParser *self, Config *cfg)
   csv_scanner_options_set_delimiters(&self->csv_opts, cfg->header.delimiters);
   csv_scanner_options_set_quote_pairs(&self->csv_opts, "");
   csv_scanner_options_set_dialect(&self->csv_opts, CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER);
+  csv_scanner_options_set_flags(&self->csv_opts, CSV_SCANNER_GREEDY);
 }
 
 gboolean

@@ -2287,7 +2287,19 @@ def test_parse_windows_eventlog_xml(config, syslog_ng):
 def test_parse_cef(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-    custom_message = "CEF:0|KasperskyLab|SecurityCenter|13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|foo=foo\\=bar bar=bar\\=baz baz=test";
+    custom_message =
+        "CEF:0|" +
+        "dummy\\|device\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|" +
+        "dummy\\\\device\\\\product\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|" +
+        "dummy device version containing extension pair separator that does not need to be escaped|" +
+        "1234|" +
+        "dummy=name=containing=extension=value=separator=that=does=not=need=to=be=escaped|" +
+        "5|" +
+        "dummy_key1=value " +
+        "dummy_key2=value containing pair separators that does not need to be escaped " +
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped " +
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped " +
+        "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
     $MSG = json(parse_cef(custom_message));
     """,
     )
@@ -2295,25 +2307,37 @@ def test_parse_cef(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    exp = (
-        r"""{"version":"0","""
-        r""""device_vendor":"KasperskyLab","""
-        r""""device_product":"SecurityCenter","""
-        r""""device_version":"13.2.0.1511","""
-        r""""device_event_class_id":"KLPRCI_TaskState","""
-        r""""name":"Completed successfully","""
-        r""""agent_severity":"1","""
-        r""""foo":"foo=bar","""
-        r""""bar":"bar=baz","""
-        r""""baz":"test"}"""
-    )
-    assert file_true.read_log() == exp
+    exp = {
+        "version": "0",
+        "device_vendor": "dummy|device|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "device_product": "dummy\\device\\product\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "device_version": "dummy device version containing extension pair separator that does not need to be escaped",
+        "device_event_class_id": "1234",
+        "name": "dummy=name=containing=extension=value=separator=that=does=not=need=to=be=escaped",
+        "agent_severity": "5",
+        "dummy_key1": "value",
+        "dummy_key2": "value containing pair separators that does not need to be escaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
+    }
+    assert json.loads(file_true.read_log()) == exp
 
 
-def test_parse_leef(config, syslog_ng):
+def test_parse_leef_version_1(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
-    custom_message = "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0 dst=172.50.123.1 sev=5cat=anomaly srcPort=81 dstPort=21 usrName=joe.black";
+    custom_message =
+        "LEEF:1.0|" +
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|" +
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|" +
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|" +
+        "1234|" +
+        "dummy_key1=value\t" +
+        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t" +
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t" +
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped\t" +
+        "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
     $MSG = json(parse_leef(custom_message));
     """,
     )
@@ -2321,20 +2345,118 @@ def test_parse_leef(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    exp = (
-        r"""{"version":"1.0","""
-        r""""vendor":"Microsoft","""
-        r""""product_name":"MSExchange","""
-        r""""product_version":"4.0 SP1","""
-        r""""event_id":"15345","""
-        r""""src":"192.0.2.0","""
-        r""""dst":"172.50.123.1","""
-        r""""sev":"5cat=anomaly","""
-        r""""srcPort":"81","""
-        r""""dstPort":"21","""
-        r""""usrName":"joe.black"}"""
+    exp = {
+        "version": "1.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "dummy_key1": "value",
+        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
+    }
+    assert json.loads(file_true.read_log()) == exp
+
+
+def test_parse_leef_version_2_no_delimiter(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    custom_message =
+        "LEEF:2.0|" +
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|" +
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|" +
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|" +
+        "1234|" +
+        "dummy_key1=value\t" +
+        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t" +
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t" +
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped\t" +
+        "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
+    $MSG = json(parse_leef(custom_message));
+    """,
     )
-    assert file_true.read_log() == exp
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+
+
+def test_parse_leef_version_2_empty_delimiter(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    custom_message =
+        "LEEF:2.0|" +
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|" +
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|" +
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|" +
+        "1234|" +
+        "|" +
+        "dummy_key1=value\t" +
+        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t" +
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t" +
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped\t" +
+        "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
+    $MSG = json(parse_leef(custom_message));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = {
+        "version": "2.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "delimiter": "",
+        "dummy_key1": "value",
+        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
+    }
+    assert json.loads(file_true.read_log()) == exp
+
+
+def test_parse_leef_version_2_space_delimiter(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+    custom_message =
+        "LEEF:2.0|" +
+        "dummy\\|vendor\\|containing\\|header\\|separator\\|that\\|needs\\|to\\|be\\|backslash\\|escaped|" +
+        "dummy\\\\product\\\\name\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped|" +
+        "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|" +
+        "1234|" +
+        " |" +
+        "dummy_key1=value " +
+        "dummy_key2=value containing pair separators that does not need to be escaped " +
+        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped " +
+        "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped " +
+        "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
+    $MSG = json(parse_leef(custom_message));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = {
+        "version": "2.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "delimiter": " ",
+        "dummy_key1": "value",
+        "dummy_key2": "value containing pair separators that does not need to be escaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
+    }
+    assert json.loads(file_true.read_log()) == exp
 
 
 def test_proper_generation_counter(config, syslog_ng):

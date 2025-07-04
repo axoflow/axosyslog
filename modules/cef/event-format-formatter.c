@@ -30,6 +30,13 @@
 
 #define FILTERX_FUNC_EVENT_FORMAT_FORMATTER_USAGE "Usage: %s(msg_dict)"
 
+void
+event_format_formatter_context_set_header(EventFormatterContext *ctx, Header *new_header)
+{
+  ctx->config.header.fields = new_header->fields;
+  ctx->config.header.num_fields = new_header->num_fields;
+}
+
 static gchar
 _header_delimiter(FilterXFunctionEventFormatFormatter *self)
 {
@@ -59,9 +66,19 @@ _append_signature(EventFormatterContext *ctx, GString *formatted, FilterXObject 
       goto exit;
     }
 
-  g_string_append_printf(formatted, "%s:", ctx->formatter->config.signature);
-  g_string_append_len(formatted, version_str, version_len);
-  g_string_append_c(formatted, _header_delimiter(ctx->formatter));
+  g_string_append_printf(formatted, "%s:", ctx->config.signature);
+
+  Field *field = &ctx->config.header.fields[0];
+  if (field->field_formatter)
+    {
+      if (!field->field_formatter(ctx, formatted, dict))
+        goto exit;
+    }
+  else
+    {
+      g_string_append_len(formatted, version_str, version_len);
+      g_string_append_c(formatted, _header_delimiter(ctx->formatter));
+    }
 
   success = TRUE;
 
@@ -70,8 +87,9 @@ exit:
   return success;
 }
 
-static gboolean
-_append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict, const Field *field)
+gboolean
+event_format_formatter_append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict,
+                                     const Field *field)
 {
   gboolean success = FALSE;
 
@@ -89,7 +107,7 @@ _append_header(EventFormatterContext *ctx, GString *formatted, FilterXObject *di
   if (!filterx_object_extract_string_ref(value, &value_str, &value_len))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                          "Header value for must be a string, got: %s, header: %s",
+                                          "Header value must be a string, got: %s, header: %s",
                                           filterx_object_get_type_name(value), field->name);
       goto exit;
     }
@@ -116,9 +134,9 @@ _append_headers(EventFormatterContext *ctx, GString *formatted, FilterXObject *d
    * Skipping the first one (version).
    * Skipping the last one (extensions).
    */
-  for (gsize i = 1; i < ctx->formatter->config.header.num_fields - 1; i++)
+  for (gsize i = 1; i < ctx->config.header.num_fields - 1; i++)
     {
-      const Field *field = &ctx->formatter->config.header.fields[i];
+      const Field *field = &ctx->config.header.fields[i];
 
       if (field->field_formatter)
         {
@@ -127,7 +145,7 @@ _append_headers(EventFormatterContext *ctx, GString *formatted, FilterXObject *d
           continue;
         }
 
-      if (!_append_header(ctx, formatted, dict, field))
+      if (!event_format_formatter_append_header(ctx, formatted, dict, field))
         return FALSE;
     }
 
@@ -152,10 +170,10 @@ _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
 
   if (!(*first))
-    g_string_append_c(formatted, ctx->extension_pair_separator);
+    g_string_append_c(formatted, ctx->config.extensions.pair_separator[0]);
 
   g_string_append_len(formatted, key_str, key_len);
-  g_string_append_c(formatted, ctx->formatter->config.extensions.value_separator);
+  g_string_append_c(formatted, ctx->config.extensions.value_separator);
 
   gsize len_before_value = formatted->len;
   if (!filterx_object_str_append(value, formatted))
@@ -166,7 +184,7 @@ _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   for (gsize i = len_before_value; i < formatted->len; i++)
     {
-      if (formatted->str[i] == ctx->formatter->config.extensions.value_separator || formatted->str[i] == '\\')
+      if (formatted->str[i] == ctx->config.extensions.value_separator || formatted->str[i] == '\\')
         g_string_insert_c(formatted, i++, '\\');
     }
 
@@ -193,9 +211,9 @@ _append_non_separate_extension(FilterXObject *key, FilterXObject *value, gpointe
   if (*fields_to_find)
     {
       /* -1: don't look for the extensions field */
-      for (gsize i = 0; i < ctx->formatter->config.header.num_fields - 1; i++)
+      for (gsize i = 0; i < ctx->config.header.num_fields - 1; i++)
         {
-          const Field *field = &ctx->formatter->config.header.fields[i];
+          const Field *field = &ctx->config.header.fields[i];
           if (strcmp(field->name, key_str) == 0)
             {
               (*fields_to_find)--;
@@ -216,7 +234,7 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
   if (!extensions)
     {
       /* -1: non-separate extensions -> extensions field will not be available */
-      gsize fields_to_find = ctx->formatter->config.header.num_fields - 1;
+      gsize fields_to_find = ctx->config.header.num_fields - 1;
       gboolean first = TRUE;
       gpointer user_data[] = { ctx, formatted, &first, &fields_to_find };
       success = filterx_dict_iter(dict, _append_non_separate_extension, user_data);
@@ -249,7 +267,7 @@ _format(FilterXFunctionEventFormatFormatter *self, GString *formatted, FilterXOb
   EventFormatterContext ctx =
   {
     .formatter = self,
-    .extension_pair_separator = self->config.extensions.pair_separator[0],
+    .config = self->config,
   };
   return _append_signature(&ctx, formatted, dict) &&
          _append_headers(&ctx, formatted, dict) &&

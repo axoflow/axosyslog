@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Axoflow
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2024 shifter
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -46,8 +47,6 @@
 #define EVENT_FORMAT_PARSER_ERROR event_format_parser_error_quark()
 GQuark event_format_parser_error_quark(void);
 
-#define EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN 0x05
-
 #define EVENT_FORMAT_PARSER_ARG_NAME_PAIR_SEPARATOR "pair_separator"
 #define EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR "value_separator"
 #define EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS "separate_extensions"
@@ -74,13 +73,11 @@ struct _FilterXFunctionEventFormatParser
 struct _EventParserContext
 {
   FilterXFunctionEventFormatParser *parser;
-  guint64 num_fields;
+  Config config;
   guint64 field_index;
   guint64 column_index;
   CSVScanner *csv_scanner;
   guint64 flags;
-  gchar kv_parser_pair_separator[EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN];
-  gchar kv_parser_value_separator;
   gboolean separate_extensions;
 };
 
@@ -93,6 +90,8 @@ gboolean parse_version(EventParserContext *ctx, const gchar *value, gint value_l
 gboolean parse_extensions(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result,
                           GError **error,
                           gpointer user_data);
+
+void event_format_parser_context_set_header(EventParserContext *ctx, Header *new_header);
 
 static inline void append_error_message(GError **error, const char *extra_info)
 {

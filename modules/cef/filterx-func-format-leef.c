@@ -30,10 +30,9 @@
 #include "utf8utils.h"
 
 gboolean
-filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict)
+filterx_function_format_leef_format_version(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict)
 {
   gboolean success = FALSE;
-  FilterXObject *delimiter_obj = NULL;
 
   FilterXObject *version_obj = filterx_object_getattr_string(dict, "version");
   if (!version_obj)
@@ -53,47 +52,55 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
       goto exit;
     }
 
-  if (strcmp(version_str, "1.0") == 0)
-    {
-      /* LEEF 1.0 does not have delimiter header */
-      success = TRUE;
-      goto exit;
-    }
+  if (strcmp(version_str, "2.0") == 0)
+    event_format_formatter_context_set_header(ctx, &leef_v2_cfg.header);
 
-  if (strcmp(version_str, "2.0") != 0)
-    {
-      filterx_eval_push_error_info_printf("Failed to evaluate format_leef()", &ctx->formatter->super.super,
-                                          "Unsupported version: %s",
-                                          version_str);
-      goto exit;
-    }
+  success = event_format_formatter_append_header(ctx, formatted, dict, &ctx->config.header.fields[0]);
+
+exit:
+  filterx_object_unref(version_obj);
+  return success;
+}
+
+gboolean
+filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict)
+{
+  gboolean success = FALSE;
+  FilterXObject *delimiter_obj = NULL;
 
   delimiter_obj = filterx_object_getattr_string(dict, "delimiter");
-  if (delimiter_obj)
+  if (!delimiter_obj)
     {
-      const gchar *delimiter_str;
-      gsize delimiter_len;
-      if (!filterx_object_extract_string_ref(delimiter_obj, &delimiter_str, &delimiter_len))
-        {
-          filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                              "Header value for must be a string, got: %s, header: delimiter",
-                                              filterx_object_get_type_name(delimiter_obj));
-          goto exit;
-        }
-
-      if (delimiter_len)
-        {
-          append_unsafe_utf8_as_escaped(formatted, delimiter_str, delimiter_len, 0, "\\x%02x", "\\x%02x");
-          ctx->extension_pair_separator = delimiter_str[0];
-        }
+      g_string_append_c(formatted, '\t');
+      goto success;
     }
 
+  const gchar *delimiter_str;
+  gsize delimiter_len;
+  if (!filterx_object_extract_string_ref(delimiter_obj, &delimiter_str, &delimiter_len))
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
+                                          "Header value must be a string, got: %s, header: delimiter",
+                                          filterx_object_get_type_name(delimiter_obj));
+      goto error;
+    }
+
+  if (!delimiter_len)
+    {
+      g_string_append_c(formatted, '\t');
+      goto success;
+    }
+
+  append_unsafe_utf8_as_escaped(formatted, delimiter_str, delimiter_len, 0, "\\x%02x", "\\x%02x");
+  ctx->config.extensions.pair_separator[0] = delimiter_str[0];
+  ctx->config.extensions.pair_separator[1] = '\0';
+
+success:
   g_string_append_c(formatted, ctx->formatter->config.header.delimiters[0]);
 
   success = TRUE;
 
-exit:
-  filterx_object_unref(version_obj);
+error:
   filterx_object_unref(delimiter_obj);
   return success;
 }
@@ -103,7 +110,7 @@ filterx_function_format_leef_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionEventFormatFormatter *self = g_new0(FilterXFunctionEventFormatFormatter, 1);
 
-  if (!filterx_function_event_format_formatter_init_instance(self, "format_leef", args, &leef_cfg, error))
+  if (!filterx_function_event_format_formatter_init_instance(self, "format_leef", args, &leef_v1_cfg, error))
     {
       g_free(self);
       return NULL;

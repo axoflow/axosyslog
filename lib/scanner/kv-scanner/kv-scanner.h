@@ -32,6 +32,13 @@ typedef gboolean (*KVTransformValueFunc)(KVScanner *);
 typedef void (*KVExtractAnnotationFunc)(KVScanner *);
 typedef gboolean (*KVIsValidKeyCharFunc)(gchar c);
 
+typedef enum
+{
+  KVSSWM_DROP = 0,
+  KVSSWM_COLLECT,
+  KVSSWM_APPEND_TO_LAST_VALUE,
+} KVScannerStrayWordsMode;
+
 struct _KVScanner
 {
   const gchar *input;
@@ -45,13 +52,15 @@ struct _KVScanner
   const gchar *pair_separator;
   gsize pair_separator_len;
   gchar stop_char;
+  KVScannerStrayWordsMode stray_words_mode;
 
   KVTransformValueFunc transform_value;
   KVExtractAnnotationFunc extract_annotation;
   KVIsValidKeyCharFunc is_valid_key_character;
 };
 
-void kv_scanner_init(KVScanner *self, gchar value_separator, const gchar *pair_separator, gboolean extract_stray_words);
+void kv_scanner_init(KVScanner *self, gchar value_separator, const gchar *pair_separator,
+                     KVScannerStrayWordsMode stray_words_mode);
 void kv_scanner_deinit(KVScanner *self);
 
 static inline void

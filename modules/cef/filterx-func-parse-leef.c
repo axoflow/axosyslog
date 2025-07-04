@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2024 shifter
  *
  *
@@ -48,7 +49,7 @@ _parse_hex_delimiter(const gchar *hexStr, gchar *delimiter)
 }
 
 static gboolean
-_delimiter_multi_parser(const gchar *input, gint input_len, gchar *delimiter, GError **error)
+_delimiter_multi_parser(const gchar *input, gint input_len, gchar *delimiter)
 {
   const gchar *hexStr = NULL;
   switch (input_len)
@@ -90,10 +91,14 @@ gboolean
 parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result, GError **error,
                 gpointer user_data)
 {
-  if (!check_flag(ctx->flags, FILTERX_FUNC_PARSE_LEEF_FLAG_20))
-    return FALSE;
+  if (!input_len)
+    {
+      *result = filterx_string_new("", 0);
+      return TRUE;
+    }
+
   gchar delimiter = 0;
-  if (_delimiter_multi_parser(input, input_len, &delimiter, error))
+  if (_delimiter_multi_parser(input, input_len, &delimiter))
     {
       if (_is_delmiter_empty(delimiter))
         {
@@ -102,12 +107,15 @@ parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, Fil
         }
       if (!_is_pair_separator_forced(ctx))
         {
-          ctx->kv_parser_pair_separator[0] = delimiter;
-          ctx->kv_parser_pair_separator[1] = 0;
+          ctx->config.extensions.pair_separator[0] = delimiter;
+          ctx->config.extensions.pair_separator[1] = 0;
         }
       *result = filterx_string_new(&delimiter, 1);
       return TRUE;
     }
+
+  g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+              "Invalid delimiter: '%.*s'", input_len, input);
   return FALSE;
 }
 
@@ -116,28 +124,53 @@ parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, 
                    gpointer user_data)
 {
   if (g_strstr_len(value, value_len, "2.0"))
-    set_flag(&ctx->flags, FILTERX_FUNC_PARSE_LEEF_FLAG_20, TRUE);
-  return parse_version(ctx, value, value_len, result, error, user_data); // call base class parser
+    event_format_parser_context_set_header(ctx, &leef_v2_cfg.header);
+
+  return parse_version(ctx, value, value_len, result, error, user_data);
 }
 
-Field leef_fields[] =
+Field leef_v1_fields[] =
 {
-  { .name = "version", .field_parser = parse_leef_version},
+  { .name = "version", .field_parser = parse_leef_version, .field_formatter = filterx_function_format_leef_format_version},
   { .name = "vendor"},
   { .name = "product_name"},
   { .name = "product_version"},
   { .name = "event_id"},
-  { .name = "delimiter", .optional=TRUE, .field_parser = parse_delimiter, .field_formatter = filterx_function_format_leef_format_delimiter},
   { .name = "extensions", .field_parser = parse_extensions},
 };
 
-Config leef_cfg =
+Field leef_v2_fields[] =
+{
+  { .name = "version", .field_parser = parse_leef_version, .field_formatter = filterx_function_format_leef_format_version},
+  { .name = "vendor"},
+  { .name = "product_name"},
+  { .name = "product_version"},
+  { .name = "event_id"},
+  { .name = "delimiter", .field_parser = parse_delimiter, .field_formatter = filterx_function_format_leef_format_delimiter},
+  { .name = "extensions", .field_parser = parse_extensions},
+};
+
+Config leef_v1_cfg =
+{
+  .signature = "LEEF",
+  .header = {
+    .num_fields = 6,
+    .delimiters = "|",
+    .fields = leef_v1_fields,
+  },
+  .extensions = {
+    .pair_separator = "\t",
+    .value_separator = '=',
+  },
+};
+
+Config leef_v2_cfg =
 {
   .signature = "LEEF",
   .header = {
     .num_fields = 7,
     .delimiters = "|",
-    .fields = leef_fields,
+    .fields = leef_v2_fields,
   },
   .extensions = {
     .pair_separator = "\t",
@@ -156,7 +189,7 @@ filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **err)
 {
   FilterXFunctionParseLEEF *self = g_new0(FilterXFunctionParseLEEF, 1);
 
-  if (!filterx_function_parser_init_instance(&self->super, "parse_leef", args, &leef_cfg, err))
+  if (!filterx_function_parser_init_instance(&self->super, "parse_leef", args, &leef_v1_cfg, err))
     goto error;
 
   filterx_function_args_free(args);

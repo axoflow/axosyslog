@@ -76,7 +76,7 @@ void
 setup(void)
 {
   app_startup();
-  kv_scanner_init(&kv_scanner, '=', 0, FALSE);
+  kv_scanner_init(&kv_scanner, '=', 0, KVSSWM_DROP);
   kv_scanner_set_transform_value(&kv_scanner, parse_linux_audit_style_hexdump);
 }
 
