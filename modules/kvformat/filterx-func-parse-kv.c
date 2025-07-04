@@ -75,7 +75,7 @@ _set_stray_words_key(FilterXFunctionParseKV *self, const gchar *value_name)
   self->stray_words_key = g_strdup(value_name);
 }
 
-gboolean
+static gboolean
 _set_dict_value(FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)

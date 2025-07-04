@@ -120,7 +120,7 @@ parse_version(EventParserContext *ctx, const gchar *value, gint value_len, Filte
   return *result != NULL;
 }
 
-gboolean
+static gboolean
 _set_dict_value(EventParserContext *ctx, FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)
