@@ -778,7 +778,32 @@ Test(kv_scanner, initial_spaces_are_trimmed_from_values)
 {
   _EXPECT_KV_PAIRS(" k= b",
   {"k", "b"});
+}
 
+Test(kv_scanner, append_stray_words_to_last_value)
+{
+  ScannerConfig config =
+  {
+    .kv_separator = '=',
+    .pair_separator = " ",
+    .stray_words_mode = KVSSWM_APPEND_TO_LAST_VALUE,
+  };
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1 y1 z1 k2=x2 y2 z2",
+  { "k1", "x1 y1 z1" },
+  { "k2", "x2 y2 z2" });
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1=y1=z1 k2=x2=y2=z2",
+  { "k1", "x1=y1=z1" },
+  { "k2", "x2=y2=z2" });
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1\\=y1\\=z1\\= k2=x2\\=y2\\=z2\\=",
+  { "k1", "x1\\=y1\\=z1\\=" },
+  { "k2", "x2\\=y2\\=z2\\=" });
+
+  _EXPECT_KV_PAIRS_WITH_CONFIG(config, "k1=x1 \\= y1 \\= z1 \\= k2=x2 \\= y2 \\= z2 \\=",
+  { "k1", "x1 \\= y1 \\= z1 \\=" },
+  { "k2", "x2 \\= y2 \\= z2 \\=" });
 }
 
 Test(kv_scanner, stray_words_are_stored)

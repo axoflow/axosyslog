@@ -36,6 +36,7 @@ typedef enum
 {
   KVSSWM_DROP = 0,
   KVSSWM_COLLECT,
+  KVSSWM_APPEND_TO_LAST_VALUE,
 } KVScannerStrayWordsMode;
 
 struct _KVScanner

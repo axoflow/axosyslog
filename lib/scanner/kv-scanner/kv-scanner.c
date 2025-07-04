@@ -1,4 +1,6 @@
 /*
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  * Copyright (c) 2015-2017 Balabit
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -258,9 +260,36 @@ _skip_initial_spaces(KVScanner *self)
 }
 
 static inline void
-_decode_value(KVScanner *self)
+_decode_value_until_next_key(KVScanner *self, const gchar *input)
 {
-  const gchar *input = &self->input[self->input_pos];
+  const gchar *separator = _locate_separator(self, input);
+  while (separator)
+    {
+      const gchar *start_of_key, *end_of_key;
+      _locate_end_of_key(self, separator, &end_of_key);
+      _locate_start_of_key(self, end_of_key, &start_of_key);
+
+      if (start_of_key == input || start_of_key[-1] != self->pair_separator[0])
+        {
+          separator = _locate_separator(self, separator + 1);
+          continue;
+        }
+
+      const gsize pair_separator_len = 1;
+      gsize value_len = start_of_key - pair_separator_len - input;
+
+      g_string_assign_len(self->value, input, value_len);
+      self->input_pos += value_len + pair_separator_len;
+      return;
+    }
+
+  g_string_assign(self->value, input);
+  self->input_pos += self->value->len;
+}
+
+static inline void
+_decode_value_until_next_pair_separator(KVScanner *self, const gchar *input)
+{
   const gchar *end;
   StrReprDecodeOptions options =
   {
@@ -279,6 +308,17 @@ _decode_value(KVScanner *self)
       /* quotation error, set was_quoted to FALSE */
       self->value_was_quoted = FALSE;
     }
+}
+
+static inline void
+_decode_value(KVScanner *self)
+{
+  const gchar *input = &self->input[self->input_pos];
+
+  if (self->stray_words_mode == KVSSWM_APPEND_TO_LAST_VALUE)
+    _decode_value_until_next_key(self, input);
+  else
+    _decode_value_until_next_pair_separator(self, input);
 }
 
 static void
