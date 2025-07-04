@@ -112,6 +112,28 @@ _append_data_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
   return TRUE;
 }
 
+static void
+_insert_event_id_qualifier(const char *key_str, const char *value_str, GString *buffer)
+{
+  char *event_id_end_pos = strstr(buffer->str, "EventID") + 7;
+  GString *qualifier = g_string_new(NULL);
+
+  g_string_overwrite(buffer, (int)(event_id_end_pos - buffer->str), " ");
+  g_string_printf(qualifier, "Qualifiers='%s'>", value_str);
+  g_string_insert(buffer, (int)(event_id_end_pos + 1 - buffer->str), qualifier->str);
+}
+
+static void
+_append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
+{
+  if (g_strcmp0(key_str, "EventIDQualifiers") == 0)
+    _insert_event_id_qualifier(key_str, value_str, buffer);
+  else if(value_str_len)
+    g_string_append_printf(buffer, "<%s>%s</%s>", key_str, value_str, key_str);
+  else
+    g_string_append_printf(buffer, "<%s/>", key_str);
+}
+
 static gboolean
 _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
 {
@@ -132,7 +154,7 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
   append_inner_dict_start_tag(key_str, buffer);
   gsize prev_buffer_len = buffer->len;
 
-  if (strncmp(key_str, "EventData", 9) == 0)
+  if (g_strcmp0(key_str, "EventData") == 0)
     {
       FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
       if(!filterx_dict_iter(dict_unwrapped, _append_data_dict, user_data))
@@ -159,6 +181,7 @@ filterx_function_format_windows_eventlog_xml_new(FilterXFunctionArgs *args, GErr
   if (!self)
     return NULL;
   self->append_inner_dict = _append_inner_dict;
+  self->append_leaf = _append_leaf;
 
   return s;
 }
