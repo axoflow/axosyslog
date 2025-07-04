@@ -47,13 +47,13 @@ typedef struct _PerfTrampolineArea
 extern void _perf_trampoline_func_start(void);
 extern void _perf_trampoline_func_end(void);
 
-#define PAGE_SIZE 4096
-#define PAGE_MAX_INDEX ((PAGE_SIZE-1))
+#define PERF_PAGE_SIZE 4096
+#define PAGE_MAX_INDEX ((PERF_PAGE_SIZE-1))
 
-#define SIZE_TO_PAGES(s) (((s + PAGE_MAX_INDEX) & ~PAGE_MAX_INDEX) / PAGE_SIZE)
-#define PAGE_TO_SIZE(p)  (p * PAGE_SIZE)
+#define SIZE_TO_PAGES(s) (((s + PAGE_MAX_INDEX) & ~PAGE_MAX_INDEX) / PERF_PAGE_SIZE)
+#define PAGE_TO_SIZE(p)  (p * PERF_PAGE_SIZE)
 
-#define ROUND_TO_PAGE_BOUNDARY(p) ((gpointer) ((((uintptr_t) (p)) / PAGE_SIZE) * PAGE_SIZE))
+#define ROUND_TO_PAGE_BOUNDARY(p) ((gpointer) ((((uintptr_t) (p)) / PERF_PAGE_SIZE) * PERF_PAGE_SIZE))
 
 #define MAX_TRAMPOLINES 163840
 
@@ -95,7 +95,7 @@ _generate_trampoline(PerfTrampolineArea *self, gpointer target_address)
 
   guint8 *trampoline_page_start = ROUND_TO_PAGE_BOUNDARY(trampoline_start);
   guint8 *trampoline_page_end = ROUND_TO_PAGE_BOUNDARY(trampoline_end);
-  gsize trampoline_page_len = (trampoline_page_end - trampoline_page_start) + PAGE_SIZE;
+  gsize trampoline_page_len = (trampoline_page_end - trampoline_page_start) + PERF_PAGE_SIZE;
 
   gint res = mprotect(trampoline_page_start, trampoline_page_len, PROT_READ | PROT_WRITE);
   if (res < 0)
