@@ -102,7 +102,7 @@ Test(filterx_func_parse_cef, test_header_missing_field)
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg, "Failed to evaluate event format parser: Header 'device_version' is empty");
+  g_string_append_printf(expected_err_msg, "Failed to evaluate event format parser: Header 'device_version' is missing");
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
@@ -119,6 +119,12 @@ Test(filterx_func_parse_cef, test_separate_extensions)
 
   _assert_parser_result_inner("{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"extensions\":{\"rt\":\"1647626887000\",\"cs9\":\"site location Bldg\",\"cs9Label\":\"GroupName\",\"dhost\":\"WS6465\",\"dst\":\"10.55.203.12\",\"cs2\":\"KES\",\"cs2Label\":\"ProductName\",\"cs3\":\"11.0.0.0\",\"cs3Label\":\"ProductVersion\",\"cs10\":\"Uninstall EDR\",\"cs10Label\":\"TaskName\",\"cs4\":\"885\",\"cs4Label\":\"TaskId\",\"cn2\":\"4\",\"cn2Label\":\"TaskNewState\",\"cn1\":\"0\",\"cn1Label\":\"TaskOldState\"}}",
                               _create_msg_arg(input), _create_separate_extensions_arg(TRUE), NULL);
+}
+
+Test(filterx_func_parse_cef, test_empty_header)
+{
+  _assert_parser_result("CEF:0|KasperskyLab||13.2.0.1511|KLPRCI_TaskState|Completed successfully|1|rt=1647626887000 cs9=site location Bldg cs9Label=GroupName dhost=WS6465 dst=10.55.203.12 cs2=KES cs2Label=ProductName cs3=11.0.0.0 cs3Label=ProductVersion cs10=Uninstall EDR cs10Label=TaskName cs4=885 cs4Label=TaskId cn2=4 cn2Label=TaskNewState cn1=0 cn1Label=TaskOldState",
+                        "{\"version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"name\":\"Completed successfully\",\"agent_severity\":\"1\",\"rt\":\"1647626887000\",\"cs9\":\"site location Bldg\",\"cs9Label\":\"GroupName\",\"dhost\":\"WS6465\",\"dst\":\"10.55.203.12\",\"cs2\":\"KES\",\"cs2Label\":\"ProductName\",\"cs3\":\"11.0.0.0\",\"cs3Label\":\"ProductVersion\",\"cs10\":\"Uninstall EDR\",\"cs10Label\":\"TaskName\",\"cs4\":\"885\",\"cs4Label\":\"TaskId\",\"cn2\":\"4\",\"cn2Label\":\"TaskNewState\",\"cn1\":\"0\",\"cn1Label\":\"TaskOldState\"}");
 }
 
 Test(filterx_func_parse_cef, test_extensions_empty)

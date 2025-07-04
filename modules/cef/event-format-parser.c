@@ -86,10 +86,10 @@ static gboolean
 parse_default(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
               gpointer user_data)
 {
-  if (!value || value_len <= 0)
+  if ((!value || value_len <= 0) && !csv_scanner_has_input_left(ctx->csv_scanner))
     {
-      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT,
-                  "Header '%s' is empty", _get_current_field(ctx)->name);
+      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS,
+                  "Header '%s' is missing", _get_current_field(ctx)->name);
       return FALSE;
     }
 

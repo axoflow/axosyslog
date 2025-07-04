@@ -102,7 +102,7 @@ Test(filterx_func_parse_leef, test_header_missing_field)
   const gchar *last_error = filterx_eval_get_last_error();
   cr_assert_not_null(last_error);
   GString *expected_err_msg = scratch_buffers_alloc();
-  g_string_append_printf(expected_err_msg, "Failed to evaluate event format parser: Header 'product_version' is empty");
+  g_string_append_printf(expected_err_msg, "Failed to evaluate event format parser: Header 'product_version' is missing");
   cr_assert_str_eq(expected_err_msg->str, last_error);
 }
 
@@ -118,6 +118,12 @@ Test(filterx_func_parse_leef, test_separate_extensions)
     "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black";
   _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}",
                               _create_msg_arg(input), _create_separate_extensions_arg(TRUE), NULL);
+}
+
+Test(filterx_func_parse_leef, test_empty_header)
+{
+  _assert_parser_result("LEEF:1.0|Microsoft||4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black",
+                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
 }
 
 Test(filterx_func_parse_leef, test_extensions_empty)
