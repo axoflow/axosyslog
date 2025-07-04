@@ -530,6 +530,12 @@ csv_scanner_is_scan_complete(CSVScanner *self)
   return self->state == CSV_STATE_FINISH;
 }
 
+gboolean
+csv_scanner_has_input_left(CSVScanner *self)
+{
+  return self->src[0] != '\0';
+}
+
 void
 csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *input)
 {
