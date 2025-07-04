@@ -84,7 +84,7 @@ _append_data_element(FilterXObject *key, FilterXObject *value, gpointer user_dat
       return FALSE;
     }
 
-  append_leaf(key_str, value_str, value_str_len, buffer);
+  self->append_leaf(key_str, value_str, value_str_len, buffer);
   return TRUE;
 }
 
