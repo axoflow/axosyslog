@@ -38,7 +38,6 @@
 
 #define EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG "no log signature %s found"
 #define EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG "the log signature differs. actual:%s expected:%s"
-#define EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS_MSG "not enough header columns provided. actual:%ld expected:%ld"
 #define EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG "input argument must be string"
 #define EVENT_FORMAT_PARSER_ERR_EMPTY_STRING "%s must be a non-empty string literal"
 #define EVENT_FORMAT_PARSER_ERR_MUST_BE_BOOLEAN "%s must be a boolean"
