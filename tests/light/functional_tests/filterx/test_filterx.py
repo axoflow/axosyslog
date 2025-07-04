@@ -2250,7 +2250,8 @@ def test_parse_windows_eventlog_xml(config, syslog_ng):
             "@xmlns": "http://schemas.microsoft.com/win/2004/08/events/event",
             "System": {
                 "Provider": {"@Name": "EventCreate"},
-                "EventID": {"@Qualifiers": "0", "#text": "999"},
+                "EventID": "999",
+                "EventIDQualifiers": "0",
                 "Version": "0",
                 "Level": "2",
                 "Task": "0",
@@ -2706,7 +2707,8 @@ windows_eventlog_dict = """
             "@xmlns": "http://schemas.microsoft.com/win/2004/08/events/event",
             "System": {
                 "Provider": {"@Name": "EventCreate"},
-                "EventID": {"@Qualifiers": "0", "#text": "999"},
+                "EventID": "999",
+                "EventIDQualifiers": "0",
                 "Version": "0",
                 "Level": "2",
                 "Task": "0",
