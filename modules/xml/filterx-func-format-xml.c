@@ -126,22 +126,19 @@ _append_text(const char *value_str, GString *buffer)
   g_string_append(buffer, value_str);
 }
 
-void
-append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
+static void
+_append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
 {
   if(value_str_len)
-    {
-      g_string_append_printf(buffer, "<%s>%s</%s>", key_str, value_str, key_str);
-    }
+    g_string_append_printf(buffer, "<%s>%s</%s>", key_str, value_str, key_str);
   else
-    {
-      g_string_append_printf(buffer, "<%s/>", key_str);
-    }
+    g_string_append_printf(buffer, "<%s/>", key_str);
 }
 
 static gboolean
 _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
+  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   GString *buffer = ((gpointer *) user_data)[1];
   gboolean *is_only_attribute_present = ((gpointer *) user_data)[2];
   const gchar *key_str;
@@ -152,7 +149,6 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
   GString *val_buf = scratch_buffers_alloc();
   if (!filterx_object_str(value, val_buf))
     {
-      FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
       filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
                                           "Couldn't convert value to string, type: %s",
                                           filterx_object_get_type_name(value));
@@ -172,7 +168,7 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
       return TRUE;
     }
 
-  append_leaf(key_str, val_buf->str, val_buf->len, buffer);
+  self->append_leaf(key_str, val_buf->str, val_buf->len, buffer);
   return TRUE;
 }
 
@@ -357,6 +353,7 @@ filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _deinit;
   self->super.super.free_fn = _free;
   self->append_inner_dict = _append_inner_dict;
+  self->append_leaf = _append_leaf;
 
   if (!_extract_argument(self, args, error) ||
       !filterx_function_args_check(args, error))
