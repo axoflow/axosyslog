@@ -489,10 +489,25 @@ _take_rest(CSVScanner *self)
 }
 
 gboolean
+csv_scanner_append_rest(CSVScanner *self)
+{
+  if (self->state == CSV_STATE_FINISH)
+    return FALSE;
+
+  g_string_assign(self->current_value, self->current_value_start_pos);
+  self->src = self->current_value_start_pos + self->current_value->len;
+  self->state = CSV_STATE_GREEDY_COLUMN;
+  _translate_value(self);
+  return TRUE;
+}
+
+gboolean
 csv_scanner_scan_next(CSVScanner *self)
 {
   if (!_switch_to_next_column(self))
     return FALSE;
+
+  self->current_value_start_pos = self->src;
 
   if (_is_last_column(self) && (self->options->flags & CSV_SCANNER_GREEDY))
     {
@@ -543,6 +558,7 @@ csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *i
   scanner->state = CSV_STATE_INITIAL;
   scanner->src = input;
   scanner->current_value = scratch_buffers_alloc();
+  scanner->current_value_start_pos = NULL;
   scanner->current_column = 0;
   scanner->options = options;
 }

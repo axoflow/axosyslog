@@ -77,6 +77,7 @@ typedef struct
   } state;
   const gchar *src;
   GString *current_value;
+  const gchar *current_value_start_pos;
   gint current_column;
   gint expected_columns;
   gchar current_quote;
@@ -85,6 +86,7 @@ typedef struct
 gint csv_scanner_get_current_column(CSVScanner *self);
 const gchar *csv_scanner_get_current_value(CSVScanner *pstate);
 gint csv_scanner_get_current_value_len(CSVScanner *self);
+gboolean csv_scanner_append_rest(CSVScanner *self);
 gboolean csv_scanner_scan_next(CSVScanner *pstate);
 gboolean csv_scanner_is_scan_complete(CSVScanner *pstate);
 gboolean csv_scanner_has_input_left(CSVScanner *self);

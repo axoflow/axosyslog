@@ -75,6 +75,12 @@ _scan_next(void)
   return csv_scanner_scan_next(&scanner);
 }
 
+static gboolean
+_append_rest(void)
+{
+  return csv_scanner_append_rest(&scanner);
+}
+
 Test(csv_scanner, simple_comma_separate_values)
 {
   csv_scanner_init(&scanner, _default_options(), "val1,val2,val3");
@@ -284,6 +290,34 @@ Test(csv_scanner, greedy_column)
   /* go past the last column */
   cr_expect(!_scan_next());
   cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
+Test(csv_scanner, append_rest)
+{
+  csv_scanner_init(&scanner, _default_options(), "foo,bar,baz");
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_index_equals(0));
+  cr_expect(_column_equals(0, "foo"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_append_rest());
+  cr_expect(_column_index_equals(0));
+  cr_expect(_column_equals(0, "foo,bar,baz"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_append_rest());
+  cr_expect(_column_index_equals(0));
+  cr_expect(_column_equals(0, "foo,bar,baz"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+
   csv_scanner_deinit(&scanner);
 }
 
