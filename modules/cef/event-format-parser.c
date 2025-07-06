@@ -83,8 +83,7 @@ _create_unescaped_string_obj(const gchar *value, gint value_len, const gchar *ch
 }
 
 static gboolean
-parse_default(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
-              gpointer user_data)
+parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *fillable)
 {
   if ((!value || value_len <= 0) && !csv_scanner_has_input_left(ctx->csv_scanner))
     {
@@ -93,13 +92,18 @@ parse_default(EventParserContext *ctx, const gchar *value, gint value_len, Filte
       return FALSE;
     }
 
-  *result = _create_unescaped_string_obj(value, value_len, "\\");
-  return *result != NULL;
+  FILTERX_STRING_DECLARE_ON_STACK(key_obj, _get_current_field(ctx)->name, -1);
+  FilterXObject *value_obj = _create_unescaped_string_obj(value, value_len, "\\");
+
+  filterx_object_set_subscript(fillable, key_obj, &value_obj);
+
+  filterx_object_unref(value_obj);
+  filterx_object_unref(key_obj);
+  return TRUE;
 }
 
 gboolean
-parse_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
-              gpointer user_data)
+parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *fillable)
 {
   const gchar *log_signature = ctx->parser->config.signature;
   gchar *colon_pos = memchr(value, ':', value_len);
@@ -109,6 +113,7 @@ parse_version(EventParserContext *ctx, const gchar *value, gint value_len, Filte
                   EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG, log_signature);
       return FALSE;
     }
+
   gint sign_len = colon_pos - value;
   if (!(strncmp(value, log_signature, sign_len) == 0))
     {
@@ -116,8 +121,15 @@ parse_version(EventParserContext *ctx, const gchar *value, gint value_len, Filte
                   EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG, value, log_signature);
       return FALSE;
     }
-  *result = filterx_string_new(++colon_pos, value_len - sign_len - 1);
-  return *result != NULL;
+
+  FILTERX_STRING_DECLARE_ON_STACK(key_obj, "version", 7);
+  FilterXObject *value_obj = filterx_string_new(++colon_pos, value_len - sign_len - 1);
+
+  filterx_object_set_subscript(fillable, key_obj, &value_obj);
+
+  filterx_object_unref(value_obj);
+  filterx_object_unref(key_obj);
+  return TRUE;
 }
 
 static gboolean
@@ -138,11 +150,17 @@ _set_dict_value(EventParserContext *ctx, FilterXObject *out,
 }
 
 gboolean
-parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result, GError **error,
-                 gpointer user_data)
+parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *fillable)
 {
-  FilterXObject *fillable = (FilterXObject *)user_data;
-  FilterXObject *dict_to_fill = ctx->separate_extensions ? filterx_object_create_dict(fillable) : fillable;
+  FilterXObject *dict_to_fill = fillable;
+
+  if (ctx->separate_extensions)
+    {
+      dict_to_fill = filterx_object_create_dict(fillable);
+      FILTERX_STRING_DECLARE_ON_STACK(key, "extensions", 10);
+      filterx_object_set_subscript(fillable, key, &dict_to_fill);
+      filterx_object_unref(key);
+    }
 
   gboolean success = FALSE;
 
@@ -165,7 +183,6 @@ parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, Fi
 
 exit:
   kv_scanner_deinit(&kv_scanner);
-  *result = ctx->separate_extensions ? dict_to_fill : NULL;
   return success;
 }
 
@@ -176,26 +193,9 @@ _parse_column(EventParserContext *ctx, FilterXObject *fillable, GError **error)
   gint input_len = csv_scanner_get_current_value_len(ctx->csv_scanner);
   Field *field = _get_current_field(ctx);
 
-  FilterXObject *val = NULL;
-  gboolean ok = FALSE;
-
   if (!field->field_parser)
-    ok = parse_default(ctx, input, input_len, &val, error, fillable);
-  else
-    ok = field->field_parser(ctx, input, input_len, &val, error, fillable);
-
-  if (!*error && ok && val)
-    {
-      /* current field might change during parsing */
-      field = _get_current_field(ctx);
-
-      FILTERX_STRING_DECLARE_ON_STACK(key, field->name, -1);
-      ok = filterx_object_set_subscript(fillable, key, &val);
-      filterx_object_unref(key);
-    }
-
-  filterx_object_unref(val);
-  return ok;
+    return parse_default(ctx, input, input_len, error, fillable);
+  return field->field_parser(ctx, input, input_len, error, fillable);
 }
 
 static EventParserContext

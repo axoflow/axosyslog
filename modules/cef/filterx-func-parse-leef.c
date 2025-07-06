@@ -88,8 +88,8 @@ _is_delmiter_empty(gchar delimiter)
 }
 
 static gboolean
-_fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result,
-                              GError **error, gpointer user_data)
+_fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error,
+                              FilterXObject *fillable)
 {
   if (!csv_scanner_append_rest(ctx->csv_scanner))
     {
@@ -103,17 +103,20 @@ _fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint 
 
   ctx->field_index++;
 
-  return parse_extensions(ctx, input, input_len, result, error, user_data);
+  return parse_extensions(ctx, input, input_len, error, fillable);
 }
 
 gboolean
-parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result, GError **error,
-                gpointer user_data)
+parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *fillable)
 {
+  FILTERX_STRING_DECLARE_ON_STACK(key, "delimiter", 9);
+  FilterXObject *value = NULL;
+
   if (!input_len)
     {
-      *result = csv_scanner_has_input_left(ctx->csv_scanner) ? filterx_string_new("", 0) : NULL;
-      return TRUE;
+      if (csv_scanner_has_input_left(ctx->csv_scanner))
+        value = filterx_string_new("", 0);
+      goto success;
     }
 
   gchar delimiter = 0;
@@ -121,34 +124,47 @@ parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, Fil
     {
       if (_is_delmiter_empty(delimiter))
         {
-          *result = filterx_string_new("", 0);
-          return TRUE;
+          value = filterx_string_new("", 0);
+          goto success;
         }
+
       if (!_is_pair_separator_forced(ctx))
         {
           ctx->config.extensions.pair_separator[0] = delimiter;
           ctx->config.extensions.pair_separator[1] = 0;
         }
-      *result = filterx_string_new(&delimiter, 1);
-      return TRUE;
+
+      value = filterx_string_new(&delimiter, 1);
+      goto success;
     }
+
+  filterx_object_unref(key);
 
   /*
    * delimiter header field is:
    *   1. either missing,
    *   2. or invalid, which might mean it is missing and there is a | in a value
    */
-  return _fallback_to_parse_extensions(ctx, input, input_len, result, error, user_data);
+  return _fallback_to_parse_extensions(ctx, input, input_len, error, fillable);
+
+success:
+  if (value)
+    {
+      filterx_object_set_subscript(fillable, key, &value);
+      filterx_object_unref(value);
+    }
+
+  filterx_object_unref(key);
+  return TRUE;
 }
 
 gboolean
-parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject **result, GError **error,
-                   gpointer user_data)
+parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *fillable)
 {
   if (g_strstr_len(value, value_len, "2.0"))
     event_format_parser_context_set_header(ctx, &leef_v2_cfg.header);
 
-  return parse_version(ctx, value, value_len, result, error, user_data);
+  return parse_version(ctx, value, value_len, error, fillable);
 }
 
 Field leef_v1_fields[] =
