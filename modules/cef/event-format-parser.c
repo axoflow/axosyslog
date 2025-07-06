@@ -105,7 +105,8 @@ parse_default(EventParserContext *ctx, const gchar *value, gint value_len, Filte
 }
 
 gboolean
-parse_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject *parsed_dict)
+event_format_parser_parse_version(EventParserContext *ctx, const gchar *value, gint value_len,
+                                  FilterXObject *parsed_dict)
 {
   const gchar *log_signature = ctx->parser->config.signature;
   gchar *colon_pos = memchr(value, ':', value_len);
@@ -154,7 +155,8 @@ _set_dict_value(EventParserContext *ctx, FilterXObject *out,
 }
 
 gboolean
-parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject *parsed_dict)
+event_format_parser_parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len,
+                                     FilterXObject *parsed_dict)
 {
   FilterXObject *dict_to_fill = parsed_dict;
 
@@ -225,7 +227,7 @@ _new_context(FilterXFunctionEventFormatParser *self,  CSVScanner *csv_scanner)
 }
 
 static FilterXObject *
-parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
+_parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
 {
   FilterXObject *result = filterx_dict_new();
 
@@ -276,7 +278,7 @@ _eval(FilterXExpr *s)
       goto exit;
     }
 
-  result = parse(self, input, len);
+  result = _parse(self, input, len);
 
 exit:
   filterx_object_unref(obj);

@@ -83,12 +83,15 @@ struct _EventParserContext
 gboolean filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *s, const gchar *fn_name,
                                                FilterXFunctionArgs *args, Config *cfg, GError **error);
 
-gboolean parse_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject *parsed_dict);
-gboolean parse_extensions(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject *parsed_dict);
+gboolean event_format_parser_parse_version(EventParserContext *ctx, const gchar *value, gint value_len,
+                                           FilterXObject *parsed_dict);
+gboolean event_format_parser_parse_extensions(EventParserContext *ctx, const gchar *value, gint value_len,
+                                              FilterXObject *parsed_dict);
 
 void event_format_parser_context_set_header(EventParserContext *ctx, Header *new_header);
 
-static inline void append_error_message(GError **error, const char *extra_info)
+static inline void
+event_format_parser_append_error_message(GError **error, const char *extra_info)
 {
   if (error == NULL || *error == NULL)
     return;

@@ -102,7 +102,7 @@ _fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint 
 
   ctx->field_index++;
 
-  return parse_extensions(ctx, input, input_len, parsed_dict);
+  return event_format_parser_parse_extensions(ctx, input, input_len, parsed_dict);
 }
 
 gboolean
@@ -163,7 +163,7 @@ parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, 
   if (g_strstr_len(value, value_len, "2.0"))
     event_format_parser_context_set_header(ctx, &leef_v2_cfg.header);
 
-  return parse_version(ctx, value, value_len, parsed_dict);
+  return event_format_parser_parse_version(ctx, value, value_len, parsed_dict);
 }
 
 Field leef_v1_fields[] =
@@ -173,7 +173,7 @@ Field leef_v1_fields[] =
   { .name = "product_name"},
   { .name = "product_version"},
   { .name = "event_id"},
-  { .name = "extensions", .field_parser = parse_extensions},
+  { .name = "extensions", .field_parser = event_format_parser_parse_extensions},
 };
 
 Field leef_v2_fields[] =
@@ -184,7 +184,7 @@ Field leef_v2_fields[] =
   { .name = "product_version"},
   { .name = "event_id"},
   { .name = "delimiter", .field_parser = parse_delimiter, .field_formatter = filterx_function_format_leef_format_delimiter},
-  { .name = "extensions", .field_parser = parse_extensions},
+  { .name = "extensions", .field_parser = event_format_parser_parse_extensions},
 };
 
 Config leef_v1_cfg =
@@ -233,7 +233,7 @@ filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **err)
   return &self->super.super.super;
 
 error:
-  append_error_message(err, FILTERX_FUNC_PARSE_LEEF_USAGE);
+  event_format_parser_append_error_message(err, FILTERX_FUNC_PARSE_LEEF_USAGE);
   filterx_function_args_free(args);
   filterx_expr_unref(&self->super.super.super);
   return NULL;
