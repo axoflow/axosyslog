@@ -87,13 +87,32 @@ _is_delmiter_empty(gchar delimiter)
   return delimiter == 0;
 }
 
+static gboolean
+_fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result,
+                              GError **error, gpointer user_data)
+{
+  if (!csv_scanner_append_rest(ctx->csv_scanner))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_EVAL_ERROR,
+                  "Unexpected end of input");
+      return FALSE;
+    }
+
+  input = csv_scanner_get_current_value(ctx->csv_scanner);
+  input_len = csv_scanner_get_current_value_len(ctx->csv_scanner);
+
+  ctx->field_index++;
+
+  return parse_extensions(ctx, input, input_len, result, error, user_data);
+}
+
 gboolean
 parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject **result, GError **error,
                 gpointer user_data)
 {
   if (!input_len)
     {
-      *result = filterx_string_new("", 0);
+      *result = csv_scanner_has_input_left(ctx->csv_scanner) ? filterx_string_new("", 0) : NULL;
       return TRUE;
     }
 
@@ -114,9 +133,12 @@ parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, Fil
       return TRUE;
     }
 
-  g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-              "Invalid delimiter: '%.*s'", input_len, input);
-  return FALSE;
+  /*
+   * delimiter header field is:
+   *   1. either missing,
+   *   2. or invalid, which might mean it is missing and there is a | in a value
+   */
+  return _fallback_to_parse_extensions(ctx, input, input_len, result, error, user_data);
 }
 
 gboolean

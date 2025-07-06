@@ -194,13 +194,8 @@ Test(filterx_func_parse_leef, test_header_custom_nonstandard_hex_delimiter)
 
 Test(filterx_func_parse_leef, test_header_custom_invalid_delimiter)
 {
-  GError *init_err = NULL;
-  const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|INVALID|foo=bar^bar=baz^baz=tik\\=tak";
-  cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
-  cr_assert_null(init_err);
-  const gchar *last_error = filterx_eval_get_last_error();
-  cr_assert_not_null(last_error);
-  cr_assert_str_eq("Failed to evaluate event format parser: Invalid delimiter: 'INVALID'", last_error);
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|INVALID|foo=bar\tbar=baz|\tbaz=tik\\=tak",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_empty_delimiter)
@@ -216,16 +211,23 @@ Test(filterx_func_parse_leef, test_forced_pair_separator_v1_no_delimiter_field)
                               _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
 }
 
-Test(filterx_func_parse_leef, test_forced_pair_separator_v2_no_delimiter_field)
+Test(filterx_func_parse_leef, test_v2_no_delimiter_field)
 {
-  GError *init_err = NULL;
-  const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar@bar=baz@baz=tik\\=tak";
-  cr_assert_null(_eval_input(&init_err, _create_msg_arg(input), NULL));
-  cr_assert_null(init_err);
-  const gchar *last_error = filterx_eval_get_last_error();
-  cr_assert_not_null(last_error);
-  cr_assert_str_eq("Failed to evaluate event format parser: Invalid delimiter: 'foo=bar@bar=baz@baz=tik\\=tak'",
-                   last_error);
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar\tbar=baz|\tbaz=tik\\=tak",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}");
+}
+
+Test(filterx_func_parse_leef, test_v2_no_delimiter_field_empty_extensions)
+{
+  _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|",
+                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
+}
+
+Test(filterx_func_parse_leef, test_v2_no_delimiter_field_separate_extensions)
+{
+  const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar\tbar=baz|\tbaz=tik\\=tak";
+  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}}",
+                              _create_msg_arg(input), _create_separate_extensions_arg(TRUE), NULL);
 }
 
 Test(filterx_func_parse_leef, test_forced_pair_separator_v2_with_delimiter_field)

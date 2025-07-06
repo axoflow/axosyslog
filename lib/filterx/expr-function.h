@@ -73,6 +73,7 @@ enum FilterXFunctionError
   FILTERX_FUNCTION_ERROR_FUNCTION_NOT_FOUND,
   FILTERX_FUNCTION_ERROR_CTOR_FAIL,
   FILTERX_FUNCTION_ERROR_UNEXPECTED_ARGS,
+  FILTERX_FUNCTION_ERROR_EVAL_ERROR,
 };
 
 void filterx_function_init_instance(FilterXFunction *s, const gchar *function_name);

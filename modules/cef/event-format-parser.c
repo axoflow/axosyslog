@@ -169,11 +169,13 @@ exit:
   return success;
 }
 
-static inline gboolean
-_match_field_to_column(EventParserContext *ctx, Field *field, const gchar *input, gint input_len,
-                       FilterXObject *fillable,
-                       GError **error)
+static gboolean
+_parse_column(EventParserContext *ctx, FilterXObject *fillable, GError **error)
 {
+  const gchar *input = csv_scanner_get_current_value(ctx->csv_scanner);
+  gint input_len = csv_scanner_get_current_value_len(ctx->csv_scanner);
+  Field *field = _get_current_field(ctx);
+
   FilterXObject *val = NULL;
   gboolean ok = FALSE;
 
@@ -184,6 +186,9 @@ _match_field_to_column(EventParserContext *ctx, Field *field, const gchar *input
 
   if (!*error && ok && val)
     {
+      /* current field might change during parsing */
+      field = _get_current_field(ctx);
+
       FILTERX_STRING_DECLARE_ON_STACK(key, field->name, -1);
       ok = filterx_object_set_subscript(fillable, key, &val);
       filterx_object_unref(key);
@@ -191,16 +196,6 @@ _match_field_to_column(EventParserContext *ctx, Field *field, const gchar *input
 
   filterx_object_unref(val);
   return ok;
-}
-
-static gboolean
-_parse_column(EventParserContext *ctx, FilterXObject *fillable, GError **error)
-{
-  const gchar *input = csv_scanner_get_current_value(ctx->csv_scanner);
-  gint input_len = csv_scanner_get_current_value_len(ctx->csv_scanner);
-  Field *field = _get_current_field(ctx);
-
-  return _match_field_to_column(ctx, field, input, input_len, fillable, error);
 }
 
 static EventParserContext

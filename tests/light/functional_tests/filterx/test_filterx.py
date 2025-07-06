@@ -2379,8 +2379,21 @@ def test_parse_leef_version_2_no_delimiter(config, syslog_ng):
     )
     syslog_ng.start(config)
 
-    assert "processed" not in file_true.get_stats()
-    assert file_false.get_stats()["processed"] == 1
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    exp = {
+        "version": "2.0",
+        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "event_id": "1234",
+        "dummy_key1": "value",
+        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
+        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
+        "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
+    }
+    assert json.loads(file_true.read_log()) == exp
 
 
 def test_parse_leef_version_2_empty_delimiter(config, syslog_ng):
