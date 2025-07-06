@@ -84,12 +84,13 @@ _create_unescaped_string_obj(const gchar *value, gint value_len, const gchar *ch
 }
 
 static gboolean
-parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *parsed_dict)
+parse_default(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject *parsed_dict)
 {
   if ((!value || value_len <= 0) && !csv_scanner_has_input_left(ctx->csv_scanner))
     {
-      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_MISSING_COLUMNS,
-                  "Header '%s' is missing", _get_current_field(ctx)->name);
+      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &ctx->parser->super.super,
+                                          "Header '%s' is missing",
+                                          _get_current_field(ctx)->name);
       return FALSE;
     }
 
@@ -104,22 +105,24 @@ parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GErro
 }
 
 gboolean
-parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *parsed_dict)
+parse_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject *parsed_dict)
 {
   const gchar *log_signature = ctx->parser->config.signature;
   gchar *colon_pos = memchr(value, ':', value_len);
   if (!colon_pos || colon_pos == value)
     {
-      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN,
-                  EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG, log_signature);
+      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &ctx->parser->super.super,
+                                          EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG,
+                                          log_signature);
       return FALSE;
     }
 
   gint sign_len = colon_pos - value;
   if (!(strncmp(value, log_signature, sign_len) == 0))
     {
-      g_set_error(error, EVENT_FORMAT_PARSER_ERROR, EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS,
-                  EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG, value, log_signature);
+      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &ctx->parser->super.super,
+                                          EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG,
+                                          value, log_signature);
       return FALSE;
     }
 
@@ -151,7 +154,7 @@ _set_dict_value(EventParserContext *ctx, FilterXObject *out,
 }
 
 gboolean
-parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *parsed_dict)
+parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject *parsed_dict)
 {
   FilterXObject *dict_to_fill = parsed_dict;
 
@@ -188,15 +191,15 @@ exit:
 }
 
 static gboolean
-_parse_column(EventParserContext *ctx, FilterXObject *parsed_dict, GError **error)
+_parse_column(EventParserContext *ctx, FilterXObject *parsed_dict)
 {
   const gchar *input = csv_scanner_get_current_value(ctx->csv_scanner);
   gint input_len = csv_scanner_get_current_value_len(ctx->csv_scanner);
   Field *field = _get_current_field(ctx);
 
   if (!field->field_parser)
-    return parse_default(ctx, input, input_len, error, parsed_dict);
-  return field->field_parser(ctx, input, input_len, error, parsed_dict);
+    return parse_default(ctx, input, input_len, parsed_dict);
+  return field->field_parser(ctx, input, input_len, parsed_dict);
 }
 
 static EventParserContext
@@ -222,9 +225,8 @@ _new_context(FilterXFunctionEventFormatParser *self,  CSVScanner *csv_scanner)
 }
 
 static FilterXObject *
-parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, GError **error)
+parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
 {
-  gboolean ok = FALSE;
   FilterXObject *result = filterx_dict_new();
 
   CSVScanner csv_scanner;
@@ -236,8 +238,7 @@ parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, GErro
     {
       csv_scanner_scan_next(&csv_scanner);
 
-      ok = _parse_column(&ctx, result, error);
-      if (!ok || *error)
+      if (!_parse_column(&ctx, result))
         {
           filterx_object_unref(result);
           result = NULL;
@@ -275,14 +276,7 @@ _eval(FilterXExpr *s)
       goto exit;
     }
 
-  GError *error = NULL;
-  result = parse(self, input, len, &error);
-  if (error)
-    {
-      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &self->super.super,
-                                          "%s", error->message);
-      g_error_free(error);
-    }
+  result = parse(self, input, len);
 
 exit:
   filterx_object_unref(obj);
