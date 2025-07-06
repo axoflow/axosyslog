@@ -34,7 +34,7 @@
         EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=string, " \
         EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS"=boolean)"
 
-FILTERX_GENERATOR_FUNCTION_DECLARE(parse_leef);
+FILTERX_FUNCTION_DECLARE(parse_leef);
 
 FilterXExpr *filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **error);
 

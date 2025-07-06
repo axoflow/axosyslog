@@ -89,7 +89,7 @@ _is_delmiter_empty(gchar delimiter)
 
 static gboolean
 _fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error,
-                              FilterXObject *fillable)
+                              FilterXObject *parsed_dict)
 {
   if (!csv_scanner_append_rest(ctx->csv_scanner))
     {
@@ -103,11 +103,11 @@ _fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint 
 
   ctx->field_index++;
 
-  return parse_extensions(ctx, input, input_len, error, fillable);
+  return parse_extensions(ctx, input, input_len, error, parsed_dict);
 }
 
 gboolean
-parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *fillable)
+parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *parsed_dict)
 {
   FILTERX_STRING_DECLARE_ON_STACK(key, "delimiter", 9);
   FilterXObject *value = NULL;
@@ -145,12 +145,12 @@ parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GEr
    *   1. either missing,
    *   2. or invalid, which might mean it is missing and there is a | in a value
    */
-  return _fallback_to_parse_extensions(ctx, input, input_len, error, fillable);
+  return _fallback_to_parse_extensions(ctx, input, input_len, error, parsed_dict);
 
 success:
   if (value)
     {
-      filterx_object_set_subscript(fillable, key, &value);
+      filterx_object_set_subscript(parsed_dict, key, &value);
       filterx_object_unref(value);
     }
 
@@ -159,12 +159,13 @@ success:
 }
 
 gboolean
-parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *fillable)
+parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error,
+                   FilterXObject *parsed_dict)
 {
   if (g_strstr_len(value, value_len, "2.0"))
     event_format_parser_context_set_header(ctx, &leef_v2_cfg.header);
 
-  return parse_version(ctx, value, value_len, error, fillable);
+  return parse_version(ctx, value, value_len, error, parsed_dict);
 }
 
 Field leef_v1_fields[] =
@@ -231,13 +232,13 @@ filterx_function_parse_leef_new(FilterXFunctionArgs *args, GError **err)
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super.super.super.super;
+  return &self->super.super.super;
 
 error:
   append_error_message(err, FILTERX_FUNC_PARSE_LEEF_USAGE);
   filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super.super.super);
+  filterx_expr_unref(&self->super.super.super);
   return NULL;
 }
 
-FILTERX_GENERATOR_FUNCTION(parse_leef, filterx_function_parse_leef_new);
+FILTERX_FUNCTION(parse_leef, filterx_function_parse_leef_new);

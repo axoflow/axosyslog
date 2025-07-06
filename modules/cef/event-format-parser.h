@@ -60,7 +60,7 @@ enum EventFormatParserError
 
 struct _FilterXFunctionEventFormatParser
 {
-  FilterXGeneratorFunction super;
+  FilterXFunction super;
   FilterXExpr *msg;
   CSVScannerOptions csv_opts;
   Config config;
@@ -84,9 +84,9 @@ gboolean filterx_function_parser_init_instance(FilterXFunctionEventFormatParser 
                                                FilterXFunctionArgs *args, Config *cfg, GError **error);
 
 gboolean parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error,
-                       FilterXObject *fillable);
+                       FilterXObject *parsed_dict);
 gboolean parse_extensions(EventParserContext *ctx, const gchar *value, gint value_len, GError **error,
-                          FilterXObject *fillable);
+                          FilterXObject *parsed_dict);
 
 void event_format_parser_context_set_header(EventParserContext *ctx, Header *new_header);
 

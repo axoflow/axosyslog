@@ -108,28 +108,17 @@ _assert_create_args(int count, ...)
 }
 
 FilterXExpr *
-_new_parser(FilterXFunctionArgs *args, GError **error, FilterXObject *fillable)
+_new_parser(FilterXFunctionArgs *args, GError **error)
 {
   if (constructor == NULL)
-    goto error;
-  FilterXExpr *func = constructor(args, error);
-
-  if (!func)
-    goto error;
-
-  FilterXExpr *fillable_expr = filterx_non_literal_new(fillable);
-  filterx_generator_set_fillable(func, fillable_expr);
-
-  return func;
-error:
-  filterx_object_unref(fillable);
-  return NULL;
+    return NULL;
+  return constructor(args, error);
 }
 
 FilterXObject *
 _eval_input_inner(GError **error, va_list vargs)
 {
-  FilterXExpr *func = _new_parser(_assert_create_args_inner(vargs), error, filterx_dict_new());
+  FilterXExpr *func = _new_parser(_assert_create_args_inner(vargs), error);
   cr_assert_not_null(func);
   FilterXObject *obj = filterx_expr_eval(func);
   filterx_expr_unref(func);

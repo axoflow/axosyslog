@@ -38,6 +38,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-list-interface.h"
 #include "filterx/object-string.h"
+#include "filterx/object-dict.h"
 
 GQuark
 event_format_parser_error_quark(void)
@@ -83,7 +84,7 @@ _create_unescaped_string_obj(const gchar *value, gint value_len, const gchar *ch
 }
 
 static gboolean
-parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *fillable)
+parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *parsed_dict)
 {
   if ((!value || value_len <= 0) && !csv_scanner_has_input_left(ctx->csv_scanner))
     {
@@ -95,7 +96,7 @@ parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GErro
   FILTERX_STRING_DECLARE_ON_STACK(key_obj, _get_current_field(ctx)->name, -1);
   FilterXObject *value_obj = _create_unescaped_string_obj(value, value_len, "\\");
 
-  filterx_object_set_subscript(fillable, key_obj, &value_obj);
+  filterx_object_set_subscript(parsed_dict, key_obj, &value_obj);
 
   filterx_object_unref(value_obj);
   filterx_object_unref(key_obj);
@@ -103,7 +104,7 @@ parse_default(EventParserContext *ctx, const gchar *value, gint value_len, GErro
 }
 
 gboolean
-parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *fillable)
+parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error, FilterXObject *parsed_dict)
 {
   const gchar *log_signature = ctx->parser->config.signature;
   gchar *colon_pos = memchr(value, ':', value_len);
@@ -125,7 +126,7 @@ parse_version(EventParserContext *ctx, const gchar *value, gint value_len, GErro
   FILTERX_STRING_DECLARE_ON_STACK(key_obj, "version", 7);
   FilterXObject *value_obj = filterx_string_new(++colon_pos, value_len - sign_len - 1);
 
-  filterx_object_set_subscript(fillable, key_obj, &value_obj);
+  filterx_object_set_subscript(parsed_dict, key_obj, &value_obj);
 
   filterx_object_unref(value_obj);
   filterx_object_unref(key_obj);
@@ -150,15 +151,15 @@ _set_dict_value(EventParserContext *ctx, FilterXObject *out,
 }
 
 gboolean
-parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *fillable)
+parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *parsed_dict)
 {
-  FilterXObject *dict_to_fill = fillable;
+  FilterXObject *dict_to_fill = parsed_dict;
 
   if (ctx->separate_extensions)
     {
-      dict_to_fill = filterx_object_create_dict(fillable);
+      dict_to_fill = filterx_object_create_dict(parsed_dict);
       FILTERX_STRING_DECLARE_ON_STACK(key, "extensions", 10);
-      filterx_object_set_subscript(fillable, key, &dict_to_fill);
+      filterx_object_set_subscript(parsed_dict, key, &dict_to_fill);
       filterx_object_unref(key);
     }
 
@@ -187,15 +188,15 @@ exit:
 }
 
 static gboolean
-_parse_column(EventParserContext *ctx, FilterXObject *fillable, GError **error)
+_parse_column(EventParserContext *ctx, FilterXObject *parsed_dict, GError **error)
 {
   const gchar *input = csv_scanner_get_current_value(ctx->csv_scanner);
   gint input_len = csv_scanner_get_current_value_len(ctx->csv_scanner);
   Field *field = _get_current_field(ctx);
 
   if (!field->field_parser)
-    return parse_default(ctx, input, input_len, error, fillable);
-  return field->field_parser(ctx, input, input_len, error, fillable);
+    return parse_default(ctx, input, input_len, error, parsed_dict);
+  return field->field_parser(ctx, input, input_len, error, parsed_dict);
 }
 
 static EventParserContext
@@ -220,10 +221,11 @@ _new_context(FilterXFunctionEventFormatParser *self,  CSVScanner *csv_scanner)
   return ctx;
 }
 
-static gboolean
-parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, FilterXObject *fillable, GError **error)
+static FilterXObject *
+parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, GError **error)
 {
   gboolean ok = FALSE;
+  FilterXObject *result = filterx_dict_new();
 
   CSVScanner csv_scanner;
   csv_scanner_init(&csv_scanner, &self->csv_opts, log);
@@ -234,52 +236,57 @@ parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len, Filte
     {
       csv_scanner_scan_next(&csv_scanner);
 
-      ok = _parse_column(&ctx, fillable, error);
+      ok = _parse_column(&ctx, result, error);
       if (!ok || *error)
-        break;
+        {
+          filterx_object_unref(result);
+          result = NULL;
+          break;
+        }
 
       ctx.field_index++;
     }
 
   csv_scanner_deinit(&csv_scanner);
-  return ok;
+  return result;
 }
 
-static gboolean
-_generate(FilterXExprGenerator *s, FilterXObject *fillable)
+static FilterXObject *
+_eval(FilterXExpr *s)
 {
   FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
-  gboolean ok = FALSE;
+
+  FilterXObject *result = NULL;
 
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
-    return FALSE;
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate event format parser", &self->super.super,
+                                          "Failed to evaluate input expression");
+      return NULL;
+    }
 
   gsize len;
   const gchar *input;
   if (!filterx_object_extract_string_ref(obj, &input, &len))
     {
-      filterx_eval_push_error_static_info("Failed to evaluate event format parser", &self->super.super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate event format parser", &self->super.super,
                                           EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG);
-      ok = FALSE;
       goto exit;
     }
 
   GError *error = NULL;
-
-  ok = parse(self, input, len, fillable, &error);
-
+  result = parse(self, input, len, &error);
   if (error)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &self->super.super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &self->super.super,
                                           "%s", error->message);
-      ok = FALSE;
       g_error_free(error);
     }
 
 exit:
   filterx_object_unref(obj);
-  return ok;
+  return result;
 }
 
 static FilterXExpr *
@@ -288,7 +295,7 @@ _optimize(FilterXExpr *s)
   FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
 
   self->msg = filterx_expr_optimize(self->msg);
-  return filterx_generator_function_optimize_method(&self->super);
+  return filterx_function_optimize_method(&self->super);
 }
 
 static gboolean
@@ -299,7 +306,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->msg, cfg))
     return FALSE;
 
-  return filterx_generator_function_init_method(&self->super, cfg);
+  return filterx_function_init_method(&self->super, cfg);
 }
 
 static void
@@ -307,7 +314,7 @@ _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
   filterx_expr_deinit(self->msg, cfg);
-  filterx_generator_function_deinit_method(&self->super, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
 }
 
 static void
@@ -317,7 +324,7 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->msg);
   g_free(self->kv_pair_separator);
   csv_scanner_options_clean(&self->csv_opts);
-  filterx_generator_function_free_method(&self->super);
+  filterx_function_free_method(&self->super);
 }
 
 static FilterXExpr *
@@ -426,13 +433,12 @@ gboolean
 filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, const gchar *fn_name,
                                       FilterXFunctionArgs *args, Config *cfg, GError **error)
 {
-  filterx_generator_function_init_instance(&self->super, fn_name);
-  self->super.super.generate = _generate;
-  self->super.super.create_container = filterx_generator_create_dict_container;
-  self->super.super.super.optimize = _optimize;
-  self->super.super.super.init = _init;
-  self->super.super.super.deinit = _deinit;
-  self->super.super.super.free_fn = _free;
+  filterx_function_init_instance(&self->super, fn_name);
+  self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
+  self->super.super.init = _init;
+  self->super.super.deinit = _deinit;
+  self->super.super.free_fn = _free;
 
   _set_config(self, cfg);
 

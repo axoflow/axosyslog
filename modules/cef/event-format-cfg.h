@@ -33,7 +33,7 @@ typedef struct _EventParserContext EventParserContext;
 typedef struct _EventFormatterContext EventFormatterContext;
 
 typedef gboolean(*FieldParser)(EventParserContext *ctx, const gchar *value, gint value_len, GError **error,
-                               FilterXObject *fillable);
+                               FilterXObject *parsed_dict);
 
 typedef gboolean(*FieldFormatter)(EventFormatterContext *ctx, GString *formatted, FilterXObject *dict);
 
