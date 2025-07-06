@@ -88,13 +88,12 @@ _is_delmiter_empty(gchar delimiter)
 }
 
 static gboolean
-_fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, GError **error,
-                              FilterXObject *parsed_dict)
+_fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject *parsed_dict)
 {
   if (!csv_scanner_append_rest(ctx->csv_scanner))
     {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_EVAL_ERROR,
-                  "Unexpected end of input");
+      filterx_eval_push_error_static_info("Failed to evaluate parse_leef()", &ctx->parser->super.super,
+                                          "Unexpected end of input");
       return FALSE;
     }
 
@@ -103,11 +102,11 @@ _fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint 
 
   ctx->field_index++;
 
-  return parse_extensions(ctx, input, input_len, error, parsed_dict);
+  return parse_extensions(ctx, input, input_len, parsed_dict);
 }
 
 gboolean
-parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GError **error, FilterXObject *parsed_dict)
+parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject *parsed_dict)
 {
   FILTERX_STRING_DECLARE_ON_STACK(key, "delimiter", 9);
   FilterXObject *value = NULL;
@@ -145,7 +144,7 @@ parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, GEr
    *   1. either missing,
    *   2. or invalid, which might mean it is missing and there is a | in a value
    */
-  return _fallback_to_parse_extensions(ctx, input, input_len, error, parsed_dict);
+  return _fallback_to_parse_extensions(ctx, input, input_len, parsed_dict);
 
 success:
   if (value)
@@ -159,13 +158,12 @@ success:
 }
 
 gboolean
-parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, GError **error,
-                   FilterXObject *parsed_dict)
+parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, FilterXObject *parsed_dict)
 {
   if (g_strstr_len(value, value_len, "2.0"))
     event_format_parser_context_set_header(ctx, &leef_v2_cfg.header);
 
-  return parse_version(ctx, value, value_len, error, parsed_dict);
+  return parse_version(ctx, value, value_len, parsed_dict);
 }
 
 Field leef_v1_fields[] =
