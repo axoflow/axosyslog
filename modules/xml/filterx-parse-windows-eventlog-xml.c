@@ -282,7 +282,8 @@ _filterx_parse_xml_start_eventid_method(FilterXGeneratorFunctionParseXml *self,
       const char *event_id_qualifier = "EventIDQualifiers";
       if (!filterx_parse_xml_prepare_elem(event_id_qualifier, last_elem_context, FALSE, &new_elem_context, error))
         return;
-      filterx_parse_xml_replace_string_text(&new_elem_context, event_id_qualifier, attribute_values[0], strlen(attribute_values[0]), error);
+      filterx_parse_xml_replace_string_text(&new_elem_context, event_id_qualifier, attribute_values[0],
+                                            strlen(attribute_values[0]), error);
     }
   xml_elem_context_stack_push(state->xml_elem_context_stack, &new_elem_context);
 }

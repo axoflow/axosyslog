@@ -443,8 +443,8 @@ _strip(const gchar *text, gsize text_len, gsize *new_text_len)
 }
 
 void
-filterx_parse_xml_replace_string_text(XmlElemContext *elem_context, const gchar *element_name, const gchar *text, gsize text_len,
-                                      GError **error)
+filterx_parse_xml_replace_string_text(XmlElemContext *elem_context, const gchar *element_name, const gchar *text,
+                                      gsize text_len, GError **error)
 {
   FILTERX_STRING_DECLARE_ON_STACK(text_obj, text, text_len);
 

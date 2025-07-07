@@ -112,8 +112,8 @@ void filterx_parse_xml_end_elem_method(FilterXGeneratorFunctionParseXml *self,
 void filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
                                    GMarkupParseContext *context, const gchar *text, gsize text_len,
                                    FilterXParseXmlState *state, GError **error);
-gboolean filterx_parse_xml_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, gboolean has_attrs,
-                                        XmlElemContext *new_elem_context, GError **error);
+gboolean filterx_parse_xml_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context,
+                                        gboolean has_attrs, XmlElemContext *new_elem_context, GError **error);
 
 void filterx_parse_xml_replace_string_text(XmlElemContext *elem_context, const gchar *element_name, const gchar *text,
                                            gsize text_len, GError **error);
