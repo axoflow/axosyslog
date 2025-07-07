@@ -684,7 +684,7 @@ public:
       {
         Message *elem_message = reflectors.reflection->MutableRepeatedMessage(message, reflectors.field_descriptor, i);
 
-        const std::string &field_name = reflectors.field_descriptor->name();
+        const std::string field_name = std::string(reflectors.field_descriptor->name());
         ProtoReflectors elem_reflectors(*message, field_name);
         ProtobufFieldConverter *converter = get_protobuf_field_converter(elem_reflectors.field_type);
 
