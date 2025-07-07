@@ -265,6 +265,30 @@ _has_wevt_event_data_attr(const gchar **attribute_names, FilterXParseWEVTState *
 }
 
 static void
+_filterx_parse_xml_start_eventid_method(FilterXGeneratorFunctionParseXml *self,
+                                        GMarkupParseContext *context, const gchar *element_name,
+                                        const gchar **attribute_names, const gchar **attribute_values,
+                                        FilterXParseXmlState *state, GError **error)
+{
+  XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->xml_elem_context_stack);
+
+  XmlElemContext new_elem_context = { 0 };
+  if (!filterx_parse_xml_prepare_elem(element_name, last_elem_context, FALSE, &new_elem_context, error))
+    return;
+
+  gboolean has_attrs = !!attribute_names[0];
+  if(has_attrs)
+    {
+      const char *event_id_qualifier = "EventIDQualifiers";
+      if (!filterx_parse_xml_prepare_elem(event_id_qualifier, last_elem_context, FALSE, &new_elem_context, error))
+        return;
+      filterx_parse_xml_replace_string_text(&new_elem_context, event_id_qualifier, attribute_values[0],
+                                            strlen(attribute_values[0]), error);
+    }
+  xml_elem_context_stack_push(state->xml_elem_context_stack, &new_elem_context);
+}
+
+static void
 _start_elem(FilterXGeneratorFunctionParseXml *s,
             GMarkupParseContext *context, const gchar *element_name,
             const gchar **attribute_names, const gchar **attribute_values,
@@ -272,6 +296,12 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
 {
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
   XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
+
+  if (g_strcmp0(element_name, "EventID") == 0)
+    {
+      _filterx_parse_xml_start_eventid_method(s, context, element_name, attribute_names, attribute_values, st, error);
+      return;
+    }
 
   if (!_push_position(state, element_name, attribute_names, attribute_values, error))
     return;
