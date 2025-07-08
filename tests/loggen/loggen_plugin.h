@@ -44,6 +44,7 @@ typedef struct _plugin_option
   int use_ipv6;
   char *target; /* command line argument */
   char *port;
+  gint client_port;
   gint64 rate;
   int rate_burst_start;
   int reconnect;

@@ -51,7 +51,7 @@ void time_val_diff_in_timeval(struct timeval *res, const struct timeval *t1, con
 size_t get_now_timestamp(char *stamp, gsize stamp_size);
 size_t get_now_timestamp_bsd(char *stamp, gsize stamp_size);
 void format_timezone_offset_with_colon(char *timestamp, int timestamp_size, struct tm *tm);
-int connect_ip_socket(int sock_type, const char *target, const char *port, int use_ipv6);
+int connect_ip_socket(int sock_type, const char *target, const char *port, int use_ipv6, int client_port);
 int connect_unix_domain_socket(int sock_type, const char *path);
 SSL *open_ssl_connection(int sock_fd);
 void close_ssl_connection(SSL *ssl);
