@@ -316,7 +316,7 @@ def setup(request):
 def port_allocator():
     def get_next_port() -> int:
         with get_session_data() as session_data:
-            last_port = session_data.get("port_allocator_last_port", 30000)
+            last_port = session_data.get("port_allocator_last_port", 20000)
             port = last_port + 1
             session_data["port_allocator_last_port"] = port
         return port
