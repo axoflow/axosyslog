@@ -113,9 +113,26 @@ _obj_to_string(FilterXObject *obj, gsize *len)
 }
 
 static gboolean
+_is_empty_value(FilterXObject *value)
+{
+  if (filterx_object_extract_null(value))
+    return TRUE;
+
+  gsize len;
+  const gchar *str;
+  if (!filterx_object_extract_string_ref(value, &str, &len))
+    return FALSE;
+
+  return len == 0;
+}
+
+static gboolean
 _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  if (_is_empty_value(*new_value))
+    return TRUE;
 
   ScratchBuffersMarker marker;
   scratch_buffers_mark(&marker);
