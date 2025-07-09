@@ -31,8 +31,8 @@
 static Plugin cef_plugins[] =
 {
   TEMPLATE_FUNCTION_PLUGIN(tf_cef, "format-cef-extension"),
-  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_cef),
-  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_leef),
+  FILTERX_FUNCTION_PLUGIN(parse_cef),
+  FILTERX_FUNCTION_PLUGIN(parse_leef),
   FILTERX_FUNCTION_PLUGIN(format_cef),
   FILTERX_FUNCTION_PLUGIN(format_leef),
 };
