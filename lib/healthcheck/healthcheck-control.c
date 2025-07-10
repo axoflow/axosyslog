@@ -27,6 +27,7 @@
 #include "control/control-connection.h"
 #include "control/control-commands.h"
 #include "stats/stats-prometheus.h"
+#include "mainloop-worker.h"
 #include "afinter.h"
 
 static inline void
@@ -79,7 +80,12 @@ control_connection_healthcheck(ControlConnection *cc, GString *command, gpointer
 
   if (!healthcheck_run(hc, _send_healthcheck_reply, control_connection_ref(cc)))
     {
-      GString *reply = g_string_new("FAIL Another healthcheck command is already running");
+      GString *reply;
+      if (is_reloading_scheduled)
+        reply = g_string_new("RETRY Healthcheck execution failed, reload is in progress. Please repeat the command.");
+      else
+        reply = g_string_new("FAIL Healthcheck execution failed");
+
       control_connection_send_reply(cc, reply);
       control_connection_unref(cc);
     }

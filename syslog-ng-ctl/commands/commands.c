@@ -52,6 +52,11 @@ process_response_status(GString *response)
       g_string_erase(response, 0, 3);
       return 0;
     }
+  else if (strncmp(response->str, "RETRY ", 6) == 0)
+    {
+      g_string_erase(response, 0, 6);
+      return 0;
+    }
   return 0;
 }
 
