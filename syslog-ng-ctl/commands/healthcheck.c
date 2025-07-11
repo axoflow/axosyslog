@@ -41,7 +41,7 @@ GOptionEntry healthcheck_options[] =
 static void
 _healthcheck_exit(int signo)
 {
-  _exit(1);
+  _exit(2);
 }
 
 static void
