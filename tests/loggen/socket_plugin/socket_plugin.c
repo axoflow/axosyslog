@@ -152,6 +152,12 @@ start(PluginOption *option)
       return FALSE;
     }
 
+  if (option->client_port > 0 && option->active_connections + option->idle_connections > 1)
+    {
+      ERROR("client port can only be specified for a single connection\n");
+      return FALSE;
+    }
+
   DEBUG("plugin (%d,%d,%d,%d)start\n",
         option->message_length,
         option->interval,
@@ -289,7 +295,7 @@ idle_thread_func(gpointer user_data)
   if (unix_socket_x)
     fd = connect_unix_domain_socket(sock_type, option->target);
   else
-    fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6);
+    fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6, option->client_port);
 
   if (fd<0)
     {
@@ -362,7 +368,7 @@ active_thread_func(gpointer user_data)
   if (unix_socket_x)
     fd = connect_unix_domain_socket(sock_type, option->target);
   else
-    fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6);
+    fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6, option->client_port);
 
   if (fd<0)
     {
@@ -443,7 +449,7 @@ active_thread_func(gpointer user_data)
           if (unix_socket_x)
             fd = connect_unix_domain_socket(sock_type, option->target);
           else
-            fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6);
+            fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6, option->client_port);
 
           while(fd < 0 && !thread_check_exit_criteria(thread_context))
             {
@@ -453,7 +459,7 @@ active_thread_func(gpointer user_data)
               if (unix_socket_x)
                 fd = connect_unix_domain_socket(sock_type, option->target);
               else
-                fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6);
+                fd = connect_ip_socket(sock_type, option->target, option->port, option->use_ipv6, option->client_port);
             }
 
           if(fd > 0)

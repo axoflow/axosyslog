@@ -60,11 +60,11 @@ class SyslogSource(SourceDriver):
         self.driver_name = "syslog"
         super(SyslogSource, self).__init__(stats_handler, prometheus_stats_handler, options=options)
 
-    def write_log(self, message, rate=None, transport=None, framed=None):
-        self.io.write_messages([message], rate=rate, transport=transport, framed=framed)
+    def write_log(self, message, rate=None, transport=None, framed=None, client_port=0):
+        self.io.write_messages([message], rate=rate, transport=transport, framed=framed, client_port=client_port)
 
-    def write_logs(self, messages, rate=None, transport=None, framed=None):
-        self.io.write_messages(messages, rate=rate, transport=transport, framed=framed)
+    def write_logs(self, messages, rate=None, transport=None, framed=None, client_port=0):
+        self.io.write_messages(messages, rate=rate, transport=transport, framed=framed, client_port=client_port)
 
-    def write_logs_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None):
-        self.io.write_messages_with_proxy_header(proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=rate, transport=transport, framed=framed)
+    def write_logs_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None, client_port=0):
+        self.io.write_messages_with_proxy_header(proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=rate, transport=transport, framed=framed, client_port=client_port)

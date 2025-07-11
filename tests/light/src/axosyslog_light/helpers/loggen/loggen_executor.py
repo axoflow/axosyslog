@@ -38,6 +38,7 @@ from psutil import TimeoutExpired
 class LoggenStartParams:
     target: str
     port: int
+    client_port: int = 0
     inet: bool = False
     unix: bool = False
     stream: bool = False
@@ -123,6 +124,8 @@ class LoggenStartParams:
             params.append("--sdata")
         if self.no_framing is True:
             params.append("--no-framing")
+        if self.client_port:
+            params.append(f"--client-port={self.client_port}")
         if self.active_connections is not None:
             params.append(f"--active-connections={self.active_connections}")
         if self.idle_connections is not None:

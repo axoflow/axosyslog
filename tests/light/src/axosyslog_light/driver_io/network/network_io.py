@@ -80,13 +80,13 @@ class NetworkIO():
             return "".join([str(len(message)) + " " + message for message in messages])
         return "".join([message + "\n" for message in messages])
 
-    def write_messages(self, messages, rate=None, transport=None, framed=None, rate_burst_start=False):
+    def write_messages(self, messages, rate=None, transport=None, framed=None, rate_burst_start=False, client_port=0):
         self.write_raw(
             self.__format_messages(messages, framed=framed), rate=rate, transport=transport,
-            extra_loggen_args={"rate_burst_start": rate_burst_start},
+            extra_loggen_args={"rate_burst_start": rate_burst_start, "client_port": client_port},
         )
 
-    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None):
+    def write_messages_with_proxy_header(self, proxy_version, src_ip, dst_ip, src_port, dst_port, messages, rate=None, transport=None, framed=None, client_port=0):
         self.write_raw(
             self.__format_messages(messages, framed=framed),
             rate=rate,
@@ -97,6 +97,7 @@ class NetworkIO():
                 "proxy_dst_ip": dst_ip,
                 "proxy_src_port": str(src_port),
                 "proxy_dst_port": str(dst_port),
+                "client_port": client_port,
             },
         )
 
