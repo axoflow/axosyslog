@@ -57,6 +57,7 @@ static PluginOption global_plugin_option =
   .use_ipv6 = 0,
   .target = NULL,
   .port = NULL,
+  .client_port = 0,
   .rate = 1000,
   .rate_burst_start = 0,
   .reconnect = 0,
@@ -107,6 +108,7 @@ static GOptionEntry loggen_options[] =
   { "proxy-dst-port", 0, 0, G_OPTION_ARG_STRING, &global_plugin_option.proxy_dst_port, "Destination port for the PROXY protocol header", "<port>" },
   { "sdata", 'p', 0, G_OPTION_ARG_STRING, &sdata_value, "Send the given sdata (e.g. \"[test name=\\\"value\\\"]\") in case of syslog-proto", NULL },
   { "rate-burst-start", 0, 0, G_OPTION_ARG_NONE, &global_plugin_option.rate_burst_start, "Do not start slow (for rate limit testing)", NULL },
+  { "client-port", 0, 0, G_OPTION_ARG_INT, &global_plugin_option.client_port, "Use this outbounds port to connect to the server", NULL },
   { "quiet", 'Q', 0, G_OPTION_ARG_NONE, &quiet, "Don't print periodic statistics", NULL },
   { "debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Enable loggen debug messages", NULL },
   { NULL }

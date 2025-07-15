@@ -55,12 +55,52 @@ set_debug_level(int new_debug)
 }
 
 static int
-connect_to_server(struct sockaddr *dest_addr, int dest_addr_len, int sock_type)
+bind_to_client_port(int sock, struct sockaddr *dest_addr, int dest_addr_len, int client_port)
+{
+  int bind_result = -1;
+
+  if (dest_addr->sa_family == AF_INET)
+    {
+      struct sockaddr_in local_addr;
+      memset(&local_addr, 0, sizeof(local_addr));
+      local_addr.sin_family = AF_INET;
+      local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+      local_addr.sin_port = htons(client_port);
+      bind_result = bind(sock, (struct sockaddr *)&local_addr, sizeof(local_addr));
+    }
+  else if (dest_addr->sa_family == AF_INET6)
+    {
+      struct sockaddr_in6 local_addr6;
+      memset(&local_addr6, 0, sizeof(local_addr6));
+      local_addr6.sin6_family = AF_INET6;
+      local_addr6.sin6_addr = in6addr_any;
+      local_addr6.sin6_port = htons(client_port);
+      bind_result = bind(sock, (struct sockaddr *)&local_addr6, sizeof(local_addr6));
+    }
+
+  if (bind_result < 0)
+    {
+      ERROR("error binding to client port %d: %s\n", client_port, g_strerror(errno));
+      close(sock);
+      return -1;
+    }
+
+  return bind_result;
+}
+
+static int
+connect_to_server(struct sockaddr *dest_addr, int dest_addr_len, int sock_type, int client_port)
 {
   int sock = socket(dest_addr->sa_family, sock_type, 0);
   if (sock < 0)
     {
       ERROR("error creating socket: %s\n", g_strerror(errno));
+      return -1;
+    }
+
+  if (client_port > 0 && bind_to_client_port(sock, dest_addr, dest_addr_len, client_port) < 0)
+    {
+      close(sock);
       return -1;
     }
 
@@ -113,7 +153,7 @@ resolve_address_using_getaddrinfo(int sock_type, const char *target, const char 
 }
 
 int
-connect_ip_socket(int sock_type, const char *target, const char *port, int use_ipv6)
+connect_ip_socket(int sock_type, const char *target, const char *port, int use_ipv6, gint client_port)
 {
   struct sockaddr *dest_addr;
   socklen_t dest_addr_len;
@@ -157,7 +197,7 @@ connect_ip_socket(int sock_type, const char *target, const char *port, int use_i
   dest_addr_len = sizeof(s_in);
 #endif
 
-  int socket = connect_to_server(dest_addr, dest_addr_len, sock_type);
+  int socket = connect_to_server(dest_addr, dest_addr_len, sock_type, client_port);
 
 #if SYSLOG_NG_HAVE_GETADDRINFO
   freeaddrinfo(addr_info);
@@ -193,7 +233,7 @@ int connect_unix_domain_socket(int sock_type, const char *path)
   dest_addr = (struct sockaddr *) &saun;
   dest_addr_len = sizeof(saun);
 
-  return connect_to_server(dest_addr, dest_addr_len, sock_type);
+  return connect_to_server(dest_addr, dest_addr_len, sock_type, 0);
 }
 
 gint64

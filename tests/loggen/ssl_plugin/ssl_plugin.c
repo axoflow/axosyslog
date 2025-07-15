@@ -269,7 +269,7 @@ idle_thread_func(gpointer user_data)
   PluginOption *option = thread_context->option;
   int thread_index = thread_context->index;
 
-  int sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6);
+  int sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6, option->client_port);
 
   SSL *ssl = open_ssl_connection(sock_fd);
   if (ssl == NULL)
@@ -362,7 +362,7 @@ active_thread_func(gpointer user_data)
 
   char *message = g_malloc0(MAX_MESSAGE_LENGTH+1);
 
-  int sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6);
+  int sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6, option->client_port);
 
   if(proxied_tls_passthrough)
     send_plaintext_proxy_header(thread_context, sock_fd, message, MAX_MESSAGE_LENGTH);
@@ -457,7 +457,7 @@ active_thread_func(gpointer user_data)
           close(sock_fd);
 
           ERROR("destination connection %s:%s (%p) is lost, try to reconnect\n", option->target, option->port, g_thread_self());
-          sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6);
+          sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6, option->client_port);
           if(proxied_tls_passthrough)
             send_plaintext_proxy_header(thread_context, sock_fd, message, MAX_MESSAGE_LENGTH);
           ssl = open_ssl_connection(sock_fd);
@@ -467,7 +467,7 @@ active_thread_func(gpointer user_data)
               ERROR("can not reconnect to %s:%s (%p), try again after %d sec\n", option->target, option->port, g_thread_self(), 1);
               g_usleep(1e6);
 
-              sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6);
+              sock_fd = connect_ip_socket(SOCK_STREAM, option->target, option->port, option->use_ipv6, option->client_port);
               if(proxied_tls_passthrough)
                 send_plaintext_proxy_header(thread_context, sock_fd, message, MAX_MESSAGE_LENGTH);
               ssl = open_ssl_connection(sock_fd);
