@@ -43,30 +43,24 @@ Test(filterx_scope, test_scope_on_heap)
 
 Test(filterx_scope, test_scope_stacking)
 {
-  gsize alloc_size = filterx_scope_get_alloc_size();
-
-  FilterXScope *s = g_alloca(alloc_size);
-  filterx_scope_init_instance(s, alloc_size, NULL);
+  FilterXScope *s = filterx_scope_new(NULL);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
   filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
 
-  FilterXScope *s2 = g_alloca(alloc_size);
-  filterx_scope_init_instance(s2, alloc_size, s);
+  FilterXScope *s2 = filterx_scope_new(s);
 
   cr_assert_not_null(filterx_scope_lookup_variable(s2, var));
 
-  filterx_scope_clear(s2);
-  filterx_scope_clear(s);
+  filterx_scope_free(s2);
+  filterx_scope_free(s);
 }
 
 Test(filterx_scope, test_scope_sync)
 {
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
 
-  gsize alloc_size = filterx_scope_get_alloc_size();
-  FilterXScope *s = g_alloca(alloc_size);
-  filterx_scope_init_instance(s, alloc_size, NULL);
+  FilterXScope *s = filterx_scope_new(NULL);
   LogMessage *msg = log_msg_new_empty();
 
   filterx_scope_set_message(s, msg);
@@ -90,7 +84,7 @@ Test(filterx_scope, test_scope_sync)
   cr_assert_not(filterx_scope_lookup_variable(s, var));
 
   log_msg_unref(msg);
-  filterx_scope_clear(s);
+  filterx_scope_free(s);
 }
 
 static gboolean
@@ -102,10 +96,7 @@ _assert_var_false(FilterXVariable *variable, gpointer user_data)
 
 Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
 {
-  gsize alloc_size = filterx_scope_get_alloc_size();
-
-  FilterXScope *s = g_alloca(alloc_size);
-  filterx_scope_init_instance(s, alloc_size, NULL);
+  FilterXScope *s = filterx_scope_new(NULL);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
   FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
@@ -113,8 +104,7 @@ Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
   filterx_scope_set_variable(s, v, &o, TRUE);
   filterx_object_unref(o);
 
-  FilterXScope *s2 = g_alloca(alloc_size);
-  filterx_scope_init_instance(s2, alloc_size, s);
+  FilterXScope *s2 = filterx_scope_new(s);
 
   v = filterx_scope_register_variable(s2, FX_VAR_DECLARED_FLOATING, var);
   o = filterx_boolean_new(FALSE);
@@ -123,8 +113,8 @@ Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
 
   cr_assert(filterx_scope_foreach_variable_readonly(s2, _assert_var_false, NULL));
 
-  filterx_scope_clear(s2);
-  filterx_scope_clear(s);
+  filterx_scope_free(s2);
+  filterx_scope_free(s);
 }
 
 static void
