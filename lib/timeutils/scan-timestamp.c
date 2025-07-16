@@ -375,10 +375,10 @@ __has_iso_timezone(const guchar *src, gint length)
          (*src == '+' || *src == '-') &&
          isdigit(*(src+1)) &&
          isdigit(*(src+2)) &&
-         *(src+3) == ':' &&
-         isdigit(*(src+4)) &&
-         isdigit(*(src+5)) &&
-         (length < 7 || !isdigit(*(src+6)));
+         (
+           (*(src+3) == ':' && isdigit(*(src+4)) && isdigit(*(src+5)) && (length < 7 || !isdigit(*(src+6)))) ||
+           (isdigit(*(src+3)) && isdigit(*(src+4)) && (length < 6 || !isdigit(*(src+5))))
+         );
 }
 
 static guint32
@@ -392,12 +392,16 @@ __parse_iso_timezone(const guchar **data, gint *length)
   /* timezone offset */
   gint sign = *src == '-' ? -1 : 1;
 
+  gint mins_offset = 4;
+  if (*(src + 3) != ':')
+    mins_offset = 3;
+
   hours = (*(src + 1) - '0') * 10 + *(src + 2) - '0';
-  mins = (*(src + 4) - '0') * 10 + *(src + 5) - '0';
+  mins = (*(src + mins_offset) - '0') * 10 + *(src + mins_offset + 1) - '0';
   tz = sign * (hours * 3600 + mins * 60);
 
-  src += 6;
-  (*length) -= 6;
+  src += mins_offset + 2;
+  (*length) -= mins_offset + 2;
 
   *data = src;
   return tz;
