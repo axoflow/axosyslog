@@ -40,7 +40,7 @@ FilterXFunctionArg *_create_separate_extensions_arg(gboolean value);
 FilterXFunctionArgs *_assert_create_args_inner(va_list vargs);
 FilterXFunctionArgs *_assert_create_args(int count, ...);
 
-FilterXExpr *_new_parser(FilterXFunctionArgs *args, GError **error, FilterXObject *fillable);
+FilterXExpr *_new_parser(FilterXFunctionArgs *args, GError **error);
 FilterXObject *_eval_input_inner(GError **error, va_list vargs);
 FilterXObject *_eval_input(GError **error, ...);
 void _assert_parser_result_inner(const gchar *expected_result, ...);

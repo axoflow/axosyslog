@@ -29,14 +29,14 @@
 
 Field cef_fields[] =
 {
-  { .name = "version", .field_parser = parse_version},
+  { .name = "version", .field_parser = event_format_parser_parse_version},
   { .name = "device_vendor"},
   { .name = "device_product"},
   { .name = "device_version"},
   { .name = "device_event_class_id"},
   { .name = "name"},
   { .name = "agent_severity"},
-  { .name = "extensions", .field_parser = parse_extensions},
+  { .name = "extensions", .field_parser = event_format_parser_parse_extensions},
 };
 
 Config cef_cfg =
@@ -67,13 +67,13 @@ filterx_function_parse_cef_new(FilterXFunctionArgs *args, GError **err)
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super.super.super.super;
+  return &self->super.super.super;
 
 error:
-  append_error_message(err, FILTERX_FUNC_PARSE_CEF_USAGE);
+  event_format_parser_append_error_message(err, FILTERX_FUNC_PARSE_CEF_USAGE);
   filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super.super.super);
+  filterx_expr_unref(&self->super.super.super);
   return NULL;
 }
 
-FILTERX_GENERATOR_FUNCTION(parse_cef, filterx_function_parse_cef_new);
+FILTERX_FUNCTION(parse_cef, filterx_function_parse_cef_new);

@@ -33,7 +33,7 @@
         EVENT_FORMAT_PARSER_ARG_NAME_VALUE_SEPARATOR"=string, " \
         EVENT_FORMAT_PARSER_ARG_SEPARATE_EXTENSIONS"=boolean)"
 
-FILTERX_GENERATOR_FUNCTION_DECLARE(parse_cef);
+FILTERX_FUNCTION_DECLARE(parse_cef);
 
 FilterXExpr *filterx_function_parse_cef_new(FilterXFunctionArgs *args, GError **error);
 
