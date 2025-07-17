@@ -1,4 +1,4 @@
-4.13.0
+4.14.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -9,17 +9,14 @@ Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-pa
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
 
-## License
+## Features
 
-The licensing of AxoSyslog has been simplified and upgraded from a combination of `LGPL-2.1-or-later` and
-`GPL-2.0-or-later` to `GPL-3.0-or-later`.
+  * `cisco-parser()`: Added support for Cisco Nexus NXOS 9.3 syslog format
+    ([#713](https://github.com/axoflow/axosyslog/pull/713))
 
-As before, Contributory Licensing Agreements (CLAs) are NOT required to contribute to AxoSyslog: contributors retain
-their own copyright, making AxoSyslog a combination of code from hundreds of individuals and companies.
-This, and the use of GPL v3 ensures that AxoSyslog or AxoSyslog derived code cannot become proprietary software.
+  * `loggen`: Added `--client-port` option to set the outbound (client) port
+    ([#709](https://github.com/axoflow/axosyslog/pull/709))
 
-While this has basically no impact on users of AxoSyslog, it reflects a step towards a more open and more
-community-friendly project. [Read more here](https://axoflow.com/blog/axosyslog-syslog-ng-fork-license-change-gpl3)
 
 ## FilterX features
 
@@ -31,38 +28,24 @@ community-friendly project. [Read more here](https://axoflow.com/blog/axosyslog-
     ```
     ([#684](https://github.com/axoflow/axosyslog/pull/684))
 
-  * `protobuf_message()`: Added a new function to create arbitrary protobuf data
-
-    Usage:
-    ```
-    protobuf_data = protobuf_message(my_dict, schema_file="my_schema_file.proto");
-    ```
-    ([#678](https://github.com/axoflow/axosyslog/pull/678))
-
-  * `clickhouse()`, `bigquery()` destination: Added `proto-var()` option
-
-    This option can be used to send a FilterX prepared protobuf payload.
-    ([#678](https://github.com/axoflow/axosyslog/pull/678))
-
-  * `format_cef()`, `format_leef()`: Added new functions for CEF and LEEF formatting
-    ([#690](https://github.com/axoflow/axosyslog/pull/690))
-
-  * `parse_cef()`, `parse_leef()`: Extensions are no longer put under the `extensions` inner dict
-
-    By default now they get placed on the same level as the headers.
-    The new `separate_extensions=true` argument can be used for the
-    old behavior.
-    ([#690](https://github.com/axoflow/axosyslog/pull/690))
-
 
 ## FilterX bugfixes
 
-  * Fixed some FilterX evaluation error messages being printed to stderr.
-    ([#654](https://github.com/axoflow/axosyslog/pull/654))
+  * `metrics_labels()`: Fixed a bug where `update_metrics()` did not omit `null` values.
+    ([#711](https://github.com/axoflow/axosyslog/pull/711))
 
-  * `parse_cef()`, `parse_leef()`: Fixed some failed parsing around escaped delimiters
-    ([#699](https://github.com/axoflow/axosyslog/pull/699))
 
+## Other changes
+
+  * `syslog-ng-ctl stats prometheus`: show orphan metrics
+
+    Stale counters will be shown in order not to lose information, for example,
+    when messages are sent using short-lived connections and metrics are scraped in
+    minute intervals.
+
+    We recommend using `syslog-ng-ctl stats --remove-orphans` during each configuration reload,
+    but only after the values of those metrics have been scraped by all scrapers.
+    ([#715](https://github.com/axoflow/axosyslog/pull/715))
 
 
 
@@ -85,5 +68,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Attila Szakacs, Balazs Scheidler, László Várady, Szilard Parrag,
-Tamás Kosztyu, shifter
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, Hofi, László Várady,
+Szilard Parrag, Tamás Kosztyu, shifter, Shiraz McClennon
