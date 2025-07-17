@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024-2025 Axoflow
  * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2025 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -28,5 +29,6 @@
 
 FilterXObject *filterx_simple_function_lower(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_simple_function_upper(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_str_replace(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif
