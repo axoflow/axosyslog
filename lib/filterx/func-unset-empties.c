@@ -65,39 +65,56 @@ static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *
 typedef int (*str_cmp_fn)(const char *, const char *);
 
 static inline gboolean
-_string_compare(FilterXFunctionUnsetEmpties *self, const gchar *str, str_cmp_fn cmp_fn)
+_lookup_targets(GPtrArray *targets, const gchar *string, str_cmp_fn cmp_fn)
 {
-  guint num_targets = self->targets ? self->targets->len : 0;
-  for (guint i = 0; i < num_targets; i++)
+  gint l, h, m;
+  gchar **elements = (gchar **) targets->pdata;
+  gsize len = targets->len;
+
+  /* open-coded binary search */
+  l = 0;
+  h = len - 1;
+  while (l <= h)
     {
-      const gchar *target = g_ptr_array_index(self->targets, i);
-      if (cmp_fn(str, target) == 0)
-        return TRUE;
+      m = (l + h) >> 1;
+
+      const gchar *m_elem = elements[m];
+      gint m_value = cmp_fn(m_elem, string);
+
+      if (m_value == 0)
+        {
+          return TRUE;
+        }
+      else if (m_value > 0)
+        {
+          h = m - 1;
+        }
+      else
+        {
+          l = m + 1;
+        }
     }
   return FALSE;
 }
 
-static gboolean
+static inline gboolean
 _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
   gsize str_len = 0;
   const gchar *str = NULL;
   if (!filterx_object_extract_string_ref(obj, &str, &str_len))
     return FALSE;
-  g_assert(str);
 
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_STRING) && (str_len == 0))
     return TRUE;
 
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
-    {
-      gboolean result = _string_compare(self, str, strcasecmp);
-      return result;
-    }
-  return _string_compare(self, str, strcmp);
+    return _lookup_targets(self->targets, str, strcasecmp);
+  else
+    return _lookup_targets(self->targets, str, strcmp);
 }
 
-static gboolean
+static inline gboolean
 _should_unset(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 {
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL) &&
@@ -113,7 +130,11 @@ _should_unset(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
       filterx_object_len(obj, &len);
       return len == 0;
     }
-  return _should_unset_string(self, obj);
+
+  if (self->targets && _should_unset_string(self, obj))
+    return TRUE;
+
+  return FALSE;
 }
 
 /* Also unsets inner dicts' and lists' values is recursive is set. */
@@ -442,6 +463,20 @@ _target_iterator(gsize index, FilterXExpr *value, gpointer user_data)
   return res;
 }
 
+static gint
+_ptr_array_string_compare(gconstpointer a, gconstpointer b, gpointer user_data)
+{
+  FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) user_data;
+
+  gchar *str_a = *(gchar **) a;
+  gchar *str_b = *(gchar **) b;
+
+  if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
+    return strcasecmp(str_a, str_b);
+  else
+    return strcmp(str_a, str_b);
+}
+
 static gboolean
 _extract_target_objects(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *args, GError **error)
 {
@@ -471,6 +506,8 @@ _extract_target_objects(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *
   if (!filterx_literal_list_foreach(targets, _target_iterator, user_data))
     result = FALSE;
   filterx_expr_unref(targets);
+
+  g_ptr_array_sort_with_data(self->targets, _ptr_array_string_compare, self);
   return result;
 }
 
