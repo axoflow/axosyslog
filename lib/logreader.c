@@ -465,7 +465,7 @@ _set_addresses(LogReader *self, LogMessage *msg, LogTransportAuxData *aux)
   log_msg_set_value(msg, LM_V_PEER_IP, ip, -1);
 
   guint16 port = g_sockaddr_get_port(self->peer_addr);
-  gint len = format_uint32_base10_rev(buf, sizeof(buf), 0, port);
+  gint len = format_uint64_into_padded_buffer(buf, sizeof(buf), ' ', 0, 10, port);
   log_msg_set_value(msg, LM_V_PEER_PORT, buf, len);
 
 set:
