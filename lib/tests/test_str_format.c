@@ -26,6 +26,210 @@
 
 #include "str-format.h"
 
+Test(test_str_format, format_uint64_buffer)
+{
+  gchar buf[32];
+  gint size;
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 1, ' ', 10, 1);
+  cr_expect_str_eq(buf, "1");
+  cr_expect_eq(size, 1);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 1, ' ', 10, 10);
+  cr_expect_str_eq(buf, "10");
+  cr_expect_eq(size, 2);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 0, ' ', 10, 10);
+  cr_expect_str_eq(buf, "10");
+  cr_expect_eq(size, 2);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 2, ' ', 10, 10);
+  cr_expect_str_eq(buf, "10");
+  cr_expect_eq(size, 2);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 3, ' ', 10, 10);
+  cr_expect_str_eq(buf, " 10");
+  cr_expect_eq(size, 3);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 4, ' ', 10, 10);
+  cr_expect_str_eq(buf, "  10");
+  cr_expect_eq(size, 4);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 0, ' ', 10, 100);
+  cr_expect_str_eq(buf, "100");
+  cr_expect_eq(size, 3);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 2, ' ', 10, 100);
+  cr_expect_str_eq(buf, "100");
+  cr_expect_eq(size, 3);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 3, ' ', 10, 100);
+  cr_expect_str_eq(buf, "100");
+  cr_expect_eq(size, 3);
+
+  size = format_uint64_into_padded_buffer(buf, sizeof(buf), 4, ' ', 10, 100);
+  cr_expect_str_eq(buf, " 100");
+  cr_expect_eq(size, 4);
+}
+
+Test(test_str_format, format_int64_buffer)
+{
+  gchar buf[32];
+  gint size;
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 1, ' ', 10, -1);
+  cr_expect_str_eq(buf, "-1");
+  cr_expect_eq(size, 2);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 1, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 0, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 2, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 3, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 4, ' ', 10, -10);
+  cr_expect_str_eq(buf, " -10");
+  cr_expect_eq(size, 4);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 0, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 2, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 3, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 4, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int64_into_padded_buffer(buf, sizeof(buf), 5, ' ', 10, -100);
+  cr_expect_str_eq(buf, " -100");
+  cr_expect_eq(size, 5);
+}
+
+Test(test_str_format, format_int32_buffer)
+{
+  gchar buf[32];
+  gint size;
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 1, ' ', 10, -1);
+  cr_expect_str_eq(buf, "-1");
+  cr_expect_eq(size, 2);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 1, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 0, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 2, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 3, ' ', 10, -10);
+  cr_expect_str_eq(buf, "-10");
+  cr_expect_eq(size, 3);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 4, ' ', 10, -10);
+  cr_expect_str_eq(buf, " -10");
+  cr_expect_eq(size, 4);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 0, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 2, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 3, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 4, ' ', 10, -100);
+  cr_expect_str_eq(buf, "-100");
+  cr_expect_eq(size, 4);
+
+  size = format_int32_into_padded_buffer(buf, sizeof(buf), 5, ' ', 10, -100);
+  cr_expect_str_eq(buf, " -100");
+  cr_expect_eq(size, 5);
+}
+
+Test(test_str_format, format_uint64_gstring)
+{
+  GString *buf = g_string_sized_new(0);
+
+  format_uint64_padded(buf, 1, ' ', 10, 1);
+  cr_expect_str_eq(buf->str, "1");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 1, ' ', 10, 10);
+  cr_expect_str_eq(buf->str, "10");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 0, ' ', 10, 10);
+  cr_expect_str_eq(buf->str, "10");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 2, ' ', 10, 10);
+  cr_expect_str_eq(buf->str, "10");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 3, ' ', 10, 10);
+  cr_expect_str_eq(buf->str, " 10");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 4, ' ', 10, 10);
+  cr_expect_str_eq(buf->str, "  10");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 0, ' ', 10, 100);
+  cr_expect_str_eq(buf->str, "100");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 2, ' ', 10, 100);
+  cr_expect_str_eq(buf->str, "100");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 3, ' ', 10, 100);
+  cr_expect_str_eq(buf->str, "100");
+
+  g_string_truncate(buf, 0);
+  format_uint64_padded(buf, 4, ' ', 10, 100);
+  cr_expect_str_eq(buf->str, " 100");
+
+  g_string_free(buf, TRUE);
+}
+
+Test(test_str_format, format_uint64_gstring_append)
+{
+  GString *buf =
+    g_string_new("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+  format_uint64_padded(buf, 0, 0, 10, 10000);
+  cr_expect_str_eq(buf->str,
+                   "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx10000");
+
+  g_string_free(buf, TRUE);
+}
+
 Test(test_str_format, hex_string__single_byte__perfect)
 {
   gchar expected_output[3] = "40";
