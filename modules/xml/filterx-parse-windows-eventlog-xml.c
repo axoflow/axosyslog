@@ -54,6 +54,7 @@ typedef struct FilterXParseWEVTState_
   FilterXParseWEVTPos position;
   gboolean has_named_data;
   GString *last_data_name;
+  gboolean text_is_present;
 } FilterXParseWEVTState;
 
 static FilterXParseXmlState *
@@ -297,6 +298,8 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
   XmlElemContext *last_elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
 
+  state->text_is_present = FALSE;
+
   if (g_strcmp0(element_name, "EventID") == 0)
     {
       _filterx_parse_xml_start_eventid_method(s, context, element_name, attribute_names, attribute_values, st, error);
@@ -311,6 +314,7 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
       if (*error)
         return;
 
+      state->text_is_present = TRUE;
       filterx_parse_xml_start_elem_method(s, context, element_name, attribute_names, attribute_values, st, error);
       return;
     }
@@ -338,6 +342,10 @@ _end_elem(FilterXGeneratorFunctionParseXml *s,
 {
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
 
+  if (!state->text_is_present && state->position == WEVT_POS_DATA)
+    return;
+
+  state->text_is_present = FALSE;
   _pop_position(state, element_name);
   filterx_parse_xml_end_elem_method(s, context, element_name, st, error);
 }
@@ -367,9 +375,20 @@ _text(FilterXGeneratorFunctionParseXml *s,
       goto fail;
     }
 
-  xml_elem_context_set_parent_obj(elem_context, elem_context->current_obj);
-  xml_elem_context_set_current_obj(elem_context, text_obj);
+  if (state->has_named_data && !text_len)
+    {
+      xml_elem_context_set_parent_obj(elem_context, elem_context->parent_obj);
+      xml_elem_context_set_current_obj(elem_context, elem_context->parent_obj);
 
+      state->text_is_present = FALSE;
+    }
+  else
+    {
+      xml_elem_context_set_parent_obj(elem_context, elem_context->current_obj);
+      xml_elem_context_set_current_obj(elem_context, text_obj);
+
+      state->text_is_present = TRUE;
+    }
   state->has_named_data = FALSE;
 
 fail:

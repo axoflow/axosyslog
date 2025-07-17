@@ -53,7 +53,10 @@ _append_inner_data_dict_element(FilterXObject *key, FilterXObject *value, gpoint
       return FALSE;
     }
 
-  g_string_append_printf(buffer, "<Data Name='%s'>%s</Data>", key_str, value_str);
+  if (value_str_len)
+    g_string_append_printf(buffer, "<Data Name='%s'>%s</Data>", key_str, value_str);
+  else
+    g_string_append_printf(buffer, "<Data Name='%s' />", key_str);
   return TRUE;
 }
 
