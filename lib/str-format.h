@@ -54,8 +54,6 @@ gint format_int32_into_padded_buffer(gchar *result, gsize result_len,
                                      gint field_len, gchar pad_char, gint base,
                                      gint32 value);
 
-gint format_uint32_base10_rev(gchar *result, gsize result_len, gint sign, guint32 value);
-
 gchar *format_hex_string(gconstpointer str, gsize str_len, gchar *result, gsize result_len);
 gchar *format_hex_string_with_delimiter(gconstpointer str, gsize str_len, gchar *result, gsize result_len,
                                         gchar delimiter);
