@@ -56,6 +56,7 @@ void dyn_metrics_store_free(DynMetricsStore *self);
 
 StatsCounterItem *dyn_metrics_store_retrieve_counter(DynMetricsStore *self, StatsClusterKey *key, gint level);
 gboolean dyn_metrics_store_release_counter(DynMetricsStore *self, StatsClusterKey *key);
+gboolean dyn_metrics_store_remove_counter(DynMetricsStore *self, StatsClusterKey *key);
 void dyn_metrics_store_merge(DynMetricsStore *self, DynMetricsStore *other);
 
 /* releases counters without removing orphans */
