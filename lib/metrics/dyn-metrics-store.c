@@ -97,7 +97,7 @@ dyn_metrics_store_retrieve_counter(DynMetricsStore *self, StatsClusterKey *key, 
 }
 
 gboolean
-dyn_metrics_store_remove_counter(DynMetricsStore *self, StatsClusterKey *key)
+dyn_metrics_store_release_counter(DynMetricsStore *self, StatsClusterKey *key)
 {
   return g_hash_table_remove(self->clusters, key);
 }
