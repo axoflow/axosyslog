@@ -1,6 +1,7 @@
 /*
- * Copyright (c) 2024 Axoflow
+ * Copyright (c) 2024-2025 Axoflow
  * Copyright (c) 2024 Attila Szakacs
+ * Copyright (c) 2025 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -89,5 +90,61 @@ filterx_simple_function_upper(FilterXExpr *s, FilterXObject *args[], gsize args_
     return NULL;
 
   FilterXObject *result = filterx_string_new_translated(str, len, _translate_to_upper);
+  return result;
+}
+
+FilterXObject *
+filterx_simple_function_str_replace(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args == NULL || (args_len != 3 && args_len != 4))
+    {
+      filterx_simple_function_argument_error(s, "Requires 3 or 4 arguments");
+      return NULL;
+    }
+
+  FilterXObject *object = args[0];
+  FilterXObject *old = args[1];
+  FilterXObject *new = args[2];
+  FilterXObject *limit = NULL;
+
+  if (args_len == 4)
+    limit = args[3];
+
+  const gchar *str;
+  gsize len;
+  if (!filterx_object_extract_string_ref(object, &str, &len))
+    {
+      filterx_simple_function_argument_error(s, "First argument must be string");
+      return NULL;
+    }
+
+  const gchar *old_str;
+  if (!filterx_object_extract_string_ref(old, &old_str, NULL))
+    {
+      filterx_simple_function_argument_error(s, "Second argument must be string");
+      return NULL;
+    }
+
+  const gchar *new_str;
+  if (!filterx_object_extract_string_ref(new, &new_str, NULL))
+    {
+      filterx_simple_function_argument_error(s, "Third argument must be string");
+      return NULL;
+    }
+
+  gint64 limit_num = 0;
+  if (limit && !filterx_object_extract_integer(limit, &limit_num))
+    {
+      filterx_simple_function_argument_error(s, "Fourth argument must be integer");
+      return NULL;
+    }
+
+  GString *replaced = g_string_new(str);
+
+  g_string_replace(replaced, old_str, new_str, limit_num);
+  FilterXObject *result = filterx_string_new_take(replaced->str, (gssize) replaced->len);
+
+  g_string_free(replaced, FALSE);
+
   return result;
 }

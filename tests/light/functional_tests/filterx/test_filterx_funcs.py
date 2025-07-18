@@ -956,3 +956,19 @@ def test_format_leef_version_2_space_delimiter(config, syslog_ng):
         "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped "
         "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped"
     )
+
+
+def test_str_replace(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    dal = "érik a szőlő, hajlik a vessző";
+    $MSG = {
+        "replace_all": str_replace(dal, "a", "egy"),
+        "replace_some": str_replace(dal, "a", "egy", 1)
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"replace_all":"érik egy szőlő, hegyjlik egy vessző","replace_some":"érik egy szőlő, hajlik a vessző"}'

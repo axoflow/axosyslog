@@ -78,4 +78,8 @@ gboolean slng_g_hash_table_steal_extended(GHashTable *hash_table, gconstpointer 
 gpointer slng_g_atomic_pointer_exchange(gpointer *atomic, gpointer newval);
 #endif
 
+#if !GLIB_CHECK_VERSION(2, 68, 0)
+guint g_string_replace(GString *string, const gchar *find, const gchar *replace, guint limit);
+#endif
+
 #endif
