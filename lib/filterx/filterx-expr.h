@@ -36,7 +36,7 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1;
+  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, mutates_scope:1;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
    * with the unmarshaled version */
