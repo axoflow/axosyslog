@@ -400,7 +400,7 @@ filterx_metrics_labels_optimize(FilterXMetricsLabels *self)
       for (guint i = 0; i < self->literal_labels->len; i++)
         {
           FilterXMetricsLabel *label = g_ptr_array_index(self->literal_labels, i);
-          gboolean is_empty;
+          gboolean is_empty = FALSE;
 
           _label_optimize(label, &is_empty);
 
