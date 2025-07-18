@@ -231,6 +231,12 @@ ClientCredentialsBuilder::set_service_account_validity_duration(guint64 validity
   service_account.validity_duration = validity_duration;
 }
 
+void
+ClientCredentialsBuilder::set_adc_service_account_key(const char *key_path)
+{
+  adc_service_account_key = key_path;
+}
+
 bool
 ClientCredentialsBuilder::validate() const
 {
@@ -271,7 +277,31 @@ ClientCredentialsBuilder::build() const
     case GCAM_ALTS:
       return ::grpc::experimental::AltsCredentials(alts_credentials_options);
     case GCAM_ADC:
+    {
+      if (!adc_service_account_key.empty())
+        {
+          const char *env_var_name = "GOOGLE_APPLICATION_CREDENTIALS";
+          const char *key_path_orig = getenv(env_var_name);
+          if (setenv(env_var_name, adc_service_account_key.c_str(), 1) != 0)
+            {
+              msg_error("gRPC: setenv failed for GOOGLE_APPLICATION_CREDENTIALS");
+              return nullptr;
+            }
+          std::shared_ptr<::grpc::ChannelCredentials> creds = ::grpc::GoogleDefaultCredentials();
+          if (!key_path_orig)
+            {
+              unsetenv(env_var_name);
+              return creds;
+            }
+          if (setenv(env_var_name, key_path_orig, 1) != 0)
+            {
+              msg_error("gRPC: resetting GOOGLE_APPLICATION_CREDENTIALS failed");
+              return nullptr;
+            }
+          return creds;
+        }
       return ::grpc::GoogleDefaultCredentials();
+    }
     case GCAM_SERVICE_ACCOUNT:
     {
       auto channel_creds = ::grpc::SslCredentials(::grpc::SslCredentialsOptions());
@@ -332,4 +362,10 @@ grpc_client_credentials_builder_service_account_set_validity_duration(GrpcClient
     guint64 validity_duration)
 {
   s->self->set_service_account_validity_duration(validity_duration);
+}
+
+void
+grpc_client_credentials_builder_set_adc_service_account_key(GrpcClientCredentialsBuilderW *s, const gchar *key_path)
+{
+  return s->self->set_adc_service_account_key(key_path);
 }
