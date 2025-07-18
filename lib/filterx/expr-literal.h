@@ -35,4 +35,7 @@ filterx_expr_is_literal(FilterXExpr *expr)
   return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal);
 }
 
+FilterXObject *
+filterx_literal_get_value(FilterXExpr *expr);
+
 #endif
