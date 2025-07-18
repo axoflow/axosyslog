@@ -61,6 +61,7 @@
 #include "filterx/expr-break.h"
 #include "filterx/expr-membership.h"
 #include "filterx/expr-arithmetic-operators.h"
+#include "filterx/expr-string-operators.h"
 
 #include "template/templates.h"
 
@@ -151,6 +152,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <node> comparison_operator
 %type <node> membership_operator
 %type <node> arithmetic_operator
+%type <node> string_operator
 %type <node> expr_generator
 %type <node> __expr_generator
 %type <node> expr_plus_generator
@@ -431,6 +433,7 @@ expr_operator
 	| membership_operator
 	| comparison_operator
 	| arithmetic_operator
+	| string_operator
 	| ternary
 	| default
 	/* TODO extract lvalues */
@@ -473,6 +476,12 @@ arithmetic_operator
 	| expr '*' expr { $$ = filterx_arithmetic_operator_multiplication_new($1, $3); }
 	| expr KW_SLASH expr { $$ = filterx_arithmetic_operator_division_new($1, $3); }
 	| expr '%' expr { $$ = filterx_arithmetic_operator_modulo_new($1, $3); }
+	;
+
+string_operator
+	: expr '[' expr LL_DOTDOT expr ']' { $$ = filterx_string_slicing_new($1, $3, $5); }
+	| expr '[' LL_DOTDOT expr ']' { $$ = filterx_string_slicing_new($1, NULL, $4); }
+	| expr '[' expr LL_DOTDOT ']' { $$ = filterx_string_slicing_new($1, $3, NULL); }
 	;
 
 expr_value
