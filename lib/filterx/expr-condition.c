@@ -163,7 +163,7 @@ _optimize(FilterXExpr *s)
   if (!filterx_expr_is_literal(self->condition))
     return NULL;
 
-  FilterXObject *condition_value = filterx_expr_eval(self->condition);
+  FilterXObject *condition_value = filterx_literal_get_value(self->condition);
 
   g_assert(condition_value);
   gboolean condition_truthy = filterx_object_truthy(condition_value);

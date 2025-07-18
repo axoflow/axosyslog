@@ -47,7 +47,7 @@ typedef struct FilterXFunctionFailureInfoEnable_
 typedef struct FilterXFunctionFailureInfoMeta_
 {
   FilterXFunction super;
-  FilterXObject *metadata;
+  FilterXExpr *metadata_expr;
 } FilterXFunctionFailureInfoMeta;
 
 static inline void
@@ -142,7 +142,9 @@ _failure_info_meta_eval(FilterXExpr *s)
   if (!filterx_eval_get_failure_info(context))
     goto exit;
 
-  filterx_eval_set_current_frame_meta(context, self->metadata);
+  FilterXObject *metadata_object = filterx_expr_eval_typed(self->metadata_expr);
+  filterx_eval_set_current_frame_meta(context, metadata_object);
+  filterx_object_unref(metadata_object);
 
 exit:
   return filterx_boolean_new(TRUE);
@@ -195,19 +197,7 @@ _extract_failure_info_meta_args(FilterXFunctionFailureInfoMeta *self, FilterXFun
       return FALSE;
     }
 
-  FilterXExpr *meta_expr = filterx_function_args_get_expr(args, 0);
-  if (!filterx_expr_is_literal(meta_expr) && !filterx_expr_is_literal_container(meta_expr))
-    {
-      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "argument must be literal. %s", FILTERX_FUNC_FAILURE_INFO_META_USAGE);
-      filterx_expr_unref(meta_expr);
-      return FALSE;
-    }
-
-  FilterXObject *metadata = filterx_expr_eval(meta_expr);
-  self->metadata = metadata;
-
-  filterx_expr_unref(meta_expr);
+  self->metadata_expr = filterx_function_args_get_expr(args, 0);
   return TRUE;
 }
 
@@ -284,7 +274,7 @@ _failure_info_meta_free(FilterXExpr *s)
 {
   FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
 
-  filterx_object_unref(self->metadata);
+  filterx_expr_unref(self->metadata_expr);
   filterx_function_free_method(&self->super);
 }
 

@@ -240,7 +240,7 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
       goto error;
     }
 
-  pattern_obj = filterx_expr_eval(self->pattern_expr);
+  pattern_obj = filterx_literal_get_value(self->pattern_expr);
 
   gsize pattern_len;
   const gchar *pattern = filterx_string_get_value_ref(pattern_obj, &pattern_len);

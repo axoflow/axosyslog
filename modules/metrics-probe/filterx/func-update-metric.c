@@ -108,7 +108,7 @@ _optimize_increment(FilterXFunctionUpdateMetric *self)
   if (!self->increment.expr || !filterx_expr_is_literal(self->increment.expr))
     return;
 
-  FilterXObject *increment_obj = filterx_expr_eval(self->increment.expr);
+  FilterXObject *increment_obj = filterx_literal_get_value(self->increment.expr);
   if (!increment_obj)
     return;
 

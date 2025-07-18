@@ -1495,6 +1495,20 @@ def test_parse_csv_optional_arg_columns(config, syslog_ng):
     assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz"}'
 
 
+def test_parse_csv_literal_arg_columns(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+    custom_message = "foo,bar,baz";
+    $MSG = parse_csv(custom_message, columns=["1st","2nd","3rd"]);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == '{"1st":"foo","2nd":"bar","3rd":"baz"}'
+
+
 def test_parse_csv_optional_arg_delimiters(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """

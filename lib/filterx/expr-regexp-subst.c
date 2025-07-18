@@ -260,7 +260,7 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
     }
 
   gsize pattern_len;
-  FilterXObject *pattern_obj = filterx_expr_eval(self->pattern_expr);
+  FilterXObject *pattern_obj = filterx_literal_get_value(self->pattern_expr);
   const gchar *pattern = filterx_string_get_value_ref(pattern_obj, &pattern_len);
   if (!pattern)
     {
