@@ -183,10 +183,10 @@ filterx_string_slicing_optimize(FilterXExpr *s)
   self->end = filterx_expr_optimize(self->end);
 
   if (filterx_expr_is_literal(self->start))
-    self->start_literal = filterx_expr_eval(self->start);
+    self->start_literal = filterx_literal_get_value(self->start);
 
   if (filterx_expr_is_literal(self->end))
-    self->end_literal = filterx_expr_eval(self->end);
+    self->end_literal = filterx_literal_get_value(self->end);
 
   return NULL;
 }
