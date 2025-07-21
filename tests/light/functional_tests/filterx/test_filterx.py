@@ -2200,46 +2200,45 @@ def test_parse_xml(config, syslog_ng):
     assert file_true.read_log() == "{\"a\":{\"b\":[{\"@attr\":\"attr_val\",\"#text\":\"c\"},\"e\"]}}"
 
 
+windows_eventlog_xml = """
+    "<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
+        <System>
+            <Provider Name='EventCreate'/>
+            <EventID Qualifiers='0'>999</EventID>
+            <Version>0</Version>
+            <Level>2</Level>
+            <Task>0</Task>
+            <Opcode>0</Opcode>
+            <Keywords>0x80000000000000</Keywords>
+            <TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/>
+            <EventRecordID>934</EventRecordID>
+            <Correlation/>
+            <Execution ProcessID='0' ThreadID='0'/>
+            <Channel>Application</Channel>
+            <Computer>DESKTOP-2MBFIV7</Computer>
+            <Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/>
+        </System>
+        <RenderingInfo Culture='en-US'>
+            <Message>foobar</Message>
+            <Level>Error</Level>
+            <Task></Task>
+            <Opcode>Info</Opcode>
+            <Channel></Channel>
+            <Provider></Provider>
+            <Keywords>
+                <Keyword>Classic</Keyword>
+            </Keywords>
+        </RenderingInfo>
+        <EventData>
+            {eventdata}
+        </EventData>
+    </Event>";
+"""
+
+
 def test_parse_windows_eventlog_xml(config, syslog_ng):
     (file_true, file_false) = create_config(
-        config, r"""
-    xml = "
-        <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
-            <System>
-                <Provider Name='EventCreate'/>
-                <EventID Qualifiers='0'>999</EventID>
-                <Version>0</Version>
-                <Level>2</Level>
-                <Task>0</Task>
-                <Opcode>0</Opcode>
-                <Keywords>0x80000000000000</Keywords>
-                <TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/>
-                <EventRecordID>934</EventRecordID>
-                <Correlation/>
-                <Execution ProcessID='0' ThreadID='0'/>
-                <Channel>Application</Channel>
-                <Computer>DESKTOP-2MBFIV7</Computer>
-                <Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/>
-            </System>
-            <RenderingInfo Culture='en-US'>
-                <Message>foobar</Message>
-                <Level>Error</Level>
-                <Task></Task>
-                <Opcode>Info</Opcode>
-                <Channel></Channel>
-                <Provider></Provider>
-                <Keywords>
-                    <Keyword>Classic</Keyword>
-                </Keywords>
-            </RenderingInfo>
-            <EventData>
-                <Data Name='param1'>foo</Data>
-                <Data Name='param2'>bar</Data>
-            </EventData>
-        </Event>
-    ";
-    $MSG = json(parse_windows_eventlog_xml(xml));
-    """,
+        config, "xml=" + windows_eventlog_xml.replace("{eventdata}", """<Data Name='param1'>foo</Data><Data Name='param2'>bar</Data>""") + "$MSG = json(parse_windows_eventlog_xml(xml));",
     )
     syslog_ng.start(config)
 
@@ -2278,6 +2277,54 @@ def test_parse_windows_eventlog_xml(config, syslog_ng):
             "EventData": {
                 "Data": {
                     "param1": "foo",
+                    "param2": "bar",
+                },
+            },
+        },
+    }
+
+
+def test_parse_windows_eventlog_xml_empty_elem(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, "xml=" + windows_eventlog_xml.replace("{eventdata}", """<Data Name='param1' /><Data Name='param2'>bar</Data>""") + "$MSG = json(parse_windows_eventlog_xml(xml));",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert json.loads(file_true.read_log()) == {
+        "Event": {
+            "@xmlns": "http://schemas.microsoft.com/win/2004/08/events/event",
+            "System": {
+                "Provider": {"@Name": "EventCreate"},
+                "EventID": "999",
+                "EventIDQualifiers": "0",
+                "Version": "0",
+                "Level": "2",
+                "Task": "0",
+                "Opcode": "0",
+                "Keywords": "0x80000000000000",
+                "TimeCreated": {"@SystemTime": "2024-01-12T09:30:12.1566754Z"},
+                "EventRecordID": "934",
+                "Correlation": "",
+                "Execution": {"@ProcessID": "0", "@ThreadID": "0"},
+                "Channel": "Application",
+                "Computer": "DESKTOP-2MBFIV7",
+                "Security": {"@UserID": "S-1-5-21-3714454296-2738353472-899133108-1001"},
+            },
+            "RenderingInfo": {
+                "@Culture": "en-US",
+                "Message": "foobar",
+                "Level": "Error",
+                "Task": "",
+                "Opcode": "Info",
+                "Channel": "",
+                "Provider": "",
+                "Keywords": {"Keyword": "Classic"},
+            },
+            "EventData": {
+                "Data": {
+                    "param1": "",
                     "param2": "bar",
                 },
             },
@@ -2837,7 +2884,7 @@ def test_parse_xml_format_xml(config, syslog_ng):
 
 
 windows_eventlog_dict = """
-    $MSG = format_windows_eventlog_xml({
+    format_windows_eventlog_xml({
         "Event": {
             "@xmlns": "http://schemas.microsoft.com/win/2004/08/events/event",
             "System": {
@@ -2874,45 +2921,7 @@ windows_eventlog_dict = """
 
 def test_parse_format_windows_eventlog_xml(config, syslog_ng):
     (file_true, file_false) = create_config(
-        config, r"""
-    xml = "
-        <Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'>
-            <System>
-                <Provider Name='EventCreate'/>
-                <EventID Qualifiers='0'>999</EventID>
-                <Version>0</Version>
-                <Level>2</Level>
-                <Task>0</Task>
-                <Opcode>0</Opcode>
-                <Keywords>0x80000000000000</Keywords>
-                <TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/>
-                <EventRecordID>934</EventRecordID>
-                <Correlation/>
-                <Execution ProcessID='0' ThreadID='0'/>
-                <Channel>Application</Channel>
-                <Computer>DESKTOP-2MBFIV7</Computer>
-                <Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/>
-            </System>
-            <RenderingInfo Culture='en-US'>
-                <Message>foobar</Message>
-                <Level>Error</Level>
-                <Task></Task>
-                <Opcode>Info</Opcode>
-                <Channel></Channel>
-                <Provider></Provider>
-                <Keywords>
-                    <Keyword>Classic</Keyword>
-                </Keywords>
-            </RenderingInfo>
-            <EventData>
-                <Data Name='param1'>foo</Data>
-                <Data Name='param2'>bar</Data>
-            </EventData>
-        </Event>
-    ";
-    dict = json(parse_windows_eventlog_xml(xml));
-    $MSG = format_windows_eventlog_xml(dict);
-    """,
+        config, "xml=" + windows_eventlog_xml.replace("{eventdata}", """<Data Name='param1'>foo</Data><Data Name='param2'>bar</Data>""") + "dict = json(parse_windows_eventlog_xml(xml));" + "$MSG = format_windows_eventlog_xml(dict);",
     )
     syslog_ng.start(config)
 
@@ -2923,7 +2932,7 @@ def test_parse_format_windows_eventlog_xml(config, syslog_ng):
 
 def test_format_windows_eventlog_xml_dict_1_elem(config, syslog_ng):
     (file_true, file_false) = create_config(
-        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":{"param1":"foo"}}"""),
+        config, "$MSG = " + windows_eventlog_dict.replace("{eventdata}", """{"Data":{"param1":"foo"}}"""),
     )
     syslog_ng.start(config)
 
@@ -2933,7 +2942,7 @@ def test_format_windows_eventlog_xml_dict_1_elem(config, syslog_ng):
 
 def test_format_windows_eventlog_dict_2_elems(config, syslog_ng):
     (file_true, file_false) = create_config(
-        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":{"param1":"foo","param2":"bar"}}"""),
+        config, "$MSG = " + windows_eventlog_dict.replace("{eventdata}", """{"Data":{"param1":"foo","param2":"bar"}}"""),
     )
     syslog_ng.start(config)
 
@@ -2944,7 +2953,7 @@ def test_format_windows_eventlog_dict_2_elems(config, syslog_ng):
 
 def test_format_windows_eventlog_single_elem(config, syslog_ng):
     (file_true, file_false) = create_config(
-        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":"foo"}"""),
+        config, "$MSG = " + windows_eventlog_dict.replace("{eventdata}", """{"Data":"foo"}"""),
     )
     syslog_ng.start(config)
 
@@ -2955,13 +2964,24 @@ def test_format_windows_eventlog_single_elem(config, syslog_ng):
 
 def test_format_windows_eventlog_list(config, syslog_ng):
     (file_true, file_false) = create_config(
-        config, windows_eventlog_dict.replace("{eventdata}", """{"Data":["foo","bar"]}"""),
+        config, "$MSG = " + windows_eventlog_dict.replace("{eventdata}", """{"Data":["foo","bar"]}"""),
     )
     syslog_ng.start(config)
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == r"""<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='EventCreate'/><EventID Qualifiers='0'>999</EventID><Version>0</Version><Level>2</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/><EventRecordID>934</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Application</Channel><Computer>DESKTOP-2MBFIV7</Computer><Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/></System><RenderingInfo Culture='en-US'><Message>foobar</Message><Level>Error</Level><Task/><Opcode>Info</Opcode><Channel/><Provider/><Keywords><Keyword>Classic</Keyword></Keywords></RenderingInfo><EventData><Data>foo</Data><Data>bar</Data></EventData></Event>"""
+
+
+def test_format_windows_eventlog_empty_element(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, "$MSG = " + windows_eventlog_dict.replace("{eventdata}", """{"Data":{"param1":"foo","param2":""}}"""),
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == r"""<Event xmlns='http://schemas.microsoft.com/win/2004/08/events/event'><System><Provider Name='EventCreate'/><EventID Qualifiers='0'>999</EventID><Version>0</Version><Level>2</Level><Task>0</Task><Opcode>0</Opcode><Keywords>0x80000000000000</Keywords><TimeCreated SystemTime='2024-01-12T09:30:12.1566754Z'/><EventRecordID>934</EventRecordID><Correlation/><Execution ProcessID='0' ThreadID='0'/><Channel>Application</Channel><Computer>DESKTOP-2MBFIV7</Computer><Security UserID='S-1-5-21-3714454296-2738353472-899133108-1001'/></System><RenderingInfo Culture='en-US'><Message>foobar</Message><Level>Error</Level><Task/><Opcode>Info</Opcode><Channel/><Provider/><Keywords><Keyword>Classic</Keyword></Keywords></RenderingInfo><EventData><Data Name='param1'>foo</Data><Data Name='param2' /></EventData></Event>"""
 
 
 def test_string_slicing(config, syslog_ng):
