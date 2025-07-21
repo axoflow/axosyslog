@@ -338,6 +338,21 @@ _end_elem(FilterXGeneratorFunctionParseXml *s,
 {
   FilterXParseWEVTState *state = (FilterXParseWEVTState *) st;
 
+  if (state->position == WEVT_POS_DATA && state->has_named_data)
+    {
+      FILTERX_STRING_DECLARE_ON_STACK(empty_value, "", 0);
+      FILTERX_STRING_DECLARE_ON_STACK(param_obj, state->last_data_name->str, state->last_data_name->len);
+      XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
+      if (!filterx_object_set_subscript(elem_context->current_obj, param_obj, &empty_value))
+        {
+          _set_error(error, "failed to add empty value text to EventData: \"%s\"", state->last_data_name->str);
+          return;
+        }
+      xml_elem_context_set_parent_obj(elem_context, elem_context->current_obj);
+      xml_elem_context_set_current_obj(elem_context, empty_value);
+      state->has_named_data = FALSE;
+    }
+
   _pop_position(state, element_name);
   filterx_parse_xml_end_elem_method(s, context, element_name, st, error);
 }
