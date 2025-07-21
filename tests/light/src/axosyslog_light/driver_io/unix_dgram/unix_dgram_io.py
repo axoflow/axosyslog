@@ -33,7 +33,7 @@ class UnixDgramIO():
 
     def write_messages(self, messages: typing.List[str]) -> None:
         for message in messages:
-            self.__socket.sendto(message.encode(), self.__path)
+            self.__socket.sendto(message.encode(), str(self.__path))
 
     def close_socket(self):
         self.__socket.close()
