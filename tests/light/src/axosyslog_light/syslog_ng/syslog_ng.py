@@ -238,4 +238,5 @@ class SyslogNg(object):
         if returncode not in [0, 1, 2]:
             # return code 1 is a directed way of termination (syntax error), it should not handle as a crash
             # return code 2 is a directed way of termination, it should not handle as a crash
+            self._process = None
             assert False, "syslog-ng has crashed with return code: %s" % returncode
