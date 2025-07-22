@@ -209,6 +209,8 @@ class SyslogNg(object):
             self._process = self._syslog_ng_executor.run_process(**args)
         elif self._external_tool == "gdb":
             self._process = self._syslog_ng_executor.run_process_with_gdb(**args)
+        elif self._external_tool == "gdb_for_bt":
+            self._process = self._syslog_ng_executor.run_process_with_gdb_for_bt(**args)
         elif self._external_tool == "valgrind":
             self._process = self._syslog_ng_executor.run_process_with_valgrind(
                 valgrind_output_path=Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_valgrind_output"),
@@ -236,4 +238,5 @@ class SyslogNg(object):
         if returncode not in [0, 1, 2]:
             # return code 1 is a directed way of termination (syntax error), it should not handle as a crash
             # return code 2 is a directed way of termination, it should not handle as a crash
+            self._process = None
             assert False, "syslog-ng has crashed with return code: %s" % returncode

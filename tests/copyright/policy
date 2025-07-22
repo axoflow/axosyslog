@@ -72,6 +72,7 @@ charts/.*$
 docker/.*$
 .editorconfig
 tests/light/functional_tests/filterx/cache_json_file\.json
+tests/light/shared_files/.*\.sh
 
 ###########################################################################
 # These files are GPLd contributions.
