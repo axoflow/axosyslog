@@ -27,20 +27,24 @@ import typing
 from pathlib import Path
 from subprocess import Popen
 
+from axosyslog_light.common.file import copy_shared_file
 from axosyslog_light.executors.command_executor import CommandExecutor
 from axosyslog_light.executors.process_executor import ProcessExecutor
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgExecutor
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgStartParams
+from axosyslog_light.testcase_parameters.testcase_parameters import TestcaseParameters
 
 
 class SyslogNgLocalExecutor(SyslogNgExecutor):
     def __init__(
         self,
         syslog_ng_binary_path: Path,
+        tc_parameters: TestcaseParameters,
     ) -> None:
         self.__process_executor = ProcessExecutor()
         self.__command_executor = CommandExecutor()
         self.__syslog_ng_binary_path = syslog_ng_binary_path
+        self.__tc_parameters = tc_parameters
 
     def run_process(
         self,
@@ -97,6 +101,25 @@ class SyslogNgLocalExecutor(SyslogNgExecutor):
             command=["xterm", "-fa", "Monospace", "-fs", "18", "-e", shlex.join(gdb_command_args)],
             stdout_path="/dev/null",
             stderr_path="/dev/null",
+        )
+
+    def run_process_with_gdb_for_bt(
+        self,
+        start_params: SyslogNgStartParams,
+        stderr_path: Path,
+        stdout_path: Path,
+    ) -> Popen:
+        gdb_exec_file_name = "gdb_exec.sh"
+        copy_shared_file(self.__tc_parameters, gdb_exec_file_name)
+        gdb_exec_cmd = [
+            f'./{gdb_exec_file_name}',
+            f'"{self.__syslog_ng_binary_path}"',
+            f'{shlex.join(start_params.format())}',
+        ]
+        return self.__command_executor.run(
+            command=gdb_exec_cmd,
+            stdout_path="gdb_stdout.log",
+            stderr_path="gdb_stderr.log",
         )
 
     def run_process_with_strace(

@@ -74,7 +74,7 @@ class InstallDirAction(argparse.Action):
 # Command line options
 def pytest_addoption(parser):
     parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
-    parser.addoption("--run-under", help="Run syslog-ng under selected tool, example tools: [valgrind, strace]")
+    parser.addoption("--run-under", help="Run syslog-ng under selected tool, example tools: [valgrind, strace, gdb, gdb_for_bt]")
 
     parser.addoption(
         "--runner",
@@ -135,7 +135,7 @@ def config(request, syslog_ng, teardown) -> SyslogNgConfig:
 @pytest.fixture
 def syslog_ng(request: pytest.FixtureRequest, testcase_parameters: TestcaseParameters, syslog_ng_ctl: SyslogNgCtl, container_name: str, teardown):
     if request.config.getoption("--runner") == "local":
-        executor = SyslogNgLocalExecutor(tc_parameters.INSTANCE_PATH.get_syslog_ng_bin())
+        executor = SyslogNgLocalExecutor(tc_parameters.INSTANCE_PATH.get_syslog_ng_bin(), testcase_parameters)
     elif request.config.getoption("--runner") == "docker":
         executor = SyslogNgDockerExecutor(container_name, request.config.getoption("--docker-image"))
     else:
