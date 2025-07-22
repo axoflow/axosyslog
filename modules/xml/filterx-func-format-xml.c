@@ -260,9 +260,11 @@ _eval(FilterXExpr *s)
   FilterXObject *input_dict_unwrapped = filterx_ref_unwrap_ro(input_dict);
   if (!filterx_object_is_type(input_dict_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
+      filterx_eval_push_error_info_printf("Failed to evaluate format xml", self->input,
+                                          "Input must be a dict, got: %s",
+                                          filterx_object_get_type_name(input_dict));
       scratch_buffers_reclaim_marked(marker);
       filterx_object_unref(input_dict);
-      filterx_eval_push_error("input must be a dict. " FILTERX_FUNC_FORMAT_XML_USAGE, s, input_dict);
       return NULL;
     }
 
