@@ -46,7 +46,8 @@ class ProcessExecutor(object):
             self.process = psutil.Popen(
                 executable_command, stdout=stdout.open(mode="a"), stderr=stderr.open(mode="a"), env=env,
             )
-        except (OSError, psutil.Error):
+        except (OSError, psutil.Error) as e:
+            logger.error("Failed to start process: {}\nError: {}".format(printable_command, e))
             stdout.close()
             stderr.close()
         return self.process
