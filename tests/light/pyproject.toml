@@ -26,6 +26,7 @@ opentelemetry-exporter-otlp-proto-grpc = "^1.31.1"
 pytest-xdist = "^3.6.1"
 filelock = "^3.18.0"
 requests = "^2.32.3"
+clickhouse-connect = "^0.8.18"
 
 [tool.poetry.group.dev.dependencies]
 pycodestyle = "^2.12.1"
