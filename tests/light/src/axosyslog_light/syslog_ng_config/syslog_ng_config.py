@@ -29,6 +29,7 @@ from axosyslog_light.syslog_ng_config import stringify
 from axosyslog_light.syslog_ng_config.renderer import ConfigRenderer
 from axosyslog_light.syslog_ng_config.statement_group import StatementGroup
 from axosyslog_light.syslog_ng_config.statements import ArrowedOptions
+from axosyslog_light.syslog_ng_config.statements.destinations.clickhouse_destination import ClickhouseDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.example_destination import ExampleDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.file_destination import FileDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.network_destination import NetworkDestination
@@ -256,6 +257,10 @@ class SyslogNgConfig(object):
         unix_stream_source = UnixStreamDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(unix_stream_source.stop_listener)
         return unix_stream_source
+
+    def create_clickhouse_destination(self, **options):
+        clickhouse_destination = ClickhouseDestination(self._stats_handler, self._prometheus_stats_handler, **options)
+        return clickhouse_destination
 
     def create_db_parser(self, config, **options):
         return DBParser(self._stats_handler, self._prometheus_stats_handler, config, **options)
