@@ -442,6 +442,14 @@ _reset_request_body(HTTPDestinationWorker *self)
     g_string_truncate(self->request_body_compressed, 0);
 }
 
+static gboolean
+_is_request_body_inited(HTTPDestinationWorker *self)
+{
+  HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
+
+  return self->request_body->len > 0 || !owner->body_prefix->len;
+}
+
 static void
 _init_request_body(HTTPDestinationWorker *self)
 {
@@ -813,9 +821,7 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
     }
 
   _reset_request_headers(self);
-
   _reset_request_body(self);
-  _init_request_body(self);
 
   log_msg_unref(self->msg_for_templated_url);
   self->msg_for_templated_url = NULL;
@@ -837,6 +843,9 @@ _insert_batched(LogThreadedDestWorker *s, LogMessage *msg)
 {
   HTTPDestinationWorker *self = (HTTPDestinationWorker *) s;
 
+  if (!_is_request_body_inited(self))
+    _init_request_body(self);
+
   gsize orig_msg_len = self->request_body->len;
   _add_message_to_batch(self, msg);
   gsize diff_msg_len = self->request_body->len - orig_msg_len;
@@ -856,6 +865,8 @@ static LogThreadedResult
 _insert_single(LogThreadedDestWorker *s, LogMessage *msg)
 {
   HTTPDestinationWorker *self = (HTTPDestinationWorker *) s;
+
+  _init_request_body(self);
 
   gsize orig_msg_len = self->request_body->len;
   _add_message_to_batch(self, msg);
@@ -899,7 +910,6 @@ _init(LogThreadedDestWorker *s)
   _reset_request_headers(self);
 
   _reset_request_body(self);
-  _init_request_body(self);
 
   return log_threaded_dest_worker_init_method(s);
 }
