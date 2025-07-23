@@ -429,7 +429,7 @@ default_map_http_status_to_worker_status(HTTPDestinationWorker *self, const gcha
 }
 
 static void
-_reinit_request_headers(HTTPDestinationWorker *self)
+_reset_request_headers(HTTPDestinationWorker *self)
 {
   list_remove_all(self->request_headers);
 }
@@ -812,7 +812,7 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
       url = alt_url;
     }
 
-  _reinit_request_headers(self);
+  _reset_request_headers(self);
 
   _reset_request_body(self);
   _init_request_body(self);
@@ -896,7 +896,7 @@ _init(LogThreadedDestWorker *s)
       return FALSE;
     }
   _setup_static_options_in_curl(self);
-  _reinit_request_headers(self);
+  _reset_request_headers(self);
 
   _reset_request_body(self);
   _init_request_body(self);
