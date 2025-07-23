@@ -447,16 +447,19 @@ _is_request_body_inited(HTTPDestinationWorker *self)
 {
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  return self->request_body->len > 0 || !owner->body_prefix->len;
+  return self->request_body->len > 0 || !owner->body_prefix_template;
 }
 
 static void
-_init_request_body(HTTPDestinationWorker *self)
+_init_request_body(HTTPDestinationWorker *self, LogMessage *msg)
 {
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  if (owner->body_prefix->len > 0)
-    g_string_append_len(self->request_body, owner->body_prefix->str, owner->body_prefix->len);
+  if (!owner->body_prefix_template)
+    return;
+
+  LogTemplateEvalOptions options = { &owner->template_options, LTZ_SEND, self->super.seq_num, NULL, LM_VT_STRING };
+  log_template_append_format(owner->body_prefix_template, msg, &options, self->request_body);
 }
 
 static void
@@ -844,7 +847,7 @@ _insert_batched(LogThreadedDestWorker *s, LogMessage *msg)
   HTTPDestinationWorker *self = (HTTPDestinationWorker *) s;
 
   if (!_is_request_body_inited(self))
-    _init_request_body(self);
+    _init_request_body(self, msg);
 
   gsize orig_msg_len = self->request_body->len;
   _add_message_to_batch(self, msg);
@@ -866,7 +869,7 @@ _insert_single(LogThreadedDestWorker *s, LogMessage *msg)
 {
   HTTPDestinationWorker *self = (HTTPDestinationWorker *) s;
 
-  _init_request_body(self);
+  _init_request_body(self, msg);
 
   gsize orig_msg_len = self->request_body->len;
   _add_message_to_batch(self, msg);

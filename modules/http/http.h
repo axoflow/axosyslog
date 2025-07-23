@@ -52,7 +52,7 @@ typedef struct
   gchar *ciphers;
   gchar *tls13_ciphers;
   gchar *proxy;
-  GString *body_prefix;
+  LogTemplate *body_prefix_template;
   GString *body_suffix;
   GString *delimiter;
   long ssl_version;
@@ -93,7 +93,7 @@ void http_dd_set_peer_verify(LogDriver *d, gboolean verify);
 gboolean http_dd_set_ocsp_stapling_verify(LogDriver *d, gboolean verify);
 void http_dd_set_timeout(LogDriver *d, glong timeout);
 void http_dd_set_batch_bytes(LogDriver *d, glong batch_bytes);
-void http_dd_set_body_prefix(LogDriver *d, const gchar *body_prefix);
+void http_dd_set_body_prefix(LogDriver *d, LogTemplate *body_prefix);
 void http_dd_set_body_suffix(LogDriver *d, const gchar *body_suffix);
 void http_dd_set_delimiter(LogDriver *d, const gchar *delimiter);
 void http_dd_insert_response_handler(LogDriver *d, HttpResponseHandler *response_handler);
