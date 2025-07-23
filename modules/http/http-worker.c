@@ -435,17 +435,20 @@ _reinit_request_headers(HTTPDestinationWorker *self)
 }
 
 static void
-_reinit_request_body(HTTPDestinationWorker *self)
+_reset_request_body(HTTPDestinationWorker *self)
+{
+  g_string_truncate(self->request_body, 0);
+  if (self->request_body_compressed)
+    g_string_truncate(self->request_body_compressed, 0);
+}
+
+static void
+_init_request_body(HTTPDestinationWorker *self)
 {
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  g_string_truncate(self->request_body, 0);
-  if (self->request_body_compressed != NULL)
-    g_string_truncate(self->request_body_compressed, 0);
-
   if (owner->body_prefix->len > 0)
     g_string_append_len(self->request_body, owner->body_prefix->str, owner->body_prefix->len);
-
 }
 
 static void
@@ -810,7 +813,9 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
     }
 
   _reinit_request_headers(self);
-  _reinit_request_body(self);
+
+  _reset_request_body(self);
+  _init_request_body(self);
 
   log_msg_unref(self->msg_for_templated_url);
   self->msg_for_templated_url = NULL;
@@ -892,7 +897,10 @@ _init(LogThreadedDestWorker *s)
     }
   _setup_static_options_in_curl(self);
   _reinit_request_headers(self);
-  _reinit_request_body(self);
+
+  _reset_request_body(self);
+  _init_request_body(self);
+
   return log_threaded_dest_worker_init_method(s);
 }
 
