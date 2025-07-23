@@ -195,6 +195,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
 
   self->new_value = new_value;
   self->super.ignore_falsy_result = TRUE;
+  self->super.mutates_scope = TRUE;
 
   /* NOTE: name borrows the string value from the string object */
   self->super.name = filterx_string_get_value_ref(self->attr, NULL);
