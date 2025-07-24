@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package TestProto;
+
+message TestProto {
+    string message = 1;
+}
