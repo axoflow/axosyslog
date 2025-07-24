@@ -37,6 +37,7 @@
   { "adc",                       KW_ADC }, \
   { "service_account",           KW_SERVICE_ACCOUNT }, \
   { "key",                       KW_KEY }, \
+  { "service_account_key",       KW_SERVICE_ACCOUNT_KEY }, \
   { "token_validity_duration",   KW_TOKEN_VALIDITY_DURATION }, \
   { "compression",               KW_COMPRESSION }, \
   { "batch_bytes",               KW_BATCH_BYTES }, \
