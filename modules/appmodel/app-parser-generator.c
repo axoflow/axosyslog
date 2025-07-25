@@ -154,16 +154,16 @@ _generate_action(AppParserGenerator *self, Application *app)
     {
       g_string_append_printf(self->block,
                              "            filterx {\n"
-                             "                %s = '%s';\n"
+                             "                if (not isset(%s)) { %s = '%s'; }\n"
                              "            };\n",
-                             self->filterx_app_variable, app->super.name);
+                             self->filterx_app_variable, self->filterx_app_variable, app->super.name);
     }
   else
     {
       g_string_append_printf(self->block,
                              "            rewrite {\n"
                              "                set-tag('.app.%s');\n"
-                             "                set('%s' value('.app.name'));\n"
+                             "                set('%s' value('.app.name') condition('${.app.name}' eq ''));\n"
                              "            };\n",
                              app->super.name, app->super.name);
     }

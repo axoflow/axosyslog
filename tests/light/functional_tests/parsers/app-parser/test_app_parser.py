@@ -127,3 +127,36 @@ def test_app_parser_auto_parse_disabled_plus_overlaps_causes_the_message_to_be_a
 
     syslog_ng.start(config)
     assert "processed" not in file_destination.get_stats()
+
+
+def test_app_parser_not_overwriting_inner_adapters_result(config, syslog_ng):
+    config.add_preamble("""
+application inner-app[inner-topic] {
+    filterx { $MSG == "for-the-inner"; };
+};
+
+application outer-app[outer-topic] {
+  parser {
+    channel {
+        if {
+            parser { app-parser(topic(inner-topic) filterx-app-variable(app.name)); };
+        } else {
+            filterx { $MSG == "for-the-outer"; };
+        };
+    };
+  };
+};
+""")
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    filterx_1 = config.create_filterx(r"declare app = {};")
+    app_parser = config.create_app_parser(topic="outer-topic", filterx_app_variable="app.name")
+    filterx_2 = config.create_filterx(r"$app_name = app.name;")
+    file_destination = config.create_file_destination(file_name="output.log", template='"$app_name\\n"')
+    config.create_logpath(statements=[file_source, filterx_1, app_parser, filterx_2, file_destination])
+
+    syslog_ng.start(config)
+
+    file_source.write_logs(["for-the-inner", "for-the-outer"])
+    file_destination.read_logs(2) == ["inner-app", "outer-app"]
+
+    syslog_ng.stop()
