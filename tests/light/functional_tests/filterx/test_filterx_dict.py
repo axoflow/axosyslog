@@ -52,3 +52,21 @@ def test_filterx_dict_message_value_key(syslog_ng, config):
 
     syslog_ng.start(config)
     assert destination.read_log() == "test_value"
+
+
+def test_filterx_dict_nullv_elements(syslog_ng, config):
+    source = config.create_example_msg_generator_source(num=1)
+    filterx = config.create_filterx(r"""
+        $MSG = {
+          "null": null,
+          "nullidontwant":?? null,
+          "erroridontwant":?? nonexistingvar,
+          "value":?? 3,
+        };
+""")
+    destination = config.create_file_destination(file_name="output.log", template='"$MSG\n"')
+
+    config.create_logpath(statements=[source, filterx, destination])
+
+    syslog_ng.start(config)
+    assert destination.read_log() == '{"null":null,"value":3}'
