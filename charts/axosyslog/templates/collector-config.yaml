@@ -30,6 +30,9 @@ data:
   {{- if .keyDelimiter }}
         key-delimiter({{ .keyDelimiter | quote }})
   {{- end }}
+  {{- if .maxContainers }}
+        max-files({{ .maxContainers }})
+  {{- end }}
       );
     };
 {{- end }}
