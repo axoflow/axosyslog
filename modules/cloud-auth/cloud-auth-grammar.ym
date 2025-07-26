@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -123,6 +124,7 @@ google_dest_auth_service_account_options
 google_dest_auth_service_account_option
   : KW_KEY '(' path_secret ')' { google_authenticator_set_service_account_key_path(last_authenticator, $3); free($3); }
   | KW_AUDIENCE '(' string ')' { google_authenticator_set_service_account_audience(last_authenticator, $3); free($3); }
+  | KW_SCOPE '(' string ')' { google_authenticator_set_service_account_scope(last_authenticator, $3); free($3); }
   | KW_TOKEN_VALIDITY_DURATION '(' nonnegative_integer64 ')' { google_authenticator_set_service_account_token_validity_duration(last_authenticator, $3); }
   ;
 

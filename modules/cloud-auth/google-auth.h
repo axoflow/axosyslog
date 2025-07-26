@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -39,6 +40,7 @@ void google_authenticator_set_auth_mode(CloudAuthenticator *s, GoogleAuthenticat
 
 void google_authenticator_set_service_account_key_path(CloudAuthenticator *s, const gchar *key_path);
 void google_authenticator_set_service_account_audience(CloudAuthenticator *s, const gchar *audience);
+void google_authenticator_set_service_account_scope(CloudAuthenticator *s, const gchar *scope);
 void google_authenticator_set_service_account_token_validity_duration(CloudAuthenticator *s,
     guint64 token_validity_duration);
 

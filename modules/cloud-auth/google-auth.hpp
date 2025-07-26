@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -39,13 +40,15 @@ namespace google {
 class ServiceAccountAuthenticator: public syslogng::cloud_auth::Authenticator
 {
 public:
-  ServiceAccountAuthenticator(const char *key_path, const char *audience, uint64_t token_validity_duration);
+  ServiceAccountAuthenticator(const char *key_path, const char *audience, const char *scope,
+                              uint64_t token_validity_duration);
   ~ServiceAccountAuthenticator() {};
 
   void handle_http_header_request(HttpHeaderRequestSignalData *data);
 
 private:
   std::string audience;
+  std::string scope;
   std::string email;
   std::string private_key;
   std::string private_key_id;

@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2025 Axoflow
+ * Copyright (c) 2025 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -33,7 +34,7 @@
 using namespace syslogng::cloud_auth::google;
 
 ServiceAccountAuthenticator::ServiceAccountAuthenticator(const char *key_path, const char *audience_,
-                                                         uint64_t token_validity_duration_)
+                                                         const char *scope_, uint64_t token_validity_duration_)
   : token_validity_duration(token_validity_duration_)
 {
   picojson::value key_json;
@@ -63,9 +64,17 @@ ServiceAccountAuthenticator::ServiceAccountAuthenticator(const char *key_path, c
       throw std::runtime_error(std::string("Failed to get the necessary fields from the key file: ") + e.what());
     }
 
-  if (audience_ == nullptr)
-    throw std::runtime_error(std::string("audience() is mandatory"));
-  audience = audience_;
+  if (audience_ == nullptr && scope_ == nullptr)
+    throw std::runtime_error(std::string("audience() or scope() is mandatory"));
+
+  if (audience_ != nullptr && scope_ != nullptr)
+    throw std::runtime_error(std::string("audience() and scope() cannot be set at the same time"));
+
+  if (audience_)
+    audience = audience_;
+
+  if (scope_)
+    scope = scope_;
 }
 
 void
@@ -80,14 +89,20 @@ ServiceAccountAuthenticator::handle_http_header_request(HttpHeaderRequestSignalD
 
   try
     {
-      jwt::traits::kazuho_picojson::string_type token = jwt::create()
-                                                        .set_issuer(email)
-                                                        .set_subject(email)
-                                                        .set_audience(audience)
-                                                        .set_key_id(private_key_id)
-                                                        .set_issued_at(issued_at)
-                                                        .set_expires_at(expires_at)
-                                                        .sign(jwt::algorithm::rs256("", private_key, "", ""));
+      jwt::builder<jwt::traits::kazuho_picojson> builder = jwt::create()
+                                                           .set_issuer(email)
+                                                           .set_subject(email)
+                                                           .set_key_id(private_key_id)
+                                                           .set_issued_at(issued_at)
+                                                           .set_expires_at(expires_at);
+
+      if (!audience.empty())
+        builder = builder.set_audience(audience);
+
+      if (!scope.empty())
+        builder = builder.set_payload_claim("scope", jwt::claim(std::string(scope)));
+
+      jwt::traits::kazuho_picojson::string_type token = builder.sign(jwt::algorithm::rs256("", private_key, "", ""));
       g_string_append(buffer, token.c_str());
     }
   catch (const std::system_error &e)
@@ -284,6 +299,7 @@ typedef struct _GoogleAuthenticator
   {
     gchar *key_path;
     gchar *audience;
+    gchar *scope;
     guint64 token_validity_duration;
   } service_account_options;
 
@@ -319,6 +335,15 @@ google_authenticator_set_service_account_audience(CloudAuthenticator *s, const g
 
   g_free(self->service_account_options.audience);
   self->service_account_options.audience = g_strdup(audience);
+}
+
+void
+google_authenticator_set_service_account_scope(CloudAuthenticator *s, const gchar *scope)
+{
+  GoogleAuthenticator *self = (GoogleAuthenticator *) s;
+
+  g_free(self->service_account_options.scope);
+  self->service_account_options.scope = g_strdup(scope);
 }
 
 void
@@ -359,6 +384,7 @@ _init(CloudAuthenticator *s)
         {
           self->super.cpp = new ServiceAccountAuthenticator(self->service_account_options.key_path,
                                                             self->service_account_options.audience,
+                                                            self->service_account_options.scope,
                                                             self->service_account_options.token_validity_duration);
         }
       catch (const std::runtime_error &e)
