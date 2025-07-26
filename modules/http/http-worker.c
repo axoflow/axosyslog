@@ -429,23 +429,37 @@ default_map_http_status_to_worker_status(HTTPDestinationWorker *self, const gcha
 }
 
 static void
-_reinit_request_headers(HTTPDestinationWorker *self)
+_reset_request_headers(HTTPDestinationWorker *self)
 {
   list_remove_all(self->request_headers);
 }
 
 static void
-_reinit_request_body(HTTPDestinationWorker *self)
+_reset_request_body(HTTPDestinationWorker *self)
+{
+  g_string_truncate(self->request_body, 0);
+  if (self->request_body_compressed)
+    g_string_truncate(self->request_body_compressed, 0);
+}
+
+static gboolean
+_is_request_body_inited(HTTPDestinationWorker *self)
 {
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  g_string_truncate(self->request_body, 0);
-  if (self->request_body_compressed != NULL)
-    g_string_truncate(self->request_body_compressed, 0);
+  return self->request_body->len > 0 || !owner->body_prefix_template;
+}
 
-  if (owner->body_prefix->len > 0)
-    g_string_append_len(self->request_body, owner->body_prefix->str, owner->body_prefix->len);
+static void
+_init_request_body(HTTPDestinationWorker *self, LogMessage *msg)
+{
+  HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
+  if (!owner->body_prefix_template)
+    return;
+
+  LogTemplateEvalOptions options = { &owner->template_options, LTZ_SEND, self->super.seq_num, NULL, LM_VT_STRING };
+  log_template_append_format(owner->body_prefix_template, msg, &options, self->request_body);
 }
 
 static void
@@ -809,8 +823,8 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
       url = alt_url;
     }
 
-  _reinit_request_headers(self);
-  _reinit_request_body(self);
+  _reset_request_headers(self);
+  _reset_request_body(self);
 
   log_msg_unref(self->msg_for_templated_url);
   self->msg_for_templated_url = NULL;
@@ -832,6 +846,9 @@ _insert_batched(LogThreadedDestWorker *s, LogMessage *msg)
 {
   HTTPDestinationWorker *self = (HTTPDestinationWorker *) s;
 
+  if (!_is_request_body_inited(self))
+    _init_request_body(self, msg);
+
   gsize orig_msg_len = self->request_body->len;
   _add_message_to_batch(self, msg);
   gsize diff_msg_len = self->request_body->len - orig_msg_len;
@@ -851,6 +868,8 @@ static LogThreadedResult
 _insert_single(LogThreadedDestWorker *s, LogMessage *msg)
 {
   HTTPDestinationWorker *self = (HTTPDestinationWorker *) s;
+
+  _init_request_body(self, msg);
 
   gsize orig_msg_len = self->request_body->len;
   _add_message_to_batch(self, msg);
@@ -891,8 +910,10 @@ _init(LogThreadedDestWorker *s)
       return FALSE;
     }
   _setup_static_options_in_curl(self);
-  _reinit_request_headers(self);
-  _reinit_request_body(self);
+  _reset_request_headers(self);
+
+  _reset_request_body(self);
+
   return log_threaded_dest_worker_init_method(s);
 }
 

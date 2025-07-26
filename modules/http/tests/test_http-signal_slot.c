@@ -119,7 +119,11 @@ Test(test_http_signal_slot, basic)
 
 Test(test_http_signal_slot, single_with_prefix_suffix)
 {
-  http_dd_set_body_prefix((LogDriver *)driver, "[");
+  LogTemplate *prefix = log_template_new(configuration, NULL);
+  cr_assert(log_template_compile(prefix, "[", NULL));
+  http_dd_set_body_prefix((LogDriver *)driver, prefix);
+  log_template_unref(prefix);
+
   http_dd_set_body_suffix((LogDriver *)driver, "]");
   http_dd_set_delimiter((LogDriver *)driver, ",");
 
@@ -137,7 +141,11 @@ Test(test_http_signal_slot, single_with_prefix_suffix)
 
 Test(test_http_signal_slot, batch_with_prefix_suffix)
 {
-  http_dd_set_body_prefix((LogDriver *)driver, "[");
+  LogTemplate *prefix = log_template_new(configuration, NULL);
+  cr_assert(log_template_compile(prefix, "[", NULL));
+  http_dd_set_body_prefix((LogDriver *)driver, prefix);
+  log_template_unref(prefix);
+
   http_dd_set_body_suffix((LogDriver *)driver, "]");
   http_dd_set_delimiter((LogDriver *)driver, ",");
   log_threaded_dest_driver_set_batch_lines((LogDriver *)driver, 2);
