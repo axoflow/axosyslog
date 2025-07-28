@@ -358,11 +358,12 @@ http_dd_set_batch_bytes(LogDriver *d, glong batch_bytes)
 }
 
 void
-http_dd_set_body_prefix(LogDriver *d, const gchar *body_prefix)
+http_dd_set_body_prefix(LogDriver *d, LogTemplate *body_prefix)
 {
   HTTPDestinationDriver *self = (HTTPDestinationDriver *) d;
 
-  g_string_assign(self->body_prefix, body_prefix);
+  log_template_unref(self->body_prefix_template);
+  self->body_prefix_template = log_template_ref(body_prefix);
 }
 
 void
@@ -475,7 +476,7 @@ http_dd_free(LogPipe *s)
   log_template_options_destroy(&self->template_options);
 
   g_string_free(self->delimiter, TRUE);
-  g_string_free(self->body_prefix, TRUE);
+  log_template_unref(self->body_prefix_template);
   g_string_free(self->body_suffix, TRUE);
   g_string_free(self->accept_encoding, TRUE);
   log_template_unref(self->body_template);
@@ -522,7 +523,6 @@ http_dd_new(GlobalConfig *cfg)
   /* disable batching even if the global batch_lines is specified */
   self->super.batch_lines = 0;
   self->batch_bytes = 0;
-  self->body_prefix = g_string_new("");
   self->body_suffix = g_string_new("");
   self->delimiter = g_string_new("\n");
   self->accept_encoding = g_string_new("");
