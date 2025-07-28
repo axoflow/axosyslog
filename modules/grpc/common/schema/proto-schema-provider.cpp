@@ -124,6 +124,12 @@ bool
 ProtoSchemaBuilder::init()
 {
   const google::protobuf::FileDescriptor *file_descriptor = this->descriptor_pool.BuildFile(this->file_descriptor_proto);
+  if (!file_descriptor || file_descriptor->message_type_count() == 0)
+    {
+      msg_error("Error initializing gRPC based destination, protobuf-schema() file cannot be built");
+      return false;
+    }
+
   this->schema_descriptor = file_descriptor->message_type(0);
   this->schema_prototype = this->msg_factory->GetPrototype(this->schema_descriptor);
 
