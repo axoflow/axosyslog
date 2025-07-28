@@ -156,9 +156,9 @@ DestDriver::map_schema_type(const std::string &type_in, google::protobuf::FieldD
     { "BIGINT SIGNED",      static_cast<FieldDescriptorProto::Type>(fd::TYPE_INT64) },
     { "TIME",               static_cast<FieldDescriptorProto::Type>(fd::TYPE_INT64) },
 
-    { "UINT8",              static_cast<FieldDescriptorProto::Type>(fd::TYPE_BOOL) },
-    { "TINYINT UNSIGNED",   static_cast<FieldDescriptorProto::Type>(fd::TYPE_BOOL) },
-    { "INT1 UNSIGNED",      static_cast<FieldDescriptorProto::Type>(fd::TYPE_BOOL) },
+    { "UINT8",              static_cast<FieldDescriptorProto::Type>(fd::TYPE_UINT32) },
+    { "TINYINT UNSIGNED",   static_cast<FieldDescriptorProto::Type>(fd::TYPE_UINT32) },
+    { "INT1 UNSIGNED",      static_cast<FieldDescriptorProto::Type>(fd::TYPE_UINT32) },
     { "UINT16",             static_cast<FieldDescriptorProto::Type>(fd::TYPE_UINT32) },
     { "SMALLINT UNSIGNED",  static_cast<FieldDescriptorProto::Type>(fd::TYPE_UINT32) },
     { "UINT32",             static_cast<FieldDescriptorProto::Type>(fd::TYPE_UINT32) },
