@@ -29,6 +29,7 @@
 #include "filterx/filterx-object.h"
 #include "filterx/object-null.h"
 #include "filterx/object-message-value.h"
+#include "filterx/object-extractor.h"
 
 /* Object Members (e.g. key-value) */
 
@@ -146,11 +147,7 @@ _literal_container_eval(FilterXExpr *s)
           if (!value)
             filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
 
-          gboolean value_is_null_or_error = !value || filterx_object_is_type(value, &FILTERX_TYPE_NAME(null))
-                                            || (filterx_object_is_type(value, &FILTERX_TYPE_NAME(message_value))
-                                                && filterx_message_value_get_type(value) == LM_VT_NULL);
-
-          if (value_is_null_or_error)
+          if (!value || filterx_object_extract_null(value))
             {
               filterx_object_unref(key);
               filterx_object_unref(value);

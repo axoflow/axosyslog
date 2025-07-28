@@ -24,6 +24,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
 #include "filterx/object-message-value.h"
+#include "filterx/object-extractor.h"
 #include "scratch-buffers.h"
 
 static inline FilterXObject *
@@ -54,9 +55,7 @@ _nullv_assign_eval(FilterXExpr *s)
 
   FilterXObject *value = filterx_expr_eval(self->rhs);
 
-  if (!value || filterx_object_is_type(value, &FILTERX_TYPE_NAME(null))
-      || (filterx_object_is_type(value, &FILTERX_TYPE_NAME(message_value))
-          && filterx_message_value_get_type(value) == LM_VT_NULL))
+  if (!value || filterx_object_extract_null(value))
     {
       if (!value)
         return _suppress_error();

@@ -24,6 +24,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-null.h"
 #include "filterx/object-message-value.h"
+#include "filterx/object-extractor.h"
 #include "scratch-buffers.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
@@ -72,9 +73,7 @@ _nullv_set_subscript_eval(FilterXExpr *s)
   FilterXObject *key = NULL;
 
   FilterXObject *new_value = filterx_expr_eval(self->new_value);
-  if (!new_value || filterx_object_is_type(new_value, &FILTERX_TYPE_NAME(null))
-      || (filterx_object_is_type(new_value, &FILTERX_TYPE_NAME(message_value))
-          && filterx_message_value_get_type(new_value) == LM_VT_NULL))
+  if (!new_value || filterx_object_extract_null(new_value))
     {
       if (!new_value)
         return _suppress_error();
