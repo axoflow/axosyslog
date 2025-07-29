@@ -77,7 +77,7 @@ class NetworkIO():
         if framed is None:
             framed = self.__framed
         if framed:
-            return "".join([str(len(message)) + " " + message for message in messages])
+            return "".join([str(len(message.encode(encoding="utf-8"))) + " " + message for message in messages])
         return "".join([message + "\n" for message in messages])
 
     def write_messages(self, messages, rate=None, transport=None, framed=None, rate_burst_start=False, client_port=0):
