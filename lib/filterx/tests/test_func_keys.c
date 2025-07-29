@@ -77,7 +77,7 @@ Test(filterx_func_keys, invalid_arg_type)
   FilterXExpr *fn = filterx_function_keys_new(filterx_function_args_new(args, NULL), &error);
   cr_assert_not_null(fn);
   cr_assert_null(error);
-  FilterXObject *res = filterx_expr_eval(fn);
+  FilterXObject *res = init_and_eval_expr(fn);
   cr_assert_null(res);
 
   const gchar *last_error = filterx_eval_get_last_error();
@@ -98,7 +98,7 @@ Test(filterx_func_keys, valid_input)
   FilterXExpr *fn = filterx_function_keys_new(filterx_function_args_new(args, NULL), &error);
   cr_assert_not_null(fn);
   cr_assert_null(error);
-  FilterXObject *res = filterx_expr_eval(fn);
+  FilterXObject *res = init_and_eval_expr(fn);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(list)));
 

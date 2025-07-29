@@ -263,6 +263,35 @@ typedef struct FilterXFunctionStrptime_
   GPtrArray *formats;
 } FilterXFunctionStrptime;
 
+static FilterXExpr *
+_strptime_optimize(FilterXExpr *s)
+{
+  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
+
+  self->time_str_expr = filterx_expr_optimize(self->time_str_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
+static gboolean
+_strptime_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
+
+  if (!filterx_expr_init(self->time_str_expr, cfg))
+    return FALSE;
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_strptime_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
+
+  filterx_expr_deinit(self->time_str_expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
 static FilterXObject *
 _strptime_eval(FilterXExpr *s)
 {
@@ -400,6 +429,9 @@ filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrptime *self = g_new0(FilterXFunctionStrptime, 1);
   filterx_function_init_instance(&self->super, "strptime");
+  self->super.super.init = _strptime_init;
+  self->super.super.deinit = _strptime_deinit;
+  self->super.super.optimize = _strptime_optimize;
   self->super.super.eval = _strptime_eval;
   self->super.super.free_fn = _strptime_free;
 

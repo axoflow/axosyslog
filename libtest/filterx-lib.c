@@ -274,6 +274,15 @@ filterx_test_expr_set_location_with_text(FilterXExpr *expr, const gchar *filenam
   filterx_expr_set_location_with_text(expr, &lloc, text);
 }
 
+FilterXObject *
+init_and_eval_expr(FilterXExpr *expr)
+{
+  cr_assert(filterx_expr_init(expr, configuration));
+  FilterXObject *result = filterx_expr_eval(expr);
+  filterx_expr_deinit(expr, configuration);
+  return result;
+}
+
 static struct
 {
   LogMessage *msg;
