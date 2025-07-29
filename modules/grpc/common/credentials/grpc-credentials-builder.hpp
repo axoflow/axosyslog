@@ -77,6 +77,9 @@ public:
   bool set_service_account_key_path(const char *key_path);
   void set_service_account_validity_duration(guint64 validity_duration);
 
+  /* ADC */
+  void set_adc_service_account_key(const char *key_path);
+
 private:
   ClientAuthMode mode = GCAM_INSECURE;
 
@@ -92,6 +95,9 @@ private:
     std::string key;
     guint64 validity_duration = 3600L;
   } service_account;
+
+  /* ADC */
+  std::string adc_service_account_key;
 };
 
 }

@@ -76,6 +76,8 @@ gboolean grpc_client_credentials_builder_service_account_set_key(GrpcClientCrede
     const gchar *key_path);
 void grpc_client_credentials_builder_service_account_set_validity_duration(GrpcClientCredentialsBuilderW *s,
     guint64 validity_duration);
+void grpc_client_credentials_builder_set_adc_service_account_key(GrpcClientCredentialsBuilderW *s,
+    const gchar *key_path);
 
 #include "compat/cpp-end.h"
 
