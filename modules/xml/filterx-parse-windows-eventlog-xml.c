@@ -153,21 +153,22 @@ _collect_attrs(const gchar **attribute_names, const gchar **attribute_values,
 static gboolean
 _has_valid_schema_url(const gchar **attribute_names, const gchar **attribute_values, GError **error)
 {
-  if (!attribute_names[0])
-    return FALSE;
-
-  if (g_strcmp0(attribute_names[0], "xmlns") != 0)
-    return FALSE;
+  if (!attribute_names[0] ||
+      g_strcmp0(attribute_names[0], "xmlns") != 0)
+    {
+      _set_error(error, "missing xmlns attribute in the Event element");
+      return FALSE;
+    }
 
   if (g_strcmp0(attribute_values[0], "http://schemas.microsoft.com/win/2004/08/events/event") != 0)
     {
-      _set_error(error, "unexpected schema URL: %s", attribute_values[0]);
+      _set_error(error, "unexpected schema URL in the Event element: %s", attribute_values[0]);
       return FALSE;
     }
 
   if (attribute_names[1])
     {
-      _set_error(error, "unexpected attribute in Event, number of attributes must be 1, got: %s", attribute_names[1]);
+      _set_error(error, "unexpected attribute in the Event element: %s", attribute_names[1]);
       return FALSE;
     }
 
