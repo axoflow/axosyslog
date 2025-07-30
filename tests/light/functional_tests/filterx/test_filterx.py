@@ -2836,6 +2836,7 @@ def test_format_xml_valid_input(config, syslog_ng):
         $MSG.float_leaf = format_xml({"a":100.0});
         datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
         $MSG.datetime_leaf = format_xml({"a":datetime});
+        $MSG.escaped = format_xml({"a":"<b>"});
 """,
     )
     syslog_ng.start(config)
@@ -2863,7 +2864,8 @@ def test_format_xml_valid_input(config, syslog_ng):
         r""""multiple_root":"<a>b</a><a>c</a>","""
         r""""integer_leaf":"<a>100</a>","""
         r""""float_leaf":"<a>100.0</a>","""
-        r""""datetime_leaf":"<a>946677600.000000</a>"}"""
+        r""""datetime_leaf":"<a>946677600.000000</a>","""
+        r""""escaped":"<a>&lt;b&gt;</a>"}"""
     )
     assert file_true.read_log() == exp
 
