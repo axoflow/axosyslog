@@ -54,7 +54,11 @@ _append_inner_data_dict_element(FilterXObject *key, FilterXObject *value, gpoint
     }
 
   if (value_str_len)
-    g_string_append_printf(buffer, "<Data Name='%s'>%s</Data>", key_str, value_str);
+    {
+      gchar *escaped_value = g_markup_escape_text(value_str, value_str_len);
+      g_string_append_printf(buffer, "<Data Name='%s'>%s</Data>", key_str, escaped_value);
+      g_free(escaped_value);
+    }
   else
     g_string_append_printf(buffer, "<Data Name='%s' />", key_str);
   return TRUE;
@@ -87,7 +91,9 @@ _append_data_element(FilterXObject *key, FilterXObject *value, gpointer user_dat
       return FALSE;
     }
 
-  self->append_leaf(key_str, value_str, value_str_len, buffer);
+  gchar *escaped_value = g_markup_escape_text(value_str, value_str_len);
+  self->append_leaf(key_str, escaped_value, strlen(escaped_value), buffer);
+  g_free (escaped_value);
   return TRUE;
 }
 

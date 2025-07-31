@@ -107,23 +107,27 @@ append_list(FilterXObject *key, FilterXObject *list, gpointer user_data)
 }
 
 static void
-_append_attribute(const char *key_str, const char *value_str, GString *buffer)
+_append_attribute(const char *key_str, GString *value_buffer, GString *buffer)
 {
   if (buffer->str[buffer->len - 1] == '>')
     g_string_overwrite(buffer, buffer->len - 1, " ");
   else
     g_string_append_c(buffer, ' ');
 
-  g_string_append_printf(buffer, "%s='%s'>", &key_str[1], value_str);
+  gchar *escaped_value = g_markup_escape_text(value_buffer->str, value_buffer->len);
+  g_string_append_printf(buffer, "%s='%s'>", &key_str[1], escaped_value);
+  g_free(escaped_value);
 }
 
 static void
-_append_text(const char *value_str, GString *buffer)
+_append_text(GString *value_buffer, GString *buffer)
 {
   if (buffer->str[buffer->len - 1] != '>')
     g_string_append_c(buffer, '>');
 
-  g_string_append(buffer, value_str);
+  gchar *escaped_value = g_markup_escape_text(value_buffer->str, value_buffer->len);
+  g_string_append(buffer, escaped_value);
+  g_free(escaped_value);
 }
 
 static void
@@ -158,17 +162,19 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (key_str_len && (key_str[0] == '@'))
     {
       *is_only_attribute_present = TRUE;
-      _append_attribute(key_str, val_buf->str, buffer);
+      _append_attribute(key_str, val_buf, buffer);
       return TRUE;
     }
   if (key_str_len && (g_strcmp0(key_str, "#text") == 0))
     {
       *is_only_attribute_present = FALSE;
-      _append_text(val_buf->str, buffer);
+      _append_text(val_buf, buffer);
       return TRUE;
     }
 
-  self->append_leaf(key_str, val_buf->str, val_buf->len, buffer);
+  gchar *escaped_value = g_markup_escape_text(val_buf->str, val_buf->len);
+  self->append_leaf(key_str, escaped_value, strlen(escaped_value), buffer);
+  g_free (escaped_value);
   return TRUE;
 }
 
