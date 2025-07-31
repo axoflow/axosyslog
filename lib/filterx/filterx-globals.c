@@ -106,6 +106,9 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("load_vars", filterx_simple_function_load_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
+  g_assert(filterx_builtin_simple_function_register("str_strip", filterx_simple_function_str_strip));
+  g_assert(filterx_builtin_simple_function_register("str_lstrip", filterx_simple_function_str_lstrip));
+  g_assert(filterx_builtin_simple_function_register("str_rstrip", filterx_simple_function_str_rstrip));
   g_assert(filterx_builtin_simple_function_register("str_replace", filterx_simple_function_str_replace));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
