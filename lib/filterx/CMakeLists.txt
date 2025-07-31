@@ -60,6 +60,7 @@ set(FILTERX_HEADERS
     filterx/func-unset-empties.h
     filterx/func-vars.h
     filterx/func-repr.h
+    filterx/func-dpath-set.h
     filterx/func-failure-info.h
     filterx/object-datetime.h
     filterx/object-dict-interface.h
@@ -137,6 +138,7 @@ set(FILTERX_SOURCES
     filterx/func-unset-empties.c
     filterx/func-vars.c
     filterx/func-repr.c
+    filterx/func-dpath-set.c
     filterx/func-failure-info.c
     filterx/object-datetime.c
     filterx/object-dict-interface.c
