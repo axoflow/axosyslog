@@ -26,6 +26,10 @@
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-object.h"
+#include "filterx/object-null.h"
+#include "filterx/object-message-value.h"
+#include "filterx/object-extractor.h"
 
 /* Object Members (e.g. key-value) */
 
@@ -33,7 +37,8 @@ struct FilterXLiteralElement_
 {
   FilterXExpr *key;
   FilterXExpr *value;
-  gboolean literal;
+  guint8 nullv:1,
+         literal:1;
 };
 
 static gboolean
@@ -85,6 +90,17 @@ filterx_literal_element_new(FilterXExpr *key, FilterXExpr *value)
   return self;
 }
 
+FilterXLiteralElement *
+filterx_nullv_literal_element_new(FilterXExpr *key, FilterXExpr *value)
+{
+  FilterXLiteralElement *self = filterx_literal_element_new(key, value);
+
+  self->nullv = TRUE;
+
+  return self;
+}
+
+
 /* Literal Object */
 
 struct FilterXLiteralContainer_
@@ -126,6 +142,19 @@ _literal_container_eval(FilterXExpr *s)
         }
 
       FilterXObject *value = filterx_expr_eval(elem->value);
+      if (elem->nullv)
+        {
+          if (!value)
+            filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
+
+          if (!value || filterx_object_extract_null(value))
+            {
+              filterx_object_unref(key);
+              filterx_object_unref(value);
+              continue;
+            }
+        }
+
       if (!value)
         {
           filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate value");
