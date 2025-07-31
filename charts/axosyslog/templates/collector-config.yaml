@@ -31,7 +31,7 @@ data:
         key-delimiter({{ .keyDelimiter | quote }})
   {{- end }}
   {{- if .maxContainers }}
-        max-files({{ .maxContainers }})
+        max-containers({{ .maxContainers }})
   {{- end }}
       );
     };
