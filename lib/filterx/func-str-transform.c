@@ -148,3 +148,43 @@ filterx_simple_function_str_replace(FilterXExpr *s, FilterXObject *args[], gsize
 
   return result;
 }
+
+static inline gchar *
+_lrstrip(gchar *str)
+{
+  /* g_strstrip() is a macro */
+  return g_strstrip(str);
+}
+
+static inline FilterXObject *
+_str_strip(FilterXExpr *s, FilterXObject *args[], gsize args_len, gchar *(*transform)(gchar *str))
+{
+  gssize len;
+  const gchar *str = _extract_str_arg(s, args, args_len, &len);
+  if (!str)
+    return NULL;
+
+  gchar *trimmed = g_strdup(str);
+  trimmed = transform(trimmed);
+
+  FilterXObject *result = filterx_string_new_take(trimmed, (gssize) strlen(trimmed));
+  return result;
+}
+
+FilterXObject *
+filterx_simple_function_str_strip(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  return _str_strip(s, args, args_len, _lrstrip);
+}
+
+FilterXObject *
+filterx_simple_function_str_lstrip(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  return _str_strip(s, args, args_len, g_strchug);
+}
+
+FilterXObject *
+filterx_simple_function_str_rstrip(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  return _str_strip(s, args, args_len, g_strchomp);
+}

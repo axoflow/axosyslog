@@ -972,3 +972,20 @@ def test_str_replace(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '{"replace_all":"érik egy szőlő, hegyjlik egy vessző","replace_some":"érik egy szőlő, hajlik a vessző"}'
+
+
+def test_str_strip(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    madar = " \n\r\t  szirti \t sas  \n\r\t";
+    $MSG = {
+        "strip": str_strip(madar),
+        "lstrip": str_lstrip(madar),
+        "rstrip": str_rstrip(madar),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"strip":"szirti \\t sas","lstrip":"szirti \\t sas  \\n\\r\\t","rstrip":" \\n\\r\\t  szirti \\t sas"}'
