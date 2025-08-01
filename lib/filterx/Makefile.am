@@ -60,6 +60,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-timestamp.h \
 	lib/filterx/func-str-transform.h \
 	lib/filterx/func-str.h \
+	lib/filterx/func-dpath-set.h \
 	lib/filterx/func-unset-empties.h \
 	lib/filterx/func-repr.h \
 	lib/filterx/func-vars.h \
@@ -140,6 +141,7 @@ filterx_sources = 				\
 	lib/filterx/func-unset-empties.c \
 	lib/filterx/func-vars.c \
 	lib/filterx/func-repr.c \
+	lib/filterx/func-dpath-set.c \
 	lib/filterx/func-failure-info.c \
 	lib/filterx/object-datetime.c \
 	lib/filterx/object-dict-interface.c \

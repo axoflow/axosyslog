@@ -47,6 +47,7 @@
 #include "filterx/func-repr.h"
 #include "filterx/func-cache-json-file.h"
 #include "filterx/func-failure-info.h"
+#include "filterx/func-dpath-set.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
@@ -160,6 +161,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("failure_info_clear", filterx_fn_failure_info_clear_new));
   g_assert(filterx_builtin_function_ctor_register("failure_info", filterx_fn_failure_info_new));
   g_assert(filterx_builtin_function_ctor_register("failure_info_meta", filterx_fn_failure_info_meta_new));
+  g_assert(filterx_builtin_function_ctor_register("dpath_set", filterx_function_dpath_set_new));
 }
 
 static void
