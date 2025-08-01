@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package TestProto;
+
+message TestProto {
+    bool data_bool = 1;
+    // bytes data_bytes = 2;
+    double data_double = 3;
+    // optional Type data_enum = 4;
+    fixed32 data_fixed32 = 5;
+    fixed64 data_fixed64 = 6;
+    float data_float = 7;
+    int32 data_int32 = 8;
+    int64 data_int64 = 9;
+    sfixed32 data_sfixed32 = 10;
+    sfixed64 data_sfixed64 = 11;
+    sint32 data_sint32 = 12;
+    sint64 data_sint64 = 13;
+    string data_string = 14;
+    uint32 data_uint32 = 15;
+    uint64 data_uint64 = 16;
+
+    enum Type {
+        FOO = 0;
+        BAR = 1;
+        BAZ  = 2;
+    }
+
+}

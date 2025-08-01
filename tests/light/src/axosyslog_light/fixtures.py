@@ -38,6 +38,8 @@ from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.common.session_data import get_session_data
 from axosyslog_light.common.session_data import SessionData
+from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_SERVER_HTTP_PORT
+from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import ClickhouseServerExecutor
 from axosyslog_light.helpers.loggen.loggen import Loggen
 from axosyslog_light.helpers.loggen.loggen_docker_executor import LoggenDockerExecutor
 from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
@@ -212,6 +214,14 @@ def loggen(testcase_parameters):
     server.stop()
 
 
+@pytest.fixture
+def clickhouse_server(request, testcase_parameters):
+    clickhouse_server_instance = ClickhouseServerExecutor(testcase_parameters)
+    yield clickhouse_server_instance
+    if clickhouse_server_instance.process is not None:
+        clickhouse_server_instance.stop()
+
+
 def calculate_report_file_path(working_dir):
     return Path(working_dir, "testcase.reportlog")
 
@@ -295,7 +305,11 @@ def setup(request):
         base_number_of_open_fds = session_data["base_number_of_open_fds"]
     number_of_open_fds = len(psutil.Process().open_files())
     assert base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
-    assert len(psutil.Process().net_connections(kind="inet")) == 0, "Previous testcase has unclosed opened sockets"
+    for net_conn in psutil.Process().net_connections(kind="inet"):
+        if net_conn.raddr.port == CLICKHOUSE_SERVER_HTTP_PORT and net_conn.status == "CLOSE_WAIT":
+            # This is a workaround for clickhouse-connect not closing connections properly
+            continue
+        assert False, "Previous testcase has unclosed opened sockets: {}".format(net_conn)
     testcase_parameters = request.getfixturevalue("testcase_parameters")
 
     copy_file(testcase_parameters.get_testcase_file(), Path.cwd())
