@@ -89,10 +89,10 @@ _optimize_arithmetic_operators_common(FilterXArithmeticOperator *self)
     g_assert_not_reached();
 
   if (filterx_expr_is_literal(self->super.lhs))
-    self->literal_lhs = filterx_expr_eval_typed(self->super.lhs);
+    self->literal_lhs = filterx_literal_get_value(self->super.lhs);
 
   if (filterx_expr_is_literal(self->super.rhs))
-    self->literal_rhs = filterx_expr_eval(self->super.rhs);
+    self->literal_rhs = filterx_literal_get_value(self->super.rhs);
 }
 
 static void

@@ -487,7 +487,7 @@ _add_literal_column(gsize index, FilterXExpr *column, gpointer user_data)
   if (!filterx_expr_is_literal(column))
     return FALSE;
 
-  FilterXObject *column_name = filterx_expr_eval_typed(column);
+  FilterXObject *column_name = filterx_literal_get_value(column);
 
   if (!filterx_object_is_type(column_name, &FILTERX_TYPE_NAME(string)))
     {
