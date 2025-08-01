@@ -2356,12 +2356,12 @@ def test_parse_cef(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = {
-        "version": "0",
+        "cef_version": "0",
         "device_vendor": "dummy|device|containing|header|separator|that|needs|to|be|backslash|escaped",
         "device_product": "dummy\\device\\product\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "device_version": "dummy device version containing extension pair separator that does not need to be escaped",
         "device_event_class_id": "1234",
-        "name": "dummy=name=containing=extension=value=separator=that=does=not=need=to=be=escaped",
+        "event_name": "dummy=name=containing=extension=value=separator=that=does=not=need=to=be=escaped",
         "agent_severity": "5",
         "dummy_key1": "value",
         "dummy_key2": "value containing pair separators that does not need to be escaped",
@@ -2394,8 +2394,8 @@ def test_parse_leef_version_1(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = {
-        "version": "1.0",
-        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "leef_version": "1.0",
+        "vendor_name": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
         "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
         "event_id": "1234",
@@ -2430,8 +2430,8 @@ def test_parse_leef_version_2_no_delimiter(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = {
-        "version": "2.0",
-        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "leef_version": "2.0",
+        "vendor_name": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
         "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
         "event_id": "1234",
@@ -2467,12 +2467,12 @@ def test_parse_leef_version_2_empty_delimiter(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = {
-        "version": "2.0",
-        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "leef_version": "2.0",
+        "vendor_name": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
         "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
         "event_id": "1234",
-        "delimiter": "",
+        "leef_delimiter": "",
         "dummy_key1": "value",
         "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
         "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
@@ -2505,12 +2505,12 @@ def test_parse_leef_version_2_space_delimiter(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = {
-        "version": "2.0",
-        "vendor": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
+        "leef_version": "2.0",
+        "vendor_name": "dummy|vendor|containing|header|separator|that|needs|to|be|backslash|escaped",
         "product_name": "dummy\\product\\name\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
         "event_id": "1234",
-        "delimiter": " ",
+        "leef_delimiter": " ",
         "dummy_key1": "value",
         "dummy_key2": "value containing pair separators that does not need to be escaped",
         "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
