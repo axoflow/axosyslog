@@ -48,7 +48,7 @@ _append_signature(EventFormatterContext *ctx, GString *formatted, FilterXObject 
 {
   gboolean success = FALSE;
 
-  FilterXObject *version_obj = filterx_object_getattr_string(dict, "version");
+  FilterXObject *version_obj = filterx_object_getattr_string(dict, ctx->config.header.fields[0].name);
   if (!version_obj)
     {
       filterx_eval_push_error_static_info("Failed to evaluate event formatter function", &ctx->formatter->super.super,
@@ -380,7 +380,11 @@ filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormat
   self->super.super.free_fn = _free;
 
   g_assert(config->header.num_fields >= 2);
-  g_assert(strcmp(config->header.fields[0].name, "version") == 0);
+
+  const gsize first_field_len = strlen(config->header.fields[0].name);
+  const gsize version_len = strlen("_version");
+  g_assert(first_field_len > version_len); /* Something must be before it. */
+  g_assert(strcmp(&config->header.fields[0].name[first_field_len - version_len], "_version") == 0);
   g_assert(strcmp(config->header.fields[config->header.num_fields - 1].name, "extensions") == 0);
 
   self->config = *config;

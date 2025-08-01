@@ -34,7 +34,7 @@ filterx_function_format_leef_format_version(EventFormatterContext *ctx, GString 
 {
   gboolean success = FALSE;
 
-  FilterXObject *version_obj = filterx_object_getattr_string(dict, "version");
+  FilterXObject *version_obj = filterx_object_getattr_string(dict, ctx->config.header.fields[0].name);
   if (!version_obj)
     {
       filterx_eval_push_error_static_info("Failed to evaluate format_leef()", &ctx->formatter->super.super,
@@ -68,7 +68,7 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   gboolean success = FALSE;
   FilterXObject *delimiter_obj = NULL;
 
-  delimiter_obj = filterx_object_getattr_string(dict, "delimiter");
+  delimiter_obj = filterx_object_getattr_string(dict, "leef_delimiter");
   if (!delimiter_obj)
     {
       g_string_append_c(formatted, '\t');
@@ -80,7 +80,7 @@ filterx_function_format_leef_format_delimiter(EventFormatterContext *ctx, GStrin
   if (!filterx_object_extract_string_ref(delimiter_obj, &delimiter_str, &delimiter_len))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
-                                          "Header value must be a string, got: %s, header: delimiter",
+                                          "Header value must be a string, got: %s, header: leef_delimiter",
                                           filterx_object_get_type_name(delimiter_obj));
       goto error;
     }

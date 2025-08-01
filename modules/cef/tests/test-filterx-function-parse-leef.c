@@ -109,145 +109,145 @@ Test(filterx_func_parse_leef, test_header_missing_field)
 Test(filterx_func_parse_leef, test_basic_leef_message)
 {
   _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black",
-                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
 }
 
 Test(filterx_func_parse_leef, test_separate_extensions)
 {
   const gchar *input =
     "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black";
-  _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}",
+  _assert_parser_result_inner("{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}}",
                               _create_msg_arg(input), _create_separate_extensions_arg(TRUE), NULL);
 }
 
 Test(filterx_func_parse_leef, test_empty_header)
 {
   _assert_parser_result("LEEF:1.0|Microsoft||4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black",
-                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
 }
 
 Test(filterx_func_parse_leef, test_extensions_empty)
 {
   _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|",
-                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_escaped_delimiter)
 {
   _assert_parser_result("LEEF:1.0|Micro\\|soft|MSExchange|4.0 SP1|15345|src=192.0.2.0\tdst=172.50.123.1\tsev=5\tcat=anomaly\tsrcPort=81\tdstPort=21\tusrName=joe.black",
-                        "{\"version\":\"1.0\",\"vendor\":\"Micro|soft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"Micro|soft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"src\":\"192.0.2.0\",\"dst\":\"172.50.123.1\",\"sev\":\"5\",\"cat\":\"anomaly\",\"srcPort\":\"81\",\"dstPort\":\"21\",\"usrName\":\"joe.black\"}");
 }
 
 Test(filterx_func_parse_leef, test_extension_escaped_delimiter)
 {
   _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz\ttik=tik\\=tak\\=toe",
-                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_do_not_strip_whitespaces)
 {
   _assert_parser_result("LEEF:1.0| Microsoft |  MSExchange  |   4.0 SP1   |    15345    |",
-                        "{\"version\":\"1.0\",\"vendor\":\" Microsoft \",\"product_name\":\"  MSExchange  \",\"product_version\":\"   4.0 SP1   \",\"event_id\":\"    15345    \"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\" Microsoft \",\"product_name\":\"  MSExchange  \",\"product_version\":\"   4.0 SP1   \",\"event_id\":\"    15345    \"}");
 }
 
 Test(filterx_func_parse_leef, test_extensions_space_in_value)
 {
   _assert_parser_result("LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar baz\ttik=tak toe",
-                        "{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar baz\",\"tik\":\"tak toe\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar baz\",\"tik\":\"tak toe\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_whitespaces)
 {
   _assert_parser_result("LEEF:1.0|Mic roso  ft|MSExchange|4.0 SP1|15345|",
-                        "{\"version\":\"1.0\",\"vendor\":\"Mic roso  ft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"Mic roso  ft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_leading_trailing_whitespaces)
 {
   _assert_parser_result("LEEF:1.0|  Microsoft |MSExchange|4.0 SP1|15345|foo=foo\\=bar\\=baz\ttik=tik\\=tak\\=toe",
-                        "{\"version\":\"1.0\",\"vendor\":\"  Microsoft \",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}");
+                        "{\"leef_version\":\"1.0\",\"vendor_name\":\"  Microsoft \",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"foo=bar=baz\",\"tik\":\"tik=tak=toe\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_optional_field_set)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"^\",\"foo\":\"bar\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"leef_delimiter\":\"^\",\"foo\":\"bar\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_custom_delimiter)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar^bar=baz^baz=tik\\=tak",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"^\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"leef_delimiter\":\"^\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_custom_hex_delimiter)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|0x40|foo=bar@bar=baz@baz=tik\\=tak",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"@\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"leef_delimiter\":\"@\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_custom_nonstandard_hex_delimiter)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|x40|foo=bar@bar=baz@baz=tik\\=tak",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"@\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"leef_delimiter\":\"@\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_custom_invalid_delimiter)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|INVALID|foo=bar\tbar=baz|\tbaz=tik\\=tak",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}");
 }
 
 Test(filterx_func_parse_leef, test_header_empty_delimiter)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345||foo=bar\tbar=baz\tbaz=tik\\=tak",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"leef_delimiter\":\"\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}");
 }
 
 Test(filterx_func_parse_leef, test_forced_pair_separator_v1_no_delimiter_field)
 {
   const gchar *input = "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar@bar=baz@baz=tik\\=tak";
-  _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
+  _assert_parser_result_inner("{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
                               _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
 }
 
 Test(filterx_func_parse_leef, test_v2_no_delimiter_field)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar\tbar=baz|\tbaz=tik\\=tak",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}");
 }
 
 Test(filterx_func_parse_leef, test_v2_no_delimiter_field_empty_extensions)
 {
   _assert_parser_result("LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|",
-                        "{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
+                        "{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\"}");
 }
 
 Test(filterx_func_parse_leef, test_v2_no_delimiter_field_separate_extensions)
 {
   const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|foo=bar\tbar=baz|\tbaz=tik\\=tak";
-  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}}",
+  _assert_parser_result_inner("{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"extensions\":{\"foo\":\"bar\",\"bar\":\"baz|\",\"baz\":\"tik=tak\"}}",
                               _create_msg_arg(input), _create_separate_extensions_arg(TRUE), NULL);
 }
 
 Test(filterx_func_parse_leef, test_forced_pair_separator_v2_with_delimiter_field)
 {
   const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345|^|foo=bar@bar=baz@baz=tik\\=tak";
-  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"^\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
+  _assert_parser_result_inner("{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"leef_delimiter\":\"^\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
                               _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
 }
 
 Test(filterx_func_parse_leef, test_forced_pair_separator_v2_with_empty_delimiter_field)
 {
   const gchar *input = "LEEF:2.0|Microsoft|MSExchange|4.0 SP1|15345||foo=bar@bar=baz@baz=tik\\=tak";
-  _assert_parser_result_inner("{\"version\":\"2.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"delimiter\":\"\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
+  _assert_parser_result_inner("{\"leef_version\":\"2.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"leef_delimiter\":\"\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik=tak\"}",
                               _create_msg_arg(input), _create_pair_separator_arg("@"), NULL);
 }
 
 Test(filterx_func_parse_leef, test_forced_value_separator)
 {
   const gchar *input = "LEEF:1.0|Microsoft|MSExchange|4.0 SP1|15345|foo#bar\tbar#baz\tbaz#tik\\#tak";
-  _assert_parser_result_inner("{\"version\":\"1.0\",\"vendor\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik#tak\"}",
+  _assert_parser_result_inner("{\"leef_version\":\"1.0\",\"vendor_name\":\"Microsoft\",\"product_name\":\"MSExchange\",\"product_version\":\"4.0 SP1\",\"event_id\":\"15345\",\"foo\":\"bar\",\"bar\":\"baz\",\"baz\":\"tik#tak\"}",
                               _create_msg_arg(input), _create_value_separator_arg("#"), NULL);
 }
 

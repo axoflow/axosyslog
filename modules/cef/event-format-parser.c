@@ -127,7 +127,7 @@ event_format_parser_parse_version(EventParserContext *ctx, const gchar *value, g
       return FALSE;
     }
 
-  FILTERX_STRING_DECLARE_ON_STACK(key_obj, "version", 7);
+  FILTERX_STRING_DECLARE_ON_STACK(key_obj, ctx->config.header.fields[0].name, -1);
   FilterXObject *value_obj = filterx_string_new(++colon_pos, value_len - sign_len - 1);
 
   filterx_object_set_subscript(parsed_dict, key_obj, &value_obj);

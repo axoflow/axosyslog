@@ -108,7 +108,7 @@ _fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint 
 gboolean
 parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, FilterXObject *parsed_dict)
 {
-  FILTERX_STRING_DECLARE_ON_STACK(key, "delimiter", 9);
+  FILTERX_STRING_DECLARE_ON_STACK(key, "leef_delimiter", 14);
   FilterXObject *value = NULL;
 
   if (!input_len)
@@ -168,8 +168,8 @@ parse_leef_version(EventParserContext *ctx, const gchar *value, gint value_len, 
 
 Field leef_v1_fields[] =
 {
-  { .name = "version", .field_parser = parse_leef_version, .field_formatter = filterx_function_format_leef_format_version},
-  { .name = "vendor"},
+  { .name = "leef_version", .field_parser = parse_leef_version, .field_formatter = filterx_function_format_leef_format_version},
+  { .name = "vendor_name"},
   { .name = "product_name"},
   { .name = "product_version"},
   { .name = "event_id"},
@@ -178,12 +178,12 @@ Field leef_v1_fields[] =
 
 Field leef_v2_fields[] =
 {
-  { .name = "version", .field_parser = parse_leef_version, .field_formatter = filterx_function_format_leef_format_version},
-  { .name = "vendor"},
+  { .name = "leef_version", .field_parser = parse_leef_version, .field_formatter = filterx_function_format_leef_format_version},
+  { .name = "vendor_name"},
   { .name = "product_name"},
   { .name = "product_version"},
   { .name = "event_id"},
-  { .name = "delimiter", .field_parser = parse_delimiter, .field_formatter = filterx_function_format_leef_format_delimiter},
+  { .name = "leef_delimiter", .field_parser = parse_delimiter, .field_formatter = filterx_function_format_leef_format_delimiter},
   { .name = "extensions", .field_parser = event_format_parser_parse_extensions},
 };
 
