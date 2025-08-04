@@ -24,3 +24,7 @@
 
 def stringify(s):
     return '"' + s.replace('\\', "\\\\").replace('"', '\\"').replace('\n', '\\n') + '"'
+
+
+def destringify(s):
+    return s[1:-1].replace('"', '"').replace("'", "'").replace('\\\\', '\\').replace('\\n', '\n')

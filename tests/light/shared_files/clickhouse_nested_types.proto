@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package TestProto;
+
+message TestProto {
+    map<string, int32> data_map = 1;
+    map<string, nested1> data_map2 = 2;
+    repeated string data_array = 3;
+    repeated nested2 data_array2 = 4;
+    nested3 data_tuple = 5;
+
+    message nested1 {
+        string foo1 = 1;
+        int32 bar1 = 2;
+        float baz1 = 3;
+    }
+
+    message nested2 {
+        string foo2 = 1;
+        int32 bar2 = 2;
+        float baz2 = 3;
+    }
+
+    message nested3 {
+        string foo3 = 1;
+        int32 bar3 = 2;
+    }
+
+}

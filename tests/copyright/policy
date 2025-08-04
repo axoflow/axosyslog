@@ -73,6 +73,7 @@ docker/.*$
 .editorconfig
 tests/light/functional_tests/filterx/cache_json_file\.json
 tests/light/shared_files/.*\.sh
+tests/light/shared_files/.*\.proto
 
 ###########################################################################
 # These files are GPLd contributions.
