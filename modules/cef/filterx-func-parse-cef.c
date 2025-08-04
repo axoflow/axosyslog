@@ -29,12 +29,12 @@
 
 Field cef_fields[] =
 {
-  { .name = "version", .field_parser = event_format_parser_parse_version},
+  { .name = "cef_version", .field_parser = event_format_parser_parse_version},
   { .name = "device_vendor"},
   { .name = "device_product"},
   { .name = "device_version"},
   { .name = "device_event_class_id"},
-  { .name = "name"},
+  { .name = "event_name"},
   { .name = "agent_severity"},
   { .name = "extensions", .field_parser = event_format_parser_parse_extensions},
 };
