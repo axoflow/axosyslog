@@ -30,5 +30,8 @@
 FilterXObject *filterx_simple_function_lower(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_simple_function_upper(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_simple_function_str_replace(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_str_strip(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_str_lstrip(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_str_rstrip(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif
