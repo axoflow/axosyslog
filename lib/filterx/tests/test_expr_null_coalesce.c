@@ -48,9 +48,11 @@ Test(expr_null_coalesce, test_coalescing_soft_null)
   FilterXExpr *coalesce = filterx_null_coalesce_new(filterx_literal_new(filterx_null_new()),
                                                     filterx_non_literal_new(filterx_test_unknown_object_new()));
   cr_assert(coalesce);
+  cr_assert(filterx_expr_init(coalesce, configuration));
   FilterXObject *res = filterx_expr_eval(coalesce);
   cr_assert(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(test_unknown_object)));
+  filterx_expr_deinit(coalesce, configuration);
   filterx_expr_unref(coalesce);
   filterx_object_unref(res);
 }
@@ -63,6 +65,7 @@ Test(expr_null_coalesce, test_coalescing_supressing_lhs_eval_error)
   // passing errorous expression as lhs
   FilterXExpr *coalesce = filterx_null_coalesce_new(err_expr, filterx_non_literal_new(filterx_test_unknown_object_new()));
   cr_assert(coalesce);
+  cr_assert(filterx_expr_init(coalesce, configuration));
 
   // eval returns rhs value, since lhs fails during eval
   FilterXObject *res = filterx_expr_eval(coalesce);
@@ -72,6 +75,7 @@ Test(expr_null_coalesce, test_coalescing_supressing_lhs_eval_error)
   // lhs expr eval errors must supressed by null_coalesce
   cr_assert(filterx_eval_get_error_count() == 0);
 
+  filterx_expr_deinit(coalesce, configuration);
   filterx_expr_unref(coalesce);
   filterx_object_unref(res);
 }
@@ -85,6 +89,7 @@ Test(expr_null_coalesce, test_coalescing_keep_rhs_eval_error)
   FilterXExpr *coalesce = filterx_null_coalesce_new(filterx_non_literal_new(filterx_null_new()),
                                                     err_expr);
   cr_assert(coalesce);
+  cr_assert(filterx_expr_init(coalesce, configuration));
 
   // null_coalesce returns null, since lhs is null and rhs fails
   FilterXObject *res = filterx_expr_eval(coalesce);
@@ -95,6 +100,7 @@ Test(expr_null_coalesce, test_coalescing_keep_rhs_eval_error)
   cr_assert_not_null(last_error);
   cr_assert_str_eq(error_msg, last_error);
 
+  filterx_expr_deinit(coalesce, configuration);
   filterx_expr_unref(coalesce);
   filterx_object_unref(res);
 }
@@ -109,6 +115,7 @@ Test(expr_null_coalesce, test_coalescing_keep_rhs_eval_error_on_double_fail)
   // passing errorous expressions
   FilterXExpr *coalesce = filterx_null_coalesce_new(err_expr_lhs, err_expr_rhs);
   cr_assert(coalesce);
+  cr_assert(filterx_expr_init(coalesce, configuration));
 
   // null_coalesce returns null, since both lhs and rhs fails
   FilterXObject *res = filterx_expr_eval(coalesce);
@@ -119,6 +126,7 @@ Test(expr_null_coalesce, test_coalescing_keep_rhs_eval_error_on_double_fail)
   cr_assert_not_null(last_error);
   cr_assert_str_eq(error_msg, last_error);
 
+  filterx_expr_deinit(coalesce, configuration);
   filterx_expr_unref(coalesce);
   filterx_object_unref(res);
 }

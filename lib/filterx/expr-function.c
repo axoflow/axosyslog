@@ -444,7 +444,7 @@ _get_literal_string_from_expr(FilterXExpr *expr, gsize *len)
   if (!filterx_expr_is_literal(expr))
     goto error;
 
-  obj = filterx_expr_eval(expr);
+  obj = filterx_literal_get_value(expr);
   if (!obj)
     goto error;
 
@@ -481,7 +481,7 @@ filterx_function_args_is_literal_null(FilterXFunctionArgs *self, guint64 index)
   if (!filterx_expr_is_literal(expr))
     return FALSE;
 
-  FilterXObject *obj = filterx_expr_eval(expr);
+  FilterXObject *obj = filterx_literal_get_value(expr);
   if (!obj)
     return FALSE;
 
@@ -521,7 +521,7 @@ filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const 
   if (!filterx_expr_is_literal(expr))
     return NULL;
 
-  return filterx_expr_eval(expr);
+  return filterx_literal_get_value(expr);
 }
 
 
@@ -606,7 +606,7 @@ filterx_function_args_get_named_literal_generic_number(FilterXFunctionArgs *self
   if (!filterx_expr_is_literal(expr))
     goto error;
 
-  obj = filterx_expr_eval(expr);
+  obj = filterx_literal_get_value(expr);
   if (!obj)
     goto error;
 

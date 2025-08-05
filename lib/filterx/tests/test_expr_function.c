@@ -22,6 +22,7 @@
 
 #include <criterion/criterion.h>
 #include "libtest/cr_template.h"
+#include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-object.h"
 #include "filterx/object-primitive.h"
@@ -98,7 +99,7 @@ Test(expr_function, test_function_valid_arg)
   cr_assert_null(error);
   g_clear_error(&error);
 
-  FilterXObject *res = filterx_expr_eval(func);
+  FilterXObject *res = init_and_eval_expr(func);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_ref(res, NULL);
@@ -121,7 +122,7 @@ Test(expr_function, test_function_multiple_args)
   cr_assert_null(error);
   g_clear_error(&error);
   cr_assert_not_null(func);
-  FilterXObject *res = filterx_expr_eval(func);
+  FilterXObject *res = init_and_eval_expr(func);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_ref(res, NULL);

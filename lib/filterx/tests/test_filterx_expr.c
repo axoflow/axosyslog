@@ -65,7 +65,7 @@ Test(filterx_expr, test_filterx_expr_construction_and_free)
 Test(filterx_expr, test_filterx_literal_evaluates_to_the_literal_object)
 {
   FilterXExpr *fexpr = filterx_literal_new(filterx_integer_new(42));
-  FilterXObject *fobj = filterx_expr_eval(fexpr);
+  FilterXObject *fobj = init_and_eval_expr(fexpr);
 
   assert_marshaled_object(fobj, "42", LM_VT_INTEGER);
 
@@ -76,7 +76,7 @@ Test(filterx_expr, test_filterx_literal_evaluates_to_the_literal_object)
 Test(filterx_expr, test_filterx_template_evaluates_to_the_expanded_value)
 {
   FilterXExpr *fexpr = filterx_template_new(compile_template("$HOST $PROGRAM"));
-  FilterXObject *fobj = filterx_expr_eval(fexpr);
+  FilterXObject *fobj = init_and_eval_expr(fexpr);
 
   assert_marshaled_object(fobj, "bzorp syslog-ng", LM_VT_STRING);
 
@@ -105,7 +105,7 @@ Test(filterx_expr, test_filterx_literal_list_with_inmutable_values)
   list_expr = filterx_literal_list_new(values);
 
   // result = [42,43,44];
-  result = filterx_expr_eval(list_expr);
+  result = init_and_eval_expr(list_expr);
   cr_assert(result);
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
@@ -134,7 +134,7 @@ Test(filterx_expr, test_filterx_literal_list_with_embedded_list)
   list_expr = filterx_literal_list_new(values);
 
   // result = [[1337]];
-  result = filterx_expr_eval(list_expr);
+  result = init_and_eval_expr(list_expr);
   cr_assert(result);
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
@@ -176,7 +176,7 @@ Test(filterx_expr, test_filterx_dict_immutable_values)
   dict_expr = filterx_literal_dict_new(values);
 
   // result = {"foo": 42, "bar": 43, "baz": 44};
-  result = filterx_expr_eval(dict_expr);
+  result = init_and_eval_expr(dict_expr);
   cr_assert(result);
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
@@ -219,7 +219,7 @@ Test(filterx_expr, test_filterx_dict_with_embedded_dict)
 
   dict_expr = filterx_literal_dict_new(values);
 
-  result = filterx_expr_eval(dict_expr);
+  result = init_and_eval_expr(dict_expr);
   cr_assert(result);
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
@@ -249,7 +249,7 @@ Test(filterx_expr, test_filterx_assign)
 
   FilterXExpr *assign = filterx_assign_new(result_var, filterx_literal_new(filterx_string_new("foobar", -1)));
 
-  FilterXObject *res = filterx_expr_eval(assign);
+  FilterXObject *res = init_and_eval_expr(assign);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "foobar");
@@ -257,7 +257,7 @@ Test(filterx_expr, test_filterx_assign)
   cr_assert(assign->ignore_falsy_result);
 
   cr_assert_not_null(result_var);
-  FilterXObject *result_obj = filterx_expr_eval(result_var);
+  FilterXObject *result_obj = init_and_eval_expr(result_var);
   cr_assert_not_null(result_obj);
   cr_assert(filterx_object_is_type(result_obj, &FILTERX_TYPE_NAME(string)));
   const gchar *result_val = filterx_string_get_value_ref(result_obj, NULL);
@@ -277,7 +277,7 @@ Test(filterx_expr, test_filterx_setattr)
                                              filterx_literal_new(filterx_string_new("bar", -1)));
   cr_assert_not_null(setattr);
 
-  FilterXObject *res = filterx_expr_eval(setattr);
+  FilterXObject *res = init_and_eval_expr(setattr);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "bar");
@@ -299,7 +299,7 @@ Test(filterx_expr, test_filterx_set_subscript)
                                                    filterx_literal_new(filterx_string_new("bar", -1)));
   cr_assert_not_null(setattr);
 
-  FilterXObject *res = filterx_expr_eval(setattr);
+  FilterXObject *res = init_and_eval_expr(setattr);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "bar");
@@ -342,11 +342,10 @@ Test(filterx_expr, test_filterx_readonly)
 
   FilterXExpr *literal = filterx_literal_new(dict);
 
-
   FilterXExpr *setattr = filterx_setattr_new(filterx_expr_ref(literal),
                                              filterx_string_new("bar", -1),
                                              filterx_literal_new(filterx_object_ref(foo)));
-  cr_assert_not(filterx_expr_eval(setattr));
+  cr_assert_not(init_and_eval_expr(setattr));
   cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(setattr);
@@ -355,14 +354,16 @@ Test(filterx_expr, test_filterx_readonly)
   FilterXExpr *set_subscript = filterx_set_subscript_new(filterx_expr_ref(literal),
                                                          filterx_literal_new(filterx_object_ref(bar)),
                                                          filterx_literal_new(filterx_object_ref(foo)));
-  cr_assert_not(filterx_expr_eval(set_subscript));
+  cr_assert_not(init_and_eval_expr(set_subscript));
   cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(set_subscript);
 
 
   FilterXExpr *getattr = filterx_getattr_new(filterx_expr_ref(literal), filterx_string_new("foo", -1));
+  cr_assert(filterx_expr_init(getattr, configuration));
   cr_assert_not(filterx_expr_unset(getattr));
+  filterx_expr_deinit(getattr, configuration);
   cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(getattr);
@@ -370,7 +371,9 @@ Test(filterx_expr, test_filterx_readonly)
 
   FilterXExpr *get_subscript = filterx_get_subscript_new(filterx_expr_ref(literal),
                                                          filterx_literal_new(filterx_object_ref(foo)));
+  cr_assert(filterx_expr_init(get_subscript, configuration));
   cr_assert_not(filterx_expr_unset(get_subscript));
+  filterx_expr_deinit(get_subscript, configuration);
   cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(get_subscript);
@@ -380,7 +383,7 @@ Test(filterx_expr, test_filterx_readonly)
                                            filterx_string_new("foo", -1)),
                                            filterx_string_new("bar", -1),
                                            filterx_literal_new(filterx_object_ref(bar)));
-  cr_assert_not(filterx_expr_eval(inner));
+  cr_assert_not(init_and_eval_expr(inner));
   cr_assert(_is_string_in_filterx_eval_errors("readonly"));
   filterx_eval_clear_errors();
   filterx_expr_unref(inner);
