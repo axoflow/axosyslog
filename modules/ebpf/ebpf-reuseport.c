@@ -21,6 +21,10 @@
  */
 #include "ebpf-reuseport.h"
 #include "modules/afsocket/afsocket-signals.h"
+#include "syslog-ng.h"
+#include "messages.h"
+
+#include <bpf/libbpf.h>
 
 typedef struct _EBPFReusePort
 {
@@ -30,6 +34,8 @@ typedef struct _EBPFReusePort
 } EBPFReusePort;
 
 #include "random.skel.c"
+
+int _libbpf_log(enum libbpf_print_level level, const char *fmt, va_list va) G_GNUC_PRINTF(2, 0);
 
 void
 ebpf_reuseport_set_sockets(LogDriverPlugin *s, gint number_of_sockets)
@@ -63,10 +69,44 @@ error:
   data->failure = TRUE;
 }
 
+int
+_libbpf_log(enum libbpf_print_level level, const char *fmt, va_list va)
+{
+  int prio = EVT_PRI_INFO;
+  switch (level)
+    {
+    case LIBBPF_DEBUG:
+      prio = EVT_PRI_DEBUG;
+      break;
+    case LIBBPF_INFO:
+      prio = EVT_PRI_INFO;
+      break;
+    case LIBBPF_WARN:
+      prio = EVT_PRI_WARNING;
+      break;
+    default:
+      prio = EVT_PRI_INFO;
+      break;
+    }
+
+  if (prio == EVT_PRI_DEBUG && !debug_flag)
+    return 0;
+
+  gchar buf[2048];
+  vsnprintf(buf, sizeof(buf), fmt, va);
+
+  msg_send_formatted_message(prio, buf);
+  return 0;
+}
+
+libbpf_print_fn_t libbpf_set_print(libbpf_print_fn_t fn G_GNUC_PRINTF(2, 0));
+
 static gboolean
 _attach(LogDriverPlugin *s, LogDriver *driver)
 {
   EBPFReusePort *self = (EBPFReusePort *)s;
+
+  libbpf_set_print(_libbpf_log);
 
   self->random = random_kern__open_and_load();
   if (!self->random)
