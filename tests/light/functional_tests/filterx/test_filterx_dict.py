@@ -70,3 +70,24 @@ def test_filterx_dict_nullv_elements(syslog_ng, config):
 
     syslog_ng.start(config)
     assert destination.read_log() == '{"null":null,"value":3}'
+
+
+def test_filterx_dpath(syslog_ng, config):
+    source = config.create_example_msg_generator_source(num=1)
+    filterx = config.create_filterx(r"""
+        exist = {"orig": 1};
+        dpath(exist.path.to.create) = {"value": {"a": 1}};
+        newdict = {};
+        dpath(newdict.path.to.create) = {"value": 3};
+        dpath(newdict.path.to.create) += {"another": 4};
+        d = {};
+        dpath(d.exist) = exist;
+        d.newdict = newdict;
+        $MSG = d;
+""")
+    destination = config.create_file_destination(file_name="output.log", template='"$MSG\n"')
+
+    config.create_logpath(statements=[source, filterx, destination])
+
+    syslog_ng.start(config)
+    assert destination.read_log() == '{"exist":{"orig":1,"path":{"to":{"create":{"value":{"a":1}}}}},"newdict":{"path":{"to":{"create":{"value":3,"another":4}}}}}'
