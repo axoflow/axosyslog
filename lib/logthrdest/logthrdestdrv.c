@@ -613,15 +613,12 @@ _perform_work(gpointer data)
        * everything.  We are awoken either by the
        * _message_became_available_callback() or if the next flush time has
        * arrived.  */
-      gboolean should_flush = _should_flush_now(self);
       msg_trace("Queue empty, flushing previously buffered data if needed",
-                evt_tag_str("should_flush", should_flush ? "YES" : "NO"),
                 evt_tag_str("driver", self->owner->super.super.id),
                 evt_tag_int("worker_index", self->worker_index),
                 evt_tag_int("batch_size", self->batch_size));
 
-      if (should_flush)
-        _perform_flush(self);
+      _perform_flush(self);
       _schedule_restart_on_next_flush(self);
     }
   else if (timeout_msec != 0)
