@@ -260,12 +260,18 @@ nullv_assignment
 	;
 
 dpath_lvalue
-	: KW_DPATH '(' variable dpath_elements ')' { $$ = filterx_dpath_lvalue_new($3, $4); }
+	: KW_DPATH '(' variable dpath_elements ')'
+		{
+		  GError *error = NULL;
+		  FilterXExpr *res = filterx_dpath_lvalue_new($3, $4, &error);
+		  CHECK_FUNCTION_ERROR(res, @$, "dpath", error);
+		  $$ = res;
+		}
 	;
 
 dpath_elements
 	: dpath_elements dpath_element { $$ = g_list_append($1, $2); }
-	| dpath_element { $$ = g_list_append(NULL, $1); };
+	| { $$ = NULL; }
 	;
 
 dpath_element
