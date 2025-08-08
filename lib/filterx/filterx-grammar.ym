@@ -265,7 +265,7 @@ dpath_lvalue
 		  GError *error = NULL;
 		  FilterXExpr *res = filterx_dpath_lvalue_new($3, $4, &error);
 		  CHECK_FUNCTION_ERROR(res, @$, "dpath", error);
-		  $$ = res;
+		  $$ = _assign_location(res, lexer, &@$);
 		}
 	;
 
