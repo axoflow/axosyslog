@@ -26,6 +26,8 @@
 #include "messages.h"
 #include "compat/cpp-end.h"
 
+#include <vector>
+
 using namespace syslogng::grpc;
 
 /*
@@ -37,6 +39,7 @@ DestDriverMetrics::init(StatsClusterKeyBuilder *kb_, int stats_level_)
 {
   kb = kb_;
   stats_level = stats_level_;
+  init_grpc_request_clusters();
 }
 
 void
@@ -56,9 +59,30 @@ DestDriverMetrics::deinit()
 }
 
 StatsCluster *
-DestDriverMetrics::create_grpc_request_cluster(::grpc::StatusCode response_code)
+DestDriverMetrics::create_grpc_request_cluster(const ::grpc::StatusCode &response_code,
+                                               const std::string &response_code_label)
 {
-  static const std::map<::grpc::StatusCode, std::string> status_code_name_mappings =
+  StatsCluster *cluster;
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_grpc_requests_total");
+    stats_cluster_key_builder_add_label(kb, stats_cluster_label("response_code", response_code_label.c_str()));
+    StatsClusterKey *sc_key = stats_cluster_key_builder_build_single(kb);
+
+    StatsCounterItem *counter;
+    cluster = stats_register_counter(stats_level, sc_key, SC_TYPE_SINGLE_VALUE, &counter);
+
+    stats_cluster_key_free(sc_key);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  return cluster;
+}
+
+void
+DestDriverMetrics::init_grpc_request_clusters()
+{
+  static const std::vector<std::pair<const ::grpc::StatusCode, const std::string>> response_code_name_mappings =
   {
     {::grpc::StatusCode::OK, "ok"},
     {::grpc::StatusCode::CANCELLED, "cancelled"},
@@ -79,60 +103,31 @@ DestDriverMetrics::create_grpc_request_cluster(::grpc::StatusCode response_code)
     {::grpc::StatusCode::DATA_LOSS, "data_loss"},
   };
 
-  std::string response_code_label;
+  stats_lock();
+  {
+    for (const auto &response_code_name_pair : response_code_name_mappings)
+      {
+        const ::grpc::StatusCode &response_code = response_code_name_pair.first;
+        const std::string &response_code_label = response_code_name_pair.second;
+        grpc_request_clusters[response_code] = create_grpc_request_cluster(response_code, response_code_label);
+      }
+  }
+  stats_unlock();
+}
+
+StatsCounterItem *
+DestDriverMetrics::lookup_grpc_request_counter(::grpc::StatusCode response_code)
+{
   try
     {
-      response_code_label = status_code_name_mappings.at(response_code);
+      StatsCluster *cluster = grpc_request_clusters.at(response_code);
+      return stats_cluster_single_get_counter(cluster);
     }
   catch (const std::out_of_range &)
     {
       msg_error("Failed to find metric label for gRPC response code", evt_tag_int("response_code", response_code));
       return nullptr;
     }
-
-  StatsCluster *cluster;
-  stats_cluster_key_builder_push(kb);
-  {
-    stats_cluster_key_builder_set_name(kb, "output_grpc_requests_total");
-    stats_cluster_key_builder_add_label(kb, stats_cluster_label("response_code", response_code_label.c_str()));
-    StatsClusterKey *sc_key = stats_cluster_key_builder_build_single(kb);
-
-    StatsCounterItem *counter;
-    cluster = stats_register_counter(stats_level, sc_key, SC_TYPE_SINGLE_VALUE, &counter);
-
-    stats_cluster_key_free(sc_key);
-  }
-  stats_cluster_key_builder_pop(kb);
-
-  return cluster;
-}
-
-StatsCounterItem *
-DestDriverMetrics::lookup_grpc_request_counter(::grpc::StatusCode response_code)
-{
-  StatsCluster *cluster;
-
-  try
-    {
-      cluster = grpc_request_clusters.at(response_code);
-    }
-  catch (const std::out_of_range &)
-    {
-      stats_lock();
-      {
-        try
-          {
-            cluster = grpc_request_clusters.at(response_code);
-          }
-        catch (const std::out_of_range &)
-          {
-            grpc_request_clusters[response_code] = cluster = create_grpc_request_cluster(response_code);
-          }
-      }
-      stats_unlock();
-    }
-
-  return stats_cluster_single_get_counter(cluster);
 }
 
 void
