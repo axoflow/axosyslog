@@ -46,7 +46,9 @@ public:
   void insert_grpc_request_stats(const ::grpc::Status &response_status);
 
 private:
-  StatsCluster *create_grpc_request_cluster(::grpc::StatusCode response_code);
+  StatsCluster *create_grpc_request_cluster(const ::grpc::StatusCode &response_code,
+                                            const std::string &response_code_label);
+  void init_grpc_request_clusters();
   StatsCounterItem *lookup_grpc_request_counter(::grpc::StatusCode response_code);
 
 private:
