@@ -266,7 +266,7 @@ _has_wevt_event_data_attr(const gchar **attribute_names, FilterXParseWEVTState *
 }
 
 static void
-_filterx_parse_xml_start_eventid_method(FilterXGeneratorFunctionParseXml *self,
+_filterx_parse_xml_start_eventid_method(FilterXFunctionParseXml *self,
                                         GMarkupParseContext *context, const gchar *element_name,
                                         const gchar **attribute_names, const gchar **attribute_values,
                                         FilterXParseXmlState *state, GError **error)
@@ -290,7 +290,7 @@ _filterx_parse_xml_start_eventid_method(FilterXGeneratorFunctionParseXml *self,
 }
 
 static void
-_start_elem(FilterXGeneratorFunctionParseXml *s,
+_start_elem(FilterXFunctionParseXml *s,
             GMarkupParseContext *context, const gchar *element_name,
             const gchar **attribute_names, const gchar **attribute_values,
             FilterXParseXmlState *st, GError **error)
@@ -333,7 +333,7 @@ _start_elem(FilterXGeneratorFunctionParseXml *s,
 }
 
 static void
-_end_elem(FilterXGeneratorFunctionParseXml *s,
+_end_elem(FilterXFunctionParseXml *s,
           GMarkupParseContext *context, const gchar *element_name,
           FilterXParseXmlState *st, GError **error)
 {
@@ -359,7 +359,7 @@ _end_elem(FilterXGeneratorFunctionParseXml *s,
 }
 
 static void
-_text(FilterXGeneratorFunctionParseXml *s,
+_text(FilterXFunctionParseXml *s,
       GMarkupParseContext *context, const gchar *text, gsize text_len,
       FilterXParseXmlState *st, GError **error)
 {
@@ -394,10 +394,10 @@ fail:
 }
 
 FilterXExpr *
-filterx_generator_function_parse_windows_eventlog_xml_new(FilterXFunctionArgs *args, GError **error)
+filterx_function_parse_windows_eventlog_xml_new(FilterXFunctionArgs *args, GError **error)
 {
-  FilterXExpr *s = filterx_generator_function_parse_xml_new(args, error);
-  FilterXGeneratorFunctionParseXml *self = (FilterXGeneratorFunctionParseXml *) s;
+  FilterXExpr *s = filterx_function_parse_xml_new(args, error);
+  FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
 
   if (!self)
     return NULL;
@@ -410,4 +410,4 @@ filterx_generator_function_parse_windows_eventlog_xml_new(FilterXFunctionArgs *a
   return s;
 }
 
-FILTERX_GENERATOR_FUNCTION(parse_windows_eventlog_xml, filterx_generator_function_parse_windows_eventlog_xml_new);
+FILTERX_FUNCTION(parse_windows_eventlog_xml, filterx_function_parse_windows_eventlog_xml_new);
