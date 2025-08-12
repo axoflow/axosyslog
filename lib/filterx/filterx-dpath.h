@@ -33,7 +33,7 @@ FilterXDPathElement *filterx_dpath_elem_object_new(FilterXObject *object);
 FilterXDPathElement *filterx_dpath_elem_expr_new(FilterXExpr *expr);
 
 /* lvalue setter */
-FilterXExpr *filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements);
+FilterXExpr *filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error);
 void filterx_dpath_lvalue_set_append_mode(FilterXExpr *s, gboolean append_mode);
 
 /* rvalue getter */

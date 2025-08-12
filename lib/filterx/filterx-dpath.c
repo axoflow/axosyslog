@@ -300,8 +300,15 @@ filterx_dpath_lvalue_set_append_mode(FilterXExpr *s, gboolean append_mode)
 }
 
 FilterXExpr *
-filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements)
+filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error)
 {
+  if (!dpath_elements)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "There must be at least one element in the path");
+      return NULL;
+    }
+
   FilterXDPathLValue *self = g_new0(FilterXDPathLValue, 1);
   filterx_expr_init_instance(&self->super, "dpath_lvalue");
 
