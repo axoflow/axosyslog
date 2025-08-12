@@ -144,22 +144,25 @@ _format_queue_persist_name(LogThreadedDestWorker *self)
 }
 
 
-static gboolean
-_should_flush_now(LogThreadedDestWorker *self)
+static inline gboolean
+_batch_timeout_expired(LogThreadedDestWorker *self)
 {
-  struct timespec now;
-  glong diff;
+  iv_validate_now();
+  struct timespec now = iv_now;
+  glong diff = timespec_diff_msec(&now, &self->last_flush_time);
 
+  return (diff >= self->owner->batch_timeout);
+}
+
+static inline gboolean
+_batching_disabled_or_timeout_expired(LogThreadedDestWorker *self)
+{
   if (self->owner->batch_timeout <= 0 ||
       self->owner->batch_lines <= 1 ||
       !self->enable_batching)
     return TRUE;
 
-  iv_validate_now();
-  now = iv_now;
-  diff = timespec_diff_msec(&now, &self->last_flush_time);
-
-  return (diff >= self->owner->batch_timeout);
+  return _batch_timeout_expired(self);
 }
 
 static void
@@ -559,7 +562,7 @@ _schedule_restart_on_next_flush(LogThreadedDestWorker *self)
 {
   if (self->suspended)
     _schedule_restart_on_suspend_timeout(self);
-  else if (!_should_flush_now(self))
+  else if (!_batching_disabled_or_timeout_expired(self))
     _schedule_restart_on_batch_timeout(self);
   else
     iv_task_register(&self->do_work);
@@ -601,7 +604,7 @@ _perform_work(gpointer data)
 
       /* Something is in the queue, buffer them up and flush (if needed) */
       _perform_inserts(self);
-      if (_should_flush_now(self))
+      if (_batching_disabled_or_timeout_expired(self))
         _perform_flush(self);
       _schedule_restart(self);
     }
@@ -613,7 +616,7 @@ _perform_work(gpointer data)
        * everything.  We are awoken either by the
        * _message_became_available_callback() or if the next flush time has
        * arrived.  */
-      gboolean should_flush = _should_flush_now(self);
+      gboolean should_flush = _batching_disabled_or_timeout_expired(self);
       msg_trace("Queue empty, flushing previously buffered data if needed",
                 evt_tag_str("should_flush", should_flush ? "YES" : "NO"),
                 evt_tag_str("driver", self->owner->super.super.id),
