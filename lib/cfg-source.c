@@ -187,18 +187,17 @@ cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const C
 static gboolean
 _extract_source_from_file_location(GString *result, const gchar *filename, const CFG_LTYPE *yylloc)
 {
-  FILE *f;
-  gint lineno = 0;
   gint buflen = 65520;
-  gchar *line = g_malloc(buflen);
-
   if (yylloc->first_column < 1 || yylloc->last_column < 1 ||
       yylloc->first_column > buflen-1 || yylloc->last_column > buflen-1)
     return FALSE;
 
-  f = fopen(filename, "r");
+  FILE *f = fopen(filename, "r");
   if (!f)
     return FALSE;
+
+  gchar *line = g_malloc(buflen);
+  gint lineno = 0;
 
   while (fgets(line, buflen, f))
     {
@@ -234,12 +233,9 @@ _extract_source_from_file_location(GString *result, const gchar *filename, const
     }
   fclose(f);
 
-  /* NOTE: do we have the appropriate number of lines? */
-  if (lineno <= yylloc->first_line)
-    return FALSE;
-
   g_free(line);
-  return TRUE;
+  /* NOTE: do we have the appropriate number of lines? */
+  return lineno > yylloc->first_line;
 }
 
 static gboolean
