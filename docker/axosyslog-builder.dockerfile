@@ -21,7 +21,7 @@
 #
 #############################################################################
 
-ARG ALPINE_VERSION=3.21
+ARG ALPINE_VERSION=3.22
 
 # json-c is required (as we enable threading mode, which is not enabled by
 # the Alpine package)
