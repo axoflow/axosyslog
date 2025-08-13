@@ -55,6 +55,7 @@ _batch_free(LogSchedulerBatch *batch)
 
 /* LogSchedulerPartition */
 
+/* runs in its own "thread" */
 static void
 _work(gpointer s, gpointer arg)
 {
@@ -105,6 +106,7 @@ _work(gpointer s, gpointer arg)
   g_mutex_unlock(&partition->batches_lock);
 }
 
+/* runs in the main thread */
 static void
 _complete(gpointer s, gpointer arg)
 {
@@ -127,6 +129,7 @@ _complete(gpointer s, gpointer arg)
     main_loop_io_worker_job_submit(&partition->io_job, NULL);
 }
 
+/* runs in the source thread */
 static void
 _partition_add_batch(LogSchedulerPartition *partition, LogSchedulerBatch *batch)
 {
@@ -173,6 +176,7 @@ _partition_clear(LogSchedulerPartition *partition)
 
 /* LogSchedulerThreadState */
 
+/* runs in the source thread */
 static guint
 _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg)
 {
@@ -189,6 +193,7 @@ _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, 
     }
 }
 
+/* runs in the source thread */
 static gpointer
 _flush_batch(gpointer s)
 {
@@ -220,6 +225,7 @@ _flush_batch(gpointer s)
   return NULL;
 }
 
+/* runs in the source thread */
 static void
 _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg,
               const LogPathOptions *path_options)
@@ -286,6 +292,7 @@ log_scheduler_deinit(LogScheduler *self)
 {
 }
 
+/* runs in the source thread */
 void
 log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *path_options)
 {
