@@ -9,7 +9,6 @@ set(FILTERX_HEADERS
     filterx/expr-done.h
     filterx/expr-drop.h
     filterx/expr-function.h
-    filterx/expr-generator.h
     filterx/expr-get-subscript.h
     filterx/expr-getattr.h
     filterx/expr-isset.h
@@ -17,7 +16,6 @@ set(FILTERX_HEADERS
     filterx/expr-literal.h
     filterx/expr-membership.h
     filterx/expr-null-coalesce.h
-    filterx/expr-plus-generator.h
     filterx/expr-plus.h
     filterx/expr-regexp-common.h
     filterx/expr-regexp-search.h
@@ -87,7 +85,6 @@ set(FILTERX_SOURCES
     filterx/expr-done.c
     filterx/expr-drop.c
     filterx/expr-function.c
-    filterx/expr-generator.c
     filterx/expr-get-subscript.c
     filterx/expr-getattr.c
     filterx/expr-isset.c
@@ -95,7 +92,6 @@ set(FILTERX_SOURCES
     filterx/expr-literal.c
     filterx/expr-membership.c
     filterx/expr-null-coalesce.c
-    filterx/expr-plus-generator.c
     filterx/expr-plus.c
     filterx/expr-regexp-common.c
     filterx/expr-regexp-search.c
