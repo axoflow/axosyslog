@@ -385,13 +385,21 @@ log_scheduler_options_defaults(LogSchedulerOptions *options)
   options->partition_key = NULL;
 }
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
 gboolean
 log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg)
 {
   if (options->num_partitions == -1)
     options->num_partitions = 0;
   if (options->num_partitions > LOGSCHEDULER_MAX_PARTITIONS)
-    options->num_partitions = LOGSCHEDULER_MAX_PARTITIONS;
+    {
+      msg_warning("parallelize() currently supports up to " TOSTRING(LOGSCHEDULER_MAX_PARTITIONS) " workers",
+                  evt_tag_int("specified_workers", options->num_partitions),
+                  evt_tag_int("used_workers", LOGSCHEDULER_MAX_PARTITIONS));
+      options->num_partitions = LOGSCHEDULER_MAX_PARTITIONS;
+    }
   return TRUE;
 }
 
