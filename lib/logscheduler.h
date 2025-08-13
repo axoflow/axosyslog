@@ -30,7 +30,7 @@
 #include <iv_list.h>
 #include <iv_event.h>
 
-#define LOGSCHEDULER_MAX_PARTITIONS 16
+#define LOGSCHEDULER_MAX_PARTITIONS 32
 
 typedef struct _LogSchedulerBatch
 {
