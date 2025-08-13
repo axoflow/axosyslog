@@ -213,6 +213,7 @@ LogMacroDef macros[] =
   { "PEERPORT", M_PEER_PORT },
   { "IP_PROTO", M_IP_PROTOCOL },
   { "PROTO", M_PROTOCOL },
+  { "PROTO_NAME", M_PROTOCOL_NAME },
   { "RAWMSG_SIZE", M_RAWMSG_SIZE },
   { "SEQNUM", M_SEQNUM },
   { "CONTEXT_ID", M_CONTEXT_ID },
@@ -288,6 +289,20 @@ _get_originating_ip_protocol(const LogMessage *msg)
     }
 #endif
   return 0;
+}
+
+const gchar *
+_get_protocol_name(gint proto)
+{
+  switch (proto)
+    {
+    case IPPROTO_TCP:
+      return "tcp";
+    case IPPROTO_UDP:
+      return "udp";
+    default:
+      return "unknown";
+    }
 }
 
 static void
@@ -684,6 +699,11 @@ log_macro_expand(gint id, LogTemplateEvalOptions *options, const LogMessage *msg
     {
       t = LM_VT_INTEGER;
       format_uint32_padded(result, 0, 0, 10, msg->proto);
+      break;
+    }
+    case M_PROTOCOL_NAME:
+    {
+      g_string_append(result, _get_protocol_name(msg->proto));
       break;
     }
     case M_RAWMSG_SIZE:

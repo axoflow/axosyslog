@@ -22,6 +22,7 @@
  */
 
 #include "gsocket.h"
+#include "str-format.h"
 
 #include <errno.h>
 #include <arpa/inet.h>
@@ -38,13 +39,18 @@
 gchar *
 g_inet_ntoa(char *buf, size_t bufsize, struct in_addr a)
 {
-  unsigned int ip = ntohl(a.s_addr);
+  guint32 ip = ntohl(a.s_addr);
 
-  g_snprintf(buf, bufsize, "%d.%d.%d.%d",
-             (ip & 0xff000000) >> 24,
-             (ip & 0x00ff0000) >> 16,
-             (ip & 0x0000ff00) >> 8,
-             (ip & 0x000000ff));
+  g_assert(bufsize >= 16);
+
+  gsize len = format_int32_into_padded_buffer(buf, bufsize, 0, 0, 10, (ip & 0xff000000) >> 24);
+  buf[len++] = '.';
+  len += format_int32_into_padded_buffer(&buf[len], bufsize-len, 0, 0, 10, (ip & 0x00ff0000) >> 16);
+  buf[len++] = '.';
+  len += format_int32_into_padded_buffer(&buf[len], bufsize-len, 0, 0, 10, (ip & 0x0000ff00) >> 8);
+  buf[len++] = '.';
+  len += format_int32_into_padded_buffer(&buf[len], bufsize-len, 0, 0, 10, (ip & 0x000000ff));
+  buf[len++] = 0;
   return buf;
 }
 
