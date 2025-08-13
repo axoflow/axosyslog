@@ -53,7 +53,7 @@ Test(filterx_func_parse_cef, test_invalid_input)
 
   FilterXExpr *func = _new_parser(fx_args, &error);
   cr_assert_null(error);
-  FilterXObject *obj = filterx_expr_eval(func);
+  FilterXObject *obj = init_and_eval_expr(func);
   cr_assert_null(obj);
 
   cr_assert_str_eq("Failed to evaluate event format parser: " EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG,

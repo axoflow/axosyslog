@@ -102,7 +102,7 @@ _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_
   if (!filterx_expr_is_literal(switch_case->super.operand))
     return FALSE;
 
-  FilterXObject *case_value = filterx_expr_eval(switch_case->super.operand);
+  FilterXObject *case_value = filterx_literal_get_value(switch_case->super.operand);
   if (!case_value)
     return FALSE;
 

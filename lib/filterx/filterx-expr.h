@@ -92,6 +92,10 @@ struct _FilterXExpr
 static inline FilterXObject *
 filterx_expr_eval(FilterXExpr *self)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(self->inited);
+#endif
+
   stats_counter_inc(self->eval_count);
 
   return self->eval(self);

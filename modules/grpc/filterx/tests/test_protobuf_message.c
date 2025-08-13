@@ -182,7 +182,7 @@ Test(filterx_protobuf_message, assign_vars)
 
   FilterXExpr *func = _assert_protobuf_message_init_success(args);
 
-  FilterXObject *result = filterx_expr_eval(func);
+  FilterXObject *result = init_and_eval_expr(func);
   cr_assert(result);
 
   cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(protobuf)));
