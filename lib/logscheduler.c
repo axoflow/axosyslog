@@ -115,14 +115,11 @@ _complete(gpointer s, gpointer arg)
   gboolean needs_restart = FALSE;
 
   g_mutex_lock(&partition->batches_lock);
+  /* our work() function returned right before a new batch was added, let's restart */
   if (!iv_list_empty(&partition->batches))
-    {
-      /* our work() function returned right before a new batch was added, let's restart */
-      needs_restart = TRUE;
-    }
+    needs_restart = TRUE;
   else
     partition->flush_running = FALSE;
-
   g_mutex_unlock(&partition->batches_lock);
 
   if (needs_restart)
@@ -136,20 +133,13 @@ _partition_add_batch(LogSchedulerPartition *partition, LogSchedulerBatch *batch)
   gboolean trigger_flush = FALSE;
 
   g_mutex_lock(&partition->batches_lock);
-  if (!partition->flush_running &&
-      iv_list_empty(&partition->batches))
-    {
-      trigger_flush = TRUE;
-      partition->flush_running = TRUE;
-    }
+  if (!partition->flush_running)
+    partition->flush_running = trigger_flush = TRUE;
   iv_list_add_tail(&batch->list, &partition->batches);
   g_mutex_unlock(&partition->batches_lock);
 
   if (trigger_flush)
-    {
-      main_loop_io_worker_job_submit_continuation(&partition->io_job, NULL);
-    }
-
+    main_loop_io_worker_job_submit_continuation(&partition->io_job, NULL);
 }
 
 static void
@@ -224,12 +214,8 @@ _flush_batch(gpointer s)
       INIT_IV_LIST_HEAD(&thread_state->batch_by_partition[partition_index]);
 
       /* add the new batch to the target partition */
-
       LogSchedulerPartition *partition = &self->partitions[partition_index];
-
       _partition_add_batch(partition, batch);
-
-
     }
   thread_state->num_messages = 0;
   return NULL;
