@@ -292,12 +292,14 @@ log_scheduler_deinit(LogScheduler *self)
 void
 log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *path_options)
 {
-  gint thread_index = main_loop_worker_get_thread_index();
+  if (self->options->num_partitions == 0 || !self->front_pipe)
+    {
+      _reinject_message(self->front_pipe, msg, path_options);
+      return;
+    }
 
-  if (!self->front_pipe ||
-      self->options->num_partitions == 0 ||
-      thread_index < 0 ||
-      thread_index >= self->num_threads)
+  gint thread_index = main_loop_worker_get_thread_index();
+  if (thread_index < 0 || thread_index >= self->num_threads)
     {
       _reinject_message(self->front_pipe, msg, path_options);
       return;
