@@ -192,6 +192,7 @@ static CfgLexerKeyword main_keywords[] =
   { "partition_key",      KW_WORKER_PARTITION_KEY },
   { "batch_lines",        KW_BATCH_LINES },
   { "batch_timeout",      KW_BATCH_TIMEOUT },
+  { "batch_size",         KW_BATCH_SIZE },
 
   { "read_old_records",   KW_READ_OLD_RECORDS},
   { "use_syslogng_pid",   KW_USE_SYSLOGNG_PID },

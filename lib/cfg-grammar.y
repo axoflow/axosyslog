@@ -258,6 +258,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_BATCH_LINES                 10087
 %token KW_BATCH_TIMEOUT               10088
 %token KW_TRIM_LARGE_MESSAGES         10089
+%token KW_BATCH_SIZE                  10600
 
 %token KW_STATS                       10400
 %token KW_FREQ                        10401
@@ -824,6 +825,10 @@ log_scheduler_option
         | KW_WORKER_PARTITION_KEY '(' template_content ')'
           {
             log_scheduler_options_set_partition_key_ref(last_scheduler_options, $3);
+          }
+        | KW_BATCH_SIZE '(' nonnegative_integer ')'
+          {
+            last_scheduler_options->batch_size = $3;
           }
         ;
 

@@ -54,11 +54,13 @@ typedef struct _LogSchedulerThreadState
 
   guint64 num_messages;
   gint last_partition;
+  gint current_batch_size;
 } LogSchedulerThreadState;
 
 typedef struct _LogSchedulerOptions
 {
   gint num_partitions;
+  gint batch_size;
   LogTemplate *partition_key;
 } LogSchedulerOptions;
 
