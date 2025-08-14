@@ -50,12 +50,12 @@ _eval_in(FilterXExpr *s)
                            : filterx_expr_eval(self->super.rhs);
   FilterXObject *list_obj = filterx_ref_unwrap_ro(rhs_obj);
 
-  filterx_object_unref(rhs_obj);
   if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
                                           "Right hand side must be list type, got: %s",
                                           filterx_object_get_type_name(list_obj));
+      filterx_object_unref(rhs_obj);
       return NULL;
     }
 
@@ -64,6 +64,7 @@ _eval_in(FilterXExpr *s)
   if (!filterx_object_len(list_obj, &size))
     {
       filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", s, "len() method failed");
+      filterx_object_unref(rhs_obj);
       return NULL;
     }
 
@@ -74,11 +75,13 @@ _eval_in(FilterXExpr *s)
       if (filterx_compare_objects(lhs, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
         {
           filterx_object_unref(elt);
+          filterx_object_unref(rhs_obj);
           return filterx_boolean_new(TRUE);
         }
       filterx_object_unref(elt);
     }
 
+  filterx_object_unref(rhs_obj);
   return filterx_boolean_new(FALSE);
 }
 
