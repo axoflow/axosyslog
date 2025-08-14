@@ -104,6 +104,23 @@ _do_casefold(const gchar **str, gsize *str_len)
 }
 
 static gboolean
+_obj_format(FilterXObject *obj, const gchar **str, gsize *str_len, gboolean ignore_case, FilterXExpr *expr_hint)
+{
+  gboolean result = FALSE;
+  if (!_format_str_obj(obj, str, str_len))
+    {
+      filterx_eval_push_error("Failed to extract string value: repr() failed", expr_hint, obj);
+      goto exit;
+    }
+
+  if (ignore_case)
+    _do_casefold(str, str_len);
+  result = TRUE;
+exit:
+  return result;
+}
+
+static gboolean
 _expr_format(FilterXExpr *expr, const gchar **str, gsize *str_len, gboolean ignore_case)
 {
   FilterXObject *obj = filterx_expr_eval(expr);
@@ -112,35 +129,8 @@ _expr_format(FilterXExpr *expr, const gchar **str, gsize *str_len, gboolean igno
   if (!obj)
     return FALSE;
 
-  if (!_format_str_obj(obj, str, str_len))
-    {
-      filterx_eval_push_error("Failed to extract string value: repr() failed", expr, obj);
-      goto exit;
-    }
-
-  if (ignore_case)
-    _do_casefold(str, str_len);
-
-  result = TRUE;
-exit:
+  result = _obj_format(obj, str, str_len, ignore_case, expr);
   filterx_object_unref(obj);
-  return result;
-}
-
-static gboolean
-_obj_format(FilterXObject *obj, const gchar **str, gsize *str_len, gboolean ignore_case)
-{
-  gboolean result = FALSE;
-  if (!_format_str_obj(obj, str, str_len))
-    {
-      filterx_eval_push_error("Failed to extract string value: repr() failed", NULL, obj);
-      goto exit;
-    }
-
-  if (ignore_case)
-    _do_casefold(str, str_len);
-  result = TRUE;
-exit:
   return result;
 }
 
@@ -150,14 +140,20 @@ _string_with_cache_fill_cache(FilterXStringWithCache *self, gboolean ignore_case
   if (!filterx_expr_is_literal(self->expr))
     return TRUE;
 
+  gboolean result = FALSE;
+  FilterXObject *object = filterx_literal_get_value(self->expr);
+
   const gchar *str = NULL;
   gsize str_len = 0;
-  if (!_expr_format(self->expr, &str, &str_len, ignore_case))
-    return FALSE;
+  if (!_obj_format(object, &str, &str_len, ignore_case, self->expr))
+    goto error;
 
   self->str_value = g_strndup(str, str_len);
   self->str_len = str_len;
-  return TRUE;
+  result = TRUE;
+error:
+  filterx_object_unref(object);
+  return result;
 }
 
 static FilterXStringWithCache *
@@ -318,7 +314,7 @@ _eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gs
       const gchar *current_needle;
       gsize current_needle_len;
 
-      gboolean res = _obj_format(elem, &current_needle, &current_needle_len, self->ignore_case);
+      gboolean res = _obj_format(elem, &current_needle, &current_needle_len, self->ignore_case, NULL);
       filterx_object_unref(elem);
 
       if (!res)
@@ -336,7 +332,7 @@ _eval_against_needle_expr_single(FilterXExprAffix *self, const gchar *haystack, 
   const gchar *needle;
   gsize needle_len;
 
-  if (_obj_format(needle_obj, &needle, &needle_len, self->ignore_case))
+  if (_obj_format(needle_obj, &needle, &needle_len, self->ignore_case, NULL))
     {
       return filterx_boolean_new(self->process(haystack, haystack_len, needle, needle_len));
     }
@@ -350,6 +346,7 @@ _eval_against_needle_expr(FilterXExprAffix *self, const gchar *haystack, gsize h
   if (!needle_obj)
     return NULL;
 
+  /* FIXME: why wouldn't this work for a list??? */
   FilterXObject *result = _eval_against_needle_expr_single(self, haystack, haystack_len, needle_obj);
   if (!result)
     result = _eval_against_needle_expr_list(self, haystack, haystack_len, needle_obj);
@@ -588,8 +585,7 @@ exit:
 static inline GString *
 _extract_literal(FilterXExpr *expr)
 {
-  FilterXObject *literal = filterx_expr_eval(expr);
-  g_assert(literal);
+  FilterXObject *literal = filterx_literal_get_value(expr);
 
   const gchar *str = NULL;
   gsize str_len = 0;

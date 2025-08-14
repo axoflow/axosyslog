@@ -266,7 +266,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_non_matching_timefmt)
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *obj = filterx_expr_eval(func_expr);
+  FilterXObject *obj = init_and_eval_expr(func_expr);
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)));
 
@@ -285,7 +285,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_timefmt)
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *obj = filterx_expr_eval(func_expr);
+  FilterXObject *obj = init_and_eval_expr(func_expr);
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -308,7 +308,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_nth_timefmt)
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *obj = filterx_expr_eval(func_expr);
+  FilterXObject *obj = init_and_eval_expr(func_expr);
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
@@ -331,7 +331,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_non_matching_nth_timefmt)
   FilterXExpr *func_expr = filterx_function_strptime_new(filterx_function_args_new(args, NULL), NULL);
   cr_assert(func_expr);
 
-  FilterXObject *obj = filterx_expr_eval(func_expr);
+  FilterXObject *obj = init_and_eval_expr(func_expr);
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(null)));
 

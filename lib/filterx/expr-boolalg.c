@@ -27,7 +27,7 @@
 static inline gboolean
 _literal_expr_truthy(FilterXExpr *expr)
 {
-  FilterXObject *result = filterx_expr_eval(expr);
+  FilterXObject *result = filterx_literal_get_value(expr);
   g_assert(result);
 
   gboolean truthy = filterx_object_truthy(result);

@@ -374,7 +374,7 @@ _extract_field_key_obj(FilterXExpr *key, GError **error)
   if (!filterx_expr_is_literal(key))
     goto exit;
 
-  key_obj = filterx_expr_eval(key);
+  key_obj = filterx_literal_get_value(key);
   if (!filterx_object_is_type(key_obj, &FILTERX_TYPE_NAME(string)))
     {
       filterx_object_unref(key_obj);

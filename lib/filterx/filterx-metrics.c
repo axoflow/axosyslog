@@ -113,7 +113,7 @@ _optimize_key(FilterXMetrics *self)
   if (!filterx_expr_is_literal(self->key.expr))
     return;
 
-  FilterXObject *key_obj = filterx_expr_eval_typed(self->key.expr);
+  FilterXObject *key_obj = filterx_literal_get_value(self->key.expr);
   if (!filterx_object_is_type(key_obj, &FILTERX_TYPE_NAME(string)))
     {
       filterx_object_unref(key_obj);

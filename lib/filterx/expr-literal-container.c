@@ -119,8 +119,17 @@ filterx_literal_container_len(FilterXExpr *s)
   return g_list_length(elements);
 }
 
-static FilterXObject *
-_literal_container_eval(FilterXExpr *s)
+static inline FilterXObject *
+_literal_container_eval_expr(FilterXExpr *expr, gboolean early_eval)
+{
+  if (early_eval)
+    return filterx_literal_get_value(expr);
+  else
+    return filterx_expr_eval(expr);
+}
+
+static inline FilterXObject *
+_literal_container_eval(FilterXExpr *s, gboolean early_eval)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
@@ -133,7 +142,7 @@ _literal_container_eval(FilterXExpr *s)
       FilterXObject *key = NULL;
       if (elem->key)
         {
-          key = filterx_expr_eval(elem->key);
+          key = _literal_container_eval_expr(elem->key, early_eval);
           if (!key)
             {
               filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate key");
@@ -141,7 +150,7 @@ _literal_container_eval(FilterXExpr *s)
             }
         }
 
-      FilterXObject *value = filterx_expr_eval(elem->value);
+      FilterXObject *value = _literal_container_eval_expr(elem->value, early_eval);
       if (elem->nullv)
         {
           if (!value)
@@ -181,6 +190,19 @@ error:
   return NULL;
 }
 
+/* evaluate during optimize while the expressions are yet to be initialized */
+static FilterXObject *
+_literal_container_eval_early(FilterXExpr *s)
+{
+  return _literal_container_eval(s, TRUE);
+}
+
+static FilterXObject *
+_literal_container_eval_runtime(FilterXExpr *s)
+{
+  return _literal_container_eval(s, FALSE);
+}
+
 static FilterXExpr *
 _literal_container_optimize(FilterXExpr *s)
 {
@@ -196,7 +218,7 @@ _literal_container_optimize(FilterXExpr *s)
         literal = FALSE;
     }
   if (literal)
-    return filterx_literal_new(_literal_container_eval(s));
+    return filterx_literal_new(_literal_container_eval_early(s));
 
   return NULL;
 }
@@ -251,7 +273,7 @@ static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
 {
   filterx_expr_init_instance(&self->super, type);
-  self->super.eval = _literal_container_eval;
+  self->super.eval = _literal_container_eval_runtime;
   self->super.optimize = _literal_container_optimize;
   self->super.init = _literal_container_init;
   self->super.deinit = _literal_container_deinit;

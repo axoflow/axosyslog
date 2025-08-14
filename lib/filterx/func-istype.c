@@ -37,22 +37,27 @@ typedef struct FilterXFunctionIsType_
   FilterXType *type;
 } FilterXFunctionIsType;
 
+static gboolean
+_object_istype(FilterXFunctionIsType *self, FilterXObject *object)
+{
+  FilterXObject *unwrapped = filterx_ref_unwrap_ro(object);
+  return filterx_object_is_type(unwrapped, self->type);
+}
+
 static FilterXObject *
 _eval_fx_istype(FilterXExpr *s)
 {
   FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
 
-  FilterXObject *object_expr = filterx_expr_eval(self->object_expr);
-  if (!object_expr)
+  FilterXObject *object = filterx_expr_eval(self->object_expr);
+  if (!object)
     {
       filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_ISTYPE_USAGE, s, NULL);
       return NULL;
     }
 
-  FilterXObject *obj = filterx_ref_unwrap_ro(object_expr);
-  gboolean result = filterx_object_is_type(obj, self->type);
-
-  filterx_object_unref(object_expr);
+  gboolean result = _object_istype(self, object);
+  filterx_object_unref(object);
   return filterx_boolean_new(result);
 }
 
@@ -65,9 +70,11 @@ _optimize(FilterXExpr *s)
 
   if (filterx_expr_is_literal(self->object_expr))
     {
-      FilterXObject *optimized_object = _eval_fx_istype(s);
-      g_assert(optimized_object);
-      return filterx_literal_new(optimized_object);
+      FilterXObject *object = filterx_literal_get_value(self->object_expr);
+      gboolean result = _object_istype(self, object);
+      filterx_object_unref(object);
+
+      return filterx_literal_new(filterx_boolean_new(result));
     }
 
   return filterx_function_optimize_method(&self->super);

@@ -68,6 +68,19 @@ _format_str_obj(FilterXObject *obj)
 }
 
 static gboolean
+_format_value(FilterXObject *obj, gchar **formatted_value)
+{
+  if (_is_value_empty(obj))
+    {
+      /* empty values should not be added, but it is not a failure */
+      return TRUE;
+    }
+
+  *formatted_value = _format_str_obj(obj);
+  return (*formatted_value) != NULL;
+}
+
+static gboolean
 _format_value_expr(FilterXExpr *expr, gchar **formatted_value)
 {
   gboolean success = TRUE;
@@ -80,21 +93,11 @@ _format_value_expr(FilterXExpr *expr, gchar **formatted_value)
                                           "Failed to evaluate expression");
       goto exit;
     }
-
-  if (_is_value_empty(obj))
+  success = _format_value(obj, formatted_value);
+  if (!success)
     {
-      /* empty values should not be added, but it is not a failure */
-      goto exit;
-    }
-
-  *formatted_value = _format_str_obj(obj);
-  if (!(*formatted_value))
-    {
-      success = FALSE;
       filterx_eval_push_error("Failed to format metrics label value: str() failed", expr, obj);
-      goto exit;
     }
-
 exit:
   filterx_object_unref(obj);
   return success;
@@ -152,8 +155,13 @@ _label_optimize(FilterXMetricsLabel *self, gboolean *is_empty)
 
   ScratchBuffersMarker marker;
   scratch_buffers_mark(&marker);
+
   gchar *formatted_value = NULL;
-  g_assert(_format_value_expr(self->value.expr, &formatted_value));
+
+  FilterXObject *value = filterx_literal_get_value(self->value.expr);
+  g_assert(_format_value(value, &formatted_value));
+  filterx_object_unref(value);
+
   self->value.str = g_strdup(formatted_value);
   scratch_buffers_reclaim_marked(marker);
 
@@ -195,7 +203,7 @@ _init_label_name(FilterXExpr *name)
       return NULL;
     }
 
-  FilterXObject *obj = filterx_expr_eval_typed(name);
+  FilterXObject *obj = filterx_literal_get_value(name);
   gchar *str = g_strdup(filterx_string_get_value_ref(obj, NULL));
   if (!str)
     {
@@ -400,7 +408,7 @@ filterx_metrics_labels_optimize(FilterXMetricsLabels *self)
       for (guint i = 0; i < self->literal_labels->len; i++)
         {
           FilterXMetricsLabel *label = g_ptr_array_index(self->literal_labels, i);
-          gboolean is_empty;
+          gboolean is_empty = FALSE;
 
           _label_optimize(label, &is_empty);
 

@@ -27,6 +27,16 @@ typedef struct _FilterXLiteral
   FilterXObject *object;
 } FilterXLiteral;
 
+FilterXObject *
+filterx_literal_get_value(FilterXExpr *s)
+{
+  g_assert(filterx_expr_is_literal(s));
+  FilterXLiteral *self = (FilterXLiteral *) s;
+
+  return filterx_object_ref(self->object);
+}
+
+
 static FilterXObject *
 _eval_literal(FilterXExpr *s)
 {

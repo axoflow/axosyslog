@@ -22,6 +22,7 @@
 
 #include <criterion/criterion.h>
 #include "libtest/cr_template.h"
+#include "libtest/filterx-lib.h"
 
 #include "filterx/filterx-object.h"
 #include "filterx/object-primitive.h"
@@ -36,14 +37,18 @@
 #include "apphook.h"
 #include "scratch-buffers.h"
 
-static void _assert_comparison(FilterXObject *lhs, FilterXObject *rhs, gint operator, gboolean expected)
+static void
+_assert_comparison(FilterXObject *lhs, FilterXObject *rhs, gint operator, gboolean expected)
 {
   FilterXExpr *lhse = filterx_literal_new(lhs);
   FilterXExpr *rhse = filterx_literal_new(rhs);
+
   FilterXExpr *cmp = filterx_comparison_new(lhse, rhse, operator);
   cr_assert_not_null(cmp);
-  FilterXObject *result = filterx_expr_eval(cmp);
+
+  FilterXObject *result = init_and_eval_expr(cmp);
   cr_assert_not_null(result);
+
   cr_assert(filterx_object_truthy(result) == expected);
   filterx_expr_unref(cmp);
   // note that comparison expression unref operands

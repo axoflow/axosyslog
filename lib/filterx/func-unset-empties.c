@@ -427,19 +427,37 @@ _target_iterator(gsize index, FilterXExpr *value, gpointer user_data)
   FilterXFunctionUnsetEmpties *self = ((gpointer *) user_data)[0];
   GError **error = ((gpointer *) user_data)[1];
 
-  if (!filterx_expr_is_literal(value) && !filterx_expr_is_literal_container(value))
+  if (filterx_expr_is_literal(value))
+    {
+      FilterXObject *target = filterx_literal_get_value(value);
+
+      gboolean res = _handle_target_object(self, target, error);
+      filterx_object_unref(target);
+      return res;
+    }
+  else if (filterx_expr_is_literal_container(value))
+    {
+      gboolean empty = filterx_literal_container_len(value) == 0;
+      if (!empty)
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                      FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS" argument list/dict must be empty! " FILTERX_FUNC_UNSET_EMPTIES_USAGE);
+          return FALSE;
+        }
+      if (filterx_expr_is_literal_list(value))
+        set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_LIST, TRUE);
+      else if (filterx_expr_is_literal_dict(value))
+        set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_DICT, TRUE);
+      else
+        g_assert_not_reached();
+      return TRUE;
+    }
+  else
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS" list members must be literals!" FILTERX_FUNC_UNSET_EMPTIES_USAGE);
       return FALSE;
     }
-
-  FilterXObject *target = filterx_expr_eval(value);
-  g_assert(target);
-
-  gboolean res = _handle_target_object(self, target, error);
-  filterx_object_unref(target);
-  return res;
 }
 
 static gboolean

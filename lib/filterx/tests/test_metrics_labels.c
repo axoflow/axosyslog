@@ -45,6 +45,7 @@ Test(filterx_metrics_labels, null_labels)
   cr_assert(metrics_labels);
 
   filterx_metrics_labels_optimize(metrics_labels);
+  cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
 
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
@@ -55,6 +56,7 @@ Test(filterx_metrics_labels, null_labels)
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 0);
 
+  filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
 }
 
@@ -66,6 +68,7 @@ Test(filterx_metrics_labels, const_literal_generator_empty_labels)
   cr_assert(metrics_labels);
 
   filterx_metrics_labels_optimize(metrics_labels);
+  cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
 
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
@@ -76,6 +79,7 @@ Test(filterx_metrics_labels, const_literal_generator_empty_labels)
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 0);
 
+  filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
 }
 
@@ -87,6 +91,7 @@ Test(filterx_metrics_labels, non_literal_empty_labels)
   cr_assert(metrics_labels);
 
   filterx_metrics_labels_optimize(metrics_labels);
+  cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
 
   cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
 
@@ -97,6 +102,7 @@ Test(filterx_metrics_labels, non_literal_empty_labels)
   cr_assert(filterx_metrics_labels_format(metrics_labels, store, &sc_labels, &len));
   cr_assert_eq(len, 0);
 
+  filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
 }
 
@@ -117,6 +123,7 @@ Test(filterx_metrics_labels, const_literal_generator_labels)
   cr_assert(metrics_labels);
 
   filterx_metrics_labels_optimize(metrics_labels);
+  cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
 
   cr_assert(filterx_metrics_labels_is_const(metrics_labels));
 
@@ -132,6 +139,7 @@ Test(filterx_metrics_labels, const_literal_generator_labels)
   cr_assert_str_eq(sc_labels[1].name, "foo");
   cr_assert_str_eq(sc_labels[1].value, "foovalue");
 
+  filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
 }
 
@@ -152,6 +160,7 @@ Test(filterx_metrics_labels, non_const_literal_generator_labels)
   cr_assert(metrics_labels);
 
   filterx_metrics_labels_optimize(metrics_labels);
+  cr_assert(filterx_metrics_labels_init(metrics_labels, configuration));
 
   cr_assert_not(filterx_metrics_labels_is_const(metrics_labels));
 
@@ -167,6 +176,7 @@ Test(filterx_metrics_labels, non_const_literal_generator_labels)
   cr_assert_str_eq(sc_labels[1].name, "foo");
   cr_assert_str_eq(sc_labels[1].value, "foovalue");
 
+  filterx_metrics_labels_deinit(metrics_labels, configuration);
   filterx_metrics_labels_free(metrics_labels);
 }
 
