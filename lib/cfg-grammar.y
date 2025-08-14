@@ -1413,7 +1413,7 @@ dest_driver_option
 
 threaded_dest_driver_batch_option
         : KW_BATCH_LINES '(' nonnegative_integer ')' { log_threaded_dest_driver_set_batch_lines(last_driver, $3); }
-        | KW_BATCH_TIMEOUT '(' positive_integer ')' { log_threaded_dest_driver_set_batch_timeout(last_driver, $3); }
+        | KW_BATCH_TIMEOUT '(' nonnegative_integer ')' { log_threaded_dest_driver_set_batch_timeout(last_driver, $3); }
         ;
 
 threaded_dest_driver_workers_option
