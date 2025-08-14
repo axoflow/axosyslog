@@ -63,27 +63,53 @@ DestDriver::init()
     this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
   this->query += (this->json_mode()) ? " FORMAT JSONEachRow" : " FORMAT Protobuf";
 
-  if (!this->json_mode())
-  {
-    if (this->proto_var && !this->log_message_protobuf_formatter.empty())
-      {
-        msg_error("Error initializing ClickHouse destination: 'proto-var()' cannot be used together with 'schema()' "
-                  "or 'protobuf-schema()'. Please use either 'proto-var()', or 'schema()'/'protobuf-schema()', "
-                  "but not both.",
-                  log_pipe_location_tag(&this->super->super.super.super.super));
-        return false;
-      }
+  if (this->json_mode())
+    {
+      if (this->proto_var)
+        {
+          msg_error("Error initializing ClickHouse destination: 'proto-var()' cannot be used together with 'json-var()'."
+                    "Please use either 'proto-var()', or 'json-var()', but not both.",
+                    log_pipe_location_tag(&this->super->super.super.super.super));
+          return false;
+        }
+      if (!this->log_message_protobuf_formatter.empty())
+        {
+          msg_error("Error initializing ClickHouse destination: 'json-var()' cannot be used together with 'schema()' "
+                    "or 'protobuf-schema()'. Please use either 'json-var()', or 'schema()'/'protobuf-schema()', "
+                    "but not both.",
+                    log_pipe_location_tag(&this->super->super.super.super.super));
+          return false;
+        }
+      if (!this->server_side_schema.empty())
+        {
+          msg_error("Error initializing ClickHouse destination: 'json-var()' cannot be used together with 'server-side-schema()'."
+                    "Please use either 'json-var()', or 'server-side-schema() with proto-var()', "
+                    "but not both.",
+                    log_pipe_location_tag(&this->super->super.super.super.super));
+          return false;
+        }
+    }
+  else
+    {
+      if (this->proto_var && !this->log_message_protobuf_formatter.empty())
+        {
+          msg_error("Error initializing ClickHouse destination: 'proto-var()' cannot be used together with 'schema()' "
+                    "or 'protobuf-schema()'. Please use either 'proto-var()', or 'schema()'/'protobuf-schema()', "
+                    "but not both.",
+                    log_pipe_location_tag(&this->super->super.super.super.super));
+          return false;
+        }
 
-    if ((!this->proto_var && this->log_message_protobuf_formatter.empty()))
-      {
-        msg_error("Error initializing ClickHouse destination, schema() or protobuf-schema() or json-var must be set",
-                  log_pipe_location_tag(&this->super->super.super.super.super));
-        return false;
-      }
+      if ((!this->proto_var && this->log_message_protobuf_formatter.empty()))
+        {
+          msg_error("Error initializing ClickHouse destination, schema() or protobuf-schema() or json-var must be set",
+                    log_pipe_location_tag(&this->super->super.super.super.super));
+          return false;
+        }
 
-    if (!this->proto_var && !this->log_message_protobuf_formatter.init())
-      return false;
-  }
+      if (!this->proto_var && !this->log_message_protobuf_formatter.init())
+        return false;
+    }
   return syslogng::grpc::DestDriver::init();
 }
 
