@@ -73,6 +73,16 @@ DestWorker::insert(LogMessage *msg)
       google::protobuf::io::CodedOutputStream coded_output(&zero_copy_output);
       coded_output.WriteVarint32(len);
       coded_output.WriteRaw(serialized, len);
+
+    }
+  else if (owner_->json_mode())
+    {
+      ssize_t len;
+      const gchar *json_str = owner_->format_json_var(msg, &len);
+      if (!json_str)
+        goto drop;
+      this->query_data.write(json_str, len);
+      this->query_data.put('\n');
     }
   else
     {
