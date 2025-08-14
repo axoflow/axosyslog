@@ -26,9 +26,9 @@
 
 #include "filterx/expr-function.h"
 
-FILTERX_GENERATOR_FUNCTION_DECLARE(parse_xml);
+FILTERX_FUNCTION_DECLARE(parse_xml);
 
-FilterXExpr *filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_parse_xml_new(FilterXFunctionArgs *args, GError **error);
 
 
 typedef struct FilterXParseXmlState_ FilterXParseXmlState;
@@ -82,34 +82,34 @@ xml_elem_context_stack_remove_last(GArray *xml_elem_context_stack)
 }
 
 
-typedef struct FilterXGeneratorFunctionParseXml_ FilterXGeneratorFunctionParseXml;
-struct FilterXGeneratorFunctionParseXml_
+typedef struct FilterXFunctionParseXml_ FilterXFunctionParseXml;
+struct FilterXFunctionParseXml_
 {
-  FilterXGeneratorFunction super;
+  FilterXFunction super;
   FilterXExpr *xml_expr;
 
   FilterXParseXmlState *(*create_state)(void);
 
-  void (*start_elem)(FilterXGeneratorFunctionParseXml *self,
+  void (*start_elem)(FilterXFunctionParseXml *self,
                      GMarkupParseContext *context, const gchar *element_name,
                      const gchar **attribute_names, const gchar **attribute_values,
                      FilterXParseXmlState *state, GError **error);
-  void (*end_elem)(FilterXGeneratorFunctionParseXml *self,
+  void (*end_elem)(FilterXFunctionParseXml *self,
                    GMarkupParseContext *context, const gchar *element_name,
                    FilterXParseXmlState *state, GError **error);
-  void (*text)(FilterXGeneratorFunctionParseXml *self,
+  void (*text)(FilterXFunctionParseXml *self,
                GMarkupParseContext *context, const gchar *text, gsize text_len,
                FilterXParseXmlState *state, GError **error);
 };
 
-void filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
+void filterx_parse_xml_start_elem_method(FilterXFunctionParseXml *self,
                                          GMarkupParseContext *context, const gchar *element_name,
                                          const gchar **attribute_names, const gchar **attribute_values,
                                          FilterXParseXmlState *state, GError **error);
-void filterx_parse_xml_end_elem_method(FilterXGeneratorFunctionParseXml *self,
+void filterx_parse_xml_end_elem_method(FilterXFunctionParseXml *self,
                                        GMarkupParseContext *context, const gchar *element_name,
                                        FilterXParseXmlState *state, GError **error);
-void filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
+void filterx_parse_xml_text_method(FilterXFunctionParseXml *self,
                                    GMarkupParseContext *context, const gchar *text, gsize text_len,
                                    FilterXParseXmlState *state, GError **error);
 gboolean filterx_parse_xml_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context,

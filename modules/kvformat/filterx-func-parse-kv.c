@@ -31,7 +31,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
-#include "filterx/expr-generator.h"
+#include "filterx/object-dict.h"
 
 #include "kv-parser.h"
 #include "parser/parser-expr.h"
@@ -40,7 +40,7 @@
 
 typedef struct FilterXFunctionParseKV_
 {
-  FilterXGeneratorFunction super;
+  FilterXFunction super;
   FilterXExpr *msg;
   gchar value_separator;
   gchar *pair_separator;
@@ -92,11 +92,11 @@ _set_dict_value(FilterXObject *out,
   return ok;
 }
 
-static gboolean
-_extract_key_values(FilterXFunctionParseKV *self, const gchar *input, gsize input_len, FilterXObject *output)
+static FilterXObject *
+_extract_key_values(FilterXFunctionParseKV *self, const gchar *input, gsize input_len)
 {
   KVScanner scanner;
-  gboolean result = FALSE;
+  FilterXObject *result = filterx_dict_new();
 
   kv_scanner_init(&scanner, self->value_separator, self->pair_separator,
                   self->stray_words_key != NULL ? KVSSWM_COLLECT : KVSSWM_DROP);
@@ -108,41 +108,47 @@ _extract_key_values(FilterXFunctionParseKV *self, const gchar *input, gsize inpu
       const gchar *value = kv_scanner_get_current_value(&scanner);
       gsize value_len = kv_scanner_get_current_value_len(&scanner);
 
-      if (!_set_dict_value(output, name, name_len, value, value_len))
-        goto exit;
+      if (!_set_dict_value(result, name, name_len, value, value_len))
+        {
+          filterx_object_unref(result);
+          result = NULL;
+          goto exit;
+        }
     }
 
   if (self->stray_words_key &&
-      !_set_dict_value(output, self->stray_words_key, -1,
+      !_set_dict_value(result, self->stray_words_key, -1,
                        kv_scanner_get_stray_words(&scanner), kv_scanner_get_stray_words_len(&scanner)))
-    goto exit;
+    {
+      filterx_object_unref(result);
+      result = NULL;
+    }
 
-  result = TRUE;
 exit:
   kv_scanner_deinit(&scanner);
   return result;
 }
 
-static gboolean
-_generate(FilterXExprGenerator *s, FilterXObject *fillable)
+static FilterXObject *
+_eval(FilterXExpr *s)
 {
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
 
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", &self->super.super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", &self->super.super,
                                           "Failed to evaluate expression");
-      return FALSE;
+      return NULL;
     }
 
   gsize len;
   const gchar *input;
 
-  gboolean result = FALSE;
+  FilterXObject *result = NULL;
   if (!filterx_object_extract_string_ref(obj, &input, &len))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()", &self->super.super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()", &self->super.super,
                                           "Input must be string, got: %s",
                                           filterx_object_get_type_name(obj));
       goto exit;
@@ -150,7 +156,7 @@ _generate(FilterXExprGenerator *s, FilterXObject *fillable)
 
   APPEND_ZERO(input, input, len);
 
-  result = _extract_key_values(self, input, len, fillable);
+  result = _extract_key_values(self, input, len);
 
 exit:
   filterx_object_unref(obj);
@@ -163,7 +169,7 @@ _optimize(FilterXExpr *s)
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
 
   self->msg = filterx_expr_optimize(self->msg);
-  return filterx_generator_function_optimize_method(&self->super);
+  return filterx_function_optimize_method(&self->super);
 }
 
 static gboolean
@@ -174,7 +180,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->msg, cfg))
     return FALSE;
 
-  return filterx_generator_function_init_method(&self->super, cfg);
+  return filterx_function_init_method(&self->super, cfg);
 }
 
 static void
@@ -182,7 +188,7 @@ _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
   filterx_expr_deinit(self->msg, cfg);
-  filterx_generator_function_deinit_method(&self->super, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
 }
 
 static void
@@ -191,7 +197,7 @@ _free(FilterXExpr *s)
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
   filterx_expr_unref(self->msg);
   g_free(self->pair_separator);
-  filterx_generator_function_free_method(&self->super);
+  filterx_function_free_method(&self->super);
 }
 
 static FilterXExpr *
@@ -292,13 +298,12 @@ FilterXExpr *
 filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
-  filterx_generator_function_init_instance(&self->super, "parse_kv");
-  self->super.super.generate = _generate;
-  self->super.super.create_container = filterx_generator_create_dict_container;
-  self->super.super.super.optimize = _optimize;
-  self->super.super.super.init = _init;
-  self->super.super.super.deinit = _deinit;
-  self->super.super.super.free_fn = _free;
+  filterx_function_init_instance(&self->super, "parse_kv");
+  self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
+  self->super.super.init = _init;
+  self->super.super.deinit = _deinit;
+  self->super.super.free_fn = _free;
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");
 
@@ -307,12 +312,12 @@ filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
     goto error;
 
   filterx_function_args_free(args);
-  return &self->super.super.super;
+  return &self->super.super;
 
 error:
   filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super.super);
+  filterx_expr_unref(&self->super.super);
   return NULL;
 }
 
-FILTERX_GENERATOR_FUNCTION(parse_kv, filterx_function_parse_kv_new);
+FILTERX_FUNCTION(parse_kv, filterx_function_parse_kv_new);

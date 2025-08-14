@@ -11,7 +11,6 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-drop.h \
 	lib/filterx/expr-break.h \
 	lib/filterx/expr-function.h \
-	lib/filterx/expr-generator.h \
 	lib/filterx/expr-get-subscript.h \
 	lib/filterx/expr-getattr.h \
 	lib/filterx/expr-isset.h \
@@ -19,7 +18,6 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-literal.h \
 	lib/filterx/expr-membership.h \
 	lib/filterx/expr-null-coalesce.h \
-	lib/filterx/expr-plus-generator.h \
 	lib/filterx/expr-plus.h \
 	lib/filterx/expr-regexp-common.h \
 	lib/filterx/expr-regexp-search.h \
@@ -88,7 +86,6 @@ filterx_sources = 				\
 	lib/filterx/expr-drop.c \
 	lib/filterx/expr-break.c \
 	lib/filterx/expr-function.c \
-	lib/filterx/expr-generator.c \
 	lib/filterx/expr-get-subscript.c \
 	lib/filterx/expr-getattr.c \
 	lib/filterx/expr-isset.c \
@@ -96,7 +93,6 @@ filterx_sources = 				\
 	lib/filterx/expr-literal.c \
 	lib/filterx/expr-membership.c \
 	lib/filterx/expr-null-coalesce.c \
-	lib/filterx/expr-plus-generator.c \
 	lib/filterx/expr-plus.c \
 	lib/filterx/expr-regexp-common.c \
 	lib/filterx/expr-regexp-search.c \

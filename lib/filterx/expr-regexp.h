@@ -24,7 +24,6 @@
 #define FILTERX_EXPR_REGEXP_H_INCLUDED
 
 #include "filterx/filterx-expr.h"
-#include "filterx/expr-generator.h"
 #include "filterx/expr-function.h"
 #include "filterx/func-flags.h"
 

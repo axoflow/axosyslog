@@ -27,6 +27,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-dict-interface.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/object-dict.h"
 #include "scratch-buffers.h"
 
 #include <stdarg.h>
@@ -387,7 +388,7 @@ exit:
 }
 
 void
-filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
+filterx_parse_xml_start_elem_method(FilterXFunctionParseXml *self,
                                     GMarkupParseContext *context, const gchar *element_name,
                                     const gchar **attribute_names, const gchar **attribute_values,
                                     FilterXParseXmlState *state, GError **error)
@@ -419,7 +420,7 @@ filterx_parse_xml_start_elem_method(FilterXGeneratorFunctionParseXml *self,
 }
 
 void
-filterx_parse_xml_end_elem_method(FilterXGeneratorFunctionParseXml *self,
+filterx_parse_xml_end_elem_method(FilterXFunctionParseXml *self,
                                   GMarkupParseContext *context, const gchar *element_name,
                                   FilterXParseXmlState *state, GError **error)
 {
@@ -530,7 +531,7 @@ fail:
 }
 
 void
-filterx_parse_xml_text_method(FilterXGeneratorFunctionParseXml *self,
+filterx_parse_xml_text_method(FilterXFunctionParseXml *self,
                               GMarkupParseContext *context, const gchar *text, gsize text_len,
                               FilterXParseXmlState *state, GError **error)
 {
@@ -567,27 +568,13 @@ exit:
   g_free(stripped_text);
 }
 
-static gboolean
-_validate_fillable(FilterXGeneratorFunctionParseXml *self, FilterXObject *fillable)
-{
-  FilterXObject *fillable_unwrapped = filterx_ref_unwrap_ro(fillable);
-  if (!filterx_object_is_type(fillable_unwrapped, &FILTERX_TYPE_NAME(dict)))
-    {
-      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super.super,
-                                          "Fillable must be a dict, got: %s",
-                                          filterx_object_get_type_name(fillable));
-      return FALSE;
-    }
-  return TRUE;
-}
-
 static const gchar *
-_extract_raw_xml(FilterXGeneratorFunctionParseXml *self, FilterXObject *xml_obj, gsize *len)
+_extract_raw_xml(FilterXFunctionParseXml *self, FilterXObject *xml_obj, gsize *len)
 {
   const gchar *raw_xml;
   if (!filterx_object_extract_string_ref(xml_obj, &raw_xml, len))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super,
                                           "Input must be a string, got: %s",
                                           filterx_object_get_type_name(xml_obj));
       filterx_object_unref(xml_obj);
@@ -602,7 +589,7 @@ _start_elem_cb(GMarkupParseContext *context, const gchar *element_name,
                const gchar **attribute_names, const gchar **attribute_values,
                gpointer cb_user_data, GError **error)
 {
-  FilterXGeneratorFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
+  FilterXFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
   FilterXParseXmlState *user_data = ((gpointer *) cb_user_data)[1];
 
   self->start_elem(self, context, element_name, attribute_names, attribute_values, user_data, error);
@@ -612,7 +599,7 @@ static void
 _end_elem_cb(GMarkupParseContext *context, const gchar *element_name,
              gpointer cb_user_data, GError **error)
 {
-  FilterXGeneratorFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
+  FilterXFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
   FilterXParseXmlState *user_data = ((gpointer *) cb_user_data)[1];
 
   self->end_elem(self, context, element_name, user_data, error);
@@ -622,14 +609,14 @@ static void
 _text_cb(GMarkupParseContext *context, const gchar *text, gsize text_len,
          gpointer cb_user_data, GError **error)
 {
-  FilterXGeneratorFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
+  FilterXFunctionParseXml *self = ((gpointer *) cb_user_data)[0];
   FilterXParseXmlState *user_data = ((gpointer *) cb_user_data)[1];
 
   self->text(self, context, text, text_len, user_data, error);
 }
 
-static gboolean
-_parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_xml_len, FilterXObject *fillable)
+static FilterXObject *
+_parse(FilterXFunctionParseXml *self, const gchar *raw_xml, gsize raw_xml_len)
 {
   static GMarkupParser scanner_callbacks =
   {
@@ -638,11 +625,13 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
     .text = _text_cb,
   };
 
+  FilterXObject *result = filterx_dict_new();
+
   FilterXParseXmlState *state = self->create_state();;
   gpointer user_data[] = { self, state };
 
   XmlElemContext root_elem_context = { 0 };
-  xml_elem_context_init(&root_elem_context, NULL, fillable);
+  xml_elem_context_init(&root_elem_context, NULL, result);
   xml_elem_context_stack_push(state->xml_elem_context_stack, &root_elem_context);
 
   GMarkupParseContext *context = g_markup_parse_context_new(&scanner_callbacks, 0, user_data, NULL);
@@ -652,47 +641,48 @@ _parse(FilterXGeneratorFunctionParseXml *self, const gchar *raw_xml, gsize raw_x
                      g_markup_parse_context_end_parse(context, &error);
   if (!success)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super,
                                           "%s", error ? error->message : "unknown error");
       if (error)
         g_error_free(error);
-      goto exit;
+      filterx_parse_xml_state_free(state);
+      g_markup_parse_context_free(context);
+      return NULL;
     }
 
-exit:
   filterx_parse_xml_state_free(state);
   g_markup_parse_context_free(context);
-  return success;
+  return result;
 }
 
-static gboolean
-_generate(FilterXExprGenerator *s, FilterXObject *fillable)
+static FilterXObject *
+_eval(FilterXExpr *s)
 {
-  FilterXGeneratorFunctionParseXml *self = (FilterXGeneratorFunctionParseXml *) s;
-
-  if (!_validate_fillable(self, fillable))
-    return FALSE;
+  FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
+  FilterXObject *result = NULL;
 
   FilterXObject *xml_obj = filterx_expr_eval(self->xml_expr);
   if (!xml_obj)
-    return FALSE;
-
-  gboolean success = FALSE;
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate parse_xml()", &self->super.super,
+                                          "Failed to evaluate input expression");
+      return NULL;
+    }
 
   gsize raw_xml_len;
   const gchar *raw_xml = _extract_raw_xml(self, xml_obj, &raw_xml_len);
   if (!raw_xml)
     goto exit;
 
-  success = _parse(self, raw_xml, raw_xml_len, fillable);
+  result = _parse(self, raw_xml, raw_xml_len);
 
 exit:
   filterx_object_unref(xml_obj);
-  return success;
+  return result;
 }
 
 static gboolean
-_extract_args(FilterXGeneratorFunctionParseXml *self, FilterXFunctionArgs *args, GError **error)
+_extract_args(FilterXFunctionParseXml *self, FilterXFunctionArgs *args, GError **error)
 {
   if (filterx_function_args_len(args) != 1)
     {
@@ -708,53 +698,52 @@ _extract_args(FilterXGeneratorFunctionParseXml *self, FilterXFunctionArgs *args,
 static FilterXExpr *
 _optimize(FilterXExpr *s)
 {
-  FilterXGeneratorFunctionParseXml *self = (FilterXGeneratorFunctionParseXml *) s;
+  FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
 
   self->xml_expr = filterx_expr_optimize(self->xml_expr);
-  return filterx_generator_function_optimize_method(&self->super);
+  return filterx_function_optimize_method(&self->super);
 }
 
 static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
-  FilterXGeneratorFunctionParseXml *self = (FilterXGeneratorFunctionParseXml *) s;
+  FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
 
   if (!filterx_expr_init(self->xml_expr, cfg))
     return FALSE;
 
-  return filterx_generator_function_init_method(&self->super, cfg);
+  return filterx_function_init_method(&self->super, cfg);
 }
 
 static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
-  FilterXGeneratorFunctionParseXml *self = (FilterXGeneratorFunctionParseXml *) s;
+  FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
 
   filterx_expr_deinit(self->xml_expr, cfg);
-  filterx_generator_function_deinit_method(&self->super, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
 }
 
 static void
 _free(FilterXExpr *s)
 {
-  FilterXGeneratorFunctionParseXml *self = (FilterXGeneratorFunctionParseXml *) s;
+  FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
 
   filterx_expr_unref(self->xml_expr);
-  filterx_generator_function_free_method(&self->super);
+  filterx_function_free_method(&self->super);
 }
 
 FilterXExpr *
-filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **error)
+filterx_function_parse_xml_new(FilterXFunctionArgs *args, GError **error)
 {
-  FilterXGeneratorFunctionParseXml *self = g_new0(FilterXGeneratorFunctionParseXml, 1);
+  FilterXFunctionParseXml *self = g_new0(FilterXFunctionParseXml, 1);
 
-  filterx_generator_function_init_instance(&self->super, "parse_xml");
-  self->super.super.generate = _generate;
-  self->super.super.create_container = filterx_generator_create_dict_container;
-  self->super.super.super.optimize = _optimize;
-  self->super.super.super.init = _init;
-  self->super.super.super.deinit = _deinit;
-  self->super.super.super.free_fn = _free;
+  filterx_function_init_instance(&self->super, "parse_xml");
+  self->super.super.eval = _eval;
+  self->super.super.optimize = _optimize;
+  self->super.super.init = _init;
+  self->super.super.deinit = _deinit;
+  self->super.super.free_fn = _free;
 
   self->create_state = _state_new;
   self->start_elem = filterx_parse_xml_start_elem_method;
@@ -766,12 +755,12 @@ filterx_generator_function_parse_xml_new(FilterXFunctionArgs *args, GError **err
     goto fail;
 
   filterx_function_args_free(args);
-  return &self->super.super.super;
+  return &self->super.super;
 
 fail:
   filterx_function_args_free(args);
-  filterx_expr_unref(&self->super.super.super);
+  filterx_expr_unref(&self->super.super);
   return NULL;
 }
 
-FILTERX_GENERATOR_FUNCTION(parse_xml, filterx_generator_function_parse_xml_new);
+FILTERX_FUNCTION(parse_xml, filterx_function_parse_xml_new);

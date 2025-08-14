@@ -36,7 +36,7 @@
 #include "libtest/filterx-lib.h"
 
 static FilterXExpr *
-_create_parse_xml_expr(const gchar *raw_xml, FilterXObject *fillable)
+_create_parse_xml_expr(const gchar *raw_xml, FilterXObject *dict)
 {
   FilterXFunctionArg *input = filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(raw_xml, -1)));
   GList *args_list = g_list_append(NULL, input);
@@ -44,11 +44,8 @@ _create_parse_xml_expr(const gchar *raw_xml, FilterXObject *fillable)
   FilterXFunctionArgs *args = filterx_function_args_new(args_list, &error);
   g_assert(!error);
 
-  FilterXExpr *func = filterx_generator_function_parse_xml_new(args, &error);
+  FilterXExpr *func = filterx_function_parse_xml_new(args, &error);
   g_assert(!error);
-
-  FilterXExpr *fillable_expr = filterx_non_literal_new(fillable);
-  filterx_generator_set_fillable(func, fillable_expr);
 
   g_error_free(error);
   return func;
@@ -68,9 +65,9 @@ _assert_parse_xml_fail(const gchar *raw_xml)
 }
 
 static void
-_assert_parse_xml_with_fillable(const gchar *raw_xml, const gchar *expected_json, FilterXObject *fillable)
+_assert_parse_xml_with_input_dict(const gchar *raw_xml, const gchar *expected_json, FilterXObject *output_dict)
 {
-  FilterXExpr *func = _create_parse_xml_expr(raw_xml, fillable);
+  FilterXExpr *func = _create_parse_xml_expr(raw_xml, output_dict);
 
   FilterXObject *result = init_and_eval_expr(func);
   cr_assert(result);
@@ -90,7 +87,7 @@ _assert_parse_xml_with_fillable(const gchar *raw_xml, const gchar *expected_json
 static void
 _assert_parse_xml(const gchar *raw_xml, const gchar *expected_json)
 {
-  _assert_parse_xml_with_fillable(raw_xml, expected_json, filterx_dict_new());
+  _assert_parse_xml_with_input_dict(raw_xml, expected_json, filterx_dict_new());
 }
 
 Test(filterx_parse_xml, invalid_inputs)
@@ -155,8 +152,8 @@ Test(filterx_parse_xml, valid_inputs)
 
 Test(filterx_parse_xml, overwrite_existing_invalid_value)
 {
-  FilterXObject *fillable = filterx_object_from_json("{\"a\":42}", -1, NULL);
-  _assert_parse_xml_with_fillable("<a><b>foo</b></a>", "{\"a\":{\"b\":\"foo\"}}", fillable);
+  FilterXObject *dict = filterx_object_from_json("{\"a\":42}", -1, NULL);
+  _assert_parse_xml_with_input_dict("<a><b>foo</b></a>", "{\"a\":{\"b\":\"foo\"}}", dict);
 }
 
 static void
