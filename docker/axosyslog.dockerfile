@@ -1,6 +1,6 @@
 #############################################################################
-# Copyright (c) 2023-2024 Axoflow
-# Copyright (c) 2023-2024 László Várady
+# Copyright (c) 2023-2025 Axoflow
+# Copyright (c) 2023-2025 László Várady
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -22,8 +22,7 @@
 #############################################################################
 
 # must be in sync with axosyslog-builder
-ARG ALPINE_VERSION=3.21
-ARG DEBUG=false
+ARG ALPINE_VERSION=3.22
 
 FROM ghcr.io/axoflow/axosyslog-builder:latest AS apkbuilder
 
@@ -34,11 +33,8 @@ FROM ghcr.io/axoflow/axosyslog-builder:latest AS apkbuilder
 
 ARG PKG_TYPE=stable
 ARG SNAPSHOT_VERSION
-ARG DEBUG
 
 ADD --chown=builder:builder apkbuild .
-
-RUN [ $DEBUG = false ] || patch -d axoflow/axosyslog -p1 -i APKBUILD-debug.patch
 
 RUN mkdir packages || true \
     && cd axoflow/axosyslog \
@@ -57,16 +53,17 @@ FROM alpine:$ALPINE_VERSION AS prod
 
 RUN cp /etc/apk/repositories /etc/apk/repositories.bak
 
-# copy packages from builder image (both the base image and the previous
-# stage)
+# copy packages from builder image (both the base image and the previous stage)
 COPY --from=apkbuilder /home/builder/packages/ /tmp/packages
 COPY --from=apkbuilder /home/builder/.abuild/*.pub /etc/apk/keys/
 
-# add our custom repos
-RUN cd /tmp/packages && ls | sed 's,^,/tmp/packages/,' >> /etc/apk/repositories && cat /etc/apk/repositories  && ls  -lR /tmp/packages
+RUN ls -lR /tmp/packages
 
-RUN apk upgrade  --no-cache --available && \
-    apk add --upgrade --no-cache \
+RUN apk add \
+        --repository /tmp/packages/main \
+        --repository /tmp/packages/community \
+        --repository /tmp/packages/axoflow \
+        -U --upgrade --no-cache \
     jemalloc \
     libdbi-drivers \
     tzdata \
@@ -100,28 +97,25 @@ RUN apk upgrade  --no-cache --available && \
     axosyslog-stomp \
     axosyslog-tags-parser \
     axosyslog-xml && \
-    rm -rf /tmp/packages && \
-    mv /etc/apk/repositories.bak /etc/apk/repositories
+    rm -rf /tmp/packages
+
 
 # flatten out prod image
 FROM scratch
 COPY --from=prod / /
 
 # https://github.com/opencontainers/image-spec/blob/main/annotations.md
-LABEL maintainer="axoflow.io"
-LABEL org.opencontainers.image.title="AxoSyslog"
-LABEL org.opencontainers.image.description="The scalable security data processor by Axoflow"
-LABEL org.opencontainers.image.authors="Axoflow"
-LABEL org.opencontainers.image.vendor="Axoflow"
-LABEL org.opencontainers.image.licenses="GPL-3.0-only"
-LABEL org.opencontainers.image.source="https://github.com/axoflow/axosyslog"
-LABEL org.opencontainers.image.documentation="https://axoflow.com/docs/axosyslog/docs/"
-LABEL org.opencontainers.image.url="https://axoflow.io/"
+LABEL maintainer="axoflow.io" \
+    org.opencontainers.image.title="AxoSyslog" \
+    org.opencontainers.image.description="The scalable security data processor by Axoflow" \
+    org.opencontainers.image.authors="Axoflow" \
+    org.opencontainers.image.vendor="Axoflow" \
+    org.opencontainers.image.licenses="GPL-3.0-only" \
+    org.opencontainers.image.source="https://github.com/axoflow/axosyslog" \
+    org.opencontainers.image.documentation="https://axoflow.com/docs/axosyslog/docs/" \
+    org.opencontainers.image.url="https://axoflow.io/"
 
-
-EXPOSE 514/udp
-EXPOSE 601/tcp
-EXPOSE 6514/tcp
+EXPOSE 514/tcp 514/udp 601/tcp 6514/tcp
 
 HEALTHCHECK --interval=2m --timeout=5s --start-period=30s CMD /usr/sbin/syslog-ng-ctl healthcheck --timeout 5
 ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
