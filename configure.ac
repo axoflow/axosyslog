@@ -1406,7 +1406,9 @@ dnl ***************************************************************************
 dnl mongo-c-driver headers/libraries
 dnl ***************************************************************************
 
-PKG_CHECK_MODULES(LIBMONGO, libmongoc-1.0 >= $LMC_MIN_VERSION, with_mongoc="yes", with_mongoc="no")
+PKG_CHECK_MODULES(LIBMONGO, mongoc2 >= $LMC_MIN_VERSION, with_mongoc="yes", [
+  PKG_CHECK_MODULES(LIBMONGO, libmongoc-1.0 >= $LMC_MIN_VERSION, with_mongoc="yes", with_mongoc="no")
+])
 
 if test "x$with_mongoc" = "xno" && test "x$enable_mongodb" = "xyes"; then
    AC_MSG_ERROR([Could not find mongo-c-driver, and MongoDB support was explicitly enabled.])
@@ -1416,8 +1418,8 @@ if test "x$with_mongoc" = "xyes"; then
 CPPFLAGS_SAVE="$CPPFLAGS"
 CPPFLAGS="$CPPFLAGS $LIBMONGO_CFLAGS"
 
-AC_CHECK_DECLS([mongoc_uri_set_option_as_int32], [], [], [[#include <mongoc.h>]])
-AC_CHECK_DECLS([MONGOC_URI_SERVERSELECTIONTIMEOUTMS], [], [], [[#include <mongoc.h>]])
+AC_CHECK_DECLS([mongoc_uri_set_option_as_int32], [], [], [[#include <mongoc/mongoc.h>]])
+AC_CHECK_DECLS([MONGOC_URI_SERVERSELECTIONTIMEOUTMS], [], [], [[#include <mongoc/mongoc.h>]])
 
 CPPFLAGS="$CPPFLAGS_SAVE"
 fi
