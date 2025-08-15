@@ -336,3 +336,13 @@ def port_allocator():
         return port
 
     return get_next_port
+
+
+@pytest.fixture
+def clickhouse_ports(port_allocator):
+    class ClickhousePorts:
+        def __init__(self):
+            self.http_port = port_allocator()
+            self.grpc_port = port_allocator()
+
+    return ClickhousePorts()
