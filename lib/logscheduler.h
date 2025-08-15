@@ -68,9 +68,9 @@ typedef struct _LogScheduler
 {
   LogPipe *front_pipe;
   LogSchedulerOptions *options;
-  gint num_threads;
+  gint num_input_threads;
   LogSchedulerPartition partitions[LOGSCHEDULER_MAX_PARTITIONS];
-  LogSchedulerThreadState thread_states[];
+  LogSchedulerThreadState input_thread_states[];
 } LogScheduler;
 
 gboolean log_scheduler_init(LogScheduler *self);

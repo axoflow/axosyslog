@@ -202,7 +202,7 @@ _flush_batch(gpointer s)
   gint thread_index = main_loop_worker_get_thread_index();
   g_assert(thread_index >= 0);
 
-  LogSchedulerThreadState *thread_state = &self->thread_states[thread_index];
+  LogSchedulerThreadState *thread_state = &self->input_thread_states[thread_index];
 
   for (gint partition_index = 0; partition_index < self->options->num_partitions; partition_index++)
     {
@@ -255,9 +255,9 @@ _thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint inde
 static void
 _init_thread_states(LogScheduler *self)
 {
-  for (gint i = 0; i < self->num_threads; i++)
+  for (gint i = 0; i < self->num_input_threads; i++)
     {
-      _thread_state_init(self, &self->thread_states[i], i);
+      _thread_state_init(self, &self->input_thread_states[i], i);
     }
 }
 
@@ -301,13 +301,13 @@ log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *pa
     }
 
   gint thread_index = main_loop_worker_get_thread_index();
-  if (thread_index < 0 || thread_index >= self->num_threads)
+  if (thread_index < 0 || thread_index >= self->num_input_threads)
     {
       _reinject_message(self->front_pipe, msg, path_options);
       return;
     }
 
-  LogSchedulerThreadState *thread_state = &self->thread_states[thread_index];
+  LogSchedulerThreadState *thread_state = &self->input_thread_states[thread_index];
   _queue_thread(self, thread_state, msg, path_options);
 }
 
@@ -316,7 +316,7 @@ log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
 {
   gint max_threads = main_loop_worker_get_max_number_of_threads();
   LogScheduler *self = g_malloc0(sizeof(LogScheduler) + max_threads * sizeof(LogSchedulerThreadState));
-  self->num_threads = max_threads;
+  self->num_input_threads = max_threads;
   self->options = options;
   self->front_pipe = log_pipe_ref(front_pipe);
 
