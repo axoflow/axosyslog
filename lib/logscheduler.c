@@ -168,8 +168,10 @@ _partition_clear(LogSchedulerPartition *partition)
 
 /* runs in the source thread */
 static guint
-_get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg)
+_get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg, gboolean *should_flush)
 {
+  *should_flush = FALSE;
+
   if (self->options->batch_size)
     {
       gint partition_index = thread_state->last_partition;
@@ -177,7 +179,10 @@ _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, 
       thread_state->current_batch_size = (thread_state->current_batch_size + 1) % self->options->batch_size;
 
       if (thread_state->current_batch_size == 0)
-        thread_state->last_partition = (thread_state->last_partition + 1) % self->options->num_partitions;
+        {
+          *should_flush = TRUE;
+          thread_state->last_partition = (thread_state->last_partition + 1) % self->options->num_partitions;
+        }
 
       return partition_index;
     }
@@ -194,8 +199,24 @@ _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, 
 }
 
 /* runs in the source thread */
+static inline void
+_move_batch_to_partition(LogScheduler *self, LogSchedulerThreadState *thread_state, gint partition_index)
+{
+  if (iv_list_empty(&thread_state->batch_by_partition[partition_index]))
+    return;
+
+  /* form the new batch, hand over the accumulated elements in batch_by_partition */
+  LogSchedulerBatch *batch = _batch_new(&thread_state->batch_by_partition[partition_index]);
+  INIT_IV_LIST_HEAD(&thread_state->batch_by_partition[partition_index]);
+
+  /* add the new batch to the target partition */
+  LogSchedulerPartition *partition = &self->partitions[partition_index];
+  _partition_add_batch(partition, batch);
+}
+
+/* runs in the source thread */
 static gpointer
-_flush_batch(gpointer s)
+_flush_batches(gpointer s)
 {
   LogScheduler *self = (LogScheduler *) s;
 
@@ -205,18 +226,8 @@ _flush_batch(gpointer s)
   LogSchedulerThreadState *thread_state = &self->input_thread_states[thread_index];
 
   for (gint partition_index = 0; partition_index < self->options->num_partitions; partition_index++)
-    {
-      if (iv_list_empty(&thread_state->batch_by_partition[partition_index]))
-        continue;
+    _move_batch_to_partition(self, thread_state, partition_index);
 
-      /* form the new batch, hand over the accumulated elements in batch_by_partition */
-      LogSchedulerBatch *batch = _batch_new(&thread_state->batch_by_partition[partition_index]);
-      INIT_IV_LIST_HEAD(&thread_state->batch_by_partition[partition_index]);
-
-      /* add the new batch to the target partition */
-      LogSchedulerPartition *partition = &self->partitions[partition_index];
-      _partition_add_batch(partition, batch);
-    }
   thread_state->num_messages = 0;
   return NULL;
 }
@@ -229,13 +240,17 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
   if (thread_state->num_messages == 0)
     main_loop_worker_register_batch_callback(&thread_state->batch_callback);
 
-  guint partition_index = _get_partition_index(self, thread_state, msg);
+  gboolean should_flush;
+  guint partition_index = _get_partition_index(self, thread_state, msg, &should_flush);
 
   LogMessageQueueNode *node;
   node = log_msg_alloc_queue_node(msg, path_options);
   iv_list_add_tail(&node->list, &thread_state->batch_by_partition[partition_index]);
   thread_state->num_messages++;
   log_msg_unref(msg);
+
+  if (should_flush)
+    _move_batch_to_partition(self, thread_state, partition_index);
 }
 
 
@@ -243,7 +258,7 @@ static void
 _thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint index)
 {
   worker_batch_callback_init(&state->batch_callback);
-  state->batch_callback.func = _flush_batch;
+  state->batch_callback.func = _flush_batches;
   state->batch_callback.user_data = self;
 
   state->last_partition = index % self->options->num_partitions;
