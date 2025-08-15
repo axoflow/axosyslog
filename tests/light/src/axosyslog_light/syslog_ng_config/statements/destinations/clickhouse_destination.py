@@ -37,8 +37,6 @@ class ClickhouseDestination(DestinationDriver):
     ) -> None:
         self.driver_name = "clickhouse"
         self.options = options
-        if "user" in options and "password" in options:
-            self.clickhouse_client = ClickhouseClient(username=options["user"], password=destringify(options["password"]))
         super(ClickhouseDestination, self).__init__(stats_handler, prometheus_stats_handler, None, options)
 
     def read_log(self) -> dict:
@@ -52,3 +50,7 @@ class ClickhouseDestination(DestinationDriver):
 
     def delete_table(self) -> None:
         self.clickhouse_client.delete_table()
+
+    def create_clickhouse_client(self, http_port: int) -> None:
+        if "user" in self.options and "password" in self.options:
+            self.clickhouse_client = ClickhouseClient(username=self.options["user"], password=destringify(self.options["password"]), http_port=http_port)
