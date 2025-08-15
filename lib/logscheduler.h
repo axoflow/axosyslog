@@ -30,7 +30,7 @@
 #include <iv_list.h>
 #include <iv_event.h>
 
-#define LOGSCHEDULER_MAX_PARTITIONS 16
+#define LOGSCHEDULER_MAX_PARTITIONS 32
 
 typedef struct _LogSchedulerBatch
 {
@@ -50,15 +50,17 @@ typedef struct _LogSchedulerPartition
 typedef struct _LogSchedulerThreadState
 {
   WorkerBatchCallback batch_callback;
+  guint8 batch_callback_registered:1;
   struct iv_list_head batch_by_partition[LOGSCHEDULER_MAX_PARTITIONS];
 
-  guint64 num_messages;
   gint last_partition;
+  gint current_batch_size;
 } LogSchedulerThreadState;
 
 typedef struct _LogSchedulerOptions
 {
   gint num_partitions;
+  gint batch_size;
   LogTemplate *partition_key;
 } LogSchedulerOptions;
 
@@ -66,9 +68,9 @@ typedef struct _LogScheduler
 {
   LogPipe *front_pipe;
   LogSchedulerOptions *options;
-  gint num_threads;
+  gint num_input_threads;
   LogSchedulerPartition partitions[LOGSCHEDULER_MAX_PARTITIONS];
-  LogSchedulerThreadState thread_states[];
+  LogSchedulerThreadState input_thread_states[];
 } LogScheduler;
 
 gboolean log_scheduler_init(LogScheduler *self);
