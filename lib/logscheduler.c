@@ -240,11 +240,13 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
 
 
 static void
-_thread_state_init(LogScheduler *self, LogSchedulerThreadState *state)
+_thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint index)
 {
   worker_batch_callback_init(&state->batch_callback);
   state->batch_callback.func = _flush_batch;
   state->batch_callback.user_data = self;
+
+  state->last_partition = index % self->options->num_partitions;
 
   for (gint i = 0; i < self->options->num_partitions; i++)
     INIT_IV_LIST_HEAD(&state->batch_by_partition[i]);
@@ -255,7 +257,7 @@ _init_thread_states(LogScheduler *self)
 {
   for (gint i = 0; i < self->num_threads; i++)
     {
-      _thread_state_init(self, &self->thread_states[i]);
+      _thread_state_init(self, &self->thread_states[i], i);
     }
 }
 
