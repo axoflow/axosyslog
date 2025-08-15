@@ -143,7 +143,8 @@
          This interface is also used by ODBC and JDBC drivers (DataGrip, Dbeaver, ...)
          and by most of the web interfaces (embedded UI, Grafana, Redash, ...).
       -->
-    <http_port>8123</http_port>
+    <!-- <http_port>8123</http_port> -->
+    <http_port>ALLOCATED_HTTP_PORT</http_port>
 
     <!-- Port for interaction by native protocol with:
          - clickhouse-client and other native ClickHouse tools (clickhouse-benchmark);
@@ -152,7 +153,7 @@
          (this protocol is also informally called as "the TCP protocol");
          See also 'tcp_port_secure' for secure connections.
     -->
-    <tcp_port>9000</tcp_port>
+    <!-- <tcp_port>9000</tcp_port> -->
 
     <!-- Chunked capabilities for native protocol by server.
          Can be enabled separately for send and receive channels.
@@ -172,12 +173,12 @@
     <!-- Compatibility with MySQL protocol.
          ClickHouse will pretend to be MySQL for applications connecting to this port.
     -->
-    <mysql_port>9004</mysql_port>
+    <!-- <mysql_port>9004</mysql_port> -->
 
     <!-- Compatibility with PostgreSQL protocol.
          ClickHouse will pretend to be PostgreSQL for applications connecting to this port.
     -->
-    <postgresql_port>9005</postgresql_port>
+    <!-- <postgresql_port>9005</postgresql_port> -->
 
     <!-- HTTP API with TLS (HTTPS).
          You have to configure certificate to enable this interface.
@@ -204,7 +205,7 @@
          Data transferred over connections to this port should not go through untrusted networks.
          See also 'interserver_https_port'.
       -->
-    <interserver_http_port>9009</interserver_http_port>
+    <!-- <interserver_http_port>9009</interserver_http_port> -->
 
     <!-- Port for communication between replicas with TLS.
          You have to configure certificate to enable this interface.
@@ -299,7 +300,8 @@
     <!-- <enable_http_stacktrace/>true<enable_http_stacktrace>-->
 
     <!-- gRPC protocol (see src/Server/grpc_protos/clickhouse_grpc.proto for the API) -->
-    <grpc_port>9100</grpc_port>
+    <!-- <grpc_port>9100</grpc_port> -->
+    <grpc_port>ALLOCATED_INTERSERVER_GRPC_PORT</grpc_port>
     <grpc>
         <enable_ssl>false</enable_ssl>
 

@@ -30,13 +30,14 @@ logger = logging.getLogger(__name__)
 
 
 class ClickhouseClient():
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, username: str, password: str, http_port: int) -> None:
         self.username = username
         self.password = password
+        self.http_port = http_port
         self.table_name = None
 
     def create_client(self):
-        return clickhouse_connect.get_client(host="localhost", username=self.username, password=self.password)
+        return clickhouse_connect.get_client(host="localhost", username=self.username, password=self.password, port=self.http_port)
 
     def create_table(self, table_name: str, table_columns_and_types: list[tuple[str, str]] = None) -> None:
         def construct_create_table_query(table_name: str, table_columns_and_types: list[tuple[str, str]]) -> str:

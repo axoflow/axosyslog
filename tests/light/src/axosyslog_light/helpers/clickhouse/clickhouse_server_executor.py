@@ -31,33 +31,30 @@ from axosyslog_light.executors.process_executor import ProcessExecutor
 
 logger = logging.getLogger(__name__)
 
-CLICKHOUSE_SERVER_HTTP_PORT = 8123
-CLICKHOUSE_SERVER_TCP_PORT = 9000
-CLICKHOUSE_SERVER_MYSQL_EMULATION_PORT = 9004
-CLICKHOUSE_SERVER_POSTGRESQL_EMULATION_PORT = 9005
-CLICKHOUSE_SERVER_INTERSERVER_GRPC_PORT = 9009
-CLICKHOUSE_SERVER_INTERSERVER_GRPC_PORT_2 = 9100
-
 
 class ClickhouseServerExecutor():
     def __init__(self, testcase_parameters) -> None:
         self.process = None
-        self.clickhouse_server_ports = [
-            CLICKHOUSE_SERVER_HTTP_PORT,
-            CLICKHOUSE_SERVER_TCP_PORT,
-            CLICKHOUSE_SERVER_MYSQL_EMULATION_PORT,
-            CLICKHOUSE_SERVER_POSTGRESQL_EMULATION_PORT,
-            CLICKHOUSE_SERVER_INTERSERVER_GRPC_PORT,
-            CLICKHOUSE_SERVER_INTERSERVER_GRPC_PORT_2,
-        ]
+        self.clickhouse_server_ports = []
         copy_shared_file(testcase_parameters, "clickhouse_server_config.xml")
         copy_shared_file(testcase_parameters, "clickhouse_users.xml")
 
-    def start(self) -> None:
+    def start(self, clickhouse_ports) -> None:
         command = [
             "clickhouse-server", "start",
             "--config-file", "clickhouse_server_config.xml",
         ]
+
+        self.clickhouse_server_ports.append(clickhouse_ports.http_port)
+        self.clickhouse_server_ports.append(clickhouse_ports.grpc_port)
+
+        with open("clickhouse_server_config.xml", "r") as file:
+            config = file.read()
+        config = config.replace("ALLOCATED_HTTP_PORT", str(clickhouse_ports.http_port))
+        config = config.replace("ALLOCATED_INTERSERVER_GRPC_PORT", str(clickhouse_ports.grpc_port))
+        with open("clickhouse_server_config.xml", "w") as file:
+            file.write(config)
+
         self.process = ProcessExecutor().start(command, "clickhouse_server.stdout", "clickhouse_server.stderr")
         if wait_until_true_custom(lambda: psutil.Process(self.process.pid).children(), timeout=0.5):
             logger.info("Clickhouse server started with child process.")

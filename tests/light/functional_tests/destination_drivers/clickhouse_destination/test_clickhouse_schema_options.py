@@ -36,9 +36,10 @@ clickhouse_options = {
 }
 
 
-def configure_syslog_ng_with_clickhouse_dest(config, additional_clickhouse_options):
+def configure_syslog_ng_with_clickhouse_dest(config, additional_clickhouse_options, clickhouse_ports):
     generator_source = config.create_example_msg_generator_source(num=1, template=f'"{custom_input_msg}"')
     clickhouse_options_copy = clickhouse_options.copy()
+    clickhouse_options_copy.update({"url": f"'127.0.0.1:{clickhouse_ports.grpc_port}'"})
     if "proto_var" in additional_clickhouse_options:
         filterx = config.create_filterx(
             '''
@@ -52,11 +53,12 @@ def configure_syslog_ng_with_clickhouse_dest(config, additional_clickhouse_optio
         clickhouse_options_copy.update(additional_clickhouse_options)
         clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
         config.create_logpath(statements=[generator_source, clickhouse_destination])
+    clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
     return config, clickhouse_destination
 
 
-def bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request):
-    clickhouse_server.start()
+def bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports):
+    clickhouse_server.start(clickhouse_ports)
     clickhouse_destination.create_table(clickhouse_options["table"], [("message", "String")])
     request.addfinalizer(lambda: clickhouse_destination.delete_table())
 
@@ -103,13 +105,13 @@ schema_options = [
 
 
 @pytest.mark.parametrize("schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error", schema_options, ids=range(len(schema_options)))
-def test_clickhouse_destination_schema_option(request, config, syslog_ng, clickhouse_server, schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error):
-    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"schema": schema_option_value})
+def test_clickhouse_destination_schema_option(request, config, syslog_ng, clickhouse_server, schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error, clickhouse_ports):
+    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"schema": schema_option_value}, clickhouse_ports)
 
     if not syslog_ng_started:
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)
 
@@ -121,14 +123,14 @@ protobuf_schema_options = [
 
 
 @pytest.mark.parametrize("protobuf_schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error", protobuf_schema_options, ids=range(len(protobuf_schema_options)))
-def test_clickhouse_destination_protobuf_schema_option(request, testcase_parameters, config, syslog_ng, clickhouse_server, protobuf_schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error):
-    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"protobuf_schema": protobuf_schema_option_value})
+def test_clickhouse_destination_protobuf_schema_option(request, testcase_parameters, config, syslog_ng, clickhouse_server, protobuf_schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error, clickhouse_ports):
+    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"protobuf_schema": protobuf_schema_option_value}, clickhouse_ports)
 
     if not syslog_ng_started:
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
         copy_shared_file(testcase_parameters, "clickhouse.proto")
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)
 
@@ -142,14 +144,14 @@ server_side_schema_options = [
 
 
 @pytest.mark.parametrize("server_side_schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error", server_side_schema_options, ids=range(len(server_side_schema_options)))
-def test_clickhouse_destination_server_side_schema_option(request, testcase_parameters, config, syslog_ng, clickhouse_server, server_side_schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error):
-    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"server_side_schema": server_side_schema_option_value, "schema": '"message" "String" => "$MSG"'})
+def test_clickhouse_destination_server_side_schema_option(request, testcase_parameters, config, syslog_ng, clickhouse_server, server_side_schema_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error, clickhouse_ports):
+    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"server_side_schema": server_side_schema_option_value, "schema": '"message" "String" => "$MSG"'}, clickhouse_ports)
 
     if not syslog_ng_started:
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
         copy_shared_file(testcase_parameters, "clickhouse.proto")
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)
 
@@ -162,13 +164,13 @@ proto_var_options = [
 
 
 @pytest.mark.parametrize("proto_var_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error", proto_var_options, ids=range(len(proto_var_options)))
-def test_clickhouse_destination_proto_var_option(request, testcase_parameters, config, syslog_ng, clickhouse_server, proto_var_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error):
-    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"proto_var": proto_var_option_value})
+def test_clickhouse_destination_proto_var_option(request, testcase_parameters, config, syslog_ng, clickhouse_server, proto_var_option_value, syslog_ng_started, syslog_ng_start_error, message_arrived_in_db, message_arrival_error, clickhouse_ports):
+    config, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, {"proto_var": proto_var_option_value}, clickhouse_ports)
 
     if not syslog_ng_started:
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
         copy_shared_file(testcase_parameters, "clickhouse.proto")
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)

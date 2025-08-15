@@ -38,7 +38,6 @@ from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.common.session_data import get_session_data
 from axosyslog_light.common.session_data import SessionData
-from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_SERVER_HTTP_PORT
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import ClickhouseServerExecutor
 from axosyslog_light.helpers.loggen.loggen import Loggen
 from axosyslog_light.helpers.loggen.loggen_docker_executor import LoggenDockerExecutor
@@ -306,7 +305,7 @@ def setup(request):
     number_of_open_fds = len(psutil.Process().open_files())
     assert base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
     for net_conn in psutil.Process().net_connections(kind="inet"):
-        if net_conn.raddr.port == CLICKHOUSE_SERVER_HTTP_PORT and net_conn.status == "CLOSE_WAIT":
+        if net_conn.status == "CLOSE_WAIT":
             # This is a workaround for clickhouse-connect not closing connections properly
             continue
         assert False, "Previous testcase has unclosed opened sockets: {}".format(net_conn)
@@ -336,3 +335,13 @@ def port_allocator():
         return port
 
     return get_next_port
+
+
+@pytest.fixture
+def clickhouse_ports(port_allocator):
+    class ClickhousePorts:
+        def __init__(self):
+            self.http_port = port_allocator()
+            self.grpc_port = port_allocator()
+
+    return ClickhousePorts()
