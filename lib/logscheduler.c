@@ -228,7 +228,7 @@ _flush_batches(gpointer s)
   for (gint partition_index = 0; partition_index < self->options->num_partitions; partition_index++)
     _move_batch_to_partition(self, thread_state, partition_index);
 
-  thread_state->num_messages = 0;
+  thread_state->batch_callback_registered = FALSE;
   return NULL;
 }
 
@@ -237,8 +237,11 @@ static void
 _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg,
               const LogPathOptions *path_options)
 {
-  if (thread_state->num_messages == 0)
-    main_loop_worker_register_batch_callback(&thread_state->batch_callback);
+  if (!thread_state->batch_callback_registered)
+    {
+      main_loop_worker_register_batch_callback(&thread_state->batch_callback);
+      thread_state->batch_callback_registered = TRUE;
+    }
 
   gboolean should_flush;
   guint partition_index = _get_partition_index(self, thread_state, msg, &should_flush);
@@ -246,7 +249,6 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
   LogMessageQueueNode *node;
   node = log_msg_alloc_queue_node(msg, path_options);
   iv_list_add_tail(&node->list, &thread_state->batch_by_partition[partition_index]);
-  thread_state->num_messages++;
   log_msg_unref(msg);
 
   if (should_flush)
