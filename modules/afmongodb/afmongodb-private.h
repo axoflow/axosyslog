@@ -24,10 +24,11 @@
 #define AFMONGODB_PRIVATE_H_
 
 #include "syslog-ng.h"
-#include "mongoc.h"
 #include "logthrdest/logthrdestdrv.h"
 #include "template/templates.h"
 #include "value-pairs/value-pairs.h"
+
+#include <mongoc/mongoc.h>
 
 typedef struct _MongoDBDestDriver
 {

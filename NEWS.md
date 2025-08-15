@@ -81,6 +81,7 @@ Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/
 
   * The base of the AxoSyslog container image is updated to Alpine 3.22
   ([#758](https://github.com/axoflow/axosyslog/pull/758))
+  * `mongodb()`: support libmongoc v2
 
 
 [1] syslog-ng is a trademark of One Identity.

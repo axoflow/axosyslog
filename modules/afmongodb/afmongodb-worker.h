@@ -26,8 +26,9 @@
 #define AFMONGODB_WORKER_H_INCLUDED
 
 #include "syslog-ng.h"
-#include "mongoc.h"
 #include "logthrdest/logthrdestdrv.h"
+
+#include <mongoc/mongoc.h>
 
 typedef struct MongoDBDestWorker
 {
