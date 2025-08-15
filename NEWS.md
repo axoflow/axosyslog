@@ -1,4 +1,4 @@
-4.15.0
+4.16.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -11,144 +11,76 @@ Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/
 
 ## Features
 
-  * `http`: Added templating support to `body-prefix()`
-
-    In case of batching the templates in `body-prefix()` will be calculated
-    from the first message. Make sure to use `worker-partition-key()` to
-    group similar messages together.
-
-    Literal dollar signs (`$`) used in `body-prefix()` must be escaped like `$$`.
-
-    Example usage:
-    ```
-    http(
-      ...
-      body-prefix('{"log_type": "$log_type", "entries": [')
-      body('"$MSG"')
-      delimiter(",")
-      body-suffix("]}")
-
-      batch-lines(1000)
-      batch-timeout(1000)
-      worker-partition-key("$log_type")
-    );
-    ```
-    ([#731](https://github.com/axoflow/axosyslog/pull/731))
-
-  * `cloud-auth()`: Added `scope()` option for `gcp(service-account())`
-
-    Can be used for authentications using scope instead of audiance.
-    For more info, see: https://google.aip.dev/auth/4111#scope-vs-audience
-
-    Example usage:
-    ```
-    http(
-      ...
-      cloud-auth(
-        gcp(
-          service-account(
-            key("/path/to/secret.json")
-            scope("https://www.googleapis.com/auth/example-scope")
-          )
-        )
-      )
-    );
-    ```
-    ([#738](https://github.com/axoflow/axosyslog/pull/738))
-
-  * affile: Add ability to refine the `wildcard-file()` `filename-pattern()` option with `exclude-pattern()`, to exclude some matching files. For example, match all `*.log` but exclude `*.?.log`.
-    ([#719](https://github.com/axoflow/axosyslog/pull/719))
-
-  * bigquery(), google-pubsub-grpc(): add service-account-key option to ADC auth mode
-
-    Example usage:
-    ```
-    destination {
-            google-pubsub-grpc(
-                project("test")
-                topic("test")
-                auth(adc(service-account-key("absolute path to file")))
-           );
-    };
-    ```
-
-    Note: File path must be the absolute path.
-    ([#732](https://github.com/axoflow/axosyslog/pull/732))
+  * New `$PROTO_NAME` macro: add a $PROTO_NAME macro that expands to "tcp" or
+    "udp" depending on the transport used by syslog-ng.
+    ([#724](https://github.com/axoflow/axosyslog/pull/724))
 
 
 ## Bugfixes
 
-  * gRPC based destinations: Gracefully stop if field name is not valid.
-    ([#739](https://github.com/axoflow/axosyslog/pull/739))
+  * Fix memory leaks during configuration parsing
+    ([#755](https://github.com/axoflow/axosyslog/pull/755))
 
-  * `clickhouse()`: Fixed setting `UINT8` protobuf type.
-    ([#739](https://github.com/axoflow/axosyslog/pull/739))
+  * `grpc` based destinations: Fixed a race condition around `syslogng_output_grpc_requests_total` metrics
+    ([#754](https://github.com/axoflow/axosyslog/pull/754))
 
-  * `disk-buffer()` metrics: fix showing used buffers as both active and abandoned
-    ([#726](https://github.com/axoflow/axosyslog/pull/726))
+  * `$PEER_PORT`: fix the value for the PEER_PORT macro, as it was incorrectly
+    reversing the digits in the port value, port 514 would become port 415.
+    ([#724](https://github.com/axoflow/axosyslog/pull/724))
+
+  * `google-pubsub()`, `logscale()`, `openobserver()`, `splunk()`, and other batching destinations: fix slowdown
+
+    The default value of `batch-timeout()` is now 0.
+    This prevents artificial slowdowns in destinations when flow control is enabled
+    and the `log-iw-size()` option of sources is set to a value lower than `batch-lines()`.
+
+    If you enable `batch-timeout()`, you can further improve batching performance,
+    but you must also adjust the `log-iw-size()` option of your sources accordingly:
+
+    `log-iw-size / max-connections >= batch-lines * workers`
+    ([#753](https://github.com/axoflow/axosyslog/pull/753))
 
 
 ## FilterX features
 
-  * Add `str_replace()` function
-
-    For example:
-    ```
-    filterx {
-        dal = "érik a szőlő, hajlik a vessző";
-        str_replace(dal, "a", "egy") == "érik egy szőlő, hegyjlik egy vessző";
-
-        dal = "érik a szőlő, hajlik a vessző";
-        str_replace(dal, "a", "egy", 1) == "érik egy szőlő, hajlik a vessző";
-    };
-    ```
-    ([#725](https://github.com/axoflow/axosyslog/pull/725))
-
-  * Support string slicing
-
-    For example:
-    ```
-    filterx {
-        str = "example";
-        idx = 3;
-        str[idx..5] == "mp";
-        str[..idx] == "exa";
-        str[idx..] == "mple";
-    };
-    ```
-    ([#720](https://github.com/axoflow/axosyslog/pull/720))
-
-  * Null and error-safe dict elements
-
-    For example, the following fields won't be set:
-    ```
-    $MSG = {
-        "nullidontwant":?? null,
-        "erroridontwant":?? nonexistingvar,
-    };
-    ```
-    ([#736](https://github.com/axoflow/axosyslog/pull/736))
+  * `str_strip()`, `str_lstrip()`, `str_rstrip()`: new string transformation functions to remove leading/trailing whitespaces from a string
+    ([#745](https://github.com/axoflow/axosyslog/pull/745))
 
 
 ## FilterX bugfixes
 
-  * `format_xml()`: Fixed an occasionally occurring crash
-
-    In case the input was not a `dict`, a crash could occour during logging the error.
-    ([#730](https://github.com/axoflow/axosyslog/pull/730))
-
-  * `parse_windows_eventlog_xml()`: Fixed a `Data` misparsing
-
-    "<Data Name="key" />" is now parsed correctly, identical to "<Data Name="key"></Data>"
-    ([#722](https://github.com/axoflow/axosyslog/pull/722))
-
-  * `format_xml()`, `format_windows_eventlog_xml()`: Fixed escaping in element values
+  * `in` operator: fix crash, that happened, when the list was declared as an operand
 
     Example:
     ```
-    <b> -> &lt;b&gt;
+    if ("test" in ["foo", "bar", "test"]) {
+      $MSG = "YES";
+    };
     ```
-    ([#743](https://github.com/axoflow/axosyslog/pull/743))
+    ([#759](https://github.com/axoflow/axosyslog/pull/759))
+
+  * `parse_cef()`, `parse_leef()`: Renamed some parsed header fields.
+
+    **These are breaking changes**
+
+    The motivation behind the renaming is that these names were too
+    generic, and there is a chance to find them in the extensions.
+
+    `parse_cef()`:
+      * `version` -> `cef_version`
+      * `name` -> `event_name`
+
+    `parse_leef()`:
+      * `version` -> `leef_version`
+      * `vendor` -> `vendor_name`
+      * `delimiter` -> `leef_delimiter`
+    ([#748](https://github.com/axoflow/axosyslog/pull/748))
+
+
+## Other changes
+
+  * The base of the AxoSyslog container image is updated to Alpine 3.22
+  ([#758](https://github.com/axoflow/axosyslog/pull/758))
 
 
 [1] syslog-ng is a trademark of One Identity.
@@ -171,4 +103,4 @@ of AxoSyslog, contribute.
 We would like to thank the following people for their contribution:
 
 Andras Mitzki, Attila Szakacs, Balazs Scheidler, László Várady,
-Ross Williams, Szilard Parrag, Tamás Kosztyu
+Tamás Kosztyu
