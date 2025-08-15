@@ -218,10 +218,10 @@ _map_grpc_status_to_log_threaded_result(const ::grpc::Status &status)
     }
 
 temporary_error:
-  msg_debug("Google Pub/Sub server responded with a temporary error status code, retrying after time-reopen() seconds",
-            evt_tag_int("error_code", status.error_code()),
-            evt_tag_str("error_message", status.error_message().c_str()),
-            evt_tag_str("error_details", status.error_details().c_str()));
+  msg_info("Google Pub/Sub server responded with a temporary error status code, retrying after time-reopen() seconds",
+           evt_tag_int("error_code", status.error_code()),
+           evt_tag_str("error_message", status.error_message().c_str()),
+           evt_tag_str("error_details", status.error_details().c_str()));
   return LTR_NOT_CONNECTED;
 
 permanent_error:
