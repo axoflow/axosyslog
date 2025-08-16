@@ -56,6 +56,7 @@ static CfgLexerKeyword filterx_keywords[] =
   { "drop",               KW_DROP },
   { "done",               KW_DONE },
   { "break",              KW_BREAK },
+  { "dpath",              KW_DPATH },
 
   { CFG_KEYWORD_STOP },
 };
