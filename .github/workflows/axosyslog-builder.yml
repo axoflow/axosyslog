@@ -69,8 +69,8 @@ jobs:
         run: |
           echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
           if [ $PLATFORM = "linux/arm/v7" ]; then
-              # on armv7 we only do a minimal rebuild
-              REBUILD_DEPS=main/json-c
+              # do not rebuild packages on armv7
+              REBUILD_DEPS=""
           fi
           echo "REBUILD_DEPS=$REBUILD_DEPS" >> $GITHUB_ENV
 
