@@ -146,6 +146,7 @@ static void
 _partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe)
 {
   main_loop_io_worker_job_init(&partition->io_job);
+  partition->io_job.type = MLIOJ_PROCESSING;
   partition->io_job.user_data = partition;
   partition->io_job.work = _work;
   partition->io_job.completion = _complete;

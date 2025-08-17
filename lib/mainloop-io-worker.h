@@ -27,16 +27,26 @@
 
 #include <iv_work.h>
 
+typedef enum
+{
+  MLIOJ_SOURCE,
+  MLIOJ_DESTINATION,
+  MLIOJ_PROCESSING,
+  MLIOJ_MAX,
+} MainLoopIOWorkerJobType;
+
+
 typedef struct _MainLoopIOWorkerJob
 {
+  struct iv_work_item work_item;
   void (*engage)(gpointer user_data);
   void (*work)(gpointer user_data, gpointer arg);
   void (*completion)(gpointer user_data, gpointer arg);
   void (*release)(gpointer user_data);
+  MainLoopIOWorkerJobType type;
   gpointer user_data;
   gpointer arg;
   gboolean working;
-  struct iv_work_item work_item;
 } MainLoopIOWorkerJob;
 
 void main_loop_io_worker_job_init(MainLoopIOWorkerJob *self);
