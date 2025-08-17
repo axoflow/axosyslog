@@ -323,6 +323,11 @@ LogScheduler *
 log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
 {
   gint max_threads = main_loop_worker_get_max_number_of_threads();
+
+  /* do not allocate thread states in "bypass" mode */
+  if (options->num_partitions == 0)
+    max_threads = 0;
+
   LogScheduler *self = g_malloc0(sizeof(LogScheduler) + max_threads * sizeof(LogSchedulerThreadState));
   self->num_input_threads = max_threads;
   self->options = options;
