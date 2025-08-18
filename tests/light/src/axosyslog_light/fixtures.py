@@ -104,6 +104,62 @@ def pytest_addoption(parser):
         help="Path for report files folder. Default form: 'reports/<current_date>'",
     )
 
+    parser.addoption(
+        "--msg-size",
+        action="store",
+        default=[256],
+        type=lambda s: [int(x) for x in s.split(",")],
+        help="Comma-separated list of message sizes in bytes for performance tests. Example: 512,1024. Default: 256",
+    )
+
+    parser.addoption(
+        "--input-msg-type",
+        action="store",
+        default=["json"],
+        type=lambda s: [x for x in s.split(",")],
+        help="Comma-separated list of input message types for performance tests. Example: json,xml. Default: json",
+    )
+
+    parser.addoption(
+        "--filterx-rule",
+        action="store",
+        default=["empty"],
+        type=lambda s: [x for x in s.split(",")],
+        help="Comma-separated list of filterx rule types for performance tests. Default: empty",
+    )
+
+    parser.addoption(
+        "--destination",
+        action="store",
+        default=["empty"],
+        type=lambda s: [x for x in s.split(",")],
+        help="Comma-separated list of destinations for performance tests. Default: empty",
+    )
+
+    parser.addoption(
+        "--msg-counter",
+        action="store",
+        default=0,
+        type=int,
+        help="Number of messages to send for performance tests. Default: 0",
+    )
+
+    parser.addoption(
+        "--run-time",
+        action="store",
+        default=30,
+        type=int,
+        help="Number of seconds to run the performance tests. Default: 30",
+    )
+
+    parser.addoption(
+        "--flow-control",
+        action="store",
+        default=["flow-control-off"],
+        type=lambda s: [x for x in s.split(",")],
+        help="Comma-separated list of flow control options for performance tests. Default: flow-control-off",
+    )
+
 
 def get_current_date():
     return datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
