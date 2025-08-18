@@ -81,6 +81,7 @@ log_scheduler_pipe_new(GlobalConfig *cfg)
   self->super.deinit = _deinit;
   self->super.queue = _queue;
   self->super.free_fn = _free;
+  self->super.plugin_name = g_strdup("scheduler");
   log_scheduler_options_defaults(&self->scheduler_options);
   log_pipe_add_info(&self->super, "scheduler");
   return &self->super;
