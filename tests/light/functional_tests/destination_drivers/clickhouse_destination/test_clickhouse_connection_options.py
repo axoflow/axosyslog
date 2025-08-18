@@ -36,13 +36,16 @@ clickhouse_options = {
 }
 
 
-def test_clickhouse_destination_valid_options_db_run(request, config, syslog_ng, clickhouse_server):
+def test_clickhouse_destination_valid_options_db_run(request, config, syslog_ng, clickhouse_server, clickhouse_ports):
     custom_input_msg = f"test message {str(uuid.uuid4())}"
     generator_source = config.create_example_msg_generator_source(num=1, template=f'{stringify(custom_input_msg)}')
-    clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options)
+    clickhouse_options_copy = clickhouse_options.copy()
+    clickhouse_options_copy.update({"url": f"'127.0.0.1:{clickhouse_ports.grpc_port}'"})
+    clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
+    clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
     config.create_logpath(statements=[generator_source, clickhouse_destination])
 
-    clickhouse_server.start()
+    clickhouse_server.start(clickhouse_ports)
     clickhouse_destination.create_table(clickhouse_options["table"], [("message", "String")])
     request.addfinalizer(lambda: clickhouse_destination.delete_table())
 
@@ -55,12 +58,14 @@ def test_clickhouse_destination_valid_options_db_run(request, config, syslog_ng,
 
 
 @pytest.mark.xfail(reason="known issue, see issue #747")
-def test_clickhouse_destination_valid_options_db_not_run_and_reconnect(request, config, syslog_ng, clickhouse_server):
+def test_clickhouse_destination_valid_options_db_not_run_and_reconnect(request, config, syslog_ng, clickhouse_server, clickhouse_ports):
     custom_input_msg = f"test message {str(uuid.uuid4())}"
     generator_source = config.create_example_msg_generator_source(num=1, template=f'{stringify(custom_input_msg)}')
     clickhouse_options_copy = clickhouse_options.copy()
     clickhouse_options_copy.update({"time_reopen": 1})
+    clickhouse_options_copy.update({"url": f"'127.0.0.1:{clickhouse_ports.grpc_port}'"})
     clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
+    clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
     config.create_logpath(statements=[generator_source, clickhouse_destination])
 
     syslog_ng.start(config)
@@ -72,7 +77,7 @@ def test_clickhouse_destination_valid_options_db_not_run_and_reconnect(request, 
     assert syslog_ng.wait_for_message_in_console_log("Message added to ClickHouse batch") != []
     assert syslog_ng.wait_for_message_in_console_log("ClickHouse server responded with a temporary error status code") != []
 
-    clickhouse_server.start()
+    clickhouse_server.start(clickhouse_ports)
     clickhouse_destination.create_table(clickhouse_options["table"], [("message", "String")])
     request.addfinalizer(lambda: clickhouse_destination.delete_table())
 
@@ -90,14 +95,22 @@ def test_clickhouse_destination_valid_options_db_not_run_and_reconnect(request, 
         ("default", "test_table", "default", f'{stringify("invalid_password")}'),
     ], ids=["invalid_database", "invalid_table", "invalid_user", "invalid_password"],
 )
-def test_clickhouse_destination_invalid_options_db_run(request, config, syslog_ng, clickhouse_server, ch_database, ch_table, ch_user, ch_password):
+def test_clickhouse_destination_invalid_options_db_run(request, config, syslog_ng, clickhouse_server, ch_database, ch_table, ch_user, ch_password, clickhouse_ports):
     custom_input_msg = f"test message {str(uuid.uuid4())}"
     generator_source = config.create_example_msg_generator_source(num=1, template=f'{stringify(custom_input_msg)}')
-    clickhouse_destination = config.create_clickhouse_destination(database=ch_database, table=ch_table, user=ch_user, password=ch_password, schema='"message" "String" => "$MSG"')
+    clickhouse_destination = config.create_clickhouse_destination(
+        database=ch_database,
+        table=ch_table,
+        user=ch_user,
+        password=ch_password,
+        schema='"message" "String" => "$MSG"',
+        url=f"'127.0.0.1:{clickhouse_ports.grpc_port}'",
+    )
+    clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
     config.create_logpath(statements=[generator_source, clickhouse_destination])
 
-    clickhouse_server.start()
-    clickhouse_client = ClickhouseClient(username="default", password="password")
+    clickhouse_server.start(clickhouse_ports)
+    clickhouse_client = ClickhouseClient(username="default", password="password", http_port=clickhouse_ports.http_port)
     clickhouse_client.create_table("test_table", [("message", "String")])
     request.addfinalizer(lambda: clickhouse_client.delete_table())
 
@@ -137,24 +150,6 @@ def test_clickhouse_destination_missing_mandatory_options(config, syslog_ng, cli
     assert syslog_ng.wait_for_message_in_console_log("Error initializing ClickHouse destination, database(), table() and user() are mandatory options") != []
 
 
-def test_clickhouse_destination_valid_url_option_db_run(request, config, syslog_ng, clickhouse_server):
-    custom_input_msg = f"test message {str(uuid.uuid4())}"
-    generator_source = config.create_example_msg_generator_source(num=1, template=f'{stringify(custom_input_msg)}')
-    clickhouse_options_copy = clickhouse_options.copy()
-    clickhouse_options_copy.update({"url": "'127.0.0.1:9100'"})
-    clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
-    config.create_logpath(statements=[generator_source, clickhouse_destination])
-
-    clickhouse_server.start()
-    clickhouse_destination.create_table(clickhouse_options_copy["table"], [("message", "String")])
-    request.addfinalizer(lambda: clickhouse_destination.delete_table())
-
-    syslog_ng.start(config)
-
-    assert clickhouse_destination.get_stats()["written"] == 1
-    assert clickhouse_destination.read_logs() == [{"message": custom_input_msg}]
-
-
 invalid_url_values = [
     ("'localhost'"),  # Missing port
     ("'invalid-domain:1234'"),  # Invalid domain
@@ -167,15 +162,16 @@ invalid_url_values = [
 
 
 @pytest.mark.parametrize("invalid_option_value", invalid_url_values, ids=range(len(invalid_url_values)))
-def test_clickhouse_destination_invalid_url_option_db_run(request, config, syslog_ng, clickhouse_server, invalid_option_value):
+def test_clickhouse_destination_invalid_url_option_db_run(request, config, syslog_ng, clickhouse_server, invalid_option_value, clickhouse_ports):
     custom_input_msg = f"test message {str(uuid.uuid4())}"
     generator_source = config.create_example_msg_generator_source(num=1, template=f'{stringify(custom_input_msg)}')
     clickhouse_options_copy = clickhouse_options.copy()
     clickhouse_options_copy.update({"url": invalid_option_value})
     clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
+    clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
     config.create_logpath(statements=[generator_source, clickhouse_destination])
 
-    clickhouse_server.start()
+    clickhouse_server.start(clickhouse_ports)
     clickhouse_destination.create_table("test_table", [("message", "String")])
 
     syslog_ng.start(config)

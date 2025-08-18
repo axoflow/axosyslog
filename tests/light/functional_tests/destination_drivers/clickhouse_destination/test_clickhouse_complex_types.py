@@ -43,7 +43,7 @@ clickhouse_options = {
 }
 
 
-def configure_syslog_ng_with_clickhouse_dest(config, proto_file_data):
+def configure_syslog_ng_with_clickhouse_dest(config, proto_file_data, clickhouse_ports):
     file_source = config.create_file_source(file_name="input.log")
     clickhouse_options_copy = clickhouse_options.copy()
     filterx_expr = f'''
@@ -53,13 +53,15 @@ def configure_syslog_ng_with_clickhouse_dest(config, proto_file_data):
     filterx = config.create_filterx(filterx_expr)
     clickhouse_options_copy.update({"proto_var": "$proto_var_value"})
     clickhouse_options_copy.update({"server_side_schema": config.stringify(proto_file_data["server_side_schema_value"])})
+    clickhouse_options_copy.update({"url": f"'127.0.0.1:{clickhouse_ports.grpc_port}'"})
     clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
+    clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
     config.create_logpath(statements=[file_source, filterx, clickhouse_destination])
     return config, file_source, clickhouse_destination
 
 
-def bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_table_schema):
-    clickhouse_server.start()
+def bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_table_schema, clickhouse_ports):
+    clickhouse_server.start(clickhouse_ports)
     clickhouse_destination.create_table(clickhouse_options["table"], clickhouse_table_schema)
     request.addfinalizer(lambda: clickhouse_destination.delete_table())
 
@@ -72,11 +74,11 @@ tc_variants = [
 
 
 @pytest.mark.parametrize("input_data, table_schema, proto_file_data, expected_output_data", tc_variants, ids=range(len(tc_variants)))
-def test_clickhouse_destination_complex_types(request, testcase_parameters, config, syslog_ng, clickhouse_server, input_data, table_schema, proto_file_data, expected_output_data):
+def test_clickhouse_destination_complex_types(request, testcase_parameters, config, syslog_ng, clickhouse_server, input_data, table_schema, proto_file_data, expected_output_data, clickhouse_ports):
     copy_shared_file(testcase_parameters, proto_file_data["proto_file_name"])
 
-    config, file_source, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, proto_file_data)
-    bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, table_schema)
+    config, file_source, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, proto_file_data, clickhouse_ports)
+    bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, table_schema, clickhouse_ports)
 
     input_msg = f'<113>Jul 17 14:47:53 testhost testprog {input_data}'
     file_source.write_log(input_msg, 1)
