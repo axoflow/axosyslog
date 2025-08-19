@@ -62,8 +62,8 @@ _slot_setup_socket(EBPFReusePort *self, AFSocketSetupSocketSignalData *data)
       goto error;
     }
 
-  msg_debug("ebpf-reuseport(): eBPF reuseport group randomizer applied",
-            evt_tag_int("sock", data->sock));
+  msg_info("ebpf-reuseport(): eBPF reuseport group randomizer applied",
+           evt_tag_int("sock", data->sock));
   return;
 error:
   data->failure = TRUE;
