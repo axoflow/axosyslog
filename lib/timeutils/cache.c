@@ -181,7 +181,7 @@ _clean_timeutils_cache(void)
   state.tzname[1] = NULL;
 }
 
-static void
+static inline void
 _validate_timeutils_cache(void)
 {
   gint gencounter = g_atomic_int_get(&global_state.cache_gencounter);
