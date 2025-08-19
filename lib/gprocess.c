@@ -104,6 +104,8 @@ static GProcessKind process_kind = G_PK_STARTUP;
 #if SYSLOG_NG_ENABLE_LINUX_CAPS
 static int have_capsyslog = FALSE;
 static cap_value_t cap_syslog;
+static int have_capbpf = FALSE;
+static cap_value_t cap_bpf;
 #endif
 #ifdef __APPLE__
 #include <crt_externs.h>
@@ -281,6 +283,13 @@ g_process_enable_cap(const gchar *cap_name)
         return FALSE;
     }
 
+  if (capability == cap_bpf && !have_capbpf)
+    {
+      ret = _check_and_get_cap_from_text("cap_sys_admin", &capability);
+      if (ret != CAP_SUPPORTED)
+        return FALSE;
+    }
+
   cap_t caps = cap_get_proc();
   if (!caps)
     return FALSE;
@@ -402,6 +411,18 @@ g_process_check_cap_syslog(void)
     have_capsyslog = TRUE;
 
   return have_capsyslog;
+}
+
+gboolean
+g_process_check_cap_bpf(void)
+{
+  if (have_capbpf)
+    return TRUE;
+
+  if (_cap_supported("cap_bpf", &cap_bpf))
+    have_capbpf = TRUE;
+
+  return have_capbpf;
 }
 
 gboolean

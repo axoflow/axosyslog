@@ -223,6 +223,8 @@ setup_caps (void)
     g_process_set_caps(capsstr_syslog);
   else
     g_process_set_caps(capsstr_sys_admin);
+
+  g_process_check_cap_bpf();
 }
 #else
 
