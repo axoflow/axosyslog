@@ -43,8 +43,8 @@ static Plugin xml_plugins[] =
     .name = "windows-eventlog-xml-parser",
     .parser = &xml_parser,
   },
-  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_xml),
-  FILTERX_GENERATOR_FUNCTION_PLUGIN(parse_windows_eventlog_xml),
+  FILTERX_FUNCTION_PLUGIN(parse_xml),
+  FILTERX_FUNCTION_PLUGIN(parse_windows_eventlog_xml),
   FILTERX_FUNCTION_PLUGIN(format_xml),
   FILTERX_FUNCTION_PLUGIN(format_windows_eventlog_xml),
 };

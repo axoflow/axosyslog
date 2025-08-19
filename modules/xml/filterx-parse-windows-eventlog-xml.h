@@ -26,8 +26,8 @@
 
 #include "filterx-parse-xml.h"
 
-FILTERX_GENERATOR_FUNCTION_DECLARE(parse_windows_eventlog_xml);
+FILTERX_FUNCTION_DECLARE(parse_windows_eventlog_xml);
 
-FilterXExpr *filterx_generator_function_parse_windows_eventlog_xml_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_parse_windows_eventlog_xml_new(FilterXFunctionArgs *args, GError **error);
 
 #endif

@@ -36,7 +36,7 @@
 #include <string.h>
 
 static FilterXExpr *
-_create_expr(const gchar *raw_xml, FilterXObject *fillable)
+_create_expr(const gchar *raw_xml)
 {
   FilterXFunctionArg *input = filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(raw_xml, -1)));
   GList *args_list = g_list_append(NULL, input);
@@ -44,11 +44,8 @@ _create_expr(const gchar *raw_xml, FilterXObject *fillable)
   FilterXFunctionArgs *args = filterx_function_args_new(args_list, &error);
   g_assert(!error);
 
-  FilterXExpr *func = filterx_generator_function_parse_windows_eventlog_xml_new(args, &error);
+  FilterXExpr *func = filterx_function_parse_windows_eventlog_xml_new(args, &error);
   g_assert(!error);
-
-  FilterXExpr *fillable_expr = filterx_non_literal_new(fillable);
-  filterx_generator_set_fillable(func, fillable_expr);
 
   g_error_free(error);
   return func;
@@ -98,7 +95,7 @@ _create_input_from_event_data(const gchar *event_data_xml)
 static void
 _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_eventdata_json)
 {
-  FilterXExpr *func = _create_expr(_create_input_from_event_data(event_data_xml), filterx_dict_new());
+  FilterXExpr *func = _create_expr(_create_input_from_event_data(event_data_xml));
 
   FilterXObject *result = init_and_eval_expr(func);
   cr_assert(result);
@@ -139,7 +136,7 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
 static void
 _assert_parse_fail(const gchar *xml)
 {
-  FilterXExpr *func = _create_expr(xml, filterx_dict_new());
+  FilterXExpr *func = _create_expr(xml);
 
   FilterXObject *result = init_and_eval_expr(func);
   cr_assert(!result);
