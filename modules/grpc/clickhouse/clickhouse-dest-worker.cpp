@@ -53,6 +53,48 @@ DestWorker::should_initiate_flush()
   return this->current_batch_bytes >= this->get_owner()->batch_bytes;
 }
 
+bool
+DestWorker::insert_query_data_from_protovar(LogMessage *msg)
+{
+  DestDriver *owner_ = this->get_owner();
+  ssize_t len;
+  const gchar *serialized = owner_->format_proto_var(msg, &len);
+  if (!serialized)
+    return false;
+
+  google::protobuf::io::OstreamOutputStream zero_copy_output(&this->query_data);
+  google::protobuf::io::CodedOutputStream coded_output(&zero_copy_output);
+  coded_output.WriteVarint32(len);
+  coded_output.WriteRaw(serialized, len);
+  return true;
+}
+
+bool
+DestWorker::insert_query_data_from_jsonvar(LogMessage *msg)
+{
+  DestDriver *owner_ = this->get_owner();
+  ssize_t len;
+  const gchar *json_str = owner_->format_json_var(msg, &len);
+  if (!json_str)
+    return false;
+  this->query_data.write(json_str, len);
+  this->query_data.put('\n');
+  return true;
+}
+
+bool
+DestWorker::insert_query_data_from_schema(LogMessage *msg)
+{
+  DestDriver *owner_ = this->get_owner();
+  google::protobuf::Message *message = nullptr;
+  message = owner_->log_message_protobuf_formatter.format(msg, this->super->super.seq_num);
+  if (!message)
+    return false;
+  bool success = google::protobuf::util::SerializeDelimitedToOstream(*message, &this->query_data);
+  delete message;
+  return success;
+}
+
 LogThreadedResult
 DestWorker::insert(LogMessage *msg)
 {
@@ -60,29 +102,19 @@ DestWorker::insert(LogMessage *msg)
   std::streampos last_pos = this->query_data.tellp();
   size_t row_bytes = 0;
 
-  google::protobuf::Message *message = nullptr;
-
   if (owner_->proto_var)
     {
-      ssize_t len;
-      const gchar *serialized = owner_->format_proto_var(msg, &len);
-      if (!serialized)
+      if (!this->insert_query_data_from_protovar(msg))
         goto drop;
-
-      google::protobuf::io::OstreamOutputStream zero_copy_output(&this->query_data);
-      google::protobuf::io::CodedOutputStream coded_output(&zero_copy_output);
-      coded_output.WriteVarint32(len);
-      coded_output.WriteRaw(serialized, len);
+    }
+  else if (owner_->json_mode())
+    {
+      if (!this->insert_query_data_from_jsonvar(msg))
+        goto drop;
     }
   else
     {
-      message = owner_->log_message_protobuf_formatter.format(msg, this->super->super.seq_num);
-      if (!message)
-        goto drop;
-
-      bool success = google::protobuf::util::SerializeDelimitedToOstream(*message, &this->query_data);
-      delete message;
-      if (!success)
+      if (!this->insert_query_data_from_schema(msg))
         goto drop;
     }
 

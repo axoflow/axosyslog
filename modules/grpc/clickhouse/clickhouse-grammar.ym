@@ -56,6 +56,7 @@
 %token KW_USER
 %token KW_PASSWORD
 %token KW_SERVER_SIDE_SCHEMA
+%token KW_JSON_VAR
 
 %type <ptr> clickhouse_dest
 
@@ -87,6 +88,7 @@ clickhouse_dest_option
   | grpc_dest_general_option
   | grpc_dest_schema_option
   | grpc_dest_proto_var_option
+  | KW_JSON_VAR '(' template_name_or_content ')'{ clickhouse_dd_set_json_var(last_driver, $3); log_template_unref($3); }
   ;
 
 /* INCLUDE_RULES */

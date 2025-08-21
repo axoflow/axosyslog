@@ -45,6 +45,19 @@ DestDriver::DestDriver(GrpcDestDriver *s)
 }
 
 bool
+DestDriver::check_schema_options()
+{
+  int count_opts = 0;
+  count_opts += int(this->proto_var != nullptr);
+  count_opts += int(this->json_mode());
+  count_opts += int(!this->log_message_protobuf_formatter.empty() && this->log_message_protobuf_formatter.init());
+
+  if (count_opts != 1)
+    return false;
+  return true;
+}
+
+bool
 DestDriver::init()
 {
   if (this->database.empty() || this->table.empty() || this->user.empty())
@@ -61,26 +74,17 @@ DestDriver::init()
   this->query = "INSERT INTO " + quoted_table;
   if (!this->server_side_schema.empty())
     this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
-  this->query += " FORMAT Protobuf";
+  this->query += (this->json_mode()) ? " FORMAT JSONEachRow" : " FORMAT Protobuf";
 
-  if (this->proto_var && !this->log_message_protobuf_formatter.empty())
+  if (!this->check_schema_options())
     {
-      msg_error("Error initializing ClickHouse destination: 'proto-var()' cannot be used together with 'schema()' "
-                "or 'protobuf-schema()'. Please use either 'proto-var()', or 'schema()'/'protobuf-schema()', "
-                "but not both.",
+      msg_error("Error initializing ClickHouse destination: please choose exactly one of the following mutually exclusive options: "
+                "schema() or protobuf-schema() / "
+                "proto-var() and server-side-schema() / "
+                "json-var()",
                 log_pipe_location_tag(&this->super->super.super.super.super));
       return false;
     }
-
-  if (!this->proto_var && this->log_message_protobuf_formatter.empty())
-    {
-      msg_error("Error initializing ClickHouse destination, schema() or protobuf-schema() must be set",
-                log_pipe_location_tag(&this->super->super.super.super.super));
-      return false;
-    }
-
-  if (!this->proto_var && !this->log_message_protobuf_formatter.init())
-    return false;
 
   return syslogng::grpc::DestDriver::init();
 }
@@ -360,6 +364,14 @@ clickhouse_dd_set_server_side_schema(LogDriver *d, const gchar *server_side_sche
   GrpcDestDriver *self = (GrpcDestDriver *) d;
   DestDriver *cpp = clickhouse_dd_get_cpp(self);
   cpp->set_server_side_schema(server_side_schema);
+}
+
+void
+clickhouse_dd_set_json_var(LogDriver *d, LogTemplate *json_var)
+{
+  GrpcDestDriver *self = (GrpcDestDriver *) d;
+  DestDriver *cpp = clickhouse_dd_get_cpp(self);
+  cpp->set_json_var(json_var);
 }
 
 LogDriver *
