@@ -28,6 +28,7 @@
 #include "grpc-dest.hpp"
 
 #include <string>
+#include <google/protobuf/util/json_util.h>
 
 namespace syslogng {
 namespace grpc {
@@ -67,6 +68,29 @@ public:
     this->server_side_schema = s;
   }
 
+  void set_json_var(LogTemplate *json_var_)
+  {
+    log_template_unref(this->json_var);
+    this->json_var = log_template_ref(json_var_);
+  }
+
+  const char *format_json_var(LogMessage *log_msg, ssize_t *len)
+  {
+    if (!json_mode())
+      return nullptr;
+
+    LogMessageValueType lmvt;
+    const gchar *serialized = log_template_get_trivial_value_and_type(this->json_var, log_msg, len, &lmvt);
+    if (lmvt != LM_VT_JSON)
+      {
+        msg_error("Error LogMessage type is not string",
+                  evt_tag_int("expected_type", LM_VT_JSON),
+                  evt_tag_int("current_type", lmvt));
+        return nullptr;
+      }
+    return serialized;
+  }
+
   const std::string &get_database()
   {
     return this->database;
@@ -97,9 +121,15 @@ public:
     return &this->log_message_protobuf_formatter;
   }
 
+  bool json_mode(void)
+  {
+    return this->json_var != nullptr;
+  }
+
 private:
   static bool map_schema_type(const std::string &type_in, google::protobuf::FieldDescriptorProto::Type &type_out);
   bool quote_identifier(const std::string &identifier, std::string &quoted_identifier);
+  bool check_schema_options();
 
 private:
   friend class DestWorker;
@@ -111,6 +141,7 @@ private:
   std::string password;
   std::string server_side_schema;
   std::string query;
+  LogTemplate *json_var = nullptr;
 
   LogMessageProtobufFormatter log_message_protobuf_formatter;
 };

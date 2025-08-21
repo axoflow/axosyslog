@@ -44,6 +44,9 @@ public:
   LogThreadedResult flush(LogThreadedFlushMode mode);
 
 private:
+  bool insert_query_data_from_protovar(LogMessage *msg);
+  bool insert_query_data_from_jsonvar(LogMessage *msg);
+  bool insert_query_data_from_schema(LogMessage *msg);
   bool should_initiate_flush();
   void prepare_query_info(::clickhouse::grpc::QueryInfo &query_info);
   void prepare_batch();
