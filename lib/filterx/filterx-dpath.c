@@ -51,9 +51,11 @@ typedef struct _FilterXDPathLValue
 {
   FilterXExpr super;
   FilterXExpr *variable;
+
   GList *dpath_elements;
 
   gboolean append_mode;
+  FilterXDPathElement *last_dpath_element;
 } FilterXDPathLValue;
 
 FilterXDPathElement *
@@ -210,7 +212,7 @@ filterx_dpath_lvalue_assign(FilterXExpr *s, FilterXObject **new_value)
       result = filterx_dict_merge(last_element, *new_value);
     }
   else
-    result = filterx_dpath_elem_set(last_element, g_list_last(self->dpath_elements)->data, *new_value);
+    result = filterx_dpath_elem_set(last_element, self->last_dpath_element, *new_value);
 
   filterx_object_unref(last_element);
   return result;
@@ -259,6 +261,8 @@ filterx_dpath_lvalue_init(FilterXExpr *s, GlobalConfig *cfg)
           if (!filterx_expr_init(dpath_elem->expr, cfg))
             return FALSE;
         }
+
+      self->last_dpath_element = dpath_elem;
     }
 
   return filterx_expr_init_method(s, cfg);
@@ -270,6 +274,8 @@ filterx_dpath_lvalue_deinit(FilterXExpr *s, GlobalConfig *cfg)
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
   filterx_expr_deinit(self->variable, cfg);
+
+  self->last_dpath_element = NULL;
 
   for (GList *elem = self->dpath_elements; elem; elem = elem->next)
     {
