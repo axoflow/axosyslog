@@ -80,6 +80,7 @@ def test_filterx_dpath(syslog_ng, config):
         newdict = {};
         dpath(newdict.path.to.create) = {"value": 3};
         dpath(newdict.path.to.create) += {"another": 4};
+        dpath(newdict.path.to.create.another) += 1;
         d = {};
         dpath(d.exist) = exist;
         d.newdict = newdict;
@@ -90,4 +91,4 @@ def test_filterx_dpath(syslog_ng, config):
     config.create_logpath(statements=[source, filterx, destination])
 
     syslog_ng.start(config)
-    assert destination.read_log() == '{"exist":{"orig":1,"path":{"to":{"create":{"value":{"a":1}}}}},"newdict":{"path":{"to":{"create":{"value":3,"another":4}}}}}'
+    assert destination.read_log() == '{"exist":{"orig":1,"path":{"to":{"create":{"value":{"a":1}}}}},"newdict":{"path":{"to":{"create":{"value":3,"another":5}}}}}'

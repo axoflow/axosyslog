@@ -110,17 +110,17 @@ filterx_dpath_elem_get(FilterXObject *dict, FilterXDPathElement *elem, gboolean 
 }
 
 static inline gboolean
-filterx_dpath_elem_set(FilterXObject *dict, FilterXDPathElement *elem, FilterXObject *value)
+filterx_dpath_elem_set(FilterXObject *dict, FilterXDPathElement *elem, FilterXObject **value)
 {
   if (elem->type == FILTERX_DPATH_ELEMENT_OBJECT)
-    return filterx_object_setattr(dict, elem->object, &value);
+    return filterx_object_setattr(dict, elem->object, value);
   else if (elem->type == FILTERX_DPATH_ELEMENT_EXPR)
     {
       FilterXObject *e = filterx_expr_eval(elem->expr);
       if (!e)
         return FALSE;
 
-      gboolean result = filterx_object_set_subscript(dict, e, &value);
+      gboolean result = filterx_object_set_subscript(dict, e, value);
       filterx_object_unref(e);
       return result;
     }
@@ -128,9 +128,26 @@ filterx_dpath_elem_set(FilterXObject *dict, FilterXDPathElement *elem, FilterXOb
   g_assert_not_reached();
 }
 
+static inline FilterXObject *
+filterx_dpath_elem_get_or_create(FilterXObject *dict, FilterXDPathElement *elem)
+{
+  gboolean error = FALSE;
+  FilterXObject *value = filterx_dpath_elem_get(dict, elem, &error);
+
+  if (error)
+    return NULL;
+
+  if (value)
+    return value;
+
+  value = filterx_dict_new();
+  filterx_object_cow_prepare(&value);
+  filterx_dpath_elem_set(dict, elem, &value);
+  return value;
+}
 
 FilterXObject *
-_dpath_touch(FilterXDPathLValue *self, gboolean append_mode)
+_dpath_touch(FilterXDPathLValue *self, gboolean append_mode, FilterXObject **last_object)
 {
   FilterXObject *dict = filterx_expr_eval(self->variable);
   if (!dict)
@@ -143,27 +160,15 @@ _dpath_touch(FilterXDPathLValue *self, gboolean append_mode)
       return NULL;
     }
 
-  for (GList *elem = self->dpath_elements; elem; elem = elem->next)
+  for (GList *elem = self->dpath_elements; elem->next; elem = elem->next)
     {
-      if (!append_mode && !elem->next)
-        break;
-
-      gboolean error = FALSE;
       FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
-      FilterXObject *value = filterx_dpath_elem_get(dict, dpath_elem, &error);
 
-      if (error)
+      FilterXObject *value = filterx_dpath_elem_get_or_create(dict, dpath_elem);
+      if (!value)
         {
           filterx_object_unref(dict);
           return NULL;
-        }
-
-      if (!value)
-        {
-          value = filterx_dict_new();
-          filterx_object_cow_prepare(&value);
-
-          filterx_dpath_elem_set(dict, dpath_elem, value);
         }
 
       filterx_object_unref(dict);
@@ -175,6 +180,19 @@ _dpath_touch(FilterXDPathLValue *self, gboolean append_mode)
           filterx_object_unref(dict);
           return NULL;
         }
+    }
+
+  if (!append_mode)
+    {
+      *last_object = NULL;
+      return dict;
+    }
+
+  *last_object = filterx_dpath_elem_get_or_create(dict, self->last_dpath_element);
+  if (!*last_object)
+    {
+      filterx_object_unref(dict);
+      return NULL;
     }
 
   return dict;
@@ -194,27 +212,28 @@ filterx_dpath_lvalue_assign(FilterXExpr *s, FilterXObject **new_value)
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
-  FilterXObject *last_element = _dpath_touch(self, self->append_mode);
+  FilterXObject *last_object = NULL;
+  FilterXObject *dict = _dpath_touch(self, self->append_mode, &last_object);
 
-  if (!last_element)
+  if (!dict)
     return FALSE;
 
   gboolean result;
   if (self->append_mode)
     {
-      if (!filterx_object_is_type_or_ref(*new_value, &FILTERX_TYPE_NAME(dict)))
-        {
-          filterx_eval_push_error("Right hand side of dpath()+= must be a dict", s, NULL);
-          filterx_object_unref(last_element);
-          return FALSE;
-        }
+      FilterXObject *added_obj = filterx_object_add_object(last_object, *new_value);
+      filterx_object_unref(*new_value);
+      *new_value = added_obj;
 
-      result = filterx_dict_merge(last_element, *new_value);
+      result = filterx_dpath_elem_set(dict, self->last_dpath_element, new_value);
+      goto exit;
     }
-  else
-    result = filterx_dpath_elem_set(last_element, self->last_dpath_element, *new_value);
 
-  filterx_object_unref(last_element);
+  result = filterx_dpath_elem_set(dict, self->last_dpath_element, new_value);
+
+exit:
+  filterx_object_unref(last_object);
+  filterx_object_unref(dict);
   return result;
 }
 
