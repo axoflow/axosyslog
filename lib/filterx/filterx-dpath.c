@@ -54,7 +54,7 @@ typedef struct _FilterXDPathLValue
 
   GList *dpath_elements;
 
-  gboolean append_mode;
+  gboolean add_mode;
   FilterXDPathElement *last_dpath_element;
 } FilterXDPathLValue;
 
@@ -147,7 +147,7 @@ filterx_dpath_elem_get_or_create(FilterXObject *dict, FilterXDPathElement *elem)
 }
 
 FilterXObject *
-_dpath_touch(FilterXDPathLValue *self, gboolean append_mode, FilterXObject **last_object)
+_dpath_touch(FilterXDPathLValue *self, gboolean add_mode, FilterXObject **last_object)
 {
   FilterXObject *dict = filterx_expr_eval(self->variable);
   if (!dict)
@@ -182,7 +182,7 @@ _dpath_touch(FilterXDPathLValue *self, gboolean append_mode, FilterXObject **las
         }
     }
 
-  if (!append_mode)
+  if (!add_mode)
     {
       *last_object = NULL;
       return dict;
@@ -213,13 +213,13 @@ filterx_dpath_lvalue_assign(FilterXExpr *s, FilterXObject **new_value)
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
   FilterXObject *last_object = NULL;
-  FilterXObject *dict = _dpath_touch(self, self->append_mode, &last_object);
+  FilterXObject *dict = _dpath_touch(self, self->add_mode, &last_object);
 
   if (!dict)
     return FALSE;
 
   gboolean result;
-  if (self->append_mode)
+  if (self->add_mode)
     {
       FilterXObject *added_obj = filterx_object_add_object(last_object, *new_value);
       filterx_object_unref(*new_value);
@@ -318,10 +318,10 @@ filterx_dpath_lvalue_free(FilterXExpr *s)
 }
 
 void
-filterx_dpath_lvalue_set_append_mode(FilterXExpr *s, gboolean append_mode)
+filterx_dpath_lvalue_set_add_mode(FilterXExpr *s, gboolean add_mode)
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
-  self->append_mode = append_mode;
+  self->add_mode = add_mode;
 }
 
 FilterXExpr *

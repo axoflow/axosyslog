@@ -34,7 +34,7 @@ FilterXDPathElement *filterx_dpath_elem_expr_new(FilterXExpr *expr);
 
 /* lvalue setter */
 FilterXExpr *filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error);
-void filterx_dpath_lvalue_set_append_mode(FilterXExpr *s, gboolean append_mode);
+void filterx_dpath_lvalue_set_add_mode(FilterXExpr *s, gboolean add_mode);
 
 /* rvalue getter */
 FilterXExpr *filterx_dpath_fn_new(FilterXFunctionArgs *args, GError **error);
