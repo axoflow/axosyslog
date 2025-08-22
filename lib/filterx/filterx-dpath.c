@@ -256,7 +256,7 @@ filterx_dpath_lvalue_optimize(FilterXExpr *s)
               if (!literal)
                 return NULL;
 
-              elem->data = filterx_dpath_elem_object_new(literal);;
+              elem->data = filterx_dpath_elem_object_new(literal);
               filterx_dpath_elem_free(dpath_elem);
             }
         }
@@ -278,7 +278,17 @@ filterx_dpath_lvalue_init(FilterXExpr *s, GlobalConfig *cfg)
       if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
         {
           if (!filterx_expr_init(dpath_elem->expr, cfg))
-            return FALSE;
+            {
+              for (GList *d = self->dpath_elements; d != elem; d = d->next)
+                {
+                  FilterXDPathElement *de = (FilterXDPathElement *) elem->data;
+                  if (de->type == FILTERX_DPATH_ELEMENT_EXPR)
+                    filterx_expr_deinit(de->expr, cfg);
+                }
+
+              filterx_expr_deinit(self->variable, cfg);
+              return FALSE;
+            }
         }
 
       self->last_dpath_element = dpath_elem;
