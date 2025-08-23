@@ -1428,6 +1428,7 @@ log_writer_init_watches(LogWriter *self)
   self->queue_filled.handler = log_writer_queue_filled;
 
   main_loop_io_worker_job_init(&self->io_job);
+  self->io_job.type = MLIOJ_DESTINATION;
   self->io_job.user_data = self;
   self->io_job.work = (void (*)(void *, void *)) log_writer_work_perform;
   self->io_job.completion = (void (*)(void *, void *)) log_writer_work_finished;

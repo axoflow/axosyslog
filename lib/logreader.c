@@ -737,6 +737,7 @@ log_reader_init_watches(LogReader *self)
   self->idle_timer.handler = log_reader_idle_timeout;
 
   main_loop_io_worker_job_init(&self->io_job);
+  self->io_job.type = MLIOJ_SOURCE;
   self->io_job.user_data = self;
   self->io_job.work = log_reader_work_perform;
   self->io_job.completion = log_reader_work_finished;

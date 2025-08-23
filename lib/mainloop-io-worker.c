@@ -30,7 +30,8 @@
  * I/O worker threads
  ************************************************************************************/
 
-static struct iv_work_pool main_loop_io_workers;
+static struct iv_work_pool main_loop_io_workers[MLIOJ_MAX];
+static gint max_threads;
 
 static void
 _release(MainLoopIOWorkerJob *self)
@@ -59,7 +60,7 @@ main_loop_io_worker_job_submit(MainLoopIOWorkerJob *self, gpointer arg)
   main_loop_worker_job_start();
   self->working = TRUE;
   self->arg = arg;
-  iv_work_pool_submit_work(&main_loop_io_workers, &self->work_item);
+  iv_work_pool_submit_work(&main_loop_io_workers[self->type], &self->work_item);
   return TRUE;
 }
 
@@ -75,7 +76,7 @@ main_loop_io_worker_job_submit_continuation(MainLoopIOWorkerJob *self, gpointer 
   self->working = TRUE;
   self->arg = arg;
 
-  iv_work_pool_submit_continuation(&main_loop_io_workers, &self->work_item);
+  iv_work_pool_submit_continuation(&main_loop_io_workers[self->type], &self->work_item);
 }
 #endif
 
@@ -134,33 +135,54 @@ main_loop_io_worker_thread_stop(void *cookie)
 static void
 __pre_pre_init_hook(gint type, gpointer user_data)
 {
-  main_loop_worker_allocate_thread_space(main_loop_io_workers.max_threads);
+  for (gint i = 0; i < MLIOJ_MAX; i++)
+    {
+      main_loop_worker_allocate_thread_space(main_loop_io_workers[i].max_threads);
+    }
 }
 
 void
 main_loop_io_worker_init(void)
 {
-  if (main_loop_io_workers.max_threads == 0)
+  if (max_threads == 0)
     {
-      main_loop_io_workers.max_threads = MIN(MAX(MAIN_LOOP_MIN_WORKER_THREADS, get_processor_count()),
-                                             MAIN_LOOP_MAX_WORKER_THREADS);
+      max_threads = MIN(MAX(MAIN_LOOP_MIN_WORKER_THREADS, get_processor_count()),
+                        MAIN_LOOP_MAX_WORKER_THREADS);
     }
 
-  main_loop_io_workers.thread_start = main_loop_io_worker_thread_start;
-  main_loop_io_workers.thread_stop = main_loop_io_worker_thread_stop;
-  iv_work_pool_create(&main_loop_io_workers);
+  for (gint i = 0; i < MLIOJ_MAX; i++)
+    {
+      /* NOTE: we are oversubscribe the number of CPUs, as each work pool
+       * takes the same max_threads value. This will ultimately be
+       * resolved by the kernel scheduler.
+       *
+       * Scaling would probably collapse once we actually execute in more
+       * threads than available CPUs, but normally threads are only
+       * allocated on-demand and the ratio between
+       * source/destination/processing would automatically form based on
+       * traffic patterns.
+       */
+      main_loop_io_workers[i].max_threads = max_threads;
+      main_loop_io_workers[i].thread_start = main_loop_io_worker_thread_start;
+      main_loop_io_workers[i].thread_stop = main_loop_io_worker_thread_stop;
+      iv_work_pool_create(&main_loop_io_workers[i]);
+    }
+
   register_application_hook(AH_CONFIG_PRE_PRE_INIT, __pre_pre_init_hook, NULL, AHM_RUN_REPEAT);
 }
 
 void
 main_loop_io_worker_deinit(void)
 {
-  iv_work_pool_put(&main_loop_io_workers);
+  for (gint i = 0; i < MLIOJ_MAX; i++)
+    {
+      iv_work_pool_put(&main_loop_io_workers[i]);
+    }
 }
 
 static GOptionEntry main_loop_io_worker_options[] =
 {
-  { "worker-threads",      0,         0, G_OPTION_ARG_INT, &main_loop_io_workers.max_threads, "Set the number of I/O worker threads", "<max>" },
+  { "worker-threads",      0,         0, G_OPTION_ARG_INT, &max_threads, "Set the number of I/O worker threads", "<max>" },
   { NULL },
 };
 
