@@ -51,12 +51,19 @@ TLS_BLOCK_START
     } tzinfo;
     struct
     {
-      TimeCache buckets[64];
+      time_t top_of_the_quarter;
+      struct tm tm;
     } localtime;
     struct
     {
-      TimeCache buckets[64];
+      time_t top_of_the_hour;
+      struct tm tm;
     } gmtime;
+    struct
+    {
+      time_t top_of_the_quarter;
+      time_t gmtofs;
+    } tzofs;
     struct
     {
       struct tm key;
@@ -103,43 +110,6 @@ static struct
 
 static GMutex localtime_lock;
 
-/**
- * get_local_timezone_ofs:
- * @when: time in UTC
- *
- * Return the zone offset (measured in seconds) of @when expressed in local
- * time. The function also takes care about daylight saving.
- **/
-long
-get_local_timezone_ofs(time_t when)
-{
-#ifdef SYSLOG_NG_HAVE_STRUCT_TM_TM_GMTOFF
-  struct tm ltm;
-
-  cached_localtime(&when, &ltm);
-  return ltm.tm_gmtoff;
-
-#else
-
-  struct tm gtm;
-  struct tm ltm;
-  long tzoff;
-
-  cached_localtime(&when, &ltm);
-  cached_gmtime(&when, &gtm);
-
-  tzoff = (ltm.tm_hour - gtm.tm_hour) * 3600;
-  tzoff += (ltm.tm_min - gtm.tm_min) * 60;
-  tzoff += ltm.tm_sec - gtm.tm_sec;
-
-  if (tzoff > 0 && (ltm.tm_year < gtm.tm_year || ltm.tm_mon < gtm.tm_mon || ltm.tm_mday < gtm.tm_mday))
-    tzoff -= 86400;
-  else if (tzoff < 0 && (ltm.tm_year > gtm.tm_year || ltm.tm_mon > gtm.tm_mon || ltm.tm_mday > gtm.tm_mday))
-    tzoff += 86400;
-
-  return tzoff;
-#endif /* SYSLOG_NG_HAVE_STRUCT_TM_TM_GMTOFF */
-}
 
 static glong
 _get_system_tzofs(void)
@@ -198,8 +168,9 @@ _copy_timezone_state_to_locals(void)
 static void
 _clean_timeutils_cache(void)
 {
-  memset(&cache.gmtime.buckets, 0, sizeof(cache.gmtime.buckets));
-  memset(&cache.localtime.buckets, 0, sizeof(cache.localtime.buckets));
+  cache.localtime.top_of_the_quarter = 0;
+  cache.gmtime.top_of_the_hour = 0;
+  cache.tzofs.top_of_the_quarter = 0;
   memset(&cache.mktime.key, 0, sizeof(cache.mktime.key));
   if (cache.tzinfo.zones)
     cache_clear(cache.tzinfo.zones);
@@ -210,7 +181,7 @@ _clean_timeutils_cache(void)
   state.tzname[1] = NULL;
 }
 
-static void
+static inline void
 _validate_timeutils_cache(void)
 {
   gint gencounter = g_atomic_int_get(&global_state.cache_gencounter);
@@ -347,27 +318,43 @@ cached_localtime(time_t *when, struct tm *tm)
 {
   _validate_timeutils_cache();
 
-  guchar i = *when & 0x3F;
-  if (G_LIKELY(*when == cache.localtime.buckets[i].when))
+  if (G_LIKELY(cache.localtime.top_of_the_quarter != 0))
     {
-      *tm = cache.localtime.buckets[i].tm;
-      return;
-    }
-  else
-    {
-#ifdef SYSLOG_NG_HAVE_LOCALTIME_R
-      localtime_r(when, tm);
-#else
-      struct tm *ltm;
+      /* NOTE: we cache our results only for 15 minutes (instead of an hour)
+       * as some timezones change to daylight saving time at non-zero
+       * minutes.  For example:
+       * https://www.timeanddate.com/time/zone/new-zealand/chatham-islands
+       *
+       * Also, we only cache forward, as time "usually" goes in that direction.
+       */
 
-      g_mutex_lock(&localtime_lock);
-      ltm = localtime(when);
-      *tm = *ltm;
-      g_mutex_unlock(&localtime_lock);
-#endif
-      cache.localtime.buckets[i].tm = *tm;
-      cache.localtime.buckets[i].when = *when;
+      time_t diff = *when - cache.localtime.top_of_the_quarter;
+      time_t quarter_in_seconds = 15*60;
+      if (G_LIKELY(diff >= 0 && diff < quarter_in_seconds))
+        {
+          *tm = cache.localtime.tm;
+          tm->tm_min += diff / 60;
+          tm->tm_sec += diff % 60;
+          return;
+        }
     }
+
+#ifdef SYSLOG_NG_HAVE_LOCALTIME_R
+  localtime_r(when, tm);
+#else
+  struct tm *ltm;
+
+  g_mutex_lock(&localtime_lock);
+  ltm = localtime(when);
+  *tm = *ltm;
+  g_mutex_unlock(&localtime_lock);
+#endif
+  gint minutes_rounded_down = ((tm->tm_min/15)*15);
+
+  cache.localtime.top_of_the_quarter = *when - 60*(tm->tm_min - minutes_rounded_down) - tm->tm_sec;
+  cache.localtime.tm = *tm;
+  cache.localtime.tm.tm_min = minutes_rounded_down;
+  cache.localtime.tm.tm_sec = 0;
 }
 
 void
@@ -375,28 +362,109 @@ cached_gmtime(time_t *when, struct tm *tm)
 {
   _validate_timeutils_cache();
 
-  guchar i = *when & 0x3F;
-  if (G_LIKELY(*when == cache.gmtime.buckets[i].when && *when != 0))
+  if (G_LIKELY(cache.gmtime.top_of_the_hour != 0))
     {
-      *tm = cache.gmtime.buckets[i].tm;
-      return;
-    }
-  else
-    {
-#ifdef SYSLOG_NG_HAVE_GMTIME_R
-      gmtime_r(when, tm);
-#else
-      struct tm *ltm;
+      /* NOTE: we cache our results only for 60 minutes, DST does not have a
+       * play here.
+       *
+       * Also, we only cache forward, as time "usually" goes in that direction.
+       */
 
-      g_mutex_lock(&localtime_lock);
-      ltm = gmtime(when);
-      *tm = *ltm;
-      g_mutex_unlock(&localtime_lock);
-#endif
-      cache.gmtime.buckets[i].tm = *tm;
-      cache.gmtime.buckets[i].when = *when;
+      time_t diff = *when - cache.gmtime.top_of_the_hour;
+      time_t hour_in_seconds = 60*60;
+      if (G_LIKELY(diff >= 0 && diff < hour_in_seconds))
+        {
+          *tm = cache.gmtime.tm;
+          tm->tm_min += diff / 60;
+          tm->tm_sec += diff % 60;
+          return;
+        }
     }
+#ifdef SYSLOG_NG_HAVE_GMTIME_R
+  gmtime_r(when, tm);
+#else
+  struct tm *ltm;
+
+  g_mutex_lock(&localtime_lock);
+  ltm = gmtime(when);
+  *tm = *ltm;
+  g_mutex_unlock(&localtime_lock);
+#endif
+  /* cache the top of the hour */
+  cache.gmtime.top_of_the_hour = *when - 60*tm->tm_min - tm->tm_sec;
+  cache.gmtime.tm = *tm;
+  cache.gmtime.tm.tm_min = 0;
+  cache.gmtime.tm.tm_sec = 0;
 }
+
+/**
+ * get_local_timezone_ofs:
+ * @when: time in UTC
+ *
+ * Return the zone offset (measured in seconds) of @when expressed in local
+ * time. The function also takes care about daylight saving.
+ **/
+static inline long
+_get_local_timezone_ofs(time_t when, struct tm *ltm)
+{
+#ifdef SYSLOG_NG_HAVE_STRUCT_TM_TM_GMTOFF
+  /* don't use the cached version as that kicks out our cache */
+  localtime_r(&when, ltm);
+  return ltm->tm_gmtoff;
+
+#else
+
+  struct tm _gtm_storage, *gtm = &_gtm_storage;
+  long tzoff;
+
+  localtime_r(&when, ltm);
+  gmtime_r(&when, gtm);
+
+  tzoff = (ltm->tm_hour - gtm->tm_hour) * 3600;
+  tzoff += (ltm->tm_min - gtm->tm_min) * 60;
+  tzoff += ltm->tm_sec - gtm->tm_sec;
+
+  if (tzoff > 0 && (ltm->tm_year < gtm->tm_year || ltm->tm_mon < gtm->tm_mon || ltm->tm_mday < gtm->tm_mday))
+    tzoff -= 86400;
+  else if (tzoff < 0 && (ltm->tm_year > gtm->tm_year || ltm->tm_mon > gtm->tm_mon || ltm->tm_mday > gtm->tm_mday))
+    tzoff += 86400;
+
+  return tzoff;
+#endif /* SYSLOG_NG_HAVE_STRUCT_TM_TM_GMTOFF */
+}
+
+long
+get_local_timezone_ofs(time_t when)
+{
+  _validate_timeutils_cache();
+
+  if (G_LIKELY(cache.tzofs.top_of_the_quarter != 0))
+    {
+      /* NOTE: we cache our results only for 15 minutes (instead of an hour)
+       * as some timezones change to daylight saving time at non-zero
+       * minutes.  For example:
+       * https://www.timeanddate.com/time/zone/new-zealand/chatham-islands
+       *
+       * Also, we only cache forward, as time "usually" goes in that direction.
+       */
+
+      time_t diff = when - cache.tzofs.top_of_the_quarter;
+      time_t quarter_in_seconds = 15*60;
+      if (G_LIKELY(diff >= 0 && diff < quarter_in_seconds))
+        {
+          return cache.tzofs.gmtofs;
+        }
+    }
+
+  struct tm ltm;
+  long gmtofs = _get_local_timezone_ofs(when, &ltm);
+  gint minutes_rounded_down = ((ltm.tm_min/15)*15);
+
+  cache.tzofs.top_of_the_quarter = when - 60*(ltm.tm_min - minutes_rounded_down) - ltm.tm_sec;
+  cache.tzofs.gmtofs = gmtofs;
+  return gmtofs;
+}
+
 
 TimeZoneInfo *
 cached_get_time_zone_info(const gchar *tz)
