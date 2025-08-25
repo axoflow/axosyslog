@@ -121,16 +121,15 @@ exit:
 }
 
 static gboolean
-_expr_format(FilterXExpr *expr, const gchar **str, gsize *str_len, gboolean ignore_case)
+_expr_format(FilterXExpr *expr, const gchar **str, gsize *str_len, gboolean ignore_case, FilterXObject **backing_obj)
 {
-  FilterXObject *obj = filterx_expr_eval(expr);
+  *backing_obj = filterx_expr_eval(expr);
   gboolean result = FALSE;
 
-  if (!obj)
+  if (!*backing_obj)
     return FALSE;
 
-  result = _obj_format(obj, str, str_len, ignore_case, expr);
-  filterx_object_unref(obj);
+  result = _obj_format(*backing_obj, str, str_len, ignore_case, expr);
   return result;
 }
 
@@ -179,7 +178,7 @@ _string_with_cache_free(FilterXStringWithCache *self)
 
 static gboolean
 _string_with_cache_get_string_value(FilterXStringWithCache *self, gboolean ignore_case, const gchar **dst,
-                                    gsize *len)
+                                    gsize *len, FilterXObject **backing_obj)
 {
   if (self->str_value)
     {
@@ -190,7 +189,7 @@ _string_with_cache_get_string_value(FilterXStringWithCache *self, gboolean ignor
 
   const gchar *str;
   gsize str_len;
-  if (!_expr_format(self->expr, &str, &str_len, ignore_case))
+  if (!_expr_format(self->expr, &str, &str_len, ignore_case, backing_obj))
     return FALSE;
 
   *dst = str;
@@ -283,11 +282,14 @@ _eval_against_literal_needles(FilterXExprAffix *self, const gchar *haystack, gsi
       FilterXStringWithCache *current_needle = g_ptr_array_index(self->needle.cached_strings, i);
       const gchar *needle_str;
       gsize needle_len;
+      FilterXObject *needle_backing_obj = NULL;
 
-      if (!_string_with_cache_get_string_value(current_needle, self->ignore_case, &needle_str, &needle_len))
+      if (!_string_with_cache_get_string_value(current_needle, self->ignore_case, &needle_str, &needle_len,
+                                               &needle_backing_obj))
         return NULL;
 
       matches = self->process(haystack, haystack_len, needle_str, needle_len);
+      filterx_object_unref(needle_backing_obj);
     }
   return filterx_boolean_new(matches);
 }
@@ -369,7 +371,8 @@ _expr_affix_eval(FilterXExpr *s)
 
   const gchar *haystack;
   gsize haystack_len;
-  if (!_expr_format(self->haystack, &haystack, &haystack_len, self->ignore_case))
+  FilterXObject *haystack_backing_obj = NULL;
+  if (!_expr_format(self->haystack, &haystack, &haystack_len, self->ignore_case, &haystack_backing_obj))
     goto exit;
 
   if (self->needle.cached_strings->len != 0)
@@ -378,6 +381,7 @@ _expr_affix_eval(FilterXExpr *s)
     result = _eval_against_needle_expr(self, haystack, haystack_len);
 
 exit:
+  filterx_object_unref(haystack_backing_obj);
   scratch_buffers_reclaim_marked(marker);
   return result;
 
