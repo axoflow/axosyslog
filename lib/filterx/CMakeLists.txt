@@ -43,6 +43,7 @@ set(FILTERX_HEADERS
     filterx/filterx-scope.h
     filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
+    filterx/filterx-dpath.h
     filterx/json-repr.h
     filterx/func-flags.h
     filterx/func-flatten.h
@@ -119,6 +120,7 @@ set(FILTERX_SOURCES
     filterx/filterx-scope.c
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
+    filterx/filterx-dpath.c
     filterx/json-repr.c
     filterx/func-flatten.c
     filterx/func-cache-json-file.c

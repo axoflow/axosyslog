@@ -45,6 +45,7 @@
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-config.h"
+#include "filterx/filterx-dpath.h"
 #include "filterx/expr-function.h"
 #include "filterx/expr-condition.h"
 #include "filterx/expr-switch.h"
@@ -126,6 +127,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %token KW_SWITCH
 %token KW_CASE
 %token KW_DEFAULT
+%token KW_DPATH
 
 %type <ptr> block
 %type <ptr> stmts
@@ -150,6 +152,7 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <node> arithmetic_operator
 %type <node> string_operator
 %type <node> function_call
+%type <node> dpath_lvalue
 %type <ptr> arguments
 %type <ptr> first_argument
 %type <ptr> rest_argument
@@ -166,6 +169,8 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <ptr> list_literal
 %type <ptr> list_element
 %type <ptr> list_elements
+%type <ptr> dpath_element
+%type <ptr> dpath_elements
 %type <ptr> regexp_match
 %type <num> boolean
 %type <ptr> conditional
@@ -231,6 +236,7 @@ plus_assignment
 						                           $5));
 						  free($3);
 						}
+	| dpath_lvalue KW_PLUS_ASSIGN expr { $$ = filterx_assign_new($1, $3); filterx_dpath_lvalue_set_add_mode($1, TRUE); }
 	;
 
 
@@ -240,6 +246,7 @@ assignment
 	| expr '.' identifier KW_ASSIGN expr	{ $$ = filterx_setattr_new($1, filterx_string_new_frozen($3, configuration), $5); free($3); }
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
+	| dpath_lvalue KW_ASSIGN expr { $$ = filterx_assign_new($1, $3); }
 	| plus_assignment
 	| nullv_assignment
 	;
@@ -249,6 +256,27 @@ nullv_assignment
 	| expr '.' identifier KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_setattr_new($1, filterx_string_new_frozen($3, configuration), $5); free($3); }
 	| expr '[' expr ']' KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_NULLV_ASSIGN expr  		{ $$ = filterx_nullv_set_subscript_new($1, NULL, $5); }
+	| dpath_lvalue KW_NULLV_ASSIGN expr { $$ = filterx_nullv_assign_new($1, $3); }
+	;
+
+dpath_lvalue
+	: KW_DPATH '(' variable dpath_elements ')'
+		{
+		  GError *error = NULL;
+		  FilterXExpr *res = filterx_dpath_lvalue_new($3, $4, &error);
+		  CHECK_FUNCTION_ERROR(res, @$, "dpath", error);
+		  $$ = _assign_location(res, lexer, &@$);
+		}
+	;
+
+dpath_elements
+	: dpath_elements dpath_element { $$ = g_list_append($1, $2); }
+	| { $$ = NULL; }
+	;
+
+dpath_element
+	: '.' identifier { $$ = filterx_dpath_elem_object_new(filterx_string_new_frozen($2, configuration)); free($2); }
+	| '[' expr ']' { $$ = filterx_dpath_elem_expr_new($2); };
 	;
 
 declaration
