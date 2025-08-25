@@ -33,15 +33,18 @@ _append_frac_digits(glong usecs, GString *target, gint frac_digits)
 
   if (frac_digits > 0)
     {
+      gchar buf[12];
+      gint pos = 0;
       gulong x;
 
-      g_string_append_c(target, '.');
+      buf[pos++] = '.';
       for (x = 100000; frac_digits && x; x = x / 10)
         {
-          g_string_append_c(target, (usecs / x) + '0');
+          buf[pos++] = (usecs / x) + '0';
           usecs = usecs % x;
           frac_digits--;
         }
+      g_string_append_len(target, buf, pos);
     }
 }
 
