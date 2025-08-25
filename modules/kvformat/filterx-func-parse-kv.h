@@ -26,7 +26,7 @@
 #include "plugin.h"
 #include "filterx/expr-function.h"
 
-#define FILTERX_FUNC_PARSE_KV_USAGE "Usage: parse_kv(msg, value_separator=\"=\", pair_separator=\", \", stray_words_key=\"stray_words\")"
+#define FILTERX_FUNC_PARSE_KV_USAGE "Usage: parse_kv(msg, value_separator=\"=\", pair_separator=\", \", stray_words_key=\"stray_words\", stray_words_append_to_value=true)"
 
 FILTERX_FUNCTION_DECLARE(parse_kv);
 
