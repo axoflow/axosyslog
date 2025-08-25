@@ -25,6 +25,7 @@ jobs:
     outputs:
       platform-matrix: ${{ steps.platforms.outputs.platform-matrix }}
       image-name: ${{ steps.registry.outputs.image-name }}
+      tags: ${{ steps.registry.outputs.tags }}
     steps:
       - id: platforms
         name: platform
@@ -33,12 +34,21 @@ jobs:
         run: |
           PLATFORM_MATRIX="$(echo "$PLATFORMS" | jq 'split(",")' -Rc)"
           echo "platform-matrix=$PLATFORM_MATRIX" >> $GITHUB_OUTPUT
+
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       - id: registry
         name: registry
         run: |
           IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/axosyslog-builder"
           IMAGE_NAME="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+
+          version_tag="$(sed -n 's/^ARG ALPINE_VERSION=\(.*\)$/\1/p' docker/axosyslog-builder.dockerfile)"
+          TAGS="$IMAGE_NAME:latest,$IMAGE_NAME:$version_tag"
+
           echo "image-name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
 
   image-build:
@@ -59,8 +69,8 @@ jobs:
         run: |
           echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
           if [ $PLATFORM = "linux/arm/v7" ]; then
-              # on armv7 we only do a minimal rebuild
-              REBUILD_DEPS=main/json-c
+              # do not rebuild packages on armv7
+              REBUILD_DEPS=""
           fi
           echo "REBUILD_DEPS=$REBUILD_DEPS" >> $GITHUB_ENV
 
@@ -129,7 +139,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: /tmp/digests
         env:
-          TAGS: ${{ needs.prepare.outputs.image-name }}:latest
+          TAGS: ${{ needs.prepare.outputs.tags }}
           IMAGE_NAME: ${{ needs.prepare.outputs.image-name }}
         run: |
           TAG_FLAGS="$(echo "$TAGS" | sed "s|[^,]*|-t &|g" | tr ',' ' ')"
