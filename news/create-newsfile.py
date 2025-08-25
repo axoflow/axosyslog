@@ -43,8 +43,6 @@ exclude_contributor_list = [
 blocks = [
     ('Features', 'feature-*.md'),
     ('Bugfixes', 'bugfix-*.md'),
-    ('FilterX features', 'fx-feature-*.md'),
-    ('FilterX bugfixes', 'fx-bugfix-*.md'),
     ('Packaging', 'packaging-*.md'),
     ('Notes to developers', 'developer-note-*.md'),
     ('Other changes', 'other-*.md'),
