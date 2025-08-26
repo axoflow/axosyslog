@@ -520,7 +520,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                                {
                                  yy_pop_state(yyscanner);
                                  yylval->cptr = strdup(yyextra->string_buffer->str);
-                                 unput(')');
+                                 unput(yytext[0]);
                                  return LL_BLOCK;
                                }
                            }
