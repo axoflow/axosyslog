@@ -21,6 +21,8 @@
  */
 #include "cfg-source.h"
 
+#include <string.h>
+
 /* display CONTEXT lines before and after the offending line */
 #define CONTEXT 5
 
@@ -185,55 +187,69 @@ cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const C
 }
 
 static gboolean
-_extract_source_from_file_location(GString *result, const gchar *filename, const CFG_LTYPE *yylloc)
+_extract_source_from_file_location(CfgLexer *lexer, GString *result, const gchar *filename, const CFG_LTYPE *yylloc)
 {
   gint buflen = 65520;
   if (yylloc->first_column < 1 || yylloc->last_column < 1 ||
       yylloc->first_column > buflen-1 || yylloc->last_column > buflen-1)
     return FALSE;
 
-  FILE *f = fopen(filename, "r");
-  if (!f)
-    return FALSE;
+  if (g_strcmp0(lexer->source_file_cache.file, filename) != 0)
+    {
+      gchar *buf;
+      if (!g_file_get_contents(filename, &buf, NULL, NULL))
+        return FALSE;
+      lexer->source_file_cache.file = filename;
+      g_string_assign(lexer->source_file_cache.content, buf);
+      g_free(buf);
+    }
 
-  gchar *line = g_malloc(buflen);
+
   gint lineno = 0;
+  const gchar *line_start = lexer->source_file_cache.content->str;
+  const gchar *file_end = lexer->source_file_cache.content->str + lexer->source_file_cache.content->len;
 
-  while (fgets(line, buflen, f))
+  while (line_start < file_end)
     {
       lineno++;
-      gint linelen = strlen(line);
-      if (line[linelen-1] == '\n')
-        {
-          line[linelen-1] = 0;
-          linelen--;
-        }
+
+      const gchar *eol = strchr(line_start, '\n');
+      const gchar *line_end = eol ? eol : file_end;
+      gint linelen = line_end - line_start;
 
       if (lineno > (gint) yylloc->last_line)
         break;
       else if (lineno < (gint) yylloc->first_line)
-        continue;
+        goto next;
       else if (lineno == yylloc->first_line)
         {
           if (yylloc->first_line == yylloc->last_line)
-            g_string_append_len(result, &line[MIN(linelen, yylloc->first_column-1)], yylloc->last_column - yylloc->first_column);
+            {
+              gint start = MIN(linelen, yylloc->first_column - 1);
+              gint len = yylloc->last_column - yylloc->first_column;
+              g_string_append_len(result, line_start + start, len);
+            }
           else
-            g_string_append(result, &line[MIN(linelen, yylloc->first_column-1)]);
+            {
+              gint token_start = MIN(linelen, yylloc->first_column - 1);
+              g_string_append_len(result, line_start + token_start, linelen);
+            }
         }
       else if (lineno < yylloc->last_line)
         {
           g_string_append_c(result, ' ');
-          g_string_append(result, line);
+          g_string_append_len(result, line_start, linelen);
         }
       else if (lineno == yylloc->last_line)
         {
           g_string_append_c(result, ' ');
-          g_string_append_len(result, line, yylloc->last_column);
+          g_string_append_len(result, line_start, yylloc->last_column);
         }
-    }
-  fclose(f);
 
-  g_free(line);
+next:
+      line_start = eol ? eol + 1 : file_end;
+    }
+
   /* NOTE: do we have the appropriate number of lines? */
   return lineno > yylloc->first_line;
 }
@@ -301,7 +317,7 @@ cfg_source_extract_source_text(CfgLexer *lexer, const CFG_LTYPE *yylloc, GString
 
   g_string_truncate(result, 0);
   if (level->include_type == CFGI_FILE)
-    return _extract_source_from_file_location(result, yylloc->name, yylloc);
+    return _extract_source_from_file_location(lexer, result, yylloc->name, yylloc);
   else if (level->include_type == CFGI_BUFFER)
     {
       CFG_LTYPE buf_lloc = *yylloc;

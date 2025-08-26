@@ -1267,6 +1267,7 @@ cfg_lexer_init(CfgLexer *self, GlobalConfig *cfg)
 
   _cfg_lexer_lex_init_extra(self, &self->state);
   self->string_buffer = g_string_sized_new(32);
+  self->source_file_cache.content = g_string_sized_new(256);
   self->token_text = g_string_sized_new(32);
   self->token_pretext = g_string_sized_new(32);
   self->cfg = cfg;
@@ -1329,6 +1330,7 @@ cfg_lexer_free(CfgLexer *self)
   self->include_depth = 0;
   _cfg_lexer_lex_destroy(self->state);
   g_string_free(self->string_buffer, TRUE);
+  g_string_free(self->source_file_cache.content, TRUE);
   if (self->token_text)
     g_string_free(self->token_text, TRUE);
   if (self->token_pretext)

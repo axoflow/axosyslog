@@ -172,6 +172,12 @@ struct _CfgIncludeLevel
   struct yy_buffer_state *yybuf;
 };
 
+typedef struct _CfgSourceCache
+{
+  const gchar *file;
+  GString *content;
+} CfgSourceCache;
+
 /* Lexer class that encapsulates a flex generated lexer. This can be
  * instantiated multiple times in parallel, e.g.  doesn't use any global
  * state as we're using the "reentrant" code by flex
@@ -193,6 +199,7 @@ struct _CfgLexer
   gint preprocess_suppress_tokens;
   GString *token_pretext;
   GString *token_text;
+  CfgSourceCache source_file_cache;
   GlobalConfig *cfg;
   guint first_non_pragma_seen:1, ignore_pragma:1;
 };
