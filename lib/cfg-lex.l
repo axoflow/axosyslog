@@ -539,7 +539,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                                  return LL_BLOCK;
                                }
                            }
-<block_arg>[^\[\]\{\}\(\),]   { g_string_append_c(yyextra->string_buffer, yytext[0]); }
+<block_arg>[^\n\r\[\]\{\}\(\),]   { g_string_append_c(yyextra->string_buffer, yytext[0]); }
 
 
 <block_string>[^\\"\r\n]+  { g_string_append(yyextra->string_buffer, yytext); }
@@ -562,7 +562,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
      * last character.  Basically we behave just as if the entire block was a
      * qstring.
      */
-<block_string,block_qstring,block_content>\r?\n    {
+<block_string,block_qstring,block_content,block_arg>\r?\n    {
                              g_string_append(yyextra->string_buffer, yytext);
                              _cfg_lex_extend_token_location_to_next_line(yyextra);
                            }
