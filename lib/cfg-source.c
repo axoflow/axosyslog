@@ -165,20 +165,24 @@ _lexer_report_buffer_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG
 }
 
 static void
+_lexer_cache_file_contents(CfgLexer *lexer, CfgIncludeLevel *level, const gchar *filename)
+{
+  if (level->original_lines)
+    return;
+
+  gchar *buf;
+  if (!g_file_get_contents(filename, &buf, NULL, NULL))
+    buf = g_strdup_printf("Error reading source for configuration file: %s\n", filename);
+
+  level->original_lines = g_strsplit(buf, "\n", 0);
+  level->num_original_lines = g_strv_length(level->original_lines);
+  g_free(buf);
+}
+
+static void
 _lexer_report_file_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
 {
-  if (!level->original_lines)
-    {
-      gchar *buf;
-      if (!g_file_get_contents(file_lloc->name, &buf, NULL, NULL))
-        {
-          fprintf(stderr, "Error reading source for configuration file: %s\n", file_lloc->name);
-          return;
-        }
-      level->original_lines = g_strsplit(buf, "\n", 0);
-      level->num_original_lines = g_strv_length(level->original_lines);
-      g_free(buf);
-    }
+  _lexer_cache_file_contents(lexer, level, file_lloc->name);
   _lexer_report_buffer_location(lexer, level, file_lloc, buf_lloc);
 }
 
@@ -197,60 +201,6 @@ cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const C
       _lexer_report_buffer_location(lexer, level, yylloc, &buf_lloc);
     }
   return TRUE;
-}
-
-static gboolean
-_extract_source_from_file_location(GString *result, const gchar *filename, const CFG_LTYPE *yylloc)
-{
-  gint buflen = 65520;
-  if (yylloc->first_column < 1 || yylloc->last_column < 1 ||
-      yylloc->first_column > buflen-1 || yylloc->last_column > buflen-1)
-    return FALSE;
-
-  FILE *f = fopen(filename, "r");
-  if (!f)
-    return FALSE;
-
-  gchar *line = g_malloc(buflen);
-  gint lineno = 0;
-
-  while (fgets(line, buflen, f))
-    {
-      lineno++;
-      gint linelen = strlen(line);
-      if (line[linelen-1] == '\n')
-        {
-          line[linelen-1] = 0;
-          linelen--;
-        }
-
-      if (lineno > (gint) yylloc->last_line)
-        break;
-      else if (lineno < (gint) yylloc->first_line)
-        continue;
-      else if (lineno == yylloc->first_line)
-        {
-          if (yylloc->first_line == yylloc->last_line)
-            g_string_append_len(result, &line[MIN(linelen, yylloc->first_column-1)], yylloc->last_column - yylloc->first_column);
-          else
-            g_string_append(result, &line[MIN(linelen, yylloc->first_column-1)]);
-        }
-      else if (lineno < yylloc->last_line)
-        {
-          g_string_append_c(result, ' ');
-          g_string_append(result, line);
-        }
-      else if (lineno == yylloc->last_line)
-        {
-          g_string_append_c(result, ' ');
-          g_string_append_len(result, line, yylloc->last_column);
-        }
-    }
-  fclose(f);
-
-  g_free(line);
-  /* NOTE: do we have the appropriate number of lines? */
-  return lineno > yylloc->first_line;
 }
 
 static gboolean
@@ -312,7 +262,10 @@ cfg_source_extract_source_text(CfgLexer *lexer, const CFG_LTYPE *yylloc, GString
 
   g_string_truncate(result, 0);
   if (level->include_type == CFGI_FILE)
-    return _extract_source_from_file_location(result, yylloc->name, yylloc);
+    {
+      _lexer_cache_file_contents(lexer, level, yylloc->name);
+      return _extract_source_from_buffer_location(result, level, yylloc);
+    }
   else if (level->include_type == CFGI_BUFFER)
     {
       CFG_LTYPE buf_lloc = *yylloc;
