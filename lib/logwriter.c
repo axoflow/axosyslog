@@ -1116,7 +1116,7 @@ log_writer_format_log(LogWriter *self, LogMessage *lm, GString *result)
 
       p = result->str;
       /* NOTE: the size is calculated to leave trailing new line */
-      while ((p = find_cr_or_lf_or_nul(p, result->str + result->len - p - 1)))
+      while ((p = (gchar *) find_cr_or_lf_or_nul(p, result->str + result->len - p - 1)))
         {
           *p = ' ';
           p++;

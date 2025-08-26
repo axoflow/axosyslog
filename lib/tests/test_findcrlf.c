@@ -152,7 +152,7 @@ ParameterizedTestParameters(findcrlf, test)
 
 ParameterizedTest(struct findcrlf_params *params, findcrlf, test)
 {
-  gchar *eom = find_cr_or_lf_or_nul(params->msg, params->msg_len);
+  const gchar *eom = find_cr_or_lf_or_nul(params->msg, params->msg_len);
 
   cr_expect_not(params->eom_ofs == -1 && eom != NULL,
                 "EOM returned is not NULL, which was expected. eom_ofs=%d, eom=%s\n",
