@@ -1265,6 +1265,14 @@ def test_len(config, syslog_ng):
 def test_regexp_match(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
+    "foo\r\n\n\t\abar" =~ /foo\r\n\n\t\abar/;
+    "a\\b\\c" =~ /a\\b\\c/;
+    "a\"'b" =~ /a"'b/;
+    "a/b/c" =~ /a\/b\/c/;
+    "a b c 5" =~ /a\sb c \d/;
+    "a\xFF\o12" =~ /a\xFF\o{12}/;
+    "a\\bcd" =~ /^([^\\]+)\\(.+)$/;
+
     ${values.str} =~ /string/;
     ${values.str} =~ /.*/;
     not (${values.str} =~ /foobar/);
@@ -1834,32 +1842,8 @@ def test_null_coalesce_precedence_versus_ternary(config, syslog_ng):
 
 def test_slash_string_features(config, syslog_ng):
     cfg = r"""
-            $MSG = {};
-            $MSG.base = /foo bar/;
-            $MSG.line_break = /foo
-bar/;
-            $MSG.joint_lines = /foo \
-bar/;
-            ## escaped characters
-            $MSG.escaped_backslash = /foo\\bar/;
-            # slash is not escaped
-            $MSG.escaped_slash = /foo\/bar/;
-            $MSG.non_escaped_single_quotes = /foo'bar/;
-            $MSG.non_escaped_double_quotes = /foo"bar/;
-            $MSG.escaped_non_special = /foo\dbar/;
-
-            ## special characters
-            $MSG.new_line = /foo\nbar/;
-            $MSG.tab = /foo\tbar/;
-            $MSG.carrige_return = /foo\rbar/;
-            $MSG.vertical_tab = /foo\vbar/;
-            $MSG.form_feed = /foo\fbar/;
-            $MSG.backspace = /foo\bbar/;
-            $MSG.alert = /foo\abar/;
-
-            ##
-            $MSG.hexadecimal_value = /foo\x40bar/;
-            $MSG.octal_value = /foo\o100bar/;
+            $MSG = /everything is kept as \\'"\d\s\r\n\t\xFF\o100 is, except for the \/ slash, and you can join \
+lines/;
         """
 
     (file_true, file_false) = create_config(
@@ -1869,25 +1853,7 @@ bar/;
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    exp = (
-        r"""{"base":"foo bar","""
-        r""""line_break":"foo\nbar","""
-        r""""joint_lines":"foo bar","""
-        r""""escaped_backslash":"foo\\bar","""
-        r""""escaped_slash":"foo/bar","""
-        r""""non_escaped_single_quotes":"foo'bar","""
-        r""""non_escaped_double_quotes":"foo\"bar","""
-        r""""escaped_non_special":"foo\\dbar","""
-        r""""new_line":"foo\nbar","""
-        r""""tab":"foo\tbar","""
-        r""""carrige_return":"foo\rbar","""
-        r""""vertical_tab":"foo\u000bbar","""
-        r""""form_feed":"foo\fbar","""
-        r""""backspace":"foo\bbar","""
-        r""""alert":"foo\u0007bar","""
-        r""""hexadecimal_value":"foo@bar","""
-        r""""octal_value":"foo@bar"}""" + ""
-    )
+    exp = (r"""everything is kept as \\'"\d\s\r\n\t\xFF\o100 is, except for the / slash, and you can join lines""")
     res = file_true.read_log()
     assert res == exp
 
