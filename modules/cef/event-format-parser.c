@@ -39,6 +39,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
+#include "find-crlf.h"
 
 GQuark
 event_format_parser_error_quark(void)
@@ -227,7 +228,7 @@ _new_context(FilterXFunctionEventFormatParser *self,  CSVScanner *csv_scanner)
 }
 
 static FilterXObject *
-_parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
+_parse_message(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
 {
   FilterXObject *result = filterx_dict_new();
 
@@ -251,6 +252,54 @@ _parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
     }
 
   csv_scanner_deinit(&csv_scanner);
+  return result;
+}
+
+/* allocate max 4kB on the stack */
+#define STACK_ALLOC_LIMIT 4096
+
+static inline FilterXObject *
+_parse(FilterXFunctionEventFormatParser *self, const gchar *log, gsize len)
+{
+  /* NOTE: this gets rid of the NL characters that are potentially in the
+   * CEF payload.  This is against the spec, but we encountered actual
+   * samples from a widely used firewall, where this is a common occurence.
+   *
+   * This workaround is performance sensitive, so it is open-coded here,
+   * especially because we are trying to allocate a buffer from the stack
+   * (if small enough) or from the heap (otherwise).
+   */
+
+  gchar *buf = NULL, *buf_heap = NULL;
+  if (self->config.drop_newlines)
+    {
+      gchar *eol = (gchar *) find_cr_or_lf_or_nul(log, len);
+      if (eol)
+        {
+          if (len < STACK_ALLOC_LIMIT)
+            buf = g_alloca(len+1);
+          else
+            buf_heap = buf = g_malloc(len+1);
+          memcpy(buf, log, len);
+          buf[len] = 0;
+
+          /* move eol inside the buffer */
+          eol = eol - log + buf;
+
+          /* replace all newlines */
+          do
+            {
+              if (*eol)
+                *eol = ' ';
+              eol++;
+            }
+          while ((eol = (gchar *) find_cr_or_lf_or_nul(eol, buf + len - eol)));
+          log = buf;
+        }
+    }
+  FilterXObject *result = _parse_message(self, log, len);
+
+  g_free(buf_heap);
   return result;
 }
 
