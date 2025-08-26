@@ -45,6 +45,7 @@ typedef struct FilterXFunctionParseKV_
   gchar value_separator;
   gchar *pair_separator;
   gchar *stray_words_key;
+  guint8 stray_words_append_to_value:1;
 } FilterXFunctionParseKV;
 
 static gboolean
@@ -99,7 +100,8 @@ _extract_key_values(FilterXFunctionParseKV *self, const gchar *input, gsize inpu
   FilterXObject *result = filterx_dict_new();
 
   kv_scanner_init(&scanner, self->value_separator, self->pair_separator,
-                  self->stray_words_key != NULL ? KVSSWM_COLLECT : KVSSWM_DROP);
+                  self->stray_words_key != NULL ? KVSSWM_COLLECT :
+                  (self->stray_words_append_to_value ? KVSSWM_APPEND_TO_LAST_VALUE : KVSSWM_DROP));
   kv_scanner_input(&scanner, input);
   while (kv_scanner_scan_next(&scanner))
     {
@@ -263,6 +265,19 @@ _extract_optional_args(FilterXFunctionParseKV *self, FilterXFunctionArgs *args, 
           goto error;
         }
       _set_stray_words_key(self, value);
+    }
+
+  gboolean eval_error = FALSE;
+  gboolean stray_words_append_to_value = filterx_function_args_get_named_literal_boolean(args,
+                                         "stray_words_append_to_value", &exists, &eval_error);
+  if (exists)
+    {
+      if (eval_error)
+        {
+          error_str = "stray_words_append_to_value argument must be bool literal";
+          goto error;
+        }
+      self->stray_words_append_to_value = stray_words_append_to_value;
     }
 
   return TRUE;
