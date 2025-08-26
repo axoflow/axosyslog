@@ -39,7 +39,6 @@ exclude_contributor_list = [
     "dependabot[bot]",
 ]
 
-
 blocks = [
     ('Features', 'feature-*.md'),
     ('Bugfixes', 'bugfix-*.md'),
@@ -47,6 +46,8 @@ blocks = [
     ('Notes to developers', 'developer-note-*.md'),
     ('Other changes', 'other-*.md'),
 ]
+
+entry_format = "*-*.md"
 
 
 def print_usage_if_needed():
@@ -108,17 +109,18 @@ def create_highlights_block():
            '\n'
 
 
-def create_standard_blocks():
+def create_standard_blocks(processed_files):
     standard_blocks = ''
     for block_name, glob in blocks:
         entries = list(news_dir.glob(glob))
         if len(entries) > 0:
             standard_blocks += create_block(block_name, entries)
+            processed_files += [ str(entry.relative_to(root_dir)) for entry in entries ]
     return standard_blocks
 
 
 def check_if_news_entries_are_present():
-    return any(news_dir.glob("*-*.md"))
+    return any(news_dir.glob(entry_format))
 
 
 def create_discord_block():
@@ -161,23 +163,22 @@ def create_newsfile(news):
     print('Newsfile created at {}\n'.format(newsfile.resolve()))
 
 
-def cleanup():
-    print("Cleaning up entry files with `git rm news/*-*.md`:")
-    _exec("git rm news/*-*.md")
-
-
-def create_news_content():
+def create_news_content(processed_files):
     news = create_version()
     news += create_prelude()
     news += create_highlights_block()
-    news += create_standard_blocks()
+    news += create_standard_blocks(processed_files)
     news += create_discord_block()
     news += create_credits_block()
     return news
 
+
 def check_if_news_is_already_uptodate():
     return get_last_version() == get_next_version()
 
+
+def remove_files(files):
+    _exec("git rm " + " ".join(files))
 
 def main():
     print_usage_if_needed()
@@ -188,10 +189,20 @@ def main():
                   'Remove NEWS entries or bump the VERSION.txt file.\n')
             return 1
         print("NEWS file is already up-to-date, no new NEWS entries, assuming it has been manually prepared")
-    else:
-        news = create_news_content()
-        create_newsfile(news)
-        cleanup()
+        return 0
+
+    processed_files = []
+
+    news = create_news_content(processed_files)
+    create_newsfile(news)
+
+    if processed_files:
+        remove_files(processed_files)
+
+    if check_if_news_entries_are_present():
+        print(f'NEWS entries of unknown type were found: {[ e.name for e in news_dir.glob(entry_format) ]}\n')
+        return 1
+
     return 0
 
 
