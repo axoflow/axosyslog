@@ -526,6 +526,7 @@ afprogram_dd_restore_reload_store_item(AFProgramDestDriver *self, GlobalConfig *
     {
       self->process_info.pid = restored_info->pid;
       self->writer = restored_info->writer;
+      ((LogPipe *) self->writer)->cfg = cfg;
 
       child_manager_register(self->process_info.pid, afprogram_dd_exit, log_pipe_ref(&self->super.super.super),
                              (GDestroyNotify)log_pipe_unref);
@@ -621,6 +622,12 @@ afprogram_dd_store_reload_store_item(AFProgramDestDriver *self, GlobalConfig *cf
 
   reload_info->pid = self->process_info.pid;
   reload_info->writer = self->writer;
+
+  LogPipe *reload_pipe = (LogPipe *) reload_info->writer;
+  if (reload_pipe->cfg)
+    {
+      reload_pipe->cfg = NULL;
+    }
 
   cfg_persist_config_add(cfg, afprogram_dd_format_persist_name((const LogPipe *)self), reload_info,
                          afprogram_reload_store_item_destroy_notify);
