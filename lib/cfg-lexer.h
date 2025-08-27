@@ -157,17 +157,16 @@ struct _CfgIncludeLevel
     } file;
     struct
     {
-      /* the lexer mutates content, so save it for error reporting */
-      gchar **original_lines;
-      gint num_original_lines;
       /* buffer for the lexer */
       gchar *content;
       gsize content_length;
     } buffer;
   };
+  /* the lexer mutates content, so save it for error reporting */
+  gchar **original_lines;
+  gint num_original_lines;
 
-
-
+  /* lexer state */
   CFG_LTYPE lloc;
   struct yy_buffer_state *yybuf;
 };

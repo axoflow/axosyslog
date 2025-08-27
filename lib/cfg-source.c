@@ -132,8 +132,8 @@ _report_file_location(const gchar *filename, const CFG_LTYPE *yylloc, gint start
 static void
 _report_buffer_location(CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
 {
-  gchar **buffer_lines = level->buffer.original_lines;
-  gint buffer_num_lines = level->buffer.num_original_lines;
+  gchar **buffer_lines = level->original_lines;
+  gint buffer_num_lines = level->num_original_lines;
 
   if (buffer_num_lines < buf_lloc->first_line)
     return;
@@ -238,8 +238,8 @@ _extract_source_from_file_location(GString *result, const gchar *filename, const
 static gboolean
 _extract_source_from_buffer_location(GString *result, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
 {
-  gchar **lines = level->buffer.original_lines;
-  gint num_lines = level->buffer.num_original_lines;
+  gchar **lines = level->original_lines;
+  gint num_lines = level->num_original_lines;
 
   if (num_lines <= yylloc->first_line)
     goto exit;
