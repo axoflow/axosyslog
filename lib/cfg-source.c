@@ -164,12 +164,30 @@ _lexer_report_buffer_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG
                                  file_lloc->first_line - range_backwards);
 }
 
+static void
+_lexer_report_file_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
+{
+  if (!level->original_lines)
+    {
+      gchar *buf;
+      if (!g_file_get_contents(file_lloc->name, &buf, NULL, NULL))
+        {
+          fprintf(stderr, "Error reading source for configuration file: %s\n", file_lloc->name);
+          return;
+        }
+      level->original_lines = g_strsplit(buf, "\n", 0);
+      level->num_original_lines = g_strv_length(level->original_lines);
+      g_free(buf);
+    }
+  _lexer_report_buffer_location(lexer, level, file_lloc, buf_lloc);
+}
+
 gboolean
 cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
 {
   if (level->include_type == CFGI_FILE)
     {
-      _report_file_location(yylloc->name, yylloc, -1);
+      _lexer_report_file_location(lexer, level, yylloc, yylloc);
     }
   else if (level->include_type == CFGI_BUFFER)
     {
