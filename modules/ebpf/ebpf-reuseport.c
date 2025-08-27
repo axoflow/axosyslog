@@ -47,9 +47,6 @@ ebpf_reuseport_set_sockets(LogDriverPlugin *s, gint number_of_sockets)
 static void
 _slot_setup_socket(EBPFReusePort *self, AFSocketSetupSocketSignalData *data)
 {
-  cap_t saved_caps = g_process_cap_save();
-  g_process_enable_cap("cap_bpf");
-
   int bpf_fd = bpf_program__fd(self->random->progs.random_choice);
   if (bpf_fd < 0)
     {
@@ -68,10 +65,8 @@ _slot_setup_socket(EBPFReusePort *self, AFSocketSetupSocketSignalData *data)
   msg_info("ebpf-reuseport(): eBPF reuseport group randomizer applied",
            evt_tag_int("sock", data->sock));
 
-  g_process_cap_restore(saved_caps);
   return;
 error:
-  g_process_cap_restore(saved_caps);
   data->failure = TRUE;
 }
 
@@ -81,7 +76,11 @@ _attach(LogDriverPlugin *s, LogDriver *driver)
 {
   EBPFReusePort *self = (EBPFReusePort *)s;
 
+  cap_t saved_caps = g_process_cap_save();
+  g_process_enable_cap("cap_bpf");
   self->random = random_kern__open_and_load();
+  g_process_cap_restore(saved_caps);
+
   if (!self->random)
     {
       msg_error("ebpf-reuseport(): Unable to load eBPF program to the kernel");
