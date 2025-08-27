@@ -277,7 +277,7 @@ report_syntax_error(CfgLexer *lexer, const CFG_LTYPE *yylloc, const char *what, 
                   from_lloc->last_line,
                   from_lloc->last_column);
         }
-      cfg_source_print_source_context(lexer, from, from_lloc);
+      cfg_source_print_region_from_lexer(lexer, from, from_lloc);
       fprintf(stderr, "\n");
     }
 }

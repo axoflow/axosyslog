@@ -85,8 +85,10 @@ _print_underlined_source_block(const CFG_LTYPE *yylloc, gchar **lines, gsize num
     }
 }
 
+/* print a region of text from the configuration file.  This can also be
+ * used once the lexer was finished, e.g. it does not use CfgLexer at all */
 static void
-_report_file_location(const gchar *filename, const CFG_LTYPE *yylloc, gint start_line)
+_print_source_region_from_file(const gchar *filename, const CFG_LTYPE *yylloc, gint start_line)
 {
   FILE *f;
   gint lineno = 0;
@@ -124,14 +126,14 @@ _report_file_location(const gchar *filename, const CFG_LTYPE *yylloc, gint start
 }
 
 gboolean
-cfg_source_print_source_text(const gchar *filename, gint line, gint column, gint start_line)
+cfg_source_print_region(const gchar *filename, gint line, gint column, gint start_line)
 {
   CFG_LTYPE yylloc = {0};
 
   yylloc.name = filename;
   yylloc.first_line = yylloc.last_line = line;
   yylloc.first_column = yylloc.last_column = column;
-  _report_file_location(yylloc.name, &yylloc, start_line);
+  _print_source_region_from_file(yylloc.name, &yylloc, start_line);
   return TRUE;
 }
 
@@ -142,7 +144,8 @@ cfg_source_print_source_text(const gchar *filename, gint line, gint column, gint
  *    file_*    => tracks file related information
  */
 static void
-_lexer_report_buffer_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
+_print_source_text_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level,
+                              const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
 {
   gchar **buffer_lines = level->original_lines;
   gint buffer_num_lines = level->num_original_lines;
@@ -165,7 +168,7 @@ _lexer_report_buffer_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG
 }
 
 static void
-_lexer_cache_file_contents(CfgLexer *lexer, CfgIncludeLevel *level, const gchar *filename)
+_cache_file_contents(CfgLexer *lexer, CfgIncludeLevel *level, const gchar *filename)
 {
   if (level->original_lines)
     return;
@@ -179,32 +182,27 @@ _lexer_cache_file_contents(CfgLexer *lexer, CfgIncludeLevel *level, const gchar 
   g_free(buf);
 }
 
-static void
-_lexer_report_file_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
-{
-  _lexer_cache_file_contents(lexer, level, file_lloc->name);
-  _lexer_report_buffer_location(lexer, level, file_lloc, buf_lloc);
-}
-
 gboolean
-cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
+cfg_source_print_region_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
 {
   if (level->include_type == CFGI_FILE)
     {
-      _lexer_report_file_location(lexer, level, yylloc, yylloc);
+      _cache_file_contents(lexer, level, yylloc->name);
+      _print_source_text_from_lexer(lexer, level, yylloc, yylloc);
     }
   else if (level->include_type == CFGI_BUFFER)
     {
       CFG_LTYPE buf_lloc = *yylloc;
       cfg_lexer_undo_set_file_location(lexer, &buf_lloc);
 
-      _lexer_report_buffer_location(lexer, level, yylloc, &buf_lloc);
+      _print_source_text_from_lexer(lexer, level, yylloc, &buf_lloc);
     }
   return TRUE;
 }
 
+/* extract the text for a specific source region, as denoted by an yylloc */
 static gboolean
-_extract_source_from_buffer_location(GString *result, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
+_extract_token_text_from_lexer(GString *result, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
 {
   gchar **lines = level->original_lines;
   gint num_lines = level->num_original_lines;
@@ -256,22 +254,22 @@ exit:
 }
 
 gboolean
-cfg_source_extract_source_text(CfgLexer *lexer, const CFG_LTYPE *yylloc, GString *result)
+cfg_source_extract_token_text(CfgLexer *lexer, const CFG_LTYPE *yylloc, GString *result)
 {
   CfgIncludeLevel *level = &lexer->include_stack[lexer->include_depth];
 
   g_string_truncate(result, 0);
   if (level->include_type == CFGI_FILE)
     {
-      _lexer_cache_file_contents(lexer, level, yylloc->name);
-      return _extract_source_from_buffer_location(result, level, yylloc);
+      _cache_file_contents(lexer, level, yylloc->name);
+      return _extract_token_text_from_lexer(result, level, yylloc);
     }
   else if (level->include_type == CFGI_BUFFER)
     {
       CFG_LTYPE buf_lloc = *yylloc;
       cfg_lexer_undo_set_file_location(lexer, &buf_lloc);
 
-      return _extract_source_from_buffer_location(result, level, &buf_lloc);
+      return _extract_token_text_from_lexer(result, level, &buf_lloc);
     }
   else
     g_assert_not_reached();
