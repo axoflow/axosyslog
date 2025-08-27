@@ -183,9 +183,18 @@ yy_filter_input(CfgLexer *self, gchar *buf, gsize buf_size)
     struct yyguts_t * __yyg = (struct yyguts_t*) yyscanner;		\
                                                                         \
     msg_error("Fatal error in configuration lexer, giving up",		\
-              evt_tag_str("error", msg));							\
+              evt_tag_str("error", msg));				\
     longjmp(__yyg->yyextra_r->fatal_error, 1);				\
   } while(0)
+
+#define ECHO \
+  do {                                                                  			\
+    CFG_LTYPE *cur_lloc = &yyextra->include_stack[yyextra->include_depth].lloc; 		\
+    msg_warning("WARNING: No rules in the configuration lexer matched these characters",	\
+              evt_tag_printf("characters", "%.*s", yyleng, yytext),				\
+              evt_tag_str("filename", cur_lloc->name),						\
+              evt_tag_printf("line", "%d:%d", cur_lloc->first_line, cur_lloc->first_column));	\
+  } while (0)
 
 #define _process_commented_line(scanner,content,cond) \
   do {                                                \
@@ -511,7 +520,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                                {
                                  yy_pop_state(yyscanner);
                                  yylval->cptr = strdup(yyextra->string_buffer->str);
-                                 unput(')');
+                                 unput(yytext[0]);
                                  return LL_BLOCK;
                                }
                            }
@@ -530,7 +539,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                                  return LL_BLOCK;
                                }
                            }
-<block_arg>[^\[\]\{\}\(\),]   { g_string_append_c(yyextra->string_buffer, yytext[0]); }
+<block_arg>[^\n\r\[\]\{\}\(\),]   { g_string_append_c(yyextra->string_buffer, yytext[0]); }
 
 
 <block_string>[^\\"\r\n]+  { g_string_append(yyextra->string_buffer, yytext); }
@@ -553,7 +562,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
      * last character.  Basically we behave just as if the entire block was a
      * qstring.
      */
-<block_string,block_qstring,block_content>\r?\n    {
+<block_string,block_qstring,block_content,block_arg>\r?\n    {
                              g_string_append(yyextra->string_buffer, yytext);
                              _cfg_lex_extend_token_location_to_next_line(yyextra);
                            }
