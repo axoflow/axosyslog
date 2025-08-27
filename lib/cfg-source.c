@@ -130,7 +130,7 @@ _report_file_location(const gchar *filename, const CFG_LTYPE *yylloc, gint start
  *    file_*    => tracks file related information
  */
 static void
-_report_buffer_location(CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
+_lexer_report_buffer_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
 {
   gchar **buffer_lines = level->original_lines;
   gint buffer_num_lines = level->num_original_lines;
@@ -176,7 +176,7 @@ cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const C
       CFG_LTYPE buf_lloc = *yylloc;
       cfg_lexer_undo_set_file_location(lexer, &buf_lloc);
 
-      _report_buffer_location(level, yylloc, &buf_lloc);
+      _lexer_report_buffer_location(lexer, level, yylloc, &buf_lloc);
     }
   return TRUE;
 }
