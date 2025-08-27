@@ -158,8 +158,8 @@ struct _CfgIncludeLevel
     struct
     {
       /* the lexer mutates content, so save it for error reporting */
-      gchar *original_content;
       gchar **original_lines;
+      gint num_original_lines;
       /* buffer for the lexer */
       gchar *content;
       gsize content_length;

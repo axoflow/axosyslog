@@ -130,13 +130,13 @@ _report_file_location(const gchar *filename, const CFG_LTYPE *yylloc, gint start
  *    file_*    => tracks file related information
  */
 static void
-_report_buffer_location(const gchar *buffer_content, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
+_report_buffer_location(CfgIncludeLevel *level, const CFG_LTYPE *file_lloc, const CFG_LTYPE *buf_lloc)
 {
-  gchar **buffer_lines = g_strsplit(buffer_content, "\n", buf_lloc->first_line + CONTEXT + 1);
-  gint buffer_num_lines = g_strv_length(buffer_lines);
+  gchar **buffer_lines = level->buffer.original_lines;
+  gint buffer_num_lines = level->buffer.num_original_lines;
 
   if (buffer_num_lines < buf_lloc->first_line)
-    goto exit;
+    return;
 
   /* the line number in the file, which we report in the source dump, 1 based */
   gint range_backwards = CONTEXT;
@@ -150,9 +150,6 @@ _report_buffer_location(const gchar *buffer_content, const CFG_LTYPE *file_lloc,
 
   _print_underlined_source_block(file_lloc, &buffer_lines[buffer_start_index], buffer_num_lines - buffer_start_index,
                                  file_lloc->first_line - range_backwards);
-
-exit:
-  g_strfreev(buffer_lines);
 }
 
 gboolean
@@ -179,7 +176,7 @@ cfg_source_print_source_context(CfgLexer *lexer, CfgIncludeLevel *level, const C
       CFG_LTYPE buf_lloc = *yylloc;
       cfg_lexer_undo_set_file_location(lexer, &buf_lloc);
 
-      _report_buffer_location(level->buffer.original_content, yylloc, &buf_lloc);
+      _report_buffer_location(level, yylloc, &buf_lloc);
     }
   return TRUE;
 }
@@ -241,12 +238,8 @@ _extract_source_from_file_location(GString *result, const gchar *filename, const
 static gboolean
 _extract_source_from_buffer_location(GString *result, CfgIncludeLevel *level, const CFG_LTYPE *yylloc)
 {
-  const gchar *buffer_content = level->buffer.original_content;
   gchar **lines = level->buffer.original_lines;
-
-  if (!lines)
-    lines = level->buffer.original_lines = g_strsplit(buffer_content, "\n", 0);
-  gint num_lines = g_strv_length(lines);
+  gint num_lines = level->buffer.num_original_lines;
 
   if (num_lines <= yylloc->first_line)
     goto exit;
