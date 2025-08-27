@@ -123,6 +123,18 @@ _report_file_location(const gchar *filename, const CFG_LTYPE *yylloc, gint start
   g_ptr_array_free(context, TRUE);
 }
 
+gboolean
+cfg_source_print_source_text(const gchar *filename, gint line, gint column, gint start_line)
+{
+  CFG_LTYPE yylloc = {0};
+
+  yylloc.name = filename;
+  yylloc.first_line = yylloc.last_line = line;
+  yylloc.first_column = yylloc.last_column = column;
+  _report_file_location(yylloc.name, &yylloc, start_line);
+  return TRUE;
+}
+
 /* this will report source content from the buffer, but use the line numbers
  * of the file where the block was defined.
  *
@@ -150,18 +162,6 @@ _lexer_report_buffer_location(CfgLexer *lexer, CfgIncludeLevel *level, const CFG
 
   _print_underlined_source_block(file_lloc, &buffer_lines[buffer_start_index], buffer_num_lines - buffer_start_index,
                                  file_lloc->first_line - range_backwards);
-}
-
-gboolean
-cfg_source_print_source_text(const gchar *filename, gint line, gint column, gint start_line)
-{
-  CFG_LTYPE yylloc = {0};
-
-  yylloc.name = filename;
-  yylloc.first_line = yylloc.last_line = line;
-  yylloc.first_column = yylloc.last_column = column;
-  _report_file_location(yylloc.name, &yylloc, start_line);
-  return TRUE;
 }
 
 gboolean
