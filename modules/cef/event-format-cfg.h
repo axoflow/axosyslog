@@ -58,6 +58,7 @@ typedef struct _Extensions
 typedef struct _Config
 {
   const gchar *signature;
+  gboolean drop_newlines;
   Header header;
   Extensions extensions;
 } Config;

@@ -112,6 +112,12 @@ Test(filterx_func_parse_cef, test_basic_cef_message)
                         "{\"cef_version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"SecurityCenter\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"event_name\":\"Completed successfully\",\"agent_severity\":\"1\",\"rt\":\"1647626887000\",\"cs9\":\"site location Bldg\",\"cs9Label\":\"GroupName\",\"dhost\":\"WS6465\",\"dst\":\"10.55.203.12\",\"cs2\":\"KES\",\"cs2Label\":\"ProductName\",\"cs3\":\"11.0.0.0\",\"cs3Label\":\"ProductVersion\",\"cs10\":\"Uninstall EDR\",\"cs10Label\":\"TaskName\",\"cs4\":\"885\",\"cs4Label\":\"TaskId\",\"cn2\":\"4\",\"cn2Label\":\"TaskNewState\",\"cn1\":\"0\",\"cn1Label\":\"TaskOldState\"}");
 }
 
+Test(filterx_func_parse_cef, test_cef_message_with_line_breaks)
+{
+  _assert_parser_result("CEF:0|KasperskyLab|Security\nCenter|13.2.0.1511|KLPRCI_TaskState|Completed\nsuccessfully|1|rt=1647626887000 cs9=site location Bldg cs9Label=GroupName dhost=WS6465 dst=10.55.203.12 cs2=KES cs2Label=ProductName\ncs3=11.0.0.0 cs3Label=ProductVersion cs10=Uninstall EDR cs10Label=TaskName cs4=885 cs4Label=TaskId cn2=4 cn2Label=TaskNewState cn1=0 cn1Label=TaskOldState",
+                        "{\"cef_version\":\"0\",\"device_vendor\":\"KasperskyLab\",\"device_product\":\"Security Center\",\"device_version\":\"13.2.0.1511\",\"device_event_class_id\":\"KLPRCI_TaskState\",\"event_name\":\"Completed successfully\",\"agent_severity\":\"1\",\"rt\":\"1647626887000\",\"cs9\":\"site location Bldg\",\"cs9Label\":\"GroupName\",\"dhost\":\"WS6465\",\"dst\":\"10.55.203.12\",\"cs2\":\"KES\",\"cs2Label\":\"ProductName\",\"cs3\":\"11.0.0.0\",\"cs3Label\":\"ProductVersion\",\"cs10\":\"Uninstall EDR\",\"cs10Label\":\"TaskName\",\"cs4\":\"885\",\"cs4Label\":\"TaskId\",\"cn2\":\"4\",\"cn2Label\":\"TaskNewState\",\"cn1\":\"0\",\"cn1Label\":\"TaskOldState\"}");
+}
+
 Test(filterx_func_parse_cef, test_separate_extensions)
 {
   const gchar *input =

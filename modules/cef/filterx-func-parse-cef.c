@@ -42,6 +42,7 @@ Field cef_fields[] =
 Config cef_cfg =
 {
   .signature = "CEF",
+  .drop_newlines = TRUE,
   .header = {
     .num_fields = 8,
     .delimiters = "|",
