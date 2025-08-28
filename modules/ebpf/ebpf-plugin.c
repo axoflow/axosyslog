@@ -23,6 +23,8 @@
 #include "cfg-parser.h"
 #include "plugin.h"
 #include "plugin-types.h"
+#include <bpf/libbpf.h>
+
 
 extern CfgParser ebpf_parser;
 
@@ -35,9 +37,48 @@ static Plugin ebpf_plugins[] =
   },
 };
 
+int _libbpf_log(enum libbpf_print_level level, const char *fmt, va_list va) G_GNUC_PRINTF(2, 0);
+
+int
+_libbpf_log(enum libbpf_print_level level, const char *fmt, va_list va)
+{
+  int prio = EVT_PRI_INFO;
+  switch (level)
+    {
+    case LIBBPF_DEBUG:
+      prio = EVT_PRI_DEBUG;
+      break;
+    case LIBBPF_INFO:
+      prio = EVT_PRI_INFO;
+      break;
+    case LIBBPF_WARN:
+      prio = EVT_PRI_WARNING;
+      break;
+    default:
+      prio = EVT_PRI_INFO;
+      break;
+    }
+
+  if (prio == EVT_PRI_DEBUG && !debug_flag)
+    return 0;
+
+  gchar buf[2048];
+  vsnprintf(buf, sizeof(buf), fmt, va);
+  gsize len = strlen(buf);
+  if (buf[len-1] == '\n')
+    buf[len-1] = 0;
+  msg_send_formatted_message(prio, buf);
+  return 0;
+}
+
+libbpf_print_fn_t libbpf_set_print(libbpf_print_fn_t fn G_GNUC_PRINTF(2, 0));
+
+
 gboolean
 ebpf_module_init(PluginContext *context, CfgArgs *args)
 {
+  libbpf_set_print(_libbpf_log);
+
   plugin_register(context, ebpf_plugins, G_N_ELEMENTS(ebpf_plugins));
   return TRUE;
 }

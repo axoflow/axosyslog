@@ -199,13 +199,12 @@ version(void)
 
 #if SYSLOG_NG_ENABLE_LINUX_CAPS
 #define BASE_CAPS "cap_net_bind_service,cap_net_broadcast,cap_net_raw," \
-  "cap_dac_read_search,cap_dac_override,cap_chown,cap_fowner=p "
+  "cap_dac_read_search,cap_dac_override,cap_chown,cap_fowner=p"
 
 static void
 setup_caps (void)
 {
-  static gchar *capsstr_syslog = BASE_CAPS "cap_syslog=ep";
-  static gchar *capsstr_sys_admin = BASE_CAPS "cap_sys_admin=ep";
+  static gchar caps[1024] = BASE_CAPS;
 
   if (geteuid() != 0)
     g_process_disable_caps();
@@ -219,10 +218,22 @@ setup_caps (void)
    * indicate readability. Enabling/disabling cap_sys_admin on every poll
    * invocation seems to be too expensive. So I enable it for now.
    */
-  if (g_process_check_cap_syslog())
-    g_process_set_caps(capsstr_syslog);
+
+  /* NOTE: this only adds either cap_sys_admin or cap_bpf to the permitted
+   * set, whereas the one below will add it to the effective and permitted
+   * sets */
+
+  if (g_process_check_cap_bpf())
+    g_strlcat(caps, " cap_bpf=p", sizeof(caps));
   else
-    g_process_set_caps(capsstr_sys_admin);
+    g_strlcat(caps, " cap_sys_admin=p", sizeof(caps));
+
+  if (g_process_check_cap_syslog())
+    g_strlcat(caps, " cap_syslog=ep", sizeof(caps));
+  else
+    g_strlcat(caps, " cap_sys_admin=ep", sizeof(caps));
+
+  g_process_set_caps(caps);
 }
 #else
 

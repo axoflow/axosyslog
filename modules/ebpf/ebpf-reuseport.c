@@ -23,6 +23,7 @@
 #include "modules/afsocket/afsocket-signals.h"
 #include "syslog-ng.h"
 #include "messages.h"
+#include "gprocess.h"
 
 #include <bpf/libbpf.h>
 
@@ -35,7 +36,6 @@ typedef struct _EBPFReusePort
 
 #include "random.skel.c"
 
-int _libbpf_log(enum libbpf_print_level level, const char *fmt, va_list va) G_GNUC_PRINTF(2, 0);
 
 void
 ebpf_reuseport_set_sockets(LogDriverPlugin *s, gint number_of_sockets)
@@ -64,51 +64,23 @@ _slot_setup_socket(EBPFReusePort *self, AFSocketSetupSocketSignalData *data)
 
   msg_info("ebpf-reuseport(): eBPF reuseport group randomizer applied",
            evt_tag_int("sock", data->sock));
+
   return;
 error:
   data->failure = TRUE;
 }
 
-int
-_libbpf_log(enum libbpf_print_level level, const char *fmt, va_list va)
-{
-  int prio = EVT_PRI_INFO;
-  switch (level)
-    {
-    case LIBBPF_DEBUG:
-      prio = EVT_PRI_DEBUG;
-      break;
-    case LIBBPF_INFO:
-      prio = EVT_PRI_INFO;
-      break;
-    case LIBBPF_WARN:
-      prio = EVT_PRI_WARNING;
-      break;
-    default:
-      prio = EVT_PRI_INFO;
-      break;
-    }
-
-  if (prio == EVT_PRI_DEBUG && !debug_flag)
-    return 0;
-
-  gchar buf[2048];
-  vsnprintf(buf, sizeof(buf), fmt, va);
-
-  msg_send_formatted_message(prio, buf);
-  return 0;
-}
-
-libbpf_print_fn_t libbpf_set_print(libbpf_print_fn_t fn G_GNUC_PRINTF(2, 0));
 
 static gboolean
 _attach(LogDriverPlugin *s, LogDriver *driver)
 {
   EBPFReusePort *self = (EBPFReusePort *)s;
 
-  libbpf_set_print(_libbpf_log);
-
+  cap_t saved_caps = g_process_cap_save();
+  g_process_enable_cap("cap_bpf");
   self->random = random_kern__open_and_load();
+  g_process_cap_restore(saved_caps);
+
   if (!self->random)
     {
       msg_error("ebpf-reuseport(): Unable to load eBPF program to the kernel");
