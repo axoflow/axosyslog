@@ -426,6 +426,14 @@ AC_ARG_ENABLE(stackdump,
               [  --disable-stackdump       Disable stackdump support]
               ,,enable_stackdump="auto")
 
+AC_ARG_ENABLE(jit,
+              [  --disable-jit       Disable FilterX JIT compiler]
+              ,,enable_jit="auto")
+
+AC_ARG_WITH(llvm-config,
+              [  --with-llvm-config=path      Specify llvm-config location],
+              ,,with_llvm_config="")
+
 AC_ARG_ENABLE(all-modules,
               [  --enable-all-modules    Forcibly enable all modules. (default: auto)]
               ,,enable_all_modules="auto")
@@ -435,7 +443,7 @@ if test "x$enable_all_modules" != "xauto"; then
 
    MODULES="spoof_source sun_streams sql pacct mongodb json amqp stomp \
             redis systemd geoip2 riemann ipv6 smtp native python python_modules java java_modules \
-            http afsnmp kafka mqtt grpc"
+            http afsnmp kafka mqtt grpc jit"
    for mod in ${MODULES}; do
        modstate=$(eval echo \$enable_${mod})
        if test "x$modstate" = "xauto"; then
@@ -1220,7 +1228,7 @@ dnl ***************************************************************************
 AC_MSG_CHECKING(whether to enable snmp destination driver)
 
 AS_IF([test "x$with_net_snmp" = "x"], [netsnmp_config_path="$PATH"], [netsnmp_config_path="$with_net_snmp"])
-AC_PATH_PROG([NETSNMP_CONFIG], [net-snmp-config], , [$netsnmp_config_path])
+AC_PATH_PROG([NETSNMP_CONFIG], [net-snmp-config], ,[$netsnmp_config_path])
 
 if test "x$enable_afsnmp" = "xyes"; then
    if test -n "$NETSNMP_CONFIG" -a -x "$NETSNMP_CONFIG"; then
@@ -1682,7 +1690,7 @@ fi
 
 dnl ***************************************************************************
 dnl riemann-client headers/libraries
-dnl ***************************************************************************
+dnl *************************************************************************
 if test "$enable_riemann" != "no"; then
  PKG_CHECK_MODULES(RIEMANN_CLIENT, riemann-client >= $LRC_MIN_VERSION,,riemann_found="no")
  if test "$riemann_found" = "no" && test "$enable_riemann" = "yes"; then
@@ -1845,6 +1853,56 @@ if test "x$enable_darwin_osl" = "xauto" || test "x$enable_darwin_osl" = "xyes"; 
         else
                 enable_darwin_osl=no
         fi
+fi
+
+dnl ***************************************************************************
+dnl FilterX JIT compiler
+dnl ***************************************************************************
+if test "x$with_llvm_config" = "x"; then
+  AC_PATH_PROG([LLVM_CONFIG], [llvm-config])
+else
+  LLVM_CONFIG="$with_llvm_config"
+fi
+
+AC_MSG_CHECKING(whether to enable the FilterX JIT compiler)
+if test "x$enable_jit" = "xyes"; then
+  if test -n "$LLVM_CONFIG" -a -x "$LLVM_CONFIG"; then
+    enable_jit="yes"
+    AC_MSG_RESULT(yes)
+  else
+    AC_MSG_RESULT(no)
+    AC_MSG_ERROR([FilterX JIT compiler is explicitly enabled, but no llvm-config is found.])
+  fi
+
+elif test "x$enable_jit" = "xauto"; then
+  if test -n "$LLVM_CONFIG" -a -x "$LLVM_CONFIG"; then
+    enable_jit="yes"
+    AC_MSG_RESULT(yes)
+  else
+    enable_jit="no"
+    AC_MSG_RESULT(no)
+  fi
+else
+  enable_jit="no"
+  AC_MSG_RESULT(no)
+fi
+
+if test "$enable_jit" = "yes"; then
+  LLVM_CFLAGS="`$LLVM_CONFIG --cflags`"
+  LLVM_CXXFLAGS="`$LLVM_CONFIG --cxxflags`"
+  llvm__ldflags="`$LLVM_CONFIG --ldflags`"
+  llvm__libs="`$LLVM_CONFIG --libs`"
+  llvm__syslibs="`$LLVM_CONFIG --system-libs`"
+  LLVM_LIBS="$llvm__ldflags $llvm__libs $llvm__syslibs "
+
+  CPPFLAGS_SAVE="$CPPFLAGS"
+  CPPFLAGS="$CPPFLAGS $LLVM_CFLAGS"
+  AC_CHECK_DECLS([LLVMOrcCreateNewThreadSafeContextFromLLVMContext], [], [], [[#include <llvm-c/Orc.h>]])
+  CPPFLAGS="$CPPFLAGS_SAVE"
+else
+  LLVM_CFLAGS=
+  LLVM_CXXFLAGS=
+  LLVM_LIBS=
 fi
 
 dnl ***************************************************************************
@@ -2088,7 +2146,7 @@ fi
 python_moduledir="$moduledir"/python
 python_sysconf_moduledir="${sysconfdir}/python"
 
-CPPFLAGS="$CPPFLAGS $libsystemd_CFLAGS $GLIB_CFLAGS $EVTLOG_CFLAGS $PCRE2_CFLAGS $OPENSSL_CFLAGS $LIBNET_CFLAGS $LIBUNWIND_CFLAGS $LIBDBI_CFLAGS $IVYKIS_CFLAGS $JSON_CFLAGS $LIBCAP_CFLAGS -D_GNU_SOURCE -D_DEFAULT_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
+CPPFLAGS="$CPPFLAGS $libsystemd_CFLAGS $GLIB_CFLAGS $EVTLOG_CFLAGS $PCRE2_CFLAGS $OPENSSL_CFLAGS $LIBNET_CFLAGS $LIBUNWIND_CFLAGS $LIBDBI_CFLAGS $IVYKIS_CFLAGS $JSON_CFLAGS $LIBCAP_CFLAGS $LLVM_CFLAGS -D_GNU_SOURCE -D_DEFAULT_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 
 ########################################################
 ## NOTES: on how syslog-ng is linked
@@ -2141,7 +2199,7 @@ else
 fi
 
 if test "x$linking_mode" = "xdynamic"; then
-	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS"
+	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LLVM_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS"
 
 	if test "x$with_ivykis" = "xinternal"; then
 		# when using the internal ivykis, we're linking it statically into libsyslog-ng.so
@@ -2159,8 +2217,8 @@ if test "x$linking_mode" = "xdynamic"; then
 elif test "x$linking_mode" = "xmonolithic"; then
 	MODULE_LDFLAGS="-static"
 	CORE_LDFLAGS="-static"
-	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $GLIB_LIBS $PCRE2_LIBS $OPENSSL_LIBS $REGEX_LIBS $JSON_LIBS $LIBUNWIND_LIBS $IVYKIS_LIBS $LIBCAP_LIBS $DL_LIBS"
-	TOOL_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LIBUNWIND_LIBS $IVYKIS_LIBS $DL_LIBS $OPENSSL_LIBS $JSON_LIBS"
+	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $GLIB_LIBS $PCRE2_LIBS $OPENSSL_LIBS $REGEX_LIBS $LLVM_LIBS $JSON_LIBS $LIBUNWIND_LIBS $IVYKIS_LIBS $LIBCAP_LIBS $DL_LIBS"
+	TOOL_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LLVM_LIBS $LIBUNWIND_LIBS $IVYKIS_LIBS $DL_LIBS $OPENSSL_LIBS $JSON_LIBS"
 	CORE_DEPS_LIBS=""
 else
 	AC_MSG_ERROR([Unknown value specified for the --with-linking-mode command line option: $linking_mode])
@@ -2243,6 +2301,7 @@ AC_DEFINE_UNQUOTED(ENABLE_SYSTEMD, `enable_value $enable_systemd`, [Enable syste
 AC_DEFINE_UNQUOTED(ENABLE_KAFKA, `enable_value $enable_kafka`, [Enable kafka support])
 AC_DEFINE_UNQUOTED(ENABLE_CPP, `enable_value $enable_cpp`, [Enable C++ support])
 AC_DEFINE_UNQUOTED(ENABLE_STACKDUMP, `enable_value $enable_stackdump`, [Enable stackdump using libunwind])
+AC_DEFINE_UNQUOTED(ENABLE_JIT, `enable_value $enable_jit`, [Enable FilterX JIT compiler])
 AC_DEFINE_UNQUOTED(SYSTEMD_JOURNAL_MODE, `journald_mode`, [Systemd-journal support mode])
 AC_DEFINE_UNQUOTED(HAVE_INOTIFY, `enable_value $ac_cv_func_inotify_init`, [Have inotify])
 AC_DEFINE_UNQUOTED(USE_CONST_IVYKIS_MOCK, `enable_value $IVYKIS_VERSION_UPDATED`, [ivykis version is greater than $IVYKIS_UPDATED_VERSION])
@@ -2296,6 +2355,7 @@ AM_CONDITIONAL([HAVE_FMEMOPEN], [test x$ac_cv_func_fmemopen = xyes])
 AM_CONDITIONAL([HAVE_JAVAH], [test -n "$JAVAH_BIN"])
 AM_CONDITIONAL([HAVE_POETRY], [test -n "$POETRY"])
 AM_CONDITIONAL(ENABLE_IPV6, [test $enable_ipv6 = yes])
+AM_CONDITIONAL(ENABLE_JIT, [test "$enable_jit" = "yes"])
 
 AM_CONDITIONAL(OS_TYPE_MACOS, [test $ostype = "Darwin"])
 
@@ -2353,6 +2413,9 @@ AC_SUBST(JSON_DEPENDENCY)
 AC_SUBST(IVYKIS_SUBDIRS)
 AC_SUBST(RESOLV_LIBS)
 AC_SUBST(LIBBPF_INCLUDE)
+AC_SUBST(LLVM_CFLAGS)
+AC_SUBST(LLVM_CXXFLAGS)
+AC_SUBST(LLVM_LIBS)
 
 AC_SUBST(CURRDATE)
 AC_SUBST(RELEASE_TAG)
@@ -2418,6 +2481,7 @@ echo "  systemd-journal support     : ${with_systemd_journal:=no}"
 echo "  JSON support                : $with_jsonc"
 echo "  perf support                : ${enable_perf:=no}"
 echo "  stackdump support           : ${enable_stackdump:=no}"
+echo "  FilterX JIT compiler        : ${enable_jit:=no}"
 echo " Build options:"
 echo "  Generate manual pages       : ${enable_manpages:=no}"
 echo "  Install manual pages        : ${enable_manpages_install:=no}"
