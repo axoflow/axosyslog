@@ -24,6 +24,7 @@
 #ifndef FILTERX_EXPR_H_INCLUDED
 #define FILTERX_EXPR_H_INCLUDED
 
+#include "filterx-jit.h"
 #include "filterx-object.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
@@ -75,6 +76,7 @@ struct _FilterXExpr
   gboolean (*init)(FilterXExpr *self, GlobalConfig *cfg);
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   FilterXExpr *(*optimize)(FilterXExpr *self);
+  FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
   void (*free_fn)(FilterXExpr *self);
 
   gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
@@ -254,6 +256,20 @@ filterx_expr_walk_children(FilterXExpr *self, FilterXExprWalkFunc f, gpointer us
   g_assert(self->walk_children);
 
   return self->walk_children(self, f, user_data);
+}
+
+/* TODO partialJIT: remove once all expressions implement compile() */
+static inline gboolean
+filterx_expr_can_compile(FilterXExpr *self)
+{
+  return !!self->compile;
+}
+
+static inline FilterXIRValue
+filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
+{
+  g_assert(self && self->compile);
+  return self->compile(self, jit);
 }
 
 typedef struct _FilterXUnaryOp
