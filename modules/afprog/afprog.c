@@ -526,7 +526,6 @@ afprogram_dd_restore_reload_store_item(AFProgramDestDriver *self, GlobalConfig *
     {
       self->process_info.pid = restored_info->pid;
       self->writer = restored_info->writer;
-      ((LogPipe *) self->writer)->cfg = cfg;
 
       child_manager_register(self->process_info.pid, afprogram_dd_exit, log_pipe_ref(&self->super.super.super),
                              (GDestroyNotify)log_pipe_unref);
@@ -582,6 +581,7 @@ afprogram_dd_init(LogPipe *s)
   StatsClusterKeyBuilder *queue_sck_builder;
   _init_stats_key_builders(self, &writer_sck_builder, &driver_sck_builder, &queue_sck_builder);
 
+  log_pipe_set_config((LogPipe *) self->writer, cfg);
   log_pipe_set_options((LogPipe *) self->writer, &self->super.super.super.options);
   log_writer_set_options(self->writer,
                          s,
@@ -622,12 +622,6 @@ afprogram_dd_store_reload_store_item(AFProgramDestDriver *self, GlobalConfig *cf
 
   reload_info->pid = self->process_info.pid;
   reload_info->writer = self->writer;
-
-  LogPipe *reload_pipe = (LogPipe *) reload_info->writer;
-  if (reload_pipe->cfg)
-    {
-      reload_pipe->cfg = NULL;
-    }
 
   cfg_persist_config_add(cfg, afprogram_dd_format_persist_name((const LogPipe *)self), reload_info,
                          afprogram_reload_store_item_destroy_notify);
