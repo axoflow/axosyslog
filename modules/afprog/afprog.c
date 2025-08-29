@@ -581,6 +581,7 @@ afprogram_dd_init(LogPipe *s)
   StatsClusterKeyBuilder *queue_sck_builder;
   _init_stats_key_builders(self, &writer_sck_builder, &driver_sck_builder, &queue_sck_builder);
 
+  log_pipe_set_config((LogPipe *) self->writer, cfg);
   log_pipe_set_options((LogPipe *) self->writer, &self->super.super.super.options);
   log_writer_set_options(self->writer,
                          s,
