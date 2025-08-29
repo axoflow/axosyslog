@@ -53,7 +53,7 @@ filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
 
   g_free(self->expr_text);
   GString *res = g_string_sized_new(0);
-  cfg_source_extract_source_text(lexer, lloc, res);
+  cfg_source_extract_token_text(lexer, lloc, res);
   self->expr_text = g_string_free(res, FALSE);
 }
 

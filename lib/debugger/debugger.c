@@ -146,8 +146,8 @@ static void
 _display_source_line(Debugger *self)
 {
   if (self->current_location.filename)
-    cfg_source_print_source_text(self->current_location.filename, self->current_location.line,
-                                 self->current_location.column, self->current_location.list_start);
+    cfg_source_print_region(self->current_location.filename, self->current_location.line,
+                            self->current_location.column, self->current_location.list_start);
   else
     puts("Unable to list source, no current location set");
 }
