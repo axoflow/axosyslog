@@ -39,19 +39,31 @@ typedef struct FilterXSlicingOperator_
   FilterXObject *end_literal;
 } FilterXSlicingOperator;
 
+static inline gint64
+_clamp_index(gint64 idx, gssize len)
+{
+  if (idx < 0)
+    return 0;
+
+  if (idx > len)
+    return len;
+
+  return idx;
+}
+
 static FilterXObject *
 _str_slice(FilterXSlicingOperator *self, const gchar *str, gsize str_len, gint64 start, gint64 end)
 {
   gssize len = (gssize) str_len;
 
   if (start < 0)
-    start = MAX(len + start, 0);
+    start = len + start;
 
   if (end < 0)
-    end = MAX(len + end, 0);
+    end = len + end;
 
-  start = MIN(start, len);
-  end = MIN(end, len);
+  start = _clamp_index(start, len);
+  end = _clamp_index(end, len);
 
   if (start > end)
     {
