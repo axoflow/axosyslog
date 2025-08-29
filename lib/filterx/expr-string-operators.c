@@ -42,8 +42,16 @@ typedef struct FilterXSlicingOperator_
 static FilterXObject *
 _str_slice(FilterXSlicingOperator *self, const gchar *str, gsize str_len, gint64 start, gint64 end)
 {
-  start = MIN(start, str_len);
-  end = MIN(end, str_len);
+  gssize len = (gssize) str_len;
+
+  if (start < 0)
+    start = MAX(len + start, 0);
+
+  if (end < 0)
+    end = MAX(len + end, 0);
+
+  start = MIN(start, len);
+  end = MIN(end, len);
 
   if (start > end)
     {

@@ -2975,6 +2975,9 @@ def test_string_slicing(config, syslog_ng):
                 "range": str[idx..5],
                 "prefix": str[..idx],
                 "suffix": str[idx..],
+                "nrange": str[-3..-1],
+                "nprefix": str[..-2],
+                "nsuffix": str[-3..],
             };
         """,
     )
@@ -2982,4 +2985,4 @@ def test_string_slicing(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"range":"mp","prefix":"exa","suffix":"mple"}'
+    assert file_true.read_log() == '{"range":"mp","prefix":"exa","suffix":"mple","nrange":"pl","nprefix":"examp","nsuffix":"ple"}'
