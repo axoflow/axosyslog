@@ -581,6 +581,38 @@ def test_metrics_labels_empty_value_and_null_value(config, syslog_ng):
     assert samples[0].labels == {"foo": "bar"}
 
 
+def test_metrics_labels_duplicates(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            labels = metrics_labels();
+
+            labels.almafa = "almafa_value";
+            labels.foo = "foo_old1";
+            labels.bar = "bar_old1";
+            labels.foo = "foo_old2";
+            labels.bar = "bar_old2";
+            labels.bar = "bar_new";
+            labels.foo = "foo_new";
+
+            $MSG = {
+                "almafa": labels.almafa,
+                "foo": labels.foo,
+                "bar": labels.bar,
+            };
+
+            update_metric("test", labels=labels);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"almafa":"almafa_value","foo":"foo_new","bar":"bar_new"}"""
+
+    metric_filters = [MetricFilter("syslogng_test", {"almafa": "almafa_value", "foo": "foo_new", "bar": "bar_new"})]
+    samples = config.prometheus_stats_handler.get_samples(metric_filters)
+    assert len(samples) == 1
+
+
 def test_set_fields(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
