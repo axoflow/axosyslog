@@ -370,40 +370,12 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gs
   return metrics_labels;
 }
 
-static FilterXObject *
-_dedup_extract_obj_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len)
-{
-  if (!args || args_len != 1)
-    {
-      filterx_simple_function_argument_error(s, "unexpected number of arguments. "
-                                             DEDUP_METRICS_LABELS_USAGE);
-      return NULL;
-    }
-
-  FilterXObject *obj = args[0];
-  FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
-  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(metrics_labels)))
-    {
-      filterx_simple_function_argument_error(s, "unexpected argument type. "
-                                             DEDUP_METRICS_LABELS_USAGE);
-      return NULL;
-    }
-
-  return obj;
-}
-
 FilterXObject *
 filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  FilterXObject *obj = _dedup_extract_obj_arg(s, args, args_len);
-  if (!obj)
-    return NULL;
-
-  FilterXObjectMetricsLabels *typed_obj = (FilterXObjectMetricsLabels *) filterx_ref_unwrap_ro(obj);
-  if (typed_obj->deduped)
-    return filterx_boolean_new(TRUE);
-
-  _dedup(obj);
+  msg_warning_once("The dedup_metrics_labels() function is deprecated, deduplication happens automatically. "
+                   "Please remove calls to dedup_metrics_labels() from your configuration as it will become "
+                   "unavailable in a couple of releases.");
   return filterx_boolean_new(TRUE);
 }
 
