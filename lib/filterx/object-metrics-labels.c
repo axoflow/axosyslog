@@ -299,6 +299,9 @@ filterx_object_metrics_labels_get_value_ref(FilterXObject *s, gsize *len)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
 
+  if (!self->deduped)
+    _dedup(s);
+
   if (!self->sorted)
     {
       g_array_sort(self->labels, (GCompareFunc) _label_cmp);
