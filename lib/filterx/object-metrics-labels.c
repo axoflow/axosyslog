@@ -239,37 +239,53 @@ _free(FilterXObject *s)
   filterx_object_free_method(s);
 }
 
+static gint
+_gssize_cmp_reverse(const void *a, const void *b)
+{
+  gssize va = *(const gssize *)a;
+  gssize vb = *(const gssize *)b;
+  return vb - va;
+}
+
 static void
 _dedup(FilterXObject *s)
 {
   FilterXObjectMetricsLabels *typed_self = (FilterXObjectMetricsLabels *) filterx_ref_unwrap_rw(s);
 
-  GHashTable *labels_map = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, (GDestroyNotify) _label_destroy);
+  GArray *label_indexes_to_remove = g_array_sized_new(FALSE, FALSE, sizeof(gssize), typed_self->labels->len);
+  GHashTable *labels_indexes_map = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
 
-  for (guint i = 0; i < typed_self->labels->len; i++)
+  for (gssize i = ((gssize) (typed_self->labels->len)) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(typed_self->labels, StatsClusterLabel, i);
-      g_hash_table_replace(labels_map, (gpointer) label->name, label);
+
+      if (g_hash_table_contains(labels_indexes_map, label->name))
+        {
+          label_indexes_to_remove = g_array_append_val(label_indexes_to_remove, i);
+          continue;
+        }
+
+      g_hash_table_insert(labels_indexes_map, (gpointer) label->name, NULL);
     }
 
-  GArray *new_labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), typed_self->labels->len);
+  if (!label_indexes_to_remove->len)
+    goto exit;
 
-  GHashTableIter iter;
-  g_hash_table_iter_init(&iter, labels_map);
+  g_array_sort(label_indexes_to_remove, _gssize_cmp_reverse);
 
-  gpointer k, v;
-  while (g_hash_table_iter_next(&iter, &k, &v))
+  for (guint i = 0; i < label_indexes_to_remove->len; i++)
     {
-      StatsClusterLabel *label = v;
-      g_array_append_val(new_labels, *label);
+      gssize index = g_array_index(label_indexes_to_remove, gssize, i);
+      StatsClusterLabel *label = &g_array_index(typed_self->labels, StatsClusterLabel, index);
+      _label_destroy(label);
+      g_array_remove_index_fast(typed_self->labels, index);
     }
 
-  g_array_free(typed_self->labels, TRUE);
-  typed_self->labels = new_labels;
+exit:
   typed_self->deduped = TRUE;
 
-  g_hash_table_steal_all(labels_map);
-  g_hash_table_unref(labels_map);
+  g_hash_table_unref(labels_indexes_map);
+  g_array_free(label_indexes_to_remove, TRUE);
 }
 
 static gint
