@@ -30,6 +30,13 @@ class SyslogNgCtl(object):
         self.__instance_name = instance_paths.get_instance_name()
         self.__syslog_ng_ctl_executor = syslog_ng_ctl_executor
 
+    def log_level(self, level):
+        return self.__syslog_ng_ctl_executor.run_command(
+            self.__instance_name,
+            command_short_name="log-level",
+            command=["log-level", level],
+        )
+
     def reload(self):
         return self.__syslog_ng_ctl_executor.run_command(
             self.__instance_name,
