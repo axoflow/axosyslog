@@ -175,6 +175,25 @@ def _indent(string, depth):
     return depth * "    " + string
 
 
+def render_inner_statement_group(statement_group, depth):
+    config_snippet = ""
+    if statement_group.group_type == "log":
+        config_snippet += render_logpath_groups(logpath_groups=[statement_group], depth=depth)
+    elif statement_group.group_type == "filterx":
+        config_snippet += _indent("filterx {\n", depth)
+        for line in statement_group.code.split("\n"):
+            config_snippet += _indent(line + "\n", depth + 1)
+        config_snippet += _indent("};\n", depth)
+    elif statement_group.group_type == "log_context_scl_block":
+        config_snippet += _indent(statement_group.name + "(\n", depth)
+        for line in render_driver_options(statement_group.options).split("\n"):
+            config_snippet += _indent(line + "\n", depth + 1)
+        config_snippet += _indent(");\n", depth)
+    else:
+        config_snippet += _indent("{}({});\n".format(statement_group.group_type, statement_group.group_id), depth)
+    return config_snippet
+
+
 def render_logpath_groups(logpath_groups, depth=0):
     config_snippet = "\n"
 
@@ -184,20 +203,7 @@ def render_logpath_groups(logpath_groups, depth=0):
         else:
             config_snippet += _indent("log {\n", depth)
         for statement_group in logpath_group.logpath:
-            if statement_group.group_type == "log":
-                config_snippet += render_logpath_groups(logpath_groups=[statement_group], depth=depth + 1)
-            elif statement_group.group_type == "filterx":
-                config_snippet += _indent("filterx {\n", depth + 1)
-                for line in statement_group.code.split("\n"):
-                    config_snippet += _indent(line + "\n", depth + 2)
-                config_snippet += _indent("};\n", depth + 1)
-            elif statement_group.group_type == "log_context_scl_block":
-                config_snippet += _indent(statement_group.name + "(\n", depth + 1)
-                for line in render_driver_options(statement_group.options).split("\n"):
-                    config_snippet += _indent(line + "\n", depth + 2)
-                config_snippet += _indent(");\n", depth + 1)
-            else:
-                config_snippet += _indent("{}({});\n".format(statement_group.group_type, statement_group.group_id), depth + 1)
+            config_snippet += render_inner_statement_group(statement_group, depth + 1)
         if logpath_group.flags:
             config_snippet += _indent("flags({});\n".format("".join(logpath_group.flags)), depth + 1)
         config_snippet += _indent("};\n", depth)
