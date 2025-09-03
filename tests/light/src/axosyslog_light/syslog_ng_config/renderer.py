@@ -189,6 +189,13 @@ def render_inner_statement_group(statement_group, depth):
         for line in render_driver_options(statement_group.options).split("\n"):
             config_snippet += _indent(line + "\n", depth + 1)
         config_snippet += _indent(");\n", depth)
+    elif statement_group.group_type == "inner_source":
+        config_snippet += _indent("source {\n", depth)
+        config_snippet += _indent("channel {\n", depth + 1)
+        for statement in statement_group.statements:
+            config_snippet += render_inner_statement_group(statement, depth + 2)
+        config_snippet += _indent("};\n", depth + 1)
+        config_snippet += _indent("};\n", depth)
     else:
         config_snippet += _indent("{}({});\n".format(statement_group.group_type, statement_group.group_id), depth)
     return config_snippet

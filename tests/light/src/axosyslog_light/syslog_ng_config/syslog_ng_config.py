@@ -51,6 +51,7 @@ from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetPri
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetTag
 from axosyslog_light.syslog_ng_config.statements.sources.example_msg_generator_source import ExampleMsgGeneratorSource
 from axosyslog_light.syslog_ng_config.statements.sources.file_source import FileSource
+from axosyslog_light.syslog_ng_config.statements.sources.inner_source import InnerSource
 from axosyslog_light.syslog_ng_config.statements.sources.internal_source import InternalSource
 from axosyslog_light.syslog_ng_config.statements.sources.network_source import NetworkSource
 from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
@@ -285,8 +286,12 @@ class SyslogNgConfig(object):
         self._syslog_ng_config["statement_groups"].append(statement_group)
         return statement_group
 
+    def create_inner_source(self, statements):
+        statement_groups = [self.__create_statement_group_if_needed(s) for s in cast_to_list(statements)]
+        return InnerSource(statement_groups)
+
     def __create_statement_group_if_needed(self, item):
-        if isinstance(item, (StatementGroup, LogPath, FilterX, LogContextSclBlock)):
+        if isinstance(item, (StatementGroup, LogPath, FilterX, LogContextSclBlock, InnerSource)):
             return item
         else:
             item_id = id(item)
