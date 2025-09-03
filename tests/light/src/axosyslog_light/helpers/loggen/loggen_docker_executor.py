@@ -27,6 +27,8 @@ from __future__ import annotations
 import os
 import typing
 from pathlib import Path
+from subprocess import DEVNULL
+from subprocess import Popen as subprocess_Popen
 
 from axosyslog_light.executors.process_executor import ProcessExecutor
 from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
@@ -40,6 +42,8 @@ class LoggenDockerExecutor(LoggenExecutor):
         super().__init__()
 
     def _start(self, start_params: LoggenStartParams, stderr: Path, stdout: Path, instance_index: int) -> Popen:
+        subprocess_Popen(["docker", "rm", "-f", f"loggen_{instance_index}"], stdout=DEVNULL, stderr=DEVNULL).wait()
+
         paths: typing.Set[Path] = {
             Path.cwd().absolute(),
         }

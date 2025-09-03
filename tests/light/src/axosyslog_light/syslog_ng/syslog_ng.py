@@ -224,7 +224,7 @@ class SyslogNg(object):
         else:
             raise Exception(f"Unknown external tool: {self._external_tool}")
 
-        if self.start_params.stderr and self.start_params.debug and self.start_params.verbose:
+        if self.start_params.stderr:
             if self.start_params.preprocess_into is None and not self.start_params.syntax_only:
                 self.__wait_for_start()
             else:

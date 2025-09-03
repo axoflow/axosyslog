@@ -25,6 +25,7 @@ import os
 import typing
 from copy import copy
 from pathlib import Path
+from subprocess import DEVNULL
 from subprocess import Popen
 
 from axosyslog_light.executors.process_executor import ProcessExecutor
@@ -46,6 +47,8 @@ class SyslogNgDockerExecutor(SyslogNgExecutor):
         stderr_path: Path,
         stdout_path: Path,
     ) -> Popen:
+        Popen(["docker", "rm", "-f", self.__container_name], stdout=DEVNULL, stderr=DEVNULL).wait()
+
         start_params = copy(start_params)
         start_params.control_socket_path = Path("/tmp/syslog-ng.ctl")
 
