@@ -60,6 +60,7 @@ collector:
   hostAliases: []
   secretMounts: []
   extraVolumes: []
+  extraVolumeMounts: []
   securityContext: {}
   maxUnavailable: 1
   hostNetworking: false
@@ -139,7 +140,8 @@ syslog:
         enabled: false
         url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
-
+  extraVolumes: []
+  extraVolumeMounts: []
 metricsExporter:
   enabled: false  # deploy the axosyslog Deamonset with the axosyslog-metrics-exporter sidecar
   image:
@@ -198,6 +200,7 @@ dnsConfig: {}
 hostAliases: []
 secretMounts: []
 extraVolumes: []
+extraVolumeMounts: []
 ## How long (in seconds) a pod may take to exit (useful with lifecycle hooks to ensure lb deregistration is done)
 ##
 terminationGracePeriodSeconds: 30
