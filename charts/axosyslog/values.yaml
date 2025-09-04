@@ -71,7 +71,7 @@ syslog:
   logFileStorage:
     enabled: false
     storageClass: standard
-    size: 500Gi
+    size: 50Gi
   bufferStorage:
     enabled: false
     storageClass: standard
