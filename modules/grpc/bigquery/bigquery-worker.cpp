@@ -61,33 +61,40 @@ DestinationWorker::~DestinationWorker()
 }
 
 bool
-DestinationWorker::connect()
+DestinationWorker::init()
 {
-  if (!this->channel)
-    {
-      this->channel = this->create_channel();
-      if (!this->channel)
-        return false;
-
-      this->stub = google::cloud::bigquery::storage::v1::BigQueryWrite().NewStub(this->channel);
-    }
-
+  if (!syslogng::grpc::DestWorker::init())
+    return false;
+  this->stub = google::cloud::bigquery::storage::v1::BigQueryWrite().NewStub(this->channel);
   this->construct_write_stream();
   this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
   this->prepare_context(*this->batch_writer_ctx.get());
   this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
 
   this->prepare_batch();
+  return true;
+}
 
+void
+DestinationWorker::deinit()
+{
+  this->stub.reset();
+  syslogng::grpc::DestWorker::deinit();
+}
+
+bool
+DestinationWorker::connect()
+{
   msg_debug("Connecting to BigQuery", log_pipe_location_tag((LogPipe *) this->super->super.owner));
 
-  std::chrono::system_clock::time_point connect_timeout =
-    std::chrono::system_clock::now() + std::chrono::seconds(10);
+  if (!DestWorker::connect())
+    {
+      msg_error("Error connecting to BigQuery",
+                evt_tag_str("url", this->owner.get_url().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      return false;
+    }
 
-  if (!this->channel->WaitForConnected(connect_timeout))
-    return false;
-
-  this->connected = true;
   return true;
 }
 
@@ -109,22 +116,7 @@ DestinationWorker::disconnect()
                   evt_tag_int("code", status.error_code()),
                   log_pipe_location_tag((LogPipe *) this->super->super.owner));
     }
-
-  ::grpc::ClientContext ctx;
-  this->prepare_context(ctx);
-  google::cloud::bigquery::storage::v1::FinalizeWriteStreamRequest finalize_request;
-  google::cloud::bigquery::storage::v1::FinalizeWriteStreamResponse finalize_response;
-  finalize_request.set_name(write_stream.name());
-
-  status = this->stub->FinalizeWriteStream(&ctx, finalize_request, &finalize_response);
-  if (!status.ok())
-    {
-      msg_warning("Error finalizing BigQuery write stream", evt_tag_str("error", status.error_message().c_str()),
-                  evt_tag_str("details", status.error_details().c_str()),
-                  log_pipe_location_tag((LogPipe *) this->super->super.owner));
-    }
-
-  this->connected = false;
+  DestWorker::disconnect();
 }
 
 void

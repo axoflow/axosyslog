@@ -61,6 +61,10 @@ public:
   LogThreadedResult flush(LogThreadedFlushMode mode);
 
 protected:
+  bool init();
+  void deinit();
+  bool connect();
+
   void clear_current_msg_metadata();
   void get_metadata_for_current_msg(LogMessage *msg);
 
@@ -81,7 +85,6 @@ protected:
   LogThreadedResult flush_spans();
 
 protected:
-  std::shared_ptr<::grpc::Channel> channel;
   std::unique_ptr<::grpc::ClientContext> client_context;
   std::unique_ptr<LogsService::Stub> logs_service_stub;
   std::unique_ptr<MetricsService::Stub> metrics_service_stub;

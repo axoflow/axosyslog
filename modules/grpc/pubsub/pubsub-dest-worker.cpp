@@ -31,22 +31,38 @@
 using syslogng::grpc::pubsub::DestWorker;
 using syslogng::grpc::pubsub::DestDriver;
 
+bool
+DestWorker::init()
+{
+  if (!syslogng::grpc::DestWorker::init())
+    return false;
+  this->stub = ::google::pubsub::v1::Publisher::NewStub(this->channel);
+  return true;
+}
+
+void
+DestWorker::deinit()
+{
+  this->stub.reset();
+  syslogng::grpc::DestWorker::deinit();
+}
+
+bool
+DestWorker::connect()
+{
+  if (!DestWorker::connect())
+    {
+      msg_error("Error connecting to Google Pub/Sub",
+                evt_tag_str("url", this->owner.get_url().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      return false;
+    }
+  return true;
+}
+
 DestWorker::DestWorker(GrpcDestWorker *s)
   : syslogng::grpc::DestWorker(s)
 {
-  std::shared_ptr<::grpc::ChannelCredentials> credentials = this->create_credentials();
-  if (!credentials)
-    {
-      msg_error("Error querying Google Pub/Sub credentials",
-                evt_tag_str("url", this->owner.get_url().c_str()),
-                log_pipe_location_tag(&this->super->super.owner->super.super.super));
-      throw std::runtime_error("Error querying Google Pub/Sub credentials");
-    }
-
-  ::grpc::ChannelArguments args = this->create_channel_args();
-
-  this->channel = ::grpc::CreateCustomChannel(this->owner.get_url(), credentials, args);
-  this->stub = ::google::pubsub::v1::Publisher::NewStub(this->channel);
 }
 
 bool

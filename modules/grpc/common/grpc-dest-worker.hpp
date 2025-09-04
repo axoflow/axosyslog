@@ -44,20 +44,23 @@ public:
 
   virtual bool init();
   virtual void deinit();
-  virtual bool connect();
-  virtual void disconnect();
   virtual LogThreadedResult insert(LogMessage *msg) = 0;
   virtual LogThreadedResult flush(LogThreadedFlushMode mode) = 0;
+  virtual bool connect();
+  virtual void disconnect();
 
 protected:
   void prepare_context(::grpc::ClientContext &context);
   void prepare_context_dynamic(::grpc::ClientContext &context, LogMessage *msg);
   std::shared_ptr<::grpc::ChannelCredentials> create_credentials();
   ::grpc::ChannelArguments create_channel_args();
+  std::shared_ptr<::grpc::Channel>create_channel();
 
 protected:
   GrpcDestWorker *super;
   DestDriver &owner;
+  bool connected;
+  std::shared_ptr<::grpc::Channel> channel;
 };
 
 }
