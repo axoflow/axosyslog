@@ -104,6 +104,8 @@ static GProcessKind process_kind = G_PK_STARTUP;
 #if SYSLOG_NG_ENABLE_LINUX_CAPS
 static int have_capsyslog = FALSE;
 static cap_value_t cap_syslog;
+static int have_capbpf = FALSE;
+static cap_value_t cap_bpf;
 #endif
 #ifdef __APPLE__
 #include <crt_externs.h>
@@ -281,6 +283,13 @@ g_process_enable_cap(const gchar *cap_name)
         return FALSE;
     }
 
+  if (capability == cap_bpf && !have_capbpf)
+    {
+      ret = _check_and_get_cap_from_text("cap_sys_admin", &capability);
+      if (ret != CAP_SUPPORTED)
+        return FALSE;
+    }
+
   cap_t caps = cap_get_proc();
   if (!caps)
     return FALSE;
@@ -359,20 +368,15 @@ g_process_cap_restore(cap_t r)
 #define PR_CAPBSET_READ 23
 #endif
 
-gboolean
-g_process_check_cap_syslog(void)
+static inline gboolean
+_cap_supported(const gchar *cap_text, cap_value_t *cap_value)
 {
-
-  if (have_capsyslog)
-    return TRUE;
-
-  switch (_check_and_get_cap_from_text("cap_syslog", &cap_syslog))
+  switch (_check_and_get_cap_from_text(cap_text, cap_value))
     {
     case CAP_NOT_SUPPORTED_BY_LIBCAP:
       if (debug_flag)
         {
-          fprintf (stderr, "The CAP_SYSLOG is not supported by libcap;"
-                   "Falling back to CAP_SYS_ADMIN!\n");
+          fprintf(stderr, "%s is not supported by libcap, falling back to cap_sys_admin!\n", cap_text);
         }
       return FALSE;
       break;
@@ -380,15 +384,14 @@ g_process_check_cap_syslog(void)
     case CAP_NOT_SUPPORTED_BY_KERNEL:
       if (debug_flag)
         {
-          fprintf (stderr, "CAP_SYSLOG seems to be supported by libcap, but "
+          fprintf (stderr, "%s seems to be supported by libcap, but "
                    "the kernel does not appear to recognize it. Falling back "
-                   "to CAP_SYS_ADMIN!\n");
+                   "to cap_sys_admin!\n", cap_text);
         }
       return FALSE;
       break;
 
     case CAP_SUPPORTED:
-      have_capsyslog = TRUE;
       return TRUE;
       break;
 
@@ -396,6 +399,30 @@ g_process_check_cap_syslog(void)
       return FALSE;
       break;
     }
+}
+
+gboolean
+g_process_check_cap_syslog(void)
+{
+  if (have_capsyslog)
+    return TRUE;
+
+  if (_cap_supported("cap_syslog", &cap_syslog))
+    have_capsyslog = TRUE;
+
+  return have_capsyslog;
+}
+
+gboolean
+g_process_check_cap_bpf(void)
+{
+  if (have_capbpf)
+    return TRUE;
+
+  if (_cap_supported("cap_bpf", &cap_bpf))
+    have_capbpf = TRUE;
+
+  return have_capbpf;
 }
 
 gboolean
