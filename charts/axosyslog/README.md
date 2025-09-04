@@ -20,19 +20,19 @@ The following table lists the configurable parameters of the AxoSyslog Collector
 |  imagePullSecrets  | The names of secrets containing private registry credentials |  []  |
 |  nameOverride  | Override the chart name |  ""  |
 |  fullnameOverride  | Override the full chart name |  ""  |
-|  daemonset.enabled  | Deploy AxoSyslog as a DaemonSet |  true  |
-|  daemonset.labels  | Additional labels to apply to the DaemonSet |  {}  |
-|  daemonset.annotations  | Additional annotations to apply to the DaemonSet |  {}  |
-|  daemonset.affinity  | Pod affinity |  {}  |
-|  daemonset.nodeSelector  | Node labels for pod assignment |  {}  |
-|  daemonset.resources  | Resource requests and limits |  {}  |
-|  daemonset.tolerations  | Tolerations for pod assignment |  []  |
-|  daemonset.hostAliases  | Add host aliases |  []  |
-|  daemonset.secretMounts  | Mount additional secrets as volumes |  []  |
-|  daemonset.extraVolumes  | Additional volumes to mount |  []  |
-|  daemonset.securityContext  | Security context for the pod |  {}  |
-|  daemonset.maxUnavailable  | The maximum number of unavailable pods during a rolling update |  1  |
-|  daemonset.hostNetworking  | Whether to enable host networking |  false  |
+|  collector.enabled  | Deploy AxoSyslog as a DaemonSet |  true  |
+|  collector.labels  | Additional labels to apply to the DaemonSet |  {}  |
+|  collector.annotations  | Additional annotations to apply to the DaemonSet |  {}  |
+|  collector.affinity  | Pod affinity |  {}  |
+|  collector.nodeSelector  | Node labels for pod assignment |  {}  |
+|  collector.resources  | Resource requests and limits |  {}  |
+|  collector.tolerations  | Tolerations for pod assignment |  []  |
+|  collector.hostAliases  | Add host aliases |  []  |
+|  collector.secretMounts  | Mount additional secrets as volumes |  []  |
+|  collector.extraVolumes  | Additional volumes to mount |  []  |
+|  collector.securityContext  | Security context for the pod |  {}  |
+|  collector.maxUnavailable  | The maximum number of unavailable pods during a rolling update |  1  |
+|  collector.hostNetworking  | Whether to enable host networking |  false  |
 |  rbac.create  | Whether to create RBAC resources |  false  |
 |  rbac.extraRules  | Additional RBAC rules |  []  |
 |  openShift.enabled  | Whether to deploy on OpenShift |  false  |
