@@ -74,27 +74,64 @@ DestWorker::create_channel_args()
   return args;
 }
 
+std::shared_ptr<::grpc::Channel>
+DestWorker::create_channel()
+{
+  DestDriver *owner_ = &this->owner;
+
+  ::grpc::ChannelArguments args = this->create_channel_args();
+  auto credentials = this->create_credentials();
+  if (!credentials)
+    {
+      msg_error("Error querying gRPC credentials", log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      return nullptr;
+    }
+
+  auto channel_ = ::grpc::CreateCustomChannel(owner_->get_url(), credentials, args);
+  if (!channel_)
+    {
+      msg_error("Error creating gRPC channel", log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      return nullptr;
+    }
+
+  return channel_;
+}
+
 bool
 DestWorker::init()
 {
+  this->channel = this->create_channel();
+  if (!this->channel)
+    return false;
   return log_threaded_dest_worker_init_method(&super->super);
 }
 
 void
 DestWorker::deinit()
 {
+  this->channel.reset();
   log_threaded_dest_worker_deinit_method(&super->super);
 }
 
 bool
 DestWorker::connect()
 {
+  std::chrono::system_clock::time_point connect_timeout =
+    std::chrono::system_clock::now() + std::chrono::seconds(10);
+
+  if (!this->channel->WaitForConnected(connect_timeout))
+    return false;
+
+  this->connected = true;
   return true;
 }
 
 void
 DestWorker::disconnect()
 {
+  if (!this->connected)
+    return;
+  this->connected = false;
 }
 
 void

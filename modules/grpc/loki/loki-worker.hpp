@@ -49,11 +49,13 @@ public:
   DestinationWorker(GrpcDestWorker *s) : syslogng::grpc::DestWorker(s) {};
   ~DestinationWorker() {};
 
-  bool init();
-  bool connect();
-  void disconnect();
   LogThreadedResult insert(LogMessage *msg);
   LogThreadedResult flush(LogThreadedFlushMode mode);
+
+protected:
+  bool init() override;
+  void deinit() override;
+  bool connect() override;
 
 private:
   void prepare_batch();
@@ -63,9 +65,6 @@ private:
   DestinationDriver *get_owner();
 
 private:
-  bool connected;
-
-  std::shared_ptr<::grpc::Channel> channel;
   std::unique_ptr<::grpc::ClientContext> client_context;
   std::unique_ptr<logproto::Pusher::Stub> stub;
   logproto::PushRequest current_batch;

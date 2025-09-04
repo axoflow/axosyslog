@@ -61,31 +61,39 @@ DestinationWorker::~DestinationWorker()
 }
 
 bool
-DestinationWorker::connect()
+DestinationWorker::init()
 {
-  if (!this->channel)
-    {
-      this->channel = this->create_channel();
-      if (!this->channel)
-        return false;
-
-      this->stub = google::cloud::bigquery::storage::v1::BigQueryWrite().NewStub(this->channel);
-    }
-
+  if (!syslogng::grpc::DestWorker::init())
+    return false;
+  this->stub = google::cloud::bigquery::storage::v1::BigQueryWrite().NewStub(this->channel);
   this->construct_write_stream();
   this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
   this->prepare_context(*this->batch_writer_ctx.get());
   this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
 
   this->prepare_batch();
+  return true;
+}
 
+void
+DestinationWorker::deinit()
+{
+  this->stub.reset();
+  syslogng::grpc::DestWorker::deinit();
+}
+
+bool
+DestinationWorker::connect()
+{
   msg_debug("Connecting to BigQuery", log_pipe_location_tag((LogPipe *) this->super->super.owner));
 
-  std::chrono::system_clock::time_point connect_timeout =
-    std::chrono::system_clock::now() + std::chrono::seconds(10);
-
-  if (!this->channel->WaitForConnected(connect_timeout))
-    return false;
+  if (!DestWorker::connect())
+    {
+      msg_error("Error connecting to BigQuery",
+                evt_tag_str("url", this->owner.get_url().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      return false;
+    }
 
   this->connected = true;
   return true;
@@ -125,6 +133,7 @@ DestinationWorker::disconnect()
     }
 
   this->connected = false;
+  DestWorker::disconnect();
 }
 
 void

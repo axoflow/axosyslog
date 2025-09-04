@@ -55,10 +55,15 @@ public:
   DestinationWorker(GrpcDestWorker *s);
   ~DestinationWorker();
 
-  bool connect();
-  void disconnect();
   LogThreadedResult insert(LogMessage *msg);
   LogThreadedResult flush(LogThreadedFlushMode mode);
+
+protected:
+  bool connect() override;
+  void disconnect() override;
+  bool init() override;
+  void deinit() override;
+  bool connected;
 
 private:
   std::shared_ptr<::grpc::Channel> create_channel();
@@ -70,9 +75,6 @@ private:
 
 private:
   std::string table;
-  bool connected;
-
-  std::shared_ptr<::grpc::Channel> channel;
   std::unique_ptr<google::cloud::bigquery::storage::v1::BigQueryWrite::Stub> stub;
 
   google::cloud::bigquery::storage::v1::WriteStream write_stream;

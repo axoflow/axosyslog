@@ -39,6 +39,39 @@ using namespace opentelemetry::proto::trace::v1;
 
 /* C++ Implementations */
 
+bool
+DestWorker::init()
+{
+  if (!syslogng::grpc::DestWorker::init())
+    return false;
+  logs_service_stub = LogsService::NewStub(channel);
+  metrics_service_stub = MetricsService::NewStub(channel);
+  trace_service_stub = TraceService::NewStub(channel);
+  return true;
+}
+
+void
+DestWorker::deinit()
+{
+  this->logs_service_stub.reset();
+  this->metrics_service_stub.reset();
+  this->trace_service_stub.reset();
+  syslogng::grpc::DestWorker::deinit();
+}
+
+bool
+DestWorker::connect()
+{
+  if (!syslogng::grpc::DestWorker::connect())
+    {
+      msg_error("Error connecting to OTel",
+                evt_tag_str("url", this->owner.get_url().c_str()),
+                log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      return false;
+    }
+  return true;
+}
+
 DestWorker::DestWorker(GrpcDestWorker *s)
   : syslogng::grpc::DestWorker(s),
     logs_current_batch_bytes(0),
@@ -46,21 +79,6 @@ DestWorker::DestWorker(GrpcDestWorker *s)
     spans_current_batch_bytes(0),
     formatter(s->super.owner->super.super.super.cfg)
 {
-  std::shared_ptr<::grpc::ChannelCredentials> credentials = DestWorker::create_credentials();
-  if (!credentials)
-    {
-      msg_error("Error querying OTel credentials",
-                evt_tag_str("url", this->owner.get_url().c_str()),
-                log_pipe_location_tag((LogPipe *) this->super->super.owner));
-      throw std::runtime_error("Error querying OTel credentials");
-    }
-
-  ::grpc::ChannelArguments args = this->create_channel_args();
-
-  channel = ::grpc::CreateCustomChannel(owner.get_url(), credentials, args);
-  logs_service_stub = LogsService::NewStub(channel);
-  metrics_service_stub = MetricsService::NewStub(channel);
-  trace_service_stub = TraceService::NewStub(channel);
 }
 
 void
