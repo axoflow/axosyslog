@@ -30,6 +30,7 @@ The following table lists the configurable parameters of the AxoSyslog Collector
 |  collector.hostAliases  | Add host aliases |  []  |
 |  collector.secretMounts  | Mount additional secrets as volumes |  []  |
 |  collector.extraVolumes  | Additional volumes to mount |  []  |
+|  collector.extraVolumeMounts  | Additional volume mounts |  []  |
 |  collector.securityContext  | Security context for the pod |  {}  |
 |  collector.maxUnavailable  | The maximum number of unavailable pods during a rolling update |  1  |
 |  collector.hostNetworking  | Whether to enable host networking |  false  |
@@ -52,4 +53,16 @@ The following table lists the configurable parameters of the AxoSyslog Collector
 |  kubernetes.enabled  | Enable kubernetes log collection  |  true  |
 |  kubernetes.prefix  | Set JSON prefix for logs collected from the k8s cluster  |  ""  |
 |  kubernetes.keyDelimiter  | Set JSON key delimiter for logs collected from the k8s cluster  |  ""  |
+|  extraVolumes | Additional volumes to mount | [] |
+|  extraVolumeMounts | Additional volume mounts | [] |
+|  syslog.enabled | Enable the syslog component | false |
+|  syslog.config | Syslog-ng configuration content | {} |
+|  syslog.labels | Additional labels for the StatefulSet | {} |
+|  syslog.annotations | Additional annotations for the StatefulSet | {} |
+|  syslog.logFileStorage.enabled | Enable persistent storage for log files | false |
+|  syslog.logFileStorage.size | Size of log file storage volume | 50Gi |
+|  syslog.bufferStorage.enabled | Enable persistent storage for syslog buffers | false |
+|  syslog.bufferStorage.size | Size of buffer storage volume | 10Gi |
+|  syslog.extraVolumeMounts | Additional volume mounts for the container | [] |
+|  syslog.extraVolumes | Additional volumes for the pod | [] |
 
