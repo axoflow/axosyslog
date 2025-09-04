@@ -42,6 +42,7 @@ from axosyslog_light.syslog_ng_config.statements.filters.filter import RateLimit
 from axosyslog_light.syslog_ng_config.statements.filterx.filterx import FilterX
 from axosyslog_light.syslog_ng_config.statements.logpath.log_context_scl_block import LogContextSclBlock
 from axosyslog_light.syslog_ng_config.statements.logpath.logpath import LogPath
+from axosyslog_light.syslog_ng_config.statements.logpath.logpath_if import LogPathIf
 from axosyslog_light.syslog_ng_config.statements.parsers.db_parser import DBParser
 from axosyslog_light.syslog_ng_config.statements.parsers.parser import Parser
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import CreditCardHash
@@ -281,6 +282,15 @@ class SyslogNgConfig(object):
         inner_logpath = self.__create_logpath_with_conversion(name, statements, flags)
         return inner_logpath
 
+    def create_logpath_if(
+        self,
+        if_elif_blocks: typing.List[typing.List[typing.Any]],
+        else_block: typing.Optional[typing.List[typing.Any]] = None,
+    ) -> LogPathIf:
+        if_elif_converted = [list(map(self.__create_statement_group_if_needed, cast_to_list(block))) for block in if_elif_blocks]
+        else_converted = list(map(self.__create_statement_group_if_needed, cast_to_list(else_block))) if else_block else None
+        return LogPathIf(if_elif_converted, else_converted)
+
     def create_statement_group(self, statements):
         statement_group = StatementGroup(statements)
         self._syslog_ng_config["statement_groups"].append(statement_group)
@@ -291,7 +301,7 @@ class SyslogNgConfig(object):
         return InnerSource(statement_groups)
 
     def __create_statement_group_if_needed(self, item):
-        if isinstance(item, (StatementGroup, LogPath, FilterX, LogContextSclBlock, InnerSource)):
+        if isinstance(item, (StatementGroup, LogPath, LogPathIf, FilterX, LogContextSclBlock, InnerSource)):
             return item
         else:
             item_id = id(item)
