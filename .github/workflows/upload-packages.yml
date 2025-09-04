@@ -16,6 +16,7 @@ on:
             {"type": "deb", "name": "debian-sid"},
             {"type": "deb", "name": "debian-bullseye"},
             {"type": "deb", "name": "debian-bookworm"},
+            {"type": "deb", "name": "debian-trixie"},
             {"type": "deb", "name": "ubuntu-focal"},
             {"type": "deb", "name": "ubuntu-jammy"},
             {"type": "deb", "name": "ubuntu-noble"},

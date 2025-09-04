@@ -34,6 +34,7 @@ EXTRA_DIST += \
 	dbld/images/debian-bookworm.dockerfile \
 	dbld/images/debian-sid.dockerfile \
 	dbld/images/debian-testing.dockerfile \
+	dbld/images/debian-trixie.dockerfile \
 	dbld/images/ubuntu-focal.dockerfile \
 	dbld/images/ubuntu-jammy.dockerfile \
 	dbld/images/ubuntu-noble.dockerfile \

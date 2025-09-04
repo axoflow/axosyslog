@@ -39,7 +39,7 @@ jobs:
       distros: '[
         "almalinux-8",
         "almalinux-9",
-        "debian-bookworm",
+        "debian-trixie",
         "debian-testing",
         "fedora-42",
         "ubuntu-noble"
