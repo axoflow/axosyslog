@@ -43,6 +43,7 @@ jobs:
           - debian-bookworm
           - debian-sid
           - debian-testing
+          - debian-trixie
           - ubuntu-focal
           - ubuntu-jammy
           - ubuntu-noble

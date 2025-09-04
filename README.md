@@ -140,6 +140,7 @@ The following x86-64 distros are supported:
 | Ubuntu 24.04    | ubuntu-noble           |
 | Ubuntu 22.04    | ubuntu-jammy           |
 | Ubuntu 20.04    | ubuntu-focal           |
+| Debian 13       | debian-trixie          |
 | Debian 12       | debian-bookworm        |
 | Debian 11       | debian-bullseye        |
 | Debian Unstable | debian-sid             |
