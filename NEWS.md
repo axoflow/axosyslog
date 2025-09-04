@@ -1,4 +1,4 @@
-4.16.0
+4.17.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -11,77 +11,93 @@ Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/
 
 ## Features
 
-  * New `$PROTO_NAME` macro: add a $PROTO_NAME macro that expands to "tcp" or
-    "udp" depending on the transport used by syslog-ng.
-    ([#724](https://github.com/axoflow/axosyslog/pull/724))
+  * FilterX `dpath()`: new function to set a potentially non-existing path within a dict
+
+    For example,
+    ```
+    dpath(dict.path.to["complex.n-v"].create) = {...};
+    ```
+    ([#746](https://github.com/axoflow/axosyslog/pull/746))
+
+  * FilterX string slices: support negative indexing
+
+    For example,
+    ```
+    filterx {
+      str = "example";
+      str[..-2] == "examp";
+      str[-3..] == "ple";
+    };
+    ```
+    ([#780](https://github.com/axoflow/axosyslog/pull/780))
+
+  * `parallelize()`: add `batch-size()` option and other perf improvements
+
+    The `batch-size()` option specifies, for each input thread, how many consecutive
+    messages should be processed by a single `parallelize()` worker.
+
+    This ensures that this many messages preserve their order on the output side
+    and also improves `parallelize()` performance. A value around 100 is recommended.
+    ([#757](https://github.com/axoflow/axosyslog/pull/757))
+
+  * `clickhouse-destination()`: new `json-var()` directive
+
+    The new `json-var()` option accepts either a JSON template or a variable containing a JSON string, and sends it to the ClickHouse server in Protobuf/JSON mixed mode (JSONEachRow format). In this mode, type validation is performed by the ClickHouse server itself, so no Protobuf schema is required for communication.
+
+    This option is mutually exclusive with `proto-var()`, `server-side-schema()`, `schema()`, and `protobuf-schema()` directives.
+
+    example:
+    ```
+       destination {
+          clickhouse (
+          ...
+          json-var("$json_data");
+    or
+          json-var(json("{\"ingest_time\":1755248921000000000, \"body\": \"test template\"}"))
+          ...
+          };
+       };
+    ```
+    ([#761](https://github.com/axoflow/axosyslog/pull/761))
+
+  * FilterX `parse_kv()`: add `stray_words_append_to_value` flag
+
+    For example,
+    ```
+    filterx {
+      $MSG = parse_kv($MSG, value_separator="=", pair_separator=" ", stray_words_append_to_value=true);
+    };
+
+    input: a=b b=c d e f=g
+    output: {"a":"b","b":"c d e","f":"g"}
+    ```
+    ([#770](https://github.com/axoflow/axosyslog/pull/770))
 
 
 ## Bugfixes
 
-  * Fix memory leaks during configuration parsing
-    ([#755](https://github.com/axoflow/axosyslog/pull/755))
+  * filterx: fix `startswith()`/`endswith()`/`includes()` functions early free
+    ([#772](https://github.com/axoflow/axosyslog/pull/772))
 
-  * `grpc` based destinations: Fixed a race condition around `syslogng_output_grpc_requests_total` metrics
-    ([#754](https://github.com/axoflow/axosyslog/pull/754))
+  * `/string/`: fix escaping
 
-  * `$PEER_PORT`: fix the value for the PEER_PORT macro, as it was incorrectly
-    reversing the digits in the port value, port 514 would become port 415.
-    ([#724](https://github.com/axoflow/axosyslog/pull/724))
+    Strings between / characters are now treated literally. The only exception is `\/`, which can be used to represent a `/` character.
 
-  * `google-pubsub()`, `logscale()`, `openobserver()`, `splunk()`, and other batching destinations: fix slowdown
+    This syntax allows you to construct regular expression patterns without worrying about double escaping.
 
-    The default value of `batch-timeout()` is now 0.
-    This prevents artificial slowdowns in destinations when flow control is enabled
-    and the `log-iw-size()` option of sources is set to a value lower than `batch-lines()`.
+    Note: Because of the simplified escaping rules, you cannot represent strings that end with a single `\` character,
+    but such strings would not be valid regular expression patterns anyway.
+    ([#776](https://github.com/axoflow/axosyslog/pull/776))
 
-    If you enable `batch-timeout()`, you can further improve batching performance,
-    but you must also adjust the `log-iw-size()` option of your sources accordingly:
+  * `program()` destination: Fix invalid access of freed log-writer cfg.
+    ([#779](https://github.com/axoflow/axosyslog/pull/779))
 
-    `log-iw-size / max-connections >= batch-lines * workers`
-    ([#753](https://github.com/axoflow/axosyslog/pull/753))
+  * `ebpf()`: acquire CAP_BPF before loading eBPF programs
 
+    Previously, when AxoSyslog was compiled with Linux capabilities enabled,
+    the `ebpf()` module was unable to load programs.
+    ([#768](https://github.com/axoflow/axosyslog/pull/768))
 
-## FilterX features
-
-  * `str_strip()`, `str_lstrip()`, `str_rstrip()`: new string transformation functions to remove leading/trailing whitespaces from a string
-    ([#745](https://github.com/axoflow/axosyslog/pull/745))
-
-
-## FilterX bugfixes
-
-  * `in` operator: fix crash, that happened, when the list was declared as an operand
-
-    Example:
-    ```
-    if ("test" in ["foo", "bar", "test"]) {
-      $MSG = "YES";
-    };
-    ```
-    ([#759](https://github.com/axoflow/axosyslog/pull/759))
-
-  * `parse_cef()`, `parse_leef()`: Renamed some parsed header fields.
-
-    **These are breaking changes**
-
-    The motivation behind the renaming is that these names were too
-    generic, and there is a chance to find them in the extensions.
-
-    `parse_cef()`:
-      * `version` -> `cef_version`
-      * `name` -> `event_name`
-
-    `parse_leef()`:
-      * `version` -> `leef_version`
-      * `vendor` -> `vendor_name`
-      * `delimiter` -> `leef_delimiter`
-    ([#748](https://github.com/axoflow/axosyslog/pull/748))
-
-
-## Other changes
-
-  * The base of the AxoSyslog container image is updated to Alpine 3.22
-  ([#758](https://github.com/axoflow/axosyslog/pull/758))
-  * `mongodb()`: support libmongoc v2
 
 
 [1] syslog-ng is a trademark of One Identity.
@@ -103,5 +119,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Attila Szakacs, Balazs Scheidler, László Várady,
-Tamás Kosztyu
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, Ben Ireland,
+László Várady, Szilard Parrag, Tamás Kosztyu, shifter
