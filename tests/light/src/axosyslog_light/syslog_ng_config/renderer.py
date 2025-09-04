@@ -179,6 +179,22 @@ def render_inner_statement_group(statement_group, depth):
     config_snippet = ""
     if statement_group.group_type == "log":
         config_snippet += render_logpath_groups(logpath_groups=[statement_group], depth=depth)
+    elif statement_group.group_type == "log_if":
+        config_snippet += _indent("if {\n", depth)
+        for statements in statement_group.if_block:
+            config_snippet += render_inner_statement_group(statements, depth + 1)
+        config_snippet += _indent("}", depth)
+        for elif_block in statement_group.elif_blocks:
+            config_snippet += " elif {\n"
+            for statements in elif_block:
+                config_snippet += render_inner_statement_group(statements, depth + 1)
+            config_snippet += _indent("}", depth)
+        if statement_group.else_block is not None:
+            config_snippet += " else {\n"
+            for statements in statement_group.else_block:
+                config_snippet += render_inner_statement_group(statements, depth + 1)
+            config_snippet += _indent("}", depth)
+        config_snippet += ";\n"
     elif statement_group.group_type == "filterx":
         config_snippet += _indent("filterx {\n", depth)
         for line in statement_group.code.split("\n"):
