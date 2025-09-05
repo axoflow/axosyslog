@@ -311,3 +311,51 @@ filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
 
   return &self->super.super;
 }
+
+static FilterXObject *
+_eval_uminus(FilterXExpr *s)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+  GenericNumber operand, result;
+
+  FilterXObject *operand_obj = filterx_expr_eval_typed(self->operand);
+  if (!operand_obj)
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", &self->super,
+                                          "Failed to evaluate operand");
+      return FALSE;
+    }
+
+  if (!filterx_object_extract_generic_number(operand_obj, &operand))
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super,
+                                          "Operand must be a double or integer, got: %s",
+                                          filterx_object_get_type_name(operand_obj));
+      filterx_object_unref(operand_obj);
+      return FALSE;
+    }
+  filterx_object_unref(operand_obj);
+
+  if (operand.type == GN_NAN)
+    return NULL;
+
+  if (operand.type == GN_INT64)
+    {
+      gn_set_int64(&result, -gn_as_int64(&operand));
+      return filterx_integer_new(gn_as_int64(&result));
+    }
+
+  gn_set_double(&result, -gn_as_double(&operand), -1);
+  return filterx_double_new(gn_as_double(&result));
+}
+
+FilterXExpr *
+filterx_arithmetic_operator_uminus_new(FilterXExpr *operand)
+{
+  FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
+  filterx_unary_op_init_instance(self, "uminus", operand);
+
+  self->super.eval = _eval_uminus;
+
+  return &self->super;
+}

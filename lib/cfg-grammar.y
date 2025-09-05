@@ -216,6 +216,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 
 %left  '+' '-'
 %left  '*' KW_SLASH '%'
+%left  PR_UPLUS PR_UMINUS
 %left '.' '[' ']'
 
 /* statements */

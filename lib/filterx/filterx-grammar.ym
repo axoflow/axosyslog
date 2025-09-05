@@ -344,6 +344,8 @@ arithmetic_operator
 	| expr '*' expr { $$ = filterx_arithmetic_operator_multiplication_new($1, $3); }
 	| expr KW_SLASH expr { $$ = filterx_arithmetic_operator_division_new($1, $3); }
 	| expr '%' expr { $$ = filterx_arithmetic_operator_modulo_new($1, $3); }
+	| '+' expr %prec PR_UPLUS { $$ = $2; }
+	| '-' expr %prec PR_UMINUS { $$ = filterx_arithmetic_operator_uminus_new($2); }
 	;
 
 string_operator
