@@ -74,10 +74,16 @@ spec:
           - mountPath: /var/lib/syslog-ng
             name: buffers
         {{- end }}
+        {{- if .Values.extraVolumeMounts | default .Values.syslog.extraVolumeMounts }}
+{{ toYaml (.Values.extraVolumeMounts | default .Values.syslog.extraVolumeMounts ) | indent 10 }}
+        {{- end }}
       volumes:
       - name: config
         configMap:
           name: {{ include "axosyslog.fullname" . }}-syslog
+      {{- if .Values.extraVolumes | default .Values.syslog.extraVolumes }}
+{{ toYaml ( .Values.extraVolumes | default .Values.syslog.extraVolumes ) | indent 6 }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
