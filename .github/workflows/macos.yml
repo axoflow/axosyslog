@@ -58,6 +58,8 @@ jobs:
             --enable-force-gnu99
             --prefix=${SYSLOG_NG_INSTALL_DIR}
             --enable-all-modules
+            --enable-jit
+            --with-llvm-config=${HOMEBREW_PREFIX}/opt/llvm/bin/llvm-config
             --enable-tests
             --with-ivykis=system
             --with-python=3

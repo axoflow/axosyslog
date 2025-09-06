@@ -120,6 +120,7 @@ override_dh_auto_configure:
 		--enable-tcp-wrapper \
 		--enable-sql \
 		--enable-json \
+		--enable-jit \
 		--enable-manpages \
 		$(PACCT_CONFIGURE_OPTS) \
 		--enable-python \
