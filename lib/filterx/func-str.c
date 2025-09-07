@@ -39,7 +39,7 @@
 #define FILTERX_FUNC_ENDSWITH_USAGE "Usage: endswith(string, suffix, ignorecase=true)" \
 "or endswith(string, [suffix_1, suffix_2, ..], ignorecase=true)"
 
-#define FILTERX_FUNC_INCLUDES_USAGE "Usage: includes(string, substring, ignorecase=true)" \
+#define FILTERX_FUNC_INCLUDES_USAGE "Usage: includes(string, substring, ignorecase=true, limit=0)" \
 "or includes(string, [substring_1, substring_2, ..], ignorecase=true)"
 
 #define FILTERX_FUNC_STRCASECMP_USAGE "Usage: strcasecmp(string, string)"
@@ -59,6 +59,7 @@ struct _FilterXExprAffix
 {
   FilterXFunction super;
   gboolean ignore_case;
+  gint64 limit;
   FilterXExpr *haystack;
   struct
   {
@@ -436,6 +437,16 @@ _extract_args(FilterXExprAffix *self, FilterXFunctionArgs *args, GError **error,
   else
     self->ignore_case = value;
 
+  self->limit = filterx_function_args_get_named_literal_integer(args, "limit", &exists, &eval_error);
+  if (eval_error)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "limit argument must be an integer. %s", function_usage);
+      return FALSE;
+    }
+  if (!exists)
+    self->limit = 0;
+
   self->haystack = filterx_function_args_get_expr(args, 0);
   g_assert(self->haystack);
 
@@ -516,9 +527,9 @@ _function_includes_process(FilterXExprAffix *self,
                            const gchar *haystack, gsize haystack_len,
                            const gchar *needle, gsize needle_len)
 {
-  if (needle_len > haystack_len)
-    return FALSE;
-  return strstr(haystack, needle) != NULL;
+  if (self->limit && haystack_len > self->limit)
+    haystack_len = self->limit;
+  return memmem(haystack, haystack_len, needle, needle_len) != NULL;
 }
 
 FilterXExpr *
