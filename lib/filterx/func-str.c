@@ -51,9 +51,11 @@ typedef struct _FilterXStringWithCache
   gsize str_len;
 } FilterXStringWithCache;
 
-typedef gboolean (*FilterXExprAffixProcessFunc)(const gchar *haystack, gsize haystack_len, const gchar *needle,
-                                                gsize needle_len);
-typedef struct _FilterXExprAffix
+typedef struct _FilterXExprAffix FilterXExprAffix;
+typedef gboolean (*FilterXExprAffixProcessFunc)(FilterXExprAffix *self,
+                                                const gchar *haystack, gsize haystack_len,
+                                                const gchar *needle, gsize needle_len);
+struct _FilterXExprAffix
 {
   FilterXFunction super;
   gboolean ignore_case;
@@ -64,7 +66,7 @@ typedef struct _FilterXExprAffix
     GPtrArray *cached_strings;
   } needle;
   FilterXExprAffixProcessFunc process;
-} FilterXExprAffix;
+};
 
 typedef struct _FilterXStrcasecmp
 {
@@ -288,7 +290,7 @@ _eval_against_literal_needles(FilterXExprAffix *self, const gchar *haystack, gsi
                                                &needle_backing_obj))
         return NULL;
 
-      matches = self->process(haystack, haystack_len, needle_str, needle_len);
+      matches = self->process(self, haystack, haystack_len, needle_str, needle_len);
       filterx_object_unref(needle_backing_obj);
     }
   return filterx_boolean_new(matches);
@@ -322,7 +324,7 @@ _eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gs
       if (!res)
         return NULL;
 
-      matches = self->process(haystack, haystack_len, current_needle, current_needle_len);
+      matches = self->process(self, haystack, haystack_len, current_needle, current_needle_len);
     }
   return filterx_boolean_new(matches);
 }
@@ -336,7 +338,7 @@ _eval_against_needle_expr_single(FilterXExprAffix *self, const gchar *haystack, 
 
   if (_obj_format(needle_obj, &needle, &needle_len, self->ignore_case, NULL))
     {
-      return filterx_boolean_new(self->process(haystack, haystack_len, needle, needle_len));
+      return filterx_boolean_new(self->process(self, haystack, haystack_len, needle, needle_len));
     }
   return NULL;
 }
@@ -476,7 +478,9 @@ error:
 }
 
 static gboolean
-_function_startswith_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+_function_startswith_process(FilterXExprAffix *self,
+                             const gchar *haystack, gsize haystack_len,
+                             const gchar *needle, gsize needle_len)
 {
   if (needle_len > haystack_len)
     return FALSE;
@@ -491,7 +495,9 @@ filterx_function_startswith_new(FilterXFunctionArgs *args, GError **error)
 }
 
 static gboolean
-_function_endswith_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+_function_endswith_process(FilterXExprAffix *self,
+                           const gchar *haystack, gsize haystack_len,
+                           const gchar *needle, gsize needle_len)
 {
   if (needle_len > haystack_len)
     return FALSE;
@@ -506,7 +512,9 @@ filterx_function_endswith_new(FilterXFunctionArgs *args, GError **error)
 }
 
 static gboolean
-_function_includes_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+_function_includes_process(FilterXExprAffix *self,
+                           const gchar *haystack, gsize haystack_len,
+                           const gchar *needle, gsize needle_len)
 {
   if (needle_len > haystack_len)
     return FALSE;
