@@ -269,13 +269,29 @@ def test_includes_with_various_arguments(config, syslog_ng):
     {
         result.includes_foo4 = true;
     };
+    if (includes($MSG, "bAz", limit=3))
+    {
+        result.includes_limited3_baz = true;
+    };
+    if (includes($MSG, "bAz", limit=2))
+    {
+        result.includes_limited2_baz = true;
+    };
+    if (includes($MSG, "BAR", limit=6))
+    {
+        result.includes_limited6_bar = true;
+    };
+    if (includes($MSG, "foo", limit=6))
+    {
+        result.includes_limited6_foo = true;
+    };
     $MSG = result;
     """, msg="bAzBARfoo",
     )
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == '{"includes_foo1":true,"includes_foo2":true,"includes_foo3":true,"includes_foo4":true}'
+    assert file_final.read_log() == '{"includes_foo1":true,"includes_foo2":true,"includes_foo3":true,"includes_foo4":true,"includes_limited3_baz":true,"includes_limited6_bar":true}'
 
 
 def test_startswith_endswith_includes(config, syslog_ng):
