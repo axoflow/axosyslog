@@ -229,6 +229,7 @@ void
 DestWorker::prepare_batch()
 {
   this->query_data.str("");
+  this->query_data.clear();
   this->batch_size = 0;
   this->current_batch_bytes = 0;
   this->client_context.reset();
