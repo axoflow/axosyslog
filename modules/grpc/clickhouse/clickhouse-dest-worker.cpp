@@ -25,6 +25,8 @@
 #include "clickhouse-dest.hpp"
 
 #include <google/protobuf/util/delimited_message_util.h>
+#include "clickhouse-exception-codes.h"
+
 
 using syslogng::grpc::clickhouse::DestWorker;
 using syslogng::grpc::clickhouse::DestDriver;
@@ -179,7 +181,11 @@ DestWorker::prepare_query_info(::clickhouse::grpc::QueryInfo &query_info)
 static LogThreadedResult
 _map_grpc_status_to_log_threaded_result(const ::grpc::Status &status)
 {
-  // TODO: this is based on OTLP, we should check how the ClickHouse gRPC server behaves
+  // NOTE: This error handling block has no effect right now because ClickHouse gRPC
+  // only returns `OK`. The actual error state is conveyed through exception codes
+  // in `clickhouse::grpc::Result`.
+  // This code is kept in place for potential future changes, in case ClickHouse
+  // starts providing meaningful gRPC error codes.
 
   switch (status.error_code())
     {
@@ -256,19 +262,20 @@ DestWorker::flush(LogThreadedFlushMode mode)
       goto error;
     }
 
-  result = _map_grpc_status_to_log_threaded_result(status);
+  result = _map_grpc_status_to_log_threaded_result(status); // Read comment
   if (result != LTR_SUCCESS)
     goto error;
 
   if (query_result.has_exception())
     {
       const ::clickhouse::grpc::Exception &exception = query_result.exception();
-      msg_error("ClickHouse server responded with an exception, dropping batch",
+      ErrorAction action = classify_clickhouse_error((ClickHouseErrorCode)exception.code());
+      msg_error("ClickHouse server responded with an exception",
                 evt_tag_int("code", exception.code()),
                 evt_tag_str("name", exception.name().c_str()),
                 evt_tag_str("display_text", exception.display_text().c_str()),
                 evt_tag_str("stack_trace", exception.stack_trace().c_str()));
-      result = LTR_DROP;
+      result = error_action_to_logthreaded_result(action);
       goto error;
     }
 

@@ -3,6 +3,8 @@ if ENABLE_GRPC
 noinst_LTLIBRARIES += modules/grpc/clickhouse/libclickhouse_cpp.la
 
 modules_grpc_clickhouse_libclickhouse_cpp_la_SOURCES = \
+  modules/grpc/clickhouse/clickhouse-exception-codes.h \
+  modules/grpc/clickhouse/clickhouse-exception-codes.c \
   modules/grpc/clickhouse/clickhouse-dest.h \
   modules/grpc/clickhouse/clickhouse-dest.hpp \
   modules/grpc/clickhouse/clickhouse-dest.cpp \
