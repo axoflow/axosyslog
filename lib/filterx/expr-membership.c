@@ -40,7 +40,7 @@ _eval_in(FilterXExpr *s)
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
 
   FilterXObject *lhs_obj = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
-                           : filterx_expr_eval(self->super.lhs);
+                           : filterx_expr_eval_typed(self->super.lhs);
 
   FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_obj);
 
