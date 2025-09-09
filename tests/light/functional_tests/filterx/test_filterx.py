@@ -2699,6 +2699,23 @@ def test_not_in_operator_false(config, syslog_ng):
     assert file_true.read_log() == "found"
 
 
+def test_in_operator_message_value(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        if (${values.str} in ['foo', 'string', 'bar']) {
+            $MSG = "found";
+        } else {
+            $MSG = "not found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "found"
+
+
 def test_arithmetic_operators_precedence(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
