@@ -23,6 +23,7 @@
 #############################################################################
 import pytest
 from axosyslog_light.common.file import copy_shared_file
+from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_OPTIONS
 from inputs_and_outputs_for_complex_types import all_protobuf_types_expected_data
 from inputs_and_outputs_for_complex_types import all_protobuf_types_input_data
 from inputs_and_outputs_for_complex_types import all_protobuf_types_proto_file_data
@@ -35,17 +36,10 @@ from inputs_and_outputs_for_complex_types import complex_types_input_data
 from inputs_and_outputs_for_complex_types import complex_types_proto_file_data
 from inputs_and_outputs_for_complex_types import complex_types_table_schema
 
-clickhouse_options = {
-    "database": "default",
-    "table": "test_table",
-    "user": "default",
-    "password": "'password'",
-}
-
 
 def configure_syslog_ng_with_clickhouse_dest(config, proto_file_data, clickhouse_ports):
     file_source = config.create_file_source(file_name="input.log")
-    clickhouse_options_copy = clickhouse_options.copy()
+    clickhouse_options_copy = CLICKHOUSE_OPTIONS.copy()
     filterx_expr = f'''
      $proto_var_value = protobuf_message(json($MSG), schema_file="{proto_file_data['proto_file_name']}");
      $MESSAGE = {{"message": $MSG}};
@@ -78,7 +72,7 @@ def test_clickhouse_destination_complex_types(request, testcase_parameters, conf
     copy_shared_file(testcase_parameters, proto_file_data["proto_file_name"])
 
     config, file_source, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, proto_file_data, clickhouse_ports)
-    bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, table_schema, clickhouse_ports)
+    bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, CLICKHOUSE_OPTIONS, request, table_schema, clickhouse_ports)
 
     input_msg = f'<113>Jul 17 14:47:53 testhost testprog {input_data}'
     file_source.write_log(input_msg, 1)

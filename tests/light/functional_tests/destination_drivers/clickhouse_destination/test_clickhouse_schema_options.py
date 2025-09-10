@@ -25,20 +25,15 @@ import uuid
 
 import pytest
 from axosyslog_light.common.file import copy_shared_file
-from axosyslog_light.syslog_ng_config.__init__ import stringify
+from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_OPTIONS
+
 
 custom_input_msg = f"test message {str(uuid.uuid4())}"
-clickhouse_options = {
-    "database": "default",
-    "table": "test_table",
-    "user": "default",
-    "password": f'{stringify("password")}',
-}
 
 
 def configure_syslog_ng_with_clickhouse_dest(config, additional_clickhouse_options, clickhouse_ports):
     generator_source = config.create_example_msg_generator_source(num=1, template=f'"{custom_input_msg}"')
-    clickhouse_options_copy = clickhouse_options.copy()
+    clickhouse_options_copy = CLICKHOUSE_OPTIONS.copy()
     clickhouse_options_copy.update({"url": f"'127.0.0.1:{clickhouse_ports.grpc_port}'"})
     if "proto_var" in additional_clickhouse_options:
         filterx = config.create_filterx(
@@ -111,7 +106,7 @@ def test_clickhouse_destination_schema_option(request, config, syslog_ng, clickh
     if not syslog_ng_started:
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, CLICKHOUSE_OPTIONS, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)
 
@@ -130,7 +125,7 @@ def test_clickhouse_destination_protobuf_schema_option(request, testcase_paramet
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
         copy_shared_file(testcase_parameters, "clickhouse.proto")
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, CLICKHOUSE_OPTIONS, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)
 
@@ -151,7 +146,7 @@ def test_clickhouse_destination_server_side_schema_option(request, testcase_para
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
         copy_shared_file(testcase_parameters, "clickhouse.proto")
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, CLICKHOUSE_OPTIONS, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)
 
@@ -171,6 +166,6 @@ def test_clickhouse_destination_proto_var_option(request, testcase_parameters, c
         check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error)
     else:
         copy_shared_file(testcase_parameters, "clickhouse.proto")
-        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, clickhouse_options, request, clickhouse_ports)
+        bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, CLICKHOUSE_OPTIONS, request, clickhouse_ports)
         syslog_ng.start(config)
         check_message_arrival(clickhouse_destination, custom_input_msg, message_arrived_in_db, message_arrival_error, syslog_ng)

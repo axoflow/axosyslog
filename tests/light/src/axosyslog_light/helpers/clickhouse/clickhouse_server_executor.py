@@ -29,17 +29,32 @@ from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.common.blocking import wait_until_true_custom
 from axosyslog_light.common.file import copy_shared_file
 from axosyslog_light.executors.process_executor import ProcessExecutor
+from axosyslog_light.syslog_ng_config.__init__ import destringify
+from axosyslog_light.syslog_ng_config.__init__ import stringify
 from tenacity import retry
 from tenacity import stop_after_delay
 from tenacity import wait_fixed
 
 logger = logging.getLogger(__name__)
 
+CLICKHOUSE_OPTIONS = {
+    "database": "default",
+    "table": "test_table",
+    "user": "default",
+    "password": f'{stringify("password")}',
+}
+
+CLICKHOUSE_OPTIONS_WITH_SCHEMA = {
+    **CLICKHOUSE_OPTIONS,
+    "schema": '"message" "String" => "$MSG"',
+}
+
 
 class ClickhouseServerExecutor():
     def __init__(self, testcase_parameters) -> None:
         self.process = None
         self.clickhouse_server_ports = []
+        self.hostname = "localhost"
         copy_shared_file(testcase_parameters, "clickhouse_server_config.xml")
         copy_shared_file(testcase_parameters, "clickhouse_users.xml")
 
@@ -74,9 +89,9 @@ class ClickhouseServerExecutor():
     @retry(wait=wait_fixed(0.1), reraise=True, stop=stop_after_delay(10))
     def wait_for_server_start(self, port) -> None:
         client = clickhouse_connect.get_client(
-            host="localhost",
-            username="default",
-            password="password",
+            host=self.hostname,
+            username=CLICKHOUSE_OPTIONS["user"],
+            password=destringify(CLICKHOUSE_OPTIONS["password"]),
             port=port,
         )
         try:
