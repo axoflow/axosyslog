@@ -283,7 +283,8 @@ _add_common_headers(HTTPDestinationWorker *self)
       LogTemplate *header_template = l->data;
       GString *buffer = scratch_buffers_alloc();
       log_template_format(header_template, self->msg_for_templates, &options, buffer);
-      list_append(self->request_headers, buffer->str);
+      if (buffer->len)
+        list_append(self->request_headers, buffer->str);
     }
 }
 
