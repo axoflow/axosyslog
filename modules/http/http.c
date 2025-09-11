@@ -100,12 +100,12 @@ http_dd_set_user_agent(LogDriver *d, const gchar *user_agent)
 }
 
 void
-http_dd_set_headers(LogDriver *d, GList *headers)
+http_dd_set_headers_ref(LogDriver *d, GList *headers)
 {
   HTTPDestinationDriver *self = (HTTPDestinationDriver *) d;
 
-  g_list_free_full(self->headers, g_free);
-  self->headers = g_list_copy_deep(headers, ((GCopyFunc)g_strdup), NULL);
+  g_list_free_full(self->headers, (GDestroyNotify) log_template_unref);
+  self->headers = headers;
 }
 
 void
@@ -493,7 +493,7 @@ http_dd_free(LogPipe *s)
   g_free(self->ciphers);
   g_free(self->tls13_ciphers);
   g_free(self->proxy);
-  g_list_free_full(self->headers, g_free);
+  g_list_free_full(self->headers, (GDestroyNotify) log_template_unref);
   http_load_balancer_free(self->load_balancer);
   http_response_handlers_free(self->response_handlers);
 

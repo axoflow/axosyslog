@@ -276,8 +276,15 @@ _add_common_headers(HTTPDestinationWorker *self)
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
   _add_header(self->request_headers, "Expect", "");
+
+  LogTemplateEvalOptions options = { &owner->template_options, LTZ_SEND, self->super.seq_num, NULL, LM_VT_STRING };
   for (GList *l = owner->headers; l; l = l->next)
-    list_append(self->request_headers, l->data);
+    {
+      LogTemplate *header_template = l->data;
+      GString *buffer = scratch_buffers_alloc();
+      log_template_format(header_template, self->msg_for_templates, &options, buffer);
+      list_append(self->request_headers, buffer->str);
+    }
 }
 
 static gboolean
