@@ -808,19 +808,26 @@ dnl Miscellanneous headers
 dnl ***************************************************************************
 
 AC_HEADER_STDC
-AC_CHECK_HEADER(dmalloc.h)
-AC_CHECK_HEADER(dlfcn.h)
-AC_CHECK_HEADERS(strings.h	\
-	getopt.h		\
-	stropts.h		\
-	sys/strlog.h		\
-	door.h			\
-	sys/capability.h	\
-	sys/prctl.h		\
-	linux/sock_diag.h	\
-	utmp.h			\
-	utmpx.h)
-AC_CHECK_HEADERS(tcpd.h)
+
+# NOTE: Always use AC_CHECK_HEADERS, not AC_CHECK_HEADER.
+# The first one will propagate the cached result to AX_PREFIX_CONFIG_H, while the latter does not.
+
+AC_CHECK_HEADERS(
+  strings.h \
+  getopt.h \
+  stropts.h \
+  sys/strlog.h \
+  sys/capability.h \
+  sys/prctl.h \
+  linux/sock_diag.h \
+  utmp.h \
+  utmpx.h \
+  dmalloc.h \
+  dlfcn.h \
+  door.h \
+  tcpd.h \
+  malloc.h \
+)
 
 AC_CHECK_TYPES([struct ucred, struct cmsgcred], [], [], [#define _GNU_SOURCE 1
 #define _DEFAULT_SOURCE 1
