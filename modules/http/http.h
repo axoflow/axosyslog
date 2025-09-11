@@ -78,7 +78,7 @@ void http_dd_set_user(LogDriver *d, const gchar *user);
 void http_dd_set_password(LogDriver *d, const gchar *password);
 void http_dd_set_method(LogDriver *d, const gchar *method);
 void http_dd_set_user_agent(LogDriver *d, const gchar *user_agent);
-void http_dd_set_headers(LogDriver *d, GList *headers);
+void http_dd_set_headers_ref(LogDriver *d, GList *headers);
 void http_dd_set_body(LogDriver *d, LogTemplate *body);
 void http_dd_set_accept_redirects(LogDriver *d, gboolean accept_redirects);
 void http_dd_set_ca_dir(LogDriver *d, const gchar *ca_dir);

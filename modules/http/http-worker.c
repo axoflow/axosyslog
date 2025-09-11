@@ -276,8 +276,16 @@ _add_common_headers(HTTPDestinationWorker *self)
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
   _add_header(self->request_headers, "Expect", "");
+
+  LogTemplateEvalOptions options = { &owner->template_options, LTZ_SEND, self->super.seq_num, NULL, LM_VT_STRING };
   for (GList *l = owner->headers; l; l = l->next)
-    list_append(self->request_headers, l->data);
+    {
+      LogTemplate *header_template = l->data;
+      GString *buffer = scratch_buffers_alloc();
+      log_template_format(header_template, self->msg_for_templates, &options, buffer);
+      if (buffer->len)
+        list_append(self->request_headers, buffer->str);
+    }
 }
 
 static gboolean
@@ -751,7 +759,7 @@ _get_url(HTTPDestinationWorker *self, HTTPLoadBalancerTarget *target)
     return http_lb_target_get_literal_url(target);
 
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
-  http_lb_target_format_templated_url(target, self->msg_for_templated_url, &owner->template_options, self->url_buffer);
+  http_lb_target_format_templated_url(target, self->msg_for_templates, &owner->template_options, self->url_buffer);
   return self->url_buffer->str;
 }
 
@@ -826,8 +834,8 @@ _flush(LogThreadedDestWorker *s, LogThreadedFlushMode mode)
   _reset_request_headers(self);
   _reset_request_body(self);
 
-  log_msg_unref(self->msg_for_templated_url);
-  self->msg_for_templated_url = NULL;
+  log_msg_unref(self->msg_for_templates);
+  self->msg_for_templates = NULL;
 
   return retval;
 }
@@ -854,8 +862,8 @@ _insert_batched(LogThreadedDestWorker *s, LogMessage *msg)
   gsize diff_msg_len = self->request_body->len - orig_msg_len;
   log_threaded_dest_driver_insert_msg_length_stats(self->super.owner, diff_msg_len);
 
-  if (!self->msg_for_templated_url)
-    self->msg_for_templated_url = log_msg_ref(msg);
+  if (!self->msg_for_templates)
+    self->msg_for_templates = log_msg_ref(msg);
 
   if (_should_initiate_flush(self))
     {
@@ -878,7 +886,7 @@ _insert_single(LogThreadedDestWorker *s, LogMessage *msg)
 
   _add_msg_specific_headers(self, msg);
 
-  self->msg_for_templated_url = log_msg_ref(msg);
+  self->msg_for_templates = log_msg_ref(msg);
 
   return log_threaded_dest_worker_flush(&self->super, LTF_FLUSH_NORMAL);
 }

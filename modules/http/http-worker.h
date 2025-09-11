@@ -42,7 +42,7 @@ typedef struct _HTTPDestinationWorker
   List *request_headers;
   GString *url_buffer;
   GString *response_buffer;
-  LogMessage *msg_for_templated_url;
+  LogMessage *msg_for_templates;
 
   struct
   {
