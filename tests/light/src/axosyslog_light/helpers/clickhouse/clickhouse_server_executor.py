@@ -23,19 +23,38 @@
 #############################################################################
 import logging
 
+import clickhouse_connect
 import psutil
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.common.blocking import wait_until_true_custom
 from axosyslog_light.common.file import copy_shared_file
 from axosyslog_light.executors.process_executor import ProcessExecutor
+from axosyslog_light.syslog_ng_config.__init__ import destringify
+from axosyslog_light.syslog_ng_config.__init__ import stringify
+from tenacity import retry
+from tenacity import stop_after_delay
+from tenacity import wait_fixed
 
 logger = logging.getLogger(__name__)
+
+CLICKHOUSE_OPTIONS = {
+    "database": "default",
+    "table": "test_table",
+    "user": "default",
+    "password": f'{stringify("password")}',
+}
+
+CLICKHOUSE_OPTIONS_WITH_SCHEMA = {
+    **CLICKHOUSE_OPTIONS,
+    "schema": '"message" "String" => "$MSG"',
+}
 
 
 class ClickhouseServerExecutor():
     def __init__(self, testcase_parameters) -> None:
         self.process = None
         self.clickhouse_server_ports = []
+        self.hostname = "localhost"
         copy_shared_file(testcase_parameters, "clickhouse_server_config.xml")
         copy_shared_file(testcase_parameters, "clickhouse_users.xml")
 
@@ -48,35 +67,37 @@ class ClickhouseServerExecutor():
         self.clickhouse_server_ports.append(clickhouse_ports.http_port)
         self.clickhouse_server_ports.append(clickhouse_ports.grpc_port)
 
-        with open("clickhouse_server_config.xml", "r") as file:
+        with open("clickhouse_server_config.xml", "r", encoding="utf-8") as file:
             config = file.read()
         config = config.replace("ALLOCATED_HTTP_PORT", str(clickhouse_ports.http_port))
         config = config.replace("ALLOCATED_INTERSERVER_GRPC_PORT", str(clickhouse_ports.grpc_port))
-        with open("clickhouse_server_config.xml", "w") as file:
+        with open("clickhouse_server_config.xml", "w", encoding="utf-8") as file:
             file.write(config)
 
         self.process = ProcessExecutor().start(command, "clickhouse_server.stdout", "clickhouse_server.stderr")
         if wait_until_true_custom(lambda: psutil.Process(self.process.pid).children(), timeout=0.5):
             logger.info("Clickhouse server started with child process.")
             self.process = psutil.Process(self.process.pid).children()[0]
-        self.wait_for_start()
-        logger.info(f"Clickhouse server started with PID: {self.process.pid}")
+        self.wait_for_server_start(port=clickhouse_ports.http_port)
+        logger.info("Clickhouse server started with PID: %s", self.process.pid)
 
     def stop(self) -> None:
         self.process.terminate()
-        self.wait_for_stop()
-        logger.info(f"Clickhouse server with PID {self.process.pid} terminated.")
+        self.wait_for_server_stop()
+        logger.info("Clickhouse server with PID %s terminated.", self.process.pid)
 
-    def get_open_ports(self) -> list[int]:
-        if not self.process:
-            raise RuntimeError("Clickhouse server process is not running.")
+    @retry(wait=wait_fixed(0.1), reraise=True, stop=stop_after_delay(10))
+    def wait_for_server_start(self, port) -> None:
+        client = clickhouse_connect.get_client(
+            host=self.hostname,
+            username=CLICKHOUSE_OPTIONS["user"],
+            password=destringify(CLICKHOUSE_OPTIONS["password"]),
+            port=port,
+        )
+        try:
+            client.command("SHOW DATABASES;")
+        except Exception as e:
+            raise RuntimeError("Clickhouse server is not ready yet.") from e
 
-        connections = psutil.Process(self.process.pid).net_connections(kind='inet')
-        open_ports = sorted(set([conn.laddr.port for conn in connections if conn.laddr]))
-        return open_ports
-
-    def wait_for_start(self) -> bool:
-        assert wait_until_true(lambda: self.get_open_ports() == self.clickhouse_server_ports), "Required ports are not open."
-
-    def wait_for_stop(self) -> bool:
-        assert wait_until_true(lambda: self.get_open_ports() == []), "Required ports are not closed."
+    def wait_for_server_stop(self) -> None:
+        wait_until_true(lambda: not self.process.is_running())

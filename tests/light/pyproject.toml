@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "axosyslog-light"
-version = "1.13.0"
+version = "1.14.0"
 description = "Lightweight End-to-End Test Framework for AxoSyslog."
 authors = ["Andras Mitzki <andras.mitzki@axoflow.com>", "Attila Szakacs <attila.szakacs@axoflow.com>"]
 readme = "README.md"
@@ -27,6 +27,7 @@ pytest-xdist = "^3.6.1"
 filelock = "^3.18.0"
 requests = "^2.32.3"
 clickhouse-connect = "^0.8.18"
+tenacity = "^9.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pycodestyle = "^2.12.1"
