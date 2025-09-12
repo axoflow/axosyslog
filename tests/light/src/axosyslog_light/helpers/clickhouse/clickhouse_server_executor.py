@@ -67,11 +67,11 @@ class ClickhouseServerExecutor():
         self.clickhouse_server_ports.append(clickhouse_ports.http_port)
         self.clickhouse_server_ports.append(clickhouse_ports.grpc_port)
 
-        with open("clickhouse_server_config.xml", "r") as file:
+        with open("clickhouse_server_config.xml", "r", encoding="utf-8") as file:
             config = file.read()
         config = config.replace("ALLOCATED_HTTP_PORT", str(clickhouse_ports.http_port))
         config = config.replace("ALLOCATED_INTERSERVER_GRPC_PORT", str(clickhouse_ports.grpc_port))
-        with open("clickhouse_server_config.xml", "w") as file:
+        with open("clickhouse_server_config.xml", "w", encoding="utf-8") as file:
             file.write(config)
 
         self.process = ProcessExecutor().start(command, "clickhouse_server.stdout", "clickhouse_server.stderr")
@@ -79,12 +79,12 @@ class ClickhouseServerExecutor():
             logger.info("Clickhouse server started with child process.")
             self.process = psutil.Process(self.process.pid).children()[0]
         self.wait_for_server_start(port=clickhouse_ports.http_port)
-        logger.info(f"Clickhouse server started with PID: {self.process.pid}")
+        logger.info("Clickhouse server started with PID: %s", self.process.pid)
 
     def stop(self) -> None:
         self.process.terminate()
         self.wait_for_server_stop()
-        logger.info(f"Clickhouse server with PID {self.process.pid} terminated.")
+        logger.info("Clickhouse server with PID %s terminated.", self.process.pid)
 
     @retry(wait=wait_fixed(0.1), reraise=True, stop=stop_after_delay(10))
     def wait_for_server_start(self, port) -> None:
