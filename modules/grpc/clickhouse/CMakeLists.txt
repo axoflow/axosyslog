@@ -4,6 +4,7 @@ endif()
 
 set(CLICKHOUSE_CPP_SOURCES
   ${GRPC_METRICS_SOURCES}
+  clickhouse-exception-codes.h
   clickhouse-dest.hpp
   clickhouse-dest.cpp
   clickhouse-dest.h
