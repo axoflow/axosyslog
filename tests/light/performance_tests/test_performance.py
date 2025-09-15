@@ -108,6 +108,7 @@ def start_syslog_ng(syslog_ng, config):
     syslog_ng.start_params.trace = False
     syslog_ng.start_params.debug = False
     syslog_ng.start_params.verbose = False
+    syslog_ng.start_params.stderr = False
     syslog_ng.start(config)
     time.sleep(0.5)
 
