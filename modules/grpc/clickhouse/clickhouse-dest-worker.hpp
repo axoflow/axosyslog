@@ -43,6 +43,11 @@ public:
   LogThreadedResult insert(LogMessage *msg);
   LogThreadedResult flush(LogThreadedFlushMode mode);
 
+protected:
+  bool connect() override;
+  bool init() override;
+  void deinit() override;
+
 private:
   bool insert_query_data_from_protovar(LogMessage *msg);
   bool insert_query_data_from_jsonvar(LogMessage *msg);
@@ -53,7 +58,6 @@ private:
   DestDriver *get_owner();
 
 private:
-  std::shared_ptr<::grpc::Channel> channel;
   std::unique_ptr<::clickhouse::grpc::ClickHouse::Stub> stub;
   std::unique_ptr<::grpc::ClientContext> client_context;
 

@@ -48,6 +48,11 @@ public:
   LogThreadedResult insert(LogMessage *msg);
   LogThreadedResult flush(LogThreadedFlushMode mode);
 
+protected:
+  bool init() override;
+  void deinit() override;
+  bool connect() override;
+
 private:
   bool should_initiate_flush();
   void prepare_batch();
@@ -57,7 +62,6 @@ private:
   DestDriver *get_owner();
 
 private:
-  std::shared_ptr<::grpc::Channel> channel;
   std::unique_ptr<::google::pubsub::v1::Publisher::Stub> stub;
   std::unique_ptr<::grpc::ClientContext> client_context;
 

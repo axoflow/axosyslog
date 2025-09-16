@@ -58,28 +58,17 @@ struct _LokiDestWorker
 bool
 DestinationWorker::init()
 {
-  ::grpc::ChannelArguments args = this->create_channel_args();
-  auto credentials = this->create_credentials();
-  if (!credentials)
-    {
-      msg_error("Error querying Loki credentials",
-                evt_tag_str("url", this->owner.get_url().c_str()),
-                log_pipe_location_tag((LogPipe *) this->super->super.owner));
-      return false;
-    }
-
-  this->channel = ::grpc::CreateCustomChannel(this->owner.get_url(), credentials, args);
-  if (!this->channel)
-    {
-      msg_error("Error creating Loki gRPC channel",
-                evt_tag_str("url", this->owner.get_url().c_str()),
-                log_pipe_location_tag((LogPipe *) this->super->super.owner));
-      return false;
-    }
-
+  if (!syslogng::grpc::DestWorker::init())
+    return false;
   this->stub = logproto::Pusher().NewStub(channel);
+  return true;
+}
 
-  return syslogng::grpc::DestWorker::init();
+void
+DestinationWorker::deinit()
+{
+  this->stub.reset();
+  syslogng::grpc::DestWorker::deinit();
 }
 
 bool
@@ -87,32 +76,17 @@ DestinationWorker::connect()
 {
   DestinationDriver *owner_ = this->get_owner();
 
-  this->prepare_batch();
-
   msg_debug("Connecting to Loki", log_pipe_location_tag((LogPipe *) this->super->super.owner));
 
-  std::chrono::system_clock::time_point connect_timeout =
-    std::chrono::system_clock::now() + std::chrono::seconds(10);
-
-  if (!this->channel->WaitForConnected(connect_timeout))
+  if (!DestWorker::connect())
     {
-      msg_error("Time out connecting to Loki",
+      msg_error("Error connecting to Loki",
                 evt_tag_str("url", owner_->get_url().c_str()),
                 log_pipe_location_tag((LogPipe *) this->super->super.owner));
       return false;
     }
-
-  this->connected = true;
+  this->prepare_batch();
   return true;
-}
-
-void
-DestinationWorker::disconnect()
-{
-  if (!this->connected)
-    return;
-
-  this->connected = false;
 }
 
 void
