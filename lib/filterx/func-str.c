@@ -39,7 +39,7 @@
 #define FILTERX_FUNC_ENDSWITH_USAGE "Usage: endswith(string, suffix, ignorecase=true)" \
 "or endswith(string, [suffix_1, suffix_2, ..], ignorecase=true)"
 
-#define FILTERX_FUNC_INCLUDES_USAGE "Usage: includes(string, substring, ignorecase=true)" \
+#define FILTERX_FUNC_INCLUDES_USAGE "Usage: includes(string, substring, ignorecase=true, limit=0)" \
 "or includes(string, [substring_1, substring_2, ..], ignorecase=true)"
 
 #define FILTERX_FUNC_STRCASECMP_USAGE "Usage: strcasecmp(string, string)"
@@ -51,12 +51,15 @@ typedef struct _FilterXStringWithCache
   gsize str_len;
 } FilterXStringWithCache;
 
-typedef gboolean (*FilterXExprAffixProcessFunc)(const gchar *haystack, gsize haystack_len, const gchar *needle,
-                                                gsize needle_len);
-typedef struct _FilterXExprAffix
+typedef struct _FilterXExprAffix FilterXExprAffix;
+typedef gboolean (*FilterXExprAffixProcessFunc)(FilterXExprAffix *self,
+                                                const gchar *haystack, gsize haystack_len,
+                                                const gchar *needle, gsize needle_len);
+struct _FilterXExprAffix
 {
   FilterXFunction super;
   gboolean ignore_case;
+  gint64 limit;
   FilterXExpr *haystack;
   struct
   {
@@ -64,7 +67,7 @@ typedef struct _FilterXExprAffix
     GPtrArray *cached_strings;
   } needle;
   FilterXExprAffixProcessFunc process;
-} FilterXExprAffix;
+};
 
 typedef struct _FilterXStrcasecmp
 {
@@ -288,7 +291,7 @@ _eval_against_literal_needles(FilterXExprAffix *self, const gchar *haystack, gsi
                                                &needle_backing_obj))
         return NULL;
 
-      matches = self->process(haystack, haystack_len, needle_str, needle_len);
+      matches = self->process(self, haystack, haystack_len, needle_str, needle_len);
       filterx_object_unref(needle_backing_obj);
     }
   return filterx_boolean_new(matches);
@@ -322,7 +325,7 @@ _eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gs
       if (!res)
         return NULL;
 
-      matches = self->process(haystack, haystack_len, current_needle, current_needle_len);
+      matches = self->process(self, haystack, haystack_len, current_needle, current_needle_len);
     }
   return filterx_boolean_new(matches);
 }
@@ -336,7 +339,7 @@ _eval_against_needle_expr_single(FilterXExprAffix *self, const gchar *haystack, 
 
   if (_obj_format(needle_obj, &needle, &needle_len, self->ignore_case, NULL))
     {
-      return filterx_boolean_new(self->process(haystack, haystack_len, needle, needle_len));
+      return filterx_boolean_new(self->process(self, haystack, haystack_len, needle, needle_len));
     }
   return NULL;
 }
@@ -434,6 +437,16 @@ _extract_args(FilterXExprAffix *self, FilterXFunctionArgs *args, GError **error,
   else
     self->ignore_case = value;
 
+  self->limit = filterx_function_args_get_named_literal_integer(args, "limit", &exists, &eval_error);
+  if (eval_error)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "limit argument must be an integer. %s", function_usage);
+      return FALSE;
+    }
+  if (!exists)
+    self->limit = 0;
+
   self->haystack = filterx_function_args_get_expr(args, 0);
   g_assert(self->haystack);
 
@@ -476,7 +489,9 @@ error:
 }
 
 static gboolean
-_function_startswith_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+_function_startswith_process(FilterXExprAffix *self,
+                             const gchar *haystack, gsize haystack_len,
+                             const gchar *needle, gsize needle_len)
 {
   if (needle_len > haystack_len)
     return FALSE;
@@ -491,7 +506,9 @@ filterx_function_startswith_new(FilterXFunctionArgs *args, GError **error)
 }
 
 static gboolean
-_function_endswith_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+_function_endswith_process(FilterXExprAffix *self,
+                           const gchar *haystack, gsize haystack_len,
+                           const gchar *needle, gsize needle_len)
 {
   if (needle_len > haystack_len)
     return FALSE;
@@ -506,11 +523,13 @@ filterx_function_endswith_new(FilterXFunctionArgs *args, GError **error)
 }
 
 static gboolean
-_function_includes_process(const gchar *haystack, gsize haystack_len, const gchar *needle, gsize needle_len)
+_function_includes_process(FilterXExprAffix *self,
+                           const gchar *haystack, gsize haystack_len,
+                           const gchar *needle, gsize needle_len)
 {
-  if (needle_len > haystack_len)
-    return FALSE;
-  return strstr(haystack, needle) != NULL;
+  if (self->limit && haystack_len > self->limit)
+    haystack_len = self->limit;
+  return memmem(haystack, haystack_len, needle, needle_len) != NULL;
 }
 
 FilterXExpr *
