@@ -33,9 +33,12 @@
 void
 filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gchar *text)
 {
-  if (!self->lloc)
-    self->lloc = g_new0(CFG_LTYPE, 1);
-  *self->lloc = *lloc;
+  if (lloc)
+    {
+      if (!self->lloc)
+        self->lloc = g_new0(CFG_LTYPE, 1);
+      *self->lloc = *lloc;
+    }
 
   if (text && text != self->expr_text)
     {
