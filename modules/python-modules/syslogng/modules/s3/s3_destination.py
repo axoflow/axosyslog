@@ -370,12 +370,15 @@ class S3Destination(LogDestination):
 
         self.__start_flush_poll_timer()
 
+    def __format_template_string(self, template: LogTemplate, msg: LogMessage) -> str:
+        return template.format(msg, self.template_options).decode("utf-8", errors="backslashreplace")
+
     def __format_target_key(self, msg: LogMessage) -> str:
-        return self.object_key.format(msg, self.template_options)
+        return self.__format_template_string(self.object_key, msg)
 
     def __format_timestamp(self, msg: LogMessage) -> str:
         if self.object_key_timestamp is not None:
-            return self.object_key_timestamp.format(msg, self.template_options)
+            return self.__format_template_string(self.object_key_timestamp, msg)
         return ""
 
     def __create_initial_s3_object(self, target_key: str, timestamp: str) -> S3Object:
@@ -484,7 +487,7 @@ class S3Destination(LogDestination):
             self.logger.error(str(e))
             return self.NOT_CONNECTED
 
-        data = self.message_template.format(msg, self.template_options).encode("utf-8")
+        data = self.message_template.format(msg, self.template_options)
 
         try:
             s3_object.write(data)

@@ -81,7 +81,7 @@ py_log_template_format(PyObject *s, PyObject *args, PyObject *kwrds)
   LogTemplateEvalOptions options = { template_options, tz, seqnum, NULL, LM_VT_STRING };
   log_template_format(self->template, msg->msg, &options, result);
 
-  return py_string_from_string(result->str, result->len);
+  return py_bytes_from_string(result->str, result->len);
 }
 
 int
