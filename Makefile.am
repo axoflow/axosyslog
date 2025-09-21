@@ -32,7 +32,7 @@ endif
 
 ACLOCAL_AMFLAGS		= -I autotools/m4 --install
 
-EXTRA_DIST		= $(filter-out ${NODIST_BUILT_SOURCES},${BUILT_SOURCES}) VERSION.txt NEWS.md autogen.sh \
+EXTRA_DIST		= $(filter-out ${BUILT_SOURCES_EXCLUDE},${BUILT_SOURCES}) VERSION.txt NEWS.md autogen.sh \
 			  autotools/dist.conf autotools/dist.conf.in autotools/syslog-ng.pc.in \
 			  cmake/syslog-ng-config.h.in	\
 			  CONTRIBUTING.md	\
@@ -184,7 +184,7 @@ pkginclude_HEADERS	= syslog-ng-config.h
 module_LTLIBRARIES	=
 loggenplugin_LTLIBRARIES	=
 BUILT_SOURCES		=
-NODIST_BUILT_SOURCES		=
+BUILT_SOURCES_EXCLUDE	=
 CLEANFILES 		= $(BUILT_SOURCES)
 check_PROGRAMS		=
 check_SCRIPTS		=
