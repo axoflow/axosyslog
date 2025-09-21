@@ -520,6 +520,25 @@ plugin_extract_candidate_plugins(PluginContext *context, const gchar *module_nam
     }
 }
 
+/*
+ * BUILTIN MODULES:
+ *
+ * The main syslog-ng binary can include builtin modules.  To do that, the
+ * main binary should export a register_builtin_modules() function, which
+ * will be called when the plugin discovery is performed.
+ *
+ * The called function can call plugin_extract_candidate_plugins() to
+ * register any module_info struct that is built in.
+ */
+extern void register_builtin_modules(PluginContext *context) __attribute__((weak));
+
+static void
+plugin_discover_builtin_modules(PluginContext *context)
+{
+  if (register_builtin_modules)
+    register_builtin_modules(context);
+}
+
 static void
 plugin_discover_loadable_modules(PluginContext *context)
 {
@@ -578,6 +597,7 @@ plugin_discover_candidate_modules(PluginContext *context)
     g_hash_table_unref(context->candidate_plugins);
   context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
 
+  plugin_discover_builtin_modules(context);
   plugin_discover_loadable_modules(context);
 }
 
