@@ -313,9 +313,6 @@ lib_libsyslog_ng_la_SOURCES		= \
 	$(signal_slot_connector_sources) \
 	$(perf_sources)
 
-lib_libsyslog_ng_la_CFLAGS		= \
-	$(AM_CFLAGS) \
-	$(libsystemd_CFLAGS)
 lib_libsyslog_ng_la_LIBADD		+= @OPENSSL_LIBS@
 
 # each line with closely related files (e.g. the ones generated from the same source)
