@@ -2403,13 +2403,13 @@ AC_SUBST(XSL_STYLESHEET)
 AX_PREFIX_CONFIG_H(syslog-ng-config.h, "SYSLOG_NG")
 AX_VALGRIND_CHECK
 
-AC_OUTPUT(autotools/dist.conf
+AC_CONFIG_FILES(autotools/dist.conf
           Makefile
 	  autotools/syslog-ng.pc
           libtest/syslog-ng-test.pc
 	  scripts/update-patterndb
-	  scripts/syslog-ng-update-virtualenv
-          )
+	  scripts/syslog-ng-update-virtualenv)
+AC_OUTPUT()
 
 echo
 echo "AxoSyslog $PACKAGE_VERSION configured"
