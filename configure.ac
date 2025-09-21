@@ -783,8 +783,6 @@ dnl ***************************************************************************
 dnl Miscellanneous headers
 dnl ***************************************************************************
 
-AC_HEADER_STDC
-
 # NOTE: Always use AC_CHECK_HEADERS, not AC_CHECK_HEADER.
 # The first one will propagate the cached result to AX_PREFIX_CONFIG_H, while the latter does not.
 
