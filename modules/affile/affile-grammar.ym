@@ -45,7 +45,6 @@
 
 FileReaderOptions *last_file_reader_options;
 LogProtoFileReaderOptions *last_log_proto_options;
-MultiLineOptions *last_multi_line_options;
 WildcardSourceDriver *last_legacy_wildcard_src_driver;
 
 static void
