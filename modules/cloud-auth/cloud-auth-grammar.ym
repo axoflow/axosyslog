@@ -32,7 +32,6 @@
 #include "google-auth.h"
 #include "azure-auth.h"
 
-LogDriverPlugin *last_plugin;
 CloudAuthenticator *last_authenticator;
 }
 
@@ -73,8 +72,8 @@ start
 inner_destination_cloud_auth
   : KW_CLOUD_AUTH
     {
-      last_plugin = cloud_auth_dest_plugin_new();
-      *instance = (LogDriverPlugin *) last_plugin;
+      last_driver_plugin = cloud_auth_dest_plugin_new();
+      *instance = (LogDriverPlugin *) last_driver_plugin;
     }
     '(' inner_destination_cloud_auth_option ')'
   ;
@@ -86,7 +85,7 @@ inner_destination_cloud_auth_option
     }
     '(' google_dest_auth_options ')'
     {
-      cloud_auth_dest_plugin_set_authenticator(last_plugin, last_authenticator);
+      cloud_auth_dest_plugin_set_authenticator(last_driver_plugin, last_authenticator);
     }
   | KW_AZURE
     {
@@ -94,7 +93,7 @@ inner_destination_cloud_auth_option
     }
     '(' azure_dest_auth_options ')'
     {
-      cloud_auth_dest_plugin_set_authenticator(last_plugin, last_authenticator);
+      cloud_auth_dest_plugin_set_authenticator(last_driver_plugin, last_authenticator);
     }
   ;
 
