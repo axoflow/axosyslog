@@ -1051,6 +1051,20 @@ if test "$linking_mode" != "dynamic"; then
 	# strip out -ldl & -lrt as it cannot be linked statically
 	GLIB_LIBS=`echo $GLIB_LIBS | tr ' ' '\n' | egrep -v "^(-ldld?)|(-lrt)$" | tr '\n' ' '`
 
+	#
+	# NOTE: this is fragile, but for now it works.  It relies the
+	# alphabetic order of glib gmodule gthread.  the problem is that
+	# when we link in glib statically and reexporting it from the main
+	# program, we are using --W,-lwhole-archive.  And if we do that, the
+	# static glib library cannot be listed multiple times, as the linker
+	# complains about symbol duplications.
+	#
+	# This set script will just remove all duplications, but then the
+	# order might be changed, but fortunately it also matches the proper
+	# order.
+	#
+	GLIB_LIBS=`echo $GLIB_LIBS | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
+
 	old_LIBS=$LIBS
 	LIBS="$LD_START_STATIC $GLIB_LIBS $LD_END_STATIC $BASE_LIBS"
 	AC_CHECK_FUNC(g_hash_table_new, blb_cv_static_glib=yes, blb_cv_static_glib=no)
