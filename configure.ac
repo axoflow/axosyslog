@@ -301,7 +301,7 @@ AC_ARG_ENABLE(smtp,
               ,,enable_smtp="auto")
 
 AC_ARG_WITH(libesmtp,
-             AC_HELP_STRING([--with-libesmtp=DIR],
+             AS_HELP_STRING([--with-libesmtp=DIR],
                             [use libesmtp library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(mqtt,
@@ -309,7 +309,7 @@ AC_ARG_ENABLE(mqtt,
               ,,enable_mqtt="auto")
 
 AC_ARG_WITH(libpaho-mqtt,
-             AC_HELP_STRING([--with-libpaho-mqtt=DIR],
+             AS_HELP_STRING([--with-libpaho-mqtt=DIR],
                             [use libpaho-mqtt library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(grpc,
@@ -317,11 +317,11 @@ AC_ARG_ENABLE(grpc,
               ,,enable_grpc="auto")
 
 AC_ARG_WITH(protoc,
-            AC_HELP_STRING([--with-protoc=PATH],
+            AS_HELP_STRING([--with-protoc=PATH],
                            [use protoc binary at PATH]),,)
 
 AC_ARG_WITH(protoc_gen_grpc_cpp_plugin,
-            AC_HELP_STRING([--with-protoc-gen-grpc-cpp-plugin=PATH],
+            AS_HELP_STRING([--with-protoc-gen-grpc-cpp-plugin=PATH],
                            [use protoc-gen-grpc-cpp plugin at PATH]),,)
 
 AC_ARG_ENABLE(cloud_auth,
@@ -337,7 +337,7 @@ AC_ARG_ENABLE(http,
               ,,enable_http="auto")
 
 AC_ARG_WITH(libcurl,
-             AC_HELP_STRING([--with-libcurl=DIR],
+             AS_HELP_STRING([--with-libcurl=DIR],
                             [use libcurl library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(redis,
@@ -345,7 +345,7 @@ AC_ARG_ENABLE(redis,
               ,,enable_redis="auto")
 
 AC_ARG_WITH(libhiredis,
-             AC_HELP_STRING([--with-libhiredis=DIR],
+             AS_HELP_STRING([--with-libhiredis=DIR],
                             [use libhiredis library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(systemd,
@@ -398,7 +398,7 @@ AC_ARG_ENABLE(poetry,
               ,,enable_poetry="auto")
 
 AC_ARG_WITH(poetry,
-            AC_HELP_STRING([--with-poetry=PATH],
+            AS_HELP_STRING([--with-poetry=PATH],
                            [use poetry binary at PATH]),,)
 
 AC_ARG_WITH(pylint,
@@ -408,8 +408,8 @@ AC_ARG_WITH(docbook,
             [  --with-docbook=FILE    Compiling manpages using docbook in the specified path, if not set, it will be searched on the system, or online version will be used from http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl]
             ,,with_docbook="auto")
 
-AC_ARG_ENABLE(manpages, AC_HELP_STRING([ --enable-manpages], [ Enable generation of manpages (default: no)]), , [enable_manpages="no"; XSL_STYLESHEET=""])
-AC_ARG_ENABLE(manpages-install, AC_HELP_STRING([ --enable-manpages-install], [ Enable installation of manpages (default: auto)]), , [enable_manpages_install="auto"])
+AC_ARG_ENABLE(manpages, AS_HELP_STRING([ --enable-manpages], [ Enable generation of manpages (default: no)]), , [enable_manpages="no"; XSL_STYLESHEET=""])
+AC_ARG_ENABLE(manpages-install, AS_HELP_STRING([ --enable-manpages-install], [ Enable installation of manpages (default: auto)]), , [enable_manpages_install="auto"])
 
 AC_ARG_ENABLE(java, [ --enable-java  Enable java destination (default: auto)],, enable_java="auto")
 
