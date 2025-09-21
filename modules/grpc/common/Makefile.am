@@ -21,6 +21,8 @@ modules_grpc_common_libgrpc_common_la_SOURCES = \
   $(grpc_schema_sources) \
   $(grpc_filterx_sources) \
   modules/grpc/common/grpc-parser.h \
+  modules/grpc/common/grpc-grammar-internal.h \
+  modules/grpc/common/grpc-grammar-internal.c \
   modules/grpc/common/grpc-dest.h \
   modules/grpc/common/grpc-dest.hpp \
   modules/grpc/common/grpc-dest.cpp \

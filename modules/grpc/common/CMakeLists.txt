@@ -17,6 +17,8 @@ set(GRPC_COMMON_CPP_SOURCES
   grpc-source.hpp
   grpc-source.cpp
   grpc-source.h
+  grpc-grammar-internal.h
+  grpc-grammar-internal.c
   grpc-source-worker.hpp
   grpc-source-worker.cpp)
 
