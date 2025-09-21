@@ -476,10 +476,10 @@ dnl Checks for programs.
 #       -------------------------------
 #
 AC_PROG_CC
-AC_PROG_CC_C99
+AC_LANG([C])
 AM_PROG_CC_C_O
 AM_PROG_AS
-if test "x$ac_cv_prog_cc_c99" = "xno"; then
+if test "x$ac_prog_cc_stdc" = "xno"; then
 	AC_MSG_ERROR([C99 standard compliant C compiler required. Try GCC 3.x or later.])
 fi
 # Turned out that even the latest gcc has no proper support of the required ObjC version
