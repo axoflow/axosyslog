@@ -87,6 +87,8 @@ if [ -z "$skip_submodules" ]; then
 fi
 
 # bootstrap syslog-ng itself
+echo "Running autogen for syslog-ng..."
+
 case `uname -s` in
 	"Darwin") LIBTOOLIZE="glibtoolize" ;;
 	*) LIBTOOLIZE="libtoolize" ;;
