@@ -486,7 +486,7 @@ fi
 # Once gcc was able to compile our ObjC modules properly this could be reverted to AC_PROG_OBJC([$OBJC $CC])
 AC_PROG_OBJC([$OBJC clang])
 AC_PROG_YACC
-AM_PROG_LEX
+AC_PROG_LEX(noyywrap)
 AM_MISSING_PROG([GPERF], [gperf])
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
