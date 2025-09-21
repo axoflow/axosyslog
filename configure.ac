@@ -1,5 +1,6 @@
 #############################################################################
 # Copyright (c) 2016 Balabit
+# Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
