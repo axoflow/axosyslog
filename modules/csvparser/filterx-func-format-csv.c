@@ -28,6 +28,7 @@
 #include "filterx/object-list-interface.h"
 #include "filterx/filterx-eval.h"
 
+#include "str-utils.h"
 #include "scratch-buffers.h"
 #include "utf8utils.h"
 
@@ -80,7 +81,7 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
       ScratchBuffersMarker marker;
       GString *value_buffer = scratch_buffers_alloc_and_mark(&marker);
 
-      g_string_assign(value_buffer, buffer->str + len_before_value);
+      g_string_assign_len(value_buffer, buffer->str + len_before_value, buffer->len - len_before_value);
       g_string_truncate(buffer, len_before_value);
       g_string_append_c(buffer, '"');
       append_unsafe_utf8_as_escaped_binary(buffer, value_buffer->str, value_buffer->len, AUTF8_UNSAFE_QUOTE);
