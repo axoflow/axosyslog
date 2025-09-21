@@ -313,8 +313,6 @@ lib_libsyslog_ng_la_SOURCES		= \
 	$(signal_slot_connector_sources) \
 	$(perf_sources)
 
-lib_libsyslog_ng_la_LIBADD		+= @OPENSSL_LIBS@
-
 # each line with closely related files (e.g. the ones generated from the same source)
 BUILT_SOURCES += lib/cfg-lex.c lib/cfg-lex.h						\
 	lib/cfg-grammar.c lib/cfg-grammar.h						\
