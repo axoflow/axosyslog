@@ -877,7 +877,7 @@ fi
 
 AC_CACHE_CHECK(for modern utmp,
                blb_cv_c_modern_utmp,
-[AC_TRY_COMPILE([
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
 #else
@@ -891,7 +891,7 @@ AC_CACHE_CHECK(for modern utmp,
         struct utmp ut;
 #endif
   return sizeof(ut.ut_type) & sizeof(ut.ut_user);
-],
+])],
 blb_cv_c_modern_utmp=yes,
 blb_cv_c_modern_utmp=no)])
 
@@ -976,18 +976,14 @@ AC_CACHE_CHECK(for TCP wrapper library,
 for libwrap in "-lwrap" "/usr/local/lib/libwrap.a"; do
         LIBS="$old_LIBS $libwrap"
 
-        [AC_TRY_LINK(,
-        [
-}
-
+        [AC_LINK_IFELSE([AC_LANG_PROGRAM([
 int allow_severity;
 int deny_severity;
 extern int hosts_access(void);
+],[
 
-int foo(void)
-{
         hosts_access();
-],
+])],
         [blb_cv_c_lwrap=$libwrap
         break],
         blb_cv_c_lwrap="")
@@ -1100,16 +1096,13 @@ fi
 
 AC_CACHE_CHECK(sanity checking Glib headers,
                blb_cv_glib_sane,
-[AC_TRY_RUN([
+[AC_RUN_IFELSE([AC_LANG_PROGRAM([
 #include <glib.h>
-
-int main()
-{
+],[
   if (sizeof(long) != GLIB_SIZEOF_LONG)
     return 1;
   return 0;
-}
-],
+])],
 blb_cv_glib_sane=yes,
 blb_cv_glib_sane=no,
 blb_cv_glib_sane=yes)])
