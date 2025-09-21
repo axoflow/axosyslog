@@ -218,11 +218,8 @@ AC_ARG_WITH(sanitizer,
                                          Enables compiler sanitizer supports (default: no)]
               ,,with_sanitizer="no")
 
-AC_ARG_ENABLE(dynamic-linking,
-              [  --enable-dynamic-linking        Link everything dynamically.],,enable_dynamic_linking="auto")
-
-AC_ARG_ENABLE(mixed-linking,
-              [  --enable-mixed-linking          Link 3rd party libraries statically, system libraries dynamically],,enable_mixed_linking="auto")
+AC_ARG_WITH(linking-mode,
+              [  --with-linking-mode        Specify linking mode, one of dynamic,mixed,monolithic.],,with_linking_mode="auto")
 
 AC_ARG_ENABLE(force-classic-linking,
               [  --enable-force-classic-linking  Link using ld-classic (default: no)],, enable_force_classic_linking="no")
@@ -727,32 +724,11 @@ case "$ostype" in
 		;;
 esac
 
-if test "$enable_dynamic_linking" = "auto" -a "$enable_mixed_linking" = "auto"; then
-	enable_dynamic_linking="yes"
-	enable_mixed_linking="no"
+if test "$with_linking_mode" = "auto"; then
+	with_linking_mode="dynamic"
 fi
 
-linkopts=0
-if test "x$enable_dynamic_linking" = "xyes"; then
-       linkopts=`expr $linkopts + 1`
-fi
-if test "x$enable_mixed_linking" = "xyes"; then
-       linkopts=`expr $linkopts + 1`
-fi
-
-if test "$linkopts" -gt 1; then
-       AC_MSG_ERROR([You cannot specify multiple linking options at the same time (--enable-dynamic-linking, --enable-mixed-linking).])
-fi
-
-if test "x$enable_dynamic_linking" = "xyes"; then
-	enable_dynamic_linking="yes"
-	enable_mixed_linking="no"
-	linking_mode="dynamic"
-elif test "x$enable_mixed_linking" = "xyes"; then
-	enable_dynamic_linking="no"
-	enable_mixed_linking="yes"
-	linking_mode="mixed"
-fi
+linking_mode=$with_linking_mode
 
 dnl ***************************************************************************
 dnl Check for --whole-archive flag
@@ -1131,7 +1107,7 @@ if test "x$blb_cv_glib_sane" = "xno"; then
 fi
 
 if test "x$linking_mode" != "xdynamic" -a "x$blb_cv_static_glib" = "xno"; then
-	AC_MSG_ERROR([static GLib libraries not found (a file named libglib-2.0.a), either link GLib dynamically using the --enable-dynamic-linking or install a static GLib])
+	AC_MSG_ERROR([static GLib libraries not found (a file named libglib-2.0.a), either link GLib dynamically using the --with-linking-mode=dynamic or install a static GLib])
 fi
 
 dnl ***************************************************************************
@@ -1229,18 +1205,6 @@ AC_CHECK_DECLS([SSL_add_dir_cert_subjects_to_stack],[], [], [[#include <openssl/
 AC_CHECK_DECLS([SSL_CTX_set_min_proto_version],[], [], [[#include <openssl/ssl.h>]])
 
 CPPFLAGS="$CPPFLAGS_SAVE"
-
-dnl
-dnl Right now, openssl is never linked statically as it is only used by the
-dnl TLS build of the afsocket plugin which is loaded dynamically anyway.
-dnl
-dnl The static check remains though, because the core may need openssl in the
-dnl future, in which case it becomes relevant again.
-dnl
-
-dnl if test "x$linking_mode" != "xdynamic" -a "x$blb_cv_static_openssl" = "xno"; then
-dnl	AC_MSG_ERROR([static OpenSSL libraries not found (libssl.a, libcrypto.a and their external dependencies like libz.a), either link OpenSSL statically using the --enable-dynamic-linking, or install a static OpenSSL])
-dnl fi
 
 dnl ***************************************************************************
 dnl libnet headers/libraries
