@@ -1853,18 +1853,18 @@ dnl ***************************************************************************
 
 if test "x$enable_java" = "xauto" || test "x$enable_java" = "xyes"; then
     if test "x$enable_java" = "xauto"; then
-      AC_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [enable_java=no])
+      AX_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [enable_java=no])
     else
-      AC_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [AC_MSG_ERROR([Java not found])])
+      AX_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [AC_MSG_ERROR([Java not found])])
     fi
 fi
 
 if test "x$enable_java" = "xyes"; then
     if test "x$enable_java_modules" = "xauto" || test "x$enable_java_modules" = "xyes"; then
         if test "x$enable_java_modules" = "xauto"; then
-          AC_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [enable_java_modules=no])
+          AX_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [enable_java_modules=no])
         else
-          AC_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [AC_MSG_ERROR([Gradle not found])])
+          AX_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [AC_MSG_ERROR([Gradle not found])])
         fi
     fi
 else
@@ -2106,7 +2106,7 @@ fi
 dnl ***************************************************************************
 dnl check if we have timezone variable in <time.h>
 dnl ***************************************************************************
-AC_VAR_TIMEZONE_EXTERNALS
+AX_VAR_TIMEZONE_EXTERNALS
 
 dnl ***************************************************************************
 dnl check fmemopen
