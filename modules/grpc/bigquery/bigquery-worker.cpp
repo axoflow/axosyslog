@@ -87,7 +87,7 @@ DestinationWorker::connect()
 {
   msg_debug("Connecting to BigQuery", log_pipe_location_tag((LogPipe *) this->super->super.owner));
 
-  if (!DestWorker::connect())
+  if (!syslogng::grpc::DestWorker::connect())
     {
       msg_error("Error connecting to BigQuery",
                 evt_tag_str("url", this->owner.get_url().c_str()),
@@ -133,7 +133,7 @@ DestinationWorker::disconnect()
     }
 
   this->connected = false;
-  DestWorker::disconnect();
+  syslogng::grpc::DestWorker::disconnect();
 }
 
 void

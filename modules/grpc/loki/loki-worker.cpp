@@ -78,7 +78,7 @@ DestinationWorker::connect()
 
   msg_debug("Connecting to Loki", log_pipe_location_tag((LogPipe *) this->super->super.owner));
 
-  if (!DestWorker::connect())
+  if (!syslogng::grpc::DestWorker::connect())
     {
       msg_error("Error connecting to Loki",
                 evt_tag_str("url", owner_->get_url().c_str()),
