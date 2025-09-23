@@ -50,7 +50,7 @@ DestWorker::deinit()
 bool
 DestWorker::connect()
 {
-  if (!DestWorker::connect())
+  if (!syslogng::grpc::DestWorker::connect())
     {
       msg_error("Error connecting to Google Pub/Sub",
                 evt_tag_str("url", this->owner.get_url().c_str()),
