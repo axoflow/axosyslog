@@ -381,7 +381,6 @@ rsyslog is not on the system.
     --enable-smtp \
     --enable-shared \
     --disable-static \
-    --enable-dynamic-linking \
     --enable-python \
     --disable-java-modules \
     --with-python=%{py_ver} \

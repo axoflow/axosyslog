@@ -1,5 +1,6 @@
 #############################################################################
 # Copyright (c) 2016 Balabit
+# Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
 #
 # This program is free software: you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -218,11 +219,8 @@ AC_ARG_WITH(sanitizer,
                                          Enables compiler sanitizer supports (default: no)]
               ,,with_sanitizer="no")
 
-AC_ARG_ENABLE(dynamic-linking,
-              [  --enable-dynamic-linking        Link everything dynamically.],,enable_dynamic_linking="auto")
-
-AC_ARG_ENABLE(mixed-linking,
-              [  --enable-mixed-linking          Link 3rd party libraries statically, system libraries dynamically],,enable_mixed_linking="auto")
+AC_ARG_WITH(linking-mode,
+              [  --with-linking-mode        Specify linking mode, one of dynamic,mixed,monolithic.],,with_linking_mode="auto")
 
 AC_ARG_ENABLE(force-classic-linking,
               [  --enable-force-classic-linking  Link using ld-classic (default: no)],, enable_force_classic_linking="no")
@@ -304,7 +302,7 @@ AC_ARG_ENABLE(smtp,
               ,,enable_smtp="auto")
 
 AC_ARG_WITH(libesmtp,
-             AC_HELP_STRING([--with-libesmtp=DIR],
+             AS_HELP_STRING([--with-libesmtp=DIR],
                             [use libesmtp library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(mqtt,
@@ -312,7 +310,7 @@ AC_ARG_ENABLE(mqtt,
               ,,enable_mqtt="auto")
 
 AC_ARG_WITH(libpaho-mqtt,
-             AC_HELP_STRING([--with-libpaho-mqtt=DIR],
+             AS_HELP_STRING([--with-libpaho-mqtt=DIR],
                             [use libpaho-mqtt library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(grpc,
@@ -320,11 +318,11 @@ AC_ARG_ENABLE(grpc,
               ,,enable_grpc="auto")
 
 AC_ARG_WITH(protoc,
-            AC_HELP_STRING([--with-protoc=PATH],
+            AS_HELP_STRING([--with-protoc=PATH],
                            [use protoc binary at PATH]),,)
 
 AC_ARG_WITH(protoc_gen_grpc_cpp_plugin,
-            AC_HELP_STRING([--with-protoc-gen-grpc-cpp-plugin=PATH],
+            AS_HELP_STRING([--with-protoc-gen-grpc-cpp-plugin=PATH],
                            [use protoc-gen-grpc-cpp plugin at PATH]),,)
 
 AC_ARG_ENABLE(cloud_auth,
@@ -340,7 +338,7 @@ AC_ARG_ENABLE(http,
               ,,enable_http="auto")
 
 AC_ARG_WITH(libcurl,
-             AC_HELP_STRING([--with-libcurl=DIR],
+             AS_HELP_STRING([--with-libcurl=DIR],
                             [use libcurl library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(redis,
@@ -348,7 +346,7 @@ AC_ARG_ENABLE(redis,
               ,,enable_redis="auto")
 
 AC_ARG_WITH(libhiredis,
-             AC_HELP_STRING([--with-libhiredis=DIR],
+             AS_HELP_STRING([--with-libhiredis=DIR],
                             [use libhiredis library from (prefix) directory DIR]),,)
 
 AC_ARG_ENABLE(systemd,
@@ -401,7 +399,7 @@ AC_ARG_ENABLE(poetry,
               ,,enable_poetry="auto")
 
 AC_ARG_WITH(poetry,
-            AC_HELP_STRING([--with-poetry=PATH],
+            AS_HELP_STRING([--with-poetry=PATH],
                            [use poetry binary at PATH]),,)
 
 AC_ARG_WITH(pylint,
@@ -411,8 +409,8 @@ AC_ARG_WITH(docbook,
             [  --with-docbook=FILE    Compiling manpages using docbook in the specified path, if not set, it will be searched on the system, or online version will be used from http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl]
             ,,with_docbook="auto")
 
-AC_ARG_ENABLE(manpages, AC_HELP_STRING([ --enable-manpages], [ Enable generation of manpages (default: no)]), , [enable_manpages="no"; XSL_STYLESHEET=""])
-AC_ARG_ENABLE(manpages-install, AC_HELP_STRING([ --enable-manpages-install], [ Enable installation of manpages (default: auto)]), , [enable_manpages_install="auto"])
+AC_ARG_ENABLE(manpages, AS_HELP_STRING([ --enable-manpages], [ Enable generation of manpages (default: no)]), , [enable_manpages="no"; XSL_STYLESHEET=""])
+AC_ARG_ENABLE(manpages-install, AS_HELP_STRING([ --enable-manpages-install], [ Enable installation of manpages (default: auto)]), , [enable_manpages_install="auto"])
 
 AC_ARG_ENABLE(java, [ --enable-java  Enable java destination (default: auto)],, enable_java="auto")
 
@@ -479,17 +477,17 @@ dnl Checks for programs.
 #       -------------------------------
 #
 AC_PROG_CC
-AC_PROG_CC_C99
+AC_LANG([C])
 AM_PROG_CC_C_O
 AM_PROG_AS
-if test "x$ac_cv_prog_cc_c99" = "xno"; then
+if test "x$ac_prog_cc_stdc" = "xno"; then
 	AC_MSG_ERROR([C99 standard compliant C compiler required. Try GCC 3.x or later.])
 fi
 # Turned out that even the latest gcc has no proper support of the required ObjC version
 # Once gcc was able to compile our ObjC modules properly this could be reverted to AC_PROG_OBJC([$OBJC $CC])
 AC_PROG_OBJC([$OBJC clang])
 AC_PROG_YACC
-AM_PROG_LEX
+AC_PROG_LEX(noyywrap)
 AM_MISSING_PROG([GPERF], [gperf])
 AC_PROG_MAKE_SET
 PKG_PROG_PKG_CONFIG
@@ -668,8 +666,11 @@ dnl We are checking for the postive warning flag, as gcc handles the
 dnl -Wno-XXX version oddly, so if no other warnings are present, it is not
 dnl reported at all, causing it to be unusable for detection purposes.
 
-AX_CFLAGS_GCC_OPTION(-Winitializer-overrides, CFLAGS_W_INITIALIZER_OVERRIDES, CFLAGS_W_NO_INITIALIZER_OVERRIDES="-Wno-initializer-overrides")
-AX_CFLAGS_GCC_OPTION(-Wold-style-declaration, CFLAGS_W_OLD_STYLE_DECLARATION)
+AX_CHECK_COMPILE_FLAG(-Winitializer-overrides, [
+	CFLAGS_W_NO_INITIALIZER_OVERRIDES="-Wno-initializer-overrides"
+])
+AX_CHECK_COMPILE_FLAG(-Wold-style-declaration, CFLAGS_W_OLD_STYLE_DECLARATION="-Wold-style-declaration")
+
 AC_SUBST(CFLAGS_W_NO_INITIALIZER_OVERRIDES)
 AC_SUBST(CFLAGS_W_OLD_STYLE_DECLARATION)
 
@@ -727,32 +728,11 @@ case "$ostype" in
 		;;
 esac
 
-if test "$enable_dynamic_linking" = "auto" -a "$enable_mixed_linking" = "auto"; then
-	enable_dynamic_linking="yes"
-	enable_mixed_linking="no"
+if test "$with_linking_mode" = "auto"; then
+	with_linking_mode="dynamic"
 fi
 
-linkopts=0
-if test "x$enable_dynamic_linking" = "xyes"; then
-       linkopts=`expr $linkopts + 1`
-fi
-if test "x$enable_mixed_linking" = "xyes"; then
-       linkopts=`expr $linkopts + 1`
-fi
-
-if test "$linkopts" -gt 1; then
-       AC_MSG_ERROR([You cannot specify multiple linking options at the same time (--enable-dynamic-linking, --enable-mixed-linking).])
-fi
-
-if test "x$enable_dynamic_linking" = "xyes"; then
-	enable_dynamic_linking="yes"
-	enable_mixed_linking="no"
-	linking_mode="dynamic"
-elif test "x$enable_mixed_linking" = "xyes"; then
-	enable_dynamic_linking="no"
-	enable_mixed_linking="yes"
-	linking_mode="mixed"
-fi
+linking_mode=$with_linking_mode
 
 dnl ***************************************************************************
 dnl Check for --whole-archive flag
@@ -806,8 +786,6 @@ fi
 dnl ***************************************************************************
 dnl Miscellanneous headers
 dnl ***************************************************************************
-
-AC_HEADER_STDC
 
 # NOTE: Always use AC_CHECK_HEADERS, not AC_CHECK_HEADER.
 # The first one will propagate the cached result to AX_PREFIX_CONFIG_H, while the latter does not.
@@ -901,7 +879,7 @@ fi
 
 AC_CACHE_CHECK(for modern utmp,
                blb_cv_c_modern_utmp,
-[AC_TRY_COMPILE([
+[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
 #else
@@ -915,7 +893,7 @@ AC_CACHE_CHECK(for modern utmp,
         struct utmp ut;
 #endif
   return sizeof(ut.ut_type) & sizeof(ut.ut_user);
-],
+])],
 blb_cv_c_modern_utmp=yes,
 blb_cv_c_modern_utmp=no)])
 
@@ -1000,18 +978,14 @@ AC_CACHE_CHECK(for TCP wrapper library,
 for libwrap in "-lwrap" "/usr/local/lib/libwrap.a"; do
         LIBS="$old_LIBS $libwrap"
 
-        [AC_TRY_LINK(,
-        [
-}
-
+        [AC_LINK_IFELSE([AC_LANG_PROGRAM([
 int allow_severity;
 int deny_severity;
 extern int hosts_access(void);
+],[
 
-int foo(void)
-{
         hosts_access();
-],
+])],
         [blb_cv_c_lwrap=$libwrap
         break],
         blb_cv_c_lwrap="")
@@ -1075,6 +1049,20 @@ if test "$linking_mode" != "dynamic"; then
 	# strip out -ldl & -lrt as it cannot be linked statically
 	GLIB_LIBS=`echo $GLIB_LIBS | tr ' ' '\n' | egrep -v "^(-ldld?)|(-lrt)$" | tr '\n' ' '`
 
+	#
+	# NOTE: this is fragile, but for now it works.  It relies the
+	# alphabetic order of glib gmodule gthread.  the problem is that
+	# when we link in glib statically and reexporting it from the main
+	# program, we are using --W,-lwhole-archive.  And if we do that, the
+	# static glib library cannot be listed multiple times, as the linker
+	# complains about symbol duplications.
+	#
+	# This set script will just remove all duplications, but then the
+	# order might be changed, but fortunately it also matches the proper
+	# order.
+	#
+	GLIB_LIBS=`echo $GLIB_LIBS | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
+
 	old_LIBS=$LIBS
 	LIBS="$LD_START_STATIC $GLIB_LIBS $LD_END_STATIC $BASE_LIBS"
 	AC_CHECK_FUNC(g_hash_table_new, blb_cv_static_glib=yes, blb_cv_static_glib=no)
@@ -1110,16 +1098,13 @@ fi
 
 AC_CACHE_CHECK(sanity checking Glib headers,
                blb_cv_glib_sane,
-[AC_TRY_RUN([
+[AC_RUN_IFELSE([AC_LANG_PROGRAM([
 #include <glib.h>
-
-int main()
-{
+],[
   if (sizeof(long) != GLIB_SIZEOF_LONG)
     return 1;
   return 0;
-}
-],
+])],
 blb_cv_glib_sane=yes,
 blb_cv_glib_sane=no,
 blb_cv_glib_sane=yes)])
@@ -1131,7 +1116,7 @@ if test "x$blb_cv_glib_sane" = "xno"; then
 fi
 
 if test "x$linking_mode" != "xdynamic" -a "x$blb_cv_static_glib" = "xno"; then
-	AC_MSG_ERROR([static GLib libraries not found (a file named libglib-2.0.a), either link GLib dynamically using the --enable-dynamic-linking or install a static GLib])
+	AC_MSG_ERROR([static GLib libraries not found (a file named libglib-2.0.a), either link GLib dynamically using the --with-linking-mode=dynamic or install a static GLib])
 fi
 
 dnl ***************************************************************************
@@ -1229,18 +1214,6 @@ AC_CHECK_DECLS([SSL_add_dir_cert_subjects_to_stack],[], [], [[#include <openssl/
 AC_CHECK_DECLS([SSL_CTX_set_min_proto_version],[], [], [[#include <openssl/ssl.h>]])
 
 CPPFLAGS="$CPPFLAGS_SAVE"
-
-dnl
-dnl Right now, openssl is never linked statically as it is only used by the
-dnl TLS build of the afsocket plugin which is loaded dynamically anyway.
-dnl
-dnl The static check remains though, because the core may need openssl in the
-dnl future, in which case it becomes relevant again.
-dnl
-
-dnl if test "x$linking_mode" != "xdynamic" -a "x$blb_cv_static_openssl" = "xno"; then
-dnl	AC_MSG_ERROR([static OpenSSL libraries not found (libssl.a, libcrypto.a and their external dependencies like libz.a), either link OpenSSL statically using the --enable-dynamic-linking, or install a static OpenSSL])
-dnl fi
 
 dnl ***************************************************************************
 dnl libnet headers/libraries
@@ -1875,18 +1848,18 @@ dnl ***************************************************************************
 
 if test "x$enable_java" = "xauto" || test "x$enable_java" = "xyes"; then
     if test "x$enable_java" = "xauto"; then
-      AC_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [enable_java=no])
+      AX_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [enable_java=no])
     else
-      AC_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [AC_MSG_ERROR([Java not found])])
+      AX_CHECK_JAVA_VERSION([$JAVA_MIN_VERSION], [enable_java=yes], [AC_MSG_ERROR([Java not found])])
     fi
 fi
 
 if test "x$enable_java" = "xyes"; then
     if test "x$enable_java_modules" = "xauto" || test "x$enable_java_modules" = "xyes"; then
         if test "x$enable_java_modules" = "xauto"; then
-          AC_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [enable_java_modules=no])
+          AX_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [enable_java_modules=no])
         else
-          AC_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [AC_MSG_ERROR([Gradle not found])])
+          AX_CHECK_GRADLE_VERSION([$GRADLE_MIN_VERSION], [enable_java_modules=yes], [AC_MSG_ERROR([Gradle not found])])
         fi
     fi
 else
@@ -2128,7 +2101,7 @@ fi
 dnl ***************************************************************************
 dnl check if we have timezone variable in <time.h>
 dnl ***************************************************************************
-AC_VAR_TIMEZONE_EXTERNALS
+AX_VAR_TIMEZONE_EXTERNALS
 
 dnl ***************************************************************************
 dnl check fmemopen
@@ -2162,7 +2135,7 @@ fi
 python_moduledir="$moduledir"/python
 python_sysconf_moduledir="${sysconfdir}/python"
 
-CPPFLAGS="$CPPFLAGS $GLIB_CFLAGS $EVTLOG_CFLAGS $PCRE2_CFLAGS $OPENSSL_CFLAGS $LIBNET_CFLAGS $LIBUNWIND_CFLAGS $LIBDBI_CFLAGS $IVYKIS_CFLAGS $JSON_CFLAGS $LIBCAP_CFLAGS -D_GNU_SOURCE -D_DEFAULT_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
+CPPFLAGS="$CPPFLAGS $libsystemd_CFLAGS $GLIB_CFLAGS $EVTLOG_CFLAGS $PCRE2_CFLAGS $OPENSSL_CFLAGS $LIBNET_CFLAGS $LIBUNWIND_CFLAGS $LIBDBI_CFLAGS $IVYKIS_CFLAGS $JSON_CFLAGS $LIBCAP_CFLAGS -D_GNU_SOURCE -D_DEFAULT_SOURCE -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 
 ########################################################
 ## NOTES: on how syslog-ng is linked
@@ -2210,27 +2183,27 @@ fi
 MODULE_DEPS_LIBS="\$(top_builddir)/lib/libsyslog-ng.la"
 
 if test "x$linking_mode" = "xdynamic"; then
-	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $DL_LIBS $LIBUNWIND_LIBS"
+	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS"
 
 	if test "x$with_ivykis" = "xinternal"; then
 		# when using the internal ivykis, we're linking it statically into libsyslog-ng.so
 
 		TOOL_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS"
-		CORE_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS $IVYKIS_LIBS $JSON_LIBS"
+		CORE_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS $IVYKIS_LIBS"
 	else
 		# otherwise everything needs to link against libivykis.so
 
 		SYSLOGNG_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS $IVYKIS_LIBS"
 
 		TOOL_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS"
-		CORE_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS $JSON_LIBS"
+		CORE_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS"
 	fi
 
 	# syslog-ng binary is linked with the default link command (e.g. libtool)
 	SYSLOGNG_LINK='$(LINK)'
 else
-	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_NO_LIBTOOL_LIBS $SECRETSTORAGE_NO_LIBTOOL_LIBS $LD_START_STATIC -Wl,${WHOLE_ARCHIVE_OPT} $GLIB_LIBS $PCRE2_LIBS $REGEX_LIBS  -Wl,${NO_WHOLE_ARCHIVE_OPT} $IVYKIS_NO_LIBTOOL_LIBS $LD_END_STATIC $LIBCAP_LIBS $DL_LIBS $LIBUNWIND_LIBS"
-	TOOL_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $IVYKIS_LIBS $DL_LIBS"
+	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_NO_LIBTOOL_LIBS $SECRETSTORAGE_NO_LIBTOOL_LIBS $LD_START_STATIC -Wl,${WHOLE_ARCHIVE_OPT} $GLIB_LIBS $PCRE2_LIBS $OPENSSL_LIBS $REGEX_LIBS $JSON_LIBS $LIBUNWIND_LIBS -Wl,${NO_WHOLE_ARCHIVE_OPT} $IVYKIS_NO_LIBTOOL_LIBS $LD_END_STATIC $LIBCAP_LIBS $DL_LIBS"
+	TOOL_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $IVYKIS_LIBS $DL_LIBS $OPENSSL_LIBS $JSON_LIBS"
 	CORE_DEPS_LIBS=""
 
 	# bypass libtool in case we want to do mixed linking because it
@@ -2434,13 +2407,13 @@ AC_SUBST(XSL_STYLESHEET)
 AX_PREFIX_CONFIG_H(syslog-ng-config.h, "SYSLOG_NG")
 AX_VALGRIND_CHECK
 
-AC_OUTPUT(autotools/dist.conf
+AC_CONFIG_FILES(autotools/dist.conf
           Makefile
 	  autotools/syslog-ng.pc
           libtest/syslog-ng-test.pc
 	  scripts/update-patterndb
-	  scripts/syslog-ng-update-virtualenv
-          )
+	  scripts/syslog-ng-update-virtualenv)
+AC_OUTPUT()
 
 echo
 echo "AxoSyslog $PACKAGE_VERSION configured"
