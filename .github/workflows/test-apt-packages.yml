@@ -24,7 +24,6 @@ jobs:
           - "ubuntu:focal"
           - "ubuntu:jammy"
           - "ubuntu:noble"
-          - "ubuntu:oracular"
           - "ubuntu:plucky"
         upgrade-from:
           - "debian-official"
