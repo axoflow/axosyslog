@@ -378,6 +378,49 @@ _extract_stringdelimiters_expr(FilterXFunctionArgs *args, GError **error)
 }
 
 static gboolean
+_set_quote_pair(gsize i, FilterXExpr *qpair, gpointer user_data)
+{
+  GString *quotes = ((gpointer *) user_data)[0];
+  const gchar **error_str = ((gpointer *) user_data)[1];
+
+  if (!filterx_expr_is_literal(qpair))
+    goto error;
+
+  FilterXObject *quote_pair = filterx_literal_get_value(qpair);
+
+  const gchar *pair;
+  gsize len;
+  if (!filterx_object_extract_string_ref(quote_pair, &pair, &len))
+    {
+      filterx_object_unref(quote_pair);
+      goto error;
+    }
+
+  if (len != 1 && len != 2)
+    {
+      filterx_object_unref(quote_pair);
+      *error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_QUOTE_PAIRS" elements must be 1 or 2 characters long";
+      return FALSE;
+    }
+
+  if (len == 1)
+    {
+      g_string_append_c(quotes, pair[0]);
+      g_string_append_c(quotes, pair[0]);
+    }
+  else
+    g_string_append_len(quotes, pair, len);
+
+  filterx_object_unref(quote_pair);
+
+  return TRUE;
+
+error:
+  *error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_QUOTE_PAIRS" must be a literal string array";
+  return FALSE;
+}
+
+static gboolean
 _extract_opts(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError **error)
 {
   guint32 opt_flags = self->options.flags;
@@ -471,6 +514,30 @@ _extract_opts(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
     }
 
   csv_scanner_options_set_flags(&self->options, opt_flags);
+
+  FilterXExpr *quote_pairs = filterx_function_args_get_named_expr(args, FILTERX_FUNC_PARSE_CSV_ARG_NAME_QUOTE_PAIRS);
+  if (quote_pairs)
+    {
+      if (!filterx_expr_is_literal_list(quote_pairs))
+        {
+          error_str = FILTERX_FUNC_PARSE_CSV_ARG_NAME_QUOTE_PAIRS" must be a literal string array";
+          goto error;
+        }
+
+      ScratchBuffersMarker m;
+      GString *quotes = scratch_buffers_alloc_and_mark(&m);
+      gpointer user_data[] = { quotes, &error_str };
+      if (!filterx_literal_list_foreach(quote_pairs, _set_quote_pair, user_data))
+        {
+          scratch_buffers_reclaim_marked(m);
+          filterx_expr_unref(quote_pairs);
+          goto error;
+        }
+
+      csv_scanner_options_set_quote_pairs(&self->options, quotes->str);
+      scratch_buffers_reclaim_marked(m);
+      filterx_expr_unref(quote_pairs);
+    }
 
   return TRUE;
 error:
