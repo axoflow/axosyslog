@@ -239,37 +239,53 @@ _free(FilterXObject *s)
   filterx_object_free_method(s);
 }
 
+static gint
+_gssize_cmp_reverse(const void *a, const void *b)
+{
+  gssize va = *(const gssize *)a;
+  gssize vb = *(const gssize *)b;
+  return vb - va;
+}
+
 static void
 _dedup(FilterXObject *s)
 {
   FilterXObjectMetricsLabels *typed_self = (FilterXObjectMetricsLabels *) filterx_ref_unwrap_rw(s);
 
-  GHashTable *labels_map = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, (GDestroyNotify) _label_destroy);
+  GArray *label_indexes_to_remove = g_array_sized_new(FALSE, FALSE, sizeof(gssize), typed_self->labels->len);
+  GHashTable *labels_indexes_map = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
 
-  for (guint i = 0; i < typed_self->labels->len; i++)
+  for (gssize i = ((gssize) (typed_self->labels->len)) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(typed_self->labels, StatsClusterLabel, i);
-      g_hash_table_replace(labels_map, (gpointer) label->name, label);
+
+      if (g_hash_table_contains(labels_indexes_map, label->name))
+        {
+          label_indexes_to_remove = g_array_append_val(label_indexes_to_remove, i);
+          continue;
+        }
+
+      g_hash_table_insert(labels_indexes_map, (gpointer) label->name, NULL);
     }
 
-  GArray *new_labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), typed_self->labels->len);
+  if (!label_indexes_to_remove->len)
+    goto exit;
 
-  GHashTableIter iter;
-  g_hash_table_iter_init(&iter, labels_map);
+  g_array_sort(label_indexes_to_remove, _gssize_cmp_reverse);
 
-  gpointer k, v;
-  while (g_hash_table_iter_next(&iter, &k, &v))
+  for (guint i = 0; i < label_indexes_to_remove->len; i++)
     {
-      StatsClusterLabel *label = v;
-      g_array_append_val(new_labels, *label);
+      gssize index = g_array_index(label_indexes_to_remove, gssize, i);
+      StatsClusterLabel *label = &g_array_index(typed_self->labels, StatsClusterLabel, index);
+      _label_destroy(label);
+      g_array_remove_index_fast(typed_self->labels, index);
     }
 
-  g_array_free(typed_self->labels, TRUE);
-  typed_self->labels = new_labels;
+exit:
   typed_self->deduped = TRUE;
 
-  g_hash_table_steal_all(labels_map);
-  g_hash_table_unref(labels_map);
+  g_hash_table_unref(labels_indexes_map);
+  g_array_free(label_indexes_to_remove, TRUE);
 }
 
 static gint
@@ -282,6 +298,9 @@ StatsClusterLabel *
 filterx_object_metrics_labels_get_value_ref(FilterXObject *s, gsize *len)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  if (!self->deduped)
+    _dedup(s);
 
   if (!self->sorted)
     {
@@ -351,40 +370,12 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gs
   return metrics_labels;
 }
 
-static FilterXObject *
-_dedup_extract_obj_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len)
-{
-  if (!args || args_len != 1)
-    {
-      filterx_simple_function_argument_error(s, "unexpected number of arguments. "
-                                             DEDUP_METRICS_LABELS_USAGE);
-      return NULL;
-    }
-
-  FilterXObject *obj = args[0];
-  FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
-  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(metrics_labels)))
-    {
-      filterx_simple_function_argument_error(s, "unexpected argument type. "
-                                             DEDUP_METRICS_LABELS_USAGE);
-      return NULL;
-    }
-
-  return obj;
-}
-
 FilterXObject *
 filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
-  FilterXObject *obj = _dedup_extract_obj_arg(s, args, args_len);
-  if (!obj)
-    return NULL;
-
-  FilterXObjectMetricsLabels *typed_obj = (FilterXObjectMetricsLabels *) filterx_ref_unwrap_ro(obj);
-  if (typed_obj->deduped)
-    return filterx_boolean_new(TRUE);
-
-  _dedup(obj);
+  msg_warning_once("The dedup_metrics_labels() function is deprecated, deduplication happens automatically. "
+                   "Please remove calls to dedup_metrics_labels() from your configuration as it will become "
+                   "unavailable in a couple of releases.");
   return filterx_boolean_new(TRUE);
 }
 
