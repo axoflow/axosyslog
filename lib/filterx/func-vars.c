@@ -97,7 +97,8 @@ FilterXExpr *
 filterx_function_vars_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionVars *self = g_new0(FilterXFunctionVars, 1);
-  filterx_function_init_instance(&self->super, "vars");
+
+  filterx_function_init_instance(&self->super, "vars", FALSE);
 
   self->super.super.eval = _filterx_function_vars_eval;
 

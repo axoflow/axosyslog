@@ -65,7 +65,7 @@ FilterXExpr *
 filterx_switch_case_new(FilterXExpr *value)
 {
   FilterXSwitchCase *self = g_new0(FilterXSwitchCase, 1);
-  filterx_unary_op_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(switch_case), value);
+  filterx_unary_op_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(switch_case), FALSE, value);
   return &self->super.super;
 }
 
@@ -323,7 +323,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
 {
   FilterXSwitch *self = g_new0(FilterXSwitch, 1);
 
-  filterx_expr_init_instance(&self->super, "switch");
+  filterx_expr_init_instance(&self->super, "switch", FALSE);
   self->super.init = _init;
   self->super.deinit = _deinit;
   self->super.optimize = _optimize;

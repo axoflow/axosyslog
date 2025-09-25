@@ -203,7 +203,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable), FALSE);
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
   self->super._update_repr = _update_repr;
