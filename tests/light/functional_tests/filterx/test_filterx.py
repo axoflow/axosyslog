@@ -1589,6 +1589,20 @@ def test_parse_csv_dialect(config, syslog_ng):
     assert file_true.read_log() == "'PTHREAD \"support initialized'"
 
 
+def test_parse_csv_quote_pairs(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+    custom_message = "sarga,[bogre],'gorbe'";
+    $MSG = parse_csv(custom_message, quote_pairs=["[]", "'"]);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == 'sarga,bogre,gorbe'
+
+
 def test_vars(config, syslog_ng):
     (file_true, file_false) = create_config(
         config,
