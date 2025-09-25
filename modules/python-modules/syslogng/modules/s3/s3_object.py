@@ -625,6 +625,7 @@ class S3Object:
                 StorageClass=self.__persist.storage_class,
                 **extra_args,
             )
+            self.__logger.debug(f"Multipart upload created for {self.bucket}/{self.key}")
         except (ClientError, EndpointConnectionError) as e:
             self.__logger.error(f"Failed to create multipart upload: {self.bucket}/{self.key} => {e}")
             return False
@@ -652,6 +653,7 @@ class S3Object:
                 PartNumber=chunk.part_number,
                 Body=chunk.buffer.getvalue(),
             )
+            self.__logger.debug(f"Multipart upload finished for {self.bucket}/{self.key}")
         except EndpointConnectionError as e:
             self.__logger.error(f"Failed to upload part: {self.bucket}/{self.key} ({chunk.part_number}) => {e}")
             self.__upload_chunk(chunk, is_retry=True)
@@ -742,6 +744,7 @@ class S3Object:
                 Key=self.key,
                 UploadId=self.__persist.upload_id,
             )
+            self.__logger.debug(f"Multipart upload aborted for {self.bucket}/{self.key}")
         except EndpointConnectionError as e:
             self.__logger.error(f"Failed to abort multipart upload: {self.bucket}/{self.key} => {e}")
             return False
@@ -780,6 +783,7 @@ class S3Object:
                 MultipartUpload={"Parts": uploaded_parts},
                 UploadId=self.__persist.upload_id,
             )
+            self.__logger.info(f"Object created {self.bucket}/{self.key}")
         except EndpointConnectionError as e:
             self.__logger.error(f"Failed to complete multipart upload: {self.bucket}/{self.key} => {e}")
             self.__complete_multipart(is_retry=True)

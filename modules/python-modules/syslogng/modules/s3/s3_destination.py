@@ -296,8 +296,11 @@ class S3Destination(LogDestination):
             if e.response["Error"]["Code"] == "404":
                 self.logger.info(f"Bucket ({self.bucket}) does not exist, trying to create it")
                 is_opened = self.__create_bucket()
-        except EndpointConnectionError:
-            pass
+            else:
+                self.logger.info(f"Client error: {e}")
+                self.logger.debug(f"Client error debug: {e.response}")
+        except EndpointConnectionError as e:
+            self.logger.info(f"Failed to connect to S3 server: {e}")
 
         if not is_opened:
             self.client = None
