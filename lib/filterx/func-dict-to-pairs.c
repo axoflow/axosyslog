@@ -204,7 +204,7 @@ FilterXExpr *
 filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionDictToPairs *self = g_new0(FilterXFunctionDictToPairs, 1);
-  filterx_function_init_instance(&self->super, "dict_to_pairs");
+  filterx_function_init_instance(&self->super, "dict_to_pairs", FALSE);
 
   self->super.super.init = _dict_to_pairs_init;
   self->super.super.deinit = _dict_to_pairs_deinit;

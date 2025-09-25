@@ -209,7 +209,7 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
 {
   FilterXSimpleFunction *self = g_new0(FilterXSimpleFunction, 1);
 
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, function_name, FALSE);
   self->super.super.eval = _simple_eval;
   self->super.super.optimize = _simple_optimize;
   self->super.super.init = _simple_init;
@@ -285,9 +285,9 @@ _function_free(FilterXExpr *s)
 }
 
 void
-filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
+filterx_function_init_instance(FilterXFunction *s, const gchar *function_name, gboolean mutates_scope)
 {
-  filterx_expr_init_instance(&s->super, "function");
+  filterx_expr_init_instance(&s->super, "function", mutates_scope);
   s->function_name = g_strdup_printf("%s()", function_name);
   s->super.optimize = _function_optimize;
   s->super.init = _function_init;

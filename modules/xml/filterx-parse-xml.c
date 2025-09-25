@@ -738,7 +738,7 @@ filterx_function_parse_xml_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseXml *self = g_new0(FilterXFunctionParseXml, 1);
 
-  filterx_function_init_instance(&self->super, "parse_xml");
+  filterx_function_init_instance(&self->super, "parse_xml", FALSE);
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
