@@ -50,8 +50,6 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
-  FilterXObject *(*list_factory)(FilterXObject *self);
-  FilterXObject *(*dict_factory)(FilterXObject *self);
   gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*str)(FilterXObject *self, GString *str);
@@ -511,24 +509,6 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   if (self->type->unset_key)
     return self->type->unset_key(self, key);
   return FALSE;
-}
-
-static inline FilterXObject *
-filterx_object_create_list(FilterXObject *self)
-{
-  if (!self->type->list_factory)
-    return NULL;
-
-  return self->type->list_factory(self);
-}
-
-static inline FilterXObject *
-filterx_object_create_dict(FilterXObject *self)
-{
-  if (!self->type->dict_factory)
-    return NULL;
-
-  return self->type->dict_factory(self);
 }
 
 void _filterx_object_log_add_object_error(FilterXObject *self);

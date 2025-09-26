@@ -163,7 +163,7 @@ event_format_parser_parse_extensions(EventParserContext *ctx, const gchar *input
 
   if (ctx->separate_extensions)
     {
-      dict_to_fill = filterx_object_create_dict(parsed_dict);
+      dict_to_fill = filterx_dict_new();
       FILTERX_STRING_DECLARE_ON_STACK(key, "extensions", 10);
       filterx_object_set_subscript(parsed_dict, key, &dict_to_fill);
       filterx_object_unref(key);
