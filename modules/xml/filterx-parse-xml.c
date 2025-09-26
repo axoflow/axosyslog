@@ -28,6 +28,7 @@
 #include "filterx/object-dict-interface.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-dict.h"
+#include "filterx/object-list.h"
 #include "scratch-buffers.h"
 
 #include <stdarg.h>
@@ -162,7 +163,7 @@ _create_object_for_new_elem(FilterXObject *parent_obj, gboolean has_attrs, const
   if (has_attrs)
     {
       *new_elem_repr = "{}";
-      return filterx_object_create_dict(parent_obj);
+      return filterx_dict_new();
     }
 
   /*
@@ -195,7 +196,7 @@ static void
 _store_second_elem(XmlElemContext *new_elem_context, FilterXObject **existing_obj, FilterXObject *new_elem_key,
                    const gchar *new_elem_name, const gchar *new_elem_repr, GError **error)
 {
-  FilterXObject *list_obj = filterx_object_create_list(new_elem_context->parent_obj);
+  FilterXObject *list_obj = filterx_list_new();
   if (!list_obj)
     goto fail;
 
@@ -338,7 +339,7 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   const gchar *parent_elem_name = (const gchar *) g_markup_parse_context_get_element_stack(context)->next->data;
   FILTERX_STRING_DECLARE_ON_STACK(key, parent_elem_name, -1);
 
-  FilterXObject *dict_obj = filterx_object_create_dict(elem_context->parent_obj);
+  FilterXObject *dict_obj = filterx_dict_new();
   if (!dict_obj)
     goto exit;
 

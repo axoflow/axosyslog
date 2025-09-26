@@ -81,8 +81,6 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, set_subscript);
   INIT_TYPE_METHOD(type, is_key_set);
   INIT_TYPE_METHOD(type, unset_key);
-  INIT_TYPE_METHOD(type, list_factory);
-  INIT_TYPE_METHOD(type, dict_factory);
   INIT_TYPE_METHOD(type, repr);
   INIT_TYPE_METHOD(type, str);
   INIT_TYPE_METHOD(type, format_json);
