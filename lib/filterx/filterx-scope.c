@@ -160,11 +160,11 @@ _register_variable(FilterXScope *self,
 }
 
 static FilterXVariable *
-_pull_variable_from_parent_scope(FilterXScope *self, FilterXScope *scope, FilterXVariable *previous_v)
+_pull_variable_from_parent_scope(FilterXScope *self, FilterXVariable *parent_variable)
 {
-  FilterXVariable *v = _register_variable(self, previous_v->variable_type, previous_v->handle);
+  FilterXVariable *v = _register_variable(self, parent_variable->variable_type, parent_variable->handle);
 
-  *v = *previous_v;
+  *v = *parent_variable;
   if (v->value)
     v->value = filterx_object_clone(v->value);
 
@@ -193,7 +193,12 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
         {
           /* NOTE: we validate against @self */
           if (_validate_variable(self, v))
-            return _pull_variable_from_parent_scope(self, scope, v);
+            {
+              if (self->write_protected)
+                return v;
+              else
+                return _pull_variable_from_parent_scope(self, v);
+            }
           else
             msg_trace("Filterx scope, not cloning stale scope variable",
                       evt_tag_str("variable", log_msg_get_value_name((filterx_variable_get_nv_handle(v)), NULL)));
