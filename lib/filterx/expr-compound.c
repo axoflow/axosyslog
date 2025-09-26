@@ -43,6 +43,17 @@ static gboolean
 _eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
   FilterXObject *res = NULL;
+
+
+  /* NOTE: this is feature envy and should be implemented within
+   * filterx_expr_eval(), however that function does not depend on the
+   * FilterXEvalContext layer and introducing that dependency would make the
+   * whole dependency chain circular.
+   */
+
+  if (expr->mutates_scope)
+    filterx_eval_context_make_writable(NULL);
+
   *result = res = filterx_expr_eval(expr);
 
   if (!res)
@@ -247,7 +258,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
   FilterXCompoundExpr *self = g_new0(FilterXCompoundExpr, 1);
 
-  filterx_expr_init_instance(&self->super, "compound");
+  filterx_expr_init_instance(&self->super, "compound", FALSE);
   self->super.eval = _eval_compound;
   self->super.optimize = _optimize;
   self->super.init = _init;

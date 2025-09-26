@@ -137,7 +137,7 @@ filterx_membership_in_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorIn *self = g_new0(FilterXOperatorIn, 1);
 
-  filterx_binary_op_init_instance(&self->super, "in", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "in", FALSE, lhs, rhs);
   self->super.super.optimize = _optimize_in;
   self->super.super.eval = _eval_in;
   self->super.super.free_fn = _free_in;

@@ -414,7 +414,7 @@ FilterXExpr *
 filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
-  filterx_function_init_instance(&self->super, "regexp_subst");
+  filterx_function_init_instance(&self->super, "regexp_subst", FALSE);
   self->super.super.eval = _subst_eval;
   self->super.super.optimize = _subst_optimize;
   self->super.super.init = _subst_init;

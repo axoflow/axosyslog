@@ -322,7 +322,7 @@ filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprRegexpSearch *self = g_new0(FilterXExprRegexpSearch, 1);
 
-  filterx_function_init_instance(&self->super, "regexp_search");
+  filterx_function_init_instance(&self->super, "regexp_search", FALSE);
   self->super.super.eval = _eval_regexp_search;
   self->super.super.optimize = _regexp_search_optimize;
   self->super.super.init = _regexp_search_init;

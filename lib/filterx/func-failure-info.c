@@ -247,7 +247,8 @@ FilterXExpr *
 filterx_fn_failure_info_enable_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoEnable *self = g_new0(FilterXFunctionFailureInfoEnable, 1);
-  filterx_function_init_instance(&self->super, "failure_info_enable");
+
+  filterx_function_init_instance(&self->super, "failure_info_enable", FALSE);
   self->super.super.eval = _failure_info_enable_eval;
 
   if (!_extract_failure_info_enable_args(self, args, error) || !filterx_function_args_check(args, error))
@@ -266,7 +267,8 @@ FilterXExpr *
 filterx_fn_failure_info_clear_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunction *self = g_new0(FilterXFunction, 1);
-  filterx_function_init_instance(self, "failure_info_clear");
+
+  filterx_function_init_instance(self, "failure_info_clear", FALSE);
   self->super.eval = _failure_info_clear_eval;
 
   if (!_check_zero_args(args, error) || !filterx_function_args_check(args, error))
@@ -284,7 +286,8 @@ FilterXExpr *
 filterx_fn_failure_info_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunction *self = g_new0(FilterXFunction, 1);
-  filterx_function_init_instance(self, "failure_info");
+
+  filterx_function_init_instance(self, "failure_info", FALSE);
   self->super.eval = _failure_info_eval;
 
   if (!_check_zero_args(args, error) || !filterx_function_args_check(args, error))
@@ -311,7 +314,8 @@ FilterXExpr *
 filterx_fn_failure_info_meta_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoMeta *self = g_new0(FilterXFunctionFailureInfoMeta, 1);
-  filterx_function_init_instance(&self->super, "failure_info_meta");
+
+  filterx_function_init_instance(&self->super, "failure_info_meta", FALSE);
   self->super.super.init = _failure_info_meta_init;
   self->super.super.deinit = _failure_info_meta_deinit;
   self->super.super.optimize = _failure_info_meta_optimize;

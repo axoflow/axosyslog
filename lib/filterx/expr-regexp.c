@@ -110,7 +110,7 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
 {
   FilterXExprRegexpMatch *self = g_new0(FilterXExprRegexpMatch, 1);
 
-  filterx_expr_init_instance(&self->super, "regexp_match");
+  filterx_expr_init_instance(&self->super, "regexp_match", FALSE);
   self->super.eval = _regexp_match_eval;
   self->super.optimize = _regexp_match_optimize;
   self->super.init = _regexp_match_init;

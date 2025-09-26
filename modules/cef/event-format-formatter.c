@@ -371,7 +371,7 @@ filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormat
                                                       const gchar *fn_name, FilterXFunctionArgs *args,
                                                       Config *config, GError **error)
 {
-  filterx_function_init_instance(&self->super, fn_name);
+  filterx_function_init_instance(&self->super, fn_name, FALSE);
 
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
