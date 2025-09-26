@@ -161,18 +161,6 @@ _filterx_list_len(FilterXList *s)
   return self->array->len;
 }
 
-static FilterXObject *
-_filterx_list_factory(FilterXObject *self)
-{
-  return filterx_list_new();
-}
-
-static FilterXObject *
-_filterx_dict_factory(FilterXObject *self)
-{
-  return filterx_dict_new();
-}
-
 FilterXObject *
 filterx_list_new(void)
 {
@@ -340,8 +328,6 @@ FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
                     .is_mutable = TRUE,
                     .truthy = _filterx_list_truthy,
                     .free_fn = _filterx_list_free,
-                    .dict_factory = _filterx_dict_factory,
-                    .list_factory = _filterx_list_factory,
                     .marshal = _filterx_list_marshal,
                     .repr = _filterx_list_repr,
                     .clone = _filterx_list_clone,

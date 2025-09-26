@@ -579,18 +579,6 @@ KVListFieldConverter::add(google::protobuf::Message *message, ProtoReflectors re
 
 KVListFieldConverter syslogng::grpc::otel::filterx::kvlist_field_converter;
 
-static FilterXObject *
-_list_factory(FilterXObject *self)
-{
-  return filterx_otel_array_new();
-}
-
-static FilterXObject *
-_dict_factory(FilterXObject *self)
-{
-  return filterx_otel_kvlist_new();
-}
-
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
@@ -615,8 +603,6 @@ FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(dict),
                     .marshal = _marshal,
                     .clone = _filterx_otel_kvlist_clone,
                     .truthy = _truthy,
-                    .list_factory = _list_factory,
-                    .dict_factory = _dict_factory,
                     .repr = _repr,
                     .free_fn = _free,
                    );

@@ -622,18 +622,6 @@ _filterx_dict_iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
 }
 
 static FilterXObject *
-_filterx_dict_factory(FilterXObject *self)
-{
-  return filterx_dict_new();
-}
-
-static FilterXObject *
-_filterx_list_factory(FilterXObject *self)
-{
-  return filterx_list_new();
-}
-
-static FilterXObject *
 filterx_dict_new_with_table(FilterXDictTable *table)
 {
   FilterXDictObject *self = g_new0(FilterXDictObject, 1);
@@ -775,8 +763,6 @@ FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
                     .is_mutable = TRUE,
                     .truthy = _filterx_dict_truthy,
                     .free_fn = _filterx_dict_free,
-                    .dict_factory = _filterx_dict_factory,
-                    .list_factory = _filterx_list_factory,
                     .marshal = _filterx_dict_marshal,
                     .repr = _filterx_dict_repr,
                     .clone = _filterx_dict_clone,

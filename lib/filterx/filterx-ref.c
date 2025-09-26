@@ -219,26 +219,6 @@ _filterx_ref_is_key_set(FilterXObject *s, FilterXObject *key)
   return filterx_object_is_key_set(self->value, key);
 }
 
-static FilterXObject *
-_filterx_ref_list_factory(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  FilterXObject *list = filterx_object_create_list(self->value);
-  filterx_object_cow_prepare(&list);
-  filterx_ref_set_parent_container(list, s);
-  return list;
-}
-
-static FilterXObject *
-_filterx_ref_dict_factory(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-  FilterXObject *dict = filterx_object_create_dict(self->value);
-  filterx_object_cow_prepare(&dict);
-  filterx_ref_set_parent_container(dict, s);
-  return dict;
-}
-
 static gboolean
 _filterx_ref_repr_append(FilterXObject *s, GString *repr)
 {
@@ -304,8 +284,6 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .set_subscript = _filterx_ref_set_subscript,
                     .is_key_set = _filterx_ref_is_key_set,
                     .unset_key = _filterx_ref_unset_key,
-                    .list_factory = _filterx_ref_list_factory,
-                    .dict_factory = _filterx_ref_dict_factory,
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,

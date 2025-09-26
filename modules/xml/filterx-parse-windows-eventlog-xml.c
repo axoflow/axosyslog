@@ -24,6 +24,7 @@
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict-interface.h"
+#include "filterx/object-dict.h"
 #include "scratch-buffers.h"
 
 static void _set_error(GError **error, const gchar *format, ...) G_GNUC_PRINTF(2, 0);
@@ -72,7 +73,7 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   const gchar *parent_elem_name = (const gchar *) g_markup_parse_context_get_element_stack(context)->next->data;
   FILTERX_STRING_DECLARE_ON_STACK(key, parent_elem_name, -1);
 
-  FilterXObject *dict_obj = filterx_object_create_dict(elem_context->parent_obj);
+  FilterXObject *dict_obj = filterx_dict_new();
   if (!dict_obj)
     goto exit;
 
@@ -109,7 +110,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
 
   if (!filterx_object_is_key_set(new_elem_context->parent_obj, new_elem_key))
     {
-      FilterXObject *empty_dict = filterx_object_create_dict(new_elem_context->parent_obj);
+      FilterXObject *empty_dict = filterx_dict_new();
       xml_elem_context_set_current_obj(new_elem_context, empty_dict);
       filterx_object_unref(empty_dict);
 
