@@ -24,6 +24,7 @@
 #define FILTERX_OBJECT_LIST_INTERFACE_H_INCLUDED
 
 #include "filterx/filterx-object.h"
+#include "filterx/object-primitive.h"
 
 #define FILTERX_LIST_MAX_LENGTH  65536
 
@@ -51,8 +52,26 @@ void filterx_list_init_instance(FilterXList *self, FilterXType *type);
 FILTERX_DECLARE_TYPE(list);
 
 static inline gboolean
-filterx_list_normalize_index(guint64 len, gint64 index, guint64 *normalized_index, gboolean allow_tail, const gchar **error)
+filterx_list_normalize_index(FilterXObject *index_object,
+                             guint64 len,
+                             guint64 *normalized_index,
+                             gboolean allow_tail,
+                             const gchar **error)
 {
+  gint64 index;
+
+  if (!index_object)
+    {
+      *error = "Index must be set";
+      return FALSE;
+    }
+
+  if (!filterx_integer_unwrap(index_object, &index))
+    {
+      *error = "Index must be integer";
+      return FALSE;
+    }
+
   if (index >= 0)
     {
       guint64 _index = (guint64) index;
@@ -72,12 +91,12 @@ filterx_list_normalize_index(guint64 len, gint64 index, guint64 *normalized_inde
       return FALSE;
     }
 
-  *normalized_index = len + index;
-  if (*normalized_index < 0)
+  if (len + index < 0)
     {
       *error = "Index out of range";
       return FALSE;
     }
+  *normalized_index = len + index;
 
   return TRUE;
 }
