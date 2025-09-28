@@ -25,6 +25,8 @@
 
 #include "filterx/filterx-object.h"
 
+#define FILTERX_LIST_MAX_LENGTH  65536
+
 typedef struct FilterXList_ FilterXList;
 
 struct FilterXList_
@@ -47,5 +49,37 @@ gboolean filterx_list_merge(FilterXObject *s, FilterXObject *other);
 void filterx_list_init_instance(FilterXList *self, FilterXType *type);
 
 FILTERX_DECLARE_TYPE(list);
+
+static inline gboolean
+filterx_list_normalize_index(guint64 len, gint64 index, guint64 *normalized_index, gboolean allow_tail, const gchar **error)
+{
+  if (index >= 0)
+    {
+      guint64 _index = (guint64) index;
+      if (_index > len ||
+          (_index == len && !allow_tail))
+        {
+          *error = "Index out of range";
+          return FALSE;
+        }
+      *normalized_index = _index;
+      return TRUE;
+    }
+
+  if (len > FILTERX_LIST_MAX_LENGTH)
+    {
+      *error = "Index exceeds maximal supported value";
+      return FALSE;
+    }
+
+  *normalized_index = len + index;
+  if (*normalized_index < 0)
+    {
+      *error = "Index out of range";
+      return FALSE;
+    }
+
+  return TRUE;
+}
 
 #endif

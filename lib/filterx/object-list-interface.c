@@ -24,7 +24,6 @@
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 
-#define FILTERX_LIST_MAX_LENGTH  65536
 
 FilterXObject *
 filterx_list_get_subscript(FilterXObject *s, gint64 index)
@@ -92,39 +91,6 @@ _len(FilterXObject *s, guint64 *len)
   return TRUE;
 }
 
-static inline gboolean
-_normalize_index(FilterXList *self, gint64 index, guint64 *normalized_index, gboolean allow_tail, const gchar **error)
-{
-  guint64 len = self->len(self);
-
-  if (index >= 0)
-    {
-      if (index > len ||
-          (index == len && !allow_tail))
-        {
-          *error = "Index out of range";
-          return FALSE;
-        }
-      *normalized_index = (guint64) index;
-      return TRUE;
-    }
-
-  if (len > FILTERX_LIST_MAX_LENGTH)
-    {
-      *error = "Index exceeds maximal supported value";
-      return FALSE;
-    }
-
-  *normalized_index = len + index;
-  if (*normalized_index < 0)
-    {
-      *error = "Index out of range";
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
 static FilterXObject *
 _get_subscript(FilterXObject *s, FilterXObject *key)
 {
@@ -171,7 +137,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, TRUE, &error))
+  if (!filterx_list_normalize_index(self->len(self), index, &normalized_index, TRUE, &error))
     {
       filterx_eval_push_error_info_printf("Failed to set element of list", NULL,
                                           "Index out of range: %" G_GINT64_FORMAT ", len: %" G_GUINT64_FORMAT,
@@ -204,7 +170,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  return _normalize_index(self, index, &normalized_index, FALSE, &error);
+  return filterx_list_normalize_index(self->len(self), index, &normalized_index, FALSE, &error);
 }
 
 static gboolean
@@ -229,7 +195,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, FALSE, &error))
+  if (!filterx_list_normalize_index(self->len(self), index, &normalized_index, FALSE, &error))
     {
       filterx_eval_push_error_info_printf("Failed to unset element of list", NULL,
                                           "%s: %" G_GINT64_FORMAT ", len: %" G_GUINT64_FORMAT,
