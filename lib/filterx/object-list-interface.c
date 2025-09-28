@@ -96,22 +96,11 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXList *self = (FilterXList *) s;
 
-  gint64 index;
-  if (!filterx_integer_unwrap(key, &index))
-    {
-      filterx_eval_push_error_info_printf("Failed to get element from list", NULL,
-                                          "Index must be integer, got: %s",
-                                          filterx_object_get_type_name(key));
-      return NULL;
-    }
-
   guint64 normalized_index;
   const gchar *error;
-  if (!_normalize_index(self, index, &normalized_index, FALSE, &error))
+  if (!filterx_list_normalize_index(key, self->len(self), &normalized_index, FALSE, &error))
     {
-      filterx_eval_push_error_info_printf("Failed to get element from list", NULL,
-                                          "Index out of range: %" G_GINT64_FORMAT ", len: %" G_GUINT64_FORMAT,
-                                          index, self->len(self));
+      filterx_eval_push_error(error, NULL, key);
       return NULL;
     }
 
@@ -126,22 +115,11 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   if (!key)
     return self->append(self, new_value);
 
-  gint64 index;
-  if (!filterx_integer_unwrap(key, &index))
-    {
-      filterx_eval_push_error_info_printf("Failed to set element of list", NULL,
-                                          "Index must be integer, got: %s",
-                                          filterx_object_get_type_name(key));
-      return FALSE;
-    }
-
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(self->len(self), index, &normalized_index, TRUE, &error))
+  if (!filterx_list_normalize_index(key, self->len(self), &normalized_index, TRUE, &error))
     {
-      filterx_eval_push_error_info_printf("Failed to set element of list", NULL,
-                                          "Index out of range: %" G_GINT64_FORMAT ", len: %" G_GUINT64_FORMAT,
-                                          index, self->len(self));
+      filterx_eval_push_error(error, NULL, key);
       return FALSE;
     }
 
@@ -152,25 +130,9 @@ static gboolean
 _is_key_set(FilterXObject *s, FilterXObject *key)
 {
   FilterXList *self = (FilterXList *) s;
-
-  if (!key)
-    {
-      filterx_eval_push_error_static_info("Failed to check index of list", NULL, "Index must be set");
-      return FALSE;
-    }
-
-  gint64 index;
-  if (!filterx_integer_unwrap(key, &index))
-    {
-      filterx_eval_push_error_info_printf("Failed to check index of list", NULL,
-                                          "Index must be integer, got: %s",
-                                          filterx_object_get_type_name(key));
-      return FALSE;
-    }
-
   guint64 normalized_index;
   const gchar *error;
-  return filterx_list_normalize_index(self->len(self), index, &normalized_index, FALSE, &error);
+  return filterx_list_normalize_index(key, self->len(self), &normalized_index, FALSE, &error);
 }
 
 static gboolean
@@ -178,28 +140,11 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXList *self = (FilterXList *) s;
 
-  if (!key)
-    {
-      filterx_eval_push_error_static_info("Failed to unset element of list", NULL, "Index must be set");
-      return FALSE;
-    }
-
-  gint64 index;
-  if (!filterx_integer_unwrap(key, &index))
-    {
-      filterx_eval_push_error_info_printf("Failed to unset element of list", NULL,
-                                          "Index must be integer, got: %s",
-                                          filterx_object_get_type_name(key));
-      return FALSE;
-    }
-
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(self->len(self), index, &normalized_index, FALSE, &error))
+  if (!filterx_list_normalize_index(key, self->len(self), &normalized_index, FALSE, &error))
     {
-      filterx_eval_push_error_info_printf("Failed to unset element of list", NULL,
-                                          "%s: %" G_GINT64_FORMAT ", len: %" G_GUINT64_FORMAT,
-                                          error, index, self->len(self));
+      filterx_eval_push_error(error, NULL, key);
       return FALSE;
     }
 
