@@ -529,28 +529,6 @@ csv_scanner_scan_next(CSVScanner *self)
     }
 }
 
-gint
-csv_scanner_get_current_column(CSVScanner *self)
-{
-  return self->current_column;
-}
-
-gboolean
-csv_scanner_is_scan_complete(CSVScanner *self)
-{
-  /* we didn't process all of the input */
-  if (self->src[0] != 0)
-    return FALSE;
-
-  return self->state == CSV_STATE_FINISH;
-}
-
-gboolean
-csv_scanner_has_input_left(CSVScanner *self)
-{
-  return self->src[0] != '\0';
-}
-
 void
 csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *input)
 {
@@ -572,18 +550,6 @@ csv_scanner_set_expected_columns(CSVScanner *scanner, gint expected_columns)
 void
 csv_scanner_deinit(CSVScanner *self)
 {
-}
-
-const gchar *
-csv_scanner_get_current_value(CSVScanner *self)
-{
-  return self->current_value->str;
-}
-
-gint
-csv_scanner_get_current_value_len(CSVScanner *self)
-{
-  return self->current_value->len;
 }
 
 gchar *
