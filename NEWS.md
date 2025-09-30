@@ -1,4 +1,4 @@
-4.17.0
+4.18.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -11,92 +11,58 @@ Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/
 
 ## Features
 
-  * FilterX `dpath()`: new function to set a potentially non-existing path within a dict
+  * `http()`: Added support for templated `headers()`
 
-    For example,
+    In case of batching the templates in `headers()` will be calculated
+    from the first message. Make sure to use `worker-partition-key()` to
+    group similar messages together.
+
+    Literal dollar signs (`$`) used in `headers()` must be escaped like `$$`.
+    ([#794](https://github.com/axoflow/axosyslog/pull/794))
+
+  * FilterX: unary `+` and `-` operators
+
+    Useful for dynamic string slicing, for example:
     ```
-    dpath(dict.path.to["complex.n-v"].create) = {...};
+    str[..-tempvar]
     ```
-    ([#746](https://github.com/axoflow/axosyslog/pull/746))
+    ([#788](https://github.com/axoflow/axosyslog/pull/788))
 
-  * FilterX string slices: support negative indexing
+  * FilterX `parse_csv()`: add `quote_pairs` parameter
 
-    For example,
-    ```
-    filterx {
-      str = "example";
-      str[..-2] == "examp";
-      str[-3..] == "ple";
-    };
-    ```
-    ([#780](https://github.com/axoflow/axosyslog/pull/780))
+    For example:
 
-  * `parallelize()`: add `batch-size()` option and other perf improvements
-
-    The `batch-size()` option specifies, for each input thread, how many consecutive
-    messages should be processed by a single `parallelize()` worker.
-
-    This ensures that this many messages preserve their order on the output side
-    and also improves `parallelize()` performance. A value around 100 is recommended.
-    ([#757](https://github.com/axoflow/axosyslog/pull/757))
-
-  * `clickhouse-destination()`: new `json-var()` directive
-
-    The new `json-var()` option accepts either a JSON template or a variable containing a JSON string, and sends it to the ClickHouse server in Protobuf/JSON mixed mode (JSONEachRow format). In this mode, type validation is performed by the ClickHouse server itself, so no Protobuf schema is required for communication.
-
-    This option is mutually exclusive with `proto-var()`, `server-side-schema()`, `schema()`, and `protobuf-schema()` directives.
-
-    example:
-    ```
-       destination {
-          clickhouse (
-          ...
-          json-var("$json_data");
-    or
-          json-var(json("{\"ingest_time\":1755248921000000000, \"body\": \"test template\"}"))
-          ...
-          };
-       };
-    ```
-    ([#761](https://github.com/axoflow/axosyslog/pull/761))
-
-  * FilterX `parse_kv()`: add `stray_words_append_to_value` flag
-
-    For example,
     ```
     filterx {
-      $MSG = parse_kv($MSG, value_separator="=", pair_separator=" ", stray_words_append_to_value=true);
+      str = "sarga,[bogre],'gorbe'";
+      $MSG = parse_csv(str, quote_pairs=["[]", "'"]);
     };
-
-    input: a=b b=c d e f=g
-    output: {"a":"b","b":"c d e","f":"g"}
     ```
-    ([#770](https://github.com/axoflow/axosyslog/pull/770))
+    ([#804](https://github.com/axoflow/axosyslog/pull/804))
 
 
 ## Bugfixes
 
-  * filterx: fix `startswith()`/`endswith()`/`includes()` functions early free
-    ([#772](https://github.com/axoflow/axosyslog/pull/772))
+  * FilterX `in` operator: fix crash when left- or right-hand side operand evaluation fails
+    ([#798](https://github.com/axoflow/axosyslog/pull/798))
 
-  * `/string/`: fix escaping
+  * `in` FilterX operator: Fixed finding `message_value`s in arrays.
+    ([#791](https://github.com/axoflow/axosyslog/pull/791))
 
-    Strings between / characters are now treated literally. The only exception is `\/`, which can be used to represent a `/` character.
+  * `python()`: `LogTemplate::format()` now returns a `bytes` object
 
-    This syntax allows you to construct regular expression patterns without worrying about double escaping.
+    In the Python bindings, `LogMessage` is not UTF-8 or Unicode–safe by default.
+    This means developers must explicitly call `decode()` on message fields and handle any decoding errors themselves.
 
-    Note: Because of the simplified escaping rules, you cannot represent strings that end with a single `\` character,
-    but such strings would not be valid regular expression patterns anyway.
-    ([#776](https://github.com/axoflow/axosyslog/pull/776))
+    Since `LogTemplate` operates on `LogMessage` fields, this behavior also applies to it.
 
-  * `program()` destination: Fix invalid access of freed log-writer cfg.
-    ([#779](https://github.com/axoflow/axosyslog/pull/779))
+    *Breaking change*:
+    When using templates, you now need to decode the result manually. For example:
+    `format().decode("utf-8", errors="backslashreplace")`
+    ([#799](https://github.com/axoflow/axosyslog/pull/799))
 
-  * `ebpf()`: acquire CAP_BPF before loading eBPF programs
-
-    Previously, when AxoSyslog was compiled with Linux capabilities enabled,
-    the `ebpf()` module was unable to load programs.
-    ([#768](https://github.com/axoflow/axosyslog/pull/768))
+  * `in` FilterX operator: Fixed possible memory corruption regarding unreferencing an operand.
+    ([#792](https://github.com/axoflow/axosyslog/pull/792))
 
 
 
@@ -119,5 +85,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Attila Szakacs, Balazs Scheidler, Ben Ireland,
-László Várady, Szilard Parrag, Tamás Kosztyu, shifter
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, Hofi, László Várady,
+Szilard Parrag, Tamás Kosztyu, shifter
