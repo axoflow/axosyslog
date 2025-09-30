@@ -184,6 +184,14 @@ struct _FilterXObject
   FilterXType *type;
 };
 
+static inline void
+filterx_object_init_instance(FilterXObject *self, FilterXType *type)
+{
+  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->type = type;
+  self->readonly = !type->is_mutable;
+}
+
 static inline gboolean
 filterx_object_is_ref(FilterXObject *self)
 {

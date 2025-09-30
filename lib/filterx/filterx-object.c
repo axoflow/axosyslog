@@ -106,14 +106,6 @@ filterx_object_free_method(FilterXObject *self)
   /* empty */
 }
 
-void
-filterx_object_init_instance(FilterXObject *self, FilterXType *type)
-{
-  g_atomic_counter_set(&self->ref_cnt, 1);
-  self->type = type;
-  self->readonly = !type->is_mutable;
-}
-
 FilterXObject *
 filterx_object_new(FilterXType *type)
 {
