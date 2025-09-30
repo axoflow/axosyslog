@@ -61,7 +61,7 @@ _literal_element_optimize(FilterXLiteralElement *self)
 {
   self->key = filterx_expr_optimize(self->key);
   self->value = filterx_expr_optimize(self->value);
-  self->literal = filterx_expr_is_literal(self->key) && filterx_expr_is_literal(self->value);
+  self->literal = (!self->key || filterx_expr_is_literal(self->key)) && filterx_expr_is_literal(self->value);
 }
 
 static void
