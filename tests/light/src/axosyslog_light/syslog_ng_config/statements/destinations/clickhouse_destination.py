@@ -36,6 +36,7 @@ class ClickhouseDestination(DestinationDriver):
         **options,
     ) -> None:
         self.driver_name = "clickhouse"
+        options.setdefault("time_reopen", 1)
         self.options = options
         super(ClickhouseDestination, self).__init__(stats_handler, prometheus_stats_handler, None, options)
 

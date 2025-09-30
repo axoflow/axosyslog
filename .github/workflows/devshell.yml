@@ -115,13 +115,13 @@ jobs:
         if: always() && steps.make_check.outcome == 'failure'
         with:
           name: test-suite-${{ matrix.build-tool }}-${{ matrix.cc }}
-          path: ${{ github.workspace }}/build/test-suite.log
+          path: $GITHUB_WORKSPACE/build/test-suite.log
 
       - name: "Prepare artifact: light-reports"
         id: prepare-light-reports
         if: always() && steps.light.outcome == 'failure'
         run: |
-          REPORTS_DIR=${{ github.workspace }}/tests/light/reports
+          REPORTS_DIR=$GITHUB_WORKSPACE/tests/light/reports
           cp -r ${REPORTS_DIR} /tmp/light-reports
           find /tmp/light-reports -type p,s -print0 | xargs -0 rm -f
           tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports

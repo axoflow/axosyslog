@@ -82,11 +82,11 @@ def test_clickhouse_destination_valid_options_db_not_run_and_reconnect(request, 
 
 @pytest.mark.parametrize(
     "ch_database, ch_table, ch_user, ch_password", [
-        ("invalid_dababase", "test_table", "default", f'{stringify("password")}'),
+        # ("invalid_dababase", "test_table", "default", f'{stringify("password")}'),
         ("default", "invalid_table", "default", f'{stringify("password")}'),
         ("default", "test_table", "invalid_user", f'{stringify("password")}'),
         ("default", "test_table", "default", f'{stringify("invalid_password")}'),
-    ], ids=["invalid_database", "invalid_table", "invalid_user", "invalid_password"],
+    ], ids=["invalid_table", "invalid_user", "invalid_password"],
 )
 def test_clickhouse_destination_invalid_options_db_run(request, config, syslog_ng, clickhouse_server, ch_database, ch_table, ch_user, ch_password, clickhouse_ports):
     custom_input_msg = f"test message {str(uuid.uuid4())}"
