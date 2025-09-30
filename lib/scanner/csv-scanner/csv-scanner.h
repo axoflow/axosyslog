@@ -83,17 +83,47 @@ typedef struct
   gchar current_quote;
 } CSVScanner;
 
-gint csv_scanner_get_current_column(CSVScanner *self);
-const gchar *csv_scanner_get_current_value(CSVScanner *pstate);
-gint csv_scanner_get_current_value_len(CSVScanner *self);
+
 gboolean csv_scanner_append_rest(CSVScanner *self);
 gboolean csv_scanner_scan_next(CSVScanner *pstate);
-gboolean csv_scanner_is_scan_complete(CSVScanner *pstate);
-gboolean csv_scanner_has_input_left(CSVScanner *self);
 gchar *csv_scanner_dup_current_value(CSVScanner *self);
 void csv_scanner_set_expected_columns(CSVScanner *scanner, gint expected_columns);
 
 void csv_scanner_init(CSVScanner *pstate, CSVScannerOptions *options, const gchar *input);
 void csv_scanner_deinit(CSVScanner *pstate);
+
+static inline gint
+csv_scanner_get_current_column(CSVScanner *self)
+{
+  return self->current_column;
+}
+
+static inline const gchar *
+csv_scanner_get_current_value(CSVScanner *self)
+{
+  return self->current_value->str;
+}
+
+static inline gint
+csv_scanner_get_current_value_len(CSVScanner *self)
+{
+  return self->current_value->len;
+}
+
+static inline gboolean
+csv_scanner_is_scan_complete(CSVScanner *self)
+{
+  /* we didn't process all of the input */
+  if (self->src[0] != 0)
+    return FALSE;
+
+  return self->state == CSV_STATE_FINISH;
+}
+
+static inline gboolean
+csv_scanner_has_input_left(CSVScanner *self)
+{
+  return self->src[0] != '\0';
+}
 
 #endif
