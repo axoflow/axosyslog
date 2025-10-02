@@ -60,6 +60,7 @@ set(FILTERX_HEADERS
     filterx/func-vars.h
     filterx/func-repr.h
     filterx/func-failure-info.h
+    filterx/func-dict-to-pairs.h
     filterx/object-datetime.h
     filterx/object-dict-interface.h
     filterx/object-dict.h
@@ -136,6 +137,7 @@ set(FILTERX_SOURCES
     filterx/func-vars.c
     filterx/func-repr.c
     filterx/func-failure-info.c
+    filterx/func-dict-to-pairs.c
     filterx/object-datetime.c
     filterx/object-dict-interface.c
     filterx/object-dict.c
