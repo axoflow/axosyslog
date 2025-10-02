@@ -457,7 +457,7 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
 
   if (self->flow_control_window->length != 0 || !_push_tail_disk(self, msg, path_options, serialized_msg))
     {
-      if (HAS_SPACE_IN_QUEUE(self->flow_control_window))
+      if (path_options->flow_control_requested || HAS_SPACE_IN_QUEUE(self->flow_control_window))
         {
           _push_tail_flow_control_window(self, msg, path_options);
           goto queued;
