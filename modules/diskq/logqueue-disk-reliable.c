@@ -364,7 +364,11 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
                 evt_tag_str("persist_name", s->persist_name),
                 suggestion);
 
-      log_queue_disk_drop_message(&self->super, msg, path_options);
+      if (path_options->flow_control_requested)
+        log_queue_disk_drop_msg_and_suspend_src(&self->super, msg, path_options);
+      else
+        log_queue_disk_drop_message(&self->super, msg, path_options);
+
       scratch_buffers_reclaim_marked(marker);
       g_mutex_unlock(&s->lock);
       return;

@@ -272,11 +272,7 @@ void
 log_queue_disk_drop_message(LogQueueDisk *self, LogMessage *msg, const LogPathOptions *path_options)
 {
   log_queue_dropped_messages_inc(&self->super);
-
-  if (path_options->flow_control_requested)
-    log_msg_drop(msg, path_options, AT_SUSPENDED);
-  else
-    log_msg_drop(msg, path_options, AT_PROCESSED);
+  log_msg_drop(msg, path_options, AT_PROCESSED);
 }
 
 void
