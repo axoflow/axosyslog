@@ -279,6 +279,15 @@ log_queue_disk_drop_message(LogQueueDisk *self, LogMessage *msg, const LogPathOp
     log_msg_drop(msg, path_options, AT_PROCESSED);
 }
 
+void
+log_queue_disk_drop_msg_and_suspend_src(LogQueueDisk *self, LogMessage *msg, const LogPathOptions *path_options)
+{
+  g_assert(path_options->flow_control_requested);
+
+  log_queue_dropped_messages_inc(&self->super);
+  log_msg_drop(msg, path_options, AT_SUSPENDED);
+}
+
 static gchar *
 _get_next_corrupted_filename(const gchar *filename)
 {
