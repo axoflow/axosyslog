@@ -494,6 +494,18 @@ Test(wallclocktime, test_strptime_percent_z_is_mandatory)
   cr_assert_null(wall_clock_time_strptime(&wct, "%Y-%m-%d %T%z", "2011-06-25 20:00:04"));
 }
 
+Test(wallclocktime, test_strftime_negative_not_whole_gmtoff)
+{
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  gchar buf[128];
+
+  /* America/Caracas */
+  wall_clock_time_strptime(&wct, "%b %d %Y %H:%M:%S.%f %z", "May  7 2021 09:29:12.123456 -04:30");
+
+  wall_clock_time_strftime(&wct, buf, sizeof(buf), "%Z");
+  cr_assert_str_eq(buf, "-04:30");
+}
+
 Test(wallclocktime, test_strftime_percent_f)
 {
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
