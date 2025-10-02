@@ -32,7 +32,6 @@ typedef struct _LogQueueDiskNonReliable
   GQueue *front_cache;
   GQueue *flow_control_window;
   GQueue *backlog;
-  gint flow_control_window_size;
   gint front_cache_size;
 } LogQueueDiskNonReliable;
 

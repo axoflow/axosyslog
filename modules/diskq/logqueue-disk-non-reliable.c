@@ -67,7 +67,11 @@ _get_message_number_in_queue(GQueue *queue)
   return queue->length / ITEM_NUMBER_PER_MESSAGE;
 }
 
-#define HAS_SPACE_IN_QUEUE(queue) (_get_message_number_in_queue(queue) < queue ## _size)
+static inline gboolean
+_has_space_in_front_cache(LogQueueDiskNonReliable *self)
+{
+  return _get_message_number_in_queue(self->front_cache) < self->front_cache_size;
+}
 
 static gint64
 _get_length(LogQueue *s)
@@ -85,7 +89,7 @@ _get_length(LogQueue *s)
 static inline gboolean
 _can_push_to_front_cache(LogQueueDiskNonReliable *self)
 {
-  return HAS_SPACE_IN_QUEUE(self->front_cache) && qdisk_get_length(self->super.qdisk) == 0;
+  return _has_space_in_front_cache(self) && qdisk_get_length(self->super.qdisk) == 0;
 }
 
 static inline gboolean
@@ -172,7 +176,7 @@ _move_messages_from_disk_to_front_cache(LogQueueDiskNonReliable *self)
       log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
       log_queue_disk_update_disk_related_counters(&self->super);
     }
-  while (HAS_SPACE_IN_QUEUE(self->front_cache));
+  while (_has_space_in_front_cache(self));
 
   return TRUE;
 }
@@ -457,7 +461,7 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
 
   if (self->flow_control_window->length != 0 || !_push_tail_disk(self, msg, path_options, serialized_msg))
     {
-      if (path_options->flow_control_requested || HAS_SPACE_IN_QUEUE(self->flow_control_window))
+      if (path_options->flow_control_requested)
         {
           _push_tail_flow_control_window(self, msg, path_options);
           goto queued;
@@ -466,7 +470,6 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
       msg_debug("Destination queue full, dropping message",
                 evt_tag_str("filename", qdisk_get_filename(self->super.qdisk)),
                 evt_tag_long("queue_len", log_queue_get_length(s)),
-                evt_tag_int("flow_control_window_size", self->flow_control_window_size),
                 evt_tag_long("capacity_bytes", qdisk_get_maximum_size(self->super.qdisk)),
                 evt_tag_str("persist_name", s->persist_name));
       log_queue_disk_drop_message(&self->super, msg, path_options);
@@ -602,7 +605,6 @@ log_queue_disk_non_reliable_new(DiskQueueOptions *options, const gchar *filename
   self->front_cache = g_queue_new();
   self->flow_control_window = g_queue_new();
   self->front_cache_size = options->front_cache_size;
-  self->flow_control_window_size = options->flow_control_window_size;
   _set_virtual_functions(self);
   return &self->super.super;
 }

@@ -33,7 +33,6 @@ _construct_options(DiskQueueOptions *options, guint64 capacity, gint flow_contro
 {
   memset(options, 0, sizeof(DiskQueueOptions));
   options->capacity_bytes = capacity;
-  options->flow_control_window_size = flow_control_window;
   options->flow_control_window_bytes = flow_control_window;
   options->front_cache_size = 0;
   options->reliable = reliable;

@@ -37,7 +37,6 @@ typedef struct _DiskQueueOptions
   gboolean reliable;
   gboolean compaction;
   gint flow_control_window_bytes;
-  gint flow_control_window_size;
   gchar *dir;
   gdouble truncate_size_ratio;
   gboolean prealloc;
