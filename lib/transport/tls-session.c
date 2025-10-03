@@ -30,6 +30,7 @@
 #include <openssl/rand.h>
 #include <openssl/pkcs12.h>
 #include <openssl/ocsp.h>
+#include <ctype.h>
 
 /* TLSSession */
 
@@ -99,11 +100,34 @@ tls_session_find_issuer(TLSSession *self, X509 *cert)
   return issuer;
 }
 
+static gboolean
+_extract_fingerprint_alg(const gchar *fp, gchar *fp_alg, gsize fp_alg_len)
+{
+  const gchar *colon = strchr(fp, ':');
+  if (!colon)
+    return FALSE;
+
+  gsize len = colon - fp;
+  if (len >= fp_alg_len - 1)
+    return FALSE;
+
+  memcpy(fp_alg, fp, len);
+  fp_alg[len] = 0;
+  if (len == 2 && isxdigit(fp_alg[0]) && isxdigit(fp_alg[1]))
+    {
+      msg_error("The fingerprint argument to trusted-keys() / trusted-fingerprints() must start with the digest algorithm (e.g. SHA256)",
+                evt_tag_str("digest", fp));
+      return FALSE;
+    }
+  return TRUE;
+}
+
 int
 tls_session_verify_fingerprint(X509_STORE_CTX *ctx)
 {
   SSL *ssl = (SSL *)X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
   TLSSession *self = SSL_get_app_data(ssl);
+  gchar fingerprint_alg[16];
   GList *current_fingerprint = self->ctx->trusted_fingerprint_list;
   GString *hash;
   gboolean match = FALSE;
@@ -119,19 +143,40 @@ tls_session_verify_fingerprint(X509_STORE_CTX *ctx)
 
   hash = g_string_sized_new(EVP_MAX_MD_SIZE * 3);
 
-  if (tls_get_x509_digest("SHA1", cert, hash))
+  do
     {
-      do
+      if (!_extract_fingerprint_alg(current_fingerprint->data, fingerprint_alg, sizeof(fingerprint_alg)))
         {
+          msg_error("Unknown digest algorithm specified in trusted-keys()/trusted-fingerprints() entry",
+                    evt_tag_str("entry", current_fingerprint->data),
+                    tls_context_format_location_tag(self->ctx));
+          return FALSE;
+        }
+
+      g_string_truncate(hash, 0);
+      if (tls_get_x509_digest(fingerprint_alg, cert, hash))
+        {
+
           if (strcmp((const gchar *)(current_fingerprint->data), hash->str) == 0)
             {
+              msg_debug("Certificate matches trusted-keys()/trusted-fingerprints() entry",
+                        evt_tag_str("entry", current_fingerprint->data),
+                        evt_tag_str("x509-digest", hash->str),
+                        tls_context_format_location_tag(self->ctx));
               match = TRUE;
               g_strlcpy(self->peer_info.fingerprint, hash->str, sizeof(self->peer_info.fingerprint));
               break;
             }
+          else
+            {
+              msg_debug("Certificate does not match trusted-keys()/trusted-fingerprints() entry",
+                        evt_tag_str("entry", current_fingerprint->data),
+                        evt_tag_str("x509-digest", hash->str),
+                        tls_context_format_location_tag(self->ctx));
+            }
         }
-      while ((current_fingerprint = g_list_next(current_fingerprint)) != NULL);
     }
+  while ((current_fingerprint = g_list_next(current_fingerprint)) != NULL);
 
   g_string_free(hash, TRUE);
   return match;
@@ -188,12 +233,36 @@ tls_session_verify(TLSSession *self, int ok, X509_STORE_CTX *ctx)
     return 1;
 
   int ctx_error_depth = X509_STORE_CTX_get_error_depth(ctx);
+  int errnum = X509_STORE_CTX_get_error(ctx);
   /* accept certificate if its fingerprint matches, again regardless whether x509 certificate validation was successful */
-  if (ok && ctx_error_depth == 0 && !tls_session_verify_fingerprint(ctx))
+
+  if (ctx_error_depth == 0 && self->ctx->trusted_fingerprint_list)
     {
-      msg_notice("Certificate valid, but fingerprint constraints were not met, rejecting",
-                 tls_context_format_location_tag(self->ctx));
-      return 0;
+
+      /* trusted-keys() is present */
+      if (ok)
+        {
+          /* certificate valid, fingerprint_list is an extra constraint */
+          if (!tls_session_verify_fingerprint(ctx))
+            {
+              msg_notice("Certificate valid, but fingerprint constraints were not met, rejecting connection",
+                         tls_context_format_location_tag(self->ctx));
+              return 0;
+            }
+        }
+      else
+        {
+          /* certificate is NOT valid */
+          if (self->ctx->trusted_fingerprint_list_is_always_trusted && tls_session_verify_fingerprint(ctx))
+            {
+              /* this is a trust anchor that forces the key to be valid */
+              msg_notice("Certificate invalid, but accepting due to being present on trusted-fingerprints()",
+                         evt_tag_str("error", X509_verify_cert_error_string(errnum)),
+                         tls_context_format_location_tag(self->ctx));
+              self->cert_trusted_by_fingerprint = TRUE;
+              return 1;
+            }
+        }
     }
 
   X509 *current_cert = X509_STORE_CTX_get_current_cert(ctx);
@@ -296,6 +365,13 @@ tls_session_verify_callback(int ok, X509_STORE_CTX *ctx)
                      tls_context_format_location_tag(self->ctx));
           break;
         }
+    }
+  else if (self->cert_trusted_by_fingerprint)
+    {
+      msg_debug("Certificate invalid, but accepting due to being present on trusted-fingerprints()",
+                evt_tag_str("error", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx))),
+                tls_context_format_location_tag(self->ctx));
+      return 1;
     }
   else
     {
