@@ -233,13 +233,10 @@ tls_session_verify(TLSSession *self, int ok, X509_STORE_CTX *ctx)
 static void
 _log_certificate_validation_progress(int ok, X509_STORE_CTX *ctx)
 {
-  X509 *xs;
-  GString *subject_name, *issuer_name;
+  X509 *xs = X509_STORE_CTX_get_current_cert(ctx);
 
-  xs = X509_STORE_CTX_get_current_cert(ctx);
-
-  subject_name = g_string_sized_new(128);
-  issuer_name = g_string_sized_new(128);
+  GString *subject_name = g_string_sized_new(128);
+  GString *issuer_name = g_string_sized_new(128);
   tls_x509_format_dn(X509_get_subject_name(xs), subject_name);
   tls_x509_format_dn(X509_get_issuer_name(xs), issuer_name);
 
@@ -247,19 +244,16 @@ _log_certificate_validation_progress(int ok, X509_STORE_CTX *ctx)
     {
       msg_debug("Certificate validation progress",
                 evt_tag_str("subject", subject_name->str),
-                evt_tag_str("issuer", issuer_name->str));
+                evt_tag_str("issuer", issuer_name->str),
+                evt_tag_int("depth", X509_STORE_CTX_get_error_depth(ctx)));
     }
   else
     {
-      gint errnum, errdepth;
-
-      errnum = X509_STORE_CTX_get_error(ctx);
-      errdepth = X509_STORE_CTX_get_error_depth(ctx);
       msg_error("Certificate validation failed",
                 evt_tag_str("subject", subject_name->str),
                 evt_tag_str("issuer", issuer_name->str),
-                evt_tag_str("error", X509_verify_cert_error_string(errnum)),
-                evt_tag_int("depth", errdepth));
+                evt_tag_str("error", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx))),
+                evt_tag_int("depth", X509_STORE_CTX_get_error_depth(ctx)));
     }
   g_string_free(subject_name, TRUE);
   g_string_free(issuer_name, TRUE);
@@ -290,7 +284,7 @@ tls_session_verify_callback(int ok, X509_STORE_CTX *ctx)
           break;
         default:
           msg_notice("Error occurred during certificate validation",
-                     evt_tag_int("error", X509_STORE_CTX_get_error(ctx)),
+                     evt_tag_str("error", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx))),
                      tls_context_format_location_tag(self->ctx));
           break;
         }
