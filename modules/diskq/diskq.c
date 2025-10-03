@@ -284,7 +284,6 @@ _attach(LogDriverPlugin *s, LogDriver *d)
 {
   DiskQDestPlugin *self = (DiskQDestPlugin *) s;
   LogDestDriver *dd = (LogDestDriver *) d;
-  GlobalConfig *cfg = log_pipe_get_config(&d->super);
 
   if (self->options.capacity_bytes < MIN_CAPACITY_BYTES && self->options.capacity_bytes > 0)
     {
@@ -294,10 +293,6 @@ _attach(LogDriverPlugin *s, LogDriver *d)
       self->options.capacity_bytes = MIN_CAPACITY_BYTES;
     }
 
-  if (self->options.flow_control_window_size < 0)
-    self->options.flow_control_window_size = dd->log_fifo_size;
-  if (self->options.flow_control_window_size < 0)
-    self->options.flow_control_window_size = cfg->log_fifo_size;
   if (self->options.front_cache_size < 0)
     self->options.front_cache_size = 1000;
 

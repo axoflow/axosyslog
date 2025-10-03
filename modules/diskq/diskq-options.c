@@ -67,7 +67,8 @@ disk_queue_options_flow_control_window_bytes_set(DiskQueueOptions *self, gint fl
 void
 disk_queue_options_flow_control_window_size_set(DiskQueueOptions *self, gint flow_control_window_size)
 {
-  self->flow_control_window_size = flow_control_window_size;
+  msg_warning_once("The flow-control-window_size() (formerly mem-buf-length()) option is deprecated "
+                   "and no longer has any effect. Remove this option from the config and review log-iw-size() values");
 }
 
 void
@@ -85,20 +86,8 @@ disk_queue_options_set_prealloc(DiskQueueOptions *self, gboolean prealloc)
 void
 disk_queue_options_check_plugin_settings(DiskQueueOptions *self)
 {
-  if (self->reliable)
-    {
-      if (self->flow_control_window_size > 0)
-        {
-          msg_warning("WARNING: flow-control-window-size/mem-buf-length parameter was ignored as it is not compatible with reliable queue. Did you mean flow-control-window-bytes?");
-        }
-    }
-  else
-    {
-      if (self->flow_control_window_bytes > 0)
-        {
-          msg_warning("WARNING: flow-control-window-bytes/mem-buf-size parameter was ignored as it is not compatible with non-reliable queue. Did you mean flow-control-window-size?");
-        }
-    }
+  if (!self->reliable && self->flow_control_window_bytes > 0)
+    msg_warning("WARNING: flow-control-window-bytes/mem-buf-size parameter was ignored as it is not compatible with non-reliable queue");
 }
 
 gchar *
@@ -127,7 +116,6 @@ void
 disk_queue_options_set_default_options(DiskQueueOptions *self)
 {
   self->capacity_bytes = -1;
-  self->flow_control_window_size = -1;
   self->reliable = FALSE;
   self->flow_control_window_bytes = -1;
   self->front_cache_size = -1;

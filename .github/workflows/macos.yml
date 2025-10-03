@@ -14,11 +14,11 @@ jobs:
   general:
     strategy:
       matrix:
-        version: [13, 14]
+        version: [15-intel, 14]
         build-tool: [autotools, cmake]
       fail-fast: false
 
-    runs-on: macOS-${{ matrix.version }}
+    runs-on: macos-${{ matrix.version }}
 
     steps:
       - name: Checkout AxoSyslog source
