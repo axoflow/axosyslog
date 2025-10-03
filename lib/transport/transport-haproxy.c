@@ -335,6 +335,7 @@ _parse_proxy_v2_header(LogTransportHAProxy *self)
   if ((proxy_hdr->ver_cmd & 0xF) == 0)
     {
       /* LOCAL connection */
+      self->info.unknown = TRUE;
       return TRUE;
     }
   else if ((proxy_hdr->ver_cmd & 0xF) == 1)
@@ -512,6 +513,7 @@ static void
 _save_addresses(LogTransportHAProxy *self)
 {
   LogTransportStack *stack = self->super.super.stack;
+
   if (self->info.unknown)
     return;
 
@@ -531,8 +533,6 @@ _save_addresses(LogTransportHAProxy *self)
                                                 g_sockaddr_inet6_new(self->info.dst_ip, self->info.dst_port));
     }
 #endif
-  else
-    g_assert_not_reached();
 }
 
 static Status
@@ -541,7 +541,14 @@ _proccess_proxy_header(LogTransportHAProxy *self)
   Status status = _fetch_into_proxy_buffer(self);
 
   self->proxy_header_processed = (status == STATUS_SUCCESS);
-  if (status != STATUS_SUCCESS)
+  if (status == STATUS_EOF)
+    {
+      /* truncated header */
+      msg_error("Truncated PROXY protocol header",
+                evt_tag_mem("header", self->proxy_header_buff, self->proxy_header_buff_len));
+      return STATUS_ERROR;
+    }
+  else if (status != STATUS_SUCCESS)
     return status;
 
   gboolean parsable = _parse_proxy_header(self);
@@ -550,11 +557,16 @@ _proccess_proxy_header(LogTransportHAProxy *self)
             evt_tag_int("version", self->proxy_header_version),
             self->proxy_header_version == 1
             ? evt_tag_mem("header", self->proxy_header_buff, self->proxy_header_buff_len)
-            : evt_tag_str("header", "<binary_data>"));
+            : evt_tag_str("header", "<binary_data>"),
+            evt_tag_int("health-check", self->info.unknown));
 
   if (parsable)
     {
       msg_trace("PROXY protocol header parsed successfully");
+
+      if (self->info.unknown)
+        return STATUS_EOF;
+
       _save_addresses(self);
 
       return STATUS_SUCCESS;
@@ -574,9 +586,11 @@ _haproxy_read(LogTransport *s, gpointer buf, gsize buflen, LogTransportAuxData *
   if (!self->proxy_header_processed)
     {
       Status status = _proccess_proxy_header(self);
-      if (status != STATUS_SUCCESS)
+      if (status == STATUS_EOF)
+        return 0;
+      else if (status != STATUS_SUCCESS)
         {
-          if (status == STATUS_ERROR || status == STATUS_EOF)
+          if (status == STATUS_ERROR)
             errno = EINVAL;
           else if (status == STATUS_AGAIN)
             errno = EAGAIN;
