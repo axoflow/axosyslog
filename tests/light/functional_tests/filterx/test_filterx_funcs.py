@@ -1005,3 +1005,20 @@ def test_str_strip(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '{"strip":"szirti \\t sas","lstrip":"szirti \\t sas  \\n\\r\\t","rstrip":" \\n\\r\\t  szirti \\t sas"}'
+
+
+def test_dict_to_pairs(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    dict = {
+        "value_1": "foo",
+        "value_2": "bar",
+        "value_3": ["baz", "bax"],
+    };
+    $MSG = dict_to_pairs(dict, "key", "value");
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[{"key":"value_1","value":"foo"},{"key":"value_2","value":"bar"},{"key":"value_3","value":["baz","bax"]}]'
