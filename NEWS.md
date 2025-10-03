@@ -1,4 +1,4 @@
-4.18.0
+4.18.1
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -9,61 +9,20 @@ Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-pa
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
 
-## Features
-
-  * `http()`: Added support for templated `headers()`
-
-    In case of batching the templates in `headers()` will be calculated
-    from the first message. Make sure to use `worker-partition-key()` to
-    group similar messages together.
-
-    Literal dollar signs (`$`) used in `headers()` must be escaped like `$$`.
-    ([#794](https://github.com/axoflow/axosyslog/pull/794))
-
-  * FilterX: unary `+` and `-` operators
-
-    Useful for dynamic string slicing, for example:
-    ```
-    str[..-tempvar]
-    ```
-    ([#788](https://github.com/axoflow/axosyslog/pull/788))
-
-  * FilterX `parse_csv()`: add `quote_pairs` parameter
-
-    For example:
-
-    ```
-    filterx {
-      str = "sarga,[bogre],'gorbe'";
-      $MSG = parse_csv(str, quote_pairs=["[]", "'"]);
-    };
-    ```
-    ([#804](https://github.com/axoflow/axosyslog/pull/804))
-
-
 ## Bugfixes
 
-  * FilterX `in` operator: fix crash when left- or right-hand side operand evaluation fails
-    ([#798](https://github.com/axoflow/axosyslog/pull/798))
+  * `strftime()` FilterX function: Fixed %Z formatting for some rare cases
 
-  * `in` FilterX operator: Fixed finding `message_value`s in arrays.
-    ([#791](https://github.com/axoflow/axosyslog/pull/791))
+    America/Caracas (-04:30) time offset will now be correctly formatted.
+    ([#811](https://github.com/axoflow/axosyslog/pull/811))
 
-  * `python()`: `LogTemplate::format()` now returns a `bytes` object
+  * `disk-buffer()`: fix getting stuck under rare circumstances
+    ([#813](https://github.com/axoflow/axosyslog/pull/813))
 
-    In the Python bindings, `LogMessage` is not UTF-8 or Unicode–safe by default.
-    This means developers must explicitly call `decode()` on message fields and handle any decoding errors themselves.
-
-    Since `LogTemplate` operates on `LogMessage` fields, this behavior also applies to it.
-
-    *Breaking change*:
-    When using templates, you now need to decode the result manually. For example:
-    `format().decode("utf-8", errors="backslashreplace")`
-    ([#799](https://github.com/axoflow/axosyslog/pull/799))
-
-  * `in` FilterX operator: Fixed possible memory corruption regarding unreferencing an operand.
-    ([#792](https://github.com/axoflow/axosyslog/pull/792))
-
+  * `disk-buffer()`: do not allow flow-control misconfiguration
+    The `flow-control-window_size()` (formerly `mem-buf-length()`) option is now deprecated and no longer has any
+    effect.
+    ([#813](https://github.com/axoflow/axosyslog/pull/813))
 
 
 [1] syslog-ng is a trademark of One Identity.
