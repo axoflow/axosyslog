@@ -513,6 +513,7 @@ static void
 _save_addresses(LogTransportHAProxy *self)
 {
   LogTransportStack *stack = self->super.super.stack;
+
   if (self->info.unknown)
     return;
 
@@ -532,8 +533,6 @@ _save_addresses(LogTransportHAProxy *self)
                                                 g_sockaddr_inet6_new(self->info.dst_ip, self->info.dst_port));
     }
 #endif
-  else
-    g_assert_not_reached();
 }
 
 static Status
