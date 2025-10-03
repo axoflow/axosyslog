@@ -247,7 +247,8 @@ _log_certificate_validation_progress(int ok,
     {
       msg_debug("Certificate validation progress",
                 evt_tag_str("subject", subject_name->str),
-                evt_tag_str("issuer", issuer_name->str));
+                evt_tag_str("issuer", issuer_name->str),
+                evt_tag_int("depth", X509_STORE_CTX_get_error_depth(ctx)));
     }
   else
     {
@@ -304,7 +305,7 @@ tls_session_verify_callback(int ok, X509_STORE_CTX *ctx)
           break;
         default:
           msg_notice("Error occurred during certificate validation",
-                     evt_tag_int("error", X509_STORE_CTX_get_error(ctx)),
+                     evt_tag_str("error", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx))),
                      tls_context_format_location_tag(self->ctx));
           break;
         }
