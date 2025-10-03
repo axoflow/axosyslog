@@ -69,15 +69,27 @@ feed_empty_messages(LogQueue *q, const LogPathOptions *path_options, gint n)
     }
 }
 
+static void
+_feed_messages(LogQueue *q, LogPathOptions *path_options, int n)
+{
+  path_options->ack_needed = TRUE;
+  feed_empty_messages(q, path_options, n);
+}
+
 void
 feed_some_messages(LogQueue *q, int n)
 {
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-
-  path_options.ack_needed = TRUE;
   path_options.flow_control_requested = TRUE;
 
-  feed_empty_messages(q, &path_options, n);
+  _feed_messages(q, &path_options, n);
+}
+
+void
+feed_messages_without_flow_control(LogQueue *q, int n)
+{
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  _feed_messages(q, &path_options, n);
 }
 
 void

@@ -38,6 +38,7 @@
 
 #define DISKQ_FILENAME_NOT_RELIABLE "test_become_full_not_reliable.qf"
 #define DISKQ_FILENAME_RELIABLE "test_become_full_reliable.qf"
+#define DISKQ_FILENAME_NR_FLOW_CONTROL "test_non_reliable_flow_control.nqf"
 
 
 static void msg_post_function(LogMessage *msg)
@@ -75,11 +76,13 @@ test_diskq_become_full(gboolean reliable, const gchar *filename)
 
   unlink(filename);
   log_queue_disk_start(q);
-  feed_some_messages(q, 1000);
+  feed_messages_without_flow_control(q, 1000);
 
   cr_assert_eq(atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), 1000,
-               "Bad dropped message number (reliable: %s)",
-               reliable ? "TRUE" : "FALSE");
+               "Bad dropped message number (reliable: %s): actual: %"G_GSSIZE_FORMAT", expected: %d",
+               reliable ? "TRUE" : "FALSE",
+               atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
+               1000);
 
   gboolean persistent;
   log_queue_disk_stop(q, &persistent);
@@ -96,6 +99,44 @@ Test(diskq_full, diskq_become_full_reliable)
 Test(diskq_full, diskq_become_full_non_reliable)
 {
   test_diskq_become_full(FALSE, DISKQ_FILENAME_NOT_RELIABLE);
+}
+
+Test(diskq_full, diskq_non_reliable_flow_control)
+{
+  acked_messages = 0;
+  fed_messages = 0;
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  DiskQueueOptions options = {0};
+  _construct_options(&options, 1000, 0, FALSE);
+  LogQueue *q = log_queue_disk_non_reliable_new(&options, DISKQ_FILENAME_NR_FLOW_CONTROL, "test_nr_fc", STATS_LEVEL0,
+                                                driver_sck_builder, queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+  stats_cluster_key_builder_free(queue_sck_builder);
+
+  unlink(DISKQ_FILENAME_NR_FLOW_CONTROL);
+  log_queue_disk_start(q);
+
+  const int expected_dropped = 1000;
+  feed_messages_without_flow_control(q, expected_dropped);
+
+  cr_assert_eq(atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), expected_dropped,
+               "Bad dropped message number: actual: %"G_GSSIZE_FORMAT", expected: %d",
+               atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
+               expected_dropped);
+
+  feed_some_messages(q, 10);
+  cr_assert_eq(atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value), expected_dropped,
+               "Flow-controlled messages should never be dropped: actual: %"G_GSSIZE_FORMAT", expected: %d",
+               atomic_gssize_racy_get(&q->metrics.shared.dropped_messages->value),
+               expected_dropped);
+
+  gboolean persistent;
+  log_queue_disk_stop(q, &persistent);
+  log_queue_unref(q);
+  disk_queue_options_destroy(&options);
+  unlink(DISKQ_FILENAME_NR_FLOW_CONTROL);
 }
 
 static void
