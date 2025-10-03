@@ -43,6 +43,7 @@ typedef struct _TLSSession
     gchar cn[X509_MAX_CN_LEN];
     gchar fingerprint[X509_MAX_FP_LEN];
   } peer_info;
+  gboolean cert_trusted_by_fingerprint;
 } TLSSession;
 
 void tls_session_configure_allow_compress(TLSSession *tls_session, gboolean allow_compress);
