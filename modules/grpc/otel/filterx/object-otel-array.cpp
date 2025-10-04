@@ -180,11 +180,19 @@ _append(FilterXList *s, FilterXObject **new_value)
 }
 
 static FilterXObject *
-_get_subscript(FilterXList *s, guint64 index)
+_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->get_subscript(index);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return NULL;
+    }
+
+  return self->cpp->get_subscript(normalized_index);
 }
 
 static gboolean
@@ -227,7 +235,6 @@ _init_instance(FilterXOtelArray *self)
 {
   filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_array));
 
-  self->super.get_subscript = _get_subscript;
   self->super.set_subscript = _set_subscript;
   self->super.append = _append;
   self->super.unset_index = _unset_index;
@@ -449,6 +456,7 @@ FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(list),
                     .marshal = _marshal,
                     .clone = _filterx_otel_array_clone,
                     .truthy = _truthy,
+                    .get_subscript = _get_subscript,
                     .repr = _repr,
                     .free_fn = _free,
                    );
