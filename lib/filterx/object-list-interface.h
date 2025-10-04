@@ -33,11 +33,6 @@ typedef struct FilterXList_ FilterXList;
 struct FilterXList_
 {
   FilterXObject super;
-
-  gboolean (*set_subscript)(FilterXList *s, guint64 index, FilterXObject **new_value);
-  gboolean (*append)(FilterXList *s, FilterXObject **new_value);
-  gboolean (*unset_index)(FilterXList *s, guint64 index);
-  guint64 (*len)(FilterXList *s);
 };
 
 FilterXObject *filterx_list_get_subscript(FilterXObject *s, gint64 index);
@@ -61,8 +56,16 @@ filterx_list_normalize_index(FilterXObject *index_object,
 
   if (!index_object)
     {
-      *error = "Index must be set";
-      return FALSE;
+      if (allow_tail)
+        {
+          *normalized_index = len;
+          return TRUE;
+        }
+      else
+        {
+          *error = "Index must be set";
+          return FALSE;
+        }
     }
 
   if (!filterx_integer_unwrap(index_object, &index))
