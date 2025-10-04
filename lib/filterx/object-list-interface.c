@@ -84,58 +84,6 @@ filterx_list_merge(FilterXObject *s, FilterXObject *other)
 }
 
 static gboolean
-_len(FilterXObject *s, guint64 *len)
-{
-  FilterXList *self = (FilterXList *) s;
-  *len = self->len(self);
-  return TRUE;
-}
-
-static gboolean
-_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
-{
-  FilterXList *self = (FilterXList *) s;
-
-  if (!key)
-    return self->append(self, new_value);
-
-  guint64 normalized_index;
-  const gchar *error;
-  if (!filterx_list_normalize_index(key, self->len(self), &normalized_index, TRUE, &error))
-    {
-      filterx_eval_push_error(error, NULL, key);
-      return FALSE;
-    }
-
-  return self->set_subscript(self, normalized_index, new_value);
-}
-
-static gboolean
-_is_key_set(FilterXObject *s, FilterXObject *key)
-{
-  FilterXList *self = (FilterXList *) s;
-  guint64 normalized_index;
-  const gchar *error;
-  return filterx_list_normalize_index(key, self->len(self), &normalized_index, FALSE, &error);
-}
-
-static gboolean
-_unset_key(FilterXObject *s, FilterXObject *key)
-{
-  FilterXList *self = (FilterXList *) s;
-
-  guint64 normalized_index;
-  const gchar *error;
-  if (!filterx_list_normalize_index(key, self->len(self), &normalized_index, FALSE, &error))
-    {
-      filterx_eval_push_error(error, NULL, key);
-      return FALSE;
-    }
-
-  return self->unset_index(self, normalized_index);
-}
-
-static gboolean
 _format_json(FilterXObject *s, GString *json)
 {
   gboolean first = TRUE;
@@ -166,10 +114,6 @@ void
 filterx_list_init_instance(FilterXList *self, FilterXType *type)
 {
   g_assert(type->is_mutable);
-  g_assert(type->len == _len);
-  g_assert(type->set_subscript == _set_subscript);
-  g_assert(type->is_key_set == _is_key_set);
-  g_assert(type->unset_key == _unset_key);
 
   filterx_object_init_instance(&self->super, type);
 }
@@ -195,10 +139,6 @@ error:
 
 FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
-                    .len = _len,
-                    .set_subscript = _set_subscript,
-                    .is_key_set = _is_key_set,
-                    .unset_key = _unset_key,
                     .format_json = _format_json,
                     .add = _add,
                    );
