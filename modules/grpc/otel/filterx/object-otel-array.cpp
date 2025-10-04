@@ -164,19 +164,21 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_value)
+_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->set_subscript(index, new_value);
-}
-
-static gboolean
-_append(FilterXList *s, FilterXObject **new_value)
-{
-  FilterXOtelArray *self = (FilterXOtelArray *) s;
-
-  return self->cpp->append(new_value);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, TRUE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+  if (normalized_index < self->cpp->len())
+    return self->cpp->set_subscript(normalized_index, new_value);
+  else
+    return self->cpp->append(new_value);
 }
 
 static FilterXObject *
@@ -196,19 +198,38 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
 }
 
 static gboolean
-_unset_index(FilterXList *s, guint64 index)
+_unset_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->unset_index(index);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  return self->cpp->unset_index(normalized_index);
 }
 
-static guint64
-_len(FilterXList *s)
+static gboolean
+_len(FilterXObject *s, guint64 *len)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->len();
+  *len = self->cpp->len();
+  return TRUE;
+}
+
+static gboolean
+_is_key_set(FilterXObject *s, FilterXObject *key)
+{
+  FilterXOtelArray *self = (FilterXOtelArray *) s;
+
+  guint64 normalized_index;
+  const gchar *error;
+  return filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error);
 }
 
 static gboolean
@@ -234,11 +255,6 @@ static void
 _init_instance(FilterXOtelArray *self)
 {
   filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_array));
-
-  self->super.set_subscript = _set_subscript;
-  self->super.append = _append;
-  self->super.unset_index = _unset_index;
-  self->super.len = _len;
 }
 
 FilterXObject *
@@ -457,6 +473,10 @@ FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(list),
                     .clone = _filterx_otel_array_clone,
                     .truthy = _truthy,
                     .get_subscript = _get_subscript,
+                    .set_subscript = _set_subscript,
+                    .is_key_set = _is_key_set,
+                    .unset_key = _unset_key,
                     .repr = _repr,
+                    .len = _len,
                     .free_fn = _free,
                    );

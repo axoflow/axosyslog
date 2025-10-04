@@ -119,17 +119,23 @@ _filterx_list_get_subscript(FilterXObject *s, FilterXObject *key)
   return filterx_object_ref(g_ptr_array_index(self->array, normalized_index));
 }
 
-}
-
 static gboolean
-_filterx_list_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_value)
+_filterx_list_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  if (index >= self->array->len)
-    g_ptr_array_set_size(self->array, index + 1);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_list_normalize_index(key, self->array->len, &normalized_index, TRUE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
-  FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, index);
+  if (normalized_index >= self->array->len)
+    g_ptr_array_set_size(self->array, normalized_index + 1);
+
+  FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, normalized_index);
   filterx_ref_unset_parent_container(*slot);
   filterx_object_unref(*slot);
   *slot = filterx_object_cow_store(new_value);
@@ -137,32 +143,41 @@ _filterx_list_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_v
 }
 
 static gboolean
-_filterx_list_append(FilterXList *s, FilterXObject **new_value)
+_filterx_list_unset_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  g_ptr_array_add(self->array, filterx_object_cow_store(new_value));
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_list_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  FilterXObject *v = (FilterXObject *) g_ptr_array_index(self->array, normalized_index);
+  filterx_ref_unset_parent_container(v);
+  g_ptr_array_remove_index(self->array, normalized_index);
   return TRUE;
 }
 
 static gboolean
-_filterx_list_unset_index(FilterXList *s, guint64 index)
+_filterx_list_len(FilterXObject *s, guint64 *len)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  g_assert(index <= self->array->len);
-  FilterXObject *v = (FilterXObject *) g_ptr_array_index(self->array, index);
-  filterx_ref_unset_parent_container(v);
-  g_ptr_array_remove_index(self->array, index);
+  *len = self->array->len;
   return TRUE;
 }
 
-static guint64
-_filterx_list_len(FilterXList *s)
+static gboolean
+_filterx_list_is_key_set(FilterXObject *s, FilterXObject *key)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  return self->array->len;
+  guint64 normalized_index;
+  const gchar *error;
+  return filterx_list_normalize_index(key, self->array->len, &normalized_index, FALSE, &error);
 }
 
 FilterXObject *
@@ -171,10 +186,6 @@ filterx_list_new(void)
   FilterXListObject *self = g_new0(FilterXListObject, 1);
   filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(list_object));
 
-  self->super.set_subscript = _filterx_list_set_subscript;
-  self->super.append = _filterx_list_append;
-  self->super.unset_index = _filterx_list_unset_index;
-  self->super.len = _filterx_list_len;
   self->array = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   return &self->super.super;
 }
@@ -336,5 +347,9 @@ FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
                     .clone = _filterx_list_clone,
                     .clone_container = _filterx_list_clone_container,
                     .get_subscript = _filterx_list_get_subscript,
+                    .set_subscript = _filterx_list_set_subscript,
+                    .is_key_set = _filterx_list_is_key_set,
+                    .unset_key = _filterx_list_unset_key,
+                    .len = _filterx_list_len,
                     .dedup = _filterx_list_dedup,
                    );
