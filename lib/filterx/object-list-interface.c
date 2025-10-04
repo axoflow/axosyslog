@@ -91,22 +91,6 @@ _len(FilterXObject *s, guint64 *len)
   return TRUE;
 }
 
-static FilterXObject *
-_get_subscript(FilterXObject *s, FilterXObject *key)
-{
-  FilterXList *self = (FilterXList *) s;
-
-  guint64 normalized_index;
-  const gchar *error;
-  if (!filterx_list_normalize_index(key, self->len(self), &normalized_index, FALSE, &error))
-    {
-      filterx_eval_push_error(error, NULL, key);
-      return NULL;
-    }
-
-  return self->get_subscript(self, normalized_index);
-}
-
 static gboolean
 _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
@@ -183,7 +167,6 @@ filterx_list_init_instance(FilterXList *self, FilterXType *type)
 {
   g_assert(type->is_mutable);
   g_assert(type->len == _len);
-  g_assert(type->get_subscript == _get_subscript);
   g_assert(type->set_subscript == _set_subscript);
   g_assert(type->is_key_set == _is_key_set);
   g_assert(type->unset_key == _unset_key);
@@ -213,7 +196,6 @@ error:
 FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .len = _len,
-                    .get_subscript = _get_subscript,
                     .set_subscript = _set_subscript,
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,

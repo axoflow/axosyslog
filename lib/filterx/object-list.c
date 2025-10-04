@@ -104,17 +104,21 @@ _filterx_list_repr(FilterXObject *s, GString *repr)
 }
 
 static FilterXObject *
-_filterx_list_get_subscript(FilterXList *s, guint64 index)
+_filterx_list_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  if (index < self->array->len)
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_list_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
     {
-      FilterXObject *value = g_ptr_array_index(self->array, index);
-      return filterx_object_ref(value);
+      filterx_eval_push_error(error, NULL, key);
+      return NULL;
     }
-  else
-    return NULL;
+
+  return filterx_object_ref(g_ptr_array_index(self->array, normalized_index));
+}
+
 }
 
 static gboolean
@@ -167,7 +171,6 @@ filterx_list_new(void)
   FilterXListObject *self = g_new0(FilterXListObject, 1);
   filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(list_object));
 
-  self->super.get_subscript = _filterx_list_get_subscript;
   self->super.set_subscript = _filterx_list_set_subscript;
   self->super.append = _filterx_list_append;
   self->super.unset_index = _filterx_list_unset_index;
@@ -332,5 +335,6 @@ FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
                     .repr = _filterx_list_repr,
                     .clone = _filterx_list_clone,
                     .clone_container = _filterx_list_clone_container,
+                    .get_subscript = _filterx_list_get_subscript,
                     .dedup = _filterx_list_dedup,
                    );
