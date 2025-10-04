@@ -314,18 +314,6 @@ filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize
   return &self->super.super;
 }
 
-static FilterXObject *
-_list_factory(FilterXObject *self)
-{
-  return filterx_otel_array_new();
-}
-
-static FilterXObject *
-_dict_factory(FilterXObject *self)
-{
-  return filterx_otel_kvlist_new();
-}
-
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
@@ -352,8 +340,6 @@ FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(dict),
                     .marshal = _marshal,
                     .clone = _filterx_otel_resource_clone,
                     .truthy = _truthy,
-                    .list_factory = _list_factory,
-                    .dict_factory = _dict_factory,
                     .repr = _repr,
                     .free_fn = _free,
                    );
