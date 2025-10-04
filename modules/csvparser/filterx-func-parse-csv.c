@@ -50,18 +50,13 @@ typedef struct FilterXFunctionParseCSV_
   FilterXExpr *msg;
   CSVScannerOptions options;
   FilterXExpr *string_delimiters;
-
-  struct
-  {
-    FilterXExpr *expr;
-    GPtrArray *literals;
-  } columns;
+  FilterXExpr *columns;
 } FilterXFunctionParseCSV;
 
 static inline gboolean
 _are_column_names_set(FilterXFunctionParseCSV *self)
 {
-  return self->columns.expr || self->columns.literals;
+  return !!self->columns;
 }
 
 static gboolean
@@ -128,21 +123,14 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_
 static inline gboolean
 _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guint64 *num_of_columns)
 {
-  if (self->columns.literals)
-    {
-      *num_of_columns = self->columns.literals->len;
-      *columns = NULL;
-      return TRUE;
-    }
-
-  if (!self->columns.expr)
+  if (!self->columns)
     {
       *columns = NULL;
       *num_of_columns = 0;
       return TRUE;
     }
 
-  *columns = filterx_expr_eval(self->columns.expr);
+  *columns = filterx_expr_eval(self->columns);
   if (!*columns)
     {
       filterx_eval_push_error_static_info("Failed to initialize parse_csv()", &self->super.super,
@@ -174,10 +162,7 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
                  FilterXObject *result)
 {
   FilterXObject *col;
-  if (self->columns.literals)
-    col = filterx_object_ref(g_ptr_array_index(self->columns.literals, index));
-  else
-    col = filterx_sequence_get_subscript(cols, index);
+  col = filterx_sequence_get_subscript(cols, index);
 
   FILTERX_STRING_DECLARE_ON_STACK(val,
                                   csv_scanner_get_current_value(scanner),
@@ -298,7 +283,7 @@ _optimize(FilterXExpr *s)
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
 
   self->msg = filterx_expr_optimize(self->msg);
-  self->columns.expr = filterx_expr_optimize(self->columns.expr);
+  self->columns = filterx_expr_optimize(self->columns);
   self->string_delimiters = filterx_expr_optimize(self->string_delimiters);
 
   return filterx_function_optimize_method(&self->super);
@@ -312,7 +297,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->msg, cfg))
     return FALSE;
 
-  if (!filterx_expr_init(self->columns.expr, cfg))
+  if (!filterx_expr_init(self->columns, cfg))
     {
       filterx_expr_deinit(self->msg, cfg);
       return FALSE;
@@ -321,7 +306,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
   if (!filterx_expr_init(self->string_delimiters, cfg))
     {
       filterx_expr_deinit(self->msg, cfg);
-      filterx_expr_deinit(self->columns.expr, cfg);
+      filterx_expr_deinit(self->columns, cfg);
       return FALSE;
     }
 
@@ -333,7 +318,7 @@ _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
   filterx_expr_deinit(self->msg, cfg);
-  filterx_expr_deinit(self->columns.expr, cfg);
+  filterx_expr_deinit(self->columns, cfg);
   filterx_expr_deinit(self->string_delimiters, cfg);
   filterx_function_deinit_method(&self->super, cfg);
 }
@@ -343,9 +328,7 @@ _free(FilterXExpr *s)
 {
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
   filterx_expr_unref(self->msg);
-  filterx_expr_unref(self->columns.expr);
-  if (self->columns.literals)
-    g_ptr_array_unref(self->columns.literals);
+  filterx_expr_unref(self->columns);
   filterx_expr_unref(self->string_delimiters);
   csv_scanner_options_clean(&self->options);
   filterx_function_free_method(&self->super);
@@ -547,41 +530,6 @@ error:
 }
 
 static gboolean
-_add_literal_column(gsize index, FilterXExpr *column, gpointer user_data)
-{
-  GPtrArray *literal_columns = (GPtrArray *) user_data;
-
-  if (!filterx_expr_is_literal(column))
-    return FALSE;
-
-  FilterXObject *column_name = filterx_literal_get_value(column);
-
-  if (!filterx_object_is_type(column_name, &FILTERX_TYPE_NAME(string)))
-    {
-      filterx_object_unref(column_name);
-      return FALSE;
-    }
-
-  g_ptr_array_add(literal_columns, column_name);
-  return TRUE;
-}
-
-static gboolean
-_extract_literal_columns(FilterXFunctionParseCSV *self, FilterXExpr *columns)
-{
-  GPtrArray *literal_columns = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-
-  if (!filterx_literal_list_foreach(columns, _add_literal_column, literal_columns))
-    {
-      g_ptr_array_unref(literal_columns);
-      return FALSE;
-    }
-
-  self->columns.literals = literal_columns;
-  return TRUE;
-}
-
-static gboolean
 _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError **error)
 {
   gsize args_len = filterx_function_args_len(args);
@@ -596,12 +544,7 @@ _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
   if (!self->msg)
     return FALSE;
 
-  FilterXExpr *columns = _extract_columns_expr(args, error);
-  if (filterx_expr_is_literal_list(columns) && _extract_literal_columns(self, columns))
-    filterx_expr_unref(columns);
-  else
-    self->columns.expr = columns;
-
+  self->columns = _extract_columns_expr(args, error);
   self->string_delimiters = _extract_stringdelimiters_expr(args, error);
 
   if (!_extract_opts(self, args, error))
