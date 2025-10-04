@@ -34,7 +34,6 @@ struct FilterXList_
 {
   FilterXObject super;
 
-  FilterXObject *(*get_subscript)(FilterXList *s, guint64 index);
   gboolean (*set_subscript)(FilterXList *s, guint64 index, FilterXObject **new_value);
   gboolean (*append)(FilterXList *s, FilterXObject **new_value);
   gboolean (*unset_index)(FilterXList *s, guint64 index);
