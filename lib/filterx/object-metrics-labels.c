@@ -68,27 +68,33 @@ _repr(FilterXObject *s, GString *repr)
   return TRUE;
 }
 
-static guint64
-_len(FilterXDict *s)
+static gboolean
+_len(FilterXObject *s, guint64 *len)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
 
-  return self->labels->len;
+  *len = self->labels->len;
+  return TRUE;
 }
 
 static FilterXObject *
-_get_subscript(FilterXDict *s, FilterXObject *key)
+_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
 
   const gchar *key_str;
-  if (!filterx_object_extract_string_ref(key, &key_str, NULL))
-    return NULL;
+  gsize key_len;
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return NULL;
+    }
 
   for (gssize i = (gssize)(self->labels->len) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
-      if (strcmp(label->name, key_str) == 0)
+      if (strncmp(label->name, key_str, key_len) == 0)
         return filterx_string_new(label->value, -1);
     }
 
@@ -127,9 +133,18 @@ _is_empty_value(FilterXObject *value)
 }
 
 static gboolean
-_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
+_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  const gchar *key_str;
+  gsize key_len;
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
   if (_is_empty_value(*new_value))
     return TRUE;
@@ -160,18 +175,47 @@ _set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
 }
 
 static gboolean
-_unset_key(FilterXDict *s, FilterXObject *key)
+_is_key_set(FilterXObject *s, FilterXObject *key)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
 
   const gchar *key_str;
-  if (!filterx_object_extract_string_ref(key, &key_str, NULL))
-    return FALSE;
+  gsize key_len;
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
   for (gssize i = (gssize)(self->labels->len) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
-      if (strcmp(label->name, key_str) == 0)
+      if (strncmp(label->name, key_str, key_len) == 0)
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+static gboolean
+_unset_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
+
+  const gchar *key_str;
+  gsize key_len;
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  for (gssize i = (gssize)(self->labels->len) - 1; i >= 0; i--)
+    {
+      StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
+      if (strncmp(label->name, key_str, key_len) == 0)
         g_array_remove_index(self->labels, i);
     }
 
@@ -299,10 +343,6 @@ filterx_object_metrics_labels_new(guint reserved_size)
   FilterXObjectMetricsLabels *self = g_new0(FilterXObjectMetricsLabels, 1);
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
 
-  self->super.get_subscript = _get_subscript;
-  self->super.set_subscript = _set_subscript;
-  self->super.unset_key = _unset_key;
-  self->super.len = _len;
   self->super.iter = _iter;
 
   self->labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), reserved_size);
@@ -394,5 +434,10 @@ FILTERX_DEFINE_TYPE(metrics_labels, FILTERX_TYPE_NAME(dict),
                     .marshal = _marshal,
                     .repr = _repr,
                     .clone = _clone,
+                    .get_subscript = _get_subscript,
+                    .set_subscript = _set_subscript,
+                    .is_key_set = _is_key_set,
+                    .unset_key = _unset_key,
+                    .len = _len,
                     .free_fn = _free,
                    );

@@ -91,97 +91,16 @@ error:
   return FALSE;
 }
 
-static gboolean
-_len(FilterXObject *s, guint64 *len)
-{
-  FilterXDict *self = (FilterXDict *) s;
-  *len = self->len(self);
-  return TRUE;
-}
-
-static FilterXObject *
-_get_subscript(FilterXObject *s, FilterXObject *key)
-{
-  FilterXDict *self = (FilterXDict *) s;
-
-  if (!key)
-    {
-      filterx_eval_push_error_static_info("Failed to get element of dict", NULL, "Key is mandatory");
-      return NULL;
-    }
-
-  return self->get_subscript(self, key);
-}
-
-static gboolean
-_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
-{
-  FilterXDict *self = (FilterXDict *) s;
-
-  if (!key)
-    {
-      filterx_eval_push_error_static_info("Failed to set element of dict", NULL, "Key is mandatory");
-      return FALSE;
-    }
-
-  return self->set_subscript(self, key, new_value);
-}
-
-static gboolean
-_is_key_set(FilterXObject *s, FilterXObject *key)
-{
-  FilterXDict *self = (FilterXDict *) s;
-
-  if (!key)
-    {
-      filterx_eval_push_error_static_info("Failed to check key of dict", NULL, "Key is mandatory");
-      return FALSE;
-    }
-
-  if (self->is_key_set)
-    return self->is_key_set(self, key);
-
-  FilterXObject *value = self->get_subscript(self, key);
-  filterx_object_unref(value);
-  return !!value;
-}
-
-static gboolean
-_unset_key(FilterXObject *s, FilterXObject *key)
-{
-  FilterXDict *self = (FilterXDict *) s;
-
-  if (!key)
-    {
-      filterx_eval_push_error_static_info("Failed to unset element of dict", NULL, "Key is mandatory");
-      return FALSE;
-    }
-
-  return self->unset_key(self, key);
-}
-
 static FilterXObject *
 _getattr(FilterXObject *s, FilterXObject *attr)
 {
-  FilterXDict *self = (FilterXDict *) s;
-
-  if (!self->support_attr)
-    return NULL;
-
-  FilterXObject *result = self->get_subscript(self, attr);
-  return result;
+  return filterx_object_get_subscript(s, attr);
 }
 
 static gboolean
 _setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_value)
 {
-  FilterXDict *self = (FilterXDict *) s;
-
-  if (!self->support_attr)
-    return FALSE;
-
-  gboolean result = self->set_subscript(self, attr, new_value);
-  return result;
+  return filterx_object_set_subscript(s, attr, new_value);
 }
 
 static gboolean
@@ -226,17 +145,7 @@ void
 filterx_dict_init_instance(FilterXDict *self, FilterXType *type)
 {
   g_assert(type->is_mutable);
-  g_assert(type->len == _len);
-  g_assert(type->get_subscript == _get_subscript);
-  g_assert(type->set_subscript == _set_subscript);
-  g_assert(type->is_key_set == _is_key_set);
-  g_assert(type->unset_key == _unset_key);
-  g_assert(type->getattr == _getattr);
-  g_assert(type->setattr == _setattr);
-
   filterx_object_init_instance(&self->super, type);
-
-  self->support_attr = TRUE;
 }
 
 static FilterXObject *
@@ -259,11 +168,6 @@ error:
 
 FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
-                    .len = _len,
-                    .get_subscript = _get_subscript,
-                    .set_subscript = _set_subscript,
-                    .is_key_set = _is_key_set,
-                    .unset_key = _unset_key,
                     .getattr = _getattr,
                     .setattr = _setattr,
                     .format_json = _format_json,
