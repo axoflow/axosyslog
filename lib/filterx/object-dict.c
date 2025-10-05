@@ -345,6 +345,19 @@ _table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value
 }
 
 static gboolean
+_table_isset(FilterXDictTable *table, FilterXObject *key)
+{
+  guint hash = _table_hash_key(key);
+
+  FilterXDictIndexSlot index_slot;
+
+  if (!_table_lookup_index_slot(table, key, hash, &index_slot))
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
 _table_unset(FilterXDictTable *table, FilterXObject *key)
 {
   guint hash = _table_hash_key(key);
@@ -543,21 +556,15 @@ _filterx_dict_repr(FilterXObject *s, GString *repr)
   return filterx_object_to_json(s, repr);
 }
 
-static inline gboolean
-_is_string(FilterXObject *o)
-{
-  return filterx_object_is_type(o, &FILTERX_TYPE_NAME(string))
-         || (filterx_object_is_type(o, &FILTERX_TYPE_NAME(message_value))
-             && filterx_message_value_get_type(o) == LM_VT_STRING);
-}
-
 static FilterXObject *
-_filterx_dict_get_subscript(FilterXDict *s, FilterXObject *key)
+_filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  if (!_is_string(key))
+  const gchar *error = NULL;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
     {
+      filterx_eval_push_error(error, NULL, key);
       return NULL;
     }
 
@@ -568,14 +575,16 @@ _filterx_dict_get_subscript(FilterXDict *s, FilterXObject *key)
 }
 
 static gboolean
-_filterx_dict_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
+_filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  g_assert(*new_value);
-
-  if (!_is_string(key))
-    return FALSE;
+  const gchar *error = NULL;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
   self->table = _table_resize_if_needed(self->table);
   _table_insert(self->table, filterx_object_ref(key), filterx_object_cow_store(new_value));
@@ -584,22 +593,42 @@ _filterx_dict_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **
 }
 
 static gboolean
-_filterx_dict_unset_key(FilterXDict *s, FilterXObject *key)
+_filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  if (!_is_string(key))
-    return FALSE;
+  const gchar *error = NULL;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  return _table_isset(self->table, key);
+}
+
+static gboolean
+_filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  const gchar *error = NULL;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
   return _table_unset(self->table, key);
 }
 
-static guint64
-_filterx_dict_len(FilterXDict *s)
+static gboolean
+_filterx_dict_len(FilterXObject *s, guint64 *len)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  return _table_size(self->table);
+  *len = _table_size(self->table);
+  return TRUE;
 }
 
 static gboolean
@@ -627,12 +656,8 @@ filterx_dict_new_with_table(FilterXDictTable *table)
   FilterXDictObject *self = g_new0(FilterXDictObject, 1);
 
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(dict_object));
-  self->table = table;
-  self->super.get_subscript = _filterx_dict_get_subscript;
-  self->super.set_subscript = _filterx_dict_set_subscript;
-  self->super.unset_key = _filterx_dict_unset_key;
-  self->super.len = _filterx_dict_len;
   self->super.iter = _filterx_dict_iter;
+  self->table = table;
   return &self->super.super;
 }
 
@@ -767,5 +792,10 @@ FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
                     .repr = _filterx_dict_repr,
                     .clone = _filterx_dict_clone,
                     .clone_container = _filterx_dict_clone_container,
+                    .get_subscript = _filterx_dict_get_subscript,
+                    .set_subscript = _filterx_dict_set_subscript,
+                    .is_key_set = _filterx_dict_is_key_set,
+                    .unset_key = _filterx_dict_unset_key,
+                    .len = _filterx_dict_len,
                     .dedup = _filterx_dict_dedup,
                    );

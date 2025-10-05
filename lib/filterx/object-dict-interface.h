@@ -24,6 +24,9 @@
 #define FILTERX_OBJECT_DICT_INTERFACE_H_INCLUDED
 
 #include "filterx/filterx-object.h"
+#include "filterx/object-string.h"
+#include "filterx/object-message-value.h"
+#include "filterx/object-extractor.h"
 
 typedef struct FilterXDict_ FilterXDict;
 
@@ -32,13 +35,7 @@ typedef gboolean (*FilterXDictIterFunc)(FilterXObject *, FilterXObject *, gpoint
 struct FilterXDict_
 {
   FilterXObject super;
-  gboolean support_attr;
 
-  FilterXObject *(*get_subscript)(FilterXDict *s, FilterXObject *key);
-  gboolean (*set_subscript)(FilterXDict *s, FilterXObject *key, FilterXObject **new_value);
-  gboolean (*is_key_set)(FilterXDict *s, FilterXObject *key);
-  gboolean (*unset_key)(FilterXDict *s, FilterXObject *key);
-  guint64 (*len)(FilterXDict *s);
   gboolean (*iter)(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data);
 };
 
@@ -49,5 +46,36 @@ gboolean filterx_dict_keys(FilterXObject *s, FilterXObject **keys);
 void filterx_dict_init_instance(FilterXDict *self, FilterXType *type);
 
 FILTERX_DECLARE_TYPE(dict);
+
+static inline gboolean
+filterx_dict_normalize_key(FilterXObject *key, const gchar **key_string, gsize *key_len, const gchar **error)
+{
+  if (!key)
+    {
+      *error = "Key is mandatory";
+      return FALSE;
+    }
+
+  if (key_string)
+    {
+      if (!filterx_object_extract_string_ref(key, key_string, key_len))
+        {
+          *error = "Key must be a string";
+          return FALSE;
+        }
+      return TRUE;
+    }
+  else
+    {
+      if (!(filterx_object_is_type(key, &FILTERX_TYPE_NAME(string)) ||
+            (filterx_object_is_type(key, &FILTERX_TYPE_NAME(message_value)) &&
+             filterx_message_value_get_type(key) == LM_VT_STRING)))
+        {
+          *error = "Key must be a string";
+          return FALSE;
+        }
+    }
+  return TRUE;
+}
 
 #endif

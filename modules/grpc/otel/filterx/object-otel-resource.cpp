@@ -173,43 +173,69 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
+_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
+
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
   return self->cpp->set_subscript(key, new_value);
 }
 
 static FilterXObject *
-_get_subscript(FilterXDict *s, FilterXObject *key)
+_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return NULL;
+    }
   return self->cpp->get_subscript(key);
 }
 
 static gboolean
-_unset_key(FilterXDict *s, FilterXObject *key)
+_unset_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
   return self->cpp->unset_key(key);
 }
 
 static gboolean
-_is_key_set(FilterXDict *s, FilterXObject *key)
+_is_key_set(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
+  const gchar *error;
+  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
   return self->cpp->is_key_set(key);
 }
 
-static guint64
-_len(FilterXDict *s)
+static gboolean
+_len(FilterXObject *s, guint64 *len)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
-  return self->cpp->len();
+  *len = self->cpp->len();
+  return TRUE;
 }
 
 static gboolean
@@ -244,11 +270,6 @@ _init_instance(FilterXOtelResource *self)
 {
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_resource));
 
-  self->super.get_subscript = _get_subscript;
-  self->super.set_subscript = _set_subscript;
-  self->super.unset_key = _unset_key;
-  self->super.is_key_set = _is_key_set;
-  self->super.len = _len;
   self->super.iter = _iter;
 }
 
@@ -340,6 +361,11 @@ FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(dict),
                     .marshal = _marshal,
                     .clone = _filterx_otel_resource_clone,
                     .truthy = _truthy,
+                    .get_subscript = _get_subscript,
+                    .set_subscript = _set_subscript,
+                    .is_key_set = _is_key_set,
+                    .unset_key = _unset_key,
                     .repr = _repr,
+                    .len = _len,
                     .free_fn = _free,
                    );
