@@ -24,14 +24,22 @@
 
 #include "filterx/filterx-object.h"
 
+/* an object representing a (type, value) pair extracted as an rvalue (e.g.
+ * cannot be assigned to as it is not part of the message) */
+typedef struct _FilterXMessageValue
+{
+  FilterXObject super;
+  const gchar *repr;
+  gsize repr_len;
+  LogMessageValueType type;
+  gchar *buf;
+} FilterXMessageValue;
+
 FILTERX_DECLARE_TYPE(message_value);
 
 FilterXObject *filterx_message_value_new_borrowed(const gchar *repr, gssize repr_len, LogMessageValueType type);
 FilterXObject *filterx_message_value_new_ref(gchar *repr, gssize repr_len, LogMessageValueType type);
 FilterXObject *filterx_message_value_new(const gchar *repr, gssize repr_len, LogMessageValueType type);
-
-LogMessageValueType filterx_message_value_get_type(FilterXObject *s);
-const gchar *filterx_message_value_get_value(FilterXObject *s, gsize *len);
 
 gboolean filterx_message_value_get_string_ref(FilterXObject *s, const gchar **value, gsize *len);
 gboolean filterx_message_value_get_bytes_ref(FilterXObject *s, const gchar **value, gsize *len);
@@ -45,5 +53,23 @@ gboolean filterx_message_value_get_json(FilterXObject *s, struct json_object **v
 
 /* unmarshal a message representation into a FilterXObject */
 FilterXObject *filterx_unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t);
+
+static inline LogMessageValueType
+filterx_message_value_get_type(FilterXObject *s)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+  return self->type;
+}
+
+static inline const gchar *
+filterx_message_value_get_value(FilterXObject *s, gsize *len)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+
+  g_assert(len);
+  *len = self->repr_len;
+  return self->repr;
+}
+
 
 #endif
