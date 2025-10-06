@@ -103,7 +103,7 @@ _append_data_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
   FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
   if(filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)))
     {
-      if(!filterx_dict_iter(value_unwrapped, _append_inner_data_dict_element, user_data))
+      if(!filterx_object_iter(value_unwrapped, _append_inner_data_dict_element, user_data))
         return FALSE;
 
       return TRUE;
@@ -166,13 +166,13 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
   if (g_strcmp0(key_str, "EventData") == 0)
     {
       FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
-      if(!filterx_dict_iter(dict_unwrapped, _append_data_dict, user_data))
+      if(!filterx_object_iter(dict_unwrapped, _append_data_dict, user_data))
         return FALSE;
     }
   else
     {
       *is_only_attribute_present = FALSE;
-      if (!filterx_dict_iter(dict, append_object, user_data))
+      if (!filterx_object_iter(dict, append_object, user_data))
         return FALSE;
     }
 

@@ -119,7 +119,7 @@ _eval(FilterXExpr *s)
 
   GString *formatted = scratch_buffers_alloc();
   gpointer user_data[] = { self, formatted };
-  gboolean success = filterx_dict_iter(kvs, _append_kv_to_buffer, user_data);
+  gboolean success = filterx_object_iter(kvs, _append_kv_to_buffer, user_data);
 
   filterx_object_unref(obj);
   return success ? filterx_string_new(formatted->str, formatted->len) : NULL;

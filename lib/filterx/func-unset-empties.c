@@ -151,7 +151,7 @@ _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
   FilterXObject *keys_to_unset[len];
 
   gpointer user_data[] = { self, GINT_TO_POINTER(len), &num, &keys_to_unset };
-  gboolean success = filterx_dict_iter(obj, _add_key_to_unset_list_if_needed, user_data);
+  gboolean success = filterx_object_iter(obj, _add_key_to_unset_list_if_needed, user_data);
 
   for (gint i = 0; i < num; i++)
     {

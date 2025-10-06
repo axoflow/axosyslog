@@ -336,7 +336,7 @@ filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsiz
               self->cpp->set_data(data_cpp);
 
               gpointer user_data[] = {static_cast<gpointer>(self->cpp), static_cast<gpointer>(buf)};
-              if (!filterx_dict_iter(attributes_arg, _build_map, user_data))
+              if (!filterx_object_iter(attributes_arg, _build_map, user_data))
                 {
                   throw std::runtime_error("dictionary argument iterator resulted with some error");
                 }

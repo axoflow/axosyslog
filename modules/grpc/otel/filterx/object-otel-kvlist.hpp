@@ -65,7 +65,7 @@ public:
   FilterXObject *get_subscript(FilterXObject *key);
   bool unset_key(FilterXObject *key);
   uint64_t len() const;
-  bool iter(FilterXDictIterFunc func, gpointer user_data) const;
+  bool iter(FilterXObjectIterFunc func, gpointer user_data) const;
   const RepeatedPtrField<KeyValue> &get_value() const;
 
 private:

@@ -29,15 +29,6 @@
 #include "utf8utils.h"
 
 
-gboolean
-filterx_dict_iter(FilterXObject *s, FilterXDictIterFunc func, gpointer user_data)
-{
-  FilterXDict *self = (FilterXDict *) s;
-  if (!self->iter)
-    return FALSE;
-  return self->iter(self, func, user_data);
-}
-
 static gboolean
 _add_elem_to_dict(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
 {
@@ -57,7 +48,7 @@ filterx_dict_merge(FilterXObject *s, FilterXObject *other)
 
   other = filterx_ref_unwrap_ro(other);
   g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(dict)));
-  return filterx_dict_iter(other, _add_elem_to_dict, self);
+  return filterx_object_iter(other, _add_elem_to_dict, self);
 }
 
 static gboolean
@@ -82,7 +73,7 @@ filterx_dict_keys(FilterXObject *s, FilterXObject **keys)
     goto error;
   g_assert(filterx_object_is_type(*keys, &FILTERX_TYPE_NAME(list)));
 
-  gboolean result = filterx_dict_iter(obj, _add_elem_to_list, *keys);
+  gboolean result = filterx_object_iter(obj, _add_elem_to_list, *keys);
 
   filterx_object_unref(s);
   return result;
@@ -134,7 +125,7 @@ _format_json(FilterXObject *value, GString *json)
 
   g_string_append_c(json, '{');
 
-  if (!filterx_dict_iter(value, _format_and_append_dict_elem, args))
+  if (!filterx_object_iter(value, _format_and_append_dict_elem, args))
     return FALSE;
 
   g_string_append_c(json, '}');

@@ -220,6 +220,13 @@ _filterx_ref_is_key_set(FilterXObject *s, FilterXObject *key)
 }
 
 static gboolean
+_filterx_ref_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
+{
+  FilterXRef *self = (FilterXRef *) s;
+  return filterx_object_iter(self->value, func, user_data);
+}
+
+static gboolean
 _filterx_ref_repr_append(FilterXObject *s, GString *repr)
 {
   FilterXRef *self = (FilterXRef *) s;
@@ -284,6 +291,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .set_subscript = _filterx_ref_set_subscript,
                     .is_key_set = _filterx_ref_is_key_set,
                     .unset_key = _filterx_ref_unset_key,
+                    .iter = _filterx_ref_iter,
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,

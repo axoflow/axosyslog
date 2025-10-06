@@ -289,7 +289,7 @@ Test(otel_filterx, logrecord_iter)
   cr_assert(filterx_object_set_subscript(logrecord, observed_time_unix_nano, &observed_time_unix_nano_val));
 
   GString *output = g_string_new(NULL);
-  cr_assert(filterx_dict_iter(logrecord, _append_to_str, output));
+  cr_assert(filterx_object_iter(logrecord, _append_to_str, output));
 
   cr_assert_str_eq(output->str,
                    "time_unix_nano\n0.000123+00:00\nbody\nbody_val\nobserved_time_unix_nano\n1712736550.001000+00:00\n");
@@ -470,7 +470,7 @@ Test(otel_filterx, resource_iter)
   cr_assert(filterx_object_set_subscript(resource, dropped_attributes_count, &dropped_attributes_count_val));
 
   GString *output = g_string_new(NULL);
-  cr_assert(filterx_dict_iter(resource, _append_to_str, output));
+  cr_assert(filterx_object_iter(resource, _append_to_str, output));
 
   cr_assert_str_eq(output->str, "dropped_attributes_count\n42\n");
 
@@ -938,7 +938,7 @@ Test(otel_filterx, scope_iter)
   cr_assert(filterx_object_set_subscript(scope, version, &version_val));
 
   GString *output = g_string_new(NULL);
-  cr_assert(filterx_dict_iter(scope, _append_to_str, output));
+  cr_assert(filterx_object_iter(scope, _append_to_str, output));
 
   cr_assert_str_eq(output->str, "name\nname_val\nversion\nversion_val\n");
 

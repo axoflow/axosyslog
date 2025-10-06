@@ -90,7 +90,7 @@ FilterXProtobufFormatter::format(FilterXObject *object) const
   google::protobuf::Message *message = this->proto_schema_file_loader.get_schema_prototype().New();
 
   gpointer user_data = static_cast<gpointer>(message);
-  gboolean success = filterx_dict_iter(object_unwrapped, _format_element, user_data);
+  gboolean success = filterx_object_iter(object_unwrapped, _format_element, user_data);
 
   if (!success)
     {

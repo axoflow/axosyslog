@@ -56,7 +56,7 @@ public:
   bool unset_key(FilterXObject *key);
   bool is_key_set(FilterXObject *key);
   uint64_t len() const;
-  bool iter(FilterXDictIterFunc func, void *user_data);
+  bool iter(FilterXObjectIterFunc func, void *user_data);
   const opentelemetry::proto::resource::v1::Resource &get_value() const;
 
 private:
