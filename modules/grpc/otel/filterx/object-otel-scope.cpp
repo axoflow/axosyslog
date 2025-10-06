@@ -365,7 +365,7 @@ FILTERX_DEFINE_TYPE(otel_scope, FILTERX_TYPE_NAME(dict),
                     .set_subscript = _set_subscript,
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
-                    .repr = _repr,
                     .len = _len,
+                    .repr = _repr,
                     .free_fn = _free,
                    );
