@@ -308,7 +308,7 @@ _format_dict_to_store(FilterXObject *obj, DynMetricsStore *store, StatsClusterLa
       return FALSE;
     }
 
-  if (!filterx_dict_iter(typed_obj, _format_dict_elem_to_store, store))
+  if (!filterx_object_iter(typed_obj, _format_dict_elem_to_store, store))
     return FALSE;
 
   dyn_metrics_store_sort_cached_labels(store);

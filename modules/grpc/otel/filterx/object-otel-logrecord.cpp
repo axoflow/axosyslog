@@ -156,7 +156,7 @@ LogRecord::len() const
 }
 
 bool
-LogRecord::iter(FilterXDictIterFunc func, void *user_data)
+LogRecord::iter(FilterXObjectIterFunc func, void *user_data)
 {
   return iter_on_otel_protobuf_message_fields(logRecord, func, user_data);
 }
@@ -258,7 +258,7 @@ _len(FilterXObject *s, guint64 *len)
 }
 
 static gboolean
-_iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
+_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
   FilterXOtelLogRecord *self = (FilterXOtelLogRecord *) s;
 
@@ -289,7 +289,6 @@ _init_instance(FilterXOtelLogRecord *self)
 {
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_logrecord));
 
-  self->super.iter = _iter;
 }
 
 FilterXObject *
@@ -384,6 +383,7 @@ FILTERX_DEFINE_TYPE(otel_logrecord, FILTERX_TYPE_NAME(dict),
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
                     .len = _len,
+                    .iter = _iter,
                     .repr = _repr,
                     .free_fn = _free,
                    );

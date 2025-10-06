@@ -237,7 +237,7 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
       gsize fields_to_find = ctx->config.header.num_fields - 1;
       gboolean first = TRUE;
       gpointer user_data[] = { ctx, formatted, &first, &fields_to_find };
-      success = filterx_dict_iter(dict, _append_non_separate_extension, user_data);
+      success = filterx_object_iter(dict, _append_non_separate_extension, user_data);
       goto exit;
     }
 
@@ -254,7 +254,7 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
 
   gboolean first = TRUE;
   gpointer user_data[] = { ctx, formatted, &first };
-  success = filterx_dict_iter(extensions_dict, _append_extension, user_data);
+  success = filterx_object_iter(extensions_dict, _append_extension, user_data);
 
 exit:
   filterx_object_unref(extensions);

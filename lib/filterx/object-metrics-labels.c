@@ -223,7 +223,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 }
 
 static gboolean
-_iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
+_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
 
@@ -343,7 +343,6 @@ filterx_object_metrics_labels_new(guint reserved_size)
   FilterXObjectMetricsLabels *self = g_new0(FilterXObjectMetricsLabels, 1);
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
 
-  self->super.iter = _iter;
 
   self->labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), reserved_size);
 
@@ -438,6 +437,7 @@ FILTERX_DEFINE_TYPE(metrics_labels, FILTERX_TYPE_NAME(dict),
                     .set_subscript = _set_subscript,
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
+                    .iter = _iter,
                     .len = _len,
                     .free_fn = _free,
                    );

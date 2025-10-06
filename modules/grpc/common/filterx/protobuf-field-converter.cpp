@@ -614,7 +614,7 @@ MapFieldConverter::set_repeated(Message *message, const std::string &field_name,
     }
 
   gpointer user_data[] = { message, &reflectors };
-  return filterx_dict_iter(dict, _map_add_elem, user_data);
+  return filterx_object_iter(dict, _map_add_elem, user_data);
 }
 
 bool
@@ -729,7 +729,7 @@ public:
 
     Message *inner_message = reflectors.reflection->MutableMessage(message, reflectors.field_descriptor);
     gpointer user_data = inner_message;
-    return filterx_dict_iter(dict, _message_add_elem, user_data);
+    return filterx_object_iter(dict, _message_add_elem, user_data);
   }
 
   bool add(Message *message, ProtoReflectors reflectors, FilterXObject *object)
@@ -743,7 +743,7 @@ public:
 
     Message *inner_message = reflectors.reflection->AddMessage(message, reflectors.field_descriptor);
     gpointer user_data = inner_message;
-    return filterx_dict_iter(dict, _message_add_elem, user_data);
+    return filterx_object_iter(dict, _message_add_elem, user_data);
   }
 };
 

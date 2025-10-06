@@ -57,7 +57,7 @@ extern AnyValueFieldConverter any_value_field;
 ProtobufFieldConverter *get_otel_protobuf_field_converter(FieldDescriptor::Type field_type);
 ProtobufFieldConverter *get_otel_protobuf_field_converter(const FieldDescriptor *fd);
 
-bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXDictIterFunc func,
+bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXObjectIterFunc func,
                                           void *user_data);
 
 }

@@ -79,7 +79,7 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
 
   gsize prev_buffer_len = buffer->len;
   *is_only_attribute_present = FALSE;
-  if(!filterx_dict_iter(dict, append_object, user_data))
+  if (!filterx_object_iter(dict, append_object, user_data))
     return FALSE;
 
   append_inner_dict_end_tag(key_str, user_data, prev_buffer_len);
@@ -277,7 +277,7 @@ _eval(FilterXExpr *s)
   gboolean is_only_attribute_present = FALSE;
   gpointer user_data[] = { self, formatted, &is_only_attribute_present };
 
-  if (!filterx_dict_iter(input_dict_unwrapped, append_object, user_data))
+  if (!filterx_object_iter(input_dict_unwrapped, append_object, user_data))
     {
       scratch_buffers_reclaim_marked(marker);
       filterx_object_unref(input_dict);

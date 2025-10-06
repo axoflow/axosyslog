@@ -231,7 +231,7 @@ KVList::len() const
 }
 
 bool
-KVList::iter(FilterXDictIterFunc func, gpointer user_data) const
+KVList::iter(FilterXObjectIterFunc func, gpointer user_data) const
 {
   ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(FieldDescriptor::TYPE_MESSAGE);
 
@@ -347,7 +347,7 @@ _len(FilterXObject *s, guint64 *len)
 }
 
 static gboolean
-_iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
+_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
   FilterXOtelKVList *self = (FilterXOtelKVList *) s;
 
@@ -378,7 +378,6 @@ _init_instance(FilterXOtelKVList *self)
 {
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_kvlist));
 
-  self->super.iter = _iter;
 }
 
 FilterXObject *
@@ -538,7 +537,7 @@ _set_kvlist_field_from_dict(google::protobuf::Message *message, syslogng::grpc::
   RepeatedPtrField<KeyValue> *repeated_kv = _get_repeated_kv(message, reflectors);
   repeated_kv->Clear();
 
-  if (!filterx_dict_iter(object, _add_elem_to_repeated_kv, repeated_kv))
+  if (!filterx_object_iter(object, _add_elem_to_repeated_kv, repeated_kv))
     return false;
 
   *assoc_object = _new_borrowed(repeated_kv);
@@ -630,6 +629,7 @@ FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(dict),
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
                     .len = _len,
+                    .iter = _iter,
                     .repr = _repr,
                     .free_fn = _free,
                    );

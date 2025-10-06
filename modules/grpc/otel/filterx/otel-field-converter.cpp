@@ -381,7 +381,8 @@ syslogng::grpc::otel::get_otel_protobuf_field_converter(const FieldDescriptor *f
 }
 
 bool
-syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXDictIterFunc func,
+syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Message &message,
+                                                           FilterXObjectIterFunc func,
                                                            void *user_data)
 {
   const google::protobuf::Reflection *reflection = message.GetReflection();

@@ -31,6 +31,8 @@ typedef struct _FilterXObject FilterXObject;
 typedef struct _FilterXRef FilterXRef;
 typedef struct _FilterXExpr FilterXExpr;
 
+typedef gboolean (*FilterXObjectIterFunc)(FilterXObject *key, FilterXObject *value, gpointer user_data);
+
 struct _FilterXType
 {
   FilterXType *super_type;
@@ -55,6 +57,7 @@ struct _FilterXType
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
   gboolean (*len)(FilterXObject *self, guint64 *len);
+  gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
   /* conversion to other data types */
   gboolean (*format_json)(FilterXObject *self, GString *json);
@@ -517,6 +520,14 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   if (self->type->unset_key)
     return self->type->unset_key(self, key);
   return FALSE;
+}
+
+static inline gboolean
+filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer user_data)
+{
+  if (!self->type->iter)
+    return FALSE;
+  return self->type->iter(self, func, user_data);
 }
 
 void _filterx_object_log_add_object_error(FilterXObject *self);

@@ -210,7 +210,7 @@ filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize a
 
   FilterXScope *scope = filterx_eval_get_scope();
   gpointer user_data[] = { s, scope };
-  gboolean success = filterx_dict_iter(vars_unwrapped, _load_from_dict, user_data);
+  gboolean success = filterx_object_iter(vars_unwrapped, _load_from_dict, user_data);
 
   return success ? filterx_boolean_new(TRUE) : NULL;
 }

@@ -85,7 +85,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
       g_string_append(key_buffer, self->separator);
 
       gpointer inner_user_data[] = { self, flattened_kvs, NULL, key_buffer, GINT_TO_POINTER(FALSE)};
-      gboolean result = filterx_dict_iter(dict, _collect_modifications_from_elem, inner_user_data);
+      gboolean result = filterx_object_iter(dict, _collect_modifications_from_elem, inner_user_data);
 
       g_string_truncate(key_buffer, orig_len);
       return result;
@@ -124,7 +124,7 @@ _collect_dict_modifications(FilterXFunctionFlatten *self, FilterXObject *dict,
 {
   GString *key_buffer = scratch_buffers_alloc();
   gpointer user_data[] = { self, flattened_kvs, top_level_dict_keys, key_buffer, GINT_TO_POINTER(TRUE)};
-  return filterx_dict_iter(dict, _collect_modifications_from_elem, user_data);
+  return filterx_object_iter(dict, _collect_modifications_from_elem, user_data);
 }
 
 static gboolean

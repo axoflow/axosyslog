@@ -145,7 +145,7 @@ _handle_dict_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
       return success;
     }
   else
-    return filterx_dict_iter(csv_data, _append_to_buffer, user_data);
+    return filterx_object_iter(csv_data, _append_to_buffer, user_data);
 }
 
 static FilterXObject *

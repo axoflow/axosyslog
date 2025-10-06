@@ -635,14 +635,14 @@ static gboolean
 _filterx_dict_foreach_inner(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
   gpointer *args = (gpointer *) user_data;
-  FilterXDictIterFunc func = args[0];
+  FilterXObjectIterFunc func = args[0];
   gpointer func_data = args[1];
 
   return func(*key, *value, func_data);
 }
 
 static gboolean
-_filterx_dict_iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
+_filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
@@ -656,7 +656,6 @@ filterx_dict_new_with_table(FilterXDictTable *table)
   FilterXDictObject *self = g_new0(FilterXDictObject, 1);
 
   filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(dict_object));
-  self->super.iter = _filterx_dict_iter;
   self->table = table;
   return &self->super.super;
 }
@@ -796,6 +795,7 @@ FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
                     .set_subscript = _filterx_dict_set_subscript,
                     .is_key_set = _filterx_dict_is_key_set,
                     .unset_key = _filterx_dict_unset_key,
+                    .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
                     .dedup = _filterx_dict_dedup,
                    );
