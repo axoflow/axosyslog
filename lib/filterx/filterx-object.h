@@ -44,19 +44,27 @@ struct _FilterXType
   FilterXObject *(*clone)(FilterXObject *self);
   FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest);
   gboolean (*truthy)(FilterXObject *self);
+
+  /* attribute access */
   FilterXObject *(*getattr)(FilterXObject *self, FilterXObject *attr);
   gboolean (*setattr)(FilterXObject *self, FilterXObject *attr, FilterXObject **new_value);
+
+  /* subscript and dictionary like access */
   FilterXObject *(*get_subscript)(FilterXObject *self, FilterXObject *key);
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
+  gboolean (*len)(FilterXObject *self, guint64 *len);
+
+  /* conversion to other data types */
   gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*str)(FilterXObject *self, GString *str);
-  gboolean (*len)(FilterXObject *self, guint64 *len);
+  /* operators */
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
+
+  /* lifecycle management (caching, deduplication) */
   void (*make_readonly)(FilterXObject *self);
-  /* return values indicates if deduplication is supported */
   gboolean (*dedup)(FilterXObject **pself, GHashTable *dedup_storage);
   void (*free_fn)(FilterXObject *self);
 };
