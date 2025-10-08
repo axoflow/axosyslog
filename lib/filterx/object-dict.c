@@ -655,7 +655,7 @@ filterx_dict_new_with_table(FilterXDictTable *table)
 {
   FilterXDictObject *self = g_new0(FilterXDictObject, 1);
 
-  filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(dict_object));
+  filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(dict));
   self->table = table;
   return &self->super.super;
 }
@@ -740,7 +740,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   FilterXObject *arg = args[0];
 
   FilterXObject *arg_unwrapped = filterx_ref_unwrap_ro(arg);
-  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(dict_object)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(dict)))
     return filterx_object_ref(arg);
 
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(mapping)))
@@ -783,7 +783,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
-FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(mapping),
+FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .truthy = _filterx_dict_truthy,
                     .free_fn = _filterx_dict_free,

@@ -26,7 +26,7 @@
 
 #include "filterx/filterx-object.h"
 
-FILTERX_DECLARE_TYPE(dict_object);
+FILTERX_DECLARE_TYPE(dict);
 
 FilterXObject *filterx_dict_new(void);
 FilterXObject *filterx_dict_sized_new(gsize init_size);
