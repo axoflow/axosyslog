@@ -232,6 +232,8 @@ _connect(LogThreadedDestWorker *self)
                 log_expr_node_location_tag(self->owner->super.super.super.expr_node));
       _suspend(self);
     }
+
+  stats_counter_set(self->metrics.output_unreachable, !self->connected);
 }
 
 /* NOTE: runs in the worker thread */
@@ -246,6 +248,7 @@ static void
 _disconnect_and_suspend(LogThreadedDestWorker *self)
 {
   _disconnect(self);
+  stats_counter_set(self->metrics.output_unreachable, !self->connected);
   _suspend(self);
 }
 
