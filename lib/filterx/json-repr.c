@@ -27,9 +27,9 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-message-value.h"
 #include "scratch-buffers.h"
@@ -52,7 +52,7 @@ _convert_from_json_array(struct json_object *jso, GError **error)
       FilterXObject *o = filterx_object_from_json_object(el, error);
       if (!o)
         goto error;
-      if (!filterx_list_append(res, &o))
+      if (!filterx_sequence_append(res, &o))
         {
           filterx_object_unref(o);
           g_set_error(error, 0, 0, "appending to list failed, index=%" G_GSIZE_FORMAT, i);

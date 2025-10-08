@@ -20,37 +20,37 @@
  *
  */
 
-#ifndef FILTERX_OBJECT_LIST_INTERFACE_H_INCLUDED
-#define FILTERX_OBJECT_LIST_INTERFACE_H_INCLUDED
+#ifndef FILTERX_OBJECT_SEQUENCE_INTERFACE_H_INCLUDED
+#define FILTERX_OBJECT_SEQUENCE_INTERFACE_H_INCLUDED
 
 #include "filterx/filterx-object.h"
 #include "filterx/object-primitive.h"
 
-#define FILTERX_LIST_MAX_LENGTH  65536
+#define FILTERX_SEQUENCE_MAX_LENGTH  65536
 
-typedef struct FilterXList_ FilterXList;
+typedef struct FilterXSequence_ FilterXSequence;
 
-struct FilterXList_
+struct FilterXSequence_
 {
   FilterXObject super;
 };
 
-FilterXObject *filterx_list_get_subscript(FilterXObject *s, gint64 index);
-gboolean filterx_list_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_value);
-gboolean filterx_list_append(FilterXObject *s, FilterXObject **new_value);
-gboolean filterx_list_unset_index(FilterXObject *s, gint64 index);
-gboolean filterx_list_merge(FilterXObject *s, FilterXObject *other);
+FilterXObject *filterx_sequence_get_subscript(FilterXObject *s, gint64 index);
+gboolean filterx_sequence_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_value);
+gboolean filterx_sequence_append(FilterXObject *s, FilterXObject **new_value);
+gboolean filterx_sequence_unset_index(FilterXObject *s, gint64 index);
+gboolean filterx_sequence_merge(FilterXObject *s, FilterXObject *other);
 
-void filterx_list_init_instance(FilterXList *self, FilterXType *type);
+void filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type);
 
-FILTERX_DECLARE_TYPE(list);
+FILTERX_DECLARE_TYPE(sequence);
 
 static inline gboolean
-filterx_list_normalize_index(FilterXObject *index_object,
-                             guint64 len,
-                             guint64 *normalized_index,
-                             gboolean allow_tail,
-                             const gchar **error)
+filterx_sequence_normalize_index(FilterXObject *index_object,
+                                 guint64 len,
+                                 guint64 *normalized_index,
+                                 gboolean allow_tail,
+                                 const gchar **error)
 {
   gint64 index;
 
@@ -87,7 +87,7 @@ filterx_list_normalize_index(FilterXObject *index_object,
       return TRUE;
     }
 
-  if (len > FILTERX_LIST_MAX_LENGTH)
+  if (len > FILTERX_SEQUENCE_MAX_LENGTH)
     {
       *error = "Index exceeds maximal supported value";
       return FALSE;

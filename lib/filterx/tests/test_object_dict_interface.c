@@ -22,7 +22,7 @@
 #include <criterion/criterion.h>
 #include "libtest/filterx-lib.h"
 
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"

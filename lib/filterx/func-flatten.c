@@ -22,7 +22,7 @@
  */
 
 #include "filterx/func-flatten.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
@@ -68,7 +68,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   gboolean is_top_level = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[4]);
 
   FilterXObject *dict = filterx_ref_unwrap_ro(value);
-  if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       if (is_top_level)
         g_ptr_array_add(top_level_dict_keys, filterx_object_ref(key));
@@ -199,7 +199,7 @@ _eval_fx_flatten(FilterXExpr *s)
   gboolean result = FALSE;
 
   FilterXObject *dict = filterx_ref_unwrap_rw(obj);
-  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to flatten object", self->dict_expr,
                                           "Object must be a dict, got: %s",

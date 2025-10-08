@@ -229,14 +229,14 @@ AnyValueFieldConverter::direct_set(AnyValue *any_value, FilterXObject *object, F
       converter = get_protobuf_field_converter(FieldDescriptor::TYPE_BYTES);
       type_field_name = "bytes_value";
     }
-  else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(dict)) ||
+  else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(mapping)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_JSON))
     {
       converter = &filterx::kvlist_field_converter;
       type_field_name = "kvlist_value";
     }
-  else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(list)) ||
+  else if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(sequence)) ||
            (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)) &&
             filterx_message_value_get_type(object) == LM_VT_LIST))
     {

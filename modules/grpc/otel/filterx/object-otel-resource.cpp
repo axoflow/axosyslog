@@ -308,7 +308,7 @@ filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize
         {
           FilterXObject *arg = args[0];
           FilterXObject *dict_arg = filterx_ref_unwrap_ro(arg);
-          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(dict)))
+          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(mapping)))
             {
               self->cpp = new Resource(self);
               if (!filterx_dict_merge(&self->super.super, dict_arg))
@@ -355,7 +355,7 @@ _repr(FilterXObject *s, GString *repr)
 
 FILTERX_SIMPLE_FUNCTION(otel_resource, filterx_otel_resource_new_from_args);
 
-FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(dict),
+FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_otel_resource_clone,

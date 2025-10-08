@@ -22,7 +22,7 @@
  */
 
 #include "object-metrics-labels.h"
-#include "object-dict-interface.h"
+#include "filterx-mapping.h"
 #include "object-string.h"
 #include "object-primitive.h"
 #include "object-extractor.h"
@@ -368,7 +368,7 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gs
   if (filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(metrics_labels)))
     return filterx_object_ref(obj);
 
-  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_simple_function_argument_error(s, "unexpected type of argument. "
                                              METRICS_LABELS_USAGE);
@@ -427,7 +427,7 @@ filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, FilterXObject *args
   return filterx_boolean_new(TRUE);
 }
 
-FILTERX_DEFINE_TYPE(metrics_labels, FILTERX_TYPE_NAME(dict),
+FILTERX_DEFINE_TYPE(metrics_labels, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .truthy = _truthy,
                     .marshal = _marshal,

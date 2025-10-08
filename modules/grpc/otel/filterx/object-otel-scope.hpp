@@ -26,7 +26,7 @@
 #include "syslog-ng.h"
 
 #include "compat/cpp-start.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 

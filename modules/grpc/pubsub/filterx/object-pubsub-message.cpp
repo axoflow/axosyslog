@@ -310,7 +310,7 @@ filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsiz
           FilterXObject *data = args[0];
           FilterXObject *attributes = args[1];
           FilterXObject *attributes_arg = filterx_ref_unwrap_ro(attributes);
-          if (filterx_object_is_type(attributes_arg, &FILTERX_TYPE_NAME(dict)))
+          if (filterx_object_is_type(attributes_arg, &FILTERX_TYPE_NAME(mapping)))
             {
               self->cpp = new Message(self);
               std::string data_cpp;

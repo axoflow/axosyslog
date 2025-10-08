@@ -23,7 +23,7 @@
 
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-dict.h"
 #include "scratch-buffers.h"
 
@@ -78,7 +78,7 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
     goto exit;
 
   FilterXObject *parent_unwrapped = filterx_ref_unwrap_ro(elem_context->parent_obj);
-  if (!filterx_object_is_type(parent_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(parent_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       _set_error(error, "failed to convert EventData string to dict, parent must be a dict");
       goto exit;
@@ -121,7 +121,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
 
   existing_obj = filterx_object_get_subscript(new_elem_context->parent_obj, new_elem_key);
   FilterXObject *existing_obj_unwrapped = filterx_ref_unwrap_ro(existing_obj);
-  if (!filterx_object_is_type(existing_obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(existing_obj_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       _set_error(error, "failed to prepare dict for named param, parent must be dict, got \"%s\"",
                  filterx_object_get_type_name(existing_obj));
@@ -318,7 +318,7 @@ _start_elem(FilterXFunctionParseXml *s,
     }
 
   FilterXObject *current_obj = filterx_ref_unwrap_ro(last_elem_context->current_obj);
-  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(mapping)))
     {
       if (!_convert_to_dict(context, last_elem_context, error))
         return;
@@ -368,7 +368,7 @@ _text(FilterXFunctionParseXml *s,
   XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
 
   FilterXObject *current_obj = filterx_ref_unwrap_ro(elem_context->current_obj);
-  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)) ||
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(mapping)) ||
       !state->has_named_data)
     {
       filterx_parse_xml_text_method(s, context, text, text_len, st, error);

@@ -22,8 +22,8 @@
  */
 
 #include "filterx/func-keys.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-list.h"

@@ -27,7 +27,7 @@
 
 #include "compat/cpp-start.h"
 #include "filterx/filterx-object.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/filterx-eval.h"
 #include "compat/cpp-end.h"
 
@@ -137,7 +137,7 @@ public:
           }
 
         FilterXObject *list = filterx_ref_unwrap_ro(object);
-        if (!filterx_object_is_type(list, &FILTERX_TYPE_NAME(list)))
+        if (!filterx_object_is_type(list, &FILTERX_TYPE_NAME(sequence)))
           {
             filterx_eval_push_error_info_printf("Failed to set repeated field", NULL,
                                                 "field name: %s, object type: %s, error: object is not a list",
@@ -152,7 +152,7 @@ public:
 
         for (gsize i = 0; i < len; i++)
           {
-            FilterXObject *elem = filterx_list_get_subscript(list, i);
+            FilterXObject *elem = filterx_sequence_get_subscript(list, i);
 
             if (!this->add(message, reflectors, elem))
               {

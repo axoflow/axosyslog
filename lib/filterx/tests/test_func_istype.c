@@ -30,7 +30,7 @@
 #include "filterx/expr-literal.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/expr-get-subscript.h"
 
 #include "apphook.h"
@@ -89,7 +89,7 @@ Test(filterx_func_istype, non_literal_type_arg)
 {
   FilterXObject *list = filterx_test_list_new();
   FilterXObject *type_str = filterx_string_new("dummy", -1);
-  filterx_list_append(list, &type_str);
+  filterx_sequence_append(list, &type_str);
   filterx_object_unref(type_str);
 
   FilterXExpr *type_expr = filterx_get_subscript_new(filterx_literal_new(list),

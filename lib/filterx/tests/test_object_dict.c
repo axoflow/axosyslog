@@ -24,7 +24,7 @@
 
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
 #include "filterx/expr-function.h"
@@ -193,8 +193,8 @@ Test(filterx_dict, test_list_dedup)
 
   cr_assert_eq(list, orig_list);
 
-  cr_assert_eq(filterx_list_get_subscript(list, 0), filterx_list_get_subscript(list, 2));
-  cr_assert_neq(filterx_list_get_subscript(list, 0), filterx_list_get_subscript(list, 1));
+  cr_assert_eq(filterx_sequence_get_subscript(list, 0), filterx_sequence_get_subscript(list, 2));
+  cr_assert_neq(filterx_sequence_get_subscript(list, 0), filterx_sequence_get_subscript(list, 1));
 
   filterx_object_unref(list);
 }

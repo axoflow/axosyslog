@@ -24,8 +24,8 @@
 #include "filterx/expr-literal.h"
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/filterx-eval.h"
 
 #include "scratch-buffers.h"
@@ -48,8 +48,8 @@ _append_kv_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_dat
   GString *buffer = ((gpointer *) user_data)[1];
 
   FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
-  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)) ||
-      filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
+  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(mapping)) ||
+      filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       msg_debug("FilterX: format_kv(): skipping object, type not supported",
                 evt_tag_str("type", filterx_object_get_type_name(value)));
@@ -108,7 +108,7 @@ _eval(FilterXExpr *s)
     }
 
   FilterXObject *kvs = filterx_ref_unwrap_ro(obj);
-  if (!filterx_object_is_type(kvs, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(kvs, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate format_kv()", &self->super.super,
                                           "Object must be a dict, got: %s. " FILTERX_FUNC_FORMAT_KV_USAGE,
