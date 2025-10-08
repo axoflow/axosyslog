@@ -40,7 +40,7 @@ gboolean filterx_dict_keys(FilterXObject *s, FilterXObject **keys);
 
 void filterx_dict_init_instance(FilterXDict *self, FilterXType *type);
 
-FILTERX_DECLARE_TYPE(dict);
+FILTERX_DECLARE_TYPE(mapping);
 
 static inline gboolean
 filterx_dict_normalize_key(FilterXObject *key, const gchar **key_string, gsize *key_len, const gchar **error)

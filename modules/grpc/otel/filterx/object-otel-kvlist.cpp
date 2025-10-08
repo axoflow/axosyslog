@@ -416,7 +416,7 @@ filterx_otel_kvlist_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize a
         {
           FilterXObject *arg = args[0];
           FilterXObject *dict_arg = filterx_ref_unwrap_ro(arg);
-          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(dict)))
+          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(mapping)))
             {
               self->cpp = new KVList(self);
               if (!filterx_dict_merge(&self->super.super, dict_arg))
@@ -551,14 +551,14 @@ KVListFieldConverter::set(google::protobuf::Message *message, ProtoReflectors re
   FilterXObject *object_unwrapped = filterx_ref_unwrap_rw(object);
   if (!filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(otel_kvlist)))
     {
-      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(dict)))
+      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(mapping)))
         return _set_kvlist_field_from_dict(message, reflectors, object_unwrapped, assoc_object);
 
       if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(message_value)))
         {
           FilterXObject *unmarshalled = filterx_object_unmarshal(object_unwrapped);
           FilterXObject *unwrapped = filterx_ref_unwrap_ro(unmarshalled);
-          bool success = filterx_object_is_type_or_ref(unwrapped, &FILTERX_TYPE_NAME(dict)) &&
+          bool success = filterx_object_is_type_or_ref(unwrapped, &FILTERX_TYPE_NAME(mapping)) &&
                          _set_kvlist_field_from_dict(message, reflectors, unwrapped, assoc_object);
           filterx_object_unref(unmarshalled);
           return success;
@@ -619,7 +619,7 @@ _repr(FilterXObject *s, GString *repr)
   return TRUE;
 }
 
-FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(dict),
+FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_otel_kvlist_clone,

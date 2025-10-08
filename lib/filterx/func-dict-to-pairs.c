@@ -22,8 +22,8 @@
  */
 
 #include "func-dict-to-pairs.h"
-#include "object-dict-interface.h"
-#include "object-list-interface.h"
+#include "filterx-sequence.h"
+#include "filterx-mapping.h"
 #include "object-dict.h"
 #include "object-list.h"
 #include "object-string.h"
@@ -69,7 +69,7 @@ _add_pair_to_list(FilterXObject *key, FilterXObject *value, gpointer user_data)
       goto exit;
     }
 
-  if (!filterx_list_append(list, &pair))
+  if (!filterx_sequence_append(list, &pair))
     {
       filterx_eval_push_error_static_info("Failed to add pair to list", &self->super.super,
                                           "Failed to append pair to list");
@@ -109,7 +109,7 @@ _dict_to_pairs_eval(FilterXExpr *s)
   result = filterx_list_new();
 
   gpointer user_data[] = { self, result };
-  if (!filterx_dict_iter(dict_obj, _add_pair_to_list, user_data))
+  if (!filterx_object_iter(dict_obj, _add_pair_to_list, user_data))
     {
       filterx_eval_push_error_static_info("Failed to evaluate dict_to_pairs()", s, "Error during iteration over dict");
       filterx_object_unref(result);

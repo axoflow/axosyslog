@@ -29,7 +29,7 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "scratch-buffers.h"
 #include "str-utils.h"
 
@@ -309,7 +309,7 @@ _eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gs
 {
   FilterXObject *list_needle = filterx_ref_unwrap_ro(needle_obj);
 
-  if (!filterx_object_is_type(list_needle, &FILTERX_TYPE_NAME(list)))
+  if (!filterx_object_is_type(list_needle, &FILTERX_TYPE_NAME(sequence)))
     return NULL;
 
   guint64 len;
@@ -321,7 +321,7 @@ _eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gs
   gboolean matches = FALSE;
   for (gsize i = 0; i < len && !matches; i++)
     {
-      FilterXObject *elem = filterx_list_get_subscript(list_needle, i);
+      FilterXObject *elem = filterx_sequence_get_subscript(list_needle, i);
       const gchar *current_needle;
       gsize current_needle_len;
 

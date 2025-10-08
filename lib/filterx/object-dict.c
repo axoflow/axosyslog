@@ -23,8 +23,8 @@
 
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
@@ -743,7 +743,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(dict_object)))
     return filterx_object_ref(arg);
 
-  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       FilterXObject *self = filterx_dict_new();
       if (!filterx_dict_merge(self, arg_unwrapped))
@@ -769,7 +769,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
           g_clear_error(&error);
           return NULL;
         }
-      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(dict)))
+      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(mapping)))
         {
           filterx_object_unref(self);
           return NULL;
@@ -783,7 +783,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
-FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(dict),
+FILTERX_DEFINE_TYPE(dict_object, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .truthy = _filterx_dict_truthy,
                     .free_fn = _filterx_dict_free,

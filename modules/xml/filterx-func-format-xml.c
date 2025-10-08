@@ -25,8 +25,8 @@
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 
 #define FILTERX_FUNC_FORMAT_XML_USAGE "Usage: format_xml([dict])"
 const char *XML_ERROR_STR = "Failed to convert to xml";
@@ -94,7 +94,7 @@ append_list(FilterXObject *key, FilterXObject *list, gpointer user_data)
 
   for (gsize i = 0; i < len; i++)
     {
-      FilterXObject *elem = filterx_list_get_subscript(list, i);
+      FilterXObject *elem = filterx_sequence_get_subscript(list, i);
 
       if(!append_object(key, elem, user_data))
         {
@@ -231,14 +231,14 @@ append_object(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if(!_is_valid_xml_tag_name(key, user_data))
     return FALSE;
 
-  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
+  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       if (!append_list(key, value_unwrapped, user_data))
         return FALSE;
 
       return TRUE;
     }
-  else if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  else if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       if (!self->append_inner_dict(key, value_unwrapped, user_data))
         return FALSE;
@@ -264,7 +264,7 @@ _eval(FilterXExpr *s)
   ScratchBuffersMarker marker;
   GString *formatted = scratch_buffers_alloc_and_mark(&marker);
   FilterXObject *input_dict_unwrapped = filterx_ref_unwrap_ro(input_dict);
-  if (!filterx_object_is_type(input_dict_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(input_dict_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate format xml", self->input,
                                           "Input must be a dict, got: %s",

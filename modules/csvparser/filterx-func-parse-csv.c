@@ -34,9 +34,9 @@
 #include "filterx/object-null.h"
 #include "filterx/filterx-object.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "parser/parser-expr.h"
@@ -75,7 +75,7 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
     return FALSE;
 
   FilterXObject *list_obj = filterx_ref_unwrap_ro(obj);
-  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
+  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(sequence)))
     {
       filterx_eval_push_error_info_printf("Failed to initialize parse_csv()", &self->super.super,
                                           "Argument %s must be a list, got: %s",
@@ -93,7 +93,7 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
 
   for (guint64 i = 0; i < size; i++)
     {
-      FilterXObject *elt = filterx_list_get_subscript(list_obj, i);
+      FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
 
       const gchar *val;
       gsize len;
@@ -151,7 +151,7 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
     }
 
   FilterXObject *cols_unwrapped = filterx_ref_unwrap_ro(*columns);
-  if (!filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(list)))
+  if (!filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       filterx_eval_push_error_info_printf("Failed to initialize parse_csv()", &self->super.super,
                                           "Argument " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " must be a list, got: %s",
@@ -177,7 +177,7 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
   if (self->columns.literals)
     col = filterx_object_ref(g_ptr_array_index(self->columns.literals, index));
   else
-    col = filterx_list_get_subscript(cols, index);
+    col = filterx_sequence_get_subscript(cols, index);
 
   FILTERX_STRING_DECLARE_ON_STACK(val,
                                   csv_scanner_get_current_value(scanner),
@@ -203,7 +203,7 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
                                   csv_scanner_get_current_value(scanner),
                                   csv_scanner_get_current_value_len(scanner));
 
-  gboolean ok = filterx_list_append(result, &val);
+  gboolean ok = filterx_sequence_append(result, &val);
   if (!ok)
     {
       filterx_eval_push_error_static_info("Failed to evaluate parse_csv()", NULL,

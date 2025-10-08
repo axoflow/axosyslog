@@ -26,7 +26,7 @@
 #include "syslog-ng.h"
 
 #include "compat/cpp-start.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
@@ -98,7 +98,7 @@ extern ArrayFieldConverter array_field_converter;
 
 struct FilterXOtelArray_
 {
-  FilterXList super;
+  FilterXSequence super;
   syslogng::grpc::otel::filterx::Array *cpp;
 };
 

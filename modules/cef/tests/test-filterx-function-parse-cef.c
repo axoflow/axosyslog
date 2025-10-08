@@ -34,8 +34,8 @@
 #include "filterx/object-null.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-list-interface.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-sequence.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 

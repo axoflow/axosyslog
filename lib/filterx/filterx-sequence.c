@@ -20,13 +20,13 @@
  *
  */
 
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 
 
 FilterXObject *
-filterx_list_get_subscript(FilterXObject *s, gint64 index)
+filterx_sequence_get_subscript(FilterXObject *s, gint64 index)
 {
   FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, index);
   FilterXObject *result = filterx_object_get_subscript(s, index_obj);
@@ -35,7 +35,7 @@ filterx_list_get_subscript(FilterXObject *s, gint64 index)
 }
 
 gboolean
-filterx_list_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_value)
+filterx_sequence_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_value)
 {
   FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, index);
   gboolean result = filterx_object_set_subscript(s, index_obj, new_value);
@@ -45,13 +45,13 @@ filterx_list_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_v
 }
 
 gboolean
-filterx_list_append(FilterXObject *s, FilterXObject **new_value)
+filterx_sequence_append(FilterXObject *s, FilterXObject **new_value)
 {
   return filterx_object_set_subscript(s, NULL, new_value);
 }
 
 gboolean
-filterx_list_unset_index(FilterXObject *s, gint64 index)
+filterx_sequence_unset_index(FilterXObject *s, gint64 index)
 {
   FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, index);
   gboolean result = filterx_object_unset_key(s, index_obj);
@@ -61,18 +61,18 @@ filterx_list_unset_index(FilterXObject *s, gint64 index)
 }
 
 gboolean
-filterx_list_merge(FilterXObject *s, FilterXObject *other)
+filterx_sequence_merge(FilterXObject *s, FilterXObject *other)
 {
   other = filterx_ref_unwrap_ro(other);
-  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(list)));
+  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(sequence)));
 
   guint64 len;
   g_assert(filterx_object_len(other, &len));
 
   for (guint64 i = 0; i < len; i++)
     {
-      FilterXObject *value_obj = filterx_list_get_subscript(other, (gint64) MIN(i, G_MAXINT64));
-      gboolean success = filterx_list_append(s, &value_obj);
+      FilterXObject *value_obj = filterx_sequence_get_subscript(other, (gint64) MIN(i, G_MAXINT64));
+      gboolean success = filterx_sequence_append(s, &value_obj);
 
       filterx_object_unref(value_obj);
 
@@ -99,7 +99,7 @@ _format_json(FilterXObject *s, GString *json)
         g_string_append_c(json, ',');
       else
         first = FALSE;
-      FilterXObject *elem = filterx_list_get_subscript(s, i);
+      FilterXObject *elem = filterx_sequence_get_subscript(s, i);
       gboolean success = filterx_object_format_json_append(elem, json);
       filterx_object_unref(elem);
 
@@ -111,7 +111,7 @@ _format_json(FilterXObject *s, GString *json)
 }
 
 void
-filterx_list_init_instance(FilterXList *self, FilterXType *type)
+filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type)
 {
   g_assert(type->is_mutable);
 
@@ -123,12 +123,12 @@ _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
   rhs_object = filterx_ref_unwrap_ro(rhs_object);
 
-  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(list)))
+  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(sequence)))
     return NULL;
 
   FilterXObject *cloned = filterx_object_clone(lhs_object);
 
-  if(!filterx_list_merge(cloned, rhs_object))
+  if(!filterx_sequence_merge(cloned, rhs_object))
     goto error;
 
   return cloned;
@@ -137,7 +137,7 @@ error:
   return NULL;
 }
 
-FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(object),
+FILTERX_DEFINE_TYPE(sequence, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .format_json = _format_json,
                     .add = _add,

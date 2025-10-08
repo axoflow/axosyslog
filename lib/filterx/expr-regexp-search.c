@@ -21,16 +21,16 @@
  *
  */
 
-#include "expr-regexp-search.h"
+#include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-sequence.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
 #include "filterx/expr-function.h"
 #include "filterx/expr-regexp-common.h"
 #include "filterx/filterx-eval.h"
@@ -71,12 +71,12 @@ _store_matches_to_list(pcre2_code_8 *pattern, const FilterXReMatchState *state)
       if (begin_index == PCRE2_UNSET || end_index == PCRE2_UNSET)
         {
           FilterXObject *null = filterx_null_new();
-          filterx_list_append(result, &null);
+          filterx_sequence_append(result, &null);
           continue;
         }
 
       FILTERX_STRING_DECLARE_ON_STACK(value, state->lhs_str + begin_index, end_index - begin_index);
-      gboolean success = filterx_list_append(result, &value);
+      gboolean success = filterx_sequence_append(result, &value);
       filterx_object_unref(value);
 
       if (!success)

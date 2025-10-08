@@ -170,7 +170,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, TRUE, &error))
+  if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, TRUE, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -188,7 +188,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
+  if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -204,7 +204,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
+  if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -229,7 +229,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  return filterx_list_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error);
+  return filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error);
 }
 
 static gboolean
@@ -271,7 +271,7 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 static void
 _init_instance(FilterXOtelArray *self)
 {
-  filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_array));
+  filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_array));
 }
 
 FilterXObject *
@@ -311,10 +311,10 @@ filterx_otel_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
           FilterXObject *arg = args[0];
 
           FilterXObject *list_arg = filterx_ref_unwrap_ro(arg);
-          if (filterx_object_is_type(list_arg, &FILTERX_TYPE_NAME(list)))
+          if (filterx_object_is_type(list_arg, &FILTERX_TYPE_NAME(sequence)))
             {
               self->cpp = new Array(self);
-              if (!filterx_list_merge(&self->super.super, list_arg))
+              if (!filterx_sequence_merge(&self->super.super, list_arg))
                 throw std::runtime_error("Failed to merge list");
             }
           else
@@ -391,7 +391,7 @@ _set_array_field_from_list(google::protobuf::Message *message, syslogng::grpc::P
 
   for (guint64 i = 0; i < len; i++)
     {
-      FilterXObject *value_obj = filterx_list_get_subscript(object, (gint64) MIN(i, G_MAXINT64));
+      FilterXObject *value_obj = filterx_sequence_get_subscript(object, (gint64) MIN(i, G_MAXINT64));
 
       AnyValue *any_value = array->add_values();
 
@@ -417,13 +417,13 @@ ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors ref
   FilterXObject *object_unwrapped = filterx_ref_unwrap_rw(object);
   if (!filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(otel_array)))
     {
-      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(list)))
+      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(sequence)))
         return _set_array_field_from_list(message, reflectors, object_unwrapped, assoc_object);
 
       if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(message_value)))
         {
           FilterXObject *unmarshalled = filterx_object_unmarshal(object_unwrapped);
-          bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(list)) &&
+          bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(sequence)) &&
                          _set_array_field_from_list(message, reflectors, unmarshalled, assoc_object);
           filterx_object_unref(unmarshalled);
           return success;
@@ -484,7 +484,7 @@ _repr(FilterXObject *s, GString *repr)
   return TRUE;
 }
 
-FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(list),
+FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(sequence),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_otel_array_clone,

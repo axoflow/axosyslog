@@ -31,7 +31,7 @@
 #include "filterx/object-list.h"
 #include "filterx/object-dict.h"
 #include "filterx-func-parse-csv.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "scanner/csv-scanner/csv-scanner.h"
 #include "filterx/object-primitive.h"
 
@@ -47,7 +47,7 @@ _generate_string_list(const gchar *elts, ...)
   while (elt != NULL)
     {
       FilterXObject *str = filterx_string_new(elt, -1);
-      cr_assert(filterx_list_append(result, &str));
+      cr_assert(filterx_sequence_append(result, &str));
       filterx_object_unref(str);
       elt = va_arg(args, const gchar *);
     }
@@ -125,7 +125,7 @@ Test(filterx_func_parse_csv, test_skipped_opts_causes_default_behaviour)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -216,7 +216,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiters)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -246,7 +246,7 @@ Test(filterx_func_parse_csv, test_optional_argument_dialect)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -345,7 +345,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -378,7 +378,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -409,7 +409,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -442,7 +442,7 @@ Test(filterx_func_parse_csv, test_optional_argument_string_delimiters_and_delimi
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -475,9 +475,9 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
-  FilterXObject *elt = filterx_list_get_subscript(obj, 1);
+  FilterXObject *elt = filterx_sequence_get_subscript(obj, 1);
 
   GString *repr = scratch_buffers_alloc();
   cr_assert(filterx_object_repr(elt, repr));

@@ -31,7 +31,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 
 #include "scratch-buffers.h"
 
@@ -88,7 +88,7 @@ _create_dict_from_failure_info_entry(FilterXFailureInfo *fi)
       _set_subscript_cstr(fx_error_entry, "line", filterx_expr_get_text(error->expr));
       _set_subscript_cstr(fx_error_entry, "error", filterx_error_format(error));
 
-      filterx_list_set_subscript(fx_errors, i, &fx_error_entry);
+      filterx_sequence_set_subscript(fx_errors, i, &fx_error_entry);
       filterx_object_unref(fx_error_entry);
     }
 
@@ -116,7 +116,7 @@ _failure_info_eval(FilterXExpr *s)
       FilterXFailureInfo *failure_info_entry = &g_array_index(failure_info, FilterXFailureInfo, i);
 
       FilterXObject *finfo_entry = _create_dict_from_failure_info_entry(failure_info_entry);
-      filterx_list_set_subscript(fx_finfo, i, &finfo_entry);
+      filterx_sequence_set_subscript(fx_finfo, i, &finfo_entry);
       filterx_object_unref(finfo_entry);
     }
 

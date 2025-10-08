@@ -26,7 +26,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 
@@ -153,7 +153,7 @@ _dpath_touch(FilterXDPathLValue *self, gboolean add_mode, FilterXObject **last_o
   if (!dict)
     return NULL;
 
-  if (!filterx_object_is_type_or_ref(dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type_or_ref(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error("dpath argument has non-dict element in path", &self->super, NULL);
       filterx_object_unref(dict);
@@ -174,7 +174,7 @@ _dpath_touch(FilterXDPathLValue *self, gboolean add_mode, FilterXObject **last_o
       filterx_object_unref(dict);
       dict = value;
 
-      if (!filterx_object_is_type_or_ref(dict, &FILTERX_TYPE_NAME(dict)))
+      if (!filterx_object_is_type_or_ref(dict, &FILTERX_TYPE_NAME(mapping)))
         {
           filterx_eval_push_error("dpath argument has non-dict element in path", &self->super, NULL);
           filterx_object_unref(dict);

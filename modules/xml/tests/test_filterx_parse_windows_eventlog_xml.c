@@ -26,7 +26,7 @@
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "apphook.h"
@@ -101,7 +101,7 @@ _assert_parse_event_data(const gchar *event_data_xml, const gchar *expected_even
   cr_assert(result);
   cr_assert(filterx_eval_get_error_count() == 0);
 
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
 
   GString *formatted_result = g_string_new(NULL);
   filterx_object_repr(result, formatted_result);

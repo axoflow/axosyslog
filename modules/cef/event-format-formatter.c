@@ -23,7 +23,7 @@
 
 #include "event-format-formatter.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
 #include "scratch-buffers.h"
@@ -244,7 +244,7 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
   /* separated extensions */
 
   FilterXObject *extensions_dict = filterx_ref_unwrap_ro(extensions);
-  if (!filterx_object_is_type(extensions_dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(extensions_dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
                                           "extensions must be a dict, got: %s",
@@ -290,7 +290,7 @@ _eval(FilterXExpr *s)
     }
 
   FilterXObject *dict = filterx_ref_unwrap_ro(msg);
-  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", s,
                                           "msg_dict must be a dict, got: %s",

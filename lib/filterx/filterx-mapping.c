@@ -20,10 +20,10 @@
  *
  */
 
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/filterx-eval.h"
 #include "str-utils.h"
 #include "utf8utils.h"
@@ -47,7 +47,7 @@ filterx_dict_merge(FilterXObject *s, FilterXObject *other)
   FilterXDict *self = (FilterXDict *) s;
 
   other = filterx_ref_unwrap_ro(other);
-  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(dict)));
+  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(mapping)));
   return filterx_object_iter(other, _add_elem_to_dict, self);
 }
 
@@ -57,7 +57,7 @@ _add_elem_to_list(FilterXObject *key_obj, FilterXObject *value_obj, gpointer use
   FilterXObject *list = (FilterXObject *) user_data;
 
   FilterXObject *key_to_add = filterx_object_ref(key_obj);
-  gboolean success = filterx_list_append(list, &key_to_add);
+  gboolean success = filterx_sequence_append(list, &key_to_add);
   filterx_object_unref(key_to_add);
 
   return success;
@@ -69,9 +69,9 @@ filterx_dict_keys(FilterXObject *s, FilterXObject **keys)
   g_assert(s);
   g_assert(keys);
   FilterXObject *obj = filterx_ref_unwrap_ro(s);
-  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)))
     goto error;
-  g_assert(filterx_object_is_type(*keys, &FILTERX_TYPE_NAME(list)));
+  g_assert(filterx_object_is_type(*keys, &FILTERX_TYPE_NAME(sequence)));
 
   gboolean result = filterx_object_iter(obj, _add_elem_to_list, *keys);
 
@@ -143,7 +143,7 @@ static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
   rhs_object = filterx_ref_unwrap_ro(rhs_object);
-  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(mapping)))
     return NULL;
 
   FilterXObject *cloned = filterx_object_clone(lhs_object);
@@ -157,7 +157,7 @@ error:
   return NULL;
 }
 
-FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(object),
+FILTERX_DEFINE_TYPE(mapping, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .getattr = _getattr,
                     .setattr = _setattr,

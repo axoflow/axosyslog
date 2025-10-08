@@ -27,8 +27,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-null.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/func-flags.h"
@@ -105,9 +105,9 @@ _should_unset(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
     return TRUE;
 
   if ((check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_LIST) &&
-       filterx_object_is_type(obj, &FILTERX_TYPE_NAME(list))) ||
+       filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence))) ||
       (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_DICT) &&
-       filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict))))
+       filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping))))
     {
       guint64 len;
       filterx_object_len(obj, &len);
@@ -128,9 +128,9 @@ _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpoin
   value = filterx_ref_unwrap_rw(value);
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
     {
-      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, value))
+      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(mapping)) && !_process_dict(self, value))
         return FALSE;
-      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(list)) && !_process_list(self, value))
+      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(sequence)) && !_process_list(self, value))
         return FALSE;
     }
 
@@ -182,17 +182,17 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 
   for (gint64 i = ((gint64) len) - 1; i >= 0; i--)
     {
-      FilterXObject *elem = filterx_list_get_subscript(obj, i);
+      FilterXObject *elem = filterx_sequence_get_subscript(obj, i);
       FilterXObject *elem_unwrapped = filterx_ref_unwrap_rw(elem);
 
       if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
         {
-          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(dict)) && !_process_dict(self, elem_unwrapped))
+          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(mapping)) && !_process_dict(self, elem_unwrapped))
             {
               filterx_object_unref(elem);
               return FALSE;
             }
-          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(list)) && !_process_list(self, elem_unwrapped))
+          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(sequence)) && !_process_list(self, elem_unwrapped))
             {
               filterx_object_unref(elem);
               return FALSE;
@@ -203,13 +203,13 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
         {
           if (self->replacement)
             {
-              if (!filterx_list_set_subscript(obj, i, &self->replacement))
+              if (!filterx_sequence_set_subscript(obj, i, &self->replacement))
                 {
                   filterx_object_unref(elem);
                   return FALSE;
                 }
             }
-          else if (!filterx_list_unset_index(obj, i))
+          else if (!filterx_sequence_unset_index(obj, i))
             {
               filterx_object_unref(elem);
               return FALSE;
@@ -236,9 +236,9 @@ _eval_fx_unset_empties(FilterXExpr *s)
 
   gboolean success = FALSE;
   FilterXObject *obj_unwrapped = filterx_ref_unwrap_rw(obj);
-  if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     success = _process_dict(self, obj_unwrapped);
-  else if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(list)))
+  else if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     success = _process_list(self, obj_unwrapped);
   else
     filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
@@ -371,7 +371,7 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
 
   if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(null)))
     set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_NULL, TRUE);
-  else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(list)))
+  else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(sequence)))
     {
       guint64 len;
       g_assert(filterx_object_len(target, &len));
@@ -383,7 +383,7 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
         }
       set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_LIST, TRUE);
     }
-  else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(dict)))
+  else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(mapping)))
     {
       guint64 len;
       g_assert(filterx_object_len(target, &len));

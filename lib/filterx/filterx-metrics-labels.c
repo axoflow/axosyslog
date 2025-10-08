@@ -28,7 +28,7 @@
 #include "object-string.h"
 #include "object-null.h"
 #include "object-extractor.h"
-#include "object-dict-interface.h"
+#include "filterx-mapping.h"
 #include "object-metrics-labels.h"
 #include "metrics/dyn-metrics-cache.h"
 #include "stats/stats-cluster-single.h"
@@ -300,7 +300,7 @@ static gboolean
 _format_dict_to_store(FilterXObject *obj, DynMetricsStore *store, StatsClusterLabel **labels, gsize *len)
 {
   FilterXObject *typed_obj = filterx_ref_unwrap_ro(obj);
-  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(typed_obj, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to format metrics labels", NULL,
                                           "Labels must be a dict, got: %s",

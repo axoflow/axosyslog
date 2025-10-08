@@ -22,9 +22,9 @@
  */
 
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/json-repr.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-extractor.h"
@@ -40,7 +40,7 @@
 typedef gboolean (*FilterXListForeachFunc)(gsize index, FilterXObject **, gpointer);
 typedef struct _FilterXListObject
 {
-  FilterXList super;
+  FilterXSequence super;
   GPtrArray *array;
 } FilterXListObject;
 
@@ -110,7 +110,7 @@ _filterx_list_get_subscript(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
+  if (!filterx_sequence_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -126,7 +126,7 @@ _filterx_list_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
 
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(key, self->array->len, &normalized_index, TRUE, &error))
+  if (!filterx_sequence_normalize_index(key, self->array->len, &normalized_index, TRUE, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -149,7 +149,7 @@ _filterx_list_unset_key(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  if (!filterx_list_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
+  if (!filterx_sequence_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -177,14 +177,14 @@ _filterx_list_is_key_set(FilterXObject *s, FilterXObject *key)
 
   guint64 normalized_index;
   const gchar *error;
-  return filterx_list_normalize_index(key, self->array->len, &normalized_index, FALSE, &error);
+  return filterx_sequence_normalize_index(key, self->array->len, &normalized_index, FALSE, &error);
 }
 
 FilterXObject *
 filterx_list_new(void)
 {
   FilterXListObject *self = g_new0(FilterXListObject, 1);
-  filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(list_object));
+  filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list_object));
 
   self->array = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   return &self->super.super;
@@ -281,7 +281,7 @@ filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len)
       FILTERX_STRING_DECLARE_ON_STACK(value,
                                       list_scanner_get_current_value(&scanner),
                                       list_scanner_get_current_value_len(&scanner));
-      if (!filterx_list_set_subscript(list, i, &value))
+      if (!filterx_sequence_set_subscript(list, i, &value))
         {
           filterx_object_unref(value);
           filterx_object_unref(list);
@@ -312,10 +312,10 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list_object)))
     return filterx_object_ref(arg);
 
-  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       FilterXObject *self = filterx_list_new();
-      if (!filterx_list_merge(self, arg_unwrapped))
+      if (!filterx_sequence_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);
           return NULL;
@@ -339,7 +339,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
           return NULL;
         }
 
-      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(list)))
+      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(sequence)))
         {
           filterx_object_unref(self);
           return NULL;
@@ -353,7 +353,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
-FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
+FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(sequence),
                     .is_mutable = TRUE,
                     .truthy = _filterx_list_truthy,
                     .free_fn = _filterx_list_free,

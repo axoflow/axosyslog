@@ -308,7 +308,7 @@ filterx_otel_scope_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
         {
           FilterXObject *arg = args[0];
           FilterXObject *dict_arg = filterx_ref_unwrap_ro(arg);
-          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(dict)))
+          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(mapping)))
             {
               self->cpp = new Scope(self);
               if (!filterx_dict_merge(&self->super.super, dict_arg))
@@ -355,7 +355,7 @@ _repr(FilterXObject *s, GString *repr)
 
 FILTERX_SIMPLE_FUNCTION(otel_scope, filterx_otel_scope_new_from_args);
 
-FILTERX_DEFINE_TYPE(otel_scope, FILTERX_TYPE_NAME(dict),
+FILTERX_DEFINE_TYPE(otel_scope, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_otel_scope_clone,

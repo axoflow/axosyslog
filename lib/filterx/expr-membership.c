@@ -21,7 +21,7 @@
  */
 #include "filterx/expr-membership.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object.h"
@@ -63,7 +63,7 @@ _eval_in(FilterXExpr *s)
 
   FilterXObject *list_obj = filterx_ref_unwrap_ro(rhs_obj);
 
-  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(list)))
+  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(sequence)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
                                           "Right hand side must be list type, got: %s",
@@ -81,7 +81,7 @@ _eval_in(FilterXExpr *s)
 
   for (guint64 i = 0; i < size; i++)
     {
-      FilterXObject *elt = filterx_list_get_subscript(list_obj, i);
+      FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
 
       if (filterx_compare_objects(lhs, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
         {
