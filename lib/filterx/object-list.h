@@ -26,7 +26,7 @@
 
 #include "filterx/filterx-object.h"
 
-FILTERX_DECLARE_TYPE(list_object);
+FILTERX_DECLARE_TYPE(list);
 
 FilterXObject *filterx_list_new(void);
 FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);

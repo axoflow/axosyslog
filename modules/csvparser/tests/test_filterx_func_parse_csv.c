@@ -155,7 +155,7 @@ Test(filterx_func_parse_csv, test_set_optional_first_argument_column_names)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -186,7 +186,7 @@ Test(filterx_func_parse_csv, test_column_names_sets_expected_column_size_additio
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -279,7 +279,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -312,7 +312,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict_object)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
 
   GString *repr = scratch_buffers_alloc();
 

@@ -184,7 +184,7 @@ FilterXObject *
 filterx_list_new(void)
 {
   FilterXListObject *self = g_new0(FilterXListObject, 1);
-  filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list_object));
+  filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list));
 
   self->array = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   return &self->super.super;
@@ -309,7 +309,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   FilterXObject *arg = args[0];
 
   FilterXObject *arg_unwrapped = filterx_ref_unwrap_ro(arg);
-  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list_object)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list)))
     return filterx_object_ref(arg);
 
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(sequence)))
@@ -353,7 +353,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
-FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(sequence),
+FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .is_mutable = TRUE,
                     .truthy = _filterx_list_truthy,
                     .free_fn = _filterx_list_free,

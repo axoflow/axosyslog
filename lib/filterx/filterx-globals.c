@@ -222,8 +222,8 @@ filterx_global_init(void)
 
   filterx_type_init(&FILTERX_TYPE_NAME(sequence));
   filterx_type_init(&FILTERX_TYPE_NAME(mapping));
-  filterx_type_init(&FILTERX_TYPE_NAME(dict_object));
-  filterx_type_init(&FILTERX_TYPE_NAME(list_object));
+  filterx_type_init(&FILTERX_TYPE_NAME(dict));
+  filterx_type_init(&FILTERX_TYPE_NAME(list));
 
   filterx_type_init(&FILTERX_TYPE_NAME(null));
   filterx_type_init(&FILTERX_TYPE_NAME(integer));

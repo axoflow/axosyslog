@@ -298,8 +298,8 @@ init_libtest_filterx(void)
   /* These will use the json implementations, but won't be json typed. */
   filterx_type_init(&FILTERX_TYPE_NAME(test_dict));
   filterx_type_init(&FILTERX_TYPE_NAME(test_list));
-  FILTERX_TYPE_NAME(test_dict) = FILTERX_TYPE_NAME(dict_object);
-  FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(list_object);
+  FILTERX_TYPE_NAME(test_dict) = FILTERX_TYPE_NAME(dict);
+  FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(list);
 
   filterx_env.msg = create_sample_message();
   filterx_env.scope = filterx_scope_new(NULL);
