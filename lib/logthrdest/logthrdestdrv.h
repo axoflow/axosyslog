@@ -218,8 +218,6 @@ log_threaded_dest_worker_connect(LogThreadedDestWorker *self)
   else
     self->connected = TRUE;
 
-
-  stats_counter_set(self->metrics.output_unreachable, !self->connected);
   return self->connected;
 }
 
@@ -229,7 +227,6 @@ log_threaded_dest_worker_disconnect(LogThreadedDestWorker *self)
   if (self->disconnect)
     self->disconnect(self);
   self->connected = FALSE;
-  stats_counter_set(self->metrics.output_unreachable, !self->connected);
 }
 
 static inline LogThreadedResult
