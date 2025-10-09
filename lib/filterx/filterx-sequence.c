@@ -84,28 +84,33 @@ filterx_sequence_merge(FilterXObject *s, FilterXObject *other)
 }
 
 static gboolean
-_format_json(FilterXObject *s, GString *json)
+_format_and_append_list_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
+{
+  gpointer *args = (gpointer *) user_data;
+  GString *json = (GString *) args[0];
+  gboolean *first = (gboolean *) args[1];
+
+  if (!(*first))
+    g_string_append_c(json, ',');
+  else
+    *first = FALSE;
+
+  if (!filterx_object_format_json_append(value, json))
+    return FALSE;
+  return TRUE;
+}
+
+static gboolean
+_format_json(FilterXObject *value, GString *json)
 {
   gboolean first = TRUE;
-
-  guint64 list_len;
-  if (!filterx_object_len(s, &list_len))
-    return FALSE;
+  gpointer args[] = { json, &first };
 
   g_string_append_c(json, '[');
-  for (guint64 i = 0; i < list_len; i++)
-    {
-      if (!first)
-        g_string_append_c(json, ',');
-      else
-        first = FALSE;
-      FilterXObject *elem = filterx_sequence_get_subscript(s, i);
-      gboolean success = filterx_object_format_json_append(elem, json);
-      filterx_object_unref(elem);
 
-      if (!success)
-        return FALSE;
-    }
+  if (!filterx_object_iter(value, _format_and_append_list_elem, args))
+    return FALSE;
+
   g_string_append_c(json, ']');
   return TRUE;
 }
