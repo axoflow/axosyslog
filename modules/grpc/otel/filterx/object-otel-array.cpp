@@ -233,6 +233,23 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
 }
 
 static gboolean
+_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
+{
+  FilterXOtelArray *self = (FilterXOtelArray *) s;
+
+  for (guint64 i = 0; i < self->cpp->len(); i++)
+    {
+      FilterXObject *value = self->cpp->get_subscript(i);
+
+      FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, (gint64) i);
+      func(index_obj, value, user_data);
+      FILTERX_INTEGER_CLEAR_FROM_STACK(index_obj);
+      filterx_object_unref(value);
+    }
+  return TRUE;
+}
+
+static gboolean
 _truthy(FilterXObject *s)
 {
   return TRUE;
@@ -477,6 +494,7 @@ FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(list),
                     .is_key_set = _is_key_set,
                     .unset_key = _unset_key,
                     .len = _len,
+                    .iter = _iter,
                     .repr = _repr,
                     .free_fn = _free,
                    );
