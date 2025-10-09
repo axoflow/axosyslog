@@ -80,7 +80,7 @@ protected:
 
 struct FilterXOtelResource_
 {
-  FilterXDict super;
+  FilterXMapping super;
   syslogng::grpc::otel::filterx::Resource *cpp;
 };
 

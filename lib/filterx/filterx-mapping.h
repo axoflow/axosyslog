@@ -28,22 +28,22 @@
 #include "filterx/object-message-value.h"
 #include "filterx/object-extractor.h"
 
-typedef struct FilterXDict_ FilterXDict;
+typedef struct FilterXMapping_ FilterXMapping;
 
-struct FilterXDict_
+struct FilterXMapping_
 {
   FilterXObject super;
 };
 
-gboolean filterx_dict_merge(FilterXObject *s, FilterXObject *other);
-gboolean filterx_dict_keys(FilterXObject *s, FilterXObject **keys);
+gboolean filterx_mapping_merge(FilterXObject *s, FilterXObject *other);
+gboolean filterx_mapping_keys(FilterXObject *s, FilterXObject **keys);
 
-void filterx_dict_init_instance(FilterXDict *self, FilterXType *type);
+void filterx_mapping_init_instance(FilterXMapping *self, FilterXType *type);
 
 FILTERX_DECLARE_TYPE(mapping);
 
 static inline gboolean
-filterx_dict_normalize_key(FilterXObject *key, const gchar **key_string, gsize *key_len, const gchar **error)
+filterx_mapping_normalize_key(FilterXObject *key, const gchar **key_string, gsize *key_len, const gchar **error)
 {
   if (!key)
     {

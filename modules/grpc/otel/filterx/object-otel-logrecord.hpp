@@ -76,7 +76,7 @@ protected:
 
 struct FilterXOtelLogRecord_
 {
-  FilterXDict super;
+  FilterXMapping super;
   syslogng::grpc::otel::filterx::LogRecord *cpp;
 };
 

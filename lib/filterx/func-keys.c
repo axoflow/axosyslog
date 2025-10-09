@@ -47,7 +47,7 @@ _eval(FilterXExpr *s)
     }
 
   FilterXObject *result = filterx_list_new();
-  if (!filterx_dict_keys(object, &result))
+  if (!filterx_mapping_keys(object, &result))
     {
       filterx_eval_push_error(FILTERX_FUNC_KEYS_ERR_NONDICT FILTERX_FUNC_KEYS_USAGE, s, NULL);
       filterx_object_unref(result);

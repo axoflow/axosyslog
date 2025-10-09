@@ -533,7 +533,7 @@ _table_resize_if_needed(FilterXDictTable *old_table)
 
 typedef struct _FilterXDictObject
 {
-  FilterXDict super;
+  FilterXMapping super;
   FilterXDictTable *table;
 } FilterXDictObject;
 
@@ -562,7 +562,7 @@ _filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -580,7 +580,7 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -598,7 +598,7 @@ _filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -613,7 +613,7 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -655,7 +655,7 @@ filterx_dict_new_with_table(FilterXDictTable *table)
 {
   FilterXDictObject *self = g_new0(FilterXDictObject, 1);
 
-  filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(dict));
+  filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(dict));
   self->table = table;
   return &self->super.super;
 }
@@ -746,7 +746,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       FilterXObject *self = filterx_dict_new();
-      if (!filterx_dict_merge(self, arg_unwrapped))
+      if (!filterx_mapping_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);
           return NULL;
