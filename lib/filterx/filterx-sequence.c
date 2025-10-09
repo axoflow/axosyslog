@@ -51,7 +51,7 @@ filterx_sequence_append(FilterXObject *s, FilterXObject **new_value)
 }
 
 gboolean
-filterx_sequence_unset_index(FilterXObject *s, gint64 index)
+filterx_sequence_unset(FilterXObject *s, gint64 index)
 {
   FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, index);
   gboolean result = filterx_object_unset_key(s, index_obj);

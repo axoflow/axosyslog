@@ -209,7 +209,7 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
                   return FALSE;
                 }
             }
-          else if (!filterx_sequence_unset_index(obj, i))
+          else if (!filterx_sequence_unset(obj, i))
             {
               filterx_object_unref(elem);
               return FALSE;

@@ -38,7 +38,7 @@ struct FilterXSequence_
 FilterXObject *filterx_sequence_get_subscript(FilterXObject *s, gint64 index);
 gboolean filterx_sequence_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_value);
 gboolean filterx_sequence_append(FilterXObject *s, FilterXObject **new_value);
-gboolean filterx_sequence_unset_index(FilterXObject *s, gint64 index);
+gboolean filterx_sequence_unset(FilterXObject *s, gint64 index);
 gboolean filterx_sequence_merge(FilterXObject *s, FilterXObject *other);
 
 void filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type);
