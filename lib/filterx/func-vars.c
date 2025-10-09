@@ -68,7 +68,7 @@ _add_to_dict(FilterXVariable *variable, gpointer user_data)
   gboolean success = filterx_object_set_subscript(vars, name, &cloned_value);
 
   filterx_object_unref(cloned_value);
-  filterx_object_unref(name);
+  FILTERX_STRING_CLEAR_FROM_STACK(name);
   return success;
 }
 

@@ -177,8 +177,8 @@ _insert_into_dict(FilterXObject *dict, const gchar *key, gssize key_len, const g
 
   gboolean res = filterx_object_set_subscript(dict, fob_key, &fob_value);
 
-  filterx_object_unref(fob_key);
-  filterx_object_unref(fob_value);
+  FILTERX_STRING_CLEAR_FROM_STACK(fob_key);
+  FILTERX_STRING_CLEAR_FROM_STACK(fob_value);
 
   return res;
 }
@@ -264,7 +264,7 @@ _build_sdata_dict(FilterXExpr *s)
       FILTERX_STRING_DECLARE_ON_STACK(sd_id_key, current_sd_id_start, current_sd_id_len);
       filterx_object_set_subscript(root_dict, sd_id_key, &inner_dict);
       filterx_object_unref(inner_dict);
-      filterx_object_unref(sd_id_key);
+      FILTERX_STRING_CLEAR_FROM_STACK(sd_id_key);
     }
 
   return root_dict;

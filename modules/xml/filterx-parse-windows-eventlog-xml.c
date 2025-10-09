@@ -94,8 +94,8 @@ exit:
   if (!(*error))
     xml_elem_context_set_current_obj(elem_context, dict_obj);
 
-  filterx_object_unref(key);
   filterx_object_unref(dict_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(key);
   return !(*error);
 }
 
@@ -131,7 +131,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
   xml_elem_context_set_current_obj(new_elem_context, existing_obj);
 
 exit:
-  filterx_object_unref(new_elem_key);
+  FILTERX_STRING_CLEAR_FROM_STACK(new_elem_key);
   filterx_object_unref(existing_obj);
 
   if (*error)
@@ -344,8 +344,14 @@ _end_elem(FilterXFunctionParseXml *s,
     {
       FILTERX_STRING_DECLARE_ON_STACK(empty_value, "", 0);
       FILTERX_STRING_DECLARE_ON_STACK(param_obj, state->last_data_name->str, state->last_data_name->len);
+
       XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
-      if (!filterx_object_set_subscript(elem_context->current_obj, param_obj, &empty_value))
+      gboolean success = filterx_object_set_subscript(elem_context->current_obj, param_obj, &empty_value);
+
+      FILTERX_STRING_CLEAR_FROM_STACK(empty_value);
+      FILTERX_STRING_CLEAR_FROM_STACK(param_obj);
+
+      if (!success)
         {
           _set_error(error, "failed to add empty value text to EventData: \"%s\"", state->last_data_name->str);
           return;
@@ -378,7 +384,12 @@ _text(FilterXFunctionParseXml *s,
   FILTERX_STRING_DECLARE_ON_STACK(key, state->last_data_name->str, state->last_data_name->len);
   FILTERX_STRING_DECLARE_ON_STACK(text_obj, text, text_len);
 
-  if (!filterx_object_set_subscript(elem_context->current_obj, key, &text_obj))
+  gboolean success = filterx_object_set_subscript(elem_context->current_obj, key, &text_obj);
+
+  FILTERX_STRING_CLEAR_FROM_STACK(text_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(key);
+
+  if (!success)
     {
       _set_error(error, "failed to add text to dict: \"%s\"=\"%s\"", state->last_data_name->str, text);
       goto fail;

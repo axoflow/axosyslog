@@ -137,7 +137,7 @@ parse_delimiter(EventParserContext *ctx, const gchar *input, gint input_len, Fil
       goto success;
     }
 
-  filterx_object_unref(key);
+  FILTERX_STRING_CLEAR_FROM_STACK(key);
 
   /*
    * delimiter header field is:

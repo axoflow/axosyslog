@@ -32,7 +32,7 @@ filterx_object_getattr_string(FilterXObject *self, const gchar *attr_name)
 {
   FILTERX_STRING_DECLARE_ON_STACK(attr, attr_name, -1);
   FilterXObject *res = filterx_object_getattr(self, attr);
-  filterx_object_unref(attr);
+  FILTERX_STRING_CLEAR_FROM_STACK(attr);
   return res;
 }
 
@@ -41,7 +41,7 @@ filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, Filte
 {
   FILTERX_STRING_DECLARE_ON_STACK(attr, attr_name, -1);
   gboolean res = filterx_object_setattr(self, attr, new_value);
-  filterx_object_unref(attr);
+  FILTERX_STRING_CLEAR_FROM_STACK(attr);
   return res;
 }
 

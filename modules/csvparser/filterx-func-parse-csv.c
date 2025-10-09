@@ -190,7 +190,7 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
                                           "set-subscript() method failed");
     }
 
-  filterx_object_unref(val);
+  FILTERX_STRING_CLEAR_FROM_STACK(val);
   filterx_object_unref(col);
 
   return ok;
@@ -210,7 +210,7 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
                                           "append() method failed");
     }
 
-  filterx_object_unref(val);
+  FILTERX_STRING_CLEAR_FROM_STACK(val);
 
   return ok;
 }

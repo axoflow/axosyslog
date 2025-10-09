@@ -81,7 +81,9 @@ _convert_from_json_object(struct json_object *jso, GError **error)
     if (!o)
       goto error;
 
-    if (!filterx_object_set_subscript(res, key, &o))
+    gboolean success = filterx_object_set_subscript(res, key, &o);
+    FILTERX_STRING_CLEAR_FROM_STACK(key);
+    if (!success)
       {
         filterx_object_unref(o);
         g_set_error(error, 0, 0, "setting dictionary item failed, key=%s", itr.key);

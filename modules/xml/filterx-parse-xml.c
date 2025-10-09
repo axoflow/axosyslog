@@ -282,7 +282,7 @@ filterx_parse_xml_prepare_elem(const gchar *new_elem_name, XmlElemContext *last_
   filterx_parse_xml_prepare_elem(new_elem_name, last_elem_context, has_attrs, new_elem_context, error);
 
 exit:
-  filterx_object_unref(new_elem_key);
+  FILTERX_STRING_CLEAR_FROM_STACK(new_elem_key);
   filterx_object_unref(new_elem_obj);
   filterx_object_unref(existing_obj);
 
@@ -320,8 +320,8 @@ _collect_attrs(const gchar *element_name, XmlElemContext *elem_context,
 
       gboolean success = filterx_object_set_subscript(elem_context->current_obj, key, &value);
 
-      filterx_object_unref(key);
-      filterx_object_unref(value);
+      FILTERX_STRING_CLEAR_FROM_STACK(key);
+      FILTERX_STRING_CLEAR_FROM_STACK(value);
 
       if (!success)
         {
@@ -383,7 +383,7 @@ exit:
   if (!(*error))
     xml_elem_context_set_current_obj(elem_context, dict_obj);
 
-  filterx_object_unref(key);
+  FILTERX_STRING_CLEAR_FROM_STACK(key);
   filterx_object_unref(dict_obj);
   return !(*error);
 }
@@ -480,7 +480,7 @@ filterx_parse_xml_replace_string_text(XmlElemContext *elem_context, const gchar 
 success:
   xml_elem_context_set_current_obj(elem_context, text_obj);
 fail:
-  filterx_object_unref(text_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(text_obj);
 }
 
 static GString *
@@ -527,8 +527,8 @@ _add_text_to_dict(XmlElemContext *elem_context, const gchar *text, gsize text_le
   xml_elem_context_set_current_obj(elem_context, text_obj);
 
 fail:
-  filterx_object_unref(key);
-  filterx_object_unref(text_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(key);
+  FILTERX_STRING_CLEAR_FROM_STACK(text_obj);
 }
 
 void
