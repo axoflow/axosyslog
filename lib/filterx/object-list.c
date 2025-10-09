@@ -260,6 +260,20 @@ _filterx_list_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   return TRUE;
 }
 
+static gboolean
+_readonly_list_item(gsize index, FilterXObject **value, gpointer user_data)
+{
+  filterx_object_make_readonly(*value);
+  return TRUE;
+}
+
+static void
+_filterx_list_make_readonly(FilterXObject *s)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+  filterx_list_foreach(self, _readonly_list_item, NULL);
+}
+
 static void
 _filterx_list_free(FilterXObject *s)
 {
@@ -368,5 +382,6 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .unset_key = _filterx_list_unset_key,
                     .iter = _filterx_list_iter,
                     .len = _filterx_list_len,
+                    .make_readonly = _filterx_list_make_readonly,
                     .dedup = _filterx_list_dedup,
                    );

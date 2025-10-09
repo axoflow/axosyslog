@@ -467,8 +467,6 @@ filterx_object_getattr(FilterXObject *self, FilterXObject *attr)
     return NULL;
 
   FilterXObject *result = self->type->getattr(self, attr);
-  if (result && self->readonly)
-    filterx_object_make_readonly(result);
   return result;
 }
 
@@ -489,8 +487,6 @@ filterx_object_get_subscript(FilterXObject *self, FilterXObject *key)
     return NULL;
 
   FilterXObject *result = self->type->get_subscript(self, key);
-  if (result && self->readonly)
-    filterx_object_make_readonly(result);
   return result;
 }
 
