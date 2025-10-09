@@ -178,7 +178,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -192,7 +192,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -206,7 +206,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -221,7 +221,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -268,7 +268,7 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 static void
 _init_instance(FilterXOtelScope *self)
 {
-  filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_scope));
+  filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_scope));
 
 }
 
@@ -311,7 +311,7 @@ filterx_otel_scope_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
           if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(mapping)))
             {
               self->cpp = new Scope(self);
-              if (!filterx_dict_merge(&self->super.super, dict_arg))
+              if (!filterx_mapping_merge(&self->super.super, dict_arg))
                 throw std::runtime_error("Failed to merge dict");
             }
           else

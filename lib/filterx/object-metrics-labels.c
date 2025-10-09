@@ -38,7 +38,7 @@
 
 typedef struct _FilterXObjectMetricsLabels
 {
-  FilterXDict super;
+  FilterXMapping super;
   GArray *labels;
   gboolean sorted;
   gboolean deduped;
@@ -85,7 +85,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -140,7 +140,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -182,7 +182,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -206,7 +206,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_dict_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -341,7 +341,7 @@ FilterXObject *
 filterx_object_metrics_labels_new(guint reserved_size)
 {
   FilterXObjectMetricsLabels *self = g_new0(FilterXObjectMetricsLabels, 1);
-  filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
+  filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
 
 
   self->labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), reserved_size);
@@ -379,7 +379,7 @@ filterx_simple_function_metrics_labels(FilterXExpr *s, FilterXObject *args[], gs
   g_assert(filterx_object_len(typed_obj, &len));
   FilterXObject *metrics_labels = filterx_object_metrics_labels_new(MIN(len, (guint64) G_MAXUINT));
 
-  if (!filterx_dict_merge(metrics_labels, typed_obj))
+  if (!filterx_mapping_merge(metrics_labels, typed_obj))
     {
       filterx_object_unref(metrics_labels);
       filterx_simple_function_argument_error(s, "failed to cast dict into metrics_labels. "

@@ -59,7 +59,7 @@ _assert_key_value(FilterXObject *dict, const gchar *key, const gchar *value)
   filterx_object_unref(v);
 }
 
-Test(filterx_dict_interface, test_add_and_lookup_keys)
+Test(filterx_mapping, test_add_and_lookup_keys)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
   cr_assert_not_null(dict);
@@ -72,7 +72,7 @@ Test(filterx_dict_interface, test_add_and_lookup_keys)
   filterx_object_unref(dict);
 }
 
-Test(filterx_dict_interface, test_add_and_overwrite_keys)
+Test(filterx_mapping, test_add_and_overwrite_keys)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
   cr_assert_not_null(dict);
@@ -86,7 +86,7 @@ Test(filterx_dict_interface, test_add_and_overwrite_keys)
 }
 
 /* NOTE: to test hash table growth */
-Test(filterx_dict_interface, test_add_and_lookup_lots_of_keys_to_test_hash_table_resize)
+Test(filterx_mapping, test_add_and_lookup_lots_of_keys_to_test_hash_table_resize)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
   cr_assert_not_null(dict);
@@ -103,7 +103,7 @@ Test(filterx_dict_interface, test_add_and_lookup_lots_of_keys_to_test_hash_table
   filterx_object_unref(dict);
 }
 
-Test(filterx_dict_interface, test_keys_empty)
+Test(filterx_mapping, test_keys_empty)
 {
   FilterXObject *dict = filterx_object_from_json("{}", -1, NULL);
   cr_assert_not_null(dict);
@@ -111,7 +111,7 @@ Test(filterx_dict_interface, test_keys_empty)
   FilterXObject *keys = filterx_list_new();
   cr_assert_not_null(keys);
 
-  gboolean ok = filterx_dict_keys(dict, &keys);
+  gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
   cr_assert_not_null(keys);
 
@@ -120,7 +120,7 @@ Test(filterx_dict_interface, test_keys_empty)
   filterx_object_unref(keys);
 }
 
-Test(filterx_dict_interface, test_keys_single)
+Test(filterx_mapping, test_keys_single)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL);
   cr_assert_not_null(dict);
@@ -128,7 +128,7 @@ Test(filterx_dict_interface, test_keys_single)
   FilterXObject *keys = filterx_list_new();
   cr_assert_not_null(keys);
 
-  gboolean ok = filterx_dict_keys(dict, &keys);
+  gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
   cr_assert_not_null(keys);
 
@@ -138,7 +138,7 @@ Test(filterx_dict_interface, test_keys_single)
 }
 
 
-Test(filterx_dict_interface, test_keys_multi)
+Test(filterx_mapping, test_keys_multi)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":\"bar\", \"bar\": \"baz\"}", -1, NULL);
   cr_assert_not_null(dict);
@@ -146,7 +146,7 @@ Test(filterx_dict_interface, test_keys_multi)
   FilterXObject *keys = filterx_list_new();
   cr_assert_not_null(keys);
 
-  gboolean ok = filterx_dict_keys(dict, &keys);
+  gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
   cr_assert_not_null(keys);
 
@@ -155,7 +155,7 @@ Test(filterx_dict_interface, test_keys_multi)
   filterx_object_unref(keys);
 }
 
-Test(filterx_dict_interface, test_keys_nested)
+Test(filterx_mapping, test_keys_nested)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}, \"bar\":{\"baz\": null}}", -1, NULL);
   cr_assert_not_null(dict);
@@ -163,7 +163,7 @@ Test(filterx_dict_interface, test_keys_nested)
   FilterXObject *keys = filterx_list_new();
   cr_assert_not_null(keys);
 
-  gboolean ok = filterx_dict_keys(dict, &keys);
+  gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(ok);
   cr_assert_not_null(keys);
 
@@ -172,25 +172,25 @@ Test(filterx_dict_interface, test_keys_nested)
   filterx_object_unref(keys);
 }
 
-Test(filterx_dict_interface, test_keys_null_dict, .signal=SIGABRT)
+Test(filterx_mapping, test_keys_null_dict, .signal=SIGABRT)
 {
   FilterXObject *keys = filterx_list_new();
   cr_assert_not_null(keys);
 
-  filterx_dict_keys(NULL, &keys);
+  filterx_mapping_keys(NULL, &keys);
 
   filterx_object_unref(keys);
 }
 
-Test(filterx_dict_interface, test_keys_null_keys, .signal=SIGABRT)
+Test(filterx_mapping, test_keys_null_keys, .signal=SIGABRT)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}, \"bar\":{\"baz\": null}}", -1, NULL);
   cr_assert_not_null(dict);
 
-  filterx_dict_keys(dict, NULL);
+  filterx_mapping_keys(dict, NULL);
 }
 
-Test(filterx_dict_interface, test_keys_key_type_is_not_list, .signal=SIGABRT)
+Test(filterx_mapping, test_keys_key_type_is_not_list, .signal=SIGABRT)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}, \"bar\":{\"baz\": null}}", -1, NULL);
   cr_assert_not_null(dict);
@@ -198,12 +198,12 @@ Test(filterx_dict_interface, test_keys_key_type_is_not_list, .signal=SIGABRT)
   FilterXObject *keys = filterx_string_new("this is string", -1);
   cr_assert_not_null(keys);
 
-  filterx_dict_keys(dict, &keys);
+  filterx_mapping_keys(dict, &keys);
 
   filterx_object_unref(keys);
 }
 
-Test(filterx_dict_interface, test_keys_object_is_not_dict)
+Test(filterx_mapping, test_keys_object_is_not_dict)
 {
   FilterXObject *dict = filterx_string_new("{\"foo\":\"bar\", \"bar\": \"baz\"}", -1);
   cr_assert_not_null(dict);
@@ -211,7 +211,7 @@ Test(filterx_dict_interface, test_keys_object_is_not_dict)
   FilterXObject *keys = filterx_list_new();
   cr_assert_not_null(keys);
 
-  gboolean ok = filterx_dict_keys(dict, &keys);
+  gboolean ok = filterx_mapping_keys(dict, &keys);
   cr_assert(!ok);
   guint64 len = G_MAXUINT64;
   cr_assert(filterx_object_len(keys, &len));
@@ -234,4 +234,4 @@ teardown(void)
   app_shutdown();
 }
 
-TestSuite(filterx_dict_interface, .init = setup, .fini = teardown);
+TestSuite(filterx_mapping, .init = setup, .fini = teardown);

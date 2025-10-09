@@ -30,25 +30,23 @@
 
 
 static gboolean
-_add_elem_to_dict(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
+_add_elem(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
 {
-  FilterXObject *dict = (FilterXObject *) user_data;
+  FilterXObject *mapping = (FilterXObject *) user_data;
 
   FilterXObject *new_value = filterx_object_ref(value_obj);
-  gboolean success = filterx_object_set_subscript(dict, key_obj, &new_value);
+  gboolean success = filterx_object_set_subscript(mapping, key_obj, &new_value);
   filterx_object_unref(new_value);
 
   return success;
 }
 
 gboolean
-filterx_dict_merge(FilterXObject *s, FilterXObject *other)
+filterx_mapping_merge(FilterXObject *s, FilterXObject *other)
 {
-  FilterXDict *self = (FilterXDict *) s;
-
   other = filterx_ref_unwrap_ro(other);
   g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(mapping)));
-  return filterx_object_iter(other, _add_elem_to_dict, self);
+  return filterx_object_iter(other, _add_elem, s);
 }
 
 static gboolean
@@ -64,7 +62,7 @@ _add_elem_to_list(FilterXObject *key_obj, FilterXObject *value_obj, gpointer use
 }
 
 gboolean
-filterx_dict_keys(FilterXObject *s, FilterXObject **keys)
+filterx_mapping_keys(FilterXObject *s, FilterXObject **keys)
 {
   g_assert(s);
   g_assert(keys);
@@ -133,7 +131,7 @@ _format_json(FilterXObject *value, GString *json)
 }
 
 void
-filterx_dict_init_instance(FilterXDict *self, FilterXType *type)
+filterx_mapping_init_instance(FilterXMapping *self, FilterXType *type)
 {
   g_assert(type->is_mutable);
   filterx_object_init_instance(&self->super, type);
@@ -148,7 +146,7 @@ _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 
   FilterXObject *cloned = filterx_object_clone(lhs_object);
 
-  if (!filterx_dict_merge(cloned, rhs_object))
+  if (!filterx_mapping_merge(cloned, rhs_object))
     goto error;
 
   return cloned;
