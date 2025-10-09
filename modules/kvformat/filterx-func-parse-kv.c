@@ -88,8 +88,8 @@ _set_dict_value(FilterXObject *out,
   if (!ok)
     filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", NULL, "set-subscript() method failed");
 
-  filterx_object_unref(dict_key);
-  filterx_object_unref(dict_val);
+  FILTERX_STRING_CLEAR_FROM_STACK(dict_val);
+  FILTERX_STRING_CLEAR_FROM_STACK(dict_key);
   return ok;
 }
 

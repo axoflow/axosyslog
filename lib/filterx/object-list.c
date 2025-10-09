@@ -225,7 +225,7 @@ _filterx_list_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
       FilterXObject *value = g_ptr_array_index(self->array, i);
       FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, i);
       func(index_obj, value, user_data);
-      filterx_object_unref(index_obj);
+      FILTERX_INTEGER_CLEAR_FROM_STACK(index_obj);
     }
   return TRUE;
 }
@@ -281,14 +281,15 @@ filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len)
       FILTERX_STRING_DECLARE_ON_STACK(value,
                                       list_scanner_get_current_value(&scanner),
                                       list_scanner_get_current_value_len(&scanner));
-      if (!filterx_sequence_set_subscript(list, i, &value))
+      gboolean success = filterx_sequence_set_subscript(list, i, &value);
+      FILTERX_STRING_CLEAR_FROM_STACK(value);
+
+      if (!success)
         {
-          filterx_object_unref(value);
           filterx_object_unref(list);
           list = NULL;
           break;
         }
-      filterx_object_unref(value);
     }
   list_scanner_deinit(&scanner);
   return list;

@@ -236,8 +236,8 @@ _iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 
       gboolean success = func(name, value, user_data);
 
-      filterx_object_unref(name);
-      filterx_object_unref(value);
+      FILTERX_STRING_CLEAR_FROM_STACK(name);
+      FILTERX_STRING_CLEAR_FROM_STACK(value);
 
       if (!success)
         return FALSE;

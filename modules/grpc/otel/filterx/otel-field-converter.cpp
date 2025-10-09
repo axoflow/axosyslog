@@ -408,8 +408,8 @@ syslogng::grpc::otel::iter_on_otel_protobuf_message_fields(google::protobuf::Mes
 
           bool success = func(key, value, user_data);
 
-          filterx_object_unref(key);
           filterx_object_unref(value);
+          FILTERX_STRING_CLEAR_FROM_STACK(key);
 
           if (!success)
             return false;

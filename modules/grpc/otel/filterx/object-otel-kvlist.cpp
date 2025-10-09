@@ -244,8 +244,8 @@ KVList::iter(FilterXObjectIterFunc func, gpointer user_data) const
 
       bool result = func(key, value, user_data);
 
-      filterx_object_unref(key);
       filterx_object_unref(value);
+      FILTERX_STRING_CLEAR_FROM_STACK(key);
       if (!result)
         return false;
     }
