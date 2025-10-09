@@ -702,6 +702,22 @@ _filterx_dict_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   return TRUE;
 }
 
+static gboolean
+_readonly_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
+{
+  filterx_object_make_readonly(*key);
+  filterx_object_make_readonly(*value);
+  return TRUE;
+}
+
+static void
+_filterx_dict_make_readonly(FilterXObject *s)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  _table_foreach(self->table, _readonly_dict_item, NULL);
+}
+
 FilterXObject *
 filterx_dict_new(void)
 {
@@ -797,5 +813,6 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .unset_key = _filterx_dict_unset_key,
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
+                    .make_readonly = _filterx_dict_make_readonly,
                     .dedup = _filterx_dict_dedup,
                    );
