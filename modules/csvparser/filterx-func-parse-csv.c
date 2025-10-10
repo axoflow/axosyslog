@@ -184,6 +184,7 @@ _run_parsing(FilterXFunctionParseCSV *self,
 
   guint64 index = 0;
   gboolean ok = TRUE;
+  gboolean is_list_object = columns && filterx_object_is_type(columns, &FILTERX_TYPE_NAME(list));
   gboolean finished = FALSE;
   while (!finished && csv_scanner_scan_next(&scanner) && ok)
     {
@@ -192,10 +193,18 @@ _run_parsing(FilterXFunctionParseCSV *self,
                                       csv_scanner_get_current_value_len(&scanner));
       if (columns)
         {
-          FilterXObject *column = filterx_sequence_get_subscript(columns, index);
-          ok = filterx_object_set_subscript(result, column, &val);
-          filterx_object_unref(column);
-
+          if (is_list_object)
+            {
+              /* if it is a list we can avoid ref/unref here */
+              FilterXObject *column = filterx_list_peek_subscript(columns, index);
+              ok = filterx_object_set_subscript(result, column, &val);
+            }
+          else
+            {
+              FilterXObject *column = filterx_sequence_get_subscript(columns, index);
+              ok = filterx_object_set_subscript(result, column, &val);
+              filterx_object_unref(column);
+            }
           index++;
           finished = (index >= num_of_columns);
         }
