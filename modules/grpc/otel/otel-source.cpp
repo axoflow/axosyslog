@@ -106,14 +106,12 @@ SourceDriver::init()
   return TRUE;
 }
 
-gboolean
-SourceDriver::deinit()
+SourceDriver::~SourceDriver()
 {
+  /* the service must exist for the lifetime of the Server instance */
   this->trace_service = nullptr;
   this->logs_service = nullptr;
   this->metrics_service = nullptr;
-
-  return syslogng::grpc::SourceDriver::deinit();
 }
 
 LogThreadedSourceWorker *

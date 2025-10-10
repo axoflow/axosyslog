@@ -39,6 +39,7 @@ class SourceDriver : public syslogng::grpc::SourceDriver
 {
 public:
   SourceDriver(GrpcSourceDriver *s);
+  ~SourceDriver() override;
 
   gboolean init() override;
   gboolean deinit() override;
