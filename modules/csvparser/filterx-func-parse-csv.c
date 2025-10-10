@@ -231,10 +231,10 @@ _run_parsing(FilterXFunctionParseCSV *self,
     {
       if (columns)
         {
-          if (i >= num_of_columns)
-            break;
           ok = _fill_object_col(self, columns, i, &scanner, result);
           i++;
+          if (i >= num_of_columns)
+            break;
         }
       else
         {
