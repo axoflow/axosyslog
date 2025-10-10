@@ -168,11 +168,6 @@ _fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 inde
                                   csv_scanner_get_current_value_len(scanner));
 
   gboolean ok = filterx_object_set_subscript(result, col, &val);
-  if (!ok)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_csv()", &self->super.super,
-                                          "set-subscript() method failed");
-    }
 
   FILTERX_STRING_CLEAR_FROM_STACK(val);
   filterx_object_unref(col);
@@ -188,11 +183,6 @@ _fill_array_element(CSVScanner *scanner, FilterXObject *result)
                                   csv_scanner_get_current_value_len(scanner));
 
   gboolean ok = filterx_sequence_append(result, &val);
-  if (!ok)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_csv()", NULL,
-                                          "append() method failed");
-    }
 
   FILTERX_STRING_CLEAR_FROM_STACK(val);
 
@@ -244,6 +234,7 @@ _run_parsing(FilterXFunctionParseCSV *self,
   if (!ok)
     {
       filterx_object_unref(result);
+      filterx_eval_push_error("Failed to store value in parse_csv()", &self->super.super, NULL);
       result = NULL;
     }
   csv_scanner_options_clean(&local_opts);
