@@ -49,7 +49,6 @@ public:
 
   virtual gboolean init();
   virtual gboolean deinit();
-  virtual void request_exit() = 0;
   virtual void format_stats_key(StatsClusterKeyBuilder *kb) = 0;
   virtual const char *generate_persist_name() = 0;
   virtual LogThreadedSourceWorker *construct_worker(int worker_index) = 0;
