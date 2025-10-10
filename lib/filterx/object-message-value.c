@@ -31,16 +31,6 @@
 #include "logmsg/type-hinting.h"
 #include "str-utils.h"
 
-/* an object representing a (type, value) pair extracted as an rvalue (e.g.
- * cannot be assigned to as it is not part of the message) */
-typedef struct _FilterXMessageValue
-{
-  FilterXObject super;
-  const gchar *repr;
-  gsize repr_len;
-  LogMessageValueType type;
-  gchar *buf;
-} FilterXMessageValue;
 
 gboolean
 filterx_message_value_get_string_ref(FilterXObject *s, const gchar **value, gsize *len)
@@ -401,23 +391,6 @@ _len(FilterXObject *s, guint64 *len)
       g_assert_not_reached();
     }
   return FALSE;
-}
-
-LogMessageValueType
-filterx_message_value_get_type(FilterXObject *s)
-{
-  FilterXMessageValue *self = (FilterXMessageValue *) s;
-  return self->type;
-}
-
-const gchar *
-filterx_message_value_get_value(FilterXObject *s, gsize *len)
-{
-  FilterXMessageValue *self = (FilterXMessageValue *) s;
-
-  g_assert(len);
-  *len = self->repr_len;
-  return self->repr;
 }
 
 /* NOTE: the caller must ensure that repr lives as long as the constructed object, avoids copying */
