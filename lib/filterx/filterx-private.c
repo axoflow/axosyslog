@@ -25,8 +25,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
-#include "filterx/object-list-interface.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-sequence.h"
+#include "filterx/filterx-mapping.h"
 
 // Builtin functions
 

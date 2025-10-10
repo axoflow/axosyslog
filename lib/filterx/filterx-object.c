@@ -32,7 +32,7 @@ filterx_object_getattr_string(FilterXObject *self, const gchar *attr_name)
 {
   FILTERX_STRING_DECLARE_ON_STACK(attr, attr_name, -1);
   FilterXObject *res = filterx_object_getattr(self, attr);
-  filterx_object_unref(attr);
+  FILTERX_STRING_CLEAR_FROM_STACK(attr);
   return res;
 }
 
@@ -41,7 +41,7 @@ filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, Filte
 {
   FILTERX_STRING_DECLARE_ON_STACK(attr, attr_name, -1);
   gboolean res = filterx_object_setattr(self, attr, new_value);
-  filterx_object_unref(attr);
+  FILTERX_STRING_CLEAR_FROM_STACK(attr);
   return res;
 }
 
@@ -81,8 +81,6 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, set_subscript);
   INIT_TYPE_METHOD(type, is_key_set);
   INIT_TYPE_METHOD(type, unset_key);
-  INIT_TYPE_METHOD(type, list_factory);
-  INIT_TYPE_METHOD(type, dict_factory);
   INIT_TYPE_METHOD(type, repr);
   INIT_TYPE_METHOD(type, str);
   INIT_TYPE_METHOD(type, format_json);

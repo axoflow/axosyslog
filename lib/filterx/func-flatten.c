@@ -22,7 +22,7 @@
  */
 
 #include "filterx/func-flatten.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
@@ -68,7 +68,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   gboolean is_top_level = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[4]);
 
   FilterXObject *dict = filterx_ref_unwrap_ro(value);
-  if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       if (is_top_level)
         g_ptr_array_add(top_level_dict_keys, filterx_object_ref(key));
@@ -85,7 +85,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
       g_string_append(key_buffer, self->separator);
 
       gpointer inner_user_data[] = { self, flattened_kvs, NULL, key_buffer, GINT_TO_POINTER(FALSE)};
-      gboolean result = filterx_dict_iter(dict, _collect_modifications_from_elem, inner_user_data);
+      gboolean result = filterx_object_iter(dict, _collect_modifications_from_elem, inner_user_data);
 
       g_string_truncate(key_buffer, orig_len);
       return result;
@@ -124,7 +124,7 @@ _collect_dict_modifications(FilterXFunctionFlatten *self, FilterXObject *dict,
 {
   GString *key_buffer = scratch_buffers_alloc();
   gpointer user_data[] = { self, flattened_kvs, top_level_dict_keys, key_buffer, GINT_TO_POINTER(TRUE)};
-  return filterx_dict_iter(dict, _collect_modifications_from_elem, user_data);
+  return filterx_object_iter(dict, _collect_modifications_from_elem, user_data);
 }
 
 static gboolean
@@ -199,7 +199,7 @@ _eval_fx_flatten(FilterXExpr *s)
   gboolean result = FALSE;
 
   FilterXObject *dict = filterx_ref_unwrap_rw(obj);
-  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to flatten object", self->dict_expr,
                                           "Object must be a dict, got: %s",

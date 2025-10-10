@@ -26,7 +26,7 @@
 #include "syslog-ng.h"
 
 #include "compat/cpp-start.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
@@ -65,7 +65,7 @@ public:
   FilterXObject *get_subscript(FilterXObject *key);
   bool unset_key(FilterXObject *key);
   uint64_t len() const;
-  bool iter(FilterXDictIterFunc func, gpointer user_data) const;
+  bool iter(FilterXObjectIterFunc func, gpointer user_data) const;
   const RepeatedPtrField<KeyValue> &get_value() const;
 
 private:
@@ -105,7 +105,7 @@ extern KVListFieldConverter kvlist_field_converter;
 
 struct FilterXOtelKVList_
 {
-  FilterXDict super;
+  FilterXMapping super;
   syslogng::grpc::otel::filterx::KVList *cpp;
 };
 

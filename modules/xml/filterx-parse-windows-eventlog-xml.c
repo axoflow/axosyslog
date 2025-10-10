@@ -23,7 +23,8 @@
 
 #include "filterx-parse-windows-eventlog-xml.h"
 #include "filterx/object-string.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/object-dict.h"
 #include "scratch-buffers.h"
 
 static void _set_error(GError **error, const gchar *format, ...) G_GNUC_PRINTF(2, 0);
@@ -72,12 +73,12 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
   const gchar *parent_elem_name = (const gchar *) g_markup_parse_context_get_element_stack(context)->next->data;
   FILTERX_STRING_DECLARE_ON_STACK(key, parent_elem_name, -1);
 
-  FilterXObject *dict_obj = filterx_object_create_dict(elem_context->parent_obj);
+  FilterXObject *dict_obj = filterx_dict_new();
   if (!dict_obj)
     goto exit;
 
   FilterXObject *parent_unwrapped = filterx_ref_unwrap_ro(elem_context->parent_obj);
-  if (!filterx_object_is_type(parent_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(parent_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       _set_error(error, "failed to convert EventData string to dict, parent must be a dict");
       goto exit;
@@ -93,8 +94,8 @@ exit:
   if (!(*error))
     xml_elem_context_set_current_obj(elem_context, dict_obj);
 
-  filterx_object_unref(key);
   filterx_object_unref(dict_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(key);
   return !(*error);
 }
 
@@ -109,7 +110,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
 
   if (!filterx_object_is_key_set(new_elem_context->parent_obj, new_elem_key))
     {
-      FilterXObject *empty_dict = filterx_object_create_dict(new_elem_context->parent_obj);
+      FilterXObject *empty_dict = filterx_dict_new();
       xml_elem_context_set_current_obj(new_elem_context, empty_dict);
       filterx_object_unref(empty_dict);
 
@@ -120,7 +121,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
 
   existing_obj = filterx_object_get_subscript(new_elem_context->parent_obj, new_elem_key);
   FilterXObject *existing_obj_unwrapped = filterx_ref_unwrap_ro(existing_obj);
-  if (!filterx_object_is_type(existing_obj_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(existing_obj_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       _set_error(error, "failed to prepare dict for named param, parent must be dict, got \"%s\"",
                  filterx_object_get_type_name(existing_obj));
@@ -130,7 +131,7 @@ _prepare_elem(const gchar *new_elem_name, XmlElemContext *last_elem_context, Xml
   xml_elem_context_set_current_obj(new_elem_context, existing_obj);
 
 exit:
-  filterx_object_unref(new_elem_key);
+  FILTERX_STRING_CLEAR_FROM_STACK(new_elem_key);
   filterx_object_unref(existing_obj);
 
   if (*error)
@@ -317,7 +318,7 @@ _start_elem(FilterXFunctionParseXml *s,
     }
 
   FilterXObject *current_obj = filterx_ref_unwrap_ro(last_elem_context->current_obj);
-  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(mapping)))
     {
       if (!_convert_to_dict(context, last_elem_context, error))
         return;
@@ -343,8 +344,14 @@ _end_elem(FilterXFunctionParseXml *s,
     {
       FILTERX_STRING_DECLARE_ON_STACK(empty_value, "", 0);
       FILTERX_STRING_DECLARE_ON_STACK(param_obj, state->last_data_name->str, state->last_data_name->len);
+
       XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
-      if (!filterx_object_set_subscript(elem_context->current_obj, param_obj, &empty_value))
+      gboolean success = filterx_object_set_subscript(elem_context->current_obj, param_obj, &empty_value);
+
+      FILTERX_STRING_CLEAR_FROM_STACK(empty_value);
+      FILTERX_STRING_CLEAR_FROM_STACK(param_obj);
+
+      if (!success)
         {
           _set_error(error, "failed to add empty value text to EventData: \"%s\"", state->last_data_name->str);
           return;
@@ -367,7 +374,7 @@ _text(FilterXFunctionParseXml *s,
   XmlElemContext *elem_context = xml_elem_context_stack_peek_last(state->super.xml_elem_context_stack);
 
   FilterXObject *current_obj = filterx_ref_unwrap_ro(elem_context->current_obj);
-  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(dict)) ||
+  if (!filterx_object_is_type(current_obj, &FILTERX_TYPE_NAME(mapping)) ||
       !state->has_named_data)
     {
       filterx_parse_xml_text_method(s, context, text, text_len, st, error);
@@ -377,7 +384,12 @@ _text(FilterXFunctionParseXml *s,
   FILTERX_STRING_DECLARE_ON_STACK(key, state->last_data_name->str, state->last_data_name->len);
   FILTERX_STRING_DECLARE_ON_STACK(text_obj, text, text_len);
 
-  if (!filterx_object_set_subscript(elem_context->current_obj, key, &text_obj))
+  gboolean success = filterx_object_set_subscript(elem_context->current_obj, key, &text_obj);
+
+  FILTERX_STRING_CLEAR_FROM_STACK(text_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(key);
+
+  if (!success)
     {
       _set_error(error, "failed to add text to dict: \"%s\"=\"%s\"", state->last_data_name->str, text);
       goto fail;

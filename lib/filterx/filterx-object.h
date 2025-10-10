@@ -31,6 +31,8 @@ typedef struct _FilterXObject FilterXObject;
 typedef struct _FilterXRef FilterXRef;
 typedef struct _FilterXExpr FilterXExpr;
 
+typedef gboolean (*FilterXObjectIterFunc)(FilterXObject *key, FilterXObject *value, gpointer user_data);
+
 struct _FilterXType
 {
   FilterXType *super_type;
@@ -44,21 +46,28 @@ struct _FilterXType
   FilterXObject *(*clone)(FilterXObject *self);
   FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest);
   gboolean (*truthy)(FilterXObject *self);
+
+  /* attribute access */
   FilterXObject *(*getattr)(FilterXObject *self, FilterXObject *attr);
   gboolean (*setattr)(FilterXObject *self, FilterXObject *attr, FilterXObject **new_value);
+
+  /* subscript and dictionary like access */
   FilterXObject *(*get_subscript)(FilterXObject *self, FilterXObject *key);
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
-  FilterXObject *(*list_factory)(FilterXObject *self);
-  FilterXObject *(*dict_factory)(FilterXObject *self);
+  gboolean (*len)(FilterXObject *self, guint64 *len);
+  gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
+
+  /* conversion to other data types */
   gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
   gboolean (*str)(FilterXObject *self, GString *str);
-  gboolean (*len)(FilterXObject *self, guint64 *len);
+  /* operators */
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
+
+  /* lifecycle management (caching, deduplication) */
   void (*make_readonly)(FilterXObject *self);
-  /* return values indicates if deduplication is supported */
   gboolean (*dedup)(FilterXObject **pself, GHashTable *dedup_storage);
   void (*free_fn)(FilterXObject *self);
 };
@@ -458,8 +467,6 @@ filterx_object_getattr(FilterXObject *self, FilterXObject *attr)
     return NULL;
 
   FilterXObject *result = self->type->getattr(self, attr);
-  if (result && self->readonly)
-    filterx_object_make_readonly(result);
   return result;
 }
 
@@ -480,8 +487,6 @@ filterx_object_get_subscript(FilterXObject *self, FilterXObject *key)
     return NULL;
 
   FilterXObject *result = self->type->get_subscript(self, key);
-  if (result && self->readonly)
-    filterx_object_make_readonly(result);
   return result;
 }
 
@@ -513,22 +518,12 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   return FALSE;
 }
 
-static inline FilterXObject *
-filterx_object_create_list(FilterXObject *self)
+static inline gboolean
+filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer user_data)
 {
-  if (!self->type->list_factory)
-    return NULL;
-
-  return self->type->list_factory(self);
-}
-
-static inline FilterXObject *
-filterx_object_create_dict(FilterXObject *self)
-{
-  if (!self->type->dict_factory)
-    return NULL;
-
-  return self->type->dict_factory(self);
+  if (!self->type->iter)
+    return FALSE;
+  return self->type->iter(self, func, user_data);
 }
 
 void _filterx_object_log_add_object_error(FilterXObject *self);

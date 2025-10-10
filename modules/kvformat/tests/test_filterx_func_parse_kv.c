@@ -31,7 +31,7 @@
 #include "filterx/object-null.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx-func-parse-kv.h"
 
 Test(filterx_func_parse_kv, test_empty_args_error)
@@ -64,7 +64,7 @@ Test(filterx_func_parse_kv, test_skipped_opts_causes_default_behaviour)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -97,7 +97,7 @@ Test(filterx_func_parse_kv, test_optional_value_separator_option_first_character
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -151,7 +151,7 @@ Test(filterx_func_parse_kv, test_optional_pair_separator_option)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
 
@@ -185,7 +185,7 @@ Test(filterx_func_parse_kv, test_optional_stray_words_key_option)
   FilterXObject *obj = init_and_eval_expr(func);
 
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
 

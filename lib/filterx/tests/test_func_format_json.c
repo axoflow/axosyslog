@@ -29,7 +29,7 @@
 #include "filterx/object-null.h"
 #include "filterx/object-string.h"
 #include "filterx/object-message-value.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -144,8 +144,8 @@ Test(filterx_format_json, test_filterx_format_json)
 
   /* list */
   FilterXObject *list = filterx_test_list_new();
-  cr_assert(filterx_list_append(list, &foo));
-  cr_assert(filterx_list_append(list, &bar));
+  cr_assert(filterx_sequence_append(list, &foo));
+  cr_assert(filterx_sequence_append(list, &bar));
   _assert_filterx_format_json_and_unref(list, "[\"foo\",\"bar\"]");
 
   filterx_object_unref(foo);

@@ -31,8 +31,8 @@
 #include "filterx/expr-literal.h"
 #include "filterx/func-keys.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -100,7 +100,7 @@ Test(filterx_func_keys, valid_input)
   cr_assert_null(error);
   FilterXObject *res = init_and_eval_expr(fn);
   cr_assert_not_null(res);
-  cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(sequence)));
 
   assert_object_repr_equals(res, "[\"foo\",\"bar\",\"baz\"]");
 

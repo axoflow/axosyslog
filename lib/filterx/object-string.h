@@ -153,6 +153,16 @@ void filterx_string_global_deinit(void);
   FilterXString __ ## _name ## storage = FILTERX_STRING_STACK_INIT(cstr, cstr_len); \
   FilterXObject *_name = &__ ## _name ## storage .super;
 
+/* make sure we only call the unref if the pointer can potentially be
+ * changed.  unchanged pointers don't need the unref call at all */
+
+#define FILTERX_STRING_CLEAR_FROM_STACK(_name) \
+  do { \
+    if (_name != &__ ## _name ## storage.super) \
+      filterx_object_unref(_name); \
+  } while (0)
+
+
 void filterx_string_global_init(void);
 void filterx_string_global_deinit(void);
 
