@@ -103,23 +103,6 @@ exit:
   return result;
 }
 
-static inline void
-_init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_of_cols, const gchar *input,
-              CSVScanner *scanner, CSVScannerOptions *local_opts)
-{
-  CSVScannerOptions *opts = &self->options;
-
-  if (string_delimiters)
-    {
-      csv_scanner_options_copy(local_opts, &self->options);
-      opts = local_opts;
-      csv_scanner_options_set_string_delimiters(local_opts, string_delimiters);
-    }
-
-  csv_scanner_init(scanner, opts, input);
-  csv_scanner_set_expected_columns(scanner, num_of_cols);
-}
-
 static inline gboolean
 _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guint64 *num_of_columns)
 {
@@ -155,6 +138,23 @@ _maybe_init_columns(FilterXFunctionParseCSV *self, FilterXObject **columns, guin
     }
 
   return TRUE;
+}
+
+static inline void
+_init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_of_cols, const gchar *input,
+              CSVScanner *scanner, CSVScannerOptions *local_opts)
+{
+  CSVScannerOptions *opts = &self->options;
+
+  if (string_delimiters)
+    {
+      csv_scanner_options_copy(local_opts, &self->options);
+      opts = local_opts;
+      csv_scanner_options_set_string_delimiters(local_opts, string_delimiters);
+    }
+
+  csv_scanner_init(scanner, opts, input);
+  csv_scanner_set_expected_columns(scanner, num_of_cols);
 }
 
 static inline gboolean
