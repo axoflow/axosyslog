@@ -187,20 +187,21 @@ filterx_expr_free_method(FilterXExpr *self)
 }
 
 void
-filterx_expr_init_instance(FilterXExpr *self, const gchar *type)
+filterx_expr_init_instance(FilterXExpr *self, const gchar *type, gboolean mutates_scope)
 {
   self->ref_cnt = 1;
   self->init = filterx_expr_init_method;
   self->deinit = filterx_expr_deinit_method;
   self->free_fn = filterx_expr_free_method;
   self->type = type;
+  self->mutates_scope = mutates_scope;
 }
 
 FilterXExpr *
 filterx_expr_new(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self, "expr");
+  filterx_expr_init_instance(self, "expr", FALSE);
   return self;
 }
 
@@ -271,9 +272,10 @@ filterx_unary_op_free_method(FilterXExpr *s)
 }
 
 void
-filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
+filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, gboolean mutates_scope,
+                               FilterXExpr *operand)
 {
-  filterx_expr_init_instance(&self->super, name);
+  filterx_expr_init_instance(&self->super, name, mutates_scope);
   self->super.optimize = filterx_unary_op_optimize_method;
   self->super.init = filterx_unary_op_init_method;
   self->super.deinit = filterx_unary_op_deinit_method;
@@ -329,9 +331,10 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 }
 
 void
-filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, gboolean mutates_scope,
+                                FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  filterx_expr_init_instance(&self->super, name);
+  filterx_expr_init_instance(&self->super, name, mutates_scope);
   self->super.optimize = filterx_binary_op_optimize_method;
   self->super.init = filterx_binary_op_init_method;
   self->super.deinit = filterx_binary_op_deinit_method;

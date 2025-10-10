@@ -181,7 +181,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
 {
   FilterXSetAttr *self = g_new0(FilterXSetAttr, 1);
 
-  filterx_expr_init_instance(&self->super, "setattr");
+  filterx_expr_init_instance(&self->super, "setattr", TRUE);
   self->super.eval = _setattr_eval;
   self->super.optimize = _optimize;
   self->super.init = _init;

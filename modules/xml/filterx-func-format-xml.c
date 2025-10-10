@@ -353,8 +353,8 @@ FilterXExpr *
 filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatXML *self = g_new0(FilterXFunctionFormatXML, 1);
-  filterx_function_init_instance(&self->super, "format_xml");
 
+  filterx_function_init_instance(&self->super, "format_xml", FALSE);
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;

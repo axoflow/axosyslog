@@ -272,7 +272,7 @@ _literal_container_free(FilterXExpr *s)
 static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
 {
-  filterx_expr_init_instance(&self->super, type);
+  filterx_expr_init_instance(&self->super, type, FALSE);
   self->super.eval = _literal_container_eval_runtime;
   self->super.optimize = _literal_container_optimize;
   self->super.init = _literal_container_init;
