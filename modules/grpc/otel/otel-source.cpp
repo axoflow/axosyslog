@@ -43,8 +43,11 @@ SourceDriver::SourceDriver(GrpcSourceDriver *s)
 void
 SourceDriver::shutdown()
 {
-  msg_debug("Shutting down OpenTelemetry server", evt_tag_int("port", this->port));
-  server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+  if (this->server)
+    {
+      msg_debug("Shutting down OpenTelemetry server", evt_tag_int("port", this->port));
+      this->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+    }
 }
 
 void
@@ -92,8 +95,8 @@ SourceDriver::init()
   for (int i = 0; i < this->super->super.num_workers; i++)
     this->cqs.push_back(builder.AddCompletionQueue());
 
-  server = builder.BuildAndStart();
-  if (!server)
+  this->server = builder.BuildAndStart();
+  if (!this->server)
     {
       msg_error("Failed to start OpenTelemetry server", evt_tag_int("port", this->port));
       return FALSE;
