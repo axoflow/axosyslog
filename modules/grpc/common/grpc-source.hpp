@@ -117,7 +117,6 @@ protected:
 
 private:
   GrpcServerCredentialsBuilderW credentials_builder_wrapper;
-  std::unique_ptr<::grpc::Server> server;
 };
 
 }
