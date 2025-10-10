@@ -38,11 +38,6 @@
 #include "scanner/list-scanner/list-scanner.h"
 
 typedef gboolean (*FilterXListForeachFunc)(gsize index, FilterXObject **, gpointer);
-typedef struct _FilterXListObject
-{
-  FilterXSequence super;
-  GPtrArray *array;
-} FilterXListObject;
 
 static gboolean
 filterx_list_foreach(FilterXListObject *self, FilterXListForeachFunc func, gpointer user_data)
