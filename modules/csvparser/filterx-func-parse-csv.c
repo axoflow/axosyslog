@@ -156,39 +156,6 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_
   csv_scanner_set_expected_columns(scanner, num_of_cols);
 }
 
-static inline gboolean
-_fill_object_col(FilterXFunctionParseCSV *self, FilterXObject *cols, gint64 index, CSVScanner *scanner,
-                 FilterXObject *result)
-{
-  FilterXObject *col;
-  col = filterx_sequence_get_subscript(cols, index);
-
-  FILTERX_STRING_DECLARE_ON_STACK(val,
-                                  csv_scanner_get_current_value(scanner),
-                                  csv_scanner_get_current_value_len(scanner));
-
-  gboolean ok = filterx_object_set_subscript(result, col, &val);
-
-  FILTERX_STRING_CLEAR_FROM_STACK(val);
-  filterx_object_unref(col);
-
-  return ok;
-}
-
-static inline gboolean
-_fill_array_element(CSVScanner *scanner, FilterXObject *result)
-{
-  FILTERX_STRING_DECLARE_ON_STACK(val,
-                                  csv_scanner_get_current_value(scanner),
-                                  csv_scanner_get_current_value_len(scanner));
-
-  gboolean ok = filterx_sequence_append(result, &val);
-
-  FILTERX_STRING_CLEAR_FROM_STACK(val);
-
-  return ok;
-}
-
 static FilterXObject *
 _run_parsing(FilterXFunctionParseCSV *self,
              const gchar *input, gsize input_len,
@@ -215,21 +182,29 @@ _run_parsing(FilterXFunctionParseCSV *self,
   CSVScanner scanner;
   _init_scanner(self, string_delimiters, num_of_columns, input, &scanner, &local_opts);
 
-  guint64 i = 0;
+  guint64 index = 0;
   gboolean ok = TRUE;
-  while (csv_scanner_scan_next(&scanner) && ok)
+  gboolean finished = FALSE;
+  while (!finished && csv_scanner_scan_next(&scanner) && ok)
     {
+      FILTERX_STRING_DECLARE_ON_STACK(val,
+                                      csv_scanner_get_current_value(&scanner),
+                                      csv_scanner_get_current_value_len(&scanner));
       if (columns)
         {
-          ok = _fill_object_col(self, columns, i, &scanner, result);
-          i++;
-          if (i >= num_of_columns)
-            break;
+          FilterXObject *column = filterx_sequence_get_subscript(columns, index);
+          ok = filterx_object_set_subscript(result, column, &val);
+          filterx_object_unref(column);
+
+          index++;
+          finished = (index >= num_of_columns);
         }
       else
         {
-          ok = _fill_array_element(&scanner, result);
+          ok = filterx_sequence_append(result, &val);
         }
+
+      FILTERX_STRING_CLEAR_FROM_STACK(val);
     }
   if (!ok)
     {
