@@ -224,6 +224,7 @@ _eval_parse_csv(FilterXExpr *s)
   GList *string_delimiters = NULL;
   guint64 num_of_columns = 0;
   FilterXObject *cols = NULL;
+  CSVScannerOptions local_opts = {0};
 
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
@@ -257,7 +258,6 @@ _eval_parse_csv(FilterXExpr *s)
   else
     result = filterx_list_new();
 
-  CSVScannerOptions local_opts = {0};
   CSVScanner scanner;
   _init_scanner(self, string_delimiters, num_of_columns, input, &scanner, &local_opts);
 
