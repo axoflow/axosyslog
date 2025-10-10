@@ -1603,6 +1603,18 @@ def test_parse_csv_quote_pairs(config, syslog_ng):
     assert file_true.read_log() == 'sarga,bogre,gorbe'
 
 
+def test_parse_csv_columns_invalid_var(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+        $MSG = parse_csv("some_string", columns=non_existent_var, delimiter=",");
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
 def test_vars(config, syslog_ng):
     (file_true, file_false) = create_config(
         config,
