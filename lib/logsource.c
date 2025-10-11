@@ -75,7 +75,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
     window_size_increment = _take_reclaimed_window(self, window_size_increment);
 
   gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
-  stats_counter_add(self->metrics.stat_window_size, window_size_increment);
+  stats_counter_add(self->metrics.window_available, window_size_increment);
 
   msg_diagnostics("Window size adjustment",
                   evt_tag_int("old_window_size", old_window_size),
@@ -233,10 +233,10 @@ _release_dynamic_window(LogSource *self)
             log_pipe_location_tag(&self->super));
 
   self->full_window_size -= dynamic_part;
-  stats_counter_sub(self->metrics.stat_full_window, dynamic_part);
+  stats_counter_sub(self->metrics.window_capacity, dynamic_part);
 
   window_size_counter_sub(&self->window_size, dynamic_part, NULL);
-  stats_counter_sub(self->metrics.stat_window_size, dynamic_part);
+  stats_counter_sub(self->metrics.window_available, dynamic_part);
   dynamic_window_release(&self->dynamic_window, dynamic_part);
 
   dynamic_window_pool_unref(self->dynamic_window.pool);
@@ -254,10 +254,10 @@ _inc_balanced(LogSource *self, gsize inc)
             evt_tag_int("new_full_window_size", self->full_window_size + offered_dynamic));
 
   self->full_window_size += offered_dynamic;
-  stats_counter_add(self->metrics.stat_full_window, offered_dynamic);
+  stats_counter_add(self->metrics.window_capacity, offered_dynamic);
 
   gsize old_window_size = window_size_counter_add(&self->window_size, offered_dynamic, NULL);
-  stats_counter_add(self->metrics.stat_window_size, offered_dynamic);
+  stats_counter_add(self->metrics.window_available, offered_dynamic);
   if (old_window_size == 0 && offered_dynamic != 0)
     log_source_wakeup(self);
 }
@@ -287,7 +287,7 @@ _dec_balanced(LogSource *self, gsize dec)
     }
 
   window_size_counter_sub(&self->window_size, dec, NULL);
-  stats_counter_sub(self->metrics.stat_window_size, dec);
+  stats_counter_sub(self->metrics.window_available, dec);
 
   msg_trace("Balance::decrease",
             log_pipe_location_tag(&self->super),
@@ -297,7 +297,7 @@ _dec_balanced(LogSource *self, gsize dec)
             evt_tag_int("to_be_reclaimed", remaining_sub));
 
   self->full_window_size = new_full_window_size;
-  stats_counter_set(self->metrics.stat_full_window, new_full_window_size);
+  stats_counter_set(self->metrics.window_capacity, new_full_window_size);
   dynamic_window_release(&self->dynamic_window, dec);
 }
 
@@ -312,7 +312,7 @@ _reclaim_window_instead_of_rebalance(LogSource *self)
   if (total_reclaim > 0)
     {
       self->full_window_size -= total_reclaim;
-      stats_counter_sub(self->metrics.stat_full_window, total_reclaim);
+      stats_counter_sub(self->metrics.window_capacity, total_reclaim);
       dynamic_window_release(&self->dynamic_window, total_reclaim);
     }
   else
@@ -423,41 +423,23 @@ _create_ack_tracker_if_not_exists(LogSource *self)
 static void
 _register_window_stats(LogSource *self)
 {
-  if (!stats_check_level(4))
-    return;
+  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : self->options->stats_level;
 
-  gchar stats_instance[1024];
-  const gchar *instance_name = self->name;
-  if (!instance_name)
-    instance_name = stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
-                    stats_instance, sizeof(stats_instance));
+  stats_register_counter(level, self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.window_available);
+  stats_register_counter(level, self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.window_capacity);
 
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_SOURCE, self->stats_id,
-                                                instance_name, "free_window");
-  self->metrics.stat_window_size_cluster = stats_register_dynamic_counter(4, &sc_key, SC_TYPE_SINGLE_VALUE,
-                                           &self->metrics.stat_window_size);
-  stats_counter_set(self->metrics.stat_window_size, window_size_counter_get(&self->window_size, NULL));
-
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_SOURCE, self->stats_id,
-                                                instance_name, "full_window");
-  self->metrics.stat_full_window_cluster = stats_register_dynamic_counter(4, &sc_key, SC_TYPE_SINGLE_VALUE,
-                                           &self->metrics.stat_full_window);
-  stats_counter_set(self->metrics.stat_full_window, self->full_window_size);
+  stats_counter_set(self->metrics.window_available, window_size_counter_get(&self->window_size, NULL));
+  stats_counter_set(self->metrics.window_capacity, self->full_window_size);
 
 }
 
 static void
 _unregister_window_stats(LogSource *self)
 {
-  if (!stats_check_level(4))
-    return;
-
-  stats_unregister_dynamic_counter(self->metrics.stat_window_size_cluster, SC_TYPE_SINGLE_VALUE,
-                                   &self->metrics.stat_window_size);
-  stats_unregister_dynamic_counter(self->metrics.stat_full_window_cluster, SC_TYPE_SINGLE_VALUE,
-                                   &self->metrics.stat_full_window);
+  stats_unregister_counter(self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_available);
+  stats_unregister_counter(self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_capacity);
 }
 
 
@@ -541,11 +523,31 @@ _allocate_counter_keys(LogSource *self)
 
   stats_cluster_key_builder_push(self->metrics.stats_kb);
   {
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_event_bytes_total");;
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_event_bytes_total");
     stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
     if (self->metrics.recvd_bytes_key)
       stats_cluster_key_free(self->metrics.recvd_bytes_key);
     self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+  }
+  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+
+  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  {
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_window_available");
+    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    if (self->metrics.window_available_key)
+      stats_cluster_key_free(self->metrics.window_available_key);
+    self->metrics.window_available_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+  }
+  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+
+  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  {
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_window_capacity");
+    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    if (self->metrics.window_capacity_key)
+      stats_cluster_key_free(self->metrics.window_capacity_key);
+    self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
   }
   stats_cluster_key_builder_pop(self->metrics.stats_kb);
 }
@@ -599,7 +601,7 @@ log_source_post(LogSource *self, LogMessage *msg)
   msg->ack_func = log_source_msg_ack;
 
   gint old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
-  stats_counter_sub(self->metrics.stat_window_size, 1);
+  stats_counter_sub(self->metrics.window_available, 1);
 
   if (G_UNLIKELY(old_window_size == 1))
     {
@@ -822,6 +824,11 @@ log_source_free(LogPipe *s)
   if (self->metrics.recvd_bytes_key)
     stats_cluster_key_free(self->metrics.recvd_bytes_key);
 
+  if (self->metrics.window_capacity_key)
+    stats_cluster_key_free(self->metrics.window_capacity_key);
+
+  if (self->metrics.window_available_key)
+    stats_cluster_key_free(self->metrics.window_available_key);
   log_pipe_detach_expr_node(&self->super);
   log_pipe_free_method(s);
 

@@ -79,20 +79,20 @@ struct _LogSource
 
   struct
   {
-    StatsClusterKeyBuilder *stats_kb;
-
-    StatsCounterItem *stat_window_size;
-    StatsCounterItem *stat_full_window;
-    StatsCounterItem *last_message_seen;
-
-    StatsClusterKey *recvd_messages_key;
+    /* counters */
     StatsCounterItem *recvd_messages;
-
-    StatsClusterKey *recvd_bytes_key;
     StatsByteCounter recvd_bytes;
+    StatsCounterItem *last_message_seen;
+    StatsCounterItem *window_available;
+    StatsCounterItem *window_capacity;
 
-    StatsCluster *stat_window_size_cluster;
-    StatsCluster *stat_full_window_cluster;
+    /* book-keeping */
+    StatsClusterKeyBuilder *stats_kb;
+    StatsClusterKey *recvd_bytes_key;
+    StatsClusterKey *recvd_messages_key;
+    StatsClusterKey *window_available_key;
+    StatsClusterKey *window_capacity_key;
+
   } metrics;
 
   guint32 last_ack_count;
