@@ -520,6 +520,36 @@ _unregister_counters(LogSource *self)
   stats_unlock();
 }
 
+static void
+_allocate_counter_keys(LogSource *self)
+{
+  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  {
+    gchar stats_instance[1024];
+    const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
+                                 stats_instance, sizeof(stats_instance));
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_events_total");
+    stats_cluster_key_builder_set_legacy_alias(self->metrics.stats_kb, self->options->stats_source | SCS_SOURCE,
+                                               self->stats_id, instance_name);
+    stats_cluster_key_builder_set_legacy_alias_name(self->metrics.stats_kb, "processed");
+    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    if (self->metrics.recvd_messages_key)
+      stats_cluster_key_free(self->metrics.recvd_messages_key);
+    self->metrics.recvd_messages_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+  }
+  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+
+  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  {
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_event_bytes_total");;
+    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    if (self->metrics.recvd_bytes_key)
+      stats_cluster_key_free(self->metrics.recvd_bytes_key);
+    self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+  }
+  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+}
+
 gboolean
 log_source_init(LogPipe *s)
 {
@@ -532,6 +562,7 @@ log_source_init(LogPipe *s)
       return FALSE;
     }
 
+  _allocate_counter_keys(self);
   _register_counters(self);
 
   return TRUE;
@@ -710,42 +741,14 @@ _is_window_initialized(LogSource *self)
 static void
 _set_metric_options(LogSource *self, const gchar *stats_id, StatsClusterKeyBuilder *kb)
 {
-  if (self->stats_id)
-    g_free(self->stats_id);
+  g_free(self->stats_id);
   self->stats_id = stats_id ? g_strdup(stats_id) : NULL;
+
   if (self->metrics.stats_kb)
     stats_cluster_key_builder_free(self->metrics.stats_kb);
 
-  if (!kb)
-    kb = stats_cluster_key_builder_new();
+  self->metrics.stats_kb = kb ? : stats_cluster_key_builder_new();
 
-  self->metrics.stats_kb = kb;
-
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
-  {
-    gchar stats_instance[1024];
-    const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
-                                 stats_instance, sizeof(stats_instance));
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_events_total");
-    stats_cluster_key_builder_set_legacy_alias(self->metrics.stats_kb, self->options->stats_source | SCS_SOURCE,
-                                               self->stats_id, instance_name);
-    stats_cluster_key_builder_set_legacy_alias_name(self->metrics.stats_kb, "processed");
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
-    if (self->metrics.recvd_messages_key)
-      stats_cluster_key_free(self->metrics.recvd_messages_key);
-    self->metrics.recvd_messages_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
-  }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
-
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
-  {
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_event_bytes_total");;
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
-    if (self->metrics.recvd_bytes_key)
-      stats_cluster_key_free(self->metrics.recvd_bytes_key);
-    self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
-  }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
 }
 
 void
