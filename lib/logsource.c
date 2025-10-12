@@ -409,6 +409,17 @@ log_source_mangle_hostname(LogSource *self, LogMessage *msg)
     }
 }
 
+static inline void
+_create_ack_tracker_if_not_exists(LogSource *self)
+{
+  if (!self->ack_tracker)
+    {
+      if (!self->ack_tracker_factory)
+        self->ack_tracker_factory = instant_ack_tracker_bookmarkless_factory_new();
+      self->ack_tracker = ack_tracker_factory_create(self->ack_tracker_factory, self);
+    }
+}
+
 static void
 _register_window_stats(LogSource *self)
 {
@@ -449,16 +460,6 @@ _unregister_window_stats(LogSource *self)
                                    &self->metrics.stat_full_window);
 }
 
-static inline void
-_create_ack_tracker_if_not_exists(LogSource *self)
-{
-  if (!self->ack_tracker)
-    {
-      if (!self->ack_tracker_factory)
-        self->ack_tracker_factory = instant_ack_tracker_bookmarkless_factory_new();
-      self->ack_tracker = ack_tracker_factory_create(self->ack_tracker_factory, self);
-    }
-}
 
 static void
 _register_raw_bytes_stats(LogSource *self, gint stats_level)
@@ -498,23 +499,6 @@ _register_counters(LogSource *self)
   _register_raw_bytes_stats(self, level);
 }
 
-gboolean
-log_source_init(LogPipe *s)
-{
-  LogSource *self = (LogSource *) s;
-
-  _create_ack_tracker_if_not_exists(self);
-  if (!ack_tracker_init(self->ack_tracker))
-    {
-      msg_error("Failed to initialize AckTracker");
-      return FALSE;
-    }
-
-  _register_counters(self);
-
-  return TRUE;
-}
-
 static void
 _unregister_counters(LogSource *self)
 {
@@ -534,6 +518,23 @@ _unregister_counters(LogSource *self)
   stats_unregister_counter(&sc_key, SC_TYPE_STAMP, &self->metrics.last_message_seen);
 
   stats_unlock();
+}
+
+gboolean
+log_source_init(LogPipe *s)
+{
+  LogSource *self = (LogSource *) s;
+
+  _create_ack_tracker_if_not_exists(self);
+  if (!ack_tracker_init(self->ack_tracker))
+    {
+      msg_error("Failed to initialize AckTracker");
+      return FALSE;
+    }
+
+  _register_counters(self);
+
+  return TRUE;
 }
 
 gboolean
