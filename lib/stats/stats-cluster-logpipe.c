@@ -44,7 +44,7 @@ _counter_group_logpipe_free(StatsCounterGroup *counter_group)
 }
 
 static gboolean
-_counter_group_logpipe_get_type_label(StatsCounterGroup *self, gint type, StatsClusterLabel *label)
+_counter_group_logpipe_get_type_label(StatsCounterGroup *self, StatsCluster *cluster, gint type, StatsClusterLabel *label)
 {
   if (type >= SC_TYPE_MAX)
     return FALSE;

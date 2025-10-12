@@ -76,13 +76,14 @@ typedef enum _StatsClusterFrameOfReference
 
 typedef struct _StatsCounterGroup StatsCounterGroup;
 typedef struct _StatsCounterGroupInit StatsCounterGroupInit;
+typedef struct _StatsCluster StatsCluster;
 
 struct _StatsCounterGroup
 {
   StatsCounterItem *counters;
   gchar **counter_names;
   guint16 capacity;
-  gboolean (*get_type_label)(StatsCounterGroup *self, gint type, StatsClusterLabel *label);
+  gboolean (*get_type_label)(StatsCounterGroup *self, StatsCluster *cluster, gint type, StatsClusterLabel *label);
   void (*free_fn)(StatsCounterGroup *self);
 };
 
@@ -150,7 +151,7 @@ struct _StatsClusterKey
  * This also improves performance for dynamic counters that relate to
  * information found in the log stream.  In that case multiple counters can
  * be registered with a single hash lookup */
-typedef struct _StatsCluster
+struct _StatsCluster
 {
   StatsClusterKey key;
   StatsCounterGroup counter_group;
@@ -158,7 +159,7 @@ typedef struct _StatsCluster
   guint16 use_count;
   guint16 dynamic:1;
   gchar *query_key;
-} StatsCluster;
+};
 
 typedef void (*StatsForeachCounterFunc)(StatsCluster *sc, gint type, StatsCounterItem *counter, gpointer user_data);
 
@@ -195,7 +196,7 @@ stats_cluster_get_type_label(StatsCluster *self, gint type, StatsClusterLabel *l
   if (!self->counter_group.get_type_label)
     return FALSE;
 
-  return self->counter_group.get_type_label(&self->counter_group, type, label);
+  return self->counter_group.get_type_label(&self->counter_group, self, type, label);
 }
 
 StatsCluster *stats_cluster_new(const StatsClusterKey *key);
