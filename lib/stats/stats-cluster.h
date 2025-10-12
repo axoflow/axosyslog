@@ -154,8 +154,8 @@ typedef struct _StatsCluster
 {
   StatsClusterKey key;
   StatsCounterGroup counter_group;
+  guint32 live_mask;
   guint16 use_count;
-  guint16 live_mask;
   guint16 dynamic:1;
   gchar *query_key;
 } StatsCluster;
