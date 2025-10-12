@@ -142,6 +142,11 @@ struct _StatsClusterKey
   StatsCounterGroupInit counter_group_init;
 };
 
+void stats_cluster_key_add_unit(StatsClusterKey *key, StatsClusterUnit stored_unit);
+void stats_cluster_key_add_frame_of_reference(StatsClusterKey *key,
+                                              StatsClusterFrameOfReference frame_of_reference);
+
+
 /* NOTE: This struct can only be used by the stats implementation and not by client code. */
 
 /* StatsCluster encapsulates a set of related counters that are registered

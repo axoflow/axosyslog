@@ -395,8 +395,8 @@ stats_cluster_key_builder_build_single(const StatsClusterKeyBuilder *self)
     {
       name = _format_name(self);
       stats_cluster_single_key_set(&temp_key, name, (StatsClusterLabel *) merged_labels->data, merged_labels->len);
-      stats_cluster_single_key_add_unit(&temp_key, _get_unit(self));
-      stats_cluster_single_key_add_frame_of_reference(&temp_key, _get_frame_of_reference(self));
+      stats_cluster_key_add_unit(&temp_key, _get_unit(self));
+      stats_cluster_key_add_frame_of_reference(&temp_key, _get_frame_of_reference(self));
     }
 
   if (has_legacy_values)

@@ -77,6 +77,18 @@ stats_cluster_deinit(void)
   stats_types = NULL;
 }
 
+void
+stats_cluster_key_add_unit(StatsClusterKey *key, StatsClusterUnit stored_unit)
+{
+  key->formatting.stored_unit = stored_unit;
+}
+
+void
+stats_cluster_key_add_frame_of_reference(StatsClusterKey *key, StatsClusterFrameOfReference frame_of_reference)
+{
+  key->formatting.frame_of_reference = frame_of_reference;
+}
+
 gboolean
 stats_cluster_key_labels_equal(StatsClusterLabel *l1, gsize l1_len, StatsClusterLabel *l2, gsize l2_len)
 {
