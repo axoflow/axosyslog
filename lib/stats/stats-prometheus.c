@@ -263,7 +263,9 @@ stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *c
     return _format_legacy(sc, type, counter);
 
   GString *record = scratch_buffers_alloc();
-  g_string_append_printf(record, PROMETHEUS_METRIC_PREFIX "%s", stats_format_prometheus_sanitize_name(sc->key.name));
+  g_string_append_printf(record, PROMETHEUS_METRIC_PREFIX "%s%s",
+                         stats_format_prometheus_sanitize_name(sc->key.name),
+                         stats_cluster_get_type_name_suffix(sc, type) ? : "");
 
   const gchar *labels = _format_labels(sc, type);
   if (labels)
