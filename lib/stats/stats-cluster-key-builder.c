@@ -23,6 +23,7 @@
 #include "stats/stats-cluster-key-builder.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-cluster-logpipe.h"
+#include "stats/stats-cluster-hist.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -461,6 +462,38 @@ stats_cluster_key_builder_build_logpipe(const StatsClusterKeyBuilder *self)
         stats_cluster_logpipe_key_add_legacy_alias(&temp_key, legacy_component, legacy_id, legacy_instance);
       else
         stats_cluster_logpipe_key_legacy_set(&temp_key, legacy_component, legacy_id, legacy_instance);
+    }
+
+  stats_cluster_key_clone(sc_key, &temp_key);
+
+  g_array_free(merged_labels, TRUE);
+  g_free(name);
+
+  return sc_key;
+}
+
+StatsClusterKey *
+stats_cluster_key_builder_build_hist(const StatsClusterKeyBuilder *self)
+{
+  StatsClusterKey *sc_key = g_new0(StatsClusterKey, 1);
+  StatsClusterKey temp_key;
+  gchar *name = NULL;
+
+  gboolean has_new_style_values = _has_new_style_values(self);
+  gboolean has_legacy_values = _has_legacy_values(self);
+
+  GArray *merged_labels = _construct_merged_labels(self);
+
+  if (has_new_style_values)
+    {
+      name = _format_name(self);
+      stats_cluster_hist_key_set(&temp_key, name, (StatsClusterLabel *) merged_labels->data, merged_labels->len);
+      stats_cluster_key_add_unit(&temp_key, _get_unit(self));
+      stats_cluster_key_add_frame_of_reference(&temp_key, _get_frame_of_reference(self));
+    }
+  if (has_legacy_values)
+    {
+      /* ignore legacy */
     }
 
   stats_cluster_key_clone(sc_key, &temp_key);
