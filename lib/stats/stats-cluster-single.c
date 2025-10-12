@@ -24,7 +24,7 @@
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-cluster.h"
 
-static const gchar *tag_names[SC_TYPE_SINGLE_MAX] =
+static gchar *tag_names[SC_TYPE_SINGLE_MAX] =
 {
   /* [SC_TYPE_SINGLE_VALUE]   = */ "value",
 };
@@ -77,7 +77,7 @@ _counter_group_init_with_name(StatsCounterGroupInit *self, StatsCounterGroup *co
   counter_group->counters = g_new0(StatsCounterItem, SC_TYPE_SINGLE_MAX);
   counter_group->capacity = SC_TYPE_SINGLE_MAX;
 
-  const gchar **counter_names = g_new0(const gchar *, 1);
+  gchar **counter_names = g_new0(gchar *, 1);
   counter_names[0] = g_strdup(self->counter.name);
   counter_group->counter_names = counter_names;
 

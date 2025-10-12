@@ -80,7 +80,7 @@ typedef struct _StatsCounterGroupInit StatsCounterGroupInit;
 struct _StatsCounterGroup
 {
   StatsCounterItem *counters;
-  const gchar **counter_names;
+  gchar **counter_names;
   guint16 capacity;
   gboolean (*get_type_label)(StatsCounterGroup *self, gint type, StatsClusterLabel *label);
   void (*free_fn)(StatsCounterGroup *self);
@@ -90,7 +90,7 @@ struct _StatsCounterGroupInit
 {
   union
   {
-    const gchar **names;
+    gchar **names;
     const gchar *name;
   } counter;
   void (*init)(StatsCounterGroupInit *self, StatsCounterGroup *counter_group);
