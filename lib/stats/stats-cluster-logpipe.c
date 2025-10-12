@@ -24,7 +24,7 @@
 #include "stats/stats-cluster-logpipe.h"
 #include "stats/stats-cluster.h"
 
-static const gchar *tag_names[SC_TYPE_MAX] =
+static gchar *tag_names[SC_TYPE_MAX] =
 {
   /* [SC_TYPE_DROPPED]   = */ "dropped",
   /* [SC_TYPE_PROCESSED] = */ "processed",
