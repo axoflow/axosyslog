@@ -46,6 +46,7 @@ void stats_cluster_key_builder_set_legacy_alias_name(StatsClusterKeyBuilder *sel
 
 StatsClusterKey *stats_cluster_key_builder_build_single(const StatsClusterKeyBuilder *self);
 StatsClusterKey *stats_cluster_key_builder_build_logpipe(const StatsClusterKeyBuilder *self);
+StatsClusterKey *stats_cluster_key_builder_build_hist(const StatsClusterKeyBuilder *self);
 
 /* Compatibility functions for reproducing stats_instance names based on unsorted labels */
 void stats_cluster_key_builder_add_legacy_label(StatsClusterKeyBuilder *self, const StatsClusterLabel label);
