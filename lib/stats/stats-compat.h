@@ -90,7 +90,7 @@ stats_byte_counter_init(StatsByteCounter *self, StatsClusterKey *key, gint stats
       g_assert_not_reached();
     }
 
-  stats_cluster_single_key_add_unit(key, unit);
+  stats_cluster_key_add_unit(key, unit);
 #endif
 
   stats_lock();

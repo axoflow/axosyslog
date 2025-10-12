@@ -201,66 +201,66 @@ Test(stats_prometheus, test_prometheus_format_value)
   StatsClusterKey key;
   stats_cluster_single_key_set(&key, "name", NULL, 0);
 
-  stats_cluster_single_key_add_unit(&key, SCU_NONE);
+  stats_cluster_key_add_unit(&key, SCU_NONE);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9");
 
-  stats_cluster_single_key_add_unit(&key, SCU_GIB);
+  stats_cluster_key_add_unit(&key, SCU_GIB);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9663676416");
-  stats_cluster_single_key_add_unit(&key, SCU_MIB);
+  stats_cluster_key_add_unit(&key, SCU_MIB);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9437184");
-  stats_cluster_single_key_add_unit(&key, SCU_KIB);
+  stats_cluster_key_add_unit(&key, SCU_KIB);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9216");
-  stats_cluster_single_key_add_unit(&key, SCU_BYTES);
+  stats_cluster_key_add_unit(&key, SCU_BYTES);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9");
 
-  stats_cluster_single_key_add_unit(&key, SCU_HOURS);
+  stats_cluster_key_add_unit(&key, SCU_HOURS);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "32400");
-  stats_cluster_single_key_add_unit(&key, SCU_MINUTES);
+  stats_cluster_key_add_unit(&key, SCU_MINUTES);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "540");
-  stats_cluster_single_key_add_unit(&key, SCU_SECONDS);
+  stats_cluster_key_add_unit(&key, SCU_SECONDS);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9");
 
-  stats_cluster_single_key_add_unit(&key, SCU_MILLISECONDS);
+  stats_cluster_key_add_unit(&key, SCU_MILLISECONDS);
   gdouble actual = g_ascii_strtod(stats_format_prometheus_format_value(&key, &counter), NULL);
   cr_assert_float_eq(actual, 0.009L, DBL_EPSILON);
 
-  stats_cluster_single_key_add_unit(&key, SCU_NANOSECONDS);
+  stats_cluster_key_add_unit(&key, SCU_NANOSECONDS);
   actual = g_ascii_strtod(stats_format_prometheus_format_value(&key, &counter), NULL);
   cr_assert_float_eq(actual, 9e-9, DBL_EPSILON);
 
   /* Relative to time of query */
-  stats_cluster_single_key_add_frame_of_reference(&key, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
+  stats_cluster_key_add_frame_of_reference(&key, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
 
   /* Fri Jan 01 2100 01:01:01 GMT+0000 */
   fake_time(INT_MAX);
   fake_time_add(1954964814);
 
   /* None, bytes and milli/nanoseconds units are unaffected */
-  stats_cluster_single_key_add_unit(&key, SCU_NONE);
+  stats_cluster_key_add_unit(&key, SCU_NONE);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9");
-  stats_cluster_single_key_add_unit(&key, SCU_GIB);
+  stats_cluster_key_add_unit(&key, SCU_GIB);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9663676416");
-  stats_cluster_single_key_add_unit(&key, SCU_MIB);
+  stats_cluster_key_add_unit(&key, SCU_MIB);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9437184");
-  stats_cluster_single_key_add_unit(&key, SCU_KIB);
+  stats_cluster_key_add_unit(&key, SCU_KIB);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9216");
-  stats_cluster_single_key_add_unit(&key, SCU_BYTES);
+  stats_cluster_key_add_unit(&key, SCU_BYTES);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "9");
 
-  stats_cluster_single_key_add_unit(&key, SCU_MILLISECONDS);
+  stats_cluster_key_add_unit(&key, SCU_MILLISECONDS);
   actual = g_ascii_strtod(stats_format_prometheus_format_value(&key, &counter), NULL);
   cr_assert_float_eq(actual, 0.009L, DBL_EPSILON);
 
-  stats_cluster_single_key_add_unit(&key, SCU_NANOSECONDS);
+  stats_cluster_key_add_unit(&key, SCU_NANOSECONDS);
   actual = g_ascii_strtod(stats_format_prometheus_format_value(&key, &counter), NULL);
   cr_assert_float_eq(actual, 9e-9, DBL_EPSILON);
 
   /* Hours, minutes and seconds are affected */
-  stats_cluster_single_key_add_unit(&key, SCU_HOURS);
+  stats_cluster_key_add_unit(&key, SCU_HOURS);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "4102416061");
-  stats_cluster_single_key_add_unit(&key, SCU_MINUTES);
+  stats_cluster_key_add_unit(&key, SCU_MINUTES);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "4102447921");
-  stats_cluster_single_key_add_unit(&key, SCU_SECONDS);
+  stats_cluster_key_add_unit(&key, SCU_SECONDS);
   cr_assert_str_eq(stats_format_prometheus_format_value(&key, &counter), "4102448452");
 }
 
