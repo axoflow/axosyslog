@@ -105,10 +105,6 @@ struct _LogThreadedDestWorker
 
   struct
   {
-    StatsClusterKey *output_event_bytes_sc_key;
-    StatsClusterKey *output_unreachable_key;
-    StatsClusterKey *message_delay_sample_key;
-    StatsClusterKey *message_delay_sample_age_key;
 
     StatsByteCounter written_bytes;
     StatsCounterItem *output_unreachable;
@@ -116,6 +112,12 @@ struct _LogThreadedDestWorker
     StatsCounterItem *message_delay_sample_age;
 
     gint64 last_delay_update;
+
+    /* book keeping */
+    StatsClusterKey *output_event_bytes_sc_key;
+    StatsClusterKey *output_unreachable_key;
+    StatsClusterKey *message_delay_sample_key;
+    StatsClusterKey *message_delay_sample_age_key;
   } metrics;
 
   gboolean (*init)(LogThreadedDestWorker *s);

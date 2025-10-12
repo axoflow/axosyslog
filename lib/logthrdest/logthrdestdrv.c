@@ -879,38 +879,50 @@ _register_worker_stats(LogThreadedDestWorker *self)
 
     stats_cluster_key_builder_set_name(kb, "output_event_bytes_total");
     self->metrics.output_event_bytes_sc_key = stats_cluster_key_builder_build_single(kb);
-    stats_byte_counter_init(&self->metrics.written_bytes, self->metrics.output_event_bytes_sc_key, level, SBCP_KIB);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  _init_worker_sck_builder(self, kb);
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_unreachable");
+    self->metrics.output_unreachable_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
   stats_cluster_key_builder_push(kb);
   {
-    _init_worker_sck_builder(self, kb);
-
-    stats_lock();
-    {
-      stats_cluster_key_builder_set_name(kb, "output_unreachable");
-      self->metrics.output_unreachable_key = stats_cluster_key_builder_build_single(kb);
-      stats_register_counter(level, self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.output_unreachable);
-
-      /* Up to 49 days and 17 hours on 32 bit machines. */
-      stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_seconds");
-      stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
-      self->metrics.message_delay_sample_key = stats_cluster_key_builder_build_single(kb);
-      stats_register_counter(level, self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample);
-
-      stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_age_seconds");
-      stats_cluster_key_builder_set_unit(kb, SCU_SECONDS);
-      stats_cluster_key_builder_set_frame_of_reference(kb, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
-      self->metrics.message_delay_sample_age_key = stats_cluster_key_builder_build_single(kb);
-      stats_register_counter(level, self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample_age);
-    }
-    stats_unlock();
+    stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_seconds");
+    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
+    self->metrics.message_delay_sample_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_age_seconds");
+    stats_cluster_key_builder_set_unit(kb, SCU_SECONDS);
+    stats_cluster_key_builder_set_frame_of_reference(kb, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
+    self->metrics.message_delay_sample_age_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_byte_counter_init(&self->metrics.written_bytes, self->metrics.output_event_bytes_sc_key, level, SBCP_KIB);
+  stats_lock();
+  {
+
+    stats_register_counter(level, self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
+                           &self->metrics.output_unreachable);
+
+    /* Up to 49 days and 17 hours on 32 bit machines. */
+    stats_register_counter(level, self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.message_delay_sample);
+
+    stats_register_counter(level, self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.message_delay_sample_age);
+  }
+  stats_unlock();
+
 
   UnixTime now;
   unix_time_set_now(&now);
