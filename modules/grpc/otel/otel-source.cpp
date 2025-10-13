@@ -109,6 +109,18 @@ SourceDriver::init()
   return TRUE;
 }
 
+void
+SourceDriver::reload_save(LogThreadedSourceWorker **workers, gint num_workers)
+{
+
+}
+
+LogThreadedSourceWorker **
+SourceDriver::reload_restore(gint *num_workers)
+{
+
+}
+
 SourceDriver::~SourceDriver()
 {
   this->shutdown();
@@ -213,10 +225,28 @@ otel_sd_get_cpp(GrpcSourceDriver *self)
   return (SourceDriver *) self->cpp;
 }
 
+void
+otel_sd_reload_save(LogThreadedSourceDriver *s, LogThreadedSourceWorker **workers, gint num_workers)
+{
+  SourceDriver *self = otel_sd_get_cpp((GrpcSourceDriver *) s);
+  self->reload_save(workers, num_workers);
+}
+
+LogThreadedSourceWorker **
+otel_sd_reload_restore(LogThreadedSourceDriver *s, gint *num_workers)
+{
+  SourceDriver *self = otel_sd_get_cpp((GrpcSourceDriver *) s);
+  return self->reload_restore(num_workers);
+}
+
 LogDriver *
 otel_sd_new(GlobalConfig *cfg)
 {
   GrpcSourceDriver *self = grpc_sd_new(cfg, "opentelemetry", "otlp");
+
+  self->super.reload_save = otel_sd_reload_save;
+  self->super.reload_restore = otel_sd_reload_restore;
+
   self->cpp = new SourceDriver(self);
   return &self->super.super.super;
 }
