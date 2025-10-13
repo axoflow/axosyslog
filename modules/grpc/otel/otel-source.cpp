@@ -75,7 +75,7 @@ SourceDriver::generate_persist_name()
   return persist_name;
 }
 
-gboolean
+bool
 SourceDriver::init()
 {
   this->super->super.worker_options.super.keep_hostname = TRUE;

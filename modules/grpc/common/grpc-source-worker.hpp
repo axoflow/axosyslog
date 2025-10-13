@@ -37,6 +37,11 @@ public:
   SourceWorker(GrpcSourceWorker *s);
   virtual ~SourceWorker() {};
 
+  virtual bool init()
+  {
+    return true;
+  }
+  virtual void deinit() {}
   virtual void run() = 0;
   virtual void request_exit() = 0;
   void post(LogMessage *msg);

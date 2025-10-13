@@ -66,12 +66,28 @@ _request_exit(LogThreadedSourceWorker *s)
   self->cpp->request_exit();
 }
 
+static gboolean
+_init(LogThreadedSourceWorker *s)
+{
+  GrpcSourceWorker *self = (GrpcSourceWorker *) s;
+  return self->cpp->init();
+}
+
+static void
+_deinit(LogThreadedSourceWorker *s)
+{
+  GrpcSourceWorker *self = (GrpcSourceWorker *) s;
+  self->cpp->deinit();
+}
+
 GrpcSourceWorker *
 grpc_sw_new(GrpcSourceDriver *o, gint worker_index)
 {
   GrpcSourceWorker *self = g_new0(GrpcSourceWorker, 1);
 
   log_threaded_source_worker_init_instance(&self->super, &o->super, worker_index);
+  self->super.thread_init = _init;
+  self->super.thread_deinit = _deinit;
   self->super.run = _run;
   self->super.request_exit = _request_exit;
   self->super.super.super.free_fn = _free;
