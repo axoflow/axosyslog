@@ -30,6 +30,12 @@
 #include "grpc-source-worker.hpp"
 #include "otel-servicecall.hpp"
 
+#include "compat/cpp-start.h"
+
+void otel_sd_reload_save(LogThreadedSourceDriver *s, LogThreadedSourceWorker **workers, gint num_workers);
+LogThreadedSourceWorker ** otel_sd_reload_restore(LogThreadedSourceDriver *s, gint *num_workers);
+
+#include "compat/cpp-end.h"
 
 namespace syslogng {
 namespace grpc {
@@ -52,6 +58,11 @@ public:
 
 private:
   friend class SourceWorker;
+  friend void ::otel_sd_reload_save(LogThreadedSourceDriver *s, LogThreadedSourceWorker **workers, gint num_workers);
+  friend LogThreadedSourceWorker **::otel_sd_reload_restore(LogThreadedSourceDriver *s, gint *num_workers);
+
+  void reload_save(LogThreadedSourceWorker **workers, gint num_workers);
+  LogThreadedSourceWorker **reload_restore(gint *num_workers);
   void drain_unused_queues();
   void shutdown();
 

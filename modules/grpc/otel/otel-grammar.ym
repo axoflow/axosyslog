@@ -54,6 +54,7 @@
 %token KW_OPENTELEMETRY
 %token KW_AXOSYSLOG_OTLP
 %token KW_SET_HOSTNAME
+%token KW_KEEP_ALIVE
 
 %type <ptr> source_otel
 %type <ptr> parser_otel
@@ -89,6 +90,7 @@ source_otel_options
 
 source_otel_option
   : grpc_source_option
+  | KW_KEEP_ALIVE '(' yesno ')' { log_threaded_source_driver_set_reload_keep_alive(last_driver, $3); }
   ;
 
 parser_otel
