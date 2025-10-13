@@ -47,11 +47,12 @@ public:
   SourceDriver(GrpcSourceDriver *s);
   ~SourceDriver() override;
 
-  gboolean init() override;
+  bool init() override;
   void format_stats_key(StatsClusterKeyBuilder *kb);
   const char *generate_persist_name();
   LogThreadedSourceWorker *construct_worker(int worker_index);
 
+  /* services must exist for the lifetime of the server instance */
   std::unique_ptr<TraceService::AsyncService> trace_service;
   std::unique_ptr<LogsService::AsyncService> logs_service;
   std::unique_ptr<MetricsService::AsyncService> metrics_service;
