@@ -79,6 +79,10 @@ struct _LogThreadedSourceDriver
 
   void (*format_stats_key)(LogThreadedSourceDriver *self, StatsClusterKeyBuilder *kb);
   LogThreadedSourceWorker *(*worker_construct)(LogThreadedSourceDriver *self, gint worker_index);
+
+  gboolean reload_keep_alive;
+  void (*reload_save)(LogThreadedSourceDriver *self, LogThreadedSourceWorker **workers, gint num_workers);
+  LogThreadedSourceWorker **(*reload_restore)(LogThreadedSourceDriver *self, gint *num_workers);
 };
 
 void log_threaded_source_worker_options_defaults(LogThreadedSourceWorkerOptions *options);
@@ -99,6 +103,13 @@ log_threaded_source_driver_set_num_workers(LogDriver *s, gint num_workers)
 {
   LogThreadedSourceDriver *self = (LogThreadedSourceDriver *) s;
   self->num_workers = num_workers;
+}
+
+static inline void
+log_threaded_source_driver_set_reload_keep_alive(LogDriver *s, gboolean keep_alive)
+{
+  LogThreadedSourceDriver *self = (LogThreadedSourceDriver *) s;
+  self->reload_keep_alive = keep_alive;
 }
 
 static inline LogSourceOptions *
