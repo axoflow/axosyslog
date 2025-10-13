@@ -265,21 +265,30 @@ _create_workers(LogThreadedSourceDriver *self)
     }
 }
 
-static void
-_destroy_workers(LogThreadedSourceDriver *self)
+void
+log_threaded_source_driver_destroy_workers(LogThreadedSourceWorker **workers, gint num_workers)
 {
-  for (size_t i = 0; i < self->num_workers; i++)
+  if (!workers)
+    return;
+
+  for (gsize i = 0; i < num_workers; i++)
     {
-      LogPipe *worker_pipe = _worker_logpipe(self->workers[i]);
+      LogPipe *worker_pipe = _worker_logpipe(workers[i]);
       if (!worker_pipe)
         break;
 
       log_pipe_deinit(worker_pipe);
       log_pipe_unref(worker_pipe);
-      self->workers[i] = NULL;
+      workers[i] = NULL;
     }
 
-  g_free(self->workers);
+  g_free(workers);
+}
+
+static void
+_destroy_workers(LogThreadedSourceDriver *self)
+{
+  log_threaded_source_driver_destroy_workers(self->workers, self->num_workers);
   self->workers = NULL;
 }
 

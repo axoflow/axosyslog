@@ -128,7 +128,10 @@ log_threaded_source_driver_get_parse_options(LogDriver *s)
   return &self->worker_options.parse_options;
 }
 
-/* Worker */
+/* protected */
+void log_threaded_source_driver_destroy_workers(LogThreadedSourceWorker **workers, gint num_workers);
+
+/* worker */
 
 void log_threaded_source_worker_init_instance(LogThreadedSourceWorker *self, LogThreadedSourceDriver *driver,
                                               gint worker_index);
