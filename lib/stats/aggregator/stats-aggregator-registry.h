@@ -42,6 +42,9 @@ void stats_register_aggregator_maximum(gint level, StatsClusterKey *sc_key, Stat
 void stats_register_aggregator_average(gint level, StatsClusterKey *sc_key, StatsAggregator **aggr);
 void stats_register_aggregator_cps(gint level, StatsClusterKey *sc_key, StatsClusterKey *sc_key_input, gint stats_type,
                                    StatsAggregator **aggr);
+void stats_register_aggregator_hist(gint level, StatsClusterKey *sc_key,
+                                    gint min_bucket, gint num_buckets,
+                                    StatsAggregator **aggr);
 void stats_unregister_aggregator(StatsAggregator **aggr);
 
 
