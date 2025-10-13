@@ -114,7 +114,7 @@ struct _LogThreadedDestWorker
     gint64 last_delay_update;
 
     /* book keeping */
-    StatsClusterKey *output_event_bytes_sc_key;
+    StatsClusterKey *output_event_bytes_key;
     StatsClusterKey *output_unreachable_key;
     StatsClusterKey *message_delay_sample_key;
     StatsClusterKey *message_delay_sample_age_key;
@@ -137,10 +137,6 @@ struct _LogThreadedDestDriver
 
   struct
   {
-    StatsClusterKey *output_events_sc_key;
-    StatsClusterKey *processed_sc_key;
-    StatsClusterKey *output_event_retries_sc_key;
-
     StatsCounterItem *dropped_messages;
     StatsCounterItem *processed_messages;
     StatsCounterItem *written_messages;
@@ -151,6 +147,11 @@ struct _LogThreadedDestDriver
     StatsAggregator *max_batch_size;
     StatsAggregator *average_batch_size;
     StatsAggregator *CPS;
+
+    /* book keeping */
+    StatsClusterKey *output_events_key;
+    StatsClusterKey *processed_key;
+    StatsClusterKey *output_event_retries_key;
   } metrics;
 
   gint batch_lines;

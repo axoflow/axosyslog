@@ -878,7 +878,7 @@ _register_worker_stats(LogThreadedDestWorker *self)
     _format_stats_key(self->owner, kb);
 
     stats_cluster_key_builder_set_name(kb, "output_event_bytes_total");
-    self->metrics.output_event_bytes_sc_key = stats_cluster_key_builder_build_single(kb);
+    self->metrics.output_event_bytes_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
@@ -907,7 +907,7 @@ _register_worker_stats(LogThreadedDestWorker *self)
   }
   stats_cluster_key_builder_pop(kb);
 
-  stats_byte_counter_init(&self->metrics.written_bytes, self->metrics.output_event_bytes_sc_key, level, SBCP_KIB);
+  stats_byte_counter_init(&self->metrics.written_bytes, self->metrics.output_event_bytes_key, level, SBCP_KIB);
   stats_lock();
   {
 
@@ -935,11 +935,11 @@ _register_worker_stats(LogThreadedDestWorker *self)
 static void
 _unregister_worker_stats(LogThreadedDestWorker *self)
 {
-  if (self->metrics.output_event_bytes_sc_key)
+  if (self->metrics.output_event_bytes_key)
     {
-      stats_byte_counter_deinit(&self->metrics.written_bytes, self->metrics.output_event_bytes_sc_key);
-      stats_cluster_key_free(self->metrics.output_event_bytes_sc_key);
-      self->metrics.output_event_bytes_sc_key = NULL;
+      stats_byte_counter_deinit(&self->metrics.written_bytes, self->metrics.output_event_bytes_key);
+      stats_cluster_key_free(self->metrics.output_event_bytes_key);
+      self->metrics.output_event_bytes_key = NULL;
     }
 
   stats_lock();
@@ -1273,7 +1273,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *driv
   stats_cluster_key_builder_push(driver_sck_builder);
   {
     stats_cluster_key_builder_set_name(driver_sck_builder, "output_events_total");
-    self->metrics.output_events_sc_key = stats_cluster_key_builder_build_logpipe(driver_sck_builder);
+    self->metrics.output_events_key = stats_cluster_key_builder_build_logpipe(driver_sck_builder);
   }
   stats_cluster_key_builder_pop(driver_sck_builder);
 
@@ -1282,7 +1282,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *driv
     stats_cluster_key_builder_set_name(driver_sck_builder, "output_event_retries_total");
     stats_cluster_key_builder_set_legacy_alias(driver_sck_builder, -1, "", "");
     stats_cluster_key_builder_set_legacy_alias_name(driver_sck_builder, "");
-    self->metrics.output_event_retries_sc_key = stats_cluster_key_builder_build_single(driver_sck_builder);
+    self->metrics.output_event_retries_key = stats_cluster_key_builder_build_single(driver_sck_builder);
   }
   stats_cluster_key_builder_pop(driver_sck_builder);
 
@@ -1292,17 +1292,17 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *driv
                                                self->super.super.id,
                                                _format_legacy_stats_instance(self, driver_sck_builder));
     stats_cluster_key_builder_set_legacy_alias_name(driver_sck_builder, "processed");
-    self->metrics.processed_sc_key = stats_cluster_key_builder_build_single(driver_sck_builder);
+    self->metrics.processed_key = stats_cluster_key_builder_build_single(driver_sck_builder);
   }
   stats_cluster_key_builder_pop(driver_sck_builder);
 
   stats_lock();
   {
-    stats_register_counter(level, self->metrics.output_events_sc_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
-    stats_register_counter(level, self->metrics.output_events_sc_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
-    stats_register_counter(level, self->metrics.processed_sc_key, SC_TYPE_SINGLE_VALUE,
+    stats_register_counter(level, self->metrics.output_events_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
+    stats_register_counter(level, self->metrics.output_events_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
+    stats_register_counter(level, self->metrics.processed_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.processed_messages);
-    stats_register_counter(level, self->metrics.output_event_retries_sc_key, SC_TYPE_SINGLE_VALUE,
+    stats_register_counter(level, self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.output_event_retries);
   }
   stats_unlock();
@@ -1325,30 +1325,30 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   _unregister_driver_aggregated_stats(self);
   stats_lock();
   {
-    if (self->metrics.output_events_sc_key)
+    if (self->metrics.output_events_key)
       {
-        stats_unregister_counter(self->metrics.output_events_sc_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
-        stats_unregister_counter(self->metrics.output_events_sc_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
+        stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
+        stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
 
-        stats_cluster_key_free(self->metrics.output_events_sc_key);
-        self->metrics.output_events_sc_key = NULL;
+        stats_cluster_key_free(self->metrics.output_events_key);
+        self->metrics.output_events_key = NULL;
       }
 
-    if (self->metrics.processed_sc_key)
+    if (self->metrics.processed_key)
       {
-        stats_unregister_counter(self->metrics.processed_sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
+        stats_unregister_counter(self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
 
-        stats_cluster_key_free(self->metrics.processed_sc_key);
-        self->metrics.processed_sc_key = NULL;
+        stats_cluster_key_free(self->metrics.processed_key);
+        self->metrics.processed_key = NULL;
       }
 
-    if (self->metrics.output_event_retries_sc_key)
+    if (self->metrics.output_event_retries_key)
       {
-        stats_unregister_counter(self->metrics.output_event_retries_sc_key, SC_TYPE_SINGLE_VALUE,
+        stats_unregister_counter(self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                                  &self->metrics.output_event_retries);
 
-        stats_cluster_key_free(self->metrics.output_event_retries_sc_key);
-        self->metrics.output_event_retries_sc_key = NULL;
+        stats_cluster_key_free(self->metrics.output_event_retries_key);
+        self->metrics.output_event_retries_key = NULL;
       }
   }
   stats_unlock();
