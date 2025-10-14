@@ -154,6 +154,7 @@ struct _LogThreadedDestDriver
     StatsClusterKey *batch_size_hist_key;
     StatsClusterKey *event_size_hist_key;
     StatsClusterKey *request_latency_hist_key;
+    StatsClusterKey *CPS_key;
   } metrics;
 
   gint batch_lines;
