@@ -144,6 +144,7 @@ struct _LogThreadedDestDriver
 
     StatsAggregator *event_size_hist;
     StatsAggregator *batch_size_hist;
+    StatsAggregator *request_latency_hist;
     StatsAggregator *CPS;
 
     /* book keeping */
@@ -152,6 +153,7 @@ struct _LogThreadedDestDriver
     StatsClusterKey *output_event_retries_key;
     StatsClusterKey *batch_size_hist_key;
     StatsClusterKey *event_size_hist_key;
+    StatsClusterKey *request_latency_hist_key;
   } metrics;
 
   gint batch_lines;
@@ -274,8 +276,14 @@ log_threaded_dest_worker_flush(LogThreadedDestWorker *self, LogThreadedFlushMode
 
   if (self->flush)
     result = self->flush(self, mode);
+
   iv_validate_now();
-  self->last_flush_time = iv_now;
+
+  struct timespec now = iv_now;
+  glong request_latency = timespec_diff_msec(&now, &self->last_flush_time);
+  self->last_flush_time = now;
+
+  stats_aggregator_add_data_point(self->owner->metrics.request_latency_hist, request_latency);
   return result;
 }
 
