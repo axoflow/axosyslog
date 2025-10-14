@@ -41,10 +41,13 @@ SourceDriver::SourceDriver(GrpcSourceDriver *s)
 }
 
 void
-SourceDriver::request_exit()
+SourceDriver::shutdown()
 {
-  msg_debug("Shutting down OpenTelemetry server", evt_tag_int("port", this->port));
-  server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+  if (this->server)
+    {
+      msg_debug("Shutting down OpenTelemetry server", evt_tag_int("port", this->port));
+      this->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+    }
 }
 
 void
@@ -92,8 +95,8 @@ SourceDriver::init()
   for (int i = 0; i < this->super->super.num_workers; i++)
     this->cqs.push_back(builder.AddCompletionQueue());
 
-  server = builder.BuildAndStart();
-  if (!server)
+  this->server = builder.BuildAndStart();
+  if (!this->server)
     {
       msg_error("Failed to start OpenTelemetry server", evt_tag_int("port", this->port));
       return FALSE;
@@ -106,14 +109,15 @@ SourceDriver::init()
   return TRUE;
 }
 
-gboolean
-SourceDriver::deinit()
+SourceDriver::~SourceDriver()
 {
+  this->shutdown();
+  this->drain_unused_queues();
+
+  /* the service must exist for the lifetime of the Server instance */
   this->trace_service = nullptr;
   this->logs_service = nullptr;
   this->metrics_service = nullptr;
-
-  return syslogng::grpc::SourceDriver::deinit();
 }
 
 LogThreadedSourceWorker *
@@ -131,6 +135,12 @@ SourceWorker::SourceWorker(GrpcSourceWorker *s, syslogng::grpc::SourceDriver &d)
   SourceDriver *owner_ = otel_sd_get_cpp(this->driver.super);
   cq = std::move(owner_->cqs.front());
   owner_->cqs.pop_front();
+}
+
+SourceWorker::~SourceWorker()
+{
+  this->shutdown();
+  this->drain_queue();
 }
 
 void
@@ -156,13 +166,45 @@ syslogng::grpc::otel::SourceWorker::run()
     {
       static_cast<AsyncServiceCallInterface *>(tag)->Proceed(ok);
     }
+
+  this->cq.reset();
 }
 
 void
 syslogng::grpc::otel::SourceWorker::request_exit()
 {
-  this->driver.request_exit();
-  this->cq->Shutdown();
+  this->shutdown();
+}
+
+void
+syslogng::grpc::otel::SourceWorker::shutdown()
+{
+  SourceDriver *owner_ = otel_sd_get_cpp(this->driver.super);
+
+  owner_->shutdown();
+  if (this->cq)
+    this->cq->Shutdown();
+}
+
+void
+syslogng::grpc::otel::SourceWorker::drain_queue()
+{
+  if (!this->cq)
+    return;
+
+  void *ignored_tag;
+  bool ignored_ok;
+  while (this->cq->Next(&ignored_tag, &ignored_ok)) {}
+}
+
+void syslogng::grpc::otel::SourceDriver::drain_unused_queues()
+{
+  for (auto &cq : this->cqs)
+    {
+      void *ignored_tag;
+      bool ignored_ok;
+      while (cq->Next(&ignored_tag, &ignored_ok)) {}
+    }
 }
 
 SourceDriver *

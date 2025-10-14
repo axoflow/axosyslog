@@ -39,10 +39,9 @@ class SourceDriver : public syslogng::grpc::SourceDriver
 {
 public:
   SourceDriver(GrpcSourceDriver *s);
+  ~SourceDriver() override;
 
   gboolean init() override;
-  gboolean deinit() override;
-  void request_exit();
   void format_stats_key(StatsClusterKeyBuilder *kb);
   const char *generate_persist_name();
   LogThreadedSourceWorker *construct_worker(int worker_index);
@@ -53,6 +52,8 @@ public:
 
 private:
   friend class SourceWorker;
+  void drain_unused_queues();
+  void shutdown();
 
 private:
   std::unique_ptr<::grpc::Server> server;
@@ -63,6 +64,7 @@ class SourceWorker : public syslogng::grpc::SourceWorker
 {
 public:
   SourceWorker(GrpcSourceWorker *s, syslogng::grpc::SourceDriver &d);
+  ~SourceWorker() override;
 
   void run();
   void request_exit();
@@ -71,6 +73,8 @@ private:
   friend TraceServiceCall;
   friend LogsServiceCall;
   friend MetricsServiceCall;
+  void drain_queue();
+  void shutdown();
 
 private:
   std::unique_ptr<::grpc::ServerCompletionQueue> cq;
