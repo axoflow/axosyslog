@@ -29,6 +29,7 @@
 #include "scratch-buffers.h"
 #include "template/eval.h"
 #include "mainloop-threaded-worker.h"
+#include "compat/pow2.h"
 
 #include <string.h>
 
@@ -1183,15 +1184,13 @@ log_threaded_dest_worker_written_bytes_add(LogThreadedDestWorker *self, gsize b)
 void
 log_threaded_dest_driver_insert_msg_length_stats(LogThreadedDestDriver *self, gsize len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_message_size, len);
-  stats_aggregator_add_data_point(self->metrics.average_messages_size, len);
+  stats_aggregator_add_data_point(self->metrics.event_size_hist, len);
 }
 
 void
 log_threaded_dest_driver_insert_batch_length_stats(LogThreadedDestDriver *self, gsize len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_batch_size, len);
-  stats_aggregator_add_data_point(self->metrics.average_batch_size, len);
+  stats_aggregator_add_data_point(self->metrics.batch_size_hist, len);
 }
 
 void
@@ -1207,24 +1206,11 @@ _register_driver_aggregated_stats(LogThreadedDestDriver *self)
   stats_cluster_logpipe_key_legacy_set(&sc_key_eps_input, self->stats_source | SCS_DESTINATION,
                                        self->super.super.id, legacy_stats_instance);
   stats_aggregator_lock();
+
+  stats_register_aggregator_hist(level, self->metrics.batch_size_hist_key, round_to_log2(1), 16, &self->metrics.batch_size_hist);
+  stats_register_aggregator_hist(level, self->metrics.event_size_hist_key, round_to_log2(64), 8, &self->metrics.event_size_hist);
+
   StatsClusterKey sc_key;
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "msg_size_max");
-  stats_register_aggregator_maximum(level, &sc_key, &self->metrics.max_message_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "msg_size_avg");
-  stats_register_aggregator_average(level, &sc_key, &self->metrics.average_messages_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "batch_size_max");
-  stats_register_aggregator_maximum(level, &sc_key, &self->metrics.max_batch_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "batch_size_avg");
-  stats_register_aggregator_average(level, &sc_key, &self->metrics.average_batch_size);
-
   stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
                                                 legacy_stats_instance, "eps");
   stats_register_aggregator_cps(level, &sc_key, &sc_key_eps_input, SC_TYPE_WRITTEN, &self->metrics.CPS);
@@ -1237,10 +1223,8 @@ _unregister_driver_aggregated_stats(LogThreadedDestDriver *self)
 {
   stats_aggregator_lock();
 
-  stats_unregister_aggregator(&self->metrics.max_message_size);
-  stats_unregister_aggregator(&self->metrics.average_messages_size);
-  stats_unregister_aggregator(&self->metrics.max_batch_size);
-  stats_unregister_aggregator(&self->metrics.average_batch_size);
+  stats_unregister_aggregator(&self->metrics.event_size_hist);
+  stats_unregister_aggregator(&self->metrics.batch_size_hist);
   stats_unregister_aggregator(&self->metrics.CPS);
 
   stats_aggregator_unlock();
@@ -1278,7 +1262,24 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
     stats_cluster_key_builder_set_legacy_alias_name(kb, "processed");
     self->metrics.processed_key = stats_cluster_key_builder_build_single(kb);
   }
+
+  }
   stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_event_size_bytes");
+    self->metrics.event_size_hist_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_batch_size_events");
+    self->metrics.batch_size_hist_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
 
   stats_lock();
   {
@@ -1320,6 +1321,9 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   stats_cluster_key_free(self->metrics.output_events_key);
   stats_cluster_key_free(self->metrics.processed_key);
   stats_cluster_key_free(self->metrics.output_event_retries_key);
+  stats_cluster_key_free(self->metrics.event_size_hist_key);
+  stats_cluster_key_free(self->metrics.batch_size_hist_key);
+
 }
 
 static gchar *

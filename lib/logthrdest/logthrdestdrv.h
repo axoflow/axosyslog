@@ -142,16 +142,16 @@ struct _LogThreadedDestDriver
     StatsCounterItem *written_messages;
     StatsCounterItem *output_event_retries;
 
-    StatsAggregator *max_message_size;
-    StatsAggregator *average_messages_size;
-    StatsAggregator *max_batch_size;
-    StatsAggregator *average_batch_size;
+    StatsAggregator *event_size_hist;
+    StatsAggregator *batch_size_hist;
     StatsAggregator *CPS;
 
     /* book keeping */
     StatsClusterKey *output_events_key;
     StatsClusterKey *processed_key;
     StatsClusterKey *output_event_retries_key;
+    StatsClusterKey *batch_size_hist_key;
+    StatsClusterKey *event_size_hist_key;
   } metrics;
 
   gint batch_lines;
