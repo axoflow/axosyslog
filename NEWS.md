@@ -1,4 +1,4 @@
-4.18.1
+4.19.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -9,20 +9,45 @@ Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-pa
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
 
+## Features
+
+  * `dict_to_pairs()` FilterX function: Added a new function to convert dicts to list of pairs
+
+    Example usage:
+    ```
+    dict = {
+        "value_1": "foo",
+        "value_2": "bar",
+        "value_3": ["baz", "bax"],
+    };
+
+    list = dict_to_pairs(dict, "key", "value");
+    # Becomes:
+    # [
+    #   {"key":"value_1","value":"foo"},
+    #   {"key":"value_2","value":"bar"},
+    #   {"key":"value_3","value":["baz","bax"]}
+    # ]
+    ```
+    ([#810](https://github.com/axoflow/axosyslog/pull/810))
+
+
 ## Bugfixes
 
-  * `strftime()` FilterX function: Fixed %Z formatting for some rare cases
+  * `syslogng_output_unreachable` metric: fix marking destinations unreachable during reload
+    ([#818](https://github.com/axoflow/axosyslog/pull/818))
 
-    America/Caracas (-04:30) time offset will now be correctly formatted.
-    ([#811](https://github.com/axoflow/axosyslog/pull/811))
+  * `transport(proxied-tcp)`: Fix a HAProxy protocol v2 parsing issue that
+    caused a failed assertion.  This essentially triggers a crash with a SIGABRT
+    whenever a "LOCAL" command was sent in the HAProxy header without address
+    information.
+    ([#814](https://github.com/axoflow/axosyslog/pull/814))
 
-  * `disk-buffer()`: fix getting stuck under rare circumstances
-    ([#813](https://github.com/axoflow/axosyslog/pull/813))
+  * filterx: fix `parse_csv` function crash if coulumns specified non-existent variable
+    ([#819](https://github.com/axoflow/axosyslog/pull/819))
 
-  * `disk-buffer()`: do not allow flow-control misconfiguration
-    The `flow-control-window_size()` (formerly `mem-buf-length()`) option is now deprecated and no longer has any
-    effect.
-    ([#813](https://github.com/axoflow/axosyslog/pull/813))
+  * `opentelemetry()` source: fix various crashes during startup/reload
+    ([#822](https://github.com/axoflow/axosyslog/pull/822))
 
 
 [1] syslog-ng is a trademark of One Identity.
@@ -44,5 +69,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Attila Szakacs, Balazs Scheidler, Hofi, László Várady,
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, László Várady,
 Szilard Parrag, Tamás Kosztyu, shifter
