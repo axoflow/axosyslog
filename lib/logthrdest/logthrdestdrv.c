@@ -935,41 +935,25 @@ _register_worker_stats(LogThreadedDestWorker *self)
 static void
 _unregister_worker_stats(LogThreadedDestWorker *self)
 {
-  if (self->metrics.output_event_bytes_key)
-    {
-      stats_byte_counter_deinit(&self->metrics.written_bytes, self->metrics.output_event_bytes_key);
-      stats_cluster_key_free(self->metrics.output_event_bytes_key);
-      self->metrics.output_event_bytes_key = NULL;
-    }
+  stats_byte_counter_deinit(&self->metrics.written_bytes, self->metrics.output_event_bytes_key);
 
   stats_lock();
   {
-    if (self->metrics.output_unreachable_key)
-      {
-        stats_unregister_counter(self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.output_unreachable);
-        stats_cluster_key_free(self->metrics.output_unreachable_key);
-        self->metrics.output_unreachable_key = NULL;
-      }
+    stats_unregister_counter(self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.output_unreachable);
 
-    if (self->metrics.message_delay_sample_key)
-      {
-        stats_unregister_counter(self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.message_delay_sample);
-        stats_cluster_key_free(self->metrics.message_delay_sample_key);
-        self->metrics.message_delay_sample_key = NULL;
-      }
+    stats_unregister_counter(self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.message_delay_sample);
 
-    if (self->metrics.message_delay_sample_age_key)
-      {
-        stats_unregister_counter(self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.message_delay_sample_age);
-        stats_cluster_key_free(self->metrics.message_delay_sample_age_key);
-        self->metrics.message_delay_sample_age_key = NULL;
-      }
+    stats_unregister_counter(self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.message_delay_sample_age);
   }
   stats_unlock();
 
+  stats_cluster_key_free(self->metrics.output_event_bytes_key);
+  stats_cluster_key_free(self->metrics.output_unreachable_key);
+  stats_cluster_key_free(self->metrics.message_delay_sample_key);
+  stats_cluster_key_free(self->metrics.message_delay_sample_age_key);
 }
 
 gboolean
@@ -1325,33 +1309,17 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   _unregister_driver_aggregated_stats(self);
   stats_lock();
   {
-    if (self->metrics.output_events_key)
-      {
-        stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
-        stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
-
-        stats_cluster_key_free(self->metrics.output_events_key);
-        self->metrics.output_events_key = NULL;
-      }
-
-    if (self->metrics.processed_key)
-      {
-        stats_unregister_counter(self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
-
-        stats_cluster_key_free(self->metrics.processed_key);
-        self->metrics.processed_key = NULL;
-      }
-
-    if (self->metrics.output_event_retries_key)
-      {
-        stats_unregister_counter(self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
+    stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
+    stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
+    stats_unregister_counter(self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
+    stats_unregister_counter(self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                                  &self->metrics.output_event_retries);
-
-        stats_cluster_key_free(self->metrics.output_event_retries_key);
-        self->metrics.output_event_retries_key = NULL;
-      }
   }
   stats_unlock();
+
+  stats_cluster_key_free(self->metrics.output_events_key);
+  stats_cluster_key_free(self->metrics.processed_key);
+  stats_cluster_key_free(self->metrics.output_event_retries_key);
 }
 
 static gchar *
