@@ -1247,38 +1247,38 @@ _unregister_driver_aggregated_stats(LogThreadedDestDriver *self)
 }
 
 static void
-_register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *driver_sck_builder)
+_register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 {
-  if (!driver_sck_builder)
+  if (!kb)
     return;
 
   gint level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL0;
 
-  stats_cluster_key_builder_push(driver_sck_builder);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(driver_sck_builder, "output_events_total");
-    self->metrics.output_events_key = stats_cluster_key_builder_build_logpipe(driver_sck_builder);
+    stats_cluster_key_builder_set_name(kb, "output_events_total");
+    self->metrics.output_events_key = stats_cluster_key_builder_build_logpipe(kb);
   }
-  stats_cluster_key_builder_pop(driver_sck_builder);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(driver_sck_builder);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(driver_sck_builder, "output_event_retries_total");
-    stats_cluster_key_builder_set_legacy_alias(driver_sck_builder, -1, "", "");
-    stats_cluster_key_builder_set_legacy_alias_name(driver_sck_builder, "");
-    self->metrics.output_event_retries_key = stats_cluster_key_builder_build_single(driver_sck_builder);
+    stats_cluster_key_builder_set_name(kb, "output_event_retries_total");
+    stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "");
+    self->metrics.output_event_retries_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(driver_sck_builder);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(driver_sck_builder);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_legacy_alias(driver_sck_builder, self->stats_source | SCS_DESTINATION,
+    stats_cluster_key_builder_set_legacy_alias(kb, self->stats_source | SCS_DESTINATION,
                                                self->super.super.id,
-                                               _format_legacy_stats_instance(self, driver_sck_builder));
-    stats_cluster_key_builder_set_legacy_alias_name(driver_sck_builder, "processed");
-    self->metrics.processed_key = stats_cluster_key_builder_build_single(driver_sck_builder);
+                                               _format_legacy_stats_instance(self, kb));
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "processed");
+    self->metrics.processed_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(driver_sck_builder);
+  stats_cluster_key_builder_pop(kb);
 
   stats_lock();
   {
