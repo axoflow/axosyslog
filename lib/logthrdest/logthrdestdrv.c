@@ -1209,6 +1209,7 @@ _register_driver_aggregated_stats(LogThreadedDestDriver *self)
 
   stats_register_aggregator_hist(level, self->metrics.batch_size_hist_key, round_to_log2(1), 16, &self->metrics.batch_size_hist);
   stats_register_aggregator_hist(level, self->metrics.event_size_hist_key, round_to_log2(64), 8, &self->metrics.event_size_hist);
+  stats_register_aggregator_hist(level, self->metrics.request_latency_hist_key, round_to_log2(32), 8, &self->metrics.request_latency_hist);
 
   StatsClusterKey sc_key;
   stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
@@ -1225,6 +1226,7 @@ _unregister_driver_aggregated_stats(LogThreadedDestDriver *self)
 
   stats_unregister_aggregator(&self->metrics.event_size_hist);
   stats_unregister_aggregator(&self->metrics.batch_size_hist);
+  stats_unregister_aggregator(&self->metrics.request_latency_hist);
   stats_unregister_aggregator(&self->metrics.CPS);
 
   stats_aggregator_unlock();
@@ -1262,7 +1264,13 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
     stats_cluster_key_builder_set_legacy_alias_name(kb, "processed");
     self->metrics.processed_key = stats_cluster_key_builder_build_single(kb);
   }
+  stats_cluster_key_builder_pop(kb);
 
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_request_latency_seconds");
+    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
+    self->metrics.request_latency_hist_key = stats_cluster_key_builder_build_hist(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
@@ -1321,6 +1329,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   stats_cluster_key_free(self->metrics.output_events_key);
   stats_cluster_key_free(self->metrics.processed_key);
   stats_cluster_key_free(self->metrics.output_event_retries_key);
+  stats_cluster_key_free(self->metrics.request_latency_hist_key);
   stats_cluster_key_free(self->metrics.event_size_hist_key);
   stats_cluster_key_free(self->metrics.batch_size_hist_key);
 
