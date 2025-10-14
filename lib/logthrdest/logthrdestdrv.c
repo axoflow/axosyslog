@@ -820,7 +820,8 @@ log_threaded_dest_worker_start(LogThreadedDestWorker *self)
 static void
 _format_stats_key(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 {
-  self->format_stats_key(self, kb);
+  if (self->format_stats_key)
+    self->format_stats_key(self, kb);
 }
 
 static const gchar *
@@ -1198,7 +1199,7 @@ log_threaded_dest_driver_insert_batch_length_stats(LogThreadedDestDriver *self, 
 }
 
 void
-log_threaded_dest_driver_register_aggregated_stats(LogThreadedDestDriver *self)
+_register_driver_aggregated_stats(LogThreadedDestDriver *self)
 {
   gint level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL0;
 
@@ -1236,7 +1237,7 @@ log_threaded_dest_driver_register_aggregated_stats(LogThreadedDestDriver *self)
 }
 
 void
-log_threaded_dest_driver_unregister_aggregated_stats(LogThreadedDestDriver *self)
+_unregister_driver_aggregated_stats(LogThreadedDestDriver *self)
 {
   stats_aggregator_lock();
 
@@ -1293,6 +1294,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *driv
                            &self->metrics.output_event_retries);
   }
   stats_unlock();
+  _register_driver_aggregated_stats(self);
 }
 
 static void
@@ -1308,6 +1310,7 @@ _init_driver_sck_builder(LogThreadedDestDriver *self, StatsClusterKeyBuilder *bu
 static void
 _unregister_driver_stats(LogThreadedDestDriver *self)
 {
+  _unregister_driver_aggregated_stats(self);
   stats_lock();
   {
     if (self->metrics.output_events_sc_key)

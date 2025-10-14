@@ -400,14 +400,6 @@ _format_stats_key(LogThreadedDestDriver *s, StatsClusterKeyBuilder *kb)
 }
 
 gboolean
-http_dd_deinit(LogPipe *s)
-{
-  HTTPDestinationDriver *self = (HTTPDestinationDriver *)s;
-  log_threaded_dest_driver_unregister_aggregated_stats(&self->super);
-  return log_threaded_dest_driver_deinit_method(s);
-}
-
-gboolean
 http_dd_init(LogPipe *s)
 {
   HTTPDestinationDriver *self = (HTTPDestinationDriver *)s;
@@ -469,7 +461,6 @@ http_dd_init(LogPipe *s)
 
   http_load_balancer_set_recovery_timeout(self->load_balancer, self->super.time_reopen);
 
-  log_threaded_dest_driver_register_aggregated_stats(&self->super);
   return TRUE;
 }
 
@@ -514,7 +505,6 @@ http_dd_new(GlobalConfig *cfg)
   log_template_options_defaults(&self->template_options);
 
   self->super.super.super.super.init = http_dd_init;
-  self->super.super.super.super.deinit = http_dd_deinit;
   self->super.super.super.super.free_fn = http_dd_free;
   self->super.super.super.super.generate_persist_name = _format_persist_name;
   self->super.format_stats_key = _format_stats_key;

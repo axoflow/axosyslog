@@ -298,8 +298,6 @@ void log_threaded_dest_worker_free(LogThreadedDestWorker *self);
 void log_threaded_dest_worker_written_bytes_add(LogThreadedDestWorker *self, gsize b);
 void log_threaded_dest_driver_insert_msg_length_stats(LogThreadedDestDriver *self, gsize len);
 void log_threaded_dest_driver_insert_batch_length_stats(LogThreadedDestDriver *self, gsize len);
-void log_threaded_dest_driver_register_aggregated_stats(LogThreadedDestDriver *self);
-void log_threaded_dest_driver_unregister_aggregated_stats(LogThreadedDestDriver *self);
 gboolean log_threaded_dest_driver_start_workers(LogThreadedDestDriver *self);
 
 gboolean log_threaded_dest_driver_deinit_method(LogPipe *s);
