@@ -124,6 +124,7 @@ _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_
   return TRUE;
 }
 
+/* Takes reference of body */
 static void
 _build_switch_table(FilterXSwitch *self, GList *body)
 {
@@ -154,7 +155,7 @@ _build_switch_table(FilterXSwitch *self, GList *body)
             }
         }
       else
-        filterx_compound_expr_add(self->body, expr);
+        filterx_compound_expr_add_ref(self->body, expr);
     }
   g_list_free(body);
 }
