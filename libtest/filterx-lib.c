@@ -212,7 +212,7 @@ filterx_non_literal_new_from_expr(FilterXExpr *expr)
   self->super.free_fn = _non_literal_free;
 
   self->block = filterx_compound_expr_new(TRUE);
-  filterx_compound_expr_add(self->block, expr);
+  filterx_compound_expr_add_ref(self->block, expr);
 
   return &self->super;
 }

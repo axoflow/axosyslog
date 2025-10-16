@@ -222,20 +222,20 @@ filterx_compound_expr_get_count(FilterXExpr *s)
 }
 
 void
-filterx_compound_expr_add(FilterXExpr *s, FilterXExpr *expr)
+filterx_compound_expr_add_ref(FilterXExpr *s, FilterXExpr *expr)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  filterx_expr_list_add(&self->exprs, expr);
+  filterx_expr_list_add_ref(&self->exprs, expr);
 }
 
 /* Takes reference of expr_list */
 void
-filterx_compound_expr_add_list(FilterXExpr *s, GList *expr_list)
+filterx_compound_expr_add_list_ref(FilterXExpr *s, GList *expr_list)
 {
   for (GList *elem = expr_list; elem; elem = elem->next)
     {
-      filterx_compound_expr_add(s, elem->data);
+      filterx_compound_expr_add_ref(s, elem->data);
     }
   g_list_free(expr_list);
 }
@@ -267,7 +267,7 @@ filterx_compound_expr_new_va(gboolean return_value_of_last_expr, FilterXExpr *fi
   FilterXExpr *arg = first;
   while (arg)
     {
-      filterx_compound_expr_add(s, arg);
+      filterx_compound_expr_add_ref(s, arg);
       arg = va_arg(va, FilterXExpr *);
     }
   va_end(va);

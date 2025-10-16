@@ -123,9 +123,9 @@ filterx_expr_list_seal(FilterXExprList *self)
 }
 
 static inline void
-filterx_expr_list_add(FilterXExprList *self, FilterXExpr *expr)
+filterx_expr_list_add_ref(FilterXExprList *self, FilterXExpr *expr)
 {
-  filterx_pointer_list_add(self, filterx_expr_ref(expr));
+  filterx_pointer_list_add(self, expr);
 }
 
 static inline FilterXExpr *
