@@ -1,0 +1,122 @@
+name: CI @ devshell
+
+on:
+  schedule:
+    - cron: '00 00 * * *'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  general:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
+      options: --privileged --ulimit core=-1
+
+    strategy:
+      matrix:
+        build-tool: [autotools]
+        cc: [gcc]
+      fail-fast: false
+
+    steps:
+      - name: Checkout AxoSyslog source
+        uses: actions/checkout@v4
+
+      - name: Setup Git safedir
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
+      - name: Setup environment
+        run: |
+          . .github/workflows/gh-tools.sh
+
+          # Setup corefiles
+          ulimit -c unlimited
+          COREFILES_DIR=/tmp/corefiles
+          mkdir ${COREFILES_DIR}
+          echo "${COREFILES_DIR}/core.%h.%e.%t" > /proc/sys/kernel/core_pattern
+
+          # Setup build time environment variables
+          PYTHONUSERBASE="${HOME}/python_packages"
+          CC="${{ matrix.cc }}"
+          CXX=`[ $CC = gcc ] && echo g++ || echo clang++`
+          SYSLOG_NG_INSTALL_DIR=${HOME}/install/syslog-ng
+          CONFIGURE_FLAGS="
+            --prefix=${SYSLOG_NG_INSTALL_DIR}
+            --enable-debug
+            --enable-all-modules
+            --disable-java
+            --disable-java-modules
+            --enable-ebpf
+            --with-python=3
+            --enable-extra-warnings
+            `[ $CC = clang ] && echo '--enable-force-gnu99' || true`
+          "
+          CMAKE_FLAGS="
+            -DCMAKE_BUILD_TYPE=Debug
+            -DCMAKE_C_FLAGS=-Werror
+            -DCMAKE_INSTALL_PREFIX=${HOME}/install/syslog-ng
+            -DPYTHON_VERSION=3
+          "
+          gh_export COREFILES_DIR PYTHONUSERBASE CC CXX SYSLOG_NG_INSTALL_DIR CONFIGURE_FLAGS CMAKE_FLAGS
+          gh_path "${PYTHONUSERBASE}"
+
+      - name: autogen.sh
+        if: matrix.build-tool == 'autotools'
+        run: ./autogen.sh
+
+      - name: configure
+        if: matrix.build-tool == 'autotools'
+        run: |
+          mkdir build
+          cd build
+          ../configure ${CONFIGURE_FLAGS}
+
+      - name: make
+        working-directory: ./build
+        run: make V=1 -j $(nproc)
+
+      - name: make install
+        working-directory: ./build
+        run: make install
+
+      - name: Python virtualenv for syslog-ng runtime
+        run: ${SYSLOG_NG_INSTALL_DIR}/bin/syslog-ng-update-virtualenv -y
+
+      - name: Light
+        id: light
+        working-directory: ./build
+        run: |
+          make light-valgrind-check
+
+      - name: "Prepare artifact: light-reports"
+        id: prepare-light-reports
+        if: always() && steps.light.outcome == 'failure'
+        run: |
+          REPORTS_DIR=$GITHUB_WORKSPACE/tests/light/reports
+          cp -r ${REPORTS_DIR} /tmp/light-reports
+          find /tmp/light-reports -type p,s -print0 | xargs -0 rm -f
+          tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports
+
+      - name: "Artifact: light-reports"
+        uses: actions/upload-artifact@v4
+        if: always() && steps.prepare-light-reports.outcome == 'success'
+        with:
+          name: light-reports-${{ matrix.build-tool }}-${{ matrix.cc }}
+          path: /tmp/light-reports.tar.gz
+
+      - name: Dump corefile backtrace
+        working-directory: ${{ env.COREFILES_DIR }}
+        if: failure()
+        run: |
+          find -name "core.*syslog-ng*" -exec \
+            gdb --ex="thread apply all bt full" --ex="quit" ${SYSLOG_NG_INSTALL_DIR}/sbin/syslog-ng --core {} \;
+
+      - name: "Artifact: corefiles"
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: corefiles-${{ matrix.build-tool }}-${{ matrix.cc }}
+          path: ${{ env.COREFILES_DIR }}
