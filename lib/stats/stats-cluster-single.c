@@ -66,8 +66,7 @@ stats_cluster_single_key_add_legacy_alias(StatsClusterKey *key, guint16 componen
 static void
 _counter_group_with_name_free(StatsCounterGroup *counter_group)
 {
-  g_free((gchar *)counter_group->counter_names[0]);
-  g_free(counter_group->counter_names);
+  g_strfreev(counter_group->counter_names);
   _counter_group_free(counter_group);
 }
 
@@ -77,8 +76,9 @@ _counter_group_init_with_name(StatsCounterGroupInit *self, StatsCounterGroup *co
   counter_group->counters = g_new0(StatsCounterItem, SC_TYPE_SINGLE_MAX);
   counter_group->capacity = SC_TYPE_SINGLE_MAX;
 
-  gchar **counter_names = g_new0(gchar *, 1);
+  gchar **counter_names = g_new0(gchar *, 2);
   counter_names[0] = g_strdup(self->counter.name);
+  counter_names[1] = NULL;
   counter_group->counter_names = counter_names;
 
   counter_group->free_fn = _counter_group_with_name_free;
