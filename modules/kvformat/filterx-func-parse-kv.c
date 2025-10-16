@@ -199,6 +199,7 @@ _free(FilterXExpr *s)
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
   filterx_expr_unref(self->msg);
   g_free(self->pair_separator);
+  g_free(self->stray_words_key);
   filterx_function_free_method(&self->super);
 }
 
