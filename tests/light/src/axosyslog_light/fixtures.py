@@ -303,12 +303,14 @@ def setup(request):
     with get_session_data() as session_data:
         base_number_of_open_fds = session_data["base_number_of_open_fds"]
     number_of_open_fds = len(psutil.Process().open_files())
-    assert base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
+    if request.config.getoption("--run-under") != "valgrind":
+        assert base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
     for net_conn in psutil.Process().net_connections(kind="inet"):
         if net_conn.status == "CLOSE_WAIT":
             # This is a workaround for clickhouse-connect not closing connections properly
             continue
-        assert False, "Previous testcase has unclosed opened sockets: {}".format(net_conn)
+        if request.config.getoption("--run-under") != "valgrind":
+            assert False, "Previous testcase has unclosed opened sockets: {}".format(net_conn)
     testcase_parameters = request.getfixturevalue("testcase_parameters")
 
     copy_file(testcase_parameters.get_testcase_file(), Path.cwd())
