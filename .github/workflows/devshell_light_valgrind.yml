@@ -90,6 +90,9 @@ jobs:
         working-directory: ./build
         run: |
           make light-valgrind-check
+          python3 scripts/process_valgrind_output.py
+          cp definitely_lost_blocks.txt reports/
+          cp errors_in_context.txt reports/
 
       - name: "Prepare artifact: light-reports"
         id: prepare-light-reports
