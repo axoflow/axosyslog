@@ -71,10 +71,13 @@ DestDriver::init()
   if (!this->quote_identifier(this->table, quoted_table))
     return false;
 
+  if (this->json_format.empty())
+    this->json_format = CLICKHOUSE_DESTINATION_JSON_FORMAT_JSONEACHROW;
+
   this->query = "INSERT INTO " + quoted_table;
   if (!this->server_side_schema.empty())
     this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
-  this->query += (this->json_mode()) ? " FORMAT JSONEachRow" : " FORMAT Protobuf";
+  this->query += (this->json_mode()) ? " FORMAT " + this->json_format : " FORMAT Protobuf";
 
   if (!this->check_schema_options())
     {
@@ -320,6 +323,29 @@ DestDriver::quote_identifier(const std::string &identifier, std::string &quoted_
 
 /* C Wrappers */
 
+typedef enum
+{
+  JSONEACHROW,
+  JSONCOMPACTEACHROW,
+} json_format_t;
+
+static const gchar *json_format_names[] =
+{
+  [JSONEACHROW] = CLICKHOUSE_DESTINATION_JSON_FORMAT_JSONEACHROW,
+  [JSONCOMPACTEACHROW] = CLICKHOUSE_DESTINATION_JSON_FORMAT_JSONCOMPACTEACHROW,
+};
+
+json_format_t
+parse_json_format(const gchar *name)
+{
+  for (gsize i = 0; i < G_N_ELEMENTS(json_format_names); i++)
+    {
+      if (strcasecmp(name, json_format_names[i]) == 0)
+        return (json_format_t)i;
+    }
+  return json_format_t(-1); // invalid
+}
+
 DestDriver *
 clickhouse_dd_get_cpp(GrpcDestDriver *self)
 {
@@ -373,6 +399,22 @@ clickhouse_dd_set_json_var(LogDriver *d, LogTemplate *json_var)
   DestDriver *cpp = clickhouse_dd_get_cpp(self);
   cpp->set_json_var(json_var);
 }
+
+gboolean
+clickhouse_dd_check_json_format(const gchar *format)
+{
+  return (parse_json_format(format) != -1);
+}
+
+void
+clickhouse_dd_set_json_format(LogDriver *d, const gchar *format)
+{
+  g_assert(clickhouse_dd_check_json_format(format));
+  GrpcDestDriver *self = (GrpcDestDriver *) d;
+  DestDriver *cpp = clickhouse_dd_get_cpp(self);
+  cpp->set_json_format(format);
+}
+
 
 LogDriver *
 clickhouse_dd_new(GlobalConfig *cfg)
