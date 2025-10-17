@@ -24,6 +24,21 @@
 #ifndef CLICKHOUSE_DEST_H
 #define CLICKHOUSE_DEST_H
 
+typedef enum
+{
+  JSONEACHROW,
+  JSONCOMPACTEACHROW,
+  PROTOBUF
+} format_t;
+
+#define CLICKHOUSE_DESTINATION_FORMAT_JSONEACHROW "JSONEachRow"
+#define CLICKHOUSE_DESTINATION_FORMAT_JSONCOMPACTEACHROW "JSONCompactEachRow"
+#define CLICKHOUSE_DESTINATION_FORMAT_PROTOBUF "Protobuf"
+#define CLICKHOUSE_DESTINATION_LIST_FORMATS \
+    CLICKHOUSE_DESTINATION_FORMAT_JSONEACHROW ", " \
+    CLICKHOUSE_DESTINATION_FORMAT_JSONCOMPACTEACHROW ", " \
+    CLICKHOUSE_DESTINATION_FORMAT_PROTOBUF
+
 #include "syslog-ng.h"
 
 #include "compat/cpp-start.h"
@@ -38,7 +53,7 @@ void clickhouse_dd_set_user(LogDriver *d, const gchar *user);
 void clickhouse_dd_set_password(LogDriver *d, const gchar *password);
 void clickhouse_dd_set_server_side_schema(LogDriver *d, const gchar *server_side_schema);
 void clickhouse_dd_set_json_var(LogDriver *d, LogTemplate *json_var);
-
+gboolean clickhouse_dd_set_format(LogDriver *d, const gchar *format);
 
 #include "compat/cpp-end.h"
 
