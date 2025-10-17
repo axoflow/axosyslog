@@ -1,5 +1,7 @@
-4.19.0
+4.19.1
 ======
+
+_This is a hotfix release that fixes a config reload time memory leak_
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
 
@@ -9,45 +11,12 @@ Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-pa
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
 
-## Features
-
-  * `dict_to_pairs()` FilterX function: Added a new function to convert dicts to list of pairs
-
-    Example usage:
-    ```
-    dict = {
-        "value_1": "foo",
-        "value_2": "bar",
-        "value_3": ["baz", "bax"],
-    };
-
-    list = dict_to_pairs(dict, "key", "value");
-    # Becomes:
-    # [
-    #   {"key":"value_1","value":"foo"},
-    #   {"key":"value_2","value":"bar"},
-    #   {"key":"value_3","value":["baz","bax"]}
-    # ]
-    ```
-    ([#810](https://github.com/axoflow/axosyslog/pull/810))
-
 
 ## Bugfixes
 
-  * `syslogng_output_unreachable` metric: fix marking destinations unreachable during reload
-    ([#818](https://github.com/axoflow/axosyslog/pull/818))
+  * `filterx`: Fixed a memory leak that occurs during reloads.
+    ([#827](https://github.com/axoflow/axosyslog/pull/827))
 
-  * `transport(proxied-tcp)`: Fix a HAProxy protocol v2 parsing issue that
-    caused a failed assertion.  This essentially triggers a crash with a SIGABRT
-    whenever a "LOCAL" command was sent in the HAProxy header without address
-    information.
-    ([#814](https://github.com/axoflow/axosyslog/pull/814))
-
-  * filterx: fix `parse_csv` function crash if coulumns specified non-existent variable
-    ([#819](https://github.com/axoflow/axosyslog/pull/819))
-
-  * `opentelemetry()` source: fix various crashes during startup/reload
-    ([#822](https://github.com/axoflow/axosyslog/pull/822))
 
 
 [1] syslog-ng is a trademark of One Identity.
