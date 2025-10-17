@@ -71,10 +71,22 @@ DestDriver::init()
   if (!this->quote_identifier(this->table, quoted_table))
     return false;
 
+  if (this->format.empty())
+    {
+      if (this->json_mode())
+        {
+          this->format = CLICKHOUSE_DESTINATION_FORMAT_JSONEACHROW;
+        }
+      else
+        {
+          this->format = CLICKHOUSE_DESTINATION_FORMAT_PROTOBUF;
+        }
+    }
+
   this->query = "INSERT INTO " + quoted_table;
   if (!this->server_side_schema.empty())
     this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
-  this->query += (this->json_mode()) ? " FORMAT JSONEachRow" : " FORMAT Protobuf";
+  this->query += " FORMAT " + this->format;
 
   if (!this->check_schema_options())
     {
@@ -320,6 +332,35 @@ DestDriver::quote_identifier(const std::string &identifier, std::string &quoted_
 
 /* C Wrappers */
 
+typedef enum
+{
+  JSONEACHROW,
+  JSONCOMPACTEACHROW,
+  PROTOBUF
+} format_t;
+
+static const gchar *format_names[] =
+{
+  [JSONEACHROW] = CLICKHOUSE_DESTINATION_FORMAT_JSONEACHROW,
+  [JSONCOMPACTEACHROW] = CLICKHOUSE_DESTINATION_FORMAT_JSONCOMPACTEACHROW,
+  [PROTOBUF] = CLICKHOUSE_DESTINATION_FORMAT_PROTOBUF,
+};
+
+gboolean
+parse_format(const gchar *name, format_t *format)
+{
+  for (gsize i = 0; i < G_N_ELEMENTS(format_names); i++)
+    {
+      if (strcasecmp(name, format_names[i]) == 0)
+        {
+          if (format != NULL)
+            *format = (format_t)i;
+          return TRUE;
+        }
+    }
+  return FALSE;
+}
+
 DestDriver *
 clickhouse_dd_get_cpp(GrpcDestDriver *self)
 {
@@ -373,6 +414,18 @@ clickhouse_dd_set_json_var(LogDriver *d, LogTemplate *json_var)
   DestDriver *cpp = clickhouse_dd_get_cpp(self);
   cpp->set_json_var(json_var);
 }
+
+gboolean
+clickhouse_dd_set_format(LogDriver *d, const gchar *format)
+{
+  if (!parse_format(format, NULL)) // unused format enum
+    return FALSE;
+  GrpcDestDriver *self = (GrpcDestDriver *) d;
+  DestDriver *cpp = clickhouse_dd_get_cpp(self);
+  cpp->set_format(format);
+  return TRUE;
+}
+
 
 LogDriver *
 clickhouse_dd_new(GlobalConfig *cfg)
