@@ -40,7 +40,6 @@ static CfgLexerKeyword clickhouse_keywords[] =
   { "password", KW_PASSWORD },
   { "server_side_schema", KW_SERVER_SIDE_SCHEMA },
   { "json_var", KW_JSON_VAR },
-  { "json_format", KW_JSON_FORMAT},
   { NULL }
 };
 

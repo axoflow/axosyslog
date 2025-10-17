@@ -71,13 +71,22 @@ DestDriver::init()
   if (!this->quote_identifier(this->table, quoted_table))
     return false;
 
-  if (this->json_format.empty())
-    this->json_format = CLICKHOUSE_DESTINATION_JSON_FORMAT_JSONEACHROW;
+  if (this->format.empty())
+    {
+      if (this->json_mode())
+        {
+          this->format = CLICKHOUSE_DESTINATION_FORMAT_JSONEACHROW;
+        }
+      else
+        {
+          this->format = CLICKHOUSE_DESTINATION_FORMAT_PROTOBUF;
+        }
+    }
 
   this->query = "INSERT INTO " + quoted_table;
   if (!this->server_side_schema.empty())
     this->query += " SETTINGS format_schema='" + this->server_side_schema + "'";
-  this->query += (this->json_mode()) ? " FORMAT " + this->json_format : " FORMAT Protobuf";
+  this->query += " FORMAT " + this->format;
 
   if (!this->check_schema_options())
     {
@@ -327,23 +336,25 @@ typedef enum
 {
   JSONEACHROW,
   JSONCOMPACTEACHROW,
-} json_format_t;
+  PROTOBUF
+} format_t;
 
-static const gchar *json_format_names[] =
+static const gchar *format_names[] =
 {
-  [JSONEACHROW] = CLICKHOUSE_DESTINATION_JSON_FORMAT_JSONEACHROW,
-  [JSONCOMPACTEACHROW] = CLICKHOUSE_DESTINATION_JSON_FORMAT_JSONCOMPACTEACHROW,
+  [JSONEACHROW] = CLICKHOUSE_DESTINATION_FORMAT_JSONEACHROW,
+  [JSONCOMPACTEACHROW] = CLICKHOUSE_DESTINATION_FORMAT_JSONCOMPACTEACHROW,
+  [PROTOBUF] = CLICKHOUSE_DESTINATION_FORMAT_PROTOBUF,
 };
 
-json_format_t
-parse_json_format(const gchar *name)
+format_t
+parse_format(const gchar *name)
 {
-  for (gsize i = 0; i < G_N_ELEMENTS(json_format_names); i++)
+  for (gsize i = 0; i < G_N_ELEMENTS(format_names); i++)
     {
-      if (strcasecmp(name, json_format_names[i]) == 0)
-        return (json_format_t)i;
+      if (strcasecmp(name, format_names[i]) == 0)
+        return (format_t)i;
     }
-  return json_format_t(-1); // invalid
+  return format_t(-1); // invalid
 }
 
 DestDriver *
@@ -401,18 +412,18 @@ clickhouse_dd_set_json_var(LogDriver *d, LogTemplate *json_var)
 }
 
 gboolean
-clickhouse_dd_check_json_format(const gchar *format)
+clickhouse_dd_check_format(const gchar *format)
 {
-  return (parse_json_format(format) != -1);
+  return (parse_format(format) != -1);
 }
 
 void
-clickhouse_dd_set_json_format(LogDriver *d, const gchar *format)
+clickhouse_dd_set_format(LogDriver *d, const gchar *format)
 {
-  g_assert(clickhouse_dd_check_json_format(format));
+  g_assert(clickhouse_dd_check_format(format));
   GrpcDestDriver *self = (GrpcDestDriver *) d;
   DestDriver *cpp = clickhouse_dd_get_cpp(self);
-  cpp->set_json_format(format);
+  cpp->set_format(format);
 }
 
 

@@ -74,9 +74,9 @@ public:
     this->json_var = log_template_ref(json_var_);
   }
 
-  void set_json_format(const std::string &format)
+  void set_format(const std::string &ingest_format)
   {
-    this->json_format = format;
+    this->format = ingest_format;
   }
 
   const char *format_json_var(LogMessage *log_msg, ssize_t *len)
@@ -147,7 +147,7 @@ private:
   std::string server_side_schema;
   std::string query;
   LogTemplate *json_var = nullptr;
-  std::string json_format;
+  std::string format;
 
   LogMessageProtobufFormatter log_message_protobuf_formatter;
 };
