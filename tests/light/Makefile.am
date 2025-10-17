@@ -31,6 +31,9 @@ light-self-check pytest-self-check: light-venv
 light-check pytest-check: light-venv
 	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) -n auto $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
 
+light-valgrind-check pytest-valgrind-check: light-venv
+	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no --run-under=valgrind
+
 light-linters pytest-linters: light-venv
 	find $(abs_top_srcdir)/tests/light/ -name "*.py" \
 		-not -path "*reports*" \
