@@ -46,8 +46,7 @@ void clickhouse_dd_set_user(LogDriver *d, const gchar *user);
 void clickhouse_dd_set_password(LogDriver *d, const gchar *password);
 void clickhouse_dd_set_server_side_schema(LogDriver *d, const gchar *server_side_schema);
 void clickhouse_dd_set_json_var(LogDriver *d, LogTemplate *json_var);
-void clickhouse_dd_set_format(LogDriver *d, const gchar *format);
-gboolean clickhouse_dd_check_format(const gchar *format);
+gboolean clickhouse_dd_set_format(LogDriver *d, const gchar *format);
 
 #include "compat/cpp-end.h"
 

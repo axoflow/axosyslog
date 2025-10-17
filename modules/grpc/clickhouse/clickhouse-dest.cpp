@@ -346,15 +346,19 @@ static const gchar *format_names[] =
   [PROTOBUF] = CLICKHOUSE_DESTINATION_FORMAT_PROTOBUF,
 };
 
-format_t
-parse_format(const gchar *name)
+gboolean
+parse_format(const gchar *name, format_t *format)
 {
   for (gsize i = 0; i < G_N_ELEMENTS(format_names); i++)
     {
       if (strcasecmp(name, format_names[i]) == 0)
-        return (format_t)i;
+        {
+          if (format != NULL)
+            *format = (format_t)i;
+          return TRUE;
+        }
     }
-  return format_t(-1); // invalid
+  return FALSE;
 }
 
 DestDriver *
@@ -412,18 +416,14 @@ clickhouse_dd_set_json_var(LogDriver *d, LogTemplate *json_var)
 }
 
 gboolean
-clickhouse_dd_check_format(const gchar *format)
-{
-  return (parse_format(format) != -1);
-}
-
-void
 clickhouse_dd_set_format(LogDriver *d, const gchar *format)
 {
-  g_assert(clickhouse_dd_check_format(format));
+  if (!parse_format(format, NULL)) // unused format enum
+    return FALSE;
   GrpcDestDriver *self = (GrpcDestDriver *) d;
   DestDriver *cpp = clickhouse_dd_get_cpp(self);
   cpp->set_format(format);
+  return TRUE;
 }
 
 
