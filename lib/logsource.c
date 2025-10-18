@@ -507,61 +507,59 @@ _unregister_counters(LogSource *self)
 static void
 _allocate_counter_keys(LogSource *self)
 {
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  StatsClusterKeyBuilder *kb = self->metrics.stats_kb;
+
+  stats_cluster_key_builder_add_label(kb, stats_cluster_label("id", self->stats_id));
+  stats_cluster_key_builder_push(kb);
   {
     gchar stats_instance[1024];
-    const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
+    const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(kb,
                                  stats_instance, sizeof(stats_instance));
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_events_total");
-    stats_cluster_key_builder_set_legacy_alias(self->metrics.stats_kb, self->options->stats_source | SCS_SOURCE,
+    stats_cluster_key_builder_set_name(kb, "input_events_total");
+    stats_cluster_key_builder_set_legacy_alias(kb, self->options->stats_source | SCS_SOURCE,
                                                self->stats_id, instance_name);
-    stats_cluster_key_builder_set_legacy_alias_name(self->metrics.stats_kb, "processed");
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "processed");
     if (self->metrics.recvd_messages_key)
       stats_cluster_key_free(self->metrics.recvd_messages_key);
-    self->metrics.recvd_messages_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+    self->metrics.recvd_messages_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_event_bytes_total");
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    stats_cluster_key_builder_set_name(kb, "input_event_bytes_total");
     if (self->metrics.recvd_bytes_key)
       stats_cluster_key_free(self->metrics.recvd_bytes_key);
-    self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+    self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_window_available");
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    stats_cluster_key_builder_set_name(kb, "input_window_available");
     if (self->metrics.window_available_key)
       stats_cluster_key_free(self->metrics.window_available_key);
-    self->metrics.window_available_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+    self->metrics.window_available_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_window_capacity");
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    stats_cluster_key_builder_set_name(kb, "input_window_capacity");
     if (self->metrics.window_capacity_key)
       stats_cluster_key_free(self->metrics.window_capacity_key);
-    self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+    self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_window_full_total");
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    stats_cluster_key_builder_set_name(kb, "input_window_full_total");
     if (self->metrics.window_full_total_key)
       stats_cluster_key_free(self->metrics.window_full_total_key);
-    self->metrics.window_full_total_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+    self->metrics.window_full_total_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+  stats_cluster_key_builder_pop(kb);
 }
 
 gboolean
