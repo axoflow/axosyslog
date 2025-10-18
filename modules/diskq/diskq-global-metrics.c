@@ -130,13 +130,13 @@ _init_abandoned_disk_buffer_sc_keys(StatsClusterKey *queued_sc_key, StatsCluster
   stats_cluster_single_key_set(queued_sc_key, "disk_queue_events", labels, labels_len);
 
   stats_cluster_single_key_set(capacity_sc_key, "disk_queue_capacity_bytes", labels, labels_len);
-  stats_cluster_single_key_add_unit(capacity_sc_key, SCU_KIB);
+  stats_cluster_key_add_unit(capacity_sc_key, SCU_KIB);
 
   stats_cluster_single_key_set(disk_allocated_sc_key, "disk_queue_disk_allocated_bytes", labels, labels_len);
-  stats_cluster_single_key_add_unit(disk_allocated_sc_key, SCU_KIB);
+  stats_cluster_key_add_unit(disk_allocated_sc_key, SCU_KIB);
 
   stats_cluster_single_key_set(disk_usage_sc_key, "disk_queue_disk_usage_bytes", labels, labels_len);
-  stats_cluster_single_key_add_unit(disk_usage_sc_key, SCU_KIB);
+  stats_cluster_key_add_unit(disk_usage_sc_key, SCU_KIB);
 }
 
 static void
@@ -273,7 +273,7 @@ _init_dir_sc_keys(StatsClusterKey *available_bytes_sc_key, const gchar *dir)
 
   stats_cluster_single_key_set(available_bytes_sc_key, "disk_queue_dir_available_bytes", labels, G_N_ELEMENTS(labels));
   /* Up to 4096 TiB with 32 bit atomic counters. */
-  stats_cluster_single_key_add_unit(available_bytes_sc_key, SCU_MIB);
+  stats_cluster_key_add_unit(available_bytes_sc_key, SCU_MIB);
 }
 
 /* Must be called with the lock held. */

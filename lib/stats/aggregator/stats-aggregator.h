@@ -101,4 +101,7 @@ StatsAggregator *stats_aggregator_average_new(gint level, StatsClusterKey *sc_ke
 StatsAggregator *stats_aggregator_cps_new(gint level, StatsClusterKey *sc_key, StatsClusterKey *sc_key_input,
                                           gint stats_type);
 
+StatsAggregator *stats_aggregator_histogram_new(gint level, StatsClusterKey *sc_key,
+                                                gint min_bucket, gint num_buckets);
+
 #endif /* STATS_AGGREGATOR_H */

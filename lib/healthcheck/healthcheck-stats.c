@@ -88,10 +88,10 @@ _register_counters(HealthCheckStats *self)
 {
   StatsClusterKey sc_key_io_worker_latency, sc_key_mainloop_iow_rt_latency;
   stats_cluster_single_key_set(&sc_key_io_worker_latency, "io_worker_latency_seconds", NULL, 0);
-  stats_cluster_single_key_add_unit(&sc_key_io_worker_latency, SCU_NANOSECONDS);
   stats_cluster_single_key_set(&sc_key_mainloop_iow_rt_latency,
                                "mainloop_io_worker_roundtrip_latency_seconds", NULL, 0);
-  stats_cluster_single_key_add_unit(&sc_key_mainloop_iow_rt_latency, SCU_NANOSECONDS);
+  stats_cluster_key_add_unit(&sc_key_io_worker_latency, SCU_NANOSECONDS);
+  stats_cluster_key_add_unit(&sc_key_mainloop_iow_rt_latency, SCU_NANOSECONDS);
 
   stats_lock();
   stats_register_counter(1, &sc_key_io_worker_latency, SC_TYPE_SINGLE_VALUE, &self->io_worker_latency);

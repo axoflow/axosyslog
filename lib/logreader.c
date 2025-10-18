@@ -27,6 +27,7 @@
 #include "ack-tracker/ack_tracker.h"
 #include "ack-tracker/ack_tracker_factory.h"
 #include "str-format.h"
+#include "compat/pow2.h"
 
 static void log_reader_io_handle_in(gpointer s);
 static gboolean log_reader_fetch_log(LogReader *self);
@@ -443,8 +444,7 @@ log_reader_process_handshake(LogReader *self)
 static void
 _log_reader_insert_msg_length_stats(LogReader *self, gsize len)
 {
-  stats_aggregator_add_data_point(self->max_message_size, len);
-  stats_aggregator_add_data_point(self->average_messages_size, len);
+  stats_aggregator_add_data_point(self->event_size_hist, len);
 }
 
 static inline void
@@ -633,18 +633,10 @@ _register_aggregated_stats(LogReader *self)
                                                 instance_name, "processed");
 
   stats_aggregator_lock();
+  stats_register_aggregator_hist(level, self->event_size_hist_key, round_to_log2(64), 8, &self->event_size_hist);
+
+
   StatsClusterKey sc_key;
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->super.options->stats_source | SCS_SOURCE,
-                                                self->super.stats_id,
-                                                instance_name, "msg_size_max");
-  stats_register_aggregator_maximum(level, &sc_key, &self->max_message_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->super.options->stats_source | SCS_SOURCE,
-                                                self->super.stats_id,
-                                                instance_name, "msg_size_avg");
-  stats_register_aggregator_average(level, &sc_key, &self->average_messages_size);
-
   stats_cluster_single_key_legacy_set_with_name(&sc_key, self->super.options->stats_source | SCS_SOURCE,
                                                 self->super.stats_id,
                                                 instance_name, "eps");
@@ -659,11 +651,24 @@ _unregister_aggregated_stats(LogReader *self)
 {
   stats_aggregator_lock();
 
-  stats_unregister_aggregator(&self->max_message_size);
-  stats_unregister_aggregator(&self->average_messages_size);
+  stats_unregister_aggregator(&self->event_size_hist);
   stats_unregister_aggregator(&self->CPS);
 
   stats_aggregator_unlock();
+}
+
+static void
+_register_stats_keys(LogReader *self)
+{
+  StatsClusterKeyBuilder *kb = self->super.metrics.stats_kb;
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "input_event_size_bytes");
+    stats_cluster_key_free(self->event_size_hist_key);
+    self->event_size_hist_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
 }
 
 /*****************************************************************************
@@ -695,6 +700,7 @@ log_reader_init(LogPipe *s)
 
   log_reader_start_watches(self);
 
+  _register_stats_keys(self);
   _register_aggregated_stats(self);
 
   return TRUE;
@@ -763,6 +769,8 @@ log_reader_free(LogPipe *s)
   g_sockaddr_unref(self->local_addr);
   g_mutex_clear(&self->pending_close_lock);
   g_cond_clear(&self->pending_close_cond);
+  if (self->event_size_hist_key)
+    stats_cluster_key_free(self->event_size_hist_key);
   log_source_free(s);
 }
 

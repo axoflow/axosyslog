@@ -67,9 +67,11 @@ struct _LogReader
   PollEvents *poll_events;
   GSockAddr *peer_addr;
   GSockAddr *local_addr;
-  StatsAggregator *max_message_size;
-  StatsAggregator *average_messages_size;
+
+  /* stats */
+  StatsAggregator *event_size_hist;
   StatsAggregator *CPS;
+  StatsClusterKey *event_size_hist_key;
 
   /* NOTE: these used to be LogReaderWatch members, which were merged into
    * LogReader with the multi-thread refactorization */
