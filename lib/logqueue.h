@@ -42,17 +42,19 @@ typedef struct _LogQueueMetrics
     StatsClusterKey *memory_usage_sc_key;
 
     StatsCounterItem *queued_messages;
-    StatsCounterItem *dropped_messages;
     StatsCounterItem *memory_usage;
+    StatsCounterItem *dropped_messages;
   } shared;
 
   struct
   {
     StatsClusterKey *events_sc_key;
     StatsClusterKey *memory_usage_sc_key;
+    StatsClusterKey *processed_messages_sc_key;
 
-    StatsCounterItem *memory_usage;
     StatsCounterItem *queued_messages;
+    StatsCounterItem *memory_usage;
+    StatsCounterItem *processed_messages;
   } owned;
 } LogQueueMetrics;
 
@@ -115,6 +117,7 @@ static inline void
 log_queue_push_tail(LogQueue *self, LogMessage *msg, const LogPathOptions *path_options)
 {
   self->push_tail(self, msg, path_options);
+  stats_counter_inc(self->metrics.owned.processed_messages);
 }
 
 static inline LogMessage *

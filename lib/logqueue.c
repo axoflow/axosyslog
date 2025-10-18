@@ -273,6 +273,9 @@ _register_owned_counters(LogQueue *self, gint stats_level, StatsClusterKeyBuilde
     stats_cluster_key_builder_set_name(builder, "events");
     self->metrics.owned.events_sc_key = stats_cluster_key_builder_build_single(builder);
 
+    stats_cluster_key_builder_set_name(builder, "processed_events_total");
+    self->metrics.owned.processed_messages_sc_key = stats_cluster_key_builder_build_single(builder);
+
     stats_cluster_key_builder_set_name(builder, "memory_usage_bytes");
     self->metrics.owned.memory_usage_sc_key = stats_cluster_key_builder_build_single(builder);
   }
@@ -284,6 +287,8 @@ _register_owned_counters(LogQueue *self, gint stats_level, StatsClusterKeyBuilde
                            &self->metrics.owned.queued_messages);
     stats_register_counter(stats_level, self->metrics.owned.memory_usage_sc_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.owned.memory_usage);
+    stats_register_counter(stats_level, self->metrics.owned.processed_messages_sc_key, SC_TYPE_SINGLE_VALUE,
+                           &self->metrics.owned.processed_messages);
   }
   stats_unlock();
 }
@@ -345,6 +350,14 @@ _unregister_owned_counters(LogQueue *self)
                                  &self->metrics.owned.memory_usage);
 
         stats_cluster_key_free(self->metrics.owned.memory_usage_sc_key);
+      }
+
+    if (self->metrics.owned.processed_messages_sc_key)
+      {
+        stats_unregister_counter(self->metrics.owned.processed_messages_sc_key, SC_TYPE_SINGLE_VALUE,
+                                 &self->metrics.owned.processed_messages);
+
+        stats_cluster_key_free(self->metrics.owned.processed_messages_sc_key);
       }
   }
   stats_unlock();
