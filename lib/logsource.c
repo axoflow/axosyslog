@@ -420,11 +420,15 @@ _create_ack_tracker_if_not_exists(LogSource *self)
     }
 }
 
+/* NOTE: window related stats are unregistered separately from the rest of
+ * the counters, as they may be used even after deinit(): when messages are
+ * still being dispatched at the destination.  */
 static void
 _register_window_stats(LogSource *self)
 {
   gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : self->options->stats_level;
 
+  stats_lock();
   stats_register_counter(level, self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE,
                          &self->metrics.window_available);
   stats_register_counter(level, self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE,
@@ -434,15 +438,17 @@ _register_window_stats(LogSource *self)
 
   stats_counter_set(self->metrics.window_available, window_size_counter_get(&self->window_size, NULL));
   stats_counter_set(self->metrics.window_capacity, self->full_window_size);
-
+  stats_unlock();
 }
 
 static void
 _unregister_window_stats(LogSource *self)
 {
+  stats_lock();
   stats_unregister_counter(self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_available);
   stats_unregister_counter(self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_capacity);
   stats_unregister_counter(self->metrics.window_full_total_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_full_total);
+  stats_unlock();
 }
 
 static void
@@ -463,10 +469,10 @@ _register_counters(LogSource *self)
                                        instance_name);
   stats_register_counter(level, &sc_key, SC_TYPE_STAMP, &self->metrics.last_message_seen);
 
-  _register_window_stats(self);
 
   stats_unlock();
 
+  _register_window_stats(self);
   stats_byte_counter_init(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key, level, SBCP_KIB);
 }
 
@@ -812,10 +818,7 @@ log_source_free(LogPipe *s)
   g_free(self->name);
   g_free(self->stats_id);
 
-  stats_lock();
   _unregister_window_stats(self);
-  stats_unlock();
-
   _deallocate_counter_keys(self);
   stats_cluster_key_builder_free(self->metrics.stats_kb);
 
