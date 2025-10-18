@@ -166,9 +166,10 @@ stats_format_prometheus_format_value(StatsClusterUnit stored_unit,
 gchar *
 stats_format_prometheus_format_counter_value(StatsCluster *sc, gint type)
 {
-  StatsClusterUnit stored_unit = sc->key.formatting.stored_unit;
-  StatsClusterFrameOfReference frame_of_reference = sc->key.formatting.frame_of_reference;
+  StatsClusterUnit stored_unit;
+  StatsClusterFrameOfReference frame_of_reference;
 
+  stats_cluster_get_type_formatting(sc, type, &stored_unit, &frame_of_reference);
   return stats_format_prometheus_format_value(stored_unit,
                                               frame_of_reference,
                                               stats_counter_get(&sc->counter_group.counters[type]));

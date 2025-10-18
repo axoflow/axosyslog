@@ -84,6 +84,8 @@ struct _StatsCounterGroup
   gchar **counter_names;
   guint16 capacity;
   gboolean (*get_type_label)(StatsCounterGroup *self, StatsCluster *cluster, gint type, StatsClusterLabel *label);
+  void (*get_type_formatting)(StatsCounterGroup *self, StatsCluster *cluster, gint type,
+                              StatsClusterUnit *stored_unit, StatsClusterFrameOfReference *frame_of_reference);
   const gchar *(*get_type_name_suffix)(StatsCounterGroup *self, StatsCluster *cluster, gint type);
   void (*free_fn)(StatsCounterGroup *self);
 };
@@ -203,6 +205,17 @@ stats_cluster_get_type_label(StatsCluster *self, gint type, StatsClusterLabel *l
     return FALSE;
 
   return self->counter_group.get_type_label(&self->counter_group, self, type, label);
+}
+
+static inline void
+stats_cluster_get_type_formatting(StatsCluster *self, gint type,
+                                  StatsClusterUnit *stored_unit,
+                                  StatsClusterFrameOfReference *frame_of_reference)
+{
+  *stored_unit = self->key.formatting.stored_unit;
+  *frame_of_reference = self->key.formatting.frame_of_reference;
+  if (self->counter_group.get_type_formatting)
+    self->counter_group.get_type_formatting(&self->counter_group, self, type, stored_unit, frame_of_reference);
 }
 
 static inline const gchar *
