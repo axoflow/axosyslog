@@ -446,18 +446,6 @@ _unregister_window_stats(LogSource *self)
 }
 
 static void
-_register_raw_bytes_stats(LogSource *self, gint stats_level)
-{
-  stats_byte_counter_init(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key, stats_level, SBCP_KIB);
-}
-
-static void
-_unregister_raw_bytes_stats(LogSource *self)
-{
-  stats_byte_counter_deinit(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key);
-}
-
-static void
 _register_counters(LogSource *self)
 {
   stats_lock();
@@ -479,14 +467,13 @@ _register_counters(LogSource *self)
 
   stats_unlock();
 
-  level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL1;
-  _register_raw_bytes_stats(self, level);
+  stats_byte_counter_init(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key, level, SBCP_KIB);
 }
 
 static void
 _unregister_counters(LogSource *self)
 {
-  _unregister_raw_bytes_stats(self);
+  stats_byte_counter_deinit(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key);
 
   stats_lock();
 
