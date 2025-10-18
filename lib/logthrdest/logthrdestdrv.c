@@ -1198,19 +1198,12 @@ _register_driver_aggregated_stats(LogThreadedDestDriver *self)
 {
   gint level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL0;
 
-  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
-  const gchar *legacy_stats_instance = _format_legacy_stats_instance(self, kb);
-  stats_cluster_key_builder_free(kb);
-
-  StatsClusterKey sc_key_eps_input;
-  stats_cluster_logpipe_key_legacy_set(&sc_key_eps_input, self->stats_source | SCS_DESTINATION,
-                                       self->super.super.id, legacy_stats_instance);
   stats_aggregator_lock();
 
   stats_register_aggregator_hist(level, self->metrics.batch_size_hist_key, round_to_log2(1), 16, &self->metrics.batch_size_hist);
   stats_register_aggregator_hist(level, self->metrics.event_size_hist_key, round_to_log2(64), 8, &self->metrics.event_size_hist);
   stats_register_aggregator_hist(level, self->metrics.request_latency_hist_key, round_to_log2(32), 8, &self->metrics.request_latency_hist);
-  stats_register_aggregator_cps(level, self->metrics.CPS_key, &sc_key_eps_input, SC_TYPE_SINGLE_VALUE, &self->metrics.CPS);
+  stats_register_aggregator_cps(level, self->metrics.CPS_key, self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.CPS);
 
   stats_aggregator_unlock();
 }
