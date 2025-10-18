@@ -85,6 +85,7 @@ struct _LogSource
     StatsCounterItem *last_message_seen;
     StatsCounterItem *window_available;
     StatsCounterItem *window_capacity;
+    StatsCounterItem *window_full_total;
 
     /* book-keeping */
     StatsClusterKeyBuilder *stats_kb;
@@ -92,6 +93,7 @@ struct _LogSource
     StatsClusterKey *recvd_messages_key;
     StatsClusterKey *window_available_key;
     StatsClusterKey *window_capacity_key;
+    StatsClusterKey *window_full_total_key;
 
   } metrics;
 
@@ -109,7 +111,12 @@ struct _LogSource
 static inline gboolean
 log_source_free_to_send(LogSource *self)
 {
-  return !window_size_counter_suspended(&self->window_size);
+  if (window_size_counter_suspended(&self->window_size))
+    {
+      stats_counter_inc(self->metrics.window_full_total);
+      return FALSE;
+    }
+  return TRUE;
 }
 
 static inline gsize

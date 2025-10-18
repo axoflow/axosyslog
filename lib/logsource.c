@@ -429,6 +429,8 @@ _register_window_stats(LogSource *self)
                          &self->metrics.window_available);
   stats_register_counter(level, self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE,
                          &self->metrics.window_capacity);
+  stats_register_counter(level, self->metrics.window_full_total_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.window_full_total);
 
   stats_counter_set(self->metrics.window_available, window_size_counter_get(&self->window_size, NULL));
   stats_counter_set(self->metrics.window_capacity, self->full_window_size);
@@ -440,8 +442,8 @@ _unregister_window_stats(LogSource *self)
 {
   stats_unregister_counter(self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_available);
   stats_unregister_counter(self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_capacity);
+  stats_unregister_counter(self->metrics.window_full_total_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_full_total);
 }
-
 
 static void
 _register_raw_bytes_stats(LogSource *self, gint stats_level)
@@ -548,6 +550,16 @@ _allocate_counter_keys(LogSource *self)
     if (self->metrics.window_capacity_key)
       stats_cluster_key_free(self->metrics.window_capacity_key);
     self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+  }
+  stats_cluster_key_builder_pop(self->metrics.stats_kb);
+
+  stats_cluster_key_builder_push(self->metrics.stats_kb);
+  {
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_window_full_total");
+    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
+    if (self->metrics.window_full_total_key)
+      stats_cluster_key_free(self->metrics.window_full_total_key);
+    self->metrics.window_full_total_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
   }
   stats_cluster_key_builder_pop(self->metrics.stats_kb);
 }
@@ -829,6 +841,10 @@ log_source_free(LogPipe *s)
 
   if (self->metrics.window_available_key)
     stats_cluster_key_free(self->metrics.window_available_key);
+
+  if (self->metrics.window_full_total_key)
+    stats_cluster_key_free(self->metrics.window_full_total_key);
+
   log_pipe_detach_expr_node(&self->super);
   log_pipe_free_method(s);
 
