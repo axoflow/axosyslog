@@ -158,6 +158,14 @@ error:
   return result;
 }
 
+static void
+_string_with_cache_free(FilterXStringWithCache *self)
+{
+  filterx_expr_unref(self->expr);
+  g_free(self->str_value);
+  g_free(self);
+}
+
 static FilterXStringWithCache *
 _string_with_cache_new(FilterXExpr *expr, gboolean ignore_case)
 {
@@ -166,17 +174,12 @@ _string_with_cache_new(FilterXExpr *expr, gboolean ignore_case)
   self->expr = filterx_expr_optimize(self->expr);
 
   if (!_string_with_cache_fill_cache(self, ignore_case))
-    return NULL;
+    {
+      _string_with_cache_free(self);
+      return NULL;
+    }
 
   return self;
-}
-
-static void
-_string_with_cache_free(FilterXStringWithCache *self)
-{
-  filterx_expr_unref(self->expr);
-  g_free(self->str_value);
-  g_free(self);
 }
 
 static gboolean
