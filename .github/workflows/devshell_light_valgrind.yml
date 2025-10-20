@@ -1,4 +1,4 @@
-name: CI @ devshell
+name: CI @ devshell_light_valgrind
 
 on:
   schedule:
@@ -85,8 +85,8 @@ jobs:
       - name: Python virtualenv for syslog-ng runtime
         run: ${SYSLOG_NG_INSTALL_DIR}/bin/syslog-ng-update-virtualenv -y
 
-      - name: Light
-        id: light
+      - name: Light-valgrind-check
+        id: light-valgrind-check
         working-directory: ./build
         run: |
           make light-valgrind-check
