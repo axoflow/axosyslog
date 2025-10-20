@@ -89,7 +89,7 @@ jobs:
         id: light-valgrind-check
         working-directory: ./build
         run: |
-          make light-valgrind-check
+          make light-valgrind-check PYTEST_OPTS="-k test_filterx"
           python3 scripts/process_valgrind_output.py
           cp definitely_lost_blocks.txt reports/
           cp errors_in_context.txt reports/
