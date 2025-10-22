@@ -235,8 +235,8 @@ main_loop_reload_config_revert(gpointer user_data)
 {
   MainLoop *self = (MainLoop *) user_data;
 
-  cfg_persist_config_move(self->new_config, self->old_config);
   cfg_deinit(self->new_config);
+  cfg_persist_config_move(self->new_config, self->old_config);
   if (!cfg_init(self->old_config))
     {
       /* hmm. hmmm, error reinitializing old configuration, we're hosed.
