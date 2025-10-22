@@ -74,7 +74,7 @@ private:
 class SourceWorker : public syslogng::grpc::SourceWorker
 {
 public:
-  SourceWorker(GrpcSourceWorker *s);
+  SourceWorker(GrpcSourceWorker *s, std::unique_ptr<::grpc::ServerCompletionQueue> queue);
   ~SourceWorker() override;
 
   void run();
