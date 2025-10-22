@@ -136,17 +136,15 @@ LogThreadedSourceWorker *
 SourceDriver::construct_worker(int worker_index)
 {
   GrpcSourceWorker *worker = grpc_sw_new(this->super, worker_index);
-  worker->cpp = new SourceWorker(worker);
+  worker->cpp = new SourceWorker(worker, std::move(this->cqs.front()));
+  this->cqs.pop_front();
   return &worker->super;
 }
 
 
-SourceWorker::SourceWorker(GrpcSourceWorker *s)
-  : syslogng::grpc::SourceWorker(s)
+SourceWorker::SourceWorker(GrpcSourceWorker *s, std::unique_ptr<::grpc::ServerCompletionQueue> queue)
+  : syslogng::grpc::SourceWorker(s), cq(std::move(queue))
 {
-  SourceDriver &owner = static_cast<SourceDriver &>(this->get_owner());
-  this->cq = std::move(owner.cqs.front());
-  owner.cqs.pop_front();
 }
 
 SourceWorker::~SourceWorker()
