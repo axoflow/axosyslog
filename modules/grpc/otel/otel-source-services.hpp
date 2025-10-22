@@ -50,13 +50,6 @@ using opentelemetry::proto::metrics::v1::ResourceMetrics;
 using opentelemetry::proto::metrics::v1::ScopeMetrics;
 using opentelemetry::proto::metrics::v1::Metric;
 
-class AsyncServiceCallInterface
-{
-public:
-  virtual void Proceed(bool ok) = 0;
-  virtual ~AsyncServiceCallInterface() = default;
-};
-
 template <class S, class Req, class Res>
 class AsyncServiceCall final : public AsyncServiceCallInterface
 {

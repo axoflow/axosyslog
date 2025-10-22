@@ -42,9 +42,21 @@ using opentelemetry::proto::collector::metrics::v1::MetricsService;
 using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceRequest;
 using opentelemetry::proto::collector::metrics::v1::ExportMetricsServiceResponse;
 
+class AsyncServiceCallInterface
+{
+public:
+  virtual void Proceed(bool ok) = 0;
+  virtual ~AsyncServiceCallInterface() = default;
+};
+
 template <class S, class Req, class Res>
 class AsyncServiceCall;
 
+class StopEventCall final: public AsyncServiceCallInterface
+{
+public:
+  void Proceed(bool ok) override {}
+};
 
 using TraceServiceCall = AsyncServiceCall<TraceService::AsyncService,
       ExportTraceServiceRequest, ExportTraceServiceResponse>;
@@ -52,6 +64,8 @@ using LogsServiceCall = AsyncServiceCall<LogsService::AsyncService,
       ExportLogsServiceRequest, ExportLogsServiceResponse>;
 using MetricsServiceCall = AsyncServiceCall<MetricsService::AsyncService,
       ExportMetricsServiceRequest, ExportMetricsServiceResponse>;
+
+class StopEventCall;
 
 }
 }
