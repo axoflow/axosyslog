@@ -57,6 +57,11 @@ _thread_deinit(MainLoopThreadedWorker *self)
     self->thread_deinit(self);
   main_loop_call((MainLoopTaskFunc) main_loop_worker_job_complete, NULL, TRUE);
   main_loop_worker_thread_stop();
+
+  g_mutex_lock(&self->lock);
+  self->startup.finished = FALSE;
+  self->startup.result = FALSE;
+  g_mutex_unlock(&self->lock);
 }
 
 static void
@@ -104,14 +109,17 @@ _wait_for_startup_finished(MainLoopThreadedWorker *self)
 gboolean
 main_loop_threaded_worker_start(MainLoopThreadedWorker *self)
 {
-  /* NOTE: we can only start up once */
   g_assert(!self->startup.finished);
 
   self->startup.result = TRUE;
   main_loop_assert_main_thread();
   main_loop_worker_job_start();
   main_loop_worker_register_exit_notification_callback(_request_worker_exit, self);
+
+  if (self->thread)
+    g_thread_unref(self->thread);
   self->thread = g_thread_new(NULL, _worker_thread_func, self);
+
   return _wait_for_startup_finished(self);
 }
 
@@ -145,6 +153,7 @@ main_loop_threaded_worker_clear(MainLoopThreadedWorker *self)
 
   if (self->thread)
     g_thread_join(self->thread);
+  self->thread = NULL;
   g_cond_clear(&self->startup.cond);
   g_mutex_clear(&self->lock);
 }
