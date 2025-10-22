@@ -35,7 +35,7 @@ SourceDriver::SourceDriver(GrpcSourceDriver *s)
   credentials_builder_wrapper.self = &credentials_builder;
 }
 
-gboolean
+bool
 SourceDriver::init()
 {
   if (!this->port)
@@ -58,7 +58,7 @@ SourceDriver::init()
   return log_threaded_source_driver_init_method(&this->super->super.super.super.super);
 }
 
-gboolean
+bool
 SourceDriver::deinit()
 {
   return log_threaded_source_driver_deinit_method(&super->super.super.super.super);

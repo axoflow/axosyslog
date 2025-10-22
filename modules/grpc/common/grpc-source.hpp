@@ -47,8 +47,8 @@ public:
   SourceDriver(GrpcSourceDriver *s);
   virtual ~SourceDriver() {};
 
-  virtual gboolean init();
-  virtual gboolean deinit();
+  virtual bool init();
+  virtual bool deinit();
   virtual void format_stats_key(StatsClusterKeyBuilder *kb) = 0;
   virtual const char *generate_persist_name() = 0;
   virtual LogThreadedSourceWorker *construct_worker(int worker_index) = 0;
