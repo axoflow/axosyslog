@@ -34,7 +34,7 @@ namespace grpc {
 class SourceWorker
 {
 public:
-  SourceWorker(GrpcSourceWorker *s, SourceDriver &d);
+  SourceWorker(GrpcSourceWorker *s);
   virtual ~SourceWorker() {};
 
   virtual void run() = 0;
@@ -43,7 +43,10 @@ public:
 
 public:
   GrpcSourceWorker *super;
-  SourceDriver &driver;
+
+protected:
+  /* do not store the reference beyond local usage */
+  SourceDriver &get_owner();
 };
 
 }

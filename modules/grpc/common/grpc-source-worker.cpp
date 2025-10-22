@@ -26,9 +26,13 @@
 using namespace syslogng::grpc;
 
 /* C++ Implementations */
+SourceDriver &
+SourceWorker::get_owner()
+{
+  return *reinterpret_cast<GrpcSourceDriver *>(this->super->super.control)->cpp;
+}
 
-SourceWorker::SourceWorker(GrpcSourceWorker *s, SourceDriver &d)
-  : super(s), driver(d)
+SourceWorker::SourceWorker(GrpcSourceWorker *s) : super(s)
 {
 }
 

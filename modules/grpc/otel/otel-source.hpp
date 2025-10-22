@@ -63,7 +63,7 @@ private:
 class SourceWorker : public syslogng::grpc::SourceWorker
 {
 public:
-  SourceWorker(GrpcSourceWorker *s, syslogng::grpc::SourceDriver &d);
+  SourceWorker(GrpcSourceWorker *s);
   ~SourceWorker() override;
 
   void run();
