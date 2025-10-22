@@ -124,17 +124,17 @@ LogThreadedSourceWorker *
 SourceDriver::construct_worker(int worker_index)
 {
   GrpcSourceWorker *worker = grpc_sw_new(this->super, worker_index);
-  worker->cpp = new SourceWorker(worker, *this);
+  worker->cpp = new SourceWorker(worker);
   return &worker->super;
 }
 
 
-SourceWorker::SourceWorker(GrpcSourceWorker *s, syslogng::grpc::SourceDriver &d)
-  : syslogng::grpc::SourceWorker(s, d)
+SourceWorker::SourceWorker(GrpcSourceWorker *s)
+  : syslogng::grpc::SourceWorker(s)
 {
-  SourceDriver *owner_ = otel_sd_get_cpp(this->driver.super);
-  cq = std::move(owner_->cqs.front());
-  owner_->cqs.pop_front();
+  SourceDriver &owner = static_cast<SourceDriver &>(this->get_owner());
+  this->cq = std::move(owner.cqs.front());
+  owner.cqs.pop_front();
 }
 
 SourceWorker::~SourceWorker()
@@ -146,18 +146,18 @@ SourceWorker::~SourceWorker()
 void
 syslogng::grpc::otel::SourceWorker::run()
 {
-  SourceDriver *owner_ = otel_sd_get_cpp(this->driver.super);
+  SourceDriver &owner = static_cast<SourceDriver &>(this->get_owner());
 
   /* Proceed() will immediately create a new ServiceCall,
    * so creating 1 ServiceCall here results in 2 concurrent requests.
    *
    * Because of this we should create (concurrent_requests - 1) ServiceCalls here.
    */
-  for (int i = 0; i < owner_->concurrent_requests - 1; i++)
+  for (int i = 0; i < owner.concurrent_requests - 1; i++)
     {
-      new TraceServiceCall(*this, owner_->trace_service.get(), this->cq.get());
-      new LogsServiceCall(*this, owner_->logs_service.get(), this->cq.get());
-      new MetricsServiceCall(*this, owner_->metrics_service.get(), this->cq.get());
+      new TraceServiceCall(*this, owner.trace_service.get(), this->cq.get());
+      new LogsServiceCall(*this, owner.logs_service.get(), this->cq.get());
+      new MetricsServiceCall(*this, owner.metrics_service.get(), this->cq.get());
     }
 
   void *tag;
