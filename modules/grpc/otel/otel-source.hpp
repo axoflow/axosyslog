@@ -33,9 +33,13 @@
 #include "compat/cpp-start.h"
 
 void otel_sd_reload_save(LogThreadedSourceDriver *s, LogThreadedSourceWorker **workers, gint num_workers);
-LogThreadedSourceWorker ** otel_sd_reload_restore(LogThreadedSourceDriver *s, gint *num_workers);
+LogThreadedSourceWorker **otel_sd_reload_restore(LogThreadedSourceDriver *s, gint *num_workers);
 
 #include "compat/cpp-end.h"
+
+#include <grpcpp/grpcpp.h>
+#include <grpcpp/alarm.h>
+#include <memory>
 
 namespace syslogng {
 namespace grpc {
@@ -64,8 +68,7 @@ private:
 
   void reload_save(LogThreadedSourceWorker **workers, gint num_workers);
   LogThreadedSourceWorker **reload_restore(gint *num_workers);
-  void drain_unused_queues();
-  void shutdown();
+  void shutdown_server();
 
 private:
   std::unique_ptr<::grpc::Server> server;
@@ -78,6 +81,7 @@ public:
   SourceWorker(GrpcSourceWorker *s, std::unique_ptr<::grpc::ServerCompletionQueue> queue);
   ~SourceWorker() override;
 
+  bool init() override;
   void run();
   void request_exit();
 
@@ -85,11 +89,13 @@ private:
   friend TraceServiceCall;
   friend LogsServiceCall;
   friend MetricsServiceCall;
-  void drain_queue();
-  void shutdown();
+  friend StopEventCall;
 
 private:
   std::unique_ptr<::grpc::ServerCompletionQueue> cq;
+  bool service_calls_registered;
+  ::grpc::Alarm stop_scheduler;
+  StopEventCall stop_call;
 };
 
 }
