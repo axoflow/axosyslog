@@ -57,6 +57,7 @@
 %token KW_PASSWORD
 %token KW_SERVER_SIDE_SCHEMA
 %token KW_JSON_VAR
+%token KW_FORMAT
 
 %type <ptr> clickhouse_dest
 
@@ -89,6 +90,7 @@ clickhouse_dest_option
   | grpc_dest_schema_option
   | grpc_dest_proto_var_option
   | KW_JSON_VAR '(' template_name_or_content ')'{ clickhouse_dd_set_json_var(last_driver, $3); log_template_unref($3); }
+  | KW_FORMAT '(' string ')' { CHECK_ERROR(clickhouse_dd_set_format(last_driver, $3), @1, "invalid format value '%s', possible values:[%s]", $3, CLICKHOUSE_DESTINATION_LIST_FORMATS); free($3); }
   ;
 
 /* INCLUDE_RULES */

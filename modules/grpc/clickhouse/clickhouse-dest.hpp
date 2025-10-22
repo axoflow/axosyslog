@@ -74,6 +74,11 @@ public:
     this->json_var = log_template_ref(json_var_);
   }
 
+  void set_format(format_t ingest_format)
+  {
+    this->format = std::make_unique<format_t>(ingest_format);
+  }
+
   const char *format_json_var(LogMessage *log_msg, ssize_t *len)
   {
     if (!json_mode())
@@ -142,6 +147,7 @@ private:
   std::string server_side_schema;
   std::string query;
   LogTemplate *json_var = nullptr;
+  std::unique_ptr<format_t> format;
 
   LogMessageProtobufFormatter log_message_protobuf_formatter;
 };
