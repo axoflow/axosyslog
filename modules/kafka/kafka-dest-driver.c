@@ -23,12 +23,10 @@
  *
  */
 
-
 #include "kafka-dest-driver.h"
+#include "kafka-internal.h"
 #include "kafka-props.h"
-#include "kafka-dest-worker.h"
 
-#include <librdkafka/rdkafka.h>
 #include <stdlib.h>
 
 /*
@@ -163,78 +161,6 @@ _format_persist_name(const LogPipe *d)
   return persist_name;
 }
 
-void
-_kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg)
-{
-  gchar *buf = g_strdup_printf("librdkafka: %s(%d): %s", fac, level, msg);
-  msg_event_send(msg_event_create(level, buf, NULL));
-  g_free(buf);
-}
-
-
-static gboolean
-_contains_valid_pattern(const gchar *name)
-{
-  const gchar *p;
-  for (p = name; *p; p++)
-    {
-      if (!((*p >= 'a' && *p <= 'z') ||
-            (*p >= 'A' && *p <= 'Z') ||
-            (*p >= '0' && *p <= '9') ||
-            (*p == '_') || (*p == '-') || (*p == '.')))
-        {
-          return FALSE;
-        }
-    }
-  return TRUE;
-}
-
-GQuark
-topic_name_error_quark(void)
-{
-  return g_quark_from_static_string("invalid-topic-name-error-quark");
-}
-
-gboolean
-kafka_dd_validate_topic_name(const gchar *name, GError **error)
-{
-  gint len = strlen(name);
-
-  if (len == 0)
-    {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_LENGTH_ZERO,
-                  "kafka: topic name is illegal, it can't be empty");
-
-      return FALSE;
-    }
-
-  if ((!g_strcmp0(name, ".")) || !g_strcmp0(name, ".."))
-    {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_DOT_TWO_DOTS,
-                  "kafka: topic name cannot be . or ..");
-
-      return FALSE;
-    }
-
-  if (len > 249)
-    {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_EXCEEDS_MAX_LENGTH,
-                  "kafka: topic name cannot be longer than 249 characters");
-
-      return FALSE;
-    }
-
-  if (!_contains_valid_pattern(name))
-    {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_INVALID_PATTERN,
-                  "kafka: topic name %s is illegal as it contains characters other than pattern [-._a-zA-Z0-9]+", name);
-
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
 rd_kafka_topic_t *
 _construct_topic(KafkaDestDriver *self, const gchar *name)
 {
@@ -242,7 +168,7 @@ _construct_topic(KafkaDestDriver *self, const gchar *name)
 
   GError *error = NULL;
 
-  if (kafka_dd_validate_topic_name(name, &error))
+  if (kafka_validate_topic_name(name, &error))
     {
       return rd_kafka_topic_new(self->kafka, name, NULL);
     }
@@ -313,65 +239,9 @@ _kafka_delivery_report_cb(rd_kafka_t *rk,
     }
 }
 
-static gboolean
-_conf_set_prop(rd_kafka_conf_t *conf, const gchar *name, const gchar *value)
-{
-  gchar errbuf[1024];
-
-  msg_debug("kafka: setting librdkafka config property",
-            evt_tag_str("name", name),
-            evt_tag_str("value", value));
-  if (rd_kafka_conf_set(conf, name, value, errbuf, sizeof(errbuf)) < 0)
-    {
-      msg_error("kafka: error setting librdkafka config property",
-                evt_tag_str("name", name),
-                evt_tag_str("value", value),
-                evt_tag_str("error", errbuf));
-      return FALSE;
-    }
-  return TRUE;
-}
-
 /*
  * Main thread
  */
-
-
-static gboolean
-_is_property_protected(const gchar *property_name)
-{
-  static gchar *protected_properties[] =
-  {
-    "bootstrap.servers",
-    "metadata.broker.list",
-  };
-
-  for (gint i = 0; i < G_N_ELEMENTS(protected_properties); i++)
-    {
-      if (strcmp(property_name, protected_properties[i]) == 0)
-        {
-          msg_warning("kafka: protected config properties cannot be overridden",
-                      evt_tag_str("name", property_name));
-          return TRUE;
-        }
-    }
-  return FALSE;
-}
-
-static gboolean
-_apply_config_props(rd_kafka_conf_t *conf, GList *props)
-{
-  GList *ll;
-
-  for (ll = props; ll != NULL; ll = g_list_next(ll))
-    {
-      KafkaProperty *kp = ll->data;
-      if (!_is_property_protected(kp->name))
-        if (!_conf_set_prop(conf, kp->name, kp->value))
-          return FALSE;
-    }
-  return TRUE;
-}
 
 static rd_kafka_t *
 _construct_client(KafkaDestDriver *self)
@@ -381,20 +251,28 @@ _construct_client(KafkaDestDriver *self)
   gchar errbuf[1024];
 
   conf = rd_kafka_conf_new();
-  if (!_conf_set_prop(conf, "metadata.broker.list", self->bootstrap_servers))
+  if (!kafka_conf_set_prop(conf, "metadata.broker.list", self->bootstrap_servers))
     goto err_exit;
-  if (!_conf_set_prop(conf, "topic.partitioner", "murmur2_random"))
+  if (!kafka_conf_set_prop(conf, "topic.partitioner", "murmur2_random"))
     goto err_exit;
 
   if (self->transaction_commit)
-    _conf_set_prop(conf, "transactional.id",
-                   log_pipe_get_persist_name(&self->super.super.super.super));
+    kafka_conf_set_prop(conf, "transactional.id",
+                        log_pipe_get_persist_name(&self->super.super.super.super));
 
-  if (!_apply_config_props(conf, self->config))
+  static gchar *protected_properties[] =
+  {
+    "bootstrap.servers",
+    "metadata.broker.list",
+  };
+  if (!kafka_apply_config_props(conf, self->config, protected_properties,
+                                G_N_ELEMENTS(protected_properties)))
     goto err_exit;
-  rd_kafka_conf_set_log_cb(conf, _kafka_log_callback);
+
+  rd_kafka_conf_set_log_cb(conf, kafka_log_callback);
   rd_kafka_conf_set_dr_cb(conf, _kafka_delivery_report_cb);
   rd_kafka_conf_set_opaque(conf, self);
+
   client = rd_kafka_new(RD_KAFKA_PRODUCER, conf, errbuf, sizeof(errbuf));
   if (!client)
     {
@@ -437,7 +315,6 @@ _flush_inflight_messages(KafkaDestDriver *self)
   if (outq_len > 0)
     {
       msg_notice("kafka: shutting down kafka producer, while messages are still in-flight, waiting for messages to flush",
-
                  evt_tag_str("topic", self->topic_name->template_str),
                  evt_tag_str("fallback_topic", self->fallback_topic_name),
                  evt_tag_int("outq_len", outq_len),
