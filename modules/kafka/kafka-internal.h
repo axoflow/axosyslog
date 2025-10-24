@@ -73,6 +73,25 @@ gboolean kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **p
                                   gsize protected_properties_num);
 void kafka_log_callback(const rd_kafka_t *rkt, int level, const char *fac, const char *msg);
 
+typedef struct _KafkaOptions
+{
+  gchar *bootstrap_servers;
+  GList *config;
+  gint poll_timeout;
+} KafkaOptions;
+
+void kafka_options_defaults(KafkaOptions *self);
+void kafka_options_destroy(KafkaOptions *self);
+void kafka_options_merge_config(KafkaOptions *self, GList *props);
+void kafka_options_set_bootstrap_servers(KafkaOptions *self, const gchar *bootstrap_servers);
+void kafka_options_set_poll_timeout(KafkaOptions *self, gint poll_timeout);
+
+typedef struct _KafkaOpaque
+{
+  LogDriver *driver;
+  KafkaOptions *options;
+} KafkaOpaque;
+
 
 /* Kafka Destination */
 
@@ -85,26 +104,35 @@ struct _KafkaDestWorker
   GString *topic_name_buffer;
 };
 
-struct _KafkaDestDriver
+struct _KafkaDestinationOptions
 {
-  LogThreadedDestDriver super;
+  KafkaOptions super;
+
+  LogTemplate *topic_name;
+  gchar *fallback_topic_name;
 
   LogTemplateOptions template_options;
   LogTemplate *key;
   LogTemplate *message;
-  LogTemplate *topic_name;
+
+  gint flush_timeout_on_shutdown;
+  gint flush_timeout_on_reload;
+
+  gboolean transaction_commit;
+};
+
+struct _KafkaDestDriver
+{
+  LogThreadedDestDriver super;
+  KafkaDestinationOptions options;
+  KafkaOpaque opaque;
+
+  rd_kafka_topic_t *topic;
+  rd_kafka_t *kafka;
+
   GHashTable *topics;
   GMutex topics_lock;
 
-  gboolean transaction_commit;
-  GList *config;
-  gchar *bootstrap_servers;
-  gchar *fallback_topic_name;
-  rd_kafka_topic_t *topic;
-  rd_kafka_t *kafka;
-  gint flush_timeout_on_shutdown;
-  gint flush_timeout_on_reload;
-  gint poll_timeout;
   gboolean transaction_inited;
 };
 
@@ -116,4 +144,3 @@ rd_kafka_topic_t *kafka_dd_query_insert_topic(KafkaDestDriver *self, const gchar
 gboolean kafka_dd_init(LogPipe *s);
 
 #endif
-
