@@ -103,6 +103,21 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+gboolean
+_unset_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXExprUnset *self = (FilterXExprUnset *) s;
+
+  for (guint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
+      if (!filterx_expr_walk(expr, order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -113,6 +128,7 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _unset_walk;
   self->super.super.free_fn = _free;
 
   self->exprs = g_ptr_array_new_full(filterx_function_args_len(args), (GDestroyNotify) filterx_expr_unref);

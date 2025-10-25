@@ -243,12 +243,36 @@ _check_zero_args(FilterXFunctionArgs *args, GError **error)
   return TRUE;
 }
 
+gboolean
+_failure_info_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  /* no child expressions */
+  return TRUE;
+}
+
+gboolean
+_failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
+
+  FilterXExpr *exprs[] = { self->metadata_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_fn_failure_info_enable_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoEnable *self = g_new0(FilterXFunctionFailureInfoEnable, 1);
   filterx_function_init_instance(&self->super, "failure_info_enable");
   self->super.super.eval = _failure_info_enable_eval;
+  self->super.super.walk_children = _failure_info_walk;
 
   if (!_extract_failure_info_enable_args(self, args, error) || !filterx_function_args_check(args, error))
     goto error;
@@ -268,6 +292,7 @@ filterx_fn_failure_info_clear_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunction *self = g_new0(FilterXFunction, 1);
   filterx_function_init_instance(self, "failure_info_clear");
   self->super.eval = _failure_info_clear_eval;
+  self->super.walk_children = _failure_info_walk;
 
   if (!_check_zero_args(args, error) || !filterx_function_args_check(args, error))
     {
@@ -286,6 +311,7 @@ filterx_fn_failure_info_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunction *self = g_new0(FilterXFunction, 1);
   filterx_function_init_instance(self, "failure_info");
   self->super.eval = _failure_info_eval;
+  self->super.walk_children = _failure_info_walk;
 
   if (!_check_zero_args(args, error) || !filterx_function_args_check(args, error))
     {
@@ -316,6 +342,7 @@ filterx_fn_failure_info_meta_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _failure_info_meta_deinit;
   self->super.super.optimize = _failure_info_meta_optimize;
   self->super.super.eval = _failure_info_meta_eval;
+  self->super.super.walk_children = _failure_info_meta_walk;
   self->super.super.free_fn = _failure_info_meta_free;
 
   if (!_extract_failure_info_meta_args(self, args, error) || !filterx_function_args_check(args, error))

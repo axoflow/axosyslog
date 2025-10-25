@@ -618,6 +618,55 @@ _extract_args(FilterXFunctionSetFields *self, FilterXFunctionArgs *args, GError 
   return TRUE;
 }
 
+static gboolean
+_set_fields_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
+
+  if (self->dict)
+    {
+      if (!filterx_expr_walk(self->dict, order, f, user_data))
+        return FALSE;
+    }
+
+  for (guint i = 0; i < self->fields->len; i++)
+    {
+      Field *field = &g_array_index(self->fields, Field, i);
+
+      if (field->overrides)
+        {
+          for (guint j = 0; j < field->overrides->len; j++)
+            {
+              FilterXExpr *expr = g_ptr_array_index(field->overrides, j);
+              if (!filterx_expr_walk(expr, order, f, user_data))
+                return FALSE;
+            }
+        }
+
+      if (field->defaults)
+        {
+          for (guint j = 0; j < field->defaults->len; j++)
+            {
+              FilterXExpr *expr = g_ptr_array_index(field->defaults, j);
+              if (!filterx_expr_walk(expr, order, f, user_data))
+                return FALSE;
+            }
+        }
+
+      if (field->replacements)
+        {
+          for (guint j = 0; j < field->replacements->len; j++)
+            {
+              FilterXExpr *expr = g_ptr_array_index(field->replacements, j);
+              if (!filterx_expr_walk(expr, order, f, user_data))
+                return FALSE;
+            }
+        }
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -628,6 +677,7 @@ filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _set_fields_walk;
   self->super.super.free_fn = _free;
   self->super.super.ignore_falsy_result = TRUE;
 

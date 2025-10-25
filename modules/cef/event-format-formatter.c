@@ -366,6 +366,22 @@ _extract_arguments(FilterXFunctionEventFormatFormatter *self, FilterXFunctionArg
   return TRUE;
 }
 
+static gboolean
+_event_format_formatter_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
+
+  FilterXExpr *exprs[] = { self->msg, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormatFormatter *self,
                                                       const gchar *fn_name, FilterXFunctionArgs *args,
@@ -377,6 +393,7 @@ filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormat
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _event_format_formatter_walk;
   self->super.super.free_fn = _free;
 
   g_assert(config->header.num_fields >= 2);

@@ -107,6 +107,22 @@ _set_pri_free(FilterXExpr *s)
 }
 
 static gboolean
+_set_pri_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionSetPri *self = (FilterXFunctionSetPri *) s;
+
+  FilterXExpr *exprs[] = { self->pri_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static gboolean
 _extract_set_pri_arg(FilterXFunctionSetPri *self, FilterXFunctionArgs *args, GError **error)
 {
   self->pri_expr = filterx_function_args_get_expr(args, 0);
@@ -132,6 +148,7 @@ filterx_function_set_pri_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _set_pri_optimize;
   self->super.super.init = _set_pri_init;
   self->super.super.deinit = _set_pri_deinit;
+  self->super.super.walk_children = _set_pri_walk;
   self->super.super.free_fn = _set_pri_free;
 
   if (!_extract_set_pri_arg(self, args, error) ||

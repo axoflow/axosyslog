@@ -107,6 +107,22 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static gboolean
+_istype_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
+
+  FilterXExpr *exprs[] = { self->object_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 static FilterXType *
 _extract_type(FilterXFunctionArgs *args, GError **error)
 {
@@ -173,6 +189,7 @@ filterx_function_istype_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _istype_walk;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) ||
