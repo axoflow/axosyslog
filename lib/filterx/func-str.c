@@ -459,6 +459,22 @@ _extract_args(FilterXExprAffix *self, FilterXFunctionArgs *args, GError **error,
   return TRUE;
 }
 
+static gboolean
+_expr_affix_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXExprAffix *self = (FilterXExprAffix *) s;
+
+  FilterXExpr *exprs[] = { self->haystack, self->needle.expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 static FilterXExpr *
 _function_affix_new(FilterXFunctionArgs *args,
                     const gchar *affix_name,
@@ -473,6 +489,7 @@ _function_affix_new(FilterXFunctionArgs *args,
   self->super.super.optimize = _expr_affix_optimize;
   self->super.super.init = _expr_affix_init;
   self->super.super.deinit = _expr_affix_deinit;
+  self->super.super.walk_children = _expr_affix_walk;
   self->super.super.free_fn = _expr_affix_free;
 
   self->needle.cached_strings = g_ptr_array_new_with_free_func((GDestroyNotify) _string_with_cache_free);
@@ -711,6 +728,24 @@ _strcasecmp_free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static gboolean
+_strcasecmp_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
+
+  if (!self->a_literal)
+    {
+      if (!filterx_expr_walk(self->a.expr, order, f, user_data))
+        return FALSE;
+    }
+  if (!self->b_literal)
+    {
+      if (!filterx_expr_walk(self->b.expr, order, f, user_data))
+        return FALSE;
+    }
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -721,6 +756,7 @@ filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _strcasecmp_optimize;
   self->super.super.init = _strcasecmp_init;
   self->super.super.deinit = _strcasecmp_deinit;
+  self->super.super.walk_children = _strcasecmp_walk;
   self->super.super.free_fn = _strcasecmp_free;
 
   if (filterx_function_args_len(args) != 2)

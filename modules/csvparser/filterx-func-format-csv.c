@@ -318,6 +318,22 @@ _extract_arguments(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GE
   return TRUE;
 }
 
+static gboolean
+_format_csv_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
+
+  FilterXExpr *exprs[] = { self->input, self->columns, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -328,6 +344,7 @@ filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _format_csv_walk;
   self->super.super.free_fn = _free;
   self->delimiter = ',';
   self->default_value = filterx_string_new("", -1);

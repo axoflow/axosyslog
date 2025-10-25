@@ -176,6 +176,21 @@ _extract_set_timestamp_args(FilterXFunctionSetTimestamp *self, FilterXFunctionAr
   return TRUE;
 }
 
+static gboolean
+_set_timestamp_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionSetTimestamp *self = (FilterXFunctionSetTimestamp *) s;
+
+  FilterXExpr *exprs[] = { self->datetime_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+  return TRUE;
+}
+
 /* Takes reference of args */
 FilterXExpr *
 filterx_function_set_timestamp_new(FilterXFunctionArgs *args, GError **error)
@@ -187,6 +202,7 @@ filterx_function_set_timestamp_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _set_timestamp_optimize;
   self->super.super.init = _set_timestamp_init;
   self->super.super.deinit = _set_timestamp_deinit;
+  self->super.super.walk_children = _set_timestamp_walk;
   self->super.super.free_fn = _set_timestamp_free;
 
   if (!_extract_set_timestamp_args(self, args, error) ||
@@ -270,6 +286,13 @@ _extract_get_timestamp_args(FilterXFunctionGetTimestamp *self, FilterXFunctionAr
   return TRUE;
 }
 
+static gboolean
+_get_timestamp_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  /* no child expressions */
+  return TRUE;
+}
+
 /* Takes reference of args */
 FilterXExpr *
 filterx_function_get_timestamp_new(FilterXFunctionArgs *args, GError **error)
@@ -278,6 +301,7 @@ filterx_function_get_timestamp_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "get_timestamp");
 
   self->super.super.eval = _get_timestamp_eval;
+  self->super.super.walk_children = _get_timestamp_walk;
 
   if (!_extract_get_timestamp_args(self, args, error) ||
       !filterx_function_args_check(args, error))

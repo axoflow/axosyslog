@@ -474,6 +474,22 @@ _set_config(FilterXFunctionEventFormatParser *self, Config *cfg)
   csv_scanner_options_set_flags(&self->csv_opts, CSV_SCANNER_GREEDY);
 }
 
+static gboolean
+_event_format_parser_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
+
+  FilterXExpr *exprs[] = { self->msg, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, const gchar *fn_name,
                                       FilterXFunctionArgs *args, Config *cfg, GError **error)
@@ -483,6 +499,7 @@ filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, co
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _event_format_parser_walk;
   self->super.super.free_fn = _free;
 
   _set_config(self, cfg);

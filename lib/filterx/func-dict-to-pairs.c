@@ -200,6 +200,22 @@ _extract_dict_to_pairs_args(FilterXFunctionDictToPairs *self, FilterXFunctionArg
   return TRUE;
 }
 
+static gboolean
+_dict_to_pairs_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
+
+  FilterXExpr *exprs[] = { self->dict_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -210,6 +226,7 @@ filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _dict_to_pairs_deinit;
   self->super.super.optimize = _dict_to_pairs_optimize;
   self->super.super.eval = _dict_to_pairs_eval;
+  self->super.super.walk_children = _dict_to_pairs_walk;
   self->super.super.free_fn = _dict_to_pairs_free;
 
   if (!_extract_dict_to_pairs_args(self, args, error) || !filterx_function_args_check(args, error))

@@ -235,6 +235,22 @@ _extract_args(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GErr
   return TRUE;
 }
 
+static gboolean
+_update_metric_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
+
+  FilterXExpr *exprs[] = { self->increment.expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -245,6 +261,7 @@ filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _update_metric_walk;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) ||
