@@ -610,6 +610,22 @@ _extract_args(FilterXFunctionParseCSV *self, FilterXFunctionArgs *args, GError *
   return TRUE;
 }
 
+static gboolean
+_parse_csv_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
+
+  FilterXExpr *exprs[] = { self->msg, self->columns.expr, self->string_delimiters, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -619,6 +635,7 @@ filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _parse_csv_walk;
   self->super.super.free_fn = _free;
   csv_scanner_options_set_delimiters(&self->options, ",");
   csv_scanner_options_set_quote_pairs(&self->options, "\"\"''");

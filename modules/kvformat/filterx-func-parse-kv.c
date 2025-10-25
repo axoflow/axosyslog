@@ -310,6 +310,22 @@ _extract_args(FilterXFunctionParseKV *self, FilterXFunctionArgs *args, GError **
   return TRUE;
 }
 
+static gboolean
+_parse_kv_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
+
+  FilterXExpr *exprs[] = { self->msg, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -319,6 +335,7 @@ filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _parse_kv_walk;
   self->super.super.free_fn = _free;
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");

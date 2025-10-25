@@ -28,6 +28,14 @@
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
+typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr *expr, gpointer user_data);
+
+typedef enum _FilterXExprWalkOrder
+{
+  FILTERX_EXPR_WALK_PRE_ORDER,
+  FILTERX_EXPR_WALK_POST_ORDER,
+} FilterXExprWalkOrder;
+
 struct _FilterXExpr
 {
   StatsCounterItem *eval_count;
@@ -54,6 +62,8 @@ struct _FilterXExpr
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   FilterXExpr *(*optimize)(FilterXExpr *self);
   void (*free_fn)(FilterXExpr *self);
+
+  gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data);
 
   /* type of the expr, is not freed, assumed to be managed by something else
    * */
@@ -204,6 +214,26 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
     self->deinit(self, cfg);
 
   self->inited = FALSE;
+}
+
+static inline gboolean
+filterx_expr_walk(FilterXExpr *self, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  if (!self)
+    return TRUE;
+
+  g_assert(self->walk_children);
+
+  if (order == FILTERX_EXPR_WALK_PRE_ORDER && !f(self, user_data))
+    return FALSE;
+
+  if (!self->walk_children(self, order, f, user_data))
+    return FALSE;
+
+  if (order == FILTERX_EXPR_WALK_POST_ORDER && !f(self, user_data))
+    return FALSE;
+
+  return TRUE;
 }
 
 typedef struct _FilterXUnaryOp

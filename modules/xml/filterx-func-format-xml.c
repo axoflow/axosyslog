@@ -349,6 +349,22 @@ _extract_argument(FilterXFunctionFormatXML *self, FilterXFunctionArgs *args, GEr
   return TRUE;
 }
 
+static gboolean
+_format_xml_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFormatXML *self = (FilterXFunctionFormatXML *) s;
+
+  FilterXExpr *exprs[] = { self->input, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -359,6 +375,7 @@ filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _format_xml_walk;
   self->super.super.free_fn = _free;
   self->append_inner_dict = _append_inner_dict;
   self->append_leaf = _append_leaf;

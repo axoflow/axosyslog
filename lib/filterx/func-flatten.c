@@ -253,6 +253,22 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static gboolean
+_flatten_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
+
+  FilterXExpr *exprs[] = { self->dict_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 static gchar *
 _extract_separator_arg(FilterXFunctionArgs *args, GError **error)
 {
@@ -300,6 +316,7 @@ filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _flatten_walk;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) || !filterx_function_args_check(args, error))

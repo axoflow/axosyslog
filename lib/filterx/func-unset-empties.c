@@ -522,6 +522,22 @@ _extract_args(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *args, GErr
   return TRUE;
 }
 
+static gboolean
+_unset_empties_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
+
+  FilterXExpr *exprs[] = { self->object_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -531,6 +547,7 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _unset_empties_walk;
   self->super.super.free_fn = _free;
 
   /* everything is enabled except ignorecase */

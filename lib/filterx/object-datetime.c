@@ -423,6 +423,22 @@ _extract_strptime_args(FilterXFunctionStrptime *self, FilterXFunctionArgs *args,
   return TRUE;
 }
 
+static gboolean
+_strptime_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
+
+  FilterXExpr *exprs[] = { self->time_str_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of args */
 FilterXExpr *
 filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
@@ -433,6 +449,7 @@ filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.deinit = _strptime_deinit;
   self->super.super.optimize = _strptime_optimize;
   self->super.super.eval = _strptime_eval;
+  self->super.super.walk_children = _strptime_walk;
   self->super.super.free_fn = _strptime_free;
 
   if (!_extract_strptime_args(self, args, error) ||
@@ -586,6 +603,22 @@ _extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args,
   return TRUE;
 }
 
+static gboolean
+_strftime_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  FilterXExpr *exprs[] = { self->datetime_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of args */
 FilterXExpr *
 filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
@@ -597,6 +630,7 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _strftime_optimize;
   self->super.super.init = _strftime_init;
   self->super.super.deinit = _strftime_deinit;
+  self->super.super.walk_children = _strftime_walk;
   self->super.super.free_fn = _strftime_free;
 
   if (!_extract_strftime_args(self, args, error) ||

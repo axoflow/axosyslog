@@ -35,11 +35,18 @@ _eval_break(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
+static gboolean
+_break_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_expr_break(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
   filterx_expr_init_instance(self, "break");
+  self->walk_children = _break_walk;
   self->eval = _eval_break;
 
   return self;

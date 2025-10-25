@@ -93,6 +93,13 @@ _filterx_function_vars_eval(FilterXExpr *s)
   return vars;
 }
 
+static gboolean
+_vars_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  /* no child expressions */
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_vars_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -100,6 +107,7 @@ filterx_function_vars_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "vars");
 
   self->super.super.eval = _filterx_function_vars_eval;
+  self->super.super.walk_children = _vars_walk;
 
   gboolean exists, eval_error;
   self->exclude_msg_values = filterx_function_args_get_named_literal_boolean(args, "exclude_msg_values", &exists,

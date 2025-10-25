@@ -410,6 +410,22 @@ _subst_free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+gboolean
+_subst_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
+
+  FilterXExpr *exprs[] = { self->string_expr, self->pattern_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -419,6 +435,7 @@ filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _subst_optimize;
   self->super.super.init = _subst_init;
   self->super.super.deinit = _subst_deinit;
+  self->super.super.walk_children = _subst_walk;
   self->super.super.free_fn = _subst_free;
 
   reset_flags(&self->flags, FLAG_VAL(FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT) | FLAG_VAL(

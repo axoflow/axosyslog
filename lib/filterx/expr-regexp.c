@@ -104,6 +104,22 @@ _regexp_match_free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_regexp_match_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
+
+  FilterXExpr *exprs[] = { self->lhs, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of lhs */
 FilterXExpr *
 filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
@@ -115,6 +131,7 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
   self->super.optimize = _regexp_match_optimize;
   self->super.init = _regexp_match_init;
   self->super.deinit = _regexp_match_deinit;
+  self->super.walk_children = _regexp_match_walk;
   self->super.free_fn = _regexp_match_free;
 
   self->lhs = lhs;

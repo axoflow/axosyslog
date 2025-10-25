@@ -319,6 +319,33 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_switch_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSwitch *self = (FilterXSwitch *) s;
+
+  if (self->selector)
+    {
+      if (!filterx_expr_walk(self->selector, order, f, user_data))
+        return FALSE;
+    }
+
+  if (self->body)
+    {
+      if (!filterx_expr_walk(self->body, order, f, user_data))
+        return FALSE;
+    }
+
+  for (gsize i = 0; i < self->cases->len; i++)
+    {
+      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
+      if (!filterx_expr_walk(expr, order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_switch_new(FilterXExpr *selector, GList *body)
 {
@@ -329,6 +356,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->super.deinit = _deinit;
   self->super.optimize = _optimize;
   self->super.eval = _eval_switch;
+  self->super.walk_children = _switch_walk;
   self->super.free_fn = _free;
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->literal_cache = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_expr_unref);

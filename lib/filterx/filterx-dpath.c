@@ -334,6 +334,30 @@ filterx_dpath_lvalue_set_add_mode(FilterXExpr *s, gboolean add_mode)
   self->add_mode = add_mode;
 }
 
+static gboolean
+filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXDPathLValue *self = (FilterXDPathLValue *) s;
+
+  if (self->variable)
+    {
+      if (!filterx_expr_walk(self->variable, order, f, user_data))
+        return FALSE;
+    }
+
+  for (GList *elem = self->dpath_elements; elem; elem = elem->next)
+    {
+      FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
+      if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
+        {
+          if (!filterx_expr_walk(dpath_elem->expr, order, f, user_data))
+            return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error)
 {
@@ -352,6 +376,7 @@ filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **
   self->super.optimize = filterx_dpath_lvalue_optimize;
   self->super.init = filterx_dpath_lvalue_init;
   self->super.deinit = filterx_dpath_lvalue_deinit;
+  self->super.walk_children = filterx_dpath_lvalue_walk;
   self->super.free_fn = filterx_dpath_lvalue_free;
 
   self->variable = variable;

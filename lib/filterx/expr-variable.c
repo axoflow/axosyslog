@@ -198,12 +198,19 @@ _dollar_msg_varname(const gchar *name)
   return dollar_name_obj;
 }
 
+static gboolean
+_variable_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
 static FilterXExpr *
 filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
   filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable));
+  self->super.walk_children = _variable_walk;
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
   self->super._update_repr = _update_repr;

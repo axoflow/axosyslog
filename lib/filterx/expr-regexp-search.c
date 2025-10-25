@@ -316,6 +316,22 @@ _extract_search_args(FilterXExprRegexpSearch *self, FilterXFunctionArgs *args, G
   return TRUE;
 }
 
+gboolean
+_regexp_search_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
+
+  FilterXExpr *exprs[] = { self->lhs, self->pattern_expr, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of lhs */
 FilterXExpr *
 filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
@@ -327,6 +343,7 @@ filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _regexp_search_optimize;
   self->super.super.init = _regexp_search_init;
   self->super.super.deinit = _regexp_search_deinit;
+  self->super.super.walk_children = _regexp_search_walk;
   self->super.super.free_fn = _regexp_search_free;
 
   if (!_extract_optional_arg_flag(self, FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO, args, error))
