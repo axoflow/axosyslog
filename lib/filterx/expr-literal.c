@@ -52,6 +52,12 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_literal_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
 /* NOTE: takes the object reference */
 void
 filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
@@ -60,6 +66,7 @@ filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
 
   filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(literal));
   self->super.eval = _eval_literal;
+  self->super.walk_children = _literal_walk;
   self->super.free_fn = _free;
   self->object = object;
 }

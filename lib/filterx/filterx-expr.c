@@ -273,6 +273,14 @@ filterx_unary_op_free_method(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  return filterx_expr_walk(self->operand, order, f, user_data);
+}
+
 void
 filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
 {
@@ -280,6 +288,7 @@ filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXE
   self->super.optimize = filterx_unary_op_optimize_method;
   self->super.init = filterx_unary_op_init_method;
   self->super.deinit = filterx_unary_op_deinit_method;
+  self->super.walk_children = filterx_unary_op_walk;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
 }
@@ -331,6 +340,20 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
   filterx_expr_deinit_method(s, cfg);
 }
 
+static gboolean
+filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+
+  if (!filterx_expr_walk(self->lhs, order, f, user_data))
+    return FALSE;
+
+  if (!filterx_expr_walk(self->rhs, order, f, user_data))
+    return FALSE;
+
+  return TRUE;
+}
+
 void
 filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
 {
@@ -338,6 +361,7 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, Filter
   self->super.optimize = filterx_binary_op_optimize_method;
   self->super.init = filterx_binary_op_init_method;
   self->super.deinit = filterx_binary_op_deinit_method;
+  self->super.walk_children = filterx_binary_op_walk;
   self->super.free_fn = filterx_binary_op_free_method;
   g_assert(lhs);
   g_assert(rhs);

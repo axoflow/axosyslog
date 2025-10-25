@@ -205,6 +205,22 @@ filterx_conditional_set_false_branch(FilterXExpr *s, FilterXExpr *false_branch)
   self->false_branch = false_branch;
 }
 
+gboolean
+_conditional_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  FilterXExpr *exprs[] = { self->condition, self->true_branch, self->false_branch, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_conditional_new(FilterXExpr *condition)
 {
@@ -214,6 +230,7 @@ filterx_conditional_new(FilterXExpr *condition)
   self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
+  self->super.walk_children = _conditional_walk;
   self->super.free_fn = _free;
   self->super.suppress_from_trace = TRUE;
   self->condition = condition;

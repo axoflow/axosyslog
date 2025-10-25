@@ -139,6 +139,22 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_getattr_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  FilterXExpr *exprs[] = { self->operand, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* NOTE: takes the object reference */
 FilterXExpr *
 filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
@@ -152,6 +168,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
+  self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
   self->operand = operand;
 

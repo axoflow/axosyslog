@@ -31,6 +31,14 @@ typedef struct _LogFilterXPipe
   FilterXExpr *block;
 } LogFilterXPipe;
 
+
+// TODO: reimplement optimize() and init()/deinit() based on filterx_expr_walk()
+static gboolean
+_walk(FilterXExpr *expr, gpointer user_data)
+{
+  return TRUE;
+}
+
 static gboolean
 log_filterx_pipe_init(LogPipe *s)
 {
@@ -43,6 +51,7 @@ log_filterx_pipe_init(LogPipe *s)
   FilterXEvalContext compile_context;
 
   filterx_eval_begin_compile(&compile_context, cfg);
+  filterx_expr_walk(self->block, FILTERX_EXPR_WALK_PRE_ORDER, _walk, s);
   self->block = filterx_expr_optimize(self->block);
   filterx_eval_end_compile(&compile_context);
 
