@@ -240,6 +240,26 @@ filterx_compound_expr_add_list_ref(FilterXExpr *s, GList *expr_list)
   g_list_free(expr_list);
 }
 
+static gboolean
+_expr_walk_cb(FilterXExpr *value, gpointer user_data)
+{
+  gpointer *args = user_data;
+  FilterXExprWalkOrder *order = args[0];
+  FilterXExprWalkFunc f = args[1];
+  gpointer udata = args[2];
+
+  return filterx_expr_walk(value, *order, f, udata);
+}
+
+gboolean
+_compound_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  gpointer args[] = { &order, f, user_data };
+  return filterx_expr_list_foreach(&self->exprs, _expr_walk_cb, args);
+}
+
 FilterXExpr *
 filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
@@ -250,6 +270,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
+  self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
   self->return_value_of_last_expr = return_value_of_last_expr;
   filterx_expr_list_init(&self->exprs);

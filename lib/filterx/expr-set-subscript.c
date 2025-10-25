@@ -207,6 +207,22 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_set_subscript_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  FilterXExpr *exprs[] = { self->object, self->key, self->new_value, NULL };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *new_value)
 {
@@ -217,6 +233,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;
+  self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
   self->object = object;
   self->key = key;

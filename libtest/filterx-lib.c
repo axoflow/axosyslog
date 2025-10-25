@@ -199,6 +199,14 @@ _non_literal_free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_non_literal_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+
+  return filterx_expr_walk(self->block, order, f, user_data);
+}
+
 FilterXExpr *
 filterx_non_literal_new_from_expr(FilterXExpr *expr)
 {
@@ -209,6 +217,7 @@ filterx_non_literal_new_from_expr(FilterXExpr *expr)
   self->super.init = _non_literal_init;
   self->super.deinit = _non_literal_deinit;
   self->super.optimize = _non_literal_optimize;
+  self->super.walk_children = _non_literal_walk;
   self->super.free_fn = _non_literal_free;
 
   self->block = filterx_compound_expr_new(TRUE);
@@ -247,6 +256,12 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_dummy_error_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_dummy_error_new(const gchar *msg)
 {
@@ -254,6 +269,7 @@ filterx_dummy_error_new(const gchar *msg)
   self->msg = g_strdup(msg);
   filterx_expr_init_instance(&self->super, "dummy");
   self->super.eval = _eval;
+  self->super.walk_children = _dummy_error_walk;
   self->super.free_fn = _free;
   return &self->super;
 }

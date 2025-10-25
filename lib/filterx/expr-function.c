@@ -203,6 +203,22 @@ _simple_process_args(FilterXSimpleFunction *self, FilterXFunctionArgs *args, GEr
   return TRUE;
 }
 
+gboolean
+_simple_function_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+
+  for (guint64 i = 0; i < self->args->len; i++)
+    {
+      FilterXExpr *arg = g_ptr_array_index(self->args, i);
+
+      if (!filterx_expr_walk(arg, order, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *args,
                             FilterXSimpleFunctionProto function_proto, GError **error)
@@ -214,6 +230,7 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
   self->super.super.optimize = _simple_optimize;
   self->super.super.init = _simple_init;
   self->super.super.deinit = _simple_deinit;
+  self->super.super.walk_children = _simple_function_walk;
   self->super.super.free_fn = _simple_free;
   self->function_proto = function_proto;
 
