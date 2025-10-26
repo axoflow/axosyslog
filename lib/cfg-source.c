@@ -158,12 +158,18 @@ _print_source_text_from_lexer(CfgLexer *lexer, CfgIncludeLevel *level,
   if (file_lloc->first_line <= range_backwards)
     range_backwards = file_lloc->first_line - 1;
 
-  /* the index of the line in the buffer where we start printing 0-based */
+  /* the index of the line in the buffer where we start printing, 0-based index */
   gint buffer_start_index = buf_lloc->first_line - 1 - range_backwards;
   if (buffer_start_index < 0)
     buffer_start_index = 0;
 
-  _print_underlined_source_block(file_lloc, &buffer_lines[buffer_start_index], buffer_num_lines - buffer_start_index,
+  /* the index of the last line, 0 based, this line is not printed (only the
+   * preceeding ones)  */
+  gint buffer_end_index = buf_lloc->last_line - 1 + CONTEXT + 1;
+  if (buffer_end_index > buffer_num_lines)
+    buffer_end_index = buffer_num_lines;
+
+  _print_underlined_source_block(file_lloc, &buffer_lines[buffer_start_index], buffer_end_index - buffer_start_index,
                                  file_lloc->first_line - range_backwards);
 }
 
