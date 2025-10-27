@@ -27,6 +27,7 @@
 #include "compat/cpp-end.h"
 
 #include <fstream>
+#include <sstream>
 
 using namespace syslogng::grpc;
 
@@ -100,9 +101,10 @@ ServerCredentialsBuilder::build() const
 }
 
 bool
-ServerCredentialsBuilder::set_tls_ca_path(const char *ca_path)
+ServerCredentialsBuilder::set_tls_ca_path(const char *ca_path_)
 {
-  return _get_file_content(ca_path, ssl_server_credentials_options.pem_root_certs);
+  this->ca_path = ca_path_;
+  return _get_file_content(ca_path_, ssl_server_credentials_options.pem_root_certs);
 }
 
 bool
@@ -118,7 +120,7 @@ ServerCredentialsBuilder::set_tls_key_path(const char *key_path)
 }
 
 bool
-ServerCredentialsBuilder::set_tls_cert_path(const char *cert_path)
+ServerCredentialsBuilder::set_tls_cert_path(const char *cert_path_)
 {
   if (ssl_server_credentials_options.pem_key_cert_pairs.size() == 0)
     {
@@ -126,7 +128,9 @@ ServerCredentialsBuilder::set_tls_cert_path(const char *cert_path)
       ssl_server_credentials_options.pem_key_cert_pairs.push_back(key_cert_pair);
     }
 
-  return _get_file_content(cert_path, ssl_server_credentials_options.pem_key_cert_pairs.at(0).cert_chain);
+  this->cert_path = cert_path_;
+
+  return _get_file_content(cert_path_, ssl_server_credentials_options.pem_key_cert_pairs.at(0).cert_chain);
 }
 
 void
@@ -153,6 +157,48 @@ ServerCredentialsBuilder::set_tls_peer_verify(GrpcServerTlsPeerVerify peer_verif
     }
 
   ssl_server_credentials_options.client_certificate_request = client_certificate_request;
+}
+
+std::string
+ServerCredentialsBuilder::get_unique_id()
+{
+  std::ostringstream id;
+
+  std::string peer_verify;
+  switch (this->ssl_server_credentials_options.client_certificate_request)
+    {
+    case GRPC_SSL_DONT_REQUEST_CLIENT_CERTIFICATE:
+      peer_verify = "dont_request_client_cert";
+      break;
+    case GRPC_SSL_REQUEST_CLIENT_CERTIFICATE_AND_VERIFY:
+      peer_verify = "request_client_cert_and_verify";
+      break;
+    case GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_BUT_DONT_VERIFY:
+      peer_verify = "require_client_cert_but_dont_verify";
+      break;
+    case GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY:
+      peer_verify = "require_client_cert_and_verify";
+      break;
+    default:
+      g_assert_not_reached();
+    }
+
+  switch (this->mode)
+    {
+    case GSAM_INSECURE:
+      id << "insecure";
+      break;
+    case GSAM_TLS:
+      id << "tls(" << peer_verify << ", " << this->ca_path << ", " << this->cert_path << ")";
+      break;
+    case GSAM_ALTS:
+      id << "alts";
+      break;
+    default:
+      g_assert_not_reached();
+    }
+
+  return id.str();
 }
 
 void
