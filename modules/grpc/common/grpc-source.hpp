@@ -100,6 +100,7 @@ public:
 
 protected:
   bool prepare_server_builder(::grpc::ServerBuilder &builder);
+  std::string get_unique_id_fragment();
 
 private:
   friend class SourceWorker;

@@ -24,6 +24,7 @@
 #include "grpc-source.hpp"
 
 #include <string>
+#include <sstream>
 
 using namespace syslogng::grpc;
 
@@ -82,6 +83,21 @@ SourceDriver::prepare_server_builder(::grpc::ServerBuilder &builder)
     builder.AddChannelArgument(nv.first, nv.second);
 
   return true;
+}
+
+std::string
+SourceDriver::get_unique_id_fragment()
+{
+  std::ostringstream id;
+
+  id << this->port << ", " << this->credentials_builder.get_unique_id();
+
+  for (auto nv : int_extra_channel_args)
+    id << ", " << nv.first << "=" << nv.second;
+  for (auto nv : string_extra_channel_args)
+    id << ", " << nv.first << "=" << nv.second;
+
+  return id.str();
 }
 
 /* C Wrappers */
