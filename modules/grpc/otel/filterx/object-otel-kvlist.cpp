@@ -514,6 +514,8 @@ _set_kvlist_field_from_dict(google::protobuf::Message *message, syslogng::grpc::
                             FilterXObject *object, FilterXObject **assoc_object)
 {
   RepeatedPtrField<KeyValue> *repeated_kv = _get_repeated_kv(message, reflectors);
+  repeated_kv->Clear();
+
   if (!filterx_dict_iter(object, _add_elem_to_repeated_kv, repeated_kv))
     return false;
 
