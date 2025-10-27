@@ -917,10 +917,10 @@ _register_worker_stats(LogThreadedDestWorker *self)
 
     /* Up to 49 days and 17 hours on 32 bit machines. */
     stats_register_counter(level, self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample);
+                           &self->metrics.message_delay_sample);
 
     stats_register_counter(level, self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample_age);
+                           &self->metrics.message_delay_sample_age);
   }
   stats_unlock();
 
@@ -1200,10 +1200,14 @@ _register_driver_aggregated_stats(LogThreadedDestDriver *self)
 
   stats_aggregator_lock();
 
-  stats_register_aggregator_hist(level, self->metrics.batch_size_hist_key, round_to_log2(1), 16, &self->metrics.batch_size_hist);
-  stats_register_aggregator_hist(level, self->metrics.event_size_hist_key, round_to_log2(64), 8, &self->metrics.event_size_hist);
-  stats_register_aggregator_hist(level, self->metrics.request_latency_hist_key, round_to_log2(32), 8, &self->metrics.request_latency_hist);
-  stats_register_aggregator_cps(level, self->metrics.CPS_key, self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.CPS);
+  stats_register_aggregator_hist(level, self->metrics.batch_size_hist_key, round_to_log2(1), 16,
+                                 &self->metrics.batch_size_hist);
+  stats_register_aggregator_hist(level, self->metrics.event_size_hist_key, round_to_log2(64), 8,
+                                 &self->metrics.event_size_hist);
+  stats_register_aggregator_hist(level, self->metrics.request_latency_hist_key, round_to_log2(32), 8,
+                                 &self->metrics.request_latency_hist);
+  stats_register_aggregator_cps(level, self->metrics.CPS_key, self->metrics.processed_key, SC_TYPE_SINGLE_VALUE,
+                                &self->metrics.CPS);
 
   stats_aggregator_unlock();
 }
@@ -1322,7 +1326,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
     stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
     stats_unregister_counter(self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
     stats_unregister_counter(self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.output_event_retries);
+                             &self->metrics.output_event_retries);
   }
   stats_unlock();
 
