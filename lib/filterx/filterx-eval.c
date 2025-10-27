@@ -433,6 +433,7 @@ filterx_eval_end_context(FilterXEvalContext *context)
 
   context->failure_info = NULL;
   filterx_object_unref(context->current_frame_meta);
+  _clear_errors(context);
   filterx_eval_set_context(context->previous_context);
 }
 
@@ -452,6 +453,7 @@ filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg)
 void
 filterx_eval_end_compile(FilterXEvalContext *context)
 {
+  _clear_errors(context);
   filterx_eval_set_context(NULL);
 }
 
