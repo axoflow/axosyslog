@@ -96,15 +96,15 @@ SourceDriver::format_stats_key(StatsClusterKeyBuilder *kb)
 const char *
 SourceDriver::generate_persist_name()
 {
-  // TODO: channel args, port, etc.   scaling unsupported -> workers
-  static char persist_name[1024];
+  static char persist_name[2048];
 
+  /* worker scaling during reload is not supported, hence num_workers is here */
   if (this->super->super.super.super.super.persist_name)
     g_snprintf(persist_name, sizeof(persist_name), "opentelemetry.%s",
                this->super->super.super.super.super.persist_name);
   else
-    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry(%" G_GUINT32_FORMAT ")",
-               this->port);
+    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry(%s, %d)",
+               this->get_unique_id_fragment().c_str(), this->super->super.num_workers);
 
   return persist_name;
 }
