@@ -104,13 +104,19 @@ class S3SessionHandler:
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
                 self.logger.info(f"Bucket ({self.__bucket}) does not exist, trying to create it")
-            try:
-                self.__client.create_bucket(Bucket=self.__bucket)
-            except (ClientError, EndpointConnectionError) as e:
-                self.logger.error(f"Failed to create bucket ({self.__bucket}): {e}")
-                return False
-            self.logger.info(f"Bucket ({self.__bucket}) successfully created")
-            return True
+                try:
+                    self.__client.create_bucket(Bucket=self.__bucket)
+                except (ClientError, EndpointConnectionError) as e:
+                    self.logger.error(f"Failed to create bucket ({self.__bucket}): {e}")
+                    return False
+                self.logger.info(f"Bucket ({self.__bucket}) successfully created")
+                return True
+            else:
+                self.logger.info(f"Client error: {e}")
+                self.logger.debug(f"Client error debug: {e.response}")
+        except EndpointConnectionError as e:
+            self.logger.info(f"Failed to connect to S3 server: {e}")
+        return False
 
     def upload_object(self, s3_object: S3ObjectBuffer) -> bool:
         if not self.connection_open:
