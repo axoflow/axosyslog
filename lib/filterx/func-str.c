@@ -292,7 +292,10 @@ _eval_against_literal_needles(FilterXExprAffix *self, const gchar *haystack, gsi
 
       if (!_string_with_cache_get_string_value(current_needle, self->ignore_case, &needle_str, &needle_len,
                                                &needle_backing_obj))
-        return NULL;
+        {
+          filterx_object_unref(needle_backing_obj);
+          return NULL;
+        }
 
       matches = self->process(self, haystack, haystack_len, needle_str, needle_len);
       filterx_object_unref(needle_backing_obj);
@@ -616,9 +619,14 @@ _extract_literal(FilterXExpr *expr)
   const gchar *str = NULL;
   gsize str_len = 0;
   if (!filterx_object_extract_string_ref(literal, &str, &str_len))
-    return NULL;
+    {
+      filterx_object_unref(literal);
+      return NULL;
+    }
 
-  return g_string_new_len(str, str_len);
+  GString *extracted = g_string_new_len(str, str_len);
+  filterx_object_unref(literal);
+  return extracted;
 }
 
 static FilterXExpr *
