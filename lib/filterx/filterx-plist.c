@@ -74,6 +74,16 @@ _invoke_non_ref(gpointer *pvalue, gpointer user_data)
   return func(*pvalue, user_data2);
 }
 
+static gboolean
+_invoke_clear(gpointer *pvalue, gpointer d)
+{
+  GDestroyNotify func = (GDestroyNotify) d;
+
+  func(*pvalue);
+
+  return TRUE;
+}
+
 gboolean
 filterx_pointer_list_foreach(FilterXPointerList *self, FilterXPointerListForeachFunc func, gpointer user_data)
 {
@@ -105,7 +115,7 @@ filterx_pointer_list_init(FilterXPointerList *self)
 void
 filterx_pointer_list_clear(FilterXPointerList *self, GDestroyNotify destroy)
 {
-  filterx_pointer_list_foreach(self, (FilterXPointerListForeachFunc) destroy, NULL);
+  filterx_pointer_list_foreach_ref(self, _invoke_clear, destroy);
 
   switch (self->mode)
     {
