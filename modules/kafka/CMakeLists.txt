@@ -28,6 +28,8 @@ set(KAFKA_SOURCES
   kafka-props.c
   kafka-internal.h
   kafka-internal.c
+  kafka-topic-parts.h
+  kafka-topic-parts.c
 )
 
 add_module(
