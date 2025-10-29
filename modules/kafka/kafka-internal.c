@@ -55,6 +55,30 @@ _is_valid_topic_name_pattern(const gchar *name)
 }
 
 gboolean
+kafka_validate_topic_pattern(const char *topic, GError **error)
+{
+  if (topic == NULL || *topic == 0)
+    {
+      if (error)
+        g_set_error(error, TOPIC_NAME_ERROR, TOPIC_LENGTH_ZERO,
+                    "kafka: topic pattern is illegal, it can't be empty");
+      return FALSE;
+    }
+
+  regex_t re;
+  int ret = regcomp(&re, topic, REG_EXTENDED | REG_NOSUB);
+  if (ret == 0)
+    {
+      regfree(&re);
+      return TRUE;
+    }
+  if (error)
+    g_set_error(error, TOPIC_NAME_ERROR, TOPIC_INVALID_PATTERN,
+                "kafka: topic name %s is illegal as it contains a badly formatted regex pattern", topic);
+  return FALSE;
+}
+
+gboolean
 kafka_validate_topic_name(const gchar *name, GError **error)
 {
   gint len = strlen(name);
@@ -174,10 +198,169 @@ kafka_apply_config_props(rd_kafka_conf_t *conf, GList *props, gchar **protected_
   return TRUE;
 }
 
+inline gchar *
+kafka_format_partition_key(const gchar *topic, int32_t partition, gchar *key, gsize key_size)
+{
+  g_snprintf(key, key_size, "%s#%d", topic, partition);
+  return key;
+}
+
+gboolean
+kafka_seek_partition(KafkaSourceDriver *self,
+                     rd_kafka_topic_partition_t *partition,
+                     int64_t offset,
+                     int timeout_ms)
+{
+  gboolean success = TRUE;
+  /* rd_kafka_seek() needs a rd_kafka_topic_t*, so create a temporary handle */
+  rd_kafka_topic_t *rkt = rd_kafka_topic_new(self->kafka, partition->topic, NULL);
+  if (!rkt)
+    {
+      msg_error("kafka: rd_kafka_topic_new() failed in fallback seek",
+                evt_tag_str("topic", partition->topic),
+                evt_tag_str("error", rd_kafka_err2str(rd_kafka_last_error())));
+      return FALSE;
+    }
+
+  rd_kafka_resp_err_t err = rd_kafka_seek(rkt, partition->partition, offset, timeout_ms);
+  if (err != RD_KAFKA_RESP_ERR_NO_ERROR)
+    {
+      msg_error("kafka: failed to seek to the restored offset (legacy rd_kafka_seek)",
+                evt_tag_str("topic", partition->topic),
+                evt_tag_int("partition", (int)partition->partition),
+                evt_tag_long("offset", offset),
+                evt_tag_str("error", rd_kafka_err2str(err)));
+      success = FALSE;
+    }
+  rd_kafka_topic_destroy(rkt);
+  return success;
+}
+
+gboolean
+kafka_seek_partitions(KafkaSourceDriver *self,
+                      rd_kafka_topic_partition_list_t *partitions,
+                      int timeout_ms)
+{
+  gboolean success = TRUE;
+
+#if SYSLOG_NG_HAVE_RD_KAFKA_SEEK_PARTITIONS
+  rd_kafka_error_t *seek_err = rd_kafka_seek_partitions(self->kafka, partitions, timeout_ms);
+  if (seek_err)
+    {
+      msg_error("kafka: failed to seek to the restored offset for partitions (seek_partitions)",
+                evt_tag_str("error", rd_kafka_error_string(seek_err)));
+      rd_kafka_error_destroy(seek_err);
+      success = FALSE;
+    }
+#else
+  /* Fallback: call rd_kafka_seek() for every entry in the topic-partition list */
+  for (int pi = 0; pi < partitions->cnt; ++pi)
+    {
+      rd_kafka_topic_partition_t *p = &partitions->elems[pi];
+      if (FALSE == kafka_seek_partition(self, p, p->offset, timeout_ms))
+        success = FALSE;
+    }
+#endif
+  return success;
+}
+
+void
+kafka_log_partition_list(KafkaSourceDriver *self, const rd_kafka_topic_partition_list_t *partitions)
+{
+  for (int i = 0 ; i < partitions->cnt ; i++)
+    msg_verbose("kafka: partition",
+                evt_tag_str("group_id", self->group_id),
+                evt_tag_str("member_id", rd_kafka_memberid(self->kafka)),
+                evt_tag_str("driver", self->super.super.super.id),
+                evt_tag_str("topic", partitions->elems[i].topic),
+                evt_tag_int("partition", (int) partitions->elems[i].partition),
+                evt_tag_long("offset", (long) partitions->elems[i].offset));
+}
+
+void
+kafka_register_counters(KafkaSourceDriver *self,
+                        GHashTable *stats_table,
+                        const gchar *label,
+                        const gchar *label_value,
+                        const gchar **counter_names,
+                        gint level)
+{
+  /* TODO: stats_table is keyed by label_value, so only one counter per label_value
+   * can be tracked currently; multiple names would all collide on the same key. */
+  g_assert(counter_names && counter_names[0] && counter_names[1] == NULL);
+
+  LogThreadedSourceWorker *worker = self->super.workers[0];
+  StatsClusterKeyBuilder *kb = worker->super.metrics.stats_kb;
+  gchar *stats_id = worker->super.stats_id;
+  LogSourceOptions *super_options = &self->options.worker_options->super;
+
+  stats_lock();
+  {
+    stats_cluster_key_builder_push(kb);
+
+    gchar stats_instance[1024];
+    stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label(label, label_value));
+    stats_cluster_key_builder_format_legacy_stats_instance(kb, stats_instance,
+                                                           sizeof(stats_instance));
+    StatsClusterKey sc_key;
+    for (const gchar **name_ptr = counter_names; *name_ptr != NULL; name_ptr++)
+      {
+        stats_cluster_single_key_legacy_set_with_name(&sc_key, super_options->stats_source | SCS_SOURCE,
+                                                      stats_id, stats_instance, *name_ptr);
+        StatsCounterItem *counter = NULL;
+        stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &counter);
+        g_hash_table_insert(stats_table, (gpointer) g_strdup(label_value), (gpointer) counter);
+        kafka_msg_debug("kafka: added stats counter",
+                        evt_tag_str(label, label_value),
+                        evt_tag_str("counter", *name_ptr));
+      }
+    stats_cluster_key_builder_pop(kb);
+  }
+  stats_unlock();
+}
+
+void
+kafka_unregister_counters(KafkaSourceDriver *self,
+                          const gchar *label,
+                          const gchar *label_value,
+                          StatsCounterItem *counter,
+                          const gchar **counter_names)
+{
+  /* Symmetric with kafka_register_counters(): single counter per label_value. */
+  g_assert(counter_names && counter_names[0] && counter_names[1] == NULL);
+
+  LogThreadedSourceWorker *worker = self->super.workers[0];
+  gchar *stats_id = worker->super.stats_id;
+  StatsClusterKeyBuilder *kb = worker->super.metrics.stats_kb;
+  LogSourceOptions *super_options = &self->options.worker_options->super;
+
+  stats_lock();
+  {
+    stats_cluster_key_builder_push(kb);
+
+    stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label(label, label_value));
+
+    gchar stats_instance[1024];
+    stats_cluster_key_builder_format_legacy_stats_instance(kb, stats_instance,
+                                                           sizeof(stats_instance));
+    for (const gchar **name_ptr = counter_names; *name_ptr != NULL; name_ptr++)
+      {
+        StatsClusterKey sc_key;
+        stats_cluster_single_key_legacy_set_with_name(&sc_key, super_options->stats_source | SCS_SOURCE,
+                                                      stats_id, stats_instance, *name_ptr);
+        stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &counter);
+      }
+
+    stats_cluster_key_builder_pop(kb);
+  }
+  stats_unlock();
+}
+
 void
 kafka_options_defaults(KafkaOptions *self)
 {
-  self->poll_timeout = 1000;
+  self->poll_timeout = 10000; /* poll_timeout milliseconds - 10 seconds */
+  self->state_update_timeout = 1000; /* state_update_timeout milliseconds - 1 second */
   self->kafka_logging = KFL_DISABLED;
 }
 
@@ -234,6 +417,12 @@ inline void
 kafka_options_set_poll_timeout(KafkaOptions *self, gint poll_timeout)
 {
   self->poll_timeout = poll_timeout;
+}
+
+inline void
+kafka_options_set_state_update_timeout(KafkaOptions *self, gint state_update_timeout)
+{
+  self->state_update_timeout = state_update_timeout;
 }
 
 void
