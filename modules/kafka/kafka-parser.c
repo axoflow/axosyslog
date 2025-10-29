@@ -27,6 +27,7 @@
 #include "kafka-grammar.h"
 
 extern int kafka_debug;
+
 int kafka_parse(CfgLexer *lexer, LogDriver **instance, gpointer arg);
 
 static CfgLexerKeyword kafka_keywords[] =
@@ -36,6 +37,8 @@ static CfgLexerKeyword kafka_keywords[] =
 
   { "topic",          KW_TOPIC },
   { "fallback_topic", KW_FALLBACK_TOPIC},
+  { "partition",      KW_PARTITION},
+  { "strategy_hint",  KW_STRATEGY_HINT },
 
   /* https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md */
   { "config",         KW_CONFIG },
@@ -48,6 +51,12 @@ static CfgLexerKeyword kafka_keywords[] =
   { "sync_send",      KW_SYNC_SEND},
   { "bootstrap_servers", KW_BOOTSTRAP_SERVERS },
   { "poll_timeout",   KW_POLL_TIMEOUT },
+  { "single_worker_queue", KW_SINGLE_WORKER_QUEUE },
+  { "log_fetch_queue_full_delay", KW_LOG_FETCH_QUEUE_FULL_DELAY },
+  { "state_update_timeout",   KW_STATE_UPDATE_TIMEOUT },
+
+  { "log_fetch_delay", KW_LOG_FETCH_DELAY },
+  { "log_fetch_retry_delay", KW_LOG_FETCH_RETRY_DELAY },
 
   { NULL }
 };

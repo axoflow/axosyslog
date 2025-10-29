@@ -1721,6 +1721,8 @@ old_CFLAGS=$CFLAGS
 LIBS=$LIBRDKAFKA_LIBS
 CFLAGS=$LIBRDKAFKA_CFLAGS
 AC_CHECK_FUNCS(rd_kafka_init_transactions)
+AC_CHECK_FUNCS([rd_kafka_seek_partitions])
+AC_CHECK_FUNCS([rd_kafka_queue_yield])
 LIBS=$old_LIBS
 CFLAGS=$old_CFLAGS
 

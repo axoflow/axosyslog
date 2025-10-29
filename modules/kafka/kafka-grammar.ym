@@ -34,7 +34,9 @@
 
 #include "cfg-grammar-internal.h"
 #include "plugin.h"
-#include "kafka-dest-driver.h"
+#include "syslog-names.h"
+#include "messages.h"
+#include "kafka-internal.h"
 #include "kafka-props.h"
 
 }
@@ -59,18 +61,33 @@
 %token KW_KAFKA_C
 %token KW_TOPIC
 %token KW_FALLBACK_TOPIC
+%token KW_PARTITION
 %token KW_CONFIG
+%token KW_STRATEGY_HINT
 %token KV_KAFKA_LOGGING
 %token KW_FLUSH_TIMEOUT_ON_SHUTDOWN
 %token KW_FLUSH_TIMEOUT_ON_RELOAD
 %token KW_POLL_TIMEOUT
+%token KW_STATE_UPDATE_TIMEOUT
+%token KW_LOG_FETCH_QUEUE_FULL_DELAY
+%token KW_SINGLE_WORKER_QUEUE
 %token KW_BOOTSTRAP_SERVERS
 %token KW_SYNC_SEND
+%token KW_LOG_FETCH_DELAY
+%token KW_LOG_FETCH_RETRY_DELAY
 
 %%
 
 start
-        : LL_CONTEXT_DESTINATION kafka_keyword
+        : LL_CONTEXT_SOURCE KW_KAFKA
+        {
+            last_driver = *instance = kafka_sd_new(configuration);
+        }
+        '(' _inner_src_context_push kafka_src_options _inner_src_context_pop ')'
+        {
+            YYACCEPT;
+        }
+        | LL_CONTEXT_DESTINATION kafka_keyword
         {
             last_driver = *instance = kafka_dd_new(configuration);
         }
@@ -83,6 +100,31 @@ start
 kafka_keyword
         : KW_KAFKA
         | KW_KAFKA_C
+        ;
+
+kafka_src_options
+        : kafka_src_option kafka_src_options
+        |
+        ;
+
+/* via threaded_source_driver_option this implies msg_format_option, source_driver_option, source_option, inner_source and driver_option */
+kafka_src_option
+        : KW_BOOTSTRAP_SERVERS '(' string ')'                   { kafka_sd_set_bootstrap_servers(last_driver, $3); free($3); }
+        | KW_CONFIG '(' kafka_properties ')'                    { kafka_sd_merge_config(last_driver, $3);  }
+        | KV_KAFKA_LOGGING '(' string ')'                       { CHECK_ERROR(kafka_sd_set_logging(last_driver, $3), @3, "Error parsing logging option %s", $3); free($3); }
+        | KW_TOPIC '(' kafka_properties ')'                     { CHECK_ERROR(kafka_sd_set_topics(last_driver, $3), @3, "Error parsing topic options"); }
+        | KW_STRATEGY_HINT '(' string ')'                       { CHECK_ERROR(kafka_sd_set_strategy_hint(last_driver, $3), @3, "Strategy hint must be either `subscribe` or `assign`, received: %s", $3); free($3); }
+        | KW_LOG_FETCH_DELAY '(' nonnegative_integer ')'        { kafka_sd_set_log_fetch_delay(last_driver, $3); }
+        | KW_LOG_FETCH_RETRY_DELAY '(' nonnegative_integer ')'  { kafka_sd_set_log_fetch_retry_delay(last_driver, $3); }
+        | KW_LOG_FETCH_LIMIT '(' positive_integer ')'           { kafka_sd_set_log_fetch_limit(last_driver, $3); }
+        | KW_LOG_FETCH_QUEUE_FULL_DELAY '(' positive_integer ')'{ kafka_sd_set_log_fetch_queue_full_delay(last_driver, $3); }
+        | KW_POLL_TIMEOUT '(' positive_integer ')'              { kafka_sd_set_poll_timeout(last_driver, $3); }
+        | KW_STATE_UPDATE_TIMEOUT '(' positive_integer ')'      { kafka_sd_set_state_update_timeout(last_driver, $3); }
+        | KW_TIME_REOPEN '(' positive_integer ')'               { kafka_sd_set_time_reopen(last_driver, $3); }
+        | KW_DO_NOT_USE_BOOKMARK '(' yesno ')'                  { kafka_sd_set_do_not_use_bookmark(last_driver, $3); }
+        | KW_SINGLE_WORKER_QUEUE '(' yesno ')'                  { kafka_sd_set_single_worker_queue(last_driver, $3); }
+        | threaded_source_driver_option
+        | threaded_source_driver_workers_option
         ;
 
 kafka_dest_options

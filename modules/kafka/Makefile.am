@@ -15,8 +15,14 @@ modules_kafka_libkafka_la_SOURCES = \
   modules/kafka/kafka-dest-driver.c \
   modules/kafka/kafka-dest-worker.h \
   modules/kafka/kafka-dest-worker.c \
+  modules/kafka/kafka-source-driver.h \
+  modules/kafka/kafka-source-driver.c \
+  modules/kafka/kafka-source-worker.h \
+  modules/kafka/kafka-source-worker.c \
   modules/kafka/kafka-internal.h \
   modules/kafka/kafka-internal.c \
+  modules/kafka/kafka-topic-parts.h \
+  modules/kafka/kafka-topic-parts.c \
   modules/kafka/kafka-plugin.c
 
 modules_kafka_libkafka_la_CPPFLAGS  = \
