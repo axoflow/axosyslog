@@ -754,6 +754,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
           filterx_eval_push_error_info_printf("Failed to create dict", s,
                                               "Argument must be a valid JSON string: %s",
                                               error->message);
+          g_clear_error(&error);
           return NULL;
         }
       if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(dict)))
