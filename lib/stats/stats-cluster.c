@@ -216,8 +216,11 @@ stats_cluster_key_cloned_free(StatsClusterKey *self)
 void
 stats_cluster_key_free(StatsClusterKey *self)
 {
-  stats_cluster_key_cloned_free(self);
-  g_free(self);
+  if (self)
+    {
+      stats_cluster_key_cloned_free(self);
+      g_free(self);
+    }
 }
 
 void

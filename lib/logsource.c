@@ -75,7 +75,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
     window_size_increment = _take_reclaimed_window(self, window_size_increment);
 
   gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
-  stats_counter_add(self->metrics.stat_window_size, window_size_increment);
+  stats_counter_add(self->metrics.window_available, window_size_increment);
 
   msg_diagnostics("Window size adjustment",
                   evt_tag_int("old_window_size", old_window_size),
@@ -233,10 +233,10 @@ _release_dynamic_window(LogSource *self)
             log_pipe_location_tag(&self->super));
 
   self->full_window_size -= dynamic_part;
-  stats_counter_sub(self->metrics.stat_full_window, dynamic_part);
+  stats_counter_sub(self->metrics.window_capacity, dynamic_part);
 
   window_size_counter_sub(&self->window_size, dynamic_part, NULL);
-  stats_counter_sub(self->metrics.stat_window_size, dynamic_part);
+  stats_counter_sub(self->metrics.window_available, dynamic_part);
   dynamic_window_release(&self->dynamic_window, dynamic_part);
 
   dynamic_window_pool_unref(self->dynamic_window.pool);
@@ -254,10 +254,10 @@ _inc_balanced(LogSource *self, gsize inc)
             evt_tag_int("new_full_window_size", self->full_window_size + offered_dynamic));
 
   self->full_window_size += offered_dynamic;
-  stats_counter_add(self->metrics.stat_full_window, offered_dynamic);
+  stats_counter_add(self->metrics.window_capacity, offered_dynamic);
 
   gsize old_window_size = window_size_counter_add(&self->window_size, offered_dynamic, NULL);
-  stats_counter_add(self->metrics.stat_window_size, offered_dynamic);
+  stats_counter_add(self->metrics.window_available, offered_dynamic);
   if (old_window_size == 0 && offered_dynamic != 0)
     log_source_wakeup(self);
 }
@@ -287,7 +287,7 @@ _dec_balanced(LogSource *self, gsize dec)
     }
 
   window_size_counter_sub(&self->window_size, dec, NULL);
-  stats_counter_sub(self->metrics.stat_window_size, dec);
+  stats_counter_sub(self->metrics.window_available, dec);
 
   msg_trace("Balance::decrease",
             log_pipe_location_tag(&self->super),
@@ -297,7 +297,7 @@ _dec_balanced(LogSource *self, gsize dec)
             evt_tag_int("to_be_reclaimed", remaining_sub));
 
   self->full_window_size = new_full_window_size;
-  stats_counter_set(self->metrics.stat_full_window, new_full_window_size);
+  stats_counter_set(self->metrics.window_capacity, new_full_window_size);
   dynamic_window_release(&self->dynamic_window, dec);
 }
 
@@ -312,7 +312,7 @@ _reclaim_window_instead_of_rebalance(LogSource *self)
   if (total_reclaim > 0)
     {
       self->full_window_size -= total_reclaim;
-      stats_counter_sub(self->metrics.stat_full_window, total_reclaim);
+      stats_counter_sub(self->metrics.window_capacity, total_reclaim);
       dynamic_window_release(&self->dynamic_window, total_reclaim);
     }
   else
@@ -409,46 +409,6 @@ log_source_mangle_hostname(LogSource *self, LogMessage *msg)
     }
 }
 
-static void
-_register_window_stats(LogSource *self)
-{
-  if (!stats_check_level(4))
-    return;
-
-  gchar stats_instance[1024];
-  const gchar *instance_name = self->name;
-  if (!instance_name)
-    instance_name = stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
-                    stats_instance, sizeof(stats_instance));
-
-  StatsClusterKey sc_key;
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_SOURCE, self->stats_id,
-                                                instance_name, "free_window");
-  self->metrics.stat_window_size_cluster = stats_register_dynamic_counter(4, &sc_key, SC_TYPE_SINGLE_VALUE,
-                                           &self->metrics.stat_window_size);
-  stats_counter_set(self->metrics.stat_window_size, window_size_counter_get(&self->window_size, NULL));
-
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->options->stats_source | SCS_SOURCE, self->stats_id,
-                                                instance_name, "full_window");
-  self->metrics.stat_full_window_cluster = stats_register_dynamic_counter(4, &sc_key, SC_TYPE_SINGLE_VALUE,
-                                           &self->metrics.stat_full_window);
-  stats_counter_set(self->metrics.stat_full_window, self->full_window_size);
-
-}
-
-static void
-_unregister_window_stats(LogSource *self)
-{
-  if (!stats_check_level(4))
-    return;
-
-  stats_unregister_dynamic_counter(self->metrics.stat_window_size_cluster, SC_TYPE_SINGLE_VALUE,
-                                   &self->metrics.stat_window_size);
-  stats_unregister_dynamic_counter(self->metrics.stat_full_window_cluster, SC_TYPE_SINGLE_VALUE,
-                                   &self->metrics.stat_full_window);
-}
-
 static inline void
 _create_ack_tracker_if_not_exists(LogSource *self)
 {
@@ -460,16 +420,35 @@ _create_ack_tracker_if_not_exists(LogSource *self)
     }
 }
 
+/* NOTE: window related stats are unregistered separately from the rest of
+ * the counters, as they may be used even after deinit(): when messages are
+ * still being dispatched at the destination.  */
 static void
-_register_raw_bytes_stats(LogSource *self, gint stats_level)
+_register_window_stats(LogSource *self)
 {
-  stats_byte_counter_init(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key, stats_level, SBCP_KIB);
+  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : self->options->stats_level;
+
+  stats_lock();
+  stats_register_counter(level, self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.window_available);
+  stats_register_counter(level, self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.window_capacity);
+  stats_register_counter(level, self->metrics.window_full_total_key, SC_TYPE_SINGLE_VALUE,
+                         &self->metrics.window_full_total);
+
+  stats_counter_set(self->metrics.window_available, window_size_counter_get(&self->window_size, NULL));
+  stats_counter_set(self->metrics.window_capacity, self->full_window_size);
+  stats_unlock();
 }
 
 static void
-_unregister_raw_bytes_stats(LogSource *self)
+_unregister_window_stats(LogSource *self)
 {
-  stats_byte_counter_deinit(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key);
+  stats_lock();
+  stats_unregister_counter(self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_available);
+  stats_unregister_counter(self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_capacity);
+  stats_unregister_counter(self->metrics.window_full_total_key, SC_TYPE_SINGLE_VALUE, &self->metrics.window_full_total);
+  stats_unlock();
 }
 
 static void
@@ -490,35 +469,17 @@ _register_counters(LogSource *self)
                                        instance_name);
   stats_register_counter(level, &sc_key, SC_TYPE_STAMP, &self->metrics.last_message_seen);
 
-  _register_window_stats(self);
 
   stats_unlock();
 
-  level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL1;
-  _register_raw_bytes_stats(self, level);
-}
-
-gboolean
-log_source_init(LogPipe *s)
-{
-  LogSource *self = (LogSource *) s;
-
-  _create_ack_tracker_if_not_exists(self);
-  if (!ack_tracker_init(self->ack_tracker))
-    {
-      msg_error("Failed to initialize AckTracker");
-      return FALSE;
-    }
-
-  _register_counters(self);
-
-  return TRUE;
+  _register_window_stats(self);
+  stats_byte_counter_init(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key, level, SBCP_KIB);
 }
 
 static void
 _unregister_counters(LogSource *self)
 {
-  _unregister_raw_bytes_stats(self);
+  stats_byte_counter_deinit(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key);
 
   stats_lock();
 
@@ -534,6 +495,86 @@ _unregister_counters(LogSource *self)
   stats_unregister_counter(&sc_key, SC_TYPE_STAMP, &self->metrics.last_message_seen);
 
   stats_unlock();
+}
+
+static void
+_deallocate_counter_keys(LogSource *self)
+{
+  stats_cluster_key_free(self->metrics.recvd_messages_key);
+  stats_cluster_key_free(self->metrics.recvd_bytes_key);
+  stats_cluster_key_free(self->metrics.window_available_key);
+  stats_cluster_key_free(self->metrics.window_capacity_key);
+  stats_cluster_key_free(self->metrics.window_full_total_key);
+}
+
+static void
+_allocate_counter_keys(LogSource *self)
+{
+  /* don't initialize keys multiple times */
+  if (self->metrics.recvd_messages_key)
+    _deallocate_counter_keys(self);
+
+  StatsClusterKeyBuilder *kb = self->metrics.stats_kb;
+
+  stats_cluster_key_builder_add_label(kb, stats_cluster_label("id", self->stats_id));
+  stats_cluster_key_builder_push(kb);
+  {
+    gchar stats_instance[1024];
+    const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(kb,
+                                 stats_instance, sizeof(stats_instance));
+    stats_cluster_key_builder_set_name(kb, "input_events_total");
+    stats_cluster_key_builder_set_legacy_alias(kb, self->options->stats_source | SCS_SOURCE,
+                                               self->stats_id, instance_name);
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "processed");
+    self->metrics.recvd_messages_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "input_event_bytes_total");
+    self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "input_window_available");
+    self->metrics.window_available_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "input_window_capacity");
+    self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "input_window_full_total");
+    self->metrics.window_full_total_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+}
+
+gboolean
+log_source_init(LogPipe *s)
+{
+  LogSource *self = (LogSource *) s;
+
+  _create_ack_tracker_if_not_exists(self);
+  if (!ack_tracker_init(self->ack_tracker))
+    {
+      msg_error("Failed to initialize AckTracker");
+      return FALSE;
+    }
+
+  _allocate_counter_keys(self);
+  _register_counters(self);
+
+  return TRUE;
 }
 
 gboolean
@@ -567,7 +608,7 @@ log_source_post(LogSource *self, LogMessage *msg)
   msg->ack_func = log_source_msg_ack;
 
   gint old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
-  stats_counter_sub(self->metrics.stat_window_size, 1);
+  stats_counter_sub(self->metrics.window_available, 1);
 
   if (G_UNLIKELY(old_window_size == 1))
     {
@@ -709,42 +750,14 @@ _is_window_initialized(LogSource *self)
 static void
 _set_metric_options(LogSource *self, const gchar *stats_id, StatsClusterKeyBuilder *kb)
 {
-  if (self->stats_id)
-    g_free(self->stats_id);
+  g_free(self->stats_id);
   self->stats_id = stats_id ? g_strdup(stats_id) : NULL;
+
   if (self->metrics.stats_kb)
     stats_cluster_key_builder_free(self->metrics.stats_kb);
 
-  if (!kb)
-    kb = stats_cluster_key_builder_new();
+  self->metrics.stats_kb = kb ? : stats_cluster_key_builder_new();
 
-  self->metrics.stats_kb = kb;
-
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
-  {
-    gchar stats_instance[1024];
-    const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
-                                 stats_instance, sizeof(stats_instance));
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_events_total");
-    stats_cluster_key_builder_set_legacy_alias(self->metrics.stats_kb, self->options->stats_source | SCS_SOURCE,
-                                               self->stats_id, instance_name);
-    stats_cluster_key_builder_set_legacy_alias_name(self->metrics.stats_kb, "processed");
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
-    if (self->metrics.recvd_messages_key)
-      stats_cluster_key_free(self->metrics.recvd_messages_key);
-    self->metrics.recvd_messages_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
-  }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
-
-  stats_cluster_key_builder_push(self->metrics.stats_kb);
-  {
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "input_event_bytes_total");;
-    stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
-    if (self->metrics.recvd_bytes_key)
-      stats_cluster_key_free(self->metrics.recvd_bytes_key);
-    self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
-  }
-  stats_cluster_key_builder_pop(self->metrics.stats_kb);
 }
 
 void
@@ -805,18 +818,9 @@ log_source_free(LogPipe *s)
   g_free(self->name);
   g_free(self->stats_id);
 
-  stats_lock();
   _unregister_window_stats(self);
-  stats_unlock();
-
-  if (self->metrics.stats_kb)
-    stats_cluster_key_builder_free(self->metrics.stats_kb);
-
-  if (self->metrics.recvd_messages_key)
-    stats_cluster_key_free(self->metrics.recvd_messages_key);
-
-  if (self->metrics.recvd_bytes_key)
-    stats_cluster_key_free(self->metrics.recvd_bytes_key);
+  _deallocate_counter_keys(self);
+  stats_cluster_key_builder_free(self->metrics.stats_kb);
 
   log_pipe_detach_expr_node(&self->super);
   log_pipe_free_method(s);
