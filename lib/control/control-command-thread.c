@@ -125,7 +125,7 @@ control_command_thread_cancel(ControlCommandThread *self)
   g_mutex_unlock(&self->state_lock);
 
   if (has_to_join)
-    g_thread_join(self->thread);
+    _on_thread_finished(self);
 }
 
 ControlCommandThread *
