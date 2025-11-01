@@ -44,21 +44,6 @@ _cancel_worker(gpointer data, gpointer user_data)
   msg_warning("Requesting the cancellation of control command thread",
               evt_tag_str("control_command", control_command_thread_get_command(thread)));
   control_command_thread_cancel(thread);
-
-  /* NOTE: threads would call control_server_worker_finished() when done (at
-   * least if the main loop is still executing once to process our
-   * thread_finished event).
-   *
-   * If finished() is called, our ref stored on the worker_threads list is
-   * dropped at that point.
-   *
-   * If finished() is not called (e.g.  the workers are stuck and have not
-   * exited until our mainloop exit strategy is executed), their reference
-   * remains lingering on the worker_threads list.
-   *
-   * We try to take care of such lingering refs in control_server_stop(),
-   * which is executed already after iv_main() returns.
-   */
 }
 
 static void
