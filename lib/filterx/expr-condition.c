@@ -206,7 +206,7 @@ filterx_conditional_set_false_branch(FilterXExpr *s, FilterXExpr *false_branch)
 }
 
 gboolean
-_conditional_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_conditional_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXConditional *self = (FilterXConditional *) s;
 
@@ -214,7 +214,7 @@ _conditional_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFun
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

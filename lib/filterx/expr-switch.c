@@ -320,26 +320,26 @@ _free(FilterXExpr *s)
 }
 
 static gboolean
-_switch_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_switch_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXSwitch *self = (FilterXSwitch *) s;
 
   if (self->selector)
     {
-      if (!filterx_expr_walk(self->selector, order, f, user_data))
+      if (!filterx_expr_visit(self->selector, f, user_data))
         return FALSE;
     }
 
   if (self->body)
     {
-      if (!filterx_expr_walk(self->body, order, f, user_data))
+      if (!filterx_expr_visit(self->body, f, user_data))
         return FALSE;
     }
 
   for (gsize i = 0; i < self->cases->len; i++)
     {
       FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      if (!filterx_expr_walk(expr, order, f, user_data))
+      if (!filterx_expr_visit(expr, f, user_data))
         return FALSE;
     }
 

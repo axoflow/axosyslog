@@ -140,7 +140,7 @@ _free(FilterXExpr *s)
 }
 
 static gboolean
-_getattr_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
 
@@ -148,7 +148,7 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f,
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

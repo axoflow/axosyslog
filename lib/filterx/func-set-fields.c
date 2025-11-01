@@ -619,13 +619,13 @@ _extract_args(FilterXFunctionSetFields *self, FilterXFunctionArgs *args, GError 
 }
 
 static gboolean
-_set_fields_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
 
   if (self->dict)
     {
-      if (!filterx_expr_walk(self->dict, order, f, user_data))
+      if (!filterx_expr_visit(self->dict, f, user_data))
         return FALSE;
     }
 
@@ -638,7 +638,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc
           for (guint j = 0; j < field->overrides->len; j++)
             {
               FilterXExpr *expr = g_ptr_array_index(field->overrides, j);
-              if (!filterx_expr_walk(expr, order, f, user_data))
+              if (!filterx_expr_visit(expr, f, user_data))
                 return FALSE;
             }
         }
@@ -648,7 +648,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc
           for (guint j = 0; j < field->defaults->len; j++)
             {
               FilterXExpr *expr = g_ptr_array_index(field->defaults, j);
-              if (!filterx_expr_walk(expr, order, f, user_data))
+              if (!filterx_expr_visit(expr, f, user_data))
                 return FALSE;
             }
         }
@@ -658,7 +658,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc
           for (guint j = 0; j < field->replacements->len; j++)
             {
               FilterXExpr *expr = g_ptr_array_index(field->replacements, j);
-              if (!filterx_expr_walk(expr, order, f, user_data))
+              if (!filterx_expr_visit(expr, f, user_data))
                 return FALSE;
             }
         }

@@ -475,7 +475,7 @@ _set_config(FilterXFunctionEventFormatParser *self, Config *cfg)
 }
 
 static gboolean
-_event_format_parser_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_event_format_parser_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
 
@@ -483,7 +483,7 @@ _event_format_parser_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExp
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

@@ -96,7 +96,7 @@ _free(FilterXExpr *s)
 }
 
 static gboolean
-_is_sdata_from_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_is_sdata_from_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   /* no child expressions */
   return TRUE;

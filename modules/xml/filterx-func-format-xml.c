@@ -350,7 +350,7 @@ _extract_argument(FilterXFunctionFormatXML *self, FilterXFunctionArgs *args, GEr
 }
 
 static gboolean
-_format_xml_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_format_xml_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFormatXML *self = (FilterXFunctionFormatXML *) s;
 
@@ -358,7 +358,7 @@ _format_xml_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

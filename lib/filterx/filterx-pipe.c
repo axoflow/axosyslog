@@ -32,7 +32,7 @@ typedef struct _LogFilterXPipe
 } LogFilterXPipe;
 
 
-// TODO: reimplement optimize() and init()/deinit() based on filterx_expr_walk()
+// TODO: reimplement optimize() and init()/deinit() based on filterx_expr_visit()
 static gboolean
 _walk(FilterXExpr *expr, gpointer user_data)
 {

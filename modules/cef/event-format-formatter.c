@@ -367,7 +367,7 @@ _extract_arguments(FilterXFunctionEventFormatFormatter *self, FilterXFunctionArg
 }
 
 static gboolean
-_event_format_formatter_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_event_format_formatter_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
 
@@ -375,7 +375,7 @@ _event_format_formatter_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterX
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

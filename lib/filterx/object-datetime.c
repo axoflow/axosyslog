@@ -424,7 +424,7 @@ _extract_strptime_args(FilterXFunctionStrptime *self, FilterXFunctionArgs *args,
 }
 
 static gboolean
-_strptime_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_strptime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
 
@@ -432,7 +432,7 @@ _strptime_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -604,7 +604,7 @@ _extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args,
 }
 
 static gboolean
-_strftime_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_strftime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
 
@@ -612,7 +612,7 @@ _strftime_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

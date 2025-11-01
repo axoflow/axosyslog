@@ -244,14 +244,14 @@ _check_zero_args(FilterXFunctionArgs *args, GError **error)
 }
 
 gboolean
-_failure_info_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_failure_info_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   /* no child expressions */
   return TRUE;
 }
 
 gboolean
-_failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
 
@@ -259,7 +259,7 @@ _failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprW
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

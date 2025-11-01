@@ -104,14 +104,14 @@ _free(FilterXExpr *s)
 }
 
 gboolean
-_unset_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_unset_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXExprUnset *self = (FilterXExprUnset *) s;
 
   for (guint i = 0; i < self->exprs->len; i++)
     {
       FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
-      if (!filterx_expr_walk(expr, order, f, user_data))
+      if (!filterx_expr_visit(expr, f, user_data))
         return FALSE;
     }
 

@@ -36,7 +36,7 @@ _eval_break(FilterXExpr *s)
 }
 
 static gboolean
-_break_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_break_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   return TRUE;
 }

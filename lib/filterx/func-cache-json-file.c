@@ -233,7 +233,7 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
 }
 
 gboolean
-_cache_json_file_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_cache_json_file_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   /* no child expressions */
   return TRUE;

@@ -200,11 +200,11 @@ _non_literal_free(FilterXExpr *s)
 }
 
 static gboolean
-_non_literal_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_non_literal_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
 
-  return filterx_expr_walk(self->block, order, f, user_data);
+  return filterx_expr_visit(self->block, f, user_data);
 }
 
 FilterXExpr *
@@ -257,7 +257,7 @@ _free(FilterXExpr *s)
 }
 
 static gboolean
-_dummy_error_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_dummy_error_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   return TRUE;
 }

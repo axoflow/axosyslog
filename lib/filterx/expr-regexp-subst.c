@@ -411,7 +411,7 @@ _subst_free(FilterXExpr *s)
 }
 
 gboolean
-_subst_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_subst_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
 
@@ -419,7 +419,7 @@ _subst_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, g
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

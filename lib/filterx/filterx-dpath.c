@@ -335,13 +335,13 @@ filterx_dpath_lvalue_set_add_mode(FilterXExpr *s, gboolean add_mode)
 }
 
 static gboolean
-filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
   if (self->variable)
     {
-      if (!filterx_expr_walk(self->variable, order, f, user_data))
+      if (!filterx_expr_visit(self->variable, f, user_data))
         return FALSE;
     }
 
@@ -350,7 +350,7 @@ filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExp
       FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
       if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
         {
-          if (!filterx_expr_walk(dpath_elem->expr, order, f, user_data))
+          if (!filterx_expr_visit(dpath_elem->expr, f, user_data))
             return FALSE;
         }
     }

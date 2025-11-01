@@ -169,7 +169,7 @@ _extract_args(FilterXProtobufMessage *self, FilterXFunctionArgs *args, GError **
 }
 
 static gboolean
-_protobuf_message_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_protobuf_message_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXProtobufMessage *self = (FilterXProtobufMessage *) s;
 
@@ -177,7 +177,7 @@ _protobuf_message_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWa
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
   return TRUE;

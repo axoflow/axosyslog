@@ -274,11 +274,11 @@ filterx_unary_op_free_method(FilterXExpr *s)
 }
 
 static gboolean
-filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXUnaryOp *self = (FilterXUnaryOp *) s;
 
-  return filterx_expr_walk(self->operand, order, f, user_data);
+  return filterx_expr_visit(self->operand, f, user_data);
 }
 
 void
@@ -341,14 +341,14 @@ filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
 }
 
 static gboolean
-filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
 
-  if (!filterx_expr_walk(self->lhs, order, f, user_data))
+  if (!filterx_expr_visit(self->lhs, f, user_data))
     return FALSE;
 
-  if (!filterx_expr_walk(self->rhs, order, f, user_data))
+  if (!filterx_expr_visit(self->rhs, f, user_data))
     return FALSE;
 
   return TRUE;

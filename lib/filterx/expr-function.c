@@ -204,7 +204,7 @@ _simple_process_args(FilterXSimpleFunction *self, FilterXFunctionArgs *args, GEr
 }
 
 gboolean
-_simple_function_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_simple_function_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
 
@@ -212,7 +212,7 @@ _simple_function_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWal
     {
       FilterXExpr *arg = g_ptr_array_index(self->args, i);
 
-      if (!filterx_expr_walk(arg, order, f, user_data))
+      if (!filterx_expr_visit(arg, f, user_data))
         return FALSE;
     }
 

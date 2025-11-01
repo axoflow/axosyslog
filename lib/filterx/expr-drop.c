@@ -35,7 +35,7 @@ _eval_drop(FilterXExpr *s)
 }
 
 static gboolean
-_drop_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_drop_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   return TRUE;
 }

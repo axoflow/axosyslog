@@ -53,7 +53,7 @@ _free(FilterXExpr *s)
 }
 
 static gboolean
-_literal_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_literal_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   return TRUE;
 }

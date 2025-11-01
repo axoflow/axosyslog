@@ -311,7 +311,7 @@ _extract_args(FilterXFunctionParseKV *self, FilterXFunctionArgs *args, GError **
 }
 
 static gboolean
-_parse_kv_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_parse_kv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
 
@@ -319,7 +319,7 @@ _parse_kv_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

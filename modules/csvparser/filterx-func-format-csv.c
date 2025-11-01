@@ -319,7 +319,7 @@ _extract_arguments(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GE
 }
 
 static gboolean
-_format_csv_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_format_csv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
 
@@ -327,7 +327,7 @@ _format_csv_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

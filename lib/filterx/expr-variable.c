@@ -199,7 +199,7 @@ _dollar_msg_varname(const gchar *name)
 }
 
 static gboolean
-_variable_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_variable_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   return TRUE;
 }

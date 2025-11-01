@@ -63,7 +63,7 @@ struct _FilterXExpr
   FilterXExpr *(*optimize)(FilterXExpr *self);
   void (*free_fn)(FilterXExpr *self);
 
-  gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data);
+  gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
 
   /* type of the expr, is not freed, assumed to be managed by something else
    * */
@@ -217,6 +217,12 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
 }
 
 static inline gboolean
+filterx_expr_visit(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return f(self, user_data);
+}
+
+static inline gboolean
 filterx_expr_walk(FilterXExpr *self, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
 {
   if (!self)
@@ -224,13 +230,13 @@ filterx_expr_walk(FilterXExpr *self, FilterXExprWalkOrder order, FilterXExprWalk
 
   g_assert(self->walk_children);
 
-  if (order == FILTERX_EXPR_WALK_PRE_ORDER && !f(self, user_data))
+  if (order == FILTERX_EXPR_WALK_PRE_ORDER && !filterx_expr_visit(self, f, user_data))
     return FALSE;
 
-  if (!self->walk_children(self, order, f, user_data))
+  if (!self->walk_children(self, f, user_data))
     return FALSE;
 
-  if (order == FILTERX_EXPR_WALK_POST_ORDER && !f(self, user_data))
+  if (order == FILTERX_EXPR_WALK_POST_ORDER && !filterx_expr_visit(self, f, user_data))
     return FALSE;
 
   return TRUE;

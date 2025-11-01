@@ -279,7 +279,7 @@ _literal_container_free(FilterXExpr *s)
 }
 
 static gboolean
-_literal_container_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_literal_container_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
@@ -290,11 +290,11 @@ _literal_container_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprW
 
       if (elem->key)
         {
-          if (!filterx_expr_walk(elem->key, order, f, user_data))
+          if (!filterx_expr_visit(elem->key, f, user_data))
             return FALSE;
         }
 
-      if (!filterx_expr_walk(elem->value, order, f, user_data))
+      if (!filterx_expr_visit(elem->value, f, user_data))
         return FALSE;
     }
 

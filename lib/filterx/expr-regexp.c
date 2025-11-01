@@ -105,7 +105,7 @@ _regexp_match_free(FilterXExpr *s)
 }
 
 static gboolean
-_regexp_match_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_regexp_match_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
 
@@ -113,7 +113,7 @@ _regexp_match_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFu
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
 

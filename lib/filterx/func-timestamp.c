@@ -177,7 +177,7 @@ _extract_set_timestamp_args(FilterXFunctionSetTimestamp *self, FilterXFunctionAr
 }
 
 static gboolean
-_set_timestamp_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_set_timestamp_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionSetTimestamp *self = (FilterXFunctionSetTimestamp *) s;
 
@@ -185,7 +185,7 @@ _set_timestamp_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkF
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_walk(exprs[i], order, f, user_data))
+      if (!filterx_expr_visit(exprs[i], f, user_data))
         return FALSE;
     }
   return TRUE;
@@ -287,7 +287,7 @@ _extract_get_timestamp_args(FilterXFunctionGetTimestamp *self, FilterXFunctionAr
 }
 
 static gboolean
-_get_timestamp_walk(FilterXExpr *s, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+_get_timestamp_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   /* no child expressions */
   return TRUE;
