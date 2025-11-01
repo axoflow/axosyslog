@@ -344,6 +344,8 @@ _set_array_field_from_list(google::protobuf::Message *message, syslogng::grpc::P
 {
   ArrayValue *array = _get_array_value(message, reflectors);
 
+  array->Clear();
+
   guint64 len;
   g_assert(filterx_object_len(object, &len));
 

@@ -247,6 +247,8 @@ def test_otel_logrecord_body_json_setter_getter(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
                                             $olr = otel_logrecord();
+                                            $olr.body = {};
+                                            $olr.body.key_to_forget = "value_to_forget";
                                             $olr.body = ${values.json};
                                             istype($olr.body, "otel_kvlist");
                                             $MSG = format_json($olr.body); """,
