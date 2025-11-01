@@ -73,26 +73,6 @@ _regexp_match_optimize(FilterXExpr *s)
   return NULL;
 }
 
-static gboolean
-_regexp_match_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
-
-  if (!filterx_expr_init(self->lhs, cfg))
-    return FALSE;
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_regexp_match_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
-
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _regexp_match_free(FilterXExpr *s)
 {
@@ -129,8 +109,6 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
   filterx_expr_init_instance(&self->super, "regexp_match");
   self->super.eval = _regexp_match_eval;
   self->super.optimize = _regexp_match_optimize;
-  self->super.init = _regexp_match_init;
-  self->super.deinit = _regexp_match_deinit;
   self->super.walk_children = _regexp_match_walk;
   self->super.free_fn = _regexp_match_free;
 

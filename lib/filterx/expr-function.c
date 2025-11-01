@@ -139,42 +139,6 @@ _simple_optimize(FilterXExpr *s)
   return filterx_function_optimize_method(&self->super);
 }
 
-static gboolean
-_simple_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
-
-  for (guint64 i = 0; i < self->args->len; i++)
-    {
-      FilterXExpr *arg = g_ptr_array_index(self->args, i);
-      if (!filterx_expr_init(arg, cfg))
-        {
-          for (gint j = 0; j < i; j++)
-            {
-              arg = g_ptr_array_index(self->args, j);
-              filterx_expr_deinit(arg, cfg);
-            }
-          return FALSE;
-        }
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_simple_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
-
-  for (guint64 i = 0; i < self->args->len; i++)
-    {
-      FilterXExpr *arg = g_ptr_array_index(self->args, i);
-      filterx_expr_deinit(arg, cfg);
-    }
-
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _simple_free(FilterXExpr *s)
 {
@@ -228,8 +192,6 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
   filterx_function_init_instance(&self->super, function_name);
   self->super.super.eval = _simple_eval;
   self->super.super.optimize = _simple_optimize;
-  self->super.super.init = _simple_init;
-  self->super.super.deinit = _simple_deinit;
   self->super.super.walk_children = _simple_function_walk;
   self->super.super.free_fn = _simple_free;
   self->function_proto = function_proto;

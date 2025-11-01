@@ -182,6 +182,62 @@ filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
   stats_unlock();
 }
 
+static gboolean
+_init_child_exprs(FilterXExpr **expr, gpointer user_data)
+{
+  GlobalConfig *cfg = (GlobalConfig *) user_data;
+
+  return filterx_expr_init(*expr, cfg);
+}
+
+static gboolean
+_deinit_child_exprs(FilterXExpr **expr, gpointer user_data)
+{
+  GlobalConfig *cfg = (GlobalConfig *) user_data;
+
+  filterx_expr_deinit(*expr, cfg);
+  return TRUE;
+}
+
+gboolean
+filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg)
+{
+  if (!self || self->inited)
+    return TRUE;
+    
+  /* init children first */
+  if (!filterx_expr_walk_children(self, _init_child_exprs, cfg))
+    goto failure;
+
+  /* init @self */
+  if (!self->init(self, cfg))
+    goto failure;
+
+  self->inited = TRUE;
+  return TRUE;
+
+failure:
+  if (!filterx_expr_walk_children(self, _deinit_child_exprs, cfg))
+    g_assert_not_reached();
+  return FALSE;
+
+}
+
+void
+filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
+{
+  if (!self || !self->inited)
+    return;
+
+  if (self->deinit)
+    self->deinit(self, cfg);
+
+  if (!filterx_expr_walk_children(self, _deinit_child_exprs, cfg))
+    g_assert_not_reached();
+
+  self->inited = FALSE;
+}
+
 void
 filterx_expr_free_method(FilterXExpr *self)
 {
@@ -244,26 +300,6 @@ filterx_unary_op_optimize_method(FilterXExpr *s)
   return NULL;
 }
 
-gboolean
-filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
-
-  if (!filterx_expr_init(self->operand, cfg))
-    return FALSE;
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-void
-filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
-
-  filterx_expr_deinit(self->operand, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 void
 filterx_unary_op_free_method(FilterXExpr *s)
 {
@@ -286,8 +322,6 @@ filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXE
 {
   filterx_expr_init_instance(&self->super, name);
   self->super.optimize = filterx_unary_op_optimize_method;
-  self->super.init = filterx_unary_op_init_method;
-  self->super.deinit = filterx_unary_op_deinit_method;
   self->super.walk_children = filterx_unary_op_walk;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
@@ -313,33 +347,6 @@ filterx_binary_op_optimize_method(FilterXExpr *s)
   return NULL;
 }
 
-gboolean
-filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  if (!filterx_expr_init(self->lhs, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->rhs, cfg))
-    {
-      filterx_expr_deinit(self->lhs, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-void
-filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit(self->rhs, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static gboolean
 filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -359,8 +366,6 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, Filter
 {
   filterx_expr_init_instance(&self->super, name);
   self->super.optimize = filterx_binary_op_optimize_method;
-  self->super.init = filterx_binary_op_init_method;
-  self->super.deinit = filterx_binary_op_deinit_method;
   self->super.walk_children = filterx_binary_op_walk;
   self->super.free_fn = filterx_binary_op_free_method;
   g_assert(lhs);

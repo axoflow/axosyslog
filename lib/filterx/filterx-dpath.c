@@ -269,30 +269,9 @@ filterx_dpath_lvalue_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
-  if (!filterx_expr_init(self->variable, cfg))
-    return FALSE;
-
-  for (GList *elem = self->dpath_elements; elem; elem = elem->next)
-    {
-      FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
-      if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
-        {
-          if (!filterx_expr_init(dpath_elem->expr, cfg))
-            {
-              for (GList *d = self->dpath_elements; d != elem; d = d->next)
-                {
-                  FilterXDPathElement *de = (FilterXDPathElement *) elem->data;
-                  if (de->type == FILTERX_DPATH_ELEMENT_EXPR)
-                    filterx_expr_deinit(de->expr, cfg);
-                }
-
-              filterx_expr_deinit(self->variable, cfg);
-              return FALSE;
-            }
-        }
-
-      self->last_dpath_element = dpath_elem;
-    }
+  GList *elem = g_list_last(self->dpath_elements);
+  FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
+  self->last_dpath_element = dpath_elem;
 
   return filterx_expr_init_method(s, cfg);
 }
@@ -302,17 +281,7 @@ filterx_dpath_lvalue_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
-  filterx_expr_deinit(self->variable, cfg);
-
   self->last_dpath_element = NULL;
-
-  for (GList *elem = self->dpath_elements; elem; elem = elem->next)
-    {
-      FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
-      if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
-        filterx_expr_deinit(dpath_elem->expr, cfg);
-    }
-
   filterx_expr_deinit_method(s, cfg);
 }
 

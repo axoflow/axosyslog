@@ -223,26 +223,6 @@ _optimize(FilterXExpr *s)
   return filterx_function_optimize_method(&self->super);
 }
 
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
-
-  if (!filterx_expr_init(self->dict_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
-
-  filterx_expr_deinit(self->dict_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -314,8 +294,6 @@ filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "flatten");
   self->super.super.eval = _eval_fx_flatten;
   self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
   self->super.super.walk_children = _flatten_walk;
   self->super.super.free_fn = _free;
 

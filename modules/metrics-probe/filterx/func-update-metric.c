@@ -137,9 +137,6 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
 
-  if (!filterx_expr_init(self->increment.expr, cfg))
-    return FALSE;
-
   if (!filterx_metrics_init(self->metrics, cfg))
     {
       filterx_expr_deinit(self->increment.expr, cfg);
@@ -153,7 +150,6 @@ static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
-  filterx_expr_deinit(self->increment.expr, cfg);
   filterx_metrics_deinit(self->metrics, cfg);
   filterx_function_deinit_method(&self->super, cfg);
 }

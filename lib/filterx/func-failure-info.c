@@ -133,26 +133,6 @@ _failure_info_clear_eval(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
-static gboolean
-_failure_info_meta_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
-
-  if (!filterx_expr_init(self->metadata_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_failure_info_meta_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
-
-  filterx_expr_deinit(self->metadata_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static FilterXExpr *
 _failure_info_meta_optimize(FilterXExpr *s)
 {
@@ -338,8 +318,6 @@ filterx_fn_failure_info_meta_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoMeta *self = g_new0(FilterXFunctionFailureInfoMeta, 1);
   filterx_function_init_instance(&self->super, "failure_info_meta");
-  self->super.super.init = _failure_info_meta_init;
-  self->super.super.deinit = _failure_info_meta_deinit;
   self->super.super.optimize = _failure_info_meta_optimize;
   self->super.super.eval = _failure_info_meta_eval;
   self->super.super.walk_children = _failure_info_meta_walk;

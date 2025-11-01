@@ -226,12 +226,6 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 
   FilterXObject *pattern_obj = NULL;
 
-  if (!filterx_expr_init(self->lhs, cfg))
-    goto error;
-
-  if (!filterx_expr_init(self->pattern_expr, cfg))
-    goto error;
-
   if (!filterx_expr_is_literal(self->pattern_expr))
     {
       filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
@@ -265,19 +259,7 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 
 error:
   filterx_object_unref(pattern_obj);
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit(self->pattern_expr, cfg);
   return FALSE;
-}
-
-static void
-_regexp_search_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
-
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit(self->pattern_expr, cfg);
-  filterx_expr_deinit_method(s, cfg);
 }
 
 static void
@@ -342,7 +324,6 @@ filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.eval = _eval_regexp_search;
   self->super.super.optimize = _regexp_search_optimize;
   self->super.super.init = _regexp_search_init;
-  self->super.super.deinit = _regexp_search_deinit;
   self->super.super.walk_children = _regexp_search_walk;
   self->super.super.free_fn = _regexp_search_free;
 

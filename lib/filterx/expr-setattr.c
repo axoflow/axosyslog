@@ -137,33 +137,6 @@ _optimize(FilterXExpr *s)
   return NULL;
 }
 
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetAttr *self = (FilterXSetAttr *) s;
-
-  if (!filterx_expr_init(self->object, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->new_value, cfg))
-    {
-      filterx_expr_deinit(self->object, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetAttr *self = (FilterXSetAttr *) s;
-
-  filterx_expr_deinit(self->object, cfg);
-  filterx_expr_deinit(self->new_value, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -200,8 +173,6 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   filterx_expr_init_instance(&self->super, "setattr");
   self->super.eval = _setattr_eval;
   self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
   self->object = object;

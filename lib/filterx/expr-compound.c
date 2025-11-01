@@ -173,34 +173,12 @@ _optimize(FilterXExpr *s)
 }
 
 static gboolean
-_invoke_deinit(FilterXExpr *expr, gpointer cfg)
-{
-  filterx_expr_deinit(expr, (GlobalConfig *) cfg);
-  return TRUE;
-}
-
-static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
   filterx_expr_list_seal(&self->exprs);
-
-  if (!filterx_expr_list_foreach(&self->exprs, (FilterXExprListForeachFunc) filterx_expr_init, cfg))
-    {
-      filterx_expr_list_foreach(&self->exprs, _invoke_deinit, cfg);
-      return FALSE;
-    }
   return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-
-  filterx_expr_list_foreach(&self->exprs, _invoke_deinit, cfg);
-  filterx_expr_deinit_method(s, cfg);
 }
 
 static void
@@ -268,7 +246,6 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.eval = _eval_compound;
   self->super.optimize = _optimize;
   self->super.init = _init;
-  self->super.deinit = _deinit;
   self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
   self->return_value_of_last_expr = return_value_of_last_expr;

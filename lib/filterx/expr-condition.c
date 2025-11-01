@@ -38,42 +38,6 @@ struct _FilterXConditional
   FilterXExpr *false_branch;
 };
 
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-
-  if (!filterx_expr_init(self->condition, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->true_branch, cfg))
-    {
-      filterx_expr_deinit(self->condition, cfg);
-      return FALSE;
-    }
-
-  if (!filterx_expr_init(self->false_branch, cfg))
-    {
-      filterx_expr_deinit(self->condition, cfg);
-      filterx_expr_deinit(self->true_branch, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-
-  filterx_expr_deinit(self->condition, cfg);
-  filterx_expr_deinit(self->true_branch, cfg);
-  filterx_expr_deinit(self->false_branch, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -228,8 +192,6 @@ filterx_conditional_new(FilterXExpr *condition)
   filterx_expr_init_instance(&self->super, "conditional");
   self->super.eval = _eval_conditional;
   self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
   self->super.walk_children = _conditional_walk;
   self->super.free_fn = _free;
   self->super.suppress_from_trace = TRUE;

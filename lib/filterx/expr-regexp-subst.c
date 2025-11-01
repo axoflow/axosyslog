@@ -244,13 +244,6 @@ _create_compile_opts(FLAGSET flags)
 static pcre2_code_8 *
 _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
 {
-  if (!filterx_expr_init(self->pattern_expr, cfg))
-    {
-      filterx_eval_push_error_static_info("Failed to initialize pattern expression", &self->super.super,
-                                          FILTERX_FUNC_REGEXP_SUBST_USAGE);
-      return NULL;
-    }
-
   if (!filterx_expr_is_literal(self->pattern_expr))
     {
       filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
@@ -376,26 +369,11 @@ _subst_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
 
-  if (!filterx_expr_init(self->string_expr, cfg))
-    return FALSE;
-
   self->pattern = _init_subst_pattern(self, cfg);
   if (!self->pattern)
-    {
-      filterx_expr_deinit(self->string_expr, cfg);
-      return FALSE;
-    }
+    return FALSE;
 
   return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_subst_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
-  filterx_expr_deinit(self->string_expr, cfg);
-  filterx_expr_deinit(self->pattern_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
 }
 
 static void
@@ -434,7 +412,6 @@ filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.eval = _subst_eval;
   self->super.super.optimize = _subst_optimize;
   self->super.super.init = _subst_init;
-  self->super.super.deinit = _subst_deinit;
   self->super.super.walk_children = _subst_walk;
   self->super.super.free_fn = _subst_free;
 

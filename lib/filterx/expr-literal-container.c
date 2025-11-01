@@ -42,41 +42,12 @@ struct FilterXLiteralElement_
          literal:1;
 };
 
-static gboolean
-_literal_element_init_callback(gpointer value, gpointer user_data)
-{
-  FilterXLiteralElement *self = (FilterXLiteralElement *) value;
-  GlobalConfig *cfg = (GlobalConfig *) user_data;
-
-  if (!filterx_expr_init(self->key, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->value, cfg))
-    {
-      filterx_expr_deinit(self->key, cfg);
-      return FALSE;
-    }
-
-  return TRUE;
-}
-
 static void
 _literal_element_optimize(FilterXLiteralElement *self)
 {
   self->key = filterx_expr_optimize(self->key);
   self->value = filterx_expr_optimize(self->value);
   self->literal = (!self->key || filterx_expr_is_literal(self->key)) && filterx_expr_is_literal(self->value);
-}
-
-static gboolean
-_literal_element_deinit_callback(gpointer value, gpointer user_data)
-{
-  FilterXLiteralElement *self = (FilterXLiteralElement *) value;
-  GlobalConfig *cfg = (GlobalConfig *) user_data;
-
-  filterx_expr_deinit(self->key, cfg);
-  filterx_expr_deinit(self->value, cfg);
-  return TRUE;
 }
 
 static void
@@ -252,21 +223,7 @@ _literal_container_init(FilterXExpr *s, GlobalConfig *cfg)
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
   filterx_pointer_list_seal(&self->elements);
-  if (!filterx_pointer_list_foreach(&self->elements, _literal_element_init_callback, cfg))
-    {
-      filterx_pointer_list_foreach(&self->elements, _literal_element_deinit_callback, cfg);
-      return FALSE;
-    }
   return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_literal_container_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
-
-  filterx_pointer_list_foreach(&self->elements, _literal_element_deinit_callback, cfg);
-  filterx_expr_deinit_method(s, cfg);
 }
 
 void
@@ -308,7 +265,6 @@ _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *typ
   self->super.eval = _literal_container_eval;
   self->super.optimize = _literal_container_optimize;
   self->super.init = _literal_container_init;
-  self->super.deinit = _literal_container_deinit;
   self->super.walk_children = _literal_container_walk;
   self->super.free_fn = _literal_container_free;
   filterx_pointer_list_init(&self->elements);

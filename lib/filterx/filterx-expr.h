@@ -34,6 +34,7 @@ typedef enum _FilterXExprWalkOrder
 {
   FILTERX_EXPR_WALK_PRE_ORDER,
   FILTERX_EXPR_WALK_POST_ORDER,
+  FILTERX_EXPR_WALK_CHILDREN,
 } FilterXExprWalkOrder;
 
 struct _FilterXExpr
@@ -185,36 +186,13 @@ void filterx_expr_init_instance(FilterXExpr *self, const gchar *type);
 FilterXExpr *filterx_expr_new(void);
 FilterXExpr *filterx_expr_ref(FilterXExpr *self);
 void filterx_expr_unref(FilterXExpr *self);
-gboolean filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg);
-void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_free_method(FilterXExpr *self);
 
-static inline gboolean
-filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg)
-{
-  if (!self || self->inited)
-    return TRUE;
+gboolean filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg);
+void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 
-  if (!self->init || self->init(self, cfg))
-    {
-      self->inited = TRUE;
-      return TRUE;
-    }
-
-  return FALSE;
-}
-
-static inline void
-filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
-{
-  if (!self || !self->inited)
-    return;
-
-  if (self->deinit)
-    self->deinit(self, cfg);
-
-  self->inited = FALSE;
-}
+gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
+void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
 
 static inline gboolean
 filterx_expr_visit(FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)

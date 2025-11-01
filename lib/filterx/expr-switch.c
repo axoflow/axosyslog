@@ -243,45 +243,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
       return FALSE;
     }
 
-  if (!filterx_expr_init(self->selector, cfg))
-    goto error;
-
-  if (!filterx_expr_init(self->body, cfg))
-    goto error;
-
-  for (gsize i = 0; i < self->cases->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      if (!filterx_expr_init(expr, cfg))
-        goto error;
-    }
-
   return filterx_expr_init_method(s, cfg);
-
-error:
-  for (gsize i = 0; i < self->cases->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      filterx_expr_deinit(expr, cfg);
-    }
-  filterx_expr_deinit(self->body, cfg);
-  filterx_expr_deinit(self->selector, cfg);
-  return FALSE;
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSwitch *self = (FilterXSwitch *) s;
-
-  for (gsize i = 0; i < self->cases->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      filterx_expr_deinit(expr, cfg);
-    }
-  filterx_expr_deinit(self->body, cfg);
-  filterx_expr_deinit(self->selector, cfg);
-  filterx_expr_deinit_method(s, cfg);
 }
 
 static FilterXExpr *
@@ -353,7 +315,6 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
 
   filterx_expr_init_instance(&self->super, "switch");
   self->super.init = _init;
-  self->super.deinit = _deinit;
   self->super.optimize = _optimize;
   self->super.eval = _eval_switch;
   self->super.walk_children = _switch_walk;

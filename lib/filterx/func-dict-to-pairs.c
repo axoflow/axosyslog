@@ -122,26 +122,6 @@ exit:
   return result;
 }
 
-static gboolean
-_dict_to_pairs_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
-
-  if (!filterx_expr_init(self->dict_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_dict_to_pairs_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
-
-  filterx_expr_deinit(self->dict_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static FilterXExpr *
 _dict_to_pairs_optimize(FilterXExpr *s)
 {
@@ -222,8 +202,6 @@ filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionDictToPairs *self = g_new0(FilterXFunctionDictToPairs, 1);
   filterx_function_init_instance(&self->super, "dict_to_pairs");
 
-  self->super.super.init = _dict_to_pairs_init;
-  self->super.super.deinit = _dict_to_pairs_deinit;
   self->super.super.optimize = _dict_to_pairs_optimize;
   self->super.super.eval = _dict_to_pairs_eval;
   self->super.super.walk_children = _dict_to_pairs_walk;

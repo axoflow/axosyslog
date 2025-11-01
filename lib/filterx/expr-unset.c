@@ -58,42 +58,6 @@ _optimize(FilterXExpr *s)
   return NULL;
 }
 
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprUnset *self = (FilterXExprUnset *) s;
-
-  for (guint i = 0; i < self->exprs->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
-      if (!filterx_expr_init(expr, cfg))
-        {
-          for (guint j = 0; j < i; j++)
-            {
-              expr = g_ptr_array_index(self->exprs, i);
-              filterx_expr_deinit(expr, cfg);
-            }
-          return FALSE;
-        }
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprUnset *self = (FilterXExprUnset *) s;
-
-  for (guint i = 0; i < self->exprs->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
-      filterx_expr_deinit(expr, cfg);
-    }
-
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -126,8 +90,6 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 
   self->super.super.eval = _eval_unset;
   self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
   self->super.super.walk_children = _unset_walk;
   self->super.super.free_fn = _free;
 

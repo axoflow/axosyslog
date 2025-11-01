@@ -161,41 +161,6 @@ _optimize(FilterXExpr *s)
   return NULL;
 }
 
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
-
-  if (!filterx_expr_init(self->object, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->new_value, cfg))
-    {
-      filterx_expr_deinit(self->object, cfg);
-      return FALSE;
-    }
-
-  if (!filterx_expr_init(self->key, cfg))
-    {
-      filterx_expr_deinit(self->object, cfg);
-      filterx_expr_deinit(self->new_value, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
-
-  filterx_expr_deinit(self->object, cfg);
-  filterx_expr_deinit(self->new_value, cfg);
-  filterx_expr_deinit(self->key, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -231,8 +196,6 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   filterx_expr_init_instance(&self->super, "set_subscript");
   self->super.eval = _set_subscript_eval;
   self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
   self->object = object;

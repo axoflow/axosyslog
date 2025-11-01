@@ -211,41 +211,6 @@ filterx_string_slicing_optimize(FilterXExpr *s)
   return NULL;
 }
 
-gboolean
-filterx_string_slicing_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSlicingOperator *self = (FilterXSlicingOperator *) s;
-
-  if (!filterx_expr_init(self->lhs, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->start, cfg))
-    {
-      filterx_expr_deinit(self->lhs, cfg);
-      return FALSE;
-    }
-
-  if (!filterx_expr_init(self->end, cfg))
-    {
-      filterx_expr_deinit(self->start, cfg);
-      filterx_expr_deinit(self->lhs, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-void
-filterx_string_slicing_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSlicingOperator *self = (FilterXSlicingOperator *) s;
-
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit(self->start, cfg);
-  filterx_expr_deinit(self->end, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static gboolean
 filterx_string_slicing_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -269,8 +234,6 @@ filterx_string_slicing_new(FilterXExpr *lhs, FilterXExpr *start, FilterXExpr *en
 
   filterx_expr_init_instance(&self->super, "string_slicing");
   self->super.optimize = filterx_string_slicing_optimize;
-  self->super.init = filterx_string_slicing_init;
-  self->super.deinit = filterx_string_slicing_deinit;
   self->super.walk_children = filterx_string_slicing_walk;
   self->super.free_fn = filterx_string_slicing_free;
 

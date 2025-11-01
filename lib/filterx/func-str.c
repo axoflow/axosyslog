@@ -241,33 +241,6 @@ error:
   return FALSE;
 }
 
-static gboolean
-_expr_affix_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprAffix *self = (FilterXExprAffix *) s;
-
-  if (!filterx_expr_init(self->haystack, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->needle.expr, cfg))
-    {
-      filterx_expr_deinit(self->haystack, cfg);
-      return FALSE;
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_expr_affix_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprAffix *self = (FilterXExprAffix *) s;
-
-  filterx_expr_deinit(self->haystack, cfg);
-  filterx_expr_deinit(self->needle.expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _expr_affix_free(FilterXExpr *s)
 {
@@ -490,8 +463,6 @@ _function_affix_new(FilterXFunctionArgs *args,
   filterx_function_init_instance(&self->super, affix_name);
   self->super.super.eval = _expr_affix_eval;
   self->super.super.optimize = _expr_affix_optimize;
-  self->super.super.init = _expr_affix_init;
-  self->super.super.deinit = _expr_affix_deinit;
   self->super.super.walk_children = _expr_affix_walk;
   self->super.super.free_fn = _expr_affix_free;
 
@@ -690,35 +661,6 @@ exit:
   return filterx_function_optimize_method(&self->super);
 }
 
-static gboolean
-_strcasecmp_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
-
-  if (!self->a_literal && !filterx_expr_init(self->a.expr, cfg))
-    return FALSE;
-
-  if (!self->b_literal && !filterx_expr_init(self->b.expr, cfg))
-    {
-      filterx_expr_deinit(self->a.expr, cfg);
-      return FALSE;
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_strcasecmp_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
-
-  if (!self->a_literal)
-    filterx_expr_deinit(self->a.expr, cfg);
-  if (!self->b_literal)
-    filterx_expr_deinit(self->b.expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _strcasecmp_free(FilterXExpr *s)
 {
@@ -762,8 +704,6 @@ filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "strcasecmp");
   self->super.super.eval = _strcasecmp_eval;
   self->super.super.optimize = _strcasecmp_optimize;
-  self->super.super.init = _strcasecmp_init;
-  self->super.super.deinit = _strcasecmp_deinit;
   self->super.super.walk_children = _strcasecmp_walk;
   self->super.super.free_fn = _strcasecmp_free;
 
