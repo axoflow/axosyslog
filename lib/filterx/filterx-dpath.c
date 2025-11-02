@@ -306,11 +306,8 @@ filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_d
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
-  if (self->variable)
-    {
-      if (!filterx_expr_visit(&self->variable, f, user_data))
-        return FALSE;
-    }
+  if (!filterx_expr_visit(&self->variable, f, user_data))
+    return FALSE;
 
   for (GList *elem = self->dpath_elements; elem; elem = elem->next)
     {
