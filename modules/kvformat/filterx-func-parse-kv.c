@@ -315,7 +315,7 @@ _parse_kv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
 
-  FilterXExpr *exprs[] = { self->msg, NULL };
+  FilterXExpr **exprs[] = { &self->msg };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

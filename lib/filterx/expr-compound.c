@@ -241,7 +241,7 @@ filterx_compound_expr_add_list_ref(FilterXExpr *s, GList *expr_list)
 }
 
 static gboolean
-_expr_walk_cb(FilterXExpr *value, gpointer user_data)
+_expr_walk_cb(FilterXExpr **value, gpointer user_data)
 {
   gpointer *args = user_data;
   FilterXExprWalkFunc f = args[0];
@@ -256,7 +256,7 @@ _compound_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
   gpointer args[] =  { f, user_data };
-  return filterx_expr_list_foreach(&self->exprs, _expr_walk_cb, args);
+  return filterx_expr_list_foreach_ref(&self->exprs, _expr_walk_cb, args);
 }
 
 FilterXExpr *

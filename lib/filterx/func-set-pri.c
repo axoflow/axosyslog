@@ -111,7 +111,7 @@ _set_pri_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionSetPri *self = (FilterXFunctionSetPri *) s;
 
-  FilterXExpr *exprs[] = { self->pri_expr, NULL };
+  FilterXExpr **exprs[] = { &self->pri_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

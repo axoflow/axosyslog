@@ -210,7 +210,7 @@ _simple_function_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (guint64 i = 0; i < self->args->len; i++)
     {
-      FilterXExpr *arg = g_ptr_array_index(self->args, i);
+      FilterXExpr **arg = (FilterXExpr **) &g_ptr_array_index(self->args, i);
 
       if (!filterx_expr_visit(arg, f, user_data))
         return FALSE;

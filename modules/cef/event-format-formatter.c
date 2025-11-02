@@ -371,7 +371,7 @@ _event_format_formatter_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer use
 {
   FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
 
-  FilterXExpr *exprs[] = { self->msg, NULL };
+  FilterXExpr **exprs[] = { &self->msg };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

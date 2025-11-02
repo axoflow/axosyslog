@@ -321,7 +321,7 @@ _regexp_search_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
 
-  FilterXExpr *exprs[] = { self->lhs, self->pattern_expr, NULL };
+  FilterXExpr **exprs[] = { &self->lhs, &self->pattern_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

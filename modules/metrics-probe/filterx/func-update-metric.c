@@ -240,7 +240,7 @@ _update_metric_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
 
-  FilterXExpr *exprs[] = { self->increment.expr, NULL };
+  FilterXExpr **exprs[] = { &self->increment.expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

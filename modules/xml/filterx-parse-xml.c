@@ -739,7 +739,7 @@ _parse_xml_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
 
-  FilterXExpr *exprs[] = { self->xml_expr, NULL };
+  FilterXExpr **exprs[] = { &self->xml_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

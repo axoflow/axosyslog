@@ -181,7 +181,7 @@ _set_timestamp_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionSetTimestamp *self = (FilterXFunctionSetTimestamp *) s;
 
-  FilterXExpr *exprs[] = { self->datetime_expr, NULL };
+  FilterXExpr **exprs[] = { &self->datetime_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

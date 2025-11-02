@@ -109,7 +109,7 @@ _regexp_match_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
 
-  FilterXExpr *exprs[] = { self->lhs, NULL };
+  FilterXExpr **exprs[] = { &self->lhs };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

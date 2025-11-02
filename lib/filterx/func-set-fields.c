@@ -625,7 +625,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   if (self->dict)
     {
-      if (!filterx_expr_visit(self->dict, f, user_data))
+      if (!filterx_expr_visit(&self->dict, f, user_data))
         return FALSE;
     }
 
@@ -637,7 +637,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
         {
           for (guint j = 0; j < field->overrides->len; j++)
             {
-              FilterXExpr *expr = g_ptr_array_index(field->overrides, j);
+              FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->overrides, j);
               if (!filterx_expr_visit(expr, f, user_data))
                 return FALSE;
             }
@@ -647,7 +647,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
         {
           for (guint j = 0; j < field->defaults->len; j++)
             {
-              FilterXExpr *expr = g_ptr_array_index(field->defaults, j);
+              FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->defaults, j);
               if (!filterx_expr_visit(expr, f, user_data))
                 return FALSE;
             }
@@ -657,7 +657,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
         {
           for (guint j = 0; j < field->replacements->len; j++)
             {
-              FilterXExpr *expr = g_ptr_array_index(field->replacements, j);
+              FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->replacements, j);
               if (!filterx_expr_visit(expr, f, user_data))
                 return FALSE;
             }

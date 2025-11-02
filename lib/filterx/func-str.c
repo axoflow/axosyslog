@@ -467,7 +467,7 @@ _expr_affix_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXExprAffix *self = (FilterXExprAffix *) s;
 
-  FilterXExpr *exprs[] = { self->haystack, self->needle.expr, NULL };
+  FilterXExpr **exprs[] = { &self->haystack, &self->needle.expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
@@ -743,12 +743,12 @@ _strcasecmp_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   if (!self->a_literal)
     {
-      if (!filterx_expr_visit(self->a.expr, f, user_data))
+      if (!filterx_expr_visit(&self->a.expr, f, user_data))
         return FALSE;
     }
   if (!self->b_literal)
     {
-      if (!filterx_expr_visit(self->b.expr, f, user_data))
+      if (!filterx_expr_visit(&self->b.expr, f, user_data))
         return FALSE;
     }
   return TRUE;

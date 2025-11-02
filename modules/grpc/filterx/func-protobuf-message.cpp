@@ -173,7 +173,7 @@ _protobuf_message_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data
 {
   FilterXProtobufMessage *self = (FilterXProtobufMessage *) s;
 
-  FilterXExpr *exprs[] = { self->input, NULL };
+  FilterXExpr **exprs[] = { &self->input };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

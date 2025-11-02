@@ -278,7 +278,7 @@ filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXUnaryOp *self = (FilterXUnaryOp *) s;
 
-  return filterx_expr_visit(self->operand, f, user_data);
+  return filterx_expr_visit(&self->operand, f, user_data);
 }
 
 void
@@ -345,10 +345,10 @@ filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
 
-  if (!filterx_expr_visit(self->lhs, f, user_data))
+  if (!filterx_expr_visit(&self->lhs, f, user_data))
     return FALSE;
 
-  if (!filterx_expr_visit(self->rhs, f, user_data))
+  if (!filterx_expr_visit(&self->rhs, f, user_data))
     return FALSE;
 
   return TRUE;

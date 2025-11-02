@@ -173,7 +173,7 @@ _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXGetSubscript *self = (FilterXGetSubscript *) s;
 
-  FilterXExpr *exprs[] = { self->operand, self->key, NULL };
+  FilterXExpr **exprs[] = { &self->operand, &self->key };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

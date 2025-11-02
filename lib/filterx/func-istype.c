@@ -112,7 +112,7 @@ _istype_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
 
-  FilterXExpr *exprs[] = { self->object_expr, NULL };
+  FilterXExpr **exprs[] = { &self->object_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

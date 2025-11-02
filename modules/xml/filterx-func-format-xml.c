@@ -354,7 +354,7 @@ _format_xml_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFormatXML *self = (FilterXFunctionFormatXML *) s;
 
-  FilterXExpr *exprs[] = { self->input, NULL };
+  FilterXExpr **exprs[] = { &self->input };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

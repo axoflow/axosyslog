@@ -254,7 +254,7 @@ _format_kv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFormatKV *self = (FilterXFunctionFormatKV *) s;
 
-  FilterXExpr *exprs[] = { self->kvs, NULL };
+  FilterXExpr **exprs[] = { &self->kvs };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

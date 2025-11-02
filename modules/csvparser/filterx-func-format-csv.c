@@ -323,7 +323,7 @@ _format_csv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
 
-  FilterXExpr *exprs[] = { self->input, self->columns, NULL };
+  FilterXExpr **exprs[] = { &self->input, &self->columns };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

@@ -258,7 +258,7 @@ _flatten_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
 
-  FilterXExpr *exprs[] = { self->dict_expr, NULL };
+  FilterXExpr **exprs[] = { &self->dict_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

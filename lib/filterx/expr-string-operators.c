@@ -251,7 +251,7 @@ filterx_string_slicing_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user
 {
   FilterXSlicingOperator *self = (FilterXSlicingOperator *) s;
 
-  FilterXExpr *exprs[] = { self->lhs, self->start, self->end, NULL };
+  FilterXExpr **exprs[] = { &self->lhs, &self->start, &self->end };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

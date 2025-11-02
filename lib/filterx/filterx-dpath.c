@@ -341,7 +341,7 @@ filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_d
 
   if (self->variable)
     {
-      if (!filterx_expr_visit(self->variable, f, user_data))
+      if (!filterx_expr_visit(&self->variable, f, user_data))
         return FALSE;
     }
 
@@ -350,7 +350,7 @@ filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_d
       FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
       if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
         {
-          if (!filterx_expr_visit(dpath_elem->expr, f, user_data))
+          if (!filterx_expr_visit(&dpath_elem->expr, f, user_data))
             return FALSE;
         }
     }

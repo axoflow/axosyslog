@@ -28,7 +28,7 @@
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
-typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr *expr, gpointer user_data);
+typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr **expr, gpointer user_data);
 
 typedef enum _FilterXExprWalkOrder
 {
@@ -217,9 +217,9 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
 }
 
 static inline gboolean
-filterx_expr_visit(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data)
+filterx_expr_visit(FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
-  return f(self, user_data);
+  return f(expr, user_data);
 }
 
 static inline gboolean

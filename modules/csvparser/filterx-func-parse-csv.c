@@ -543,7 +543,7 @@ _parse_csv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
 
-  FilterXExpr *exprs[] = { self->msg, self->columns.expr, self->string_delimiters, NULL };
+  FilterXExpr **exprs[] = { &self->msg, &self->columns, &self->string_delimiters };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

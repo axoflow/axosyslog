@@ -212,7 +212,7 @@ _set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXSetSubscript *self = (FilterXSetSubscript *) s;
 
-  FilterXExpr *exprs[] = { self->object, self->key, self->new_value, NULL };
+  FilterXExpr **exprs[] = { &self->object, &self->key, &self->new_value };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

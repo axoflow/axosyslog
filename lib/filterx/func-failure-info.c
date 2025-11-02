@@ -255,7 +255,7 @@ _failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
 {
   FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
 
-  FilterXExpr *exprs[] = { self->metadata_expr, NULL };
+  FilterXExpr **exprs[] = { &self->metadata_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

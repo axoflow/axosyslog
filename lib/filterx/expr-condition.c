@@ -210,7 +210,7 @@ _conditional_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXConditional *self = (FilterXConditional *) s;
 
-  FilterXExpr *exprs[] = { self->condition, self->true_branch, self->false_branch, NULL };
+  FilterXExpr **exprs[] = { &self->condition, &self->true_branch, &self->false_branch };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

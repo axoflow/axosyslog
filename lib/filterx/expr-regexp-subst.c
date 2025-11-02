@@ -415,7 +415,7 @@ _subst_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFuncRegexpSubst *self = (FilterXFuncRegexpSubst *) s;
 
-  FilterXExpr *exprs[] = { self->string_expr, self->pattern_expr, NULL };
+  FilterXExpr **exprs[] = { &self->string_expr, &self->pattern_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

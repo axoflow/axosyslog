@@ -205,7 +205,7 @@ _dict_to_pairs_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
 
-  FilterXExpr *exprs[] = { self->dict_expr, NULL };
+  FilterXExpr **exprs[] = { &self->dict_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

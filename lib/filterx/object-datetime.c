@@ -428,7 +428,7 @@ _strptime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
 
-  FilterXExpr *exprs[] = { self->time_str_expr, NULL };
+  FilterXExpr **exprs[] = { &self->time_str_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
@@ -608,7 +608,7 @@ _strftime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
 
-  FilterXExpr *exprs[] = { self->datetime_expr, NULL };
+  FilterXExpr **exprs[] = { &self->datetime_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

@@ -527,7 +527,7 @@ _unset_empties_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
 
-  FilterXExpr *exprs[] = { self->object_expr, NULL };
+  FilterXExpr **exprs[] = { &self->object_expr };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {

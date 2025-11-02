@@ -144,7 +144,7 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
 
-  FilterXExpr *exprs[] = { self->operand, NULL };
+  FilterXExpr **exprs[] = { &self->operand };
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
