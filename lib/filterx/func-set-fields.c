@@ -465,11 +465,8 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
 
-  if (self->dict)
-    {
-      if (!filterx_expr_visit(&self->dict, f, user_data))
-        return FALSE;
-    }
+  if (!filterx_expr_visit(&self->dict, f, user_data))
+    return FALSE;
 
   for (guint i = 0; i < self->fields->len; i++)
     {
