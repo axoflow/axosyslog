@@ -249,8 +249,7 @@ filterx_dpath_lvalue_optimize(FilterXExpr *s)
         {
           if (filterx_expr_is_literal(dpath_elem->expr))
             {
-              /* FIXME: calling eval from optimize is not safe! */
-              FilterXObject *literal = filterx_expr_eval(dpath_elem->expr);
+              FilterXObject *literal = filterx_literal_get_value(dpath_elem->expr);
               if (!literal)
                 return NULL;
 
