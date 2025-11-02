@@ -93,42 +93,6 @@ filterx_expr_get_text(FilterXExpr *self)
   return "n/a";
 }
 
-FilterXExpr *
-filterx_expr_optimize(FilterXExpr *self)
-{
-  if (!self)
-    return NULL;
-
-  if (self->optimized)
-    return self;
-
-  self->optimized = TRUE;
-  g_assert(!self->inited);
-
-  if (!self->optimize)
-    return self;
-
-  FilterXExpr *optimized = self->optimize(self);
-  if (!optimized)
-    return self;
-
-  /* the new expression may be also be optimized */
-  optimized = filterx_expr_optimize(optimized);
-
-  msg_trace("FilterX: expression optimized",
-            filterx_expr_format_location_tag(self),
-            evt_tag_str("old_type", self->type),
-            evt_tag_str("new_type", optimized->type));
-  if (self->lloc)
-    {
-      /* copy location information to the optimized representation */
-      filterx_expr_set_location_with_text(optimized, self->lloc, self->expr_text);
-    }
-  /* consume original expression */
-  filterx_expr_unref(self);
-  return optimized;
-}
-
 static void
 _init_sc_key_name(FilterXExpr *self, gchar *buf, gsize buf_len)
 {
@@ -236,6 +200,42 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
     g_assert_not_reached();
 
   self->inited = FALSE;
+}
+
+FilterXExpr *
+filterx_expr_optimize(FilterXExpr *self)
+{
+  if (!self)
+    return NULL;
+
+  if (self->optimized)
+    return self;
+
+  self->optimized = TRUE;
+  g_assert(!self->inited);
+
+  if (!self->optimize)
+    return self;
+
+  FilterXExpr *optimized = self->optimize(self);
+  if (!optimized)
+    return self;
+
+  /* the new expression may be also be optimized */
+  optimized = filterx_expr_optimize(optimized);
+
+  msg_trace("FilterX: expression optimized",
+            filterx_expr_format_location_tag(self),
+            evt_tag_str("old_type", self->type),
+            evt_tag_str("new_type", optimized->type));
+  if (self->lloc)
+    {
+      /* copy location information to the optimized representation */
+      filterx_expr_set_location_with_text(optimized, self->lloc, self->expr_text);
+    }
+  /* consume original expression */
+  filterx_expr_unref(self);
+  return optimized;
 }
 
 void
