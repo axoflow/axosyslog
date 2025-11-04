@@ -175,10 +175,10 @@ SourceDriver::reload_restore(gint *num_workers)
   if (!reload_entry)
     return NULL;
 
-  this->trace_service = std::move(reload_entry->trace_service),
-        this->logs_service = std::move(reload_entry->logs_service),
-              this->metrics_service = std::move(reload_entry->metrics_service),
-                    this->server = std::move(reload_entry->server);
+  this->trace_service = std::move(reload_entry->trace_service);
+  this->logs_service = std::move(reload_entry->logs_service);
+  this->metrics_service = std::move(reload_entry->metrics_service);
+  this->server = std::move(reload_entry->server);
   LogThreadedSourceWorker **workers = reload_entry->workers;
   *num_workers = reload_entry->num_workers;
 
