@@ -263,15 +263,6 @@ typedef struct FilterXFunctionStrptime_
   GPtrArray *formats;
 } FilterXFunctionStrptime;
 
-static FilterXExpr *
-_strptime_optimize(FilterXExpr *s)
-{
-  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
-
-  self->time_str_expr = filterx_expr_optimize(self->time_str_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static FilterXObject *
 _strptime_eval(FilterXExpr *s)
 {
@@ -425,7 +416,6 @@ filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrptime *self = g_new0(FilterXFunctionStrptime, 1);
   filterx_function_init_instance(&self->super, "strptime");
-  self->super.super.optimize = _strptime_optimize;
   self->super.super.eval = _strptime_eval;
   self->super.super.walk_children = _strptime_walk;
   self->super.super.free_fn = _strptime_free;
@@ -485,15 +475,6 @@ _strftime_eval(FilterXExpr *s)
     return filterx_null_new();
 
   return filterx_string_new(result_str, date_size);
-}
-
-static FilterXExpr *
-_strftime_optimize(FilterXExpr *s)
-{
-  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
-
-  self->datetime_expr = filterx_expr_optimize(self->datetime_expr);
-  return filterx_function_optimize_method(&self->super);
 }
 
 static void
@@ -585,7 +566,6 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "strftime");
 
   self->super.super.eval = _strftime_eval;
-  self->super.super.optimize = _strftime_optimize;
   self->super.super.walk_children = _strftime_walk;
   self->super.super.free_fn = _strftime_free;
 

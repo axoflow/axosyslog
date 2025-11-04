@@ -69,15 +69,6 @@ _set_pri_eval(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
-static FilterXExpr *
-_set_pri_optimize(FilterXExpr *s)
-{
-  FilterXFunctionSetPri *self = (FilterXFunctionSetPri *) s;
-
-  self->pri_expr = filterx_expr_optimize(self->pri_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _set_pri_free(FilterXExpr *s)
 {
@@ -125,7 +116,6 @@ filterx_function_set_pri_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "set_pri");
 
   self->super.super.eval = _set_pri_eval;
-  self->super.super.optimize = _set_pri_optimize;
   self->super.super.walk_children = _set_pri_walk;
   self->super.super.free_fn = _set_pri_free;
 

@@ -193,14 +193,10 @@ filterx_string_slicing_free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
-FilterXExpr *
+static FilterXExpr *
 filterx_string_slicing_optimize(FilterXExpr *s)
 {
   FilterXSlicingOperator *self = (FilterXSlicingOperator *) s;
-
-  self->lhs = filterx_expr_optimize(self->lhs);
-  self->start = filterx_expr_optimize(self->start);
-  self->end = filterx_expr_optimize(self->end);
 
   if (filterx_expr_is_literal(self->start))
     self->start_literal = filterx_literal_get_value(self->start);

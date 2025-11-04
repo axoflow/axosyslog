@@ -38,16 +38,13 @@ struct FilterXLiteralElement_
 {
   FilterXExpr *key;
   FilterXExpr *value;
-  guint8 nullv:1,
-         literal:1;
+  guint8 nullv:1;
 };
 
-static void
-_literal_element_optimize(FilterXLiteralElement *self)
+static gboolean
+_literal_element_is_literal(FilterXLiteralElement *self)
 {
-  self->key = filterx_expr_optimize(self->key);
-  self->value = filterx_expr_optimize(self->value);
-  self->literal = (!self->key || filterx_expr_is_literal(self->key)) && filterx_expr_is_literal(self->value);
+  return (!self->key || filterx_expr_is_literal(self->key)) && filterx_expr_is_literal(self->value);
 }
 
 static void
@@ -207,8 +204,7 @@ _literal_container_optimize(FilterXExpr *s)
     {
       FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
 
-      _literal_element_optimize(elem);
-      if (!elem->literal)
+      if (!_literal_element_is_literal(elem))
         literal = FALSE;
     }
   if (literal)

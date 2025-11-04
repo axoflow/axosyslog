@@ -133,15 +133,6 @@ _failure_info_clear_eval(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
-static FilterXExpr *
-_failure_info_meta_optimize(FilterXExpr *s)
-{
-  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
-
-  self->metadata_expr = filterx_expr_optimize(self->metadata_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static FilterXObject *
 _failure_info_meta_eval(FilterXExpr *s)
 {
@@ -318,7 +309,6 @@ filterx_fn_failure_info_meta_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoMeta *self = g_new0(FilterXFunctionFailureInfoMeta, 1);
   filterx_function_init_instance(&self->super, "failure_info_meta");
-  self->super.super.optimize = _failure_info_meta_optimize;
   self->super.super.eval = _failure_info_meta_eval;
   self->super.super.walk_children = _failure_info_meta_walk;
   self->super.super.free_fn = _failure_info_meta_free;

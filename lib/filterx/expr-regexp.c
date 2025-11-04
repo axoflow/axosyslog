@@ -64,15 +64,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_regexp_match_optimize(FilterXExpr *s)
-{
-  FilterXExprRegexpMatch *self = (FilterXExprRegexpMatch *) s;
-
-  self->lhs = filterx_expr_optimize(self->lhs);
-  return NULL;
-}
-
 static void
 _regexp_match_free(FilterXExpr *s)
 {
@@ -108,7 +99,6 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
 
   filterx_expr_init_instance(&self->super, "regexp_match");
   self->super.eval = _regexp_match_eval;
-  self->super.optimize = _regexp_match_optimize;
   self->super.walk_children = _regexp_match_walk;
   self->super.free_fn = _regexp_match_free;
 

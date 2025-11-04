@@ -157,22 +157,6 @@ filterx_compound_expr_eval_ext(FilterXExpr *s, gsize start_index)
 }
 
 static gboolean
-_optimize_expr(FilterXExpr **pexpr, gpointer user_data)
-{
-  *pexpr = filterx_expr_optimize(*pexpr);
-  return TRUE;
-}
-
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-
-  filterx_expr_list_foreach_ref(&self->exprs, _optimize_expr, NULL);
-  return NULL;
-}
-
-static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
@@ -244,7 +228,6 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 
   filterx_expr_init_instance(&self->super, "compound");
   self->super.eval = _eval_compound;
-  self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;

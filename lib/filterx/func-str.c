@@ -171,7 +171,6 @@ _string_with_cache_new(FilterXExpr *expr, gboolean ignore_case)
 {
   FilterXStringWithCache *self = g_new0(FilterXStringWithCache, 1);
   self->expr = filterx_expr_ref(expr);
-  self->expr = filterx_expr_optimize(self->expr);
 
   if (!_string_with_cache_fill_cache(self, ignore_case))
     {
@@ -373,9 +372,6 @@ static FilterXExpr *
 _expr_affix_optimize(FilterXExpr *s)
 {
   FilterXExprAffix *self = (FilterXExprAffix *) s;
-
-  self->haystack = filterx_expr_optimize(self->haystack);
-  self->needle.expr = filterx_expr_optimize(self->needle.expr);
 
   if (!_expr_affix_cache_needle(self))
     goto exit;
@@ -621,9 +617,6 @@ static FilterXExpr *
 _strcasecmp_optimize(FilterXExpr *s)
 {
   FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
-
-  self->a.expr = filterx_expr_optimize(self->a.expr);
-  self->b.expr = filterx_expr_optimize(self->b.expr);
 
   if (filterx_expr_is_literal(self->a.expr) && filterx_expr_is_literal(self->b.expr))
     {

@@ -125,15 +125,6 @@ _eval(FilterXExpr *s)
   return success ? filterx_string_new(formatted->str, formatted->len) : NULL;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionFormatKV *self = (FilterXFunctionFormatKV *) s;
-
-  self->kvs = filterx_expr_optimize(self->kvs);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -252,7 +243,6 @@ filterx_function_format_kv_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "format_kv");
 
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _format_kv_walk;
   self->super.super.free_fn = _free;
   self->value_separator = '=';

@@ -104,7 +104,6 @@ exit:
 static void
 _optimize_increment(FilterXFunctionUpdateMetric *self)
 {
-  self->increment.expr = filterx_expr_optimize(self->increment.expr);
   if (!self->increment.expr || !filterx_expr_is_literal(self->increment.expr))
     return;
 

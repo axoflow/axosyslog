@@ -247,15 +247,6 @@ _eval_fx_unset_empties(FilterXExpr *s)
   return success ? filterx_boolean_new(TRUE) : NULL;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
-
-  self->object_expr = filterx_expr_optimize(self->object_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -524,7 +515,6 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionUnsetEmpties *self = g_new0(FilterXFunctionUnsetEmpties, 1);
   filterx_function_init_instance(&self->super, "unset_empties");
   self->super.super.eval = _eval_fx_unset_empties;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _unset_empties_walk;
   self->super.super.free_fn = _free;
 

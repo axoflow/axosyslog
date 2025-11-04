@@ -150,17 +150,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
-
-  self->object = filterx_expr_optimize(self->object);
-  self->new_value = filterx_expr_optimize(self->new_value);
-  self->key = filterx_expr_optimize(self->key);
-  return NULL;
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -195,7 +184,6 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
 
   filterx_expr_init_instance(&self->super, "set_subscript");
   self->super.eval = _set_subscript_eval;
-  self->super.optimize = _optimize;
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
   self->object = object;

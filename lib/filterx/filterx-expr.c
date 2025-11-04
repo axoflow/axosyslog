@@ -202,17 +202,25 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
   self->inited = FALSE;
 }
 
+static gboolean
+_optimize_child_exprs(FilterXExpr **expr, gpointer user_data)
+{
+  *expr = filterx_expr_optimize(*expr);
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_expr_optimize(FilterXExpr *self)
 {
-  if (!self)
-    return NULL;
-
-  if (self->optimized)
+  if (!self || self->optimized)
     return self;
 
   self->optimized = TRUE;
   g_assert(!self->inited);
+
+  /* optimize children first */
+  if (!filterx_expr_walk_children(self, _optimize_child_exprs, NULL))
+    g_assert_not_reached();
 
   if (!self->optimize)
     return self;

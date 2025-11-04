@@ -165,15 +165,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
-
-  self->msg = filterx_expr_optimize(self->msg);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -313,7 +304,6 @@ filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
   filterx_function_init_instance(&self->super, "parse_kv");
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _parse_kv_walk;
   self->super.super.free_fn = _free;
   self->value_separator = '=';

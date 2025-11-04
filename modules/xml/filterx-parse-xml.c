@@ -696,15 +696,6 @@ _extract_args(FilterXFunctionParseXml *self, FilterXFunctionArgs *args, GError *
   return TRUE;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionParseXml *self = (FilterXFunctionParseXml *) s;
-
-  self->xml_expr = filterx_expr_optimize(self->xml_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -737,7 +728,6 @@ filterx_function_parse_xml_new(FilterXFunctionArgs *args, GError **error)
 
   filterx_function_init_instance(&self->super, "parse_xml");
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _parse_xml_walk;
   self->super.super.free_fn = _free;
 

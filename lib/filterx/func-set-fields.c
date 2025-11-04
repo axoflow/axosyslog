@@ -47,36 +47,6 @@ typedef struct Field_
 } Field;
 
 static void
-_field_optimize(Field *self)
-{
-  if (self->overrides)
-    {
-      for (guint i = 0; i < self->overrides->len; i++)
-        {
-          FilterXExpr *override = g_ptr_array_index(self->overrides, i);
-          g_ptr_array_index(self->overrides, i) = filterx_expr_optimize(override);
-        }
-    }
-
-  if (self->defaults)
-    {
-      for (guint i = 0; i < self->defaults->len; i++)
-        {
-          FilterXExpr *def = g_ptr_array_index(self->defaults, i);
-          g_ptr_array_index(self->defaults, i) = filterx_expr_optimize(def);
-        }
-    }
-  if (self->replacements)
-    {
-      for (guint i = 0; i < self->replacements->len; i++)
-        {
-          FilterXExpr *def = g_ptr_array_index(self->replacements, i);
-          g_ptr_array_index(self->replacements, i) = filterx_expr_optimize(def);
-        }
-    }
-}
-
-static void
 _field_destroy(Field *self)
 {
   filterx_object_unref(self->key);
@@ -219,22 +189,6 @@ _eval_fx_set_fields(FilterXExpr *s)
 error:
   filterx_object_unref(dict);
   return NULL;
-}
-
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
-
-  self->dict = filterx_expr_optimize(self->dict);
-
-  for (guint i = 0; i < self->fields->len; i++)
-    {
-      Field *field = &g_array_index(self->fields, Field, i);
-      _field_optimize(field);
-    }
-
-  return filterx_function_optimize_method(&self->super);
 }
 
 static void
@@ -562,7 +516,6 @@ filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "set_fields");
 
   self->super.super.eval = _eval_fx_set_fields;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _set_fields_walk;
   self->super.super.free_fn = _free;
   self->super.super.ignore_falsy_result = TRUE;

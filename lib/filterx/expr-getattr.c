@@ -101,15 +101,6 @@ _isset(FilterXExpr *s)
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXGetAttr *self = (FilterXGetAttr *) s;
-
-  self->operand = filterx_expr_optimize(self->operand);
-  return NULL;
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -145,7 +136,6 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.eval = _eval_getattr;
   self->super.unset = _unset;
   self->super.is_set = _isset;
-  self->super.optimize = _optimize;
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
   self->operand = operand;

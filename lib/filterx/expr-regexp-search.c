@@ -209,16 +209,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_regexp_search_optimize(FilterXExpr *s)
-{
-  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
-
-  self->lhs = filterx_expr_optimize(self->lhs);
-  self->pattern_expr = filterx_expr_optimize(self->pattern_expr);
-  return NULL;
-}
-
 static gboolean
 _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 {
@@ -322,7 +312,6 @@ filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
 
   filterx_function_init_instance(&self->super, "regexp_search");
   self->super.super.eval = _eval_regexp_search;
-  self->super.super.optimize = _regexp_search_optimize;
   self->super.super.init = _regexp_search_init;
   self->super.super.walk_children = _regexp_search_walk;
   self->super.super.free_fn = _regexp_search_free;

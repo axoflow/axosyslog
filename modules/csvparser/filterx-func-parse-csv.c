@@ -262,18 +262,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionParseCSV *self = (FilterXFunctionParseCSV *) s;
-
-  self->msg = filterx_expr_optimize(self->msg);
-  self->columns = filterx_expr_optimize(self->columns);
-  self->string_delimiters = filterx_expr_optimize(self->string_delimiters);
-
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -526,7 +514,6 @@ filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionParseCSV *self = g_new0(FilterXFunctionParseCSV, 1);
   filterx_function_init_instance(&self->super, "parse_csv");
   self->super.super.eval = _eval_parse_csv;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _parse_csv_walk;
   self->super.super.free_fn = _free;
   csv_scanner_options_set_delimiters(&self->options, ",");

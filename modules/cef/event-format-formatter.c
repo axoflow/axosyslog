@@ -311,14 +311,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
-
-  self->msg = filterx_expr_optimize(self->msg);
-  return filterx_function_optimize_method(&self->super);
-}
 
 static void
 _free(FilterXExpr *s)
@@ -370,7 +362,6 @@ filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormat
   filterx_function_init_instance(&self->super, fn_name);
 
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _event_format_formatter_walk;
   self->super.super.free_fn = _free;
 

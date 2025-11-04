@@ -45,19 +45,6 @@ _eval_unset(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXExprUnset *self = (FilterXExprUnset *) s;
-
-  for (guint i = 0; i < self->exprs->len; i++)
-    {
-      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
-      *expr = filterx_expr_optimize(*expr);
-    }
-  return NULL;
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -89,7 +76,6 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "unset");
 
   self->super.super.eval = _eval_unset;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _unset_walk;
   self->super.super.free_fn = _free;
 

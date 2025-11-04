@@ -242,16 +242,14 @@ filterx_dpath_lvalue_optimize(FilterXExpr *s)
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
-  self->variable = filterx_expr_optimize(self->variable);
   for (GList *elem = self->dpath_elements; elem; elem = elem->next)
     {
       FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
       if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
         {
-          dpath_elem->expr = filterx_expr_optimize(dpath_elem->expr);
-
           if (filterx_expr_is_literal(dpath_elem->expr))
             {
+              /* FIXME: calling eval from optimize is not safe! */
               FilterXObject *literal = filterx_expr_eval(dpath_elem->expr);
               if (!literal)
                 return NULL;

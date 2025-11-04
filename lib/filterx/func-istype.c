@@ -66,8 +66,6 @@ _optimize(FilterXExpr *s)
 {
   FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
 
-  self->object_expr = filterx_expr_optimize(self->object_expr);
-
   if (filterx_expr_is_literal(self->object_expr))
     {
       FilterXObject *object = filterx_literal_get_value(self->object_expr);

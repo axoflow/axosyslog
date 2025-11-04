@@ -122,15 +122,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_dict_to_pairs_optimize(FilterXExpr *s)
-{
-  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
-
-  self->dict_expr = filterx_expr_optimize(self->dict_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _dict_to_pairs_free(FilterXExpr *s)
 {
@@ -202,7 +193,6 @@ filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionDictToPairs *self = g_new0(FilterXFunctionDictToPairs, 1);
   filterx_function_init_instance(&self->super, "dict_to_pairs");
 
-  self->super.super.optimize = _dict_to_pairs_optimize;
   self->super.super.eval = _dict_to_pairs_eval;
   self->super.super.walk_children = _dict_to_pairs_walk;
   self->super.super.free_fn = _dict_to_pairs_free;

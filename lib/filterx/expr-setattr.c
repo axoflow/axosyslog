@@ -127,16 +127,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXSetAttr *self = (FilterXSetAttr *) s;
-
-  self->object = filterx_expr_optimize(self->object);
-  self->new_value = filterx_expr_optimize(self->new_value);
-  return NULL;
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -172,7 +162,6 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
 
   filterx_expr_init_instance(&self->super, "setattr");
   self->super.eval = _setattr_eval;
-  self->super.optimize = _optimize;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
   self->object = object;

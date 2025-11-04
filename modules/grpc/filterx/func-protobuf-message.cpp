@@ -83,16 +83,6 @@ _eval(FilterXExpr *s)
   return filterx_protobuf_new(protobuf_string.c_str(), protobuf_string.length());
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXProtobufMessage *self = (FilterXProtobufMessage *) s;
-
-  self->input = filterx_expr_optimize(self->input);
-
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -170,7 +160,6 @@ filterx_function_protobuf_message_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "protobuf_message");
 
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
   self->super.super.walk_children = _protobuf_message_walk;
   self->super.super.free_fn = _free;
 

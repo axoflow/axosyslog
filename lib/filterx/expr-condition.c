@@ -107,22 +107,10 @@ _eval_conditional(FilterXExpr *s)
   return result;
 }
 
-static void
-_optimize_branches(FilterXExpr *s)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-
-  self->condition = filterx_expr_optimize(self->condition);
-  self->true_branch = filterx_expr_optimize(self->true_branch);
-  self->false_branch = filterx_expr_optimize(self->false_branch);
-}
-
 static FilterXExpr *
 _optimize(FilterXExpr *s)
 {
   FilterXConditional *self = (FilterXConditional *) s;
-
-  _optimize_branches(s);
 
   if (!filterx_expr_is_literal(self->condition))
     return NULL;
