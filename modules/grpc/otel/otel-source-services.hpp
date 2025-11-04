@@ -50,13 +50,6 @@ using opentelemetry::proto::metrics::v1::ResourceMetrics;
 using opentelemetry::proto::metrics::v1::ScopeMetrics;
 using opentelemetry::proto::metrics::v1::Metric;
 
-class AsyncServiceCallInterface
-{
-public:
-  virtual void Proceed(bool ok) = 0;
-  virtual ~AsyncServiceCallInterface() = default;
-};
-
 template <class S, class Req, class Res>
 class AsyncServiceCall final : public AsyncServiceCallInterface
 {
@@ -131,7 +124,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
               worker.post(msg);
 
               msgs_in_fetch_round++;
-              if (msgs_in_fetch_round == worker.driver.get_fetch_limit())
+              if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
                 {
                   log_threaded_source_worker_close_batch(&worker.super->super);
                   msgs_in_fetch_round = 0;
@@ -198,7 +191,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
               worker.post(msg);
 
               msgs_in_fetch_round++;
-              if (msgs_in_fetch_round == worker.driver.get_fetch_limit())
+              if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
                 {
                   log_threaded_source_worker_close_batch(&worker.super->super);
                   msgs_in_fetch_round = 0;
@@ -257,7 +250,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
               worker.post(msg);
 
               msgs_in_fetch_round++;
-              if (msgs_in_fetch_round == worker.driver.get_fetch_limit())
+              if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
                 {
                   log_threaded_source_worker_close_batch(&worker.super->super);
                   msgs_in_fetch_round = 0;

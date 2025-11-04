@@ -24,6 +24,7 @@
 #include "grpc-source.hpp"
 
 #include <string>
+#include <sstream>
 
 using namespace syslogng::grpc;
 
@@ -35,7 +36,7 @@ SourceDriver::SourceDriver(GrpcSourceDriver *s)
   credentials_builder_wrapper.self = &credentials_builder;
 }
 
-gboolean
+bool
 SourceDriver::init()
 {
   if (!this->port)
@@ -58,7 +59,7 @@ SourceDriver::init()
   return log_threaded_source_driver_init_method(&this->super->super.super.super.super);
 }
 
-gboolean
+bool
 SourceDriver::deinit()
 {
   return log_threaded_source_driver_deinit_method(&super->super.super.super.super);
@@ -82,6 +83,21 @@ SourceDriver::prepare_server_builder(::grpc::ServerBuilder &builder)
     builder.AddChannelArgument(nv.first, nv.second);
 
   return true;
+}
+
+std::string
+SourceDriver::get_unique_id_fragment()
+{
+  std::ostringstream id;
+
+  id << this->port << ", " << this->credentials_builder.get_unique_id();
+
+  for (auto nv : int_extra_channel_args)
+    id << ", " << nv.first << "=" << nv.second;
+  for (auto nv : string_extra_channel_args)
+    id << ", " << nv.first << "=" << nv.second;
+
+  return id.str();
 }
 
 /* C Wrappers */

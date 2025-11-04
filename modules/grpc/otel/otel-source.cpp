@@ -26,6 +26,7 @@
 
 #include "compat/cpp-start.h"
 #include "messages.h"
+#include "cfg.h"
 #include "compat/cpp-end.h"
 
 #include <string>
@@ -34,14 +35,46 @@
 
 using namespace syslogng::grpc::otel;
 
+namespace {
+
+struct CfgReloadEntry
+{
+  LogThreadedSourceWorker **workers;
+  int num_workers;
+  std::unique_ptr<::grpc::Server> server;
+  std::unique_ptr<TraceService::AsyncService> trace_service;
+  std::unique_ptr<LogsService::AsyncService> logs_service;
+  std::unique_ptr<MetricsService::AsyncService> metrics_service;
+};
+
+}
+
+#include "compat/cpp-start.h"
+
+static void
+_destroy_reload_entry(void *c)
+{
+  CfgReloadEntry *e = static_cast<CfgReloadEntry *>(c);
+
+  e->server->Shutdown(std::chrono::system_clock::now() + std::chrono::seconds(30));
+  log_threaded_source_driver_destroy_workers(e->workers, e->num_workers);
+
+  delete e;
+}
+
+#include "compat/cpp-end.h"
+
 SourceDriver::SourceDriver(GrpcSourceDriver *s)
   : syslogng::grpc::SourceDriver(s)
 {
   this->port = 4317;
+  this->trace_service = std::make_unique<TraceService::AsyncService>();
+  this->logs_service = std::make_unique<LogsService::AsyncService>();
+  this->metrics_service = std::make_unique<MetricsService::AsyncService>();
 }
 
 void
-SourceDriver::shutdown()
+SourceDriver::shutdown_server()
 {
   if (this->server)
     {
@@ -63,30 +96,27 @@ SourceDriver::format_stats_key(StatsClusterKeyBuilder *kb)
 const char *
 SourceDriver::generate_persist_name()
 {
-  static char persist_name[1024];
+  static char persist_name[2048];
 
+  /* worker scaling during reload is not supported, hence num_workers is here */
   if (this->super->super.super.super.super.persist_name)
     g_snprintf(persist_name, sizeof(persist_name), "opentelemetry.%s",
                this->super->super.super.super.super.persist_name);
   else
-    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry(%" G_GUINT32_FORMAT ")",
-               this->port);
+    g_snprintf(persist_name, sizeof(persist_name), "opentelemetry(%s, %d)",
+               this->get_unique_id_fragment().c_str(), this->super->super.num_workers);
 
   return persist_name;
 }
 
-gboolean
+bool
 SourceDriver::init()
 {
   this->super->super.worker_options.super.keep_hostname = TRUE;
 
   ::grpc::ServerBuilder builder;
   if (!this->prepare_server_builder(builder))
-    return FALSE;
-
-  trace_service = std::make_unique<TraceService::AsyncService>();
-  logs_service = std::make_unique<LogsService::AsyncService>();
-  metrics_service = std::make_unique<MetricsService::AsyncService>();
+    return false;
 
   builder.RegisterService(this->trace_service.get());
   builder.RegisterService(this->logs_service.get());
@@ -95,116 +125,153 @@ SourceDriver::init()
   for (int i = 0; i < this->super->super.num_workers; i++)
     this->cqs.push_back(builder.AddCompletionQueue());
 
+  bool workers_inited = syslogng::grpc::SourceDriver::init();
+
+  this->cqs.clear();
+
+  if (!workers_inited)
+    return false;
+
+  if (this->server)
+    goto exit;
+
   this->server = builder.BuildAndStart();
   if (!this->server)
     {
       msg_error("Failed to start OpenTelemetry server", evt_tag_int("port", this->port));
-      return FALSE;
+      return false;
     }
 
-  if (!syslogng::grpc::SourceDriver::init())
-    return FALSE;
-
+exit:
   msg_info("OpenTelemetry server accepting connections", evt_tag_int("port", this->port));
-  return TRUE;
+  return true;
+}
+
+void
+SourceDriver::reload_save(LogThreadedSourceWorker **workers, gint num_workers)
+{
+  GlobalConfig *cfg = log_pipe_get_config(&this->super->super.super.super.super);
+
+  CfgReloadEntry *reload_entry = new CfgReloadEntry
+  {
+    workers,
+    num_workers,
+    std::move(this->server),
+    std::move(this->trace_service),
+    std::move(this->logs_service),
+    std::move(this->metrics_service),
+  };
+  cfg_persist_config_add(cfg, this->generate_persist_name(), reload_entry, _destroy_reload_entry);
+}
+
+LogThreadedSourceWorker **
+SourceDriver::reload_restore(gint *num_workers)
+{
+  GlobalConfig *cfg = log_pipe_get_config(&this->super->super.super.super.super);
+
+  CfgReloadEntry *reload_entry = static_cast<CfgReloadEntry *>(
+                                   cfg_persist_config_fetch(cfg, this->generate_persist_name()));
+
+  if (!reload_entry)
+    return NULL;
+
+  this->trace_service = std::move(reload_entry->trace_service),
+        this->logs_service = std::move(reload_entry->logs_service),
+              this->metrics_service = std::move(reload_entry->metrics_service),
+                    this->server = std::move(reload_entry->server);
+  LogThreadedSourceWorker **workers = reload_entry->workers;
+  *num_workers = reload_entry->num_workers;
+
+  delete reload_entry;
+
+  return workers;
 }
 
 SourceDriver::~SourceDriver()
 {
-  this->shutdown();
-  this->drain_unused_queues();
-
-  /* the service must exist for the lifetime of the Server instance */
-  this->trace_service = nullptr;
-  this->logs_service = nullptr;
-  this->metrics_service = nullptr;
+  this->shutdown_server();
 }
 
 LogThreadedSourceWorker *
 SourceDriver::construct_worker(int worker_index)
 {
   GrpcSourceWorker *worker = grpc_sw_new(this->super, worker_index);
-  worker->cpp = new SourceWorker(worker, *this);
+  worker->cpp = new SourceWorker(worker, std::move(this->cqs.front()));
+  this->cqs.pop_front();
   return &worker->super;
 }
 
 
-SourceWorker::SourceWorker(GrpcSourceWorker *s, syslogng::grpc::SourceDriver &d)
-  : syslogng::grpc::SourceWorker(s, d)
+SourceWorker::SourceWorker(GrpcSourceWorker *s, std::unique_ptr<::grpc::ServerCompletionQueue> queue)
+  : syslogng::grpc::SourceWorker(s), cq(std::move(queue)), service_calls_registered(false)
 {
-  SourceDriver *owner_ = otel_sd_get_cpp(this->driver.super);
-  cq = std::move(owner_->cqs.front());
-  owner_->cqs.pop_front();
 }
 
 SourceWorker::~SourceWorker()
 {
-  this->shutdown();
-  this->drain_queue();
+  SourceDriver &owner = static_cast<SourceDriver &>(this->get_owner());
+  owner.shutdown_server();
+
+  if (!this->cq)
+    return;
+
+  this->cq->Shutdown();
+
+  void *tag;
+  bool ignored_ok;
+  while (this->cq->Next(&tag, &ignored_ok))
+    {
+      auto call = static_cast<AsyncServiceCallInterface *>(tag);
+      delete call;
+    }
 }
 
-void
-syslogng::grpc::otel::SourceWorker::run()
+bool
+syslogng::grpc::otel::SourceWorker::init()
 {
-  SourceDriver *owner_ = otel_sd_get_cpp(this->driver.super);
+  if (this->service_calls_registered)
+    return true;
+
+  SourceDriver &owner = static_cast<SourceDriver &>(this->get_owner());
 
   /* Proceed() will immediately create a new ServiceCall,
    * so creating 1 ServiceCall here results in 2 concurrent requests.
    *
    * Because of this we should create (concurrent_requests - 1) ServiceCalls here.
    */
-  for (int i = 0; i < owner_->concurrent_requests - 1; i++)
+  for (int i = 0; i < owner.concurrent_requests - 1; i++)
     {
-      new TraceServiceCall(*this, owner_->trace_service.get(), this->cq.get());
-      new LogsServiceCall(*this, owner_->logs_service.get(), this->cq.get());
-      new MetricsServiceCall(*this, owner_->metrics_service.get(), this->cq.get());
+      new TraceServiceCall(*this, owner.trace_service.get(), this->cq.get());
+      new LogsServiceCall(*this, owner.logs_service.get(), this->cq.get());
+      new MetricsServiceCall(*this, owner.metrics_service.get(), this->cq.get());
     }
 
+  this->service_calls_registered = true;
+
+  return true;
+}
+
+void
+syslogng::grpc::otel::SourceWorker::run()
+{
   void *tag;
   bool ok;
   while (this->cq->Next(&tag, &ok))
     {
-      static_cast<AsyncServiceCallInterface *>(tag)->Proceed(ok);
-    }
+      auto call = static_cast<AsyncServiceCallInterface *>(tag);
 
-  this->cq.reset();
+      if (typeid(*call) == typeid(StopEventCall))
+        break;
+
+      /* call may be freed after calling Proceed() y*/
+      call->Proceed(ok);
+    }
 }
 
 void
 syslogng::grpc::otel::SourceWorker::request_exit()
 {
-  this->shutdown();
-}
-
-void
-syslogng::grpc::otel::SourceWorker::shutdown()
-{
-  SourceDriver *owner_ = otel_sd_get_cpp(this->driver.super);
-
-  owner_->shutdown();
-  if (this->cq)
-    this->cq->Shutdown();
-}
-
-void
-syslogng::grpc::otel::SourceWorker::drain_queue()
-{
-  if (!this->cq)
-    return;
-
-  void *ignored_tag;
-  bool ignored_ok;
-  while (this->cq->Next(&ignored_tag, &ignored_ok)) {}
-}
-
-void syslogng::grpc::otel::SourceDriver::drain_unused_queues()
-{
-  for (auto &cq : this->cqs)
-    {
-      void *ignored_tag;
-      bool ignored_ok;
-      while (cq->Next(&ignored_tag, &ignored_ok)) {}
-    }
+  this->stop_scheduler.Set(this->cq.get(), gpr_inf_past(GPR_CLOCK_MONOTONIC), &this->stop_call);
 }
 
 SourceDriver *
@@ -213,10 +280,29 @@ otel_sd_get_cpp(GrpcSourceDriver *self)
   return (SourceDriver *) self->cpp;
 }
 
+void
+otel_sd_reload_save(LogThreadedSourceDriver *s, LogThreadedSourceWorker **workers, gint num_workers)
+{
+  SourceDriver *self = otel_sd_get_cpp((GrpcSourceDriver *) s);
+  self->reload_save(workers, num_workers);
+}
+
+LogThreadedSourceWorker **
+otel_sd_reload_restore(LogThreadedSourceDriver *s, gint *num_workers)
+{
+  SourceDriver *self = otel_sd_get_cpp((GrpcSourceDriver *) s);
+  return self->reload_restore(num_workers);
+}
+
 LogDriver *
 otel_sd_new(GlobalConfig *cfg)
 {
   GrpcSourceDriver *self = grpc_sd_new(cfg, "opentelemetry", "otlp");
+
+  self->super.reload_keep_alive = TRUE;
+  self->super.reload_save = otel_sd_reload_save;
+  self->super.reload_restore = otel_sd_reload_restore;
+
   self->cpp = new SourceDriver(self);
   return &self->super.super.super;
 }

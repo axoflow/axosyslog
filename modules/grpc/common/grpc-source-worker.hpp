@@ -34,16 +34,24 @@ namespace grpc {
 class SourceWorker
 {
 public:
-  SourceWorker(GrpcSourceWorker *s, SourceDriver &d);
+  SourceWorker(GrpcSourceWorker *s);
   virtual ~SourceWorker() {};
 
+  virtual bool init()
+  {
+    return true;
+  }
+  virtual void deinit() {}
   virtual void run() = 0;
   virtual void request_exit() = 0;
   void post(LogMessage *msg);
 
 public:
   GrpcSourceWorker *super;
-  SourceDriver &driver;
+
+protected:
+  /* do not store the reference beyond local usage */
+  SourceDriver &get_owner();
 };
 
 }

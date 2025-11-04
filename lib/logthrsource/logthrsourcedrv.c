@@ -141,6 +141,8 @@ _worker_thread_init(MainLoopThreadedWorker *s)
 {
   LogThreadedSourceWorker *self = (LogThreadedSourceWorker *) s->data;
 
+  self->under_termination = FALSE;
+
   if (self->thread_init)
     return self->thread_init(self);
   return TRUE;
@@ -259,27 +261,36 @@ _create_workers(LogThreadedSourceDriver *self)
   g_assert(!self->workers);
 
   self->workers = g_new0(LogThreadedSourceWorker *, self->num_workers);
-  for (size_t i = 0; i < self->num_workers; i++)
+  for (gsize i = 0; i < self->num_workers; i++)
     {
       self->workers[i] = self->worker_construct(self, i);
     }
 }
 
-static void
-_destroy_workers(LogThreadedSourceDriver *self)
+void
+log_threaded_source_driver_destroy_workers(LogThreadedSourceWorker **workers, gint num_workers)
 {
-  for (size_t i = 0; i < self->num_workers; i++)
+  if (!workers)
+    return;
+
+  for (gsize i = 0; i < num_workers; i++)
     {
-      LogPipe *worker_pipe = _worker_logpipe(self->workers[i]);
+      LogPipe *worker_pipe = _worker_logpipe(workers[i]);
       if (!worker_pipe)
         break;
 
       log_pipe_deinit(worker_pipe);
       log_pipe_unref(worker_pipe);
-      self->workers[i] = NULL;
+      workers[i] = NULL;
     }
 
-  g_free(self->workers);
+  g_free(workers);
+}
+
+static void
+_destroy_workers(LogThreadedSourceDriver *self)
+{
+  log_threaded_source_driver_destroy_workers(self->workers, self->num_workers);
   self->workers = NULL;
 }
 
@@ -292,7 +303,7 @@ _init_workers(LogThreadedSourceDriver *self)
 
   log_threaded_source_worker_options_init(&self->worker_options, cfg, self->super.super.group, self->num_workers);
 
-  for (size_t i = 0; i < self->num_workers; i++)
+  for (gsize i = 0; i < self->num_workers; i++)
     {
       StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
       self->format_stats_key(self, kb);
@@ -308,12 +319,104 @@ _init_workers(LogThreadedSourceDriver *self)
   return TRUE;
 }
 
+static void
+log_threaded_source_driver_save_workers(LogThreadedSourceDriver *self)
+{
+  if (!self->reload_save)
+    return;
+
+  for (gsize i = 0; i < self->num_workers; i++)
+    {
+      LogPipe *worker_pipe = _worker_logpipe(self->workers[i]);
+      log_pipe_deinit(worker_pipe);
+    }
+
+  LogThreadedSourceWorker **workers = self->workers;
+  self->reload_save(self, workers, self->num_workers);
+  self->workers = NULL;
+}
+
+static inline void
+_scale_down_workers(LogThreadedSourceDriver *self, gint current_workers_count)
+{
+  gint desired_workers_count = self->num_workers;
+
+  msg_debug("Scaling down workers", evt_tag_int("from", current_workers_count),
+            evt_tag_int("to", desired_workers_count));
+
+  for (gsize i = desired_workers_count; i < current_workers_count; i++)
+    {
+      LogPipe *worker_pipe = _worker_logpipe(self->workers[i]);
+      log_pipe_unref(worker_pipe);
+      self->workers[i] = NULL;
+    }
+}
+
+static inline void
+_scale_up_workers(LogThreadedSourceDriver *self, gint current_workers_count)
+{
+  gint desired_workers_count = self->num_workers;
+
+  msg_debug("Scaling up workers", evt_tag_int("from", current_workers_count),
+            evt_tag_int("to", desired_workers_count));
+
+  self->workers = g_realloc_n(self->workers, self->num_workers, sizeof(LogThreadedSourceWorker *));
+  for (gsize i = current_workers_count; i < self->num_workers; i++)
+    {
+      self->workers[i] = self->worker_construct(self, i);
+    }
+}
+
+static void
+log_threaded_source_driver_restore_workers(LogThreadedSourceDriver *self)
+{
+  if (!self->reload_restore)
+    return;
+
+  g_assert(!self->workers);
+
+  gint num_workers = 0;
+  LogThreadedSourceWorker **workers = self->reload_restore(self, &num_workers);
+
+  if (!workers)
+    return;
+
+  GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
+  for (gsize i = 0; i < num_workers; i++)
+    {
+      LogPipe *worker_pipe = _worker_logpipe(workers[i]);
+      log_pipe_set_config(worker_pipe, cfg);
+    }
+
+  self->workers = workers;
+
+  if (self->num_workers < num_workers)
+    _scale_down_workers(self, num_workers);
+  else if (self->num_workers > num_workers)
+    _scale_up_workers(self, num_workers);
+}
+
+static void
+_save_or_destroy_workers(LogThreadedSourceDriver *self)
+{
+  if (self->reload_keep_alive)
+    log_threaded_source_driver_save_workers(self);
+  else
+    _destroy_workers(self);
+}
+
 gboolean
 log_threaded_source_driver_init_method(LogPipe *s)
 {
   LogThreadedSourceDriver *self = (LogThreadedSourceDriver *) s;
 
-  _create_workers(self);
+  g_assert(!!self->reload_save == !!self->reload_restore);
+
+  if (self->reload_keep_alive)
+    log_threaded_source_driver_restore_workers(self);
+
+  if (!self->workers)
+    _create_workers(self);
 
   if (!log_src_driver_init_method(s))
     goto error;
@@ -324,7 +427,7 @@ log_threaded_source_driver_init_method(LogPipe *s)
   return TRUE;
 
 error:
-  _destroy_workers(self);
+  _save_or_destroy_workers(self);
   return FALSE;
 }
 
@@ -333,7 +436,7 @@ log_threaded_source_driver_deinit_method(LogPipe *s)
 {
   LogThreadedSourceDriver *self = (LogThreadedSourceDriver *) s;
 
-  _destroy_workers(self);
+  _save_or_destroy_workers(self);
 
   return log_src_driver_deinit_method(s);
 }
@@ -349,10 +452,10 @@ log_threaded_source_driver_free_method(LogPipe *s)
   log_src_driver_free(s);
 }
 
-gboolean
+static gboolean
 log_threaded_source_driver_start_workers(LogThreadedSourceDriver *self)
 {
-  for (size_t i = 0; i < self->num_workers; i++)
+  for (gsize i = 0; i < self->num_workers; i++)
     g_assert(main_loop_threaded_worker_start(&self->workers[i]->thread));
 
   return TRUE;

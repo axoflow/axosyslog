@@ -27,6 +27,8 @@
 #include <grpcpp/security/credentials.h>
 #include "grpc-credentials-builder.h"
 
+#include <string>
+
 namespace syslogng {
 namespace grpc {
 
@@ -46,11 +48,15 @@ public:
   bool set_tls_cert_path(const char *cert_path);
   void set_tls_peer_verify(ServerTlsPeerVerify peer_verify);
 
+  std::string get_unique_id();
+
 private:
   ServerAuthMode mode = GSAM_INSECURE;
 
   /* TLS */
   ::grpc::SslServerCredentialsOptions ssl_server_credentials_options { GRPC_SSL_REQUEST_AND_REQUIRE_CLIENT_CERTIFICATE_AND_VERIFY };
+  std::string ca_path;
+  std::string cert_path;
 
   /* ALTS */
   ::grpc::experimental::AltsServerCredentialsOptions alts_server_credentials_options;
