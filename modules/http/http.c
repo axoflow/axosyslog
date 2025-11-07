@@ -443,7 +443,12 @@ http_dd_init(LogPipe *s)
   if (!log_threaded_dest_driver_init_method(s))
     return FALSE;
 
-  if ((self->super.batch_lines || self->batch_bytes) && http_load_balancer_is_url_templated(self->load_balancer))
+  gboolean is_batching_enabled = self->super.batch_lines || self->batch_bytes;
+  gboolean is_body_prefix_templated = self->body_prefix_template &&
+                                      !log_template_is_literal_string(self->body_prefix_template);
+  gboolean is_batch_templated = http_load_balancer_is_url_templated(self->load_balancer) || is_body_prefix_templated;
+
+  if (is_batching_enabled && is_batch_templated)
     {
       log_threaded_dest_driver_set_flush_on_worker_key_change(&self->super.super.super, TRUE);
 
