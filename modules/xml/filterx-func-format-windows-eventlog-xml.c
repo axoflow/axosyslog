@@ -125,11 +125,13 @@ static void
 _insert_event_id_qualifier(const char *key_str, const char *value_str, GString *buffer)
 {
   char *event_id_end_pos = strstr(buffer->str, "EventID") + 7;
-  GString *qualifier = g_string_new(NULL);
+  gchar qualifier[1024];
 
   g_string_overwrite(buffer, (int)(event_id_end_pos - buffer->str), " ");
-  g_string_printf(qualifier, "Qualifiers='%s'>", value_str);
-  g_string_insert(buffer, (int)(event_id_end_pos + 1 - buffer->str), qualifier->str);
+  gint formatted_size = g_snprintf(qualifier, sizeof(qualifier), "Qualifiers='%s'>", value_str);
+  g_string_insert_len(buffer,
+                      (int)(event_id_end_pos + 1 - buffer->str), qualifier,
+                      MIN(formatted_size, sizeof(qualifier) - 1));
 }
 
 static void
