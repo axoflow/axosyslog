@@ -26,7 +26,7 @@
 
 #include "compat/cpp-start.h"
 #include "func-protobuf-message.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
 #include "compat/cpp-end.h"
@@ -52,7 +52,7 @@ _eval(FilterXExpr *s)
     }
 
   FilterXObject *dict = filterx_ref_unwrap_ro(input);
-  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate protobuf_message()", self->input,
                                           "Input must be a dict, got: %s",

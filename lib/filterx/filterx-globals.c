@@ -30,8 +30,8 @@
 #include "filterx/object-list.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
-#include "filterx/object-list-interface.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-sequence.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-metrics-labels.h"
 #include "filterx/func-istype.h"
 #include "filterx/func-len.h"
@@ -220,10 +220,10 @@ filterx_global_init(void)
 {
   filterx_types_init();
 
-  filterx_type_init(&FILTERX_TYPE_NAME(list));
+  filterx_type_init(&FILTERX_TYPE_NAME(sequence));
+  filterx_type_init(&FILTERX_TYPE_NAME(mapping));
   filterx_type_init(&FILTERX_TYPE_NAME(dict));
-  filterx_type_init(&FILTERX_TYPE_NAME(dict_object));
-  filterx_type_init(&FILTERX_TYPE_NAME(list_object));
+  filterx_type_init(&FILTERX_TYPE_NAME(list));
 
   filterx_type_init(&FILTERX_TYPE_NAME(null));
   filterx_type_init(&FILTERX_TYPE_NAME(integer));

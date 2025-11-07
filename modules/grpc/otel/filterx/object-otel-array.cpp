@@ -164,43 +164,89 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_value)
+_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->set_subscript(index, new_value);
-}
-
-static gboolean
-_append(FilterXList *s, FilterXObject **new_value)
-{
-  FilterXOtelArray *self = (FilterXOtelArray *) s;
-
-  return self->cpp->append(new_value);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, TRUE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+  if (normalized_index < self->cpp->len())
+    return self->cpp->set_subscript(normalized_index, new_value);
+  else
+    return self->cpp->append(new_value);
 }
 
 static FilterXObject *
-_get_subscript(FilterXList *s, guint64 index)
+_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->get_subscript(index);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return NULL;
+    }
+
+  return self->cpp->get_subscript(normalized_index);
 }
 
 static gboolean
-_unset_index(FilterXList *s, guint64 index)
+_unset_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->unset_index(index);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  return self->cpp->unset_index(normalized_index);
 }
 
-static guint64
-_len(FilterXList *s)
+static gboolean
+_len(FilterXObject *s, guint64 *len)
 {
   FilterXOtelArray *self = (FilterXOtelArray *) s;
 
-  return self->cpp->len();
+  *len = self->cpp->len();
+  return TRUE;
+}
+
+static gboolean
+_is_key_set(FilterXObject *s, FilterXObject *key)
+{
+  FilterXOtelArray *self = (FilterXOtelArray *) s;
+
+  guint64 normalized_index;
+  const gchar *error;
+  return filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error);
+}
+
+static gboolean
+_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
+{
+  FilterXOtelArray *self = (FilterXOtelArray *) s;
+
+  for (guint64 i = 0; i < self->cpp->len(); i++)
+    {
+      FilterXObject *value = self->cpp->get_subscript(i);
+
+      FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, (gint64) i);
+      func(index_obj, value, user_data);
+      FILTERX_INTEGER_CLEAR_FROM_STACK(index_obj);
+      filterx_object_unref(value);
+    }
+  return TRUE;
 }
 
 static gboolean
@@ -225,13 +271,7 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 static void
 _init_instance(FilterXOtelArray *self)
 {
-  filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_array));
-
-  self->super.get_subscript = _get_subscript;
-  self->super.set_subscript = _set_subscript;
-  self->super.append = _append;
-  self->super.unset_index = _unset_index;
-  self->super.len = _len;
+  filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_array));
 }
 
 FilterXObject *
@@ -271,10 +311,10 @@ filterx_otel_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
           FilterXObject *arg = args[0];
 
           FilterXObject *list_arg = filterx_ref_unwrap_ro(arg);
-          if (filterx_object_is_type(list_arg, &FILTERX_TYPE_NAME(list)))
+          if (filterx_object_is_type(list_arg, &FILTERX_TYPE_NAME(sequence)))
             {
               self->cpp = new Array(self);
-              if (!filterx_list_merge(&self->super.super, list_arg))
+              if (!filterx_sequence_merge(&self->super.super, list_arg))
                 throw std::runtime_error("Failed to merge list");
             }
           else
@@ -351,7 +391,7 @@ _set_array_field_from_list(google::protobuf::Message *message, syslogng::grpc::P
 
   for (guint64 i = 0; i < len; i++)
     {
-      FilterXObject *value_obj = filterx_list_get_subscript(object, (gint64) MIN(i, G_MAXINT64));
+      FilterXObject *value_obj = filterx_sequence_get_subscript(object, (gint64) MIN(i, G_MAXINT64));
 
       AnyValue *any_value = array->add_values();
 
@@ -377,13 +417,13 @@ ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors ref
   FilterXObject *object_unwrapped = filterx_ref_unwrap_rw(object);
   if (!filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(otel_array)))
     {
-      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(list)))
+      if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(sequence)))
         return _set_array_field_from_list(message, reflectors, object_unwrapped, assoc_object);
 
       if (filterx_object_is_type(object_unwrapped, &FILTERX_TYPE_NAME(message_value)))
         {
           FilterXObject *unmarshalled = filterx_object_unmarshal(object_unwrapped);
-          bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(list)) &&
+          bool success = filterx_object_is_type(unmarshalled, &FILTERX_TYPE_NAME(sequence)) &&
                          _set_array_field_from_list(message, reflectors, unmarshalled, assoc_object);
           filterx_object_unref(unmarshalled);
           return success;
@@ -425,18 +465,6 @@ ArrayFieldConverter::add(google::protobuf::Message *message, ProtoReflectors ref
 
 ArrayFieldConverter syslogng::grpc::otel::filterx::array_field_converter;
 
-static FilterXObject *
-_list_factory(FilterXObject *self)
-{
-  return filterx_otel_array_new();
-}
-
-static FilterXObject *
-_dict_factory(FilterXObject *self)
-{
-  return filterx_otel_kvlist_new();
-}
-
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
@@ -456,13 +484,17 @@ _repr(FilterXObject *s, GString *repr)
   return TRUE;
 }
 
-FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(list),
+FILTERX_DEFINE_TYPE(otel_array, FILTERX_TYPE_NAME(sequence),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_otel_array_clone,
                     .truthy = _truthy,
-                    .list_factory = _list_factory,
-                    .dict_factory = _dict_factory,
+                    .get_subscript = _get_subscript,
+                    .set_subscript = _set_subscript,
+                    .is_key_set = _is_key_set,
+                    .unset_key = _unset_key,
+                    .len = _len,
+                    .iter = _iter,
                     .repr = _repr,
                     .free_fn = _free,
                    );

@@ -23,8 +23,8 @@
 #include "filterx-func-format-windows-eventlog-xml.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-extractor.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 
 static gboolean
 _append_inner_data_dict_element(FilterXObject *key, FilterXObject *value, gpointer user_data)
@@ -101,14 +101,14 @@ static gboolean
 _append_data_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
   FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
-  if(filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if(filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
-      if(!filterx_dict_iter(value_unwrapped, _append_inner_data_dict_element, user_data))
+      if(!filterx_object_iter(value_unwrapped, _append_inner_data_dict_element, user_data))
         return FALSE;
 
       return TRUE;
     }
-  else if(filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(list)))
+  else if(filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       if (!append_list(key, value_unwrapped, user_data))
         return FALSE;
@@ -166,13 +166,13 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
   if (g_strcmp0(key_str, "EventData") == 0)
     {
       FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
-      if(!filterx_dict_iter(dict_unwrapped, _append_data_dict, user_data))
+      if(!filterx_object_iter(dict_unwrapped, _append_data_dict, user_data))
         return FALSE;
     }
   else
     {
       *is_only_attribute_present = FALSE;
-      if (!filterx_dict_iter(dict, append_object, user_data))
+      if (!filterx_object_iter(dict, append_object, user_data))
         return FALSE;
     }
 

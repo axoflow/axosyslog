@@ -28,8 +28,8 @@
 #include "filterx/expr-literal.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-null.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -100,7 +100,7 @@ _assert_len(FilterXObject *obj, guint64 expected_len)
 static void
 _assert_list_elem(FilterXObject *list, gint64 index, const gchar *expected_value)
 {
-  FilterXObject *elem = filterx_list_get_subscript(list, index);
+  FilterXObject *elem = filterx_sequence_get_subscript(list, index);
   cr_assert(elem);
 
   const gchar *value = filterx_string_get_value_ref(elem, NULL);
@@ -126,7 +126,7 @@ _assert_dict_elem(FilterXObject *list, const gchar *key, const gchar *expected_v
 Test(filterx_expr_regexp_search, unnamed)
 {
   FilterXObject *result = _search("foobarbaz", "(foo)(bar)(baz)", 0);
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 3);
   _assert_dict_elem(result, "1", "foo");
   _assert_dict_elem(result, "2", "bar");
@@ -137,7 +137,7 @@ Test(filterx_expr_regexp_search, unnamed)
 Test(filterx_expr_regexp_search, unnamed_grp_zero)
 {
   FilterXObject *result = _search("foobarbaz", "(foo)(bar)(baz)", FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO));
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 4);
   _assert_dict_elem(result, "0", "foobarbaz");
   _assert_dict_elem(result, "1", "foo");
@@ -150,7 +150,7 @@ Test(filterx_expr_regexp_search, unnamed_grp_zero_list_mode)
 {
   FilterXObject *result = _search("foobarbaz", "(foo)(bar)(baz)",
                                   FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO) | FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(sequence)));
   _assert_len(result, 4);
   _assert_list_elem(result, 0, "foobarbaz");
   _assert_list_elem(result, 1, "foo");
@@ -162,7 +162,7 @@ Test(filterx_expr_regexp_search, unnamed_grp_zero_list_mode)
 Test(filterx_expr_regexp_search, named)
 {
   FilterXObject *result = _search("foobarbaz", "(?<first>foo)(?<second>bar)(?<third>baz)", 0);
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 3);
   _assert_dict_elem(result, "first", "foo");
   _assert_dict_elem(result, "second", "bar");
@@ -174,7 +174,7 @@ Test(filterx_expr_regexp_search, named_grp_zero)
 {
   FilterXObject *result = _search("foobarbaz", "(?<first>foo)(?<second>bar)(?<third>baz)",
                                   FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO));
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 4);
   _assert_dict_elem(result, "0", "foobarbaz");
   _assert_dict_elem(result, "first", "foo");
@@ -187,7 +187,7 @@ Test(filterx_expr_regexp_search, named_grp_zero_list_mode)
 {
   FilterXObject *result = _search("foobarbaz", "(?<first>foo)(?<second>bar)(?<third>baz)",
                                   FLAG_VAL(FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO) | FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(sequence)));
   _assert_len(result, 4);
   _assert_list_elem(result, 0, "foobarbaz");
   _assert_list_elem(result, 1, "foo");
@@ -200,10 +200,10 @@ Test(filterx_expr_regexp_search, optional_group_list_mode)
 {
   FilterXObject *result = _search("bar", "(foo)?(bar)?", FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
 
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(sequence)));
   _assert_len(result, 2);
 
-  cr_assert_eq(filterx_list_get_subscript(result, 0), filterx_null_new());
+  cr_assert_eq(filterx_sequence_get_subscript(result, 0), filterx_null_new());
   _assert_list_elem(result, 1, "bar");
 
   filterx_object_unref(result);
@@ -225,7 +225,7 @@ Test(filterx_expr_regexp_search, optional_group_dict_mode)
 Test(filterx_expr_regexp_search, mixed)
 {
   FilterXObject *result = _search("foobarbaz", "(?<first>foo)(bar)(?<third>baz)", 0);
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 3);
   _assert_dict_elem(result, "first", "foo");
   _assert_dict_elem(result, "2", "bar");
@@ -236,7 +236,7 @@ Test(filterx_expr_regexp_search, mixed)
 Test(filterx_expr_regexp_search, unnamed_no_match)
 {
   FilterXObject *result = _search("foobarbaz", "(almafa)", 0);
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 0);
   filterx_object_unref(result);
 }
@@ -244,7 +244,7 @@ Test(filterx_expr_regexp_search, unnamed_no_match)
 Test(filterx_expr_regexp_search, named_no_match)
 {
   FilterXObject *result = _search("foobarbaz", "(?<first>almafa)", 0);
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 0);
   filterx_object_unref(result);
 }
@@ -252,7 +252,7 @@ Test(filterx_expr_regexp_search, named_no_match)
 Test(filterx_expr_regexp_search, retain_group_zero_if_sole)
 {
   FilterXObject *result = _search("foobarbaz", "foobarbaz", 0);
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(mapping)));
   _assert_len(result, 1);
   _assert_dict_elem(result, "0", "foobarbaz");
   filterx_object_unref(result);
@@ -261,7 +261,7 @@ Test(filterx_expr_regexp_search, retain_group_zero_if_sole)
 Test(filterx_expr_regexp_search, retain_group_zero_if_sole_list_mode)
 {
   FilterXObject *result = _search("foobarbaz", "foobarbaz", FLAG_VAL(FILTERX_REGEXP_SEARCH_LIST_MODE));
-  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(sequence)));
   _assert_len(result, 1);
   _assert_list_elem(result, 0, "foobarbaz");
   filterx_object_unref(result);

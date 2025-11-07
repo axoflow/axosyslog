@@ -32,8 +32,8 @@
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-sequence.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/expr-assign.h"
 #include "filterx/expr-variable.h"
 #include "filterx/expr-setattr.h"
@@ -110,9 +110,9 @@ Test(filterx_expr, test_filterx_literal_list_with_inmutable_values)
   cr_assert(filterx_object_truthy(result));
   cr_assert(filterx_object_len(result, &len));
   cr_assert_eq(len, 3);
-  _assert_int_value_and_unref(filterx_list_get_subscript(result, 0), 42);
-  _assert_int_value_and_unref(filterx_list_get_subscript(result, 1), 43);
-  _assert_int_value_and_unref(filterx_list_get_subscript(result, 2), 44);
+  _assert_int_value_and_unref(filterx_sequence_get_subscript(result, 0), 42);
+  _assert_int_value_and_unref(filterx_sequence_get_subscript(result, 1), 43);
+  _assert_int_value_and_unref(filterx_sequence_get_subscript(result, 2), 44);
   filterx_object_unref(result);
   filterx_expr_unref(list_expr);
 }
@@ -140,12 +140,12 @@ Test(filterx_expr, test_filterx_literal_list_with_embedded_list)
   cr_assert(filterx_object_len(result, &len));
   cr_assert_eq(len, 1);
 
-  FilterXObject *stored_inner_list = filterx_list_get_subscript(result, 0);
+  FilterXObject *stored_inner_list = filterx_sequence_get_subscript(result, 0);
   cr_assert(stored_inner_list);
-  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_list), &FILTERX_TYPE_NAME(list)));
+  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_list), &FILTERX_TYPE_NAME(sequence)));
   cr_assert(filterx_object_len(stored_inner_list, &len));
   cr_assert_eq(len, 1);
-  _assert_int_value_and_unref(filterx_list_get_subscript(stored_inner_list, 0), 1337);
+  _assert_int_value_and_unref(filterx_sequence_get_subscript(stored_inner_list, 0), 1337);
   filterx_object_unref(stored_inner_list);
 
   filterx_object_unref(result);
@@ -229,7 +229,7 @@ Test(filterx_expr, test_filterx_dict_with_embedded_dict)
 
   FilterXObject *stored_inner_dict = filterx_object_get_subscript(result, baz);
   cr_assert(stored_inner_dict);
-  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_dict), &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(filterx_ref_unwrap_ro(stored_inner_dict), &FILTERX_TYPE_NAME(mapping)));
   cr_assert_eq(filterx_object_len(stored_inner_dict, &len), 1);
   _assert_int_value_and_unref(filterx_object_get_subscript(stored_inner_dict, foo), 1);
   filterx_object_unref(stored_inner_dict);

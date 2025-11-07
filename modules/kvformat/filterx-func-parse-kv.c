@@ -28,7 +28,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
 #include "filterx/object-dict.h"
@@ -88,8 +88,8 @@ _set_dict_value(FilterXObject *out,
   if (!ok)
     filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", NULL, "set-subscript() method failed");
 
-  filterx_object_unref(dict_key);
-  filterx_object_unref(dict_val);
+  FILTERX_STRING_CLEAR_FROM_STACK(dict_val);
+  FILTERX_STRING_CLEAR_FROM_STACK(dict_key);
   return ok;
 }
 

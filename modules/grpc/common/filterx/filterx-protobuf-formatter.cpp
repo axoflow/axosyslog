@@ -25,7 +25,7 @@
 #include "filterx-protobuf-formatter.hpp"
 
 #include "compat/cpp-start.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-extractor.h"
 #include "compat/cpp-end.h"
 
@@ -82,7 +82,7 @@ google::protobuf::Message *
 FilterXProtobufFormatter::format(FilterXObject *object) const
 {
   FilterXObject *object_unwrapped = filterx_ref_unwrap_ro(object);
-  if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(object, &FILTERX_TYPE_NAME(mapping)))
     {
       throw std::runtime_error("Expected a dictionary object for protobuf formatting");
     }
@@ -90,7 +90,7 @@ FilterXProtobufFormatter::format(FilterXObject *object) const
   google::protobuf::Message *message = this->proto_schema_file_loader.get_schema_prototype().New();
 
   gpointer user_data = static_cast<gpointer>(message);
-  gboolean success = filterx_dict_iter(object_unwrapped, _format_element, user_data);
+  gboolean success = filterx_object_iter(object_unwrapped, _format_element, user_data);
 
   if (!success)
     {

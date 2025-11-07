@@ -143,4 +143,15 @@ void filterx_primitive_global_deinit(void);
   FilterXPrimitive __ ## _name ## storage = FILTERX_INTEGER_STACK_INIT(v); \
   FilterXObject *_name = &__ ## _name ## storage .super;
 
+/* if _name has not changed, we don't need to unref it, it is a simple stack
+ * based variable.  The advantage here is that the entire condition,
+ * including the unref can be optimized away by the compiler, if nothing can
+ * ever change the pointer */
+
+#define FILTERX_INTEGER_CLEAR_FROM_STACK(_name) \
+  do { \
+    if (_name != &__ ## _name ## storage.super) \
+      filterx_object_unref(_name); \
+  } while (0)
+
 #endif

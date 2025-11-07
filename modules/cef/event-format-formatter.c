@@ -23,7 +23,7 @@
 
 #include "event-format-formatter.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-string.h"
 #include "filterx/object-extractor.h"
 #include "scratch-buffers.h"
@@ -237,14 +237,14 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
       gsize fields_to_find = ctx->config.header.num_fields - 1;
       gboolean first = TRUE;
       gpointer user_data[] = { ctx, formatted, &first, &fields_to_find };
-      success = filterx_dict_iter(dict, _append_non_separate_extension, user_data);
+      success = filterx_object_iter(dict, _append_non_separate_extension, user_data);
       goto exit;
     }
 
   /* separated extensions */
 
   FilterXObject *extensions_dict = filterx_ref_unwrap_ro(extensions);
-  if (!filterx_object_is_type(extensions_dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(extensions_dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", &ctx->formatter->super.super,
                                           "extensions must be a dict, got: %s",
@@ -254,7 +254,7 @@ _append_extensions(EventFormatterContext *ctx, GString *formatted, FilterXObject
 
   gboolean first = TRUE;
   gpointer user_data[] = { ctx, formatted, &first };
-  success = filterx_dict_iter(extensions_dict, _append_extension, user_data);
+  success = filterx_object_iter(extensions_dict, _append_extension, user_data);
 
 exit:
   filterx_object_unref(extensions);
@@ -290,7 +290,7 @@ _eval(FilterXExpr *s)
     }
 
   FilterXObject *dict = filterx_ref_unwrap_ro(msg);
-  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event formatter function", s,
                                           "msg_dict must be a dict, got: %s",

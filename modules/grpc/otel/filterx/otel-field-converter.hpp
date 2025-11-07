@@ -27,7 +27,7 @@
 #include "filterx/protobuf-field-converter.hpp"
 
 #include "compat/cpp-start.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "compat/cpp-end.h"
 
 #include "opentelemetry/proto/logs/v1/logs.pb.h"
@@ -57,7 +57,7 @@ extern AnyValueFieldConverter any_value_field;
 ProtobufFieldConverter *get_otel_protobuf_field_converter(FieldDescriptor::Type field_type);
 ProtobufFieldConverter *get_otel_protobuf_field_converter(const FieldDescriptor *fd);
 
-bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXDictIterFunc func,
+bool iter_on_otel_protobuf_message_fields(google::protobuf::Message &message, FilterXObjectIterFunc func,
                                           void *user_data);
 
 }

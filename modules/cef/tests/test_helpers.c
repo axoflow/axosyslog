@@ -33,8 +33,8 @@
 #include "filterx/object-null.h"
 #include "filterx/expr-literal.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-list-interface.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-sequence.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-primitive.h"
 
 static event_parser_constructor constructor = NULL;
@@ -146,7 +146,7 @@ _assert_parser_result_inner(const gchar *expected_result, ...)
   cr_assert_null(err);
   cr_assert_not_null(obj);
 
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(dict)));
+  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   GString *repr = scratch_buffers_alloc();
 

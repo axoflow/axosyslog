@@ -142,7 +142,7 @@ Resource::len() const
 }
 
 bool
-Resource::iter(FilterXDictIterFunc func, void *user_data)
+Resource::iter(FilterXObjectIterFunc func, void *user_data)
 {
   return iter_on_otel_protobuf_message_fields(resource, func, user_data);
 }
@@ -173,47 +173,73 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_set_subscript(FilterXDict *s, FilterXObject *key, FilterXObject **new_value)
+_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
+
+  const gchar *error;
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
   return self->cpp->set_subscript(key, new_value);
 }
 
 static FilterXObject *
-_get_subscript(FilterXDict *s, FilterXObject *key)
+_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
+  const gchar *error;
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return NULL;
+    }
   return self->cpp->get_subscript(key);
 }
 
 static gboolean
-_unset_key(FilterXDict *s, FilterXObject *key)
+_unset_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
+  const gchar *error;
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
   return self->cpp->unset_key(key);
 }
 
 static gboolean
-_is_key_set(FilterXDict *s, FilterXObject *key)
+_is_key_set(FilterXObject *s, FilterXObject *key)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
+  const gchar *error;
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
   return self->cpp->is_key_set(key);
 }
 
-static guint64
-_len(FilterXDict *s)
+static gboolean
+_len(FilterXObject *s, guint64 *len)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
-  return self->cpp->len();
+  *len = self->cpp->len();
+  return TRUE;
 }
 
 static gboolean
-_iter(FilterXDict *s, FilterXDictIterFunc func, gpointer user_data)
+_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
   FilterXOtelResource *self = (FilterXOtelResource *) s;
 
@@ -242,14 +268,8 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 static void
 _init_instance(FilterXOtelResource *self)
 {
-  filterx_dict_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_resource));
+  filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(otel_resource));
 
-  self->super.get_subscript = _get_subscript;
-  self->super.set_subscript = _set_subscript;
-  self->super.unset_key = _unset_key;
-  self->super.is_key_set = _is_key_set;
-  self->super.len = _len;
-  self->super.iter = _iter;
 }
 
 FilterXObject *
@@ -288,10 +308,10 @@ filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize
         {
           FilterXObject *arg = args[0];
           FilterXObject *dict_arg = filterx_ref_unwrap_ro(arg);
-          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(dict)))
+          if (filterx_object_is_type(dict_arg, &FILTERX_TYPE_NAME(mapping)))
             {
               self->cpp = new Resource(self);
-              if (!filterx_dict_merge(&self->super.super, dict_arg))
+              if (!filterx_mapping_merge(&self->super.super, dict_arg))
                 throw std::runtime_error("Failed to merge dict");
             }
           else
@@ -312,18 +332,6 @@ filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize
     }
 
   return &self->super.super;
-}
-
-static FilterXObject *
-_list_factory(FilterXObject *self)
-{
-  return filterx_otel_array_new();
-}
-
-static FilterXObject *
-_dict_factory(FilterXObject *self)
-{
-  return filterx_otel_kvlist_new();
 }
 
 static gboolean
@@ -347,13 +355,17 @@ _repr(FilterXObject *s, GString *repr)
 
 FILTERX_SIMPLE_FUNCTION(otel_resource, filterx_otel_resource_new_from_args);
 
-FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(dict),
+FILTERX_DEFINE_TYPE(otel_resource, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_otel_resource_clone,
                     .truthy = _truthy,
-                    .list_factory = _list_factory,
-                    .dict_factory = _dict_factory,
+                    .get_subscript = _get_subscript,
+                    .set_subscript = _set_subscript,
+                    .is_key_set = _is_key_set,
+                    .unset_key = _unset_key,
+                    .len = _len,
+                    .iter = _iter,
                     .repr = _repr,
                     .free_fn = _free,
                    );

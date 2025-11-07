@@ -27,7 +27,7 @@
 #include "object-string.h"
 #include "object-primitive.h"
 #include "object-message-value.h"
-#include "object-dict-interface.h"
+#include "filterx-mapping.h"
 
 #include "scratch-buffers.h"
 #include "str-utils.h"
@@ -68,7 +68,7 @@ _add_to_dict(FilterXVariable *variable, gpointer user_data)
   gboolean success = filterx_object_set_subscript(vars, name, &cloned_value);
 
   filterx_object_unref(cloned_value);
-  filterx_object_unref(name);
+  FILTERX_STRING_CLEAR_FROM_STACK(name);
   return success;
 }
 
@@ -210,7 +210,7 @@ filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize a
 
   FilterXScope *scope = filterx_eval_get_scope();
   gpointer user_data[] = { s, scope };
-  gboolean success = filterx_dict_iter(vars_unwrapped, _load_from_dict, user_data);
+  gboolean success = filterx_object_iter(vars_unwrapped, _load_from_dict, user_data);
 
   return success ? filterx_boolean_new(TRUE) : NULL;
 }

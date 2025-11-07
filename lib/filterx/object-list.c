@@ -22,9 +22,9 @@
  */
 
 #include "filterx/object-list.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-dict.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/json-repr.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/object-extractor.h"
@@ -38,11 +38,6 @@
 #include "scanner/list-scanner/list-scanner.h"
 
 typedef gboolean (*FilterXListForeachFunc)(gsize index, FilterXObject **, gpointer);
-typedef struct _FilterXListObject
-{
-  FilterXList super;
-  GPtrArray *array;
-} FilterXListObject;
 
 static gboolean
 filterx_list_foreach(FilterXListObject *self, FilterXListForeachFunc func, gpointer user_data)
@@ -104,28 +99,38 @@ _filterx_list_repr(FilterXObject *s, GString *repr)
 }
 
 static FilterXObject *
-_filterx_list_get_subscript(FilterXList *s, guint64 index)
+_filterx_list_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  if (index < self->array->len)
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_sequence_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
     {
-      FilterXObject *value = g_ptr_array_index(self->array, index);
-      return filterx_object_ref(value);
+      filterx_eval_push_error(error, NULL, key);
+      return NULL;
     }
-  else
-    return NULL;
+
+  return filterx_object_ref(g_ptr_array_index(self->array, normalized_index));
 }
 
 static gboolean
-_filterx_list_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_value)
+_filterx_list_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  if (index >= self->array->len)
-    g_ptr_array_set_size(self->array, index + 1);
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_sequence_normalize_index(key, self->array->len, &normalized_index, TRUE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
 
-  FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, index);
+  if (normalized_index >= self->array->len)
+    g_ptr_array_set_size(self->array, normalized_index + 1);
+
+  FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, normalized_index);
   filterx_ref_unset_parent_container(*slot);
   filterx_object_unref(*slot);
   *slot = filterx_object_cow_store(new_value);
@@ -133,57 +138,49 @@ _filterx_list_set_subscript(FilterXList *s, guint64 index, FilterXObject **new_v
 }
 
 static gboolean
-_filterx_list_append(FilterXList *s, FilterXObject **new_value)
+_filterx_list_unset_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  g_ptr_array_add(self->array, filterx_object_cow_store(new_value));
+  guint64 normalized_index;
+  const gchar *error;
+  if (!filterx_sequence_normalize_index(key, self->array->len, &normalized_index, FALSE, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  FilterXObject *v = (FilterXObject *) g_ptr_array_index(self->array, normalized_index);
+  filterx_ref_unset_parent_container(v);
+  g_ptr_array_remove_index(self->array, normalized_index);
   return TRUE;
 }
 
 static gboolean
-_filterx_list_unset_index(FilterXList *s, guint64 index)
+_filterx_list_len(FilterXObject *s, guint64 *len)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  g_assert(index <= self->array->len);
-  FilterXObject *v = (FilterXObject *) g_ptr_array_index(self->array, index);
-  filterx_ref_unset_parent_container(v);
-  g_ptr_array_remove_index(self->array, index);
+  *len = self->array->len;
   return TRUE;
 }
 
-static guint64
-_filterx_list_len(FilterXList *s)
+static gboolean
+_filterx_list_is_key_set(FilterXObject *s, FilterXObject *key)
 {
   FilterXListObject *self = (FilterXListObject *) s;
 
-  return self->array->len;
-}
-
-static FilterXObject *
-_filterx_list_factory(FilterXObject *self)
-{
-  return filterx_list_new();
-}
-
-static FilterXObject *
-_filterx_dict_factory(FilterXObject *self)
-{
-  return filterx_dict_new();
+  guint64 normalized_index;
+  const gchar *error;
+  return filterx_sequence_normalize_index(key, self->array->len, &normalized_index, FALSE, &error);
 }
 
 FilterXObject *
 filterx_list_new(void)
 {
   FilterXListObject *self = g_new0(FilterXListObject, 1);
-  filterx_list_init_instance(&self->super, &FILTERX_TYPE_NAME(list_object));
+  filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list));
 
-  self->super.get_subscript = _filterx_list_get_subscript;
-  self->super.set_subscript = _filterx_list_set_subscript;
-  self->super.append = _filterx_list_append;
-  self->super.unset_index = _filterx_list_unset_index;
-  self->super.len = _filterx_list_len;
   self->array = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
   return &self->super.super;
 }
@@ -211,6 +208,21 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
     }
   g_assert(child_found || child_of_interest == NULL);
   return &clone->super.super;
+}
+
+static gboolean
+_filterx_list_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+
+  for (gsize i = 0; i < self->array->len; i++)
+    {
+      FilterXObject *value = g_ptr_array_index(self->array, i);
+      FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, i);
+      func(index_obj, value, user_data);
+      FILTERX_INTEGER_CLEAR_FROM_STACK(index_obj);
+    }
+  return TRUE;
 }
 
 static FilterXObject *
@@ -243,6 +255,20 @@ _filterx_list_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   return TRUE;
 }
 
+static gboolean
+_readonly_list_item(gsize index, FilterXObject **value, gpointer user_data)
+{
+  filterx_object_make_readonly(*value);
+  return TRUE;
+}
+
+static void
+_filterx_list_make_readonly(FilterXObject *s)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+  filterx_list_foreach(self, _readonly_list_item, NULL);
+}
+
 static void
 _filterx_list_free(FilterXObject *s)
 {
@@ -264,14 +290,15 @@ filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len)
       FILTERX_STRING_DECLARE_ON_STACK(value,
                                       list_scanner_get_current_value(&scanner),
                                       list_scanner_get_current_value_len(&scanner));
-      if (!filterx_list_set_subscript(list, i, &value))
+      gboolean success = filterx_sequence_set_subscript(list, i, &value);
+      FILTERX_STRING_CLEAR_FROM_STACK(value);
+
+      if (!success)
         {
-          filterx_object_unref(value);
           filterx_object_unref(list);
           list = NULL;
           break;
         }
-      filterx_object_unref(value);
     }
   list_scanner_deinit(&scanner);
   return list;
@@ -292,13 +319,13 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   FilterXObject *arg = args[0];
 
   FilterXObject *arg_unwrapped = filterx_ref_unwrap_ro(arg);
-  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list_object)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list)))
     return filterx_object_ref(arg);
 
-  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(list)))
+  if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       FilterXObject *self = filterx_list_new();
-      if (!filterx_list_merge(self, arg_unwrapped))
+      if (!filterx_sequence_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);
           return NULL;
@@ -322,7 +349,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
           return NULL;
         }
 
-      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(list)))
+      if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(sequence)))
         {
           filterx_object_unref(self);
           return NULL;
@@ -336,15 +363,20 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
-FILTERX_DEFINE_TYPE(list_object, FILTERX_TYPE_NAME(list),
+FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .is_mutable = TRUE,
                     .truthy = _filterx_list_truthy,
                     .free_fn = _filterx_list_free,
-                    .dict_factory = _filterx_dict_factory,
-                    .list_factory = _filterx_list_factory,
                     .marshal = _filterx_list_marshal,
                     .repr = _filterx_list_repr,
                     .clone = _filterx_list_clone,
                     .clone_container = _filterx_list_clone_container,
+                    .get_subscript = _filterx_list_get_subscript,
+                    .set_subscript = _filterx_list_set_subscript,
+                    .is_key_set = _filterx_list_is_key_set,
+                    .unset_key = _filterx_list_unset_key,
+                    .iter = _filterx_list_iter,
+                    .len = _filterx_list_len,
+                    .make_readonly = _filterx_list_make_readonly,
                     .dedup = _filterx_list_dedup,
                    );

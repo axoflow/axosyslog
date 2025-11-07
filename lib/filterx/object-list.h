@@ -24,12 +24,26 @@
 #ifndef FILTERX_OBJECT_LIST_H
 #define FILTERX_OBJECT_LIST_H
 
-#include "filterx/filterx-object.h"
+#include "filterx/filterx-sequence.h"
 
-FILTERX_DECLARE_TYPE(list_object);
+typedef struct _FilterXListObject
+{
+  FilterXSequence super;
+  GPtrArray *array;
+} FilterXListObject;
+
+FILTERX_DECLARE_TYPE(list);
 
 FilterXObject *filterx_list_new(void);
 FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
 FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+static inline FilterXObject *
+filterx_list_peek_subscript(FilterXObject *s, gint64 index)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+  return g_ptr_array_index(self->array, index);
+}
+
 
 #endif

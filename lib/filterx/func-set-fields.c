@@ -24,7 +24,7 @@
 #include "filterx/func-set-fields.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/object-extractor.h"
 #include "filterx/expr-literal.h"
 #include "filterx/expr-literal-container.h"
@@ -272,7 +272,7 @@ _eval_fx_set_fields(FilterXExpr *s)
     goto error;
 
   FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
-  if (!filterx_object_is_type(dict_unwrapped, &FILTERX_TYPE_NAME(dict)))
+  if (!filterx_object_is_type(dict_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       filterx_eval_push_error("First argument must be a dict. " FILTERX_FUNC_SET_FIELDS_USAGE, s, NULL);
       goto error;

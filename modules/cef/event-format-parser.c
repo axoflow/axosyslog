@@ -35,8 +35,8 @@
 #include "filterx/object-message-value.h"
 #include "filterx/object-null.h"
 #include "filterx/filterx-object.h"
-#include "filterx/object-dict-interface.h"
-#include "filterx/object-list-interface.h"
+#include "filterx/filterx-mapping.h"
+#include "filterx/filterx-sequence.h"
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
 #include "find-crlf.h"
@@ -101,7 +101,7 @@ parse_default(EventParserContext *ctx, const gchar *value, gint value_len, Filte
   filterx_object_set_subscript(parsed_dict, key_obj, &value_obj);
 
   filterx_object_unref(value_obj);
-  filterx_object_unref(key_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(key_obj);
   return TRUE;
 }
 
@@ -134,7 +134,7 @@ event_format_parser_parse_version(EventParserContext *ctx, const gchar *value, g
   filterx_object_set_subscript(parsed_dict, key_obj, &value_obj);
 
   filterx_object_unref(value_obj);
-  filterx_object_unref(key_obj);
+  FILTERX_STRING_CLEAR_FROM_STACK(key_obj);
   return TRUE;
 }
 
@@ -150,8 +150,8 @@ _set_dict_value(EventParserContext *ctx, FilterXObject *out,
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
 
-  filterx_object_unref(dict_key);
   filterx_object_unref(dict_val);
+  FILTERX_STRING_CLEAR_FROM_STACK(dict_key);
   return ok;
 }
 
@@ -163,10 +163,10 @@ event_format_parser_parse_extensions(EventParserContext *ctx, const gchar *input
 
   if (ctx->separate_extensions)
     {
-      dict_to_fill = filterx_object_create_dict(parsed_dict);
+      dict_to_fill = filterx_dict_new();
       FILTERX_STRING_DECLARE_ON_STACK(key, "extensions", 10);
       filterx_object_set_subscript(parsed_dict, key, &dict_to_fill);
-      filterx_object_unref(key);
+      FILTERX_STRING_CLEAR_FROM_STACK(key);
     }
 
   gboolean success = FALSE;

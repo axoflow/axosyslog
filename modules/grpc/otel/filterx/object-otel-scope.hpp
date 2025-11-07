@@ -26,7 +26,7 @@
 #include "syslog-ng.h"
 
 #include "compat/cpp-start.h"
-#include "filterx/object-dict-interface.h"
+#include "filterx/filterx-mapping.h"
 #include "object-otel.h"
 #include "compat/cpp-end.h"
 
@@ -56,7 +56,7 @@ public:
   bool unset_key(FilterXObject *key);
   bool is_key_set(FilterXObject *key);
   uint64_t len() const;
-  bool iter(FilterXDictIterFunc func, void *user_data);
+  bool iter(FilterXObjectIterFunc func, void *user_data);
   const opentelemetry::proto::common::v1::InstrumentationScope &get_value() const;
 
 private:
@@ -80,7 +80,7 @@ protected:
 
 struct FilterXOtelScope_
 {
-  FilterXDict super;
+  FilterXMapping super;
   syslogng::grpc::otel::filterx::Scope *cpp;
 };
 
