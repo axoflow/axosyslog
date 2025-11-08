@@ -57,7 +57,7 @@ struct _Plugin
      use ugly braces when initializing the structure. */
 
   gint type;
-  const gchar *name;
+  gchar *name;
   CfgParser *parser;
   gpointer (*construct)(Plugin *self);
   void (*free_fn)(Plugin *s);
@@ -84,8 +84,8 @@ struct _ModuleInfo
 
 struct _PluginContext
 {
-  GList *plugins;
-  GList *candidate_plugins;
+  GHashTable *plugins;
+  GHashTable *candidate_plugins;
   gchar *module_path;
 };
 
