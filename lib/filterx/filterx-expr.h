@@ -223,23 +223,12 @@ filterx_expr_visit(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data)
 }
 
 static inline gboolean
-filterx_expr_walk(FilterXExpr *self, FilterXExprWalkOrder order, FilterXExprWalkFunc f, gpointer user_data)
+filterx_expr_walk_children(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data)
 {
-  if (!self)
+  if (!self || !self->walk_children)
     return TRUE;
 
-  g_assert(self->walk_children);
-
-  if (order == FILTERX_EXPR_WALK_PRE_ORDER && !filterx_expr_visit(self, f, user_data))
-    return FALSE;
-
-  if (!self->walk_children(self, f, user_data))
-    return FALSE;
-
-  if (order == FILTERX_EXPR_WALK_POST_ORDER && !filterx_expr_visit(self, f, user_data))
-    return FALSE;
-
-  return TRUE;
+  return self->walk_children(self, f, user_data);
 }
 
 typedef struct _FilterXUnaryOp
