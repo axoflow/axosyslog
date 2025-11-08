@@ -33,6 +33,8 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/compiler/importer.h>
 
+#include <functional>
+
 namespace syslogng {
 namespace grpc {
 
