@@ -114,6 +114,7 @@ class S3ObjectPersist:
         bucket: Optional[str] = None,
         target_key: Optional[str] = None,
         timestamp: Optional[str] = None,
+        suffix: Optional[str] = None,
         compress: Optional[bool] = None,
         compresslevel: Optional[int] = None,
         chunk_size: Optional[int] = None,
@@ -132,6 +133,7 @@ class S3ObjectPersist:
                 and bucket is not None
                 and target_key is not None
                 and timestamp is not None
+                and suffix is not None
                 and compress is not None
                 and compresslevel is not None
                 and chunk_size is not None
@@ -174,6 +176,7 @@ class S3ObjectPersist:
                 "bucket",
                 "target-key",
                 "timestamp",
+                "suffix",
                 "index",
                 "compress",
                 "compresslevel",
@@ -197,6 +200,7 @@ class S3ObjectPersist:
         self.__bucket: str = cache.get("bucket", bucket)
         self.__target_key: str = cache.get("target-key", target_key)
         self.__timestamp: str = cache.get("timestamp", timestamp)
+        self.__suffix: str = cache.get("suffix", suffix)
         self.__index: int = cache.get("index", -1)
         self.__compress: bool = cache.get("compress", compress)
         self.__compresslevel: bool = cache.get("compresslevel", compresslevel)
@@ -224,6 +228,7 @@ class S3ObjectPersist:
             "bucket": self.__bucket,
             "target-key": self.__target_key,
             "timestamp": self.__timestamp,
+            "suffix": self.__suffix,
             "index": self.__index,
             "compress": self.__compress,
             "compresslevel": self.__compresslevel,
@@ -268,6 +273,10 @@ class S3ObjectPersist:
     @property
     def timestamp(self) -> str:
         return self.__timestamp
+
+    @property
+    def suffix(self) -> str:
+        return self.__suffix
 
     @property
     def index(self) -> int:
@@ -381,6 +390,7 @@ class S3Object:
         bucket: Optional[str] = None,
         target_key: Optional[str] = None,
         timestamp: Optional[str] = None,
+        suffix: Optional[str] = None,
         target_index: Optional[int] = None,
         compress: Optional[bool] = None,
         chunk_size: Optional[int] = None,
@@ -416,6 +426,7 @@ class S3Object:
                 and bucket is not None
                 and target_key is not None
                 and timestamp is not None
+                and suffix is not None
                 and target_index is not None
                 and compress is not None
                 and chunk_size is not None
@@ -432,6 +443,7 @@ class S3Object:
                 bucket=bucket,
                 target_key=target_key,
                 timestamp=timestamp,
+                suffix=suffix,
                 compress=compress,
                 compresslevel=compresslevel,
                 chunk_size=chunk_size,
@@ -478,6 +490,7 @@ class S3Object:
         bucket: str,
         target_key: str,
         timestamp: str,
+        suffix: str,
         compress: bool,
         compresslevel: int,
         server_side_encryption: str,
@@ -500,6 +513,7 @@ class S3Object:
             bucket=bucket,
             target_key=target_key,
             timestamp=timestamp,
+            suffix=suffix,
             target_index=0,
             compress=compress,
             compresslevel=compresslevel,
@@ -532,6 +546,7 @@ class S3Object:
             bucket=self.bucket,
             target_key=self.target_key,
             timestamp=self.timestamp,
+            suffix=self.suffix,
             target_index=self.index + 1,
             compress=self.__persist.compress,
             compresslevel=self.__persist.compresslevel,
@@ -546,11 +561,11 @@ class S3Object:
         )
 
     @staticmethod
-    def format_key(target_key: str, timestamp: str, index: int, compression: bool) -> str:
+    def format_key(target_key: str, timestamp: str, suffix: str, index: int, compression: bool) -> str:
         key = target_key
         key += f"-{timestamp}" if timestamp != "" else ""
         key += f"-{str(index)}" if index > 0 else ""
-        key += ".gz" if compression else ""
+        key += suffix
         return key
 
     @property
@@ -563,11 +578,15 @@ class S3Object:
 
     @property
     def key(self) -> str:
-        return self.format_key(self.target_key, self.timestamp, self.index, self.__persist.compress)
+        return self.format_key(self.target_key, self.timestamp, self.suffix, self.index, self.__persist.compress)
 
     @property
     def timestamp(self) -> str:
         return self.__persist.timestamp
+
+    @property
+    def suffix(self) -> str:
+        return self.__persist.suffix
 
     @property
     def index(self) -> int:
@@ -933,8 +952,8 @@ class S3Object:
 
         i = target_index
         while True:
-            uncompressed_key = S3Object.format_key(self.target_key, self.timestamp, i, False)
-            compressed_key = S3Object.format_key(self.target_key, self.timestamp, i, True)
+            uncompressed_key = S3Object.format_key(self.target_key, self.timestamp, self.suffix, i, False)
+            compressed_key = S3Object.format_key(self.target_key, self.timestamp, self.suffix, i, True)
             if uncompressed_key not in objects and compressed_key not in objects:
                 return i
             i += 1

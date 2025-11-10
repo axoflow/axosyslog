@@ -56,8 +56,11 @@ class S3Destination(LogDestination):
             self.role = str(options["role"])
             self.object_key: LogTemplate = options["object_key"]
             self.object_key_timestamp: Optional[LogTemplate] = options["object_key_timestamp"]
+            self.object_key_suffix: Optional[str] = options["object_key_suffix"]
             self.message_template: LogTemplate = options["template"]
             self.compression = bool(options["compression"])
+            if self.compression:
+                self.object_key_suffix += ".gz"
             self.compresslevel = int(options["compresslevel"])
             self.chunk_size = int(options["chunk_size"])
             self.max_object_size = int(options["max_object_size"])
@@ -390,6 +393,7 @@ class S3Destination(LogDestination):
             bucket=self.bucket,
             target_key=target_key,
             timestamp=timestamp,
+            suffix=self.object_key_suffix,
             compress=self.compression,
             server_side_encryption=self.server_side_encryption,
             kms_key=self.kms_key,
