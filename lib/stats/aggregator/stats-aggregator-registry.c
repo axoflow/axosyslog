@@ -237,6 +237,32 @@ stats_register_aggregator_cps(gint level, StatsClusterKey *sc_key, StatsClusterK
 }
 
 void
+stats_register_aggregator_hist(gint level, StatsClusterKey *sc_key,
+                               gint min_bucket, gint num_buckets,
+                               StatsAggregator **aggr)
+{
+  g_assert(stats_aggregator_locked);
+
+  if (!stats_check_level(level))
+    {
+      *aggr = NULL;
+      return;
+    }
+
+  if (!_is_in_table(sc_key))
+    {
+      *aggr = stats_aggregator_histogram_new(level, sc_key, min_bucket, num_buckets);
+      _insert_to_table(*aggr);
+    }
+  else
+    {
+      *aggr = _get_from_table(sc_key);
+    }
+
+  stats_aggregator_start(*aggr);
+}
+
+void
 stats_unregister_aggregator(StatsAggregator **aggr)
 {
   g_assert(stats_aggregator_locked);

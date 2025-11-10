@@ -118,8 +118,6 @@ DestDriver::init()
   if (!log_threaded_dest_driver_init_method(&this->super->super.super.super.super))
     return false;
 
-  log_threaded_dest_driver_register_aggregated_stats(&this->super->super);
-
   if (this->batch_bytes > 0 && this->super->super.batch_lines <= 0)
     this->super->super.batch_lines = G_MAXINT;
 

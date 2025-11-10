@@ -76,13 +76,17 @@ typedef enum _StatsClusterFrameOfReference
 
 typedef struct _StatsCounterGroup StatsCounterGroup;
 typedef struct _StatsCounterGroupInit StatsCounterGroupInit;
+typedef struct _StatsCluster StatsCluster;
 
 struct _StatsCounterGroup
 {
   StatsCounterItem *counters;
-  const gchar **counter_names;
+  gchar **counter_names;
   guint16 capacity;
-  gboolean (*get_type_label)(StatsCounterGroup *self, gint type, StatsClusterLabel *label);
+  gboolean (*get_type_label)(StatsCounterGroup *self, StatsCluster *cluster, gint type, StatsClusterLabel *label);
+  void (*get_type_formatting)(StatsCounterGroup *self, StatsCluster *cluster, gint type,
+                              StatsClusterUnit *stored_unit, StatsClusterFrameOfReference *frame_of_reference);
+  const gchar *(*get_type_name_suffix)(StatsCounterGroup *self, StatsCluster *cluster, gint type);
   void (*free_fn)(StatsCounterGroup *self);
 };
 
@@ -90,7 +94,7 @@ struct _StatsCounterGroupInit
 {
   union
   {
-    const gchar **names;
+    gchar **names;
     const gchar *name;
   } counter;
   void (*init)(StatsCounterGroupInit *self, StatsCounterGroup *counter_group);
@@ -141,6 +145,11 @@ struct _StatsClusterKey
   StatsCounterGroupInit counter_group_init;
 };
 
+void stats_cluster_key_add_unit(StatsClusterKey *key, StatsClusterUnit stored_unit);
+void stats_cluster_key_add_frame_of_reference(StatsClusterKey *key,
+                                              StatsClusterFrameOfReference frame_of_reference);
+
+
 /* NOTE: This struct can only be used by the stats implementation and not by client code. */
 
 /* StatsCluster encapsulates a set of related counters that are registered
@@ -150,15 +159,15 @@ struct _StatsClusterKey
  * This also improves performance for dynamic counters that relate to
  * information found in the log stream.  In that case multiple counters can
  * be registered with a single hash lookup */
-typedef struct _StatsCluster
+struct _StatsCluster
 {
   StatsClusterKey key;
   StatsCounterGroup counter_group;
+  guint32 live_mask;
   guint16 use_count;
-  guint16 live_mask;
   guint16 dynamic:1;
   gchar *query_key;
-} StatsCluster;
+};
 
 typedef void (*StatsForeachCounterFunc)(StatsCluster *sc, gint type, StatsCounterItem *counter, gpointer user_data);
 
@@ -195,7 +204,27 @@ stats_cluster_get_type_label(StatsCluster *self, gint type, StatsClusterLabel *l
   if (!self->counter_group.get_type_label)
     return FALSE;
 
-  return self->counter_group.get_type_label(&self->counter_group, type, label);
+  return self->counter_group.get_type_label(&self->counter_group, self, type, label);
+}
+
+static inline void
+stats_cluster_get_type_formatting(StatsCluster *self, gint type,
+                                  StatsClusterUnit *stored_unit,
+                                  StatsClusterFrameOfReference *frame_of_reference)
+{
+  *stored_unit = self->key.formatting.stored_unit;
+  *frame_of_reference = self->key.formatting.frame_of_reference;
+  if (self->counter_group.get_type_formatting)
+    self->counter_group.get_type_formatting(&self->counter_group, self, type, stored_unit, frame_of_reference);
+}
+
+static inline const gchar *
+stats_cluster_get_type_name_suffix(StatsCluster *self, gint type)
+{
+  if (!self->counter_group.get_type_name_suffix)
+    return NULL;
+
+  return self->counter_group.get_type_name_suffix(&self->counter_group, self, type);
 }
 
 StatsCluster *stats_cluster_new(const StatsClusterKey *key);

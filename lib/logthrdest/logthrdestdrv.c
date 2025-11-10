@@ -29,6 +29,7 @@
 #include "scratch-buffers.h"
 #include "template/eval.h"
 #include "mainloop-threaded-worker.h"
+#include "compat/pow2.h"
 
 #include <string.h>
 
@@ -820,7 +821,8 @@ log_threaded_dest_worker_start(LogThreadedDestWorker *self)
 static void
 _format_stats_key(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 {
-  self->format_stats_key(self, kb);
+  if (self->format_stats_key)
+    self->format_stats_key(self, kb);
 }
 
 static const gchar *
@@ -877,39 +879,51 @@ _register_worker_stats(LogThreadedDestWorker *self)
     _format_stats_key(self->owner, kb);
 
     stats_cluster_key_builder_set_name(kb, "output_event_bytes_total");
-    self->metrics.output_event_bytes_sc_key = stats_cluster_key_builder_build_single(kb);
-    stats_byte_counter_init(&self->metrics.written_bytes, self->metrics.output_event_bytes_sc_key, level, SBCP_KIB);
+    self->metrics.output_event_bytes_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  _init_worker_sck_builder(self, kb);
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_unreachable");
+    self->metrics.output_unreachable_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
   stats_cluster_key_builder_push(kb);
   {
-    _init_worker_sck_builder(self, kb);
-
-    stats_lock();
-    {
-      stats_cluster_key_builder_set_name(kb, "output_unreachable");
-      self->metrics.output_unreachable_key = stats_cluster_key_builder_build_single(kb);
-      stats_register_counter(level, self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.output_unreachable);
-
-      /* Up to 49 days and 17 hours on 32 bit machines. */
-      stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_seconds");
-      stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
-      self->metrics.message_delay_sample_key = stats_cluster_key_builder_build_single(kb);
-      stats_register_counter(level, self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample);
-
-      stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_age_seconds");
-      stats_cluster_key_builder_set_unit(kb, SCU_SECONDS);
-      stats_cluster_key_builder_set_frame_of_reference(kb, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
-      self->metrics.message_delay_sample_age_key = stats_cluster_key_builder_build_single(kb);
-      stats_register_counter(level, self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample_age);
-    }
-    stats_unlock();
+    stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_seconds");
+    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
+    self->metrics.message_delay_sample_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_age_seconds");
+    stats_cluster_key_builder_set_unit(kb, SCU_SECONDS);
+    stats_cluster_key_builder_set_frame_of_reference(kb, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
+    self->metrics.message_delay_sample_age_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_byte_counter_init(&self->metrics.written_bytes, self->metrics.output_event_bytes_key, level, SBCP_KIB);
+  stats_lock();
+  {
+
+    stats_register_counter(level, self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
+                           &self->metrics.output_unreachable);
+
+    /* Up to 49 days and 17 hours on 32 bit machines. */
+    stats_register_counter(level, self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
+                           &self->metrics.message_delay_sample);
+
+    stats_register_counter(level, self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
+                           &self->metrics.message_delay_sample_age);
+  }
+  stats_unlock();
+
 
   UnixTime now;
   unix_time_set_now(&now);
@@ -922,41 +936,25 @@ _register_worker_stats(LogThreadedDestWorker *self)
 static void
 _unregister_worker_stats(LogThreadedDestWorker *self)
 {
-  if (self->metrics.output_event_bytes_sc_key)
-    {
-      stats_byte_counter_deinit(&self->metrics.written_bytes, self->metrics.output_event_bytes_sc_key);
-      stats_cluster_key_free(self->metrics.output_event_bytes_sc_key);
-      self->metrics.output_event_bytes_sc_key = NULL;
-    }
+  stats_byte_counter_deinit(&self->metrics.written_bytes, self->metrics.output_event_bytes_key);
 
   stats_lock();
   {
-    if (self->metrics.output_unreachable_key)
-      {
-        stats_unregister_counter(self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.output_unreachable);
-        stats_cluster_key_free(self->metrics.output_unreachable_key);
-        self->metrics.output_unreachable_key = NULL;
-      }
+    stats_unregister_counter(self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.output_unreachable);
 
-    if (self->metrics.message_delay_sample_key)
-      {
-        stats_unregister_counter(self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.message_delay_sample);
-        stats_cluster_key_free(self->metrics.message_delay_sample_key);
-        self->metrics.message_delay_sample_key = NULL;
-      }
+    stats_unregister_counter(self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.message_delay_sample);
 
-    if (self->metrics.message_delay_sample_age_key)
-      {
-        stats_unregister_counter(self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.message_delay_sample_age);
-        stats_cluster_key_free(self->metrics.message_delay_sample_age_key);
-        self->metrics.message_delay_sample_age_key = NULL;
-      }
+    stats_unregister_counter(self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.message_delay_sample_age);
   }
   stats_unlock();
 
+  stats_cluster_key_free(self->metrics.output_event_bytes_key);
+  stats_cluster_key_free(self->metrics.output_unreachable_key);
+  stats_cluster_key_free(self->metrics.message_delay_sample_key);
+  stats_cluster_key_free(self->metrics.message_delay_sample_age_key);
 }
 
 gboolean
@@ -1186,113 +1184,126 @@ log_threaded_dest_worker_written_bytes_add(LogThreadedDestWorker *self, gsize b)
 void
 log_threaded_dest_driver_insert_msg_length_stats(LogThreadedDestDriver *self, gsize len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_message_size, len);
-  stats_aggregator_add_data_point(self->metrics.average_messages_size, len);
+  stats_aggregator_add_data_point(self->metrics.event_size_hist, len);
 }
 
 void
 log_threaded_dest_driver_insert_batch_length_stats(LogThreadedDestDriver *self, gsize len)
 {
-  stats_aggregator_add_data_point(self->metrics.max_batch_size, len);
-  stats_aggregator_add_data_point(self->metrics.average_batch_size, len);
+  stats_aggregator_add_data_point(self->metrics.batch_size_hist, len);
 }
 
 void
-log_threaded_dest_driver_register_aggregated_stats(LogThreadedDestDriver *self)
+_register_driver_aggregated_stats(LogThreadedDestDriver *self)
 {
   gint level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL0;
 
-  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
-  const gchar *legacy_stats_instance = _format_legacy_stats_instance(self, kb);
-  stats_cluster_key_builder_free(kb);
-
-  StatsClusterKey sc_key_eps_input;
-  stats_cluster_logpipe_key_legacy_set(&sc_key_eps_input, self->stats_source | SCS_DESTINATION,
-                                       self->super.super.id, legacy_stats_instance);
   stats_aggregator_lock();
-  StatsClusterKey sc_key;
 
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "msg_size_max");
-  stats_register_aggregator_maximum(level, &sc_key, &self->metrics.max_message_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "msg_size_avg");
-  stats_register_aggregator_average(level, &sc_key, &self->metrics.average_messages_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "batch_size_max");
-  stats_register_aggregator_maximum(level, &sc_key, &self->metrics.max_batch_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "batch_size_avg");
-  stats_register_aggregator_average(level, &sc_key, &self->metrics.average_batch_size);
-
-  stats_cluster_single_key_legacy_set_with_name(&sc_key, self->stats_source | SCS_DESTINATION, self->super.super.id,
-                                                legacy_stats_instance, "eps");
-  stats_register_aggregator_cps(level, &sc_key, &sc_key_eps_input, SC_TYPE_WRITTEN, &self->metrics.CPS);
+  stats_register_aggregator_hist(level, self->metrics.batch_size_hist_key, round_to_log2(1), 16,
+                                 &self->metrics.batch_size_hist);
+  stats_register_aggregator_hist(level, self->metrics.event_size_hist_key, round_to_log2(64), 8,
+                                 &self->metrics.event_size_hist);
+  stats_register_aggregator_hist(level, self->metrics.request_latency_hist_key, round_to_log2(32), 8,
+                                 &self->metrics.request_latency_hist);
+  stats_register_aggregator_cps(level, self->metrics.CPS_key, self->metrics.processed_key, SC_TYPE_SINGLE_VALUE,
+                                &self->metrics.CPS);
 
   stats_aggregator_unlock();
 }
 
 void
-log_threaded_dest_driver_unregister_aggregated_stats(LogThreadedDestDriver *self)
+_unregister_driver_aggregated_stats(LogThreadedDestDriver *self)
 {
   stats_aggregator_lock();
 
-  stats_unregister_aggregator(&self->metrics.max_message_size);
-  stats_unregister_aggregator(&self->metrics.average_messages_size);
-  stats_unregister_aggregator(&self->metrics.max_batch_size);
-  stats_unregister_aggregator(&self->metrics.average_batch_size);
+  stats_unregister_aggregator(&self->metrics.event_size_hist);
+  stats_unregister_aggregator(&self->metrics.batch_size_hist);
+  stats_unregister_aggregator(&self->metrics.request_latency_hist);
   stats_unregister_aggregator(&self->metrics.CPS);
 
   stats_aggregator_unlock();
 }
 
 static void
-_register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *driver_sck_builder)
+_register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 {
-  if (!driver_sck_builder)
+  if (!kb)
     return;
 
   gint level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL0;
 
-  stats_cluster_key_builder_push(driver_sck_builder);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(driver_sck_builder, "output_events_total");
-    self->metrics.output_events_sc_key = stats_cluster_key_builder_build_logpipe(driver_sck_builder);
+    stats_cluster_key_builder_set_name(kb, "output_events_total");
+    self->metrics.output_events_key = stats_cluster_key_builder_build_logpipe(kb);
   }
-  stats_cluster_key_builder_pop(driver_sck_builder);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(driver_sck_builder);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(driver_sck_builder, "output_event_retries_total");
-    stats_cluster_key_builder_set_legacy_alias(driver_sck_builder, -1, "", "");
-    stats_cluster_key_builder_set_legacy_alias_name(driver_sck_builder, "");
-    self->metrics.output_event_retries_sc_key = stats_cluster_key_builder_build_single(driver_sck_builder);
+    stats_cluster_key_builder_set_name(kb, "output_event_retries_total");
+    stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "");
+    self->metrics.output_event_retries_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(driver_sck_builder);
+  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(driver_sck_builder);
+  stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_legacy_alias(driver_sck_builder, self->stats_source | SCS_DESTINATION,
+    stats_cluster_key_builder_set_legacy_alias(kb, self->stats_source | SCS_DESTINATION,
                                                self->super.super.id,
-                                               _format_legacy_stats_instance(self, driver_sck_builder));
-    stats_cluster_key_builder_set_legacy_alias_name(driver_sck_builder, "processed");
-    self->metrics.processed_sc_key = stats_cluster_key_builder_build_single(driver_sck_builder);
+                                               _format_legacy_stats_instance(self, kb));
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "processed");
+    self->metrics.processed_key = stats_cluster_key_builder_build_single(kb);
   }
-  stats_cluster_key_builder_pop(driver_sck_builder);
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_legacy_alias(kb, self->stats_source | SCS_DESTINATION,
+                                               self->super.super.id,
+                                               _format_legacy_stats_instance(self, kb));
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "eps");
+
+    self->metrics.CPS_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_request_latency_seconds");
+    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
+    self->metrics.request_latency_hist_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_event_size_bytes");
+    self->metrics.event_size_hist_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_batch_size_events");
+    self->metrics.batch_size_hist_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
 
   stats_lock();
   {
-    stats_register_counter(level, self->metrics.output_events_sc_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
-    stats_register_counter(level, self->metrics.output_events_sc_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
-    stats_register_counter(level, self->metrics.processed_sc_key, SC_TYPE_SINGLE_VALUE,
+    stats_register_counter(level, self->metrics.output_events_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
+    stats_register_counter(level, self->metrics.output_events_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
+    stats_register_counter(level, self->metrics.processed_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.processed_messages);
-    stats_register_counter(level, self->metrics.output_event_retries_sc_key, SC_TYPE_SINGLE_VALUE,
+    stats_register_counter(level, self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.output_event_retries);
   }
   stats_unlock();
+  _register_driver_aggregated_stats(self);
 }
 
 static void
@@ -1308,35 +1319,24 @@ _init_driver_sck_builder(LogThreadedDestDriver *self, StatsClusterKeyBuilder *bu
 static void
 _unregister_driver_stats(LogThreadedDestDriver *self)
 {
+  _unregister_driver_aggregated_stats(self);
   stats_lock();
   {
-    if (self->metrics.output_events_sc_key)
-      {
-        stats_unregister_counter(self->metrics.output_events_sc_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
-        stats_unregister_counter(self->metrics.output_events_sc_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
-
-        stats_cluster_key_free(self->metrics.output_events_sc_key);
-        self->metrics.output_events_sc_key = NULL;
-      }
-
-    if (self->metrics.processed_sc_key)
-      {
-        stats_unregister_counter(self->metrics.processed_sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
-
-        stats_cluster_key_free(self->metrics.processed_sc_key);
-        self->metrics.processed_sc_key = NULL;
-      }
-
-    if (self->metrics.output_event_retries_sc_key)
-      {
-        stats_unregister_counter(self->metrics.output_event_retries_sc_key, SC_TYPE_SINGLE_VALUE,
-                                 &self->metrics.output_event_retries);
-
-        stats_cluster_key_free(self->metrics.output_event_retries_sc_key);
-        self->metrics.output_event_retries_sc_key = NULL;
-      }
+    stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
+    stats_unregister_counter(self->metrics.output_events_key, SC_TYPE_WRITTEN, &self->metrics.written_messages);
+    stats_unregister_counter(self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
+    stats_unregister_counter(self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.output_event_retries);
   }
   stats_unlock();
+
+  stats_cluster_key_free(self->metrics.output_events_key);
+  stats_cluster_key_free(self->metrics.processed_key);
+  stats_cluster_key_free(self->metrics.output_event_retries_key);
+  stats_cluster_key_free(self->metrics.request_latency_hist_key);
+  stats_cluster_key_free(self->metrics.event_size_hist_key);
+  stats_cluster_key_free(self->metrics.batch_size_hist_key);
+
 }
 
 static gchar *

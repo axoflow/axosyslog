@@ -35,6 +35,7 @@
 #include "str-format.h"
 #include "str-utils.h"
 #include "scratch-buffers.h"
+#include "compat/pow2.h"
 
 /* hash table implementation inspired by Python's own dict implementation,
  * as described in
@@ -94,29 +95,6 @@ typedef struct _FilterXDictTable
    */
 } FilterXDictTable;
 
-
-#if (defined(__clang__) || defined(__GNUC__))
-static inline gint
-_round_to_log2(gsize x)
-{
-  if (x == 0)
-    return 0;
-
-  /* __builtin_clzll(): Returns the number of leading 0-bits in X, starting
-   * at the most significant bit position.  If X is 0, the result is
-   * undefined.
-   */
-  return (gint) sizeof(x) * 8 - __builtin_clzll(x-1);
-}
-#else
-#error "Only gcc/clang is supported to compile this code"
-#endif
-
-static inline gsize
-_pow2(gint bits)
-{
-  return 1 << bits;
-}
 
 static inline gint
 _table_index_element_size(gsize table_size)
@@ -402,8 +380,8 @@ _table_size(FilterXDictTable *table)
 static FilterXDictTable *
 _table_new(gsize initial_size)
 {
-  gint table_size_log2 = _round_to_log2(initial_size);
-  gsize table_size = _pow2(table_size_log2);
+  gint table_size_log2 = round_to_log2(initial_size);
+  gsize table_size = pow2(table_size_log2);
   gsize entries_size = _table_usable_entries(table_size);
 
   FilterXDictTable *table = g_malloc(sizeof(FilterXDictTable) +

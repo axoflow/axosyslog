@@ -105,10 +105,6 @@ struct _LogThreadedDestWorker
 
   struct
   {
-    StatsClusterKey *output_event_bytes_sc_key;
-    StatsClusterKey *output_unreachable_key;
-    StatsClusterKey *message_delay_sample_key;
-    StatsClusterKey *message_delay_sample_age_key;
 
     StatsByteCounter written_bytes;
     StatsCounterItem *output_unreachable;
@@ -116,6 +112,12 @@ struct _LogThreadedDestWorker
     StatsCounterItem *message_delay_sample_age;
 
     gint64 last_delay_update;
+
+    /* book keeping */
+    StatsClusterKey *output_event_bytes_key;
+    StatsClusterKey *output_unreachable_key;
+    StatsClusterKey *message_delay_sample_key;
+    StatsClusterKey *message_delay_sample_age_key;
   } metrics;
 
   gboolean (*init)(LogThreadedDestWorker *s);
@@ -135,20 +137,24 @@ struct _LogThreadedDestDriver
 
   struct
   {
-    StatsClusterKey *output_events_sc_key;
-    StatsClusterKey *processed_sc_key;
-    StatsClusterKey *output_event_retries_sc_key;
-
     StatsCounterItem *dropped_messages;
     StatsCounterItem *processed_messages;
     StatsCounterItem *written_messages;
     StatsCounterItem *output_event_retries;
 
-    StatsAggregator *max_message_size;
-    StatsAggregator *average_messages_size;
-    StatsAggregator *max_batch_size;
-    StatsAggregator *average_batch_size;
+    StatsAggregator *event_size_hist;
+    StatsAggregator *batch_size_hist;
+    StatsAggregator *request_latency_hist;
     StatsAggregator *CPS;
+
+    /* book keeping */
+    StatsClusterKey *output_events_key;
+    StatsClusterKey *processed_key;
+    StatsClusterKey *output_event_retries_key;
+    StatsClusterKey *batch_size_hist_key;
+    StatsClusterKey *event_size_hist_key;
+    StatsClusterKey *request_latency_hist_key;
+    StatsClusterKey *CPS_key;
   } metrics;
 
   gint batch_lines;
@@ -271,8 +277,14 @@ log_threaded_dest_worker_flush(LogThreadedDestWorker *self, LogThreadedFlushMode
 
   if (self->flush)
     result = self->flush(self, mode);
+
   iv_validate_now();
-  self->last_flush_time = iv_now;
+
+  struct timespec now = iv_now;
+  glong request_latency = timespec_diff_msec(&now, &self->last_flush_time);
+  self->last_flush_time = now;
+
+  stats_aggregator_add_data_point(self->owner->metrics.request_latency_hist, request_latency);
   return result;
 }
 
@@ -298,8 +310,6 @@ void log_threaded_dest_worker_free(LogThreadedDestWorker *self);
 void log_threaded_dest_worker_written_bytes_add(LogThreadedDestWorker *self, gsize b);
 void log_threaded_dest_driver_insert_msg_length_stats(LogThreadedDestDriver *self, gsize len);
 void log_threaded_dest_driver_insert_batch_length_stats(LogThreadedDestDriver *self, gsize len);
-void log_threaded_dest_driver_register_aggregated_stats(LogThreadedDestDriver *self);
-void log_threaded_dest_driver_unregister_aggregated_stats(LogThreadedDestDriver *self);
 gboolean log_threaded_dest_driver_start_workers(LogThreadedDestDriver *self);
 
 gboolean log_threaded_dest_driver_deinit_method(LogPipe *s);

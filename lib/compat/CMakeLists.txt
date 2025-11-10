@@ -19,6 +19,7 @@ set(COMPAT_HEADERS
     compat/curl.h
     compat/json.h
     compat/inttypes.h
+    compat/pow2.h
     PARENT_SCOPE)
 
 set(COMPAT_SOURCES
