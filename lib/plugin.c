@@ -551,7 +551,7 @@ plugin_discover_candidate_modules(PluginContext *context)
 }
 
 void
-plugin_context_copy_candidates(PluginContext *context, PluginContext *from)
+plugin_context_share_candidates(PluginContext *context, PluginContext *from)
 {
   g_hash_table_unref(context->candidate_plugins);
   context->candidate_plugins = g_hash_table_ref(from->candidate_plugins);

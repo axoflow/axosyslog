@@ -495,7 +495,7 @@ cfg_new_subordinate(GlobalConfig *master)
 {
   GlobalConfig *self = cfg_new_snippet();
 
-  plugin_context_copy_candidates(&self->plugin_context, &master->plugin_context);
+  plugin_context_share_candidates(&self->plugin_context, &master->plugin_context);
   return self;
 }
 
