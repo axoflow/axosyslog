@@ -34,6 +34,7 @@ class CompressableFileBuffer:
         path: Path,
         compress: bool = False,
         compresslevel: Optional[int] = None,
+        prev_buffer: Optional[CompressableFileBuffer] = None,
     ) -> None:
         self.__finished = False
 
@@ -45,7 +46,11 @@ class CompressableFileBuffer:
 
         self.__gzfile: Optional[GzipFile] = None
 
-        if compress:
+        if prev_buffer is not None:
+            self.__gzfile = prev_buffer.gzipfile
+            if self.__gzfile:
+                self.__gzfile.fileobj = self.__buffer
+        elif compress:
             assert compresslevel is not None
             self.__gzfile = GzipFile(
                 filename="",
@@ -53,6 +58,19 @@ class CompressableFileBuffer:
                 mode="wb",
                 compresslevel=compresslevel,
             )
+
+    @staticmethod
+    def create_initial(path: Path, compress: bool, compresslevel: Optional[int] = None) -> CompressableFileBuffer:
+        return CompressableFileBuffer(path=path, compress=compress, compresslevel=compresslevel)
+
+    @staticmethod
+    def load_finished(path: Path) -> CompressableFileBuffer:
+        self = CompressableFileBuffer(path=path)
+        self.__finished = True
+        return self
+
+    def create_next(self, path: Path) -> CompressableFileBuffer:
+        return CompressableFileBuffer(path=path, prev_buffer=self)
 
     @property
     def path(self) -> Path:
@@ -84,6 +102,11 @@ class CompressableFileBuffer:
         if self.__gzfile:
             self.__gzfile.close()
         self.__buffer.close()
+
+    def getvalue(self) -> bytes:
+        self.flush()
+        self.__buffer.seek(0)
+        return self.__buffer.read()
 
     def finish(self) -> None:
         if self.__finished:
