@@ -415,6 +415,7 @@ class S3Object:
         # Locked variables
         self.__lock = Lock()
         self.__current_chunk: Optional[S3Chunk] = None
+        self.__prev_chunk: Optional[S3Chunk] = None
         self.__upload_futures: List[Future] = []
         self.__multipart_completed: bool = False
         self.__multipart_complete_future: Optional[Future] = None
@@ -682,6 +683,7 @@ class S3Object:
                 f"Critical failure when trying to upload part, finishing S3 object: {self.bucket}/{self.key} => {e}"
             )
             self.__persist.cancel_pending_part(chunk.buffer.path)
+            chunk.buffer.unlink()
             self.finish()
             return
 
@@ -711,11 +713,6 @@ class S3Object:
             )
             return
 
-        if self.finished and chunk.buffer.is_empty():
-            self.__persist.cancel_pending_part(chunk.buffer.path)
-            chunk.buffer.unlink()
-            return
-
         future = self.__executor.submit(self.__upload_chunk_cb, chunk, is_retry)
         with self.__lock:
             self.__upload_futures.append(future)
@@ -725,7 +722,11 @@ class S3Object:
         with self.__lock:
             chunk = self.__current_chunk
         if chunk is None:
-            raise AlreadyFinishedError()
+            with self.__lock:
+                self.__current_chunk = self.__prev_chunk.create_next()
+                self.__prev_chunk = None
+                self.__persist.add_pending_part(self.__current_chunk.buffer.path, self.__current_chunk.part_number)
+                chunk = self.__current_chunk
 
         old_size = chunk.buffer.tell()
         chunk.buffer.write(data)
@@ -747,8 +748,8 @@ class S3Object:
                 self.finish()
                 return
 
-            self.__current_chunk = chunk.create_next()
-            self.__persist.add_pending_part(self.__current_chunk.buffer.path, self.__current_chunk.part_number)
+            self.__prev_chunk = self.__current_chunk
+            self.__current_chunk = None
 
             self.__lock.release()
 
@@ -853,6 +854,7 @@ class S3Object:
                 chunk = self.__current_chunk
                 self.__current_chunk.buffer.finish()
                 self.__current_chunk = None
+                self.__prev_chunk = None
 
         if chunk is not None:
             self.__upload_chunk(chunk)
