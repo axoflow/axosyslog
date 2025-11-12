@@ -1190,7 +1190,7 @@ log_threaded_dest_driver_insert_msg_length_stats(LogThreadedDestDriver *self, gs
 void
 log_threaded_dest_driver_insert_batch_length_stats(LogThreadedDestDriver *self, gsize len)
 {
-  stats_aggregator_add_data_point(self->metrics.batch_size_hist, len);
+  stats_aggregator_add_data_point(self->metrics.batch_size_bytes_hist, len);
 }
 
 void
@@ -1200,8 +1200,10 @@ _register_driver_aggregated_stats(LogThreadedDestDriver *self)
 
   stats_aggregator_lock();
 
-  stats_register_aggregator_hist(level, self->metrics.batch_size_hist_key, round_to_log2(1), 16,
-                                 &self->metrics.batch_size_hist);
+  stats_register_aggregator_hist(level, self->metrics.batch_size_events_hist_key, round_to_log2(1), 16,
+                                 &self->metrics.batch_size_events_hist);
+  stats_register_aggregator_hist(level, self->metrics.batch_size_bytes_hist_key, round_to_log2(512), 16,
+                                 &self->metrics.batch_size_bytes_hist);
   stats_register_aggregator_hist(level, self->metrics.event_size_hist_key, round_to_log2(64), 8,
                                  &self->metrics.event_size_hist);
   stats_register_aggregator_hist(level, self->metrics.request_latency_hist_key, round_to_log2(32), 8,
@@ -1218,7 +1220,8 @@ _unregister_driver_aggregated_stats(LogThreadedDestDriver *self)
   stats_aggregator_lock();
 
   stats_unregister_aggregator(&self->metrics.event_size_hist);
-  stats_unregister_aggregator(&self->metrics.batch_size_hist);
+  stats_unregister_aggregator(&self->metrics.batch_size_events_hist);
+  stats_unregister_aggregator(&self->metrics.batch_size_bytes_hist);
   stats_unregister_aggregator(&self->metrics.request_latency_hist);
   stats_unregister_aggregator(&self->metrics.CPS);
 
@@ -1287,8 +1290,15 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 
   stats_cluster_key_builder_push(kb);
   {
+    stats_cluster_key_builder_set_name(kb, "output_batch_size_bytes");
+    self->metrics.batch_size_bytes_hist_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
     stats_cluster_key_builder_set_name(kb, "output_batch_size_events");
-    self->metrics.batch_size_hist_key = stats_cluster_key_builder_build_hist(kb);
+    self->metrics.batch_size_events_hist_key = stats_cluster_key_builder_build_hist(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
@@ -1335,7 +1345,8 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   stats_cluster_key_free(self->metrics.output_event_retries_key);
   stats_cluster_key_free(self->metrics.request_latency_hist_key);
   stats_cluster_key_free(self->metrics.event_size_hist_key);
-  stats_cluster_key_free(self->metrics.batch_size_hist_key);
+  stats_cluster_key_free(self->metrics.batch_size_events_hist_key);
+  stats_cluster_key_free(self->metrics.batch_size_bytes_hist_key);
 
 }
 
