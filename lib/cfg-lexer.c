@@ -1027,7 +1027,7 @@ static void
 cfg_lexer_append_preprocessed_output(CfgLexer *self, const gchar *token_text)
 {
   if (self->preprocess_output)
-    g_string_append_printf(self->preprocess_output, "%s", token_text);
+    g_string_append(self->preprocess_output, token_text);
 }
 
 static CfgTokenBlock *

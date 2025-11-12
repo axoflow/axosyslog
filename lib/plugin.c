@@ -40,6 +40,51 @@
 #define G_MODULE_SUFFIX "dylib"
 #endif
 
+static guint
+plugin_hash(gconstpointer pp)
+{
+  const PluginBase *pb = pp;
+  const char *p;
+  guint32 h = 5381 + pb->type;
+
+  for (p = pb->name; *p != '\0'; p++)
+    {
+      gchar c = *p;
+      if (c == '-')
+        c = '_';
+      h = (h << 5) + h + c;
+    }
+
+  return h;
+}
+
+static gboolean
+plugin_equal(gconstpointer p1, gconstpointer p2)
+{
+  const PluginBase *pb1 = p1;
+  const PluginBase *pb2 = p2;
+  gint i;
+
+  if (pb1->type != pb2->type)
+    return FALSE;
+
+  for (i = 0; pb1->name[i] && pb2->name[i]; i++)
+    {
+      gchar c1 = pb1->name[i];
+      gchar c2 = pb2->name[i];
+
+      if (c1 == c2)
+        continue;
+
+      if ((c1 == '-' || c1 == '_') &&
+          (c2 == '-' || c2 == '_'))
+        continue;
+  }
+  if (pb1->name[i] == 0 && pb2->name[i] == 0)
+    return TRUE;
+  return FALSE;
+}
+
 static void
 plugin_candidate_set_module_name(PluginCandidate *self, const gchar *module_name)
 {
@@ -125,38 +170,6 @@ plugin_construct_from_config(Plugin *self, CfgLexer *lexer, gpointer arg)
 /*****************************************************************************
  * Implementation of PluginContext
  *****************************************************************************/
-
-static Plugin *
-_find_plugin_in_list(GList *head, gint plugin_type, const gchar *plugin_name)
-{
-  GList *p;
-  Plugin *plugin;
-  gint i;
-
-  /* this function can only use the first two fields in plugin (type &
-   * name), because it may be supplied a list of PluginCandidate
-   * instances too */
-
-  for (p = head; p; p = g_list_next(p))
-    {
-      plugin = p->data;
-      if (plugin->type == plugin_type)
-        {
-          for (i = 0; plugin->name[i] && plugin_name[i]; i++)
-            {
-              if (plugin->name[i] != plugin_name[i] &&
-                  !((plugin->name[i] == '-' || plugin->name[i] == '_') &&
-                    (plugin_name[i] == '-' || plugin_name[i] == '_')))
-                {
-                  break;
-                }
-            }
-          if (plugin_name[i] == 0 && plugin->name[i] == 0)
-            return plugin;
-        }
-    }
-  return NULL;
-}
 
 static ModuleInfo *
 _get_module_info(GModule *mod)
@@ -297,18 +310,20 @@ plugin_register(PluginContext *context, Plugin *p, gint number)
 
   for (i = 0; i < number; i++)
     {
-      Plugin *existing_plugin;
+      PluginBase key;
 
-      existing_plugin = _find_plugin_in_list(context->plugins, p[i].type, p[i].name);
-      if (existing_plugin)
+      key.type = p[i].type;
+      key.name = p[i].name;
+
+      if (g_hash_table_lookup(context->plugins, &key))
         {
           msg_debug("Attempted to register the same plugin multiple times, dropping the old one",
                     evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(p[i].type)),
                     evt_tag_str("name", p[i].name));
-          plugin_free(existing_plugin);
-          context->plugins = g_list_remove(context->plugins, existing_plugin);
+          g_hash_table_replace(context->plugins, &p[i], &p[i]);
         }
-      context->plugins = g_list_prepend(context->plugins, &p[i]);
+      else
+        g_hash_table_insert(context->plugins, &p[i], &p[i]);
     }
 }
 
@@ -317,15 +332,17 @@ plugin_find(PluginContext *context, gint plugin_type, const gchar *plugin_name)
 {
   Plugin *p;
   PluginCandidate *candidate;
+  PluginBase key;
+
+  key.type = plugin_type;
+  key.name = (gchar *) plugin_name;
 
   /* try registered plugins first */
-  p = _find_plugin_in_list(context->plugins, plugin_type, plugin_name);
+  p = (Plugin *) g_hash_table_lookup(context->plugins, &key);
   if (p)
-    {
-      return p;
-    }
+    return p;
 
-  candidate = (PluginCandidate *) _find_plugin_in_list(context->candidate_plugins, plugin_type, plugin_name);
+  candidate = (PluginCandidate *) g_hash_table_lookup(context->candidate_plugins, &key);
   if (!candidate)
     return NULL;
 
@@ -333,19 +350,17 @@ plugin_find(PluginContext *context, gint plugin_type, const gchar *plugin_name)
   plugin_load_module(context, candidate->module_name, NULL);
 
   /* by this time it should've registered */
-  p = _find_plugin_in_list(context->plugins, plugin_type, plugin_name);
-  if (p)
-    {
-      return p;
-    }
-  else
+  p = (Plugin *) g_hash_table_lookup(context->plugins, &key);
+  if (!p)
     {
       msg_error("This module claims to support a plugin, which it didn't register after loading",
                 evt_tag_str("module", candidate->module_name),
                 evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin_type)),
                 evt_tag_str("name", plugin_name));
+      return NULL;
     }
-  return NULL;
+
+  return p;
 }
 
 gboolean
@@ -410,9 +425,13 @@ call_init:
 gboolean
 plugin_is_module_available(PluginContext *context, const gchar *module_name)
 {
-  for (GList *l = context->candidate_plugins; l; l = l->next)
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init(&iter, context->candidate_plugins);
+  while (g_hash_table_iter_next(&iter, &key, &value))
     {
-      PluginCandidate *pc = (PluginCandidate *) l->data;
+      PluginCandidate *pc = (PluginCandidate *) value;
 
       if (strcmp(pc->module_name, module_name) == 0)
         return TRUE;
@@ -425,12 +444,16 @@ plugin_is_plugin_available(PluginContext *context, gint plugin_type, const gchar
 {
   Plugin *p;
   PluginCandidate *candidate;
+  PluginBase key;
 
-  p = _find_plugin_in_list(context->plugins, plugin_type, plugin_name);
+  key.type = plugin_type;
+  key.name = (gchar *) plugin_name;
+
+  p = (Plugin *) g_hash_table_lookup(context->plugins, &key);
   if (p)
     return TRUE;
 
-  candidate = (PluginCandidate *) _find_plugin_in_list(context->candidate_plugins, plugin_type, plugin_name);
+  candidate = (PluginCandidate *) g_hash_table_lookup(context->candidate_plugins, &key);
   return !!candidate;
 }
 
@@ -438,14 +461,6 @@ plugin_is_plugin_available(PluginContext *context, gint plugin_type, const gchar
 /************************************************************
  * Candidate modules
  ************************************************************/
-
-static void
-_free_candidate_plugins(PluginContext *context)
-{
-  g_list_foreach(context->candidate_plugins, (GFunc) plugin_candidate_free, NULL);
-  g_list_free(context->candidate_plugins);
-  context->candidate_plugins = NULL;
-}
 
 gboolean
 plugin_has_discovery_run(PluginContext *context)
@@ -460,7 +475,9 @@ plugin_discover_candidate_modules(PluginContext *context)
   gchar **mod_paths;
   gint i, j;
 
-  _free_candidate_plugins(context);
+  if (context->candidate_plugins)
+    g_hash_table_unref(context->candidate_plugins);
+  context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
 
   mod_paths = g_strsplit(context->module_path ? : "", G_SEARCHPATH_SEPARATOR_S, 0);
   for (i = 0; mod_paths[i]; i++)
@@ -499,7 +516,7 @@ plugin_discover_candidate_modules(PluginContext *context)
                       Plugin *plugin = &module_info->plugins[j];
                       PluginCandidate *candidate_plugin;
 
-                      candidate_plugin = (PluginCandidate *) _find_plugin_in_list(context->candidate_plugins, plugin->type, plugin->name);
+                      candidate_plugin = (PluginCandidate *) g_hash_table_lookup(context->candidate_plugins, plugin);
 
                       msg_debug("Registering candidate plugin",
                                 evt_tag_str("module", module_name),
@@ -516,9 +533,8 @@ plugin_discover_candidate_modules(PluginContext *context)
                         }
                       else
                         {
-                          context->candidate_plugins = g_list_prepend(context->candidate_plugins,
-                                                                      plugin_candidate_new(plugin->type, plugin->name,
-                                                                          module_name));
+                          candidate_plugin = plugin_candidate_new(plugin->type, plugin->name, module_name);
+                          g_hash_table_insert(context->candidate_plugins, candidate_plugin, candidate_plugin);
                         }
                     }
                 }
@@ -534,28 +550,11 @@ plugin_discover_candidate_modules(PluginContext *context)
   g_strfreev(mod_paths);
 }
 
-
-static void
-_free_plugins(PluginContext *context)
-{
-  g_list_foreach(context->plugins, (GFunc) plugin_free, NULL);
-  g_list_free(context->plugins);
-  context->plugins = NULL;
-}
-
 void
-plugin_context_copy_candidates(PluginContext *context, PluginContext *from)
+plugin_context_share_candidates(PluginContext *context, PluginContext *from)
 {
-  GList *l;
-
-  for (l = from->candidate_plugins; l; l = l->next)
-    {
-      PluginCandidate *pc = (PluginCandidate *) l->data;
-
-      context->candidate_plugins =
-        g_list_prepend(context->candidate_plugins,
-                       plugin_candidate_new(pc->super.type, pc->super.name, pc->module_name));
-    }
+  g_hash_table_unref(context->candidate_plugins);
+  context->candidate_plugins = g_hash_table_ref(from->candidate_plugins);
 }
 
 void
@@ -565,19 +564,21 @@ plugin_context_set_module_path(PluginContext *context, const gchar *module_path)
   context->module_path = g_strdup(module_path);
 }
 
+
 void
 plugin_context_init_instance(PluginContext *context)
 {
   memset(context, 0, sizeof(*context));
   plugin_context_set_module_path(context, resolved_configurable_paths.initial_module_path);
+  context->plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_free);
 }
 
 void
 plugin_context_deinit_instance(PluginContext *context)
 {
-  _free_plugins(context);
-  _free_candidate_plugins(context);
-
+  g_hash_table_unref(context->plugins);
+  if (context->candidate_plugins)
+    g_hash_table_unref(context->candidate_plugins);
   g_free(context->module_path);
 }
 
