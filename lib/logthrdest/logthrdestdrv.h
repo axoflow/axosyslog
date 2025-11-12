@@ -143,7 +143,8 @@ struct _LogThreadedDestDriver
     StatsCounterItem *output_event_retries;
 
     StatsAggregator *event_size_hist;
-    StatsAggregator *batch_size_hist;
+    StatsAggregator *batch_size_events_hist;
+    StatsAggregator *batch_size_bytes_hist;
     StatsAggregator *request_latency_hist;
     StatsAggregator *CPS;
 
@@ -151,7 +152,8 @@ struct _LogThreadedDestDriver
     StatsClusterKey *output_events_key;
     StatsClusterKey *processed_key;
     StatsClusterKey *output_event_retries_key;
-    StatsClusterKey *batch_size_hist_key;
+    StatsClusterKey *batch_size_bytes_hist_key;
+    StatsClusterKey *batch_size_events_hist_key;
     StatsClusterKey *event_size_hist_key;
     StatsClusterKey *request_latency_hist_key;
     StatsClusterKey *CPS_key;
@@ -274,6 +276,7 @@ static inline LogThreadedResult
 log_threaded_dest_worker_flush(LogThreadedDestWorker *self, LogThreadedFlushMode mode)
 {
   LogThreadedResult result = LTR_SUCCESS;
+  gsize batch_size = self->batch_size;
 
   if (self->flush)
     result = self->flush(self, mode);
@@ -284,7 +287,11 @@ log_threaded_dest_worker_flush(LogThreadedDestWorker *self, LogThreadedFlushMode
   glong request_latency = timespec_diff_msec(&now, &self->last_flush_time);
   self->last_flush_time = now;
 
-  stats_aggregator_add_data_point(self->owner->metrics.request_latency_hist, request_latency);
+  if (result == LTR_SUCCESS)
+    {
+      stats_aggregator_add_data_point(self->owner->metrics.batch_size_events_hist, batch_size);
+      stats_aggregator_add_data_point(self->owner->metrics.request_latency_hist, request_latency);
+    }
   return result;
 }
 
