@@ -64,6 +64,6 @@ def test_filterx_failure_info(syslog_ng, config):
 
     actual_falsy = actual_failure_info[1]
     assert actual_falsy["errors"] == [
-        {"location": "syslog_ng_server.conf:37:17", "line": "{ ... }", "error": "bailing out due to a falsy expr: false"},
+        {"location": "syslog_ng_server.conf:41:21", "line": "a == 3", "error": "bailing out due to a falsy expr: false"},
     ]
     assert actual_falsy["meta"]["step"] == "falsy_block"
