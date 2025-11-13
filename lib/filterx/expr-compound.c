@@ -75,6 +75,10 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
                   evt_tag_str("type", filterx_object_get_type_name(res)));
       scratch_buffers_reclaim_marked(mark);
     }
+
+  if (!success)
+    filterx_eval_push_falsy_error("bailing out due to a falsy expr", expr, res);
+
   return success;
 }
 
@@ -118,12 +122,8 @@ _eval_compound_start(FilterXCompoundExpr *self, gsize start_index)
 
   if (!_eval_exprs(self, &result, start_index))
     {
-      if (result)
-        {
-          filterx_eval_push_falsy_error("bailing out due to a falsy expr", &self->super, result);
-          filterx_object_unref(result);
-          result = NULL;
-        }
+      filterx_object_unref(result);
+      result = NULL;
     }
   else
     {
