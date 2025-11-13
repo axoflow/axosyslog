@@ -102,7 +102,7 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   FilterXScope *scope = context->scope;
 
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
-  filterx_scope_set_variable(scope, variable, new_repr, FALSE);
+  filterx_scope_set_variable(scope, variable, new_repr, variable->assigned);
 }
 
 static gboolean
