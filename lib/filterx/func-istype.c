@@ -66,8 +66,6 @@ _optimize(FilterXExpr *s)
 {
   FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
 
-  self->object_expr = filterx_expr_optimize(self->object_expr);
-
   if (filterx_expr_is_literal(self->object_expr))
     {
       FilterXObject *object = filterx_literal_get_value(self->object_expr);
@@ -80,31 +78,28 @@ _optimize(FilterXExpr *s)
   return filterx_function_optimize_method(&self->super);
 }
 
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
-
-  if (!filterx_expr_init(self->object_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
-  filterx_expr_deinit(self->object_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
   FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
   filterx_expr_unref(self->object_expr);
   filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_istype_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
+
+  FilterXExpr **exprs[] = { &self->object_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 static FilterXType *
@@ -171,8 +166,7 @@ filterx_function_istype_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "istype");
   self->super.super.eval = _eval_fx_istype;
   self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _istype_walk;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) ||
