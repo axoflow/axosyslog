@@ -76,6 +76,7 @@ extern LogWriterOptions *last_writer_options;
 extern FilePermOptions *last_file_perm_options;
 extern MsgFormatOptions *last_msg_format_options;
 extern LogDriver *last_driver;
+extern LogDriverPlugin *last_driver_plugin;
 extern LogSchedulerOptions *last_scheduler_options;
 extern LogParser *last_parser;
 extern FilterExprNode *last_filter_expr;

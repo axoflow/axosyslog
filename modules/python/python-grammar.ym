@@ -43,7 +43,6 @@
 #include "plugin.h"
 #include "syslog-names.h"
 
-PythonHttpHeaderPlugin *last_header;
 PythonOptions *last_python_options;
 PythonBinding *last_python_binding;
 
@@ -116,8 +115,8 @@ start
           '(' _inner_src_context_push python_fetcher_options _inner_src_context_pop ')'      { YYACCEPT; }
         | LL_CONTEXT_INNER_DEST KW_PYTHON_HTTP_HEADER
           {
-            last_header = *instance = python_http_header_new();
-	    last_python_binding = python_http_header_get_binding(last_header);
+            last_driver_plugin = *instance = python_http_header_new();
+	    last_python_binding = python_http_header_get_binding((PythonHttpHeaderPlugin *) last_driver_plugin);
           }
           '(' python_http_header_options ')'                                                 { YYACCEPT; }
         | LL_CONTEXT_ROOT KW_PYTHON _block_content_context_push LL_BLOCK _block_content_context_pop
@@ -192,7 +191,7 @@ python_http_header_option
 	: python_binding_option
         | KW_MARK_ERRORS_AS_CRITICAL '(' yesno ')'
           {
-            python_http_header_set_mark_errors_as_critical(last_header, $3);
+            python_http_header_set_mark_errors_as_critical((PythonHttpHeaderPlugin *) last_driver_plugin, $3);
           }
         ;
 

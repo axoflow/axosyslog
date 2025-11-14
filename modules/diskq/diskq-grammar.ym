@@ -34,6 +34,7 @@
 %code {
 
 #include "cfg-parser.h"
+#include "cfg-grammar-internal.h"
 #include "syslog-names.h"
 #include "messages.h"
 #include "diskq.h"
@@ -42,7 +43,6 @@
 
 #include <string.h>
 
-DiskQDestPlugin *last_plugin;
 DiskQueueOptions *last_options;
 
 }
@@ -81,9 +81,8 @@ start
 dest_diskq
         : KW_DISK_BUFFER
           {
-            last_plugin = diskq_dest_plugin_new();
-            *instance = (LogDriverPlugin*)last_plugin;
-            last_options = diskq_get_options(last_plugin);
+            *instance = last_driver_plugin = (LogDriverPlugin *) diskq_dest_plugin_new();
+            last_options = diskq_get_options((DiskQDestPlugin*) last_driver_plugin);
           }
           '(' dest_diskq_options ')' { disk_queue_options_check_plugin_settings(last_options); }
         ;

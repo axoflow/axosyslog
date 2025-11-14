@@ -27,11 +27,8 @@
 
 #include "grpc-dest.h"
 #include "grpc-source.h"
-#include "cfg-grammar-internal.h"
+#include "grpc-grammar-internal.h"
 #include "plugin.h"
-
-GrpcServerCredentialsBuilderW *last_grpc_server_credentials_builder;
-GrpcClientCredentialsBuilderW *last_grpc_client_credentials_builder;
 
 }
 
