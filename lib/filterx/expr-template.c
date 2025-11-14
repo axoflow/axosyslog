@@ -70,7 +70,7 @@ filterx_template_new(LogTemplate *template)
 {
   FilterXTemplate *self = g_new0(FilterXTemplate, 1);
 
-  filterx_expr_init_instance(&self->super, "template");
+  filterx_expr_init_instance(&self->super, "template", FALSE);
   self->super.eval = _eval_template;
   self->super.free_fn = _free;
   self->template = template;

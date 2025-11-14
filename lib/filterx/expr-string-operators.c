@@ -251,7 +251,7 @@ filterx_string_slicing_new(FilterXExpr *lhs, FilterXExpr *start, FilterXExpr *en
 {
   FilterXSlicingOperator *self = g_new0(FilterXSlicingOperator, 1);
 
-  filterx_expr_init_instance(&self->super, "string_slicing");
+  filterx_expr_init_instance(&self->super, "string_slicing", FALSE);
   self->super.optimize = filterx_string_slicing_optimize;
   self->super.init = filterx_string_slicing_init;
   self->super.deinit = filterx_string_slicing_deinit;

@@ -428,7 +428,8 @@ FilterXExpr *
 filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrptime *self = g_new0(FilterXFunctionStrptime, 1);
-  filterx_function_init_instance(&self->super, "strptime");
+
+  filterx_function_init_instance(&self->super, "strptime", FALSE);
   self->super.super.init = _strptime_init;
   self->super.super.deinit = _strptime_deinit;
   self->super.super.optimize = _strptime_optimize;
@@ -591,7 +592,8 @@ FilterXExpr *
 filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrftime *self = g_new0(FilterXFunctionStrftime, 1);
-  filterx_function_init_instance(&self->super, "strftime");
+
+  filterx_function_init_instance(&self->super, "strftime", FALSE);
 
   self->super.super.eval = _strftime_eval;
   self->super.super.optimize = _strftime_optimize;

@@ -181,7 +181,8 @@ FilterXExpr *
 filterx_function_set_timestamp_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionSetTimestamp *self = g_new0(FilterXFunctionSetTimestamp, 1);
-  filterx_function_init_instance(&self->super, "set_timestamp");
+
+  filterx_function_init_instance(&self->super, "set_timestamp", FALSE);
 
   self->super.super.eval = _set_timestamp_eval;
   self->super.super.optimize = _set_timestamp_optimize;
@@ -275,7 +276,7 @@ FilterXExpr *
 filterx_function_get_timestamp_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionGetTimestamp *self = g_new0(FilterXFunctionGetTimestamp, 1);
-  filterx_function_init_instance(&self->super, "get_timestamp");
+  filterx_function_init_instance(&self->super, "get_timestamp", FALSE);
 
   self->super.super.eval = _get_timestamp_eval;
 

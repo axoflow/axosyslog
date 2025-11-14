@@ -172,8 +172,8 @@ FilterXExpr *
 filterx_function_protobuf_message_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXProtobufMessage *self = g_new0(FilterXProtobufMessage, 1);
-  filterx_function_init_instance(&self->super, "protobuf_message");
 
+  filterx_function_init_instance(&self->super, "protobuf_message", FALSE);
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
