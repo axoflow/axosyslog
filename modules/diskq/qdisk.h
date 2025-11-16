@@ -27,30 +27,26 @@
 #include "syslog-ng.h"
 #include "diskq-options.h"
 
-#define LOG_PATH_OPTIONS_FOR_BACKLOG GINT_TO_POINTER(0x80000000)
 #define QDISK_RESERVED_SPACE 4096
-#define LOG_PATH_OPTIONS_TO_POINTER(lpo) GUINT_TO_POINTER(0x80000000 | (lpo)->ack_needed)
 
-/* NOTE: this must not evaluate ptr multiple times, otherwise the code that
- * uses this breaks, as it passes the result of a g_queue_pop_head call,
- * which has side effects.
- */
-#define POINTER_TO_LOG_PATH_OPTIONS(ptr, lpo) \
-({ \
-  gpointer p = ptr; \
-  (lpo)->ack_needed = (GPOINTER_TO_INT(p) & ~0x80000000); \
-})
+typedef enum
+{
+  QDISK_MQ_FRONT_CACHE,
+  QDISK_MQ_BACKLOG,
+  QDISK_MQ_FLOW_CONTROL_WINDOW,
+} QDiskMemoryQueueType;
 
 typedef gboolean (*QDiskSerializeFunc)(SerializeArchive *sa, gpointer user_data);
 typedef gboolean (*QDiskDeSerializeFunc)(SerializeArchive *sa, gpointer user_data);
+typedef gboolean (*QDiskMemQLoadFunc)(QDiskMemoryQueueType type, LogMessage *msg, gpointer user_data);
+typedef gboolean (*QDiskMemQSaveFunc)(QDiskMemoryQueueType type, LogMessage **pmsg, gpointer *iter, gpointer user_data);
 
 typedef struct
 {
   gint64 ofs;
   guint32 len;
   guint32 count;
-}
-QDiskQueuePosition;
+} QDiskQueuePosition;
 
 typedef struct _QDisk QDisk;
 
@@ -69,8 +65,8 @@ gboolean qdisk_rewind_backlog(QDisk *self, guint rewind_count);
 void qdisk_empty_backlog(QDisk *self);
 gint64 qdisk_get_next_tail_position(QDisk *self);
 gint64 qdisk_get_next_head_position(QDisk *self);
-gboolean qdisk_start(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window);
-gboolean qdisk_stop(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window);
+gboolean qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data);
+gboolean qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data);
 void qdisk_reset_file_if_empty(QDisk *self);
 gboolean qdisk_started(QDisk *self);
 void qdisk_free(QDisk *self);

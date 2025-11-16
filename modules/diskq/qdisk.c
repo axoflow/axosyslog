@@ -1091,7 +1091,9 @@ _create_stream(QDisk *self, gint64 offset)
 }
 
 static gboolean
-_load_queue(QDisk *self, GQueue *q, gint64 q_ofs, guint32 q_len, guint32 q_count)
+_load_queue(QDisk *self,
+            QDiskMemoryQueueType type, QDiskMemQLoadFunc func, gpointer user_data,
+            gint64 q_ofs, guint32 q_len, guint32 q_count)
 {
   if (q_ofs)
     {
@@ -1107,9 +1109,7 @@ _load_queue(QDisk *self, GQueue *q, gint64 q_ofs, guint32 q_len, guint32 q_count
           msg = log_msg_new_empty();
           if (log_msg_deserialize(msg, sa))
             {
-              g_queue_push_tail(q, msg);
-              /* we restore the queue without ACKs */
-              g_queue_push_tail(q, LOG_PATH_OPTIONS_FOR_BACKLOG);
+              func(type, msg, user_data);
             }
           else
             {
@@ -1132,7 +1132,9 @@ _load_queue(QDisk *self, GQueue *q, gint64 q_ofs, guint32 q_len, guint32 q_count
 }
 
 static gboolean
-_try_to_load_queue(QDisk *self, GQueue *queue, QDiskQueuePosition *pos, gchar *type)
+_try_to_load_queue(QDisk *self,
+                   QDiskMemoryQueueType qtype, QDiskMemQLoadFunc func, gpointer user_data,
+                   QDiskQueuePosition *pos, gchar *type)
 {
   gint64 ofs;
   guint32 count, len;
@@ -1143,7 +1145,7 @@ _try_to_load_queue(QDisk *self, GQueue *queue, QDiskQueuePosition *pos, gchar *t
 
   if (!(ofs > 0 && ofs < self->hdr->write_head))
     {
-      if (!_load_queue(self, queue, ofs, len, count))
+      if (!_load_queue(self, qtype, func, user_data, ofs, len, count))
         return !self->options->read_only;
     }
   else
@@ -1159,16 +1161,14 @@ _try_to_load_queue(QDisk *self, GQueue *queue, QDiskQueuePosition *pos, gchar *t
   return TRUE;
 }
 
-#define try_load_queue(self, queue) _try_to_load_queue(self, queue, &self->hdr->queue ##_pos, #queue)
-
 static gboolean
-_load_non_reliable_queues(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window)
+_load_non_reliable_queues(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
-  if (!try_load_queue(self, front_cache))
+  if (!_try_to_load_queue(self, QDISK_MQ_FRONT_CACHE, func, user_data, &self->hdr->front_cache_pos, "front_cache"))
     return FALSE;
-  if (!try_load_queue(self, backlog))
+  if (!_try_to_load_queue(self, QDISK_MQ_BACKLOG, func, user_data, &self->hdr->backlog_pos, "backlog"))
     return FALSE;
-  if (!try_load_queue(self, flow_control_window))
+  if (!_try_to_load_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &self->hdr->flow_control_window_pos, "flow_control_window"))
     return FALSE;
 
   return TRUE;
@@ -1230,37 +1230,31 @@ qdisk_write_serialized_string_to_file(QDisk *self, GString const *serialized, gi
 }
 
 static gboolean
-_save_queue(QDisk *self, GQueue *q, QDiskQueuePosition *q_pos)
+_save_queue(QDisk *self, QDiskMemoryQueueType type, QDiskMemQSaveFunc func, gpointer user_data, QDiskQueuePosition *q_pos)
 {
   LogMessage *msg;
-  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   SerializeArchive *sa;
   GString *serialized;
   gint64  current_offset = 0;
   gint64  queue_start_position = 0;
+  guint32  count = 0;
   gint32  written_bytes = 0;
   gboolean success = FALSE;
-
-  if (q->length == 0)
-    {
-      q_pos->ofs = 0;
-      q_pos->len = 0;
-      return TRUE;
-    }
+  gpointer iter = NULL;
 
   serialized = g_string_sized_new(4096);
   sa = serialize_string_archive_new(serialized);
-  for (gint i = 0; i < g_queue_get_length(q); i+=2)
+
+  while (func(type, &msg, &iter, user_data))
     {
       /* NOTE: we might have some flow-controlled events on front_cache, when
        * saving them to disk, we ack them, they are restored as
        * non-flow-controlled entries later, but then we've saved them to
        * disk anyway. */
 
-      msg = g_queue_peek_nth(q, i);
-      POINTER_TO_LOG_PATH_OPTIONS(g_queue_peek_nth(q, i+1), &path_options);
+      count++;
       log_msg_serialize(msg, sa, 0);
-
+      log_msg_unref(msg);
       if (string_reached_memory_limit(serialized))
         {
           if (!qdisk_write_serialized_string_to_file(self, serialized, &current_offset))
@@ -1280,8 +1274,16 @@ _save_queue(QDisk *self, GQueue *q, QDiskQueuePosition *q_pos)
       written_bytes += serialized->len;
     }
 
+  if (count == 0)
+    {
+      q_pos->ofs = 0;
+      q_pos->len = 0;
+      q_pos->count = 0;
+      return TRUE;
+    }
   q_pos->len = written_bytes;
   q_pos->ofs = queue_start_position;
+  q_pos->count = count;
   success = TRUE;
 error:
   g_string_free(serialized, TRUE);
@@ -1290,32 +1292,20 @@ error:
 }
 
 static gboolean
-_save_state(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window)
+_save_state(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
 {
   QDiskQueuePosition front_cache_pos = { 0 };
   QDiskQueuePosition backlog_pos = { 0 };
   QDiskQueuePosition flow_control_window_pos = { 0 };
 
-  if (front_cache)
-    {
-      front_cache_pos.count = front_cache->length / 2;
-      if (!_save_queue(self, front_cache, &front_cache_pos))
-        return FALSE;
-    }
+  if (!_save_queue(self, QDISK_MQ_FRONT_CACHE, func, user_data, &front_cache_pos))
+    return FALSE;
 
-  if (backlog)
-    {
-      backlog_pos.count = backlog->length / 2;
-      if (!_save_queue(self, backlog, &backlog_pos))
-        return FALSE;
-    }
+  if (!_save_queue(self, QDISK_MQ_BACKLOG, func, user_data, &backlog_pos))
+    return FALSE;
 
-  if (flow_control_window)
-    {
-      flow_control_window_pos.count = flow_control_window->length / 2;
-      if (!_save_queue(self, flow_control_window, &flow_control_window_pos))
-        return FALSE;
-    }
+  if (!_save_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &flow_control_window_pos))
+    return FALSE;
 
   memcpy(self->hdr->magic, self->file_id, sizeof(self->hdr->magic));
 
@@ -1537,14 +1527,15 @@ _load_header(QDisk *self)
 }
 
 static gboolean
-_load_state(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window)
+_load_state(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
   if (!_load_header(self))
     return FALSE;
 
   if (!self->options->reliable)
     {
-      if (!_load_non_reliable_queues(self, front_cache, backlog, flow_control_window))
+      g_assert(func);
+      if (!_load_non_reliable_queues(self, func, user_data))
         return FALSE;
 
       self->cached_file_size = QDISK_RESERVED_SPACE;
@@ -1571,6 +1562,8 @@ _load_state(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_cont
     }
   else
     {
+      g_assert(func == NULL);
+
       struct stat st;
       fstat(self->fd, &st);
       self->cached_file_size = st.st_size;
@@ -1651,12 +1644,12 @@ _ensure_capacity_bytes(QDisk *self)
 }
 
 static gboolean
-_load_qdisk_file(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window)
+_load_qdisk_file(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
   if (!_open_file(self->filename, self->options->read_only, &self->fd))
     goto error;
 
-  if (!_load_state(self, front_cache, backlog, flow_control_window))
+  if (!_load_state(self, func, user_data))
     goto error;
 
   if (!_ensure_capacity_bytes(self))
@@ -1726,7 +1719,7 @@ error:
 }
 
 gboolean
-qdisk_start(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window)
+qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
   g_assert(!qdisk_started(self));
   g_assert(self->filename);
@@ -1738,18 +1731,18 @@ qdisk_start(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_cont
     return _create_qdisk_file(self);
 
   if (st.st_size != 0)
-    return _load_qdisk_file(self, front_cache, backlog, flow_control_window);
+    return _load_qdisk_file(self, func, user_data);
 
   return _init_qdisk_file_from_empty_file(self);
 }
 
 gboolean
-qdisk_stop(QDisk *self, GQueue *front_cache, GQueue *backlog, GQueue *flow_control_window)
+qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
 {
   gboolean result = TRUE;
 
   if (!self->options->read_only)
-    result = _save_state(self, front_cache, backlog, flow_control_window);
+    result = _save_state(self, func, user_data);
 
   _close_file(self);
 

@@ -32,6 +32,19 @@
 #define PESSIMISTIC_FLOW_CONTROL_WINDOW_BYTES 10000 * 16 *1024
 #define ENTRIES_PER_MSG_IN_MEM_Q 3
 
+#define LOG_PATH_OPTIONS_FOR_BACKLOG GINT_TO_POINTER(0x80000000)
+#define LOG_PATH_OPTIONS_TO_POINTER(lpo) GUINT_TO_POINTER(0x80000000 | (lpo)->ack_needed)
+
+/* NOTE: this must not evaluate ptr multiple times, otherwise the code that
+ * uses this breaks, as it passes the result of a g_queue_pop_head call,
+ * which has side effects.
+ */
+#define POINTER_TO_LOG_PATH_OPTIONS(ptr, lpo) \
+({ \
+  gpointer p = ptr; \
+  (lpo)->ack_needed = (GPOINTER_TO_INT(p) & ~0x80000000); \
+})
+
 static inline void
 _push_to_memory_queue_tail(GQueue *queue, gint64 position, LogMessage *msg, const LogPathOptions *path_options)
 {
@@ -65,7 +78,7 @@ _peek_memory_queue_head_position(GQueue *queue)
 static gboolean
 _start(LogQueueDisk *s)
 {
-  return qdisk_start(s->qdisk, NULL, NULL, NULL);
+  return qdisk_start(s->qdisk, NULL, NULL);
 }
 
 static gboolean
@@ -453,7 +466,7 @@ _stop(LogQueueDisk *s, gboolean *persistent)
 
   gboolean result = FALSE;
 
-  if (qdisk_stop(s->qdisk, NULL, NULL, NULL))
+  if (qdisk_stop(s->qdisk, NULL, NULL))
     {
       *persistent = TRUE;
       result = TRUE;
