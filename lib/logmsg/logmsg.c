@@ -452,8 +452,13 @@ static void
 log_msg_init_queue_node(LogMessage *msg, LogMessageQueueNode *node, const LogPathOptions *path_options)
 {
   INIT_IV_LIST_HEAD(&node->list);
-  node->ack_needed = path_options->ack_needed;
-  node->flow_control_requested = path_options->flow_control_requested;
+  node->ack_needed = FALSE;
+  node->flow_control_requested = FALSE;
+  if (path_options)
+    {
+      node->ack_needed = path_options->ack_needed;
+      node->flow_control_requested = path_options->flow_control_requested;
+    }
   node->msg = log_msg_ref(msg);
 }
 
