@@ -496,16 +496,6 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
   return node;
 }
 
-LogMessageQueueNode *
-log_msg_alloc_dynamic_queue_node(LogMessage *msg, const LogPathOptions *path_options)
-{
-  LogMessageQueueNode *node;
-  node = g_slice_new(LogMessageQueueNode);
-  node->embedded = FALSE;
-  log_msg_init_queue_node(msg, node, path_options);
-  return node;
-}
-
 void
 log_msg_free_queue_node(LogMessageQueueNode *node)
 {
