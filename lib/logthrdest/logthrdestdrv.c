@@ -1138,18 +1138,30 @@ log_threaded_dest_driver_set_max_retries_on_error(LogDriver *s, gint max_retries
   self->retries_on_error_max = max_retries;
 }
 
+static guint
+_partition_to_worker_index(LogThreadedDestDriver *self, LogMessage *msg)
+{
+  LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  return log_template_hash(self->worker_partition_key, msg, &options) % self->num_workers;
+}
+
+static guint
+_round_robin_to_worker_index(LogThreadedDestDriver *self)
+{
+  guint worker_index = self->last_worker;
+  self->last_worker = (self->last_worker + 1) % self->num_workers;
+  return worker_index;
+}
+
 LogThreadedDestWorker *
 _lookup_worker(LogThreadedDestDriver *self, LogMessage *msg)
 {
+  guint worker_index;
   if (self->worker_partition_key)
-    {
-      LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-      guint worker_index = log_template_hash(self->worker_partition_key, msg, &options) % self->num_workers;
-      return self->workers[worker_index];
-    }
+    worker_index = _partition_to_worker_index(self, msg);
+  else
+    worker_index = _round_robin_to_worker_index(self);
 
-  guint worker_index = self->last_worker;
-  self->last_worker = (self->last_worker + 1) % self->num_workers;
   return self->workers[worker_index];
 }
 
