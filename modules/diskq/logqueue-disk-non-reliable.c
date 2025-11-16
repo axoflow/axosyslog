@@ -289,7 +289,7 @@ _peek_head(LogQueue *s)
 
   if (self->front_cache->length > 0)
     {
-      msg = g_queue_peek_head(self->front_cache);
+      msg = log_msg_ref(g_queue_peek_head(self->front_cache));
       if (msg)
         goto success;
     }
@@ -299,7 +299,7 @@ _peek_head(LogQueue *s)
     goto success;
 
   if (self->flow_control_window->length > 0 && qdisk_is_read_only(self->super.qdisk))
-    msg = g_queue_peek_head(self->flow_control_window);
+    msg = log_msg_ref(g_queue_peek_head(self->flow_control_window));
 
 success:
   g_mutex_unlock(&s->lock);

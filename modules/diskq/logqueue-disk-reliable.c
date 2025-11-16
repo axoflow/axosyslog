@@ -236,13 +236,13 @@ _peek_head(LogQueue *s)
 
   if (_is_next_message_in_flow_control_window(self))
     {
-      msg = g_queue_peek_nth(self->flow_control_window, 1);
+      msg = log_msg_ref(g_queue_peek_nth(self->flow_control_window, 1));
       goto exit;
     }
 
   if (_is_next_message_in_front_cache(self))
     {
-      msg = g_queue_peek_nth(self->front_cache, 1);
+      msg = log_msg_ref(g_queue_peek_nth(self->front_cache, 1));
       goto exit;
     }
 

@@ -475,7 +475,9 @@ _perform_inserts(LogThreadedDestWorker *self)
               break;
             }
 
-          if (_should_flush_due_to_partition_key_change(self, msg))
+          gboolean flush_needed = _should_flush_due_to_partition_key_change(self, msg);
+          log_msg_unref(msg);
+          if (flush_needed)
             {
               gboolean flush_result = _perform_flush(self);
               if (flush_result != LTR_SUCCESS && flush_result != LTR_EXPLICIT_ACK_MGMT)
