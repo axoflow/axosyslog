@@ -102,25 +102,6 @@ _pop_from_memory_queue_head(LogQueueDiskMemoryQueue *memory_queue, LogMessage **
   return TRUE;
 }
 
-static void
-_update_memory_usage_during_load(LogQueueDiskNonReliable *s, LogQueueDiskMemoryQueue *memory_queue, guint offset)
-{
-  if (memory_queue->len == offset)
-    return;
-
-  struct iv_list_head *ilh;
-  gsize i = 0;
-  iv_list_for_each(ilh, &memory_queue->items)
-    {
-      if (i >= offset)
-        {
-          LogMessage *msg = iv_list_entry(ilh, LogMessageQueueNode, list)->msg;
-
-          log_queue_memory_usage_add(&s->super.super, log_msg_get_size(msg));
-        }
-    }
-}
-
 static LogQueueDiskMemoryQueue *
 _qtype_to_memory_queue(LogQueueDiskNonReliable *self, QDiskMemoryQueueType type)
 {
@@ -144,6 +125,7 @@ _load_queue_callback(QDiskMemoryQueueType qtype, LogMessage *msg, gpointer user_
   LogQueueDiskMemoryQueue *memq = _qtype_to_memory_queue(self, qtype);
 
   _push_to_memory_queue_tail(memq, msg, NULL);
+  log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
   log_msg_unref(msg);
   return TRUE;
 }
@@ -153,16 +135,7 @@ _start(LogQueueDisk *s)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) s;
 
-  guint front_cache_length_before_start = self->front_cache.len;
-  guint backlog_length_before_start = self->backlog.len;
-  guint flow_control_window_length_before_start = self->flow_control_window.len;
-
   gboolean retval = qdisk_start(s->qdisk, _load_queue_callback, self);
-
-  _update_memory_usage_during_load(self, &self->front_cache, front_cache_length_before_start);
-  _update_memory_usage_during_load(self, &self->backlog, backlog_length_before_start);
-  _update_memory_usage_during_load(self, &self->flow_control_window, flow_control_window_length_before_start);
-
   return retval;
 }
 
