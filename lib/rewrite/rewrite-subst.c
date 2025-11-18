@@ -50,14 +50,14 @@ log_rewrite_subst_process(LogRewrite *s, LogMessage **pmsg, const LogPathOptions
 {
   LogRewriteSubst *self = (LogRewriteSubst *) s;
   LogMessage *msg;
-  NVTable *nvtable;
   const gchar *value;
   gchar *new_value;
   gssize length;
   gssize new_length = -1;
 
   msg = log_msg_make_writable(pmsg, path_options);
-  nvtable = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
+
   value = log_msg_get_value(msg, self->super.value_handle, &length);
   new_value = log_matcher_replace(self->matcher, msg, self->super.value_handle, value, length, self->replacement,
                                   &new_length);
@@ -85,7 +85,7 @@ log_rewrite_subst_process(LogRewrite *s, LogMessage **pmsg, const LogPathOptions
                 evt_tag_str("replacement", self->replacement->template_str),
                 log_pipe_location_tag(&s->super));
     }
-  nv_table_unref(nvtable);
+  log_msg_unpin_payload(msg, pin);
   g_free(new_value);
 }
 

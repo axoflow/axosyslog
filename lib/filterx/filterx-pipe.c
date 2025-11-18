@@ -69,7 +69,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
   FilterXEvalContext eval_context;
   FilterXEvalContext *previous_context = path_options->filterx_context;
 
-  NVTable *payload = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
   FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg)
   {
     FilterXEvalResult eval_res;
@@ -112,7 +112,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
       }
   }
   FILTERX_EVAL_END_CONTEXT(eval_context);
-  nv_table_unref(payload);
+  log_msg_unpin_payload(msg, pin);
 }
 
 static LogPipe *

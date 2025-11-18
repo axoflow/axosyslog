@@ -274,9 +274,9 @@ _set_program(JournalReaderOptions *options, LogMessage *msg)
     }
 
   /* we need to reference the payload: referred value can change during log_msg_set_value if nvtable realloc needed */
-  NVTable *nvtable = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
   log_msg_set_value(msg, LM_V_PROGRAM, value_ref, value_length);
-  nv_table_unref(nvtable);
+  log_msg_unpin_payload(msg, pin);
 }
 
 static void

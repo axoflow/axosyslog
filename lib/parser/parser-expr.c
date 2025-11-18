@@ -50,7 +50,8 @@ log_parser_process_message(LogParser *self, LogMessage **pmsg, const LogPathOpti
 
   if (G_LIKELY(!self->template_obj))
     {
-      NVTable *payload = nv_table_ref(msg->payload);
+      LogMessagePin pin = log_msg_pin_payload(msg);
+
       const gchar *value;
       gssize value_len;
 
@@ -65,7 +66,7 @@ log_parser_process_message(LogParser *self, LogMessage **pmsg, const LogPathOpti
 
       value = log_msg_get_value(msg, LM_V_MESSAGE, &value_len);
       success = self->process(self, pmsg, path_options, value, value_len);
-      nv_table_unref(payload);
+      log_msg_unpin_payload(msg, pin);
     }
   else
     {

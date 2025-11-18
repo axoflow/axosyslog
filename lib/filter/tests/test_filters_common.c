@@ -176,7 +176,6 @@ testcase_with_backref_chk(const gchar *msg,
 {
   LogMessage *logmsg;
   const gchar *value_msg;
-  NVTable *nv_table;
   gboolean res;
   gssize length;
   NVHandle nonasciiz = log_msg_get_value_handle("NON-ASCIIZ");
@@ -193,19 +192,18 @@ testcase_with_backref_chk(const gchar *msg,
   /* add a non-zero terminated indirect value which contains the whole message */
   log_msg_set_value_indirect(logmsg, nonasciiz, log_msg_get_value_handle("MESSAGE2"), 0, msglen);
 
-  nv_table = nv_table_ref(logmsg->payload);
+  LogMessagePin pin = log_msg_pin_payload(logmsg);
   res = filter_expr_eval(f, logmsg);
   cr_assert_eq(res, expected_result, "Filter test failed; msg='%s'\n", msg);
-
-  nv_table_unref(nv_table);
+  log_msg_unpin_payload(logmsg, pin);
   f->comp = 1;
 
-  nv_table = nv_table_ref(logmsg->payload);
+  pin = log_msg_pin_payload(logmsg);
   res = filter_expr_eval(f, logmsg);
   cr_assert_eq(res, !expected_result, "Filter test failed (negated); msg='%s'\n", msg);
 
   value_msg = log_msg_get_value_by_name(logmsg, name, &length);
-  nv_table_unref(nv_table);
+  log_msg_unpin_payload(logmsg, pin);
   if(value == NULL || value[0] == 0)
     {
       cr_assert_not(value_msg != NULL
