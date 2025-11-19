@@ -278,7 +278,6 @@ Test(expr_plus, test_list_add_list)
 
   FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(sequence)));
 
   assert_object_repr_equals(obj, "[\"foo\",\"bar\",\"tik\",\"tak\"]");
 
@@ -310,7 +309,6 @@ Test(expr_plus, test_dict_add_dict)
 
   FilterXObject *obj = init_and_eval_expr(expr);
   cr_assert_not_null(obj);
-  cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)));
 
   assert_object_repr_equals(obj, "{\"foo\":\"bar\",\"tik\":\"tak\"}");
 

@@ -82,6 +82,13 @@ filterx_ref_unwrap_rw(FilterXObject *s)
   return self->value;
 }
 
+static inline FilterXObject *
+filterx_ref_add_inplace(FilterXObject *s, FilterXObject *o)
+{
+  FilterXRef *self = (FilterXRef *) s;
+  return self->value->type->add_inplace(self->value, s, o);
+}
+
 static inline gboolean
 filterx_ref_values_equal(FilterXObject *r1, FilterXObject *r2)
 {

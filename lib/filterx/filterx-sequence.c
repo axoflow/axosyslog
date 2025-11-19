@@ -127,9 +127,19 @@ error:
   return NULL;
 }
 
+static FilterXObject *
+_add_inplace(FilterXObject *self, FilterXObject *container, FilterXObject *other)
+{
+  if (!filterx_sequence_merge(container, other))
+    return NULL;
+
+  return filterx_object_ref(container);
+}
+
 FILTERX_DEFINE_TYPE(sequence, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .is_abstract = TRUE,
                     .format_json = _format_json,
                     .add = _add,
+                    .add_inplace = _add_inplace,
                    );
