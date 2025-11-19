@@ -86,6 +86,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, format_json);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
+  INIT_TYPE_METHOD(type, add_inplace);
   INIT_TYPE_METHOD(type, free_fn);
 }
 

@@ -65,6 +65,7 @@ struct _FilterXType
   gboolean (*str)(FilterXObject *self, GString *str);
   /* operators */
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
+  FilterXObject *(*add_inplace)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
   void (*make_readonly)(FilterXObject *self);
@@ -538,6 +539,21 @@ filterx_object_add(FilterXObject *self, FilterXObject *object)
     }
 
   return self->type->add(self, object);
+}
+
+static inline FilterXObject *
+filterx_object_add_inplace(FilterXObject *self, FilterXObject *object)
+{
+  if (!self->type->add_inplace)
+    {
+      /* simulate in-place addition by cloning self, adding it up and returning the new object */
+      FilterXObject *cloned = filterx_object_clone(self);
+      FilterXObject *result = filterx_object_add(cloned, object);
+      filterx_object_unref(cloned);
+      return result;
+    }
+
+  return self->type->add_inplace(self, object);
 }
 
 static inline gboolean
