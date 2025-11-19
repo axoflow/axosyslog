@@ -106,11 +106,11 @@ testcase_replace(const gchar *log, const gchar *re, gchar *replacement, const gc
   r = log_template_new(configuration, NULL);
   cr_assert(log_template_compile(r, replacement, NULL));
 
-  NVTable *nv_table = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
   value = log_msg_get_value(msg, nonasciiz, &msglen);
   result = log_matcher_replace(m, msg, nonasciiz, value, msglen, r, &length);
   value = log_msg_get_value(msg, nonasciiz, &msglen);
-  nv_table_unref(nv_table);
+  log_msg_unpin_payload(msg, pin);
 
   cr_assert_arr_eq((result ? result : value), expected_result, (result ? length : msglen),
                    "pattern=%s, result=%.*s, expected=%s\n",
@@ -534,10 +534,10 @@ Test(matcher, test_replace_works_correctly_if_capture_group_overwrites_the_input
   NVHandle input_handle = log_msg_get_value_handle("1");
   const gchar *input = log_msg_get_value(msg, input_handle, &value_len);
 
-  NVTable *payload = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
   gchar *result = log_matcher_replace(m, msg, input_handle, input, value_len,
                                       replace_template, &result_len);
-  nv_table_unref(payload);
+  log_msg_unpin_payload(msg, pin);
   cr_log_info("replace result value: %s, length(%ld)", result, result_len);
   cr_assert_arr_eq(result, expected_result, strlen(expected_result),
                    "replace failed; result: %s (length %ld), expected: %s (length %ld)",
@@ -571,10 +571,10 @@ Test(matcher, test_replace_works_correctly_if_named_capture_group_overwrites_the
   NVHandle input_handle = log_msg_get_value_handle("TMP");
   const gchar *input = log_msg_get_value(msg, input_handle, &value_len);
 
-  NVTable *payload = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
   gchar *result = log_matcher_replace(m, msg, input_handle, input, value_len,
                                       replace_template, &result_len);
-  nv_table_unref(payload);
+  log_msg_unpin_payload(msg, pin);
   cr_log_info("replace result value: %s, length(%ld)", result, result_len);
   cr_assert_arr_eq(result, expected_result, strlen(expected_result),
                    "replace failed; result: %s (length %ld), expected: %s (length %ld)",
@@ -608,10 +608,10 @@ Test(matcher, test_replace_works_correctly_if_input_is_a_match_value_that_gets_t
   NVHandle input_handle = log_msg_get_value_handle("2");
   const gchar *input = log_msg_get_value(msg, input_handle, &value_len);
 
-  NVTable *payload = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
   gchar *result = log_matcher_replace(m, msg, input_handle, input, value_len,
                                       replace_template, &result_len);
-  nv_table_unref(payload);
+  log_msg_unpin_payload(msg, pin);
   cr_log_info("replace result value: %s, length(%ld)", result, result_len);
   cr_assert_arr_eq(result, expected_result, strlen(expected_result),
                    "replace failed; result: %s (length %ld), expected: %s (length %ld)",

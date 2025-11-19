@@ -736,14 +736,15 @@ typedef LogMatcher *(*LogMatcherConstructFunc)(const LogMatcherOptions *options)
 gboolean
 log_matcher_match_value(LogMatcher *s, LogMessage *msg, gint value_handle)
 {
-  NVTable *payload = nv_table_ref(msg->payload);
+  LogMessagePin pin = log_msg_pin_payload(msg);
+
   gssize value_len;
   const gchar *value = log_msg_get_value(msg, value_handle, &value_len);
 
   APPEND_ZERO(value, value, value_len);
 
   gboolean result = log_matcher_match(s, msg, value_handle, value, value_len);
-  nv_table_unref(payload);
+  log_msg_unpin_payload(msg, pin);
   return result;
 }
 

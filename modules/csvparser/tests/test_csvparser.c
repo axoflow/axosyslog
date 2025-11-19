@@ -774,7 +774,6 @@ ParameterizedTest(CsvParserTestParam *param, parser, test_csv_parser)
   LogMessage *logmsg;
   LogParser *p, *pclone;
   gint i;
-  NVTable *nvtable;
   const gchar *column_array[] =
   {
     "C1",
@@ -839,10 +838,10 @@ ParameterizedTest(CsvParserTestParam *param, parser, test_csv_parser)
 
   cr_assert(log_pipe_init(&pclone->super));
 
-  nvtable = nv_table_ref(logmsg->payload);
+  LogMessagePin pin = log_msg_pin_payload(logmsg);
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   success = log_parser_process(pclone, &logmsg, &path_options, log_msg_get_value(logmsg, LM_V_MESSAGE, NULL), -1);
-  nv_table_unref(nvtable);
+  log_msg_unpin_payload(logmsg, pin);
 
   cr_assert_not((success && !param->expected_values[0]), "unexpected match; msg=%s\n", param->msg);
   cr_assert_not((!success && param->expected_values[0]), "unexpected non-match; msg=%s\n", param->msg);

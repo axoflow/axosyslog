@@ -331,6 +331,36 @@ extern gint logmsg_node_max;
 LogMessage *log_msg_ref(LogMessage *m);
 void log_msg_unref(LogMessage *m);
 
+typedef gpointer LogMessagePin;
+
+/* Pin the payload, e.g.  keep it as long as log_msg_unpin_payload() is
+ * called.  This is useful when the payload is to be changed.  In these
+ * cases pointers pointing to the payload might get invalidated, as the
+ * payload gets moved/reallocated.
+ *
+ * The return value is an opaque value, just make sure you save the value
+ * and pass it back to unpin.
+ */
+static inline LogMessagePin
+log_msg_pin_payload(LogMessage *self)
+{
+  if (self->payload->borrowed)
+    {
+      log_msg_ref(self);
+      return NULL;
+    }
+  return (LogMessagePin) nv_table_ref(self->payload);
+}
+
+static inline void
+log_msg_unpin_payload(LogMessage *self, LogMessagePin pin)
+{
+  if (pin)
+    nv_table_unref((NVTable *) pin);
+  else
+    log_msg_unref(self);
+}
+
 static inline void
 log_msg_write_protect(LogMessage *self)
 {
