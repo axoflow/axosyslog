@@ -423,7 +423,6 @@ log_queue_fifo_peek_head(LogQueue *s)
 {
   LogQueueFifo *self = (LogQueueFifo *) s;
   LogMessageQueueNode *node;
-  LogMessage *msg = NULL;
 
   if (self->output_queue.len == 0)
     _move_items_from_wait_queue_to_output_queue(self);
@@ -432,9 +431,7 @@ log_queue_fifo_peek_head(LogQueue *s)
     return NULL;
 
   node = iv_list_entry(self->output_queue.items.next, LogMessageQueueNode, list);
-  msg = node->msg;
-
-  return msg;
+  return log_msg_ref(node->msg);
 }
 
 /*
