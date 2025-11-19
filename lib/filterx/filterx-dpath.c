@@ -221,7 +221,7 @@ filterx_dpath_lvalue_assign(FilterXExpr *s, FilterXObject **new_value)
   gboolean result;
   if (self->add_mode)
     {
-      FilterXObject *added_obj = filterx_object_add_object(last_object, *new_value);
+      FilterXObject *added_obj = filterx_object_add(last_object, *new_value);
       filterx_object_unref(*new_value);
       *new_value = added_obj;
 

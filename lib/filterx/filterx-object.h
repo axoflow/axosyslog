@@ -529,7 +529,7 @@ filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer us
 void _filterx_object_log_add_object_error(FilterXObject *self);
 
 static inline FilterXObject *
-filterx_object_add_object(FilterXObject *self, FilterXObject *object)
+filterx_object_add(FilterXObject *self, FilterXObject *object)
 {
   if (!self->type->add)
     {

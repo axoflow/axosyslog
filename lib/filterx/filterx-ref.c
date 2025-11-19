@@ -257,7 +257,7 @@ static FilterXObject *
 _filterx_ref_add(FilterXObject *s, FilterXObject *object)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_add_object(self->value, object);
+  return filterx_object_add(self->value, object);
 }
 
 /* NOTE: fastpath is in the header as an inline function */
