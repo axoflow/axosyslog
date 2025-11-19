@@ -30,6 +30,7 @@
 #include "template/eval.h"
 #include "mainloop-threaded-worker.h"
 #include "compat/pow2.h"
+#include "str-format.h"
 
 #include <string.h>
 
@@ -1037,6 +1038,15 @@ log_threaded_dest_driver_set_worker_partition_key_ref(LogDriver *s, LogTemplate 
 }
 
 void
+log_threaded_dest_driver_set_worker_partition_buckets_ref(LogDriver *s, LogTemplate *buckets)
+{
+  LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
+
+  log_template_unref(self->worker_partition_buckets);
+  self->worker_partition_buckets = buckets;
+}
+
+void
 log_threaded_dest_driver_set_flush_on_worker_key_change(LogDriver *s, gboolean f)
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
@@ -1140,18 +1150,66 @@ log_threaded_dest_driver_set_max_retries_on_error(LogDriver *s, gint max_retries
   self->retries_on_error_max = max_retries;
 }
 
+static const gchar *
+_eval_buckets(LogThreadedDestDriver *self, LogTemplateEvalOptions *options, LogMessage *msg, gssize *len)
+{
+  if (log_template_is_trivial(self->worker_partition_buckets))
+    return log_template_get_trivial_value(self->worker_partition_buckets, msg, len);
+
+  GString *r = scratch_buffers_alloc();
+  log_template_format(self->worker_partition_buckets, msg, options, r);
+  return r->str;
+}
+
+static guint
+_partition_to_worker_index(LogThreadedDestDriver *self, LogMessage *msg)
+{
+  LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  guint worker_index = log_template_hash(self->worker_partition_key, msg, &options);
+  gint buckets = 0;
+  gint bucket = 0;
+  if (self->worker_partition_buckets)
+    {
+      gssize buckets_len;
+      const gchar *buckets_string = _eval_buckets(self, &options, msg, &buckets_len);
+
+      if (buckets_len > 0)
+        {
+          const gchar *p = buckets_string;
+          gint p_len = buckets_len;
+
+          if (!scan_positive_int(&p, &p_len, p_len, &buckets))
+            {
+              msg_warning_once("WARNING: value for worker-partition-buckets() is not an integer, partition bucketing is disabled",
+                               evt_tag_str("value", buckets_string));
+              buckets = 0;
+            }
+        }
+    }
+  if (buckets > 0)
+    {
+      bucket = (gint64) msg->timestamps[LM_TS_RECVD].ut_usec * buckets / 1000000LL;
+    }
+  return (worker_index + bucket) % self->num_workers;
+}
+
+static guint
+_round_robin_to_worker_index(LogThreadedDestDriver *self)
+{
+  guint worker_index = self->last_worker;
+  self->last_worker = (self->last_worker + 1) % self->num_workers;
+  return worker_index;
+}
+
 LogThreadedDestWorker *
 _lookup_worker(LogThreadedDestDriver *self, LogMessage *msg)
 {
+  guint worker_index;
   if (self->worker_partition_key)
-    {
-      LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-      guint worker_index = log_template_hash(self->worker_partition_key, msg, &options) % self->num_workers;
-      return self->workers[worker_index];
-    }
+    worker_index = _partition_to_worker_index(self, msg);
+  else
+    worker_index = _round_robin_to_worker_index(self);
 
-  guint worker_index = self->last_worker;
-  self->last_worker = (self->last_worker + 1) % self->num_workers;
   return self->workers[worker_index];
 }
 
