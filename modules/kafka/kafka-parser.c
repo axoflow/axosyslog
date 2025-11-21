@@ -58,6 +58,9 @@ static CfgLexerKeyword kafka_keywords[] =
   { "log_fetch_delay", KW_LOG_FETCH_DELAY },
   { "log_fetch_retry_delay", KW_LOG_FETCH_RETRY_DELAY },
 
+  { "ignore_saved_bookmarks", KW_IGNORE_SAVED_BOOKMARKS },
+  { "disable_bookmarks", KW_DISABLE_BOOKMARKS },
+
   { NULL }
 };
 
