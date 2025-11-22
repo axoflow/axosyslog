@@ -55,6 +55,7 @@
 #include "filterx/expr-compound.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-plus.h"
+#include "filterx/expr-plus-assign.h"
 #include "filterx/expr-null-coalesce.h"
 #include "filterx/expr-drop.h"
 #include "filterx/expr-done.h"
@@ -226,7 +227,7 @@ __complex_expr
 	;
 
 plus_assignment
-	: variable KW_PLUS_ASSIGN expr		{ $$ = filterx_assign_new(filterx_expr_ref($1), filterx_operator_plus_new($1, $3)); }
+	: variable KW_PLUS_ASSIGN expr		{ $$ = filterx_operator_plus_assign_new($1, $3); }
 	| expr '[' expr ']' KW_PLUS_ASSIGN expr	{ $$ = filterx_set_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3), filterx_operator_plus_new(filterx_get_subscript_new($1, $3), $6)); }
 	| expr '.' identifier KW_PLUS_ASSIGN expr
 						{
