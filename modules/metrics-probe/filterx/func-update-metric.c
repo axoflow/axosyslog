@@ -104,7 +104,6 @@ exit:
 static void
 _optimize_increment(FilterXFunctionUpdateMetric *self)
 {
-  self->increment.expr = filterx_expr_optimize(self->increment.expr);
   if (!self->increment.expr || !filterx_expr_is_literal(self->increment.expr))
     return;
 
@@ -137,9 +136,6 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
 
-  if (!filterx_expr_init(self->increment.expr, cfg))
-    return FALSE;
-
   if (!filterx_metrics_init(self->metrics, cfg))
     {
       filterx_expr_deinit(self->increment.expr, cfg);
@@ -153,7 +149,6 @@ static void
 _deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
-  filterx_expr_deinit(self->increment.expr, cfg);
   filterx_metrics_deinit(self->metrics, cfg);
   filterx_function_deinit_method(&self->super, cfg);
 }
@@ -235,6 +230,22 @@ _extract_args(FilterXFunctionUpdateMetric *self, FilterXFunctionArgs *args, GErr
   return TRUE;
 }
 
+static gboolean
+_update_metric_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
+
+  FilterXExpr **exprs[] = { &self->increment.expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -245,6 +256,7 @@ filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
   self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _update_metric_walk;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) ||

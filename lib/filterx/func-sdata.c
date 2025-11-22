@@ -95,6 +95,13 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static gboolean
+_is_sdata_from_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  /* no child expressions */
+  return TRUE;
+}
+
 
 FilterXExpr *
 filterx_function_is_sdata_from_enterprise_new(FilterXFunctionArgs *args, GError **error)
@@ -105,6 +112,7 @@ filterx_function_is_sdata_from_enterprise_new(FilterXFunctionArgs *args, GError 
   if (!_extract_args(self, args, error) || !filterx_function_args_check(args, error))
     goto error;
   self->super.super.eval = _eval_fx_is_sdata_from;
+  self->super.super.walk_children = _is_sdata_from_walk;
   self->super.super.free_fn = _free;
   filterx_function_args_free(args);
   return &self->super.super;

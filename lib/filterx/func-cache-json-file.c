@@ -232,6 +232,13 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
   return TRUE;
 }
 
+gboolean
+_cache_json_file_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  /* no child expressions */
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -239,6 +246,7 @@ filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "cache_json_file");
 
   self->super.super.eval = _eval;
+  self->super.super.walk_children = _cache_json_file_walk;
   self->super.super.free_fn = _free;
 
   self->filepath = _extract_filepath(args, error);
