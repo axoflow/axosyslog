@@ -541,6 +541,11 @@ filterx_object_add(FilterXObject *self, FilterXObject *object)
   return self->type->add(self, object);
 }
 
+/*
+ * Add the value to @self, mutating @self if it is a mutable object.  The
+ * return value is usually the same as @self (if in-place addition was
+ * successful) or an alternative object instance, in case if it wasn't.
+ */
 static inline FilterXObject *
 filterx_object_add_inplace(FilterXObject *self, FilterXObject *object)
 {
