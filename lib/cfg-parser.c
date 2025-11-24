@@ -192,6 +192,7 @@ static CfgLexerKeyword main_keywords[] =
   { "partition_key",      KW_WORKER_PARTITION_KEY },
   { "worker_partition_buckets",  KW_WORKER_PARTITION_BUCKETS },
   { "partition_buckets",  KW_WORKER_PARTITION_BUCKETS },
+  { "worker_partition_autoscaling", KW_WORKER_PARTITION_AUTOSCALING },
   { "batch_lines",        KW_BATCH_LINES },
   { "batch_timeout",      KW_BATCH_TIMEOUT },
   { "batch_size",         KW_BATCH_SIZE },
