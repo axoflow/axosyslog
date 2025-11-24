@@ -309,13 +309,8 @@ _eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gs
 {
   FilterXObject *list_needle = filterx_ref_unwrap_ro(needle_obj);
 
-  if (!filterx_object_is_type(list_needle, &FILTERX_TYPE_NAME(sequence)))
-    return NULL;
-
   guint64 len;
-  filterx_object_len(needle_obj, &len);
-
-  if (len == 0)
+  if (!filterx_object_len(needle_obj, &len) || len == 0)
     return NULL;
 
   gboolean matches = FALSE;
