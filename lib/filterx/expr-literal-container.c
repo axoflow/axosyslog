@@ -134,6 +134,56 @@ _literal_container_eval_expr(FilterXExpr *expr, gboolean early_eval)
     return filterx_expr_eval(expr);
 }
 
+static inline gboolean
+_literal_container_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject *result, gboolean early_eval)
+{
+  FilterXObject *key = NULL;
+  FilterXObject *value = NULL;
+  gboolean success = FALSE;
+
+  if (elem->key)
+    {
+      key = _literal_container_eval_expr(elem->key, early_eval);
+      if (!key)
+        {
+          filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate key");
+          goto exit;
+        }
+    }
+
+  value = _literal_container_eval_expr(elem->value, early_eval);
+  if (elem->nullv)
+    {
+      if (!value)
+        filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
+
+      if (!value || filterx_object_extract_null(value))
+        {
+          success = TRUE;
+          goto exit;
+        }
+    }
+
+  if (!value)
+    {
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
+      goto exit;
+    }
+
+  value = filterx_object_cow_fork2(value, NULL);
+  success = filterx_object_set_subscript(result, key, &value);
+
+  if (!success)
+    {
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
+      goto exit;
+    }
+exit:
+  filterx_object_unref(key);
+  filterx_object_unref(value);
+  return success;
+}
+
 /*
  * This is an inline version with two variants,
  *
@@ -161,49 +211,8 @@ _literal_container_eval_adaptive(FilterXExpr *s, gboolean early_eval)
       else
         elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
 
-      FilterXObject *key = NULL;
-      if (elem->key)
-        {
-          key = _literal_container_eval_expr(elem->key, early_eval);
-          if (!key)
-            {
-              filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate key");
-              goto error;
-            }
-        }
-
-      FilterXObject *value = _literal_container_eval_expr(elem->value, early_eval);
-      if (elem->nullv)
-        {
-          if (!value)
-            filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
-
-          if (!value || filterx_object_extract_null(value))
-            {
-              filterx_object_unref(key);
-              filterx_object_unref(value);
-              continue;
-            }
-        }
-
-      if (!value)
-        {
-          filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate value");
-          filterx_object_unref(key);
-          goto error;
-        }
-
-      value = filterx_object_cow_fork2(value, NULL);
-      gboolean success = filterx_object_set_subscript(result, key, &value);
-
-      filterx_object_unref(key);
-      filterx_object_unref(value);
-
-      if (!success)
-        {
-          filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to set value in container");
-          goto error;
-        }
+      if (!_literal_container_eval_elem(self, elem, result, early_eval))
+        goto error;
     }
 
   return result;
