@@ -23,6 +23,7 @@
 #include "filterx/filterx-mapping.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
+#include "filterx/object-list.h"
 #include "filterx/filterx-sequence.h"
 #include "filterx/filterx-eval.h"
 #include "str-utils.h"
@@ -59,13 +60,16 @@ _add_elem_to_list(FilterXObject *key_obj, FilterXObject *value_obj, gpointer use
   return success;
 }
 
-gboolean
-filterx_mapping_keys(FilterXObject *s, FilterXObject **keys)
+FilterXObject *
+filterx_mapping_keys(FilterXObject *s)
 {
-  gboolean result = filterx_object_iter(s, _add_elem_to_list, *keys);
-
-  filterx_object_unref(s);
-  return result;
+  FilterXObject *keys = filterx_list_new();
+  if (!filterx_object_iter(s, _add_elem_to_list, keys))
+    {
+      filterx_object_unref(keys);
+      return NULL;
+    }
+  return keys;
 }
 
 static FilterXObject *
