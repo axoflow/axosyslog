@@ -79,13 +79,21 @@ _track_input_counter(StatsAggregatorCPS *self)
   self->input_counter = input_counter;
   g_assert(self->input_counter != NULL);
 
-  stats_cluster_track_counter(self->sc_input, self->stats_type_input);
+  stats_lock();
+  {
+    stats_cluster_track_counter(self->sc_input, self->stats_type_input);
+  }
+  stats_unlock();
 }
 
 static void
 _untrack_input_counter(StatsAggregatorCPS *self)
 {
-  stats_cluster_untrack_counter(self->sc_input, self->stats_type_input, &self->input_counter);
+  stats_lock();
+  {
+    stats_cluster_untrack_counter(self->sc_input, self->stats_type_input, &self->input_counter);
+  }
+  stats_unlock();
   self->input_counter = NULL;
 }
 

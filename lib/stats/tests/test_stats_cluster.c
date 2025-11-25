@@ -23,6 +23,7 @@
 
 #include <criterion/criterion.h>
 
+#include "stats/stats-registry.h"
 #include "stats/stats-cluster.h"
 #include "stats/stats-cluster-single.h"
 #include "apphook.h"
@@ -34,6 +35,28 @@ setup(void)
 {
   app_startup();
   SCS_FILE = stats_register_type("file");
+}
+
+static StatsCounterItem *
+_track_counter_locked(StatsCluster *sc, gint type)
+{
+  StatsCounterItem *counter;
+  stats_lock();
+  {
+    counter = stats_cluster_track_counter(sc, type);
+  }
+  stats_unlock();
+  return counter;
+}
+
+static void
+_untrack_counter_locked(StatsCluster *sc, gint type, StatsCounterItem **counter)
+{
+  stats_lock();
+  {
+    stats_cluster_untrack_counter(sc, type, counter);
+  }
+  stats_unlock();
 }
 
 Test(stats_cluster, test_stats_cluster_single)
@@ -285,10 +308,10 @@ Test(stats_cluster, test_stats_foreach_counter_yields_tracked_counters)
 
   assert_stats_foreach_yielded_counters_matches(sc, -1);
 
-  stats_cluster_track_counter(sc, SC_TYPE_PROCESSED);
+  _track_counter_locked(sc, SC_TYPE_PROCESSED);
   assert_stats_foreach_yielded_counters_matches(sc, SC_TYPE_PROCESSED, -1);
 
-  stats_cluster_track_counter(sc, SC_TYPE_STAMP);
+  _track_counter_locked(sc, SC_TYPE_STAMP);
   assert_stats_foreach_yielded_counters_matches(sc, SC_TYPE_PROCESSED, SC_TYPE_STAMP, -1);
   stats_cluster_free(sc);
 }
@@ -300,12 +323,12 @@ Test(stats_cluster, test_stats_foreach_counter_never_forgets_untracked_counters)
   StatsCluster *sc = stats_cluster_new(&sc_key);
   StatsCounterItem *processed, *stamp;
 
-  processed = stats_cluster_track_counter(sc, SC_TYPE_PROCESSED);
-  stamp = stats_cluster_track_counter(sc, SC_TYPE_STAMP);
+  processed = _track_counter_locked(sc, SC_TYPE_PROCESSED);
+  stamp = _track_counter_locked(sc, SC_TYPE_STAMP);
 
-  stats_cluster_untrack_counter(sc, SC_TYPE_PROCESSED, &processed);
+  _untrack_counter_locked(sc, SC_TYPE_PROCESSED, &processed);
   assert_stats_foreach_yielded_counters_matches(sc, SC_TYPE_PROCESSED, SC_TYPE_STAMP, -1);
-  stats_cluster_untrack_counter(sc, SC_TYPE_STAMP, &stamp);
+  _untrack_counter_locked(sc, SC_TYPE_STAMP, &stamp);
   assert_stats_foreach_yielded_counters_matches(sc, SC_TYPE_PROCESSED, SC_TYPE_STAMP, -1);
 
   stats_cluster_free(sc);
@@ -342,11 +365,11 @@ Test(stats_cluster, test_get_counter)
   StatsCounterItem *processed;
 
   cr_assert_null(stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), "get counter before tracked");
-  processed = stats_cluster_track_counter(sc, SC_TYPE_PROCESSED);
+  processed = _track_counter_locked(sc, SC_TYPE_PROCESSED);
   cr_assert_eq(stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), processed, "get counter after tracked");
 
   StatsCounterItem *saved_processed = processed;
-  stats_cluster_untrack_counter(sc, SC_TYPE_PROCESSED, &processed);
+  _untrack_counter_locked(sc, SC_TYPE_PROCESSED, &processed);
   cr_assert_null(processed, "untrack counter");
   cr_assert_eq(stats_cluster_get_counter(sc, SC_TYPE_PROCESSED), saved_processed, "get counter after untracked");
   stats_cluster_free(sc);
