@@ -1298,14 +1298,16 @@ _save_state(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
   QDiskQueuePosition backlog_pos = { 0 };
   QDiskQueuePosition flow_control_window_pos = { 0 };
 
-  if (!_save_queue(self, QDISK_MQ_FRONT_CACHE, func, user_data, &front_cache_pos))
-    return FALSE;
+  if (func) {
+    if (!_save_queue(self, QDISK_MQ_FRONT_CACHE, func, user_data, &front_cache_pos))
+      return FALSE;
 
-  if (!_save_queue(self, QDISK_MQ_BACKLOG, func, user_data, &backlog_pos))
-    return FALSE;
+    if (!_save_queue(self, QDISK_MQ_BACKLOG, func, user_data, &backlog_pos))
+      return FALSE;
 
-  if (!_save_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &flow_control_window_pos))
-    return FALSE;
+    if (!_save_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &flow_control_window_pos))
+      return FALSE;
+  }
 
   memcpy(self->hdr->magic, self->file_id, sizeof(self->hdr->magic));
 
