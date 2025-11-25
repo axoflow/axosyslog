@@ -331,8 +331,6 @@ _rewind_backlog(LogQueue *s, guint rewind_count)
   guint i;
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
 
-  g_mutex_lock(&s->lock);
-
   /* TODO: instead of iterating the messages in the backlog, just move it in
    * one swoop using iv_list_splice() */
 
@@ -344,11 +342,9 @@ _rewind_backlog(LogQueue *s, guint rewind_count)
       if (!_pop_node_from_memory_queue_head(&self->backlog, &node))
         return;
 
-      _push_node_to_memory_queue_head(&self->front_cache, node);
+      _push_node_to_memory_queue_head(&self->front_cache_output, node);
       log_queue_queued_messages_inc(s);
     }
-
-  g_mutex_unlock(&s->lock);
 }
 
 static void
