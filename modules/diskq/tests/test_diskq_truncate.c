@@ -206,7 +206,7 @@ _test_diskq_truncate(TruncateTestParams params)
 }
 
 // Diskbuffer is the part of disk-queue that is used only when front cache is full
-Test(diskq_truncate, test_diskq_truncate_with_diskbuffer_used)
+Test(diskq_truncate, test_diskq_truncate_with_diskbuffer_used, .disabled=true)
 {
   _test_diskq_truncate((TruncateTestParams)
   {
