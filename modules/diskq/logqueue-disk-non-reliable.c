@@ -395,6 +395,9 @@ _peek_head(LogQueue *s)
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
   LogMessage *msg = NULL;
 
+  if (_peek_from_memory_queue_head(&self->front_cache_output, &msg))
+    return msg;
+
   g_mutex_lock(&s->lock);
 
   if (_peek_from_memory_queue_head(&self->front_cache, &msg))
