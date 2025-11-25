@@ -31,6 +31,7 @@ typedef gboolean (*StatsForeachClusterRemoveFunc)(StatsCluster *sc, gpointer use
 
 void stats_lock(void);
 void stats_unlock(void);
+gboolean is_stats_locked(void);
 gboolean stats_check_level(gint level);
 StatsCluster *stats_register_counter(gint level, const StatsClusterKey *sc_key, gint type, StatsCounterItem **counter);
 
