@@ -38,6 +38,7 @@ typedef struct _LogQueueDiskNonReliable
   LogQueueDiskMemoryQueue front_cache;
   LogQueueDiskMemoryQueue flow_control_window;
   LogQueueDiskMemoryQueue backlog;
+  LogQueueDiskMemoryQueue front_cache_output;
   gint front_cache_size;
 } LogQueueDiskNonReliable;
 
