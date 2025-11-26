@@ -130,7 +130,11 @@ dyn_metrics_store_merge(DynMetricsStore *self, DynMetricsStore *other)
   gpointer key, value;
   while (g_hash_table_iter_next(&iter, &key, &value))
     {
-      stats_cluster_track_counter(value, SC_TYPE_SINGLE_VALUE);
+      stats_lock();
+      {
+        stats_cluster_track_counter(value, SC_TYPE_SINGLE_VALUE);
+      }
+      stats_unlock();
       g_hash_table_insert(self->clusters, key, value);
     }
 }

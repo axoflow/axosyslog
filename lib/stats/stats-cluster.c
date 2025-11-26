@@ -21,6 +21,7 @@
  *
  */
 #include "stats/stats-cluster.h"
+#include "stats/stats-registry.h"
 #include "mainloop.h"
 
 #include <assert.h>
@@ -343,6 +344,7 @@ stats_cluster_track_counter(StatsCluster *self, gint type)
 {
   gint type_mask = 1 << type;
 
+  g_assert(is_stats_locked());
   g_assert(type < self->counter_group.capacity);
 
   self->live_mask |= type_mask;
@@ -366,6 +368,7 @@ stats_cluster_get_counter(StatsCluster *self, gint type)
 void
 stats_cluster_untrack_counter(StatsCluster *self, gint type, StatsCounterItem **counter)
 {
+  g_assert(is_stats_locked());
   g_assert(self && (self->live_mask & (1 << type)) && &self->counter_group.counters[type] == (*counter));
   g_assert(self->use_count > 0);
   self->use_count--;

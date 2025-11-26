@@ -65,6 +65,12 @@ stats_unlock(void)
   g_mutex_unlock(&stats_mutex);
 }
 
+gboolean
+is_stats_locked(void)
+{
+  return stats_locked;
+}
+
 static StatsCluster *
 _grab_dynamic_cluster(const StatsClusterKey *sc_key)
 {

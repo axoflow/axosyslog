@@ -24,6 +24,7 @@
 #include <criterion/criterion.h>
 
 #include "stats/stats.h"
+#include "stats/stats-registry.h"
 #include "stats/stats-cluster.h"
 #include "stats/stats-cluster-single.h"
 #include "stats/stats-cluster-logpipe.h"
@@ -51,6 +52,18 @@ teardown(void)
 }
 
 TestSuite(stats_prometheus, .init = setup, .fini = teardown);
+
+static StatsCounterItem *
+_track_counter_locked(StatsCluster *sc, gint type)
+{
+  StatsCounterItem *counter;
+  stats_lock();
+  {
+    counter = stats_cluster_track_counter(sc, type);
+  }
+  stats_unlock();
+  return counter;
+}
 
 static inline StatsCluster *
 test_single_cluster(const gchar *name, StatsClusterLabel *labels, gsize labels_len)
@@ -93,7 +106,7 @@ Test(stats_prometheus, test_prometheus_format_single)
     stats_cluster_label("customlabel", "value"),
   };
   cluster = test_single_cluster("test_name", labels2, G_N_ELEMENTS(labels2));
-  stats_counter_inc(stats_cluster_track_counter(cluster, SC_TYPE_SINGLE_VALUE));
+  stats_counter_inc(_track_counter_locked(cluster, SC_TYPE_SINGLE_VALUE));
   assert_prometheus_format(cluster, SC_TYPE_SINGLE_VALUE,
                            "syslogng_test_name{app=\"cisco\",sourceip=\"127.0.0.1\",customlabel=\"value\"} 1\n");
   stats_cluster_free(cluster);
@@ -117,7 +130,7 @@ Test(stats_prometheus, test_prometheus_format_logpipe)
     stats_cluster_label("customlabel", "value"),
   };
   cluster = test_logpipe_cluster("test_name", labels2, G_N_ELEMENTS(labels2));
-  stats_counter_inc(stats_cluster_track_counter(cluster, SC_TYPE_WRITTEN));
+  stats_counter_inc(_track_counter_locked(cluster, SC_TYPE_WRITTEN));
   assert_prometheus_format(cluster, SC_TYPE_WRITTEN,
                            "syslogng_test_name{app=\"cisco\",sourceip=\"127.0.0.1\",customlabel=\"value\","
                            "result=\"delivered\"} 1\n");
