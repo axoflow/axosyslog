@@ -1,5 +1,7 @@
-4.20.0
+4.20.1
 ======
+
+_This is a hotfix release that fixes a rare metric race condition causing a reload time crash._
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
 
@@ -108,6 +110,9 @@ Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/
 
 
 ## Bugfixes
+
+  * `metrics`: Fixed a rare race condition in dynamic metrics.
+    ([#858](https://github.com/axoflow/axosyslog/pull/858))
 
   * `filterx`: Fixed various memory leaks
     ([#829](https://github.com/axoflow/axosyslog/pull/829))
