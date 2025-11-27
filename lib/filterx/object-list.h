@@ -38,11 +38,27 @@ FilterXObject *filterx_list_new(void);
 FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
 FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
+
+/* these are low-level, fast interfaces which bypass a lot of validations */
+
+/* NOTE: index must be valid! */
 static inline FilterXObject *
 filterx_list_peek_subscript(FilterXObject *s, gint64 index)
 {
   FilterXListObject *self = (FilterXListObject *) s;
   return g_ptr_array_index(self->array, index);
+}
+
+/* NOTE: index must be valid! */
+static inline void
+filterx_list_set_subscript(FilterXObject *s, gint64 index, FilterXObject **new_value)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+
+  FilterXObject **slot = (FilterXObject **) &g_ptr_array_index(self->array, index);
+  filterx_ref_unset_parent_container(*slot);
+  filterx_object_unref(*slot);
+  *slot = filterx_object_cow_store(new_value);
 }
 
 
