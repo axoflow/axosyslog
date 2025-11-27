@@ -140,9 +140,9 @@ _start(LogQueueDisk *s)
 }
 
 static inline gboolean
-_has_space_in_front_cache(LogQueueDiskNonReliable *self)
+_has_space_in_front_cache_queue(gint front_cache_size, LogQueueDiskMemoryQueue *queue)
 {
-  return self->front_cache.len < self->front_cache_size;
+  return queue->len < front_cache_size;
 }
 
 static gint64
@@ -160,16 +160,16 @@ _get_length(LogQueue *s)
 }
 
 static inline gboolean
-_can_push_to_front_cache(LogQueueDiskNonReliable *self)
+_can_push_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
-  return _has_space_in_front_cache(self) && qdisk_get_length(self->super.qdisk) == 0;
+  return _has_space_in_front_cache_queue(self->front_cache_size, queue) && qdisk_get_length(self->super.qdisk) == 0;
 }
 
 static inline gboolean
 _flow_control_window_has_movable_message(LogQueueDiskNonReliable *self)
 {
   return self->flow_control_window.len > 0
-         && (_can_push_to_front_cache(self) || qdisk_is_space_avail(self->super.qdisk, 4096));
+         && (_can_push_to_front_cache_queue(self, &self->front_cache_output) || _can_push_to_front_cache_queue(self, &self->front_cache) || qdisk_is_space_avail(self->super.qdisk, 4096));
 }
 
 static gboolean
@@ -204,39 +204,49 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 
       /* NOTE: this adds a ref to msg */
       _extract_queue_node(node, &msg, &path_options);
-      if (_can_push_to_front_cache(self))
+      if (_can_push_to_front_cache_queue(self, &self->front_cache_output))
         {
-          /* we can skip qdisk, go straight to front_cache */
-          _push_node_to_memory_queue_tail(&self->front_cache, node);
+          /* we can skip qdisk and front_cache, go straight to front_cache_output */
+          _push_node_to_memory_queue_tail(&self->front_cache_output, node);
           log_msg_ack(msg, &path_options, AT_PROCESSED);
           log_msg_unref(msg);
         }
       else
         {
-          if (_serialize_and_write_message_to_disk(self, msg))
+          if (_can_push_to_front_cache_queue(self, &self->front_cache))
             {
-              log_queue_disk_update_disk_related_counters(&self->super);
-              log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
+              /* we can skip qdisk, go straight to front_cache */
+              _push_node_to_memory_queue_tail(&self->front_cache, node);
               log_msg_ack(msg, &path_options, AT_PROCESSED);
-              log_msg_free_queue_node(node);
               log_msg_unref(msg);
             }
           else
             {
-              /* oops, although there seemed to be some free space available,
-               * we failed saving this message, (it might have needed more
-               * than 4096 bytes than we ensured), push back and break
-               */
-              _push_node_to_memory_queue_head(&self->flow_control_window, node);
-              log_msg_unref(msg);
-              break;
+              if (_serialize_and_write_message_to_disk(self, msg))
+                {
+                  log_queue_disk_update_disk_related_counters(&self->super);
+                  log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
+                  log_msg_ack(msg, &path_options, AT_PROCESSED);
+                  log_msg_free_queue_node(node);
+                  log_msg_unref(msg);
+                }
+              else
+                {
+                  /* oops, although there seemed to be some free space available,
+                  * we failed saving this message, (it might have needed more
+                  * than 4096 bytes than we ensured), push back and break
+                  */
+                  _push_node_to_memory_queue_head(&self->flow_control_window, node);
+                  log_msg_unref(msg);
+                  break;
+                }
             }
         }
     }
 }
 
 static gboolean
-_move_messages_from_disk_to_front_cache(LogQueueDiskNonReliable *self)
+_move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
   do
     {
@@ -249,13 +259,13 @@ _move_messages_from_disk_to_front_cache(LogQueueDiskNonReliable *self)
       if (!msg)
         return FALSE;
 
-      _push_to_memory_queue_tail(&self->front_cache, msg, &path_options);
+      _push_to_memory_queue_tail(queue, msg, &path_options);
       log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
       log_msg_unref(msg);
 
       log_queue_disk_update_disk_related_counters(&self->super);
     }
-  while (_has_space_in_front_cache(self));
+  while (_has_space_in_front_cache_queue(self->front_cache_size, queue));
 
   return TRUE;
 }
@@ -279,8 +289,15 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
   if (qdisk_is_read_only(self->super.qdisk))
     return TRUE;
 
-  if (self->front_cache.len == 0 && self->front_cache_size > 0)
-    ret = _move_messages_from_disk_to_front_cache(self);
+  if (self->front_cache_output.len == 0 && self->front_cache_size > 0)
+    _move_items_from_front_cache_queue_to_output_queue(self);
+
+  if (self->front_cache_size > 0)
+    {
+      ret = _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache_output);
+      if (ret)
+        ret = _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache);
+    }
 
   if (self->flow_control_window.len > 0)
     _move_messages_from_overflow(self);
@@ -460,7 +477,7 @@ _is_msg_serialization_needed_hint(LogQueueDiskNonReliable *self)
 
   gboolean msg_serialization_needed = FALSE;
 
-  if (_can_push_to_front_cache(self))
+  if (_can_push_to_front_cache_queue(self, &self->front_cache))
     goto exit;
 
   if (self->flow_control_window.len != 0)
@@ -547,7 +564,7 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
   g_mutex_lock(&s->lock);
 
   /* we push messages into queue segments in the following order: flow_control_window, disk, front_cache */
-  if (_can_push_to_front_cache(self))
+  if (_can_push_to_front_cache_queue(self, &self->front_cache))
     {
       _push_tail_front_cache(self, msg, path_options);
       goto queued;
