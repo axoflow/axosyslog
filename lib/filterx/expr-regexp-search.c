@@ -209,28 +209,12 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_regexp_search_optimize(FilterXExpr *s)
-{
-  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
-
-  self->lhs = filterx_expr_optimize(self->lhs);
-  self->pattern_expr = filterx_expr_optimize(self->pattern_expr);
-  return NULL;
-}
-
 static gboolean
 _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
 
   FilterXObject *pattern_obj = NULL;
-
-  if (!filterx_expr_init(self->lhs, cfg))
-    goto error;
-
-  if (!filterx_expr_init(self->pattern_expr, cfg))
-    goto error;
 
   if (!filterx_expr_is_literal(self->pattern_expr))
     {
@@ -265,19 +249,7 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
 
 error:
   filterx_object_unref(pattern_obj);
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit(self->pattern_expr, cfg);
   return FALSE;
-}
-
-static void
-_regexp_search_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
-
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit(self->pattern_expr, cfg);
-  filterx_expr_deinit_method(s, cfg);
 }
 
 static void
@@ -316,6 +288,22 @@ _extract_search_args(FilterXExprRegexpSearch *self, FilterXFunctionArgs *args, G
   return TRUE;
 }
 
+gboolean
+_regexp_search_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXExprRegexpSearch *self = (FilterXExprRegexpSearch *) s;
+
+  FilterXExpr **exprs[] = { &self->lhs, &self->pattern_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of lhs */
 FilterXExpr *
 filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
@@ -324,9 +312,8 @@ filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
 
   filterx_function_init_instance(&self->super, "regexp_search");
   self->super.super.eval = _eval_regexp_search;
-  self->super.super.optimize = _regexp_search_optimize;
   self->super.super.init = _regexp_search_init;
-  self->super.super.deinit = _regexp_search_deinit;
+  self->super.super.walk_children = _regexp_search_walk;
   self->super.super.free_fn = _regexp_search_free;
 
   if (!_extract_optional_arg_flag(self, FILTERX_REGEXP_SEARCH_KEEP_GRP_ZERO, args, error))

@@ -122,43 +122,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
-
-  self->operand = filterx_expr_optimize(self->operand);
-  self->key = filterx_expr_optimize(self->key);
-  return NULL;
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
-
-  if (!filterx_expr_init(self->operand, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->key, cfg))
-    {
-      filterx_expr_deinit(self->operand, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
-
-  filterx_expr_deinit(self->operand, cfg);
-  filterx_expr_deinit(self->key, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -166,6 +129,22 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->key);
   filterx_expr_unref(self->operand);
   filterx_expr_free_method(s);
+}
+
+static gboolean
+_get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  FilterXExpr **exprs[] = { &self->operand, &self->key };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 /* NOTE: takes the object reference */
@@ -178,9 +157,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.eval = _eval_get_subscript;
   self->super.is_set = _isset;
   self->super.unset = _unset;
-  self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
+  self->super.walk_children = _get_subscript_walk;
   self->super.free_fn = _free;
   self->operand = operand;
   self->key = key;
