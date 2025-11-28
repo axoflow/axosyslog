@@ -71,7 +71,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       if (is_top_level)
-        g_ptr_array_add(top_level_dict_keys, filterx_object_ref(key));
+        g_ptr_array_add(top_level_dict_keys, key);
 
       gssize orig_len = key_buffer->len;
       const gchar *key_string;
@@ -164,7 +164,7 @@ static gboolean
 _flatten(FilterXFunctionFlatten *self, FilterXObject *dict)
 {
   GArray *flattened_kvs = g_array_sized_new(FALSE, FALSE, sizeof(FilterXFunctionFlattenKV), 16);
-  GPtrArray *top_level_dict_keys = g_ptr_array_new_full(16, (GDestroyNotify) filterx_object_unref);
+  GPtrArray *top_level_dict_keys = g_ptr_array_sized_new(16);
   gboolean result = FALSE;
 
   if (!_collect_dict_modifications(self, dict, flattened_kvs, top_level_dict_keys))
