@@ -283,24 +283,34 @@ log_template_format(LogTemplate *self, LogMessage *lm, LogTemplateEvalOptions *o
   log_template_format_value_and_type(self, lm, options, result, NULL);
 }
 
-guint
-log_template_hash(LogTemplate *self, LogMessage *lm, LogTemplateEvalOptions *options)
+const gchar *
+log_template_format_tmpbuf(LogTemplate *self, LogMessage *message, LogTemplateEvalOptions *options, gssize *value_len)
 {
   if (log_template_is_literal_string(self))
-    return g_str_hash(log_template_get_literal_value(self, NULL));
+    return log_template_get_literal_value(self, value_len);
 
   if (log_template_is_trivial(self))
     {
       NVHandle handle = log_template_get_trivial_value_handle(self);
       g_assert(handle != LM_V_NONE);
-      return g_str_hash(log_msg_get_value(lm, handle, NULL));
+      return log_msg_get_value(message, handle, value_len);
     }
 
-  ScratchBuffersMarker mark;
-  GString *buffer = scratch_buffers_alloc_and_mark(&mark);
-  log_template_format(self, lm, options, buffer);
-  guint hash = g_str_hash(buffer->str);
-  scratch_buffers_reclaim_marked(mark);
+  GString *buffer = scratch_buffers_alloc();
+  log_template_format(self, message, options, buffer);
 
+  return buffer->str;
+}
+
+guint
+log_template_hash(LogTemplate *self, LogMessage *lm, LogTemplateEvalOptions *options)
+{
+  ScratchBuffersMarker mark;
+  scratch_buffers_mark(&mark);
+
+  const gchar *value = log_template_format_tmpbuf(self, lm, options, NULL);
+  guint hash = g_str_hash(value);
+
+  scratch_buffers_reclaim_marked(mark);
   return hash;
 }
