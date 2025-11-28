@@ -109,9 +109,9 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   g_string_append_len(key_buffer, key_string, key_length);
 
   FilterXObject *flat_key = filterx_string_new(key_buffer->str, (gssize) MIN(key_buffer->len, G_MAXSSIZE));
-  FilterXFunctionFlattenKV kv;
-  _kv_init(&kv, flat_key, filterx_object_ref(value));
-  g_array_append_val(flattened_kvs, kv);
+  g_array_set_size(flattened_kvs, flattened_kvs->len+1);
+  FilterXFunctionFlattenKV *kv = &g_array_index(flattened_kvs, FilterXFunctionFlattenKV, flattened_kvs->len-1);
+  _kv_init(kv, flat_key, filterx_object_ref(value));
 
   g_string_truncate(key_buffer, orig_len);
   return TRUE;
