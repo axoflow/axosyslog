@@ -1087,3 +1087,26 @@ def test_format_syslog_5424(config, syslog_ng):
         '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - - foobar\\n",' \
         '"<13>1 2025-12-07T22:34:32.000000+00:00 host-value prog-value hihi 1234 - foobar\\n"' \
         ']'
+
+
+def test_flatten(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":{"inner_inner_field":1}}};
+
+            default_separator = dict;
+            custom_separator = dict;
+
+            flatten(default_separator);
+            flatten(custom_separator, separator="->");
+
+            $MSG = [default_separator, custom_separator];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1},' \
+        '{"top_level_field":42,"top_level_dict->inner_field":1337,"top_level_dict->inner_dict->inner_inner_field":1}' \
+        ']'
