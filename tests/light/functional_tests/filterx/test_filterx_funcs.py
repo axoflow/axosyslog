@@ -1022,3 +1022,26 @@ def test_dict_to_pairs(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '[{"key":"value_1","value":"foo"},{"key":"value_2","value":"bar"},{"key":"value_3","value":["baz","bax"]}]'
+
+
+def test_flatten(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":{"inner_inner_field":1}}};
+
+            default_separator = dict;
+            custom_separator = dict;
+
+            flatten(default_separator);
+            flatten(custom_separator, separator="->");
+
+            $MSG = [default_separator, custom_separator];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1},' \
+        '{"top_level_field":42,"top_level_dict->inner_field":1337,"top_level_dict->inner_dict->inner_inner_field":1}' \
+        ']'
