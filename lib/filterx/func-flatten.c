@@ -163,8 +163,8 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
 static gboolean
 _flatten(FilterXFunctionFlatten *self, FilterXObject *dict)
 {
-  GArray *flattened_kvs = g_array_new(FALSE, FALSE, sizeof(FilterXFunctionFlattenKV));
-  GPtrArray *top_level_dict_keys = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  GArray *flattened_kvs = g_array_sized_new(FALSE, FALSE, sizeof(FilterXFunctionFlattenKV), 16);
+  GPtrArray *top_level_dict_keys = g_ptr_array_new_full(16, (GDestroyNotify) filterx_object_unref);
   gboolean result = FALSE;
 
   if (!_collect_dict_modifications(self, dict, flattened_kvs, top_level_dict_keys))
