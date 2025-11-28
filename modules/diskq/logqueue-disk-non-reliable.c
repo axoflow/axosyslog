@@ -317,6 +317,12 @@ _move_items_from_front_cache_queue_to_output_queue(LogQueueDiskNonReliable *self
   self->front_cache.len = 0;
 }
 
+static inline gboolean
+_is_front_cache_enabled(LogQueueDiskNonReliable *self)
+{
+  return self->front_cache_size > 0;
+}
+
 /*
  * Must be called with lock held.
  */
@@ -328,7 +334,7 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
   if (qdisk_is_read_only(self->super.qdisk))
     return TRUE;
 
-  if (self->front_cache_size > 0)
+  if (_is_front_cache_enabled(self))
     {
       if (self->front_cache_output.len == 0)
         _move_items_from_front_cache_queue_to_output_queue(self);
