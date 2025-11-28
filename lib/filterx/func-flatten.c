@@ -47,8 +47,8 @@ typedef struct FilterXFunctionFlattenKV_
 static void
 _kv_init(FilterXFunctionFlattenKV *self, FilterXObject *key, FilterXObject *value)
 {
-  self->key = filterx_object_ref(key);
-  self->value = filterx_object_ref(value);
+  self->key = key;
+  self->value = value;
 }
 
 static void
@@ -110,9 +110,8 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
 
   FilterXObject *flat_key = filterx_string_new(key_buffer->str, (gssize) MIN(key_buffer->len, G_MAXSSIZE));
   FilterXFunctionFlattenKV kv;
-  _kv_init(&kv, flat_key, value);
+  _kv_init(&kv, flat_key, filterx_object_ref(value));
   g_array_append_val(flattened_kvs, kv);
-  filterx_object_unref(flat_key);
 
   g_string_truncate(key_buffer, orig_len);
   return TRUE;
