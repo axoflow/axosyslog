@@ -146,9 +146,17 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
     {
       FilterXFunctionFlattenKV *kv = &g_array_index(kvs, FilterXFunctionFlattenKV, i);
 
-      FilterXObject *value = filterx_object_clone(kv->value);
-      gboolean success = filterx_object_set_subscript(dict, kv->key, &value);
-      filterx_object_unref(value);
+      /*
+       * NOTE: Normally we would need to filterx_object_clone() the object
+       * here to ensure we have a separate copy-on-write instance of it.
+       * However, we already "own" our own a FilterXRef to it, in a different
+       * location of the dict. We are basically moving that FilterXRef from one spot to another:
+       *   1) removing the other ref in _remove_keys()
+       *   2) adding it here
+       *
+       * With that said, just taking a simple object reference suffices.
+       */
+      gboolean success = filterx_object_set_subscript(dict, kv->key, &kv->value);
 
       if (!success)
         {
