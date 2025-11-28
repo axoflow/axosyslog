@@ -30,6 +30,7 @@ typedef struct _LogQueueDiskMemoryQueue
 {
   struct iv_list_head items;
   gint len;
+  gint limit;
 } LogQueueDiskMemoryQueue;
 
 typedef struct _LogQueueDiskNonReliable
@@ -39,7 +40,6 @@ typedef struct _LogQueueDiskNonReliable
   LogQueueDiskMemoryQueue flow_control_window;
   LogQueueDiskMemoryQueue backlog;
   LogQueueDiskMemoryQueue front_cache_output;
-  gint front_cache_size;
 } LogQueueDiskNonReliable;
 
 LogQueue *log_queue_disk_non_reliable_new(DiskQueueOptions *options, const gchar *filename, const gchar *persist_name,

@@ -31,6 +31,7 @@ static void
 _init_memory_queue(LogQueueDiskMemoryQueue *q)
 {
   INIT_IV_LIST_HEAD(&q->items);
+  q->limit = G_MAXINT;
 }
 
 static void
@@ -139,24 +140,6 @@ _start(LogQueueDisk *s)
   return retval;
 }
 
-static inline gboolean
-_has_space_in_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
-{
-  return queue->len < self->front_cache_size;
-}
-
-static inline gboolean
-_has_space_in_front_cache(LogQueueDiskNonReliable *self)
-{
-  return _has_space_in_front_cache_queue(self, &self->front_cache);
-}
-
-static inline gboolean
-_has_space_in_front_cache_output(LogQueueDiskNonReliable *self)
-{
-  return _has_space_in_front_cache_queue(self, &self->front_cache_output);
-}
-
 static gint64
 _get_length(LogQueue *s)
 {
@@ -174,7 +157,7 @@ _get_length(LogQueue *s)
 static inline gboolean
 _can_push_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
-  return _has_space_in_front_cache_queue(self, queue) && qdisk_get_length(self->super.qdisk) == 0;
+  return queue->len < queue->limit && qdisk_get_length(self->super.qdisk) == 0;
 }
 
 static inline gboolean
@@ -289,7 +272,7 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
 
       log_queue_disk_update_disk_related_counters(&self->super);
     }
-  while (_has_space_in_front_cache_queue(self, queue));
+  while (queue->len < queue->limit);
 
   return TRUE;
 }
@@ -320,7 +303,7 @@ _move_items_from_front_cache_queue_to_output_queue(LogQueueDiskNonReliable *self
 static inline gboolean
 _is_front_cache_enabled(LogQueueDiskNonReliable *self)
 {
-  return self->front_cache_size > 0;
+  return self->front_cache.limit > 0;
 }
 
 /*
@@ -789,7 +772,15 @@ log_queue_disk_non_reliable_new(DiskQueueOptions *options, const gchar *filename
   _init_memory_queue(&self->backlog);
   _init_memory_queue(&self->flow_control_window);
   _init_memory_queue(&self->front_cache_output);
-  self->front_cache_size = options->front_cache_size;
+  if (options->front_cache_size % 2 == 0)
+    {
+      self->front_cache.limit = self->front_cache_output.limit = options->front_cache_size / 2;
+    }
+  else
+    {
+      self->front_cache_output.limit = (options->front_cache_size - 1) / 2;
+      self->front_cache.limit = options->front_cache_size - self->front_cache_output.limit;
+    }
   _set_virtual_functions(self);
   return &self->super.super;
 }
