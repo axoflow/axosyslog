@@ -114,7 +114,6 @@ filterx_nullv_literal_element_new(FilterXExpr *key, FilterXExpr *value)
 struct FilterXLiteralContainer_
 {
   FilterXExpr super;
-  FilterXObject *(*create_container)(FilterXLiteralContainer *self);
   FilterXObject *(*eval_early)(FilterXLiteralContainer *self);
   FilterXPointerList elements;
 };
@@ -265,7 +264,7 @@ _literal_dict_eval_adaptive(FilterXExpr *s, gboolean early_eval)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  FilterXObject *result = self->create_container(self);
+  FilterXObject *result = filterx_dict_new();
   filterx_object_cow_prepare(&result);
 
   gsize len = filterx_pointer_list_get_length(&self->elements);
@@ -318,12 +317,6 @@ filterx_literal_dict_foreach(FilterXExpr *s, FilterXLiteralDictForeachFunc func,
   return TRUE;
 }
 
-static FilterXObject *
-_literal_dict_create(FilterXLiteralContainer *s)
-{
-  return filterx_dict_new();
-}
-
 FilterXExpr *
 filterx_literal_dict_new(GList *elements)
 {
@@ -331,7 +324,6 @@ filterx_literal_dict_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_dict));
   self->super.eval = _literal_dict_eval;
-  self->create_container = _literal_dict_create;
   self->eval_early = _literal_dict_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
@@ -404,7 +396,7 @@ _literal_list_eval_adaptive(FilterXExpr *s, gboolean early_eval)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  FilterXObject *result = self->create_container(self);
+  FilterXObject *result = filterx_list_new();
   filterx_object_cow_prepare(&result);
 
   gsize len = filterx_pointer_list_get_length(&self->elements);
@@ -457,12 +449,6 @@ filterx_literal_list_foreach(FilterXExpr *s, FilterXLiteralListForeachFunc func,
   return TRUE;
 }
 
-static FilterXObject *
-_literal_list_create(FilterXLiteralContainer *s)
-{
-  return filterx_list_new();
-}
-
 FilterXExpr *
 filterx_literal_list_new(GList *elements)
 {
@@ -470,7 +456,6 @@ filterx_literal_list_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_list));
   self->super.eval = _literal_list_eval;
-  self->create_container = _literal_list_create;
   self->eval_early = _literal_list_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
