@@ -114,7 +114,7 @@ timespec_diff_usec(const struct timespec *t1, const struct timespec *t2)
 }
 
 gint64
-timespec_diff_nsec(struct timespec *t1, struct timespec *t2)
+timespec_diff_nsec(const struct timespec *t1, const struct timespec *t2)
 {
   return (((gint64)t1->tv_sec - t2->tv_sec) * 1000000000) + (t1->tv_nsec - t2->tv_nsec);
 }
