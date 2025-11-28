@@ -370,6 +370,7 @@ _ack_backlog(LogQueue *s, gint num_msg_to_ack)
     }
 }
 
+/* runs only in the output thread */
 static void
 _rewind_backlog(LogQueue *s, guint rewind_count)
 {
@@ -392,6 +393,7 @@ _rewind_backlog(LogQueue *s, guint rewind_count)
     }
 }
 
+/* runs only in the output thread */
 static void
 _rewind_backlog_all(LogQueue *s)
 {
