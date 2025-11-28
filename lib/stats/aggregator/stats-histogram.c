@@ -68,8 +68,7 @@ _add_data_point(StatsAggregator *s, gsize value)
   stats_counter_inc(self->count);
   stats_counter_add(self->sum, value);
 
-  /* round_to_log2() returns at least 1, but our bucket index starts at 0, thus the -1 below */
-  gssize bucket = (round_to_log2(value) - 1);
+  gssize bucket = (round_to_log2(value));
 
   /* anything below min_bucket goes to the first bucket */
   bucket -= self->min_bucket;

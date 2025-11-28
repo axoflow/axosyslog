@@ -26,7 +26,7 @@
 static inline int
 round_to_log2(size_t x)
 {
-  if (x == 0)
+  if (x <= 1)
     return 0;
 
   /* __builtin_clzll(): Returns the number of leading 0-bits in X, starting
