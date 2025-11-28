@@ -304,20 +304,27 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
   entry->value = value;
 }
 
-static gboolean
-_table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value)
+static FilterXDictEntrySlot
+_table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key)
 {
   guint hash = _table_hash_key(key);
 
   FilterXDictIndexSlot index_slot;
-  FilterXDictEntrySlot entry_slot;
-  FilterXDictEntry *entry;
 
   if (!_table_lookup_index_slot(table, key, hash, &index_slot))
+    return FXD_IX_EMPTY;
+
+  return _table_get_index_entry(table, index_slot);
+}
+
+static gboolean
+_table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value)
+{
+  FilterXDictEntrySlot entry_slot = _table_lookup_entry_slot(table, key);
+  if (entry_slot < 0)
     return FALSE;
 
-  entry_slot = _table_get_index_entry(table, index_slot);
-  entry = _table_get_entry(table, entry_slot);
+  FilterXDictEntry *entry = _table_get_entry(table, entry_slot);
   *value = filterx_object_ref(entry->value);
   return TRUE;
 }
