@@ -476,25 +476,32 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
   gboolean stats_update = TRUE;
 
   msg = _pop_head_front_cache_output(self, path_options);
-  if (msg)
+  if (msg && self->front_cache_output.len != 0)
     {
-      if (self->front_cache_output.len == 0)
-        {
-          g_mutex_lock(&s->lock);
-          goto success;
-        }
-      goto lockless_success;
+      /*
+       * FAST PATH
+       *
+       * Successfully popped a message from the output queue
+       * and there are still more in it for the next pop.
+       *
+       * Let's just return the message without grabbing the lock
+       * and moving messages around in the queue segments.
+       */
+      goto fast_success;
     }
 
   g_mutex_lock(&s->lock);
 
+  if (msg)
+    goto slow_success;
+
   msg = _pop_head_front_cache(self, path_options);
   if (msg)
-    goto success;
+    goto slow_success;
 
   msg = log_queue_disk_read_message(&self->super, path_options);
   if (msg)
-    goto success;
+    goto slow_success;
 
   if (self->flow_control_window.len > 0 && qdisk_is_read_only(self->super.qdisk))
     msg = _pop_head_flow_control_window(self, path_options);
@@ -505,7 +512,7 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
       return NULL;
     }
 
-success:
+slow_success:
   if (!_maybe_move_messages_among_queue_segments(self))
     {
       stats_update = FALSE;
@@ -514,7 +521,7 @@ success:
   log_queue_disk_update_disk_related_counters(&self->super);
   g_mutex_unlock(&s->lock);
 
-lockless_success:
+fast_success:
   _push_tail_backlog(self, msg, path_options);
 
   if (stats_update)
