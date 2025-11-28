@@ -194,6 +194,7 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 {
   LogMessage *msg;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
   /* move away as much entries from the overflow area as possible */
   while (_flow_control_window_has_movable_message(self))
     {
@@ -204,44 +205,43 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 
       /* NOTE: this adds a ref to msg */
       _extract_queue_node(node, &msg, &path_options);
+
       if (_can_push_to_front_cache_queue(self, &self->front_cache_output))
         {
           /* we can skip qdisk and front_cache, go straight to front_cache_output */
           _push_node_to_memory_queue_tail(&self->front_cache_output, node);
           log_msg_ack(msg, &path_options, AT_PROCESSED);
           log_msg_unref(msg);
+          continue;
         }
-      else
+
+      if (_can_push_to_front_cache_queue(self, &self->front_cache))
         {
-          if (_can_push_to_front_cache_queue(self, &self->front_cache))
-            {
-              /* we can skip qdisk, go straight to front_cache */
-              _push_node_to_memory_queue_tail(&self->front_cache, node);
-              log_msg_ack(msg, &path_options, AT_PROCESSED);
-              log_msg_unref(msg);
-            }
-          else
-            {
-              if (_serialize_and_write_message_to_disk(self, msg))
-                {
-                  log_queue_disk_update_disk_related_counters(&self->super);
-                  log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
-                  log_msg_ack(msg, &path_options, AT_PROCESSED);
-                  log_msg_free_queue_node(node);
-                  log_msg_unref(msg);
-                }
-              else
-                {
-                  /* oops, although there seemed to be some free space available,
-                  * we failed saving this message, (it might have needed more
-                  * than 4096 bytes than we ensured), push back and break
-                  */
-                  _push_node_to_memory_queue_head(&self->flow_control_window, node);
-                  log_msg_unref(msg);
-                  break;
-                }
-            }
+          /* we can skip qdisk, go straight to front_cache */
+          _push_node_to_memory_queue_tail(&self->front_cache, node);
+          log_msg_ack(msg, &path_options, AT_PROCESSED);
+          log_msg_unref(msg);
+          continue;
         }
+
+      if (_serialize_and_write_message_to_disk(self, msg))
+        {
+          log_queue_disk_update_disk_related_counters(&self->super);
+          log_queue_memory_usage_sub(&self->super.super, log_msg_get_size(msg));
+          log_msg_ack(msg, &path_options, AT_PROCESSED);
+          log_msg_free_queue_node(node);
+          log_msg_unref(msg);
+          continue;
+        }
+
+      /*
+       * oops, although there seemed to be some free space available,
+       * we failed saving this message, (it might have needed more
+       * than 4096 bytes than we ensured), push back and break
+       */
+      _push_node_to_memory_queue_head(&self->flow_control_window, node);
+      log_msg_unref(msg);
+      break;
     }
 }
 
