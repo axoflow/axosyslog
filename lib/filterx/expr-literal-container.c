@@ -201,7 +201,7 @@ _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *typ
 /* Literal dict objects */
 
 static inline gboolean
-_literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject *result, gboolean early_eval)
+_literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject **pkey, FilterXObject **pvalue, gboolean early_eval)
 {
   FilterXObject *key = NULL;
   FilterXObject *value = NULL;
@@ -218,35 +218,54 @@ _literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
     }
 
   value = _literal_container_eval_expr(elem->value, early_eval);
-  if (elem->nullv)
-    {
-      if (!value)
-        filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
-
-      if (!value || filterx_object_extract_null(value))
-        {
-          success = TRUE;
-          goto exit;
-        }
-    }
-
-  if (!value)
+  if (!value && !elem->nullv)
     {
       filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
       goto exit;
     }
 
-  value = filterx_object_cow_fork2(value, NULL);
-  success = filterx_object_set_subscript(result, key, &value);
-
-  if (!success)
-    {
-      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
-      goto exit;
-    }
+  success = TRUE;
 exit:
+  if (success)
+    {
+      *pkey = key;
+      *pvalue = value;
+    }
+  else
+    {
+      filterx_object_unref(key);
+      filterx_object_unref(value);
+    }
+  return success;
+}
+
+static inline gboolean
+_literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *result, FilterXLiteralElement *elem, FilterXObject *key, FilterXObject *value)
+{
+  gboolean success = FALSE;
+  if (elem->nullv)
+    {
+      if (!value)
+        {
+          filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
+        }
+      else if (filterx_object_extract_null(value))
+        {
+          filterx_object_unref(value);
+          value = NULL;
+        }
+      success = TRUE;
+    }
+
+  if (value)
+    {
+      value = filterx_object_cow_fork2(value, NULL);
+      success = filterx_object_set_subscript(result, key, &value);
+      if (!success)
+        filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
+      filterx_object_unref(value);
+    }
   filterx_object_unref(key);
-  filterx_object_unref(value);
   return success;
 }
 
@@ -277,7 +296,11 @@ _literal_dict_eval_adaptive(FilterXExpr *s, gboolean early_eval)
       else
         elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
 
-      if (!_literal_dict_eval_elem(self, elem, result, early_eval))
+      FilterXObject *key, *value;
+      if (!_literal_dict_eval_elem(self, elem, &key, &value, early_eval))
+        goto error;
+
+      if (!_literal_dict_store_elem(self, result, elem, key, value))
         goto error;
     }
 
