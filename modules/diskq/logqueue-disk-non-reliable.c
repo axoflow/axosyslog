@@ -140,9 +140,21 @@ _start(LogQueueDisk *s)
 }
 
 static inline gboolean
-_has_space_in_front_cache_queue(gint front_cache_size, LogQueueDiskMemoryQueue *queue)
+_has_space_in_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
-  return queue->len < front_cache_size;
+  return queue->len < self->front_cache_size;
+}
+
+static inline gboolean
+_has_space_in_front_cache(LogQueueDiskNonReliable *self)
+{
+  return _has_space_in_front_cache_queue(self, &self->front_cache);
+}
+
+static inline gboolean
+_has_space_in_front_cache_output(LogQueueDiskNonReliable *self)
+{
+  return _has_space_in_front_cache_queue(self, &self->front_cache_output);
 }
 
 static gint64
@@ -162,14 +174,26 @@ _get_length(LogQueue *s)
 static inline gboolean
 _can_push_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
-  return _has_space_in_front_cache_queue(self->front_cache_size, queue) && qdisk_get_length(self->super.qdisk) == 0;
+  return _has_space_in_front_cache_queue(self, queue) && qdisk_get_length(self->super.qdisk) == 0;
+}
+
+static inline gboolean
+_can_push_to_front_cache(LogQueueDiskNonReliable *self)
+{
+  return _can_push_to_front_cache_queue(self, &self->front_cache);
+}
+
+static inline gboolean
+_can_push_to_front_cache_output(LogQueueDiskNonReliable *self)
+{
+  return _can_push_to_front_cache_queue(self, &self->front_cache_output);
 }
 
 static inline gboolean
 _flow_control_window_has_movable_message(LogQueueDiskNonReliable *self)
 {
   return self->flow_control_window.len > 0
-         && (_can_push_to_front_cache_queue(self, &self->front_cache_output) || _can_push_to_front_cache_queue(self, &self->front_cache) || qdisk_is_space_avail(self->super.qdisk, 4096));
+         && (_can_push_to_front_cache_output(self) || _can_push_to_front_cache(self) || qdisk_is_space_avail(self->super.qdisk, 4096));
 }
 
 static gboolean
@@ -206,7 +230,7 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
       /* NOTE: this adds a ref to msg */
       _extract_queue_node(node, &msg, &path_options);
 
-      if (_can_push_to_front_cache_queue(self, &self->front_cache_output))
+      if (_can_push_to_front_cache_output(self))
         {
           /* we can skip qdisk and front_cache, go straight to front_cache_output */
           _push_node_to_memory_queue_tail(&self->front_cache_output, node);
@@ -215,7 +239,7 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
           continue;
         }
 
-      if (_can_push_to_front_cache_queue(self, &self->front_cache))
+      if (_can_push_to_front_cache(self))
         {
           /* we can skip qdisk, go straight to front_cache */
           _push_node_to_memory_queue_tail(&self->front_cache, node);
@@ -265,9 +289,21 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
 
       log_queue_disk_update_disk_related_counters(&self->super);
     }
-  while (_has_space_in_front_cache_queue(self->front_cache_size, queue));
+  while (_has_space_in_front_cache_queue(self, queue));
 
   return TRUE;
+}
+
+static inline gboolean
+_move_messages_from_disk_to_front_cache(LogQueueDiskNonReliable *self)
+{
+  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache);
+}
+
+static inline gboolean
+_move_messages_from_disk_to_front_cache_output(LogQueueDiskNonReliable *self)
+{
+  return _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache_output);
 }
 
 /*
@@ -294,9 +330,9 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
 
   if (self->front_cache_size > 0)
     {
-      ret = _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache_output);
+      ret = _move_messages_from_disk_to_front_cache_output(self);
       if (ret)
-        ret = _move_messages_from_disk_to_front_cache_queue(self, &self->front_cache);
+        ret = _move_messages_from_disk_to_front_cache(self);
     }
 
   if (self->flow_control_window.len > 0)
@@ -366,6 +402,18 @@ _pop_head_front_cache_queues(LogQueueDiskNonReliable *self, LogPathOptions *path
 }
 
 static inline LogMessage *
+_pop_head_front_cache(LogQueueDiskNonReliable *self, LogPathOptions *path_options)
+{
+  return _pop_head_front_cache_queues(self, path_options, &self->front_cache);
+}
+
+static inline LogMessage *
+_pop_head_front_cache_output(LogQueueDiskNonReliable *self, LogPathOptions *path_options)
+{
+  return _pop_head_front_cache_queues(self, path_options, &self->front_cache_output);
+}
+
+static inline LogMessage *
 _pop_head_flow_control_window(LogQueueDiskNonReliable *self, LogPathOptions *path_options)
 {
   LogMessage *msg;
@@ -418,7 +466,7 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
   LogMessage *msg = NULL;
   gboolean stats_update = TRUE;
 
-  msg = _pop_head_front_cache_queues(self, path_options, &self->front_cache_output);
+  msg = _pop_head_front_cache_output(self, path_options);
   if (msg)
     {
       if (self->front_cache_output.len == 0)
@@ -431,7 +479,7 @@ _pop_head(LogQueue *s, LogPathOptions *path_options)
 
   g_mutex_lock(&s->lock);
 
-  msg = _pop_head_front_cache_queues(self, path_options, &self->front_cache);
+  msg = _pop_head_front_cache(self, path_options);
   if (msg)
     goto success;
 
@@ -476,7 +524,7 @@ _is_msg_serialization_needed_hint(LogQueueDiskNonReliable *self)
 
   gboolean msg_serialization_needed = FALSE;
 
-  if (_can_push_to_front_cache_queue(self, &self->front_cache))
+  if (_can_push_to_front_cache(self))
     goto exit;
 
   if (self->flow_control_window.len != 0)
@@ -563,7 +611,7 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
   g_mutex_lock(&s->lock);
 
   /* we push messages into queue segments in the following order: flow_control_window, disk, front_cache */
-  if (_can_push_to_front_cache_queue(self, &self->front_cache))
+  if (_can_push_to_front_cache(self))
     {
       _push_tail_front_cache(self, msg, path_options);
       goto queued;
