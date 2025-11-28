@@ -317,6 +317,9 @@ _move_items_from_front_cache_queue_to_output_queue(LogQueueDiskNonReliable *self
   self->front_cache.len = 0;
 }
 
+/*
+ * Must be called with lock held.
+ */
 static inline gboolean
 _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
 {
@@ -325,11 +328,11 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
   if (qdisk_is_read_only(self->super.qdisk))
     return TRUE;
 
-  if (self->front_cache_output.len == 0 && self->front_cache_size > 0)
-    _move_items_from_front_cache_queue_to_output_queue(self);
-
   if (self->front_cache_size > 0)
     {
+      if (self->front_cache_output.len == 0)
+        _move_items_from_front_cache_queue_to_output_queue(self);
+
       ret = _move_messages_from_disk_to_front_cache_output(self);
       if (ret)
         ret = _move_messages_from_disk_to_front_cache(self);
