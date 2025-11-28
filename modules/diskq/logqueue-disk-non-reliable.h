@@ -26,12 +26,19 @@
 
 #include "logqueue-disk.h"
 
+typedef struct _LogQueueDiskMemoryQueue
+{
+  struct iv_list_head items;
+  gint len;
+} LogQueueDiskMemoryQueue;
+
 typedef struct _LogQueueDiskNonReliable
 {
   LogQueueDisk super;
-  GQueue *front_cache;
-  GQueue *flow_control_window;
-  GQueue *backlog;
+  LogQueueDiskMemoryQueue front_cache;
+  LogQueueDiskMemoryQueue flow_control_window;
+  LogQueueDiskMemoryQueue backlog;
+  LogQueueDiskMemoryQueue front_cache_output;
   gint front_cache_size;
 } LogQueueDiskNonReliable;
 

@@ -608,7 +608,6 @@ void log_msg_set_daddr_ref(LogMessage *self, GSockAddr *daddr);
 
 
 LogMessageQueueNode *log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options);
-LogMessageQueueNode *log_msg_alloc_dynamic_queue_node(LogMessage *msg, const LogPathOptions *path_options);
 void log_msg_free_queue_node(LogMessageQueueNode *node);
 
 void log_msg_clear(LogMessage *self);

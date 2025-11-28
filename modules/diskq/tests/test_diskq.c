@@ -492,7 +492,7 @@ assert_flow_control_window_length(diskq_tester_parameters_t *parameters, LogQueu
       return;
     }
 
-  cr_assert_eq(((LogQueueDiskNonReliable *)q)->flow_control_window->length, 2 * expected_length,
+  cr_assert_eq(((LogQueueDiskNonReliable *)q)->flow_control_window.len, expected_length,
                "%"G_GSIZE_FORMAT" message in flow control window: line: %d", expected_length, __LINE__);
 }
 
