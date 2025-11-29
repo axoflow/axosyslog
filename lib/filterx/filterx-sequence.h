@@ -41,8 +41,6 @@ gboolean filterx_sequence_append(FilterXObject *s, FilterXObject **new_value);
 gboolean filterx_sequence_unset(FilterXObject *s, gint64 index);
 gboolean filterx_sequence_merge(FilterXObject *s, FilterXObject *other);
 
-void filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type);
-
 FILTERX_DECLARE_TYPE(sequence);
 
 static inline gboolean
@@ -101,6 +99,16 @@ filterx_sequence_normalize_index(FilterXObject *index_object,
   *normalized_index = len + index;
 
   return TRUE;
+}
+
+static inline void
+filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(type->is_mutable);
+#endif
+
+  filterx_object_init_instance(&self->super, type);
 }
 
 #endif
