@@ -266,35 +266,19 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *result, F
   return success;
 }
 
-/*
- * This is an inline version with two variants,
- *
- * "fastpath" == TRUE means we * are doing this at eval time by which point
- *                    we already did a filterx_plist_seal()
- *
- * "fastpath" == FALSE means we are still doing this at compilation time and
- *               seal is yet to be called.
- */
-static inline FilterXObject *
-_literal_dict_eval_adaptive(FilterXExpr *s, gboolean early_eval)
+static FilterXObject *
+_literal_dict_eval_early(FilterXLiteralContainer *self)
 {
-  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
-
   FilterXObject *result = filterx_dict_new();
   filterx_object_cow_prepare(&result);
 
   gsize len = filterx_pointer_list_get_length(&self->elements);
   for (gsize i = 0; i < len; i++)
     {
-      FilterXLiteralElement *elem;
-
-      if (early_eval)
-        elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
-      else
-        elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
 
       FilterXObject *key, *value;
-      if (!_literal_dict_eval_elem(self, elem, &key, &value, early_eval))
+      if (!_literal_dict_eval_elem(self, elem, &key, &value, TRUE))
         goto error;
 
       if (!_literal_dict_store_elem(self, result, elem, key, value))
@@ -307,17 +291,31 @@ error:
   return NULL;
 }
 
-/* evaluate during optimize while the expressions are yet to be initialized */
-static FilterXObject *
-_literal_dict_eval_early(FilterXLiteralContainer *self)
-{
-  return _literal_dict_eval_adaptive(&self->super, TRUE);
-}
-
 static FilterXObject *
 _literal_dict_eval(FilterXExpr *s)
 {
-  return _literal_dict_eval_adaptive(s, FALSE);
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+
+  FilterXObject *result = filterx_dict_new();
+  filterx_object_cow_prepare(&result);
+
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
+
+      FilterXObject *key, *value;
+      if (!_literal_dict_eval_elem(self, elem, &key, &value, FALSE))
+        goto error;
+
+      if (!_literal_dict_store_elem(self, result, elem, key, value))
+        goto error;
+    }
+
+  return result;
+error:
+  filterx_object_unref(result);
+  return NULL;
 }
 
 gboolean
