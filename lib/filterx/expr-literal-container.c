@@ -118,6 +118,7 @@ struct FilterXLiteralContainer_
   FilterXExpr super;
   FilterXObject *(*eval_early)(FilterXLiteralContainer *self);
   FilterXPointerList elements;
+  FilterXPointerList nonliteral_elements;
 
   /* half initialized container, non-literal fields are set to nulls so we
    * can populate them at runtime */
@@ -157,7 +158,10 @@ _literal_container_optimize(FilterXExpr *s)
 
       _literal_element_optimize(elem);
       if (!elem->literal)
-        literal = FALSE;
+        {
+          literal = FALSE;
+          filterx_pointer_list_add(&self->nonliteral_elements, elem);
+        }
     }
   FilterXObject *container = self->eval_early(self);
   if (literal)
@@ -174,6 +178,7 @@ _literal_container_init(FilterXExpr *s, GlobalConfig *cfg)
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
   filterx_pointer_list_seal(&self->elements);
+  filterx_pointer_list_seal(&self->nonliteral_elements);
   if (!filterx_pointer_list_foreach(&self->elements, _literal_element_init_callback, cfg))
     {
       filterx_pointer_list_foreach(&self->elements, _literal_element_deinit_callback, cfg);
@@ -198,6 +203,7 @@ _literal_container_free(FilterXExpr *s)
 
   filterx_object_unref(self->sparse_container);
   filterx_pointer_list_clear(&self->elements, (GDestroyNotify) _literal_element_free);
+  filterx_pointer_list_clear(&self->nonliteral_elements, NULL);
   filterx_expr_free_method(s);
 }
 
@@ -210,6 +216,7 @@ _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *typ
   self->super.deinit = _literal_container_deinit;
   self->super.free_fn = _literal_container_free;
   filterx_pointer_list_init(&self->elements);
+  filterx_pointer_list_init(&self->nonliteral_elements);
 }
 
 /* Literal dict objects */
@@ -329,11 +336,13 @@ static FilterXObject *
 _literal_dict_eval(FilterXExpr *s)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+  FilterXPointerList *pl = &self->elements;
 
   FilterXObject *dict_ref;
   if (self->sparse_container)
     {
       dict_ref = filterx_object_cow_fork(&self->sparse_container);
+      pl = &self->nonliteral_elements;
     }
   else
     {
@@ -342,10 +351,10 @@ _literal_dict_eval(FilterXExpr *s)
     }
   FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
 
-  gsize len = filterx_pointer_list_get_length(&self->elements);
+  gsize len = filterx_pointer_list_get_length(pl);
   for (gsize i = 0; i < len; i++)
     {
-      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(pl, i);
 
       FilterXObject *key, *value;
       if (!_literal_dict_eval_elem(self, elem, &key, &value, FALSE))
