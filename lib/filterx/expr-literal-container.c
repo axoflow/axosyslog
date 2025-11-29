@@ -207,14 +207,11 @@ _literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
   FilterXObject *value = NULL;
   gboolean success = FALSE;
 
-  if (elem->key)
+  key = _literal_container_eval_expr(elem->key, early_eval);
+  if (!key)
     {
-      key = _literal_container_eval_expr(elem->key, early_eval);
-      if (!key)
-        {
-          filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate key");
-          goto exit;
-        }
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate key");
+      goto exit;
     }
 
   value = _literal_container_eval_expr(elem->value, early_eval);
@@ -362,29 +359,7 @@ _literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
   FilterXObject *value = NULL;
   gboolean success = FALSE;
 
-  if (elem->key)
-    {
-      key = _literal_container_eval_expr(elem->key, early_eval);
-      if (!key)
-        {
-          filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate key");
-          goto exit;
-        }
-    }
-
   value = _literal_container_eval_expr(elem->value, early_eval);
-  if (elem->nullv)
-    {
-      if (!value)
-        filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
-
-      if (!value || filterx_object_extract_null(value))
-        {
-          success = TRUE;
-          goto exit;
-        }
-    }
-
   if (!value)
     {
       filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
