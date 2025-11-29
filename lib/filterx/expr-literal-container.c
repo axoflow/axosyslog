@@ -38,8 +38,10 @@ struct FilterXLiteralElement_
 {
   FilterXExpr *key;
   FilterXExpr *value;
+  gint64 anchor;
   guint8 nullv:1,
          literal:1;
+
 };
 
 static gboolean
@@ -94,7 +96,7 @@ filterx_literal_element_new(FilterXExpr *key, FilterXExpr *value)
 
   self->key = key;
   self->value = value;
-
+  self->anchor = -1;
   return self;
 }
 
@@ -116,6 +118,10 @@ struct FilterXLiteralContainer_
   FilterXExpr super;
   FilterXObject *(*eval_early)(FilterXLiteralContainer *self);
   FilterXPointerList elements;
+
+  /* half initialized container, non-literal fields are set to nulls so we
+   * can populate them at runtime */
+  FilterXObject *sparse_container;
 };
 
 gsize
@@ -129,7 +135,11 @@ static inline FilterXObject *
 _literal_container_eval_expr(FilterXExpr *expr, gboolean early_eval)
 {
   if (early_eval)
-    return filterx_literal_get_value(expr);
+    {
+      if (filterx_expr_is_literal(expr))
+        return filterx_literal_get_value(expr);
+      return filterx_null_new();
+    }
   else
     return filterx_expr_eval(expr);
 }
@@ -149,8 +159,11 @@ _literal_container_optimize(FilterXExpr *s)
       if (!elem->literal)
         literal = FALSE;
     }
+  FilterXObject *container = self->eval_early(self);
   if (literal)
-    return filterx_literal_new(self->eval_early(self));
+    return filterx_literal_new(container);
+  else
+    self->sparse_container = container;
 
   return NULL;
 }
@@ -183,6 +196,7 @@ _literal_container_free(FilterXExpr *s)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
+  filterx_object_unref(self->sparse_container);
   filterx_pointer_list_clear(&self->elements, (GDestroyNotify) _literal_element_free);
   filterx_expr_free_method(s);
 }
@@ -237,7 +251,7 @@ exit:
 }
 
 static inline gboolean
-_literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *result, FilterXLiteralElement *elem, FilterXObject *key, FilterXObject *value)
+_literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref, FilterXObject *dict, FilterXLiteralElement *elem, FilterXObject *key, FilterXObject *value, gboolean early_eval)
 {
   gboolean success = FALSE;
   if (elem->nullv)
@@ -257,10 +271,28 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *result, F
   if (value)
     {
       value = filterx_object_cow_fork2(value, NULL);
-      success = filterx_object_set_subscript(result, key, &value);
+      if (!early_eval && elem->anchor >= 0)
+        {
+          /* runtime with an anchor already present */
+          filterx_ref_set_parent_container(value, dict_ref);
+          filterx_dict_set_subscript_by_anchor(dict, elem->anchor, &value);
+          success = TRUE;
+        }
+      else
+        {
+          /* early_eval or no anchor (e.g. no optimize) */
+          success = filterx_object_set_subscript(dict_ref, key, &value);
+
+          if (early_eval && success)
+            {
+              elem->anchor = filterx_dict_get_anchor_for_key(dict, key);
+            }
+        }
+
       if (!success)
         filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
       filterx_object_unref(value);
+
     }
   filterx_object_unref(key);
   return success;
@@ -269,8 +301,10 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *result, F
 static FilterXObject *
 _literal_dict_eval_early(FilterXLiteralContainer *self)
 {
-  FilterXObject *result = filterx_dict_new();
-  filterx_object_cow_prepare(&result);
+  FilterXObject *dict_ref = filterx_dict_new();
+  filterx_object_cow_prepare(&dict_ref);
+
+  FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
 
   gsize len = filterx_pointer_list_get_length(&self->elements);
   for (gsize i = 0; i < len; i++)
@@ -281,13 +315,13 @@ _literal_dict_eval_early(FilterXLiteralContainer *self)
       if (!_literal_dict_eval_elem(self, elem, &key, &value, TRUE))
         goto error;
 
-      if (!_literal_dict_store_elem(self, result, elem, key, value))
+      if (!_literal_dict_store_elem(self, dict_ref, dict, elem, key, value, TRUE))
         goto error;
     }
 
-  return result;
+  return dict_ref;
 error:
-  filterx_object_unref(result);
+  filterx_object_unref(dict_ref);
   return NULL;
 }
 
@@ -296,8 +330,17 @@ _literal_dict_eval(FilterXExpr *s)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
-  FilterXObject *result = filterx_dict_new();
-  filterx_object_cow_prepare(&result);
+  FilterXObject *dict_ref;
+  if (self->sparse_container)
+    {
+      dict_ref = filterx_object_cow_fork(&self->sparse_container);
+    }
+  else
+    {
+      dict_ref = filterx_dict_new();
+      filterx_object_cow_prepare(&dict_ref);
+    }
+  FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
 
   gsize len = filterx_pointer_list_get_length(&self->elements);
   for (gsize i = 0; i < len; i++)
@@ -308,13 +351,13 @@ _literal_dict_eval(FilterXExpr *s)
       if (!_literal_dict_eval_elem(self, elem, &key, &value, FALSE))
         goto error;
 
-      if (!_literal_dict_store_elem(self, result, elem, key, value))
+      if (!_literal_dict_store_elem(self, dict_ref, dict, elem, key, value, FALSE))
         goto error;
     }
 
-  return result;
+  return dict_ref;
 error:
-  filterx_object_unref(result);
+  filterx_object_unref(dict_ref);
   return NULL;
 }
 
