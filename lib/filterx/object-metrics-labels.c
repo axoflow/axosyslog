@@ -164,12 +164,6 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   self->sorted = FALSE;
   self->deduped = FALSE;
 
-  if (!filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(string)))
-    {
-      filterx_object_unref(*new_value);
-      *new_value = filterx_string_new(value_str, value_len);
-    }
-
   scratch_buffers_reclaim_marked(marker);
   return TRUE;
 }
