@@ -54,7 +54,6 @@ typedef struct _FilterXDPathLValue
 
   GList *dpath_elements;
 
-  gboolean add_mode;
   FilterXDPathElement *last_dpath_element;
 } FilterXDPathLValue;
 
@@ -213,23 +212,40 @@ filterx_dpath_lvalue_assign(FilterXExpr *s, FilterXObject **new_value)
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
   FilterXObject *last_object = NULL;
-  FilterXObject *dict = _dpath_touch(self, self->add_mode, &last_object);
+  FilterXObject *dict = _dpath_touch(self, FALSE, &last_object);
 
   if (!dict)
     return FALSE;
 
-  gboolean result;
-  if (self->add_mode)
-    {
-      FilterXObject *added_obj = filterx_object_add(last_object, *new_value);
-      filterx_object_unref(*new_value);
-      *new_value = added_obj;
+  gboolean result = filterx_dpath_elem_set(dict, self->last_dpath_element, new_value);
 
+  filterx_object_unref(last_object);
+  filterx_object_unref(dict);
+  return result;
+}
+
+static FilterXObject *
+filterx_dpath_lvalue_plus_assign(FilterXExpr *s, FilterXObject *new_value)
+{
+  FilterXDPathLValue *self = (FilterXDPathLValue *) s;
+
+  FilterXObject *last_object = NULL;
+  FilterXObject *dict = _dpath_touch(self, TRUE, &last_object);
+
+  if (!dict)
+    return FALSE;
+
+  FilterXObject *result = filterx_object_add_inplace(last_object, new_value);
+  if (result != last_object)
+    {
+      /* add_inplace() replaced the object */
+      if (!filterx_dpath_elem_set(dict, self->last_dpath_element, &result))
+        {
+          filterx_object_unref(result);
+          result = NULL;
+        }
     }
 
-  result = filterx_dpath_elem_set(dict, self->last_dpath_element, new_value);
-
-exit:
   filterx_object_unref(last_object);
   filterx_object_unref(dict);
   return result;
@@ -325,13 +341,6 @@ filterx_dpath_lvalue_free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
-void
-filterx_dpath_lvalue_set_add_mode(FilterXExpr *s, gboolean add_mode)
-{
-  FilterXDPathLValue *self = (FilterXDPathLValue *) s;
-  self->add_mode = add_mode;
-}
-
 FilterXExpr *
 filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error)
 {
@@ -347,6 +356,7 @@ filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **
 
   self->super.eval = _prohibit_eval;
   self->super.assign = filterx_dpath_lvalue_assign;
+  self->super.plus_assign = filterx_dpath_lvalue_plus_assign;
   self->super.optimize = filterx_dpath_lvalue_optimize;
   self->super.init = filterx_dpath_lvalue_init;
   self->super.deinit = filterx_dpath_lvalue_deinit;
