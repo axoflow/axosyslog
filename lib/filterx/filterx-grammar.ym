@@ -237,7 +237,7 @@ plus_assignment
 						                           $5));
 						  free($3);
 						}
-	| dpath_lvalue KW_PLUS_ASSIGN expr { $$ = filterx_assign_new($1, $3); filterx_dpath_lvalue_set_add_mode($1, TRUE); }
+	| dpath_lvalue KW_PLUS_ASSIGN expr      { $$ = filterx_operator_plus_assign_new($1, $3); }
 	;
 
 
