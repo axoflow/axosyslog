@@ -225,8 +225,6 @@ filterx_dpath_lvalue_assign(FilterXExpr *s, FilterXObject **new_value)
       filterx_object_unref(*new_value);
       *new_value = added_obj;
 
-      result = filterx_dpath_elem_set(dict, self->last_dpath_element, new_value);
-      goto exit;
     }
 
   result = filterx_dpath_elem_set(dict, self->last_dpath_element, new_value);
