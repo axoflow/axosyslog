@@ -44,6 +44,13 @@ typedef struct _FilterXObjectMetricsLabels
   gboolean deduped;
 } FilterXObjectMetricsLabels;
 
+static void
+_label_destroy(StatsClusterLabel *label)
+{
+  g_free((gchar *) label->name);
+  g_free((gchar *) label->value);
+}
+
 static gboolean
 _truthy(FilterXObject *s)
 {
@@ -258,20 +265,11 @@ _clone(FilterXObject *s)
   return &cloned->super.super;
 }
 
-static void
-_label_destroy(StatsClusterLabel *label)
-{
-  g_free((gchar *) label->name);
-  g_free((gchar *) label->value);
-}
 
 static void
 _free(FilterXObject *s)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
-
-  for (guint i = 0; i < self->labels->len; i++)
-    _label_destroy(&g_array_index(self->labels, StatsClusterLabel, i));
 
   g_array_free(self->labels, TRUE);
   filterx_object_free_method(s);
@@ -288,7 +286,8 @@ _dedup(FilterXObjectMetricsLabels *self)
       g_hash_table_replace(labels_map, (gpointer) label->name, label);
     }
 
-  GArray *new_labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), self->labels->len);
+  g_array_set_clear_func(self->labels, NULL);
+  g_array_set_size(self->labels, 0);
 
   GHashTableIter iter;
   g_hash_table_iter_init(&iter, labels_map);
@@ -297,15 +296,14 @@ _dedup(FilterXObjectMetricsLabels *self)
   while (g_hash_table_iter_next(&iter, &k, &v))
     {
       StatsClusterLabel *label = v;
-      g_array_append_val(new_labels, *label);
+      g_array_append_val(self->labels, *label);
     }
 
-  g_array_free(self->labels, TRUE);
-  self->labels = new_labels;
   self->deduped = TRUE;
 
   g_hash_table_steal_all(labels_map);
   g_hash_table_unref(labels_map);
+  g_array_set_clear_func(self->labels, (GDestroyNotify) _label_destroy);
 }
 
 static gint
@@ -335,8 +333,8 @@ filterx_object_metrics_labels_new(guint reserved_size)
   FilterXObjectMetricsLabels *self = g_new0(FilterXObjectMetricsLabels, 1);
   filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
 
-
   self->labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), reserved_size);
+  g_array_set_clear_func(self->labels, (GDestroyNotify) _label_destroy);
 
   return &self->super.super;
 }
