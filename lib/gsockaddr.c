@@ -234,6 +234,10 @@ g_sockaddr_inet_format(GSockAddr *addr, gchar *text, gulong n, gint format)
     g_snprintf(text, n, "AF_INET(%s:%d)",
                g_inet_ntoa(buf, sizeof(buf), self->sin.sin_addr),
                htons(self->sin.sin_port));
+  else if (format == GSA_ADDRESS_PORT)
+    g_snprintf(text, n, "%s:%d",
+               g_inet_ntoa(buf, sizeof(buf), self->sin.sin_addr),
+               htons(self->sin.sin_port));
   else if (format == GSA_ADDRESS_ONLY)
     g_inet_ntoa(text, n, self->sin.sin_addr);
   else
@@ -372,6 +376,13 @@ g_sockaddr_inet6_format(GSockAddr *s, gchar *text, gulong n, gint format)
     {
       inet_ntop(AF_INET6, &self->sin6.sin6_addr, buf, sizeof(buf));
       g_snprintf(text, n, "AF_INET6([%s]:%d)",
+                 buf,
+                 htons(self->sin6.sin6_port));
+    }
+  else if (format == GSA_ADDRESS_PORT)
+    {
+      inet_ntop(AF_INET6, &self->sin6.sin6_addr, buf, sizeof(buf));
+      g_snprintf(text, n, "[%s]:%d",
                  buf,
                  htons(self->sin6.sin6_port));
     }
@@ -663,7 +674,7 @@ g_sockaddr_unix_format(GSockAddr *addr, gchar *text, gulong n, gint format)
                  unix_addr->salen > sizeof(unix_addr->saun.sun_family) && unix_addr->saun.sun_path[0] ? unix_addr->saun.sun_path
                  : "anonymous");
     }
-  else if (format == GSA_ADDRESS_ONLY)
+  else if (format == GSA_ADDRESS_ONLY || format == GSA_ADDRESS_PORT)
     {
       g_snprintf(text, n, "%s", unix_addr->salen > sizeof(unix_addr->saun.sun_family)
                  && unix_addr->saun.sun_path[0] ? unix_addr->saun.sun_path : "anonymous");
