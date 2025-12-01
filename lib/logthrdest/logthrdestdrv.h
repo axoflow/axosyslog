@@ -199,6 +199,7 @@ struct _LogThreadedDestDriver
 
   gboolean flush_on_key_change;
   gboolean worker_partition_autoscaling;
+  gint worker_partition_autoscaling_wfo;
   LogTemplate *worker_partition_key;
   LogTemplate *worker_partition_buckets;
   LogThreadedDestPartitionStats partition_stats;
@@ -322,6 +323,14 @@ log_threaded_dest_driver_set_worker_partition_autoscaling(LogDriver *s, gboolean
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
 
   self->worker_partition_autoscaling = partition_autoscaling;
+}
+
+static inline void
+log_threaded_dest_driver_set_worker_partition_autoscaling_wfo(LogDriver *s, gint wfo)
+{
+  LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
+
+  self->worker_partition_autoscaling_wfo = wfo;
 }
 
 void log_threaded_dest_worker_ack_messages(LogThreadedDestWorker *self, gint batch_size);

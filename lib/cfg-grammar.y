@@ -271,6 +271,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_WORKER_PARTITION_KEY        10407
 %token KW_WORKER_PARTITION_BUCKETS    10408
 %token KW_WORKER_PARTITION_AUTOSCALING 10601
+%token KW_WORKER_PARTITION_AUTOSCALING_WFO 10602
 
 %token KW_LOG_FLOW_CONTROL            10409
 
@@ -1427,6 +1428,7 @@ threaded_dest_driver_workers_option
         | KW_WORKER_PARTITION_KEY '(' template_content ')' { log_threaded_dest_driver_set_worker_partition_key_ref(last_driver, $3); }
         | KW_WORKER_PARTITION_BUCKETS '(' template_content ')' { log_threaded_dest_driver_set_worker_partition_buckets_ref(last_driver, $3); }
         | KW_WORKER_PARTITION_AUTOSCALING '(' yesno ')' { log_threaded_dest_driver_set_worker_partition_autoscaling(last_driver, $3); }
+        | KW_WORKER_PARTITION_AUTOSCALING_WFO '(' positive_integer ')' { log_threaded_dest_driver_set_worker_partition_autoscaling_wfo(last_driver, $3); }
         ;
 
 /* implies dest_driver_option */

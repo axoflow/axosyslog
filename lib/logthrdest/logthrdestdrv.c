@@ -1323,8 +1323,8 @@ _rescale_worker_partitions(LogThreadedDestDriver *self, Partition *current_parti
 {
   gdouble total_rate = _get_total_rate_and_update_partition_stats(self, current_partition, now);
   gint num_workers = self->num_workers;
-  /* reserve 1 worker for minuscule partitions */
-  gint free_workers = num_workers - 1;
+  /* reserve WFO number of workers for minuscule partitions */
+  gint free_workers = MAX(1, num_workers - self->worker_partition_autoscaling_wfo);
 
   gint current_worker_idx = 0;
   gdouble remainder = num_workers - free_workers;
@@ -1351,6 +1351,7 @@ _rescale_worker_partitions(LogThreadedDestDriver *self, Partition *current_parti
       current_worker_idx = (current_worker_idx + part->num_of_workers) % num_workers;
     }
 
+  /* no orphans => give the remainder to the last partition (cheaper than sorting partitions) */
   if (self->partition_stats.orphans->len == 0)
     part->num_of_workers += (gint) (0 + floor(remainder));
 
@@ -1864,4 +1865,5 @@ log_threaded_dest_driver_init_instance(LogThreadedDestDriver *self, GlobalConfig
   self->retries_max = MAX_RETRIES_BEFORE_SUSPEND_DEFAULT;
 
   self->flush_on_key_change = FALSE;
+  self->worker_partition_autoscaling_wfo = 1;
 }
