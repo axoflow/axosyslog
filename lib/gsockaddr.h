@@ -36,8 +36,9 @@
 
 #define MAX_SOCKADDR_STRING 64
 
-#define GSA_FULL    0
-#define GSA_ADDRESS_ONLY 1
+#define GSA_FULL          0
+#define GSA_ADDRESS_ONLY  1
+#define GSA_ADDRESS_PORT  2
 
 typedef struct _GSockAddrFuncs GSockAddrFuncs;
 
