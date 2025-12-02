@@ -149,6 +149,7 @@ struct _LogThreadedDestDriver
     StatsCounterItem *processed_messages;
     StatsCounterItem *written_messages;
     StatsCounterItem *output_event_retries;
+    StatsCounterItem *active_partitions;
 
     StatsAggregator *event_size_hist;
     StatsAggregator *batch_size_events_hist;
@@ -160,6 +161,7 @@ struct _LogThreadedDestDriver
     StatsClusterKey *output_events_key;
     StatsClusterKey *processed_key;
     StatsClusterKey *output_event_retries_key;
+    StatsClusterKey *active_partitions_key;
     StatsClusterKey *batch_size_bytes_hist_key;
     StatsClusterKey *batch_size_events_hist_key;
     StatsClusterKey *event_size_hist_key;

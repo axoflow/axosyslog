@@ -1376,6 +1376,8 @@ _rescale_worker_partitions(LogThreadedDestDriver *self, Partition *current_parti
   g_ptr_array_set_size(self->partition_stats.orphans, 0);
 
   self->partition_stats.last_rescale = *now;
+
+  stats_counter_set(self->metrics.active_partitions, g_hash_table_size(self->partition_stats.partitions));
 }
 
 /* partition_stats_lock must be held when calling this method */
@@ -1623,7 +1625,17 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
   }
   stats_cluster_key_builder_pop(kb);
 
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_active_worker_partitions");
+    stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "");
+    self->metrics.active_partitions_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
 
+
+  gint lvl = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL2;
   stats_lock();
   {
     stats_register_counter(level, self->metrics.output_events_key, SC_TYPE_DROPPED, &self->metrics.dropped_messages);
@@ -1632,6 +1644,12 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
                            &self->metrics.processed_messages);
     stats_register_counter(level, self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.output_event_retries);
+
+    if (self->worker_partition_autoscaling)
+      {
+        stats_register_counter(lvl, self->metrics.active_partitions_key, SC_TYPE_SINGLE_VALUE,
+                               &self->metrics.active_partitions);
+      }
   }
   stats_unlock();
   _register_driver_aggregated_stats(self);
@@ -1658,12 +1676,15 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
     stats_unregister_counter(self->metrics.processed_key, SC_TYPE_SINGLE_VALUE, &self->metrics.processed_messages);
     stats_unregister_counter(self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                              &self->metrics.output_event_retries);
+    stats_unregister_counter(self->metrics.active_partitions_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.active_partitions);
   }
   stats_unlock();
 
   stats_cluster_key_free(self->metrics.output_events_key);
   stats_cluster_key_free(self->metrics.processed_key);
   stats_cluster_key_free(self->metrics.output_event_retries_key);
+  stats_cluster_key_free(self->metrics.active_partitions_key);
   stats_cluster_key_free(self->metrics.request_latency_hist_key);
   stats_cluster_key_free(self->metrics.event_size_hist_key);
   stats_cluster_key_free(self->metrics.batch_size_events_hist_key);
