@@ -364,3 +364,19 @@ log_proto_text_with_nuls_server_new(LogTransport *transport, const LogProtoServe
   self->find_eom = _find_nl_as_eom;
   return &self->super.super;
 }
+
+static const guchar *
+_find_nul_as_eom(const guchar *s, gsize n)
+{
+  return memchr(s, 0, n);
+}
+
+LogProtoServer *
+log_proto_nul_terminated_server_new(LogTransport *transport, const LogProtoServerOptions *options)
+{
+  LogProtoTextServer *self = g_new0(LogProtoTextServer, 1);
+
+  log_proto_text_server_init(self, transport, options);
+  self->find_eom = _find_nul_as_eom;
+  return &self->super.super;
+}
