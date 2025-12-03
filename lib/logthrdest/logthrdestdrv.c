@@ -1223,7 +1223,7 @@ _calculate_partition_key_bucket(LogThreadedDestDriver *self, LogMessage *msg, Lo
 }
 
 static inline gdouble
-_get_time_diff(const struct timespec *last_update, const struct timespec *now)
+_get_time_diff_sec(const struct timespec *last_update, const struct timespec *now)
 {
   gint64 diff = 0;
   if (last_update->tv_sec != 0)
@@ -1306,7 +1306,7 @@ _get_total_rate_and_update_partition_stats(LogThreadedDestDriver *self, Partitio
        /* update all the other partitions' rate */
       if (p != current_partition)
         {
-          gdouble dt = _get_time_diff(&p->last_update, now);
+          gdouble dt = _get_time_diff_sec(&p->last_update, now);
           _apply_exp_decay(dt, &p->rate);
         }
 
@@ -1384,7 +1384,7 @@ _update_partition_stats(LogThreadedDestDriver *self, Partition *partition, const
 {
   const gint num_of_messages = 1;
 
-  gdouble partition_dt = _get_time_diff(&partition->last_update, now);
+  gdouble partition_dt = _get_time_diff_sec(&partition->last_update, now);
 
   /* first message should be considered too */
   if (partition_dt <= 0)
