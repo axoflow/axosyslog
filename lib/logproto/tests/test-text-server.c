@@ -166,6 +166,22 @@ Test(log_proto, test_log_proto_text_server_no_eol_before_eof)
 
 }
 
+Test(log_proto, test_log_proto_text_server_eols_are_removed_from_the_front_as_well_as_from_the_end)
+{
+  LogProtoServer *proto;
+
+  proto = construct_test_proto(
+            log_transport_mock_stream_new(
+              "\r01234567\r\n", -1,
+              "\r01234567\r\n", -1,
+              LTM_EOF));
+
+  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch(proto, "01234567", -1);
+  assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
+  log_proto_server_free(proto);
+}
+
 Test(log_proto, test_log_proto_text_with_embedded_nuls)
 {
   LogProtoServer *proto;

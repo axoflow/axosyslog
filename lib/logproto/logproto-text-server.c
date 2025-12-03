@@ -169,8 +169,21 @@ log_proto_text_server_extract(LogProtoTextServer *self, LogProtoBufferedServerSt
   return FALSE;
 }
 
+static inline gboolean
+_is_message_boundary(gchar ch)
+{
+  if (ch <= 13)
+    {
+      /* set bits to 1 where they are considered to be message boundaries,
+       * CR, LF and NUL characters are set */
+      const guint32 ch_bits = 0x2401;
+      return !!(ch_bits & (1 << ch));
+    }
+  return FALSE;
+}
+
 static void
-log_proto_text_server_remove_trailing_newline(const guchar **msg, gsize *msg_len)
+log_proto_text_server_trim_message_boundaries(const guchar **msg, gsize *msg_len)
 {
   const guchar *msg_start = (*msg);
   const guchar *msg_end = msg_start + (*msg_len);
@@ -178,11 +191,13 @@ log_proto_text_server_remove_trailing_newline(const guchar **msg, gsize *msg_len
   /* msg_end points at the newline character. A \r or \0 may precede
    * this which should be removed from the message body */
 
-  while ((msg_end > msg_start) && (msg_end[-1] == '\r' || msg_end[-1] == '\n' || msg_end[-1] == 0))
+  while ((msg_end > msg_start) && (_is_message_boundary(msg_end[-1])))
     msg_end--;
+  while (msg_start < msg_end && (_is_message_boundary(msg_start[0])))
+    msg_start++;
   *msg_len = msg_end - msg_start;
+  *msg = msg_start;
 }
-
 
 static inline void
 log_proto_text_server_yield_whole_buffer_as_message(LogProtoTextServer *self, LogProtoBufferedServerState *state,
@@ -255,7 +270,7 @@ _fetch_msg_from_buffer(LogProtoTextServer *self, LogProtoBufferedServerState *st
   return FALSE;
 
 success:
-  log_proto_text_server_remove_trailing_newline(msg, msg_len);
+  log_proto_text_server_trim_message_boundaries(msg, msg_len);
   return TRUE;
 }
 
