@@ -1634,6 +1634,15 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
   }
   stats_cluster_key_builder_pop(kb);
 
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_workers");
+    stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "");
+    self->metrics.workers_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
 
   gint lvl = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL2;
   stats_lock();
@@ -1644,6 +1653,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
                            &self->metrics.processed_messages);
     stats_register_counter(level, self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.output_event_retries);
+    stats_register_counter(level, self->metrics.workers_key, SC_TYPE_SINGLE_VALUE, &self->metrics.workers);
 
     if (self->worker_partition_autoscaling)
       {
@@ -1678,6 +1688,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
                              &self->metrics.output_event_retries);
     stats_unregister_counter(self->metrics.active_partitions_key, SC_TYPE_SINGLE_VALUE,
                              &self->metrics.active_partitions);
+    stats_unregister_counter(self->metrics.workers_key, SC_TYPE_SINGLE_VALUE, &self->metrics.workers);
   }
   stats_unlock();
 
@@ -1685,6 +1696,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   stats_cluster_key_free(self->metrics.processed_key);
   stats_cluster_key_free(self->metrics.output_event_retries_key);
   stats_cluster_key_free(self->metrics.active_partitions_key);
+  stats_cluster_key_free(self->metrics.workers_key);
   stats_cluster_key_free(self->metrics.request_latency_hist_key);
   stats_cluster_key_free(self->metrics.event_size_hist_key);
   stats_cluster_key_free(self->metrics.batch_size_events_hist_key);
@@ -1786,6 +1798,7 @@ log_threaded_dest_driver_init_method(LogPipe *s)
     }
 
   _register_driver_stats(self, driver_sck_builder);
+  stats_counter_set(self->metrics.workers, self->num_workers);
 
   stats_cluster_key_builder_free(driver_sck_builder);
   return TRUE;
