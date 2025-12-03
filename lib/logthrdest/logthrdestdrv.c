@@ -1223,7 +1223,7 @@ _calculate_partition_key_bucket(LogThreadedDestDriver *self, LogMessage *msg, Lo
 }
 
 static inline gdouble
-_get_time_diff(const struct timespec *last_update, const struct timespec *now)
+_get_time_diff_sec(const struct timespec *last_update, const struct timespec *now)
 {
   gint64 diff = 0;
   if (last_update->tv_sec != 0)
@@ -1271,16 +1271,15 @@ _is_worker_partition_rescale_due(LogThreadedDestDriver *self, const struct times
 
 /* partition_stats_lock must be held when calling this method */
 static inline gboolean
-_remove_if_partition_expired(Partition **p, GHashTableIter *iter, const struct timespec *now)
+_remove_if_partition_expired(Partition *p, GHashTableIter *iter, const struct timespec *now)
 {
   gint64 diff = 0;
-  if ((*p)->last_update.tv_sec != 0)
-    diff = timespec_diff_usec(now, &(*p)->last_update);
+  if (p->last_update.tv_sec != 0)
+    diff = timespec_diff_usec(now, &p->last_update);
 
   if (diff >= PARTITION_EXPIRATION_INTERVAL * 1000000)
     {
       g_hash_table_iter_remove(iter);
-      *p = NULL;
       return TRUE;
     }
 
@@ -1301,13 +1300,13 @@ _get_total_rate_and_update_partition_stats(LogThreadedDestDriver *self, Partitio
     {
       Partition *p = v;
 
-      if (p != current_partition && _remove_if_partition_expired(&p, &iter, now))
+      if (p != current_partition && _remove_if_partition_expired(p, &iter, now))
         continue;
 
        /* update all the other partitions' rate */
       if (p != current_partition)
         {
-          gdouble dt = _get_time_diff(&p->last_update, now);
+          gdouble dt = _get_time_diff_sec(&p->last_update, now);
           _apply_exp_decay(dt, &p->rate);
         }
 
@@ -1323,11 +1322,19 @@ _rescale_worker_partitions(LogThreadedDestDriver *self, Partition *current_parti
 {
   gdouble total_rate = _get_total_rate_and_update_partition_stats(self, current_partition, now);
   gint num_workers = self->num_workers;
+  gint workers_used = 0;
+
   /* reserve WFO number of workers for minuscule partitions */
   gint free_workers = MAX(1, num_workers - self->worker_partition_autoscaling_wfo);
 
+  /*
+   * We need to round down the fractional part of the workers assigned to one partition,
+   * so we do not exceed the total number of workers available.
+   * We can store the unused fractional part though and carry it over to the next partition.
+   */
+  gdouble fractional_worker_carryover = 0.0;
+
   gint current_worker_idx = 0;
-  gdouble remainder = num_workers - free_workers;
   g_ptr_array_set_size(self->partition_stats.orphans, 0);
 
   Partition *part;
@@ -1339,31 +1346,30 @@ _rescale_worker_partitions(LogThreadedDestDriver *self, Partition *current_parti
       part = v;
 
       part->worker_idx = current_worker_idx;
+
       gdouble partition_ratio = _get_partition_rate_ratio(part->rate, total_rate);
-      gdouble partition_workers = partition_ratio * free_workers;
+      gdouble partition_workers = partition_ratio * free_workers + fractional_worker_carryover;
       part->num_of_workers = (gint) (0 + floor(partition_workers));
-      remainder += partition_workers - part->num_of_workers;
+      fractional_worker_carryover = partition_workers - part->num_of_workers;
+      workers_used += part->num_of_workers;
 
       if (part->num_of_workers <= 0)
         g_ptr_array_add(self->partition_stats.orphans, part);
 
-
       current_worker_idx = (current_worker_idx + part->num_of_workers) % num_workers;
     }
 
-  /* no orphans => give the remainder to the last partition (cheaper than sorting partitions) */
-  if (self->partition_stats.orphans->len == 0)
-    part->num_of_workers += (gint) (0 + floor(remainder));
+  gdouble remaining_workers = num_workers - workers_used;
 
   for (gint i = 0; i < self->partition_stats.orphans->len; ++i)
     {
       Partition *p = g_ptr_array_index(self->partition_stats.orphans, i);
       p->worker_idx = current_worker_idx;
-      p->num_of_workers = (gint) MAX(1.0, remainder / self->partition_stats.orphans->len);
+      p->num_of_workers = (gint) MAX(1.0, remaining_workers / self->partition_stats.orphans->len);
 
-      remainder -= p->num_of_workers;
+      remaining_workers -= p->num_of_workers;
 
-      if (remainder >= 1)
+      if (remaining_workers >= 1)
         current_worker_idx = (current_worker_idx + p->num_of_workers) % num_workers;
     }
 
@@ -1378,7 +1384,7 @@ _update_partition_stats(LogThreadedDestDriver *self, Partition *partition, const
 {
   const gint num_of_messages = 1;
 
-  gdouble partition_dt = _get_time_diff(&partition->last_update, now);
+  gdouble partition_dt = _get_time_diff_sec(&partition->last_update, now);
 
   /* first message should be considered too */
   if (partition_dt <= 0)
