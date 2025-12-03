@@ -473,7 +473,11 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
       ep->key = filterx_object_clone(ep->key);
       if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
         {
-          ep->value = filterx_object_ref(child_of_interest);
+          /* child_of_interest is a movable, floating xref, which is grounded by this clone */
+          ep->value = filterx_object_clone(child_of_interest);
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(ep->value == child_of_interest);
+#endif
           child_found = TRUE;
         }
       else
