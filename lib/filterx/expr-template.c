@@ -64,6 +64,12 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_template_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
 /* NOTE: takes the object reference */
 FilterXExpr *
 filterx_template_new(LogTemplate *template)
@@ -72,6 +78,7 @@ filterx_template_new(LogTemplate *template)
 
   filterx_expr_init_instance(&self->super, "template");
   self->super.eval = _eval_template;
+  self->super.walk_children = _template_walk;
   self->super.free_fn = _free;
   self->template = template;
   return &self->super;

@@ -56,40 +56,28 @@ _eval(FilterXExpr *s)
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionKeys *self = (FilterXFunctionKeys *) s;
-
-  self->object_expr = filterx_expr_optimize(self->object_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionKeys *self = (FilterXFunctionKeys *) s;
-
-  if (!filterx_expr_init(self->object_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionKeys *self = (FilterXFunctionKeys *) s;
-  filterx_expr_deinit(self->object_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
   FilterXFunctionKeys *self = (FilterXFunctionKeys *) s;
   filterx_expr_unref(self->object_expr);
   filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_keys_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionKeys *self = (FilterXFunctionKeys *) s;
+
+  FilterXExpr **exprs[] = { &self->object_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 static FilterXExpr *
@@ -129,9 +117,7 @@ filterx_function_keys_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionKeys *self = g_new0(FilterXFunctionKeys, 1);
   filterx_function_init_instance(&self->super, "keys");
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _keys_walk;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) ||
