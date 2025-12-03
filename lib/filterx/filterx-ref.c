@@ -27,6 +27,10 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  if (s->flags & FILTERX_REF_FLAG_MOBILE)
+    {
+      return filterx_ref_park(filterx_object_ref(s));
+    }
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
@@ -276,7 +280,7 @@ _filterx_ref_new(FilterXObject *value)
   self->value = value;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
 
-  return &self->super;
+  return filterx_ref_mobilize(&self->super);
 }
 
 FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
