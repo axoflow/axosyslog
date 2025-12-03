@@ -179,7 +179,6 @@ struct _FilterXObject
   /* NOTE:
    *
    *     readonly          -- marks the object as unmodifiable,
-   *                          propagates to the inner elements lazily
    *
    *     weak_referenced   -- marks that this object is referenced via a at
    *                          least one weakref already.
