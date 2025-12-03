@@ -74,7 +74,8 @@ EXTRA_DIST += \
 	tests/light/functional_tests/source_drivers/network_source/proxyprotocol/test_pp_with_syslog_proto.py \
 	tests/light/functional_tests/source_drivers/network_source/test_network_transports.py \
 	tests/light/functional_tests/source_drivers/network_source/test_syslog_parser_timestamp_spinning.py \
-	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_nul_acceptance.py \
+	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_embedded_nul.py \
+	tests/light/functional_tests/source_drivers/network_source/text_with_nuls/test_nul_terminated.py \
 	tests/light/functional_tests/source_drivers/opentelemetry_source/test_opentelemetry_source_acceptance.py \
 	tests/light/functional_tests/source_drivers/syslog_source/auto/test_auto_proto.py \
 	tests/light/functional_tests/source_drivers/syslog_source/test_syslog_transports.py \

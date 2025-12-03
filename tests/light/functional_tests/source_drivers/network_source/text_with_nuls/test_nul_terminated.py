@@ -22,17 +22,35 @@
 #############################################################################
 
 TEMPLATE = r'"${MESSAGE}\n"'
-INPUT_MESSAGE = "prog message\x00embedded\x00nul"
-EXPECTED_MESSAGE0 = "message embedded nul"
 
 
-def test_nul_acceptance(config, syslog_ng, port_allocator):
-    network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport='"text-with-nuls"', flags="no-multi-line")
+def test_nul_nl_termination(config, syslog_ng, port_allocator):
+    INPUT_MESSAGE = "prog message nul terminated\x00\n"
+    EXPECTED_MESSAGE0 = "message nul terminated"
+
+    network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport='"nul-terminated"', flags="no-multi-line")
+    file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
+    config.create_logpath(statements=[network_source, file_destination])
+
+    syslog_ng.start(config)
+
+    network_source.write_log(INPUT_MESSAGE * 3)
+
+    assert file_destination.read_log() == EXPECTED_MESSAGE0
+    assert file_destination.read_log() == EXPECTED_MESSAGE0
+    assert file_destination.read_log() == EXPECTED_MESSAGE0
+
+
+def test_multiline_messages_with_nul_termination(config, syslog_ng, port_allocator):
+    INPUT_MESSAGE = "prog message\nnul\nterminated\x00\n"
+    EXPECTED_MESSAGE0 = "message nul terminated"
+
+    network_source = config.create_network_source(ip="localhost", port=port_allocator(), transport='"nul-terminated"', flags="no-multi-line")
     file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
     config.create_logpath(statements=[network_source, file_destination])
 
     syslog_ng.start(config)
 
     network_source.write_log(INPUT_MESSAGE)
-
+    # newlines are replaced by spaces due to flags(no-multi-line)
     assert file_destination.read_log() == EXPECTED_MESSAGE0

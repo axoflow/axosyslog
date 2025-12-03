@@ -45,6 +45,7 @@ void log_proto_text_server_set_multi_line(LogProtoServer *s, MultiLineLogic *mul
  */
 LogProtoServer *log_proto_text_server_new(LogTransport *transport, const LogProtoServerOptions *options);
 LogProtoServer *log_proto_text_with_nuls_server_new(LogTransport *transport, const LogProtoServerOptions *options);
+LogProtoServer *log_proto_nul_terminated_server_new(LogTransport *transport, const LogProtoServerOptions *options);
 
 void log_proto_text_server_free(LogProtoServer *self);
 void log_proto_text_server_init(LogProtoTextServer *self, LogTransport *transport,
