@@ -38,6 +38,7 @@
 
 #include <iv.h>
 #include <iv_event.h>
+#include <time.h>
 
 typedef enum
 {
@@ -131,6 +132,13 @@ struct _LogThreadedDestWorker
 
 const gchar *log_threaded_result_to_str(LogThreadedResult self);
 
+typedef struct _LogThreadedDestPartitionStats
+{
+  struct timespec last_rescale;
+  GHashTable *partitions;
+  GPtrArray *orphans;
+} LogThreadedDestPartitionStats;
+
 struct _LogThreadedDestDriver
 {
   LogDestDriver super;
@@ -161,6 +169,7 @@ struct _LogThreadedDestDriver
 
   gint batch_lines;
   gint batch_timeout;
+
   gboolean under_termination;
   time_t time_reopen;
   gint retries_on_error_max;
@@ -189,8 +198,13 @@ struct _LogThreadedDestDriver
   guint last_worker;
 
   gboolean flush_on_key_change;
+  gboolean worker_partition_autoscaling;
+  gint worker_partition_autoscaling_wfo;
   LogTemplate *worker_partition_key;
   LogTemplate *worker_partition_buckets;
+  LogThreadedDestPartitionStats partition_stats;
+  GMutex partition_stats_lock;
+
   gint stats_source;
 
   /* this counter is not thread safe if there are multiple worker threads,
@@ -301,6 +315,22 @@ static inline LogThreadedResult
 log_threaded_dest_driver_flush(LogThreadedDestDriver *self)
 {
   return log_threaded_dest_worker_flush(&self->worker.instance, LTF_FLUSH_NORMAL);
+}
+
+static inline void
+log_threaded_dest_driver_set_worker_partition_autoscaling(LogDriver *s, gboolean partition_autoscaling)
+{
+  LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
+
+  self->worker_partition_autoscaling = partition_autoscaling;
+}
+
+static inline void
+log_threaded_dest_driver_set_worker_partition_autoscaling_wfo(LogDriver *s, gint wfo)
+{
+  LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
+
+  self->worker_partition_autoscaling_wfo = wfo;
 }
 
 void log_threaded_dest_worker_ack_messages(LogThreadedDestWorker *self, gint batch_size);
