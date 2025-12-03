@@ -661,7 +661,7 @@ static inline FilterXObject *
 filterx_object_cow_store(FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_object_ref(*pself);
+  return filterx_ref_park(filterx_object_ref(*pself));
 }
 
 #endif
