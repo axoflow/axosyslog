@@ -1271,16 +1271,15 @@ _is_worker_partition_rescale_due(LogThreadedDestDriver *self, const struct times
 
 /* partition_stats_lock must be held when calling this method */
 static inline gboolean
-_remove_if_partition_expired(Partition **p, GHashTableIter *iter, const struct timespec *now)
+_remove_if_partition_expired(Partition *p, GHashTableIter *iter, const struct timespec *now)
 {
   gint64 diff = 0;
-  if ((*p)->last_update.tv_sec != 0)
-    diff = timespec_diff_usec(now, &(*p)->last_update);
+  if (p->last_update.tv_sec != 0)
+    diff = timespec_diff_usec(now, &p->last_update);
 
   if (diff >= PARTITION_EXPIRATION_INTERVAL * 1000000)
     {
       g_hash_table_iter_remove(iter);
-      *p = NULL;
       return TRUE;
     }
 
@@ -1301,7 +1300,7 @@ _get_total_rate_and_update_partition_stats(LogThreadedDestDriver *self, Partitio
     {
       Partition *p = v;
 
-      if (p != current_partition && _remove_if_partition_expired(&p, &iter, now))
+      if (p != current_partition && _remove_if_partition_expired(p, &iter, now))
         continue;
 
        /* update all the other partitions' rate */
