@@ -249,6 +249,11 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  if (s->flags & FILTERX_REF_FLAG_FLOATING)
+    {
+      /* this is where a floating ref becomes grounded */
+      return filterx_ref_ground(filterx_object_ref(s));
+    }
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
@@ -410,7 +415,7 @@ _filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXOb
       g_atomic_counter_get(&container->value->fx_ref_cnt) <= 1)
     return s;
 
-  FilterXObject *result = _filterx_ref_new(filterx_object_ref(self->value));
+  FilterXObject *result = filterx_ref_float(_filterx_ref_new(filterx_object_ref(self->value)));
   filterx_object_unref(&self->super);
   filterx_ref_set_parent_container(result, &container->super);
   return result;
