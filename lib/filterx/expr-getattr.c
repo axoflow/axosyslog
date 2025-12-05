@@ -84,6 +84,32 @@ exit:
   return result;
 }
 
+static FilterXObject *
+_move(FilterXExpr *s)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  FilterXObject *result = NULL;
+
+  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Failed to evaluate expression");
+      return NULL;
+    }
+
+  if (variable->readonly)
+    {
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Object is readonly");
+      goto exit;
+    }
+
+  result = filterx_object_move_key(variable, self->attr);
+
+exit:
+  filterx_object_unref(variable);
+  return result;
+}
+
 static gboolean
 _isset(FilterXExpr *s)
 {
@@ -148,6 +174,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr));
   self->super.eval = _eval_getattr;
   self->super.unset = _unset;
+  self->super.move = _move;
   self->super.is_set = _isset;
   self->super.optimize = _optimize;
   self->super.init = _init;

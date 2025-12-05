@@ -49,6 +49,8 @@ struct _FilterXExpr
   gboolean (*is_set)(FilterXExpr *self);
   /* unset the expression */
   gboolean (*unset)(FilterXExpr *self);
+  /* move the expression */
+  FilterXObject *(*move)(FilterXExpr *self);
 
   gboolean (*init)(FilterXExpr *self, GlobalConfig *cfg);
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
@@ -159,10 +161,27 @@ filterx_expr_unset(FilterXExpr *self)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_expr_move(FilterXExpr *self)
+{
+  if (self->move)
+    return self->move(self);
+  return NULL;
+}
+
 static inline gboolean
 filterx_expr_unset_available(FilterXExpr *self)
 {
   return self->unset != NULL;
+}
+
+
+/* move() method is always available a default implementation is derived
+ * from FilterXExpr, but we also need the unset() method in the generic one. */
+static inline gboolean
+filterx_expr_move_available(FilterXExpr *self)
+{
+  return filterx_expr_unset_available(self) && self->move != NULL;
 }
 
 void filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc);
