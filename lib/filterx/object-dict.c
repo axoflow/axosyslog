@@ -305,28 +305,40 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
 }
 
 static FilterXDictEntrySlot
-_table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key)
+_table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
 {
   guint hash = _table_hash_key(key);
+  FilterXDictIndexSlot _index_slot;
 
-  FilterXDictIndexSlot index_slot;
+  if (!index_slot)
+    index_slot = &_index_slot;
 
-  if (!_table_lookup_index_slot(table, key, hash, &index_slot))
+  if (!_table_lookup_index_slot(table, key, hash, index_slot))
     return FXD_IX_EMPTY;
 
-  return _table_get_index_entry(table, index_slot);
+  return _table_get_index_entry(table, *index_slot);
+}
+
+static FilterXDictEntry *
+_table_lookup_entry(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
+{
+  FilterXDictEntrySlot entry_slot = _table_lookup_entry_slot(table, key, index_slot);
+  if (entry_slot < 0)
+    return NULL;
+
+  return _table_get_entry(table, entry_slot);
 }
 
 static gboolean
 _table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value)
 {
-  FilterXDictEntrySlot entry_slot = _table_lookup_entry_slot(table, key);
-  if (entry_slot < 0)
-    return FALSE;
-
-  FilterXDictEntry *entry = _table_get_entry(table, entry_slot);
-  *value = filterx_object_ref(entry->value);
-  return TRUE;
+  FilterXDictEntry *entry = _table_lookup_entry(table, key, NULL);
+  if (entry)
+    {
+      *value = filterx_object_ref(entry->value);
+      return TRUE;
+    }
+  return FALSE;
 }
 
 static gboolean
