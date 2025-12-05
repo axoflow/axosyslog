@@ -56,6 +56,7 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
+  FilterXObject *(*move_key)(FilterXObject *self, FilterXObject *key);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
@@ -515,6 +516,16 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   if (self->type->unset_key)
     return self->type->unset_key(self, key);
   return FALSE;
+}
+
+static inline FilterXObject *
+filterx_object_move_key(FilterXObject *self, FilterXObject *key)
+{
+  g_assert(!self->readonly);
+
+  if (self->type->move_key)
+    return self->type->move_key(self, key);
+  return NULL;
 }
 
 static inline gboolean
