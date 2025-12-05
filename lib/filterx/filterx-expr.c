@@ -93,6 +93,39 @@ filterx_expr_get_text(FilterXExpr *self)
   return "n/a";
 }
 
+FilterXObject *
+filterx_expr_move_method(FilterXExpr *self)
+{
+  FilterXObject *result = filterx_expr_eval(self);
+  if (!result)
+    return NULL;
+
+  if (!filterx_expr_unset(self))
+    return NULL;
+
+  filterx_ref_unset_parent_container(result);
+
+  return result;
+}
+
+
+FilterXObject *
+filterx_expr_plus_assign_method(FilterXExpr *self, FilterXObject *value)
+{
+  FilterXObject *object = filterx_expr_eval_typed(self);
+  if (!object)
+    return NULL;
+
+  FilterXObject *res = filterx_object_add_inplace(object, value);
+  filterx_object_unref(object);
+  if (res != object)
+    {
+      /* add_inpace() returned a different object, store the replacement */
+      filterx_expr_assign(self, &res);
+    }
+  return res;
+}
+
 FilterXExpr *
 filterx_expr_optimize(FilterXExpr *self)
 {
@@ -195,6 +228,7 @@ filterx_expr_init_instance(FilterXExpr *self, const gchar *type)
   self->ref_cnt = 1;
   self->init = filterx_expr_init_method;
   self->deinit = filterx_expr_deinit_method;
+  self->move = filterx_expr_move_method;
   self->free_fn = filterx_expr_free_method;
   self->type = type;
 }
