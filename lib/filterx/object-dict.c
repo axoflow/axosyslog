@@ -357,17 +357,11 @@ _table_isset(FilterXDictTable *table, FilterXObject *key)
 static gboolean
 _table_unset(FilterXDictTable *table, FilterXObject *key)
 {
-  guint hash = _table_hash_key(key);
-
   FilterXDictIndexSlot index_slot;
-  FilterXDictEntrySlot entry_slot;
-  FilterXDictEntry *entry;
-
-  if (!_table_lookup_index_slot(table, key, hash, &index_slot))
+  FilterXDictEntry *entry = _table_lookup_entry(table, key, &index_slot);
+  if (!entry)
     return TRUE;
 
-  entry_slot = _table_get_index_entry(table, index_slot);
-  entry = _table_get_entry(table, entry_slot);
   filterx_dict_entry_clear(entry);
   _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
   table->empty_num++;
