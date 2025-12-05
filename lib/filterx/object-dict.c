@@ -745,7 +745,7 @@ filterx_dict_get_anchor_for_key(FilterXObject *s, FilterXObject *key)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  FilterXDictAnchor anchor = (FilterXDictAnchor) _table_lookup_entry_slot(self->table, key);
+  FilterXDictAnchor anchor = (FilterXDictAnchor) _table_lookup_entry_slot(self->table, key, NULL);
   g_assert(anchor >= 0);
   return anchor;
 }
