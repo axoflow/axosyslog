@@ -73,6 +73,7 @@ struct _FilterXEvalContext
 
   guint8 failure_info_collect_falsy:1;
   GArray *failure_info;
+  gint weak_refs_offset;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
