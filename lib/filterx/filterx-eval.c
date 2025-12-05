@@ -388,6 +388,7 @@ filterx_eval_begin_context(FilterXEvalContext *context,
       context->weak_refs = previous_context->weak_refs;
       context->failure_info = previous_context->failure_info;
       context->failure_info_collect_falsy = previous_context->failure_info_collect_falsy;
+      context->weak_refs_offset = context->weak_refs->len;
     }
   else
     context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
@@ -429,6 +430,15 @@ filterx_eval_end_context(FilterXEvalContext *context)
           _clear_failure_info(context->failure_info);
           g_array_free(context->failure_info, TRUE);
         }
+    }
+  else if (context->scope != context->previous_context->scope)
+    {
+      /* we can only drop our weakrefs if we are not reusing the scope
+       * instance of the previous block.  In that case, the scope will be
+       * destroyed in the previous context, so we need to keep everything
+       * around that might be registered.
+       */
+      g_ptr_array_set_size(context->weak_refs, context->weak_refs_offset);
     }
 
   context->failure_info = NULL;
