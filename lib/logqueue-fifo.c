@@ -195,9 +195,8 @@ log_queue_fifo_drop_messages_from_input_queue(LogQueueFifo *self, InputQueue *in
       iv_list_del(&node->list);
       input_queue->len--;
       log_queue_dropped_messages_inc(&self->super);
+      LogMessage *msg = log_msg_ref(node->msg);
       log_msg_free_queue_node(node);
-
-      LogMessage *msg = node->msg;
 
       input_queue->non_flow_controlled_len--;
       log_msg_drop(msg, &path_options, AT_PROCESSED);
@@ -495,7 +494,6 @@ static void
 log_queue_fifo_ack_backlog(LogQueue *s, gint rewind_count)
 {
   LogQueueFifo *self = (LogQueueFifo *) s;
-  LogMessage *msg;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   gint pos;
 
@@ -503,7 +501,6 @@ log_queue_fifo_ack_backlog(LogQueue *s, gint rewind_count)
     {
       LogMessageQueueNode *node;
       node = iv_list_entry(self->backlog_queue.items.next, LogMessageQueueNode, list);
-      msg = node->msg;
 
       iv_list_del(&node->list);
       self->backlog_queue.len--;
@@ -512,9 +509,8 @@ log_queue_fifo_ack_backlog(LogQueue *s, gint rewind_count)
         self->backlog_queue.non_flow_controlled_len--;
 
       path_options.ack_needed = node->ack_needed;
-      log_msg_ack(msg, &path_options, AT_PROCESSED);
+      log_msg_ack(node->msg, &path_options, AT_PROCESSED);
       log_msg_free_queue_node(node);
-      log_msg_unref(msg);
     }
 }
 
@@ -585,16 +581,13 @@ log_queue_fifo_free_queue(struct iv_list_head *q)
     {
       LogMessageQueueNode *node;
       LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-      LogMessage *msg;
 
       node = iv_list_entry(q->next, LogMessageQueueNode, list);
       iv_list_del(&node->list);
 
       path_options.ack_needed = node->ack_needed;
-      msg = node->msg;
+      log_msg_ack(node->msg, &path_options, AT_ABORTED);
       log_msg_free_queue_node(node);
-      log_msg_ack(msg, &path_options, AT_ABORTED);
-      log_msg_unref(msg);
     }
 }
 

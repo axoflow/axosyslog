@@ -504,7 +504,9 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
 void
 log_msg_free_queue_node(LogMessageQueueNode *node)
 {
-  if (!node->embedded)
+  gboolean is_embedded = node->embedded;
+  log_msg_unref(node->msg);
+  if (!is_embedded)
     g_slice_free(LogMessageQueueNode, node);
 }
 

@@ -1279,6 +1279,8 @@ _save_queue(QDisk *self, QDiskMemoryQueueType type, QDiskMemQSaveFunc func, gpoi
       q_pos->ofs = 0;
       q_pos->len = 0;
       q_pos->count = 0;
+      g_string_free(serialized, TRUE);
+      serialize_archive_free(sa);
       return TRUE;
     }
   q_pos->len = written_bytes;
