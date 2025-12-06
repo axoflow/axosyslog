@@ -35,11 +35,14 @@
 static inline gboolean
 filterx_object_extract_string_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
+  *value = filterx_string_get_value_ref(obj, len);
+  if (*value)
+    return TRUE;
+
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))
     return filterx_message_value_get_string_ref(obj, value, len);
 
-  *value = filterx_string_get_value_ref(obj, len);
-  return !!(*value);
+  return FALSE;
 }
 
 static inline gboolean
