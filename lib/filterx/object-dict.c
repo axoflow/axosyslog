@@ -707,6 +707,7 @@ filterx_dict_sized_new(gsize init_size)
 {
   if (init_size < 16)
     init_size = 16;
+  init_size = init_size * 3 / 2;
   return filterx_dict_new_with_table(_table_new(init_size));
 }
 
