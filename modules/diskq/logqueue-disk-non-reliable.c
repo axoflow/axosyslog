@@ -87,7 +87,7 @@ _pop_node_from_memory_queue_head(LogQueueDiskMemoryQueue *memory_queue, LogMessa
 static void
 _extract_queue_node(LogMessageQueueNode *node, LogMessage **pmsg, LogPathOptions *path_options)
 {
-  *pmsg = log_msg_ref(node->msg);
+  *pmsg = node->msg;
   path_options->ack_needed = node->ack_needed;
 }
 
