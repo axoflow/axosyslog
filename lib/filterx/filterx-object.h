@@ -56,6 +56,7 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
+  FilterXObject *(*move_key)(FilterXObject *self, FilterXObject *key);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
@@ -65,6 +66,7 @@ struct _FilterXType
   gboolean (*str)(FilterXObject *self, GString *str);
   /* operators */
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
+  FilterXObject *(*add_inplace)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
   void (*make_readonly)(FilterXObject *self);
@@ -179,7 +181,6 @@ struct _FilterXObject
   /* NOTE:
    *
    *     readonly          -- marks the object as unmodifiable,
-   *                          propagates to the inner elements lazily
    *
    *     weak_referenced   -- marks that this object is referenced via a at
    *                          least one weakref already.
@@ -518,6 +519,16 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_object_move_key(FilterXObject *self, FilterXObject *key)
+{
+  g_assert(!self->readonly);
+
+  if (self->type->move_key)
+    return self->type->move_key(self, key);
+  return NULL;
+}
+
 static inline gboolean
 filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer user_data)
 {
@@ -529,7 +540,7 @@ filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer us
 void _filterx_object_log_add_object_error(FilterXObject *self);
 
 static inline FilterXObject *
-filterx_object_add_object(FilterXObject *self, FilterXObject *object)
+filterx_object_add(FilterXObject *self, FilterXObject *object)
 {
   if (!self->type->add)
     {
@@ -538,6 +549,26 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
     }
 
   return self->type->add(self, object);
+}
+
+/*
+ * Add the value to @self, mutating @self if it is a mutable object.  The
+ * return value is usually the same as @self (if in-place addition was
+ * successful) or an alternative object instance, in case if it wasn't.
+ */
+static inline FilterXObject *
+filterx_object_add_inplace(FilterXObject *self, FilterXObject *object)
+{
+  if (!self->type->add_inplace)
+    {
+      /* simulate in-place addition by cloning self, adding it up and returning the new object */
+      FilterXObject *cloned = filterx_object_clone(self);
+      FilterXObject *result = filterx_object_add(cloned, object);
+      filterx_object_unref(cloned);
+      return result;
+    }
+
+  return self->type->add_inplace(self, object);
 }
 
 static inline gboolean
@@ -662,7 +693,7 @@ static inline FilterXObject *
 filterx_object_cow_store(FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_object_ref(*pself);
+  return filterx_ref_park(filterx_object_ref(*pself));
 }
 
 #endif

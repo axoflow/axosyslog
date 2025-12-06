@@ -122,6 +122,41 @@ exit:
   return result;
 }
 
+static FilterXObject *
+_move(FilterXExpr *s)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  FilterXObject *result = NULL;
+
+  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to unset from object", s, "Failed to evaluate expression");
+      return FALSE;
+    }
+
+  FilterXObject *key = filterx_expr_eval_typed(self->key);
+  if (!key)
+    {
+      filterx_eval_push_error_static_info("Failed to unset from object", s, "Failed to evaluate key");
+      goto exit;
+    }
+
+  if (variable->readonly)
+    {
+      filterx_eval_push_error_static_info("Failed to unset from object", s, "Object is readonly");
+      goto exit;
+    }
+
+  result = filterx_object_move_key(variable, key);
+
+exit:
+  filterx_object_unref(key);
+  filterx_object_unref(variable);
+  return result;
+}
+
 static FilterXExpr *
 _optimize(FilterXExpr *s)
 {
@@ -178,6 +213,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.eval = _eval_get_subscript;
   self->super.is_set = _isset;
   self->super.unset = _unset;
+  self->super.move = _move;
   self->super.optimize = _optimize;
   self->super.init = _init;
   self->super.deinit = _deinit;

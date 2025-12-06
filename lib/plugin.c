@@ -171,6 +171,27 @@ plugin_construct_from_config(Plugin *self, CfgLexer *lexer, gpointer arg)
  * Implementation of PluginContext
  *****************************************************************************/
 
+static gchar *
+_format_module_symbol_name(const gchar *module_name, const gchar *suffix)
+{
+  gchar *module_symbol;
+  gchar *p;
+
+  module_symbol = g_strdup_printf("%s_%s", module_name, suffix);
+  for (p = module_symbol; *p; p++)
+    {
+      if ((*p) == '-')
+        *p = '_';
+    }
+  return module_symbol;
+}
+
+static gchar *
+_format_module_init_name(const gchar *module_name)
+{
+  return _format_module_symbol_name(module_name, "module_init");
+}
+
 static ModuleInfo *
 _get_module_info(GModule *mod)
 {
@@ -179,21 +200,6 @@ _get_module_info(GModule *mod)
   if (mod && g_module_symbol(mod, "module_info", (gpointer *) &module_info))
     return module_info;
   return NULL;
-}
-
-static gchar *
-_format_module_init_name(const gchar *module_name)
-{
-  gchar *module_init_func;
-  gchar *p;
-
-  module_init_func = g_strdup_printf("%s_module_init", module_name);
-  for (p = module_init_func; *p; p++)
-    {
-      if ((*p) == '-')
-        *p = '_';
-    }
-  return module_init_func;
 }
 
 static GModule *

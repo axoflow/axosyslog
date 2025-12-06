@@ -27,6 +27,10 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  if (s->flags & FILTERX_REF_FLAG_MOBILE)
+    {
+      return filterx_ref_park(filterx_object_ref(s));
+    }
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
@@ -91,6 +95,16 @@ _filterx_ref_unset_key(FilterXObject *s, FilterXObject *key)
   _filterx_ref_cow(self);
 
   return filterx_object_unset_key(self->value, key);
+}
+
+static FilterXObject *
+_filterx_ref_move_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  _filterx_ref_cow(self);
+
+  return filterx_object_move_key(self->value, key);
 }
 
 static void
@@ -257,7 +271,32 @@ static FilterXObject *
 _filterx_ref_add(FilterXObject *s, FilterXObject *object)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_add_object(self->value, object);
+  return filterx_object_add(self->value, object);
+}
+
+static FilterXObject *
+_filterx_ref_add_inplace(FilterXObject *s, FilterXObject *object)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  _filterx_ref_cow(self);
+  FilterXObject *new_object = filterx_object_add_inplace(self->value, object);
+  if (!new_object)
+    return NULL;
+
+  if (filterx_object_is_ref(new_object))
+    return new_object;
+
+  if (new_object != self->value)
+    {
+      filterx_object_unref(self->value);
+      self->value = new_object;
+    }
+  else
+    {
+      filterx_object_unref(new_object);
+    }
+  return filterx_object_ref(s);
 }
 
 /* NOTE: fastpath is in the header as an inline function */
@@ -276,7 +315,7 @@ _filterx_ref_new(FilterXObject *value)
   self->value = value;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
 
-  return &self->super;
+  return filterx_ref_mobilize(&self->super);
 }
 
 FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
@@ -291,11 +330,13 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .set_subscript = _filterx_ref_set_subscript,
                     .is_key_set = _filterx_ref_is_key_set,
                     .unset_key = _filterx_ref_unset_key,
+                    .move_key = _filterx_ref_move_key,
                     .iter = _filterx_ref_iter,
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
+                    .add_inplace = _filterx_ref_add_inplace,
                     .make_readonly = _filterx_ref_make_readonly,
                     .dedup = _filterx_ref_dedup,
                     .free_fn = _filterx_ref_free,
