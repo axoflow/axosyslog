@@ -56,6 +56,7 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
+  FilterXObject *(*move_key)(FilterXObject *self, FilterXObject *key);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
@@ -180,7 +181,6 @@ struct _FilterXObject
   /* NOTE:
    *
    *     readonly          -- marks the object as unmodifiable,
-   *                          propagates to the inner elements lazily
    *
    *     weak_referenced   -- marks that this object is referenced via a at
    *                          least one weakref already.
@@ -519,6 +519,16 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_object_move_key(FilterXObject *self, FilterXObject *key)
+{
+  g_assert(!self->readonly);
+
+  if (self->type->move_key)
+    return self->type->move_key(self, key);
+  return NULL;
+}
+
 static inline gboolean
 filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer user_data)
 {
@@ -683,7 +693,7 @@ static inline FilterXObject *
 filterx_object_cow_store(FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_object_ref(*pself);
+  return filterx_ref_park(filterx_object_ref(*pself));
 }
 
 #endif

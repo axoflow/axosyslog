@@ -52,6 +52,7 @@
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-unset.h"
+#include "filterx/expr-move.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/func-keys.h"
 #include "filterx/json-repr.h"
@@ -144,6 +145,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("set_fields", filterx_function_set_fields_new));
   g_assert(filterx_builtin_function_ctor_register("regexp_subst", filterx_function_regexp_subst_new));
   g_assert(filterx_builtin_function_ctor_register("unset", filterx_function_unset_new));
+  g_assert(filterx_builtin_function_ctor_register("move", filterx_function_move_new));
   g_assert(filterx_builtin_function_ctor_register("flatten", filterx_function_flatten_new));
   g_assert(filterx_builtin_function_ctor_register("is_sdata_from_enterprise",
                                                   filterx_function_is_sdata_from_enterprise_new));
