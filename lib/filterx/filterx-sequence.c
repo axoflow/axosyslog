@@ -114,14 +114,6 @@ _format_json(FilterXObject *value, GString *json)
   return TRUE;
 }
 
-void
-filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type)
-{
-  g_assert(type->is_mutable);
-
-  filterx_object_init_instance(&self->super, type);
-}
-
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {

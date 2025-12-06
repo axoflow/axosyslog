@@ -390,7 +390,7 @@ filterx_eval_begin_context(FilterXEvalContext *context,
       context->failure_info_collect_falsy = previous_context->failure_info_collect_falsy;
     }
   else
-    context->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+    context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
   context->previous_context = previous_context;
 
   context->eval_control_modifier = FXC_UNSET;
