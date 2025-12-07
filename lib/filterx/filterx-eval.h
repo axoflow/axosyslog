@@ -191,6 +191,25 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     filterx_eval_end_context(&eval_context); \
   } while(0)
 
+static inline FilterXObject *
+filterx_malloc_object(gsize object_size, gsize alloc_size)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXObject *result;
+
+  if (!context || !context->allocator || alloc_size > 4096)
+    {
+      result = (FilterXObject *) g_malloc0(alloc_size);
+    }
+  else
+    {
+      result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
+      result->allocator_used = TRUE;
+    }
+
+  return result;
+}
+
 void filterx_eval_global_init(void);
 void filterx_eval_global_deinit(void);
 
