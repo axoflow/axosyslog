@@ -40,6 +40,7 @@ typedef struct _FilterXObjectMetricsLabels
 {
   FilterXMapping super;
   GArray *labels;
+  GPtrArray *objects;
   gboolean sorted;
   gboolean deduped;
 } FilterXObjectMetricsLabels;
@@ -101,35 +102,21 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   return NULL;
 }
 
-static const gchar *
-_obj_to_string(FilterXObject *obj, gsize *len)
+static FilterXObject *
+_obj_to_string(FilterXObject *obj, const gchar **str, gsize *len)
 {
-  const gchar *str;
-  if (filterx_object_extract_string_ref(obj, &str, len))
-    return str;
+  if (filterx_object_extract_string_ref(obj, str, len))
+    return filterx_object_ref(obj);
 
   GString *buf = scratch_buffers_alloc();
+  FilterXObject *result = NULL;
   if (filterx_object_str(obj, buf))
     {
-      *len = buf->len;
-      return buf->str;
+      result = filterx_string_new(buf->str, buf->len);
+      *str = filterx_string_get_value_ref(result, len);
     }
 
-  return NULL;
-}
-
-static gboolean
-_is_empty_value(FilterXObject *value)
-{
-  if (filterx_object_extract_null(value))
-    return TRUE;
-
-  gsize len;
-  const gchar *str;
-  if (!filterx_object_extract_string_ref(value, &str, &len))
-    return FALSE;
-
-  return len == 0;
+  return result;
 }
 
 static gboolean
@@ -146,29 +133,36 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
       return FALSE;
     }
 
-  if (_is_empty_value(*new_value))
+  if (filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(null)))
     return TRUE;
 
   ScratchBuffersMarker marker;
   scratch_buffers_mark(&marker);
 
-  gsize name_len, value_len;
-  const gchar *name_str = _obj_to_string(key, &name_len);
-  const gchar *value_str = _obj_to_string(*new_value, &value_len);
-  if (!name_str || !value_str)
+  const gchar *value_str;
+  gsize value_len;
+  FilterXObject *value = _obj_to_string(*new_value, &value_str, &value_len);
+  if (!value)
     return FALSE;
 
-  StatsClusterLabel label = stats_cluster_label(g_strndup(name_str, name_len), g_strndup(value_str, value_len));
-  g_array_append_val(self->labels, label);
+  if (value_len == 0)
+    {
+      filterx_object_unref(value);
+      return TRUE;
+    }
+
+  g_array_set_size(self->labels, self->labels->len + 1);
+  StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, self->labels->len-1);
+  *label = stats_cluster_label(key_str, value_str);
+
+  /* take a ref to our borrowed key argument */
+  g_ptr_array_add(self->objects, filterx_object_ref(key));
+
+  /* sink the ref we got from _obj_to_string */
+  g_ptr_array_add(self->objects, value);
 
   self->sorted = FALSE;
   self->deduped = FALSE;
-
-  if (!filterx_object_is_type(*new_value, &FILTERX_TYPE_NAME(string)))
-    {
-      filterx_object_unref(*new_value);
-      *new_value = filterx_string_new(value_str, value_len);
-    }
 
   scratch_buffers_reclaim_marked(marker);
   return TRUE;
@@ -257,46 +251,42 @@ _clone(FilterXObject *s)
   for (guint i = 0; i < self->labels->len; i++)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
-      StatsClusterLabel cloned_label = stats_cluster_label(g_strdup(label->name), g_strdup(label->value));
-      g_array_append_val(cloned->labels, cloned_label);
+      StatsClusterLabel *cloned_label = &g_array_index(cloned->labels, StatsClusterLabel, i);
+      
+      *cloned_label = stats_cluster_label(label->name, label->value);
+    }
+    
+  for (guint i = 0; i < self->objects->len; i++)
+    {
+      g_ptr_array_add(cloned->objects, filterx_object_ref(g_ptr_array_index(self->objects, i)));
     }
 
   return &cloned->super.super;
 }
 
-static void
-_label_destroy(StatsClusterLabel *label)
-{
-  g_free((gchar *) label->name);
-  g_free((gchar *) label->value);
-}
 
 static void
 _free(FilterXObject *s)
 {
   FilterXObjectMetricsLabels *self = (FilterXObjectMetricsLabels *) s;
 
-  for (guint i = 0; i < self->labels->len; i++)
-    _label_destroy(&g_array_index(self->labels, StatsClusterLabel, i));
-
   g_array_free(self->labels, TRUE);
+  g_ptr_array_unref(self->objects);
   filterx_object_free_method(s);
 }
 
 static void
-_dedup(FilterXObject *s)
+_dedup(FilterXObjectMetricsLabels *self)
 {
-  FilterXObjectMetricsLabels *typed_self = (FilterXObjectMetricsLabels *) filterx_ref_unwrap_rw(s);
+  GHashTable *labels_map = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
 
-  GHashTable *labels_map = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, (GDestroyNotify) _label_destroy);
-
-  for (guint i = 0; i < typed_self->labels->len; i++)
+  for (guint i = 0; i < self->labels->len; i++)
     {
-      StatsClusterLabel *label = &g_array_index(typed_self->labels, StatsClusterLabel, i);
+      StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
       g_hash_table_replace(labels_map, (gpointer) label->name, label);
     }
 
-  GArray *new_labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), typed_self->labels->len);
+  g_array_set_size(self->labels, 0);
 
   GHashTableIter iter;
   g_hash_table_iter_init(&iter, labels_map);
@@ -305,14 +295,11 @@ _dedup(FilterXObject *s)
   while (g_hash_table_iter_next(&iter, &k, &v))
     {
       StatsClusterLabel *label = v;
-      g_array_append_val(new_labels, *label);
+      g_array_append_val(self->labels, *label);
     }
 
-  g_array_free(typed_self->labels, TRUE);
-  typed_self->labels = new_labels;
-  typed_self->deduped = TRUE;
+  self->deduped = TRUE;
 
-  g_hash_table_steal_all(labels_map);
   g_hash_table_unref(labels_map);
 }
 
@@ -343,8 +330,8 @@ filterx_object_metrics_labels_new(guint reserved_size)
   FilterXObjectMetricsLabels *self = g_new0(FilterXObjectMetricsLabels, 1);
   filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
 
-
   self->labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), reserved_size);
+  self->objects = g_ptr_array_new_full(2 * reserved_size, (GDestroyNotify) filterx_object_unref);
 
   return &self->super.super;
 }
@@ -423,7 +410,8 @@ filterx_simple_function_dedup_metrics_labels(FilterXExpr *s, FilterXObject *args
   if (typed_obj->deduped)
     return filterx_boolean_new(TRUE);
 
-  _dedup(obj);
+  typed_obj = (FilterXObjectMetricsLabels *) filterx_ref_unwrap_rw(obj);
+  _dedup(typed_obj);
   return filterx_boolean_new(TRUE);
 }
 

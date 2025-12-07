@@ -573,6 +573,25 @@ def test_metrics_labels_get(config, syslog_ng):
     assert file_final.read_log() == r"""{"empty_labels_does_not_exist":"fallback","does_not_exist":"fallback","exists":"bar"}"""
 
 
+def test_metrics_labels_duplicates(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            $MSG = {};
+
+            labels = metrics_labels();
+            labels["foo"] = "foovalue";
+            labels["foo"] = "foovalue2";
+            $MSG.dupes = string(labels);
+            dedup_metrics_labels(labels);
+            $MSG.deduped = string(labels);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == r"""{"dupes":"{foo=\"foovalue\",foo=\"foovalue2\"}","deduped":"{foo=\"foovalue2\"}"}"""
+
+
 def test_metrics_labels_empty_value_and_null_value(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
