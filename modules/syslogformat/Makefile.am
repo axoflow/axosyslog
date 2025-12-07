@@ -9,7 +9,9 @@ modules_syslogformat_libsyslogformat_la_SOURCES	=	\
 	modules/syslogformat/syslog-parser.c		\
 	modules/syslogformat/syslog-parser.h		\
 	modules/syslogformat/sdata-parser.c		\
-	modules/syslogformat/sdata-parser.h
+	modules/syslogformat/sdata-parser.h		\
+	modules/syslogformat/filterx-func-format-syslog.h		\
+	modules/syslogformat/filterx-func-format-syslog.c
 
 
 BUILT_SOURCES					+=	\

@@ -8,6 +8,8 @@ set(SYSLOGFORMAT_SOURCES
     syslog-parser.h
     sdata-parser.c
     sdata-parser.h
+    filterx-func-format-syslog.c
+    filterx-func-format-syslog.h
 )
 
 add_module(

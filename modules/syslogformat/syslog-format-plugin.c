@@ -26,6 +26,8 @@
 #include "messages.h"
 #include "plugin.h"
 #include "plugin-types.h"
+#include "filterx-func-format-syslog.h"
+#include "filterx/expr-function.h"
 
 static MsgFormatHandler syslog_handler =
 {
@@ -54,7 +56,8 @@ static Plugin syslog_format_plugins[] =
     .type = LL_CONTEXT_PARSER,
     .name = "sdata-parser",
     .parser = &syslog_parser_parser,
-  }
+  },
+  FILTERX_FUNCTION_PLUGIN(format_syslog_5424),
 };
 
 gboolean
