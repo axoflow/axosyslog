@@ -26,14 +26,17 @@
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
+#include "apphook.h"
 
 TLS_BLOCK_START
 {
   FilterXEvalContext *eval_context;
+  FilterXAllocator eval_allocator;
 }
 TLS_BLOCK_END;
 
-#define eval_context __tls_deref(eval_context)
+#define eval_context   __tls_deref(eval_context)
+#define eval_allocator __tls_deref(eval_allocator)
 
 #define FAILURE_INFO_PREALLOC_SIZE 16
 
@@ -386,12 +389,25 @@ filterx_eval_begin_context(FilterXEvalContext *context,
   if (previous_context)
     {
       context->weak_refs = previous_context->weak_refs;
+      context->allocator = previous_context->allocator;
+      if (previous_context->scope != scope)
+        {
+          /* Unless we have our own scope object, we need to reuse the
+           * allocator as well. This means that in that case we won't need
+           * to remember where we need to go back.
+           */
+          filterx_allocator_save_position(context->allocator, &context->allocator_position);
+        }
       context->failure_info = previous_context->failure_info;
       context->failure_info_collect_falsy = previous_context->failure_info_collect_falsy;
       context->weak_refs_offset = context->weak_refs->len;
     }
   else
-    context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+    {
+      context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+      filterx_allocator_init(&eval_allocator);
+      context->allocator = &eval_allocator;
+    }
   context->previous_context = previous_context;
 
   context->eval_control_modifier = FXC_UNSET;
@@ -424,7 +440,7 @@ filterx_eval_end_context(FilterXEvalContext *context)
   if (!context->previous_context)
     {
       g_ptr_array_free(context->weak_refs, TRUE);
-
+      filterx_allocator_empty(&eval_allocator);
       if (context->failure_info)
         {
           _clear_failure_info(context->failure_info);
@@ -433,12 +449,13 @@ filterx_eval_end_context(FilterXEvalContext *context)
     }
   else if (context->scope != context->previous_context->scope)
     {
-      /* we can only drop our weakrefs if we are not reusing the scope
-       * instance of the previous block.  In that case, the scope will be
-       * destroyed in the previous context, so we need to keep everything
-       * around that might be registered.
+      /* we can only drop our weakrefs/allocator if we are not reusing the
+       * scope object of the previous block. If we do, the scope object will
+       * be destroyed by the previous context, so we need to keep everything
+       * around that still be sitting in previous_context->scope.
        */
       g_ptr_array_set_size(context->weak_refs, context->weak_refs_offset);
+      filterx_allocator_restore_position(context->allocator, &context->allocator_position);
     }
 
   context->failure_info = NULL;
@@ -529,4 +546,22 @@ filterx_format_eval_result(FilterXEvalResult result)
       break;
     }
   return evt_tag_str("result", eval_result);
+}
+
+static void
+_deinit_tls_allocator(gpointer user_data)
+{
+  filterx_allocator_clear(&eval_allocator);
+}
+
+void
+filterx_eval_global_init(void)
+{
+  register_application_thread_deinit_hook(_deinit_tls_allocator, NULL);
+}
+
+void
+filterx_eval_global_deinit(void)
+{
+  filterx_allocator_clear(&eval_allocator);
 }
