@@ -23,6 +23,15 @@
 
 #include "filterx-func-format-syslog.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/object-string.h"
+#include "filterx/object-extractor.h"
+#include "hostname.h"
+#include "timeutils/unixtime.h"
+#include "timeutils/wallclocktime.h"
+#include "timeutils/conv.h"
+#include "timeutils/format.h"
+#include "str-format.h"
+#include "scratch-buffers.h"
 
 #define FILTERX_FUNC_FORMAT_SYSLOG_5424_USAGE "Usage: format_syslog_5424(message, add_octet_count=false, pri=expr, " \
                                               "timestamp=expr, host=expr, program=expr, pid=expr, msgid=expr)"
@@ -40,11 +49,240 @@ typedef struct FilterXFunctionFormatSyslog5424_
   FilterXExpr *message_expr;
 } FilterXFunctionFormatSyslog5424;
 
+static inline FilterXObject *
+_eval_optional_or_fallible_expr(FilterXExpr *expr)
+{
+  if (!expr)
+    return NULL;
+
+  FilterXObject *obj = filterx_expr_eval(expr);
+  if (!obj)
+    filterx_eval_clear_errors();
+
+  return obj;
+}
+
+static inline const gchar *
+_cast_to_string(FilterXObject *obj, gsize *len)
+{
+  if (!obj)
+    {
+      *len = 0;
+      return "";
+    }
+
+  const gchar *str;
+  if (filterx_object_extract_string_ref(obj, &str, len))
+    return str;
+
+  GString *buf = scratch_buffers_alloc();
+  if (filterx_object_str(obj, buf))
+    {
+      *len = buf->len;
+      return buf->str;
+    }
+
+  filterx_eval_push_error("Cannot convert object to string", NULL, obj);
+  return NULL;
+}
+
+static inline gint64
+_cast_to_int(FilterXObject *obj)
+{
+  if (!obj)
+    return -1;
+
+  gint64 value;
+  if (filterx_object_extract_integer(obj, &value))
+    return value;
+
+  return -1;
+}
+
+static inline FilterXObject *
+_get_message(FilterXFunctionFormatSyslog5424 *self, const gchar **message, gsize *message_len)
+{
+  FilterXObject *message_obj = filterx_expr_eval(self->message_expr);
+  if (!message_obj)
+    return NULL;
+  *message = _cast_to_string(message_obj, message_len);
+  return message_obj;
+}
+
+static inline FilterXObject *
+_get_pri(FilterXFunctionFormatSyslog5424 *self, LogMessage *logmsg, gint64 *pri)
+{
+  FilterXObject *pri_obj = _eval_optional_or_fallible_expr(self->pri_expr);
+  *pri = _cast_to_int(pri_obj);
+  if (*pri == -1)
+    *pri = logmsg->pri;
+  return pri_obj;
+}
+
+static inline FilterXObject *
+_get_timestamp(FilterXFunctionFormatSyslog5424 *self, LogMessage *logmsg, WallClockTime *timestamp)
+{
+  UnixTime ut;
+  FilterXObject *timestamp_obj = _eval_optional_or_fallible_expr(self->timestamp_expr);
+  if (!timestamp_obj || !filterx_object_extract_datetime(timestamp_obj, &ut))
+    ut = logmsg->timestamps[LM_TS_STAMP];
+  convert_unix_time_to_wall_clock_time(&ut, timestamp);
+  return timestamp_obj;
+}
+
+static inline FilterXObject *
+_get_host(FilterXFunctionFormatSyslog5424 *self, const gchar **host, gsize *host_len)
+{
+  FilterXObject *host_obj = _eval_optional_or_fallible_expr(self->host_expr);
+  *host = _cast_to_string(host_obj, host_len);
+  if (*host_len == 0)
+    {
+      *host = "-";
+      *host_len = 1;
+    }
+  return host_obj;
+}
+
+static inline FilterXObject *
+_get_program(FilterXFunctionFormatSyslog5424 *self, const gchar **program, gsize *program_len)
+{
+  FilterXObject *program_obj = _eval_optional_or_fallible_expr(self->program_expr);
+  *program = _cast_to_string(program_obj, program_len);
+  if (*program_len == 0)
+    {
+      *program = "-";
+      *program_len = 1;
+    }
+  return program_obj;
+}
+
+static inline FilterXObject *
+_get_pid(FilterXFunctionFormatSyslog5424 *self, const gchar **pid, gsize *pid_len)
+{
+  FilterXObject *pid_obj = _eval_optional_or_fallible_expr(self->pid_expr);
+  *pid = _cast_to_string(pid_obj, pid_len);
+  if (*pid_len == 0)
+    {
+      *pid = "-";
+      *pid_len = 1;
+    }
+  return pid_obj;
+}
+
+static inline FilterXObject *
+_get_msgid(FilterXFunctionFormatSyslog5424 *self, const gchar **msgid, gsize *msgid_len)
+{
+  FilterXObject *msgid_obj = _eval_optional_or_fallible_expr(self->msgid_expr);
+  *msgid = _cast_to_string(msgid_obj, msgid_len);
+  if (*msgid_len == 0)
+    {
+      *msgid = "-";
+      *msgid_len = 1;
+    }
+  return msgid_obj;
+}
+
+static inline void
+_prepend_octet_count(GString *buffer)
+{
+  gint octet_count = buffer->len;
+  gchar octet_count_str[64];
+  gsize octet_count_str_len = format_int64_into_padded_buffer(octet_count_str, sizeof(octet_count_str), 0, ' ', 10,
+                                                              octet_count);
+  g_assert(octet_count_str_len < sizeof(octet_count_str) - 1);
+  octet_count_str[octet_count_str_len] = ' ';
+  g_string_prepend_len(buffer, octet_count_str, octet_count_str_len + 1);
+}
+
 static FilterXObject *
 _format_syslog_5424_eval(FilterXExpr *s)
 {
-  /* TODO: implement */
-  return NULL;
+  FilterXFunctionFormatSyslog5424 *self = (FilterXFunctionFormatSyslog5424 *) s;
+
+  FilterXEvalContext *context = filterx_eval_get_context();
+  LogMessage *logmsg = context->msg;
+  FilterXObject *result = NULL;
+
+  gsize message_len;
+  const gchar *message;
+  FilterXObject *message_obj = _get_message(self, &message, &message_len);
+  if (!message_obj)
+    return NULL;
+
+  gint64 pri;
+  FilterXObject *pri_obj = _get_pri(self, logmsg, &pri);
+
+  WallClockTime timestamp;
+  FilterXObject *timestamp_obj = _get_timestamp(self, logmsg, &timestamp);
+
+  const gchar *host;
+  gsize host_len;
+  FilterXObject *host_obj = _get_host(self, &host, &host_len);
+
+  const gchar *program;
+  gsize program_len;
+  FilterXObject *program_obj = _get_program(self, &program, &program_len);
+
+  const gchar *pid;
+  gsize pid_len;
+  FilterXObject *pid_obj = _get_pid(self, &pid, &pid_len);
+
+  const gchar *msgid;
+  gsize msgid_len;
+  FilterXObject *msgid_obj = _get_msgid(self, &msgid, &msgid_len);
+
+  /* PRI */
+  GString *buffer = g_string_new("<");
+  format_int64_padded(buffer, 0, ' ', 10, pri);
+  g_string_append(buffer, ">1 ");
+
+  /* TIMESTAMP */
+  append_format_wall_clock_time(&timestamp, buffer, TS_FMT_ISO, 6);
+  g_string_append_c(buffer, ' ');
+
+  /* HOST */
+  g_string_append_len(buffer, host, host_len);
+  g_string_append_c(buffer, ' ');
+
+  /* PROGRAM */
+  g_string_append_len(buffer, program, program_len);
+  g_string_append_c(buffer, ' ');
+
+  /* PID */
+  g_string_append_len(buffer, pid, pid_len);
+  g_string_append_c(buffer, ' ');
+
+  /* MSGID */
+  g_string_append_len(buffer, msgid, msgid_len);
+  g_string_append_c(buffer, ' ');
+
+  /* SDATA */
+  if (logmsg->num_sdata)
+    log_msg_append_format_sdata(logmsg, buffer, 0);
+  else
+    g_string_append_c(buffer, '-');
+
+  g_string_append_c(buffer, ' ');
+
+  /* MESSAGE */
+  g_string_append_len(buffer, message, message_len);
+  g_string_append_c(buffer, '\n');
+
+  if (self->add_octet_count)
+    _prepend_octet_count(buffer);
+
+  result = filterx_string_new_take(buffer->str, buffer->len);
+
+  g_string_free(buffer, FALSE);
+  filterx_object_unref(message_obj);
+  filterx_object_unref(msgid_obj);
+  filterx_object_unref(pid_obj);
+  filterx_object_unref(program_obj);
+  filterx_object_unref(host_obj);
+  filterx_object_unref(timestamp_obj);
+  filterx_object_unref(pri_obj);
+
+  return result;
 }
 
 static FilterXExpr *
