@@ -27,6 +27,7 @@
 #include "messages.h"
 #include "scratch-buffers.h"
 #include "atomic.h"
+#include "filterx/filterx-allocator.h"
 
 #include <iv.h>
 
