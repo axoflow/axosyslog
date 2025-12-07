@@ -31,6 +31,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-move.h \
 	lib/filterx/expr-variable.h \
 	lib/filterx/expr-string-operators.h \
+	lib/filterx/filterx-allocator.h \
 	lib/filterx/filterx-config.h \
 	lib/filterx/filterx-error.h \
 	lib/filterx/filterx-eval.h \
@@ -110,6 +111,7 @@ filterx_sources = 				\
 	lib/filterx/expr-move.c \
 	lib/filterx/expr-variable.c \
 	lib/filterx/expr-string-operators.c \
+	lib/filterx/filterx-allocator.c \
 	lib/filterx/filterx-config.c \
 	lib/filterx/filterx-error.c \
 	lib/filterx/filterx-eval.c \
