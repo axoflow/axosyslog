@@ -1041,3 +1041,21 @@ def test_dict_to_pairs(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '[{"key":"value_1","value":"foo"},{"key":"value_2","value":"bar"},{"key":"value_3","value":["baz","bax"]}]'
+
+
+def test_format_syslog_5424(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    formats = [];
+    formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0));
+    formats[] = format_syslog_5424("foobar", timestamp=datetime(1765146872.0), host="host-value", program="prog-value", pid="hihi", msgid="1234");
+    $MSG = string(formats);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - - foobar\\n",' \
+        '"<13>1 2025-12-07T22:34:32.000000+00:00 host-value prog-value hihi 1234 - foobar\\n"' \
+        ']'
