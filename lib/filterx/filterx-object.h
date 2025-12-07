@@ -186,10 +186,12 @@ struct _FilterXObject
    *
    *     is_dirty          -- marks that the object was changed (mutable objects only)
    *
+   *     allocator_used    -- object was allocated using the FilterX allocator
+   *
    *     flags             -- to be used by descendant types
    *
    */
-  guint readonly:1, weak_referenced:1, is_dirty:1, flags:5;
+  guint readonly:1, weak_referenced:1, is_dirty:1, allocator_used:1, flags:5;
   FilterXType *type;
 };
 
@@ -258,6 +260,23 @@ filterx_object_is_preserved(FilterXObject *self)
   return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
+/* NOTE: these two macros actually require the inclusion of filterx-eval.h
+ * which works in an implementation file, but not here */
+
+#define filterx_new_object(t) ((t *) filterx_malloc_object(sizeof(t), sizeof(t)))
+#define filterx_new_object_with_extra(t, extra) ((t *) filterx_malloc_object(sizeof(t), sizeof(t) + extra))
+
+static inline void
+filterx_free_object(FilterXObject *object)
+{
+  if (object->allocator_used)
+    {
+      /* allocated using the allocator, do nothing */
+      return;
+    }
+  g_free(object);
+}
+
 static inline FilterXObject *
 filterx_object_ref(FilterXObject *self)
 {
@@ -318,7 +337,7 @@ filterx_object_unref(FilterXObject *self)
   if (g_atomic_counter_dec_and_test(&self->ref_cnt))
     {
       self->type->free_fn(self);
-      g_free(self);
+      filterx_free_object(self);
     }
 }
 
