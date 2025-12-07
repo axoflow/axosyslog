@@ -679,7 +679,7 @@ _filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
 static FilterXObject *
 filterx_dict_new_with_table(FilterXDictTable *table)
 {
-  FilterXDictObject *self = g_new0(FilterXDictObject, 1);
+  FilterXDictObject *self = filterx_new_object(FilterXDictObject);
 
   filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(dict));
   self->table = table;
