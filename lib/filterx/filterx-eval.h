@@ -26,6 +26,7 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-allocator.h"
 #include "template/eval.h"
 
 #define FILTERX_CONTEXT_ERROR_STACK_SIZE (8)
@@ -68,6 +69,8 @@ struct _FilterXEvalContext
   FilterXObject *current_frame_meta;
   LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
+  FilterXAllocator *allocator;
+  FilterXAllocatorPosition allocator_position;
   FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
 
@@ -182,9 +185,13 @@ filterx_eval_store_weak_ref(FilterXObject *object)
 
 #define FILTERX_EVAL_END_CONTEXT(eval_context) \
     while(0); \
-    filterx_eval_end_context(&eval_context); \
+    \
     if (local_scope) \
       filterx_scope_clear(scope); \
+    filterx_eval_end_context(&eval_context); \
   } while(0)
+
+void filterx_eval_global_init(void);
+void filterx_eval_global_deinit(void);
 
 #endif
