@@ -48,7 +48,7 @@ _truthy(FilterXObject *s)
 static FilterXPrimitive *
 filterx_primitive_new(FilterXType *type)
 {
-  FilterXPrimitive *self = g_new0(FilterXPrimitive, 1);
+  FilterXPrimitive *self = filterx_new_object(FilterXPrimitive);
 
   filterx_object_init_instance(&self->super, type);
   return self;
