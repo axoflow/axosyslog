@@ -19,6 +19,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-membership.h \
 	lib/filterx/expr-null-coalesce.h \
 	lib/filterx/expr-plus.h \
+	lib/filterx/expr-plus-assign.h \
 	lib/filterx/expr-regexp-common.h \
 	lib/filterx/expr-regexp-search.h \
 	lib/filterx/expr-regexp-subst.h \
@@ -28,8 +29,10 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-switch.h \
 	lib/filterx/expr-template.h \
 	lib/filterx/expr-unset.h \
+	lib/filterx/expr-move.h \
 	lib/filterx/expr-variable.h \
 	lib/filterx/expr-string-operators.h \
+	lib/filterx/filterx-allocator.h \
 	lib/filterx/filterx-config.h \
 	lib/filterx/filterx-error.h \
 	lib/filterx/filterx-eval.h \
@@ -97,6 +100,7 @@ filterx_sources = 				\
 	lib/filterx/expr-membership.c \
 	lib/filterx/expr-null-coalesce.c \
 	lib/filterx/expr-plus.c \
+	lib/filterx/expr-plus-assign.c \
 	lib/filterx/expr-regexp-common.c \
 	lib/filterx/expr-regexp-search.c \
 	lib/filterx/expr-regexp-subst.c \
@@ -106,8 +110,10 @@ filterx_sources = 				\
 	lib/filterx/expr-switch.c \
 	lib/filterx/expr-template.c \
 	lib/filterx/expr-unset.c \
+	lib/filterx/expr-move.c \
 	lib/filterx/expr-variable.c \
 	lib/filterx/expr-string-operators.c \
+	lib/filterx/filterx-allocator.c \
 	lib/filterx/filterx-config.c \
 	lib/filterx/filterx-error.c \
 	lib/filterx/filterx-eval.c \

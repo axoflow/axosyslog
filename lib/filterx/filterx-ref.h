@@ -42,6 +42,15 @@
  * open for extension.
  */
 
+
+/* mobile reference, e.g.  this is a reference to an object that is yet to
+ * be stored in a variable/attribute/etc.  While a reference is mobile, we
+ * don't need to clone another ref when storing it.  This avoids excessive
+ * copies in copy-on-write as well as reduces the number of refs allocated
+ * */
+
+#define FILTERX_REF_FLAG_MOBILE 0x1
+
 struct _FilterXRef
 {
   FilterXObject super;
@@ -114,6 +123,23 @@ filterx_ref_unset_parent_container(FilterXObject *s)
     }
 }
 
+/* mark this ref as a movable one, not yet stored anywhere */
+static inline FilterXObject *
+filterx_ref_mobilize(FilterXObject *s)
+{
+  if (s && filterx_object_is_ref(s))
+    s->flags |= FILTERX_REF_FLAG_MOBILE;
+  return s;
+}
+
+/* mark this ref as a stored one, e.g. one that cannot be moved anymore */
+static inline FilterXObject *
+filterx_ref_park(FilterXObject *s)
+{
+  if (s && filterx_object_is_ref(s))
+    s->flags &= ~FILTERX_REF_FLAG_MOBILE;
+  return s;
+}
 
 FilterXObject *_filterx_ref_new(FilterXObject *value);
 
