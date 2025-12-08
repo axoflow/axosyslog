@@ -27,6 +27,10 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  if (s->flags & FILTERX_REF_FLAG_MOBILE)
+    {
+      return filterx_ref_park(filterx_object_ref(s));
+    }
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
@@ -91,6 +95,16 @@ _filterx_ref_unset_key(FilterXObject *s, FilterXObject *key)
   _filterx_ref_cow(self);
 
   return filterx_object_unset_key(self->value, key);
+}
+
+static FilterXObject *
+_filterx_ref_move_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  _filterx_ref_cow(self);
+
+  return filterx_object_move_key(self->value, key);
 }
 
 static void
@@ -301,7 +315,7 @@ _filterx_ref_new(FilterXObject *value)
   self->value = value;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
 
-  return &self->super;
+  return filterx_ref_mobilize(&self->super);
 }
 
 FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
@@ -316,6 +330,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .set_subscript = _filterx_ref_set_subscript,
                     .is_key_set = _filterx_ref_is_key_set,
                     .unset_key = _filterx_ref_unset_key,
+                    .move_key = _filterx_ref_move_key,
                     .iter = _filterx_ref_iter,
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,

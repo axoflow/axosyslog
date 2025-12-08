@@ -164,6 +164,15 @@ _literal_container_optimize(FilterXExpr *s)
         }
     }
   FilterXObject *container = self->eval_early(self);
+
+  /* NOTE: cow_store assumes that container is borrowed, e.g.  takes an
+   * additional reference */
+  filterx_object_cow_store(&container);
+
+  /* drop the original reference returned by eval_early */
+  filterx_object_unref(container);
+
+  /* use the ref returned by cow_store */
   if (literal)
     return filterx_literal_new(container);
   else
