@@ -46,11 +46,12 @@ _eval(FilterXExpr *s)
       return NULL;
     }
 
-  FilterXObject *result = filterx_list_new();
-  if (!filterx_mapping_keys(object, &result))
+  FilterXObject *result = filterx_mapping_keys(object);
+  filterx_object_unref(object);
+
+  if (!result)
     {
       filterx_eval_push_error(FILTERX_FUNC_KEYS_ERR_NONDICT FILTERX_FUNC_KEYS_USAGE, s, NULL);
-      filterx_object_unref(result);
       return NULL;
     }
   return result;

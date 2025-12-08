@@ -63,10 +63,10 @@ gboolean
 filterx_sequence_merge(FilterXObject *s, FilterXObject *other)
 {
   other = filterx_ref_unwrap_ro(other);
-  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(sequence)));
 
   guint64 len;
-  g_assert(filterx_object_len(other, &len));
+  if (!filterx_object_len(other, &len))
+    return FALSE;
 
   for (guint64 i = 0; i < len; i++)
     {
@@ -125,14 +125,9 @@ filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type)
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
-  rhs_object = filterx_ref_unwrap_ro(rhs_object);
-
-  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(sequence)))
-    return NULL;
-
   FilterXObject *cloned = filterx_object_clone(lhs_object);
 
-  if(!filterx_sequence_merge(cloned, rhs_object))
+  if (!filterx_sequence_merge(cloned, rhs_object))
     goto error;
 
   return cloned;
