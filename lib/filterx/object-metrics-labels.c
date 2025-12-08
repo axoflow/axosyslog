@@ -248,12 +248,13 @@ _clone(FilterXObject *s)
   FilterXObjectMetricsLabels *cloned = \
                                        (FilterXObjectMetricsLabels *) filterx_object_metrics_labels_new(self->labels->len);
 
+  g_array_set_size(cloned->labels, self->labels->len);
   for (guint i = 0; i < self->labels->len; i++)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
       StatsClusterLabel *cloned_label = &g_array_index(cloned->labels, StatsClusterLabel, i);
       
-      *cloned_label = stats_cluster_label(label->name, label->value);
+      *cloned_label = *label;
     }
     
   for (guint i = 0; i < self->objects->len; i++)

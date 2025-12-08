@@ -616,6 +616,34 @@ def test_metrics_labels_empty_value_and_null_value(config, syslog_ng):
     assert samples[0].labels == {"foo": "bar"}
 
 
+def test_metrics_labels_inplace_addition(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            labels = metrics_labels({
+                "foo": "bar",
+                "empty_from_ctor": "",
+                "null_from_ctor": null,
+            });
+
+            labels += {
+                "empty_from_set_subscript": "",
+                "null_from_set_subscript": null,
+                "meg": "valami",
+            };
+
+            update_metric("test", labels=labels);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+
+    metric_filters = [MetricFilter("syslogng_test", {"foo": "bar"})]
+    samples = config.prometheus_stats_handler.get_samples(metric_filters)
+    assert len(samples) == 1
+    assert samples[0].labels == {"foo": "bar", "meg": "valami"}
+
+
 def test_set_fields(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
