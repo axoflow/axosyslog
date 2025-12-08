@@ -125,7 +125,7 @@ afsocket_sc_format_stats_key(AFSocketSourceConnection *self, StatsClusterKeyBuil
       /* dgram connection, which means we have no peer, use the bind address */
       if (self->owner->bind_addr)
         {
-          g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
+          g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_IP_PORT);
           stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("address", addr));
           return;
         }
@@ -133,7 +133,7 @@ afsocket_sc_format_stats_key(AFSocketSourceConnection *self, StatsClusterKeyBuil
         return;
     }
 
-  g_sockaddr_format(self->peer_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
+  g_sockaddr_format(self->peer_addr, addr, sizeof(addr), GSA_IP_PORT);
   stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("transport",
                                              self->owner->transport_mapper->transport));
   stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("address", addr));
