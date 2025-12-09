@@ -360,12 +360,19 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
       log_msg_write_protect(msg);
       node = log_msg_alloc_queue_node(msg, path_options);
       iv_list_add_tail(&node->list, &self->input_queues[thread_index].items);
-      self->input_queues[thread_index].len++;
+      gsize qlen = ++self->input_queues[thread_index].len;
 
       if (!path_options->flow_control_requested)
         self->input_queues[thread_index].non_flow_controlled_len++;
 
       log_msg_unref(msg);
+      if (qlen > 256)
+        {
+          /* our input queue is quite long now, do an explicit flush to the
+           * consumer.  NOTE: this locks the queue and notifies the consumer
+           * if needed.  */
+          log_queue_fifo_move_input(self, thread_index);
+        }
       return;
     }
 
