@@ -120,22 +120,23 @@ _parse_columns_argument(FilterXFunctionParseCSV *self, FilterXObject **columns)
 static inline gboolean
 _parse_msg_argument(FilterXFunctionParseCSV *self, FilterXObject **input_obj, const gchar **input, gsize *input_len)
 {
-  *input_obj = filterx_expr_eval(self->msg);
-  if (!(*input_obj))
+  FilterXObject *result = filterx_expr_eval(self->msg);
+  if (!result)
     {
       filterx_eval_push_error_static_info("Failed to evaluate parse_csv()", &self->super.super,
                                           "Failed to evaluate expression");
       return FALSE;
     }
 
-  if (!filterx_object_extract_string_ref(*input_obj, input, input_len))
+  if (!filterx_object_extract_string_ref(result, input, input_len))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate parse_csv()", &self->super.super,
                                           "Input must be a string, got: %s. " FILTERX_FUNC_PARSE_CSV_USAGE,
-                                          filterx_object_get_type_name(*input_obj));
-      filterx_object_unref(*input_obj);
+                                          filterx_object_get_type_name(result));
+      filterx_object_unref(result);
       return FALSE;
     }
+  *input_obj = result;
   return TRUE;
 }
 
