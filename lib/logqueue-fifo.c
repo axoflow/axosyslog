@@ -78,6 +78,7 @@ typedef struct _InputQueue
   WorkerBatchCallback cb;
   guint32 len;
   guint32 non_flow_controlled_len;
+  UnixTime first_message_recvd;
   guint16 finish_cb_registered;
 } InputQueue;
 
@@ -343,6 +344,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
   if (thread_index >= 0)
     {
       /* fastpath, use per-thread input FIFOs */
+
       if (!self->input_queues[thread_index].finish_cb_registered)
         {
           /* this is the first item in the input FIFO, register a finish
@@ -355,17 +357,37 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
           main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
           self->input_queues[thread_index].finish_cb_registered = TRUE;
           log_queue_ref(&self->super);
+          self->input_queues[thread_index].first_message_recvd = msg->timestamps[LM_TS_RECVD];
         }
 
       log_msg_write_protect(msg);
       node = log_msg_alloc_queue_node(msg, path_options);
       iv_list_add_tail(&node->list, &self->input_queues[thread_index].items);
-      self->input_queues[thread_index].len++;
+      gsize qlen = ++self->input_queues[thread_index].len;
 
       if (!path_options->flow_control_requested)
         self->input_queues[thread_index].non_flow_controlled_len++;
 
+      gboolean flush_input_queue = FALSE;
+      if ((qlen & 0x7F) == 0)
+        {
+          /* don't check the elapsed time for every message, once every 128
+           * should be sufficient to keep our delays low.
+           */
+
+          gint64 input_queue_age_msec =
+              unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
+
+          flush_input_queue = input_queue_age_msec > 100;
+        }
       log_msg_unref(msg);
+
+      if (flush_input_queue)
+        {
+          /* if the input queue is more than 100msec old, let's do an
+           * explicit flush to avoid starving the consumer */
+          log_queue_fifo_move_input(self, thread_index);
+        }
       return;
     }
 
