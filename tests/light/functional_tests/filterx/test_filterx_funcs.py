@@ -53,7 +53,7 @@ options {{ stats(level(1)); }};
 source genmsg {{
     example-msg-generator(
         num(1)
-        template("{msg}")
+        template("{msg.replace('"', '\\"')}")
         values(
             "values.str" => string("string"),
             "values.bool" => boolean(true),
@@ -352,6 +352,22 @@ def test_cache_json_file(config, syslog_ng, testcase_parameters):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == 'foo/foo_value'
+
+
+def test_parse_json(config, syslog_ng, testcase_parameters):
+    json_text = '{"data_map": {"key1": 1, "key2": 2}, "data_map2": {"key1": {"foo1": "value1", "bar1": 1, "baz1": 1.1}, "key2": {"foo1": "value2", "bar1": 2, "baz1": 2.2}}, "data_array": ["value1", "value2"], "data_array2": [{"foo2": "value1", "bar2": 1, "baz2": 1.1}, {"foo2": "value2", "bar2": 2, "baz2": 2.2}], "data_tuple": {"foo3": "value1", "bar3": 3}}'
+    (file_final,) = create_config(
+        config, r"""
+
+    js = parse_json($MSG);
+    $MSG = js.data_map.key1 == 1;
+    $MSG = format_json(js);
+    """, msg=json_text,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(json.loads(json_text), separators=(",", ":"))
 
 
 def test_unset_empties_defaults_dict(config, syslog_ng):
