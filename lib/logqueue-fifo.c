@@ -265,13 +265,23 @@ log_queue_fifo_move_input_unlocked(LogQueueFifo *self, gint thread_index)
   self->input_queues[thread_index].non_flow_controlled_len = 0;
 }
 
+/* explicitly move input to the wait queue, to be called from the input thread */
+static void
+log_queue_fifo_move_input(LogQueueFifo *self, gint thread_index)
+{
+  g_mutex_lock(&self->super.lock);
+  log_queue_fifo_move_input_unlocked(self, thread_index);
+  log_queue_push_notify(&self->super);
+  g_mutex_unlock(&self->super.lock);
+}
+
 /* move items from the per-thread input queue to the lock-protected
  * "wait" queue, but grabbing locks first. This is registered as a
  * callback to be called when the input worker thread finishes its
  * job.
  */
 static gpointer
-log_queue_fifo_move_input(gpointer user_data)
+log_queue_fifo_input_batch_callback(gpointer user_data)
 {
   LogQueueFifo *self = (LogQueueFifo *) user_data;
   gint thread_index;
@@ -279,10 +289,7 @@ log_queue_fifo_move_input(gpointer user_data)
   thread_index = main_loop_worker_get_thread_index();
   g_assert(thread_index >= 0);
 
-  g_mutex_lock(&self->super.lock);
-  log_queue_fifo_move_input_unlocked(self, thread_index);
-  log_queue_push_notify(&self->super);
-  g_mutex_unlock(&self->super.lock);
+  log_queue_fifo_move_input(self, thread_index);
   self->input_queues[thread_index].finish_cb_registered = FALSE;
   log_queue_unref(&self->super);
   return NULL;
@@ -685,7 +692,7 @@ log_queue_fifo_new(gint log_fifo_size, const gchar *persist_name, gint stats_lev
     {
       INIT_IV_LIST_HEAD(&self->input_queues[i].items);
       worker_batch_callback_init(&self->input_queues[i].cb);
-      self->input_queues[i].cb.func = log_queue_fifo_move_input;
+      self->input_queues[i].cb.func = log_queue_fifo_input_batch_callback;
       self->input_queues[i].cb.user_data = self;
     }
   INIT_IV_LIST_HEAD(&self->wait_queue.items);
