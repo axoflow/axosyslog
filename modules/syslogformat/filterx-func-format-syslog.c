@@ -110,12 +110,19 @@ _get_message(FilterXFunctionFormatSyslog5424 *self, const gchar **message, gsize
 }
 
 static inline FilterXObject *
-_get_pri(FilterXFunctionFormatSyslog5424 *self, LogMessage *logmsg, gint64 *pri)
+_get_pri(FilterXFunctionFormatSyslog5424 *self, LogMessage *logmsg, gint64 *pri,
+         const gchar **pri_str, gsize *pri_str_len)
 {
   FilterXObject *pri_obj = _eval_optional_or_fallible_expr(self->pri_expr);
+
   *pri = _cast_to_int(pri_obj);
-  if (*pri == -1)
-    *pri = logmsg->pri;
+  if (*pri != -1)
+    return pri_obj;
+
+  if (pri_obj && filterx_object_extract_string_ref(pri_obj, pri_str, pri_str_len))
+    return pri_obj;
+
+  *pri = logmsg->pri;
   return pri_obj;
 }
 
@@ -210,7 +217,9 @@ _format_syslog_5424_eval(FilterXExpr *s)
     return NULL;
 
   gint64 pri;
-  FilterXObject *pri_obj = _get_pri(self, logmsg, &pri);
+  const gchar *pri_str;
+  gsize pri_str_len;
+  FilterXObject *pri_obj = _get_pri(self, logmsg, &pri, &pri_str, &pri_str_len);
 
   WallClockTime timestamp;
   FilterXObject *timestamp_obj = _get_timestamp(self, logmsg, &timestamp);
@@ -231,9 +240,18 @@ _format_syslog_5424_eval(FilterXExpr *s)
   gsize msgid_len;
   FilterXObject *msgid_obj = _get_msgid(self, &msgid, &msgid_len);
 
+  /*                    OCT _   <   PRI >   1   _   TS   _   HOST       _   PROGRAM       _   PID       _ */
+  gsize expected_size = 6 + 1 + 1 + 3 + 1 + 1 + 1 + 32 + 1 + host_len + 1 + program_len + 1 + pid_len + 1 +
+                        msgid_len + 1 + logmsg->num_sdata * 64 + 1 + 1 + message_len + 1 + 64;
+  /*                    MSGID       _   (SDATA or                -)  _   MESSAGE       NL  "for good measure" */
+
   /* PRI */
-  GString *buffer = g_string_new("<");
-  format_int64_padded(buffer, 0, ' ', 10, pri);
+  GString *buffer = g_string_sized_new(expected_size);
+  g_string_append_c(buffer, '<');
+  if (pri != -1)
+    format_int64_padded(buffer, 0, ' ', 10, pri);
+  else
+    g_string_append_len(buffer, pri_str, pri_str_len);
   g_string_append(buffer, ">1 ");
 
   /* TIMESTAMP */
