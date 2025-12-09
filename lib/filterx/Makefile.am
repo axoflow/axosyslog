@@ -1,6 +1,7 @@
 filterxincludedir			= ${pkgincludedir}/filterx
 
 filterxinclude_HEADERS = 			\
+	lib/filterx/jsmn.h \
 	lib/filterx/expr-arithmetic-operators.h \
 	lib/filterx/expr-assign.h \
 	lib/filterx/expr-boolalg.h \
