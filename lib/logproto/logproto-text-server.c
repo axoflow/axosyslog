@@ -170,7 +170,7 @@ log_proto_text_server_extract(LogProtoTextServer *self, LogProtoBufferedServerSt
 }
 
 static inline gboolean
-_is_message_boundary(gchar ch)
+_is_message_boundary(guchar ch)
 {
   if (ch <= 13)
     {
