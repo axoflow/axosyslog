@@ -176,7 +176,7 @@ _is_message_boundary(guchar ch)
     {
       /* set bits to 1 where they are considered to be message boundaries,
        * CR, LF and NUL characters are set */
-      const guint32 ch_bits = 0x2401;
+      const guint32 ch_bits = (1 << '\0') | (1 << '\n') | (1 << '\r');
       return !!(ch_bits & (1 << ch));
     }
   return FALSE;
