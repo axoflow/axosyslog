@@ -66,6 +66,71 @@ extern "C" {
 #define JSMN_API extern
 #endif
 
+static inline int
+_jsmn_find_backslash_or_quote_or_nul(const char *s, int n)
+{
+  const char *char_ptr;
+  unsigned long *longword_ptr;
+  unsigned long longword, magic_bits, bslash_charmask, quote_charmask;
+  const char BSLASH = '\\';
+  const char QUOTE = '"';
+
+  /* align input to long boundary */
+  for (char_ptr = s; n > 0 && ((unsigned long) char_ptr & (sizeof(longword) - 1)) != 0; ++char_ptr, n--)
+    {
+      if (*char_ptr == BSLASH || *char_ptr == QUOTE || *char_ptr == 0)
+        return char_ptr - s;
+    }
+
+  longword_ptr = (unsigned long *) char_ptr;
+
+#if GLIB_SIZEOF_LONG == 8
+  magic_bits = 0x7efefefefefefeffL;
+  /* 8 backslashes */
+  bslash_charmask = 0x5c5c5c5c5c5c5c5cL;
+  /* 8 quote characters */
+  quote_charmask = 0x2222222222222222L;
+#elif GLIB_SIZEOF_LONG == 4
+  magic_bits = 0x7efefeffL;
+  bslash_charmask = 0x5c5c5c5c;
+  quote_charmask = 0x22222222;
+#else
+#error "unknown architecture"
+#endif
+
+  while (n > sizeof(longword))
+    {
+      longword = *longword_ptr++;
+      if ((((longword + magic_bits) ^ ~longword) & ~magic_bits) != 0 ||
+          ((((longword ^ bslash_charmask) + magic_bits) ^ ~(longword ^ bslash_charmask)) & ~magic_bits) != 0 ||
+          ((((longword ^ quote_charmask) + magic_bits) ^ ~(longword ^ quote_charmask)) & ~magic_bits) != 0)
+        {
+          gint i;
+
+          char_ptr = (char *) (longword_ptr - 1);
+
+          for (i = 0; i < sizeof(longword); i++)
+            {
+              if (*char_ptr == BSLASH || *char_ptr == QUOTE || *char_ptr == 0)
+                return char_ptr - s;
+              char_ptr++;
+            }
+        }
+      n -= sizeof(longword);
+    }
+
+  char_ptr = (char *) longword_ptr;
+
+  while (n-- > 0)
+    {
+      if (*char_ptr == BSLASH || *char_ptr == QUOTE || *char_ptr == 0)
+        return char_ptr - s;
+      ++char_ptr;
+    }
+
+  return char_ptr - s;
+}
+
 /**
  * JSON type identifier. Basic types are:
  * 	o Object
@@ -230,7 +295,8 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
   /* Skip starting quote */
   parser->pos++;
 
-  for (; parser->pos < len && js[parser->pos] != '\0'; parser->pos++) {
+  parser->pos += _jsmn_find_backslash_or_quote_or_nul(&js[parser->pos], len - parser->pos);
+  while (parser->pos < len && js[parser->pos] != '\0') {
     char c = js[parser->pos];
 
     /* Quote: end of string */
@@ -264,6 +330,7 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
       case 'r':
       case 'n':
       case 't':
+        parser->pos++;
         break;
       /* Allows escaped symbol \uXXXX */
       case 'u':
@@ -279,7 +346,6 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
           }
           parser->pos++;
         }
-        parser->pos--;
         break;
       /* Unexpected symbol */
       default:
@@ -287,6 +353,7 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
         return JSMN_ERROR_INVAL;
       }
     }
+    parser->pos += _jsmn_find_backslash_or_quote_or_nul(&js[parser->pos], len - parser->pos);
   }
   parser->pos = start;
   return JSMN_ERROR_PART;
