@@ -180,44 +180,6 @@ _eval(FilterXExpr *s)
   return success ? filterx_string_new(formatted->str, formatted->len) : NULL;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
-
-  self->input = filterx_expr_optimize(self->input);
-  self->columns = filterx_expr_optimize(self->columns);
-
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
-
-  if (!filterx_expr_init(self->input, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->columns, cfg))
-    {
-      filterx_expr_deinit(self->input, cfg);
-      return FALSE;
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
-
-  filterx_expr_deinit(self->input, cfg);
-  filterx_expr_deinit(self->columns, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -318,6 +280,22 @@ _extract_arguments(FilterXFunctionFormatCSV *self, FilterXFunctionArgs *args, GE
   return TRUE;
 }
 
+static gboolean
+_format_csv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFormatCSV *self = (FilterXFunctionFormatCSV *) s;
+
+  FilterXExpr **exprs[] = { &self->input, &self->columns };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -325,9 +303,7 @@ filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "format_csv");
 
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _format_csv_walk;
   self->super.super.free_fn = _free;
   self->delimiter = ',';
   self->default_value = filterx_string_new("", -1);

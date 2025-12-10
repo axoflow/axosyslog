@@ -93,42 +93,6 @@ filterx_expr_get_text(FilterXExpr *self)
   return "n/a";
 }
 
-FilterXExpr *
-filterx_expr_optimize(FilterXExpr *self)
-{
-  if (!self)
-    return NULL;
-
-  if (self->optimized)
-    return self;
-
-  self->optimized = TRUE;
-  g_assert(!self->inited);
-
-  if (!self->optimize)
-    return self;
-
-  FilterXExpr *optimized = self->optimize(self);
-  if (!optimized)
-    return self;
-
-  /* the new expression may be also be optimized */
-  optimized = filterx_expr_optimize(optimized);
-
-  msg_trace("FilterX: expression optimized",
-            filterx_expr_format_location_tag(self),
-            evt_tag_str("old_type", self->type),
-            evt_tag_str("new_type", optimized->type));
-  if (self->lloc)
-    {
-      /* copy location information to the optimized representation */
-      filterx_expr_set_location_with_text(optimized, self->lloc, self->expr_text);
-    }
-  /* consume original expression */
-  filterx_expr_unref(self);
-  return optimized;
-}
-
 static void
 _init_sc_key_name(FilterXExpr *self, gchar *buf, gsize buf_len)
 {
@@ -180,6 +144,106 @@ filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
   stats_cluster_single_key_set(&sc_key, buf, labels, labels_len);
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->eval_count);
   stats_unlock();
+}
+
+static gboolean
+_init_child_exprs(FilterXExpr **expr, gpointer user_data)
+{
+  GlobalConfig *cfg = (GlobalConfig *) user_data;
+
+  return filterx_expr_init(*expr, cfg);
+}
+
+static gboolean
+_deinit_child_exprs(FilterXExpr **expr, gpointer user_data)
+{
+  GlobalConfig *cfg = (GlobalConfig *) user_data;
+
+  filterx_expr_deinit(*expr, cfg);
+  return TRUE;
+}
+
+gboolean
+filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg)
+{
+  if (!self || self->inited)
+    return TRUE;
+    
+  /* init children first */
+  if (!filterx_expr_walk_children(self, _init_child_exprs, cfg))
+    goto failure;
+
+  /* init @self */
+  if (!self->init(self, cfg))
+    goto failure;
+
+  self->inited = TRUE;
+  return TRUE;
+
+failure:
+  if (!filterx_expr_walk_children(self, _deinit_child_exprs, cfg))
+    g_assert_not_reached();
+  return FALSE;
+
+}
+
+void
+filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
+{
+  if (!self || !self->inited)
+    return;
+
+  if (self->deinit)
+    self->deinit(self, cfg);
+
+  if (!filterx_expr_walk_children(self, _deinit_child_exprs, cfg))
+    g_assert_not_reached();
+
+  self->inited = FALSE;
+}
+
+static gboolean
+_optimize_child_exprs(FilterXExpr **expr, gpointer user_data)
+{
+  *expr = filterx_expr_optimize(*expr);
+  return TRUE;
+}
+
+FilterXExpr *
+filterx_expr_optimize(FilterXExpr *self)
+{
+  if (!self || self->optimized)
+    return self;
+
+  self->optimized = TRUE;
+  g_assert(!self->inited);
+
+  /* optimize children first */
+  if (!filterx_expr_walk_children(self, _optimize_child_exprs, NULL))
+    g_assert_not_reached();
+
+  if (!self->optimize)
+    return self;
+
+  FilterXExpr *optimized = self->optimize(self);
+  if (!optimized)
+    return self;
+
+  /* the new expression may be also be optimized */
+  optimized = filterx_expr_optimize(optimized);
+
+  msg_trace("FilterX: expression optimized",
+            filterx_expr_format_location_tag(self),
+            evt_tag_str("old_type", self->type),
+            evt_tag_str("new_type", optimized->type));
+  if (self->lloc)
+    {
+      /* copy location information to the optimized representation */
+      filterx_expr_set_location_with_text(optimized, self->lloc, self->expr_text);
+    }
+  /* consume original expression */
+  filterx_expr_unref(self);
+  return optimized;
 }
 
 void
@@ -244,26 +308,6 @@ filterx_unary_op_optimize_method(FilterXExpr *s)
   return NULL;
 }
 
-gboolean
-filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
-
-  if (!filterx_expr_init(self->operand, cfg))
-    return FALSE;
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-void
-filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
-
-  filterx_expr_deinit(self->operand, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 void
 filterx_unary_op_free_method(FilterXExpr *s)
 {
@@ -273,13 +317,20 @@ filterx_unary_op_free_method(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+
+  return filterx_expr_visit(&self->operand, f, user_data);
+}
+
 void
 filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
 {
   filterx_expr_init_instance(&self->super, name);
   self->super.optimize = filterx_unary_op_optimize_method;
-  self->super.init = filterx_unary_op_init_method;
-  self->super.deinit = filterx_unary_op_deinit_method;
+  self->super.walk_children = filterx_unary_op_walk;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
 }
@@ -304,31 +355,18 @@ filterx_binary_op_optimize_method(FilterXExpr *s)
   return NULL;
 }
 
-gboolean
-filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg)
+static gboolean
+filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
 
-  if (!filterx_expr_init(self->lhs, cfg))
+  if (!filterx_expr_visit(&self->lhs, f, user_data))
     return FALSE;
 
-  if (!filterx_expr_init(self->rhs, cfg))
-    {
-      filterx_expr_deinit(self->lhs, cfg);
-      return FALSE;
-    }
+  if (!filterx_expr_visit(&self->rhs, f, user_data))
+    return FALSE;
 
-  return filterx_expr_init_method(s, cfg);
-}
-
-void
-filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  filterx_expr_deinit(self->lhs, cfg);
-  filterx_expr_deinit(self->rhs, cfg);
-  filterx_expr_deinit_method(s, cfg);
+  return TRUE;
 }
 
 void
@@ -336,8 +374,7 @@ filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, Filter
 {
   filterx_expr_init_instance(&self->super, name);
   self->super.optimize = filterx_binary_op_optimize_method;
-  self->super.init = filterx_binary_op_init_method;
-  self->super.deinit = filterx_binary_op_deinit_method;
+  self->super.walk_children = filterx_binary_op_walk;
   self->super.free_fn = filterx_binary_op_free_method;
   g_assert(lhs);
   g_assert(rhs);

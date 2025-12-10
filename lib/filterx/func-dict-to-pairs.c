@@ -122,35 +122,6 @@ exit:
   return result;
 }
 
-static gboolean
-_dict_to_pairs_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
-
-  if (!filterx_expr_init(self->dict_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_dict_to_pairs_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
-
-  filterx_expr_deinit(self->dict_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
-static FilterXExpr *
-_dict_to_pairs_optimize(FilterXExpr *s)
-{
-  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
-
-  self->dict_expr = filterx_expr_optimize(self->dict_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static void
 _dict_to_pairs_free(FilterXExpr *s)
 {
@@ -200,16 +171,30 @@ _extract_dict_to_pairs_args(FilterXFunctionDictToPairs *self, FilterXFunctionArg
   return TRUE;
 }
 
+static gboolean
+_dict_to_pairs_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionDictToPairs *self = (FilterXFunctionDictToPairs *) s;
+
+  FilterXExpr **exprs[] = { &self->dict_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionDictToPairs *self = g_new0(FilterXFunctionDictToPairs, 1);
   filterx_function_init_instance(&self->super, "dict_to_pairs");
 
-  self->super.super.init = _dict_to_pairs_init;
-  self->super.super.deinit = _dict_to_pairs_deinit;
-  self->super.super.optimize = _dict_to_pairs_optimize;
   self->super.super.eval = _dict_to_pairs_eval;
+  self->super.super.walk_children = _dict_to_pairs_walk;
   self->super.super.free_fn = _dict_to_pairs_free;
 
   if (!_extract_dict_to_pairs_args(self, args, error) || !filterx_function_args_check(args, error))
