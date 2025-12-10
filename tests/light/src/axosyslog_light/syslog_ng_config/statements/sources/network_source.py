@@ -31,6 +31,7 @@ def map_transport(transport):
         "auto": NetworkIO.Transport.AUTO,
         "tcp": NetworkIO.Transport.TCP,
         "text-with-nuls": NetworkIO.Transport.TCP,
+        "nul-terminated": NetworkIO.Transport.TCP,
         "udp": NetworkIO.Transport.UDP,
         "tls": NetworkIO.Transport.TLS,
         "proxied-tcp": NetworkIO.Transport.PROXIED_TCP,
