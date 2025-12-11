@@ -107,7 +107,7 @@ filterx_object_free_method(FilterXObject *self)
 FilterXObject *
 filterx_object_new(FilterXType *type)
 {
-  FilterXObject *self = g_new0(FilterXObject, 1);
+  FilterXObject *self = filterx_new_object(FilterXObject);
   filterx_object_init_instance(self, type);
   return self;
 }
