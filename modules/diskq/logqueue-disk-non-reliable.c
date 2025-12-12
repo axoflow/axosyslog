@@ -176,7 +176,8 @@ static inline gboolean
 _flow_control_window_has_movable_message(LogQueueDiskNonReliable *self)
 {
   return self->flow_control_window.len > 0
-         && (_can_push_to_front_cache_output(self) || _can_push_to_front_cache(self) || qdisk_is_space_avail(self->super.qdisk, 4096));
+         && (_can_push_to_front_cache_output(self) || _can_push_to_front_cache(self)
+             || qdisk_is_space_avail(self->super.qdisk, 4096));
 }
 
 static gboolean
@@ -384,7 +385,8 @@ _rewind_backlog_all(LogQueue *s)
 }
 
 static inline LogMessage *
-_pop_head_front_cache_queues(LogQueueDiskNonReliable *self, LogPathOptions *path_options, LogQueueDiskMemoryQueue *queue)
+_pop_head_front_cache_queues(LogQueueDiskNonReliable *self, LogPathOptions *path_options,
+                             LogQueueDiskMemoryQueue *queue)
 {
   LogMessage *msg;
 
@@ -588,7 +590,7 @@ _push_tail_disk(LogQueueDiskNonReliable *self, LogMessage *msg, const LogPathOpt
 }
 
 static void
-_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
+_push_tail_single_message(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
 
@@ -650,6 +652,139 @@ exit:
 }
 
 static void
+_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
+{
+  LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) s;
+  gint thread_index;
+  LogMessageQueueNode *node;
+
+  thread_index = main_loop_worker_get_thread_index();
+
+  /* if this thread has an ID than the number of input queues we have (due
+   * to a config change), handle the load via the slow path */
+
+  if (thread_index >= self->num_input_queues)
+    thread_index = -1;
+
+  /* NOTE: we don't use high-water marks for now, as log_fetch_limit
+   * limits the number of items placed on the per-thread input queue
+   * anyway, and any sane number decreased the performance measurably.
+   *
+   * This means that per-thread input queues contain _all_ items that
+   * a single poll iteration produces. And once the reader is finished
+   * (either because the input is depleted or because of
+   * log_fetch_limit / window_size) the whole bunch is shared between the
+   * front_cache and legacy behaviour.
+   */
+
+  if (thread_index >= 0)
+    {
+      /* fastpath, use per-thread input FIFOs */
+      if (!self->input_queues[thread_index].finish_cb_registered)
+        {
+          /* this is the first item in the input FIFO, register a finish
+           * callback to make sure it gets moved to the wait_queue if the
+           * input thread finishes
+           * One reference should be held, while the callback is registered
+           * avoiding use-after-free situation
+           */
+
+          main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
+          self->input_queues[thread_index].finish_cb_registered = TRUE;
+          log_queue_ref(&self->super.super);
+        }
+
+      log_msg_write_protect(msg);
+      node = log_msg_alloc_queue_node(msg, path_options);
+      iv_list_add_tail(&node->list, &self->input_queues[thread_index].items);
+
+      self->input_queues[thread_index].len++;
+
+      log_msg_unref(msg);
+      return;
+    }
+  // slow path
+  _push_tail_single_message(s, msg, path_options);
+}
+
+static void
+_move_part_of_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queue,
+                                   gint num_msgs_to_send_to_front_cache)
+{
+  struct iv_list_head *head = &input_queue->items;
+  struct iv_list_head *pos = head->next;
+  gint count = 0;
+  g_mutex_lock(&self->super.super.lock);
+  while (pos != head && count < num_msgs_to_send_to_front_cache)
+    {
+      struct iv_list_head *next = pos->next;
+      LogMessageQueueNode *node = iv_list_entry(pos, LogMessageQueueNode, list);
+      LogPathOptions lpo = LOG_PATH_OPTIONS_INIT;
+      lpo.ack_needed = node->ack_needed;
+      lpo.flow_control_requested = node->flow_control_requested;
+
+      LogMessage *msg = log_msg_ref(node->msg);
+      _push_tail_front_cache(self, msg, &lpo);
+      log_msg_free_queue_node(node);
+
+      iv_list_del_init(pos);
+      input_queue->len--;
+      log_queue_queued_messages_inc(&self->super.super);
+
+      pos = next;
+      count++;
+    }
+  log_queue_push_notify(&self->super.super);
+  g_mutex_unlock(&self->super.super.lock);
+}
+
+static void
+_move_part_of_input_to_disk_or_flow_control_window(LogQueueDiskNonReliable *self, InputQueue *input_queue)
+{
+  LogMessageQueueNode *node = iv_list_entry(input_queue->items.next, LogMessageQueueNode, list);
+  LogPathOptions lpo = LOG_PATH_OPTIONS_INIT;
+  lpo.ack_needed = node->ack_needed;
+  lpo.flow_control_requested = node->flow_control_requested;
+  LogMessage *msg = log_msg_ref(node->msg);
+
+  _push_tail_single_message(&self->super.super, msg, &lpo);
+
+  iv_list_del_init(&node->list);
+  input_queue->len--;
+  log_msg_free_queue_node(node);
+}
+
+static gpointer
+_move_input(gpointer user_data)
+{
+  LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) user_data;
+  gint thread_index = main_loop_worker_get_thread_index();
+  g_assert(thread_index >= 0);
+
+  if (self->input_queues[thread_index].len == 0)
+    goto exit;
+
+  while (self->input_queues[thread_index].len > 0)
+    {
+      gint num_msgs_to_send_to_front_cache = (qdisk_get_length(self->super.qdisk) == 0 && self->flow_control_window.len == 0)?
+                                             MIN(self->front_cache.limit - self->front_cache.len, self->input_queues[thread_index].len) : 0;
+
+      if (num_msgs_to_send_to_front_cache > 0)
+        {
+          _move_part_of_input_to_front_cache(self, &self->input_queues[thread_index], num_msgs_to_send_to_front_cache);
+        }
+      else
+        {
+          _move_part_of_input_to_disk_or_flow_control_window(self, &self->input_queues[thread_index]);
+        }
+    }
+exit:
+  self->input_queues[thread_index].finish_cb_registered = FALSE;
+  log_queue_unref(&self->super.super);
+  return NULL;
+}
+
+static void
 _empty_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *q)
 {
   while (q && q->len > 0)
@@ -665,9 +800,35 @@ _empty_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *q)
 }
 
 static void
+log_queue_disk_free_queue(struct iv_list_head *q)
+{
+  while (!iv_list_empty(q))
+    {
+      LogMessageQueueNode *node;
+      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+      LogMessage *msg;
+
+      node = iv_list_entry(q->next, LogMessageQueueNode, list);
+      iv_list_del(&node->list);
+
+      path_options.ack_needed = node->ack_needed;
+      msg = node->msg;
+      log_msg_free_queue_node(node);
+      log_msg_ack(msg, &path_options, AT_ABORTED);
+      log_msg_unref(msg);
+    }
+}
+
+static void
 _free(LogQueue *s)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
+
+  for (gint i = 0; i < self->num_input_queues; i++)
+    {
+      g_assert(self->input_queues[i].finish_cb_registered == FALSE);
+      log_queue_disk_free_queue(&self->input_queues[i].items);
+    }
 
   g_assert(self->front_cache_output.len == 0);
   g_assert(self->front_cache.len == 0);
@@ -765,7 +926,11 @@ log_queue_disk_non_reliable_new(DiskQueueOptions *options, const gchar *filename
                                 StatsClusterKeyBuilder *queue_sck_builder)
 {
   g_assert(options->reliable == FALSE);
-  LogQueueDiskNonReliable *self = g_new0(LogQueueDiskNonReliable, 1);
+
+  gint max_threads = main_loop_worker_get_max_number_of_threads();
+  LogQueueDiskNonReliable *self;
+  self = g_malloc0(sizeof(LogQueueDiskNonReliable) + max_threads * sizeof(self->input_queues[0]));
+
   log_queue_disk_init_instance(&self->super, options, "SLQF", filename, persist_name, stats_level,
                                driver_sck_builder, queue_sck_builder);
   _init_memory_queue(&self->front_cache);
@@ -781,6 +946,16 @@ log_queue_disk_non_reliable_new(DiskQueueOptions *options, const gchar *filename
       self->front_cache_output.limit = (options->front_cache_size - 1) / 2;
       self->front_cache.limit = options->front_cache_size - self->front_cache_output.limit;
     }
+
+  self->num_input_queues = max_threads;
+  for (gint i = 0; i < self->num_input_queues; i++)
+    {
+      INIT_IV_LIST_HEAD(&self->input_queues[i].items);
+      worker_batch_callback_init(&self->input_queues[i].cb);
+      self->input_queues[i].cb.func = _move_input;
+      self->input_queues[i].cb.user_data = self;
+    }
+
   _set_virtual_functions(self);
   return &self->super.super;
 }
