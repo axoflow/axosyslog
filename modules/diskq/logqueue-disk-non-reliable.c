@@ -319,7 +319,7 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
 
   if (_is_front_cache_enabled(self))
     {
-      if (self->front_cache_output.len == 0)
+      if (self->front_cache_output.len == 0 && self->front_cache.len > 0)
         _move_items_from_front_cache_queue_to_output_queue(self);
 
       ret = _move_messages_from_disk_to_front_cache_output(self);
