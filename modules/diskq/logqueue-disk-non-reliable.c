@@ -710,33 +710,32 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
 static void
 _maybe_move_part_of_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queue)
 {
-  struct iv_list_head *head = &input_queue->items;
-  struct iv_list_head *pos = head->next;
-  gint count = 0;
   g_mutex_lock(&self->super.super.lock);
   gint num_msgs_to_send_to_front_cache = (qdisk_get_length(self->super.qdisk) == 0 && self->flow_control_window.len == 0)?
                                          MIN(self->front_cache.limit - self->front_cache.len, input_queue->len) : 0;
 
-  while (pos != head && count < num_msgs_to_send_to_front_cache)
-    {
-      struct iv_list_head *next = pos->next;
-      LogMessageQueueNode *node = iv_list_entry(pos, LogMessageQueueNode, list);
-      LogPathOptions lpo = LOG_PATH_OPTIONS_INIT;
-      lpo.ack_needed = node->ack_needed;
-      lpo.flow_control_requested = node->flow_control_requested;
+  if (num_msgs_to_send_to_front_cache == 0)
+    goto exit;
 
-      LogMessage *msg = log_msg_ref(node->msg);
-      _push_tail_front_cache(self, msg, &lpo);
-      log_msg_free_queue_node(node);
-
-      iv_list_del_init(pos);
-      input_queue->len--;
-      log_queue_queued_messages_inc(&self->super.super);
-
-      pos = next;
-      count++;
-    }
+  gint count = 0;
+  struct iv_list_head *ilh, *ilh2;
+  iv_list_for_each_safe(ilh, ilh2, &input_queue->items)
+  {
+    if (count >= num_msgs_to_send_to_front_cache)
+      break;
+    LogMessageQueueNode *node = iv_list_entry(ilh, LogMessageQueueNode, list);
+    LogPathOptions lpo = LOG_PATH_OPTIONS_INIT;
+    LogMessage *msg;
+    _extract_queue_node(node, &msg, &lpo);
+    _push_tail_front_cache(self, msg, &lpo);
+    iv_list_del_init(ilh);
+    log_msg_free_queue_node(node);
+    input_queue->len--;
+    log_queue_queued_messages_inc(&self->super.super);
+    count++;
+  }
   log_queue_push_notify(&self->super.super);
+exit:
   g_mutex_unlock(&self->super.super.lock);
 }
 
@@ -745,10 +744,10 @@ _move_part_of_input_to_disk_or_flow_control_window(LogQueueDiskNonReliable *self
 {
   LogMessageQueueNode *node = iv_list_entry(input_queue->items.next, LogMessageQueueNode, list);
   LogPathOptions lpo = LOG_PATH_OPTIONS_INIT;
-  lpo.ack_needed = node->ack_needed;
   lpo.flow_control_requested = node->flow_control_requested;
-  LogMessage *msg = log_msg_ref(node->msg);
 
+  LogMessage *msg;
+  _extract_queue_node(node, &msg, &lpo);
   _push_tail_single_message(&self->super.super, msg, &lpo);
 
   iv_list_del_init(&node->list);
