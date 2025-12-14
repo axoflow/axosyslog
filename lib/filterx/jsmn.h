@@ -140,10 +140,10 @@ _jsmn_find_backslash_or_quote_or_nul(const char *s, int n)
  */
 typedef enum {
   JSMN_UNDEFINED = 0,
-  JSMN_OBJECT = 1 << 0,
-  JSMN_ARRAY = 1 << 1,
-  JSMN_STRING = 1 << 2,
-  JSMN_PRIMITIVE = 1 << 3
+  JSMN_OBJECT = 1,
+  JSMN_ARRAY = 2,
+  JSMN_STRING = 3,
+  JSMN_PRIMITIVE = 4,
 } jsmntype_t;
 
 enum jsmnerr {
