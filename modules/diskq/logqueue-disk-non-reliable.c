@@ -708,13 +708,15 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
 }
 
 static void
-_move_part_of_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queue,
-                                   gint num_msgs_to_send_to_front_cache)
+_maybe_move_part_of_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queue)
 {
   struct iv_list_head *head = &input_queue->items;
   struct iv_list_head *pos = head->next;
   gint count = 0;
   g_mutex_lock(&self->super.super.lock);
+  gint num_msgs_to_send_to_front_cache = (qdisk_get_length(self->super.qdisk) == 0 && self->flow_control_window.len == 0)?
+                                         MIN(self->front_cache.limit - self->front_cache.len, input_queue->len) : 0;
+
   while (pos != head && count < num_msgs_to_send_to_front_cache)
     {
       struct iv_list_head *next = pos->next;
@@ -766,17 +768,9 @@ _move_input(gpointer user_data)
 
   while (self->input_queues[thread_index].len > 0)
     {
-      gint num_msgs_to_send_to_front_cache = (qdisk_get_length(self->super.qdisk) == 0 && self->flow_control_window.len == 0)?
-                                             MIN(self->front_cache.limit - self->front_cache.len, self->input_queues[thread_index].len) : 0;
-
-      if (num_msgs_to_send_to_front_cache > 0)
-        {
-          _move_part_of_input_to_front_cache(self, &self->input_queues[thread_index], num_msgs_to_send_to_front_cache);
-        }
-      else
-        {
-          _move_part_of_input_to_disk_or_flow_control_window(self, &self->input_queues[thread_index]);
-        }
+      _maybe_move_part_of_input_to_front_cache(self, &self->input_queues[thread_index]);
+      if (self->input_queues[thread_index].len > 0)
+        _move_part_of_input_to_disk_or_flow_control_window(self, &self->input_queues[thread_index]);
     }
 exit:
   self->input_queues[thread_index].finish_cb_registered = FALSE;
