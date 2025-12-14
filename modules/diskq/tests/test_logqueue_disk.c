@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2025 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -159,6 +160,7 @@ _assert_log_queue_disk_non_reliable_is_empty(LogQueue *q)
   LogQueueDiskNonReliable *queue = (LogQueueDiskNonReliable *) q;
 
   cr_assert_eq(queue->front_cache.len, 0);
+  cr_assert_eq(queue->front_cache_output.len, 0);
   cr_assert_eq(queue->flow_control_window.len, 0);
   cr_assert_eq(queue->backlog.len, 0);
   cr_assert_eq(qdisk_get_length(queue->super.qdisk), 0);
@@ -413,6 +415,74 @@ Test(logqueue_disk, restart_corrupted_with_multiple_queues)
   unlink(filename_2);
   unlink(filename_2_corrupted);
 
+  stop_grabbing_messages();
+}
+
+static inline void
+_pop_msgs(LogQueue *queue, gint num_of_messages)
+{
+  for (gint i = 1; i <= num_of_messages + 1; i++)
+    _pop_msg(queue);
+}
+
+Test(logqueue_disk, test_non_reliable_queue_front_cache_size)
+{
+  gint front_cache_size = 1024;
+  start_grabbing_messages();
+
+  const gchar *filename = "test_nrq_front_cache_size.qf";
+
+  DiskQueueOptions options = {0};
+  disk_queue_options_set_default_options(&options);
+  disk_queue_options_reliable_set(&options, FALSE);
+  disk_queue_options_capacity_bytes_set(&options, MIN_CAPACITY_BYTES);
+  disk_queue_options_front_cache_size_set(&options, front_cache_size);
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_front_cache_size",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  LogQueueDiskNonReliable *nrq = (LogQueueDiskNonReliable *) queue;
+  stats_cluster_key_builder_free(queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+
+  cr_assert(log_queue_disk_start(queue));
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+  cr_assert_eq(nrq->front_cache.limit, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache_output.limit, front_cache_size/2);
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.flow_control_requested = TRUE;
+
+  for (gint i = 1; i <= front_cache_size/2; i++)
+    {
+      log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+      cr_assert_eq(nrq->front_cache.len, i);
+    }
+
+  _pop_msg(queue);
+
+  for (gint i = 1; i <= front_cache_size/2; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  cr_assert_eq(log_queue_get_length(queue), front_cache_size - 1);
+  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2 - 1);
+
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 2);
+
+  _pop_msgs(queue, front_cache_size + 1);
+  log_queue_ack_backlog(queue, front_cache_size + 2);
+
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+
+  gboolean persistent;
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+  disk_queue_options_destroy(&options);
+  unlink(filename);
   stop_grabbing_messages();
 }
 
