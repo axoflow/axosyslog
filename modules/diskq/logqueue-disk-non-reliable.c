@@ -866,6 +866,19 @@ _stop(LogQueueDisk *s, gboolean *persistent)
       self->front_cache.len = 0;
     }
 
+  g_mutex_lock(&s->super.lock);
+
+  for (gint i = 0; i < self->num_input_queues; i++)
+    {
+      if (self->input_queues[i].len > 0)
+        {
+          iv_list_splice_tail_init(&self->input_queues[i].items, &self->flow_control_window.items);
+          self->flow_control_window.len += self->input_queues[i].len;
+          self->input_queues[i].len = 0;
+        }
+    }
+  g_mutex_unlock(&s->super.lock);
+
   if (qdisk_stop(s->qdisk, _save_queue_callback, self))
     {
       *persistent = TRUE;
