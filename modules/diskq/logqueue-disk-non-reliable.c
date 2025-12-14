@@ -755,7 +755,7 @@ _move_part_of_input_to_disk_or_flow_control_window(LogQueueDiskNonReliable *self
   log_msg_free_queue_node(node);
 }
 
-static gpointer
+static inline gpointer
 _move_input(gpointer user_data)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) user_data;
