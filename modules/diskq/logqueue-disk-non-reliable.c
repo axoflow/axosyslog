@@ -793,26 +793,6 @@ _empty_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *q)
 }
 
 static void
-log_queue_disk_free_queue(struct iv_list_head *q)
-{
-  while (!iv_list_empty(q))
-    {
-      LogMessageQueueNode *node;
-      LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
-      LogMessage *msg;
-
-      node = iv_list_entry(q->next, LogMessageQueueNode, list);
-      iv_list_del(&node->list);
-
-      path_options.ack_needed = node->ack_needed;
-      msg = node->msg;
-      log_msg_free_queue_node(node);
-      log_msg_ack(msg, &path_options, AT_ABORTED);
-      log_msg_unref(msg);
-    }
-}
-
-static void
 _free(LogQueue *s)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
@@ -820,7 +800,7 @@ _free(LogQueue *s)
   for (gint i = 0; i < self->num_input_queues; i++)
     {
       g_assert(self->input_queues[i].finish_cb_registered == FALSE);
-      log_queue_disk_free_queue(&self->input_queues[i].items);
+      g_assert(self->input_queues[i].len == 0);
     }
 
   g_assert(self->front_cache_output.len == 0);
