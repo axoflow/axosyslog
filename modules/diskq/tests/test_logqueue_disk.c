@@ -619,6 +619,80 @@ Test(logqueue_disk, test_non_reliable_queue_rewind)
   stop_grabbing_messages();
 }
 
+Test(logqueue_disk, test_non_reliable_queue_persistance)
+{
+  gint front_cache_size = 1024;
+  start_grabbing_messages();
+
+  const gchar *filename = "test_nrq_persist.qf";
+
+  DiskQueueOptions options = {0};
+  disk_queue_options_set_default_options(&options);
+  disk_queue_options_reliable_set(&options, FALSE);
+  disk_queue_options_capacity_bytes_set(&options, MIN_CAPACITY_BYTES);
+  disk_queue_options_front_cache_size_set(&options, front_cache_size);
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_persist",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  LogQueueDiskNonReliable *nrq = (LogQueueDiskNonReliable *) queue;
+
+  cr_assert(log_queue_disk_start(queue));
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.flow_control_requested = TRUE;
+
+  for (gint i = 1; i <= 5555; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  _pop_msg(queue);
+  log_queue_ack_backlog(queue, 1);
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1);
+
+  /* restart */
+  gboolean persistent;
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+
+  queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_persist",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  nrq = (LogQueueDiskNonReliable *) queue;
+
+  cr_assert(log_queue_disk_start(queue));
+
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size);
+  cr_assert_eq(nrq->front_cache.len, 0);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1);
+
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  cr_assert_eq(log_queue_get_length(queue), 5555);
+  _pop_msgs(queue, 5555);
+  log_queue_ack_backlog(queue, 5555);
+
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  cr_assert_eq(nrq->front_cache.len, 2);
+  _pop_msg(queue);
+  log_queue_ack_backlog(queue, 1);
+
+  cr_assert_eq(nrq->front_cache_output.len, 1);
+    _pop_msg(queue);
+  log_queue_ack_backlog(queue, 1);
+
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+
+  stats_cluster_key_builder_free(queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+  disk_queue_options_destroy(&options);
+  unlink(filename);
+  stop_grabbing_messages();
+}
+
 static void
 setup(void)
 {
