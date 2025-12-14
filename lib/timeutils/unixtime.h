@@ -77,10 +77,6 @@ void unix_time_fix_timezone(UnixTime *self, gint new_gmtoff);
 void unix_time_fix_timezone_with_tzinfo(UnixTime *self, TimeZoneInfo *tzinfo);
 gboolean unix_time_fix_timezone_assuming_the_time_matches_real_time(UnixTime *self);
 
-gboolean unix_time_eq(const UnixTime *a, const UnixTime *b);
-gint64 unix_time_diff_in_seconds(const UnixTime *a, const UnixTime *b);
-gint64 unix_time_diff_in_msec(const UnixTime *a, const UnixTime *b);
-
 struct timeval timeval_from_unix_time(UnixTime *ut);
 UnixTime unix_time_from_unix_epoch_usec(guint64 unix_epoch);
 guint64 unix_time_to_unix_epoch_usec(const UnixTime ut);
@@ -88,5 +84,44 @@ UnixTime unix_time_from_unix_epoch_nsec(guint64 unix_epoch_nsec);
 guint64 unix_time_to_unix_epoch_nsec(const UnixTime ut);
 UnixTime unix_time_add_duration(UnixTime time, guint64 duration);
 void dump_unix_time(const UnixTime *ut, GString *output);
+
+static inline gboolean
+unix_time_eq(const UnixTime *a, const UnixTime *b)
+{
+  return a->ut_sec == b->ut_sec &&
+         a->ut_usec == b->ut_usec &&
+         a->ut_gmtoff == b->ut_gmtoff;
+}
+
+/* NOTE: returns sec */
+static inline gint64
+unix_time_diff_in_seconds(const UnixTime *a, const UnixTime *b)
+{
+  gint64 diff_sec = a->ut_sec - b->ut_sec;
+  gint64 diff_usec = (gint64) a->ut_usec - (gint64) b->ut_usec;
+
+  if (diff_usec > -500000 && diff_usec < 500000)
+    ;
+  else if (diff_usec <= -500000)
+    diff_sec--;
+  else
+    diff_sec++;
+  return diff_sec;
+}
+
+static inline gint64
+unix_time_diff_in_msec(const UnixTime *a, const UnixTime *b)
+{
+  gint64 diff_msec = (a->ut_sec - b->ut_sec) * 1000 + ((gint64) a->ut_usec - (gint64) b->ut_usec) / 1000;
+  gint64 diff_usec = ((gint64) a->ut_usec - (gint64) b->ut_usec) % 1000;
+
+  if (diff_usec > -500 && diff_usec < 500)
+    ;
+  else if (diff_usec <= -500)
+    diff_msec--;
+  else
+    diff_msec++;
+  return diff_msec;
+}
 
 #endif
