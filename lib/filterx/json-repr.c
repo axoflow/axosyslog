@@ -193,6 +193,8 @@ _convert_from_json_string(const gchar *json_text, gsize json_len,
   jsmntok_t *token = *tokens;
 
   result = filterx_string_new(&json_text[token->start], token->end - token->start);
+  if (token->flags & JSMN_STRING_NO_ESCAPE)
+    filterx_string_mark_safe_without_json_escaping(result);
   if (result)
     *tokens = token + 1;
   return result;

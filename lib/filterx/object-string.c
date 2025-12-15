@@ -107,10 +107,13 @@ _string_repr(FilterXObject *s, GString *repr)
 }
 
 gboolean
-string_format_json(const gchar *str, gsize str_len, GString *json)
+string_format_json(const gchar *str, gsize str_len, gboolean json_escaping_needed, GString *json)
 {
   g_string_append_c(json, '"');
-  append_unsafe_utf8_as_escaped(json, str, str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  if (json_escaping_needed)
+    append_unsafe_utf8_as_escaped(json, str, str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  else
+    g_string_append_len(json, str, str_len);
   g_string_append_c(json, '"');
   return TRUE;
 }
@@ -119,7 +122,7 @@ static gboolean
 _string_format_json(FilterXObject *s, GString *json)
 {
   FilterXString *self = (FilterXString *) s;
-  return string_format_json(self->str, self->str_len, json);
+  return string_format_json(self->str, self->str_len, filterx_string_is_json_escaping_needed(s), json);
 }
 
 static FilterXObject *
