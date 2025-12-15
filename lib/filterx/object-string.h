@@ -24,6 +24,9 @@
 
 #include "filterx-object.h"
 
+/* storage for the string is allocated separately, needs an explicit free() */
+#define FILTERX_STRING_FLAG_STR_ALLOCATED          0x01
+
 /* cache indices */
 enum
 {
