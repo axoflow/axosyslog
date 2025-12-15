@@ -55,9 +55,9 @@ Test(filterx_string, test_frozen_string_deduplication)
 }
 
 static void
-_translate_to_incremented(gchar *target, const gchar *source, gsize len)
+_translate_to_incremented(gchar *target, const gchar *source, gsize *len)
 {
-  for (gsize i = 0; i < len; i++)
+  for (gsize i = 0; i < *len; i++)
     target[i] = source[i] + 1;
 }
 

@@ -170,11 +170,11 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   memset(self, 0, sizeof(FilterXString));
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
-  self->str_len = str_len;
   if (translate)
-    translate(self->storage, str, str_len);
+    translate(self->storage, str, (gsize *) &str_len);
   else
     memcpy(self->storage, str, str_len);
+  self->str_len = str_len;
   self->storage[str_len] = 0;
   self->str = self->storage;
 
