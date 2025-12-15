@@ -198,6 +198,8 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
     }
 
   _filterx_string_hash(self);
+  if (unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
+    filterx_string_mark_safe_without_json_escaping(&self->super);
   g_hash_table_insert(dedup_storage, dedup_key, self);
   return TRUE;
 }
