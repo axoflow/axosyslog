@@ -160,6 +160,21 @@ ch_isdigit(gchar c)
 }
 
 static inline gboolean
+ch_isxdigit(gchar c)
+{
+  if (c >= '0' && c <= '9')
+    return TRUE;
+
+  if (c >= 'a' && c <= 'f')
+    return TRUE;
+
+  if (c >= 'A' && c <= 'F')
+    return TRUE;
+
+  return FALSE;
+}
+
+static inline gboolean
 ch_isalpha(gchar c)
 {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
