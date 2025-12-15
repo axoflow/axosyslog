@@ -22,9 +22,8 @@
  */
 
 #include "str-format.h"
-
+#include "str-utils.h"
 #include <string.h>
-#include <ctype.h>
 
 static gchar digits[] = "0123456789abcdef";
 
@@ -269,8 +268,7 @@ scan_positive_int(const gchar **buf, gint *left, gint field_width, gint *num)
       field_width--;
     }
 
-  while (*left > 0 && field_width > 0 &&
-         (**buf) >= '0' && (**buf) <= '9')
+  while (*left > 0 && field_width > 0 && ch_isdigit(**buf))
     {
       result = result * 10 + ((**buf) - '0');
       (*buf)++;
