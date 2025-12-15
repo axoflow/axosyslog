@@ -351,3 +351,85 @@ Test(test_str_format, scan_positive_int)
   assert_scan_positive_int_in_field_fails("31a", 3);
   assert_scan_positive_int_in_field_fails("31aaaaaaaa", 3);
 }
+
+static void
+assert_scan_hex_int_in_field_value_equals(const gchar *input, gint field, gint expected_result)
+{
+  const gchar *buf = input;
+  gsize left = strlen(buf);
+  glong result = expected_result + 1;
+
+  gboolean success = scan_hex_int(&buf, &left, field >= 0 ? field : left, &result);
+
+  cr_assert(success);
+  if (field == -1 || field == strlen(input))
+    {
+      cr_assert(*buf == 0);
+      cr_assert(left == 0);
+    }
+  else
+    {
+      cr_assert(buf[0] == input[field]);
+      cr_assert(left == strlen(input) - field);
+    }
+  cr_assert_eq(result, expected_result);
+}
+
+static void
+assert_scan_hex_int_value_equals(const gchar *input, gint expected_result)
+{
+  return assert_scan_hex_int_in_field_value_equals(input, -1, expected_result);
+}
+
+static void
+assert_scan_hex_int_in_field_fails(const gchar *input, gint field)
+{
+  const gchar *buf = input;
+  gsize left = strlen(buf);
+  glong result = 99;
+
+  gboolean success = scan_hex_int(&buf, &left, field >= 0 ? field : left, &result);
+
+  cr_assert_not(success);
+}
+
+static void
+assert_scan_hex_int_fails(const gchar *input)
+{
+  return assert_scan_hex_int_in_field_fails(input, -1);
+}
+
+Test(test_str_format, scan_hex_int)
+{
+  assert_scan_hex_int_value_equals("1", 1);
+  assert_scan_hex_int_value_equals("3", 3);
+  assert_scan_hex_int_value_equals("11", 0x11);
+  assert_scan_hex_int_value_equals("222", 0x222);
+
+  assert_scan_hex_int_value_equals("1a", 0x1a);
+  assert_scan_hex_int_value_equals("3a", 0x3a);
+  assert_scan_hex_int_value_equals("11a", 0x11a);
+  assert_scan_hex_int_value_equals("3FFF", 0x3fff);
+  assert_scan_hex_int_value_equals("3fff", 0x3fff);
+
+  assert_scan_hex_int_value_equals(" 3", 3);
+  assert_scan_hex_int_value_equals("  3", 3);
+  assert_scan_hex_int_value_equals("   3", 3);
+  assert_scan_hex_int_in_field_value_equals("  3", 2, 0);
+  assert_scan_hex_int_in_field_value_equals("  3", 3, 3);
+  assert_scan_hex_int_in_field_value_equals("  31", 3, 3);
+
+  assert_scan_hex_int_fails(" 3 ");
+  assert_scan_hex_int_fails(" 0 ");
+  assert_scan_hex_int_fails("q3");
+  assert_scan_hex_int_fails("3q");
+
+  /* string too short for field_length */
+  assert_scan_hex_int_in_field_fails("31", 3);
+
+  /* non-number in front */
+  assert_scan_hex_int_in_field_fails("q31", 3);
+  assert_scan_hex_int_in_field_fails("qqqqqqq31", 3);
+  assert_scan_hex_int_in_field_fails("31q", 3);
+  assert_scan_hex_int_in_field_fails("31qqqqqqq", 3);
+}
