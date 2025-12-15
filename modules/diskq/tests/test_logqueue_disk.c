@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2025 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -159,6 +160,7 @@ _assert_log_queue_disk_non_reliable_is_empty(LogQueue *q)
   LogQueueDiskNonReliable *queue = (LogQueueDiskNonReliable *) q;
 
   cr_assert_eq(queue->front_cache.len, 0);
+  cr_assert_eq(queue->front_cache_output.len, 0);
   cr_assert_eq(queue->flow_control_window.len, 0);
   cr_assert_eq(queue->backlog.len, 0);
   cr_assert_eq(qdisk_get_length(queue->super.qdisk), 0);
@@ -413,6 +415,281 @@ Test(logqueue_disk, restart_corrupted_with_multiple_queues)
   unlink(filename_2);
   unlink(filename_2_corrupted);
 
+  stop_grabbing_messages();
+}
+
+static inline void
+_pop_msgs(LogQueue *queue, gint num_of_messages)
+{
+  for (gint i = 1; i <= num_of_messages + 1; i++)
+    _pop_msg(queue);
+}
+
+Test(logqueue_disk, test_non_reliable_queue_front_cache_size)
+{
+  gint front_cache_size = 1024;
+  start_grabbing_messages();
+
+  const gchar *filename = "test_nrq_front_cache_size.qf";
+
+  DiskQueueOptions options = {0};
+  disk_queue_options_set_default_options(&options);
+  disk_queue_options_reliable_set(&options, FALSE);
+  disk_queue_options_capacity_bytes_set(&options, MIN_CAPACITY_BYTES);
+  disk_queue_options_front_cache_size_set(&options, front_cache_size);
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_front_cache_size",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  LogQueueDiskNonReliable *nrq = (LogQueueDiskNonReliable *) queue;
+  stats_cluster_key_builder_free(queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+
+  cr_assert(log_queue_disk_start(queue));
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+  cr_assert_eq(nrq->front_cache.limit, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache_output.limit, front_cache_size/2);
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.flow_control_requested = TRUE;
+
+  for (gint i = 1; i <= front_cache_size/2; i++)
+    {
+      log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+      cr_assert_eq(nrq->front_cache.len, i);
+    }
+
+  _pop_msg(queue);
+
+  for (gint i = 1; i <= front_cache_size/2; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  cr_assert_eq(log_queue_get_length(queue), front_cache_size - 1);
+  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2 - 1);
+
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 2);
+
+  _pop_msgs(queue, front_cache_size + 1);
+  log_queue_ack_backlog(queue, front_cache_size + 2);
+
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+
+  gboolean persistent;
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+  disk_queue_options_destroy(&options);
+  unlink(filename);
+  stop_grabbing_messages();
+}
+
+Test(logqueue_disk, test_non_reliable_queue_segments)
+{
+  gint front_cache_size = 4096;
+  gint additional_messages = 9999;
+  start_grabbing_messages();
+
+  const gchar *filename = "test_nrq_segments.qf";
+
+  DiskQueueOptions options = {0};
+  disk_queue_options_set_default_options(&options);
+  disk_queue_options_reliable_set(&options, FALSE);
+  disk_queue_options_capacity_bytes_set(&options, 100*1024*1024);
+  disk_queue_options_front_cache_size_set(&options, front_cache_size);
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_segments",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  LogQueueDiskNonReliable *nrq = (LogQueueDiskNonReliable *) queue;
+  stats_cluster_key_builder_free(queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+
+  cr_assert(log_queue_disk_start(queue));
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.flow_control_requested = TRUE;
+
+  for (gint i = 1; i <= front_cache_size/2; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  _assert_log_queue_disk_non_reliable_has_messages_in_front_cache(queue, &nrq->front_cache, front_cache_size/2);
+
+  for (gint i = 1; i <= additional_messages; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), additional_messages);
+
+  _pop_msg(queue);
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), additional_messages - front_cache_size/2 - 1);
+  cr_assert_eq(log_queue_get_length(queue), front_cache_size/2 + additional_messages - 1);
+
+  _pop_msgs(queue, front_cache_size/2 + additional_messages - 1);
+  cr_assert_eq(nrq->backlog.len, front_cache_size/2 + additional_messages);
+  log_queue_ack_backlog(queue, front_cache_size/2 + additional_messages);
+
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+
+  LogMessage *msg1 = log_msg_new_empty();
+  LogMessage *msg2 = log_msg_new_empty();
+  log_queue_push_tail(queue, log_msg_ref(msg1), &path_options);
+  log_queue_push_tail(queue, log_msg_ref(msg2), &path_options);
+  for (gint i = 1; i <= additional_messages; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  cr_assert_eq(nrq->front_cache_output.len, 0);
+  LogMessage *peeked_msg = log_queue_peek_head(queue);
+  cr_assert_eq(peeked_msg, msg1);
+  log_msg_unref(msg1);
+  log_msg_unref(peeked_msg);
+
+  _pop_msg(queue);
+  cr_assert_neq(nrq->front_cache_output.len, 0);
+
+  peeked_msg = log_queue_peek_head(queue);
+  cr_assert_eq(peeked_msg, msg2);
+  log_msg_unref(msg2);
+  log_msg_unref(peeked_msg);
+
+  _pop_msgs(queue, additional_messages + 1);
+  log_queue_ack_backlog(queue, additional_messages + 2);
+
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+
+  gboolean persistent;
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+  disk_queue_options_destroy(&options);
+  unlink(filename);
+  stop_grabbing_messages();
+}
+
+Test(logqueue_disk, test_non_reliable_queue_rewind)
+{
+  gint front_cache_size = 1024;
+  start_grabbing_messages();
+
+  const gchar *filename = "test_nrq_rewind.qf";
+
+  DiskQueueOptions options = {0};
+  disk_queue_options_set_default_options(&options);
+  disk_queue_options_reliable_set(&options, FALSE);
+  disk_queue_options_capacity_bytes_set(&options, MIN_CAPACITY_BYTES);
+  disk_queue_options_front_cache_size_set(&options, front_cache_size);
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_rewind",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  LogQueueDiskNonReliable *nrq = (LogQueueDiskNonReliable *) queue;
+  stats_cluster_key_builder_free(queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+
+  cr_assert(log_queue_disk_start(queue));
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.flow_control_requested = TRUE;
+
+  for (gint i = 1; i <= 5555; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  _pop_msgs(queue, 5555);
+  cr_assert_eq(nrq->front_cache_output.len, 0);
+  log_queue_rewind_backlog(queue, 3);
+  cr_assert_eq(nrq->front_cache_output.len, 3);
+  log_queue_rewind_backlog_all(queue);
+  cr_assert_eq(nrq->front_cache_output.len, 5555);
+
+  _pop_msgs(queue, 5555);
+  log_queue_ack_backlog(queue, 5555);
+
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+
+  gboolean persistent;
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+  disk_queue_options_destroy(&options);
+  unlink(filename);
+  stop_grabbing_messages();
+}
+
+Test(logqueue_disk, test_non_reliable_queue_persistance)
+{
+  gint front_cache_size = 1024;
+  start_grabbing_messages();
+
+  const gchar *filename = "test_nrq_persist.qf";
+
+  DiskQueueOptions options = {0};
+  disk_queue_options_set_default_options(&options);
+  disk_queue_options_reliable_set(&options, FALSE);
+  disk_queue_options_capacity_bytes_set(&options, MIN_CAPACITY_BYTES);
+  disk_queue_options_front_cache_size_set(&options, front_cache_size);
+
+  StatsClusterKeyBuilder *driver_sck_builder = stats_cluster_key_builder_new();
+  StatsClusterKeyBuilder *queue_sck_builder = stats_cluster_key_builder_new();
+  LogQueue *queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_persist",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  LogQueueDiskNonReliable *nrq = (LogQueueDiskNonReliable *) queue;
+
+  cr_assert(log_queue_disk_start(queue));
+
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+  path_options.flow_control_requested = TRUE;
+
+  for (gint i = 1; i <= 5555; i++)
+    log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+
+  _pop_msg(queue);
+  log_queue_ack_backlog(queue, 1);
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1);
+
+  /* restart */
+  gboolean persistent;
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+
+  queue = log_queue_disk_non_reliable_new(&options, filename, "test_nrq_persist",
+                                                  STATS_LEVEL0, driver_sck_builder, queue_sck_builder);
+  nrq = (LogQueueDiskNonReliable *) queue;
+
+  cr_assert(log_queue_disk_start(queue));
+
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size);
+  cr_assert_eq(nrq->front_cache.len, 0);
+  cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1);
+
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  cr_assert_eq(log_queue_get_length(queue), 5555);
+  _pop_msgs(queue, 5555);
+  log_queue_ack_backlog(queue, 5555);
+
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
+  cr_assert_eq(nrq->front_cache.len, 2);
+  _pop_msg(queue);
+  log_queue_ack_backlog(queue, 1);
+
+  cr_assert_eq(nrq->front_cache_output.len, 1);
+    _pop_msg(queue);
+  log_queue_ack_backlog(queue, 1);
+
+  _assert_log_queue_disk_non_reliable_is_empty(queue);
+
+  stats_cluster_key_builder_free(queue_sck_builder);
+  stats_cluster_key_builder_free(driver_sck_builder);
+  log_queue_disk_stop(queue, &persistent);
+  log_queue_unref(queue);
+  disk_queue_options_destroy(&options);
+  unlink(filename);
   stop_grabbing_messages();
 }
 
