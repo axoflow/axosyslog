@@ -30,7 +30,6 @@
 #include "str-utils.h"
 #include "utf8utils.h"
 
-#define FILTERX_STRING_FLAG_STR_ALLOCATED 0x01
 
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
