@@ -100,5 +100,8 @@ ParameterizedTest(StringValueList *string_value_list, test_utf8utils, test_escap
                                                            string_value_list->unsafe_flags);
 
   cr_assert_str_eq(escaped_str, string_value_list->expected_escaped_str, "Escaped UTF-8 string is not as expected");
+
+  gboolean escaping_was_applied = strcmp(escaped_str, string_value_list->str) != 0;
+  cr_assert_eq(unsafe_utf8_is_escaping_needed(string_value_list->str, string_value_list->str_len, string_value_list->unsafe_flags), escaping_was_applied);
   g_free(escaped_str);
 }
