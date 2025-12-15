@@ -286,6 +286,54 @@ fail:
   return FALSE;
 }
 
+/* NOTE: only works for valid hex digits */
+static inline gint
+_xdigit_to_value(gchar ch)
+{
+  if (ch_isdigit(ch))
+    return ch - '0';
+
+  if (ch >= 'a')
+    return ch - 'a' + 10;
+
+  return ch - 'A' + 10;
+}
+
+/* scan hex digits, without any prefix */
+gboolean
+scan_hex_int(const gchar **buf, gsize *left, gint field_width, glong *num)
+{
+  const gchar *original_buf = *buf;
+  gint original_left = *left;
+  guint32 result;
+
+  result = 0;
+
+  while (*left > 0 && field_width > 0 && **buf == ' ')
+    {
+      (*buf)++;
+      (*left)--;
+      field_width--;
+    }
+
+  while (*left > 0 && field_width > 0 && ch_isxdigit(**buf))
+    {
+      result = result * 16 + _xdigit_to_value(**buf);
+      (*buf)++;
+      (*left)--;
+      field_width--;
+    }
+  if (field_width != 0)
+    goto fail;
+  *num = result;
+  return TRUE;
+
+fail:
+  *buf = original_buf;
+  *left = original_left;
+  return FALSE;
+}
+
 gboolean
 scan_expect_char(const gchar **buf, gint *left, gchar value)
 {
