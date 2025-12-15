@@ -44,6 +44,7 @@ void append_unsafe_utf8_as_escaped(GString *escaped_output, const gchar *raw,
                                    const gchar *control_format,
                                    const gchar *invalid_format);
 
+gboolean unsafe_utf8_is_escaping_needed(const gchar *str, gssize str_len, guint32 unsafe_flags);
 
 /* for performance-critical use only */
 
