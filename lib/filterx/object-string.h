@@ -60,7 +60,7 @@ struct _FilterXString
 };
 
 
-typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize source_len);
+typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize *source_len);
 
 FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
