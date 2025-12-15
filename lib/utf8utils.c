@@ -278,3 +278,17 @@ convert_unsafe_utf8_to_escaped_text(const gchar *str, gssize str_len,
   append_unsafe_utf8_as_escaped_text(escaped_string, str, str_len, unsafe_flags);
   return g_string_free(escaped_string, FALSE);
 }
+
+/* this is not to be called on hot paths as it is relatively slow */
+gboolean
+unsafe_utf8_is_escaping_needed(const gchar *str, gssize str_len, guint32 unsafe_flags)
+{
+  if (str_len < 0)
+    str_len = strlen(str);
+  GString *escaped_string = g_string_sized_new(str_len);
+
+  append_unsafe_utf8_as_escaped_binary(escaped_string, str, str_len, unsafe_flags);
+  gboolean result = (str_len != escaped_string->len);
+  g_string_free(escaped_string, TRUE);
+  return result;
+}
