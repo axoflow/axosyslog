@@ -147,6 +147,8 @@ typedef enum {
 } jsmntype_t;
 
 typedef enum {
+  /* no internal escape sequences in the string, e.g. it can be extracted without performing de-escaping */
+  JSMN_STRING_NO_ESCAPE = 1 << 0,
 } jsmnflags_t;
 
 enum jsmnerr {
@@ -296,6 +298,7 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
                              const size_t len, jsmntok_t *tokens,
                              const size_t num_tokens) {
   jsmntok_t *token;
+  int escape_was_present = FALSE;
 
   int start = parser->pos;
 
@@ -320,12 +323,16 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 #ifdef JSMN_PARENT_LINKS
       token->parent = parser->toksuper;
 #endif
+      if (!escape_was_present)
+        token->flags |= JSMN_STRING_NO_ESCAPE;
       return 0;
     }
 
     /* Backslash: Quoted symbol expected */
     if (c == '\\' && parser->pos + 1 < len) {
       int i;
+
+      escape_was_present = TRUE;
       parser->pos++;
       switch (js[parser->pos]) {
       /* Allowed escaped symbols */
