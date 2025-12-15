@@ -68,6 +68,48 @@ Test(filterx_string, test_filterx_string_new_translate)
   filterx_object_unref(fobj);
 }
 
+Test(filterx_string, test_filterx_string_new_from_json_literal)
+{
+  FilterXObject *fobj = filterx_string_new_from_json_literal("abc", -1);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\ndef", -1);
+  assert_object_json_equals(fobj, "\"abc\\ndef\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\\\def", -1);
+  assert_object_json_equals(fobj, "\"abc\\\\def\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\ndef\\nghi\\", -1);
+  assert_object_json_equals(fobj, "\"abc\\ndef\\nghi\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("\\", -1);
+  assert_object_json_equals(fobj, "\"\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\u0040def", -1);
+  assert_object_json_equals(fobj, "\"abc@def\"");
+  filterx_object_unref(fobj);
+
+  /* BOM */
+  fobj = filterx_string_new_from_json_literal("abc\\uFFFEdef", -1);
+  assert_object_json_equals(fobj, "\"abc\uFFFEdef\"");
+  filterx_object_unref(fobj);
+
+  /* trailing backslash */
+  fobj = filterx_string_new_from_json_literal("abc\\", -1);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+
+  /* trailing backslash with length constraint */
+  fobj = filterx_string_new_from_json_literal("abc\\n", 4);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+}
+
 Test(filterx_string, test_filterx_string_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_string(NULL, NULL, 0);
