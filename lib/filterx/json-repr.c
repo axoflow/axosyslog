@@ -184,17 +184,24 @@ _convert_from_json_primitive(const gchar *json_text, gsize json_len,
   return result;
 }
 
+
 static FilterXObject *
 _convert_from_json_string(const gchar *json_text, gsize json_len,
-                             jsmntok_t **tokens, jsmntok_t *sentinel)
+                          jsmntok_t **tokens, jsmntok_t *sentinel)
 {
 
   FilterXObject *result = NULL;
   jsmntok_t *token = *tokens;
 
-  result = filterx_string_new(&json_text[token->start], token->end - token->start);
   if (token->flags & JSMN_STRING_NO_ESCAPE)
-    filterx_string_mark_safe_without_json_escaping(result);
+    {
+      result = filterx_string_new(&json_text[token->start], token->end - token->start);
+      filterx_string_mark_safe_without_json_escaping(result);
+    }
+  else
+    {
+      result = filterx_string_new_from_json_literal(&json_text[token->start], token->end - token->start);
+    }
   if (result)
     *tokens = token + 1;
   return result;
