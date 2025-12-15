@@ -255,6 +255,95 @@ filterx_string_new_take(gchar *str, gssize str_len)
   return &self->super;
 }
 
+static void
+_deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
+{
+  const gchar *input_pos = source;
+  gchar *output_pos = target;
+  gsize len = *source_len;
+  const gchar *backslash;
+  gssize remaining_len = len;
+
+  backslash = memchr(input_pos, '\\', len);
+  while (backslash != NULL)
+    {
+      gssize segment_len = backslash - input_pos;
+
+      /* copy characters up to the backslash */
+      memcpy(output_pos, input_pos, segment_len);
+      output_pos += segment_len;
+      input_pos = backslash + 1;
+      remaining_len = len - (input_pos - source);
+
+      if (remaining_len <= 0)
+        break;
+
+      /* translate escaped character */
+      if (*input_pos == 'u')
+        {
+          glong unicode_codepoint;
+
+          input_pos++;
+          remaining_len--;
+
+          if (scan_hex_int(&input_pos, (gsize *) &remaining_len, 4, &unicode_codepoint))
+            output_pos += g_unichar_to_utf8((gunichar) unicode_codepoint, output_pos);
+        }
+      else
+        {
+          gchar escaped_character = 0;
+
+          /* control character */
+          switch (*input_pos)
+            {
+            case '/':
+              escaped_character = '/';
+              break;
+            case 'b':
+              escaped_character = '\b';
+              break;
+            case 'f':
+              escaped_character = '\f';
+              break;
+            case 'n':
+              escaped_character = '\n';
+              break;
+            case 'r':
+              escaped_character = '\r';
+              break;
+            case 't':
+              escaped_character = '\t';
+              break;
+            case '\\':
+              escaped_character = '\\';
+              break;
+            case '"':
+              escaped_character = '"';
+              break;
+            default:
+              continue;
+            }
+          *output_pos = escaped_character;
+          output_pos++;
+          input_pos++;
+          remaining_len--;
+        }
+      backslash = remaining_len > 0 ? memchr(input_pos, '\\', remaining_len) : NULL;
+    }
+  if (remaining_len > 0)
+    {
+      memcpy(output_pos, input_pos, remaining_len);
+      output_pos += remaining_len;
+    }
+  *source_len = output_pos - target;
+}
+
+FilterXObject *
+filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
+{
+  return &_string_new(str, str_len, _deescape_json_string)->super;
+}
+
 static inline gsize
 _get_base64_encoded_size(gsize len)
 {
