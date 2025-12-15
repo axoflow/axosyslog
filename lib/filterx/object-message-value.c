@@ -302,7 +302,7 @@ _format_json(FilterXObject *s, GString *json)
       break;
 
     case LM_VT_STRING:
-      return string_format_json(self->repr, self->repr_len, json);
+      return string_format_json(self->repr, self->repr_len, TRUE, json);
     case LM_VT_BOOLEAN:
     {
       gboolean val;

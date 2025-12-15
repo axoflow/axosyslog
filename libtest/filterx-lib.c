@@ -132,7 +132,7 @@ _unknown_format_json(FilterXObject *s, GString *json)
 {
   gssize len;
   const gchar *str = filterx_test_unknown_object_marshaled_repr(&len);
-  return string_format_json(str, len, json);
+  return string_format_json(str, len, TRUE, json);
 }
 
 static gboolean
