@@ -78,6 +78,7 @@ typedef struct _InputQueue
   WorkerBatchCallback cb;
   guint32 len;
   guint32 non_flow_controlled_len;
+  UnixTime first_message_recvd;
   guint16 finish_cb_registered;
 } InputQueue;
 
@@ -265,13 +266,23 @@ log_queue_fifo_move_input_unlocked(LogQueueFifo *self, gint thread_index)
   self->input_queues[thread_index].non_flow_controlled_len = 0;
 }
 
+/* explicitly move input to the wait queue, to be called from the input thread */
+static void
+log_queue_fifo_move_input(LogQueueFifo *self, gint thread_index)
+{
+  g_mutex_lock(&self->super.lock);
+  log_queue_fifo_move_input_unlocked(self, thread_index);
+  log_queue_push_notify(&self->super);
+  g_mutex_unlock(&self->super.lock);
+}
+
 /* move items from the per-thread input queue to the lock-protected
  * "wait" queue, but grabbing locks first. This is registered as a
  * callback to be called when the input worker thread finishes its
  * job.
  */
 static gpointer
-log_queue_fifo_move_input(gpointer user_data)
+log_queue_fifo_input_batch_callback(gpointer user_data)
 {
   LogQueueFifo *self = (LogQueueFifo *) user_data;
   gint thread_index;
@@ -279,10 +290,7 @@ log_queue_fifo_move_input(gpointer user_data)
   thread_index = main_loop_worker_get_thread_index();
   g_assert(thread_index >= 0);
 
-  g_mutex_lock(&self->super.lock);
-  log_queue_fifo_move_input_unlocked(self, thread_index);
-  log_queue_push_notify(&self->super);
-  g_mutex_unlock(&self->super.lock);
+  log_queue_fifo_move_input(self, thread_index);
   self->input_queues[thread_index].finish_cb_registered = FALSE;
   log_queue_unref(&self->super);
   return NULL;
@@ -336,6 +344,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
   if (thread_index >= 0)
     {
       /* fastpath, use per-thread input FIFOs */
+
       if (!self->input_queues[thread_index].finish_cb_registered)
         {
           /* this is the first item in the input FIFO, register a finish
@@ -348,17 +357,37 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
           main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
           self->input_queues[thread_index].finish_cb_registered = TRUE;
           log_queue_ref(&self->super);
+          self->input_queues[thread_index].first_message_recvd = msg->timestamps[LM_TS_RECVD];
         }
 
       log_msg_write_protect(msg);
       node = log_msg_alloc_queue_node(msg, path_options);
       iv_list_add_tail(&node->list, &self->input_queues[thread_index].items);
-      self->input_queues[thread_index].len++;
+      gsize qlen = ++self->input_queues[thread_index].len;
 
       if (!path_options->flow_control_requested)
         self->input_queues[thread_index].non_flow_controlled_len++;
 
+      gboolean flush_input_queue = FALSE;
+      if ((qlen & 0x7F) == 0)
+        {
+          /* don't check the elapsed time for every message, once every 128
+           * should be sufficient to keep our delays low.
+           */
+
+          gint64 input_queue_age_msec =
+              unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
+
+          flush_input_queue = input_queue_age_msec > 100;
+        }
       log_msg_unref(msg);
+
+      if (flush_input_queue)
+        {
+          /* if the input queue is more than 100msec old, let's do an
+           * explicit flush to avoid starving the consumer */
+          log_queue_fifo_move_input(self, thread_index);
+        }
       return;
     }
 
@@ -685,7 +714,7 @@ log_queue_fifo_new(gint log_fifo_size, const gchar *persist_name, gint stats_lev
     {
       INIT_IV_LIST_HEAD(&self->input_queues[i].items);
       worker_batch_callback_init(&self->input_queues[i].cb);
-      self->input_queues[i].cb.func = log_queue_fifo_move_input;
+      self->input_queues[i].cb.func = log_queue_fifo_input_batch_callback;
       self->input_queues[i].cb.user_data = self;
     }
   INIT_IV_LIST_HEAD(&self->wait_queue.items);
