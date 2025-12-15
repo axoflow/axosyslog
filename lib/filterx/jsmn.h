@@ -146,6 +146,9 @@ typedef enum {
   JSMN_PRIMITIVE = 4,
 } jsmntype_t;
 
+typedef enum {
+} jsmnflags_t;
+
 enum jsmnerr {
   /* Not enough tokens were provided */
   JSMN_ERROR_NOMEM = -1,
@@ -162,7 +165,9 @@ enum jsmnerr {
  * end		end position in JSON data string
  */
 typedef struct jsmntok {
-  jsmntype_t type;
+  /* the token type, one of jsmntype_t */
+  short type;
+  short flags;
   int start;
   int end;
   int size;
@@ -211,6 +216,7 @@ static jsmntok_t *jsmn_alloc_token(jsmn_parser *parser, jsmntok_t *tokens,
 #ifdef JSMN_PARENT_LINKS
   tok->parent = -1;
 #endif
+  tok->flags = 0;
   return tok;
 }
 
