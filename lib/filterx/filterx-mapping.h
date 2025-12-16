@@ -36,7 +36,7 @@ struct FilterXMapping_
 };
 
 gboolean filterx_mapping_merge(FilterXObject *s, FilterXObject *other);
-gboolean filterx_mapping_keys(FilterXObject *s, FilterXObject **keys);
+FilterXObject *filterx_mapping_keys(FilterXObject *s);
 
 void filterx_mapping_init_instance(FilterXMapping *self, FilterXType *type);
 

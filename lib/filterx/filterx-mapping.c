@@ -23,6 +23,7 @@
 #include "filterx/filterx-mapping.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
+#include "filterx/object-list.h"
 #include "filterx/filterx-sequence.h"
 #include "filterx/filterx-eval.h"
 #include "str-utils.h"
@@ -44,8 +45,6 @@ _add_elem(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
 gboolean
 filterx_mapping_merge(FilterXObject *s, FilterXObject *other)
 {
-  other = filterx_ref_unwrap_ro(other);
-  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(mapping)));
   return filterx_object_iter(other, _add_elem, s);
 }
 
@@ -61,23 +60,16 @@ _add_elem_to_list(FilterXObject *key_obj, FilterXObject *value_obj, gpointer use
   return success;
 }
 
-gboolean
-filterx_mapping_keys(FilterXObject *s, FilterXObject **keys)
+FilterXObject *
+filterx_mapping_keys(FilterXObject *s)
 {
-  g_assert(s);
-  g_assert(keys);
-  FilterXObject *obj = filterx_ref_unwrap_ro(s);
-  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)))
-    goto error;
-  g_assert(filterx_object_is_type(*keys, &FILTERX_TYPE_NAME(sequence)));
-
-  gboolean result = filterx_object_iter(obj, _add_elem_to_list, *keys);
-
-  filterx_object_unref(s);
-  return result;
-error:
-  filterx_object_unref(s);
-  return FALSE;
+  FilterXObject *keys = filterx_list_new();
+  if (!filterx_object_iter(s, _add_elem_to_list, keys))
+    {
+      filterx_object_unref(keys);
+      return NULL;
+    }
+  return keys;
 }
 
 static FilterXObject *
@@ -140,10 +132,6 @@ filterx_mapping_init_instance(FilterXMapping *self, FilterXType *type)
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
-  rhs_object = filterx_ref_unwrap_ro(rhs_object);
-  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(mapping)))
-    return NULL;
-
   FilterXObject *cloned = filterx_object_clone(lhs_object);
 
   if (!filterx_mapping_merge(cloned, rhs_object))

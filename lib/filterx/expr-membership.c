@@ -63,16 +63,7 @@ _eval_in(FilterXExpr *s)
 
   FilterXObject *list_obj = filterx_ref_unwrap_ro(rhs_obj);
 
-  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(sequence)))
-    {
-      filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
-                                          "Right hand side must be list type, got: %s",
-                                          filterx_object_get_type_name(list_obj));
-      goto error;
-    }
-
   guint64 size;
-
   if (!filterx_object_len(list_obj, &size))
     {
       filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", s, "len() method failed");
