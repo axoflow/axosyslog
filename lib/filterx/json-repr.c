@@ -243,13 +243,6 @@ filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_
 }
 
 FilterXObject *
-filterx_object_from_json_object(struct json_object *jso, GError **error)
-{
-  return NULL;
-}
-
-
-FilterXObject *
 filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
 {
   const gint min_tokens = 256;
