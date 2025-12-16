@@ -110,6 +110,34 @@ Test(filterx_string, test_filterx_string_new_from_json_literal)
   filterx_object_unref(fobj);
 }
 
+Test(filterx_string, test_filterx_string_cache_json_escaping_need)
+{
+  FilterXObject *fobj = filterx_string_new("literal-string", -1);
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal-string\"");
+  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal-string\"");
+  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  filterx_object_unref(fobj);
+
+
+  fobj = filterx_string_new("literal\nstring", -1);
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal\\nstring\"");
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal\\nstring\"");
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_string, test_filterx_string_frozen_json_escaping_need)
+{
+  FilterXObject *fobj = filterx_string_new_frozen("foo\"bar", configuration);
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"foo\\\"bar\"");
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+}
+
 Test(filterx_string, test_filterx_string_typecast_null_args)
 {
   FilterXObject *obj = filterx_typecast_string(NULL, NULL, 0);
