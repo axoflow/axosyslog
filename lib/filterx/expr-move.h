@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2024 Axoflow
- * Copyright (c) 2024 László Várady
+ * Copyright (c) 2025 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,21 +19,11 @@
  * COPYING for details.
  *
  */
+#ifndef FILTERX_MOVE_KEY_H_INCLUDED
+#define FILTERX_MOVE_KEY_H_INCLUDED
 
-#ifndef FILTERX_OBJECT_DICT_H
-#define FILTERX_OBJECT_DICT_H
+#include "filterx/expr-function.h"
 
-#include "filterx/filterx-object.h"
-
-typedef gint32 FilterXDictAnchor;
-
-FILTERX_DECLARE_TYPE(dict);
-
-FilterXObject *filterx_dict_new(void);
-FilterXObject *filterx_dict_sized_new(gsize init_size);
-FilterXObject *filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
-
-FilterXDictAnchor filterx_dict_get_anchor_for_key(FilterXObject *s, FilterXObject *key);
-void filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor, FilterXObject **new_value);
+FilterXExpr *filterx_function_move_new(FilterXFunctionArgs *args, GError **error);
 
 #endif
