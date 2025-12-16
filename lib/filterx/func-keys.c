@@ -127,7 +127,8 @@ FilterXExpr *
 filterx_function_keys_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionKeys *self = g_new0(FilterXFunctionKeys, 1);
-  filterx_function_init_instance(&self->super, "keys");
+
+  filterx_function_init_instance(&self->super, "keys", FALSE);
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;

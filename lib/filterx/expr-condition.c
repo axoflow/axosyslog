@@ -209,7 +209,7 @@ FilterXExpr *
 filterx_conditional_new(FilterXExpr *condition)
 {
   FilterXConditional *self = g_new0(FilterXConditional, 1);
-  filterx_expr_init_instance(&self->super, "conditional");
+  filterx_expr_init_instance(&self->super, "conditional", FALSE);
   self->super.eval = _eval_conditional;
   self->super.optimize = _optimize;
   self->super.init = _init;

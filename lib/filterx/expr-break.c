@@ -39,7 +39,7 @@ FilterXExpr *
 filterx_expr_break(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self, "break");
+  filterx_expr_init_instance(self, "break", FALSE);
   self->eval = _eval_break;
 
   return self;

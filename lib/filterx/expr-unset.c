@@ -107,7 +107,7 @@ FilterXExpr *
 filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprUnset *self = g_new0(FilterXExprUnset, 1);
-  filterx_function_init_instance(&self->super, "unset");
+  filterx_function_init_instance(&self->super, "unset", TRUE);
 
   self->super.super.eval = _eval_unset;
   self->super.super.optimize = _optimize;

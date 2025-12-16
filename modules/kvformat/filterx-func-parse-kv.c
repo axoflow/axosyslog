@@ -314,7 +314,8 @@ FilterXExpr *
 filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
-  filterx_function_init_instance(&self->super, "parse_kv");
+
+  filterx_function_init_instance(&self->super, "parse_kv", FALSE);
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;
