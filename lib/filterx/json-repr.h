@@ -40,7 +40,6 @@ enum FilterXJSONError
 GQuark filterx_json_error_quark(void);
 
 /* C API */
-FilterXObject *filterx_object_from_json_object(struct json_object *jso, GError **error);
 FilterXObject *filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error);
 gboolean filterx_object_to_json(FilterXObject *o, GString *repr);
 
