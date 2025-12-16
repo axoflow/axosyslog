@@ -91,64 +91,36 @@ _extract_filepath(FilterXFunctionArgs *args, GError **error)
 static FilterXObject *
 _load_json_file(const gchar *filepath, GError **error)
 {
-  FILE *file = fopen(filepath, "rb");
-  if (!file)
+  gchar *content;
+  gsize length;
+  GError *local_error = NULL;
+
+  if (!g_file_get_contents(filepath, &content, &length, &local_error))
     {
       g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_FILE_OPEN_ERROR,
-                  "failed to open file: %s (%s)", filepath, g_strerror(errno));
+                  "failed to open file: %s (%s)", filepath, local_error->message);
+      g_clear_error(&local_error);
       return NULL;
     }
 
-  struct json_tokener *tokener = json_tokener_new();
-  struct json_object *object = NULL;
-
-  gchar buffer[1024];
-  while (TRUE)
+  FilterXObject *result = filterx_object_from_json(content, length, &local_error);
+  g_free(content);
+  if (!result)
     {
-      gsize bytes_read = fread(buffer, 1, sizeof(buffer), file);
-      if (bytes_read <= 0)
-        {
-          if (ferror(file))
-            g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_FILE_READ_ERROR,
-                        "failed to read file: %s (%s)", filepath, g_strerror(errno));
-          else
-            g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_FILE_READ_ERROR,
-                        "failed to read file: %s (unexpected EOF)", filepath);
-          break;
-        }
-
-      object = json_tokener_parse_ex(tokener, buffer, bytes_read);
-
-      enum json_tokener_error parse_result = json_tokener_get_error(tokener);
-      if (parse_result == json_tokener_success)
-        break;
-      if (parse_result == json_tokener_continue)
-        continue;
-
       g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_JSON_PARSE_ERROR,
-                  "failed to parse JSON file: %s (%s)", filepath, json_tokener_error_desc(parse_result));
-      break;
+                  "failed to parse JSON file: %s (%s)", filepath, local_error->message);
+      g_clear_error(&local_error);
+      return NULL;
     }
 
-  FilterXObject *result = NULL;
-
-  if (!object)
-    goto exit;
-
-  if (json_object_get_type(object) != json_type_object && json_object_get_type(object) != json_type_array)
+  if (!filterx_object_is_type_or_ref(result, &FILTERX_TYPE_NAME(mapping)) &&
+      !filterx_object_is_type_or_ref(result, &FILTERX_TYPE_NAME(sequence)))
     {
       g_set_error(error, CACHE_JSON_FILE_ERROR, CACHE_JSON_FILE_ERROR_JSON_PARSE_ERROR,
                   "JSON file must contain an object or an array");
-      json_object_put(object);
-      goto exit;
+      filterx_object_unref(result);
+      return NULL;
     }
-
-  result = filterx_object_from_json_object(object, error);
-
-exit:
-  json_tokener_free(tokener);
-  json_object_put(object);
-  fclose(file);
   return result;
 }
 
