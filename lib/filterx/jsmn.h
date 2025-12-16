@@ -179,6 +179,7 @@ typedef struct jsmn_parser {
   unsigned int pos;     /* offset in the JSON string */
   unsigned int toknext; /* next token to allocate */
   int toksuper;         /* superior token node, e.g. parent object or array */
+  int openobjects;
 } jsmn_parser;
 
 /**
@@ -365,7 +366,6 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 JSMN_API int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
                         jsmntok_t *tokens, const unsigned int num_tokens) {
   int r;
-  int i;
   jsmntok_t *token;
   int count = parser->toknext;
 
@@ -401,6 +401,7 @@ JSMN_API int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
       token->type = (c == '{' ? JSMN_OBJECT : JSMN_ARRAY);
       token->start = parser->pos;
       parser->toksuper = parser->toknext - 1;
+      parser->openobjects++;
       break;
     case '}':
     case ']':
@@ -454,6 +455,7 @@ JSMN_API int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
         }
       }
 #endif
+      parser->openobjects--;
       break;
     case '\"':
       r = jsmn_parse_string(parser, js, len, tokens, num_tokens);
@@ -537,14 +539,8 @@ JSMN_API int jsmn_parse(jsmn_parser *parser, const char *js, const size_t len,
     }
   }
 
-  if (tokens != NULL) {
-    for (i = parser->toknext - 1; i >= 0; i--) {
-      /* Unmatched opened object or array */
-      if (tokens[i].start != -1 && tokens[i].end == -1) {
-        return JSMN_ERROR_PART;
-      }
-    }
-  }
+  if (parser->openobjects != 0)
+    return JSMN_ERROR_PART;
 
   return count;
 }
@@ -557,6 +553,7 @@ JSMN_API void jsmn_init(jsmn_parser *parser) {
   parser->pos = 0;
   parser->toknext = 0;
   parser->toksuper = -1;
+  parser->openobjects = 0;
 }
 
 #endif /* JSMN_HEADER */
