@@ -122,7 +122,20 @@ static gboolean
 _string_format_json(FilterXObject *s, GString *json)
 {
   FilterXString *self = (FilterXString *) s;
-  return string_format_json(self->str, self->str_len, filterx_string_is_json_escaping_needed(s), json);
+  gsize orig_len = json->len;
+  const gint quote_characters_len = 2;
+
+  gboolean success = string_format_json(self->str, self->str_len, filterx_string_is_json_escaping_needed(s), json);
+
+  if ((self->str_len + quote_characters_len) == (json->len - orig_len))
+    {
+      /* no escapes were necessary, we only enclosed the original value in
+       * quotes: cache the result in our flags to avoid escaping the same
+       * string the next time */
+
+      filterx_string_mark_safe_without_json_escaping(s);
+    }
+  return success;
 }
 
 static FilterXObject *
