@@ -122,7 +122,20 @@ static gboolean
 _string_format_json(FilterXObject *s, GString *json)
 {
   FilterXString *self = (FilterXString *) s;
-  return string_format_json(self->str, self->str_len, filterx_string_is_json_escaping_needed(s), json);
+  gsize orig_len = json->len;
+  const gint quote_characters_len = 2;
+
+  gboolean success = string_format_json(self->str, self->str_len, filterx_string_is_json_escaping_needed(s), json);
+
+  if ((self->str_len + quote_characters_len) == (json->len - orig_len))
+    {
+      /* no escapes were necessary, we only enclosed the original value in
+       * quotes: cache the result in our flags to avoid escaping the same
+       * string the next time */
+
+      filterx_string_mark_safe_without_json_escaping(s);
+    }
+  return success;
 }
 
 static FilterXObject *
@@ -197,7 +210,7 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
     }
 
   _filterx_string_hash(self);
-  if (unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
+  if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
     filterx_string_mark_safe_without_json_escaping(&self->super);
   g_hash_table_insert(dedup_storage, dedup_key, self);
   return TRUE;
