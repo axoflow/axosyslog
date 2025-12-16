@@ -38,8 +38,6 @@ struct FilterXMapping_
 gboolean filterx_mapping_merge(FilterXObject *s, FilterXObject *other);
 gboolean filterx_mapping_keys(FilterXObject *s, FilterXObject **keys);
 
-void filterx_mapping_init_instance(FilterXMapping *self, FilterXType *type);
-
 FILTERX_DECLARE_TYPE(mapping);
 
 static inline gboolean
@@ -71,6 +69,16 @@ filterx_mapping_normalize_key(FilterXObject *key, const gchar **key_string, gsiz
         }
     }
   return TRUE;
+}
+
+static inline void
+filterx_mapping_init_instance(FilterXMapping *self, FilterXType *type)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(type->is_mutable);
+#endif
+
+  filterx_object_init_instance(&self->super, type);
 }
 
 #endif
