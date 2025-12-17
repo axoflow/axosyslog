@@ -39,6 +39,10 @@ from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.common.session_data import get_session_data
 from axosyslog_light.common.session_data import SessionData
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import ClickhouseServerExecutor
+from axosyslog_light.helpers.dqtool.dqtool import DqTool
+from axosyslog_light.helpers.dqtool.dqtool_docker_executor import DqToolDockerExecutor
+from axosyslog_light.helpers.dqtool.dqtool_executor import DqToolExecutor
+from axosyslog_light.helpers.dqtool.dqtool_local_executor import DqToolLocalExecutor
 from axosyslog_light.helpers.loggen.loggen import Loggen
 from axosyslog_light.helpers.loggen.loggen_docker_executor import LoggenDockerExecutor
 from axosyslog_light.helpers.loggen.loggen_executor import LoggenExecutor
@@ -214,6 +218,12 @@ def loggen(testcase_parameters):
 
 
 @pytest.fixture
+def dqtool(testcase_parameters):
+    instance = DqTool()
+    yield instance
+
+
+@pytest.fixture
 def clickhouse_server(request, testcase_parameters):
     clickhouse_server_instance = ClickhouseServerExecutor(testcase_parameters)
     yield clickhouse_server_instance
@@ -321,9 +331,15 @@ def setup(request):
         LoggenExecutor.set_default_executor(
             LoggenDockerExecutor(request.config.getoption("--docker-image")),
         )
+        DqToolExecutor.set_default_executor(
+            DqToolDockerExecutor(request.config.getoption("--docker-image")),
+        )
     elif request.config.getoption("--runner") == "local":
         LoggenExecutor.set_default_executor(
             LoggenLocalExecutor(Path(request.config.getoption("--installdir"), "bin", "loggen")),
+        )
+        DqToolExecutor.set_default_executor(
+            DqToolLocalExecutor(Path(request.config.getoption("--installdir"), "bin", "dqtool")),
         )
 
 
