@@ -38,6 +38,7 @@ static FilterXObject *
 _eval_in(FilterXExpr *s)
 {
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
+  FilterXObject *result = NULL;
 
   FilterXObject *lhs_obj = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
                            : filterx_expr_eval_typed(self->super.lhs);
@@ -58,7 +59,7 @@ _eval_in(FilterXExpr *s)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
                                           "Failed to evaluate right hand side");
-      goto error;
+      goto exit;
     }
 
   FilterXObject *list_obj = filterx_ref_unwrap_ro(rhs_obj);
@@ -69,7 +70,7 @@ _eval_in(FilterXExpr *s)
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
                                           "Right hand side must be list type, got: %s",
                                           filterx_object_get_type_name(list_obj));
-      goto error;
+      goto exit;
     }
 
   guint64 size;
@@ -77,7 +78,7 @@ _eval_in(FilterXExpr *s)
   if (!filterx_object_len(list_obj, &size))
     {
       filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", s, "len() method failed");
-      goto error;
+      goto exit;
     }
 
   for (guint64 i = 0; i < size; i++)
@@ -87,21 +88,18 @@ _eval_in(FilterXExpr *s)
       if (filterx_compare_objects(lhs, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
         {
           filterx_object_unref(elt);
-          filterx_object_unref(rhs_obj);
-          filterx_object_unref(lhs_obj);
-          return filterx_boolean_new(TRUE);
+          result =  filterx_boolean_new(TRUE);
+          goto exit;
         }
       filterx_object_unref(elt);
     }
 
-  filterx_object_unref(rhs_obj);
-  filterx_object_unref(lhs_obj);
-  return filterx_boolean_new(FALSE);
+  result = filterx_boolean_new(FALSE);
 
-error:
+exit:
   filterx_object_unref(rhs_obj);
   filterx_object_unref(lhs_obj);
-  return NULL;
+  return result;
 }
 
 static FilterXExpr *
