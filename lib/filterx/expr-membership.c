@@ -22,6 +22,7 @@
 #include "filterx/expr-membership.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-sequence.h"
+#include "filterx/object-dict.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object.h"
@@ -33,6 +34,13 @@ typedef struct FilterXOperatorIn_
   FilterXObject *literal_lhs;
   FilterXObject *literal_rhs;
 } FilterXOperatorIn;
+
+static FilterXObject *
+_eval_in_dict(FilterXOperatorIn *self, FilterXObject *dict_obj, FilterXObject *needle_obj)
+{
+  gboolean is_key_set = filterx_object_is_key_set(dict_obj, needle_obj);
+  return filterx_boolean_new(is_key_set);
+}
 
 static FilterXObject *
 _eval_in_list(FilterXOperatorIn *self, FilterXObject *list_obj, FilterXObject *needle_obj)
