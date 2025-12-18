@@ -35,6 +35,33 @@ typedef struct FilterXOperatorIn_
 } FilterXOperatorIn;
 
 static FilterXObject *
+_eval_in_list(FilterXOperatorIn *self, FilterXObject *list_obj, FilterXObject *needle_obj)
+{
+  guint64 size;
+
+  if (!filterx_object_len(list_obj, &size))
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", &self->super.super, "len() method failed");
+      return NULL;
+    }
+
+  FilterXObject *needle = filterx_ref_unwrap_ro(needle_obj);
+  for (guint64 i = 0; i < size; i++)
+    {
+      FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
+
+      if (filterx_compare_objects(needle, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
+        {
+          filterx_object_unref(elt);
+          return filterx_boolean_new(TRUE);
+        }
+      filterx_object_unref(elt);
+    }
+
+  return filterx_boolean_new(FALSE);
+}
+
+static FilterXObject *
 _eval_in(FilterXExpr *s)
 {
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
@@ -50,7 +77,6 @@ _eval_in(FilterXExpr *s)
       return NULL;
     }
 
-  FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_obj);
 
   FilterXObject *rhs_obj = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
                            : filterx_expr_eval(self->super.rhs);
@@ -73,28 +99,7 @@ _eval_in(FilterXExpr *s)
       goto exit;
     }
 
-  guint64 size;
-
-  if (!filterx_object_len(list_obj, &size))
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", s, "len() method failed");
-      goto exit;
-    }
-
-  for (guint64 i = 0; i < size; i++)
-    {
-      FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
-
-      if (filterx_compare_objects(lhs, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
-        {
-          filterx_object_unref(elt);
-          result =  filterx_boolean_new(TRUE);
-          goto exit;
-        }
-      filterx_object_unref(elt);
-    }
-
-  result = filterx_boolean_new(FALSE);
+  result = _eval_in_list(self, list_obj, lhs_obj);
 
 exit:
   filterx_object_unref(rhs_obj);
