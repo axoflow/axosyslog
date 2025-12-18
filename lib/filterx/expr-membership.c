@@ -63,7 +63,8 @@ _eval_in(FilterXExpr *s)
 
   FilterXObject *list_obj = filterx_ref_unwrap_ro(rhs_obj);
 
-  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(sequence)))
+  gboolean is_list_obj = filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(sequence));
+  if (!is_list_obj)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
                                           "Right hand side must be list type, got: %s",
