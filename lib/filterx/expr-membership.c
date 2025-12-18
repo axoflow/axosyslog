@@ -96,18 +96,22 @@ _eval_in(FilterXExpr *s)
       goto exit;
     }
 
-  FilterXObject *list_obj = filterx_ref_unwrap_ro(rhs_obj);
+  FilterXObject *iterable_obj = filterx_ref_unwrap_ro(rhs_obj);
 
-  gboolean is_list_obj = filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(sequence));
-  if (!is_list_obj)
+  gboolean is_list_obj = filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(sequence));
+  gboolean is_dict_obj = filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(dict));
+  if (!is_list_obj && !is_dict_obj)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
-                                          "Right hand side must be list type, got: %s",
-                                          filterx_object_get_type_name(list_obj));
+                                          "Right hand side must be list or dict type, got: %s",
+                                          filterx_object_get_type_name(iterable_obj));
       goto exit;
     }
 
-  result = _eval_in_list(self, list_obj, lhs_obj);
+  if (is_list_obj)
+    result = _eval_in_list(self, iterable_obj, lhs_obj);
+  else
+    result = _eval_in_dict(self, iterable_obj, lhs_obj);
 
 exit:
   filterx_object_unref(rhs_obj);
