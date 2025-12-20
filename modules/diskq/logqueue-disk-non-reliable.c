@@ -640,6 +640,7 @@ _push_tail_front_cache(LogQueueDiskNonReliable *self, LogMessage *msg, const Log
 static inline void
 _push_tail_flow_control_window(LogQueueDiskNonReliable *self, LogMessage *msg, const LogPathOptions *path_options)
 {
+  log_msg_shrink_payload(msg);
   _push_to_memory_queue_tail(&self->flow_control_window, msg, path_options);
   log_queue_memory_usage_add(&self->super.super, log_msg_get_size(msg));
   /* no ack */

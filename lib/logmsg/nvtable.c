@@ -819,6 +819,28 @@ nv_table_realloc(NVTable **pself, gsize additional_space)
   return TRUE;
 }
 
+void
+nv_table_shrink(NVTable **pself)
+{
+  NVTable *self = *pself;
+  gsize old_size = self->size;
+  gsize new_size;
+
+  if (self->ref_cnt != 1 || self->borrowed)
+    return;
+
+  new_size = nv_table_get_alloc_size(self->num_static_entries, self->index_size, self->used);
+  if (new_size >= old_size - 128)
+    return;
+
+  self->size = new_size;
+  /* move the downwards growing region to the end of the new buffer */
+  memmove(NV_TABLE_ADDR(self, self->size - self->used),
+          NV_TABLE_ADDR(self, old_size - self->used),
+          self->used);
+  *pself = g_realloc(self, new_size);
+}
+
 NVTable *
 nv_table_ref(NVTable *self)
 {
