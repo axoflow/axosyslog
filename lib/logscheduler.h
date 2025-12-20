@@ -58,7 +58,6 @@ typedef struct _LogSchedulerPartition
 typedef struct _LogSchedulerThreadState
 {
   WorkerBatchCallback batch_callback;
-  guint8 batch_callback_registered:1;
   struct iv_list_head batch_by_partition[LOGSCHEDULER_MAX_PARTITIONS];
 
   gint last_partition;
