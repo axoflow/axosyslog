@@ -593,7 +593,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
     {
       /* error allocating string in payload, reallocate */
       guint32 old_size = self->payload->size;
-      if (!nv_table_realloc(self->payload, &self->payload))
+      if (!nv_table_realloc(self->payload, &self->payload, name_len + 1 + value_len + 1))
         {
           /* can't grow the payload, it has reached the maximum size */
           msg_info("Cannot store value for this log message, maximum size has been reached",
@@ -644,7 +644,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
     {
       /* error allocating string in payload, reallocate */
       guint32 old_size = self->payload->size;
-      if (!nv_table_realloc(self->payload, &self->payload))
+      if (!nv_table_realloc(self->payload, &self->payload, 0))
         {
           /* can't grow the payload, it has reached the maximum size */
           const gchar *name = log_msg_get_value_name(handle, NULL);
@@ -715,7 +715,7 @@ log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle,
   while (!nv_table_add_value_indirect(self->payload, handle, name, name_len, &referenced_slice, type, &new_entry))
     {
       /* error allocating string in payload, reallocate */
-      if (!nv_table_realloc(self->payload, &self->payload))
+      if (!nv_table_realloc(self->payload, &self->payload, name_len + 1))
         {
           /* error growing the payload, skip without storing the value */
           msg_info("Cannot store referenced value for this log message, maximum size has been reached",
