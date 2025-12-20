@@ -638,7 +638,11 @@ void log_msg_registry_foreach(GHFunc func, gpointer user_data);
 
 gint log_msg_lookup_time_stamp_name(const gchar *name);
 
-gssize log_msg_get_size(LogMessage *self);
+static inline gsize
+log_msg_get_size(LogMessage *self)
+{
+  return self->allocated_bytes;
+}
 
 #define evt_tag_msg_reference(msg)             \
     evt_tag_printf("msg", "%p", (msg)),        \
