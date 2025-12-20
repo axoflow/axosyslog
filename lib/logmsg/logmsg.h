@@ -362,6 +362,12 @@ log_msg_unpin_payload(LogMessage *self, LogMessagePin pin)
 }
 
 static inline void
+log_msg_shrink_payload(LogMessage *self)
+{
+  nv_table_shrink(&self->payload);
+}
+
+static inline void
 log_msg_write_protect(LogMessage *self)
 {
   self->write_protected = TRUE;
