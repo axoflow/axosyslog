@@ -80,7 +80,6 @@ typedef struct _InputQueue
   guint32 non_flow_controlled_len;
   UnixTime first_message_recvd;
   gsize total_size;
-  guint16 finish_cb_registered;
 } InputQueue;
 
 typedef struct _OverflowQueue
@@ -150,7 +149,7 @@ log_queue_fifo_is_empty_racy(LogQueue *s)
       gint i;
       for (i = 0; i < self->num_input_queues && !has_message_in_queue; i++)
         {
-          has_message_in_queue |= self->input_queues[i].finish_cb_registered;
+          has_message_in_queue |= main_loop_worker_batch_callback_registered(&self->input_queues[i].cb);
         }
     }
   g_mutex_unlock(&self->super.lock);
@@ -284,7 +283,6 @@ log_queue_fifo_input_batch_callback(gpointer user_data)
   g_assert(thread_index >= 0);
 
   log_queue_fifo_move_input(self, thread_index);
-  self->input_queues[thread_index].finish_cb_registered = FALSE;
   log_queue_unref(&self->super);
   return NULL;
 }
@@ -338,7 +336,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
     {
       /* fastpath, use per-thread input FIFOs */
 
-      if (!self->input_queues[thread_index].finish_cb_registered)
+      if (!main_loop_worker_batch_callback_registered(&self->input_queues[thread_index].cb))
         {
           /* this is the first item in the input FIFO, register a finish
            * callback to make sure it gets moved to the wait_queue if the
@@ -348,7 +346,6 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
            */
 
           main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
-          self->input_queues[thread_index].finish_cb_registered = TRUE;
           log_queue_ref(&self->super);
           self->input_queues[thread_index].first_message_recvd = msg->timestamps[LM_TS_RECVD];
         }
@@ -665,7 +662,7 @@ log_queue_fifo_free(LogQueue *s)
 
   for (i = 0; i < self->num_input_queues; i++)
     {
-      g_assert(self->input_queues[i].finish_cb_registered == FALSE);
+      g_assert(!main_loop_worker_batch_callback_registered(&self->input_queues[i].cb));
       log_queue_fifo_free_queue(&self->input_queues[i].items);
     }
 
