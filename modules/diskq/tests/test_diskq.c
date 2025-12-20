@@ -579,6 +579,11 @@ setup(void)
   configuration->stats_options.level = 1;
 
   cr_assert(cfg_init(configuration));
+
+  /* we bump the number so our tests do not increase it as we send/receive
+   * messages.  This makes the size of a LogMessage stable, thus we can
+   * check stats counters */
+  logmsg_queue_node_max = 10;
 }
 
 static void
