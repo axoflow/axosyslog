@@ -780,15 +780,11 @@ nv_table_init_borrowed(gpointer space, gsize space_len, gint num_static_entries)
 
 /* returns TRUE if successfully realloced, FALSE means that we're unable to grow */
 gboolean
-nv_table_realloc(NVTable *self, NVTable **new_nv_table)
+nv_table_realloc(NVTable *self, NVTable **new_nv_table, gsize additional_space)
 {
   gsize old_size = self->size;
-  gsize new_size;
+  gsize new_size = nv_table_get_next_size(self, additional_space + sizeof(NVEntry));
 
-  /* double the size of the current allocation */
-  new_size = ((gsize) self->size) << 1;
-  if (new_size > NV_TABLE_MAX_BYTES)
-    new_size = NV_TABLE_MAX_BYTES;
   if (new_size == old_size)
     return FALSE;
 
