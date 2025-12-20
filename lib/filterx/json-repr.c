@@ -37,6 +37,7 @@
 #include "parse-number.h"
 #include "scratch-buffers.h"
 #include "utf8utils.h"
+#include "tls-support.h"
 
 #include "logmsg/type-hinting.h"
 
@@ -44,6 +45,16 @@
 #define JSMN_STRICT 1
 #define JSMN_PARENT_LINKS 1
 #include "jsmn.h"
+
+TLS_BLOCK_START
+{
+  jsmntok_t *jsmn_tokens;
+  gint jsmn_tokens_len;
+}
+TLS_BLOCK_END;
+
+#define jsmn_tokens      __tls_deref(jsmn_tokens)
+#define jsmn_tokens_len  __tls_deref(jsmn_tokens_len)
 
 /* JSON parsing */
 
@@ -224,16 +235,38 @@ filterx_object_from_json_object(struct json_object *jso, GError **error)
 FilterXObject *
 filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
 {
+  const gint min_tokens = 256;
+  const gint max_tokens = 65536;
+
   g_return_val_if_fail(error == NULL || (*error) == NULL, NULL);
 
   if (repr_len < 0)
     repr_len = strlen(repr);
 
-  jsmntok_t token_storage[256];
   jsmn_parser parser;
-
   jsmn_init(&parser);
-  gint r = jsmn_parse(&parser, repr, repr_len, token_storage, G_N_ELEMENTS(token_storage));
+
+  if (jsmn_tokens == NULL)
+    {
+      jsmn_tokens_len = min_tokens;
+      jsmn_tokens = g_new(jsmntok_t, jsmn_tokens_len);
+    }
+
+  gint r;
+  gboolean try_again;
+  do
+    {
+      try_again = FALSE;
+
+      r = jsmn_parse(&parser, repr, repr_len, jsmn_tokens, jsmn_tokens_len);
+      if (r == JSMN_ERROR_NOMEM && jsmn_tokens_len < max_tokens)
+        {
+          jsmn_tokens_len *= 2;
+          jsmn_tokens = g_renew(jsmntok_t, jsmn_tokens, jsmn_tokens_len);
+          try_again = TRUE;
+        }
+    }
+  while (try_again);
 
   if (r < 0)
     {
@@ -285,7 +318,7 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
       return NULL;
     }
 
-  jsmntok_t *tokens = token_storage;
+  jsmntok_t *tokens = jsmn_tokens;
   FilterXObject *res = filterx_object_from_jsmn_tokens(repr, repr_len, &tokens, tokens + r);
 
   if (!res)
@@ -365,6 +398,18 @@ filterx_format_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 
   FilterXObject *arg = args[0];
   return _format_json(arg);
+}
+
+void
+filterx_json_repr_thread_init(void)
+{
+}
+
+void
+filterx_json_repr_thread_deinit(void)
+{
+  g_free(jsmn_tokens);
+  jsmn_tokens = NULL;
 }
 
 GQuark
