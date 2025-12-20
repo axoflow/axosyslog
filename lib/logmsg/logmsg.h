@@ -665,4 +665,6 @@ evt_tag_msg_value_name(const gchar *name, NVHandle value_handle)
   return evt_tag_str(name, value_name);
 }
 
+extern gint logmsg_queue_node_max;
+
 #endif
