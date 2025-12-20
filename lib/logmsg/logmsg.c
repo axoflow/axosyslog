@@ -2125,20 +2125,6 @@ log_msg_lookup_time_stamp_name(const gchar *name)
   return -1;
 }
 
-gssize
-log_msg_get_size(LogMessage *self)
-{
-  if (!self)
-    return 0;
-
-  return
-    sizeof(LogMessage) + // msg.static fields
-    + self->alloc_sdata * sizeof(self->sdata[0]) +
-    g_sockaddr_len(self->saddr) + g_sockaddr_len(self->daddr) +
-    ((self->num_tags) ? sizeof(self->tags[0]) * self->num_tags : 0) +
-    nv_table_get_memory_consumption(self->payload); // msg.payload (nvtable)
-}
-
 #ifdef __linux__
 
 const gchar *
