@@ -539,6 +539,7 @@ void log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle, NVH
                                           guint16 ofs, guint16 len, LogMessageValueType type);
 void log_msg_unset_value(LogMessage *self, NVHandle handle);
 void log_msg_unset_value_by_name(LogMessage *self, const gchar *name);
+void log_msg_shrink_payload(LogMessage *self);
 gboolean log_msg_values_foreach(const LogMessage *self, NVTableForeachFunc func, gpointer user_data);
 NVHandle log_msg_get_match_handle(gint index_);
 gint log_msg_get_match_index(NVHandle handle);
