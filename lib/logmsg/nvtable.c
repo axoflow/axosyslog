@@ -813,7 +813,7 @@ nv_table_clone(NVTable *self, gint additional_space)
   NVTable *new;
   gint new_size;
 
-  if (nv_table_get_bottom(self) - nv_table_get_ofs_table_top(self) < additional_space)
+  if (nv_table_get_available(self) < additional_space)
     new_size = self->size;
   else
     new_size = self->size + (NV_TABLE_BOUND(additional_space));
