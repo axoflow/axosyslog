@@ -131,7 +131,7 @@ _double_add(FilterXObject *s, FilterXObject *object)
 }
 
 gboolean
-double_repr(double dbl, GString *repr)
+double_repr(double dbl, gint prec, GString *repr)
 {
   if (isnan(dbl))
     {
@@ -147,7 +147,15 @@ double_repr(double dbl, GString *repr)
     {
       gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
 
-      g_ascii_dtostr(buf, sizeof(buf), dbl);
+      /* NOTE: if precision is unknown, use up to 17 digits.  We are also using
+       * the %g format qualifier, which causes trailing zeroes to be removed.
+       * it is a good compromise between readability and accuracy.  The same
+       * format string is used by g_ascii_dtostr() */
+
+      if (prec >= 0)
+        snprintf(buf, sizeof(buf), "%.*f", prec, dbl);
+      else
+        snprintf(buf, sizeof(buf), "%.17g", dbl);
       gchar *dot = strchr(buf, '.');
       if (!dot && strchr(buf, 'e') == NULL)
         {
@@ -176,7 +184,7 @@ _double_format_json(FilterXObject *s, GString *json)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
 
-  return double_repr(gn_as_double(&self->value), json);
+  return double_repr(gn_as_double(&self->value), self->value.precision, json);
 }
 
 static gboolean
@@ -184,7 +192,7 @@ _double_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
   *t = LM_VT_DOUBLE;
-  return double_repr(gn_as_double(&self->value), repr);
+  return double_repr(gn_as_double(&self->value), self->value.precision, repr);
 }
 
 FilterXObject *

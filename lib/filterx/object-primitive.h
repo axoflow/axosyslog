@@ -62,7 +62,7 @@ FilterXObject *filterx_typecast_double(FilterXExpr *s, FilterXObject *args[], gs
 
 gboolean bool_repr(gboolean bool_val, GString *repr);
 gboolean bool_format_json(gboolean bool_val, GString *json);
-gboolean double_repr(gdouble val, GString *repr);
+gboolean double_repr(gdouble val, gint prec, GString *repr);
 gboolean integer_repr(gint64 val, GString *repr);
 
 /* NOTE: Consider using filterx_object_extract_integer() to also support message_value. */
