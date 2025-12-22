@@ -162,6 +162,23 @@ nv_registry_free(NVRegistry *self)
   g_free(self);
 }
 
+/* NVTable */
+
+static inline gsize
+nv_table_get_next_size(NVTable *self, gsize additional_space)
+{
+  gsize new_size;
+
+  if (nv_table_get_available(self) < additional_space)
+    new_size = self->size;
+  else
+    new_size = self->size + (NV_TABLE_BOUND(additional_space));
+
+  if (new_size > NV_TABLE_MAX_BYTES)
+    new_size = NV_TABLE_MAX_BYTES;
+  return new_size;
+}
+
 /* return the offset to a newly allocated payload string */
 static inline NVEntry *
 nv_table_alloc_value(NVTable *self, gsize alloc_size)
@@ -813,14 +830,7 @@ nv_table_clone(NVTable *self, gint additional_space)
   NVTable *new;
   gint new_size;
 
-  if (nv_table_get_available(self) < additional_space)
-    new_size = self->size;
-  else
-    new_size = self->size + (NV_TABLE_BOUND(additional_space));
-
-  if (new_size > NV_TABLE_MAX_BYTES)
-    new_size = NV_TABLE_MAX_BYTES;
-
+  new_size = nv_table_get_next_size(self, additional_space + sizeof(NVEntry));
   new = g_malloc(new_size);
   memcpy(new, self, sizeof(NVTable) + self->num_static_entries * sizeof(self->static_entries[0]) + self->index_size *
          sizeof(NVIndexEntry));
