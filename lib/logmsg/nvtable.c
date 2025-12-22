@@ -167,15 +167,36 @@ nv_registry_free(NVRegistry *self)
 static inline gsize
 nv_table_get_next_size(NVTable *self, gsize additional_space)
 {
-  gsize new_size;
+  gsize avail_size = nv_table_get_available(self);
 
-  if (nv_table_get_available(self) < additional_space)
-    new_size = self->size;
+  if (additional_space < 256)
+    {
+      /* since we are reallocating, try to get at least 256 bytes of fresh
+       * storage so we can grow without another realloc */
+
+      additional_space = 256;
+    }
+
+  if (additional_space <= avail_size)
+    return self->size;
+
+  gsize new_size = self->size + (additional_space - avail_size);
+  if (new_size > 4096)
+    {
+      /* align to page boundary */
+      new_size = (new_size + 0xFFF) & ~0xFFF;
+    }
+  else if (new_size > 1024)
+    {
+      /* align to 1024 byte boundary */
+      new_size = (new_size + 0x3FF) & ~0x3FF;
+    }
   else
-    new_size = self->size + (NV_TABLE_BOUND(additional_space));
+    new_size = 1024;
 
   if (new_size > NV_TABLE_MAX_BYTES)
     new_size = NV_TABLE_MAX_BYTES;
+
   return new_size;
 }
 
@@ -825,10 +846,10 @@ nv_table_unref(NVTable *self)
  *
  **/
 NVTable *
-nv_table_clone(NVTable *self, gint additional_space)
+nv_table_clone(NVTable *self, gsize additional_space)
 {
   NVTable *new;
-  gint new_size;
+  gsize new_size;
 
   new_size = nv_table_get_next_size(self, additional_space + sizeof(NVEntry));
   new = g_malloc(new_size);

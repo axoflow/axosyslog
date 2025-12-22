@@ -313,7 +313,7 @@ NVTable *nv_table_new(gint num_static_values, gint index_size_hint, gint init_le
 NVTable *nv_table_init_borrowed(gpointer space, gsize space_len, gint num_static_entries);
 gboolean nv_table_realloc(NVTable *self, NVTable **new_nv_table);
 NVTable *nv_table_compact(NVTable *self);
-NVTable *nv_table_clone(NVTable *self, gint additional_space);
+NVTable *nv_table_clone(NVTable *self, gsize additional_space);
 NVTable *nv_table_ref(NVTable *self);
 void nv_table_unref(NVTable *self);
 
