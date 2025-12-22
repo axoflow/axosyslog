@@ -164,15 +164,14 @@ double_repr(double dbl, gint prec, GString *repr)
         }
       else if (dot)
         {
-          gchar *last_useful_digit = NULL;
-          for (gchar *c = dot+1; *c; c++)
+          gchar *last_useful_digit = dot + 1;
+          for (gchar *c = last_useful_digit; *c; c++)
             {
               if (*c != '0')
                 last_useful_digit = c;
             }
           /* truncate trailing zeroes */
-          if (last_useful_digit)
-            *(last_useful_digit+1) = 0;
+          *(last_useful_digit+1) = 0;
         }
       g_string_append(repr, buf);
     }
