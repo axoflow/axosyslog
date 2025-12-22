@@ -357,10 +357,16 @@ nv_table_get_ofs_table_top(NVTable *self)
                                                         self->index_size * sizeof(NVIndexEntry)];
 }
 
+static inline gsize
+nv_table_get_available(NVTable *self)
+{
+  return (gsize)(nv_table_get_bottom(self) - nv_table_get_ofs_table_top(self));
+}
+
 static inline gboolean
 nv_table_alloc_check(NVTable *self, gsize alloc_size)
 {
-  if ((gsize)(nv_table_get_bottom(self) - nv_table_get_ofs_table_top(self)) < alloc_size)
+  if (nv_table_get_available(self) < alloc_size)
     return FALSE;
   return TRUE;
 }
