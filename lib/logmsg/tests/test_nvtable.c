@@ -911,7 +911,7 @@ Test(nvtable, test_nvtable_realloc_extends_nvtable_size)
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  cr_assert(nv_table_realloc(tab, &tab, 2048));
+  cr_assert(nv_table_realloc(&tab, 2048));
   cr_assert_geq(nv_table_get_available(tab), 2048);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
@@ -929,7 +929,7 @@ Test(nvtable, test_nvtable_realloc_sets_size_to_nv_table_max_bytes_at_most)
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
   gsize old_size = tab->size;
-  cr_assert(nv_table_realloc(tab, &tab, NV_TABLE_MAX_BYTES));
+  cr_assert(nv_table_realloc(&tab, NV_TABLE_MAX_BYTES));
   cr_assert_gt(tab->size, old_size);
   cr_assert_leq(tab->size, NV_TABLE_MAX_BYTES);
 
@@ -948,7 +948,7 @@ Test(nvtable, test_nvtable_realloc_fails_if_new_allocation_fits)
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  cr_assert_not(nv_table_realloc(tab, &tab, 1024));
+  cr_assert_not(nv_table_realloc(&tab, 1024));
   cr_assert_eq(tab->size, NV_TABLE_MAX_BYTES);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
@@ -971,7 +971,7 @@ Test(nvtable, test_nvtable_realloc_leaves_original_intact_if_there_are_multiple_
 
   old_size = tab_ref1->size;
 
-  cr_assert(nv_table_realloc(tab_ref2, &tab_ref2, 2048));
+  cr_assert(nv_table_realloc(&tab_ref2, 2048));
   cr_assert_eq(tab_ref1->size, old_size);
   cr_assert_geq(tab_ref2->size, old_size);
   assert_nvtable(tab_ref1, STATIC_HANDLE, "value", 5);
