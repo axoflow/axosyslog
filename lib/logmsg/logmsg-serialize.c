@@ -116,6 +116,9 @@ _deserialize_sdata(LogMessageSerializationState *state)
   if (!serialize_read_uint8(sa, &self->alloc_sdata))
     return FALSE;
 
+  if (self->alloc_sdata < self->num_sdata)
+    self->alloc_sdata = self->num_sdata;
+
   g_assert(!self->sdata);
   self->sdata = (NVHandle *) g_malloc(sizeof(NVHandle)*self->alloc_sdata);
 
