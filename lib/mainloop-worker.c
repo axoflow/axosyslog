@@ -320,7 +320,6 @@ main_loop_worker_job_complete(void)
  * Register a function to be called back when the current I/O job is
  * finished (in the worker thread).
  *
- * NOTE: we only support one pending callback at a time, may become a list of callbacks if needed in the future
  */
 void
 main_loop_worker_register_batch_callback(WorkerBatchCallback *cb)
