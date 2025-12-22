@@ -22,6 +22,7 @@
 #include "filterx/expr-membership.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-sequence.h"
+#include "filterx/object-dict.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object.h"
@@ -35,9 +36,44 @@ typedef struct FilterXOperatorIn_
 } FilterXOperatorIn;
 
 static FilterXObject *
+_eval_in_dict(FilterXOperatorIn *self, FilterXObject *dict_obj, FilterXObject *needle_obj)
+{
+  gboolean is_key_set = filterx_object_is_key_set(dict_obj, needle_obj);
+  return filterx_boolean_new(is_key_set);
+}
+
+static FilterXObject *
+_eval_in_list(FilterXOperatorIn *self, FilterXObject *list_obj, FilterXObject *needle_obj)
+{
+  guint64 size;
+
+  if (!filterx_object_len(list_obj, &size))
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", &self->super.super, "len() method failed");
+      return NULL;
+    }
+
+  FilterXObject *needle = filterx_ref_unwrap_ro(needle_obj);
+  for (guint64 i = 0; i < size; i++)
+    {
+      FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
+
+      if (filterx_compare_objects(needle, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
+        {
+          filterx_object_unref(elt);
+          return filterx_boolean_new(TRUE);
+        }
+      filterx_object_unref(elt);
+    }
+
+  return filterx_boolean_new(FALSE);
+}
+
+static FilterXObject *
 _eval_in(FilterXExpr *s)
 {
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
+  FilterXObject *result = NULL;
 
   FilterXObject *lhs_obj = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
                            : filterx_expr_eval_typed(self->super.lhs);
@@ -49,7 +85,6 @@ _eval_in(FilterXExpr *s)
       return NULL;
     }
 
-  FilterXObject *lhs = filterx_ref_unwrap_ro(lhs_obj);
 
   FilterXObject *rhs_obj = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
                            : filterx_expr_eval(self->super.rhs);
@@ -58,49 +93,30 @@ _eval_in(FilterXExpr *s)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
                                           "Failed to evaluate right hand side");
-      goto error;
+      goto exit;
     }
 
-  FilterXObject *list_obj = filterx_ref_unwrap_ro(rhs_obj);
+  FilterXObject *iterable_obj = filterx_ref_unwrap_ro(rhs_obj);
 
-  if (!filterx_object_is_type(list_obj, &FILTERX_TYPE_NAME(sequence)))
+  gboolean is_list_obj = filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(sequence));
+  gboolean is_dict_obj = filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(dict));
+  if (!is_list_obj && !is_dict_obj)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
-                                          "Right hand side must be list type, got: %s",
-                                          filterx_object_get_type_name(list_obj));
-      goto error;
+                                          "Right hand side must be list or dict type, got: %s",
+                                          filterx_object_get_type_name(iterable_obj));
+      goto exit;
     }
 
-  guint64 size;
+  if (is_list_obj)
+    result = _eval_in_list(self, iterable_obj, lhs_obj);
+  else
+    result = _eval_in_dict(self, iterable_obj, lhs_obj);
 
-  if (!filterx_object_len(list_obj, &size))
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate 'in' operator", s, "len() method failed");
-      goto error;
-    }
-
-  for (guint64 i = 0; i < size; i++)
-    {
-      FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
-
-      if (filterx_compare_objects(lhs, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
-        {
-          filterx_object_unref(elt);
-          filterx_object_unref(rhs_obj);
-          filterx_object_unref(lhs_obj);
-          return filterx_boolean_new(TRUE);
-        }
-      filterx_object_unref(elt);
-    }
-
+exit:
   filterx_object_unref(rhs_obj);
   filterx_object_unref(lhs_obj);
-  return filterx_boolean_new(FALSE);
-
-error:
-  filterx_object_unref(rhs_obj);
-  filterx_object_unref(lhs_obj);
-  return NULL;
+  return result;
 }
 
 static FilterXExpr *

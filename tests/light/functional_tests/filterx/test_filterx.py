@@ -2759,6 +2759,78 @@ def test_in_operator_message_value(config, syslog_ng):
     assert file_true.read_log() == "found"
 
 
+def test_in_dict_operator_key_exists(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        my_dict = {"foo": "foovalue", "bar": "barvalue"};
+        if ("foo" in my_dict) {
+            $MSG = "found";
+        } else {
+            $MSG = "not found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "found"
+
+
+def test_in_dict_operator_key_not_exists(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        my_dict = {"foo": "foovalue", "bar": "barvalue"};
+        if ("baz" in my_dict) {
+            $MSG = "found";
+        } else {
+            $MSG = "not found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "not found"
+
+
+def test_not_in_dict_operator(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        my_dict = {"foo": "foovalue", "bar": "barvalue"};
+        if ("baz" not in my_dict) {
+            $MSG = "not found";
+        } else {
+            $MSG = "found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "not found"
+
+
+def test_in_dict_operator_with_message_value(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        my_dict = {"string": "value1", "foo": "value2"};
+        if (${values.str} in my_dict) {
+            $MSG = "found";
+        } else {
+            $MSG = "not found";
+        };
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "found"
+
+
 def test_arithmetic_operators_precedence(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
