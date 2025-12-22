@@ -195,11 +195,17 @@ _double_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 FilterXObject *
-filterx_double_new(gdouble value)
+filterx_double_new_with_prec(gdouble value, gint prec)
 {
   FilterXPrimitive *self = filterx_primitive_new(&FILTERX_TYPE_NAME(double));
-  gn_set_double(&self->value, value, -1);
+  gn_set_double(&self->value, value, prec);
   return &self->super;
+}
+
+FilterXObject *
+filterx_double_new(gdouble value)
+{
+  return filterx_double_new_with_prec(value, -1);
 }
 
 gboolean
@@ -301,6 +307,29 @@ filterx_primitive_get_value(FilterXObject *s)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
   return self->value;
+}
+
+FilterXObject *
+filterx_primitive_new_from_gn(const GenericNumber *gn)
+{
+  FilterXType *type;
+
+  switch (gn->type)
+    {
+    case GN_DOUBLE:
+    case GN_NAN:
+      type = &FILTERX_TYPE_NAME(double);
+      break;
+    case GN_INT64:
+      type = &FILTERX_TYPE_NAME(integer);
+      break;
+    default:
+      g_assert_not_reached();
+    }
+  FilterXPrimitive *self = filterx_primitive_new(type);
+  self->value = *gn;
+  return &self->super;
+
 }
 
 FilterXObject *
