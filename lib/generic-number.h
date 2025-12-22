@@ -38,7 +38,8 @@ typedef struct _GenericNumber
     gint64 raw_int64;
     gdouble raw_double;
   } value;
-  guint8 type, precision;
+  guint8 type;
+  gint8 precision;
 } GenericNumber;
 
 static inline gdouble
@@ -56,7 +57,7 @@ gn_set_double(GenericNumber *number, gdouble value, gint precision)
 {
   number->type = GN_DOUBLE;
   number->value.raw_double = value;
-  number->precision = precision > 0 ? precision : 20;
+  number->precision = precision;
 }
 
 gint64 _gn_as_int64(const GenericNumber *number);
