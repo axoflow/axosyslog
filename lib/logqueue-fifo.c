@@ -361,6 +361,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
         }
 
       log_msg_write_protect(msg);
+      log_msg_shrink_payload(msg);
       node = log_msg_alloc_queue_node(msg, path_options);
       iv_list_add_tail(&node->list, &self->input_queues[thread_index].items);
       gsize qlen = ++self->input_queues[thread_index].len;
@@ -410,6 +411,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
     }
 
   log_msg_write_protect(msg);
+  log_msg_shrink_payload(msg);
   node = log_msg_alloc_queue_node(msg, path_options);
 
   iv_list_add_tail(&node->list, &self->wait_queue.items);
