@@ -935,6 +935,7 @@ log_msg_set_tag_by_id_onoff(LogMessage *self, LogTagId id, gboolean on)
   if (!log_msg_chk_flag(self, LF_STATE_OWN_TAGS) && self->num_tags)
     {
       self->tags = g_memdup2(self->tags, sizeof(self->tags[0]) * self->num_tags);
+      log_msg_update_allocation(self, sizeof(self->tags[0]) * self->num_tags);
     }
   log_msg_set_flag(self, LF_STATE_OWN_TAGS);
 
@@ -964,6 +965,7 @@ log_msg_set_tag_by_id_onoff(LogMessage *self, LogTagId id, gboolean on)
             self->tags = g_realloc(self->tags, sizeof(self->tags[0]) * self->num_tags);
           else
             self->tags = g_malloc(sizeof(self->tags[0]) * self->num_tags);
+          log_msg_update_allocation(self, (self->num_tags - old_num_tags) * sizeof(self->tags[0]));
           memset(&self->tags[old_num_tags], 0, (self->num_tags - old_num_tags) * sizeof(self->tags[0]));
 
           if (inline_tags)
@@ -1280,9 +1282,14 @@ log_msg_set_saddr(LogMessage *self, GSockAddr *saddr)
 void
 log_msg_set_saddr_ref(LogMessage *self, GSockAddr *saddr)
 {
+  gssize old_len = 0;
   if (log_msg_chk_flag(self, LF_STATE_OWN_SADDR))
-    g_sockaddr_unref(self->saddr);
+    {
+      old_len = g_sockaddr_len(self->saddr);
+      g_sockaddr_unref(self->saddr);
+    }
   self->saddr = saddr;
+  log_msg_update_allocation(self, (gssize) g_sockaddr_len(self->saddr) - old_len);
   self->flags |= LF_STATE_OWN_SADDR;
 }
 
@@ -1295,9 +1302,14 @@ log_msg_set_daddr(LogMessage *self, GSockAddr *daddr)
 void
 log_msg_set_daddr_ref(LogMessage *self, GSockAddr *daddr)
 {
+  gssize old_len = 0;
   if (log_msg_chk_flag(self,  LF_STATE_OWN_DADDR))
-    g_sockaddr_unref(self->daddr);
+    {
+      old_len = g_sockaddr_len(self->daddr);
+      g_sockaddr_unref(self->daddr);
+    }
   self->daddr = daddr;
+  log_msg_update_allocation(self, (gssize) g_sockaddr_len(self->daddr) - old_len);
   self->flags |= LF_STATE_OWN_DADDR;
 }
 
