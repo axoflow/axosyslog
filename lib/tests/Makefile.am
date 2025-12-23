@@ -34,7 +34,6 @@ lib_tests_TESTS		= \
 	lib/tests/test_hostid		   \
 	lib/tests/test_zone		   \
 	lib/tests/test_logwriter	\
-	lib/tests/test_thread_wakeup	\
 	lib/tests/test_logscheduler
 
 EXTRA_DIST += lib/tests/CMakeLists.txt
@@ -238,9 +237,6 @@ lib_tests_test_hostid_LDADD		= \
 lib_tests_test_zone_LDADD		= \
 	$(TEST_LDADD) $(PREOPEN_SYSLOGFORMAT)
 lib_tests_test_zone_CFLAGS		= $(TEST_CFLAGS)
-
-lib_tests_test_thread_wakeup_CFLAGS	= $(TEST_CFLAGS)
-lib_tests_test_thread_wakeup_LDADD	= $(TEST_LDADD)
 
 
 EXTRA_DIST += \
