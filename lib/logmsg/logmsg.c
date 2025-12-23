@@ -278,6 +278,13 @@ static StatsCounterItem *count_sdata_updates;
 static StatsCounterItem *count_allocated_bytes;
 static GPrivate priv_macro_value = G_PRIVATE_INIT(__free_macro_value);
 
+static inline void
+log_msg_update_allocation(LogMessage *self, gssize delta)
+{
+  self->allocated_bytes += delta;
+  stats_counter_add(count_allocated_bytes, delta);
+}
+
 static void
 log_msg_update_sdata_slow(LogMessage *self, NVHandle handle, const gchar *name, gssize name_len)
 {
@@ -327,8 +334,7 @@ log_msg_update_sdata_slow(LogMessage *self, NVHandle handle, const gchar *name, 
   self->alloc_sdata = alloc_sdata;
   if (self->sdata)
     {
-      self->allocated_bytes += ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
-      stats_counter_add(count_allocated_bytes, (self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
+      log_msg_update_allocation(self, ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0])));
     }
   /* ok, we have our own SDATA array now which has at least one free slot */
 
@@ -577,8 +583,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
     {
       self->payload = nv_table_clone(self->payload, name_len + value_len + 2);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
-      self->allocated_bytes += self->payload->size;
-      stats_counter_add(count_allocated_bytes, self->payload->size);
+      log_msg_update_allocation(self, self->payload->size);
     }
 
   /* we need a loop here as a single realloc may not be enough. Might help
@@ -598,8 +603,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
           break;
         }
       guint32 new_size = self->payload->size;
-      self->allocated_bytes += (new_size - old_size);
-      stats_counter_add(count_allocated_bytes, new_size-old_size);
+      log_msg_update_allocation(self, (new_size - old_size));
       stats_counter_inc(count_payload_reallocs);
     }
 
@@ -650,8 +654,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
           break;
         }
       guint32 new_size = self->payload->size;
-      self->allocated_bytes += (new_size - old_size);
-      stats_counter_add(count_allocated_bytes, new_size-old_size);
+      log_msg_update_allocation(self, (new_size - old_size));
       stats_counter_inc(count_payload_reallocs);
     }
 
@@ -1392,8 +1395,7 @@ log_msg_alloc(gsize payload_size)
     msg->payload = nv_table_init_borrowed(((gchar *) msg) + payload_ofs, payload_space, LM_V_MAX);
 
   msg->num_nodes = nodes;
-  msg->allocated_bytes = alloc_size + payload_space;
-  stats_counter_add(count_allocated_bytes, msg->allocated_bytes);
+  log_msg_update_allocation(msg, alloc_size);
   return msg;
 }
 
@@ -1444,9 +1446,10 @@ log_msg_alloc_clone(LogMessage *original)
   msg = g_malloc(alloc_size);
 
   memcpy(msg, original, sizeof(*msg));
+  msg->allocated_bytes = 0;
   msg->num_nodes = nodes;
-  msg->allocated_bytes = alloc_size;
-  stats_counter_add(count_allocated_bytes, msg->allocated_bytes);
+  log_msg_update_allocation(msg, alloc_size);
+
   return msg;
 }
 
