@@ -511,6 +511,7 @@ gboolean
 log_msg_deserialize(LogMessage *self, SerializeArchive *sa)
 {
   LogMessageSerializationState state = { 0 };
+  gboolean result = FALSE;
 
   state.sa = sa;
   state.msg = self;
@@ -520,7 +521,15 @@ log_msg_deserialize(LogMessage *self, SerializeArchive *sa)
     }
 
   if (state.version < LGM_V20)
-    return _deserialize_message_version_1x(&state);
+    result = _deserialize_message_version_1x(&state);
+  else
+    result = _deserialize_message_version_2x(&state);
 
-  return _deserialize_message_version_2x(&state);
+  self->allocated_bytes = sizeof(LogMessage) +
+     self->alloc_sdata * sizeof(self->sdata[0]) +
+     g_sockaddr_len(self->saddr) + g_sockaddr_len(self->daddr) +
+     (sizeof(self->tags[0]) * self->num_tags) +
+     (sizeof(self->nodes[0]) * self->num_nodes) +
+     (self->payload ? nv_table_get_memory_consumption(self->payload) : 0);
+  return result;
 }
