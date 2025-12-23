@@ -1081,8 +1081,8 @@ _load_queue(QDisk *self,
         {
           LogMessage *msg;
 
-          msg = log_msg_new_empty();
-          if (log_msg_deserialize(msg, sa))
+          msg = log_msg_deserialize(sa);
+          if (msg)
             {
               func(type, msg, user_data);
             }

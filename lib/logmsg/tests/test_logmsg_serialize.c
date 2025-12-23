@@ -140,12 +140,12 @@ _deserialize_message_from_string(const guint8 *serialized, gsize serialized_len)
   s.allocated_len = 0;
   s.len = serialized_len;
   s.str = (gchar *) serialized;
-  LogMessage *msg = log_msg_new_empty();
 
   SerializeArchive *sa = serialize_string_archive_new(&s);
   _reset_log_msg_registry();
 
-  cr_assert(log_msg_deserialize(msg, sa), ERROR_MSG);
+  LogMessage *msg = log_msg_deserialize(sa);
+  cr_assert(msg != NULL, ERROR_MSG);
   serialize_archive_free(sa);
   return msg;
 }
@@ -156,9 +156,9 @@ Test(logmsg_serialize, serialize)
 
   SerializeArchive *sa = _serialize_message_for_test(stream, RAW_MSG);
   _reset_log_msg_registry();
-  LogMessage *msg = log_msg_new_empty();
+  LogMessage *msg = log_msg_deserialize(sa);
 
-  cr_assert(log_msg_deserialize(msg, sa), ERROR_MSG);
+  cr_assert(msg, ERROR_MSG);
 
   /* we use nv_registry_get_handle() as it will not change the name-value
    * pair flags, whereas log_msg_get_value_handle() would */
@@ -207,9 +207,7 @@ Test(logmsg_serialize, simple_serialization)
   log_msg_serialize(msg, sa, 0);
 
   log_msg_unref(msg);
-  msg = log_msg_new_empty();
-
-  log_msg_deserialize(msg, sa);
+  msg = log_msg_deserialize(sa);
 
   UnixTime ls =
   {
@@ -241,9 +239,7 @@ Test(logmsg_serialize, given_ts_processed)
   log_msg_serialize_with_ts_processed(msg, sa, &ls, 0);
 
   log_msg_unref(msg);
-  msg = log_msg_new_empty();
-
-  log_msg_deserialize(msg, sa);
+  msg = log_msg_deserialize(sa);
 
   _check_processed_timestamp(msg, &ls);
 
@@ -268,9 +264,7 @@ Test(logmsg_serialize, existing_ts_processed)
   log_msg_serialize(msg, sa, 0);
 
   log_msg_unref(msg);
-  msg = log_msg_new_empty();
-
-  log_msg_deserialize(msg, sa);
+  msg = log_msg_deserialize(sa);
 
   _check_processed_timestamp(msg, &ls);
 
@@ -299,9 +293,7 @@ Test(logmsg_serialize, existing_and_given_ts_processed)
   log_msg_serialize_with_ts_processed(msg, sa, &ls, 0);
 
   log_msg_unref(msg);
-  msg = log_msg_new_empty();
-
-  log_msg_deserialize(msg, sa);
+  msg = log_msg_deserialize(sa);
 
   _check_processed_timestamp(msg, &ls);
 
@@ -403,8 +395,7 @@ Test(logmsg_serialize, deserialization_performance)
   for (int i = 0; i < iterations; i++)
     {
       serialize_string_archive_reset(sa);
-      msg = log_msg_new_empty();
-      log_msg_deserialize(msg, sa);
+      msg = log_msg_deserialize(sa);
       log_msg_unref(msg);
     }
   stop_stopwatch_and_display_result(iterations, "deserializing %d times took", iterations);

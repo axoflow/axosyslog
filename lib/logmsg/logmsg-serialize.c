@@ -507,29 +507,37 @@ _check_msg_version(LogMessageSerializationState *state)
   return TRUE;
 }
 
-gboolean
-log_msg_deserialize(LogMessage *self, SerializeArchive *sa)
+LogMessage *
+log_msg_deserialize(SerializeArchive *sa)
 {
   LogMessageSerializationState state = { 0 };
-  gboolean result = FALSE;
+  LogMessage *msg = log_msg_new_empty();
 
   state.sa = sa;
-  state.msg = self;
+  state.msg = msg;
   if (!_check_msg_version(&state))
     {
-      return FALSE;
+      log_msg_unref(msg);
+      return NULL;
     }
 
+  gboolean result;
   if (state.version < LGM_V20)
     result = _deserialize_message_version_1x(&state);
   else
     result = _deserialize_message_version_2x(&state);
 
-  self->allocated_bytes = sizeof(LogMessage) +
-     self->alloc_sdata * sizeof(self->sdata[0]) +
-     g_sockaddr_len(self->saddr) + g_sockaddr_len(self->daddr) +
-     (sizeof(self->tags[0]) * self->num_tags) +
-     (sizeof(self->nodes[0]) * self->num_nodes) +
-     (self->payload ? nv_table_get_memory_consumption(self->payload) : 0);
-  return result;
+  if (!result)
+    {
+      log_msg_unref(msg);
+      return NULL;
+    }
+
+  msg->allocated_bytes = sizeof(LogMessage) +
+     msg->alloc_sdata * sizeof(msg->sdata[0]) +
+     g_sockaddr_len(msg->saddr) + g_sockaddr_len(msg->daddr) +
+     (sizeof(msg->tags[0]) * msg->num_tags) +
+     (sizeof(msg->nodes[0]) * msg->num_nodes) +
+     (msg->payload ? nv_table_get_memory_consumption(msg->payload) : 0);
+  return msg;
 }
