@@ -171,7 +171,6 @@ _string_with_cache_new(FilterXExpr *expr, gboolean ignore_case)
 {
   FilterXStringWithCache *self = g_new0(FilterXStringWithCache, 1);
   self->expr = filterx_expr_ref(expr);
-  self->expr = filterx_expr_optimize(self->expr);
 
   if (!_string_with_cache_fill_cache(self, ignore_case))
     {
@@ -239,33 +238,6 @@ _expr_affix_cache_needle(FilterXExprAffix *self)
 error:
   g_ptr_array_remove_range(self->needle.cached_strings, 0, self->needle.cached_strings->len);
   return FALSE;
-}
-
-static gboolean
-_expr_affix_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprAffix *self = (FilterXExprAffix *) s;
-
-  if (!filterx_expr_init(self->haystack, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->needle.expr, cfg))
-    {
-      filterx_expr_deinit(self->haystack, cfg);
-      return FALSE;
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_expr_affix_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprAffix *self = (FilterXExprAffix *) s;
-
-  filterx_expr_deinit(self->haystack, cfg);
-  filterx_expr_deinit(self->needle.expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
 }
 
 static void
@@ -401,9 +373,6 @@ _expr_affix_optimize(FilterXExpr *s)
 {
   FilterXExprAffix *self = (FilterXExprAffix *) s;
 
-  self->haystack = filterx_expr_optimize(self->haystack);
-  self->needle.expr = filterx_expr_optimize(self->needle.expr);
-
   if (!_expr_affix_cache_needle(self))
     goto exit;
 
@@ -462,6 +431,22 @@ _extract_args(FilterXExprAffix *self, FilterXFunctionArgs *args, GError **error,
   return TRUE;
 }
 
+static gboolean
+_expr_affix_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXExprAffix *self = (FilterXExprAffix *) s;
+
+  FilterXExpr **exprs[] = { &self->haystack, &self->needle.expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 static FilterXExpr *
 _function_affix_new(FilterXFunctionArgs *args,
                     const gchar *affix_name,
@@ -474,8 +459,7 @@ _function_affix_new(FilterXFunctionArgs *args,
   filterx_function_init_instance(&self->super, affix_name);
   self->super.super.eval = _expr_affix_eval;
   self->super.super.optimize = _expr_affix_optimize;
-  self->super.super.init = _expr_affix_init;
-  self->super.super.deinit = _expr_affix_deinit;
+  self->super.super.walk_children = _expr_affix_walk;
   self->super.super.free_fn = _expr_affix_free;
 
   self->needle.cached_strings = g_ptr_array_new_with_free_func((GDestroyNotify) _string_with_cache_free);
@@ -634,9 +618,6 @@ _strcasecmp_optimize(FilterXExpr *s)
 {
   FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
 
-  self->a.expr = filterx_expr_optimize(self->a.expr);
-  self->b.expr = filterx_expr_optimize(self->b.expr);
-
   if (filterx_expr_is_literal(self->a.expr) && filterx_expr_is_literal(self->b.expr))
     {
       FilterXObject *result = _strcasecmp_eval(s);
@@ -673,35 +654,6 @@ exit:
   return filterx_function_optimize_method(&self->super);
 }
 
-static gboolean
-_strcasecmp_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
-
-  if (!self->a_literal && !filterx_expr_init(self->a.expr, cfg))
-    return FALSE;
-
-  if (!self->b_literal && !filterx_expr_init(self->b.expr, cfg))
-    {
-      filterx_expr_deinit(self->a.expr, cfg);
-      return FALSE;
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_strcasecmp_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
-
-  if (!self->a_literal)
-    filterx_expr_deinit(self->a.expr, cfg);
-  if (!self->b_literal)
-    filterx_expr_deinit(self->b.expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _strcasecmp_free(FilterXExpr *s)
 {
@@ -719,6 +671,24 @@ _strcasecmp_free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static gboolean
+_strcasecmp_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXStrcasecmp *self = (FilterXStrcasecmp *) s;
+
+  if (!self->a_literal)
+    {
+      if (!filterx_expr_visit(&self->a.expr, f, user_data))
+        return FALSE;
+    }
+  if (!self->b_literal)
+    {
+      if (!filterx_expr_visit(&self->b.expr, f, user_data))
+        return FALSE;
+    }
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -727,8 +697,7 @@ filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "strcasecmp");
   self->super.super.eval = _strcasecmp_eval;
   self->super.super.optimize = _strcasecmp_optimize;
-  self->super.super.init = _strcasecmp_init;
-  self->super.super.deinit = _strcasecmp_deinit;
+  self->super.super.walk_children = _strcasecmp_walk;
   self->super.super.free_fn = _strcasecmp_free;
 
   if (filterx_function_args_len(args) != 2)

@@ -38,42 +38,6 @@ struct _FilterXConditional
   FilterXExpr *false_branch;
 };
 
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-
-  if (!filterx_expr_init(self->condition, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->true_branch, cfg))
-    {
-      filterx_expr_deinit(self->condition, cfg);
-      return FALSE;
-    }
-
-  if (!filterx_expr_init(self->false_branch, cfg))
-    {
-      filterx_expr_deinit(self->condition, cfg);
-      filterx_expr_deinit(self->true_branch, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-
-  filterx_expr_deinit(self->condition, cfg);
-  filterx_expr_deinit(self->true_branch, cfg);
-  filterx_expr_deinit(self->false_branch, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -143,22 +107,10 @@ _eval_conditional(FilterXExpr *s)
   return result;
 }
 
-static void
-_optimize_branches(FilterXExpr *s)
-{
-  FilterXConditional *self = (FilterXConditional *) s;
-
-  self->condition = filterx_expr_optimize(self->condition);
-  self->true_branch = filterx_expr_optimize(self->true_branch);
-  self->false_branch = filterx_expr_optimize(self->false_branch);
-}
-
 static FilterXExpr *
 _optimize(FilterXExpr *s)
 {
   FilterXConditional *self = (FilterXConditional *) s;
-
-  _optimize_branches(s);
 
   if (!filterx_expr_is_literal(self->condition))
     return NULL;
@@ -205,6 +157,22 @@ filterx_conditional_set_false_branch(FilterXExpr *s, FilterXExpr *false_branch)
   self->false_branch = false_branch;
 }
 
+gboolean
+_conditional_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  FilterXExpr **exprs[] = { &self->condition, &self->true_branch, &self->false_branch };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_conditional_new(FilterXExpr *condition)
 {
@@ -212,8 +180,7 @@ filterx_conditional_new(FilterXExpr *condition)
   filterx_expr_init_instance(&self->super, "conditional");
   self->super.eval = _eval_conditional;
   self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
+  self->super.walk_children = _conditional_walk;
   self->super.free_fn = _free;
   self->super.suppress_from_trace = TRUE;
   self->condition = condition;

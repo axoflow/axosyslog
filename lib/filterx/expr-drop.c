@@ -34,11 +34,18 @@ _eval_drop(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
+static gboolean
+_drop_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_expr_drop_msg(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
   filterx_expr_init_instance(self, "drop");
+  self->walk_children = _drop_walk;
   self->eval = _eval_drop;
 
   return self;
