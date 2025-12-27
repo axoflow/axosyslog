@@ -90,10 +90,12 @@ _nullv_set_subscript_eval(FilterXExpr *s)
 
   if (self->key)
     {
-      filterx_eval_push_error_static_info("Failed to set element of object", s, "Failed to evaluate key");
       key = filterx_expr_eval(self->key);
       if (!key)
-        goto exit;
+        {
+          filterx_eval_push_error_static_info("Failed to set element of object", s, "Failed to evaluate key");
+          goto exit;
+        }
     }
 
   result = _set_subscript(self, object, key, new_value);
