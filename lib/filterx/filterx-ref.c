@@ -185,8 +185,10 @@ _filterx_ref_replace_foreign_ref_with_a_floating_one(FilterXObject **ps, FilterX
     return;
 
   FilterXRef *self = (FilterXRef *) *ps;
+  FilterXRef *container_as_ref = (FilterXRef *) container;
 
-  if (filterx_weakref_is_set_to(&self->parent_container, container))
+  if (filterx_weakref_is_set_to(&self->parent_container, container) &&
+      g_atomic_counter_get(&container_as_ref->value->fx_ref_cnt) <= 1)
     return;
 
   *ps = _filterx_ref_new(filterx_object_ref(self->value));
