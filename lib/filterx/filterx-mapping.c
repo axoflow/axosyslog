@@ -34,7 +34,7 @@ _add_elem(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
 {
   FilterXObject *mapping = (FilterXObject *) user_data;
 
-  FilterXObject *new_value = filterx_object_ref(value_obj);
+  FilterXObject *new_value = filterx_object_clone(value_obj);
   gboolean success = filterx_object_set_subscript(mapping, key_obj, &new_value);
   filterx_object_unref(new_value);
 
