@@ -38,23 +38,34 @@ typedef struct _FilterXSetSubscript
 } FilterXSetSubscript;
 
 static inline FilterXObject *
-_set_subscript(FilterXSetSubscript *self, FilterXObject *object, FilterXObject *key, FilterXObject *new_value)
+_set_subscript(FilterXSetSubscript *self, FilterXObject *key, FilterXObject *new_value)
 {
+  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
+
+  FilterXObject *object = filterx_expr_eval_typed(self->object);
+  if (!object)
+    {
+      filterx_eval_push_error_static_info("Failed to set element of object", &self->super, "Failed to evaluate expression");
+      goto error;
+    }
+
   if (object->readonly)
     {
       filterx_eval_push_error("Object set-subscript failed, object is readonly", &self->super, key);
-      return NULL;
+      goto error;
     }
 
-  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
   if (!filterx_object_set_subscript(object, key, &cloned))
     {
       filterx_eval_push_error("Object set-subscript failed", &self->super, key);
-      filterx_object_unref(cloned);
-      return NULL;
+      goto error;
     }
 
   return cloned;
+error:
+  filterx_object_unref(object);
+  filterx_object_unref(cloned);
+  return NULL;
 }
 
 static inline FilterXObject *
@@ -81,13 +92,6 @@ _nullv_set_subscript_eval(FilterXExpr *s)
       return new_value;
     }
 
-  FilterXObject *object = filterx_expr_eval_typed(self->object);
-  if (!object)
-    {
-      filterx_eval_push_error_static_info("Failed to set element of object", s, "Failed to evaluate expression");
-      goto exit;
-    }
-
   if (self->key)
     {
       key = filterx_expr_eval(self->key);
@@ -98,7 +102,7 @@ _nullv_set_subscript_eval(FilterXExpr *s)
         }
     }
 
-  result = _set_subscript(self, object, key, new_value);
+  result = _set_subscript(self, key, new_value);
   if (!result)
     {
       filterx_eval_push_error_static_info("Failed to set element of object", s, "set-subscript() method failed");
@@ -108,7 +112,6 @@ _nullv_set_subscript_eval(FilterXExpr *s)
 exit:
   filterx_object_unref(new_value);
   filterx_object_unref(key);
-  filterx_object_unref(object);
   return result;
 }
 
@@ -126,13 +129,6 @@ _set_subscript_eval(FilterXExpr *s)
       return NULL;
     }
 
-  FilterXObject *object = filterx_expr_eval_typed(self->object);
-  if (!object)
-    {
-      filterx_eval_push_error_static_info("Failed to set element of object", s, "Failed to evaluate expression");
-      goto exit;
-    }
-
   if (self->key)
     {
       key = filterx_expr_eval(self->key);
@@ -143,7 +139,7 @@ _set_subscript_eval(FilterXExpr *s)
         }
     }
 
-  result = _set_subscript(self, object, key, new_value);
+  result = _set_subscript(self, key, new_value);
   if (!result)
     {
       filterx_eval_push_error_static_info("Failed to set element of object", s, "set-subscript() method failed");
@@ -153,7 +149,6 @@ _set_subscript_eval(FilterXExpr *s)
 exit:
   filterx_object_unref(new_value);
   filterx_object_unref(key);
-  filterx_object_unref(object);
   return result;
 }
 
