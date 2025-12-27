@@ -99,6 +99,11 @@ _nullv_set_subscript_eval(FilterXExpr *s)
     }
 
   result = _set_subscript(self, object, key, new_value);
+  if (!result)
+    {
+      filterx_eval_push_error_static_info("Failed to set element of object", s, "set-subscript() method failed");
+      goto exit;
+    }
 
 exit:
   filterx_object_unref(new_value);
