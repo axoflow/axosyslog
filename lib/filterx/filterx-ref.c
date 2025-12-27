@@ -175,25 +175,23 @@ _filterx_ref_truthy(FilterXObject *s)
  * its proper home: in the parent dict.  This is exactly the
  * "child_of_interest" we are passing to clone_container().
  */
-static void
-_filterx_ref_replace_foreign_ref_with_a_floating_one(FilterXObject **ps, FilterXObject *container)
+static FilterXObject *
+_filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXObject *c)
 {
-  if (!(*ps))
-    return;
+  if (!s || !filterx_object_is_ref(s))
+    return s;
 
-  if (!filterx_object_is_ref(*ps))
-    return;
+  FilterXRef *self = (FilterXRef *) s;
+  FilterXRef *container = (FilterXRef *) c;
 
-  FilterXRef *self = (FilterXRef *) *ps;
-  FilterXRef *container_as_ref = (FilterXRef *) container;
+  if (filterx_weakref_is_set_to(&self->parent_container, &container->super) &&
+      g_atomic_counter_get(&container->value->fx_ref_cnt) <= 1)
+    return s;
 
-  if (filterx_weakref_is_set_to(&self->parent_container, container) &&
-      g_atomic_counter_get(&container_as_ref->value->fx_ref_cnt) <= 1)
-    return;
-
-  *ps = _filterx_ref_new(filterx_object_ref(self->value));
+  FilterXObject *result = _filterx_ref_new(filterx_object_ref(self->value));
   filterx_object_unref(&self->super);
-  filterx_ref_set_parent_container(*ps, container);
+  filterx_ref_set_parent_container(result, &container->super);
+  return result;
 }
 
 static FilterXObject *
@@ -201,8 +199,7 @@ _filterx_ref_getattr(FilterXObject *s, FilterXObject *attr)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *result = filterx_object_getattr(self->value, attr);
-  _filterx_ref_replace_foreign_ref_with_a_floating_one(&result, s);
-  return result;
+  return _filterx_ref_replace_shared_xref_with_a_floating_one(result, s);
 }
 
 static FilterXObject *
@@ -210,8 +207,7 @@ _filterx_ref_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *result = filterx_object_get_subscript(self->value, key);
-  _filterx_ref_replace_foreign_ref_with_a_floating_one(&result, s);
-  return result;
+  return _filterx_ref_replace_shared_xref_with_a_floating_one(result, s);
 }
 
 static gboolean
