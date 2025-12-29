@@ -39,6 +39,7 @@
  *  - mutable structure
  *  - parent_container
  *  - bare objects
+ *  - floating xref
  *
  * References vs. copying
  * ----------------------
@@ -215,35 +216,56 @@
  * --------------
  * As we navigate and change the hierarchy of dict/list instances while
  * interpreting the filterx statements, we need to notice and eliminate the
- * use of shared xrefs.  If an xref is shared, that means the `fx_ref_cnt`
- * of an object does not correctly reflect the number of total copies.  This
- * might even mean that a dict is assumed to be non-shared (fx_ref_cnt==1),
- * and we would fail to copy it, before modifying it.
- *
- * Any expr that evaluates to an object in a hierarchical structure (e.g.
- * getattr or get_subscript) must check for shared xrefs and actively
- * replace them with a "floating xref".  See the function
- * `_filterx_ref_replace_shared_xref_with_a_floating_one()`.
- *
- * A floating xref is a normal FilterXRef instance, the only difference is
- * that it is yet to be stored somewhere (e.g.  another dict or a variable).
- * A floating xref is only kept in local variables and returned by
- * filterx_expr_eval().
- *
- * Should we call a mutating function (e.g.  setattr) on a floating xref, we
- * will trigger the cloning of the object (as there are multiple xrefs, one
- * of them is the floating one), but we also make sure that the floating
- * xref is replaces the old xref in the cloned container.  This is
- * implemented by the filterx_object_clone_container() method, which will
- * take care of this replacement.
+ * use of shared xrefs.  If an xref is shared, that means that `fx_ref_cnt`
+ * of the associated object does not correctly reflect the number of total
+ * copies (xrefs) of the object, which in turn would obviously break our
+ * copy-on-write mechanism.
  *
  * An xref is considered shared, iff:
  *  - its parent_container is pointing outside of the current hierarchy, OR
  *  - the parent container is shared (e.g. `fx_ref_cnt` > 1),
  *
+ * Any expr that evaluates to an object in a hierarchical structure (e.g.
+ * getattr or get_subscript) must check for shared xrefs and actively
+ * replace them with a "floating xref" instead of returning the stored xref.
+ * See the function
+ * `_filterx_ref_replace_shared_xref_with_a_floating_one()`.
+ *
+ * A floating xref is a temporary FilterXRef that is explicitly marked as
+ * floating using the `filterx_ref_floating()` function (and the associated
+ * FILTERX_REF_FLAG_FLOATING flag).
+ *
+ * Floating xrefs are yet to be stored somewhere or be discarded at the end
+ * of the FilterX statement unless they are actually needed.  A floating xref
+ * should only be kept in local variables and returned by
+ * filterx_expr_eval().  They should never cross statement boundaries in the
+ * FilterX language.
+ *
+ * If a floating xref is eventually stored (using setattr/set_subscript or
+ * assigning it to a variable), it becomes grounded, e.g.  a normal xref
+ * that is kept around.
+ *
+ * When do we generate floating xrefs
+ * -----------------------------------
+ *
+ *   1) when a hierarchical structure is sharing an xref with another, then
+ *      the getattr/get_subscript operation returns a floating xref instead of
+ *      the stored (& shared) one.
+ *
+ *   2) `filterx_object_cow_fork2()` generates a floating ref as the new copy
+ *
+ *   3) the new `move()` FilterX "function" retrieves the stored xref, unsets
+ *      it and returns it as a floating xref.
+ *
+ * When do we ground floating xrefs
+ * --------------------------------
+ *
+ *   1) when storing a value in a list/dict `filterx_object_cow_store()`
+ *
+ *   2) filterx_object_clone() turns the floating xref into a simple xref,
+ *      without generating a new clone.
+ *
  */
-
-
 static FilterXObject *
 _filterx_ref_clone(FilterXObject *s)
 {
@@ -396,9 +418,10 @@ _filterx_ref_truthy(FilterXObject *s)
 
 /*
  * Sometimes we are looking up values from a dict still shared between
- * multiple, independent copy-on-write hierarchies.  In these cases, the ref
- * we retrieve as a result of the lookup points outside of our current
- * structure.
+ * multiple, independent copy-on-write hierarchies (see xref sharing in the
+ * long comment at the top).  In these cases, the xref we retrieve as a
+ * result of the lookup points outside of our current structure or its
+ * parent itself is shared.
  *
  * In these cases, we need a new ref instance, which has the proper
  * parent_container value, while still cotinuing to share the dict (e.g.
@@ -410,7 +433,7 @@ _filterx_ref_truthy(FilterXObject *s)
  * In case we are actually mutating the dict, the new "floating" ref will
  * cause the dict to be cloned and by that time our floating ref will find
  * its proper home: in the parent dict.  This is exactly the
- * "child_of_interest" we are passing to clone_container().
+ * "child_of_interest" argument we are passing to clone_container().
  */
 static FilterXObject *
 _filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXObject *c)
