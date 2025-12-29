@@ -227,6 +227,239 @@ def test_dict_child_of_child_of_child_writes_cause_clone(config, syslog_ng):
     assert file_true.read_log() == ("""barvalue--bar-changed""")
 
 
+def test_shared_child_dict_gets_unshared_at_the_first_setattr_on_original(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {
+                    'foo':'foovalue',
+                    'bar':'barvalue',
+                    'child': {
+                        'child_foo':'foovalue',
+                        'child_bar':'barvalue',
+                        'child2': {
+                            'child2_foo':'foovalue',
+                            'child2_bar':'barvalue',
+                            'child3': {
+                                'child3_foo':'foovalue',
+                                'child3_bar':'barvalue',
+                                'child4': {
+                                    'child4_foo':'foovalue',
+                                    'child4_bar':'barvalue',
+                                    'child5': {
+                                        'child5_foo':'foovalue',
+                                        'child5_bar':'barvalue',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                };
+                # make sure our "d" is not a clone of the cached literal
+                d.child.child2.child3.child4.child5.added_key = 'added_key';
+
+                # d2 is a clone of "d", sharing all of the dicts
+                d2 = d;
+
+                # change "d" and check if "d2" is unchanged
+                d.child.child2.child3.child4.child5.added_key2 = 'added_key2';
+                $MSG = [d, d2];
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == ("""[\
+{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key","added_key2":"added_key2"}}}}}},\
+{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key"}}}}}}\
+]""")
+
+
+def test_shared_child_dict_gets_unshared_at_the_first_setattr_on_clone(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {
+                    'foo':'foovalue',
+                    'bar':'barvalue',
+                    'child': {
+                        'child_foo':'foovalue',
+                        'child_bar':'barvalue',
+                        'child2': {
+                            'child2_foo':'foovalue',
+                            'child2_bar':'barvalue',
+                            'child3': {
+                                'child3_foo':'foovalue',
+                                'child3_bar':'barvalue',
+                                'child4': {
+                                    'child4_foo':'foovalue',
+                                    'child4_bar':'barvalue',
+                                    'child5': {
+                                        'child5_foo':'foovalue',
+                                        'child5_bar':'barvalue',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                };
+                # make sure our "d" is not a clone of the cached literal
+                d.child.child2.child3.child4.child5.added_key = 'added_key';
+
+                # d2 is a clone of "d", sharing all of the dicts
+                d2 = d;
+
+                # change "d2" and check if "d" is unchanged
+                d2.child.child2.child3.child4.child5.added_key2 = 'added_key2';
+                $MSG = [d, d2];
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == ("""[\
+{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key"}}}}}},\
+{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key","added_key2":"added_key2"}}}}}}\
+]""")
+
+
+def test_recursive_setattring_of_the_same_dict_is_storing_the_old_version(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {
+                    'foo':'foovalue',
+                    'bar':'barvalue',
+                    'child': {
+                        'child_foo':'foovalue',
+                        'child_bar':'barvalue',
+                        'child2': {
+                            'child2_foo':'foovalue',
+                            'child2_bar':'barvalue',
+                            'child3': {
+                                'child3_foo':'foovalue',
+                                'child3_bar':'barvalue',
+                                'child4': {
+                                    'child4_foo':'foovalue',
+                                    'child4_bar':'barvalue',
+                                    'child5': {
+                                        'child5_foo':'foovalue',
+                                        'child5_bar':'barvalue',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                };
+                # make sure our "d" is not a clone of the cached literal
+                d.child.child2.child3.child4.child5.added_key = 'added_key';
+
+                # store "d" inside of "d" using setattr
+                d.child.child2.child3.child4.child5.recursive = d;
+
+                $MSG = d;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == ("""\
+{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key",\
+"recursive":{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key"}}}}}}}}}}}}\
+""")
+
+
+def test_recursive_set_subscripting_of_the_same_dict_is_storing_the_old_version(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {
+                    'foo':'foovalue',
+                    'bar':'barvalue',
+                    'child': {
+                        'child_foo':'foovalue',
+                        'child_bar':'barvalue',
+                        'child2': {
+                            'child2_foo':'foovalue',
+                            'child2_bar':'barvalue',
+                            'child3': {
+                                'child3_foo':'foovalue',
+                                'child3_bar':'barvalue',
+                                'child4': {
+                                    'child4_foo':'foovalue',
+                                    'child4_bar':'barvalue',
+                                    'child5': {
+                                        'child5_foo':'foovalue',
+                                        'child5_bar':'barvalue',
+                                    },
+                                },
+                            },
+                        },
+                    },
+                };
+                # make sure our "d" is not a clone of the cached literal
+                d.child.child2.child3.child4.child5.added_key = 'added_key';
+
+                # store "d" inside of "d" using set_subscript
+                d.child.child2.child3.child4.child5["recursive"] = d;
+
+                $MSG = d;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == ("""\
+{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key",\
+"recursive":{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","child3":{"child3_foo":"foovalue","child3_bar":"barvalue","child4":{"child4_foo":"foovalue","child4_bar":"barvalue","child5":{"child5_foo":"foovalue","child5_bar":"barvalue","added_key":"added_key"}}}}}}}}}}}}\
+""")
+
+
+def test_recursive_plus_assign_of_the_same_dict_merges_the_old_version(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {
+                    'foo':'foovalue',
+                    'bar':'barvalue',
+                    'child': {
+                        'child_foo':'foovalue',
+                        'child_bar':'barvalue',
+                        'child2': {
+                            'child2_foo':'foovalue',
+                            'child2_bar':'barvalue',
+                        },
+                    },
+                };
+                # make sure our "d" is not a clone of the cached literal
+                d.child.child2.added_key = 'added_key';
+
+                # merge "d" inside of "d"
+                d.child.child2 += d;
+
+                $MSG = d;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    # 2nd line is where we merged the top-level dict again
+    assert file_true.read_log() == ("""\
+{"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","added_key":"added_key",\
+"foo":"foovalue","bar":"barvalue","child":{"child_foo":"foovalue","child_bar":"barvalue","child2":{"child2_foo":"foovalue","child2_bar":"barvalue","added_key":"added_key"}}}}}\
+""")
+
+
 def test_list_writes_cause_clone(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [

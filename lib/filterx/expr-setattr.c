@@ -39,23 +39,41 @@ typedef struct _FilterXSetAttr
 } FilterXSetAttr;
 
 static inline FilterXObject *
-_setattr(FilterXSetAttr *self, FilterXObject *object, FilterXObject *new_value)
+_setattr(FilterXSetAttr *self, FilterXObject *new_value)
 {
+  /* NOTE: we need to fork the rhs first, so that the lhs will notice it is
+   * shared and can clone accordingly.  This is needed to make sure
+   * something like `d.sub = d` works.
+   */
+
+  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
+
+  FilterXObject *object = filterx_expr_eval_typed(self->object);
+  if (!object)
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
+                                          "Failed to evaluate expression");
+      goto error;
+    }
+
   if (object->readonly)
     {
       filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "Object is readonly");
-      return NULL;
+      goto error;
     }
 
-  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
       filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "setattr() method failed");
-      filterx_object_unref(cloned);
-      return NULL;
+      goto error;
     }
 
+  filterx_object_unref(object);
   return cloned;
+error:
+  filterx_object_unref(object);
+  filterx_object_unref(cloned);
+  return NULL;
 }
 
 static inline FilterXObject *
@@ -81,19 +99,8 @@ _nullv_setattr_eval(FilterXExpr *s)
       return new_value;
     }
 
-  FilterXObject *object = filterx_expr_eval_typed(self->object);
-  if (!object)
-    {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
-                                          "Failed to evaluate expression");
-      goto exit;
-    }
-
-  result = _setattr(self, object, new_value);
-
-exit:
+  result = _setattr(self, new_value);
   filterx_object_unref(new_value);
-  filterx_object_unref(object);
   return result;
 }
 
@@ -111,19 +118,8 @@ _setattr_eval(FilterXExpr *s)
       return NULL;
     }
 
-  FilterXObject *object = filterx_expr_eval_typed(self->object);
-  if (!object)
-    {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
-                                          "Failed to evaluate expression");
-      goto exit;
-    }
-
-  result = _setattr(self, object, new_value);
-
-exit:
+  result = _setattr(self, new_value);
   filterx_object_unref(new_value);
-  filterx_object_unref(object);
   return result;
 }
 

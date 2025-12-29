@@ -53,7 +53,7 @@ options {{ stats(level(1)); }};
 source genmsg {{
     example-msg-generator(
         num(1)
-        template("{msg}")
+        template("{msg.replace('"', '\\"')}")
         values(
             "values.str" => string("string"),
             "values.bool" => boolean(true),
@@ -339,6 +339,22 @@ def test_cache_json_file(config, syslog_ng, testcase_parameters):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == 'foo/foo_value'
+
+
+def test_parse_json(config, syslog_ng, testcase_parameters):
+    json_text = '{"data_map": {"key1": 1, "key2": 2}, "data_map2": {"key1": {"foo1": "value1", "bar1": 1, "baz1": 1.1}, "key2": {"foo1": "value2", "bar1": 2, "baz1": 2.2}}, "data_array": ["value1", "value2"], "data_array2": [{"foo2": "value1", "bar2": 1, "baz2": 1.1}, {"foo2": "value2", "bar2": 2, "baz2": 2.2}], "data_tuple": {"foo3": "value1", "bar3": 3}}'
+    (file_final,) = create_config(
+        config, r"""
+
+    js = parse_json($MSG);
+    $MSG = js.data_map.key1 == 1;
+    $MSG = format_json(js);
+    """, msg=json_text,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(json.loads(json_text), separators=(",", ":"))
 
 
 def test_unset_empties_defaults_dict(config, syslog_ng):
@@ -1086,4 +1102,54 @@ def test_format_syslog_5424(config, syslog_ng):
     assert file_final.read_log() == '[' \
         '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - - foobar\\n",' \
         '"<13>1 2025-12-07T22:34:32.000000+00:00 host-value prog-value hihi 1234 - foobar\\n"' \
+        ']'
+
+
+def test_flatten(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":{"inner_inner_field":1}}};
+
+            default_separator = dict;
+            custom_separator = dict;
+
+            flatten(default_separator);
+            flatten(custom_separator, separator="->");
+
+            $MSG = [default_separator, custom_separator];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1},' \
+        '{"top_level_field":42,"top_level_dict->inner_field":1337,"top_level_dict->inner_dict->inner_inner_field":1}' \
+        ']'
+
+
+def test_flatten_when_moving_references(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            # we are placing a mutable object inside our dict
+            inner_list = [1,2,3,4];
+            inner_dict = {"inner_inner_field":1};
+            dict = {"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":inner_dict,"inner_list":inner_list}};
+
+            # now we are changing the list object to see if copy-on-write kicks in
+            inner_list[]=5;
+            inner_dict.inner_inner_field = 2;
+
+            flatten(dict);
+
+            $MSG = [dict,inner_list,inner_dict];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1,"top_level_dict.inner_list":[1,2,3,4]},' \
+        '[1,2,3,4,5],' \
+        '{"inner_inner_field":2}' \
         ']'

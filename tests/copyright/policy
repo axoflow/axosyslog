@@ -158,7 +158,6 @@ lib/tests/test_matcher\.c
 lib/tests/test_msgparse\.c
 lib/tests/test_ringbuffer\.c
 lib/tests/test_serialize\.c
-lib/tests/test_thread_wakeup\.c
 lib/tests/test_zone\.c
 autogen\.sh$
 autotools/sub-configure\.sh$

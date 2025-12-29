@@ -132,7 +132,7 @@ _unknown_format_json(FilterXObject *s, GString *json)
 {
   gssize len;
   const gchar *str = filterx_test_unknown_object_marshaled_repr(&len);
-  return string_format_json(str, len, json);
+  return string_format_json(str, len, TRUE, json);
 }
 
 static gboolean
@@ -310,8 +310,8 @@ void
 deinit_libtest_filterx(void)
 {
   log_msg_unref(filterx_env.msg);
-  filterx_eval_end_context(&filterx_env.context);
   filterx_scope_free(filterx_env.scope);
+  filterx_eval_end_context(&filterx_env.context);
 }
 
 FILTERX_DEFINE_TYPE(test_dict, FILTERX_TYPE_NAME(object));

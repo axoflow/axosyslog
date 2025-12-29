@@ -362,6 +362,12 @@ log_msg_unpin_payload(LogMessage *self, LogMessagePin pin)
 }
 
 static inline void
+log_msg_shrink_payload(LogMessage *self)
+{
+  nv_table_shrink(&self->payload);
+}
+
+static inline void
 log_msg_write_protect(LogMessage *self)
 {
   self->write_protected = TRUE;
@@ -638,7 +644,11 @@ void log_msg_registry_foreach(GHFunc func, gpointer user_data);
 
 gint log_msg_lookup_time_stamp_name(const gchar *name);
 
-gssize log_msg_get_size(LogMessage *self);
+static inline gsize
+log_msg_get_size(LogMessage *self)
+{
+  return self->allocated_bytes;
+}
 
 #define evt_tag_msg_reference(msg)             \
     evt_tag_printf("msg", "%p", (msg)),        \
@@ -660,5 +670,7 @@ evt_tag_msg_value_name(const gchar *name, NVHandle value_handle)
 
   return evt_tag_str(name, value_name);
 }
+
+extern gint logmsg_queue_node_max;
 
 #endif

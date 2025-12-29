@@ -54,7 +54,7 @@ _eval_plus(FilterXExpr *s)
       return NULL;
     }
 
-  FilterXObject *res = filterx_object_add_object(lhs_object, rhs_object);
+  FilterXObject *res = filterx_object_add(lhs_object, rhs_object);
   filterx_object_unref(lhs_object);
   filterx_object_unref(rhs_object);
 
