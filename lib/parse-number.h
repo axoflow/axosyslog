@@ -32,7 +32,7 @@ gboolean parse_int64_base8(const gchar *str, gint64 *result);
 gboolean parse_int64_base_any(const gchar *str, gint64 *result);
 
 gboolean parse_int64_with_suffix(const gchar *str, gint64 *result);
-gboolean parse_double(const gchar *str, gdouble *result);
+gboolean parse_double(const gchar *str, gdouble *result, gint *prec);
 gboolean parse_generic_number(const char *str, GenericNumber *number);
 
 #endif
