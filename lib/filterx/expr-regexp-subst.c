@@ -115,10 +115,10 @@ _parse_machgrp_ref(const gchar *from, const gchar *to, gint *value)
 }
 
 static gboolean
-_build_replacement_stirng_with_match_groups(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state,
+_build_replacement_string_with_match_groups(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state,
                                             GString *replacement_string)
 {
-  g_string_set_size(replacement_string, 0);
+  g_string_truncate(replacement_string, 0);
   gint num_grps = state->rc;
   PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(state->match_data);
 
@@ -153,15 +153,15 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
   PCRE2_SIZE *ovector = NULL;
   gint pos = 0;
   const gchar *replacement_string = self->replacement;
+  GString *rep_str = scratch_buffers_alloc();
 
-  if (check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS))
-    {
-      GString *rep_str = scratch_buffers_alloc();
-      _build_replacement_stirng_with_match_groups(self, state, rep_str);
-      replacement_string = rep_str->str;
-    }
   do
     {
+      if (check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_GROUPS))
+        {
+          _build_replacement_string_with_match_groups(self, state, rep_str);
+          replacement_string = rep_str->str;
+        }
       ovector = pcre2_get_ovector_pointer(state->match_data);
 
       g_string_append_len(new_value, state->lhs_str + pos, match_start_offset(ovector) - pos);
