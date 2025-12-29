@@ -165,34 +165,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
-
-  self->msg = filterx_expr_optimize(self->msg);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
-
-  if (!filterx_expr_init(self->msg, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
-  filterx_expr_deinit(self->msg, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -310,15 +282,29 @@ _extract_args(FilterXFunctionParseKV *self, FilterXFunctionArgs *args, GError **
   return TRUE;
 }
 
+static gboolean
+_parse_kv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionParseKV *self = (FilterXFunctionParseKV *) s;
+
+  FilterXExpr **exprs[] = { &self->msg };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
   filterx_function_init_instance(&self->super, "parse_kv");
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _parse_kv_walk;
   self->super.super.free_fn = _free;
   self->value_separator = '=';
   self->pair_separator = g_strdup(", ");
