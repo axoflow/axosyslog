@@ -34,7 +34,5 @@ add_module(
   SOURCES ${afsnmp_SOURCES}
 )
 
-set_target_properties(afsnmp PROPERTIES COMPILE_FLAGS ${NETSNMP_CFLAGS})
-
 add_test_subdirectory(tests)
 
