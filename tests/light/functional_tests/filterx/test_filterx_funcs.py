@@ -1087,3 +1087,53 @@ def test_format_syslog_5424(config, syslog_ng):
         '"<13>1 2025-12-07T22:34:32.000000+00:00 - - - - - foobar\\n",' \
         '"<13>1 2025-12-07T22:34:32.000000+00:00 host-value prog-value hihi 1234 - foobar\\n"' \
         ']'
+
+
+def test_flatten(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            dict = {"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":{"inner_inner_field":1}}};
+
+            default_separator = dict;
+            custom_separator = dict;
+
+            flatten(default_separator);
+            flatten(custom_separator, separator="->");
+
+            $MSG = [default_separator, custom_separator];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1},' \
+        '{"top_level_field":42,"top_level_dict->inner_field":1337,"top_level_dict->inner_dict->inner_inner_field":1}' \
+        ']'
+
+
+def test_flatten_when_moving_references(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+            # we are placing a mutable object inside our dict
+            inner_list = [1,2,3,4];
+            inner_dict = {"inner_inner_field":1};
+            dict = {"top_level_field":42,"top_level_dict":{"inner_field":1337,"inner_dict":inner_dict,"inner_list":inner_list}};
+
+            # now we are changing the list object to see if copy-on-write kicks in
+            inner_list[]=5;
+            inner_dict.inner_inner_field = 2;
+
+            flatten(dict);
+
+            $MSG = [dict,inner_list,inner_dict];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '[' \
+        '{"top_level_field":42,"top_level_dict.inner_field":1337,"top_level_dict.inner_dict.inner_inner_field":1,"top_level_dict.inner_list":[1,2,3,4]},' \
+        '[1,2,3,4,5],' \
+        '{"inner_inner_field":2}' \
+        ']'
