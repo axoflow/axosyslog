@@ -709,6 +709,28 @@ _filterx_dict_make_readonly(FilterXObject *s)
   _table_foreach(self->table, _readonly_dict_item, NULL);
 }
 
+FilterXDictAnchor
+filterx_dict_get_anchor_for_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  FilterXDictAnchor anchor = (FilterXDictAnchor) _table_lookup_entry_slot(self->table, key, NULL);
+  g_assert(anchor >= 0);
+  return anchor;
+}
+
+void
+filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor, FilterXObject **new_value)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  FilterXDictEntry *entry = _table_get_entry(self->table, (FilterXDictEntrySlot) anchor);
+  filterx_ref_unset_parent_container(entry->value);
+  filterx_object_unref(entry->value);
+
+  entry->value = filterx_object_cow_store(new_value);
+}
+
 FilterXObject *
 filterx_dict_new(void)
 {
