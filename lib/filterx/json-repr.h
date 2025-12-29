@@ -28,13 +28,27 @@
 
 #include "filterx/filterx-object.h"
 
+enum FilterXJSONError
+{
+  FILTERX_JSON_ERROR_TOO_LARGE,
+  FILTERX_JSON_ERROR_INCOMPLETE,
+  FILTERX_JSON_ERROR_INVALID,
+  FILTERX_JSON_ERROR_STORE_ERROR,
+};
+
+#define FILTERX_JSON_ERROR filterx_json_error_quark()
+GQuark filterx_json_error_quark(void);
+
 /* C API */
-FilterXObject *filterx_object_from_json_object(struct json_object *jso, GError **error);
 FilterXObject *filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error);
 gboolean filterx_object_to_json(FilterXObject *o, GString *repr);
 
 /* exported filterx functions */
 FilterXObject *filterx_format_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_parse_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+void filterx_json_repr_thread_init(void);
+void filterx_json_repr_thread_deinit(void);
+
 
 #endif
