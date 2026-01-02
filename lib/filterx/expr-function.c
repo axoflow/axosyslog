@@ -407,6 +407,17 @@ filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 inde
   return _get_literal_string_from_expr(expr, len);
 }
 
+gchar *
+filterx_function_args_get_literal_string_dup(FilterXFunctionArgs *self, guint64 index)
+{
+  gsize len;
+  const gchar *value = filterx_function_args_get_literal_string(self, index, &len);
+  if (!value)
+    return NULL;
+
+  return g_strndup(value, len);
+}
+
 gboolean
 filterx_function_args_is_literal_null(FilterXFunctionArgs *self, guint64 index)
 {
@@ -460,7 +471,6 @@ filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const 
   return filterx_literal_get_value(expr);
 }
 
-
 const gchar *
 filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name, gsize *len,
                                                gboolean *exists)
@@ -471,6 +481,17 @@ filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const 
     return NULL;
 
   return _get_literal_string_from_expr(expr, len);
+}
+
+gchar *
+filterx_function_args_get_named_literal_string_dup(FilterXFunctionArgs *self, const gchar *name, gboolean *exists)
+{
+  gsize len;
+  const gchar *value = filterx_function_args_get_named_literal_string(self, name, &len, exists);
+  if (!value)
+    return NULL;
+
+  return g_strndup(value, len);
 }
 
 gboolean
