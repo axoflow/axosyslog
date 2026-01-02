@@ -51,7 +51,7 @@ _convert_filterx_object_to_generic_number(FilterXObject *obj, GenericNumber *gn)
     return;
 
   const gchar *str;
-  if (filterx_object_extract_string_ref(obj, &str, NULL))
+  if (filterx_object_extract_string_as_cstr(obj, &str))
     {
       if (!parse_generic_number(str, gn))
         gn_set_nan(gn);
