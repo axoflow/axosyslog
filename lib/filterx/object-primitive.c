@@ -327,11 +327,8 @@ filterx_typecast_integer(FilterXExpr *s, FilterXObject *args[], gsize args_len)
     return filterx_integer_new(gn_as_int64(&gn));
 
   const gchar *str;
-  gsize str_len;
-  if (filterx_object_extract_string_ref(object, &str, &str_len))
+  if (filterx_object_extract_string_as_cstr(object, &str))
     {
-      APPEND_ZERO(str, str, str_len);
-
       gchar *endptr;
       gint64 val = g_ascii_strtoll(str, &endptr, 10);
       if (str != endptr && *endptr == '\0')
@@ -363,11 +360,8 @@ filterx_typecast_double(FilterXExpr *s, FilterXObject *args[], gsize args_len)
     return filterx_double_new(gn_as_double(&gn));
 
   const gchar *str;
-  gsize str_len;
-  if (filterx_object_extract_string_ref(object, &str, &str_len))
+  if (filterx_object_extract_string_as_cstr(object, &str))
     {
-      APPEND_ZERO(str, str, str_len);
-
       gchar *endptr;
       gdouble val = g_ascii_strtod(str, &endptr);
       if (str != endptr && *endptr == '\0')
