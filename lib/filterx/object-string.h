@@ -23,6 +23,7 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
+#include "str-utils.h"
 
 /* cache indices */
 enum
@@ -76,9 +77,6 @@ FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value.
- *
- * Also NOTE: the returned string may not be NUL terminated, although often
- * it will be. Generic code should handle the cases where it is not.
  */
 static inline const gchar *
 filterx_string_get_value_ref(FilterXObject *s, gsize *length)
@@ -88,11 +86,50 @@ filterx_string_get_value_ref(FilterXObject *s, gsize *length)
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
     return NULL;
 
-  if (length)
-    *length = self->str_len;
-  else
-    g_assert(self->str[self->str_len] == 0);
+  *length = self->str_len;
   return self->str;
+}
+
+/* get string value and assert if the terminating NUL is present, should
+ * only be used in cases where we are sure that the FilterXString is a
+ * literal string, which is always NUL terminated */
+static inline const gchar *
+filterx_string_get_value_ref_and_assert_nul(FilterXObject *s, gsize *length)
+{
+  gsize len = 0;
+  const gchar *str = filterx_string_get_value_ref(s, &len);
+  if (!str)
+    return NULL;
+
+  g_assert(str[len] == 0);
+  if (length)
+    *length = len;
+  return str;
+}
+
+#define filterx_string_get_value_as_cstr(s) \
+  ({ \
+    gsize __len; \
+    const gchar *__str = filterx_string_get_value_ref(s, &__len); \
+    if (__str) { APPEND_ZERO(__str, __str, __len); } \
+    __str; \
+  })
+
+#define filterx_string_get_value_as_cstr_len(s, len) \
+  ({ \
+    const gchar *__str = filterx_string_get_value_ref(s, len); \
+    if (__str) { APPEND_ZERO(__str, __str, *len); } \
+    __str; \
+  })
+
+static inline gchar *
+filterx_string_strdup_value(FilterXObject *s)
+{
+  gsize len;
+  const gchar *str = filterx_string_get_value_ref(s, &len);
+  if (!str)
+    return NULL;
+  return g_strndup(str, len);
 }
 
 static inline FilterXObject *
