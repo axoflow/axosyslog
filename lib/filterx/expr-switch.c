@@ -114,7 +114,8 @@ _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_
       return FALSE;
     }
 
-  if (!g_hash_table_insert(self->literal_cache, g_strdup(str), filterx_expr_ref(&switch_case->super.super)))
+  /* NOTE: g_hash_table_insert() frees the key if it was a duplicate */
+  if (!g_hash_table_insert(self->literal_cache, g_strndup(str, len), filterx_expr_ref(&switch_case->super.super)))
     {
       /* Switch case already exists, this is not allowed. */
       _store_duplicate_cases_error(self, str);
@@ -172,8 +173,7 @@ _eval_body(FilterXSwitch *self, gssize target)
 static FilterXSwitchCase *
 _find_matching_literal_case(FilterXSwitch *self, FilterXObject *selector)
 {
-  gsize len;
-  const gchar *str = filterx_string_get_value_ref(selector, &len);
+  const gchar *str = filterx_string_get_value_as_cstr(selector);
   if (!str)
     return NULL;
 
