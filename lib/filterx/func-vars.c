@@ -153,9 +153,7 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
 
   gsize key_len = 0;
-  const gchar *key_str = filterx_string_get_value_ref(key, &key_len);
-  APPEND_ZERO(key_str, key_str, key_len);
-
+  const gchar *key_str = filterx_string_get_value_as_cstr_len(key, &key_len);
   if (key_len == 0)
     {
       filterx_eval_push_error("Variable name must not be empty", s, key);

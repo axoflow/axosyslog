@@ -148,15 +148,13 @@ _eval(FilterXExpr *s)
   const gchar *input;
 
   FilterXObject *result = NULL;
-  if (!filterx_object_extract_string_ref(obj, &input, &len))
+  if (!filterx_object_extract_string_as_cstr_len(obj, &input, &len))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()", &self->super.super,
                                           "Input must be string, got: %s",
                                           filterx_object_get_type_name(obj));
       goto exit;
     }
-
-  APPEND_ZERO(input, input, len);
 
   result = _extract_key_values(self, input, len);
 
