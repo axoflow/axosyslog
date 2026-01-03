@@ -199,18 +199,6 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   return TRUE;
 }
 
-static inline guint
-_hash_str(const gchar *str, gsize str_len)
-{
-  const char *p;
-  guint32 h = 5381;
-
-  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
-    h = (h << 5) + h + *p;
-
-  return h;
-}
-
 guint
 _filterx_string_hash(FilterXString *self)
 {
@@ -220,7 +208,7 @@ _filterx_string_hash(FilterXString *self)
    * arm).  */
 
   G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
-  self->hash = _hash_str(self->str, self->str_len);
+  self->hash = strn_hash(self->str, self->str_len);
   return self->hash;
 }
 
