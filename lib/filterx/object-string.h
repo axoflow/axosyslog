@@ -51,7 +51,11 @@ struct _FilterXString
   const gchar *str;
   guint32 str_len;
   volatile guint32 hash;
-  gchar storage[];
+  union
+  {
+    FilterXObject *slice;
+    gchar bytes[0];
+  } storage;
 };
 
 typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize source_len);
@@ -72,6 +76,7 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], 
 FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
+FilterXObject *filterx_string_new_slice(FilterXObject *string_, gsize start, gsize end);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
