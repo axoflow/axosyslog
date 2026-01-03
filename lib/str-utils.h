@@ -123,6 +123,18 @@ strn_eq_strz(const char *str, const char *asciiz, size_t str_len)
   return asciiz[str_len] == 0;
 }
 
+static inline guint
+strn_hash(const gchar *str, gsize str_len)
+{
+  const char *p;
+  guint32 h = 5381;
+
+  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
+    h = (h << 5) + h + *p;
+
+  return h;
+}
+
 /*
  * strsplit() splits the `str` into `maxtokens` pieces.
  * This version skips multiple `delims`.
