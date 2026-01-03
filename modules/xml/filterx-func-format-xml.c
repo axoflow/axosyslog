@@ -32,18 +32,20 @@
 const char *XML_ERROR_STR = "Failed to convert to xml";
 
 void
-append_inner_dict_start_tag(const char *key_str, GString *buffer)
+append_inner_dict_start_tag(const char *key_str, gsize key_str_len, GString *buffer)
 {
-  g_string_append_printf(buffer, "<%s>", key_str);
+  g_string_append_c(buffer, '<');
+  g_string_append_len(buffer, key_str, key_str_len);
+  g_string_append_c(buffer, '>');
 }
 
 void
-append_inner_dict_end_tag(const char *key_str, gpointer user_data, gsize prev_buffer_len)
+append_inner_dict_end_tag(const char *key_str, gsize key_str_len, gpointer user_data, gsize prev_buffer_len)
 {
   GString *buffer = ((gpointer *) user_data)[1];
   gboolean *is_only_attribute_present = ((gpointer *) user_data)[2];
 
-  if(*is_only_attribute_present)
+  if (*is_only_attribute_present)
     {
       g_string_overwrite(buffer, buffer->len - 1, "/");
       g_string_append_c(buffer, '>');
@@ -57,10 +59,12 @@ append_inner_dict_end_tag(const char *key_str, gpointer user_data, gsize prev_bu
           g_string_append_c(buffer, '>');
         }
       else if (buffer->str[buffer->len - 1] == '\"' || buffer->str[buffer->len - 1] == '\'')
-        g_string_append(buffer, "/>");
+        g_string_append_len(buffer, "/>", 2);
       else
         {
-          g_string_append_printf(buffer, "</%s>", key_str);
+          g_string_append_len(buffer, "</", 2);
+          g_string_append_len(buffer, key_str, key_str_len);
+          g_string_append_c(buffer, '>');
         }
     }
 }
@@ -75,14 +79,14 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
 
   g_assert(filterx_object_extract_string_ref(key, &key_str, &key_str_len));
 
-  append_inner_dict_start_tag(key_str, buffer);
+  append_inner_dict_start_tag(key_str, key_str_len, buffer);
 
   gsize prev_buffer_len = buffer->len;
   *is_only_attribute_present = FALSE;
   if (!filterx_object_iter(dict, append_object, user_data))
     return FALSE;
 
-  append_inner_dict_end_tag(key_str, user_data, prev_buffer_len);
+  append_inner_dict_end_tag(key_str, key_str_len, user_data, prev_buffer_len);
   return TRUE;
 }
 
@@ -107,7 +111,7 @@ append_list(FilterXObject *key, FilterXObject *list, gpointer user_data)
 }
 
 static void
-_append_attribute(const char *key_str, GString *value_buffer, GString *buffer)
+_append_attribute(const char *key_str, gsize key_str_len, GString *value_buffer, GString *buffer)
 {
   if (buffer->str[buffer->len - 1] == '>')
     g_string_overwrite(buffer, buffer->len - 1, " ");
@@ -115,7 +119,10 @@ _append_attribute(const char *key_str, GString *value_buffer, GString *buffer)
     g_string_append_c(buffer, ' ');
 
   gchar *escaped_value = g_markup_escape_text(value_buffer->str, value_buffer->len);
-  g_string_append_printf(buffer, "%s='%s'>", &key_str[1], escaped_value);
+  g_string_append_len(buffer, &key_str[1], key_str_len - 1);
+  g_string_append_len(buffer, "='", 2);
+  g_string_append(buffer, escaped_value);
+  g_string_append_len(buffer, "'>", 2);
   g_free(escaped_value);
 }
 
@@ -130,13 +137,24 @@ _append_text(GString *value_buffer, GString *buffer)
   g_free(escaped_value);
 }
 
-static void
-_append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
+void
+append_leaf(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len, GString *buffer)
 {
-  if(value_str_len)
-    g_string_append_printf(buffer, "<%s>%s</%s>", key_str, value_str, key_str);
+  g_string_append_c(buffer, '<');
+  if (value_str_len)
+    {
+      g_string_append_len(buffer, key_str, key_str_len);
+      g_string_append_c(buffer, '>');
+      g_string_append_len(buffer, value_str, value_str_len);
+      g_string_append_len(buffer, "</", 2);
+      g_string_append_len(buffer, key_str, key_str_len);
+      g_string_append_c(buffer, '>');
+    }
   else
-    g_string_append_printf(buffer, "<%s/>", key_str);
+    {
+      g_string_append_len(buffer, key_str, key_str_len);
+      g_string_append_len(buffer, "/>", 2);
+    }
 }
 
 static gboolean
@@ -162,10 +180,10 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (key_str_len && (key_str[0] == '@'))
     {
       *is_only_attribute_present = TRUE;
-      _append_attribute(key_str, val_buf, buffer);
+      _append_attribute(key_str, key_str_len, val_buf, buffer);
       return TRUE;
     }
-  if (key_str_len && (g_strcmp0(key_str, "#text") == 0))
+  if (key_str_len && (strn_eq_strz(key_str, "#text", key_str_len)))
     {
       *is_only_attribute_present = FALSE;
       _append_text(val_buf, buffer);
@@ -173,7 +191,7 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
 
   gchar *escaped_value = g_markup_escape_text(val_buf->str, val_buf->len);
-  self->append_leaf(key_str, escaped_value, strlen(escaped_value), buffer);
+  self->append_leaf(key_str, key_str_len, escaped_value, strlen(escaped_value), buffer);
   g_free (escaped_value);
   return TRUE;
 }
@@ -202,16 +220,16 @@ _is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
 
   // '@' character and "#text" string are reserved for attributes and text respectively,
   // so we consider them valid
-  if (!(isalpha(tag_str[0]) || tag_str[0] == '_' || tag_str[0] == '@' || (g_strcmp0(tag_str, "#text") == 0)))
+  if (!(isalpha(tag_str[0]) || tag_str[0] == '_' || tag_str[0] == '@' || strn_eq_strz(tag_str, "#text", tag_str_len)))
     {
       filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
                                           "Dict key must begin with a letter or '_' character");
       return FALSE;
     }
 
-  for(gint i = 1; i < tag_str_len -1; ++i)
+  for(gint i = 1; i < tag_str_len - 1; ++i)
     {
-      if (!(isalnum(tag_str[i])) || tag_str[i]=='.' || tag_str[i] == '_' || tag_str[i] == '-')
+      if (!(isalnum(tag_str[i])) || tag_str[i] == '.' || tag_str[i] == '_' || tag_str[i] == '-')
         {
           filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
                                               "Dict key can't contain special characters, except '.', '_', and '-'");
@@ -345,7 +363,7 @@ filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.walk_children = _format_xml_walk;
   self->super.super.free_fn = _free;
   self->append_inner_dict = _append_inner_dict;
-  self->append_leaf = _append_leaf;
+  self->append_leaf = append_leaf;
 
   if (!_extract_argument(self, args, error) ||
       !filterx_function_args_check(args, error))
