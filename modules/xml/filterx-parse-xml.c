@@ -356,8 +356,8 @@ _convert_to_dict(GMarkupParseContext *context, XmlElemContext *elem_context, GEr
 
       if (!success)
         {
-          _set_error(error, "failed to store leaf node value in a new dict: \"%s\"={\"#text\": \"%s\"}",
-                     parent_elem_name, existing_value);
+          _set_error(error, "failed to store leaf node value in a new dict: \"%s\"={\"#text\": \"%.*s\"}",
+                     parent_elem_name, existing_value_len, existing_value);
           goto exit;
         }
     }
