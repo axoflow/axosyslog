@@ -41,7 +41,7 @@ typedef struct _DynMetricsTemplate
 } DynMetricsTemplate;
 
 void dyn_metrics_template_set_key(DynMetricsTemplate *s, const gchar *key);
-void dyn_metrics_template_add_label_template(DynMetricsTemplate *s, const gchar *label, LogTemplate *value_template);
+void dyn_metrics_template_add_label_template(DynMetricsTemplate *s, const gchar *label, gssize label_len, LogTemplate *value_template);
 void dyn_metrics_template_set_level(DynMetricsTemplate *s, gint level);
 ValuePairs *dyn_metrics_template_get_value_pairs(DynMetricsTemplate *s);
 gboolean dyn_metrics_template_is_enabled(DynMetricsTemplate *self);
