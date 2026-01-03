@@ -121,7 +121,7 @@ _optimize_key(FilterXMetrics *self)
     }
 
   /* There are no literal message values, so we don't need to call extract_string() here. */
-  self->key.str = g_strdup(filterx_string_get_value_ref(key_obj, NULL));
+  self->key.str = filterx_string_strdup_value(key_obj);
 
   filterx_expr_unref(self->key.expr);
   self->key.expr = NULL;
