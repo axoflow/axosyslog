@@ -30,7 +30,6 @@
 #include "str-utils.h"
 #include "utf8utils.h"
 
-
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
 /* NOTE: Consider using filterx_object_extract_bytes_ref() to also support message_value. */
@@ -95,6 +94,8 @@ _free(FilterXObject *s)
   FilterXString *self = (FilterXString *) s;
   if (self->super.flags & FILTERX_STRING_FLAG_STR_ALLOCATED)
     g_free((gchar *) self->str);
+  else if (self->super.flags & FILTERX_STRING_FLAG_STR_BORROWED_SLICE)
+    filterx_object_unref(self->storage.slice);
   filterx_object_free_method(s);
 }
 
@@ -183,20 +184,20 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
   if (translate)
-    translate(self->storage, str, (gsize *) &str_len);
+    translate(self->storage.bytes, str, (gsize *) &str_len);
   else
-    memcpy(self->storage, str, str_len);
+    memcpy(self->storage.bytes, str, str_len);
   self->str_len = str_len;
 
   /* NOTE: in DEBUG mode we always use a non-NUL termination to trigger
    * length handling bugs in newly introduced code */
 
+  self->str = self->storage.bytes;
 #if SYSLOG_NG_ENABLE_DEBUG
-  self->storage[str_len] = '`';
+  self->storage.bytes[str_len] = '`';
 #else
-  self->storage[str_len] = 0;
+  self->storage.bytes[str_len] = 0;
 #endif
-  self->str = self->storage;
 
   return self;
 }
@@ -393,6 +394,35 @@ FilterXObject *
 filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 {
   return &_string_new(str, str_len, _deescape_json_string)->super;
+}
+
+FilterXObject *
+filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
+{
+  FilterXString *self = filterx_new_object(FilterXString);
+  filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
+
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+    {
+      FilterXString *string = (FilterXString *) object;
+      g_assert(end <= string->str_len && start <= end);
+      self->str = &string->str[start];
+    }
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
+    {
+      FilterXMessageValue *mv = (FilterXMessageValue *) object;
+      g_assert(end <= mv->repr_len && start <= end);
+      self->str = &mv->repr[start];
+    }
+  else
+    {
+      return NULL;
+    }
+
+  self->super.flags |= FILTERX_STRING_FLAG_STR_BORROWED_SLICE;
+  self->str_len = end - start;
+  self->storage.slice = filterx_object_ref(object);
+  return &self->super;
 }
 
 static inline gsize
