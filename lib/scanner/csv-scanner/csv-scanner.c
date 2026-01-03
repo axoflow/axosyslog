@@ -221,7 +221,7 @@ _decode_xbyte(gchar xdigit1, gchar xdigit2)
 }
 
 static void
-_parse_character_with_quotation(CSVScanner *self)
+_parse_character_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
 {
   gchar ch;
   /* quoted character */
@@ -231,6 +231,7 @@ _parse_character_with_quotation(CSVScanner *self)
     {
       self->src++;
       ch = *self->src;
+      *nonliteral_input = TRUE;
     }
   else if (self->options->dialect == CSV_SCANNER_ESCAPE_BACKSLASH_WITH_SEQUENCES &&
            *self->src == '\\' &&
@@ -238,6 +239,7 @@ _parse_character_with_quotation(CSVScanner *self)
     {
       self->src++;
       ch = *self->src;
+      *nonliteral_input = TRUE;
       if (ch != self->current_quote)
         {
           switch (ch)
@@ -281,18 +283,19 @@ _parse_character_with_quotation(CSVScanner *self)
     {
       self->src++;
       ch = *self->src;
+      *nonliteral_input = TRUE;
     }
   else if (*self->src == self->current_quote)
     {
       self->current_quote = 0;
-      self->src++;
-      return;
+      goto exit;
     }
   else
     {
       ch = *self->src;
     }
   g_string_append_c(self->current_value, ch);
+exit:
   self->src++;
 }
 
@@ -334,35 +337,35 @@ _parse_string_delimiters_at_current_position(CSVScanner *self)
 }
 
 static gboolean
-_parse_character_delimiters_at_current_position(CSVScanner *self)
+_parse_character_delimiters_at_current_position(CSVScanner *self, gboolean *nonliteral_input)
 {
-  gboolean escaped = FALSE;
+  gboolean quoted = FALSE;
   if (self->options->dialect == CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER &&
       *self->src == '\\' &&
       *(self->src + 1))
     {
       self->src++;
-      escaped = TRUE;
+      *nonliteral_input = quoted = TRUE;
     }
   if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, *self->src) != NULL)
     {
-      if (escaped)
+      if (quoted)
         return FALSE;
       self->src++;
       return TRUE;
     }
-  if (escaped)
+  if (quoted)
     self->src--;
   return FALSE;
 }
 
 static gboolean
-_parse_delimiter(CSVScanner *self)
+_parse_delimiter(CSVScanner *self, gboolean *nonliteral_input)
 {
   if (_parse_string_delimiters_at_current_position(self))
     return TRUE;
 
-  if (_parse_character_delimiters_at_current_position(self))
+  if (_parse_character_delimiters_at_current_position(self, nonliteral_input))
     return TRUE;
 
   return FALSE;
@@ -378,21 +381,27 @@ _parse_unquoted_literal_character(CSVScanner *self)
 static void
 _parse_value_with_whitespace_and_delimiter(CSVScanner *self)
 {
+  /* was there any escaping in the source string? */
+  gboolean nonliteral_input = FALSE;
+
+  self->current_value_start_ofs = self->src - self->input;
   while (*self->src)
     {
       if (self->current_quote)
         {
           /* within quotation marks */
-          _parse_character_with_quotation(self);
+          _parse_character_with_quotation(self, &nonliteral_input);
         }
       else
         {
           /* unquoted value */
-          if (_parse_delimiter(self))
+          if (_parse_delimiter(self, &nonliteral_input))
             break;
           _parse_unquoted_literal_character(self);
         }
     }
+  if (nonliteral_input)
+    self->current_value_start_ofs = -1;
 }
 
 static gint
@@ -448,6 +457,7 @@ static gboolean
 _switch_to_next_column(CSVScanner *self)
 {
   g_string_truncate(self->current_value, 0);
+  self->current_value_start_ofs = -1;
 
   if (self->expected_columns == 0)
     return TRUE;
@@ -481,6 +491,7 @@ static gboolean
 _take_rest(CSVScanner *self)
 {
   _parse_left_whitespace(self);
+  self->current_value_start_ofs = self->src - self->input;
   g_string_assign(self->current_value, self->src);
   self->src += self->current_value->len;
   self->state = CSV_STATE_GREEDY_COLUMN;
@@ -494,6 +505,7 @@ csv_scanner_append_rest(CSVScanner *self)
   if (self->state == CSV_STATE_FINISH)
     return FALSE;
 
+  self->current_value_start_ofs = self->current_value_start_pos - self->input;
   g_string_assign(self->current_value, self->current_value_start_pos);
   self->src = self->current_value_start_pos + self->current_value->len;
   self->state = CSV_STATE_GREEDY_COLUMN;
@@ -534,7 +546,7 @@ csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *i
 {
   memset(scanner, 0, sizeof(*scanner));
   scanner->state = CSV_STATE_INITIAL;
-  scanner->src = input;
+  scanner->input = scanner->src = input;
   scanner->current_value = scratch_buffers_alloc();
   scanner->current_value_start_pos = NULL;
   scanner->current_column = 0;
