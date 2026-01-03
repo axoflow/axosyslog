@@ -131,7 +131,18 @@ filterx_string_get_value_ref_and_assert_nul(FilterXObject *s, gsize *length)
   if (!str)
     return NULL;
 
+#if SYSLOG_NG_ENABLE_DEBUG
+
+  /* in DEBUG mode we are _never_ NUL terminating FilterXString instances to
+   * trigger any issues that relate to length handling.  But we must use
+   * this hack below to turn them into NUL terminated if the application
+   * code correctly requests it using this function.
+    */
+  g_assert(str[len] == 0 || str[len] == '`');
+  ((gchar *) str)[len] = 0;
+#else
   g_assert(str[len] == 0);
+#endif
   if (length)
     *length = len;
   return str;
