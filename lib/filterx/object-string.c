@@ -172,7 +172,15 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
     translate(self->storage, str, str_len);
   else
     memcpy(self->storage, str, str_len);
+
+  /* NOTE: in DEBUG mode we always use a non-NUL termination to trigger
+   * length handling bugs in newly introduced code */
+
+#if SYSLOG_NG_ENABLE_DEBUG
+  self->storage[str_len] = '`';
+#else
   self->storage[str_len] = 0;
+#endif
   self->str = self->storage;
 
   return self;
