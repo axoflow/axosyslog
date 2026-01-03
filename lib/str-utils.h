@@ -123,6 +123,14 @@ strn_eq_strz(const char *str, const char *asciiz, size_t str_len)
   return asciiz[str_len] == 0;
 }
 
+static inline gboolean
+strn_eq_strn(const char *str1, gsize str1_len, const char *str2, size_t str2_len)
+{
+  if (str1_len != str2_len)
+    return FALSE;
+  return memcmp(str1, str2, str1_len) == 0;
+}
+
 static inline guint
 strn_hash(const gchar *str, gsize str_len)
 {
