@@ -66,7 +66,6 @@ filterx_message_value_get_value(FilterXObject *s, gsize *len)
 {
   FilterXMessageValue *self = (FilterXMessageValue *) s;
 
-  g_assert(len);
   *len = self->repr_len;
   return self->repr;
 }
