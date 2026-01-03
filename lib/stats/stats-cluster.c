@@ -23,6 +23,7 @@
 #include "stats/stats-cluster.h"
 #include "stats/stats-registry.h"
 #include "mainloop.h"
+#include "str-utils.h"
 
 #include <assert.h>
 #include <string.h>
@@ -98,7 +99,8 @@ stats_cluster_key_labels_equal(StatsClusterLabel *l1, gsize l1_len, StatsCluster
 
   for (gsize i = 0; i < l1_len; ++i)
     {
-      if (strcmp(l1[i].name, l2[i].name) != 0 || g_strcmp0(l1[i].value, l2[i].value) != 0)
+      if (!strn_eq_strn(l1[i].name, l1[i].name_len, l2[i].name, l2[i].name_len) ||
+          !strn_eq_strn(l1[i].value, l1[i].value_len, l2[i].value, l2[i].value_len))
         return FALSE;
     }
 
@@ -112,9 +114,9 @@ stats_cluster_key_labels_hash(StatsClusterLabel *labels, gsize labels_len)
   for (gsize i = 0; i < labels_len; ++i)
     {
       StatsClusterLabel *label = &labels[i];
-      hash += g_str_hash(label->name);
+      hash += strn_hash(label->name, label->name_len);
       if (label->value)
-        hash += g_str_hash(label->value);
+        hash += strn_hash(label->value, label->value_len);
     }
 
   return hash;
@@ -130,7 +132,8 @@ stats_cluster_key_labels_clone(StatsClusterLabel *labels, gsize labels_len)
       StatsClusterLabel *label = &labels[i];
       g_assert(label->name);
 
-      cloned[i] = stats_cluster_label(g_strdup(label->name), g_strdup(label->value));
+      cloned[i] = stats_cluster_label(g_strndup(label->name, label->name_len),
+                                      g_strndup(label->value, label->value_len));
     }
 
   return cloned;
@@ -265,7 +268,6 @@ _get_module_name(gint source)
   g_assert(type < stats_types->len);
   return g_ptr_array_index(stats_types, type);
 }
-
 
 static const gchar *
 _get_component_prefix(gint source)

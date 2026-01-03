@@ -111,6 +111,8 @@ struct _StatsClusterLabel
 {
   const gchar *name;
   const gchar *value;
+  guint32 name_len;
+  guint32 value_len;
 };
 
 static inline StatsClusterLabel
@@ -118,7 +120,20 @@ stats_cluster_label(const gchar *name, const gchar *value)
 {
   return (StatsClusterLabel)
   {
-    .name = name, .value = value
+    .name = name, .value = value,
+    .name_len = (guint32) (name ? strlen(name) : 0),
+    .value_len = (guint32) (value ? strlen(value) : 0),
+  };
+}
+
+static inline StatsClusterLabel
+stats_cluster_label_len(const gchar *name, gsize name_len, const gchar *value, gsize value_len)
+{
+  return (StatsClusterLabel)
+  {
+    .name = name, .value = value,
+    .name_len = (guint32) name_len,
+    .value_len = (guint32) value_len,
   };
 }
 
