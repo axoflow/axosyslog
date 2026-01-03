@@ -184,7 +184,7 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
 {
   FilterXString *self = (FilterXString *) *pself;
 
-  gchar *dedup_key = g_strdup_printf("string_%s", self->str);
+  gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
 
   FilterXObject *dedup_str = g_hash_table_lookup(dedup_storage, dedup_key);
   if (dedup_str)
