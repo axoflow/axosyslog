@@ -95,8 +95,8 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   for (gssize i = (gssize)(self->labels->len) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
-      if (strncmp(label->name, key_str, key_len) == 0)
-        return filterx_string_new(label->value, -1);
+      if (label->name_len == key_len && strncmp(label->name, key_str, key_len) == 0)
+        return filterx_string_new(label->value, label->value_len);
     }
 
   return NULL;
@@ -153,7 +153,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
 
   g_array_set_size(self->labels, self->labels->len + 1);
   StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, self->labels->len-1);
-  *label = stats_cluster_label(key_str, value_str);
+  *label = stats_cluster_label_len(key_str, key_len, value_str, value_len);
 
   /* take a ref to our borrowed key argument */
   g_ptr_array_add(self->objects, filterx_object_ref(key));
@@ -185,7 +185,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
   for (gssize i = (gssize)(self->labels->len) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
-      if (strncmp(label->name, key_str, key_len) == 0)
+      if (label->name_len == key_len && strncmp(label->name, key_str, key_len) == 0)
         return TRUE;
     }
 
@@ -209,7 +209,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   for (gssize i = (gssize)(self->labels->len) - 1; i >= 0; i--)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
-      if (strncmp(label->name, key_str, key_len) == 0)
+      if (label->name_len == key_len && strncmp(label->name, key_str, key_len) == 0)
         g_array_remove_index(self->labels, i);
     }
 
@@ -225,8 +225,8 @@ _iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
 
-      FILTERX_STRING_DECLARE_ON_STACK(name, label->name, -1);
-      FILTERX_STRING_DECLARE_ON_STACK(value, label->value, -1);
+      FILTERX_STRING_DECLARE_ON_STACK(name, label->name, label->name_len);
+      FILTERX_STRING_DECLARE_ON_STACK(value, label->value, label->value_len);
 
       gboolean success = func(name, value, user_data);
 
@@ -281,10 +281,17 @@ _dedup(FilterXObjectMetricsLabels *self)
 {
   GHashTable *labels_map = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
 
+  /* NOTE: nul terminated labels are stored on the stack if they are not NUL
+   * terminated originally, but this is not a problem, the hash table is
+   * only used locally.
+   */
   for (guint i = 0; i < self->labels->len; i++)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
-      g_hash_table_replace(labels_map, (gpointer) label->name, label);
+
+      const gchar *label_name = label->name;
+      APPEND_ZERO(label_name, label_name, label->name_len);
+      g_hash_table_replace(labels_map, (gpointer) label_name, label);
     }
 
   g_array_set_size(self->labels, 0);
