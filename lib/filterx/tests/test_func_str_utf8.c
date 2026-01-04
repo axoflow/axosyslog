@@ -41,7 +41,7 @@ static FilterXExpr *
 _create_utf8_validate_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("utf8_validate", filterx_function_args_new(args, NULL),
@@ -105,7 +105,7 @@ static FilterXExpr *
 _create_utf8_sanitize_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("utf8_sanitize", filterx_function_args_new(args, NULL),

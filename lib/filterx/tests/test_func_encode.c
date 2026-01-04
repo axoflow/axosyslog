@@ -41,7 +41,7 @@ static FilterXExpr *
 _create_base64_encode_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("base64_encode", filterx_function_args_new(args, NULL),
@@ -54,7 +54,7 @@ static FilterXExpr *
 _create_base64_decode_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("base64_decode", filterx_function_args_new(args, NULL),
@@ -154,7 +154,7 @@ static FilterXExpr *
 _create_urlencode_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("urlencode", filterx_function_args_new(args, NULL),
@@ -167,7 +167,7 @@ static FilterXExpr *
 _create_urldecode_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("urldecode", filterx_function_args_new(args, NULL),
@@ -284,7 +284,7 @@ static FilterXExpr *
 _create_hex_encode_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("hex_encode", filterx_function_args_new(args, NULL),
@@ -297,7 +297,7 @@ static FilterXExpr *
 _create_hex_decode_expr(FilterXObject *arg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("hex_decode", filterx_function_args_new(args, NULL),
