@@ -357,6 +357,10 @@ static FilterXObject *
 _unmarshal(FilterXObject *s)
 {
   FilterXMessageValue *self = (FilterXMessageValue *) s;
+  if (self->type == LM_VT_STRING)
+    {
+      return filterx_string_new_slice(s, 0, self->repr_len);
+    }
   return filterx_unmarshal_repr(self->repr, self->repr_len, self->type);
 }
 
