@@ -217,6 +217,11 @@ static inline gboolean
 _filterx_object_is_type(FilterXObject *object, FilterXType *type)
 {
   FilterXType *self_type = object->type;
+  if (G_LIKELY(type == self_type))
+    {
+      return TRUE;
+    }
+  self_type = self_type->super_type;
   while (self_type)
     {
       if (type == self_type)
