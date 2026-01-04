@@ -746,7 +746,7 @@ _filterx_dict_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 
   if (!self->table)
-    return TRUE;
+    return;
 
   g_assert(_table_foreach(self->table, _dedup_dict_item, dedup_storage));
 

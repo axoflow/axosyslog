@@ -81,7 +81,7 @@ Test(filterx_func_flatten, invalid_args)
   /* non-literal separator */
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new("separator",
-                                                      filterx_non_literal_new(filterx_boolean_new(TRUE))));
+                                                      filterx_object_expr_new(filterx_boolean_new(TRUE))));
   _assert_flatten_init_fail(args);
   args = NULL;
 
