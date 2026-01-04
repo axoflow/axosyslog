@@ -50,7 +50,7 @@ static FilterXExpr *
 _create_simple_digest_expr(FilterXObject *arg, FilterXSimpleFunctionProto fn, const gchar *fn_name)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn_expr = filterx_simple_function_new(fn_name, filterx_function_args_new(args, NULL), fn, &error);
@@ -62,7 +62,7 @@ static FilterXExpr *
 _create_digest_expr(FilterXObject *arg, const gchar *alg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
   if (alg)
     args = g_list_append(args, filterx_function_arg_new("alg", filterx_literal_new(filterx_string_new(alg, -1))));
 
@@ -186,7 +186,7 @@ Test(filterx_func_digest, digest_unknown_alg)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_non_literal_new(filterx_string_new("foo", -1))));
+                                                      filterx_object_expr_new(filterx_string_new("foo", -1))));
   args = g_list_append(args, filterx_function_arg_new("alg",
                                                       filterx_literal_new(filterx_string_new("bogus_alg", -1))));
 
