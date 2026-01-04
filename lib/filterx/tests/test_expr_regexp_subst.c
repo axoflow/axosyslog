@@ -49,7 +49,7 @@ static FilterXExpr *
 _build_subst_func(const gchar *pattern, const gchar *repr, const gchar *str, FilterXFuncRegexpSubstOpts opts)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(str, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new(str, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(repr, -1))));
   if (opts.global)
