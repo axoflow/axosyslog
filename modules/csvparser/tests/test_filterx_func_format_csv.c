@@ -77,7 +77,7 @@ Test(filterx_func_format_csv, test_invalid_args)
 
   /* non literal delimiter */
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
-  args = g_list_append(args, filterx_function_arg_new("delimiter", filterx_non_literal_new(filterx_string_new(",",
+  args = g_list_append(args, filterx_function_arg_new("delimiter", filterx_object_expr_new(filterx_string_new(",",
                                                       -1))));
   _assert_format_csv_init_fail(args);
   args = NULL;
@@ -122,7 +122,7 @@ Test(filterx_func_format_csv, test_array_mode_skip_column_names)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_non_literal_new(filterx_object_from_json("[\"col1\",\"col2\"]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"col1\",\"col2\"]", -1, NULL))));
 
   _assert_format_csv(args, "foo,bar,baz");
 }
@@ -156,7 +156,7 @@ Test(filterx_func_format_csv, test_dict_mode_with_column_names_with_default_deli
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_non_literal_new(filterx_object_from_json("[\"col2\",\"col1\"]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"col2\",\"col1\"]", -1, NULL))));
 
   _assert_format_csv(args, "bar,foo");
 }
@@ -170,7 +170,7 @@ Test(filterx_func_format_csv, test_dict_mode_with_column_names_with_custom_delim
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DELIMITER,
                                                       filterx_literal_new(filterx_string_new(";", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_non_literal_new(filterx_object_from_json("[\"col3\",\"col1\"]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"col3\",\"col1\"]", -1, NULL))));
 
   _assert_format_csv(args, "baz;foo");
 }
@@ -209,7 +209,7 @@ Test(filterx_func_format_csv, test_dict_mode_fills_remaining_cols_with_default_d
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_non_literal_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
 
   _assert_format_csv(args, "foo,bar,baz,,");
 }
@@ -221,7 +221,7 @@ Test(filterx_func_format_csv, test_dict_mode_fills_remaining_cols_with_non_defau
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_non_literal_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DEFAULT_VALUE,
                                                       filterx_literal_new(filterx_string_new("null", -1))));
 
@@ -235,9 +235,9 @@ Test(filterx_func_format_csv, test_dict_mode_default_value_repr_must_be_literal)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_non_literal_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DEFAULT_VALUE,
-                                                      filterx_non_literal_new(filterx_string_new("null", -1))));
+                                                      filterx_object_expr_new(filterx_string_new("null", -1))));
 
   _assert_format_csv_init_fail(args);
 }
@@ -249,7 +249,7 @@ Test(filterx_func_format_csv, test_dict_mode_default_value_repr_must_be_string)
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, csv_data));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_COLUMNS,
-                                                      filterx_non_literal_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"col1\",\"col2\",\"col3\",\"more\",\"cols\"]", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_FORMAT_CSV_ARG_NAME_DEFAULT_VALUE,
                                                       filterx_literal_new(filterx_null_new())));
 
