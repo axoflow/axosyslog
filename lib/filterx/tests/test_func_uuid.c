@@ -108,7 +108,7 @@ Test(filterx_func_uuid, two_calls_produce_different_uuids)
 Test(filterx_func_uuid, rejects_arguments)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new("foo", -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new("foo", -1))));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_simple_function_new("uuid", filterx_function_args_new(args, NULL),

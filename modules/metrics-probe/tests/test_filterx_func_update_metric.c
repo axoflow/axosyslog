@@ -90,7 +90,7 @@ _eval(FilterXExpr *func)
 Test(filterx_func_update_metric, key_and_labels)
 {
   FilterXExpr *key = filterx_literal_new(filterx_string_new("test_key", -1));
-  FilterXExpr *labels = filterx_non_literal_new(filterx_test_dict_new());
+  FilterXExpr *labels = filterx_object_expr_new(filterx_test_dict_new());
   _add_label(labels, "test_label_3", "baz");
   _add_label(labels, "test_label_1", "foo");
   _add_label(labels, "test_label_2", "bar");
@@ -123,7 +123,7 @@ Test(filterx_func_update_metric, key_and_labels)
 Test(filterx_func_update_metric, increment)
 {
   FilterXExpr *key = filterx_literal_new(filterx_string_new("test_key", -1));
-  FilterXExpr *func = _create_func(key, NULL, filterx_non_literal_new(filterx_integer_new(42)), NULL);
+  FilterXExpr *func = _create_func(key, NULL, filterx_object_expr_new(filterx_integer_new(42)), NULL);
   cr_assert(filterx_expr_init(func, configuration));
 
   StatsClusterLabel expected_labels[] = {};
