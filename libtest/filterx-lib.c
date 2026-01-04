@@ -147,16 +147,16 @@ filterx_test_unknown_object_new(void)
   return filterx_object_new(&FILTERX_TYPE_NAME(test_unknown_object));
 }
 
-typedef struct _FilterXNonLiteralExpr
+typedef struct _FilterXExprWrapperExpr
 {
   FilterXExpr super;
   FilterXExpr *block;
-} FilterXNonLiteralExpr;
+} FilterXExprWrapperExpr;
 
 static FilterXObject *
-_non_literal_eval(FilterXExpr *s)
+_expr_wrapper_eval(FilterXExpr *s)
 {
-  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  FilterXExprWrapperExpr *self = (FilterXExprWrapperExpr *) s;
   FilterXObject *result = filterx_expr_eval(self->block);
   if (!result)
     {
@@ -167,49 +167,49 @@ _non_literal_eval(FilterXExpr *s)
 }
 
 static FilterXExpr *
-_non_literal_optimize(FilterXExpr *s)
+_expr_wrapper_optimize(FilterXExpr *s)
 {
-  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  FilterXExprWrapperExpr *self = (FilterXExprWrapperExpr *) s;
   self->block = filterx_expr_optimize(self->block);
   return NULL;
 }
 
 static gboolean
-_non_literal_init(FilterXExpr *s, GlobalConfig *cfg)
+_expr_wrapper_init(FilterXExpr *s, GlobalConfig *cfg)
 {
-  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  FilterXExprWrapperExpr *self = (FilterXExprWrapperExpr *) s;
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
   return filterx_expr_init_method(s, cfg);
 }
 
 static void
-_non_literal_deinit(FilterXExpr *s, GlobalConfig *cfg)
+_expr_wrapper_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
-  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  FilterXExprWrapperExpr *self = (FilterXExprWrapperExpr *) s;
   filterx_expr_deinit(self->block, cfg);
   filterx_expr_deinit_method(s, cfg);
 }
 
 static void
-_non_literal_free(FilterXExpr *s)
+_expr_wrapper_free(FilterXExpr *s)
 {
-  FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
+  FilterXExprWrapperExpr *self = (FilterXExprWrapperExpr *) s;
   filterx_expr_unref(self->block);
   filterx_expr_free_method(s);
 }
 
 FilterXExpr *
-filterx_non_literal_new_from_expr(FilterXExpr *expr)
+filterx_expr_wrapper_new(FilterXExpr *expr)
 {
-  FilterXNonLiteralExpr *self = g_new0(FilterXNonLiteralExpr, 1);
+  FilterXExprWrapperExpr *self = g_new0(FilterXExprWrapperExpr, 1);
 
-  filterx_expr_init_instance(&self->super, "non-literal");
-  self->super.eval = _non_literal_eval;
-  self->super.init = _non_literal_init;
-  self->super.deinit = _non_literal_deinit;
-  self->super.optimize = _non_literal_optimize;
-  self->super.free_fn = _non_literal_free;
+  filterx_expr_init_instance(&self->super, "expr-wrapper");
+  self->super.eval = _expr_wrapper_eval;
+  self->super.init = _expr_wrapper_init;
+  self->super.deinit = _expr_wrapper_deinit;
+  self->super.optimize = _expr_wrapper_optimize;
+  self->super.free_fn = _expr_wrapper_free;
 
   self->block = filterx_compound_expr_new(TRUE);
   filterx_compound_expr_add_ref(self->block, expr);
@@ -217,10 +217,37 @@ filterx_non_literal_new_from_expr(FilterXExpr *expr)
   return &self->super;
 }
 
-FilterXExpr *
-filterx_non_literal_new(FilterXObject *object)
+typedef struct _FilterXObjectExpr
 {
-  return filterx_non_literal_new_from_expr(filterx_literal_new(object));
+  FilterXExpr super;
+  FilterXObject *object;
+} FilterXObjectExpr;
+
+static FilterXObject *
+_object_expr_eval(FilterXExpr *s)
+{
+  FilterXObjectExpr *self = (FilterXObjectExpr *) s;
+  return filterx_object_ref(self->object);
+}
+
+static void
+_object_expr_free(FilterXExpr *s)
+{
+  FilterXObjectExpr *self = (FilterXObjectExpr *) s;
+  filterx_object_unref(self->object);
+  filterx_expr_free_method(s);
+}
+
+FilterXExpr *
+filterx_object_expr_new(FilterXObject *object)
+{
+  FilterXObjectExpr *self = g_new0(FilterXObjectExpr, 1);
+
+  filterx_expr_init_instance(&self->super, "object-expr");
+  self->super.eval = _object_expr_eval;
+  self->super.free_fn = _object_expr_free;
+  self->object = object;
+  return &self->super;
 }
 
 typedef struct _FilterXDummyError FilterXDummyError;
