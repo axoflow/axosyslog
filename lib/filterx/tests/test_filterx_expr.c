@@ -271,7 +271,7 @@ Test(filterx_expr, test_filterx_assign)
 Test(filterx_expr, test_filterx_setattr)
 {
   FilterXObject *dict = filterx_dict_new();
-  FilterXExpr *fillable = filterx_literal_new(dict);
+  FilterXExpr *fillable = filterx_object_expr_new(dict);
 
   FilterXExpr *setattr = filterx_setattr_new(fillable, filterx_string_new("foo", -1),
                                              filterx_literal_new(filterx_string_new("bar", -1)));
@@ -292,7 +292,7 @@ Test(filterx_expr, test_filterx_setattr)
 Test(filterx_expr, test_filterx_set_subscript)
 {
   FilterXObject *dict = filterx_dict_new();
-  FilterXExpr *fillable = filterx_literal_new(dict);
+  FilterXExpr *fillable = filterx_object_expr_new(dict);
 
   FilterXExpr *setattr = filterx_set_subscript_new(fillable,
                                                    filterx_literal_new(filterx_string_new("foo", -1)),
