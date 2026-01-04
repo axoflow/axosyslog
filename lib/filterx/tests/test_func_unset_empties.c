@@ -102,7 +102,7 @@ Test(filterx_func_unset_empties, invalid_args)
   /* non-literal recursive */
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE,
-                                                      filterx_non_literal_new(filterx_boolean_new(TRUE))));
+                                                      filterx_object_expr_new(filterx_boolean_new(TRUE))));
   _assert_unset_empties_init_fail(args);
   args = NULL;
 
