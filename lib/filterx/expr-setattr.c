@@ -56,12 +56,6 @@ _setattr(FilterXSetAttr *self, FilterXObject *new_value)
       goto error;
     }
 
-  if (object->readonly)
-    {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "Object is readonly");
-      goto error;
-    }
-
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
       filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "setattr() method failed");
