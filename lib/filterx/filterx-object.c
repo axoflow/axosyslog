@@ -114,50 +114,48 @@ filterx_object_new(FilterXType *type)
   return self;
 }
 
-/* NOTE: we expect an exclusive reference, as it is not thread safe to be
- * called on the same object from multiple threads */
 void
-filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg)
+filterx_destroy_frozen_objects(GPtrArray *frozen_objects)
 {
-  FilterXObject *self = *pself;
-  FilterXConfig *fx_cfg = filterx_config_get(cfg);
-
-  /* Mutable or recursive objects should never be frozen.
-   * Use filterx_object_make_readonly() instead, that is enough to avoid clones.
-   */
-  g_assert(!filterx_object_is_ref(self) && !self->type->is_mutable);
-
-  if (filterx_object_is_preserved(self))
-    return;
-
-  if (filterx_object_dedup(pself, fx_cfg->frozen_deduplicated_objects))
+  /* keep all objects "FROZEN" and force call their destructor */
+  for (gsize i = 0; i < frozen_objects->len; i++)
     {
-      /* NOTE: filterx_object_dedup() may change self to replace with an already frozen version */
-      if (self != *pself)
-        return;
+      FilterXObject *o = (FilterXObject *) g_ptr_array_index(frozen_objects, i);
+      o->type->free_fn(o);
     }
-  else
-    g_ptr_array_add(fx_cfg->frozen_objects, self);
+  /* we now have the empty shells, let's free them */
+  for (gsize i = 0; i < frozen_objects->len; i++)
+    {
+      FilterXObject *o = (FilterXObject *) g_ptr_array_index(frozen_objects, i);
+      filterx_free_object(o);
+    }
+  g_ptr_array_unref(frozen_objects);
+}
 
-  /* no change in the object, so we are freezing self */
+void
+filterx_object_freeze_finish(FilterXObject *self)
+{
   filterx_object_make_readonly(self);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
 }
 
+/* NOTE: we expect an exclusive reference, as it is not thread safe to be
+ * called on the same object from multiple threads */
 void
-_filterx_object_unfreeze_and_free(FilterXObject *self)
+filterx_object_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
-  if (!self)
+  FilterXObject *self = *pself;
+
+  if (filterx_object_is_preserved(self))
     return;
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_HIBERNATED)
+  if (!freezer)
     return;
 
-  g_assert(r == FILTERX_OBJECT_REFCOUNT_FROZEN);
-
-  g_atomic_counter_set(&self->ref_cnt, 1);
-  filterx_object_unref(self);
+  if (self->type->freeze)
+    self->type->freeze(pself, freezer);
+  else
+    filterx_object_freezer_keep(freezer, self);
 }
 
 void
