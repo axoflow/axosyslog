@@ -98,6 +98,8 @@ EVTTAG *filterx_eval_format_error_index_tag(gint index, gchar *buf);
 EVTTAG *filterx_format_eval_result(FilterXEvalResult result);
 void filterx_eval_dump_errors(const gchar *message);
 
+GPtrArray *filterx_eval_construct_weak_ref_array(void);
+
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
