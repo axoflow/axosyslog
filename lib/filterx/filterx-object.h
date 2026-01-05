@@ -73,7 +73,6 @@ struct _FilterXType
 
   /* lifecycle management (caching, deduplication) */
   void (*freeze)(FilterXObject **pself, FilterXObjectFreezer *freezer);
-  void (*make_readonly)(FilterXObject *self);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -183,8 +182,6 @@ struct _FilterXObject
 
   /* NOTE:
    *
-   *     readonly          -- marks the object as unmodifiable,
-   *
    *     weak_referenced   -- marks that this object is referenced via a at
    *                          least one weakref already.
    *
@@ -197,7 +194,7 @@ struct _FilterXObject
    *     flags             -- to be used by descendant types
    *
    */
-  guint readonly:1, weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, flags:5;
+  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, flags:5;
   FilterXType *type;
 };
 
@@ -206,7 +203,6 @@ filterx_object_init_instance(FilterXObject *self, FilterXType *type)
 {
   g_atomic_counter_set(&self->ref_cnt, 1);
   self->type = type;
-  self->readonly = !type->is_mutable;
 }
 
 static inline gboolean
@@ -260,12 +256,6 @@ void filterx_object_hibernate(FilterXObject *self);
 void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
-
-static inline gboolean
-filterx_object_is_readonly(FilterXObject *self)
-{
-  return self->readonly;
-}
 
 static inline gboolean
 filterx_object_is_preserved(FilterXObject *self)
@@ -359,15 +349,6 @@ filterx_object_unref(FilterXObject *self)
       self->type->free_fn(self);
       filterx_free_object(self);
     }
-}
-
-static inline void
-filterx_object_make_readonly(FilterXObject *self)
-{
-  if (self->type->make_readonly)
-    self->type->make_readonly(self);
-
-  self->readonly = TRUE;
 }
 
 static inline FilterXObject *
@@ -468,7 +449,6 @@ filterx_object_clone_container(FilterXObject *self, FilterXObject *container, Fi
     return self->type->clone_container(self, container, child_of_interest, dup);
   return self->type->clone(self);
 }
-
 
 static inline gboolean
 filterx_object_truthy(FilterXObject *self)
@@ -601,7 +581,6 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
   { \
     .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
     .fx_ref_cnt = { .counter = 0 }, \
-    .readonly = TRUE, \
     .weak_referenced = FALSE, \
     .is_dirty = FALSE, \
     .type = &FILTERX_TYPE_NAME(_type) \
