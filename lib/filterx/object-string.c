@@ -19,15 +19,14 @@
  * COPYING for details.
  *
  */
-#include "object-string.h"
-#include "object-extractor.h"
+#include "filterx/object-string.h"
+#include "filterx/object-extractor.h"
 #include "filterx/filterx-globals.h"
-#include "filterx-ref.h"
-#include "filterx-eval.h"
+#include "filterx/filterx-config.h"
+#include "filterx/filterx-eval.h"
 #include "str-utils.h"
 #include "scratch-buffers.h"
 #include "str-format.h"
-#include "str-utils.h"
 #include "utf8utils.h"
 
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
@@ -202,27 +201,20 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   return self;
 }
 
-static gboolean
-_string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_string_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXString *self = (FilterXString *) *pself;
 
   gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
-
-  FilterXObject *dedup_str = g_hash_table_lookup(dedup_storage, dedup_key);
-  if (dedup_str)
+  if (!filterx_object_freezer_dedup(freezer, pself, dedup_key))
     {
-      filterx_object_unref(*pself);
-      *pself = filterx_object_ref(dedup_str);
-      g_free(dedup_key);
-      return TRUE;
-    }
+      _filterx_string_hash(self);
+      if (unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
+        filterx_string_mark_safe_without_json_escaping(&self->super);
 
-  _filterx_string_hash(self);
-  if (unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
-    filterx_string_mark_safe_without_json_escaping(&self->super);
-  g_hash_table_insert(dedup_storage, dedup_key, self);
-  return TRUE;
+      filterx_object_freezer_add(freezer, dedup_key, *pself);
+    }
 }
 
 guint
@@ -386,7 +378,7 @@ FilterXObject *
 filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
 {
   FilterXObject *self = filterx_string_new(str, -1);
-  filterx_object_freeze(&self, cfg);
+  filterx_object_freeze_to_config(&self, cfg);
   return self;
 }
 
@@ -591,7 +583,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .repr = _string_repr,
                     .add = _string_add,
                     .clone = _string_clone,
-                    .dedup = _string_dedup,
+                    .freeze = _string_freeze,
                     .free_fn = _free,
                    );
 

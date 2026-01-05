@@ -31,8 +31,8 @@ filterx_config_free(ModuleConfig *s)
   FilterXConfig *self = (FilterXConfig *) s;
 
   g_ptr_array_unref(self->weak_refs);
-  g_ptr_array_unref(self->frozen_objects);
   g_hash_table_unref(self->frozen_deduplicated_objects);
+  filterx_destroy_frozen_objects(self->frozen_objects);
   module_config_free_method(s);
 }
 
@@ -42,9 +42,8 @@ filterx_config_new(GlobalConfig *cfg)
   FilterXConfig *self = g_new0(FilterXConfig, 1);
 
   self->super.free_fn = filterx_config_free;
-  self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) _filterx_object_unfreeze_and_free);
-  self->frozen_deduplicated_objects = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
-                                                            (GDestroyNotify)_filterx_object_unfreeze_and_free);
+  self->frozen_objects = g_ptr_array_new();
+  self->frozen_deduplicated_objects = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
   self->weak_refs = filterx_eval_construct_weak_ref_array();
   return self;
 }
@@ -59,4 +58,55 @@ filterx_config_get(GlobalConfig *cfg)
       g_hash_table_insert(cfg->module_config, g_strdup(MODULE_CONFIG_KEY), fxc);
     }
   return fxc;
+}
+
+FilterXObject *
+_get_frozen_object_from_config(FilterXObjectFreezer *self, const gchar *key)
+{
+  GlobalConfig *cfg = (GlobalConfig *) self->user_data;
+  FilterXConfig *fx_cfg = filterx_config_get(cfg);
+
+  return g_hash_table_lookup(fx_cfg->frozen_deduplicated_objects, key);
+}
+
+void
+_add_frozen_object_to_config(FilterXObjectFreezer *self, gchar *key, FilterXObject *object)
+{
+  GlobalConfig *cfg = (GlobalConfig *) self->user_data;
+  FilterXConfig *fx_cfg = filterx_config_get(cfg);
+
+  g_hash_table_insert(fx_cfg->frozen_deduplicated_objects, key, object);
+}
+
+void
+_keep_frozen_object_in_config(FilterXObjectFreezer *self, FilterXObject *object)
+{
+  GlobalConfig *cfg = (GlobalConfig *) self->user_data;
+  FilterXConfig *fx_cfg = filterx_config_get(cfg);
+
+  g_ptr_array_add(fx_cfg->frozen_objects, object);
+}
+
+void
+filterx_config_freezer_init(FilterXObjectFreezer *self, GlobalConfig *cfg)
+{
+  self->get = _get_frozen_object_from_config;
+  self->add = _add_frozen_object_to_config;
+  self->keep = _keep_frozen_object_in_config;
+  self->user_data = cfg;
+}
+
+void
+filterx_object_freeze_to_config(FilterXObject **pself, GlobalConfig *cfg)
+{
+  if (!cfg)
+    {
+      filterx_object_freeze(pself, NULL);
+      return;
+    }
+
+  FilterXObjectFreezer freezer;
+  filterx_config_freezer_init(&freezer, cfg);
+
+  filterx_object_freeze(pself, &freezer);
 }

@@ -236,27 +236,27 @@ _filterx_list_clone(FilterXObject *s)
 }
 
 static gboolean
-_dedup_list_item(gsize index, FilterXObject **value, gpointer user_data)
+_freeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
 {
-  GHashTable *dedup_storage = (GHashTable *) user_data;
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
 
-  filterx_object_dedup(value, dedup_storage);
+  filterx_object_freeze(value, freezer);
 
   return TRUE;
 }
 
-static gboolean
-_filterx_list_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_filterx_list_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXListObject *self = (FilterXListObject *) *pself;
 
-  g_assert(filterx_list_foreach(self, _dedup_list_item, dedup_storage));
+  filterx_object_freezer_keep(freezer, *pself);
+  g_assert(filterx_list_foreach(self, _freeze_list_item, freezer));
 
   /* Mutable objects themselves should never be deduplicated,
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(*pself == &self->super.super);
-  return TRUE;
 }
 
 static gboolean
@@ -382,5 +382,5 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .iter = _filterx_list_iter,
                     .len = _filterx_list_len,
                     .make_readonly = _filterx_list_make_readonly,
-                    .dedup = _filterx_list_dedup,
+                    .freeze = _filterx_list_freeze,
                    );

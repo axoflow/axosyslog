@@ -73,8 +73,7 @@ construct_template_expr(LogTemplate *template)
 
   if (log_template_is_literal_string(template))
     {
-      FilterXObject *obj = filterx_string_new(log_template_get_literal_value(template, NULL), -1);
-      filterx_object_freeze(&obj, configuration);
+      FilterXObject *obj = filterx_string_new_frozen(log_template_get_literal_value(template, NULL), configuration);
       result = filterx_literal_new(obj);
     }
   else if (log_template_is_trivial(template))
@@ -379,7 +378,7 @@ rest_argument
 	;
 
 literal
-	: literal_object				{ FilterXObject *literal = $1; filterx_object_freeze(&literal, configuration); $$ = filterx_literal_new(literal); }
+	: literal_object			{ FilterXObject *literal = $1; filterx_object_freeze_to_config(&literal, configuration); $$ = filterx_literal_new(literal); }
 	| dict_literal
 	| list_literal
 	;
