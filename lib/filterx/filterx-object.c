@@ -117,7 +117,6 @@ filterx_object_new(FilterXType *type)
 void
 filterx_object_freeze_finish(FilterXObject *self)
 {
-  filterx_object_make_readonly(self);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
 }
 
@@ -147,11 +146,9 @@ filterx_object_hibernate(FilterXObject *self)
   g_assert(!filterx_object_is_preserved(self));
 
   /* Mutable or recursive objects should never be hibernated.
-   * Use filterx_object_make_readonly() instead, that is enough to avoid clones.
    */
   g_assert(!filterx_object_is_ref(self) && !self->type->is_mutable);
 
-  filterx_object_make_readonly(self);
   g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_HIBERNATED);
 }
 
