@@ -370,22 +370,19 @@ _filterx_ref_make_readonly(FilterXObject *s)
   filterx_object_make_readonly(self->value);
 }
 
-static gboolean
-_filterx_ref_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_filterx_ref_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXRef *self = (FilterXRef *) *pself;
 
   FilterXObject *orig_value = self->value;
-
-  if (!filterx_object_dedup(&self->value, dedup_storage))
-    return FALSE;
+  filterx_object_freezer_keep(freezer, *pself);
+  filterx_object_freeze(&self->value, freezer);
 
   /* Mutable objects themselves should never be deduplicated,
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(orig_value == self->value);
-
-  return TRUE;
 }
 
 /* readonly methods */
@@ -582,6 +579,6 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .add = _filterx_ref_add,
                     .add_inplace = _filterx_ref_add_inplace,
                     .make_readonly = _filterx_ref_make_readonly,
-                    .dedup = _filterx_ref_dedup,
+                    .freeze = _filterx_ref_freeze,
                     .free_fn = _filterx_ref_free,
                    );
