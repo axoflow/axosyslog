@@ -396,6 +396,12 @@ exit:
   return result;
 }
 
+GPtrArray *
+filterx_eval_construct_weak_ref_array(void)
+{
+  return g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+}
+
 void
 filterx_eval_begin_context(FilterXEvalContext *context,
                            FilterXEvalContext *previous_context,
@@ -427,7 +433,7 @@ filterx_eval_begin_context(FilterXEvalContext *context,
     }
   else
     {
-      context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+      context->weak_refs = filterx_eval_construct_weak_ref_array();
       filterx_allocator_init(&eval_allocator);
       context->allocator = &eval_allocator;
     }
