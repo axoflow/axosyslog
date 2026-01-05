@@ -30,6 +30,7 @@ typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
 typedef struct _FilterXRef FilterXRef;
 typedef struct _FilterXExpr FilterXExpr;
+typedef struct _FilterXObjectFreezer FilterXObjectFreezer;
 
 typedef gboolean (*FilterXObjectIterFunc)(FilterXObject *key, FilterXObject *value, gpointer user_data);
 
@@ -69,8 +70,8 @@ struct _FilterXType
   FilterXObject *(*add_inplace)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
+  void (*freeze)(FilterXObject **pself, FilterXObjectFreezer *freezer);
   void (*make_readonly)(FilterXObject *self);
-  gboolean (*dedup)(FilterXObject **pself, GHashTable *dedup_storage);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -247,8 +248,8 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
-void filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg);
-void _filterx_object_unfreeze_and_free(FilterXObject *self);
+void filterx_object_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer);
+void filterx_object_freeze_finish(FilterXObject *self);
 void filterx_object_hibernate(FilterXObject *self);
 void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
@@ -354,17 +355,6 @@ filterx_object_make_readonly(FilterXObject *self)
     self->type->make_readonly(self);
 
   self->readonly = TRUE;
-}
-
-static inline gboolean
-filterx_object_dedup(FilterXObject **pself, GHashTable *dedup_storage)
-{
-  FilterXObject *self = *pself;
-
-  if (!self->type->dedup)
-    return FALSE;
-
-  return self->type->dedup(pself, dedup_storage);
 }
 
 static inline FilterXObject *
@@ -618,6 +608,67 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
     .is_dirty = FALSE, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
+
+/* helper class to facilitate freezing objects, a frozen object has a
+ * different lifetime (its refcount is disabled) */
+typedef struct _FilterXObjectFreezer
+{
+  FilterXObject *(*get)(FilterXObjectFreezer *self, const gchar *key);
+  void (*add)(FilterXObjectFreezer *self, gchar *key, FilterXObject *object);
+  void (*keep)(FilterXObjectFreezer *self, FilterXObject *object);
+  gpointer user_data;
+} FilterXObjectFreezer;
+
+static inline FilterXObject *
+filterx_object_freezer_get(FilterXObjectFreezer *self, const gchar *key)
+{
+  FilterXObject *result = self->get(self, key);
+
+  if (!result)
+    return NULL;
+
+  g_assert(filterx_object_is_preserved(result));
+  return result;
+}
+
+static inline void
+filterx_object_freezer_keep(FilterXObjectFreezer *self, FilterXObject *object)
+{
+  if (!filterx_object_is_preserved(object))
+    {
+      self->keep(self, object);
+      filterx_object_freeze_finish(object);
+    }
+}
+
+static inline void
+filterx_object_freezer_add(FilterXObjectFreezer *self, gchar *key, FilterXObject *object)
+{
+  if (!filterx_object_is_preserved(object))
+    {
+      filterx_object_freezer_keep(self, object);
+      self->add(self, key, object);
+    }
+}
+
+
+static inline gboolean
+filterx_object_freezer_dedup(FilterXObjectFreezer *self, FilterXObject **pobject, gchar *key)
+{
+  g_assert(!filterx_object_is_preserved(*pobject));
+  FilterXObject *dedup_object = filterx_object_freezer_get(self, key);
+  if (dedup_object)
+    {
+      filterx_object_unref(*pobject);
+      *pobject = filterx_object_ref(dedup_object);
+      g_free(key);
+      return TRUE;
+    }
+  return FALSE;
+}
+
+GPtrArray *filterx_construct_frozen_objects(void);
+void filterx_destroy_frozen_objects(GPtrArray *frozen_objects);
 
 #include "filterx-ref.h"
 
