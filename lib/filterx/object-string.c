@@ -431,6 +431,14 @@ _filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gs
   return _filterx_string_new_slice_from_borrowed_str_and_len(object, str, str_len);
 }
 
+FilterXObject *
+filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
+{
+  FilterXObject *self = filterx_string_new(str, -1);
+  filterx_object_freeze(&self, cfg);
+  return self;
+}
+
 static inline gsize
 _get_base64_encoded_size(gsize len)
 {

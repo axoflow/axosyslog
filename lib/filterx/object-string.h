@@ -83,6 +83,8 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], 
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
+FilterXObject *filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg);
+
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
@@ -224,14 +226,6 @@ filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
     }
 
   return _filterx_string_new_slice_from_non_string(object, start, end);
-}
-
-static inline FilterXObject *
-filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
-{
-  FilterXObject *self = filterx_string_new(str, -1);
-  filterx_object_freeze(&self, cfg);
-  return self;
 }
 
 guint
