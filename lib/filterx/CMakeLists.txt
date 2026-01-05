@@ -46,6 +46,7 @@ set(FILTERX_HEADERS
     filterx/filterx-private.h
     filterx/filterx-ref.h
     filterx/filterx-scope.h
+    filterx/filterx-stashed-object.h
     filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
     filterx/filterx-dpath.h
@@ -136,6 +137,7 @@ set(FILTERX_SOURCES
     filterx/filterx-private.c
     filterx/filterx-ref.c
     filterx/filterx-scope.c
+    filterx/filterx-stashed-object.c
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
     filterx/filterx-dpath.c
