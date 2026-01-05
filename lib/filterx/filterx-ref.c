@@ -363,14 +363,6 @@ _filterx_ref_free(FilterXObject *s)
 }
 
 static void
-_filterx_ref_make_readonly(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-
-  filterx_object_make_readonly(self->value);
-}
-
-static void
 _filterx_ref_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXRef *self = (FilterXRef *) *pself;
@@ -567,7 +559,6 @@ filterx_ref_dup(FilterXObject *s)
   FilterXRef *dup = filterx_new_object(FilterXRef);
 
   filterx_object_init_instance(&dup->super, &FILTERX_TYPE_NAME(ref));
-  dup->super.readonly = FALSE;
 
   dup->value = filterx_object_clone_container(value, &dup->super, NULL, TRUE);
   g_atomic_counter_inc(&dup->value->fx_ref_cnt);
@@ -588,7 +579,6 @@ _filterx_ref_new(FilterXObject *value)
   FilterXRef *self = filterx_new_object(FilterXRef);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
-  self->super.readonly = FALSE;
 
   self->value = value;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
@@ -616,7 +606,6 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add_method,
                     .add_inplace = _filterx_ref_add_inplace_method,
-                    .make_readonly = _filterx_ref_make_readonly,
                     .freeze = _filterx_ref_freeze,
                     .free_fn = _filterx_ref_free,
                    );
