@@ -727,22 +727,6 @@ _filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
   g_assert(*pself == &self->super.super);
 }
 
-static gboolean
-_readonly_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_make_readonly(*key);
-  filterx_object_make_readonly(*value);
-  return TRUE;
-}
-
-static void
-_filterx_dict_make_readonly(FilterXObject *s)
-{
-  FilterXDictObject *self = (FilterXDictObject *) s;
-
-  _table_foreach(self->table, _readonly_dict_item, NULL);
-}
-
 FilterXDictAnchor
 filterx_dict_get_anchor_for_key(FilterXObject *s, FilterXObject *key)
 {
@@ -862,6 +846,5 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .move_key = _filterx_dict_move_key,
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
-                    .make_readonly = _filterx_dict_make_readonly,
                     .freeze = _filterx_dict_freeze,
                    );
