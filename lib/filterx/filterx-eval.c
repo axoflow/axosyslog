@@ -334,6 +334,26 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
   failure_info->error_count = context->error_count;
 }
 
+static void
+_failure_info_clear_entry(FilterXFailureInfo *failure_info)
+{
+  for (gint i = 0; i < failure_info->error_count; i++)
+    filterx_error_clear(&failure_info->errors[i]);
+  filterx_object_unref(failure_info->meta);
+}
+
+static void
+_clear_failure_info(GArray *failure_info)
+{
+  for (guint i = 0; i < failure_info->len; ++i)
+    {
+      FilterXFailureInfo *fi = &g_array_index(failure_info, FilterXFailureInfo, i);
+      _failure_info_clear_entry(fi);
+    }
+
+  g_array_set_size(failure_info, 0);
+}
+
 FilterXEvalResult
 filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
 {
@@ -415,26 +435,6 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 
   context->eval_control_modifier = FXC_UNSET;
   filterx_eval_set_context(context);
-}
-
-static void
-_failure_info_clear_entry(FilterXFailureInfo *failure_info)
-{
-  for (gint i = 0; i < failure_info->error_count; i++)
-    filterx_error_clear(&failure_info->errors[i]);
-  filterx_object_unref(failure_info->meta);
-}
-
-static void
-_clear_failure_info(GArray *failure_info)
-{
-  for (guint i = 0; i < failure_info->len; ++i)
-    {
-      FilterXFailureInfo *fi = &g_array_index(failure_info, FilterXFailureInfo, i);
-      _failure_info_clear_entry(fi);
-    }
-
-  g_array_set_size(failure_info, 0);
 }
 
 void
