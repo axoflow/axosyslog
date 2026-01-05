@@ -474,23 +474,34 @@ filterx_eval_end_context(FilterXEvalContext *context)
 }
 
 void
+filterx_eval_begin_restricted_context(FilterXEvalContext *context, GPtrArray *weak_refs)
+{
+  memset(context, 0, sizeof(*context));
+  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  context->weak_refs = weak_refs;
+  context->eval_control_modifier = FXC_UNSET;
+  context->previous_context = filterx_eval_get_context();
+  filterx_eval_set_context(context);
+}
+
+void
+filterx_eval_end_restricted_context(FilterXEvalContext *context)
+{
+  _clear_errors(context);
+  filterx_eval_set_context(context->previous_context);
+}
+
+void
 filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg)
 {
   FilterXConfig *config = filterx_config_get(cfg);
-
-  g_assert(config != NULL);
-  memset(context, 0, sizeof(*context));
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-  context->weak_refs = config->weak_refs;
-  context->eval_control_modifier = FXC_UNSET;
-  filterx_eval_set_context(context);
+  filterx_eval_begin_restricted_context(context, config->weak_refs);
 }
 
 void
 filterx_eval_end_compile(FilterXEvalContext *context)
 {
-  _clear_errors(context);
-  filterx_eval_set_context(NULL);
+  filterx_eval_end_restricted_context(context);
 }
 
 void
