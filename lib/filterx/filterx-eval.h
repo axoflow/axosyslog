@@ -103,6 +103,9 @@ GPtrArray *filterx_eval_construct_weak_ref_array(void);
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
+void filterx_eval_begin_restricted_context(FilterXEvalContext *context, GPtrArray *weak_refs);
+void filterx_eval_end_restricted_context(FilterXEvalContext *context);
+
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
 
