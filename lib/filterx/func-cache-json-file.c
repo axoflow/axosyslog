@@ -27,6 +27,7 @@
 #include "filterx/filterx-mapping.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-stashed-object.h"
 #include "scratch-buffers.h"
 #include "file-monitor.h"
 #include "mainloop.h"
@@ -56,13 +57,12 @@ cache_json_file_error_quark(void)
   return g_quark_from_static_string("filterx-function-cache-json-file-error-quark");
 }
 
-#define FROZEN_OBJECTS_HISTORY_SIZE 5
 
 typedef struct FilterXFunctionCacheJsonFile_
 {
   FilterXFunction super;
   gchar *filepath;
-  gpointer cached_json;
+  FilterXStashedObject *stashed_object;
   FileMonitor *file_monitor;
 } FilterXFunctionCacheJsonFile;
 
@@ -128,8 +128,14 @@ static FilterXObject *
 _eval(FilterXExpr *s)
 {
   FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
-  FilterXObject *cached_json = g_atomic_pointer_get(&self->cached_json);
-  return filterx_object_ref(cached_json);
+  FilterXObject *result = NULL;
+
+  FilterXStashedObject *stashed_object = g_atomic_pointer_get(&self->stashed_object);
+  filterx_stashed_object_ref(stashed_object);
+  if (stashed_object)
+     result = filterx_object_ref(stashed_object->object);
+  filterx_stashed_object_unref(stashed_object);
+  return result;
 }
 
 static void
@@ -137,7 +143,7 @@ _free(FilterXExpr *s)
 {
   FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
 
-  filterx_object_unref(self->cached_json);
+  filterx_stashed_object_unref(self->stashed_object);
   g_free(self->filepath);
   if (self->file_monitor)
     {
@@ -150,24 +156,29 @@ _free(FilterXExpr *s)
 gboolean
 _load_json_file_version(FilterXFunctionCacheJsonFile *self, GError **error)
 {
-  FilterXObject *cached_json = _load_json_file(self->filepath, error);
-  if (!cached_json)
+  FilterXEnvironment json_env;
+  FilterXEvalContext json_reload_context;
+  gboolean result = FALSE;
+
+  filterx_env_init(&json_env);
+  filterx_eval_begin_restricted_context(&json_reload_context, &json_env);
+  FilterXObject *json = _load_json_file(self->filepath, error);
+  filterx_eval_end_restricted_context(&json_reload_context);
+
+  if (json)
     {
-      return FALSE;
+      FilterXStashedObject *new_value = filterx_stash_object(json, &json_env);
+      FilterXStashedObject *old_value = g_atomic_pointer_exchange(&self->stashed_object, new_value);
+      filterx_stashed_object_unref(old_value);
+      result = TRUE;
     }
-
-  filterx_object_make_readonly(cached_json);
-
-  FilterXObject *old_cached_json = g_atomic_pointer_exchange(&self->cached_json, cached_json);
-  filterx_object_unref(old_cached_json);
-  return TRUE;
+  filterx_env_clear(&json_env);
+  return result;
 }
 
 gboolean
 _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
 {
-  MainLoop *main_loop = main_loop_get_instance();
-
   FilterXFunctionCacheJsonFile *self = user_data;
   if (event->event == DELETED)
     {
@@ -178,10 +189,6 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
 
   main_loop_assert_main_thread();
 
-  /* needed for parent tracking of temporary non-frozen objects */
-  FilterXEvalContext json_reload_context;
-  filterx_eval_begin_compile(&json_reload_context, main_loop_get_current_config(main_loop));
-
   GError *error = NULL;
   if (!_load_json_file_version(self, &error) && error)
     {
@@ -191,7 +198,6 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
       g_clear_error(&error);
     }
 
-  filterx_eval_end_compile(&json_reload_context);
   return TRUE;
 }
 
