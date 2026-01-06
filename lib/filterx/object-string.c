@@ -356,7 +356,7 @@ filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 FilterXObject *
 filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
 {
-  FilterXString *self = g_new0(FilterXString, 1);
+  FilterXString *self = filterx_new_object(FilterXString);
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
