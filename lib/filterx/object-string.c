@@ -401,7 +401,7 @@ filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 FilterXObject *
 _filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len)
 {
-  FilterXString *self = g_new0(FilterXString, 1);
+  FilterXString *self = filterx_new_object(FilterXString);
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
   self->super.flags |= FILTERX_STRING_FLAG_STR_BORROWED_SLICE;
