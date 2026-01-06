@@ -47,8 +47,8 @@ typedef struct FilterXFunctionFlattenKV_
 static void
 _kv_init(FilterXFunctionFlattenKV *self, FilterXObject *key, FilterXObject *value)
 {
-  self->key = filterx_object_ref(key);
-  self->value = filterx_object_ref(value);
+  self->key = key;
+  self->value = value;
 }
 
 static void
@@ -71,7 +71,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
       if (is_top_level)
-        g_ptr_array_add(top_level_dict_keys, filterx_object_ref(key));
+        g_ptr_array_add(top_level_dict_keys, key);
 
       gssize orig_len = key_buffer->len;
       const gchar *key_string;
@@ -109,10 +109,9 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   g_string_append_len(key_buffer, key_string, key_length);
 
   FilterXObject *flat_key = filterx_string_new(key_buffer->str, (gssize) MIN(key_buffer->len, G_MAXSSIZE));
-  FilterXFunctionFlattenKV kv;
-  _kv_init(&kv, flat_key, value);
-  g_array_append_val(flattened_kvs, kv);
-  filterx_object_unref(flat_key);
+  g_array_set_size(flattened_kvs, flattened_kvs->len+1);
+  FilterXFunctionFlattenKV *kv = &g_array_index(flattened_kvs, FilterXFunctionFlattenKV, flattened_kvs->len-1);
+  _kv_init(kv, flat_key, filterx_object_ref(value));
 
   g_string_truncate(key_buffer, orig_len);
   return TRUE;
@@ -147,9 +146,17 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
     {
       FilterXFunctionFlattenKV *kv = &g_array_index(kvs, FilterXFunctionFlattenKV, i);
 
-      FilterXObject *value = filterx_object_clone(kv->value);
-      gboolean success = filterx_object_set_subscript(dict, kv->key, &value);
-      filterx_object_unref(value);
+      /*
+       * NOTE: Normally we would need to filterx_object_clone() the object
+       * here to ensure we have a separate copy-on-write instance of it.
+       * However, we already "own" our own a FilterXRef to it, in a different
+       * location of the dict. We are basically moving that FilterXRef from one spot to another:
+       *   1) removing the other ref in _remove_keys()
+       *   2) adding it here
+       *
+       * With that said, just taking a simple object reference suffices.
+       */
+      gboolean success = filterx_object_set_subscript(dict, kv->key, &kv->value);
 
       if (!success)
         {
@@ -164,8 +171,8 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
 static gboolean
 _flatten(FilterXFunctionFlatten *self, FilterXObject *dict)
 {
-  GArray *flattened_kvs = g_array_new(FALSE, FALSE, sizeof(FilterXFunctionFlattenKV));
-  GPtrArray *top_level_dict_keys = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  GArray *flattened_kvs = g_array_sized_new(FALSE, FALSE, sizeof(FilterXFunctionFlattenKV), 16);
+  GPtrArray *top_level_dict_keys = g_ptr_array_sized_new(16);
   gboolean result = FALSE;
 
   if (!_collect_dict_modifications(self, dict, flattened_kvs, top_level_dict_keys))
