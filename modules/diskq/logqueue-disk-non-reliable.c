@@ -331,7 +331,7 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 static gboolean
 _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
-  do
+    while (queue->len < queue->limit)
     {
       if (qdisk_get_length(self->super.qdisk) <= 0)
         break;
@@ -348,7 +348,6 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
 
       log_queue_disk_update_disk_related_counters(&self->super);
     }
-  while (queue->len < queue->limit);
 
   return TRUE;
 }
