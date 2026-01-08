@@ -119,10 +119,60 @@ _qtype_to_memory_queue(LogQueueDiskNonReliable *self, QDiskMemoryQueueType type)
     }
 }
 
+static gboolean
+_iv_list_partition(struct iv_list_head *src, struct iv_list_head *dst, gint index)
+{
+  if (index <= 0 || iv_list_empty(src))
+    return FALSE;
+
+  struct iv_list_head *pos = src->next;
+  for (gint i = 1; i < index && pos->next != src; i++)
+      pos = pos->next;
+
+  if (pos->next == src)
+    return FALSE;
+
+  pos = pos->next;
+
+  pos->prev->next = src;
+  dst->next = pos;
+  dst->prev = src->prev;
+  src->prev->next = dst;
+  src->prev = pos->prev;
+  pos->prev = dst;
+
+  return TRUE;
+}
+
+static void
+_redistribute_front_cache_items(LogQueueDiskNonReliable *self)
+{
+  if (self->front_cache_output.len == 0)
+    return;
+  if (self->front_cache_output.len <= self->front_cache.limit)
+  {
+    iv_list_splice_tail_init(&self->front_cache_output.items, &self->front_cache.items);
+    self->front_cache.len = self->front_cache_output.len;
+    self->front_cache_output.len = 0;
+    return;
+  }
+  gint numof_msgs_move = self->front_cache.limit;
+  gint index = self->front_cache_output.len - numof_msgs_move;
+
+  if (!_iv_list_partition(&self->front_cache_output.items, &self->front_cache.items, index))
+    return;
+
+  self->front_cache_output.len -= numof_msgs_move;
+  self->front_cache.len = numof_msgs_move;
+}
+
 static void
 _qdisk_post_operation_callback(QDiskOperation op, QDiskFileHeader *hdr, gpointer user_data)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) user_data;
+
+  if (op == QDISK_LOAD)
+    _redistribute_front_cache_items(self);
 
   msg_info("Non-reliable disk-buffer state",
           evt_tag_str("operation", (op == QDISK_SAVE)?"save":"load"),

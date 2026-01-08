@@ -318,7 +318,8 @@ Test(logqueue_disk, restart_corrupted_non_reliable_with_front_cache)
 
   cr_assert(log_queue_disk_start(queue));
 
-  _assert_log_queue_disk_non_reliable_has_messages_in_front_cache(queue, &queue_disk_non_reliable->front_cache_output, 1);
+  // front_cache.limit = 1 so this causes front_cache_output.limit = 0 on constructor, this way the message will loaded into front_cache
+  _assert_log_queue_disk_non_reliable_has_messages_in_front_cache(queue, &queue_disk_non_reliable->front_cache, 1);
 
   stats_cluster_key_builder_free(driver_sck_builder);
   stats_cluster_key_builder_free(queue_sck_builder);
@@ -663,8 +664,9 @@ Test(logqueue_disk, test_non_reliable_queue_persistance)
 
   cr_assert(log_queue_disk_start(queue));
 
-  cr_assert_eq(nrq->front_cache_output.len, front_cache_size);
-  cr_assert_eq(nrq->front_cache.len, 0);
+  // the loaded front_cache elements are now distributed between front_cache and front_cache_output
+  cr_assert_eq(nrq->front_cache_output.len, front_cache_size/2);
+  cr_assert_eq(nrq->front_cache.len, front_cache_size/2);
   cr_assert_eq(qdisk_get_length(nrq->super.qdisk), 5555 - front_cache_size - 1);
 
   log_queue_push_tail(queue, log_msg_new_empty(), &path_options);
