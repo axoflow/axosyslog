@@ -589,7 +589,7 @@ afprogram_dd_init(LogPipe *s)
                          self->super.super.id,
                          writer_sck_builder);
 
-
+  log_writer_set_queue(self->writer, NULL);
   gint stats_level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : self->writer_options.stats_level;
   LogQueue *queue = log_dest_driver_acquire_queue(&self->super, afprogram_dd_format_queue_persist_name(self),
                                                   stats_level, driver_sck_builder, queue_sck_builder);

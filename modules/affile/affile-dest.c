@@ -225,7 +225,7 @@ affile_dw_init(LogPipe *s)
                          self->owner->super.super.id,
                          writer_sck_builder);
 
-
+  log_writer_set_queue(self->writer, NULL);
   gint stats_level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : self->owner->writer_options.stats_level;
   LogQueue *queue = log_dest_driver_acquire_queue(&self->owner->super, affile_dw_format_persist_name(self),
                                                   stats_level, driver_sck_builder, queue_sck_builder);
