@@ -166,7 +166,7 @@ _set_abandoned_disk_buffer_file_metrics(const gchar *dir, const gchar *filename)
   gchar *abs_filename = g_build_filename(dir, filename, NULL);
   LogQueueDisk *queue = _create_log_queue_disk(&options, abs_filename);
 
-  if (!log_queue_disk_start(&queue->super))
+  if (!log_queue_disk_load_hdr(&queue->super))
     {
       log_queue_unref(&queue->super);
       disk_queue_options_destroy(&options);
@@ -184,13 +184,12 @@ _set_abandoned_disk_buffer_file_metrics(const gchar *dir, const gchar *filename)
   disk_allocated = dyn_metrics_store_retrieve_counter(diskq_global_metrics.cache, &disk_allocated_sc_key, STATS_LEVEL1);
   disk_usage = dyn_metrics_store_retrieve_counter(diskq_global_metrics.cache, &disk_usage_sc_key, STATS_LEVEL1);
 
-  stats_counter_set(queued, log_queue_get_length(&queue->super));
+  stats_counter_set(queued, qdisk_get_hdr_total_length(queue->qdisk));
   stats_counter_set(capacity, B_TO_KiB(qdisk_get_max_useful_space(queue->qdisk)));
   stats_counter_set(disk_allocated, B_TO_KiB(qdisk_get_file_size(queue->qdisk)));
   stats_counter_set(disk_usage, B_TO_KiB(qdisk_get_used_useful_space(queue->qdisk)));
 
-  gboolean persistent;
-  log_queue_disk_stop(&queue->super, &persistent);
+  log_queue_disk_unload_hdr(&queue->super);
   log_queue_unref(&queue->super);
   disk_queue_options_destroy(&options);
   g_free(abs_filename);
