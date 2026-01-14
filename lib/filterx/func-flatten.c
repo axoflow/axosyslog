@@ -221,35 +221,6 @@ exit:
   return result ? filterx_boolean_new(TRUE) : NULL;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
-
-  self->dict_expr = filterx_expr_optimize(self->dict_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
-
-  if (!filterx_expr_init(self->dict_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
-
-  filterx_expr_deinit(self->dict_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -258,6 +229,22 @@ _free(FilterXExpr *s)
   filterx_expr_unref(self->dict_expr);
   g_free(self->separator);
   filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_flatten_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFlatten *self = (FilterXFunctionFlatten *) s;
+
+  FilterXExpr **exprs[] = { &self->dict_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 static gchar *
@@ -304,9 +291,7 @@ filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionFlatten *self = g_new0(FilterXFunctionFlatten, 1);
   filterx_function_init_instance(&self->super, "flatten");
   self->super.super.eval = _eval_fx_flatten;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _flatten_walk;
   self->super.super.free_fn = _free;
 
   if (!_extract_args(self, args, error) || !filterx_function_args_check(args, error))

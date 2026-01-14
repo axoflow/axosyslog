@@ -31,6 +31,7 @@ typedef struct _LogFilterXPipe
   FilterXExpr *block;
 } LogFilterXPipe;
 
+
 static gboolean
 log_filterx_pipe_init(LogPipe *s)
 {
