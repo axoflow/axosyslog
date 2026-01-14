@@ -1942,7 +1942,8 @@ log_msg_refcache_stop(void)
   old_value = log_msg_update_ack_and_ref_and_abort_and_suspended(logmsg_current, 0, current_cached_acks,
               current_cached_abort, current_cached_suspend);
 
-  if ((LOGMSG_REFCACHE_VALUE_TO_ACK(old_value) == -current_cached_acks) && logmsg_cached_ack_needed)
+  gboolean acks_changed = current_cached_acks != 0;
+  if (acks_changed && (LOGMSG_REFCACHE_VALUE_TO_ACK(old_value) == -current_cached_acks) && logmsg_cached_ack_needed)
     {
       AckType ack_type_cumulated = _ack_and_ref_and_abort_and_suspend_to_acktype(old_value);
 
@@ -1965,9 +1966,11 @@ log_msg_refcache_stop(void)
   log_msg_unref(logmsg_current);
 
   /* 5) fold the combined result of our own ref/unref and ack handler's results */
-  old_value = log_msg_update_ack_and_ref(logmsg_current, logmsg_cached_refs, 0);
+  gint current_cached_refs = logmsg_cached_refs;
+  old_value = log_msg_update_ack_and_ref(logmsg_current, current_cached_refs, 0);
 
-  if (LOGMSG_REFCACHE_VALUE_TO_REF(old_value) == -logmsg_cached_refs)
+  gboolean refs_changed = current_cached_refs != 0;
+  if (refs_changed && LOGMSG_REFCACHE_VALUE_TO_REF(old_value) == -current_cached_refs)
     log_msg_free(logmsg_current);
   logmsg_cached_refs = 0;
   logmsg_current = NULL;
