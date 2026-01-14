@@ -24,8 +24,10 @@
 import uuid
 
 import pytest
+from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.driver_io.clickhouse.clickhouse_io import ClickhouseClient
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_OPTIONS_WITH_SCHEMA
+from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 from axosyslog_light.syslog_ng_config.__init__ import stringify
 
 
@@ -170,3 +172,40 @@ def test_clickhouse_destination_invalid_url_option_db_run(request, config, syslo
     syslog_ng.start(config)
 
     assert clickhouse_destination.get_stats()["written"] == 0
+
+
+def test_clickhouse_destination_with_non_reliable_disk_buffer(request, config, syslog_ng, clickhouse_server, clickhouse_ports, port_allocator, loggen, dqtool):
+    network_source = config.create_network_source(ip="localhost", port=port_allocator())
+    clickhouse_options_copy = CLICKHOUSE_OPTIONS_WITH_SCHEMA.copy()
+    clickhouse_options_copy.update({
+        "url": f"'127.0.0.1:{clickhouse_ports.grpc_port}'",
+        "disk-buffer": {"reliable": "no", "dir": "'.'", "capacity-bytes": "1MiB", "front-cache-size": 1000},
+    })
+    clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
+    clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
+    config.create_logpath(statements=[network_source, clickhouse_destination], flags="flow-control")
+    syslog_ng.start(config)
+
+    loggen_msg_number = 1400
+    disk_buffer_max_size = 1324  # that number of messages can fit into the disk buffer with 1KiB message size
+    loggen.start(LoggenStartParams(target=network_source.options["ip"], port=network_source.options["port"], inet=True, stream=True, rate=10000, size=1024, number=loggen_msg_number))
+    wait_until_true(lambda: loggen.get_sent_message_count() == loggen_msg_number)
+
+    syslog_ng.reload(config)
+
+    syslog_ng.stop()
+
+    dqtool_info_output = dqtool.info(disk_buffer_file='./syslog-ng-00000.qf')
+    stderr_content = dqtool_info_output["stderr"]
+    assert f"number_of_messages='{disk_buffer_max_size}'" in stderr_content, f"Expected {disk_buffer_max_size} messages in disk buffer, but got:\n{stderr_content}"
+
+    clickhouse_server.start(clickhouse_ports)
+    clickhouse_destination.create_table(CLICKHOUSE_OPTIONS_WITH_SCHEMA["table"], [("message", "String")])
+    request.addfinalizer(lambda: clickhouse_destination.delete_table())
+
+    syslog_ng.start(config)
+    assert syslog_ng.wait_for_message_in_console_log("ClickHouse batch delivered") != []
+
+    assert clickhouse_destination.get_stats()['written'] == disk_buffer_max_size
+    assert clickhouse_destination.get_stats()['dropped'] == 0
+    assert clickhouse_destination.get_stats()['queued'] == 0
