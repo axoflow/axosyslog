@@ -22,7 +22,7 @@
 #############################################################################
 
 # must be in sync with axosyslog-builder
-ARG ALPINE_VERSION=3.22
+ARG ALPINE_VERSION=3.23
 
 FROM ghcr.io/axoflow/axosyslog-builder:$ALPINE_VERSION AS apkbuilder
 
