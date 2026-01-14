@@ -188,6 +188,9 @@ class LoggenExecutor(ABC):
 
         self.proc = None
 
+    def is_running(self) -> bool:
+        return self.proc is not None and self.proc.is_running()
+
     @abstractmethod
     def _copy(self) -> LoggenExecutor:
         pass
