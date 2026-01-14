@@ -91,7 +91,7 @@ Test(logscheduler, test_log_scheduler_can_be_constructed)
 
   log_scheduler_options_defaults(&options);
   log_scheduler_options_init(&options, configuration);
-  s = log_scheduler_new(&options, &test_pipe->super);
+  s = log_scheduler_new(&options, &test_pipe->super, "id");
 
   LogMessage *msg = create_sample_message();
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;

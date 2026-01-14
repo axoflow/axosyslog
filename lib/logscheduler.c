@@ -22,6 +22,8 @@
 
 #include "logscheduler.h"
 #include "template/eval.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 static void
 _reinject_message(LogPipe *front_pipe, LogMessage *msg, const LogPathOptions *path_options)
@@ -97,6 +99,8 @@ _work(gpointer s, gpointer arg)
           log_msg_refcache_start_consumer(msg, &path_options);
           _reinject_message(partition->front_pipe, msg, &path_options);
           log_msg_refcache_stop();
+
+          stats_counter_inc(partition->metrics.processed_events_total);
         }
         _batch_free(batch);
       }
@@ -142,7 +146,37 @@ _partition_add_batch(LogSchedulerPartition *partition, LogSchedulerBatch *batch)
 }
 
 static void
-_partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe)
+_format_sc_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
+               StatsClusterKey *sc_key, const gchar *name)
+{
+  StatsClusterKey temp_sc_key;
+  gchar partition_index_buf[64];
+  g_snprintf(partition_index_buf, sizeof(partition_index_buf), "%d", partition_index);
+
+  StatsClusterLabel labels[2];
+  labels[0] = stats_cluster_label("id", scheduler_id);
+  labels[1] = stats_cluster_label("partition_index", partition_index_buf);
+
+  stats_cluster_single_key_set(&temp_sc_key, name, labels, 2);
+  stats_cluster_key_clone(sc_key, &temp_sc_key);
+}
+
+static void
+_format_assigned_events_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
+                            StatsClusterKey *sc_key)
+{
+  _format_sc_key(partition, scheduler_id, partition_index, sc_key, "parallelized_assigned_events_total");
+}
+
+static void
+_format_processed_events_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
+                             StatsClusterKey *sc_key)
+{
+  _format_sc_key(partition, scheduler_id, partition_index, sc_key, "parallelized_processed_events_total");
+}
+
+static void
+_partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe, const gchar *scheduler_id, gint partition_index)
 {
   main_loop_io_worker_job_init(&partition->io_job);
   partition->io_job.type = MLIOJ_PROCESSING;
@@ -156,12 +190,36 @@ _partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe)
 
   INIT_IV_LIST_HEAD(&partition->batches);
   g_mutex_init(&partition->batches_lock);
+
+  stats_lock();
+  {
+    _format_assigned_events_key(partition, scheduler_id, partition_index,
+                                &partition->metrics.assigned_events_total_key);
+    stats_register_counter(4, &partition->metrics.assigned_events_total_key, SC_TYPE_SINGLE_VALUE,
+                           &partition->metrics.assigned_events_total);
+
+    _format_processed_events_key(partition, scheduler_id, partition_index,
+                                 &partition->metrics.processed_events_total_key);
+    stats_register_counter(4, &partition->metrics.processed_events_total_key, SC_TYPE_SINGLE_VALUE,
+                           &partition->metrics.processed_events_total);
+  }
+  stats_unlock();
 }
 
 void
 _partition_clear(LogSchedulerPartition *partition)
 {
   g_mutex_clear(&partition->batches_lock);
+  stats_lock();
+  {
+    stats_unregister_counter(&partition->metrics.assigned_events_total_key, SC_TYPE_SINGLE_VALUE,
+                             &partition->metrics.assigned_events_total);
+    stats_unregister_counter(&partition->metrics.processed_events_total_key, SC_TYPE_SINGLE_VALUE,
+                             &partition->metrics.processed_events_total);
+    stats_cluster_key_cloned_free(&partition->metrics.assigned_events_total_key);
+    stats_cluster_key_cloned_free(&partition->metrics.processed_events_total_key);
+  }
+  stats_unlock();
 }
 
 /* LogSchedulerThreadState */
@@ -244,6 +302,8 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
   node = log_msg_alloc_queue_node(msg, path_options);
   iv_list_add_tail(&node->list, &thread_state->batch_by_partition[partition_index]);
   log_msg_unref(msg);
+
+  stats_counter_inc(self->partitions[partition_index].metrics.assigned_events_total);
 }
 
 
@@ -274,7 +334,7 @@ _init_partitions(LogScheduler *self)
 {
   for (gint i = 0; i < self->options->num_partitions; i++)
     {
-      _partition_init(&self->partitions[i], self->front_pipe);
+      _partition_init(&self->partitions[i], self->front_pipe, self->id, i);
     }
 }
 
@@ -320,7 +380,7 @@ log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *pa
 }
 
 LogScheduler *
-log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
+log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar *id)
 {
   gint max_threads = main_loop_worker_get_max_number_of_threads();
 
@@ -329,6 +389,7 @@ log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
     max_threads = 0;
 
   LogScheduler *self = g_malloc0(sizeof(LogScheduler) + max_threads * sizeof(LogSchedulerThreadState));
+  self->id = g_strdup(id);
   self->num_input_threads = max_threads;
   self->options = options;
   self->front_pipe = log_pipe_ref(front_pipe);
@@ -342,6 +403,7 @@ void
 log_scheduler_free(LogScheduler *self)
 {
   log_pipe_unref(self->front_pipe);
+  g_free(self->id);
   _free_partitions(self);
   g_free(self);
 }
@@ -373,9 +435,10 @@ log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *pa
 }
 
 LogScheduler *
-log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
+log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar *id)
 {
   LogScheduler *self = g_malloc0(sizeof(LogScheduler) + 0 * sizeof(LogSchedulerThreadState));
+  self->id = g_strdup(id);
   self->options = options;
   self->front_pipe = log_pipe_ref(front_pipe);
 
@@ -386,6 +449,7 @@ void
 log_scheduler_free(LogScheduler *self)
 {
   log_pipe_unref(self->front_pipe);
+  g_free(self->id);
   g_free(self);
 }
 

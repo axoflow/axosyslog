@@ -38,7 +38,11 @@ _init(LogPipe *s)
     return FALSE;
 
   if (!self->scheduler)
-    self->scheduler = log_scheduler_new(&self->scheduler_options, self->super.pipe_next);
+    {
+      gchar id_buf[1024];
+      log_expr_node_format_location(s->expr_node, id_buf, sizeof(id_buf));
+      self->scheduler = log_scheduler_new(&self->scheduler_options, self->super.pipe_next, id_buf);
+    }
 
   log_scheduler_init(self->scheduler);
 
