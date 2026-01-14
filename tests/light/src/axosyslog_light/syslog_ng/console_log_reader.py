@@ -66,6 +66,13 @@ class ConsoleLogReader(object):
             self.__teardown.register(stderr_file.close)
         return stderr_file.wait_for_lines(expected_messages)
 
+    def is_message_in_console_log(self, expected_message):
+        console_logs = self.__get_all_console_logs()
+        for console_log_message in console_logs.split("\n"):
+            if expected_message in console_log_message:
+                return True
+        return False
+
     def check_for_unexpected_messages(self, unexpected_messages=None):
         unexpected_patterns = ["Plugin module not found", "assertion failed"]
         if unexpected_messages is not None:
