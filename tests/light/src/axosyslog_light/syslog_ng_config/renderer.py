@@ -133,6 +133,9 @@ def render_driver_options(driver_options):
             config_snippet += render_list(option_name, option_value)
         elif isinstance(option_value, Filter):
             config_snippet += render_driver(option_name, option_value)
+        elif option_value is None:
+            # do nothing for None values, this means the option is not set (default)
+            pass
         else:
             config_snippet += render_name_value(option_name, option_value)
 
