@@ -36,12 +36,6 @@ typedef enum
   QDISK_MQ_FLOW_CONTROL_WINDOW,
 } QDiskMemoryQueueType;
 
-typedef enum
-{
-  QDISK_SAVE,
-  QDISK_LOAD,
-} QDiskOperation;
-
 typedef struct
 {
   gint64 ofs;
@@ -78,7 +72,6 @@ typedef gboolean (*QDiskSerializeFunc)(SerializeArchive *sa, gpointer user_data)
 typedef gboolean (*QDiskDeSerializeFunc)(SerializeArchive *sa, gpointer user_data);
 typedef gboolean (*QDiskMemQLoadFunc)(QDiskMemoryQueueType type, LogMessage *msg, gpointer user_data);
 typedef gboolean (*QDiskMemQSaveFunc)(QDiskMemoryQueueType type, LogMessage **pmsg, gpointer *iter, gpointer user_data);
-typedef void (*QDiskPostOperation)(QDiskOperation op, QDiskFileHeader *hdr, gpointer user_data);
 
 typedef struct _QDisk QDisk;
 
@@ -97,8 +90,8 @@ gboolean qdisk_rewind_backlog(QDisk *self, guint rewind_count);
 void qdisk_empty_backlog(QDisk *self);
 gint64 qdisk_get_next_tail_position(QDisk *self);
 gint64 qdisk_get_next_head_position(QDisk *self);
-gboolean qdisk_start(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, gpointer user_data);
-gboolean qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, QDiskPostOperation post_op_cb, gpointer user_data);
+gboolean qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data);
+gboolean qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data);
 void qdisk_reset_file_if_empty(QDisk *self);
 gboolean qdisk_started(QDisk *self);
 void qdisk_free(QDisk *self);

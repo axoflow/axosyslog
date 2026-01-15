@@ -1253,7 +1253,7 @@ error:
 }
 
 static gboolean
-_save_state(QDisk *self, QDiskMemQSaveFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
+_save_state(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
 {
   QDiskQueuePosition front_cache_pos = { 0 };
   QDiskQueuePosition backlog_pos = { 0 };
@@ -1269,9 +1269,6 @@ _save_state(QDisk *self, QDiskMemQSaveFunc func, QDiskPostOperation post_op_cb, 
     if (!_save_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &flow_control_window_pos))
       return FALSE;
   }
-
-  if (post_op_cb && user_data)
-    post_op_cb(QDISK_SAVE, self->hdr, user_data);
 
   memcpy(self->hdr->magic, self->file_id, sizeof(self->hdr->magic));
 
@@ -1481,7 +1478,7 @@ _load_header(QDisk *self)
 }
 
 static gboolean
-_load_state(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
+_load_state(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
   if (!_load_header(self))
     return FALSE;
@@ -1498,8 +1495,6 @@ _load_state(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, 
           _maybe_truncate_file_to_minimal(self);
         }
 
-      if (post_op_cb && user_data)
-          post_op_cb(QDISK_LOAD, self->hdr, user_data);
       _reset_queue_pointers(self);
     }
   else
@@ -1509,8 +1504,6 @@ _load_state(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, 
       struct stat st;
       fstat(self->fd, &st);
       self->cached_file_size = st.st_size;
-      if (post_op_cb && user_data)
-        post_op_cb(QDISK_LOAD, self->hdr, user_data);
     }
 
   return TRUE;
@@ -1576,12 +1569,12 @@ _ensure_capacity_bytes(QDisk *self)
 }
 
 static gboolean
-_load_qdisk_file(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
+_load_qdisk_file(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
   if (!_open_file(self->filename, self->options->read_only, &self->fd))
     goto error;
 
-  if (!_load_state(self, func, post_op_cb, user_data))
+  if (!_load_state(self, func, user_data))
     goto error;
 
   if (!_ensure_capacity_bytes(self))
@@ -1651,7 +1644,7 @@ error:
 }
 
 gboolean
-qdisk_start(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
+qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
   g_assert(!qdisk_started(self));
   g_assert(self->filename);
@@ -1663,18 +1656,18 @@ qdisk_start(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, 
     return _create_qdisk_file(self);
 
   if (st.st_size != 0)
-    return _load_qdisk_file(self, func, post_op_cb, user_data);
+    return _load_qdisk_file(self, func, user_data);
 
   return _init_qdisk_file_from_empty_file(self);
 }
 
 gboolean
-qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
+qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
 {
   gboolean result = TRUE;
 
   if (!self->options->read_only)
-    result = _save_state(self, func, post_op_cb, user_data);
+    result = _save_state(self, func, user_data);
 
   _close_file(self);
 
