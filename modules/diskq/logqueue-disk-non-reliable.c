@@ -120,6 +120,81 @@ _qtype_to_memory_queue(LogQueueDiskNonReliable *self, QDiskMemoryQueueType type)
 }
 
 static gboolean
+_iv_list_partition(struct iv_list_head *src, struct iv_list_head *dst, gint index)
+{
+  if (index <= 0 || iv_list_empty(src))
+    return FALSE;
+
+  struct iv_list_head *pos = src->next;
+  for (gint i = 1; i < index && pos->next != src; i++)
+      pos = pos->next;
+
+  if (pos->next == src)
+    return FALSE;
+
+  pos = pos->next;
+
+  pos->prev->next = src;
+  dst->next = pos;
+  dst->prev = src->prev;
+  src->prev->next = dst;
+  src->prev = pos->prev;
+  pos->prev = dst;
+
+  return TRUE;
+}
+
+static void
+_redistribute_front_cache_items(LogQueueDiskNonReliable *self)
+{
+  if (self->front_cache_output.len == 0)
+    return;
+  if (self->front_cache_output.len <= self->front_cache.limit)
+  {
+    iv_list_splice_tail_init(&self->front_cache_output.items, &self->front_cache.items);
+    self->front_cache.len = self->front_cache_output.len;
+    self->front_cache_output.len = 0;
+    return;
+  }
+  gint numof_msgs_move = self->front_cache.limit;
+  gint index = self->front_cache_output.len - numof_msgs_move;
+
+  if (!_iv_list_partition(&self->front_cache_output.items, &self->front_cache.items, index))
+    return;
+
+  self->front_cache_output.len -= numof_msgs_move;
+  self->front_cache.len = numof_msgs_move;
+}
+
+static void
+_qdisk_post_operation_callback(QDiskOperation op, QDiskFileHeader *hdr, gpointer user_data)
+{
+  LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) user_data;
+
+  if (op == QDISK_LOAD)
+    _redistribute_front_cache_items(self);
+
+  msg_info("Non-reliable disk-buffer state",
+          evt_tag_str("operation", (op == QDISK_SAVE)?"save":"load"),
+          evt_tag_str("filename", qdisk_get_filename(self->super.qdisk)),
+          evt_tag_long("number_of_messages", log_queue_get_length(&self->super.super)));
+
+  msg_debug("Non-reliable disk-buffer internal state",
+           evt_tag_str("operation", (op == QDISK_SAVE)?"save":"load"),
+           evt_tag_str("filename", qdisk_get_filename(self->super.qdisk)),
+           evt_tag_long("flow_control_window_length", self->flow_control_window.len),
+           evt_tag_long("qdisk_length", qdisk_get_length(self->super.qdisk)),
+           evt_tag_long("front_cache_length", self->front_cache.len),
+           evt_tag_long("front_cache_output_length", self->front_cache_output.len),
+           evt_tag_long("backlog_length", self->backlog.len),
+           evt_tag_long("header_length", hdr->length),
+           evt_tag_long("backlog_head", hdr->backlog_head),
+           evt_tag_long("read_head", hdr->read_head),
+           evt_tag_long("write_head", hdr->write_head),
+           evt_tag_long("capacity_bytes", hdr->capacity_bytes));
+}
+
+static gboolean
 _load_queue_callback(QDiskMemoryQueueType qtype, LogMessage *msg, gpointer user_data)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) user_data;
@@ -136,7 +211,7 @@ _start(LogQueueDisk *s)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) s;
 
-  gboolean retval = qdisk_start(s->qdisk, _load_queue_callback, self);
+  gboolean retval = qdisk_start(s->qdisk, _load_queue_callback, _qdisk_post_operation_callback, self);
   return retval;
 }
 
@@ -256,7 +331,7 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 static gboolean
 _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
-  do
+    while (queue->len < queue->limit)
     {
       if (qdisk_get_length(self->super.qdisk) <= 0)
         break;
@@ -273,7 +348,6 @@ _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, Log
 
       log_queue_disk_update_disk_related_counters(&self->super);
     }
-  while (queue->len < queue->limit);
 
   return TRUE;
 }
@@ -858,7 +932,7 @@ _stop(LogQueueDisk *s, gboolean *persistent)
     }
   g_mutex_unlock(&s->super.lock);
 
-  if (qdisk_stop(s->qdisk, _save_queue_callback, self))
+  if (qdisk_stop(s->qdisk, _save_queue_callback, _qdisk_post_operation_callback, self))
     {
       *persistent = TRUE;
       result = TRUE;
@@ -875,7 +949,7 @@ _stop(LogQueueDisk *s, gboolean *persistent)
 static gboolean
 _stop_corrupted(LogQueueDisk *s)
 {
-  return qdisk_stop(s->qdisk, NULL, NULL);
+  return qdisk_stop(s->qdisk, NULL, NULL, NULL);
 }
 
 static inline void

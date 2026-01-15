@@ -69,31 +69,6 @@
 
 static GMutex filename_lock;
 
-typedef union _QDiskFileHeader
-{
-  struct
-  {
-    gchar magic[4];
-    guint8 version;
-    guint8 big_endian;
-    guint8 _pad1;
-
-    gint64 read_head;
-    gint64 write_head;
-    gint64 length;
-
-    QDiskQueuePosition front_cache_pos;
-    QDiskQueuePosition backlog_pos;
-    QDiskQueuePosition flow_control_window_pos;
-    gint64 backlog_head;
-    gint64 backlog_len;
-
-    guint8 use_v1_wrap_condition;
-    gint64 capacity_bytes;
-  };
-  gchar _pad2[QDISK_RESERVED_SPACE];
-} QDiskFileHeader;
-
 struct _QDisk
 {
   gchar *filename;
@@ -1176,22 +1151,6 @@ _load_non_reliable_queues(QDisk *self, QDiskMemQLoadFunc func, gpointer user_dat
 
 #define _clear(obj) memset(&obj, 0, sizeof(obj));
 
-static gint64
-_number_of_messages(QDisk *self)
-{
-  if (self->options->reliable)
-    {
-      return self->hdr->length + self->hdr->backlog_len;
-    }
-  else
-    {
-      return self->hdr->length +
-             self->hdr->backlog_pos.count +
-             self->hdr->front_cache_pos.count +
-             self->hdr->flow_control_window_pos.count;
-    }
-}
-
 static void
 _reset_queue_pointers(QDisk *self)
 {
@@ -1294,7 +1253,7 @@ error:
 }
 
 static gboolean
-_save_state(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
+_save_state(QDisk *self, QDiskMemQSaveFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
 {
   QDiskQueuePosition front_cache_pos = { 0 };
   QDiskQueuePosition backlog_pos = { 0 };
@@ -1311,23 +1270,14 @@ _save_state(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
       return FALSE;
   }
 
+  if (post_op_cb && user_data)
+    post_op_cb(QDISK_SAVE, self->hdr, user_data);
+
   memcpy(self->hdr->magic, self->file_id, sizeof(self->hdr->magic));
 
   self->hdr->front_cache_pos = front_cache_pos;
   self->hdr->backlog_pos = backlog_pos;
   self->hdr->flow_control_window_pos= flow_control_window_pos;
-
-  if (!self->options->reliable)
-    msg_info("Disk-buffer state saved",
-             evt_tag_str("filename", self->filename),
-             evt_tag_long("front_cache_length", front_cache_pos.count),
-             evt_tag_long("backlog_length", backlog_pos.count),
-             evt_tag_long("flow_control_window_length", flow_control_window_pos.count),
-             evt_tag_long("qdisk_length", self->hdr->length));
-  else
-    msg_info("Reliable disk-buffer state saved",
-             evt_tag_str("filename", self->filename),
-             evt_tag_long("qdisk_length", self->hdr->length));
 
   return TRUE;
 }
@@ -1531,7 +1481,7 @@ _load_header(QDisk *self)
 }
 
 static gboolean
-_load_state(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
+_load_state(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
 {
   if (!_load_header(self))
     return FALSE;
@@ -1548,20 +1498,8 @@ _load_state(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
           _maybe_truncate_file_to_minimal(self);
         }
 
-      msg_info("Disk-buffer state loaded",
-               evt_tag_str("filename", self->filename),
-               evt_tag_long("number_of_messages", _number_of_messages(self)));
-
-      msg_debug("Disk-buffer internal state",
-                evt_tag_str("filename", self->filename),
-                evt_tag_long("front_cache_length", self->hdr->front_cache_pos.count),
-                evt_tag_long("backlog_length", self->hdr->backlog_pos.count),
-                evt_tag_long("flow_control_window_length", self->hdr->flow_control_window_pos.count),
-                evt_tag_long("qdisk_length", self->hdr->length),
-                evt_tag_long("read_head", self->hdr->read_head),
-                evt_tag_long("write_head", self->hdr->write_head),
-                evt_tag_long("capacity_bytes", self->hdr->capacity_bytes));
-
+      if (post_op_cb && user_data)
+          post_op_cb(QDISK_LOAD, self->hdr, user_data);
       _reset_queue_pointers(self);
     }
   else
@@ -1571,18 +1509,8 @@ _load_state(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
       struct stat st;
       fstat(self->fd, &st);
       self->cached_file_size = st.st_size;
-      msg_info("Reliable disk-buffer state loaded",
-               evt_tag_str("filename", self->filename),
-               evt_tag_long("number_of_messages", _number_of_messages(self)));
-
-      msg_debug("Reliable disk-buffer internal state",
-                evt_tag_str("filename", self->filename),
-                evt_tag_long("queue_length", self->hdr->length),
-                evt_tag_long("backlog_len", self->hdr->backlog_len),
-                evt_tag_long("backlog_head", self->hdr->backlog_head),
-                evt_tag_long("read_head", self->hdr->read_head),
-                evt_tag_long("write_head", self->hdr->write_head),
-                evt_tag_long("capacity_bytes", self->hdr->capacity_bytes));
+      if (post_op_cb && user_data)
+        post_op_cb(QDISK_LOAD, self->hdr, user_data);
     }
 
   return TRUE;
@@ -1648,12 +1576,12 @@ _ensure_capacity_bytes(QDisk *self)
 }
 
 static gboolean
-_load_qdisk_file(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
+_load_qdisk_file(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
 {
   if (!_open_file(self->filename, self->options->read_only, &self->fd))
     goto error;
 
-  if (!_load_state(self, func, user_data))
+  if (!_load_state(self, func, post_op_cb, user_data))
     goto error;
 
   if (!_ensure_capacity_bytes(self))
@@ -1723,7 +1651,7 @@ error:
 }
 
 gboolean
-qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
+qdisk_start(QDisk *self, QDiskMemQLoadFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
 {
   g_assert(!qdisk_started(self));
   g_assert(self->filename);
@@ -1735,18 +1663,18 @@ qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
     return _create_qdisk_file(self);
 
   if (st.st_size != 0)
-    return _load_qdisk_file(self, func, user_data);
+    return _load_qdisk_file(self, func, post_op_cb, user_data);
 
   return _init_qdisk_file_from_empty_file(self);
 }
 
 gboolean
-qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
+qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, QDiskPostOperation post_op_cb, gpointer user_data)
 {
   gboolean result = TRUE;
 
   if (!self->options->read_only)
-    result = _save_state(self, func, user_data);
+    result = _save_state(self, func, post_op_cb, user_data);
 
   _close_file(self);
 
