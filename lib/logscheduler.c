@@ -62,8 +62,8 @@ static void
 _work(gpointer s, gpointer arg)
 {
   LogSchedulerPartition *partition = (LogSchedulerPartition *) s;
-  struct iv_list_head *ilh, *next;
-  struct iv_list_head *ilh2, *next2;
+  struct iv_list_head *batch_list_head, *next_batch_list_head;
+  struct iv_list_head *msg_list_head, *next_msg_list_head;
 
   /* batches_lock protects the batches list itself.  We take off partitions
    * one-by-one under the protection of the lock */
@@ -76,15 +76,15 @@ _work(gpointer s, gpointer arg)
 
       g_mutex_unlock(&partition->batches_lock);
 
-      iv_list_for_each_safe(ilh, next, &batches)
+      iv_list_for_each_safe(batch_list_head, next_batch_list_head, &batches)
       {
         /* remove the first batch from the batches list */
-        LogSchedulerBatch *batch = iv_list_entry(ilh, LogSchedulerBatch, list);
+        LogSchedulerBatch *batch = iv_list_entry(batch_list_head, LogSchedulerBatch, list);
         iv_list_del(&batch->list);
 
-        iv_list_for_each_safe(ilh2, next2, &batch->elements)
+        iv_list_for_each_safe(msg_list_head, next_msg_list_head, &batch->elements)
         {
-          LogMessageQueueNode *node = iv_list_entry(ilh2, LogMessageQueueNode, list);
+          LogMessageQueueNode *node = iv_list_entry(msg_list_head, LogMessageQueueNode, list);
 
           iv_list_del(&node->list);
 
