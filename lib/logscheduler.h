@@ -46,6 +46,7 @@ typedef struct _LogSchedulerPartition
   gboolean flush_running;
   MainLoopIOWorkerJob io_job;
   LogPipe *front_pipe;
+  gsize log_fetch_limit;
   struct {
     StatsClusterKey assigned_events_total_key;
     StatsClusterKey processed_events_total_key;
@@ -69,6 +70,7 @@ typedef struct _LogSchedulerOptions
   gint num_partitions;
   gint batch_size;
   LogTemplate *partition_key;
+  gsize log_fetch_limit;
 } LogSchedulerOptions;
 
 typedef struct _LogScheduler

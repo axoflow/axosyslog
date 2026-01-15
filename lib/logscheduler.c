@@ -65,11 +65,19 @@ _work(gpointer s, gpointer arg)
   struct iv_list_head *batch_list_head, *next_batch_list_head;
   struct iv_list_head *msg_list_head, *next_msg_list_head;
 
+  /*
+   * We need to occasionally return from this job,
+   * so that other jobs can be executed.
+   * This prevents starvation of other LogScheduler jobs.
+   */
+  gsize msgs_processed = 0;
+  gboolean fetch_limit_reached = FALSE;
+
   /* batches_lock protects the batches list itself.  We take off partitions
    * one-by-one under the protection of the lock */
 
   g_mutex_lock(&partition->batches_lock);
-  while (!iv_list_empty(&partition->batches))
+  while (!iv_list_empty(&partition->batches) && !fetch_limit_reached)
     {
       struct iv_list_head batches = IV_LIST_HEAD_INIT(batches);
       iv_list_splice_init(&partition->batches, &batches);
@@ -78,6 +86,14 @@ _work(gpointer s, gpointer arg)
 
       iv_list_for_each_safe(batch_list_head, next_batch_list_head, &batches)
       {
+        if (fetch_limit_reached)
+          {
+            g_mutex_lock(&partition->batches_lock);
+            iv_list_splice(&batches, &partition->batches);
+            g_mutex_unlock(&partition->batches_lock);
+            break;
+          }
+
         /* remove the first batch from the batches list */
         LogSchedulerBatch *batch = iv_list_entry(batch_list_head, LogSchedulerBatch, list);
         iv_list_del(&batch->list);
@@ -100,7 +116,11 @@ _work(gpointer s, gpointer arg)
           _reinject_message(partition->front_pipe, msg, &path_options);
           log_msg_refcache_stop();
 
+          msgs_processed++;
           stats_counter_inc(partition->metrics.processed_events_total);
+
+          /* We process the current batch even if we bumped into the limit during its processing. */
+          fetch_limit_reached = partition->log_fetch_limit > 0 && msgs_processed >= partition->log_fetch_limit;
         }
         _batch_free(batch);
       }
@@ -118,7 +138,11 @@ _complete(gpointer s, gpointer arg)
   gboolean needs_restart = FALSE;
 
   g_mutex_lock(&partition->batches_lock);
-  /* our work() function returned right before a new batch was added, let's restart */
+  /*
+   * Our work() function returned right before a new batch was added,
+   * or we early returned because of log_fetch_limit().
+   * Let's restart.
+   */
   if (!iv_list_empty(&partition->batches))
     needs_restart = TRUE;
   else
@@ -176,7 +200,8 @@ _format_processed_events_key(LogSchedulerPartition *partition, const gchar *sche
 }
 
 static void
-_partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe, const gchar *scheduler_id, gint partition_index)
+_partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe, gsize log_fetch_limit, const gchar *scheduler_id,
+                gint partition_index)
 {
   main_loop_io_worker_job_init(&partition->io_job);
   partition->io_job.type = MLIOJ_PROCESSING;
@@ -187,6 +212,7 @@ _partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe, const gch
   partition->io_job.release = NULL;
 
   partition->front_pipe = front_pipe;
+  partition->log_fetch_limit = log_fetch_limit;
 
   INIT_IV_LIST_HEAD(&partition->batches);
   g_mutex_init(&partition->batches_lock);
@@ -334,7 +360,7 @@ _init_partitions(LogScheduler *self)
 {
   for (gint i = 0; i < self->options->num_partitions; i++)
     {
-      _partition_init(&self->partitions[i], self->front_pipe, self->id, i);
+      _partition_init(&self->partitions[i], self->front_pipe, self->options->log_fetch_limit, self->id, i);
     }
 }
 
@@ -468,6 +494,7 @@ log_scheduler_options_defaults(LogSchedulerOptions *options)
   options->num_partitions = -1;
   options->batch_size = 0;
   options->partition_key = NULL;
+  options->log_fetch_limit = 1000;
 }
 
 #define STRINGIFY(x) #x
