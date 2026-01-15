@@ -115,7 +115,8 @@ filterx_pointer_list_init(FilterXPointerList *self)
 void
 filterx_pointer_list_clear(FilterXPointerList *self, GDestroyNotify destroy)
 {
-  filterx_pointer_list_foreach_ref(self, _invoke_clear, destroy);
+  if (destroy)
+    filterx_pointer_list_foreach_ref(self, _invoke_clear, destroy);
 
   switch (self->mode)
     {
