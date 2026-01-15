@@ -26,6 +26,7 @@
 #include "logpipe.h"
 #include "mainloop-io-worker.h"
 #include "template/templates.h"
+#include "stats/stats-counter.h"
 
 #include <iv_list.h>
 #include <iv_event.h>
@@ -45,6 +46,13 @@ typedef struct _LogSchedulerPartition
   gboolean flush_running;
   MainLoopIOWorkerJob io_job;
   LogPipe *front_pipe;
+  gsize log_fetch_limit;
+  struct {
+    StatsClusterKey assigned_events_total_key;
+    StatsClusterKey processed_events_total_key;
+    StatsCounterItem *assigned_events_total;
+    StatsCounterItem *processed_events_total;
+  } metrics;
 } LogSchedulerPartition;
 
 typedef struct _LogSchedulerThreadState
@@ -62,10 +70,12 @@ typedef struct _LogSchedulerOptions
   gint num_partitions;
   gint batch_size;
   LogTemplate *partition_key;
+  gsize log_fetch_limit;
 } LogSchedulerOptions;
 
 typedef struct _LogScheduler
 {
+  gchar *id;
   LogPipe *front_pipe;
   LogSchedulerOptions *options;
   gint num_input_threads;
@@ -77,7 +87,7 @@ gboolean log_scheduler_init(LogScheduler *self);
 void log_scheduler_deinit(LogScheduler *self);
 
 void log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *path_options);
-LogScheduler *log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe);
+LogScheduler *log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar *id);
 void log_scheduler_free(LogScheduler *self);
 
 void log_scheduler_options_set_partition_key_ref(LogSchedulerOptions *options, LogTemplate *partition_key);

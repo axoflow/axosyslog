@@ -834,6 +834,10 @@ log_scheduler_option
           {
             last_scheduler_options->batch_size = $3;
           }
+        | KW_LOG_FETCH_LIMIT '(' nonnegative_integer ')'
+          {
+            last_scheduler_options->log_fetch_limit = $3;
+          }
         ;
 
 

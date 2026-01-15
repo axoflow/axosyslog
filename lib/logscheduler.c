@@ -22,6 +22,8 @@
 
 #include "logscheduler.h"
 #include "template/eval.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 static void
 _reinject_message(LogPipe *front_pipe, LogMessage *msg, const LogPathOptions *path_options)
@@ -60,29 +62,45 @@ static void
 _work(gpointer s, gpointer arg)
 {
   LogSchedulerPartition *partition = (LogSchedulerPartition *) s;
-  struct iv_list_head *ilh, *next;
-  struct iv_list_head *ilh2, *next2;
+  struct iv_list_head *batch_list_head, *next_batch_list_head;
+  struct iv_list_head *msg_list_head, *next_msg_list_head;
+
+  /*
+   * We need to occasionally return from this job,
+   * so that other jobs can be executed.
+   * This prevents starvation of other LogScheduler jobs.
+   */
+  gsize msgs_processed = 0;
+  gboolean fetch_limit_reached = FALSE;
 
   /* batches_lock protects the batches list itself.  We take off partitions
    * one-by-one under the protection of the lock */
 
   g_mutex_lock(&partition->batches_lock);
-  while (!iv_list_empty(&partition->batches))
+  while (!iv_list_empty(&partition->batches) && !fetch_limit_reached)
     {
       struct iv_list_head batches = IV_LIST_HEAD_INIT(batches);
       iv_list_splice_init(&partition->batches, &batches);
 
       g_mutex_unlock(&partition->batches_lock);
 
-      iv_list_for_each_safe(ilh, next, &batches)
+      iv_list_for_each_safe(batch_list_head, next_batch_list_head, &batches)
       {
+        if (fetch_limit_reached)
+          {
+            g_mutex_lock(&partition->batches_lock);
+            iv_list_splice(&batches, &partition->batches);
+            g_mutex_unlock(&partition->batches_lock);
+            break;
+          }
+
         /* remove the first batch from the batches list */
-        LogSchedulerBatch *batch = iv_list_entry(ilh, LogSchedulerBatch, list);
+        LogSchedulerBatch *batch = iv_list_entry(batch_list_head, LogSchedulerBatch, list);
         iv_list_del(&batch->list);
 
-        iv_list_for_each_safe(ilh2, next2, &batch->elements)
+        iv_list_for_each_safe(msg_list_head, next_msg_list_head, &batch->elements)
         {
-          LogMessageQueueNode *node = iv_list_entry(ilh2, LogMessageQueueNode, list);
+          LogMessageQueueNode *node = iv_list_entry(msg_list_head, LogMessageQueueNode, list);
 
           iv_list_del(&node->list);
 
@@ -97,6 +115,12 @@ _work(gpointer s, gpointer arg)
           log_msg_refcache_start_consumer(msg, &path_options);
           _reinject_message(partition->front_pipe, msg, &path_options);
           log_msg_refcache_stop();
+
+          msgs_processed++;
+          stats_counter_inc(partition->metrics.processed_events_total);
+
+          /* We process the current batch even if we bumped into the limit during its processing. */
+          fetch_limit_reached = partition->log_fetch_limit > 0 && msgs_processed >= partition->log_fetch_limit;
         }
         _batch_free(batch);
       }
@@ -114,7 +138,11 @@ _complete(gpointer s, gpointer arg)
   gboolean needs_restart = FALSE;
 
   g_mutex_lock(&partition->batches_lock);
-  /* our work() function returned right before a new batch was added, let's restart */
+  /*
+   * Our work() function returned right before a new batch was added,
+   * or we early returned because of log_fetch_limit().
+   * Let's restart.
+   */
   if (!iv_list_empty(&partition->batches))
     needs_restart = TRUE;
   else
@@ -142,7 +170,38 @@ _partition_add_batch(LogSchedulerPartition *partition, LogSchedulerBatch *batch)
 }
 
 static void
-_partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe)
+_format_sc_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
+               StatsClusterKey *sc_key, const gchar *name)
+{
+  StatsClusterKey temp_sc_key;
+  gchar partition_index_buf[64];
+  g_snprintf(partition_index_buf, sizeof(partition_index_buf), "%d", partition_index);
+
+  StatsClusterLabel labels[2];
+  labels[0] = stats_cluster_label("id", scheduler_id);
+  labels[1] = stats_cluster_label("partition_index", partition_index_buf);
+
+  stats_cluster_single_key_set(&temp_sc_key, name, labels, 2);
+  stats_cluster_key_clone(sc_key, &temp_sc_key);
+}
+
+static void
+_format_assigned_events_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
+                            StatsClusterKey *sc_key)
+{
+  _format_sc_key(partition, scheduler_id, partition_index, sc_key, "parallelized_assigned_events_total");
+}
+
+static void
+_format_processed_events_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
+                             StatsClusterKey *sc_key)
+{
+  _format_sc_key(partition, scheduler_id, partition_index, sc_key, "parallelized_processed_events_total");
+}
+
+static void
+_partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe, gsize log_fetch_limit, const gchar *scheduler_id,
+                gint partition_index)
 {
   main_loop_io_worker_job_init(&partition->io_job);
   partition->io_job.type = MLIOJ_PROCESSING;
@@ -153,15 +212,40 @@ _partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe)
   partition->io_job.release = NULL;
 
   partition->front_pipe = front_pipe;
+  partition->log_fetch_limit = log_fetch_limit;
 
   INIT_IV_LIST_HEAD(&partition->batches);
   g_mutex_init(&partition->batches_lock);
+
+  stats_lock();
+  {
+    _format_assigned_events_key(partition, scheduler_id, partition_index,
+                                &partition->metrics.assigned_events_total_key);
+    stats_register_counter(4, &partition->metrics.assigned_events_total_key, SC_TYPE_SINGLE_VALUE,
+                           &partition->metrics.assigned_events_total);
+
+    _format_processed_events_key(partition, scheduler_id, partition_index,
+                                 &partition->metrics.processed_events_total_key);
+    stats_register_counter(4, &partition->metrics.processed_events_total_key, SC_TYPE_SINGLE_VALUE,
+                           &partition->metrics.processed_events_total);
+  }
+  stats_unlock();
 }
 
 void
 _partition_clear(LogSchedulerPartition *partition)
 {
   g_mutex_clear(&partition->batches_lock);
+  stats_lock();
+  {
+    stats_unregister_counter(&partition->metrics.assigned_events_total_key, SC_TYPE_SINGLE_VALUE,
+                             &partition->metrics.assigned_events_total);
+    stats_unregister_counter(&partition->metrics.processed_events_total_key, SC_TYPE_SINGLE_VALUE,
+                             &partition->metrics.processed_events_total);
+    stats_cluster_key_cloned_free(&partition->metrics.assigned_events_total_key);
+    stats_cluster_key_cloned_free(&partition->metrics.processed_events_total_key);
+  }
+  stats_unlock();
 }
 
 /* LogSchedulerThreadState */
@@ -244,6 +328,8 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
   node = log_msg_alloc_queue_node(msg, path_options);
   iv_list_add_tail(&node->list, &thread_state->batch_by_partition[partition_index]);
   log_msg_unref(msg);
+
+  stats_counter_inc(self->partitions[partition_index].metrics.assigned_events_total);
 }
 
 
@@ -274,7 +360,7 @@ _init_partitions(LogScheduler *self)
 {
   for (gint i = 0; i < self->options->num_partitions; i++)
     {
-      _partition_init(&self->partitions[i], self->front_pipe);
+      _partition_init(&self->partitions[i], self->front_pipe, self->options->log_fetch_limit, self->id, i);
     }
 }
 
@@ -320,7 +406,7 @@ log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *pa
 }
 
 LogScheduler *
-log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
+log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar *id)
 {
   gint max_threads = main_loop_worker_get_max_number_of_threads();
 
@@ -329,6 +415,7 @@ log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
     max_threads = 0;
 
   LogScheduler *self = g_malloc0(sizeof(LogScheduler) + max_threads * sizeof(LogSchedulerThreadState));
+  self->id = g_strdup(id);
   self->num_input_threads = max_threads;
   self->options = options;
   self->front_pipe = log_pipe_ref(front_pipe);
@@ -342,6 +429,7 @@ void
 log_scheduler_free(LogScheduler *self)
 {
   log_pipe_unref(self->front_pipe);
+  g_free(self->id);
   _free_partitions(self);
   g_free(self);
 }
@@ -373,9 +461,10 @@ log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *pa
 }
 
 LogScheduler *
-log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe)
+log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar *id)
 {
   LogScheduler *self = g_malloc0(sizeof(LogScheduler) + 0 * sizeof(LogSchedulerThreadState));
+  self->id = g_strdup(id);
   self->options = options;
   self->front_pipe = log_pipe_ref(front_pipe);
 
@@ -386,6 +475,7 @@ void
 log_scheduler_free(LogScheduler *self)
 {
   log_pipe_unref(self->front_pipe);
+  g_free(self->id);
   g_free(self);
 }
 
@@ -404,6 +494,7 @@ log_scheduler_options_defaults(LogSchedulerOptions *options)
   options->num_partitions = -1;
   options->batch_size = 0;
   options->partition_key = NULL;
+  options->log_fetch_limit = 1000;
 }
 
 #define STRINGIFY(x) #x
