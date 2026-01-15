@@ -42,6 +42,15 @@
  * open for extension.
  */
 
+
+/* floating reference, e.g.  this is a reference to an object that is yet to
+ * be stored in a variable/attribute/etc.  While a reference is floating, we
+ * don't need to clone another ref when storing it.  This avoids excessive
+ * copies in copy-on-write as well as reduces the number of refs allocated
+ * */
+
+#define FILTERX_REF_FLAG_FLOATING 0x1
+
 struct _FilterXRef
 {
   FilterXObject super;
@@ -114,6 +123,32 @@ filterx_ref_unset_parent_container(FilterXObject *s)
     }
 }
 
+/* mark this xref as a floating one, not yet stored anywhere, can be stored
+ * without cloning.  If @s is not an xref, do nothing, otherwise @s must be
+ * a non-floating reference, you can't float a ref twice! */
+static inline FilterXObject *
+filterx_ref_float(FilterXObject *s)
+{
+  if (s && filterx_object_is_ref(s))
+    {
+#if SYSLOG_NG_ENABLE_DEBUG
+      g_assert((s->flags & FILTERX_REF_FLAG_FLOATING) == 0);
+#endif
+      s->flags |= FILTERX_REF_FLAG_FLOATING;
+    }
+  return s;
+}
+
+/* ground this xref (e.g.  make it not floating), the reverse of
+ * filterx_ref_float().  This is to be used when the xref is stored
+ * somewhere */
+static inline FilterXObject *
+filterx_ref_ground(FilterXObject *s)
+{
+  if (s && filterx_object_is_ref(s))
+    s->flags &= ~FILTERX_REF_FLAG_FLOATING;
+  return s;
+}
 
 FilterXObject *_filterx_ref_new(FilterXObject *value);
 
