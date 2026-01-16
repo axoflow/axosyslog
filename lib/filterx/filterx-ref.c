@@ -22,6 +22,228 @@
 
 #include "filterx-object.h"
 
+/*
+ * Copy-on-write architecture
+ * ==========================
+ *
+ * A key part of our performance is the copy-on-write architecture
+ * implemented for mutable objects.  This description tries to capture the
+ * most important aspects how it works.  Copy-on-write is unfortunately a
+ * complex beast and its implementation is scattered throughout the filterx
+ * implementation.
+ *
+ * Glossary
+ * --------
+ *  - FilterXRef or xref:
+ *  - false sharing
+ *  - mutable structure
+ *  - parent_container
+ *  - bare objects
+ *
+ * References vs. copying
+ * ----------------------
+ * The filterx language does not have "references" in the user-visible
+ * language (not even for mutable data types), rather it **copies** data
+ * where more usual languages would just store a reference.
+ *
+ * For example, Python or JavaScript:
+ *
+ *    a = {"foo": "foovalue"};
+ *    b = {"bar": "barvalue"};
+ *    a.b = b;
+ *    b.baz = "bazvalue";
+ *
+ * In JavaScript or Python the assignment to `b.baz` would also change
+ * `a.b.baz` as `b` is stored as a reference in the `a` dict, e.g.  the
+ * values would be like:
+ *
+ *    a = {"foo": "foovalue","b":{"bar": "barvalue", "baz": "bazvalue"}}
+ *    b = {"bar":"barvalue", "baz": "bazvalue"}
+ *
+ * NOTE: `a` changed along with `b`.
+ *
+ * The problem with this approach is that our language is primarily designed
+ * for data manipulation, this kind of sharing is not at all intuitive for
+ * users that are not experienced programmers.  Also, when routing data, we
+ * might need to backtrack to a specific state and perform an alternative
+ * route with a different set of mutations, which means that we need to get
+ * back to a specific state.  This is difficult to do if we would be using
+ * references.
+ *
+ * With all that said, this is how the assignments above would look like in
+ * FilterX:
+ *
+ *    a = {"foo": "foovalue","b":{"bar": "barvalue"}}
+ *    b = {"bar":"barvalue", "baz": "bazvalue"}
+ *
+ * E.g. even though `b` has changed, `a` did not.
+ *
+ * The need for copy-on-write
+ * --------------------------
+ * If we actually copied data on all assignments, that would be slow.
+ * Therefore, the FilterX interpreter implements a copy-on-write mechanism
+ * for mutable data types.
+ *
+ * NOTE: copy-on-write does not apply to immutable data types (e.g.
+ * FilterXString or FilterXPrimitive), since they never change, thus sharing
+ * immutable object instances is perfectly fine.
+ *
+ * Copy-on-write basically means that we attempt to defer the actual copying
+ * of the data structures for as long as we can: we only copy the actual
+ * data when a change would cascade to other dict/list objects through the
+ * sharing of data structures.
+ *
+ * Design principles
+ * -----------------
+ * In case of mutable objects, we have two interoperating object classes:
+ *   - a bare, mutable object class to represent the data structure (e.g.
+ *     FilterXDictObject or FilterXListObject)
+ *
+ *   - FilterXRef (also sometimes referenced as "xref", which is different
+ *     from a simple ref).  An instance of FilterXRef "contains" or "wraps"
+ *     an object using its `FilterXRef->value` member and we can have
+ *     multiple of these xrefs.
+ *
+ * All objects in FilterX are reference counted (including FilterXRef too!),
+ * but FilterXRefs (xrefs) are not simple reference counts: they represent
+ * the multiple "copies" of a mutable data structure, while sharing the
+ * same object instance between the copies.
+ *
+ * FilterXRef mechanism
+ * --------------------
+ * An object behind a FilterXRef (xref) offers the same interface as the
+ * object itself, however the object and the associated xrefs are all
+ * distinct object instances.
+ *
+ * Wrapping an object into an xref represents another "copy" of the same
+ * object.  An object is wrapped into a new xref using the following
+ * functions:
+ *
+ *   1) a call to filterx_object_cow_prepare(), that is used to prepare a
+ *      mutable object to be used by the copy-on-write mechanism.  This is
+ *      only used for the creation of the very first xref pointing to a
+ *      newly created object.
+ *
+ *   2) filterx_object_cow_fork() and fork2() are to be used when the filterx
+ *      language is using a copying construct (e.g.  assigmnent, setattr or
+ *      set_subscript).  These functions return both "copies" of the object:
+ *      old and new.  They also handle filterx_object_cow_prepare() if an
+ *      object is not yet wrapped.
+ *
+ *   2) filterx_object_clone() does not explicitly wrap a bare object,
+ *      but will clone the xref if it is already wrapped.
+ *
+ * The number of copies for objects are tracked by the
+ * `FilterXObject->fx_ref_cnt` member, which counts the number of
+ * active xrefs to an object.
+ *
+ * When the reference count for an xref drops to zero, it automatically
+ * removes the associated "copy" as well, e.g.  the `fx_ref_cnt` member will
+ * be decreased.
+ *
+ * Triggering a copy
+ * -----------------
+ * All changes to objects are facilitated through one of the FilterXRef
+ * instances (e.g. setattr, set_subscript or another mutating method).
+ *
+ * When a mutating method is called, the xref would first trigger a clone of
+ * the underlying object and then apply the requested operation on the
+ * clone.  The clone operation removes the sharing of the objects between the
+ * two xrefs.
+ *
+ * This is implemented by the _filterx_ref_cow() function.
+ *
+ * Recursive data structures
+ * -------------------------
+ * Mutable data structures often contain other mutable data structures as
+ * elements, thereby representing a recursive data structure like JSON (dict
+ * in dict/list or list in dict/list)
+ *
+ * In case of a recursive structure, copy-on-write operates layer-by-layer.
+ * It may happen that the top-level dict had already been unshared due to a
+ * write operation, while most of the children are still shared.
+ *
+ * We support cases where we look up a child of a large data structure
+ * (think of results looked up from cache_json_file()) and sharing that as
+ * long as the copy is not changed.
+ *
+ * Parent tracking
+ * ---------------
+ *
+ * Given a recursive data structure, changing any of the children, even
+ * those buried deeply in the data structure means that the entire hierarchy
+ * (up to the top-level element) should be considered changed.
+ *
+ * The reason is simple: a changed child needs to be updated in the
+ * container, which is a child of its container, etc.  Basically any "clone"
+ * operation is carried out all the way up to the top
+ * (`_filterx_ref_cow_parents()` function).
+ *
+ * In order to carry out these update operations, we need to keep track of
+ * the parent container.  This is done by the `FilterXRef->parent_container`
+ * weakref.  That means that all hierarchical data structures can be
+ * navigated from top-to-bottom (using normal accessor functions like
+ * getattr or get_subscript) and from bottom-to-up, using the
+ * parent_container weakref.
+ *
+ * Since we have this weakref, we also use it to mark the top-level dict as
+ * dirty, whenever any of the children are changed.
+ *
+ * Sharing of xrefs
+ * ----------------
+ * The idea of FilterXRefs (or xrefs) is to represent a distinct copy of a
+ * mutable data structure.  There's an exception to everything though: and
+ * that is the potential sharing of xrefs between multiple shared object
+ * hierarchies.
+ *
+ * FilterXRef instances can be shared when we have a dict embedded in
+ * another dict (e.g.  top-level and a child) and the top-level dict is
+ * being shared by two xrefs.  In this case, while the xref to the top-level
+ * is distinct (kept in two variables for example), the xref to the child
+ * (contained in the top-level as a value) is shared, and the child dict
+ * itself may contain additional xrefs to further mutable data objects.
+ *
+ * When manipulating data structures through xrefs we have to know if those
+ * xrefs are shared or not.  Actually we can't mutate objects through shared
+ * xrefs, as that would mean that changes would cascade into multiple
+ * objects, or worse, we can even create an infinite recursion in our
+ * hierarchy.
+ *
+ * To avoid this, xref sharing needs to be eliminated.
+ *
+ * Floating xrefs
+ * --------------
+ * As we navigate and change the hierarchy of dict/list instances while
+ * interpreting the filterx statements, we need to notice and eliminate the
+ * use of shared xrefs.  If an xref is shared, that means the `fx_ref_cnt`
+ * of an object does not correctly reflect the number of total copies.  This
+ * might even mean that a dict is assumed to be non-shared (fx_ref_cnt==1),
+ * and we would fail to copy it, before modifying it.
+ *
+ * Any expr that evaluates to an object in a hierarchical structure (e.g.
+ * getattr or get_subscript) must check for shared xrefs and actively
+ * replace them with a "floating xref".  See the function
+ * `_filterx_ref_replace_shared_xref_with_a_floating_one()`.
+ *
+ * A floating xref is a normal FilterXRef instance, the only difference is
+ * that it is yet to be stored somewhere (e.g.  another dict or a variable).
+ * A floating xref is only kept in local variables and returned by
+ * filterx_expr_eval().
+ *
+ * Should we call a mutating function (e.g.  setattr) on a floating xref, we
+ * will trigger the cloning of the object (as there are multiple xrefs, one
+ * of them is the floating one), but we also make sure that the floating
+ * xref is replaces the old xref in the cloned container.  This is
+ * implemented by the filterx_object_clone_container() method, which will
+ * take care of this replacement.
+ *
+ * An xref is considered shared, iff:
+ *  - its parent_container is pointing outside of the current hierarchy, OR
+ *  - the parent container is shared (e.g. `fx_ref_cnt` > 1),
+ *
+ */
+
+
 static FilterXObject *
 _filterx_ref_clone(FilterXObject *s)
 {
@@ -175,23 +397,23 @@ _filterx_ref_truthy(FilterXObject *s)
  * its proper home: in the parent dict.  This is exactly the
  * "child_of_interest" we are passing to clone_container().
  */
-static void
-_filterx_ref_replace_foreign_ref_with_a_floating_one(FilterXObject **ps, FilterXObject *container)
+static FilterXObject *
+_filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXObject *c)
 {
-  if (!(*ps))
-    return;
+  if (!s || !filterx_object_is_ref(s))
+    return s;
 
-  if (!filterx_object_is_ref(*ps))
-    return;
+  FilterXRef *self = (FilterXRef *) s;
+  FilterXRef *container = (FilterXRef *) c;
 
-  FilterXRef *self = (FilterXRef *) *ps;
+  if (filterx_weakref_is_set_to(&self->parent_container, &container->super) &&
+      g_atomic_counter_get(&container->value->fx_ref_cnt) <= 1)
+    return s;
 
-  if (filterx_weakref_is_set_to(&self->parent_container, container))
-    return;
-
-  *ps = _filterx_ref_new(filterx_object_ref(self->value));
+  FilterXObject *result = _filterx_ref_new(filterx_object_ref(self->value));
   filterx_object_unref(&self->super);
-  filterx_ref_set_parent_container(*ps, container);
+  filterx_ref_set_parent_container(result, &container->super);
+  return result;
 }
 
 static FilterXObject *
@@ -199,8 +421,7 @@ _filterx_ref_getattr(FilterXObject *s, FilterXObject *attr)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *result = filterx_object_getattr(self->value, attr);
-  _filterx_ref_replace_foreign_ref_with_a_floating_one(&result, s);
-  return result;
+  return _filterx_ref_replace_shared_xref_with_a_floating_one(result, s);
 }
 
 static FilterXObject *
@@ -208,8 +429,7 @@ _filterx_ref_get_subscript(FilterXObject *s, FilterXObject *key)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXObject *result = filterx_object_get_subscript(self->value, key);
-  _filterx_ref_replace_foreign_ref_with_a_floating_one(&result, s);
-  return result;
+  return _filterx_ref_replace_shared_xref_with_a_floating_one(result, s);
 }
 
 static gboolean
