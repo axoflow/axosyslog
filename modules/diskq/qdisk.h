@@ -90,6 +90,8 @@ gboolean qdisk_rewind_backlog(QDisk *self, guint rewind_count);
 void qdisk_empty_backlog(QDisk *self);
 gint64 qdisk_get_next_tail_position(QDisk *self);
 gint64 qdisk_get_next_head_position(QDisk *self);
+gboolean qdisk_load_hdr(QDisk *self);
+gboolean qdisk_unload_hdr(QDisk *self);
 gboolean qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data);
 gboolean qdisk_stop(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data);
 void qdisk_reset_file_if_empty(QDisk *self);
@@ -98,6 +100,7 @@ void qdisk_free(QDisk *self);
 
 DiskQueueOptions *qdisk_get_options(QDisk *self);
 gint64 qdisk_get_length(QDisk *self);
+gint64 qdisk_get_hdr_total_length(QDisk *self);
 gint64 qdisk_get_maximum_size(QDisk *self);
 gint64 qdisk_get_writer_head(QDisk *self);
 gint64 qdisk_get_reader_head(QDisk *self);

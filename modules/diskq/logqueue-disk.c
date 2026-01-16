@@ -63,6 +63,23 @@ log_queue_disk_stop(LogQueue *s, gboolean *persistent)
 }
 
 gboolean
+log_queue_disk_load_hdr(LogQueue *s)
+{
+  LogQueueDisk *self = (LogQueueDisk *) s;
+
+  /* qdisk portion is not yet started when this happens */
+  g_assert(!qdisk_started(self->qdisk));
+  return qdisk_load_hdr(self->qdisk);
+}
+
+gboolean
+log_queue_disk_unload_hdr(LogQueue *s)
+{
+    LogQueueDisk *self = (LogQueueDisk *) s;
+    return qdisk_unload_hdr(self->qdisk);
+}
+
+gboolean
 log_queue_disk_start(LogQueue *s)
 {
   LogQueueDisk *self = (LogQueueDisk *) s;

@@ -1644,6 +1644,39 @@ error:
 }
 
 gboolean
+qdisk_load_hdr(QDisk *self)
+{
+  g_assert(!qdisk_started(self));
+  g_assert(self->filename);
+
+  struct stat st;
+  gboolean file_exists = stat(self->filename, &st) != -1;
+  if (!file_exists || (st.st_size == 0))
+    return FALSE;
+  if (!_open_file(self->filename, self->options->read_only, &self->fd))
+    goto error;
+
+  if (!_load_header(self))
+    goto error;
+
+  self->cached_file_size = st.st_size;
+
+  return TRUE;
+error:
+  _close_file(self);
+  return FALSE;
+}
+
+gboolean
+qdisk_unload_hdr(QDisk *self)
+{
+  g_assert(self->filename);
+
+  _close_file(self);
+  return TRUE;
+}
+
+gboolean
 qdisk_start(QDisk *self, QDiskMemQLoadFunc func, gpointer user_data)
 {
   g_assert(!qdisk_started(self));
@@ -1692,6 +1725,16 @@ qdisk_get_options(QDisk *self)
 {
   return self->options;
 }
+
+gint64
+qdisk_get_hdr_total_length(QDisk *self)
+{
+  return self->hdr->length +
+  self->hdr->backlog_pos.count +
+  self->hdr->front_cache_pos.count +
+  self->hdr->flow_control_window_pos.count;
+}
+
 
 gint64
 qdisk_get_length(QDisk *self)

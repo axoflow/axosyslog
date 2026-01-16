@@ -222,7 +222,7 @@ _get_length(LogQueue *s)
   if (!qdisk_started(self->super.qdisk))
     return 0;
 
-  return self->front_cache.len
+   return self->front_cache.len
          + self->front_cache_output.len
          + qdisk_get_length(self->super.qdisk)
          + self->flow_control_window.len;
