@@ -26,6 +26,8 @@ from collections import namedtuple
 from helper_functions import check_abandoned_disk_buffer_metrics
 from helper_functions import check_both_disk_buffer_metrics
 from helper_functions import check_disk_buffer_files
+from helper_functions import check_disk_buffer_state_load_attempts
+from helper_functions import check_disk_buffer_state_save_attempts
 from helper_functions import fill_up_and_check_initial_disk_buffer_metrics
 from helper_functions import fill_up_and_check_new_disk_buffer_metrics
 from helper_functions import set_config_with_default_non_reliable_disk_buffer_values
@@ -84,3 +86,6 @@ def test_abandoned_disk_buffer(config, port_allocator, syslog_ng, loggen, dqtool
 
     check_both_disk_buffer_metrics(config, FIRST_DISK_BUFFER_METRICS, EMPTY_DISK_BUFFER_METRICS)
     check_disk_buffer_files(dqtool, [("syslog-ng-00000.qf", NUMBER_OF_MESSAGES_TO_FILL_FIRST_BUFFERS), ("syslog-ng-00001.qf", 0)])
+    syslog_ng.stop()
+    check_disk_buffer_state_load_attempts(syslog_ng, expected_load_attempts=3)
+    check_disk_buffer_state_save_attempts(syslog_ng, expected_save_attempts=3)

@@ -123,6 +123,20 @@ def check_if_source_suspended(syslog_ng, is_suspended_source):
     assert syslog_ng.is_message_in_console_log("Source has been suspended") == is_suspended_source
 
 
+def check_disk_buffer_state_load_attempts(syslog_ng, expected_load_attempts):
+    actual_load_attempts = syslog_ng.count_message_in_console_log("Non-reliable disk-buffer internal state; operation='load'")
+    assert actual_load_attempts == expected_load_attempts, f"Expected {expected_load_attempts} load attempts, but got {actual_load_attempts}"
+    actual_load_attempts = syslog_ng.count_message_in_console_log("Non-reliable disk-buffer state; operation='load'")
+    assert actual_load_attempts == expected_load_attempts
+
+
+def check_disk_buffer_state_save_attempts(syslog_ng, expected_save_attempts):
+    actual_save_attempts = syslog_ng.count_message_in_console_log("Non-reliable disk-buffer internal state; operation='save'")
+    assert actual_save_attempts == expected_save_attempts, f"Expected {expected_save_attempts} save attempts, but got {actual_save_attempts}"
+    actual_save_attempts = syslog_ng.count_message_in_console_log("Non-reliable disk-buffer state; operation='save'")
+    assert actual_save_attempts == expected_save_attempts, f"Expected {expected_save_attempts} save attempts, but got {actual_save_attempts}"
+
+
 def trigger_to_create_abandoned_disk_buffer(network_destination, config, port_allocator, syslog_ng):
     network_destination.options["port"] = port_allocator()
     network_destination.options["disk_buffer"]["front-cache-size"] = 2000
