@@ -136,10 +136,10 @@ Test(qdisk, test_qdisk_started)
 
   cr_assert_not(qdisk_started(qdisk));
 
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
   cr_assert(qdisk_started(qdisk));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   cr_assert_not(qdisk_started(qdisk));
 
   cleanup_qdisk(filename, qdisk);
@@ -149,7 +149,7 @@ Test(qdisk, qdisk_basic_push_pop)
 {
   const gchar *filename = "test_qdisk_basic_push_pop.rqf";
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   guint expected_record_len = 128;
   cr_assert(push_dummy_record(qdisk, expected_record_len));
@@ -162,7 +162,7 @@ Test(qdisk, qdisk_basic_push_pop)
 
   cr_assert_eq(qdisk_get_length(qdisk), 0);
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
 }
 
@@ -172,7 +172,7 @@ Test(qdisk, qdisk_is_space_avail)
   gsize qdisk_size = MiB(1);
   GString *data = g_string_new(NULL);
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, qdisk_size);
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   gsize available_space = qdisk_size - QDISK_RESERVED_SPACE;
   cr_assert(qdisk_is_space_avail(qdisk, available_space));
@@ -196,7 +196,7 @@ Test(qdisk, qdisk_is_space_avail)
   /* 1 byte of empty space (between backlog and write head) is reserved */
   cr_assert(qdisk_is_space_avail(qdisk, 100 - 1));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   g_string_free(data, TRUE);
   cleanup_qdisk(filename, qdisk);
 }
@@ -205,7 +205,7 @@ Test(qdisk, qdisk_remove_head)
 {
   const gchar *filename = "test_qdisk_remove_head.rqf";
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   push_dummy_record(qdisk, 128);
   cr_assert(qdisk_remove_head(qdisk));
@@ -219,7 +219,7 @@ Test(qdisk, qdisk_remove_head)
 
   cr_assert_not(qdisk_remove_head(qdisk));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
 }
 
@@ -227,7 +227,7 @@ Test(qdisk, qdisk_basic_ack_rewind)
 {
   const gchar *filename = "test_qdisk_basic_ack_rewind.rqf";
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   gsize num_of_records = 100;
 
@@ -257,7 +257,7 @@ Test(qdisk, qdisk_basic_ack_rewind)
   cr_assert_eq(qdisk_get_backlog_count(qdisk), 0);
   cr_assert_eq(qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
 }
 
@@ -265,7 +265,7 @@ Test(qdisk, qdisk_empty_backlog)
 {
   const gchar *filename = "test_qdisk_empty_backlog.rqf";
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, MiB(1));
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   push_dummy_record(qdisk, 514);
   push_dummy_record(qdisk, 514);
@@ -280,7 +280,7 @@ Test(qdisk, qdisk_empty_backlog)
 
   cr_assert_eq(qdisk_get_backlog_head(qdisk), qdisk_get_reader_head(qdisk));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
 }
 
@@ -289,7 +289,7 @@ Test(qdisk, allow_writing_more_than_max_size_when_last_message_does_not_fit)
   const gchar *filename = "test_qdisk_exceed_max_size.rqf";
   gsize qdisk_size = MiB(1);
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, qdisk_size);
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   push_dummy_record(qdisk, 100);
 
@@ -298,7 +298,7 @@ Test(qdisk, allow_writing_more_than_max_size_when_last_message_does_not_fit)
 
   cr_assert_geq(qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
 }
 
@@ -308,7 +308,7 @@ Test(qdisk, do_not_allow_diskq_to_exceed_max_size_if_last_message_fits)
   gsize qdisk_size = MiB(1);
   GString *data = g_string_new(NULL);
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, qdisk_size);
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   // fill completely
   push_dummy_record(qdisk, qdisk_size - QDISK_RESERVED_SPACE - FRAME_LENGTH);
@@ -322,7 +322,7 @@ Test(qdisk, do_not_allow_diskq_to_exceed_max_size_if_last_message_fits)
   push_dummy_record(qdisk, 4);
   cr_assert_leq(qdisk_get_file_size(qdisk), qdisk_get_maximum_size(qdisk));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   g_string_free(data, TRUE);
   cleanup_qdisk(filename, qdisk);
 }
@@ -333,7 +333,7 @@ Test(qdisk, completely_full_and_then_emptied_qdisk_should_update_positions_prope
   gsize qdisk_size = MiB(1);
   GString *popped_data = g_string_new(NULL);
   QDisk *qdisk = create_qdisk(TDISKQ_RELIABLE, filename, qdisk_size);
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   gsize num_of_records = 4;
 
@@ -351,7 +351,7 @@ Test(qdisk, completely_full_and_then_emptied_qdisk_should_update_positions_prope
   cr_assert(push_dummy_record(qdisk, record_len));
   cr_assert(reliable_pop_record_without_backlog(qdisk, popped_data));
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   g_string_free(popped_data, TRUE);
   cleanup_qdisk(filename, qdisk);
 }
@@ -364,7 +364,7 @@ Test(qdisk, prealloc)
   disk_queue_options_set_prealloc(opts, TRUE);
   QDisk *qdisk = qdisk_new(opts, "TEST", filename);
 
-  qdisk_start(qdisk, NULL, NULL, NULL);
+  qdisk_start(qdisk, NULL, NULL);
 
   struct stat file_stats;
   cr_assert(stat(filename, &file_stats) == 0, "Stat call failed, errno: %d", errno);
@@ -373,7 +373,7 @@ Test(qdisk, prealloc)
   cr_assert_eq(qdisk_get_file_size(qdisk), MIN_CAPACITY_BYTES);
   cr_assert_eq(qdisk_get_file_size(qdisk), real_size);
 
-  qdisk_stop(qdisk, NULL, NULL, NULL);
+  qdisk_stop(qdisk, NULL, NULL);
   cleanup_qdisk(filename, qdisk);
 }
 
@@ -435,7 +435,7 @@ Test(qdisk, get_empty_space_non_wrapped)
   DiskQueueOptions *opts = construct_diskq_options(TDISKQ_RELIABLE, MIN_CAPACITY_BYTES);
   disk_queue_options_set_truncate_size_ratio(opts, 1);
   QDisk *qdisk = qdisk_new(opts, "TEST", filename);
-  cr_assert(qdisk_start(qdisk, NULL, NULL, NULL));
+  cr_assert(qdisk_start(qdisk, NULL, NULL));
 
   // 0   RESERVED=B=W              DBS
   // |---|------- ... -------------|
@@ -510,7 +510,7 @@ Test(qdisk, get_empty_space_non_wrapped)
   // |---|------ ... --------------|---------|
   //      ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-  cr_assert(qdisk_stop(qdisk, NULL, NULL, NULL));
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
 }
 
@@ -523,7 +523,7 @@ Test(qdisk, get_empty_space_wrapped)
   DiskQueueOptions *opts = construct_diskq_options(TDISKQ_RELIABLE, MIN_CAPACITY_BYTES);
   disk_queue_options_set_truncate_size_ratio(opts, 1);
   QDisk *qdisk = qdisk_new(opts, "TEST", filename);
-  cr_assert(qdisk_start(qdisk, NULL, NULL, NULL));
+  cr_assert(qdisk_start(qdisk, NULL, NULL));
 
   _push_data_to_qdisk(qdisk, small_amount_of_data * 2);
   _push_data_to_qdisk(qdisk, useful_size);
@@ -570,7 +570,7 @@ Test(qdisk, get_empty_space_wrapped)
   // 0   RESERVED                  DBS=W     B
   // |---|------ ... --------------|---------|
 
-  cr_assert(qdisk_stop(qdisk, NULL, NULL, NULL));
+  cr_assert(qdisk_stop(qdisk, NULL, NULL));
   cleanup_qdisk(filename, qdisk);
 }
 
