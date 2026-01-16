@@ -64,6 +64,9 @@ class Loggen(object):
         self.loggen_stderr_path = Path("loggen_stderr_{}".format(instance_index))
         return self.executor.start(start_params, self.loggen_stderr_path, self.loggen_stdout_path, instance_index)
 
+    def is_running(self) -> bool:
+        return self.executor.is_running()
+
     def get_loggen_stats(self) -> LoggenStats:
         if not self.loggen_stderr_path.exists():
             raise RuntimeError("Loggen stderr file does not exist")

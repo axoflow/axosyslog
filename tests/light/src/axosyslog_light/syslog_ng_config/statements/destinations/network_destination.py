@@ -53,20 +53,24 @@ class NetworkDestination(DestinationDriver):
     ) -> None:
         self.driver_name = "network"
         self.ip = ip
-        self.io = create_io(self.ip, options)
+        self.options = options
+        self._io = None
         super(NetworkDestination, self).__init__(stats_handler, prometheus_stats_handler, [self.ip], options)
 
     def start_listener(self):
-        self.io.start_listener()
+        if self._io is None:
+            self._io = create_io(self.ip, self.options)
+        self._io.start_listener()
 
     def stop_listener(self):
-        self.io.stop_listener()
+        if self._io is not None:
+            self._io.stop_listener()
 
     def read_log(self):
         return self.read_logs(1)[0]
 
     def read_logs(self, counter):
-        return self.io.read_number_of_messages(counter)
+        return self._io.read_number_of_messages(counter)
 
     def read_until_logs(self, logs):
-        return self.io.read_until_messages(logs)
+        return self._io.read_until_messages(logs)
