@@ -164,6 +164,9 @@ class SyslogNg(object):
     def is_message_in_console_log(self, expected_message: str) -> bool:
         return self._console_log_reader.is_message_in_console_log(expected_message)
 
+    def count_message_in_console_log(self, expected_message: str) -> int:
+        return self._console_log_reader.count_message_in_console_log(expected_message)
+
     def __syntax_check(self) -> None:
         stdout_path = Path(self.instance_paths.get_syntax_only_stdout_path())
         stderr_path = Path(self.instance_paths.get_syntax_only_stderr_path())
