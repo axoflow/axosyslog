@@ -28,6 +28,8 @@ from helper_functions import check_disk_buffer_metrics_after_destination_alive
 from helper_functions import check_disk_buffer_metrics_after_reload
 from helper_functions import check_disk_buffer_metrics_after_restart_and_destination_alive
 from helper_functions import check_disk_buffer_metrics_after_sending_more_logs_than_buffer_can_handle
+from helper_functions import check_disk_buffer_state_load_attempts
+from helper_functions import check_disk_buffer_state_save_attempts
 from helper_functions import check_if_source_suspended
 from helper_functions import fill_up_and_check_initial_disk_buffer_metrics
 from helper_functions import loggen_send_messages
@@ -320,6 +322,8 @@ def test_overwrite_buffers_with_reload_for_non_reliable_disk_buffer_with_flow_co
     syslog_ng.stop()
     validate_disk_buffer(dqtool, 0, disk_buffer_file="./syslog-ng-00000.qf")
     check_if_source_suspended(syslog_ng, params.is_suspended_source)
+    check_disk_buffer_state_load_attempts(syslog_ng, expected_load_attempts=2)
+    check_disk_buffer_state_save_attempts(syslog_ng, expected_save_attempts=2)
 
 
 def test_fill_up_buffers_for_non_reliable_disk_buffer_without_flow_control_then_send_out_all_logs(config, port_allocator, syslog_ng, loggen, dqtool):
