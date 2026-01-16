@@ -73,6 +73,14 @@ class ConsoleLogReader(object):
                 return True
         return False
 
+    def count_message_in_console_log(self, expected_message):
+        console_logs = self.__get_all_console_logs()
+        count = 0
+        for console_log_message in console_logs.split("\n"):
+            if expected_message in console_log_message:
+                count += 1
+        return count
+
     def check_for_unexpected_messages(self, unexpected_messages=None):
         unexpected_patterns = ["Plugin module not found", "assertion failed"]
         if unexpected_messages is not None:
