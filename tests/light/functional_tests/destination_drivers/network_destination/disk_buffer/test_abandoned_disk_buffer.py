@@ -38,7 +38,7 @@ NUMBER_OF_MESSAGES_TO_FILL_SECOND_BUFFERS = 1000 + 724 + 100  # FrontCache + QDI
 BufferState = namedtuple(
     "BufferState", [
         "syslogng_disk_queue_capacity_bytes",
-        "syslogng_disk_queue_disk_allocated_bytes",
+        # "syslogng_disk_queue_disk_allocated_bytes",
         "syslogng_disk_queue_disk_usage_bytes",
         "syslogng_disk_queue_events",
     ],
@@ -46,19 +46,19 @@ BufferState = namedtuple(
 
 FIRST_DISK_BUFFER_METRICS = BufferState(
     syslogng_disk_queue_capacity_bytes=1044480,
-    syslogng_disk_queue_disk_allocated_bytes=1048576,
+    # syslogng_disk_queue_disk_allocated_bytes=1048576,
     syslogng_disk_queue_disk_usage_bytes=1044480,
     syslogng_disk_queue_events=NUMBER_OF_MESSAGES_TO_FILL_FIRST_BUFFERS,
 )
 SECOND_DISK_BUFFER_METRICS = BufferState(
     syslogng_disk_queue_capacity_bytes=1044480,
-    syslogng_disk_queue_disk_allocated_bytes=1048576,
+    # syslogng_disk_queue_disk_allocated_bytes=1048576,
     syslogng_disk_queue_disk_usage_bytes=1044480,
     syslogng_disk_queue_events=NUMBER_OF_MESSAGES_TO_FILL_SECOND_BUFFERS,
 )
 EMPTY_DISK_BUFFER_METRICS = BufferState(
     syslogng_disk_queue_capacity_bytes=1044480,
-    syslogng_disk_queue_disk_allocated_bytes=1048576,
+    # syslogng_disk_queue_disk_allocated_bytes=1048576,
     syslogng_disk_queue_disk_usage_bytes=0,
     syslogng_disk_queue_events=0,
 )
