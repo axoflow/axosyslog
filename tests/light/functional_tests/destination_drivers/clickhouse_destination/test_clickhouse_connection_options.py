@@ -191,8 +191,6 @@ def test_clickhouse_destination_with_non_reliable_disk_buffer(request, config, s
     loggen.start(LoggenStartParams(target=network_source.options["ip"], port=network_source.options["port"], inet=True, stream=True, rate=10000, size=1024, number=loggen_msg_number))
     wait_until_true(lambda: loggen.get_sent_message_count() == loggen_msg_number)
 
-    syslog_ng.reload(config)
-
     syslog_ng.stop()
 
     dqtool_info_output = dqtool.info(disk_buffer_file='./syslog-ng-00000.qf')

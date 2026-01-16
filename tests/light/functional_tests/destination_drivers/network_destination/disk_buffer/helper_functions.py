@@ -130,7 +130,7 @@ def trigger_to_create_abandoned_disk_buffer(network_destination, config, port_al
     return network_destination
 
 
-def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle(frontCache_size, qdisk_size, extra_msg_number):
+def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_without_flow_control(frontCache_size, qdisk_size, extra_msg_number):
     BufferState = namedtuple(
         "BufferState", [
             "delivered_syslogng_output_events_total",
@@ -171,6 +171,64 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle(fro
             syslogng_disk_queue_disk_usage_bytes=0,
             syslogng_disk_queue_events=0,
             syslogng_disk_queue_memory_usage_bytes=0,
+            messages_in_disk_buffer=0,
+        ),
+    )
+
+
+def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_with_flow_control(frontCache_size, qdisk_size, flow_control_window_size, extra_msg_number):
+    BufferState = namedtuple(
+        "BufferState", [
+            "delivered_syslogng_output_events_total",
+            "queued_syslogng_output_events_total",
+            "dropped_syslogng_output_events_total",
+            "syslogng_disk_queue_processed_events_total",
+            "syslogng_disk_queue_disk_allocated_bytes",
+            "syslogng_disk_queue_disk_usage_bytes",
+            "syslogng_disk_queue_events",
+            # "syslogng_disk_queue_memory_usage_bytes",
+            "messages_in_disk_buffer",
+        ],
+    )
+    TCParams = namedtuple(
+        "TCParams", [
+            "last_msg_id", "is_suspended_source", "before_reload", "after_reload", "after_dst_alive",
+        ],
+    )
+    return TCParams(
+        last_msg_id=f"000000{frontCache_size + qdisk_size + flow_control_window_size + extra_msg_number - 1}",
+        is_suspended_source=True,
+        before_reload=BufferState(
+            delivered_syslogng_output_events_total=0,
+            queued_syslogng_output_events_total=frontCache_size + qdisk_size + flow_control_window_size,
+            dropped_syslogng_output_events_total=0,
+            syslogng_disk_queue_processed_events_total=1324,
+            syslogng_disk_queue_disk_allocated_bytes=1048576,
+            syslogng_disk_queue_disk_usage_bytes=1044480,
+            syslogng_disk_queue_events=1324,
+            # syslogng_disk_queue_memory_usage_bytes=916800,
+            messages_in_disk_buffer=724,
+        ),
+        after_reload=BufferState(
+            delivered_syslogng_output_events_total=0,
+            queued_syslogng_output_events_total=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
+            dropped_syslogng_output_events_total=0,
+            syslogng_disk_queue_processed_events_total=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
+            syslogng_disk_queue_disk_allocated_bytes=1048576,
+            syslogng_disk_queue_disk_usage_bytes=1044480,
+            syslogng_disk_queue_events=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
+            # syslogng_disk_queue_memory_usage_bytes=916800,
+            messages_in_disk_buffer=724,
+        ),
+        after_dst_alive=BufferState(
+            delivered_syslogng_output_events_total=frontCache_size + qdisk_size + flow_control_window_size + extra_msg_number,
+            queued_syslogng_output_events_total=0,
+            dropped_syslogng_output_events_total=0,
+            syslogng_disk_queue_processed_events_total=frontCache_size + qdisk_size + flow_control_window_size + extra_msg_number,
+            syslogng_disk_queue_disk_allocated_bytes=1048576,
+            syslogng_disk_queue_disk_usage_bytes=0,
+            syslogng_disk_queue_events=0,
+            # syslogng_disk_queue_memory_usage_bytes=0,
             messages_in_disk_buffer=0,
         ),
     )
