@@ -63,6 +63,8 @@ extern QueueType log_queue_disk_type;
 const gchar *log_queue_disk_get_filename(LogQueue *self);
 gboolean log_queue_disk_stop(LogQueue *self, gboolean *persistent);
 gboolean log_queue_disk_start(LogQueue *self);
+gboolean log_queue_disk_load_hdr(LogQueue *self);
+gboolean log_queue_disk_unload_hdr(LogQueue *s);
 void log_queue_disk_init_instance(LogQueueDisk *self, DiskQueueOptions *options, const gchar *qdisk_file_id,
                                   const gchar *filename, const gchar *persist_name, gint stats_level,
                                   StatsClusterKeyBuilder *driver_sck_builder,
