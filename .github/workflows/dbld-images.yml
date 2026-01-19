@@ -48,6 +48,7 @@ jobs:
           - ubuntu-jammy
           - ubuntu-noble
           - ubuntu-plucky
+          - ubuntu-questing
           - devshell
           - tarball
       fail-fast: false

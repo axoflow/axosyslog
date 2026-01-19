@@ -23,6 +23,7 @@ on:
           "ubuntu-jammy",
           "ubuntu-noble",
           "ubuntu-plucky",
+          "ubuntu-questing",
           "almalinux-8",
           "almalinux-9",
           "fedora-41",
