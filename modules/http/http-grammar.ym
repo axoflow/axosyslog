@@ -176,6 +176,7 @@ http_option
         CHECK_ERROR(http_dd_set_content_compression(last_driver, $3), @3, "Unrecognized compression type");
         free($3);
       }
+    | KW_FORCE_CONTENT_COMPRESSION '(' yesno ')' { http_dd_set_force_content_compression(last_driver, $3); }
     | { last_template_options = http_dd_get_template_options(last_driver); } template_option
     | KW_RESPONSE_ACTION '(' response_action_items ')'
     ;
