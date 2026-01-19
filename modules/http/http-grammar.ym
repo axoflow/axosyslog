@@ -76,6 +76,7 @@ HttpResponseHandler last_response_handler;
 %token KW_TLS
 %token KW_ACCEPT_ENCODING
 %token KW_CONTENT_COMPRESSION
+%token KW_FORCE_CONTENT_COMPRESSION
 %token KW_BATCH_BYTES
 %token KW_BODY_PREFIX
 %token KW_BODY_SUFFIX
