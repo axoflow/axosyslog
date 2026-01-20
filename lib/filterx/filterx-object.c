@@ -137,7 +137,7 @@ filterx_object_new(FilterXType *type)
 void
 filterx_object_freeze_finish(FilterXObject *self)
 {
-  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
+  self->ref_cnt = FILTERX_OBJECT_REFCOUNT_FROZEN;
 }
 
 /* NOTE: we expect an exclusive reference, as it is not thread safe to be
@@ -169,7 +169,7 @@ filterx_object_hibernate(FilterXObject *self)
    */
   g_assert(!filterx_object_is_ref(self) && !self->type->is_mutable);
 
-  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_HIBERNATED);
+  self->ref_cnt = FILTERX_OBJECT_REFCOUNT_HIBERNATED;
 }
 
 void
@@ -178,10 +178,10 @@ filterx_object_unhibernate_and_free(FilterXObject *self)
   if (!self)
     return;
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
+  gint r = self->ref_cnt;
   g_assert(r == FILTERX_OBJECT_REFCOUNT_HIBERNATED);
 
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   filterx_object_unref(self);
 }
 
