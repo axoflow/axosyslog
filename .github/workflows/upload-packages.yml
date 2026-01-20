@@ -21,6 +21,7 @@ on:
             {"type": "deb", "name": "ubuntu-jammy"},
             {"type": "deb", "name": "ubuntu-noble"},
             {"type": "deb", "name": "ubuntu-plucky"},
+            {"type": "deb", "name": "ubuntu-questing"},
 
             {"type": "rpm", "name": "almalinux-8"},
             {"type": "rpm", "name": "almalinux-9"},

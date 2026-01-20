@@ -135,6 +135,7 @@ The following x86-64 distros are supported:
 
 | Distro          | sources.list component |
 |-----------------|------------------------|
+| Ubuntu 25.10    | ubuntu-questing        |
 | Ubuntu 25.04    | ubuntu-plucky          |
 | Ubuntu 24.04    | ubuntu-noble           |
 | Ubuntu 22.04    | ubuntu-jammy           |

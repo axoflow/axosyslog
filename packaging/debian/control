@@ -51,7 +51,7 @@ Build-Depends: debhelper (>= 10~),
                libbpf-dev <!sng-nobpf>,
                linux-tools-common <!sng-nobpf sng-ubuntu>,
                linux-tools-generic <!sng-nobpf sng-ubuntu>,
-               bpftool <!sng-nobpf sng-debian> <!sng-nobpf sng-ubuntu-plucky>
+               bpftool <!sng-nobpf sng-debian> <!sng-nobpf sng-ubuntu-plucky> <!sng-nobpf sng-ubuntu-questing>
 Build-Conflicts: autoconf2.13
 Standards-Version: 4.4.1
 Homepage: https://axoflow.com/docs/axosyslog-core/

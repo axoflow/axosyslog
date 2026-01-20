@@ -15,6 +15,7 @@ BUILDER_IMAGES=		\
 	ubuntu-jammy \
 	ubuntu-noble \
 	ubuntu-plucky \
+	ubuntu-questing \
 	tarball
 
 IMAGES=${BUILDER_IMAGES} devshell
