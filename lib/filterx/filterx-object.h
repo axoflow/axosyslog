@@ -175,7 +175,7 @@ G_STATIC_ASSERT(__FILTERX_OBJECT_REFCOUNT_MAX == G_MAXINT32);
 
 struct _FilterXObject
 {
-  GAtomicCounter ref_cnt;
+  guint32 ref_cnt;
   GAtomicCounter fx_ref_cnt;
 
   /* NOTE:
@@ -203,7 +203,7 @@ struct _FilterXObject
 static inline void
 filterx_object_init_instance(FilterXObject *self, FilterXType *type)
 {
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   self->type = type;
 }
 
@@ -260,7 +260,7 @@ void filterx_object_free_method(FilterXObject *self);
 static inline gboolean
 filterx_object_is_preserved(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
+  return self->ref_cnt >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
 /* NOTE: these two macros actually require the inclusion of filterx-eval.h
@@ -307,7 +307,7 @@ filterx_object_ref(FilterXObject *self)
   if (!self)
     return NULL;
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
+  gint r = self->ref_cnt;
 
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
@@ -320,7 +320,7 @@ filterx_object_ref(FilterXObject *self)
   filterx_object_check_early_allocation(self);
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
-  g_atomic_counter_inc(&self->ref_cnt);
+  self->ref_cnt++;
   return self;
 }
 
@@ -330,7 +330,7 @@ filterx_object_unref(FilterXObject *self)
   if (!self)
     return;
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
+  gint r = self->ref_cnt;
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
       /* NOTE: Normally, stack based allocations are only used by a single
@@ -346,7 +346,7 @@ filterx_object_unref(FilterXObject *self)
        * means, that we won't have actual race here.
        */
 
-      g_atomic_counter_set(&self->ref_cnt, 0);
+      self->ref_cnt = 0;
       return;
     }
 
@@ -356,7 +356,7 @@ filterx_object_unref(FilterXObject *self)
   filterx_object_check_early_allocation(self);
   g_assert(r > 0);
 
-  if (g_atomic_counter_dec_and_test(&self->ref_cnt))
+  if (--self->ref_cnt == 0)
     {
       self->type->free_fn(self);
       filterx_free_object(self);
@@ -582,7 +582,7 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
 
 #define FILTERX_OBJECT_STACK_INIT(_type) \
   { \
-    .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
+    .ref_cnt = FILTERX_OBJECT_REFCOUNT_STACK, \
     .fx_ref_cnt = { .counter = 0 }, \
     .weak_referenced = FALSE, \
     .is_dirty = FALSE, \
