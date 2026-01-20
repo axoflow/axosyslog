@@ -55,7 +55,7 @@ extern void _perf_trampoline_func_end(void);
 
 #define ROUND_TO_PAGE_BOUNDARY(p) ((gpointer) ((((uintptr_t) (p)) / PERF_PAGE_SIZE) * PERF_PAGE_SIZE))
 
-#define MAX_TRAMPOLINES 163840
+#define MAX_TRAMPOLINES (327680)
 
 static gboolean
 _allocate_trampoline_area(PerfTrampolineArea *self)
