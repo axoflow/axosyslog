@@ -58,6 +58,7 @@ typedef struct
   long ssl_version;
   GString *accept_encoding;
   gint8 content_compression;
+  gboolean force_content_compression;
   gboolean peer_verify;
   gboolean ocsp_stapling_verify;
   gboolean accept_redirects;
@@ -100,5 +101,6 @@ void http_dd_insert_response_handler(LogDriver *d, HttpResponseHandler *response
 LogTemplateOptions *http_dd_get_template_options(LogDriver *d);
 void http_dd_set_accept_encoding(LogDriver *d, const gchar *encoding);
 gboolean http_dd_set_content_compression(LogDriver *d, const gchar *encoding);
+void http_dd_set_force_content_compression(LogDriver *d, gboolean force_content_compression);
 
 #endif

@@ -311,6 +311,14 @@ http_dd_set_content_compression(LogDriver *d, const gchar *encoding)
   return self->content_compression != CURL_COMPRESSION_UNKNOWN;
 }
 
+void
+http_dd_set_force_content_compression(LogDriver *d, gboolean force_content_compression)
+{
+  HTTPDestinationDriver *self = (HTTPDestinationDriver *) d;
+
+  self->force_content_compression = force_content_compression;
+}
+
 
 void
 http_dd_set_peer_verify(LogDriver *d, gboolean verify)

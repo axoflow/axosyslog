@@ -69,6 +69,7 @@ static CfgLexerKeyword http_keywords[] =
   { "delimiter",        KW_DELIMITER },
   { "accept_encoding",  KW_ACCEPT_ENCODING },
   { "content_compression",    KW_CONTENT_COMPRESSION },
+  { "force_content_compression",    KW_FORCE_CONTENT_COMPRESSION },
   { NULL }
 };
 
