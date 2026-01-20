@@ -55,7 +55,7 @@ extern void _perf_trampoline_func_end(void);
 
 #define ROUND_TO_PAGE_BOUNDARY(p) ((gpointer) ((((uintptr_t) (p)) / PERF_PAGE_SIZE) * PERF_PAGE_SIZE))
 
-#define MAX_TRAMPOLINES 163840
+#define MAX_TRAMPOLINES (327680)
 
 static gboolean
 _allocate_trampoline_area(PerfTrampolineArea *self)
@@ -64,7 +64,8 @@ _allocate_trampoline_area(PerfTrampolineArea *self)
   guint8 *end = (guint8 *) &_perf_trampoline_func_end;
 
   self->code_size = end - start;
-  gsize code_pages = SIZE_TO_PAGES(self->code_size * MAX_TRAMPOLINES);
+  gsize max_trampolines = atoi(getenv("PERF_MAX_TRAMPOLINES") ? : "0") ? : MAX_TRAMPOLINES;
+  gsize code_pages = SIZE_TO_PAGES(self->code_size * max_trampolines);
 
   self->size = PAGE_TO_SIZE(code_pages);
   self->area = mmap(NULL,
@@ -187,7 +188,7 @@ perf_generate_trampoline(gpointer target_address, const gchar *symbol_name)
   if (!t)
     {
       console_printf("WARNING: out of free trampoline slots, unable to instrument symbol '%s', "
-                     "increase MAX_TRAMPOLINES", symbol_name);
+                     "increase PERF_MAX_TRAMPOLINES env variable", symbol_name);
       return target_address;
     }
 
