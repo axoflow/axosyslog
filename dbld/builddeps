@@ -50,7 +50,7 @@ function install_dbld_dependencies()
             ;;
         debian|ubuntu)
             apt-get update
-            $APT_INSTALL wget gnupg2
+            $APT_INSTALL wget gnupg2 xz-utils
             ;;
         fedora)
             $DNF_INSTALL -y wget dnf-plugins-core
@@ -81,6 +81,15 @@ function install_criterion() {
     ldconfig
     rm -rf /tmp/criterion.tar.bz2 /tmp/criterion-v${CRITERION_VERSION}
 
+}
+
+function install_criterion_latest() {
+    CRITERION_VERSION=2.4.3
+    download_target "https://github.com/Snaipe/Criterion/releases/download/v${CRITERION_VERSION}/criterion-${CRITERION_VERSION}-linux-x86_64.tar.xz" /tmp/criterion.tar.xz
+    tar -C /usr --strip-components=1 -xvf /tmp/criterion.tar.xz
+
+    ldconfig
+    rm -rf /tmp/criterion.tar.xz
 }
 
 function set_jvm_paths() {
