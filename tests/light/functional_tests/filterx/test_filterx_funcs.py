@@ -155,7 +155,7 @@ def test_repr(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == """{"repr":"2000-01-01T00:00:00.000+00:00","str":"946684800.000000"}"""
+    assert file_final.read_log() == """{"repr":"2000-01-01T00:00:00.000000+00:00","str":"946684800.000000"}"""
 
 
 def test_startswith_with_various_arguments(config, syslog_ng):

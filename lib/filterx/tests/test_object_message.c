@@ -136,7 +136,7 @@ Test(filterx_message, test_filterx_message_type_datetime_repr)
   gchar *val = "1713520972.000000+02:00";
   FilterXObject *fobj = filterx_message_value_new(val, -1, LM_VT_DATETIME);
   assert_object_str_equals(fobj, "1713520972.000000");
-  assert_object_repr_equals(fobj, "2024-04-19T12:02:52.000+02:00");
+  assert_object_repr_equals(fobj, "2024-04-19T12:02:52.000000+02:00");
   filterx_object_unref(fobj);
 }
 

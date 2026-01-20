@@ -117,7 +117,7 @@ Test(expr_plus, test_datetime_add_integer)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  assert_object_repr_equals(obj, "2020-01-01T01:00:00.000+00:00");
+  assert_object_repr_equals(obj, "2020-01-01T01:00:00.000000+00:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -137,7 +137,7 @@ Test(expr_plus, test_datetime_add_double)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  assert_object_repr_equals(obj, "2020-01-01T01:00:00.000+00:00");
+  assert_object_repr_equals(obj, "2020-01-01T01:00:00.000000+00:00");
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);

@@ -184,7 +184,7 @@ datetime_repr(const UnixTime *ut, GString *repr)
 {
   WallClockTime wct = WALL_CLOCK_TIME_INIT;
   convert_unix_time_to_wall_clock_time(ut, &wct);
-  append_format_wall_clock_time(&wct, repr, TS_FMT_ISO, 3);
+  append_format_wall_clock_time(&wct, repr, TS_FMT_ISO, 6);
   return TRUE;
 }
 
