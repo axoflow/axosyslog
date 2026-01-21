@@ -138,7 +138,7 @@ yy_subst_input(CfgLexer *self, gchar *buf, gsize buf_size)
     {                                                                   \
       if (!fgets(buf, max_size, yyin))                                  \
         result = YY_NULL;                                               \
-      else if (YY_START >= block)                                       \
+      else if (yyextra->input_subst_suspended)                          \
         result = strlen(buf);                                           \
       else                                                              \
         {                                                               \
@@ -282,7 +282,6 @@ alpha		[a-zA-Z]
 alphanum	[a-zA-Z0-9]
 word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
 
-/* block related states must be last, as we use this fact in YY_INPUT */
 %x filterx
 %x string
 %x qstring
@@ -443,11 +442,11 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
 
     /* rules to parse a block as a LL_BLOCK token */
 <block>{white}+            ;
-<block>[^{( \t\r\n]+       { yy_pop_state(yyscanner); YY_FATAL_ERROR("Expected opening bracket as block boundary, e.g. opening brace or parenthesis"); }
+<block>[^{( \t\r\n]+       { yy_pop_state(yyscanner); cfg_lexer_resume_input_subst(yyextra); YY_FATAL_ERROR("Expected opening bracket as block boundary, e.g. opening brace or parenthesis"); }
 <block>\r?\n		   { _cfg_lex_move_token_location_to_new_line(yyextra); };
-<block>\({white}*\)        { yy_pop_state(yyscanner); yylval->cptr = NULL; return LL_BLOCK; }
-<block>\({white}*\"\"{white}*\) { yy_pop_state(yyscanner); yylval->cptr = g_strdup(""); return LL_BLOCK; }
-<block>\({white}*\'\'{white}*\) { yy_pop_state(yyscanner); yylval->cptr = g_strdup(""); return LL_BLOCK; }
+<block>\({white}*\)        { yy_pop_state(yyscanner); cfg_lexer_resume_input_subst(yyextra); yylval->cptr = NULL; return LL_BLOCK; }
+<block>\({white}*\"\"{white}*\) { yy_pop_state(yyscanner); cfg_lexer_resume_input_subst(yyextra); yylval->cptr = g_strdup(""); return LL_BLOCK; }
+<block>\({white}*\'\'{white}*\) { yy_pop_state(yyscanner); cfg_lexer_resume_input_subst(yyextra); yylval->cptr = g_strdup(""); return LL_BLOCK; }
 
     /* start character of the block */
 <block>[{(]                {
@@ -489,6 +488,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                                {
                                  yy_pop_state(yyscanner);
                                  yy_pop_state(yyscanner);
+                                 cfg_lexer_resume_input_subst(yyextra);
                                  yylval->cptr = strdup(yyextra->string_buffer->str);
                                  return LL_BLOCK;
                                }
@@ -516,6 +516,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                              else
                                {
                                  yy_pop_state(yyscanner);
+                                 cfg_lexer_resume_input_subst(yyextra);
                                  yylval->cptr = strdup(yyextra->string_buffer->str);
                                  unput(yytext[0]);
                                  return LL_BLOCK;
@@ -531,6 +532,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                              else
                                {
                                  yy_pop_state(yyscanner);
+                                 cfg_lexer_resume_input_subst(yyextra);
                                  yylval->cptr = strdup(yyextra->string_buffer->str);
                                  unput(',');
                                  return LL_BLOCK;
@@ -598,6 +600,7 @@ void
 cfg_lexer_start_block_state(CfgLexer *self, const gchar block_boundary[2])
 {
   memcpy(&self->block_boundary, block_boundary, sizeof(self->block_boundary));
+  cfg_lexer_suspend_input_subst(self);
   yy_push_state(block, self->state);
 }
 
@@ -606,6 +609,7 @@ cfg_lexer_start_block_arg_state(CfgLexer *self)
 {
   g_string_truncate(self->string_buffer, 0);
   self->brace_count = 0;
+  cfg_lexer_suspend_input_subst(self);
   yy_push_state(block_arg, self->state);
 }
 
