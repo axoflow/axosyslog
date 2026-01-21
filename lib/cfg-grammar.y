@@ -181,25 +181,26 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token LL_CONTEXT_BLOCK_REF           9
 %token LL_CONTEXT_BLOCK_CONTENT       10
 %token LL_CONTEXT_BLOCK_ARG           11
-%token LL_CONTEXT_BLOCK_FUNCARG       12
-%token LL_CONTEXT_PRAGMA              13
-%token LL_CONTEXT_FORMAT              14
-%token LL_CONTEXT_TEMPLATE_FUNC       15
-%token LL_CONTEXT_INNER_DEST          16
-%token LL_CONTEXT_INNER_SRC           17
-%token LL_CONTEXT_CLIENT_PROTO        18
-%token LL_CONTEXT_SERVER_PROTO        19
-%token LL_CONTEXT_OPTIONS             20
-%token LL_CONTEXT_CONFIG              21
-%token LL_CONTEXT_TEMPLATE_REF        22
-%token LL_CONTEXT_FILTERX             23
-%token LL_CONTEXT_FILTERX_SIMPLE_FUNC 24
-%token LL_CONTEXT_FILTERX_ENUM        25
-%token LL_CONTEXT_FILTERX_FUNC        26
-%token LL_CONTEXT_FILTERX_GEN_FUNC    27
+%token LL_CONTEXT_BLOCK_PARAM         12
+%token LL_CONTEXT_BLOCK_FUNCARG       13
+%token LL_CONTEXT_PRAGMA              14
+%token LL_CONTEXT_FORMAT              15
+%token LL_CONTEXT_TEMPLATE_FUNC       16
+%token LL_CONTEXT_INNER_DEST          17
+%token LL_CONTEXT_INNER_SRC           18
+%token LL_CONTEXT_CLIENT_PROTO        19
+%token LL_CONTEXT_SERVER_PROTO        20
+%token LL_CONTEXT_OPTIONS             21
+%token LL_CONTEXT_CONFIG              22
+%token LL_CONTEXT_TEMPLATE_REF        23
+%token LL_CONTEXT_FILTERX             24
+%token LL_CONTEXT_FILTERX_SIMPLE_FUNC 25
+%token LL_CONTEXT_FILTERX_ENUM        26
+%token LL_CONTEXT_FILTERX_FUNC        27
+%token LL_CONTEXT_FILTERX_GEN_FUNC    28
 
 /* this is a placeholder for unit tests, must be the latest & largest */
-%token LL_CONTEXT_MAX                 28
+%token LL_CONTEXT_MAX                 29
 
 
 %left   ';'
@@ -1097,7 +1098,7 @@ block_args
         ;
 
 block_arg
-        : LL_IDENTIFIER _block_arg_context_push LL_BLOCK _block_arg_context_pop      { cfg_args_set(last_block_args, $1, $3); free($1); free($3); }
+        : LL_IDENTIFIER _block_param_context_push LL_BLOCK _block_param_context_pop      { cfg_args_set(last_block_args, $1, $3); free($1); free($3); }
         ;
 
 options_items
@@ -1804,6 +1805,8 @@ _block_content_context_push: { cfg_lexer_push_context(lexer, LL_CONTEXT_BLOCK_CO
 _block_content_context_pop: { cfg_lexer_pop_context(lexer); };
 _block_arg_context_push: { cfg_lexer_push_context(lexer, LL_CONTEXT_BLOCK_ARG, NULL, "block argument"); };
 _block_arg_context_pop: { cfg_lexer_pop_context(lexer); };
+_block_param_context_push: { cfg_lexer_push_context(lexer, LL_CONTEXT_BLOCK_PARAM, NULL, "block parameter"); };
+_block_param_context_pop: { cfg_lexer_pop_context(lexer); };
 _block_func_arg_context_push: { cfg_lexer_push_context(lexer, LL_CONTEXT_BLOCK_FUNCARG, NULL, "block argument"); };
 _block_func_arg_context_pop: { cfg_lexer_pop_context(lexer); };
 _template_ref_context_push: { cfg_lexer_push_context(lexer, LL_CONTEXT_TEMPLATE_REF, NULL, "template reference"); };

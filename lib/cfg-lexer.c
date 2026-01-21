@@ -1208,7 +1208,9 @@ cfg_lexer_lex(CfgLexer *self, CFG_STYPE *yylval, CFG_LTYPE *yylloc)
           if (cfg_lexer_get_context_type(self) == LL_CONTEXT_BLOCK_CONTENT)
             cfg_lexer_start_block_state(self, "{}");
           else if (cfg_lexer_get_context_type(self) == LL_CONTEXT_BLOCK_ARG)
-            cfg_lexer_start_block_state(self, "()");
+            cfg_lexer_start_block_arg_state(self);
+          else if (cfg_lexer_get_context_type(self) == LL_CONTEXT_BLOCK_PARAM)
+            cfg_lexer_start_block_param_state(self);
           else if (cfg_lexer_get_context_type(self) == LL_CONTEXT_BLOCK_FUNCARG)
             cfg_lexer_start_block_funcarg_state(self);
 
@@ -1351,6 +1353,7 @@ static const gchar *lexer_contexts[] =
   [LL_CONTEXT_LOG] = "log",
   [LL_CONTEXT_BLOCK_DEF] = "block-def",
   [LL_CONTEXT_BLOCK_ARG] = "block-arg",
+  [LL_CONTEXT_BLOCK_PARAM] = "block-param",
   [LL_CONTEXT_BLOCK_REF] = "block-ref",
   [LL_CONTEXT_BLOCK_CONTENT] = "block-content",
   [LL_CONTEXT_BLOCK_FUNCARG] = "block-func-arg",

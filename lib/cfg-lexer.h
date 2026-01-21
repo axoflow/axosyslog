@@ -203,6 +203,8 @@ void cfg_lexer_start_block_state(CfgLexer *self, const gchar block_boundary[2]);
 void cfg_lexer_push_filterx_state(CfgLexer *self);
 void cfg_lexer_pop_filterx_state(CfgLexer *self);
 void cfg_lexer_push_slashstring_state(CfgLexer *self);
+void cfg_lexer_start_block_param_state(CfgLexer *self);
+void cfg_lexer_start_block_arg_state(CfgLexer *self);
 void cfg_lexer_start_block_funcarg_state(CfgLexer *self);
 
 void cfg_lexer_append_string(CfgLexer *self, int length, char *str);
