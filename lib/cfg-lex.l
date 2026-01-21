@@ -122,7 +122,7 @@ yy_patch_include_statement(CfgLexer *self, gchar *buf, gsize buf_size, gsize *le
 }
 
 static gint
-yy_filter_input(CfgLexer *self, gchar *buf, gsize buf_size)
+yy_subst_input(CfgLexer *self, gchar *buf, gsize buf_size)
 {
   gsize len = strlen(buf);
 
@@ -143,7 +143,7 @@ yy_filter_input(CfgLexer *self, gchar *buf, gsize buf_size)
       else                                                              \
         {                                                               \
           gint rc;                                                      \
-          rc = yy_filter_input(yyextra, buf, max_size); 		\
+          rc = yy_subst_input(yyextra, buf, max_size); 		\
           if (rc < 0)                                                   \
             {                                                           \
               YY_FATAL_ERROR("configuration input filtering failure");  \
