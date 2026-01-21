@@ -56,6 +56,7 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
+  FilterXObject *(*move_key)(FilterXObject *self, FilterXObject *key);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
@@ -65,6 +66,7 @@ struct _FilterXType
   gboolean (*str)(FilterXObject *self, GString *str);
   /* operators */
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
+  FilterXObject *(*add_inplace)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
   void (*make_readonly)(FilterXObject *self);
@@ -179,17 +181,18 @@ struct _FilterXObject
   /* NOTE:
    *
    *     readonly          -- marks the object as unmodifiable,
-   *                          propagates to the inner elements lazily
    *
    *     weak_referenced   -- marks that this object is referenced via a at
    *                          least one weakref already.
    *
    *     is_dirty          -- marks that the object was changed (mutable objects only)
    *
+   *     allocator_used    -- object was allocated using the FilterX allocator
+   *
    *     flags             -- to be used by descendant types
    *
    */
-  guint readonly:1, weak_referenced:1, is_dirty:1, flags:5;
+  guint readonly:1, weak_referenced:1, is_dirty:1, allocator_used:1, flags:5;
   FilterXType *type;
 };
 
@@ -258,6 +261,23 @@ filterx_object_is_preserved(FilterXObject *self)
   return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
+/* NOTE: these two macros actually require the inclusion of filterx-eval.h
+ * which works in an implementation file, but not here */
+
+#define filterx_new_object(t) ((t *) filterx_malloc_object(sizeof(t), sizeof(t)))
+#define filterx_new_object_with_extra(t, extra) ((t *) filterx_malloc_object(sizeof(t), sizeof(t) + extra))
+
+static inline void
+filterx_free_object(FilterXObject *object)
+{
+  if (object->allocator_used)
+    {
+      /* allocated using the allocator, do nothing */
+      return;
+    }
+  g_free(object);
+}
+
 static inline FilterXObject *
 filterx_object_ref(FilterXObject *self)
 {
@@ -318,7 +338,7 @@ filterx_object_unref(FilterXObject *self)
   if (g_atomic_counter_dec_and_test(&self->ref_cnt))
     {
       self->type->free_fn(self);
-      g_free(self);
+      filterx_free_object(self);
     }
 }
 
@@ -518,6 +538,18 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_object_move_key(FilterXObject *self, FilterXObject *key)
+{
+  g_assert(!self->readonly);
+
+  if (self->type->move_key)
+    return self->type->move_key(self, key);
+  return NULL;
+}
+
+/* NOTE: key/values passed to the callback are not suitable for changing,
+ * they are considered read-only! */
 static inline gboolean
 filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer user_data)
 {
@@ -529,7 +561,7 @@ filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer us
 void _filterx_object_log_add_object_error(FilterXObject *self);
 
 static inline FilterXObject *
-filterx_object_add_object(FilterXObject *self, FilterXObject *object)
+filterx_object_add(FilterXObject *self, FilterXObject *object)
 {
   if (!self->type->add)
     {
@@ -538,6 +570,26 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
     }
 
   return self->type->add(self, object);
+}
+
+/*
+ * Add the value to @self, mutating @self if it is a mutable object.  The
+ * return value is usually the same as @self (if in-place addition was
+ * successful) or an alternative object instance, in case if it wasn't.
+ */
+static inline FilterXObject *
+filterx_object_add_inplace(FilterXObject *self, FilterXObject *object)
+{
+  if (!self->type->add_inplace)
+    {
+      /* simulate in-place addition by cloning self, adding it up and returning the new object */
+      FilterXObject *cloned = filterx_object_clone(self);
+      FilterXObject *result = filterx_object_add(cloned, object);
+      filterx_object_unref(cloned);
+      return result;
+    }
+
+  return self->type->add_inplace(self, object);
 }
 
 static inline gboolean
@@ -637,14 +689,14 @@ filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
   if (pself)
     {
       *pself = self;
-      return filterx_object_clone(self);
+      return filterx_ref_float(filterx_object_clone(self));
     }
   else
     {
       if (self != saved_self)
-        return self;
+        return filterx_ref_float(self);
 
-      FilterXObject *result = filterx_object_clone(self);
+      FilterXObject *result = filterx_ref_float(filterx_object_clone(self));
       filterx_object_unref(self);
       return result;
     }
@@ -662,7 +714,7 @@ static inline FilterXObject *
 filterx_object_cow_store(FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_object_ref(*pself);
+  return filterx_ref_ground(filterx_object_ref(*pself));
 }
 
 #endif

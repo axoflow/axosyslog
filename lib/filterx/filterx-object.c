@@ -81,11 +81,13 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, set_subscript);
   INIT_TYPE_METHOD(type, is_key_set);
   INIT_TYPE_METHOD(type, unset_key);
+  INIT_TYPE_METHOD(type, move_key);
   INIT_TYPE_METHOD(type, repr);
   INIT_TYPE_METHOD(type, str);
   INIT_TYPE_METHOD(type, format_json);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
+  INIT_TYPE_METHOD(type, add_inplace);
   INIT_TYPE_METHOD(type, free_fn);
 }
 
@@ -107,7 +109,7 @@ filterx_object_free_method(FilterXObject *self)
 FilterXObject *
 filterx_object_new(FilterXType *type)
 {
-  FilterXObject *self = g_new0(FilterXObject, 1);
+  FilterXObject *self = filterx_new_object(FilterXObject);
   filterx_object_init_instance(self, type);
   return self;
 }
