@@ -605,7 +605,7 @@ cfg_lexer_start_block_state(CfgLexer *self, const gchar block_boundary[2])
 }
 
 void
-cfg_lexer_start_block_arg_state(CfgLexer *self)
+cfg_lexer_start_block_funcarg_state(CfgLexer *self)
 {
   g_string_truncate(self->string_buffer, 0);
   self->brace_count = 0;

@@ -1210,7 +1210,7 @@ cfg_lexer_lex(CfgLexer *self, CFG_STYPE *yylval, CFG_LTYPE *yylloc)
           else if (cfg_lexer_get_context_type(self) == LL_CONTEXT_BLOCK_ARG)
             cfg_lexer_start_block_state(self, "()");
           else if (cfg_lexer_get_context_type(self) == LL_CONTEXT_BLOCK_FUNCARG)
-            cfg_lexer_start_block_arg_state(self);
+            cfg_lexer_start_block_funcarg_state(self);
 
           tok = cfg_lexer_lex_next_token(self, yylval, yylloc);
           cfg_lexer_append_preprocessed_output(self, self->token_pretext->str);
