@@ -307,6 +307,7 @@ _decode_value_until_next_pair_separator(KVScanner *self, const gchar *input)
     {
       /* quotation error, set was_quoted to FALSE */
       self->value_was_quoted = FALSE;
+      self->input_pos = end - self->input;
     }
 }
 
