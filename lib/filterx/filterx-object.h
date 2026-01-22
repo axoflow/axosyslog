@@ -656,9 +656,6 @@ filterx_object_freezer_dedup(FilterXObjectFreezer *self, FilterXObject **pobject
   return FALSE;
 }
 
-GPtrArray *filterx_construct_frozen_objects(void);
-void filterx_destroy_frozen_objects(GPtrArray *frozen_objects);
-
 #include "filterx-ref.h"
 
 static inline FilterXObject *

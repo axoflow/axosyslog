@@ -34,6 +34,7 @@ set(FILTERX_HEADERS
     filterx/filterx-config.h
     filterx/filterx-error.h
     filterx/filterx-eval.h
+    filterx/filterx-env.h
     filterx/filterx-expr.h
     filterx/filterx-plist.h
     filterx/filterx-globals.h
@@ -117,6 +118,7 @@ set(FILTERX_SOURCES
     filterx/filterx-config.c
     filterx/filterx-error.c
     filterx/filterx-eval.c
+    filterx/filterx-env.c
     filterx/filterx-expr.c
     filterx/filterx-plist.c
     filterx/filterx-globals.c
