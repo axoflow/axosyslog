@@ -604,6 +604,7 @@ cfg_lexer_start_block_state(CfgLexer *self, const gchar block_boundary[2])
   yy_push_state(block, self->state);
 }
 
+/* block parameters: part of the block definition (signature) */
 void
 cfg_lexer_start_block_param_state(CfgLexer *self)
 {
@@ -612,6 +613,7 @@ cfg_lexer_start_block_param_state(CfgLexer *self)
   yy_push_state(block, self->state);
 }
 
+/* block arguments: the actual values passed during block invocation */
 void
 cfg_lexer_start_block_arg_state(CfgLexer *self)
 {
@@ -619,6 +621,7 @@ cfg_lexer_start_block_arg_state(CfgLexer *self)
   yy_push_state(block, self->state);
 }
 
+/* block func-arguments: the actual values passed during block invocation in FilterX */
 void
 cfg_lexer_start_block_funcarg_state(CfgLexer *self)
 {
