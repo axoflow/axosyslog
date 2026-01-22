@@ -88,7 +88,7 @@ FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, F
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_slice(FilterXObject *string_, gsize start, gsize end);
-FilterXObject *filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg);
+FilterXObject *filterx_string_new_frozen(const gchar *str);
 
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
