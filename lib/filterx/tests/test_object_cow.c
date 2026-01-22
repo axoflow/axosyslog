@@ -47,13 +47,13 @@ Test(filterx_cow, test_filterx_cow_wrap_adds_an_xref_wrapper)
 static FilterXObject *
 _attr_string(const gchar *attr)
 {
-  return filterx_string_new_frozen(attr, configuration);
+  return filterx_string_new_frozen(attr);
 }
 
 static FilterXObject *
 _value_string(const gchar *attr)
 {
-  return filterx_string_new_frozen(attr, configuration);
+  return filterx_string_new_frozen(attr);
 }
 
 Test(filterx_cow, test_filterx_cow_child_objects_are_refs_too)
