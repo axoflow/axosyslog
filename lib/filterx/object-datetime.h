@@ -41,6 +41,9 @@ FilterXExpr *filterx_function_strftime_new(FilterXFunctionArgs *args, GError **e
 gboolean datetime_repr(const UnixTime *ut, GString *repr);
 gboolean datetime_str(const UnixTime *ut, GString *repr);
 gboolean datetime_format_json(const UnixTime *ut, GString *repr);
+gboolean filterx_datetime_format_isodate(const UnixTime *ut, GString *repr);
+
+FilterXObject *filterx_simple_function_format_isodate(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 void filterx_datetime_global_init(void);
 void filterx_datetime_global_deinit(void);

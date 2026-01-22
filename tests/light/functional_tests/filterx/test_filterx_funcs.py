@@ -158,6 +158,19 @@ def test_repr(config, syslog_ng):
     assert file_final.read_log() == """{"repr":"2000-01-01T00:00:00.000+00:00","str":"946684800.000000"}"""
 
 
+def test_format_isodate(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    dt=strptime("2000-01-02T03:04:05.678901-07:00", "%Y-%m-%dT%H:%M:%S.%f%Z");
+    $MSG = format_isodate(dt);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == """2000-01-02T03:04:05.678901-07:00"""
+
+
 def test_startswith_with_various_arguments(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""

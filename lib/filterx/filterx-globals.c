@@ -94,6 +94,7 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("isodate", filterx_typecast_datetime_isodate));
   g_assert(filterx_builtin_simple_function_register("string", filterx_typecast_string));
   g_assert(filterx_builtin_simple_function_register("repr", filterx_simple_function_repr));
+  g_assert(filterx_builtin_simple_function_register("format_isodate", filterx_simple_function_format_isodate));
   g_assert(filterx_builtin_simple_function_register("bytes", filterx_typecast_bytes));
   g_assert(filterx_builtin_simple_function_register("protobuf", filterx_typecast_protobuf));
   g_assert(filterx_builtin_simple_function_register("bool", filterx_typecast_boolean));
