@@ -25,6 +25,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-function.h"
+#include "filterx/filterx-eval.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -46,12 +47,15 @@ Test(filterx_string, test_filterx_object_string_maps_to_the_right_json_value)
 
 Test(filterx_string, test_frozen_string_deduplication)
 {
-  FilterXObject *str = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str2 = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str3 = filterx_string_new_frozen("abcde", configuration);
+  FilterXEvalContext context;
+  filterx_eval_begin_compile(&context, configuration);
+  FilterXObject *str = filterx_string_new_frozen("abcd");
+  FilterXObject *str2 = filterx_string_new_frozen("abcd");
+  FilterXObject *str3 = filterx_string_new_frozen("abcde");
 
   cr_assert_eq(str, str2);
   cr_assert_neq(str, str3);
+  filterx_eval_end_compile(&context);
 }
 
 Test(filterx_string, test_string_taking_allocated_storage)
