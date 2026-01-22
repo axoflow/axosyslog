@@ -193,7 +193,7 @@ struct _CfgLexer
   GString *token_pretext;
   GString *token_text;
   GlobalConfig *cfg;
-  guint first_non_pragma_seen:1, ignore_pragma:1;
+  guint first_non_pragma_seen:1, ignore_pragma:1, input_subst_suspended:1;
 };
 
 /* pattern buffer */
@@ -203,7 +203,9 @@ void cfg_lexer_start_block_state(CfgLexer *self, const gchar block_boundary[2]);
 void cfg_lexer_push_filterx_state(CfgLexer *self);
 void cfg_lexer_pop_filterx_state(CfgLexer *self);
 void cfg_lexer_push_slashstring_state(CfgLexer *self);
+void cfg_lexer_start_block_param_state(CfgLexer *self);
 void cfg_lexer_start_block_arg_state(CfgLexer *self);
+void cfg_lexer_start_block_funcarg_state(CfgLexer *self);
 
 void cfg_lexer_append_string(CfgLexer *self, int length, char *str);
 void cfg_lexer_append_char(CfgLexer *self, char c);
@@ -235,6 +237,18 @@ void cfg_lexer_inject_token_block(CfgLexer *self, CfgTokenBlock *block);
 
 int cfg_lexer_lex(CfgLexer *self, CFG_STYPE *yylval, CFG_LTYPE *yylloc);
 void cfg_lexer_free_token(CFG_STYPE *token);
+
+static inline void
+cfg_lexer_suspend_input_subst(CfgLexer *self)
+{
+  self->input_subst_suspended = TRUE;
+}
+
+static inline void
+cfg_lexer_resume_input_subst(CfgLexer *self)
+{
+  self->input_subst_suspended = FALSE;
+}
 
 CfgLexer *cfg_lexer_new(GlobalConfig *cfg, FILE *file, const gchar *filename, GString *preprocess_output);
 CfgLexer *cfg_lexer_new_buffer(GlobalConfig *cfg, const gchar *buffer, gsize length);
