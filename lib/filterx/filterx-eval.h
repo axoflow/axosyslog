@@ -108,6 +108,7 @@ void filterx_eval_end_restricted_context(FilterXEvalContext *context);
 
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
+void filterx_eval_freeze_object(FilterXObject **object);
 
 FilterXEvalControl filterx_eval_get_control_modifier(FilterXEvalContext *context);
 void filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier);

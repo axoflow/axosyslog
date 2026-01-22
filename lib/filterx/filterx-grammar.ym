@@ -73,7 +73,7 @@ construct_template_expr(LogTemplate *template)
 
   if (log_template_is_literal_string(template))
     {
-      FilterXObject *obj = filterx_string_new_frozen(log_template_get_literal_value(template, NULL), configuration);
+      FilterXObject *obj = filterx_string_new_frozen(log_template_get_literal_value(template, NULL));
       result = filterx_literal_new(obj);
     }
   else if (log_template_is_trivial(template))
@@ -220,7 +220,7 @@ stmt_expr
 assignment
 	/* TODO extract lvalues */
 	: variable KW_ASSIGN expr		{ $$ = filterx_assign_new($1, $3); }
-	| expr '.' identifier KW_ASSIGN expr	{ $$ = filterx_setattr_new($1, filterx_string_new_frozen($3, configuration), $5); free($3); }
+	| expr '.' identifier KW_ASSIGN expr	{ $$ = filterx_setattr_new($1, filterx_string_new_frozen($3), $5); free($3); }
 	| expr '[' expr ']' KW_ASSIGN expr	{ $$ = filterx_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_ASSIGN expr  		{ $$ = filterx_set_subscript_new($1, NULL, $5); }
 	| dpath_lvalue KW_ASSIGN expr { $$ = filterx_assign_new($1, $3); }
@@ -230,7 +230,7 @@ assignment
 
 nullv_assignment
 	: variable KW_NULLV_ASSIGN expr			{ $$ = filterx_nullv_assign_new($1, $3); }
-	| expr '.' identifier KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_setattr_new($1, filterx_string_new_frozen($3, configuration), $5); free($3); }
+	| expr '.' identifier KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_setattr_new($1, filterx_string_new_frozen($3), $5); free($3); }
 	| expr '[' expr ']' KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_NULLV_ASSIGN expr  		{ $$ = filterx_nullv_set_subscript_new($1, NULL, $5); }
 	| dpath_lvalue KW_NULLV_ASSIGN expr { $$ = filterx_nullv_assign_new($1, $3); }
@@ -242,8 +242,8 @@ plus_assignment
 	| expr '.' identifier KW_PLUS_ASSIGN expr
 						{
 						  $$ = filterx_setattr_new(filterx_expr_ref($1),
-						                           filterx_string_new_frozen($3, configuration),
-						                           filterx_operator_plus_new(filterx_getattr_new($1, filterx_string_new_frozen($3, configuration)),
+						                           filterx_string_new_frozen($3),
+						                           filterx_operator_plus_new(filterx_getattr_new($1, filterx_string_new_frozen($3)),
 						                           $5));
 						  free($3);
 						}
@@ -266,7 +266,7 @@ dpath_elements
 	;
 
 dpath_element
-	: '.' identifier { $$ = filterx_dpath_elem_object_new(filterx_string_new_frozen($2, configuration)); free($2); }
+	: '.' identifier { $$ = filterx_dpath_elem_object_new(filterx_string_new_frozen($2)); free($2); }
 	| '[' expr ']' { $$ = filterx_dpath_elem_expr_new($2); };
 	;
 
@@ -296,7 +296,7 @@ expr_operator
 	| ternary
 	| default
 	/* TODO extract lvalues */
-	| expr '.' identifier		{ $$ = filterx_getattr_new($1, filterx_string_new_frozen($3, configuration)); free($3); }
+	| expr '.' identifier		{ $$ = filterx_getattr_new($1, filterx_string_new_frozen($3)); free($3); }
 	| expr '[' expr ']'		{ $$ = filterx_get_subscript_new($1, $3); }
 	;
 
