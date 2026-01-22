@@ -500,6 +500,18 @@ filterx_eval_end_compile(FilterXEvalContext *context)
 }
 
 void
+filterx_eval_freeze_object(FilterXObject **object)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (context && context->env)
+    {
+      /* only compile contexts have an env. We can only freeze objects during compile time. */
+      filterx_env_freeze_object(context->env, object);
+    }
+}
+
+void
 filterx_eval_enable_failure_info(FilterXEvalContext *context, gboolean collect_falsy)
 {
   if (context->failure_info)
