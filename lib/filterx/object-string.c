@@ -375,10 +375,10 @@ filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
 }
 
 FilterXObject *
-filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
+filterx_string_new_frozen(const gchar *str)
 {
   FilterXObject *self = filterx_string_new(str, -1);
-  filterx_config_freeze_object(cfg, &self);
+  filterx_eval_freeze_object(&self);
   return self;
 }
 
