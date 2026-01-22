@@ -125,24 +125,6 @@ filterx_object_new(FilterXType *type)
 }
 
 void
-filterx_destroy_frozen_objects(GPtrArray *frozen_objects)
-{
-  /* keep all objects "FROZEN" and force call their destructor */
-  for (gsize i = 0; i < frozen_objects->len; i++)
-    {
-      FilterXObject *o = (FilterXObject *) g_ptr_array_index(frozen_objects, i);
-      o->type->free_fn(o);
-    }
-  /* we now have the empty shells, let's free them */
-  for (gsize i = 0; i < frozen_objects->len; i++)
-    {
-      FilterXObject *o = (FilterXObject *) g_ptr_array_index(frozen_objects, i);
-      filterx_free_object(o);
-    }
-  g_ptr_array_unref(frozen_objects);
-}
-
-void
 filterx_object_freeze_finish(FilterXObject *self)
 {
   filterx_object_make_readonly(self);

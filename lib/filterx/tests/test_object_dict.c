@@ -189,7 +189,7 @@ Test(filterx_dict, test_list_dedup)
   FilterXObject *list = _exec_list_func(filterx_string_new("[\"a\", \"b\", \"a\"]", -1));
   FilterXObject *orig_list = list;
 
-  filterx_object_freeze_to_config(&list, configuration);
+  filterx_config_freeze_object(configuration, &list);
 
   cr_assert_eq(list, orig_list);
 
@@ -204,7 +204,7 @@ Test(filterx_dict, test_dict_dedup)
   FilterXObject *dict = filterx_object_from_json("{\"a\": \"a\", \"b\": \"b\", \"c\": \"a\"}", -1, NULL);
   FilterXObject *orig_dict = dict;
 
-  filterx_object_freeze_to_config(&dict, configuration);
+  filterx_config_freeze_object(configuration, &dict);
 
   cr_assert_eq(dict, orig_dict);
 

@@ -30,9 +30,7 @@ filterx_config_free(ModuleConfig *s)
 {
   FilterXConfig *self = (FilterXConfig *) s;
 
-  g_ptr_array_unref(self->weak_refs);
-  g_hash_table_unref(self->frozen_deduplicated_objects);
-  filterx_destroy_frozen_objects(self->frozen_objects);
+  filterx_env_clear(&self->global_env);
   module_config_free_method(s);
 }
 
@@ -42,9 +40,7 @@ filterx_config_new(GlobalConfig *cfg)
   FilterXConfig *self = g_new0(FilterXConfig, 1);
 
   self->super.free_fn = filterx_config_free;
-  self->frozen_objects = g_ptr_array_new();
-  self->frozen_deduplicated_objects = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-  self->weak_refs = filterx_eval_construct_weak_ref_array();
+  filterx_env_init(&self->global_env);
   return self;
 }
 
@@ -60,53 +56,14 @@ filterx_config_get(GlobalConfig *cfg)
   return fxc;
 }
 
-FilterXObject *
-_get_frozen_object_from_config(FilterXObjectFreezer *self, const gchar *key)
-{
-  GlobalConfig *cfg = (GlobalConfig *) self->user_data;
-  FilterXConfig *fx_cfg = filterx_config_get(cfg);
-
-  return g_hash_table_lookup(fx_cfg->frozen_deduplicated_objects, key);
-}
-
 void
-_add_frozen_object_to_config(FilterXObjectFreezer *self, gchar *key, FilterXObject *object)
-{
-  GlobalConfig *cfg = (GlobalConfig *) self->user_data;
-  FilterXConfig *fx_cfg = filterx_config_get(cfg);
-
-  g_hash_table_insert(fx_cfg->frozen_deduplicated_objects, key, object);
-}
-
-void
-_keep_frozen_object_in_config(FilterXObjectFreezer *self, FilterXObject *object)
-{
-  GlobalConfig *cfg = (GlobalConfig *) self->user_data;
-  FilterXConfig *fx_cfg = filterx_config_get(cfg);
-
-  g_ptr_array_add(fx_cfg->frozen_objects, object);
-}
-
-void
-filterx_config_freezer_init(FilterXObjectFreezer *self, GlobalConfig *cfg)
-{
-  self->get = _get_frozen_object_from_config;
-  self->add = _add_frozen_object_to_config;
-  self->keep = _keep_frozen_object_in_config;
-  self->user_data = cfg;
-}
-
-void
-filterx_object_freeze_to_config(FilterXObject **pself, GlobalConfig *cfg)
+filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object)
 {
   if (!cfg)
     {
-      filterx_object_freeze(pself, NULL);
+      filterx_object_freeze(object, NULL);
       return;
     }
-
-  FilterXObjectFreezer freezer;
-  filterx_config_freezer_init(&freezer, cfg);
-
-  filterx_object_freeze(pself, &freezer);
+  FilterXConfig *fxc = filterx_config_get(cfg);
+  filterx_env_freeze_object(&fxc->global_env, object);
 }
