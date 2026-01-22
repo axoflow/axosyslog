@@ -188,6 +188,37 @@ datetime_repr(const UnixTime *ut, GString *repr)
   return TRUE;
 }
 
+FilterXObject *
+filterx_simple_function_format_isodate(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (!args || args_len != 1)
+  {
+    filterx_simple_function_argument_error(s, "Requires exactly one argument");
+    return NULL;
+  }
+
+  FilterXObject *datetime_obj = (FilterXObject *) args[0];
+  if (!datetime_obj)
+    return NULL;
+
+  UnixTime ut;
+  if (!filterx_object_extract_datetime(datetime_obj, &ut))
+    {
+      filterx_eval_push_error_info_printf("Failed to extract datetime", s,
+                                          "format_isodate() requires a datetime object, got: %s",
+                                          filterx_object_get_type_name(datetime_obj));
+      return NULL;
+    }
+
+  GString *buf = scratch_buffers_alloc();
+
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  convert_unix_time_to_wall_clock_time(&ut, &wct);
+  append_format_wall_clock_time(&wct, buf, TS_FMT_ISO, 6);
+
+  return filterx_string_new(buf->str, buf->len);
+}
+
 gboolean
 datetime_format_json(const UnixTime *ut, GString *repr)
 {
