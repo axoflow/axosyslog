@@ -146,27 +146,23 @@ _extract_dict_to_pairs_args(FilterXFunctionDictToPairs *self, FilterXFunctionArg
   self->dict_expr = filterx_function_args_get_expr(args, 0);
   g_assert(self->dict_expr);
 
-  gsize key_name_len;
-  const gchar *key_name_str = filterx_function_args_get_literal_string(args, 1, &key_name_len);
-  if (!key_name_str)
+  self->key_name_object = filterx_function_args_get_literal_object(args, 1);
+  if (!self->key_name_object || !filterx_object_is_type(self->key_name_object, &FILTERX_TYPE_NAME(string)))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "dict_to_pairs() requires the second argument to be a literal string. "
                   FILTERX_FUNC_DICT_TO_PAIRS_USAGE);
       return FALSE;
     }
-  self->key_name_object = filterx_string_new(key_name_str, (gssize) key_name_len);
 
-  gsize value_name_len;
-  const gchar *value_name_str = filterx_function_args_get_literal_string(args, 2, &value_name_len);
-  if (!value_name_str)
+  self->value_name_object = filterx_function_args_get_literal_object(args, 2);
+  if (!self->value_name_object || !filterx_object_is_type(self->value_name_object, &FILTERX_TYPE_NAME(string)))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
                   "dict_to_pairs() requires the third argument to be a literal string. "
                   FILTERX_FUNC_DICT_TO_PAIRS_USAGE);
       return FALSE;
     }
-  self->value_name_object = filterx_string_new(value_name_str, (gssize) value_name_len);
 
   return TRUE;
 }
