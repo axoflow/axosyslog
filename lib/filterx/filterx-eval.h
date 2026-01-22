@@ -27,6 +27,7 @@
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-allocator.h"
+#include "filterx/filterx-env.h"
 #include "template/eval.h"
 
 #define FILTERX_CONTEXT_ERROR_STACK_SIZE (8)
@@ -77,6 +78,7 @@ struct _FilterXEvalContext
   guint8 failure_info_collect_falsy:1;
   GArray *failure_info;
   gint weak_refs_offset;
+  FilterXEnvironment *env;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
@@ -101,7 +103,7 @@ void filterx_eval_dump_errors(const gchar *message);
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
-void filterx_eval_begin_restricted_context(FilterXEvalContext *context, GPtrArray *weak_refs);
+void filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env);
 void filterx_eval_end_restricted_context(FilterXEvalContext *context);
 
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
