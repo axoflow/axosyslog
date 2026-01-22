@@ -88,7 +88,7 @@ extern HostResolveOptions *last_host_resolve_options;
 extern StatsOptions *last_stats_options;
 extern HealthCheckStatsOptions *last_healthcheck_options;
 extern LogRewrite *last_rewrite;
-extern CfgArgs *last_block_args;
+extern CfgArgs *last_block_params;
 extern DNSCacheOptions *last_dns_cache_options;
 extern MultiLineOptions *last_multi_line_options;
 extern DynMetricsTemplate *last_dyn_metrics_template;

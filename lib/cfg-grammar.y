@@ -1067,7 +1067,7 @@ block_stmt
         : KW_BLOCK
           _block_def_context_push
           LL_IDENTIFIER LL_IDENTIFIER
-          '(' { last_block_args = cfg_args_new(); } block_definition ')'
+          '(' { last_block_params = cfg_args_new(); } block_definition ')'
           _block_content_context_push
           LL_BLOCK
           _block_content_context_pop
@@ -1078,27 +1078,27 @@ block_stmt
             gint context_type = cfg_lexer_lookup_context_type_by_name($3);
             CHECK_ERROR(context_type, @3, "unknown context \"%s\"", $3);
 
-            block = cfg_block_new(context_type, $4, $10, last_block_args, &@10);
+            block = cfg_block_new(context_type, $4, $10, last_block_params, &@10);
             cfg_lexer_register_generator_plugin(&configuration->plugin_context, block);
             free($3);
             free($4);
             free($10);
-            last_block_args = NULL;
+            last_block_params = NULL;
           }
         ;
 
 block_definition
-        : block_args
-        | block_args LL_DOTDOTDOT			{ cfg_args_accept_varargs(last_block_args); }
+        : block_params
+        | block_params LL_DOTDOTDOT			{ cfg_args_accept_varargs(last_block_params); }
         ;
 
-block_args
-        : block_arg block_args
+block_params
+        : block_param block_params
         |
         ;
 
-block_arg
-        : LL_IDENTIFIER _block_param_context_push LL_BLOCK _block_param_context_pop      { cfg_args_set(last_block_args, $1, $3); free($1); free($3); }
+block_param
+        : LL_IDENTIFIER _block_param_context_push LL_BLOCK _block_param_context_pop      { cfg_args_set(last_block_params, $1, $3); free($1); free($3); }
         ;
 
 options_items
