@@ -194,7 +194,7 @@ static inline FilterXObject *
 _dollar_msg_varname(const gchar *name)
 {
   gchar *dollar_name = g_strdup_printf("$%s", name);
-  FilterXObject *dollar_name_obj = filterx_string_new(dollar_name, -1);
+  FilterXObject *dollar_name_obj = filterx_string_new_frozen(dollar_name);
   g_free(dollar_name);
 
   return dollar_name_obj;
@@ -229,7 +229,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
       self->handle_is_macro = log_msg_is_handle_macro(filterx_variable_handle_to_nv_handle(self->handle));
     }
   else
-    self->variable_name = filterx_string_new(name, -1);
+    self->variable_name = filterx_string_new_frozen(name);
 
   /* NOTE: name borrows the string value from the string object */
   self->super.name = filterx_string_get_value_ref_and_assert_nul(self->variable_name, NULL);

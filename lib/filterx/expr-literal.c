@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-eval.h"
 
 typedef struct _FilterXLiteral
 {
@@ -35,7 +36,6 @@ filterx_literal_get_value(FilterXExpr *s)
 
   return filterx_object_ref(self->object);
 }
-
 
 static FilterXObject *
 _eval_literal(FilterXExpr *s)
@@ -78,6 +78,7 @@ filterx_literal_new(FilterXObject *object)
   FilterXLiteral *self = g_new0(FilterXLiteral, 1);
 
   filterx_literal_init_instance(self, object);
+  filterx_eval_freeze_object(&self->object);
   return &self->super;
 }
 
