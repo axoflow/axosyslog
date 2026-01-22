@@ -378,7 +378,7 @@ rest_argument
 	;
 
 literal
-	: literal_object			{ FilterXObject *literal = $1; filterx_object_freeze_to_config(&literal, configuration); $$ = filterx_literal_new(literal); }
+	: literal_object			{ FilterXObject *literal = $1; filterx_config_freeze_object(configuration, &literal); $$ = filterx_literal_new(literal); }
 	| dict_literal
 	| list_literal
 	;

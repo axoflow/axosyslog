@@ -43,6 +43,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-metrics-labels.h \
 	lib/filterx/filterx-metrics.h \
 	lib/filterx/filterx-object.h \
+	lib/filterx/filterx-env.h \
 	lib/filterx/filterx-parser.h \
 	lib/filterx/filterx-pipe.h \
 	lib/filterx/filterx-private.h \
@@ -125,6 +126,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-metrics-labels.c \
 	lib/filterx/filterx-metrics.c \
 	lib/filterx/filterx-object.c \
+	lib/filterx/filterx-env.c \
 	lib/filterx/filterx-parser.c \
 	lib/filterx/filterx-pipe.c \
 	lib/filterx/filterx-private.c \
