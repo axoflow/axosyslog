@@ -32,7 +32,7 @@ _add_label(LogParser *s, const gchar *label, const gchar *value_template_str)
 {
   LogTemplate *value_template = log_template_new(s->super.cfg, NULL);
   log_template_compile(value_template, value_template_str, NULL);
-  dyn_metrics_template_add_label_template(metrics_probe_get_metrics_template(s), label, value_template);
+  dyn_metrics_template_add_label_template(metrics_probe_get_metrics_template(s), label, -1, value_template);
   log_template_unref(value_template);
 }
 
