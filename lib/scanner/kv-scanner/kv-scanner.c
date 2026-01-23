@@ -299,15 +299,13 @@ _decode_value_until_next_pair_separator(KVScanner *self, const gchar *input)
   };
 
   self->value_was_quoted = _is_quoted(input);
-  if (str_repr_decode_with_options(self->value, input, &end, &options))
-    {
-      self->input_pos = end - self->input;
-    }
-  else
+  gboolean success = str_repr_decode_with_options(self->value, input, &end, &options);
+  if (!success)
     {
       /* quotation error, set was_quoted to FALSE */
       self->value_was_quoted = FALSE;
     }
+  self->input_pos = end - self->input;
 }
 
 static inline void

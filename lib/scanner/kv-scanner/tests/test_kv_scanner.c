@@ -828,6 +828,18 @@ Test(kv_scanner, key_buffer_underrun)
   _EXPECT_KV_PAIRS(input);
 }
 
+Test(kv_scanner, malformed_quotes_do_not_create_false_key_value_pairs)
+{
+  /* Key should only appear once with correct value, not extracted from malformed quoted value */
+  _EXPECT_KV_PAIRS(
+    "id=123 key=original data=\"/path/key=\"malformed\"\" next=value",
+    { "id", "123" },
+    { "key", "original" },
+    { "data", "\"/path/key=\"malformed\"\" " },
+    { "next", "value" }
+  );
+}
+
 static Testcase *
 _provide_cases_for_performance_test_nothing_to_parse(void)
 {
