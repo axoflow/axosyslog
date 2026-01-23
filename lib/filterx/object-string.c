@@ -30,7 +30,8 @@
 #include "str-utils.h"
 #include "utf8utils.h"
 
-#define FILTERX_STRING_FLAG_STR_ALLOCATED 0x01
+#define FILTERX_STRING_FLAG_STR_ALLOCATED      0x01
+#define FILTERX_STRING_FLAG_STR_BORROWED_SLICE 0x02
 
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
@@ -96,6 +97,8 @@ _free(FilterXObject *s)
   FilterXString *self = (FilterXString *) s;
   if (self->super.flags & FILTERX_STRING_FLAG_STR_ALLOCATED)
     g_free((gchar *) self->str);
+  else if (self->super.flags & FILTERX_STRING_FLAG_STR_BORROWED_SLICE)
+    filterx_object_unref(self->storage.slice);
   filterx_object_free_method(s);
 }
 
@@ -170,11 +173,19 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
 
   self->str_len = str_len;
   if (translate)
-    translate(self->storage, str, str_len);
+    translate(self->storage.bytes, str, str_len);
   else
-    memcpy(self->storage, str, str_len);
-  self->storage[str_len] = 0;
-  self->str = self->storage;
+    memcpy(self->storage.bytes, str, str_len);
+
+  /* NOTE: in DEBUG mode we always use a non-NUL termination to trigger
+   * length handling bugs in newly introduced code */
+
+  self->str = self->storage.bytes;
+#if SYSLOG_NG_ENABLE_DEBUG
+  self->storage.bytes[str_len] = '`';
+#else
+  self->storage.bytes[str_len] = 0;
+#endif
 
   return self;
 }
@@ -184,7 +195,7 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
 {
   FilterXString *self = (FilterXString *) *pself;
 
-  gchar *dedup_key = g_strdup_printf("string_%s", self->str);
+  gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
 
   FilterXObject *dedup_str = g_hash_table_lookup(dedup_storage, dedup_key);
   if (dedup_str)
@@ -200,18 +211,6 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   return TRUE;
 }
 
-static inline guint
-_hash_str(const gchar *str, gsize str_len)
-{
-  const char *p;
-  guint32 h = 5381;
-
-  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
-    h = (h << 5) + h + *p;
-
-  return h;
-}
-
 guint
 _filterx_string_hash(FilterXString *self)
 {
@@ -221,7 +220,7 @@ _filterx_string_hash(FilterXString *self)
    * arm).  */
 
   G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
-  self->hash = _hash_str(self->str, self->str_len);
+  self->hash = strn_hash(self->str, self->str_len);
   return self->hash;
 }
 
@@ -248,6 +247,35 @@ filterx_string_new_take(gchar *str, gssize str_len)
   self->str = str;
   self->super.flags |= FILTERX_STRING_FLAG_STR_ALLOCATED;
 
+  return &self->super;
+}
+
+FilterXObject *
+filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
+{
+  FilterXString *self = g_new0(FilterXString, 1);
+  filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
+
+  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
+    {
+      FilterXString *string = (FilterXString *) object;
+      g_assert(end <= string->str_len && start <= end);
+      self->str = &string->str[start];
+    }
+  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
+    {
+      FilterXMessageValue *mv = (FilterXMessageValue *) object;
+      g_assert(end <= mv->repr_len && start <= end);
+      self->str = &mv->repr[start];
+    }
+  else
+    {
+      return NULL;
+    }
+
+  self->super.flags |= FILTERX_STRING_FLAG_STR_BORROWED_SLICE;
+  self->str_len = end - start;
+  self->storage.slice = filterx_object_ref(object);
   return &self->super;
 }
 

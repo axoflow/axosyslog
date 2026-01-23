@@ -75,9 +75,11 @@ typedef struct
     CSV_STATE_PARTIAL_INPUT,
     CSV_STATE_FINISH,
   } state;
+  const gchar *input;
   const gchar *src;
   GString *current_value;
   const gchar *current_value_start_pos;
+  gint32 current_value_start_ofs;
   gint current_column;
   gint expected_columns;
   gchar current_quote;
@@ -108,6 +110,17 @@ static inline gint
 csv_scanner_get_current_value_len(CSVScanner *self)
 {
   return self->current_value->len;
+}
+
+static inline gboolean
+csv_scanner_get_value_slice(CSVScanner *self, gsize *start, gsize *end)
+{
+  if (self->current_value_start_ofs < 0)
+    return FALSE;
+
+  *start = self->current_value_start_ofs;
+  *end = *start + self->current_value->len;
+  return TRUE;
 }
 
 static inline gboolean

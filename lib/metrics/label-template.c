@@ -25,6 +25,7 @@
 struct _LabelTemplate
 {
   gchar *name;
+  gsize name_len;
   LogTemplate *value_template;
 };
 
@@ -48,7 +49,9 @@ label_template_format(LabelTemplate *self, const LogTemplateOptions *template_op
                       GString *value_buffer, StatsClusterLabel *label)
 {
   label->name = self->name;
+  label->name_len = self->name_len;
   label->value = _format_value(self, template_options, msg, value_buffer);
+  label->value_len = (label->value == value_buffer->str) ? value_buffer->len : strlen(label->value);
 }
 
 gint
@@ -58,11 +61,12 @@ label_template_compare(const LabelTemplate *self, const LabelTemplate *other)
 }
 
 LabelTemplate *
-label_template_new(const gchar *name, LogTemplate *value_template)
+label_template_new(const gchar *name, gssize name_len, LogTemplate *value_template)
 {
   LabelTemplate *self = g_new0(LabelTemplate, 1);
 
   self->name = g_strdup(name);
+  self->name_len = name_len < 0 ? strlen(name) : name_len;
   self->value_template = log_template_ref(value_template);
 
   return self;
@@ -71,7 +75,7 @@ label_template_new(const gchar *name, LogTemplate *value_template)
 LabelTemplate *
 label_template_clone(const LabelTemplate *self)
 {
-  return label_template_new(self->name, self->value_template);
+  return label_template_new(self->name, self->name_len, self->value_template);
 }
 
 void

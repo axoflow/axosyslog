@@ -60,7 +60,22 @@ _column_index_equals(gint column)
 static gboolean
 _column_equals(gint column, const gchar *value)
 {
-  return _column_index_equals(column) && strcmp(csv_scanner_get_current_value(&scanner), value) == 0;
+  if (!_column_index_equals(column))
+    return FALSE;
+
+  if (strcmp(csv_scanner_get_current_value(&scanner), value) != 0)
+    return FALSE;
+
+  gsize start, end;
+  if (csv_scanner_get_value_slice(&scanner, &start, &end))
+    {
+      if (end - start != strlen(value))
+        return FALSE;
+
+      if (memcmp(&scanner.input[start], value, end-start) != 0)
+        return FALSE;
+    }
+  return TRUE;
 }
 
 static gboolean
