@@ -89,12 +89,6 @@ typedef struct _FilterXStrcasecmp
 
 } FilterXStrcasecmp;
 
-static gboolean
-_format_str_obj(FilterXObject *obj, const gchar **str, gsize *str_len)
-{
-  return filterx_object_extract_string_ref(obj, str, str_len);
-}
-
 static inline void
 _do_casefold(const gchar **str, gsize *str_len)
 {
@@ -110,7 +104,7 @@ static gboolean
 _obj_format(FilterXObject *obj, const gchar **str, gsize *str_len, gboolean ignore_case, FilterXExpr *expr_hint)
 {
   gboolean result = FALSE;
-  if (!_format_str_obj(obj, str, str_len))
+  if (!filterx_object_extract_string_ref(obj, str, str_len))
     {
       filterx_eval_push_error("Failed to extract string value: repr() failed", expr_hint, obj);
       goto exit;

@@ -125,7 +125,9 @@ _label_format(FilterXMetricsLabel *self, DynMetricsStore *store)
 
   StatsClusterLabel *sc_label = dyn_metrics_store_cache_label(store);
   sc_label->name = self->name;
+  sc_label->name_len = strlen(self->name);
   sc_label->value = value;
+  sc_label->value_len = strlen(value);
 
   return TRUE;
 }
@@ -204,7 +206,7 @@ _init_label_name(FilterXExpr *name)
     }
 
   FilterXObject *obj = filterx_literal_get_value(name);
-  gchar *str = g_strdup(filterx_string_get_value_ref(obj, NULL));
+  gchar *str = filterx_string_strdup_value(obj);
   if (!str)
     {
       filterx_eval_push_error_info_printf("Failed to initialize metrics label name", name,
@@ -291,7 +293,9 @@ _format_dict_elem_to_store(FilterXObject *key, FilterXObject *value, gpointer us
 
   StatsClusterLabel *label = dyn_metrics_store_cache_label(store);
   label->name = name_str;
+  label->name_len = strlen(name_str);
   label->value = value_str;
+  label->value_len = strlen(value_str);
 
   return TRUE;
 }

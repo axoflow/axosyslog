@@ -34,6 +34,7 @@ import axosyslog_light.testcase_parameters.testcase_parameters as tc_parameters
 import psutil
 import pytest
 import xdist
+from axosyslog_light.common import blocking
 from axosyslog_light.common.file import copy_file
 from axosyslog_light.common.pytest_operations import calculate_testcase_name
 from axosyslog_light.common.session_data import get_session_data
@@ -315,6 +316,9 @@ def setup(request):
     number_of_open_fds = len(psutil.Process().open_files())
     if request.config.getoption("--run-under") != "valgrind":
         assert base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
+    else:
+        blocking.DEFAULT_TIMEOUT = 60
+        blocking.POLL_FREQ = 500
     for net_conn in psutil.Process().net_connections(kind="inet"):
         if net_conn.status == "CLOSE_WAIT":
             # This is a workaround for clickhouse-connect not closing connections properly
