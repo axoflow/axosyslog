@@ -101,6 +101,16 @@ filterx_type_init(FilterXType *type)
 }
 
 void
+_filterx_object_assert_object_is_not_shared(FilterXObject *self)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  if (filterx_eval_context_is_production(context))
+    {
+      g_assert(!self->early_allocation);
+    }
+}
+
+void
 filterx_object_free_method(FilterXObject *self)
 {
   /* empty */
