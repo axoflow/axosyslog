@@ -109,12 +109,15 @@ _deserialize_sdata(LogMessageSerializationState *state)
 {
   LogMessage *self = state->msg;
   SerializeArchive *sa = state->sa;
+  guint8 alloc_sdata_ignored;
 
   if (!serialize_read_uint8(sa, &self->num_sdata))
     return FALSE;
 
-  if (!serialize_read_uint8(sa, &self->alloc_sdata))
+  if (!serialize_read_uint8(sa, &alloc_sdata_ignored))
     return FALSE;
+
+  self->alloc_sdata = self->num_sdata;
 
   g_assert(!self->sdata);
   self->sdata = (NVHandle *) g_malloc(sizeof(NVHandle)*self->alloc_sdata);
