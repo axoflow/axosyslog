@@ -37,7 +37,10 @@ format_number(GString *result, LogMessageValueType *type, const GenericNumber *n
     }
 
   *type = LM_VT_DOUBLE;
-  g_string_append_printf(result, "%.*f", n->precision, gn_as_double(n));
+  if (n->precision >= 0)
+    g_string_append_printf(result, "%.*f", n->precision, gn_as_double(n));
+  else
+    g_string_append_printf(result, "%.17g", gn_as_double(n));
 }
 
 void

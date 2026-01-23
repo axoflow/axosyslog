@@ -84,10 +84,9 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
     {
       FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
 
-      const gchar *val;
-      gsize len;
-      if (filterx_object_extract_string_ref(elt, &val, &len))
-        *list = g_list_append(*list, g_strndup(val, len));
+      gchar *val;
+      if (filterx_object_extract_string_dup(elt, &val))
+        *list = g_list_append(*list, val);
       filterx_object_unref(elt);
     }
 
@@ -159,6 +158,7 @@ _init_scanner(FilterXFunctionParseCSV *self, GList *string_delimiters, gint num_
 
 static FilterXObject *
 _run_parsing(FilterXFunctionParseCSV *self,
+             FilterXObject *input_obj,
              const gchar *input, gsize input_len,
              FilterXObject *columns, GList *string_delimiters)
 {
@@ -189,9 +189,15 @@ _run_parsing(FilterXFunctionParseCSV *self,
   gboolean finished = FALSE;
   while (!finished && csv_scanner_scan_next(&scanner) && ok)
     {
-      FILTERX_STRING_DECLARE_ON_STACK(val,
-                                      csv_scanner_get_current_value(&scanner),
-                                      csv_scanner_get_current_value_len(&scanner));
+      const gchar *value = csv_scanner_get_current_value(&scanner);
+      gsize value_len = csv_scanner_get_current_value_len(&scanner);
+      FilterXObject *val;
+      gsize start, end;
+
+      if (csv_scanner_get_value_slice(&scanner, &start, &end))
+        val = filterx_string_new_slice(input_obj, start, end);
+      else
+        val = filterx_string_new(value, value_len);
       if (columns)
         {
           if (is_list_object)
@@ -213,8 +219,8 @@ _run_parsing(FilterXFunctionParseCSV *self,
         {
           ok = filterx_sequence_append(result, &val);
         }
+      filterx_object_unref(val);
 
-      FILTERX_STRING_CLEAR_FROM_STACK(val);
     }
   if (!ok)
     {
@@ -255,7 +261,7 @@ _eval_parse_csv(FilterXExpr *s)
 
   /* make sure input is zero terminated */
   APPEND_ZERO(input, input, input_len);
-  result = _run_parsing(self, input, input_len, columns, string_delimiters);
+  result = _run_parsing(self, input_obj, input, input_len, columns, string_delimiters);
 
 exit:
   filterx_object_unref(columns);
