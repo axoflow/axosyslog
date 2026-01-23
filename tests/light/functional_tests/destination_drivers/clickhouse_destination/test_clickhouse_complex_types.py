@@ -21,6 +21,8 @@
 # COPYING for details.
 #
 #############################################################################
+import json
+
 import pytest
 from axosyslog_light.common.file import copy_shared_file
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_OPTIONS
@@ -74,11 +76,11 @@ def test_clickhouse_destination_complex_types(request, testcase_parameters, conf
     config, file_source, clickhouse_destination = configure_syslog_ng_with_clickhouse_dest(config, proto_file_data, clickhouse_ports)
     bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, CLICKHOUSE_OPTIONS, request, table_schema, clickhouse_ports)
 
-    input_msg = f'<113>Jul 17 14:47:53 testhost testprog {input_data}'
+    input_msg = f'<113>Jul 17 14:47:53 testhost testprog {json.dumps(input_data)}'
     file_source.write_log(input_msg, 1)
     syslog_ng.start(config)
 
     assert syslog_ng.wait_for_message_in_console_log("ClickHouse batch delivered") != []
-    assert clickhouse_destination.read_logs() == [expected_output_data]
+    assert clickhouse_destination.read_log() == expected_output_data
     assert clickhouse_destination.get_stats()["written"] == 1
     assert clickhouse_destination.get_stats()["dropped"] == 0
