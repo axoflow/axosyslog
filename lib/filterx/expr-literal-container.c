@@ -164,6 +164,11 @@ _literal_container_optimize(FilterXExpr *s)
         }
     }
   FilterXObject *container = self->eval_early(self);
+  if (!container)
+    {
+      filterx_eval_clear_errors();
+      return NULL;
+    }
   if (literal)
     return filterx_literal_new(container);
   else
