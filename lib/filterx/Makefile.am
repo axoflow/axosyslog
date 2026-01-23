@@ -30,6 +30,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-switch.h \
 	lib/filterx/expr-template.h \
 	lib/filterx/expr-unset.h \
+	lib/filterx/expr-move.h \
 	lib/filterx/expr-variable.h \
 	lib/filterx/expr-string-operators.h \
 	lib/filterx/filterx-allocator.h \
@@ -110,6 +111,7 @@ filterx_sources = 				\
 	lib/filterx/expr-switch.c \
 	lib/filterx/expr-template.c \
 	lib/filterx/expr-unset.c \
+	lib/filterx/expr-move.c \
 	lib/filterx/expr-variable.c \
 	lib/filterx/expr-string-operators.c \
 	lib/filterx/filterx-allocator.c \
