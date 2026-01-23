@@ -42,6 +42,18 @@ struct FilterXLiteralElement_
   guint8 nullv:1;
 };
 
+static void
+_literal_element_set_anchor(FilterXLiteralElement *self, gint64 anchor)
+{
+  self->anchor = anchor;
+}
+
+static void
+_literal_element_unset_anchor(FilterXLiteralElement *self)
+{
+  self->anchor = -1;
+}
+
 static gboolean
 _literal_element_is_literal(FilterXLiteralElement *self)
 {
@@ -272,7 +284,7 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref,
 
           if (early_eval && success)
             {
-              elem->anchor = filterx_dict_get_anchor_for_key(dict, key);
+              _literal_element_set_anchor(elem, filterx_dict_get_anchor_for_key(dict, key));
             }
         }
 
@@ -308,6 +320,13 @@ _literal_dict_eval_early(FilterXLiteralContainer *self)
 
   return dict_ref;
 error:
+
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
+      _literal_element_unset_anchor(elem);
+    }
+
   filterx_object_unref(dict_ref);
   return NULL;
 }
