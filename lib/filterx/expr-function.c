@@ -366,6 +366,19 @@ error:
   return str;
 }
 
+FilterXObject *
+filterx_function_args_get_literal_object(FilterXFunctionArgs *self, guint64 index)
+{
+  FilterXExpr *expr = _args_get_expr(self, index);
+  if (!expr)
+    return NULL;
+
+  if (!filterx_expr_is_literal(expr))
+    return NULL;
+
+  return filterx_literal_get_value(expr);
+}
+
 const gchar *
 filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 index, gsize *len)
 {
