@@ -199,7 +199,8 @@ _deserialize_message_version_2x(LogMessageSerializationState *state)
   if (!_deserialize_sdata(state))
     return FALSE;
 
-  nv_table_unref(msg->payload);
+  if (msg->payload)
+    nv_table_unref(msg->payload);
   msg->payload = _nv_table_deserialize_selector(state);
   if (!msg->payload)
     return FALSE;
@@ -510,23 +511,31 @@ _check_msg_version(LogMessageSerializationState *state)
   return TRUE;
 }
 
-gboolean
-log_msg_deserialize(LogMessage *self, SerializeArchive *sa)
+LogMessage *
+log_msg_deserialize(SerializeArchive *sa)
 {
   LogMessageSerializationState state = { 0 };
-  gboolean result = FALSE;
+  LogMessage *self = log_msg_sized_new(0);
 
   state.sa = sa;
   state.msg = self;
   if (!_check_msg_version(&state))
     {
-      return FALSE;
+      log_msg_unref(self);
+      return NULL;
     }
 
+  gboolean result;
   if (state.version < LGM_V20)
     result = _deserialize_message_version_1x(&state);
   else
     result = _deserialize_message_version_2x(&state);
+
+  if (!result)
+    {
+      log_msg_unref(self);
+      return NULL;
+    }
 
   self->allocated_bytes = sizeof(LogMessage) +
      self->alloc_sdata * sizeof(self->sdata[0]) +
@@ -534,5 +543,5 @@ log_msg_deserialize(LogMessage *self, SerializeArchive *sa)
      (sizeof(self->tags[0]) * self->num_tags) +
      (sizeof(self->nodes[0]) * self->num_nodes) +
      nv_table_get_memory_consumption(self->payload);
-  return result;
+  return self;
 }
