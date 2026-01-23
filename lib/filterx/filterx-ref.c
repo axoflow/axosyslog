@@ -289,7 +289,8 @@ _filterx_ref_setattr(FilterXObject *s, FilterXObject *attr, FilterXObject **new_
   _filterx_ref_cow(self);
 
   gboolean result = filterx_object_setattr(self->value, attr, new_value);
-  filterx_ref_set_parent_container(*new_value, s);
+  if (result)
+    filterx_ref_set_parent_container(*new_value, s);
   return result;
 }
 
@@ -301,7 +302,8 @@ _filterx_ref_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject *
   _filterx_ref_cow(self);
 
   gboolean result = filterx_object_set_subscript(self->value, key, new_value);
-  filterx_ref_set_parent_container(*new_value, s);
+  if (result)
+    filterx_ref_set_parent_container(*new_value, s);
   return result;
 }
 
