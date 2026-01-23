@@ -277,6 +277,11 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref,
           filterx_dict_set_subscript_by_anchor(dict, elem->anchor, &value);
           success = TRUE;
         }
+      else if (early_eval && filterx_object_is_key_set(dict_ref, key))
+        {
+          /* overlapping keys, bail out with failure and evaluate dict at runtime */
+          success = FALSE;
+        }
       else
         {
           /* early_eval or no anchor (e.g. no optimize) */
