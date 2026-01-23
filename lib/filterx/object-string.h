@@ -31,6 +31,9 @@
 /* the string holds a value that does not need escaping when generating a JSON string literal */
 #define FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED  0x02
 
+/* string is borrowing its payload from another string */
+#define FILTERX_STRING_FLAG_STR_BORROWED_SLICE     0x04
+
 /* cache indices */
 enum
 {
@@ -57,7 +60,11 @@ struct _FilterXString
   const gchar *str;
   guint32 str_len;
   volatile guint32 hash;
-  gchar storage[];
+  union
+  {
+    FilterXObject *slice;
+    gchar bytes[0];
+  } storage;
 };
 
 
@@ -80,6 +87,7 @@ FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
+FilterXObject *filterx_string_new_slice(FilterXObject *string_, gsize start, gsize end);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
