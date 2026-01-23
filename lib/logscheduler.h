@@ -80,6 +80,7 @@ typedef struct _LogScheduler
   LogSchedulerOptions *options;
   gint num_input_threads;
   LogSchedulerPartition partitions[LOGSCHEDULER_MAX_PARTITIONS];
+  StatsCounterItem *parallelize_failed_events_total;
   LogSchedulerThreadState input_thread_states[];
 } LogScheduler;
 
