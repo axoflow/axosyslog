@@ -213,6 +213,14 @@ filterx_eval_context_make_writable(FilterXEvalContext *context)
     }
 }
 
+static inline gboolean
+filterx_eval_context_is_production(FilterXEvalContext *context)
+{
+  if (!context)
+    return FALSE;
+  return context->scope != NULL;
+}
+
 static inline FilterXObject *
 filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
 {
@@ -229,6 +237,7 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
       result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
       result->allocator_used = TRUE;
     }
+  result->early_allocation = !filterx_eval_context_is_production(context);
 
   return result;
 }
