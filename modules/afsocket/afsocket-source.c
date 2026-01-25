@@ -99,21 +99,29 @@ afsocket_sc_format_stats_key(AFSocketSourceConnection *self, StatsClusterKeyBuil
 
   if (!self->peer_addr)
     {
-      /* dgram connection, which means we have no peer, use the bind address */
-      if (self->owner->bind_addr)
-        {
-          g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
-          stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("address", addr));
-          return;
-        }
-      else
-        return;
-    }
+      /* dgram connection: we have no peer, we use the bind address */
 
-  g_sockaddr_format(self->peer_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
-  stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("transport",
-                                             self->owner->transport_mapper->transport));
-  stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("address", addr));
+      stats_cluster_key_builder_add_label(kb, stats_cluster_label("transport", self->owner->transport_mapper->transport));
+
+      /* legacy stats instance only includes the receiver IP adddress */
+      g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
+      stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label(".compat-address", addr));
+    }
+  else
+    {
+      /* stream connection, we have both receiver and peer address */
+
+      /* legacy stats include "transport" and the peer's IP adddress in stats-instance */
+      stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("transport",
+                                                 self->owner->transport_mapper->transport));
+
+      g_sockaddr_format(self->peer_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
+      stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("peer_address", addr));
+
+    }
+  /* prometheus style stats have an address label that contais the receiver ip:port, regardless of transport */
+  g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_ADDRESS_PORT);
+  stats_cluster_key_builder_add_label(kb, stats_cluster_label("address", addr));
 }
 
 static gchar *
@@ -1236,11 +1244,11 @@ afsocket_sd_register_stats(AFSocketSourceDriver *self)
 
   StatsClusterLabel labels[] =
   {
-    stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", self->driver_name),
-    stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
+    stats_cluster_label("driver", self->driver_name),
+    stats_cluster_label("id", self->super.super.id),
+    stats_cluster_label("transport", self->transport_mapper->transport),
   };
   stats_lock();
   if (self->transport_mapper->sock_type == SOCK_STREAM)
@@ -1258,11 +1266,11 @@ afsocket_sd_unregister_stats(AFSocketSourceDriver *self)
 
   StatsClusterLabel labels[] =
   {
-    stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", self->driver_name),
-    stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
+    stats_cluster_label("driver", self->driver_name),
+    stats_cluster_label("id", self->super.super.id),
+    stats_cluster_label("transport", self->transport_mapper->transport),
   };
   stats_lock();
   if (self->transport_mapper->sock_type == SOCK_STREAM)
