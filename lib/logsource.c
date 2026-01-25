@@ -539,20 +539,15 @@ _allocate_counter_keys(LogSource *self)
 
   stats_cluster_key_builder_push(kb);
   {
+    if (self->name)
+      stats_cluster_key_builder_add_label(kb, stats_cluster_label("connection", self->name));
+
     stats_cluster_key_builder_set_name(kb, "input_window_available");
     self->metrics.window_available_key = stats_cluster_key_builder_build_single(kb);
-  }
-  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(kb);
-  {
     stats_cluster_key_builder_set_name(kb, "input_window_capacity");
     self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(kb);
-  }
-  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(kb);
-  {
     stats_cluster_key_builder_set_name(kb, "input_window_full_total");
     self->metrics.window_full_total_key = stats_cluster_key_builder_build_single(kb);
   }

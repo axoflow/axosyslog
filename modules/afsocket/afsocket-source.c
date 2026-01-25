@@ -90,29 +90,6 @@ _connections_count_dec(AFSocketSourceDriver *self)
   atomic_gssize_dec(&self->num_connections);
 }
 
-static gchar *
-_format_sc_name(AFSocketSourceConnection *self, gint format_type)
-{
-  static gchar buf[256];
-  gchar peer_addr[MAX_SOCKADDR_STRING];
-
-  if (!self->peer_addr)
-    {
-      /* dgram connection, which means we have no peer, use the bind address */
-      if (self->owner->bind_addr)
-        {
-          g_sockaddr_format(self->owner->bind_addr, buf, sizeof(buf), format_type);
-          return buf;
-        }
-      else
-        return NULL;
-    }
-
-  g_sockaddr_format(self->peer_addr, peer_addr, sizeof(peer_addr), format_type);
-  g_snprintf(buf, sizeof(buf), "%s,%s", self->owner->transport_mapper->transport, peer_addr);
-  return buf;
-}
-
 static void
 afsocket_sc_format_stats_key(AFSocketSourceConnection *self, StatsClusterKeyBuilder *kb)
 {
@@ -142,7 +119,13 @@ afsocket_sc_format_stats_key(AFSocketSourceConnection *self, StatsClusterKeyBuil
 static gchar *
 afsocket_sc_format_name(AFSocketSourceConnection *self)
 {
-  return _format_sc_name(self, GSA_FULL);
+  static gchar buf[256];
+
+  if (!self->peer_addr)
+    return NULL;
+
+  g_sockaddr_format(self->peer_addr, buf, sizeof(buf), GSA_ADDRESS_PORT);
+  return buf;
 }
 
 static gboolean
