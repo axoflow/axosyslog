@@ -426,7 +426,7 @@ _create_ack_tracker_if_not_exists(LogSource *self)
 static void
 _register_window_stats(LogSource *self)
 {
-  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : self->options->stats_level;
+  gint level = STATS_LEVEL4;
 
   stats_lock();
   stats_register_counter(level, self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE,
