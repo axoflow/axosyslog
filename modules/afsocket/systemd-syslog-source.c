@@ -133,7 +133,7 @@ systemd_syslog_sd_new(GlobalConfig *cfg, gboolean fallback)
   self = g_new0(SystemDSyslogSourceDriver, 1);
   transport_mapper = transport_mapper_unix_dgram_new();
 
-  afsocket_sd_init_instance(&self->super, socket_options_new(), transport_mapper, cfg);
+  afsocket_sd_init_instance(&self->super, socket_options_new(), transport_mapper, "systemd-syslog", cfg);
 
   self->super.super.super.super.init = systemd_syslog_sd_init_method;
 

@@ -70,6 +70,7 @@ struct _AFSocketSourceDriver
   GList *connections;
   SocketOptions *socket_options;
   TransportMapper *transport_mapper;
+  gchar *driver_name;
 
   /*
    * Apply transport options, set up bind_addr based on the
@@ -116,6 +117,6 @@ gboolean afsocket_sd_deinit_method(LogPipe *s);
 void afsocket_sd_free_method(LogPipe *self);
 
 void afsocket_sd_init_instance(AFSocketSourceDriver *self, SocketOptions *socket_options,
-                               TransportMapper *transport_mapper, GlobalConfig *cfg);
+                               TransportMapper *transport_mapper, const gchar *driver_name, GlobalConfig *cfg);
 
 #endif

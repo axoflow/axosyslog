@@ -70,11 +70,11 @@ afunix_dd_free(LogPipe *s)
 }
 
 AFUnixDestDriver *
-afunix_dd_new_instance(TransportMapper *transport_mapper, gchar *filename, GlobalConfig *cfg)
+afunix_dd_new_instance(TransportMapper *transport_mapper, gchar *filename, const gchar *driver_name, GlobalConfig *cfg)
 {
   AFUnixDestDriver *self = g_new0(AFUnixDestDriver, 1);
 
-  afsocket_dd_init_instance(&self->super, socket_options_new(), transport_mapper, cfg);
+  afsocket_dd_init_instance(&self->super, socket_options_new(), transport_mapper, driver_name, cfg);
   self->super.super.super.super.free_fn = afunix_dd_free;
   self->super.setup_addresses = afunix_dd_setup_addresses;
   self->super.writer_options.mark_mode = MM_NONE;
@@ -88,11 +88,11 @@ afunix_dd_new_instance(TransportMapper *transport_mapper, gchar *filename, Globa
 AFUnixDestDriver *
 afunix_dd_new_dgram(gchar *filename, GlobalConfig *cfg)
 {
-  return afunix_dd_new_instance(transport_mapper_unix_dgram_new(), filename, cfg);
+  return afunix_dd_new_instance(transport_mapper_unix_dgram_new(), filename, "unix-dgram", cfg);
 }
 
 AFUnixDestDriver *
 afunix_dd_new_stream(gchar *filename, GlobalConfig *cfg)
 {
-  return afunix_dd_new_instance(transport_mapper_unix_stream_new(), filename, cfg);
+  return afunix_dd_new_instance(transport_mapper_unix_stream_new(), filename, "unix-stream", cfg);
 }
