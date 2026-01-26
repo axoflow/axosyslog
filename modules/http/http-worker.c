@@ -593,6 +593,7 @@ _curl_perform_request(HTTPDestinationWorker *self, const gchar *url)
   CURLcode ret = curl_easy_perform(self->curl);
   if (ret != CURLE_OK)
     {
+      msg_debug("http: Sent request", evt_tag_str("request", self->request_body->str));
       msg_error("http: error sending HTTP request",
                 evt_tag_str("url", url),
                 evt_tag_str("error", curl_easy_strerror(ret)),
