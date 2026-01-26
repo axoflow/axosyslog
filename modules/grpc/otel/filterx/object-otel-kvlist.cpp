@@ -619,6 +619,12 @@ _repr(FilterXObject *s, GString *repr)
   return TRUE;
 }
 
+static gboolean
+_str(FilterXObject *s, GString *str)
+{
+  return filterx_object_format_json(s, str);
+}
+
 FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(mapping),
                     .is_mutable = TRUE,
                     .marshal = _marshal,
@@ -631,5 +637,6 @@ FILTERX_DEFINE_TYPE(otel_kvlist, FILTERX_TYPE_NAME(mapping),
                     .len = _len,
                     .iter = _iter,
                     .repr = _repr,
+                    .str = _str,
                     .free_fn = _free,
                    );
