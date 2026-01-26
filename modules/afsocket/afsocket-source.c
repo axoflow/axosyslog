@@ -1232,7 +1232,7 @@ static void
 afsocket_sd_register_stats(AFSocketSourceDriver *self)
 {
   gchar addr[256];
-  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_FULL);
+  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_ADDRESS_PORT);
 
   StatsClusterLabel labels[] =
   {
@@ -1254,7 +1254,7 @@ static void
 afsocket_sd_unregister_stats(AFSocketSourceDriver *self)
 {
   gchar addr[256];
-  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_FULL);
+  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_ADDRESS_PORT);
 
   StatsClusterLabel labels[] =
   {
