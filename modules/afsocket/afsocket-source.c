@@ -95,7 +95,7 @@ afsocket_sc_format_stats_key(AFSocketSourceConnection *self, StatsClusterKeyBuil
 {
   gchar addr[256];
 
-  stats_cluster_key_builder_add_label(kb, stats_cluster_label("driver", "afsocket"));
+  stats_cluster_key_builder_add_label(kb, stats_cluster_label("driver", self->owner->driver_name));
 
   if (!self->peer_addr)
     {
@@ -1237,7 +1237,7 @@ afsocket_sd_register_stats(AFSocketSourceDriver *self)
   StatsClusterLabel labels[] =
   {
     stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", "afsocket"),
+    stats_cluster_label("driver", self->driver_name),
     stats_cluster_label("transport", (self->transport_mapper->sock_type == SOCK_STREAM) ? "stream" : "dgram"),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
@@ -1259,7 +1259,7 @@ afsocket_sd_unregister_stats(AFSocketSourceDriver *self)
   StatsClusterLabel labels[] =
   {
     stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", "afsocket"),
+    stats_cluster_label("driver", self->driver_name),
     stats_cluster_label("transport", (self->transport_mapper->sock_type == SOCK_STREAM) ? "stream" : "dgram"),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
@@ -1347,6 +1347,7 @@ afsocket_sd_free_method(LogPipe *s)
 {
   AFSocketSourceDriver *self = (AFSocketSourceDriver *) s;
 
+  g_free(self->driver_name);
   log_reader_options_destroy(&self->reader_options);
   transport_mapper_free(self->transport_mapper);
   socket_options_free(self->socket_options);
@@ -1359,6 +1360,7 @@ void
 afsocket_sd_init_instance(AFSocketSourceDriver *self,
                           SocketOptions *socket_options,
                           TransportMapper *transport_mapper,
+                          const gchar *driver_name,
                           GlobalConfig *cfg)
 {
   log_src_driver_init_instance(&self->super, cfg);
@@ -1381,6 +1383,7 @@ afsocket_sd_init_instance(AFSocketSourceDriver *self,
   self->reader_options.super.stats_level = STATS_LEVEL1;
   self->reader_options.super.stats_source = transport_mapper->stats_source;
   self->activate_listener = TRUE;
+  self->driver_name = g_strdup(driver_name);
 
   afsocket_sd_init_watches(self);
 }

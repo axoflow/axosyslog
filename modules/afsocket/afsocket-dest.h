@@ -53,6 +53,7 @@ struct _AFSocketDestDriver
   struct iv_timer reconnect_timer;
   SocketOptions *socket_options;
   TransportMapper *transport_mapper;
+  gchar *driver_name;
 
   struct
   {
@@ -102,7 +103,8 @@ LogWriter *afsocket_dd_construct_writer_method(AFSocketDestDriver *self);
 gboolean afsocket_dd_setup_addresses_method(AFSocketDestDriver *self);
 void afsocket_dd_set_keep_alive(LogDriver *self, gint enable);
 void afsocket_dd_init_instance(AFSocketDestDriver *self, SocketOptions *socket_options,
-                               TransportMapper *transport_mapper, GlobalConfig *cfg);
+                               TransportMapper *transport_mapper, const gchar *driver_name,
+                               GlobalConfig *cfg);
 void afsocket_dd_reconnect(AFSocketDestDriver *self);
 void afsocket_dd_stop_watches(AFSocketDestDriver *self);
 
