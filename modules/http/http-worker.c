@@ -492,6 +492,7 @@ _debug_response_info(HTTPDestinationWorker *self, const gchar *url, glong http_c
   msg_debug("http: HTTP response received",
             evt_tag_str("url", url),
             evt_tag_int("status_code", http_code),
+            evt_tag_printf("request", "%.512s%s", self->request_body->str, self->request_body->len > 512 ? "..." : ""),
             evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
             evt_tag_int("body_size", self->request_body->len),
             evt_tag_int("batch_size", self->super.batch_size),
