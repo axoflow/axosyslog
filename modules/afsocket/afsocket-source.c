@@ -1238,7 +1238,7 @@ afsocket_sd_register_stats(AFSocketSourceDriver *self)
   {
     stats_cluster_label("id", self->super.super.id),
     stats_cluster_label("driver", self->driver_name),
-    stats_cluster_label("transport", (self->transport_mapper->sock_type == SOCK_STREAM) ? "stream" : "dgram"),
+    stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
   };
@@ -1260,7 +1260,7 @@ afsocket_sd_unregister_stats(AFSocketSourceDriver *self)
   {
     stats_cluster_label("id", self->super.super.id),
     stats_cluster_label("driver", self->driver_name),
-    stats_cluster_label("transport", (self->transport_mapper->sock_type == SOCK_STREAM) ? "stream" : "dgram"),
+    stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
   };
