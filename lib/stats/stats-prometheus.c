@@ -178,7 +178,13 @@ stats_format_prometheus_format_counter_value(StatsCluster *sc, gint type)
 static inline void
 _append_formatted_label(GString *serialized_labels, const StatsClusterLabel *label, gboolean *comma_needed)
 {
-  if (_is_str_empty(label->value))
+  /* NOTE: labels with a starting dot are excluded
+   *
+   * This is useful when the legacy instance_id and the prometheus labels
+   * diverge.  In those cases the hidden label can be used as a legacy
+   * label, as the instance_id formatting ignores the name.
+   */
+  if (label->name[0] == '.' || _is_str_empty(label->value))
     return;
 
   if (*comma_needed)
