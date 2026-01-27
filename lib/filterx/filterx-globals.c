@@ -104,7 +104,6 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("dedup_metrics_labels",
                                                     filterx_simple_function_dedup_metrics_labels));
   g_assert(filterx_builtin_simple_function_register("len", filterx_simple_function_len));
-  g_assert(filterx_builtin_simple_function_register("load_vars", filterx_simple_function_load_vars));
   g_assert(filterx_builtin_simple_function_register("lower", filterx_simple_function_lower));
   g_assert(filterx_builtin_simple_function_register("upper", filterx_simple_function_upper));
   g_assert(filterx_builtin_simple_function_register("str_strip", filterx_simple_function_str_strip));
@@ -155,6 +154,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("strftime", filterx_function_strftime_new));
   g_assert(filterx_builtin_function_ctor_register("keys", filterx_function_keys_new));
   g_assert(filterx_builtin_function_ctor_register("vars", filterx_function_vars_new));
+  g_assert(filterx_builtin_function_ctor_register("load_vars", filterx_function_load_vars_new));
   g_assert(filterx_builtin_function_ctor_register("get_timestamp", filterx_function_get_timestamp_new));
   g_assert(filterx_builtin_function_ctor_register("set_timestamp", filterx_function_set_timestamp_new));
   g_assert(filterx_builtin_function_ctor_register("set_pri", filterx_function_set_pri_new));
