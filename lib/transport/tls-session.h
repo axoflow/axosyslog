@@ -43,10 +43,10 @@ typedef struct _TLSSession
     gchar cn[X509_MAX_CN_LEN];
     gchar fingerprint[X509_MAX_FP_LEN];
   } peer_info;
+  gboolean cert_trusted_by_fingerprint;
 } TLSSession;
 
-void tls_session_set_trusted_fingerprints(TLSContext *self, GList *fingerprints);
-void tls_session_set_trusted_dn(TLSContext *self, GList *dns);
+void tls_session_configure_allow_compress(TLSSession *tls_session, gboolean allow_compress);
 void tls_session_set_verifier(TLSSession *self, TLSVerifier *verifier);
 
 int tls_session_verify_callback(int ok, X509_STORE_CTX *ctx);

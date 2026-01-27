@@ -862,6 +862,26 @@ tls_context_set_ca_file(TLSContext *self, const gchar *ca_file)
 }
 
 void
+tls_context_set_trusted_fingerprints(TLSContext *self, GList *fingerprints, gboolean trust_anchor)
+{
+  g_assert(fingerprints);
+
+  g_list_foreach(self->trusted_fingerprint_list, (GFunc) g_free, NULL);
+  self->trusted_fingerprint_list = fingerprints;
+  self->trusted_fingerprint_list_is_always_trusted = trust_anchor;
+}
+
+void
+tls_context_set_trusted_dn(TLSContext *self, GList *dn)
+{
+  g_assert(dn);
+
+  g_list_foreach(self->trusted_dn_list, (GFunc) g_free, NULL);
+  self->trusted_dn_list = dn;
+}
+
+
+void
 tls_context_set_cipher_suite(TLSContext *self, const gchar *cipher_suite)
 {
   g_free(self->cipher_suite);
