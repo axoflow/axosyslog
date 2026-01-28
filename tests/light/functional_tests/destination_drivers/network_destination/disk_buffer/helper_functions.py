@@ -28,8 +28,27 @@ from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
-EXPECTED_SIZE_OF_MESSAGE_IN_DISKQ = 1452
-EXPECTED_SIZE_OF_MESSAGE_IN_MEMORY = 2528
+SIZE_OF_MESSAGE_IN_DISKQ = 1452
+SIZE_OF_MESSAGE_IN_MEMORY = 2528
+SIZE_OF_DISKQ = 1024 * 1024
+SIZE_OF_DISKQ_HEADER = 4096
+BufferParams = namedtuple(
+    "BufferParams", [
+        "message_size_in_diskq",
+        "message_size_in_memory",
+        "count_front_cache",
+        "count_qdisk",
+        "count_flow_control_window",
+    ],
+)
+buffer_params = BufferParams(
+    message_size_in_diskq=SIZE_OF_MESSAGE_IN_DISKQ,
+    message_size_in_memory=SIZE_OF_MESSAGE_IN_MEMORY,
+    count_front_cache=500,
+    # we can write 1 partial message past the end of capacity
+    count_qdisk=(SIZE_OF_DISKQ - SIZE_OF_DISKQ_HEADER) // SIZE_OF_MESSAGE_IN_DISKQ + 1,
+    count_flow_control_window=100,
+)
 
 
 def set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator, flow_control=True):
@@ -177,7 +196,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=1044480,
             syslogng_disk_queue_events=frontCache_size + qdisk_size,
-            syslogng_disk_queue_memory_usage_bytes=764000,
+            syslogng_disk_queue_memory_usage_bytes=frontCache_size * buffer_params.message_size_in_memory,
             messages_in_disk_buffer=qdisk_size,
         ),
         after=BufferState(
@@ -220,12 +239,12 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             delivered_syslogng_output_events_total=0,
             queued_syslogng_output_events_total=frontCache_size + qdisk_size + flow_control_window_size,
             dropped_syslogng_output_events_total=0,
-            syslogng_disk_queue_processed_events_total=1324,
+            syslogng_disk_queue_processed_events_total=frontCache_size + qdisk_size + flow_control_window_size,
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=1044480,
-            syslogng_disk_queue_events=1324,
-            syslogng_disk_queue_memory_usage_bytes=916800,
-            messages_in_disk_buffer=724,
+            syslogng_disk_queue_events=frontCache_size + qdisk_size + flow_control_window_size,
+            syslogng_disk_queue_memory_usage_bytes=(frontCache_size + flow_control_window_size) * buffer_params.message_size_in_memory,
+            messages_in_disk_buffer=qdisk_size,
         ),
         after_reload=BufferState(
             delivered_syslogng_output_events_total=0,
@@ -235,8 +254,8 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=1044480,
             syslogng_disk_queue_events=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
-            syslogng_disk_queue_memory_usage_bytes=916800,
-            messages_in_disk_buffer=724,
+            syslogng_disk_queue_memory_usage_bytes=(frontCache_size + 2 * flow_control_window_size) * buffer_params.message_size_in_memory,
+            messages_in_disk_buffer=qdisk_size,
         ),
         after_dst_alive=BufferState(
             delivered_syslogng_output_events_total=frontCache_size + qdisk_size + flow_control_window_size + extra_msg_number,
