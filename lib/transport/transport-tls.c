@@ -190,6 +190,18 @@ log_transport_tls_send_shutdown(LogTransportTLS *self)
   return shutdown_rc;
 }
 
+static inline gboolean
+log_transport_tls_aux_data_add_peer_info(LogTransportTLS *self, LogTransportAuxData *aux)
+{
+  if (!self->tls_session->peer_info.found)
+    return FALSE;
+
+  log_transport_aux_data_add_nv_pair(aux, ".tls.x509_cn", self->tls_session->peer_info.cn);
+  log_transport_aux_data_add_nv_pair(aux, ".tls.x509_o", self->tls_session->peer_info.o);
+  log_transport_aux_data_add_nv_pair(aux, ".tls.x509_ou", self->tls_session->peer_info.ou);
+  return TRUE;
+}
+
 static gssize
 log_transport_tls_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTransportAuxData *aux)
 {
@@ -202,24 +214,6 @@ log_transport_tls_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTr
   if (G_UNLIKELY(self->sending_shutdown))
     return (log_transport_tls_send_shutdown(self) >= 0) ? 0 : -1;
 
-  if (aux)
-    {
-      /* if we have found the peer has a certificate */
-      if (self->tls_session->peer_info.found)
-        {
-          log_transport_aux_data_add_nv_pair(aux, ".tls.x509_cn", self->tls_session->peer_info.cn);
-          log_transport_aux_data_add_nv_pair(aux, ".tls.x509_o", self->tls_session->peer_info.o);
-          log_transport_aux_data_add_nv_pair(aux, ".tls.x509_ou", self->tls_session->peer_info.ou);
-        }
-      if (self->tls_session->peer_info.fingerprint[0])
-        log_transport_aux_data_add_nv_pair(aux, ".tls.x509_fp", self->tls_session->peer_info.fingerprint);
-
-      /* NOTE: we only support TLS on top of TCP for now.  We could reuse the
-       * proto auto detection code from transport-socket to make this more
-       * accurate.  */
-
-      aux->proto = IPPROTO_TCP;
-    }
   do
     {
       rc = SSL_read(self->tls_session->ssl, buf, buflen);
@@ -257,6 +251,20 @@ log_transport_tls_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTr
         }
     }
   while (rc == -1 && errno == EINTR);
+
+  if (aux)
+    {
+      log_transport_tls_aux_data_add_peer_info(self, aux);
+
+      if (self->tls_session->peer_info.fingerprint[0])
+        log_transport_aux_data_add_nv_pair(aux, ".tls.x509_fp", self->tls_session->peer_info.fingerprint);
+
+      /* NOTE: we only support TLS on top of TCP for now.  We could reuse the
+       * proto auto detection code from transport-socket to make this more
+       * accurate.  */
+
+      aux->proto = IPPROTO_TCP;
+    }
 
   return rc;
 tls_error:
