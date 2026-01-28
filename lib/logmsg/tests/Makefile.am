@@ -13,7 +13,8 @@ EXTRA_DIST += lib/logmsg/tests/CMakeLists.txt \
 	lib/logmsg/tests/messages/syslog-ng-3.28.1-msg.h \
 	lib/logmsg/tests/messages/syslog-ng-3.29.1-msg.h \
 	lib/logmsg/tests/messages/syslog-ng-3.30.1-msg.h \
-	lib/logmsg/tests/messages/syslog-ng-pe-6.0-msg.h
+	lib/logmsg/tests/messages/syslog-ng-pe-6.0-msg.h \
+	lib/logmsg/tests/messages/axosyslog-4.23.0-msg.h
 
 
 check_PROGRAMS       += ${lib_logmsg_tests_TESTS}
