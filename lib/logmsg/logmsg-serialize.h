@@ -47,6 +47,7 @@
  *   24      new processed timestamp
  *   25      added hostid
  *   26      use 32 bit values nvtable
+ *   27      serialize "daddr"
  */
 
 enum _LogMessageVersion
@@ -61,7 +62,8 @@ enum _LogMessageVersion
   LGM_V23 = 23,
   LGM_V24 = 24,
   LGM_V25 = 25,
-  LGM_V26 = 26
+  LGM_V26 = 26,
+  LGM_V27 = 27
 };
 
 enum _LogMessageSerializationFlags
