@@ -465,19 +465,19 @@ log_queue_disk_serialize_msg(LogQueueDisk *self, LogMessage *msg, GString *seria
 static gboolean
 _deserialize_msg(SerializeArchive *sa, gpointer user_data)
 {
-  LogMessage *msg = user_data;
+  LogMessage **pmsg = user_data;
 
-  return log_msg_deserialize(msg, sa);
+  *pmsg = log_msg_deserialize(sa);
+  return *pmsg != NULL;
 }
 
 gboolean
 log_queue_disk_deserialize_msg(LogQueueDisk *self, GString *serialized, LogMessage **msg)
 {
-  LogMessage *local_msg = log_msg_new_empty();
-  gpointer user_data = local_msg;
+  LogMessage *local_msg = NULL;
   GError *error = NULL;
 
-  if (!qdisk_deserialize(serialized, _deserialize_msg, user_data, &error))
+  if (!qdisk_deserialize(serialized, _deserialize_msg, &local_msg, &error))
     {
       msg_error("Error deserializing message from the disk-queue file",
                 evt_tag_str("error", error->message),
