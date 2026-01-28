@@ -265,7 +265,6 @@ _inc_balanced(LogSource *self, gsize inc)
 static void
 _dec_balanced(LogSource *self, gsize dec)
 {
-  gsize new_full_window_size = self->full_window_size - dec;
 
   gsize empty_window = window_size_counter_get(&self->window_size, NULL);
   gsize remaining_sub = 0;
@@ -274,20 +273,17 @@ _dec_balanced(LogSource *self, gsize dec)
     {
       remaining_sub = dec - empty_window;
       if (empty_window == 0)
-        {
-          dec = 0;
-        }
+        dec = 0;
       else
-        {
-          dec = empty_window - 1;
-        }
+        dec = empty_window - 1;
 
-      new_full_window_size = self->full_window_size - dec;
       _reclaim_dynamic_window(self, remaining_sub);
     }
 
   window_size_counter_sub(&self->window_size, dec, NULL);
   stats_counter_sub(self->metrics.window_available, dec);
+
+  gsize new_full_window_size = self->full_window_size - dec;
 
   msg_trace("Balance::decrease",
             log_pipe_location_tag(&self->super),
