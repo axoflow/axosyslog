@@ -24,6 +24,7 @@
 from collections import namedtuple
 
 import pytest
+from helper_functions import (EXPECTED_SIZE_OF_MESSAGE_IN_DISKQ, EXPECTED_SIZE_OF_MESSAGE_IN_MEMORY)
 from helper_functions import check_disk_buffer_metrics_after_destination_alive
 from helper_functions import check_disk_buffer_metrics_after_reload
 from helper_functions import check_disk_buffer_metrics_after_restart_and_destination_alive
@@ -32,12 +33,50 @@ from helper_functions import check_disk_buffer_state_load_attempts
 from helper_functions import check_disk_buffer_state_save_attempts
 from helper_functions import check_if_source_suspended
 from helper_functions import fill_up_and_check_initial_disk_buffer_metrics
+from helper_functions import get_metric
 from helper_functions import loggen_send_messages
 from helper_functions import send_and_wait_for_messages_arrived
 from helper_functions import set_config_with_default_non_reliable_disk_buffer_values
 from helper_functions import set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_with_flow_control
 from helper_functions import set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_without_flow_control
 from helper_functions import validate_disk_buffer
+
+
+FRONT_CACHE_MESSAGE_COUNT = 500
+QDISK_USABLE_BYTES = 1024 * 1024 - 4096
+QDISK_MESSAGE_COUNT = (QDISK_USABLE_BYTES // EXPECTED_SIZE_OF_MESSAGE_IN_DISKQ) + 1
+FLOW_CONTROL_WINDOW_MESSAGE_COUNT = 100
+
+
+def test_expected_message_size_in_memory_match_current_reality(config, port_allocator, syslog_ng, loggen, dqtool):
+    config, network_source, network_destination = set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator)
+
+    syslog_ng.start(config)
+    # single message goes directly to qout, so stays in memory
+    loggen_send_messages(loggen, network_source, number=1)
+    size_of_message_in_memory = get_metric(config, "syslogng_disk_queue_memory_usage_bytes")
+    syslog_ng.stop()
+    assert size_of_message_in_memory == EXPECTED_SIZE_OF_MESSAGE_IN_MEMORY
+
+
+def test_expected_message_size_in_diskq_match_current_reality(config, port_allocator, syslog_ng, loggen, dqtool):
+    config, network_source, network_destination = set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator)
+
+    syslog_ng.start(config)
+    # 500 messages go to qout (stays in memory), and the rest goes to diskq
+    #
+    # NOTE: our disk usage metric has a granularity of 1kB, everything else is rounded DOWN
+    # we need store enough messages that are _exactly_ on a kB boundary.
+    # OR we need to fix the disk_usage metric
+
+    messages_to_measure = 256
+
+    assert (messages_to_measure * EXPECTED_SIZE_OF_MESSAGE_IN_DISKQ) % 1024 == 0
+    loggen_send_messages(loggen, network_source, number=FRONT_CACHE_MESSAGE_COUNT + messages_to_measure)
+    size_of_message_in_diskq = get_metric(config, "syslogng_disk_queue_disk_usage_bytes")
+    syslog_ng.stop()
+    assert size_of_message_in_diskq == messages_to_measure * EXPECTED_SIZE_OF_MESSAGE_IN_DISKQ
+
 
 BufferState = namedtuple(
     "BufferState", [
