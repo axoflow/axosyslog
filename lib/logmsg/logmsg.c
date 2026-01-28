@@ -270,7 +270,7 @@ static NVHandle match_handles[256];
 NVRegistry *logmsg_registry;
 const char logmsg_sd_prefix[] = ".SDATA.";
 const gint logmsg_sd_prefix_len = sizeof(logmsg_sd_prefix) - 1;
-gint logmsg_queue_node_max = 1;
+gint logmsg_queue_node_max = 2;
 /* statistics */
 static StatsCounterItem *count_msg_clones;
 static StatsCounterItem *count_payload_reallocs;
