@@ -876,7 +876,7 @@ Test(nvtable, test_nvtable_clone_grows_the_cloned_structure)
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  tab_clone = nv_table_clone(tab, 64);
+  tab_clone = nv_table_clone(tab, 256);
   assert_nvtable(tab_clone, STATIC_HANDLE, "value", 5);
   cr_assert_lt(tab->size, tab_clone->size);
   nv_table_unref(tab_clone);
@@ -888,12 +888,12 @@ Test(nvtable, test_nvtable_clone_cannot_grow_nvtable_larger_than_nvtable_max_byt
   NVTable *tab, *tab_clone;
   gboolean success;
 
-  tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, NV_TABLE_MAX_BYTES - 1024);
+  tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, 1024);
   success = nv_table_add_value(tab, STATIC_HANDLE, STATIC_NAME, strlen(STATIC_NAME), "value", 5, 0, NULL);
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  tab_clone = nv_table_clone(tab, 2048);
+  tab_clone = nv_table_clone(tab, NV_TABLE_MAX_BYTES);
   assert_nvtable(tab_clone, STATIC_HANDLE, "value", 5);
   cr_assert_lt(tab->size, tab_clone->size);
   cr_assert_leq(tab_clone->size, NV_TABLE_MAX_BYTES);
@@ -901,49 +901,44 @@ Test(nvtable, test_nvtable_clone_cannot_grow_nvtable_larger_than_nvtable_max_byt
   nv_table_unref(tab);
 }
 
-Test(nvtable, test_nvtable_realloc_doubles_nvtable_size)
+Test(nvtable, test_nvtable_realloc_extends_nvtable_size)
 {
   NVTable *tab;
   gboolean success;
-  gsize old_size;
 
   tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, 1024);
   success = nv_table_add_value(tab, STATIC_HANDLE, STATIC_NAME, strlen(STATIC_NAME), "value", 5, 0, NULL);
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  old_size = tab->size;
-
-  cr_assert(nv_table_realloc(tab, &tab));
-  cr_assert_geq(tab->size, old_size * 2);
+  cr_assert(nv_table_realloc(&tab, 2048));
+  cr_assert_geq(nv_table_get_available(tab), 2048);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
   nv_table_unref(tab);
-
 }
 
 Test(nvtable, test_nvtable_realloc_sets_size_to_nv_table_max_bytes_at_most)
 {
   NVTable *tab;
   gboolean success;
-  gsize old_size;
 
-  tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, NV_TABLE_MAX_BYTES - 1024);
+  tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, NV_TABLE_MAX_BYTES - 8192);
   success = nv_table_add_value(tab, STATIC_HANDLE, STATIC_NAME, strlen(STATIC_NAME), "value", 5, 0, NULL);
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  old_size = tab->size;
-
-  cr_assert(nv_table_realloc(tab, &tab));
+  gsize old_size = tab->size;
+  cr_assert(nv_table_realloc(&tab, NV_TABLE_MAX_BYTES));
   cr_assert_gt(tab->size, old_size);
   cr_assert_leq(tab->size, NV_TABLE_MAX_BYTES);
+
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
   nv_table_unref(tab);
 }
 
-Test(nvtable, test_nvtable_realloc_fails_if_size_is_at_maximum)
+Test(nvtable, test_nvtable_realloc_fails_if_new_allocation_fits)
 {
   NVTable *tab;
   gboolean success;
@@ -953,7 +948,7 @@ Test(nvtable, test_nvtable_realloc_fails_if_size_is_at_maximum)
   cr_assert(success);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
-  cr_assert_not(nv_table_realloc(tab, &tab));
+  cr_assert_not(nv_table_realloc(&tab, 1024));
   cr_assert_eq(tab->size, NV_TABLE_MAX_BYTES);
   assert_nvtable(tab, STATIC_HANDLE, "value", 5);
 
@@ -976,7 +971,7 @@ Test(nvtable, test_nvtable_realloc_leaves_original_intact_if_there_are_multiple_
 
   old_size = tab_ref1->size;
 
-  cr_assert(nv_table_realloc(tab_ref2, &tab_ref2));
+  cr_assert(nv_table_realloc(&tab_ref2, 2048));
   cr_assert_eq(tab_ref1->size, old_size);
   cr_assert_geq(tab_ref2->size, old_size);
   assert_nvtable(tab_ref1, STATIC_HANDLE, "value", 5);

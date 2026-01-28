@@ -162,6 +162,44 @@ nv_registry_free(NVRegistry *self)
   g_free(self);
 }
 
+/* NVTable */
+
+static inline gsize
+nv_table_get_next_size(NVTable *self, gsize additional_space)
+{
+  gsize avail_size = nv_table_get_available(self);
+
+  if (additional_space < 256)
+    {
+      /* since we are reallocating, try to get at least 256 bytes of fresh
+       * storage so we can grow without another realloc */
+
+      additional_space = 256;
+    }
+
+  if (additional_space <= avail_size)
+    return self->size;
+
+  gsize new_size = self->size + (additional_space - avail_size);
+  if (new_size > 4096)
+    {
+      /* align to page boundary */
+      new_size = (new_size + 0xFFF) & ~0xFFF;
+    }
+  else if (new_size > 1024)
+    {
+      /* align to 1024 byte boundary */
+      new_size = (new_size + 0x3FF) & ~0x3FF;
+    }
+  else
+    new_size = 1024;
+
+  if (new_size > NV_TABLE_MAX_BYTES)
+    new_size = NV_TABLE_MAX_BYTES;
+
+  return new_size;
+}
+
 /* return the offset to a newly allocated payload string */
 static inline NVEntry *
 nv_table_alloc_value(NVTable *self, gsize alloc_size)
@@ -742,21 +780,18 @@ nv_table_init_borrowed(gpointer space, gsize space_len, gint num_static_entries)
 
 /* returns TRUE if successfully realloced, FALSE means that we're unable to grow */
 gboolean
-nv_table_realloc(NVTable *self, NVTable **new_nv_table)
+nv_table_realloc(NVTable **pself, gsize additional_space)
 {
+  NVTable *self = *pself;
   gsize old_size = self->size;
-  gsize new_size;
+  gsize new_size = nv_table_get_next_size(self, additional_space + sizeof(NVEntry));
 
-  /* double the size of the current allocation */
-  new_size = ((gsize) self->size) << 1;
-  if (new_size > NV_TABLE_MAX_BYTES)
-    new_size = NV_TABLE_MAX_BYTES;
   if (new_size == old_size)
     return FALSE;
 
   if (self->ref_cnt == 1 && !self->borrowed)
     {
-      *new_nv_table = self = g_realloc(self, new_size);
+      *pself = self = g_realloc(self, new_size);
 
       self->size = new_size;
       /* move the downwards growing region to the end of the new buffer */
@@ -766,16 +801,16 @@ nv_table_realloc(NVTable *self, NVTable **new_nv_table)
     }
   else
     {
-      *new_nv_table = g_malloc(new_size);
+      *pself = g_malloc(new_size);
 
       /* we only copy the header first */
-      memcpy(*new_nv_table, self, sizeof(NVTable) + self->num_static_entries * sizeof(self->static_entries[0]) +
+      memcpy(*pself, self, sizeof(NVTable) + self->num_static_entries * sizeof(self->static_entries[0]) +
              self->index_size * sizeof(NVIndexEntry));
-      (*new_nv_table)->ref_cnt = 1;
-      (*new_nv_table)->borrowed = FALSE;
-      (*new_nv_table)->size = new_size;
+      (*pself)->ref_cnt = 1;
+      (*pself)->borrowed = FALSE;
+      (*pself)->size = new_size;
 
-      memmove(NV_TABLE_ADDR((*new_nv_table), (*new_nv_table)->size - (*new_nv_table)->used),
+      memmove(NV_TABLE_ADDR((*pself), (*pself)->size - (*pself)->used),
               NV_TABLE_ADDR(self, old_size - self->used),
               self->used);
 
@@ -808,19 +843,12 @@ nv_table_unref(NVTable *self)
  *
  **/
 NVTable *
-nv_table_clone(NVTable *self, gint additional_space)
+nv_table_clone(NVTable *self, gsize additional_space)
 {
   NVTable *new;
-  gint new_size;
+  gsize new_size;
 
-  if (nv_table_get_bottom(self) - nv_table_get_ofs_table_top(self) < additional_space)
-    new_size = self->size;
-  else
-    new_size = self->size + (NV_TABLE_BOUND(additional_space));
-
-  if (new_size > NV_TABLE_MAX_BYTES)
-    new_size = NV_TABLE_MAX_BYTES;
-
+  new_size = nv_table_get_next_size(self, additional_space + sizeof(NVEntry));
   new = g_malloc(new_size);
   memcpy(new, self, sizeof(NVTable) + self->num_static_entries * sizeof(self->static_entries[0]) + self->index_size *
          sizeof(NVIndexEntry));
