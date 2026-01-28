@@ -42,7 +42,8 @@ enum
   STATS_LEVEL0 = 0,
   STATS_LEVEL1,
   STATS_LEVEL2,
-  STATS_LEVEL3
+  STATS_LEVEL3,
+  STATS_LEVEL4,
 };
 
 void stats_reinit(StatsOptions *options);

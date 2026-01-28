@@ -289,22 +289,12 @@ _construct_merged_labels(const StatsClusterKeyBuilder *self)
       const BuilderOptions *options = (const BuilderOptions *) link->data;
 
       if (options->legacy_labels)
-        merged_labels = g_array_append_vals(merged_labels, options->legacy_labels->data, options->legacy_labels->len);
-    }
-
-  GArray *merged_unsorted_labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), 4);
-  for (const GList *link = g_list_first(self->options_stack); link; link = link->next)
-    {
-      const BuilderOptions *options = (const BuilderOptions *) link->data;
+        g_array_append_vals(merged_labels, options->legacy_labels->data, options->legacy_labels->len);
 
       if (options->labels)
-        merged_unsorted_labels = g_array_append_vals(merged_unsorted_labels, options->labels->data,
-                                                     options->labels->len);
+        g_array_append_vals(merged_labels, options->labels->data, options->labels->len);
     }
-  g_array_sort(merged_unsorted_labels, (GCompareFunc) _labels_sort);
-  merged_labels = g_array_append_vals(merged_labels, merged_unsorted_labels->data, merged_unsorted_labels->len);
-
-  g_array_free(merged_unsorted_labels, TRUE);
+  g_array_sort(merged_labels, (GCompareFunc) _labels_sort);
   return merged_labels;
 }
 

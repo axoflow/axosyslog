@@ -90,59 +90,50 @@ _connections_count_dec(AFSocketSourceDriver *self)
   atomic_gssize_dec(&self->num_connections);
 }
 
-static gchar *
-_format_sc_name(AFSocketSourceConnection *self, gint format_type)
-{
-  static gchar buf[256];
-  gchar peer_addr[MAX_SOCKADDR_STRING];
-
-  if (!self->peer_addr)
-    {
-      /* dgram connection, which means we have no peer, use the bind address */
-      if (self->owner->bind_addr)
-        {
-          g_sockaddr_format(self->owner->bind_addr, buf, sizeof(buf), format_type);
-          return buf;
-        }
-      else
-        return NULL;
-    }
-
-  g_sockaddr_format(self->peer_addr, peer_addr, sizeof(peer_addr), format_type);
-  g_snprintf(buf, sizeof(buf), "%s,%s", self->owner->transport_mapper->transport, peer_addr);
-  return buf;
-}
-
 static void
 afsocket_sc_format_stats_key(AFSocketSourceConnection *self, StatsClusterKeyBuilder *kb)
 {
   gchar addr[256];
 
-  stats_cluster_key_builder_add_label(kb, stats_cluster_label("driver", "afsocket"));
+  stats_cluster_key_builder_add_label(kb, stats_cluster_label("driver", self->owner->driver_name));
 
   if (!self->peer_addr)
     {
-      /* dgram connection, which means we have no peer, use the bind address */
-      if (self->owner->bind_addr)
-        {
-          g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
-          stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("address", addr));
-          return;
-        }
-      else
-        return;
-    }
+      /* dgram connection: we have no peer, we use the bind address */
 
-  g_sockaddr_format(self->peer_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
-  stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("transport",
-                                             self->owner->transport_mapper->transport));
-  stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("address", addr));
+      stats_cluster_key_builder_add_label(kb, stats_cluster_label("transport", self->owner->transport_mapper->transport));
+
+      /* legacy stats instance only includes the receiver IP adddress */
+      g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
+      stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label(".compat-address", addr));
+    }
+  else
+    {
+      /* stream connection, we have both receiver and peer address */
+
+      /* legacy stats include "transport" and the peer's IP adddress in stats-instance */
+      stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("transport",
+                                                 self->owner->transport_mapper->transport));
+
+      g_sockaddr_format(self->peer_addr, addr, sizeof(addr), GSA_ADDRESS_ONLY);
+      stats_cluster_key_builder_add_legacy_label(kb, stats_cluster_label("peer_address", addr));
+
+    }
+  /* prometheus style stats have an address label that contais the receiver ip:port, regardless of transport */
+  g_sockaddr_format(self->owner->bind_addr, addr, sizeof(addr), GSA_ADDRESS_PORT);
+  stats_cluster_key_builder_add_label(kb, stats_cluster_label("address", addr));
 }
 
 static gchar *
 afsocket_sc_format_name(AFSocketSourceConnection *self)
 {
-  return _format_sc_name(self, GSA_FULL);
+  static gchar buf[256];
+
+  if (!self->peer_addr)
+    return NULL;
+
+  g_sockaddr_format(self->peer_addr, buf, sizeof(buf), GSA_ADDRESS_PORT);
+  return buf;
 }
 
 static gboolean
@@ -1249,15 +1240,15 @@ static void
 afsocket_sd_register_stats(AFSocketSourceDriver *self)
 {
   gchar addr[256];
-  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_FULL);
+  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_ADDRESS_PORT);
 
   StatsClusterLabel labels[] =
   {
-    stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", "afsocket"),
-    stats_cluster_label("transport", (self->transport_mapper->sock_type == SOCK_STREAM) ? "stream" : "dgram"),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
+    stats_cluster_label("driver", self->driver_name),
+    stats_cluster_label("id", self->super.super.id),
+    stats_cluster_label("transport", self->transport_mapper->transport),
   };
   stats_lock();
   if (self->transport_mapper->sock_type == SOCK_STREAM)
@@ -1271,15 +1262,15 @@ static void
 afsocket_sd_unregister_stats(AFSocketSourceDriver *self)
 {
   gchar addr[256];
-  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_FULL);
+  g_sockaddr_format(self->bind_addr, addr, sizeof(addr), GSA_ADDRESS_PORT);
 
   StatsClusterLabel labels[] =
   {
-    stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", "afsocket"),
-    stats_cluster_label("transport", (self->transport_mapper->sock_type == SOCK_STREAM) ? "stream" : "dgram"),
     stats_cluster_label("address", addr),
     stats_cluster_label("direction", "input"),
+    stats_cluster_label("driver", self->driver_name),
+    stats_cluster_label("id", self->super.super.id),
+    stats_cluster_label("transport", self->transport_mapper->transport),
   };
   stats_lock();
   if (self->transport_mapper->sock_type == SOCK_STREAM)
@@ -1364,6 +1355,7 @@ afsocket_sd_free_method(LogPipe *s)
 {
   AFSocketSourceDriver *self = (AFSocketSourceDriver *) s;
 
+  g_free(self->driver_name);
   log_reader_options_destroy(&self->reader_options);
   transport_mapper_free(self->transport_mapper);
   socket_options_free(self->socket_options);
@@ -1376,6 +1368,7 @@ void
 afsocket_sd_init_instance(AFSocketSourceDriver *self,
                           SocketOptions *socket_options,
                           TransportMapper *transport_mapper,
+                          const gchar *driver_name,
                           GlobalConfig *cfg)
 {
   log_src_driver_init_instance(&self->super, cfg);
@@ -1398,6 +1391,7 @@ afsocket_sd_init_instance(AFSocketSourceDriver *self,
   self->reader_options.super.stats_level = STATS_LEVEL1;
   self->reader_options.super.stats_source = transport_mapper->stats_source;
   self->activate_listener = TRUE;
+  self->driver_name = g_strdup(driver_name);
 
   afsocket_sd_init_watches(self);
 }
