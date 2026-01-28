@@ -152,52 +152,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
-
-  self->object = filterx_expr_optimize(self->object);
-  self->new_value = filterx_expr_optimize(self->new_value);
-  self->key = filterx_expr_optimize(self->key);
-  return NULL;
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
-
-  if (!filterx_expr_init(self->object, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->new_value, cfg))
-    {
-      filterx_expr_deinit(self->object, cfg);
-      return FALSE;
-    }
-
-  if (!filterx_expr_init(self->key, cfg))
-    {
-      filterx_expr_deinit(self->object, cfg);
-      filterx_expr_deinit(self->new_value, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
-
-  filterx_expr_deinit(self->object, cfg);
-  filterx_expr_deinit(self->new_value, cfg);
-  filterx_expr_deinit(self->key, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -209,6 +163,22 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+
+  FilterXExpr **exprs[] = { &self->object, &self->key, &self->new_value };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *new_value)
 {
@@ -216,9 +186,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
 
   filterx_expr_init_instance(&self->super, "set_subscript");
   self->super.eval = _set_subscript_eval;
-  self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
+  self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
   self->object = object;
   self->key = key;

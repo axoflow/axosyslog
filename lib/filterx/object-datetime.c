@@ -294,35 +294,6 @@ typedef struct FilterXFunctionStrptime_
   GPtrArray *formats;
 } FilterXFunctionStrptime;
 
-static FilterXExpr *
-_strptime_optimize(FilterXExpr *s)
-{
-  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
-
-  self->time_str_expr = filterx_expr_optimize(self->time_str_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_strptime_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
-
-  if (!filterx_expr_init(self->time_str_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_strptime_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
-
-  filterx_expr_deinit(self->time_str_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static FilterXObject *
 _strptime_eval(FilterXExpr *s)
 {
@@ -454,16 +425,30 @@ _extract_strptime_args(FilterXFunctionStrptime *self, FilterXFunctionArgs *args,
   return TRUE;
 }
 
+static gboolean
+_strptime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionStrptime *self = (FilterXFunctionStrptime *) s;
+
+  FilterXExpr **exprs[] = { &self->time_str_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of args */
 FilterXExpr *
 filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrptime *self = g_new0(FilterXFunctionStrptime, 1);
   filterx_function_init_instance(&self->super, "strptime");
-  self->super.super.init = _strptime_init;
-  self->super.super.deinit = _strptime_deinit;
-  self->super.super.optimize = _strptime_optimize;
   self->super.super.eval = _strptime_eval;
+  self->super.super.walk_children = _strptime_walk;
   self->super.super.free_fn = _strptime_free;
 
   if (!_extract_strptime_args(self, args, error) ||
@@ -521,35 +506,6 @@ _strftime_eval(FilterXExpr *s)
     return filterx_null_new();
 
   return filterx_string_new(result_str, date_size);
-}
-
-static FilterXExpr *
-_strftime_optimize(FilterXExpr *s)
-{
-  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
-
-  self->datetime_expr = filterx_expr_optimize(self->datetime_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_strftime_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
-
-  if (!filterx_expr_init(self->datetime_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_strftime_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
-
-  filterx_expr_deinit(self->datetime_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
 }
 
 static void
@@ -617,6 +573,22 @@ _extract_strftime_args(FilterXFunctionStrftime *self, FilterXFunctionArgs *args,
   return TRUE;
 }
 
+static gboolean
+_strftime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionStrftime *self = (FilterXFunctionStrftime *) s;
+
+  FilterXExpr **exprs[] = { &self->datetime_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of args */
 FilterXExpr *
 filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
@@ -625,9 +597,7 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "strftime");
 
   self->super.super.eval = _strftime_eval;
-  self->super.super.optimize = _strftime_optimize;
-  self->super.super.init = _strftime_init;
-  self->super.super.deinit = _strftime_deinit;
+  self->super.super.walk_children = _strftime_walk;
   self->super.super.free_fn = _strftime_free;
 
   if (!_extract_strftime_args(self, args, error) ||

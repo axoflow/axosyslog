@@ -311,34 +311,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
-
-  self->msg = filterx_expr_optimize(self->msg);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
-
-  if (!filterx_expr_init(self->msg, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
-
-  filterx_expr_deinit(self->msg, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
 
 static void
 _free(FilterXExpr *s)
@@ -366,6 +338,22 @@ _extract_arguments(FilterXFunctionEventFormatFormatter *self, FilterXFunctionArg
   return TRUE;
 }
 
+static gboolean
+_event_format_formatter_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionEventFormatFormatter *self = (FilterXFunctionEventFormatFormatter *) s;
+
+  FilterXExpr **exprs[] = { &self->msg };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormatFormatter *self,
                                                       const gchar *fn_name, FilterXFunctionArgs *args,
@@ -374,9 +362,7 @@ filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormat
   filterx_function_init_instance(&self->super, fn_name);
 
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _event_format_formatter_walk;
   self->super.super.free_fn = _free;
 
   g_assert(config->header.num_fields >= 2);

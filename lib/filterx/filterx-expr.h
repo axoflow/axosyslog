@@ -28,6 +28,15 @@
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
+typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr **expr, gpointer user_data);
+
+typedef enum _FilterXExprWalkOrder
+{
+  FILTERX_EXPR_WALK_PRE_ORDER,
+  FILTERX_EXPR_WALK_POST_ORDER,
+  FILTERX_EXPR_WALK_CHILDREN,
+} FilterXExprWalkOrder;
+
 struct _FilterXExpr
 {
   StatsCounterItem *eval_count;
@@ -54,6 +63,8 @@ struct _FilterXExpr
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   FilterXExpr *(*optimize)(FilterXExpr *self);
   void (*free_fn)(FilterXExpr *self);
+
+  gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
 
   /* type of the expr, is not freed, assumed to be managed by something else
    * */
@@ -175,35 +186,27 @@ void filterx_expr_init_instance(FilterXExpr *self, const gchar *type);
 FilterXExpr *filterx_expr_new(void);
 FilterXExpr *filterx_expr_ref(FilterXExpr *self);
 void filterx_expr_unref(FilterXExpr *self);
-gboolean filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg);
-void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_free_method(FilterXExpr *self);
 
+gboolean filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg);
+void filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg);
+
+gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
+void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
+
 static inline gboolean
-filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg)
+filterx_expr_visit(FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
-  if (!self || self->inited)
-    return TRUE;
-
-  if (!self->init || self->init(self, cfg))
-    {
-      self->inited = TRUE;
-      return TRUE;
-    }
-
-  return FALSE;
+  return f(expr, user_data);
 }
 
-static inline void
-filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
+static inline gboolean
+filterx_expr_walk_children(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data)
 {
-  if (!self || !self->inited)
-    return;
+  if (!self || !self->walk_children)
+    return TRUE;
 
-  if (self->deinit)
-    self->deinit(self, cfg);
-
-  self->inited = FALSE;
+  return self->walk_children(self, f, user_data);
 }
 
 typedef struct _FilterXUnaryOp

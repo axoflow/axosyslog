@@ -334,34 +334,6 @@ exit:
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
-
-  self->msg = filterx_expr_optimize(self->msg);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
-
-  if (!filterx_expr_init(self->msg, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
-  filterx_expr_deinit(self->msg, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -474,15 +446,29 @@ _set_config(FilterXFunctionEventFormatParser *self, Config *cfg)
   csv_scanner_options_set_flags(&self->csv_opts, CSV_SCANNER_GREEDY);
 }
 
+static gboolean
+_event_format_parser_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionEventFormatParser *self = (FilterXFunctionEventFormatParser *) s;
+
+  FilterXExpr **exprs[] = { &self->msg };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, const gchar *fn_name,
                                       FilterXFunctionArgs *args, Config *cfg, GError **error)
 {
   filterx_function_init_instance(&self->super, fn_name);
   self->super.super.eval = _eval;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _event_format_parser_walk;
   self->super.super.free_fn = _free;
 
   _set_config(self, cfg);

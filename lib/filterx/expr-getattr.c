@@ -101,35 +101,6 @@ _isset(FilterXExpr *s)
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXGetAttr *self = (FilterXGetAttr *) s;
-
-  self->operand = filterx_expr_optimize(self->operand);
-  return NULL;
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXGetAttr *self = (FilterXGetAttr *) s;
-
-  if (!filterx_expr_init(self->operand, cfg))
-    return FALSE;
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXGetAttr *self = (FilterXGetAttr *) s;
-
-  filterx_expr_deinit(self->operand, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -137,6 +108,22 @@ _free(FilterXExpr *s)
   filterx_object_unref(self->attr);
   filterx_expr_unref(self->operand);
   filterx_expr_free_method(s);
+}
+
+static gboolean
+_getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  FilterXExpr **exprs[] = { &self->operand };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 /* NOTE: takes the object reference */
@@ -149,9 +136,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.eval = _eval_getattr;
   self->super.unset = _unset;
   self->super.is_set = _isset;
-  self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
+  self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
   self->operand = operand;
 

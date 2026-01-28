@@ -123,43 +123,6 @@ _setattr_eval(FilterXExpr *s)
   return result;
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXSetAttr *self = (FilterXSetAttr *) s;
-
-  self->object = filterx_expr_optimize(self->object);
-  self->new_value = filterx_expr_optimize(self->new_value);
-  return NULL;
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetAttr *self = (FilterXSetAttr *) s;
-
-  if (!filterx_expr_init(self->object, cfg))
-    return FALSE;
-
-  if (!filterx_expr_init(self->new_value, cfg))
-    {
-      filterx_expr_deinit(self->object, cfg);
-      return FALSE;
-    }
-
-  return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSetAttr *self = (FilterXSetAttr *) s;
-
-  filterx_expr_deinit(self->object, cfg);
-  filterx_expr_deinit(self->new_value, cfg);
-  filterx_expr_deinit_method(s, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -171,6 +134,22 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  FilterXExpr **exprs[] = { &self->object, &self->new_value };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 /* Takes reference of object and new_value */
 FilterXExpr *
 filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *new_value)
@@ -179,9 +158,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
 
   filterx_expr_init_instance(&self->super, "setattr");
   self->super.eval = _setattr_eval;
-  self->super.optimize = _optimize;
-  self->super.init = _init;
-  self->super.deinit = _deinit;
+  self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
   self->object = object;
 

@@ -157,50 +157,12 @@ filterx_compound_expr_eval_ext(FilterXExpr *s, gsize start_index)
 }
 
 static gboolean
-_optimize_expr(FilterXExpr **pexpr, gpointer user_data)
-{
-  *pexpr = filterx_expr_optimize(*pexpr);
-  return TRUE;
-}
-
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-
-  filterx_expr_list_foreach_ref(&self->exprs, _optimize_expr, NULL);
-  return NULL;
-}
-
-static gboolean
-_invoke_deinit(FilterXExpr *expr, gpointer cfg)
-{
-  filterx_expr_deinit(expr, (GlobalConfig *) cfg);
-  return TRUE;
-}
-
-static gboolean
 _init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
   filterx_expr_list_seal(&self->exprs);
-
-  if (!filterx_expr_list_foreach(&self->exprs, (FilterXExprListForeachFunc) filterx_expr_init, cfg))
-    {
-      filterx_expr_list_foreach(&self->exprs, _invoke_deinit, cfg);
-      return FALSE;
-    }
   return filterx_expr_init_method(s, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
-
-  filterx_expr_list_foreach(&self->exprs, _invoke_deinit, cfg);
-  filterx_expr_deinit_method(s, cfg);
 }
 
 static void
@@ -240,6 +202,25 @@ filterx_compound_expr_add_list_ref(FilterXExpr *s, GList *expr_list)
   g_list_free(expr_list);
 }
 
+static gboolean
+_expr_walk_cb(FilterXExpr **value, gpointer user_data)
+{
+  gpointer *args = user_data;
+  FilterXExprWalkFunc f = args[0];
+  gpointer udata = args[1];
+
+  return filterx_expr_visit(value, *f, udata);
+}
+
+gboolean
+_compound_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+
+  gpointer args[] =  { f, user_data };
+  return filterx_expr_list_foreach_ref(&self->exprs, _expr_walk_cb, args);
+}
+
 FilterXExpr *
 filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
@@ -247,9 +228,8 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 
   filterx_expr_init_instance(&self->super, "compound");
   self->super.eval = _eval_compound;
-  self->super.optimize = _optimize;
   self->super.init = _init;
-  self->super.deinit = _deinit;
+  self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
   self->return_value_of_last_expr = return_value_of_last_expr;
   filterx_expr_list_init(&self->exprs);

@@ -47,106 +47,6 @@ typedef struct Field_
 } Field;
 
 static void
-_field_optimize(Field *self)
-{
-  if (self->overrides)
-    {
-      for (guint i = 0; i < self->overrides->len; i++)
-        {
-          FilterXExpr *override = g_ptr_array_index(self->overrides, i);
-          g_ptr_array_index(self->overrides, i) = filterx_expr_optimize(override);
-        }
-    }
-
-  if (self->defaults)
-    {
-      for (guint i = 0; i < self->defaults->len; i++)
-        {
-          FilterXExpr *def = g_ptr_array_index(self->defaults, i);
-          g_ptr_array_index(self->defaults, i) = filterx_expr_optimize(def);
-        }
-    }
-  if (self->replacements)
-    {
-      for (guint i = 0; i < self->replacements->len; i++)
-        {
-          FilterXExpr *def = g_ptr_array_index(self->replacements, i);
-          g_ptr_array_index(self->replacements, i) = filterx_expr_optimize(def);
-        }
-    }
-}
-
-static void
-_field_deinit(Field *self, GlobalConfig *cfg)
-{
-  if (self->overrides)
-    {
-      for (guint i = 0; i < self->overrides->len; i++)
-        {
-          FilterXExpr *override = g_ptr_array_index(self->overrides, i);
-          filterx_expr_deinit(override, cfg);
-        }
-    }
-
-  if (self->defaults)
-    {
-      for (guint i = 0; i < self->defaults->len; i++)
-        {
-          FilterXExpr *def = g_ptr_array_index(self->defaults, i);
-          filterx_expr_deinit(def, cfg);
-        }
-    }
-  if (self->replacements)
-    {
-      for (guint i = 0; i < self->replacements->len; i++)
-        {
-          FilterXExpr *replacement = g_ptr_array_index(self->replacements, i);
-          filterx_expr_deinit(replacement, cfg);
-        }
-    }
-}
-
-static gboolean
-_field_init(Field *self, GlobalConfig *cfg)
-{
-  if (self->overrides)
-    {
-      for (guint i = 0; i < self->overrides->len; i++)
-        {
-          FilterXExpr *override = g_ptr_array_index(self->overrides, i);
-          if (!filterx_expr_init(override, cfg))
-            goto error;
-        }
-    }
-
-  if (self->defaults)
-    {
-      for (guint i = 0; i < self->defaults->len; i++)
-        {
-          FilterXExpr *def = g_ptr_array_index(self->defaults, i);
-          if (!filterx_expr_init(def, cfg))
-            goto error;
-        }
-    }
-
-  if (self->replacements)
-    {
-      for (guint i = 0; i < self->replacements->len; i++)
-        {
-          FilterXExpr *replacement = g_ptr_array_index(self->replacements, i);
-          if (!filterx_expr_init(replacement, cfg))
-            goto error;
-        }
-    }
-
-  return TRUE;
-
-error:
-  _field_deinit(self, cfg);
-  return FALSE;
-}
-
-static void
 _field_destroy(Field *self)
 {
   filterx_object_unref(self->key);
@@ -289,64 +189,6 @@ _eval_fx_set_fields(FilterXExpr *s)
 error:
   filterx_object_unref(dict);
   return NULL;
-}
-
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
-
-  self->dict = filterx_expr_optimize(self->dict);
-
-  for (guint i = 0; i < self->fields->len; i++)
-    {
-      Field *field = &g_array_index(self->fields, Field, i);
-      _field_optimize(field);
-    }
-
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
-
-  if (!filterx_expr_init(self->dict, cfg))
-    return FALSE;
-
-  for (guint i = 0; i < self->fields->len; i++)
-    {
-      Field *field = &g_array_index(self->fields, Field, i);
-      if (!_field_init(field, cfg))
-        {
-          for (guint j = 0; j < i; j++)
-            {
-              field = &g_array_index(self->fields, Field, j);
-              _field_deinit(field, cfg);
-            }
-          filterx_expr_deinit(self->dict, cfg);
-          return FALSE;
-        }
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
-
-  filterx_expr_deinit(self->dict, cfg);
-
-  for (guint i = 0; i < self->fields->len; i++)
-    {
-      Field *field = &g_array_index(self->fields, Field, i);
-      _field_deinit(field, cfg);
-    }
-
-  filterx_function_deinit_method(&self->super, cfg);
 }
 
 static void
@@ -618,6 +460,52 @@ _extract_args(FilterXFunctionSetFields *self, FilterXFunctionArgs *args, GError 
   return TRUE;
 }
 
+static gboolean
+_set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
+
+  if (!filterx_expr_visit(&self->dict, f, user_data))
+    return FALSE;
+
+  for (guint i = 0; i < self->fields->len; i++)
+    {
+      Field *field = &g_array_index(self->fields, Field, i);
+
+      if (field->overrides)
+        {
+          for (guint j = 0; j < field->overrides->len; j++)
+            {
+              FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->overrides, j);
+              if (!filterx_expr_visit(expr, f, user_data))
+                return FALSE;
+            }
+        }
+
+      if (field->defaults)
+        {
+          for (guint j = 0; j < field->defaults->len; j++)
+            {
+              FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->defaults, j);
+              if (!filterx_expr_visit(expr, f, user_data))
+                return FALSE;
+            }
+        }
+
+      if (field->replacements)
+        {
+          for (guint j = 0; j < field->replacements->len; j++)
+            {
+              FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->replacements, j);
+              if (!filterx_expr_visit(expr, f, user_data))
+                return FALSE;
+            }
+        }
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -625,9 +513,7 @@ filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "set_fields");
 
   self->super.super.eval = _eval_fx_set_fields;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _set_fields_walk;
   self->super.super.free_fn = _free;
   self->super.super.ignore_falsy_result = TRUE;
 

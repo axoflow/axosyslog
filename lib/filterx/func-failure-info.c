@@ -133,35 +133,6 @@ _failure_info_clear_eval(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
-static gboolean
-_failure_info_meta_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
-
-  if (!filterx_expr_init(self->metadata_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_failure_info_meta_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
-
-  filterx_expr_deinit(self->metadata_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
-static FilterXExpr *
-_failure_info_meta_optimize(FilterXExpr *s)
-{
-  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
-
-  self->metadata_expr = filterx_expr_optimize(self->metadata_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
 static FilterXObject *
 _failure_info_meta_eval(FilterXExpr *s)
 {
@@ -243,12 +214,36 @@ _check_zero_args(FilterXFunctionArgs *args, GError **error)
   return TRUE;
 }
 
+gboolean
+_failure_info_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  /* no child expressions */
+  return TRUE;
+}
+
+gboolean
+_failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
+
+  FilterXExpr **exprs[] = { &self->metadata_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_fn_failure_info_enable_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoEnable *self = g_new0(FilterXFunctionFailureInfoEnable, 1);
   filterx_function_init_instance(&self->super, "failure_info_enable");
   self->super.super.eval = _failure_info_enable_eval;
+  self->super.super.walk_children = _failure_info_walk;
 
   if (!_extract_failure_info_enable_args(self, args, error) || !filterx_function_args_check(args, error))
     goto error;
@@ -268,6 +263,7 @@ filterx_fn_failure_info_clear_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunction *self = g_new0(FilterXFunction, 1);
   filterx_function_init_instance(self, "failure_info_clear");
   self->super.eval = _failure_info_clear_eval;
+  self->super.walk_children = _failure_info_walk;
 
   if (!_check_zero_args(args, error) || !filterx_function_args_check(args, error))
     {
@@ -286,6 +282,7 @@ filterx_fn_failure_info_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunction *self = g_new0(FilterXFunction, 1);
   filterx_function_init_instance(self, "failure_info");
   self->super.eval = _failure_info_eval;
+  self->super.walk_children = _failure_info_walk;
 
   if (!_check_zero_args(args, error) || !filterx_function_args_check(args, error))
     {
@@ -312,10 +309,8 @@ filterx_fn_failure_info_meta_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoMeta *self = g_new0(FilterXFunctionFailureInfoMeta, 1);
   filterx_function_init_instance(&self->super, "failure_info_meta");
-  self->super.super.init = _failure_info_meta_init;
-  self->super.super.deinit = _failure_info_meta_deinit;
-  self->super.super.optimize = _failure_info_meta_optimize;
   self->super.super.eval = _failure_info_meta_eval;
+  self->super.super.walk_children = _failure_info_meta_walk;
   self->super.super.free_fn = _failure_info_meta_free;
 
   if (!_extract_failure_info_meta_args(self, args, error) || !filterx_function_args_check(args, error))

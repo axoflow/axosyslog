@@ -243,45 +243,7 @@ _init(FilterXExpr *s, GlobalConfig *cfg)
       return FALSE;
     }
 
-  if (!filterx_expr_init(self->selector, cfg))
-    goto error;
-
-  if (!filterx_expr_init(self->body, cfg))
-    goto error;
-
-  for (gsize i = 0; i < self->cases->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      if (!filterx_expr_init(expr, cfg))
-        goto error;
-    }
-
   return filterx_expr_init_method(s, cfg);
-
-error:
-  for (gsize i = 0; i < self->cases->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      filterx_expr_deinit(expr, cfg);
-    }
-  filterx_expr_deinit(self->body, cfg);
-  filterx_expr_deinit(self->selector, cfg);
-  return FALSE;
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXSwitch *self = (FilterXSwitch *) s;
-
-  for (gsize i = 0; i < self->cases->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      filterx_expr_deinit(expr, cfg);
-    }
-  filterx_expr_deinit(self->body, cfg);
-  filterx_expr_deinit(self->selector, cfg);
-  filterx_expr_deinit_method(s, cfg);
 }
 
 static FilterXExpr *
@@ -289,16 +251,11 @@ _optimize(FilterXExpr *s)
 {
   FilterXSwitch *self = (FilterXSwitch *) s;
 
-  self->body = filterx_expr_optimize(self->body);
-  self->selector = filterx_expr_optimize(self->selector);
-
   for (gssize i = (gssize)(self->cases->len) - 1; i >= 0; i--)
     {
       FilterXExpr *switch_case = (FilterXExpr *) g_ptr_array_index(self->cases, i);
-      FilterXExpr *optimized_switch_case = filterx_expr_optimize(switch_case);
-      g_ptr_array_index(self->cases, i) = optimized_switch_case;
 
-      if (_try_to_cache_literal_switch_case(self, optimized_switch_case))
+      if (_try_to_cache_literal_switch_case(self, switch_case))
         g_ptr_array_remove_index(self->cases, i);
     }
 
@@ -319,6 +276,33 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static gboolean
+_switch_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSwitch *self = (FilterXSwitch *) s;
+
+  if (self->selector)
+    {
+      if (!filterx_expr_visit(&self->selector, f, user_data))
+        return FALSE;
+    }
+
+  if (self->body)
+    {
+      if (!filterx_expr_visit(&self->body, f, user_data))
+        return FALSE;
+    }
+
+  for (gsize i = 0; i < self->cases->len; i++)
+    {
+      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->cases, i);
+      if (!filterx_expr_visit(expr, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_switch_new(FilterXExpr *selector, GList *body)
 {
@@ -326,9 +310,9 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
 
   filterx_expr_init_instance(&self->super, "switch");
   self->super.init = _init;
-  self->super.deinit = _deinit;
   self->super.optimize = _optimize;
   self->super.eval = _eval_switch;
+  self->super.walk_children = _switch_walk;
   self->super.free_fn = _free;
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->literal_cache = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_expr_unref);

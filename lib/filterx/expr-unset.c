@@ -45,55 +45,6 @@ _eval_unset(FilterXExpr *s)
   return filterx_boolean_new(TRUE);
 }
 
-static FilterXExpr *
-_optimize(FilterXExpr *s)
-{
-  FilterXExprUnset *self = (FilterXExprUnset *) s;
-
-  for (guint i = 0; i < self->exprs->len; i++)
-    {
-      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
-      *expr = filterx_expr_optimize(*expr);
-    }
-  return NULL;
-}
-
-static gboolean
-_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprUnset *self = (FilterXExprUnset *) s;
-
-  for (guint i = 0; i < self->exprs->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
-      if (!filterx_expr_init(expr, cfg))
-        {
-          for (guint j = 0; j < i; j++)
-            {
-              expr = g_ptr_array_index(self->exprs, i);
-              filterx_expr_deinit(expr, cfg);
-            }
-          return FALSE;
-        }
-    }
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXExprUnset *self = (FilterXExprUnset *) s;
-
-  for (guint i = 0; i < self->exprs->len; i++)
-    {
-      FilterXExpr *expr = (FilterXExpr *) g_ptr_array_index(self->exprs, i);
-      filterx_expr_deinit(expr, cfg);
-    }
-
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _free(FilterXExpr *s)
 {
@@ -103,6 +54,21 @@ _free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+gboolean
+_unset_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXExprUnset *self = (FilterXExprUnset *) s;
+
+  for (guint i = 0; i < self->exprs->len; i++)
+    {
+      FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
+      if (!filterx_expr_visit(expr, f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
 FilterXExpr *
 filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -110,9 +76,7 @@ filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "unset");
 
   self->super.super.eval = _eval_unset;
-  self->super.super.optimize = _optimize;
-  self->super.super.init = _init;
-  self->super.super.deinit = _deinit;
+  self->super.super.walk_children = _unset_walk;
   self->super.super.free_fn = _free;
 
   self->exprs = g_ptr_array_new_full(filterx_function_args_len(args), (GDestroyNotify) filterx_expr_unref);
