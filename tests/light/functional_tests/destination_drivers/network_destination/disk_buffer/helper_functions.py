@@ -158,7 +158,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             "syslogng_disk_queue_disk_allocated_bytes",
             "syslogng_disk_queue_disk_usage_bytes",
             "syslogng_disk_queue_events",
-            # "syslogng_disk_queue_memory_usage_bytes",
+            "syslogng_disk_queue_memory_usage_bytes",
             "messages_in_disk_buffer",
         ],
     )
@@ -177,7 +177,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=1044480,
             syslogng_disk_queue_events=frontCache_size + qdisk_size,
-            # syslogng_disk_queue_memory_usage_bytes=764000,
+            syslogng_disk_queue_memory_usage_bytes=764000,
             messages_in_disk_buffer=qdisk_size,
         ),
         after=BufferState(
@@ -188,7 +188,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=0,
             syslogng_disk_queue_events=0,
-            # syslogng_disk_queue_memory_usage_bytes=0,
+            syslogng_disk_queue_memory_usage_bytes=0,
             messages_in_disk_buffer=0,
         ),
     )
@@ -204,7 +204,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             "syslogng_disk_queue_disk_allocated_bytes",
             "syslogng_disk_queue_disk_usage_bytes",
             "syslogng_disk_queue_events",
-            # "syslogng_disk_queue_memory_usage_bytes",
+            "syslogng_disk_queue_memory_usage_bytes",
             "messages_in_disk_buffer",
         ],
     )
@@ -224,7 +224,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=1044480,
             syslogng_disk_queue_events=1324,
-            # syslogng_disk_queue_memory_usage_bytes=916800,
+            syslogng_disk_queue_memory_usage_bytes=916800,
             messages_in_disk_buffer=724,
         ),
         after_reload=BufferState(
@@ -235,7 +235,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=1044480,
             syslogng_disk_queue_events=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
-            # syslogng_disk_queue_memory_usage_bytes=916800,
+            syslogng_disk_queue_memory_usage_bytes=916800,
             messages_in_disk_buffer=724,
         ),
         after_dst_alive=BufferState(
@@ -246,7 +246,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_allocated_bytes=1048576,
             syslogng_disk_queue_disk_usage_bytes=0,
             syslogng_disk_queue_events=0,
-            # syslogng_disk_queue_memory_usage_bytes=0,
+            syslogng_disk_queue_memory_usage_bytes=0,
             messages_in_disk_buffer=0,
         ),
     )
