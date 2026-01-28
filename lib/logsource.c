@@ -259,6 +259,8 @@ _release_dynamic_window(LogSource *self)
 {
   g_assert(self->ack_tracker == NULL);
 
+  _process_reclaimed_window(self);
+
   gsize dynamic_part = self->full_window_size - self->initial_window_size;
   msg_trace("Releasing dynamic part of the window", evt_tag_int("dynamic_window_to_be_released", dynamic_part),
             log_pipe_location_tag(&self->super));
