@@ -319,12 +319,14 @@ Test(logmsg_serialize, existing_and_given_ts_processed)
 #include "messages/syslog-ng-3.28.1-msg.h"
 #include "messages/syslog-ng-3.29.1-msg.h"
 #include "messages/syslog-ng-3.30.1-msg.h"
+#include "messages/axosyslog-4.23.0-msg.h"
 
 
 ParameterizedTestParameters(logmsg_serialize, test_deserialization_of_legacy_messages)
 {
   static struct iovec messages[] =
   {
+    { serialized_message_axosyslog_4_23_0, sizeof(serialized_message_axosyslog_4_23_0) },
     { serialized_message_3_17_1, sizeof(serialized_message_3_17_1) },
     { serialized_message_3_18_1, sizeof(serialized_message_3_18_1) },
     { serialized_message_3_21_1, sizeof(serialized_message_3_21_1) },
