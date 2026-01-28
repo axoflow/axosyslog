@@ -69,6 +69,8 @@ _serialize_message(LogMessageSerializationState *state)
   serialize_write_uint32(sa, msg->flags & ~LF_STATE_MASK);
   serialize_write_uint16(sa, msg->pri);
   g_sockaddr_serialize(sa, msg->saddr);
+  if (state->version >= LGM_V27)
+    g_sockaddr_serialize(sa, msg->daddr);
   timestamp_serialize(sa, timestamps);
   serialize_write_uint32(sa, msg->host_id);
   tags_serialize(msg, sa);
@@ -125,7 +127,7 @@ _deserialize_sdata(LogMessageSerializationState *state)
   if ((state->version < LGM_V26) && !serialize_read_uint16_array(sa, (guint32 *) self->sdata, self->num_sdata))
     return FALSE;
 
-  if ((state->version == LGM_V26) && !serialize_read_uint32_array(sa, (guint32 *) self->sdata, self->num_sdata))
+  if ((state->version >= LGM_V26) && !serialize_read_uint32_array(sa, (guint32 *) self->sdata, self->num_sdata))
     return FALSE;
 
   return TRUE;
@@ -146,7 +148,7 @@ _nv_table_deserialize_selector(LogMessageSerializationState *state)
 
       return state->nvtable;
     }
-  else if (state->version == LGM_V26)
+  else if (state->version >= LGM_V26)
     {
       return nv_table_deserialize(state);
     }
@@ -172,6 +174,11 @@ _deserialize_message_version_2x(LogMessageSerializationState *state)
     return FALSE;
   if (!g_sockaddr_deserialize(sa, &msg->saddr))
     return FALSE;
+  if (state->version >= LGM_V27)
+    {
+      if (!g_sockaddr_deserialize(sa, &msg->daddr))
+        return FALSE;
+    }
   if (state->version < LGM_V24)
     {
       if (!timestamp_deserialize_legacy(sa, msg->timestamps))
@@ -498,7 +505,7 @@ _check_msg_version(LogMessageSerializationState *state)
   if (!serialize_read_uint8(state->sa, &state->version))
     return FALSE;
 
-  if (state->version < LGM_V10 || state->version > LGM_V26)
+  if (state->version < LGM_V10 || state->version > LGM_V27)
     {
       msg_error("Error deserializing log message, unsupported version",
                 evt_tag_int("version", state->version));
