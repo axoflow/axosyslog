@@ -539,6 +539,7 @@ void log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle, NVH
                                           guint16 ofs, guint16 len, LogMessageValueType type);
 void log_msg_unset_value(LogMessage *self, NVHandle handle);
 void log_msg_unset_value_by_name(LogMessage *self, const gchar *name);
+void log_msg_shrink_payload(LogMessage *self);
 gboolean log_msg_values_foreach(const LogMessage *self, NVTableForeachFunc func, gpointer user_data);
 NVHandle log_msg_get_match_handle(gint index_);
 gint log_msg_get_match_index(NVHandle handle);
@@ -638,7 +639,11 @@ void log_msg_registry_foreach(GHFunc func, gpointer user_data);
 
 gint log_msg_lookup_time_stamp_name(const gchar *name);
 
-gssize log_msg_get_size(LogMessage *self);
+static inline gsize
+log_msg_get_size(LogMessage *self)
+{
+  return self->allocated_bytes;
+}
 
 #define evt_tag_msg_reference(msg)             \
     evt_tag_printf("msg", "%p", (msg)),        \
@@ -660,5 +665,7 @@ evt_tag_msg_value_name(const gchar *name, NVHandle value_handle)
 
   return evt_tag_str(name, value_name);
 }
+
+extern gint logmsg_queue_node_max;
 
 #endif
