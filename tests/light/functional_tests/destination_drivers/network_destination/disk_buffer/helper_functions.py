@@ -28,6 +28,10 @@ from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
+EXPECTED_SIZE_OF_MESSAGE_IN_DISKQ = 1452
+EXPECTED_SIZE_OF_MESSAGE_IN_MEMORY = 2528
+
+
 def set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator, flow_control=True):
     config.update_global_options(stats_level=2)
     network_source = config.create_network_source(ip="localhost", port=port_allocator())
