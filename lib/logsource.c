@@ -223,10 +223,43 @@ _reclaim_dynamic_window(LogSource *self, gsize window_size)
   atomic_gssize_set(&self->window_size_to_be_reclaimed, window_size);
 }
 
+static gboolean
+_process_reclaimed_window(LogSource *self)
+{
+  //check pending_reclaimed
+  gssize total_reclaim = atomic_gssize_set_and_get(&self->pending_reclaimed, 0);
+  gssize to_be_reclaimed = atomic_gssize_get(&self->window_size_to_be_reclaimed);
+  gboolean reclaim_in_progress = (to_be_reclaimed > 0);
+
+  if (total_reclaim > 0)
+    {
+      self->full_window_size -= total_reclaim;
+      stats_counter_sub(self->metrics.window_capacity, total_reclaim);
+      dynamic_window_release(&self->dynamic_window, total_reclaim);
+    }
+  else
+    {
+      //to avoid underflow, we need to set a value <= 0
+      if (to_be_reclaimed < 0) {
+        atomic_gssize_set(&self->window_size_to_be_reclaimed, 0);
+      }
+    }
+
+  msg_trace("Checking if reclaim is in progress...",
+            log_pipe_location_tag(&self->super),
+            evt_tag_printf("connection", "%p", self),
+            evt_tag_printf("in progress", "%s", reclaim_in_progress ? "yes" : "no"),
+            evt_tag_long("total_reclaim", total_reclaim));
+
+  return reclaim_in_progress;
+}
+
 static void
 _release_dynamic_window(LogSource *self)
 {
   g_assert(self->ack_tracker == NULL);
+
+  _process_reclaimed_window(self);
 
   gsize dynamic_part = self->full_window_size - self->initial_window_size;
   msg_trace("Releasing dynamic part of the window", evt_tag_int("dynamic_window_to_be_released", dynamic_part),
@@ -265,7 +298,6 @@ _inc_balanced(LogSource *self, gsize inc)
 static void
 _dec_balanced(LogSource *self, gsize dec)
 {
-  gsize new_full_window_size = self->full_window_size - dec;
 
   gsize empty_window = window_size_counter_get(&self->window_size, NULL);
   gsize remaining_sub = 0;
@@ -274,20 +306,17 @@ _dec_balanced(LogSource *self, gsize dec)
     {
       remaining_sub = dec - empty_window;
       if (empty_window == 0)
-        {
-          dec = 0;
-        }
+        dec = 0;
       else
-        {
-          dec = empty_window - 1;
-        }
+        dec = empty_window - 1;
 
-      new_full_window_size = self->full_window_size - dec;
       _reclaim_dynamic_window(self, remaining_sub);
     }
 
   window_size_counter_sub(&self->window_size, dec, NULL);
   stats_counter_sub(self->metrics.window_available, dec);
+
+  gsize new_full_window_size = self->full_window_size - dec;
 
   msg_trace("Balance::decrease",
             log_pipe_location_tag(&self->super),
@@ -299,36 +328,6 @@ _dec_balanced(LogSource *self, gsize dec)
   self->full_window_size = new_full_window_size;
   stats_counter_set(self->metrics.window_capacity, new_full_window_size);
   dynamic_window_release(&self->dynamic_window, dec);
-}
-
-static gboolean
-_reclaim_window_instead_of_rebalance(LogSource *self)
-{
-  //check pending_reclaimed
-  gssize total_reclaim = atomic_gssize_set_and_get(&self->pending_reclaimed, 0);
-  gssize to_be_reclaimed = atomic_gssize_get(&self->window_size_to_be_reclaimed);
-  gboolean reclaim_in_progress = (to_be_reclaimed > 0);
-
-  if (total_reclaim > 0)
-    {
-      self->full_window_size -= total_reclaim;
-      stats_counter_sub(self->metrics.window_capacity, total_reclaim);
-      dynamic_window_release(&self->dynamic_window, total_reclaim);
-    }
-  else
-    {
-      //to avoid underflow, we need to set a value <= 0
-      if (to_be_reclaimed < 0)
-        atomic_gssize_set(&self->window_size_to_be_reclaimed, 0);
-    }
-
-  msg_trace("Checking if reclaim is in progress...",
-            log_pipe_location_tag(&self->super),
-            evt_tag_printf("connection", "%p", self),
-            evt_tag_printf("in progress", "%s", reclaim_in_progress ? "yes" : "no"),
-            evt_tag_long("total_reclaim", total_reclaim));
-
-  return reclaim_in_progress;
 }
 
 static void
@@ -359,7 +358,7 @@ log_source_dynamic_window_realloc(LogSource *self)
   /* it is safe to assume that the window size is not decremented while this function runs,
    * only incrementation is possible by destination threads */
 
-  if (!_reclaim_window_instead_of_rebalance(self))
+  if (!_process_reclaimed_window(self))
     _dynamic_window_rebalance(self);
 
   dynamic_window_stat_reset(&self->dynamic_window.stat);
