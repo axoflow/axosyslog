@@ -35,8 +35,8 @@ RUN apk add --update-cache \
       alpine-sdk \
       sudo \
       git \
-      # Rust is needed on armv7 for https://cryptography.io/en/46.0.4/installation/#rust
-      rust \
+      # Rust + openssl-dev is needed on armv7 for https://cryptography.io/en/46.0.4/installation/#rust
+      rust cargo openssl-dev \
     && apk upgrade -a \
     && adduser -D builder \
     && addgroup builder abuild \
