@@ -425,7 +425,7 @@ _create_ack_tracker_if_not_exists(LogSource *self)
 static void
 _register_window_stats(LogSource *self)
 {
-  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : self->options->stats_level;
+  gint level = STATS_LEVEL4;
 
   stats_lock();
   stats_register_counter(level, self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE,
@@ -538,20 +538,15 @@ _allocate_counter_keys(LogSource *self)
 
   stats_cluster_key_builder_push(kb);
   {
+    if (self->name)
+      stats_cluster_key_builder_add_label(kb, stats_cluster_label("connection", self->name));
+
     stats_cluster_key_builder_set_name(kb, "input_window_available");
     self->metrics.window_available_key = stats_cluster_key_builder_build_single(kb);
-  }
-  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(kb);
-  {
     stats_cluster_key_builder_set_name(kb, "input_window_capacity");
     self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(kb);
-  }
-  stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(kb);
-  {
     stats_cluster_key_builder_set_name(kb, "input_window_full_total");
     self->metrics.window_full_total_key = stats_cluster_key_builder_build_single(kb);
   }

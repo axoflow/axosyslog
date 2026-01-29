@@ -502,14 +502,14 @@ _init_stats_key_builders(AFSocketDestDriver *self, StatsClusterKeyBuilder **writ
                          StatsClusterKeyBuilder **driver_sck_builder, StatsClusterKeyBuilder **queue_sck_builder)
 {
   *writer_sck_builder = stats_cluster_key_builder_new();
-  stats_cluster_key_builder_add_label(*writer_sck_builder, stats_cluster_label("driver", "afsocket"));
+  stats_cluster_key_builder_add_label(*writer_sck_builder, stats_cluster_label("driver", self->driver_name));
   stats_cluster_key_builder_add_legacy_label(*writer_sck_builder, stats_cluster_label("transport",
                                              self->transport_mapper->transport));
   stats_cluster_key_builder_add_legacy_label(*writer_sck_builder, stats_cluster_label("address",
                                              afsocket_dd_get_dest_name(self)));
 
   *driver_sck_builder = stats_cluster_key_builder_new();
-  stats_cluster_key_builder_add_label(*driver_sck_builder, stats_cluster_label("driver", "afsocket"));
+  stats_cluster_key_builder_add_label(*driver_sck_builder, stats_cluster_label("driver", self->driver_name));
   stats_cluster_key_builder_add_label(*driver_sck_builder, stats_cluster_label("id", self->super.super.id));
   stats_cluster_key_builder_add_legacy_label(*driver_sck_builder, stats_cluster_label("transport",
                                              self->transport_mapper->transport));
@@ -520,7 +520,7 @@ _init_stats_key_builders(AFSocketDestDriver *self, StatsClusterKeyBuilder **writ
                                              self->super.super.id, afsocket_dd_stats_instance(self));
 
   *queue_sck_builder = stats_cluster_key_builder_new();
-  stats_cluster_key_builder_add_label(*queue_sck_builder, stats_cluster_label("driver", "afsocket"));
+  stats_cluster_key_builder_add_label(*queue_sck_builder, stats_cluster_label("driver", self->driver_name));
   stats_cluster_key_builder_add_label(*queue_sck_builder, stats_cluster_label("id", self->super.super.id));
   stats_cluster_key_builder_add_legacy_label(*queue_sck_builder, stats_cluster_label("transport",
                                              self->transport_mapper->transport));
@@ -534,7 +534,7 @@ afsocket_dd_register_stats(AFSocketDestDriver *self)
   StatsClusterLabel labels[] =
   {
     stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", "afsocket"),
+    stats_cluster_label("driver", self->driver_name),
     stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", afsocket_dd_get_dest_name(self)),
   };
@@ -554,7 +554,7 @@ afsocket_dd_unregister_stats(AFSocketDestDriver *self)
   StatsClusterLabel labels[] =
   {
     stats_cluster_label("id", self->super.super.id),
-    stats_cluster_label("driver", "afsocket"),
+    stats_cluster_label("driver", self->driver_name),
     stats_cluster_label("transport", self->transport_mapper->transport),
     stats_cluster_label("address", afsocket_dd_get_dest_name(self)),
   };
@@ -775,6 +775,7 @@ afsocket_dd_free(LogPipe *s)
 {
   AFSocketDestDriver *self = (AFSocketDestDriver *) s;
 
+  g_free(self->driver_name);
   log_writer_options_destroy(&self->writer_options);
   g_sockaddr_unref(self->bind_addr);
   g_sockaddr_unref(self->dest_addr);
@@ -788,6 +789,7 @@ void
 afsocket_dd_init_instance(AFSocketDestDriver *self,
                           SocketOptions *socket_options,
                           TransportMapper *transport_mapper,
+                          const gchar *driver_name,
                           GlobalConfig *cfg)
 {
   log_dest_driver_init_instance(&self->super, cfg);
@@ -807,7 +809,7 @@ afsocket_dd_init_instance(AFSocketDestDriver *self,
   self->socket_options = socket_options;
   self->connections_kept_alive_across_reloads = TRUE;
   self->connection_initialized = FALSE;
-
+  self->driver_name = g_strdup(driver_name);
 
   self->writer_options.mark_mode = MM_GLOBAL;
   self->writer_options.stats_level = STATS_LEVEL0;
