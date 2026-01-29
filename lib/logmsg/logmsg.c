@@ -278,6 +278,13 @@ static StatsCounterItem *count_sdata_updates;
 static StatsCounterItem *count_allocated_bytes;
 static GPrivate priv_macro_value = G_PRIVATE_INIT(__free_macro_value);
 
+static inline void
+log_msg_update_allocation(LogMessage *self, gssize delta)
+{
+  self->allocated_bytes += delta;
+  stats_counter_add(count_allocated_bytes, delta);
+}
+
 static void
 log_msg_update_sdata_slow(LogMessage *self, NVHandle handle, const gchar *name, gssize name_len)
 {
@@ -327,8 +334,7 @@ log_msg_update_sdata_slow(LogMessage *self, NVHandle handle, const gchar *name, 
   self->alloc_sdata = alloc_sdata;
   if (self->sdata)
     {
-      self->allocated_bytes += ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
-      stats_counter_add(count_allocated_bytes, (self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0]));
+      log_msg_update_allocation(self, ((self->alloc_sdata - old_alloc_sdata) * sizeof(self->sdata[0])));
     }
   /* ok, we have our own SDATA array now which has at least one free slot */
 
@@ -577,8 +583,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
     {
       self->payload = nv_table_clone(self->payload, name_len + value_len + 2);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
-      self->allocated_bytes += self->payload->size;
-      stats_counter_add(count_allocated_bytes, self->payload->size);
+      log_msg_update_allocation(self, self->payload->size);
     }
 
   /* we need a loop here as a single realloc may not be enough. Might help
@@ -598,8 +603,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
           break;
         }
       guint32 new_size = self->payload->size;
-      self->allocated_bytes += (new_size - old_size);
-      stats_counter_add(count_allocated_bytes, new_size-old_size);
+      log_msg_update_allocation(self, (new_size - old_size));
       stats_counter_inc(count_payload_reallocs);
     }
 
@@ -650,8 +654,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
           break;
         }
       guint32 new_size = self->payload->size;
-      self->allocated_bytes += (new_size - old_size);
-      stats_counter_add(count_allocated_bytes, new_size-old_size);
+      log_msg_update_allocation(self, (new_size - old_size));
       stats_counter_inc(count_payload_reallocs);
     }
 
@@ -932,6 +935,7 @@ log_msg_set_tag_by_id_onoff(LogMessage *self, LogTagId id, gboolean on)
   if (!log_msg_chk_flag(self, LF_STATE_OWN_TAGS) && self->num_tags)
     {
       self->tags = g_memdup2(self->tags, sizeof(self->tags[0]) * self->num_tags);
+      log_msg_update_allocation(self, sizeof(self->tags[0]) * self->num_tags);
     }
   log_msg_set_flag(self, LF_STATE_OWN_TAGS);
 
@@ -961,6 +965,7 @@ log_msg_set_tag_by_id_onoff(LogMessage *self, LogTagId id, gboolean on)
             self->tags = g_realloc(self->tags, sizeof(self->tags[0]) * self->num_tags);
           else
             self->tags = g_malloc(sizeof(self->tags[0]) * self->num_tags);
+          log_msg_update_allocation(self, (self->num_tags - old_num_tags) * sizeof(self->tags[0]));
           memset(&self->tags[old_num_tags], 0, (self->num_tags - old_num_tags) * sizeof(self->tags[0]));
 
           if (inline_tags)
@@ -1277,9 +1282,14 @@ log_msg_set_saddr(LogMessage *self, GSockAddr *saddr)
 void
 log_msg_set_saddr_ref(LogMessage *self, GSockAddr *saddr)
 {
+  gssize old_len = 0;
   if (log_msg_chk_flag(self, LF_STATE_OWN_SADDR))
-    g_sockaddr_unref(self->saddr);
+    {
+      old_len = g_sockaddr_len(self->saddr);
+      g_sockaddr_unref(self->saddr);
+    }
   self->saddr = saddr;
+  log_msg_update_allocation(self, (gssize) g_sockaddr_len(self->saddr) - old_len);
   self->flags |= LF_STATE_OWN_SADDR;
 }
 
@@ -1292,9 +1302,14 @@ log_msg_set_daddr(LogMessage *self, GSockAddr *daddr)
 void
 log_msg_set_daddr_ref(LogMessage *self, GSockAddr *daddr)
 {
+  gssize old_len = 0;
   if (log_msg_chk_flag(self,  LF_STATE_OWN_DADDR))
-    g_sockaddr_unref(self->daddr);
+    {
+      old_len = g_sockaddr_len(self->daddr);
+      g_sockaddr_unref(self->daddr);
+    }
   self->daddr = daddr;
+  log_msg_update_allocation(self, (gssize) g_sockaddr_len(self->daddr) - old_len);
   self->flags |= LF_STATE_OWN_DADDR;
 }
 
@@ -1392,8 +1407,7 @@ log_msg_alloc(gsize payload_size)
     msg->payload = nv_table_init_borrowed(((gchar *) msg) + payload_ofs, payload_space, LM_V_MAX);
 
   msg->num_nodes = nodes;
-  msg->allocated_bytes = alloc_size + payload_space;
-  stats_counter_add(count_allocated_bytes, msg->allocated_bytes);
+  log_msg_update_allocation(msg, alloc_size);
   return msg;
 }
 
@@ -1444,9 +1458,10 @@ log_msg_alloc_clone(LogMessage *original)
   msg = g_malloc(alloc_size);
 
   memcpy(msg, original, sizeof(*msg));
+  msg->allocated_bytes = 0;
   msg->num_nodes = nodes;
-  msg->allocated_bytes = alloc_size;
-  stats_counter_add(count_allocated_bytes, msg->allocated_bytes);
+  log_msg_update_allocation(msg, alloc_size);
+
   return msg;
 }
 
@@ -2108,20 +2123,6 @@ log_msg_lookup_time_stamp_name(const gchar *name)
   else if (strcmp(name, "recvd") == 0)
     return LM_TS_RECVD;
   return -1;
-}
-
-gssize
-log_msg_get_size(LogMessage *self)
-{
-  if (!self)
-    return 0;
-
-  return
-    sizeof(LogMessage) + // msg.static fields
-    + self->alloc_sdata * sizeof(self->sdata[0]) +
-    g_sockaddr_len(self->saddr) + g_sockaddr_len(self->daddr) +
-    ((self->num_tags) ? sizeof(self->tags[0]) * self->num_tags : 0) +
-    nv_table_get_memory_consumption(self->payload); // msg.payload (nvtable)
 }
 
 #ifdef __linux__
