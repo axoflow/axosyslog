@@ -38,6 +38,7 @@
 #include "scratch-buffers.h"
 #include "utf8utils.h"
 #include "tls-support.h"
+#include "str-utils.h"
 
 #include "logmsg/type-hinting.h"
 
@@ -163,13 +164,16 @@ _convert_from_json_primitive(const gchar *json_text, gsize json_len,
   switch (json_text[token->start])
     {
     case 't':
-      result = filterx_boolean_new(TRUE);
+      if (strn_eq_strz(&json_text[token->start], "true", token->end - token->start))
+        result = filterx_boolean_new(TRUE);
       break;
     case 'f':
-      result = filterx_boolean_new(FALSE);
+      if (strn_eq_strz(&json_text[token->start], "false", token->end - token->start))
+        result = filterx_boolean_new(FALSE);
       break;
     case 'n':
-      result = filterx_null_new();
+      if (strn_eq_strz(&json_text[token->start], "null", token->end - token->start))
+        result = filterx_null_new();
       break;
     default:
       result = _convert_from_json_number(json_text, json_len, token);
