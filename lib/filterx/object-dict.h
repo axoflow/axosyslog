@@ -26,10 +26,15 @@
 
 #include "filterx/filterx-object.h"
 
+typedef gint32 FilterXDictAnchor;
+
 FILTERX_DECLARE_TYPE(dict);
 
 FilterXObject *filterx_dict_new(void);
 FilterXObject *filterx_dict_sized_new(gsize init_size);
 FilterXObject *filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+FilterXDictAnchor filterx_dict_get_anchor_for_key(FilterXObject *s, FilterXObject *key);
+void filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor, FilterXObject **new_value);
 
 #endif

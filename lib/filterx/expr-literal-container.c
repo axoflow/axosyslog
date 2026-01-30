@@ -38,8 +38,21 @@ struct FilterXLiteralElement_
 {
   FilterXExpr *key;
   FilterXExpr *value;
+  gint64 anchor;
   guint8 nullv:1;
 };
+
+static void
+_literal_element_set_anchor(FilterXLiteralElement *self, gint64 anchor)
+{
+  self->anchor = anchor;
+}
+
+static void
+_literal_element_unset_anchor(FilterXLiteralElement *self)
+{
+  self->anchor = -1;
+}
 
 static gboolean
 _literal_element_is_literal(FilterXLiteralElement *self)
@@ -62,7 +75,7 @@ filterx_literal_element_new(FilterXExpr *key, FilterXExpr *value)
 
   self->key = key;
   self->value = value;
-
+  self->anchor = -1;
   return self;
 }
 
@@ -82,8 +95,13 @@ filterx_nullv_literal_element_new(FilterXExpr *key, FilterXExpr *value)
 struct FilterXLiteralContainer_
 {
   FilterXExpr super;
-  FilterXObject *(*create_container)(FilterXLiteralContainer *self);
+  FilterXObject *(*eval_early)(FilterXLiteralContainer *self);
   FilterXPointerList elements;
+  FilterXPointerList nonliteral_elements;
+
+  /* half initialized container, non-literal fields are set to nulls so we
+   * can populate them at runtime */
+  FilterXObject *sparse_container;
 };
 
 gsize
@@ -97,100 +115,13 @@ static inline FilterXObject *
 _literal_container_eval_expr(FilterXExpr *expr, gboolean early_eval)
 {
   if (early_eval)
-    return filterx_literal_get_value(expr);
+    {
+      if (filterx_expr_is_literal(expr))
+        return filterx_literal_get_value(expr);
+      return filterx_null_new();
+    }
   else
     return filterx_expr_eval(expr);
-}
-
-/*
- * This is an inline version with two variants,
- *
- * "fastpath" == TRUE means we * are doing this at eval time by which point
- *                    we already did a filterx_plist_seal()
- *
- * "fastpath" == FALSE means we are still doing this at compilation time and
- *               seal is yet to be called.
- */
-static inline FilterXObject *
-_literal_container_eval_adaptive(FilterXExpr *s, gboolean early_eval)
-{
-  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
-
-  FilterXObject *result = self->create_container(self);
-  filterx_object_cow_prepare(&result);
-
-  gsize len = filterx_pointer_list_get_length(&self->elements);
-  for (gsize i = 0; i < len; i++)
-    {
-      FilterXLiteralElement *elem;
-
-      if (early_eval)
-        elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
-      else
-        elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
-
-      FilterXObject *key = NULL;
-      if (elem->key)
-        {
-          key = _literal_container_eval_expr(elem->key, early_eval);
-          if (!key)
-            {
-              filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate key");
-              goto error;
-            }
-        }
-
-      FilterXObject *value = _literal_container_eval_expr(elem->value, early_eval);
-      if (elem->nullv)
-        {
-          if (!value)
-            filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
-
-          if (!value || filterx_object_extract_null(value))
-            {
-              filterx_object_unref(key);
-              filterx_object_unref(value);
-              continue;
-            }
-        }
-
-      if (!value)
-        {
-          filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to evaluate value");
-          filterx_object_unref(key);
-          goto error;
-        }
-
-      value = filterx_object_cow_fork2(value, NULL);
-      gboolean success = filterx_object_set_subscript(result, key, &value);
-
-      filterx_object_unref(key);
-      filterx_object_unref(value);
-
-      if (!success)
-        {
-          filterx_eval_push_error_static_info("Failed create literal container", s, "Failed to set value in container");
-          goto error;
-        }
-    }
-
-  return result;
-error:
-  filterx_object_unref(result);
-  return NULL;
-}
-
-/* evaluate during optimize while the expressions are yet to be initialized */
-static FilterXObject *
-_literal_container_eval_early(FilterXExpr *s)
-{
-  return _literal_container_eval_adaptive(s, TRUE);
-}
-
-static FilterXObject *
-_literal_container_eval(FilterXExpr *s)
-{
-  return _literal_container_eval_adaptive(s, FALSE);
 }
 
 static FilterXExpr *
@@ -205,10 +136,21 @@ _literal_container_optimize(FilterXExpr *s)
       FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
 
       if (!_literal_element_is_literal(elem))
-        literal = FALSE;
+        {
+          literal = FALSE;
+          filterx_pointer_list_add(&self->nonliteral_elements, elem);
+        }
+    }
+  FilterXObject *container = self->eval_early(self);
+  if (!container)
+    {
+      filterx_eval_clear_errors();
+      return NULL;
     }
   if (literal)
-    return filterx_literal_new(_literal_container_eval_early(s));
+    return filterx_literal_new(container);
+  else
+    self->sparse_container = container;
 
   return NULL;
 }
@@ -219,6 +161,7 @@ _literal_container_init(FilterXExpr *s, GlobalConfig *cfg)
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
   filterx_pointer_list_seal(&self->elements);
+  filterx_pointer_list_seal(&self->nonliteral_elements);
   return filterx_expr_init_method(s, cfg);
 }
 
@@ -227,7 +170,9 @@ _literal_container_free(FilterXExpr *s)
 {
   FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
 
+  filterx_object_unref(self->sparse_container);
   filterx_pointer_list_clear(&self->elements, (GDestroyNotify) _literal_element_free);
+  filterx_pointer_list_clear(&self->nonliteral_elements, NULL);
   filterx_expr_free_method(s);
 }
 
@@ -258,12 +203,175 @@ static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
 {
   filterx_expr_init_instance(&self->super, type);
-  self->super.eval = _literal_container_eval;
   self->super.optimize = _literal_container_optimize;
   self->super.init = _literal_container_init;
   self->super.walk_children = _literal_container_walk;
   self->super.free_fn = _literal_container_free;
   filterx_pointer_list_init(&self->elements);
+  filterx_pointer_list_init(&self->nonliteral_elements);
+}
+
+/* Literal dict objects */
+
+static inline gboolean
+_literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject **pkey, FilterXObject **pvalue, gboolean early_eval)
+{
+  FilterXObject *key = NULL;
+  FilterXObject *value = NULL;
+  gboolean success = FALSE;
+
+  key = _literal_container_eval_expr(elem->key, early_eval);
+  if (!key)
+    {
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate key");
+      goto exit;
+    }
+
+  value = _literal_container_eval_expr(elem->value, early_eval);
+  if (!value && !elem->nullv)
+    {
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
+      goto exit;
+    }
+
+  success = TRUE;
+exit:
+  if (success)
+    {
+      *pkey = key;
+      *pvalue = value;
+    }
+  else
+    {
+      filterx_object_unref(key);
+      filterx_object_unref(value);
+    }
+  return success;
+}
+
+static inline gboolean
+_literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref, FilterXObject *dict, FilterXLiteralElement *elem, FilterXObject *key, FilterXObject *value, gboolean early_eval)
+{
+  gboolean success = FALSE;
+  if (elem->nullv)
+    {
+      if (!value)
+        {
+          filterx_eval_dump_errors("FilterX: null coalesce assignment suppressing error");
+        }
+      else if (filterx_object_extract_null(value))
+        {
+          filterx_object_unref(value);
+          value = NULL;
+        }
+      success = TRUE;
+    }
+
+  if (value)
+    {
+      value = filterx_object_cow_fork2(value, NULL);
+      if (!early_eval && elem->anchor >= 0)
+        {
+          /* runtime with an anchor already present */
+          filterx_ref_set_parent_container(value, dict_ref);
+          filterx_dict_set_subscript_by_anchor(dict, elem->anchor, &value);
+          success = TRUE;
+        }
+      else if (early_eval && filterx_object_is_key_set(dict_ref, key))
+        {
+          /* overlapping keys, bail out with failure and evaluate dict at runtime */
+          success = FALSE;
+        }
+      else
+        {
+          /* early_eval or no anchor (e.g. no optimize) */
+          success = filterx_object_set_subscript(dict_ref, key, &value);
+
+          if (early_eval && success)
+            {
+              _literal_element_set_anchor(elem, filterx_dict_get_anchor_for_key(dict, key));
+            }
+        }
+
+      if (!success)
+        filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
+      filterx_object_unref(value);
+
+    }
+  filterx_object_unref(key);
+  return success;
+}
+
+static FilterXObject *
+_literal_dict_eval_early(FilterXLiteralContainer *self)
+{
+  FilterXObject *dict_ref = filterx_dict_new();
+  filterx_object_cow_prepare(&dict_ref);
+
+  FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
+
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
+
+      FilterXObject *key, *value;
+      if (!_literal_dict_eval_elem(self, elem, &key, &value, TRUE))
+        goto error;
+
+      if (!_literal_dict_store_elem(self, dict_ref, dict, elem, key, value, TRUE))
+        goto error;
+    }
+
+  return dict_ref;
+error:
+
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
+      _literal_element_unset_anchor(elem);
+    }
+
+  filterx_object_unref(dict_ref);
+  return NULL;
+}
+
+static FilterXObject *
+_literal_dict_eval(FilterXExpr *s)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+  FilterXPointerList *pl = &self->elements;
+
+  FilterXObject *dict_ref;
+  if (self->sparse_container)
+    {
+      dict_ref = filterx_object_cow_fork(&self->sparse_container);
+      pl = &self->nonliteral_elements;
+    }
+  else
+    {
+      dict_ref = filterx_dict_new();
+      filterx_object_cow_prepare(&dict_ref);
+    }
+  FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
+
+  gsize len = filterx_pointer_list_get_length(pl);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(pl, i);
+
+      FilterXObject *key, *value;
+      if (!_literal_dict_eval_elem(self, elem, &key, &value, FALSE))
+        goto error;
+
+      if (!_literal_dict_store_elem(self, dict_ref, dict, elem, key, value, FALSE))
+        goto error;
+    }
+
+  return dict_ref;
+error:
+  filterx_object_unref(dict_ref);
+  return NULL;
 }
 
 /* Literal dict objects */
@@ -285,25 +393,98 @@ filterx_literal_dict_foreach(FilterXExpr *s, FilterXLiteralDictForeachFunc func,
   return TRUE;
 }
 
-static FilterXObject *
-_literal_dict_create(FilterXLiteralContainer *s)
-{
-  return filterx_dict_new();
-}
-
 FilterXExpr *
 filterx_literal_dict_new(GList *elements)
 {
   FilterXLiteralContainer *self = g_new0(FilterXLiteralContainer, 1);
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_dict));
-  self->create_container = _literal_dict_create;
+  self->super.eval = _literal_dict_eval;
+  self->eval_early = _literal_dict_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
   return &self->super;
 }
 
 /* Literal list objects */
+
+static inline gboolean
+_literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject *result, gboolean early_eval)
+{
+  FilterXObject *key = NULL;
+  FilterXObject *value = NULL;
+  gboolean success = FALSE;
+
+  value = _literal_container_eval_expr(elem->value, early_eval);
+  if (!value)
+    {
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
+      goto exit;
+    }
+
+  value = filterx_object_cow_fork2(value, NULL);
+  success = filterx_object_set_subscript(result, key, &value);
+
+  if (!success)
+    {
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
+      goto exit;
+    }
+exit:
+  filterx_object_unref(key);
+  filterx_object_unref(value);
+  return success;
+}
+
+/*
+ * This is an inline version with two variants,
+ *
+ * "fastpath" == TRUE means we * are doing this at eval time by which point
+ *                    we already did a filterx_plist_seal()
+ *
+ * "fastpath" == FALSE means we are still doing this at compilation time and
+ *               seal is yet to be called.
+ */
+static inline FilterXObject *
+_literal_list_eval_adaptive(FilterXExpr *s, gboolean early_eval)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+
+  FilterXObject *result = filterx_list_new();
+  filterx_object_cow_prepare(&result);
+
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem;
+
+      if (early_eval)
+        elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
+      else
+        elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
+
+      if (!_literal_list_eval_elem(self, elem, result, early_eval))
+        goto error;
+    }
+
+  return result;
+error:
+  filterx_object_unref(result);
+  return NULL;
+}
+
+/* evaluate during optimize while the expressions are yet to be initialized */
+static FilterXObject *
+_literal_list_eval_early(FilterXLiteralContainer *self)
+{
+  return _literal_list_eval_adaptive(&self->super, TRUE);
+}
+
+static FilterXObject *
+_literal_list_eval(FilterXExpr *s)
+{
+  return _literal_list_eval_adaptive(s, FALSE);
+}
 
 gboolean
 filterx_literal_list_foreach(FilterXExpr *s, FilterXLiteralListForeachFunc func, gpointer user_data)
@@ -322,19 +503,14 @@ filterx_literal_list_foreach(FilterXExpr *s, FilterXLiteralListForeachFunc func,
   return TRUE;
 }
 
-static FilterXObject *
-_literal_list_create(FilterXLiteralContainer *s)
-{
-  return filterx_list_new();
-}
-
 FilterXExpr *
 filterx_literal_list_new(GList *elements)
 {
   FilterXLiteralContainer *self = g_new0(FilterXLiteralContainer, 1);
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_list));
-  self->create_container = _literal_list_create;
+  self->super.eval = _literal_list_eval;
+  self->eval_early = _literal_list_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
   return &self->super;

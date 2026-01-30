@@ -304,22 +304,41 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
   entry->value = value;
 }
 
+static FilterXDictEntrySlot
+_table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
+{
+  guint hash = _table_hash_key(key);
+  FilterXDictIndexSlot _index_slot;
+
+  if (!index_slot)
+    index_slot = &_index_slot;
+
+  if (!_table_lookup_index_slot(table, key, hash, index_slot))
+    return FXD_IX_EMPTY;
+
+  return _table_get_index_entry(table, *index_slot);
+}
+
+static FilterXDictEntry *
+_table_lookup_entry(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
+{
+  FilterXDictEntrySlot entry_slot = _table_lookup_entry_slot(table, key, index_slot);
+  if (entry_slot < 0)
+    return NULL;
+
+  return _table_get_entry(table, entry_slot);
+}
+
 static gboolean
 _table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value)
 {
-  guint hash = _table_hash_key(key);
-
-  FilterXDictIndexSlot index_slot;
-  FilterXDictEntrySlot entry_slot;
-  FilterXDictEntry *entry;
-
-  if (!_table_lookup_index_slot(table, key, hash, &index_slot))
-    return FALSE;
-
-  entry_slot = _table_get_index_entry(table, index_slot);
-  entry = _table_get_entry(table, entry_slot);
-  *value = filterx_object_ref(entry->value);
-  return TRUE;
+  FilterXDictEntry *entry = _table_lookup_entry(table, key, NULL);
+  if (entry)
+    {
+      *value = filterx_object_ref(entry->value);
+      return TRUE;
+    }
+  return FALSE;
 }
 
 static gboolean
@@ -338,17 +357,11 @@ _table_isset(FilterXDictTable *table, FilterXObject *key)
 static gboolean
 _table_unset(FilterXDictTable *table, FilterXObject *key)
 {
-  guint hash = _table_hash_key(key);
-
   FilterXDictIndexSlot index_slot;
-  FilterXDictEntrySlot entry_slot;
-  FilterXDictEntry *entry;
-
-  if (!_table_lookup_index_slot(table, key, hash, &index_slot))
+  FilterXDictEntry *entry = _table_lookup_entry(table, key, &index_slot);
+  if (!entry)
     return TRUE;
 
-  entry_slot = _table_get_index_entry(table, index_slot);
-  entry = _table_get_entry(table, entry_slot);
   filterx_dict_entry_clear(entry);
   _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
   table->empty_num++;
@@ -694,6 +707,28 @@ _filterx_dict_make_readonly(FilterXObject *s)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   _table_foreach(self->table, _readonly_dict_item, NULL);
+}
+
+FilterXDictAnchor
+filterx_dict_get_anchor_for_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  FilterXDictAnchor anchor = (FilterXDictAnchor) _table_lookup_entry_slot(self->table, key, NULL);
+  g_assert(anchor >= 0);
+  return anchor;
+}
+
+void
+filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor, FilterXObject **new_value)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  FilterXDictEntry *entry = _table_get_entry(self->table, (FilterXDictEntrySlot) anchor);
+  filterx_ref_unset_parent_container(entry->value);
+  filterx_object_unref(entry->value);
+
+  entry->value = filterx_object_cow_store(new_value);
 }
 
 FilterXObject *
