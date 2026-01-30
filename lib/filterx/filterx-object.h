@@ -56,6 +56,7 @@ struct _FilterXType
   gboolean (*set_subscript)(FilterXObject *self, FilterXObject *key, FilterXObject **new_value);
   gboolean (*is_key_set)(FilterXObject *self, FilterXObject *key);
   gboolean (*unset_key)(FilterXObject *self, FilterXObject *key);
+  FilterXObject *(*move_key)(FilterXObject *self, FilterXObject *key);
   gboolean (*len)(FilterXObject *self, guint64 *len);
   gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
@@ -180,7 +181,6 @@ struct _FilterXObject
   /* NOTE:
    *
    *     readonly          -- marks the object as unmodifiable,
-   *                          propagates to the inner elements lazily
    *
    *     weak_referenced   -- marks that this object is referenced via a at
    *                          least one weakref already.
@@ -538,6 +538,18 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_object_move_key(FilterXObject *self, FilterXObject *key)
+{
+  g_assert(!self->readonly);
+
+  if (self->type->move_key)
+    return self->type->move_key(self, key);
+  return NULL;
+}
+
+/* NOTE: key/values passed to the callback are not suitable for changing,
+ * they are considered read-only! */
 static inline gboolean
 filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer user_data)
 {
@@ -677,14 +689,14 @@ filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
   if (pself)
     {
       *pself = self;
-      return filterx_object_clone(self);
+      return filterx_ref_float(filterx_object_clone(self));
     }
   else
     {
       if (self != saved_self)
-        return self;
+        return filterx_ref_float(self);
 
-      FilterXObject *result = filterx_object_clone(self);
+      FilterXObject *result = filterx_ref_float(filterx_object_clone(self));
       filterx_object_unref(self);
       return result;
     }
@@ -702,7 +714,7 @@ static inline FilterXObject *
 filterx_object_cow_store(FilterXObject **pself)
 {
   filterx_object_cow_prepare(pself);
-  return filterx_object_ref(*pself);
+  return filterx_ref_ground(filterx_object_ref(*pself));
 }
 
 #endif

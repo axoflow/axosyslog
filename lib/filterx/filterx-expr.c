@@ -110,6 +110,21 @@ filterx_expr_plus_assign_method(FilterXExpr *self, FilterXObject *value)
   return res;
 }
 
+FilterXObject *
+filterx_expr_move_method(FilterXExpr *self)
+{
+  FilterXObject *result = filterx_expr_eval(self);
+  if (!result)
+    return NULL;
+
+  if (!filterx_expr_unset(self))
+    return NULL;
+
+  filterx_ref_unset_parent_container(result);
+
+  return result;
+}
+
 static void
 _init_sc_key_name(FilterXExpr *self, gchar *buf, gsize buf_len)
 {
@@ -276,6 +291,7 @@ filterx_expr_init_instance(FilterXExpr *self, const gchar *type)
   self->ref_cnt = 1;
   self->init = filterx_expr_init_method;
   self->deinit = filterx_expr_deinit_method;
+  self->move = filterx_expr_move_method;
   self->free_fn = filterx_expr_free_method;
   self->plus_assign = filterx_expr_plus_assign_method;
   self->type = type;
