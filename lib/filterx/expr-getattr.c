@@ -143,7 +143,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   g_assert(filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string)));
   self->attr = attr_name;
   /* NOTE: name borrows the string value from the string object */
-  self->super.name = filterx_string_get_value_ref(self->attr, NULL);
+  self->super.name = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
   return &self->super;
 }
 
