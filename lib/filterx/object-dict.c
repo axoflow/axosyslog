@@ -644,7 +644,7 @@ _filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
 static FilterXObject *
 filterx_dict_new_with_table(FilterXDictTable *table)
 {
-  FilterXDictObject *self = g_new0(FilterXDictObject, 1);
+  FilterXDictObject *self = filterx_new_object(FilterXDictObject);
 
   filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(dict));
   self->table = table;
@@ -742,6 +742,7 @@ filterx_dict_sized_new(gsize init_size)
 {
   if (init_size < 16)
     init_size = 16;
+  init_size = init_size * 3 / 2;
   return filterx_dict_new_with_table(_table_new(init_size));
 }
 

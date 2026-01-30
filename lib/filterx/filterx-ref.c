@@ -21,6 +21,7 @@
  */
 
 #include "filterx-object.h"
+#include "filterx-eval.h"
 
 /*
  * Copy-on-write architecture
@@ -490,7 +491,8 @@ _filterx_ref_new(FilterXObject *value)
   if (!value->type->is_mutable || filterx_object_is_ref(value))
     g_assert("filterx_ref_new() must only be used for a cowable object" && FALSE);
 #endif
-  FilterXRef *self = g_new0(FilterXRef, 1);
+//  FilterXRef *self = g_new0(FilterXRef, 1);
+  FilterXRef *self = filterx_new_object(FilterXRef);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
   self->super.readonly = FALSE;

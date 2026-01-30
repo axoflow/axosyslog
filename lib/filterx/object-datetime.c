@@ -90,7 +90,7 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 FilterXObject *
 _datetime_new(const UnixTime *ut)
 {
-  FilterXDateTime *self = g_new0(FilterXDateTime, 1);
+  FilterXDateTime *self = filterx_new_object(FilterXDateTime);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(datetime));
   self->ut = *ut;
