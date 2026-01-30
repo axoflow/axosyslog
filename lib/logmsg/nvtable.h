@@ -311,9 +311,9 @@ gboolean nv_table_foreach_entry(NVTable *self, NVTableForeachEntryFunc func, gpo
 
 NVTable *nv_table_new(gint num_static_values, gint index_size_hint, gint init_length);
 NVTable *nv_table_init_borrowed(gpointer space, gsize space_len, gint num_static_entries);
-gboolean nv_table_realloc(NVTable *self, NVTable **new_nv_table);
+gboolean nv_table_realloc(NVTable **pself, gsize additional_space);
 NVTable *nv_table_compact(NVTable *self);
-NVTable *nv_table_clone(NVTable *self, gint additional_space);
+NVTable *nv_table_clone(NVTable *self, gsize additional_space);
 NVTable *nv_table_ref(NVTable *self);
 void nv_table_unref(NVTable *self);
 
@@ -357,10 +357,16 @@ nv_table_get_ofs_table_top(NVTable *self)
                                                         self->index_size * sizeof(NVIndexEntry)];
 }
 
+static inline gsize
+nv_table_get_available(NVTable *self)
+{
+  return (gsize)(nv_table_get_bottom(self) - nv_table_get_ofs_table_top(self));
+}
+
 static inline gboolean
 nv_table_alloc_check(NVTable *self, gsize alloc_size)
 {
-  if ((gsize)(nv_table_get_bottom(self) - nv_table_get_ofs_table_top(self)) < alloc_size)
+  if (nv_table_get_available(self) < alloc_size)
     return FALSE;
   return TRUE;
 }
