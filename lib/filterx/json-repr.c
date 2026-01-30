@@ -200,6 +200,10 @@ filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_
   FilterXObject *result = NULL;
 
   jsmntok_t *token = *tokens;
+
+  if (token >= sentinel)
+    return NULL;
+
   switch (token->type)
     {
     case JSMN_OBJECT:
@@ -323,7 +327,7 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
 
   if (!res)
     {
-      g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_STORE_ERROR, "Error representing JSON as filterx objects");
+      g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_STORE_ERROR, "Invalid JSON, unrecognized token");
     }
   else if (tokens != jsmn_tokens + r)
     {
