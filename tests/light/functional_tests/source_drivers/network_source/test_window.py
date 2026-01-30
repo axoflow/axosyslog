@@ -333,27 +333,31 @@ def test_dynamic_window_rebalance_with_paralell_connections(config, syslog_ng, p
 
     syslog_ng.stop()
 
-# def test_dynamic_window_size_increased_send(config, syslog_ng, port_allocator, loggen, syslog_ng_ctl):
-#     config, network_source, network_destination = set_config_for_dynamic_window(config, port_allocator, dynamic_window_size=5000, log_iw_size=10)
-#     syslog_ng.start(config)
 
-#     sum_msg_counter = 0
-#     # sum_input_window_capacity = 0
-#     # sum_input_window_available = 0
-#     for msg_counter in range(100, 1000 + 100, 100):
-#         # sum_msg_counter += msg_counter
-#         # sum_input_window_capacity += 100
-#         # sum_input_window_available += 100 - msg_counter
-#         send_messages_with_loggen(loggen, network_source, 1, msg_counter)
-#         print(syslog_ng_ctl.stats_prometheus())
-#         # check_prometheus_metrics(
-#         #     config, {
-#         #         "syslogng_input_window_available": sum_input_window_available,
-#         #         "syslogng_input_window_capacity": sum_input_window_capacity,
-#         #         "syslogng_input_events_total": sum_msg_counter,
-#         #     },
-#         # )
+def test_dynamic_window_size_increased_send(config, syslog_ng, port_allocator, loggen, syslog_ng_ctl):
+    config, network_source, network_destination = set_config_for_dynamic_window(config, port_allocator, dynamic_window_size=5000, log_iw_size=10)
+    syslog_ng.start(config)
+    import time
+    sum_msg_counter = 0
+    sum_input_window_capacity = 0
+    input_window_available = 0
+    for msg_counter in range(100, 1000 + 100, 100):
+        send_messages_with_loggen(loggen, network_source, 1, msg_counter)
+        time.sleep(2)
+        sum_msg_counter += msg_counter
+        if sum_msg_counter > 5010:
+            sum_input_window_capacity = sum_msg_counter = 5010
+        else:
+            sum_input_window_capacity += msg_counter
 
-#     iwa_after = 9999  # max_connection * initial window size
-#     iwc_after = 9999  # max_connection * initial window size
-#     start_destination_and_check(config, network_destination, sum_msg_counter, iwa_after, iwc_after)
+        check_prometheus_metrics(
+            config, {
+                "syslogng_input_window_available": input_window_available,
+                "syslogng_input_window_capacity": sum_input_window_capacity,
+                "syslogng_input_events_total": sum_msg_counter,
+            },
+        )
+
+    iwa_after = sum_msg_counter  # max_connection * initial window size
+    iwc_after = sum_msg_counter  # max_connection * initial window size
+    start_destination_and_check(config, network_destination, sum_msg_counter, iwa_after, iwc_after)
