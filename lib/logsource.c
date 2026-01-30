@@ -33,6 +33,7 @@
 #include "timeutils/misc.h"
 #include "compat/time.h"
 #include "scratch-buffers.h"
+#include "mainloop.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -258,6 +259,7 @@ static void
 _release_dynamic_window(LogSource *self)
 {
   g_assert(self->ack_tracker == NULL);
+  main_loop_assert_main_thread();
 
   _process_reclaimed_window(self);
 
@@ -275,6 +277,7 @@ _release_dynamic_window(LogSource *self)
   dynamic_window_pool_unref(self->dynamic_window.pool);
 }
 
+/* runs in the main thread, the source is idle */
 static void
 _inc_balanced(LogSource *self, gsize inc)
 {
@@ -295,10 +298,10 @@ _inc_balanced(LogSource *self, gsize inc)
     log_source_wakeup(self);
 }
 
+/* runs in the main thread, the source is idle */
 static void
 _dec_balanced(LogSource *self, gsize dec)
 {
-
   gsize empty_window = window_size_counter_get(&self->window_size, NULL);
   gsize remaining_sub = 0;
 
@@ -333,6 +336,7 @@ _dec_balanced(LogSource *self, gsize dec)
 void
 log_source_dynamic_window_release_available(LogSource *self)
 {
+  main_loop_assert_main_thread();
   g_assert((self->super.flags & PIF_INITIALIZED) == 0);
 
   if (!dynamic_window_is_enabled(&self->dynamic_window))
@@ -355,6 +359,7 @@ log_source_dynamic_window_release_available(LogSource *self)
   dynamic_window_release(&self->dynamic_window, empty_dynamic);
 }
 
+/* runs in the main thread, the source is idle */
 static void
 _dynamic_window_rebalance(LogSource *self)
 {
@@ -380,6 +385,8 @@ _dynamic_window_rebalance(LogSource *self)
 void
 log_source_dynamic_window_realloc(LogSource *self)
 {
+  main_loop_assert_main_thread();
+
   /* it is safe to assume that the window size is not decremented while this function runs,
    * only incrementation is possible by destination threads */
 
