@@ -27,6 +27,8 @@
 #include "messages.h"
 #include "scratch-buffers.h"
 #include "atomic.h"
+#include "stats/stats-cluster-single.h"
+#include "stats/stats-registry.h"
 
 #include <iv.h>
 
@@ -76,6 +78,24 @@ gint
 main_loop_worker_get_thread_index(void)
 {
   return main_loop_worker_id - 1;
+}
+
+static void
+_update_threading_metrics_thread_count(void)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[1];
+  labels[0] = stats_cluster_label("result", main_loop_worker_id ? "success" : "failed");
+  stats_cluster_single_key_set(&sc_key, "worker_thread_id_allocation_total", labels, 1);
+
+  stats_lock();
+  {
+    StatsCounterItem *counter;
+    stats_register_counter(STATS_LEVEL2, &sc_key, SC_TYPE_SINGLE_VALUE, &counter);
+    stats_counter_inc(counter);
+    stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &counter);
+  }
+  stats_unlock();
 }
 
 static void
@@ -129,6 +149,8 @@ _allocate_thread_id(void)
                        evt_tag_int("max-worker-threads", main_loop_max_workers));
       main_loop_worker_id = 0;
     }
+
+  _update_threading_metrics_thread_count();
 }
 
 static void
