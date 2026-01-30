@@ -28,7 +28,7 @@
 
 typedef struct _LabelTemplate LabelTemplate;
 
-LabelTemplate *label_template_new(const gchar *name, LogTemplate *value_template);
+LabelTemplate *label_template_new(const gchar *name, gssize name_len, LogTemplate *value_template);
 LabelTemplate *label_template_clone(const LabelTemplate *self);
 void label_template_free(LabelTemplate *self);
 
