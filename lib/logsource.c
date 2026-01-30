@@ -330,6 +330,31 @@ _dec_balanced(LogSource *self, gsize dec)
   dynamic_window_release(&self->dynamic_window, dec);
 }
 
+void
+log_source_dynamic_window_release_available(LogSource *self)
+{
+  g_assert((self->super.flags & PIF_INITIALIZED) == 0);
+
+  if (!dynamic_window_is_enabled(&self->dynamic_window))
+    return;
+
+  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+  gsize dynamic_part = self->full_window_size - self->initial_window_size;
+
+  gsize empty_dynamic = MIN(empty_window, dynamic_part);
+
+  msg_trace("Releasing available dynamic part of the window",
+            evt_tag_int("dynamic_window_to_be_released", empty_dynamic),
+            log_pipe_location_tag(&self->super));
+
+  self->full_window_size -= empty_dynamic;
+  stats_counter_sub(self->metrics.window_capacity, empty_dynamic);
+
+  window_size_counter_sub(&self->window_size, empty_dynamic, NULL);
+  stats_counter_sub(self->metrics.window_available, empty_dynamic);
+  dynamic_window_release(&self->dynamic_window, empty_dynamic);
+}
+
 static void
 _dynamic_window_rebalance(LogSource *self)
 {
