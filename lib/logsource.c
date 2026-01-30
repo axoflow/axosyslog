@@ -34,6 +34,7 @@
 #include "compat/time.h"
 #include "scratch-buffers.h"
 #include "mainloop.h"
+#include "mainloop-call.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -841,6 +842,15 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->ack_tracker = NULL;
 }
 
+static gpointer
+_release_dynamic_window_cb(gpointer c)
+{
+  LogSource *self = (LogSource *) c;
+  _release_dynamic_window(self);
+
+  return NULL;
+}
+
 void
 log_source_free(LogPipe *s)
 {
@@ -852,6 +862,10 @@ log_source_free(LogPipe *s)
   g_free(self->name);
   g_free(self->stats_id);
 
+  /* free() may run in a destination thread (last acked message) */
+  if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
+    main_loop_call(_release_dynamic_window_cb, self, TRUE);
+
   _unregister_window_stats(self);
   _deallocate_counter_keys(self);
   stats_cluster_key_builder_free(self->metrics.stats_kb);
@@ -860,8 +874,6 @@ log_source_free(LogPipe *s)
   log_pipe_free_method(s);
 
   ack_tracker_factory_unref(self->ack_tracker_factory);
-  if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
-    _release_dynamic_window(self);
 }
 
 void
