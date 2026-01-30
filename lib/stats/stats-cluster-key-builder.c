@@ -284,17 +284,37 @@ _construct_merged_labels(const StatsClusterKeyBuilder *self)
 {
   GArray *merged_labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), 4);
 
-  for (const GList *link = g_list_first(self->options_stack); link; link = link->next)
+  for (const GList *link = g_list_last(self->options_stack); link; link = link->prev)
     {
       const BuilderOptions *options = (const BuilderOptions *) link->data;
+
+      if (options->labels)
+        g_array_append_vals(merged_labels, options->labels->data, options->labels->len);
 
       if (options->legacy_labels)
         g_array_append_vals(merged_labels, options->legacy_labels->data, options->legacy_labels->len);
 
-      if (options->labels)
-        g_array_append_vals(merged_labels, options->labels->data, options->labels->len);
     }
+
+  /* NOTE: g_array_sort() is documented to be a stable sort, e.g.  the first
+   * item of the same value remains the first one */
+
   g_array_sort(merged_labels, (GCompareFunc) _labels_sort);
+
+  /* remove duplications */
+  StatsClusterLabel *prev = NULL, *cur;
+  for (gsize i = 0; i < merged_labels->len; i++)
+    {
+      cur = &g_array_index(merged_labels, StatsClusterLabel, i);
+      if (prev && strcmp(prev->name, cur->name) == 0)
+        {
+          /* same label repeats, skip the latter value */
+          g_array_remove_index(merged_labels, i);
+          i--;
+          continue;
+        }
+      prev = cur;
+    }
   return merged_labels;
 }
 
