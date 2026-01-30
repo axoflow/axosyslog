@@ -266,7 +266,7 @@ static gchar *
 _extract_separator_arg(FilterXFunctionArgs *args, GError **error)
 {
   gboolean exists;
-  const gchar *value = filterx_function_args_get_named_literal_string(args, "separator", NULL, &exists);
+  gchar *value = filterx_function_args_get_named_literal_string_dup(args, "separator", &exists);
   if (!exists)
     return g_strdup(".");
 
@@ -276,8 +276,7 @@ _extract_separator_arg(FilterXFunctionArgs *args, GError **error)
                   "separator argument must be string literal. " FILTERX_FUNC_FLATTEN_USAGE);
       return NULL;
     }
-
-  return g_strdup(value);
+  return value;
 }
 
 static gboolean
