@@ -212,7 +212,13 @@ Test(parse_generic_number, test_string_is_properly_represented_as_a_generic_numb
 
   parse_generic_number("-123.0", &gn);
   cr_assert(gn.type == GN_DOUBLE);
+  cr_assert(gn.precision == 1);
   cr_assert_float_eq(gn.value.raw_double, -123.0, DBL_EPSILON);
+
+  parse_generic_number("1.1", &gn);
+  cr_assert(gn.type == GN_DOUBLE);
+  cr_assert(gn.precision == 1);
+  cr_assert_float_eq(gn.value.raw_double, 1.1, DBL_EPSILON);
 
   parse_generic_number("9223372036854775808", &gn);
   cr_assert(gn.type == GN_DOUBLE);
