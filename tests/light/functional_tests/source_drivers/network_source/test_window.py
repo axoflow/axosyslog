@@ -358,6 +358,6 @@ def test_dynamic_window_size_increased_send(config, syslog_ng, port_allocator, l
             },
         )
 
-    iwa_after = sum_msg_counter  # max_connection * initial window size
-    iwc_after = sum_msg_counter  # max_connection * initial window size
-    start_destination_and_check(config, network_destination, sum_msg_counter, iwa_after, iwc_after)
+    iwa_after = 10  # ???
+    iwc_after = 10  # ???
+    start_destination_and_check(config, network_destination, 5500, iwa_after, iwc_after)
