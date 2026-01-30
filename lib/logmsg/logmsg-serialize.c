@@ -196,7 +196,8 @@ _deserialize_message_version_2x(LogMessageSerializationState *state)
   if (!_deserialize_sdata(state))
     return FALSE;
 
-  nv_table_unref(msg->payload);
+  if (msg->payload)
+    nv_table_unref(msg->payload);
   msg->payload = _nv_table_deserialize_selector(state);
   if (!msg->payload)
     return FALSE;
@@ -511,7 +512,7 @@ LogMessage *
 log_msg_deserialize(SerializeArchive *sa)
 {
   LogMessageSerializationState state = { 0 };
-  LogMessage *msg = log_msg_new_empty();
+  LogMessage *msg = log_msg_sized_new(0);
 
   state.sa = sa;
   state.msg = msg;
