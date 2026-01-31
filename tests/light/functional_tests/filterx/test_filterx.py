@@ -2635,7 +2635,7 @@ def test_otel_repr(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     exp = (
-        r"""{"kvlist":"{\"values\":[{\"key\":\"test\",\"value\":{\"stringValue\":\"kvlist\"}},{\"key\":\"message\",\"value\":{\"stringValue\":\"foobar\"}}]}","""
+        r"""{"kvlist":"{\"test\":\"kvlist\",\"message\":\"foobar\"}","""
         r""""array":"{\"values\":[{\"stringValue\":\"message\"},{\"stringValue\":\"foobar\"}]}","""
         r""""logrecord":"{\"body\":{\"stringValue\":\"foobar\"},\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}]}","""
         r""""resource":"{\"attributes\":[{\"key\":\"resource\",\"value\":{\"stringValue\":\"foobar\"}}],\"droppedAttributesCount\":444}","""
