@@ -21,6 +21,7 @@
  */
 
 #include "filterx-object.h"
+#include "filterx-eval.h"
 
 /*
  * Copy-on-write architecture
@@ -39,6 +40,7 @@
  *  - mutable structure
  *  - parent_container
  *  - bare objects
+ *  - floating xref
  *
  * References vs. copying
  * ----------------------
@@ -215,40 +217,66 @@
  * --------------
  * As we navigate and change the hierarchy of dict/list instances while
  * interpreting the filterx statements, we need to notice and eliminate the
- * use of shared xrefs.  If an xref is shared, that means the `fx_ref_cnt`
- * of an object does not correctly reflect the number of total copies.  This
- * might even mean that a dict is assumed to be non-shared (fx_ref_cnt==1),
- * and we would fail to copy it, before modifying it.
- *
- * Any expr that evaluates to an object in a hierarchical structure (e.g.
- * getattr or get_subscript) must check for shared xrefs and actively
- * replace them with a "floating xref".  See the function
- * `_filterx_ref_replace_shared_xref_with_a_floating_one()`.
- *
- * A floating xref is a normal FilterXRef instance, the only difference is
- * that it is yet to be stored somewhere (e.g.  another dict or a variable).
- * A floating xref is only kept in local variables and returned by
- * filterx_expr_eval().
- *
- * Should we call a mutating function (e.g.  setattr) on a floating xref, we
- * will trigger the cloning of the object (as there are multiple xrefs, one
- * of them is the floating one), but we also make sure that the floating
- * xref is replaces the old xref in the cloned container.  This is
- * implemented by the filterx_object_clone_container() method, which will
- * take care of this replacement.
+ * use of shared xrefs.  If an xref is shared, that means that `fx_ref_cnt`
+ * of the associated object does not correctly reflect the number of total
+ * copies (xrefs) of the object, which in turn would obviously break our
+ * copy-on-write mechanism.
  *
  * An xref is considered shared, iff:
  *  - its parent_container is pointing outside of the current hierarchy, OR
  *  - the parent container is shared (e.g. `fx_ref_cnt` > 1),
  *
+ * Any expr that evaluates to an object in a hierarchical structure (e.g.
+ * getattr or get_subscript) must check for shared xrefs and actively
+ * replace them with a "floating xref" instead of returning the stored xref.
+ * See the function
+ * `_filterx_ref_replace_shared_xref_with_a_floating_one()`.
+ *
+ * A floating xref is a temporary FilterXRef that is explicitly marked as
+ * floating using the `filterx_ref_floating()` function (and the associated
+ * FILTERX_REF_FLAG_FLOATING flag).
+ *
+ * Floating xrefs are yet to be stored somewhere or be discarded at the end
+ * of the FilterX statement unless they are actually needed.  A floating xref
+ * should only be kept in local variables and returned by
+ * filterx_expr_eval().  They should never cross statement boundaries in the
+ * FilterX language.
+ *
+ * If a floating xref is eventually stored (using setattr/set_subscript or
+ * assigning it to a variable), it becomes grounded, e.g.  a normal xref
+ * that is kept around.
+ *
+ * When do we generate floating xrefs
+ * -----------------------------------
+ *
+ *   1) when a hierarchical structure is sharing an xref with another, then
+ *      the getattr/get_subscript operation returns a floating xref instead of
+ *      the stored (& shared) one.
+ *
+ *   2) `filterx_object_cow_fork2()` generates a floating ref as the new copy
+ *
+ *   3) the new `move()` FilterX "function" retrieves the stored xref, unsets
+ *      it and returns it as a floating xref.
+ *
+ * When do we ground floating xrefs
+ * --------------------------------
+ *
+ *   1) when storing a value in a list/dict `filterx_object_cow_store()`
+ *
+ *   2) filterx_object_clone() turns the floating xref into a simple xref,
+ *      without generating a new clone.
+ *
  */
-
-
 static FilterXObject *
 _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
+  if (s->flags & FILTERX_REF_FLAG_FLOATING)
+    {
+      /* this is where a floating ref becomes grounded */
+      return filterx_ref_ground(filterx_object_ref(s));
+    }
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
@@ -317,6 +345,16 @@ _filterx_ref_unset_key(FilterXObject *s, FilterXObject *key)
   return filterx_object_unset_key(self->value, key);
 }
 
+static FilterXObject *
+_filterx_ref_move_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  _filterx_ref_cow(self);
+
+  return filterx_object_move_key(self->value, key);
+}
+
 static void
 _filterx_ref_free(FilterXObject *s)
 {
@@ -329,29 +367,18 @@ _filterx_ref_free(FilterXObject *s)
 }
 
 static void
-_filterx_ref_make_readonly(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-
-  filterx_object_make_readonly(self->value);
-}
-
-static gboolean
-_filterx_ref_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+_filterx_ref_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXRef *self = (FilterXRef *) *pself;
 
   FilterXObject *orig_value = self->value;
-
-  if (!filterx_object_dedup(&self->value, dedup_storage))
-    return FALSE;
+  filterx_object_freezer_keep(freezer, *pself);
+  filterx_object_freeze(&self->value, freezer);
 
   /* Mutable objects themselves should never be deduplicated,
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(orig_value == self->value);
-
-  return TRUE;
 }
 
 /* readonly methods */
@@ -383,9 +410,10 @@ _filterx_ref_truthy(FilterXObject *s)
 
 /*
  * Sometimes we are looking up values from a dict still shared between
- * multiple, independent copy-on-write hierarchies.  In these cases, the ref
- * we retrieve as a result of the lookup points outside of our current
- * structure.
+ * multiple, independent copy-on-write hierarchies (see xref sharing in the
+ * long comment at the top).  In these cases, the xref we retrieve as a
+ * result of the lookup points outside of our current structure or its
+ * parent itself is shared.
  *
  * In these cases, we need a new ref instance, which has the proper
  * parent_container value, while still cotinuing to share the dict (e.g.
@@ -397,7 +425,7 @@ _filterx_ref_truthy(FilterXObject *s)
  * In case we are actually mutating the dict, the new "floating" ref will
  * cause the dict to be cloned and by that time our floating ref will find
  * its proper home: in the parent dict.  This is exactly the
- * "child_of_interest" we are passing to clone_container().
+ * "child_of_interest" argument we are passing to clone_container().
  */
 static FilterXObject *
 _filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXObject *c)
@@ -412,7 +440,7 @@ _filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXOb
       g_atomic_counter_get(&container->value->fx_ref_cnt) <= 1)
     return s;
 
-  FilterXObject *result = _filterx_ref_new(filterx_object_ref(self->value));
+  FilterXObject *result = filterx_ref_float(_filterx_ref_new(filterx_object_ref(self->value)));
   filterx_object_unref(&self->super);
   filterx_ref_set_parent_container(result, &container->super);
   return result;
@@ -479,7 +507,32 @@ static FilterXObject *
 _filterx_ref_add(FilterXObject *s, FilterXObject *object)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_add_object(self->value, object);
+  return filterx_object_add(self->value, object);
+}
+
+static FilterXObject *
+_filterx_ref_add_inplace(FilterXObject *s, FilterXObject *object)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  _filterx_ref_cow(self);
+  FilterXObject *new_object = filterx_object_add_inplace(self->value, object);
+  if (!new_object)
+    return NULL;
+
+  if (filterx_object_is_ref(new_object))
+    return new_object;
+
+  if (new_object != self->value)
+    {
+      filterx_object_unref(self->value);
+      self->value = new_object;
+    }
+  else
+    {
+      filterx_object_unref(new_object);
+    }
+  return filterx_object_ref(s);
 }
 
 /* NOTE: fastpath is in the header as an inline function */
@@ -490,10 +543,10 @@ _filterx_ref_new(FilterXObject *value)
   if (!value->type->is_mutable || filterx_object_is_ref(value))
     g_assert("filterx_ref_new() must only be used for a cowable object" && FALSE);
 #endif
-  FilterXRef *self = g_new0(FilterXRef, 1);
+//  FilterXRef *self = g_new0(FilterXRef, 1);
+  FilterXRef *self = filterx_new_object(FilterXRef);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
-  self->super.readonly = FALSE;
 
   self->value = value;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
@@ -513,12 +566,13 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .set_subscript = _filterx_ref_set_subscript,
                     .is_key_set = _filterx_ref_is_key_set,
                     .unset_key = _filterx_ref_unset_key,
+                    .move_key = _filterx_ref_move_key,
                     .iter = _filterx_ref_iter,
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
-                    .make_readonly = _filterx_ref_make_readonly,
-                    .dedup = _filterx_ref_dedup,
+                    .add_inplace = _filterx_ref_add_inplace,
+                    .freeze = _filterx_ref_freeze,
                     .free_fn = _filterx_ref_free,
                    );

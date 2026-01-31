@@ -46,6 +46,62 @@ filterx_object_extract_string_ref(FilterXObject *obj, const gchar **value, gsize
 }
 
 static inline gboolean
+filterx_object_extract_string_dup(FilterXObject *obj, gchar **value)
+{
+  gsize len;
+  const gchar *str;
+
+  if (!filterx_object_extract_string_ref(obj, &str, &len))
+    return FALSE;
+  *value = g_strndup(str, len);
+  return TRUE;
+}
+
+#define filterx_object_extract_string_as_cstr(s, str) \
+  ({ \
+    gsize __len; \
+    const gchar *__str; \
+    gboolean result = FALSE; \
+    if (filterx_object_extract_string_ref(s, &__str, &__len)) \
+      { \
+        if (__str) \
+          { \
+            APPEND_ZERO(__str, __str, __len); \
+          } \
+        *str = __str; \
+        result = TRUE; \
+      } \
+    else \
+      { \
+        *str = NULL; \
+      } \
+    result; \
+  })
+
+#define filterx_object_extract_string_as_cstr_len(s, str, len) \
+  ({ \
+    gsize __len; \
+    const gchar *__str; \
+    gboolean __result = FALSE; \
+    if (filterx_object_extract_string_ref(s, &__str, &__len)) \
+      { \
+        *len = __len; \
+        if (__str) \
+          { \
+            APPEND_ZERO(__str, __str, __len); \
+          } \
+        *str = __str; \
+        __result = TRUE; \
+      } \
+    else \
+      { \
+        *str = NULL; \
+      } \
+    __result; \
+  })
+
+
+static inline gboolean
 filterx_object_extract_bytes_ref(FilterXObject *obj, const gchar **value, gsize *len)
 {
   if (filterx_object_is_type(obj, &FILTERX_TYPE_NAME(message_value)))

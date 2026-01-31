@@ -178,7 +178,7 @@ _filterx_list_is_key_set(FilterXObject *s, FilterXObject *key)
 FilterXObject *
 filterx_list_new(void)
 {
-  FilterXListObject *self = g_new0(FilterXListObject, 1);
+  FilterXListObject *self = filterx_new_object(FilterXListObject);
   filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list));
 
   self->array = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
@@ -198,7 +198,11 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
 
       if (child_of_interest && filterx_ref_values_equal(el, child_of_interest))
         {
-          el = filterx_object_ref(child_of_interest);
+          /* child_of_interest is a movable, floating xref, which is grounded by this clone */
+          el = filterx_object_clone(child_of_interest);
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(el == child_of_interest);
+#endif
           child_found = TRUE;
         }
       else
@@ -232,41 +236,27 @@ _filterx_list_clone(FilterXObject *s)
 }
 
 static gboolean
-_dedup_list_item(gsize index, FilterXObject **value, gpointer user_data)
+_freeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
 {
-  GHashTable *dedup_storage = (GHashTable *) user_data;
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
 
-  filterx_object_dedup(value, dedup_storage);
+  filterx_object_freeze(value, freezer);
 
   return TRUE;
 }
 
-static gboolean
-_filterx_list_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_filterx_list_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXListObject *self = (FilterXListObject *) *pself;
 
-  g_assert(filterx_list_foreach(self, _dedup_list_item, dedup_storage));
+  filterx_object_freezer_keep(freezer, *pself);
+  g_assert(filterx_list_foreach(self, _freeze_list_item, freezer));
 
   /* Mutable objects themselves should never be deduplicated,
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(*pself == &self->super.super);
-  return TRUE;
-}
-
-static gboolean
-_readonly_list_item(gsize index, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_make_readonly(*value);
-  return TRUE;
-}
-
-static void
-_filterx_list_make_readonly(FilterXObject *s)
-{
-  FilterXListObject *self = (FilterXListObject *) s;
-  filterx_list_foreach(self, _readonly_list_item, NULL);
 }
 
 static void
@@ -377,6 +367,5 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .unset_key = _filterx_list_unset_key,
                     .iter = _filterx_list_iter,
                     .len = _filterx_list_len,
-                    .make_readonly = _filterx_list_make_readonly,
-                    .dedup = _filterx_list_dedup,
+                    .freeze = _filterx_list_freeze,
                    );

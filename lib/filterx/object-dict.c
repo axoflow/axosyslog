@@ -368,6 +368,22 @@ _table_unset(FilterXDictTable *table, FilterXObject *key)
   return TRUE;
 }
 
+/* clear dict entry but return the original value */
+static FilterXObject *
+_table_move(FilterXDictTable *table, FilterXObject *key)
+{
+  FilterXDictIndexSlot index_slot;
+  FilterXDictEntry *entry = _table_lookup_entry(table, key, &index_slot);
+  if (!entry)
+    return NULL;
+
+  FilterXObject *result = filterx_object_ref(entry->value);
+  filterx_dict_entry_clear(entry);
+  _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
+  table->empty_num++;
+  return result;
+}
+
 static gboolean
 _table_foreach(FilterXDictTable *table, FilterXDictForeachFunc func, gpointer user_data)
 {
@@ -473,7 +489,11 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
       ep->key = filterx_object_clone(ep->key);
       if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
         {
-          ep->value = filterx_object_ref(child_of_interest);
+          /* child_of_interest is a movable, floating xref, which is grounded by this clone */
+          ep->value = filterx_object_clone(child_of_interest);
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(ep->value == child_of_interest);
+#endif
           child_found = TRUE;
         }
       else
@@ -613,6 +633,21 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
   return _table_unset(self->table, key);
 }
 
+static FilterXObject *
+_filterx_dict_move_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  const gchar *error = NULL;
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  return filterx_ref_float(_table_move(self->table, key));
+}
+
 static gboolean
 _filterx_dict_len(FilterXObject *s, guint64 *len)
 {
@@ -644,7 +679,7 @@ _filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
 static FilterXObject *
 filterx_dict_new_with_table(FilterXDictTable *table)
 {
-  FilterXDictObject *self = g_new0(FilterXDictObject, 1);
+  FilterXDictObject *self = filterx_new_object(FilterXDictObject);
 
   filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(dict));
   self->table = table;
@@ -669,44 +704,27 @@ _filterx_dict_clone(FilterXObject *s)
 }
 
 static gboolean
-_dedup_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
+_freeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
-  GHashTable *dedup_storage = (GHashTable *) user_data;
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
 
-  filterx_object_dedup(key, dedup_storage);
-  filterx_object_dedup(value, dedup_storage);
-
+  filterx_object_freeze(key, freezer);
+  filterx_object_freeze(value, freezer);
   return TRUE;
 }
 
-static gboolean
-_filterx_dict_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 
-  g_assert(_table_foreach(self->table, _dedup_dict_item, dedup_storage));
+  filterx_object_freezer_keep(freezer, *pself);
+  g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 
   /* Mutable objects themselves should never be deduplicated,
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(*pself == &self->super.super);
-  return TRUE;
-}
-
-static gboolean
-_readonly_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_make_readonly(*key);
-  filterx_object_make_readonly(*value);
-  return TRUE;
-}
-
-static void
-_filterx_dict_make_readonly(FilterXObject *s)
-{
-  FilterXDictObject *self = (FilterXDictObject *) s;
-
-  _table_foreach(self->table, _readonly_dict_item, NULL);
 }
 
 FilterXDictAnchor
@@ -742,6 +760,7 @@ filterx_dict_sized_new(gsize init_size)
 {
   if (init_size < 16)
     init_size = 16;
+  init_size = init_size * 3 / 2;
   return filterx_dict_new_with_table(_table_new(init_size));
 }
 
@@ -824,8 +843,8 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .set_subscript = _filterx_dict_set_subscript,
                     .is_key_set = _filterx_dict_is_key_set,
                     .unset_key = _filterx_dict_unset_key,
+                    .move_key = _filterx_dict_move_key,
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
-                    .make_readonly = _filterx_dict_make_readonly,
-                    .dedup = _filterx_dict_dedup,
+                    .freeze = _filterx_dict_freeze,
                    );

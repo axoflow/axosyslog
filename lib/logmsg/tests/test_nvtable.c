@@ -981,6 +981,23 @@ Test(nvtable, test_nvtable_realloc_leaves_original_intact_if_there_are_multiple_
   nv_table_unref(tab_ref2);
 }
 
+Test(nvtable, test_nvtable_shrink_reduces_nvtable_size)
+{
+  NVTable *tab;
+  gboolean success;
+
+  tab = nv_table_new(STATIC_VALUES, STATIC_VALUES, 1024);
+  success = nv_table_add_value(tab, STATIC_HANDLE, STATIC_NAME, strlen(STATIC_NAME), "value", 5, 0, NULL);
+  cr_assert(success);
+  assert_nvtable(tab, STATIC_HANDLE, "value", 5);
+
+  nv_table_shrink(&tab);
+  cr_assert_leq(nv_table_get_available(tab), 128);
+  assert_nvtable(tab, STATIC_HANDLE, "value", 5);
+
+  nv_table_unref(tab);
+}
+
 Test(nvtable, test_nvtable_unset_values)
 {
   NVTable *tab;

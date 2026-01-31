@@ -1,6 +1,7 @@
 filterxincludedir			= ${pkgincludedir}/filterx
 
 filterxinclude_HEADERS = 			\
+	lib/filterx/jsmn.h \
 	lib/filterx/expr-arithmetic-operators.h \
 	lib/filterx/expr-assign.h \
 	lib/filterx/expr-boolalg.h \
@@ -19,6 +20,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-membership.h \
 	lib/filterx/expr-null-coalesce.h \
 	lib/filterx/expr-plus.h \
+	lib/filterx/expr-plus-assign.h \
 	lib/filterx/expr-regexp-common.h \
 	lib/filterx/expr-regexp-search.h \
 	lib/filterx/expr-regexp-subst.h \
@@ -28,8 +30,10 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/expr-switch.h \
 	lib/filterx/expr-template.h \
 	lib/filterx/expr-unset.h \
+	lib/filterx/expr-move.h \
 	lib/filterx/expr-variable.h \
 	lib/filterx/expr-string-operators.h \
+	lib/filterx/filterx-allocator.h \
 	lib/filterx/filterx-config.h \
 	lib/filterx/filterx-error.h \
 	lib/filterx/filterx-eval.h \
@@ -39,6 +43,8 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-metrics-labels.h \
 	lib/filterx/filterx-metrics.h \
 	lib/filterx/filterx-object.h \
+	lib/filterx/filterx-env.h \
+	lib/filterx/filterx-stashed-object.h \
 	lib/filterx/filterx-parser.h \
 	lib/filterx/filterx-pipe.h \
 	lib/filterx/filterx-private.h \
@@ -97,6 +103,7 @@ filterx_sources = 				\
 	lib/filterx/expr-membership.c \
 	lib/filterx/expr-null-coalesce.c \
 	lib/filterx/expr-plus.c \
+	lib/filterx/expr-plus-assign.c \
 	lib/filterx/expr-regexp-common.c \
 	lib/filterx/expr-regexp-search.c \
 	lib/filterx/expr-regexp-subst.c \
@@ -106,8 +113,10 @@ filterx_sources = 				\
 	lib/filterx/expr-switch.c \
 	lib/filterx/expr-template.c \
 	lib/filterx/expr-unset.c \
+	lib/filterx/expr-move.c \
 	lib/filterx/expr-variable.c \
 	lib/filterx/expr-string-operators.c \
+	lib/filterx/filterx-allocator.c \
 	lib/filterx/filterx-config.c \
 	lib/filterx/filterx-error.c \
 	lib/filterx/filterx-eval.c \
@@ -118,6 +127,8 @@ filterx_sources = 				\
 	lib/filterx/filterx-metrics-labels.c \
 	lib/filterx/filterx-metrics.c \
 	lib/filterx/filterx-object.c \
+	lib/filterx/filterx-env.c \
+	lib/filterx/filterx-stashed-object.c \
 	lib/filterx/filterx-parser.c \
 	lib/filterx/filterx-pipe.c \
 	lib/filterx/filterx-private.c \

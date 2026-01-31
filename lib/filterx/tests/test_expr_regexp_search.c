@@ -52,7 +52,7 @@ static FilterXObject *
 _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
   _parse_search_flags(args, flags);
 
@@ -74,7 +74,7 @@ static void
 _assert_search_init_error(const gchar *lhs, const gchar *pattern)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
 
   GError *arg_err = NULL;
@@ -103,7 +103,7 @@ _assert_list_elem(FilterXObject *list, gint64 index, const gchar *expected_value
   FilterXObject *elem = filterx_sequence_get_subscript(list, index);
   cr_assert(elem);
 
-  const gchar *value = filterx_string_get_value_ref(elem, NULL);
+  const gchar *value = filterx_string_get_value_as_cstr(elem);
   cr_assert_str_eq(value, expected_value);
 
   filterx_object_unref(elem);
@@ -116,7 +116,7 @@ _assert_dict_elem(FilterXObject *list, const gchar *key, const gchar *expected_v
   FilterXObject *elem = filterx_object_get_subscript(list, key_obj);
   cr_assert(elem);
 
-  const gchar *value = filterx_string_get_value_ref(elem, NULL);
+  const gchar *value = filterx_string_get_value_as_cstr(elem);
   cr_assert_str_eq(value, expected_value);
 
   filterx_object_unref(key_obj);

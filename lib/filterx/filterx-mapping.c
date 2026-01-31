@@ -99,18 +99,14 @@ _format_and_append_dict_elem(FilterXObject *key, FilterXObject *value, gpointer 
   GString *json = (GString *) args[0];
   gboolean *first = (gboolean *) args[1];
 
-  const gchar *key_str;
-  gsize key_str_len;
-  if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
-    return FALSE;
-
   if (!(*first))
     g_string_append_c(json, ',');
   else
     *first = FALSE;
-  g_string_append_c(json, '"');
-  append_unsafe_utf8_as_escaped(json, key_str, key_str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
-  g_string_append(json, "\":");
+
+  if (!filterx_object_format_json_append(key, json))
+    return FALSE;
+  g_string_append_c(json, ':');
 
   return filterx_object_format_json_append(value, json);
 }
@@ -148,10 +144,20 @@ error:
   return NULL;
 }
 
+static FilterXObject *
+_add_inplace(FilterXObject *lhs_object, FilterXObject *rhs_object)
+{
+  if (!filterx_mapping_merge(lhs_object, rhs_object))
+    return NULL;
+
+  return filterx_object_ref(lhs_object);
+}
+
 FILTERX_DEFINE_TYPE(mapping, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .getattr = _getattr,
                     .setattr = _setattr,
                     .format_json = _format_json,
                     .add = _add,
+                    .add_inplace = _add_inplace,
                    );

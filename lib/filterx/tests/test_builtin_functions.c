@@ -85,10 +85,8 @@ Test(builtin_functions, test_builtin_simple_functions_lookup)
   FilterXObject *res = func(NULL, NULL, 0);
   cr_assert(res != NULL);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  gsize len;
-  const gchar *str = filterx_string_get_value_ref(res, &len);
-  cr_assert(len > 0);
 
+  const gchar *str = filterx_string_get_value_as_cstr(res);
   cr_assert(strcmp(str, "test-builtin-functions") == 0);
 
   filterx_builtin_simple_functions_deinit_private(ht);
@@ -148,9 +146,7 @@ Test(builtin_functions, test_builtin_function_ctors_lookup)
 
   FilterXObject *res = init_and_eval_expr(func_expr);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  gsize len;
-  const gchar *str = filterx_string_get_value_ref(res, &len);
-  cr_assert(len > 0);
+  const gchar *str = filterx_string_get_value_as_cstr(res);
 
   cr_assert(strcmp(str, "test-builtin-functions") == 0);
 

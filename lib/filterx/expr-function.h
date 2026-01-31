@@ -80,13 +80,17 @@ FilterXFunctionArgs *filterx_function_args_new(GList *args, GError **error);
 guint64 filterx_function_args_len(FilterXFunctionArgs *self);
 gboolean filterx_function_args_empty(FilterXFunctionArgs *self);
 FilterXExpr *filterx_function_args_get_expr(FilterXFunctionArgs *self, guint64 index);
+FilterXObject *filterx_function_args_get_literal_object(FilterXFunctionArgs *self, guint64 index);
 const gchar *filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 index, gsize *len);
+gchar *filterx_function_args_get_literal_string_dup(FilterXFunctionArgs *self, guint64 index);
 gboolean filterx_function_args_is_literal_null(FilterXFunctionArgs *self, guint64 index);
 FilterXExpr *filterx_function_args_get_named_expr(FilterXFunctionArgs *self, const gchar *name);
 FilterXObject *filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const gchar *name,
     gboolean *exists);
+
 const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name,
                                                             gsize *len, gboolean *exists);
+gchar *filterx_function_args_get_named_literal_string_dup(FilterXFunctionArgs *self, const gchar *name, gboolean *exists);
 gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
                                                          gboolean *exists, gboolean *error);
 gint64 filterx_function_args_get_named_literal_integer(FilterXFunctionArgs *self, const gchar *name,
