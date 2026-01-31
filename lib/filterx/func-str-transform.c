@@ -52,18 +52,18 @@ _extract_str_arg(FilterXExpr *s, FilterXObject *args[], gsize args_len, gssize *
 }
 
 static void
-_translate_to_lower(gchar *target, const gchar *source, gsize len)
+_translate_to_lower(gchar *target, const gchar *source, gsize *len)
 {
-  for (gsize i = 0; i < len; i++)
+  for (gsize i = 0; i < *len; i++)
     {
       target[i] = ch_tolower(source[i]);
     }
 }
 
 static void
-_translate_to_upper(gchar *target, const gchar *source, gsize len)
+_translate_to_upper(gchar *target, const gchar *source, gsize *len)
 {
-  for (gsize i = 0; i < len; i++)
+  for (gsize i = 0; i < *len; i++)
     {
       target[i] = ch_toupper(source[i]);
     }
