@@ -187,7 +187,7 @@ def test_clickhouse_destination_with_non_reliable_disk_buffer(request, config, s
     syslog_ng.start(config)
 
     loggen_msg_number = 1400
-    disk_buffer_max_size = 1324  # that number of messages can fit into the disk buffer with 1KiB message size
+    disk_buffer_max_size = 1320  # that number of messages can fit into the disk buffer with 1KiB message size
     loggen.start(LoggenStartParams(target=network_source.options["ip"], port=network_source.options["port"], inet=True, stream=True, rate=10000, size=1024, number=loggen_msg_number))
     wait_until_true(lambda: loggen.get_sent_message_count() == loggen_msg_number)
 
