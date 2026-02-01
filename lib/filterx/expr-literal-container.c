@@ -188,11 +188,11 @@ _literal_container_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
 
       if (elem->key)
         {
-          if (!filterx_expr_visit(&elem->key, f, user_data))
+          if (!filterx_expr_visit(s, &elem->key, f, user_data))
             return FALSE;
         }
 
-      if (!filterx_expr_visit(&elem->value, f, user_data))
+      if (!filterx_expr_visit(s, &elem->value, f, user_data))
         return FALSE;
     }
 

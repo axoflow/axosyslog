@@ -147,19 +147,19 @@ filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
 }
 
 static gboolean
-_init_child_exprs(FilterXExpr **expr, gpointer user_data)
+_init_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
   GlobalConfig *cfg = (GlobalConfig *) user_data;
 
-  return filterx_expr_init(*expr, cfg);
+  return filterx_expr_init(*child, cfg);
 }
 
 static gboolean
-_deinit_child_exprs(FilterXExpr **expr, gpointer user_data)
+_deinit_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
   GlobalConfig *cfg = (GlobalConfig *) user_data;
 
-  filterx_expr_deinit(*expr, cfg);
+  filterx_expr_deinit(*child, cfg);
   return TRUE;
 }
 
@@ -203,9 +203,9 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
 }
 
 static gboolean
-_optimize_child_exprs(FilterXExpr **expr, gpointer user_data)
+_optimize_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
-  *expr = filterx_expr_optimize(*expr);
+  *child = filterx_expr_optimize(*child);
   return TRUE;
 }
 
@@ -322,7 +322,7 @@ filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXUnaryOp *self = (FilterXUnaryOp *) s;
 
-  return filterx_expr_visit(&self->operand, f, user_data);
+  return filterx_expr_visit(s, &self->operand, f, user_data);
 }
 
 void
@@ -360,10 +360,10 @@ filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
 
-  if (!filterx_expr_visit(&self->lhs, f, user_data))
+  if (!filterx_expr_visit(s, &self->lhs, f, user_data))
     return FALSE;
 
-  if (!filterx_expr_visit(&self->rhs, f, user_data))
+  if (!filterx_expr_visit(s, &self->rhs, f, user_data))
     return FALSE;
 
   return TRUE;

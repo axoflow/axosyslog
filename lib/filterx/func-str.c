@@ -440,7 +440,7 @@ _expr_affix_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -678,12 +678,12 @@ _strcasecmp_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   if (!self->a_literal)
     {
-      if (!filterx_expr_visit(&self->a.expr, f, user_data))
+      if (!filterx_expr_visit(s, &self->a.expr, f, user_data))
         return FALSE;
     }
   if (!self->b_literal)
     {
-      if (!filterx_expr_visit(&self->b.expr, f, user_data))
+      if (!filterx_expr_visit(s, &self->b.expr, f, user_data))
         return FALSE;
     }
   return TRUE;

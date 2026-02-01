@@ -28,14 +28,7 @@
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
-typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr **expr, gpointer user_data);
-
-typedef enum _FilterXExprWalkOrder
-{
-  FILTERX_EXPR_WALK_PRE_ORDER,
-  FILTERX_EXPR_WALK_POST_ORDER,
-  FILTERX_EXPR_WALK_CHILDREN,
-} FilterXExprWalkOrder;
+typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr *parent, FilterXExpr **child, gpointer user_data);
 
 struct _FilterXExpr
 {
@@ -195,9 +188,9 @@ gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
 
 static inline gboolean
-filterx_expr_visit(FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
+filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
-  return f(expr, user_data);
+  return f(self, expr, user_data);
 }
 
 static inline gboolean

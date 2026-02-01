@@ -230,7 +230,7 @@ _failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 

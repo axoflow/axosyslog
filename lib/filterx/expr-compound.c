@@ -206,10 +206,11 @@ static gboolean
 _expr_walk_cb(FilterXExpr **value, gpointer user_data)
 {
   gpointer *args = user_data;
-  FilterXExprWalkFunc f = args[0];
-  gpointer udata = args[1];
+  FilterXExpr *expr = args[0];
+  FilterXExprWalkFunc f = args[1];
+  gpointer udata = args[2];
 
-  return filterx_expr_visit(value, *f, udata);
+  return filterx_expr_visit(expr, value, *f, udata);
 }
 
 gboolean
@@ -217,7 +218,7 @@ _compound_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  gpointer args[] =  { f, user_data };
+  gpointer args[] =  { s, f, user_data };
   return filterx_expr_list_foreach_ref(&self->exprs, _expr_walk_cb, args);
 }
 

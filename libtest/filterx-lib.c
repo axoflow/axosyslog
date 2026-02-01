@@ -204,7 +204,7 @@ _non_literal_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
 
-  return filterx_expr_visit(&self->block, f, user_data);
+  return filterx_expr_visit(s, &self->block, f, user_data);
 }
 
 FilterXExpr *

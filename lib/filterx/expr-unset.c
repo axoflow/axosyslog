@@ -62,7 +62,7 @@ _unset_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   for (guint i = 0; i < self->exprs->len; i++)
     {
       FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
-      if (!filterx_expr_visit(expr, f, user_data))
+      if (!filterx_expr_visit(s, expr, f, user_data))
         return FALSE;
     }
 
