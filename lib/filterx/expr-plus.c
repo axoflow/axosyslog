@@ -97,7 +97,7 @@ FilterXExpr *
 filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorPlus *self = g_new0(FilterXOperatorPlus, 1);
-  filterx_binary_op_init_instance(&self->super, "plus", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "plus", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize;
   self->super.super.eval = _eval_plus;
   self->super.super.free_fn = _filterx_operator_plus_free;

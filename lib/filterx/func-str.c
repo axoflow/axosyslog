@@ -456,7 +456,7 @@ _function_affix_new(FilterXFunctionArgs *args,
 {
   FilterXExprAffix *self = g_new0(FilterXExprAffix, 1);
 
-  filterx_function_init_instance(&self->super, affix_name);
+  filterx_function_init_instance(&self->super, affix_name, FXE_READ);
   self->super.super.eval = _expr_affix_eval;
   self->super.super.optimize = _expr_affix_optimize;
   self->super.super.walk_children = _expr_affix_walk;
@@ -694,7 +694,7 @@ filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXStrcasecmp *self = g_new0(FilterXStrcasecmp, 1);
 
-  filterx_function_init_instance(&self->super, "strcasecmp");
+  filterx_function_init_instance(&self->super, "strcasecmp", FXE_READ);
   self->super.super.eval = _strcasecmp_eval;
   self->super.super.optimize = _strcasecmp_optimize;
   self->super.super.walk_children = _strcasecmp_walk;

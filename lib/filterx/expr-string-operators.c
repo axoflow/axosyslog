@@ -228,7 +228,7 @@ filterx_string_slicing_new(FilterXExpr *lhs, FilterXExpr *start, FilterXExpr *en
 {
   FilterXSlicingOperator *self = g_new0(FilterXSlicingOperator, 1);
 
-  filterx_expr_init_instance(&self->super, "string_slicing");
+  filterx_expr_init_instance(&self->super, "string_slicing", FXE_READ);
   self->super.optimize = filterx_string_slicing_optimize;
   self->super.walk_children = filterx_string_slicing_walk;
   self->super.free_fn = filterx_string_slicing_free;

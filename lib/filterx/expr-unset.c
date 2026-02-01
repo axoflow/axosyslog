@@ -73,7 +73,7 @@ FilterXExpr *
 filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprUnset *self = g_new0(FilterXExprUnset, 1);
-  filterx_function_init_instance(&self->super, "unset");
+  filterx_function_init_instance(&self->super, "unset", FXE_WRITE);
 
   self->super.super.eval = _eval_unset;
   self->super.super.walk_children = _unset_walk;

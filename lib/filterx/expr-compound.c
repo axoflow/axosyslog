@@ -227,7 +227,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
   FilterXCompoundExpr *self = g_new0(FilterXCompoundExpr, 1);
 
-  filterx_expr_init_instance(&self->super, "compound");
+  filterx_expr_init_instance(&self->super, "compound", FXE_READ);
   self->super.eval = _eval_compound;
   self->super.init = _init;
   self->super.walk_children = _compound_walk;

@@ -76,7 +76,7 @@ filterx_unary_not_new(FilterXExpr *operand)
 {
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
 
-  filterx_unary_op_init_instance(self, "not", operand);
+  filterx_unary_op_init_instance(self, "not", FXE_READ, operand);
   self->super.optimize = _optimize_not;
   self->super.eval = _eval_not;
   return &self->super;
@@ -156,7 +156,7 @@ filterx_binary_and_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
-  filterx_binary_op_init_instance(self, "and", lhs, rhs);
+  filterx_binary_op_init_instance(self, "and", FXE_READ, lhs, rhs);
 
   self->super.optimize = _optimize_and;
   self->super.eval = _eval_and;
@@ -239,7 +239,7 @@ filterx_binary_or_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
-  filterx_binary_op_init_instance(self, "or", lhs, rhs);
+  filterx_binary_op_init_instance(self, "or", FXE_READ, lhs, rhs);
 
   self->super.optimize = _optimize_or;
   self->super.eval = _eval_or;

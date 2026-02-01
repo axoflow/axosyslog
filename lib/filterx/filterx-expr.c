@@ -254,20 +254,21 @@ filterx_expr_free_method(FilterXExpr *self)
 }
 
 void
-filterx_expr_init_instance(FilterXExpr *self, const gchar *type)
+filterx_expr_init_instance(FilterXExpr *self, const gchar *type, FilterXEffect effects)
 {
   self->ref_cnt = 1;
   self->init = filterx_expr_init_method;
   self->deinit = filterx_expr_deinit_method;
   self->free_fn = filterx_expr_free_method;
   self->type = type;
+  self->effects = effects;
 }
 
 FilterXExpr *
 filterx_expr_new(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self, "expr");
+  filterx_expr_init_instance(self, "expr", FXE_READ);
   return self;
 }
 
@@ -326,9 +327,10 @@ filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 }
 
 void
-filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
+filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXEffect effects,
+                               FilterXExpr *operand)
 {
-  filterx_expr_init_instance(&self->super, name);
+  filterx_expr_init_instance(&self->super, name, effects);
   self->super.optimize = filterx_unary_op_optimize_method;
   self->super.walk_children = filterx_unary_op_walk;
   self->super.free_fn = filterx_unary_op_free_method;
@@ -370,9 +372,10 @@ filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data
 }
 
 void
-filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXEffect effects,
+                                FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  filterx_expr_init_instance(&self->super, name);
+  filterx_expr_init_instance(&self->super, name, effects);
   self->super.optimize = filterx_binary_op_optimize_method;
   self->super.walk_children = filterx_binary_op_walk;
   self->super.free_fn = filterx_binary_op_free_method;

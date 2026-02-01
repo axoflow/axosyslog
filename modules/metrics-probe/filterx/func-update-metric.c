@@ -250,8 +250,8 @@ FilterXExpr *
 filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionUpdateMetric *self = g_new0(FilterXFunctionUpdateMetric, 1);
-  filterx_function_init_instance(&self->super, "update_metric");
 
+  filterx_function_init_instance(&self->super, "update_metric", FXE_WORLD);
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;

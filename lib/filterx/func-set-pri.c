@@ -113,7 +113,8 @@ FilterXExpr *
 filterx_function_set_pri_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionSetPri *self = g_new0(FilterXFunctionSetPri, 1);
-  filterx_function_init_instance(&self->super, "set_pri");
+
+  filterx_function_init_instance(&self->super, "set_pri", FXE_WORLD);
 
   self->super.super.eval = _set_pri_eval;
   self->super.super.walk_children = _set_pri_walk;

@@ -156,7 +156,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
 {
   FilterXSetAttr *self = g_new0(FilterXSetAttr, 1);
 
-  filterx_expr_init_instance(&self->super, "setattr");
+  filterx_expr_init_instance(&self->super, "setattr", FXE_WRITE);
   self->super.eval = _setattr_eval;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;

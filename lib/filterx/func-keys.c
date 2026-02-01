@@ -115,7 +115,8 @@ FilterXExpr *
 filterx_function_keys_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionKeys *self = g_new0(FilterXFunctionKeys, 1);
-  filterx_function_init_instance(&self->super, "keys");
+
+  filterx_function_init_instance(&self->super, "keys", FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _keys_walk;
   self->super.super.free_fn = _free;

@@ -191,7 +191,7 @@ FilterXExpr *
 filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionDictToPairs *self = g_new0(FilterXFunctionDictToPairs, 1);
-  filterx_function_init_instance(&self->super, "dict_to_pairs");
+  filterx_function_init_instance(&self->super, "dict_to_pairs", FXE_READ);
 
   self->super.super.eval = _dict_to_pairs_eval;
   self->super.super.walk_children = _dict_to_pairs_walk;

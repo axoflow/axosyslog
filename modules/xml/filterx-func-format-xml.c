@@ -339,8 +339,8 @@ FilterXExpr *
 filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatXML *self = g_new0(FilterXFunctionFormatXML, 1);
-  filterx_function_init_instance(&self->super, "format_xml");
 
+  filterx_function_init_instance(&self->super, "format_xml", FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _format_xml_walk;
   self->super.super.free_fn = _free;

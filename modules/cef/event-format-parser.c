@@ -466,7 +466,7 @@ gboolean
 filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, const gchar *fn_name,
                                       FilterXFunctionArgs *args, Config *cfg, GError **error)
 {
-  filterx_function_init_instance(&self->super, fn_name);
+  filterx_function_init_instance(&self->super, fn_name, FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _event_format_parser_walk;
   self->super.super.free_fn = _free;

@@ -132,7 +132,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
 {
   FilterXGetAttr *self = g_new0(FilterXGetAttr, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr), FXE_READ);
   self->super.eval = _eval_getattr;
   self->super.unset = _unset;
   self->super.is_set = _isset;

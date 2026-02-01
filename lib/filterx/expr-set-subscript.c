@@ -184,7 +184,7 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
 {
   FilterXSetSubscript *self = g_new0(FilterXSetSubscript, 1);
 
-  filterx_expr_init_instance(&self->super, "set_subscript");
+  filterx_expr_init_instance(&self->super, "set_subscript", FXE_WRITE);
   self->super.eval = _set_subscript_eval;
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;

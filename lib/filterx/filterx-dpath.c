@@ -332,7 +332,7 @@ filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **
     }
 
   FilterXDPathLValue *self = g_new0(FilterXDPathLValue, 1);
-  filterx_expr_init_instance(&self->super, "dpath_lvalue");
+  filterx_expr_init_instance(&self->super, "dpath_lvalue", FXE_READ);
 
   self->super.eval = _prohibit_eval;
   self->super.assign = filterx_dpath_lvalue_assign;

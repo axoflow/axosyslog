@@ -726,7 +726,7 @@ filterx_function_parse_xml_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseXml *self = g_new0(FilterXFunctionParseXml, 1);
 
-  filterx_function_init_instance(&self->super, "parse_xml");
+  filterx_function_init_instance(&self->super, "parse_xml", FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _parse_xml_walk;
   self->super.super.free_fn = _free;

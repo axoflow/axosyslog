@@ -300,7 +300,8 @@ FilterXExpr *
 filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatCSV *self = g_new0(FilterXFunctionFormatCSV, 1);
-  filterx_function_init_instance(&self->super, "format_csv");
+
+  filterx_function_init_instance(&self->super, "format_csv", FXE_READ);
 
   self->super.super.eval = _eval;
   self->super.super.walk_children = _format_csv_walk;

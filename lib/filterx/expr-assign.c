@@ -97,7 +97,7 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
 
-  filterx_binary_op_init_instance(self, "assign", lhs, rhs);
+  filterx_binary_op_init_instance(self, "assign", FXE_WRITE, lhs, rhs);
   self->super.eval = _assign_eval;
   self->super.ignore_falsy_result = TRUE;
   return &self->super;

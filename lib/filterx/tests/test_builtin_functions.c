@@ -105,7 +105,8 @@ static FilterXExpr *
 _test_builtin_dummy_function_ctor(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunction *self = g_new0(FilterXFunction, 1);
-  filterx_function_init_instance(self, TEST_BUILTIN_FUNCTION_NAME);
+
+  filterx_function_init_instance(self, TEST_BUILTIN_FUNCTION_NAME, FXE_READ);
   self->super.eval = _dummy_eval;
 
   filterx_function_args_free(args);

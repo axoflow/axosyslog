@@ -45,7 +45,7 @@ FilterXExpr *
 filterx_expr_break(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self, "break");
+  filterx_expr_init_instance(self, "break", FXE_CONTROL);
   self->walk_children = _break_walk;
   self->eval = _eval_break;
 

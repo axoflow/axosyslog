@@ -202,7 +202,7 @@ _literal_container_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
 static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
 {
-  filterx_expr_init_instance(&self->super, type);
+  filterx_expr_init_instance(&self->super, type, FXE_READ);
   self->super.optimize = _literal_container_optimize;
   self->super.init = _literal_container_init;
   self->super.walk_children = _literal_container_walk;

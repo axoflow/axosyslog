@@ -64,7 +64,7 @@ filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
 {
   FilterXLiteral *self = (FilterXLiteral *) s;
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(literal));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(literal), FXE_READ);
   self->super.eval = _eval_literal;
   self->super.walk_children = _literal_walk;
   self->super.free_fn = _free;

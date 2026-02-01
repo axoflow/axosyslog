@@ -302,7 +302,8 @@ FilterXExpr *
 filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
-  filterx_function_init_instance(&self->super, "parse_kv");
+
+  filterx_function_init_instance(&self->super, "parse_kv", FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _parse_kv_walk;
   self->super.super.free_fn = _free;

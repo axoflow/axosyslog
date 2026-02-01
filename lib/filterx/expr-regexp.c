@@ -97,7 +97,7 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
 {
   FilterXExprRegexpMatch *self = g_new0(FilterXExprRegexpMatch, 1);
 
-  filterx_expr_init_instance(&self->super, "regexp_match");
+  filterx_expr_init_instance(&self->super, "regexp_match", FXE_READ);
   self->super.eval = _regexp_match_eval;
   self->super.walk_children = _regexp_match_walk;
   self->super.free_fn = _regexp_match_free;

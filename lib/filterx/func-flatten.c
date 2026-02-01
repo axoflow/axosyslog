@@ -289,7 +289,8 @@ FilterXExpr *
 filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFlatten *self = g_new0(FilterXFunctionFlatten, 1);
-  filterx_function_init_instance(&self->super, "flatten");
+
+  filterx_function_init_instance(&self->super, "flatten", FXE_WRITE);
   self->super.super.eval = _eval_fx_flatten;
   self->super.super.walk_children = _flatten_walk;
   self->super.super.free_fn = _free;

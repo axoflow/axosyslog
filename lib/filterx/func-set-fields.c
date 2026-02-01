@@ -510,7 +510,8 @@ FilterXExpr *
 filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionSetFields *self = g_new0(FilterXFunctionSetFields, 1);
-  filterx_function_init_instance(&self->super, "set_fields");
+
+  filterx_function_init_instance(&self->super, "set_fields", FXE_WRITE);
 
   self->super.super.eval = _eval_fx_set_fields;
   self->super.super.walk_children = _set_fields_walk;

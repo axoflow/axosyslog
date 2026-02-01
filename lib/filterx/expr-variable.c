@@ -209,7 +209,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable), FXE_READ);
   self->super.walk_children = _variable_walk;
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;

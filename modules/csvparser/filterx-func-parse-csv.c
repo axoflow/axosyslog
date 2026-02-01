@@ -513,7 +513,8 @@ FilterXExpr *
 filterx_function_parse_csv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseCSV *self = g_new0(FilterXFunctionParseCSV, 1);
-  filterx_function_init_instance(&self->super, "parse_csv");
+
+  filterx_function_init_instance(&self->super, "parse_csv", FXE_READ);
   self->super.super.eval = _eval_parse_csv;
   self->super.super.walk_children = _parse_csv_walk;
   self->super.super.free_fn = _free;
