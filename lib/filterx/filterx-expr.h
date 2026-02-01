@@ -230,7 +230,6 @@ typedef struct _FilterXUnaryOp
   FilterXExpr *operand;
 } FilterXUnaryOp;
 
-FilterXExpr *filterx_unary_op_optimize_method(FilterXExpr *s);
 gboolean filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_unary_op_free_method(FilterXExpr *s);
@@ -243,7 +242,6 @@ typedef struct _FilterXBinaryOp
   FilterXExpr *lhs, *rhs;
 } FilterXBinaryOp;
 
-FilterXExpr *filterx_binary_op_optimize_method(FilterXExpr *s);
 gboolean filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_binary_op_free_method(FilterXExpr *s);

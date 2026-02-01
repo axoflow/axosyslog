@@ -85,9 +85,6 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
 static void
 _optimize_arithmetic_operators_common(FilterXArithmeticOperator *self)
 {
-  if (filterx_binary_op_optimize_method(&self->super.super))
-    g_assert_not_reached();
-
   if (filterx_expr_is_literal(self->super.lhs))
     self->literal_lhs = filterx_literal_get_value(self->super.lhs);
 

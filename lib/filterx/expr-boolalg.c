@@ -41,9 +41,6 @@ _optimize_not(FilterXExpr *s)
 {
   FilterXUnaryOp *self = (FilterXUnaryOp *) s;
 
-  if (filterx_unary_op_optimize_method(s))
-    g_assert_not_reached();
-
   if (!filterx_expr_is_literal(self->operand))
     return NULL;
 
@@ -86,9 +83,6 @@ static FilterXExpr *
 _optimize_and(FilterXExpr *s)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  if (filterx_binary_op_optimize_method(s))
-    g_assert_not_reached();
 
   if (!filterx_expr_is_literal(self->lhs))
     return NULL;
@@ -168,9 +162,6 @@ static FilterXExpr *
 _optimize_or(FilterXExpr *s)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  if (filterx_binary_op_optimize_method(s))
-    g_assert_not_reached();
 
   if (!filterx_expr_is_literal(self->lhs))
     return NULL;

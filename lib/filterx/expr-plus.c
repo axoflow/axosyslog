@@ -69,9 +69,6 @@ _optimize(FilterXExpr *s)
 {
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
 
-  if (filterx_binary_op_optimize_method(s))
-    g_assert_not_reached();
-
   if (filterx_expr_is_literal(self->super.lhs))
     self->literal_lhs = filterx_literal_get_value(self->super.lhs);
 

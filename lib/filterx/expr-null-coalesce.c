@@ -64,9 +64,6 @@ _optimize(FilterXExpr *s)
 {
   FilterXNullCoalesce *self = (FilterXNullCoalesce *) s;
 
-  if (filterx_binary_op_optimize_method(s))
-    g_assert_not_reached();
-
   if (!filterx_expr_is_literal(self->super.lhs))
     return NULL;
 

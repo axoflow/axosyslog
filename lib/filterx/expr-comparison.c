@@ -272,8 +272,6 @@ _optimize(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
 
-  g_assert(!filterx_binary_op_optimize_method(s));
-
   if (filterx_expr_is_literal(self->super.lhs))
     self->literal_lhs = filterx_literal_get_value(self->super.lhs);
 
