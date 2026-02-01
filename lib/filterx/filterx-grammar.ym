@@ -133,8 +133,6 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <ptr> stmts
 %type <node> stmt
 %type <node> stmt_expr
-%type <node> complex_expr
-%type <node> __complex_expr
 %type <node> switch_case
 %type <ptr> cases
 %type <ptr> case
@@ -206,7 +204,7 @@ stmts
 stmt
 	: stmt_expr ';'				{
 						  CHECK_ERROR($1, @1, "failed to initialize statement");
-						  $$ = $1;
+						  $$ = _assign_location($1, lexer, &@1);
 						}
 	| ';'					{ $$ = NULL; }
 	| conditional				{ $$ = _assign_location($1, lexer, &@1); }
@@ -215,13 +213,7 @@ stmt
 
 stmt_expr
 	: expr
-	| complex_expr
-	;
-
-complex_expr: __complex_expr			{ $$ = _assign_location($1, lexer, &@1); }
-
-__complex_expr
-	: assignment
+	| assignment
 	| declaration
 	;
 
