@@ -69,7 +69,7 @@ enum _LogMessageSerializationFlags
   LMSF_COMPACTION = 0x0001,
 };
 
-gboolean log_msg_deserialize(LogMessage *self, SerializeArchive *sa);
+LogMessage *log_msg_deserialize(SerializeArchive *sa);
 gboolean log_msg_serialize_with_ts_processed(LogMessage *self, SerializeArchive *sa, const UnixTime *processed,
                                              guint32 flags);
 gboolean log_msg_serialize(LogMessage *self, SerializeArchive *sa, guint32 flags);
