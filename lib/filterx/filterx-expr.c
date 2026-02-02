@@ -151,7 +151,12 @@ _init_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
   GlobalConfig *cfg = (GlobalConfig *) user_data;
 
-  return filterx_expr_init(*child, cfg);
+  if (!filterx_expr_init(*child, cfg))
+    return FALSE;
+
+  if (*child && filterx_expr_has_effect(*child, FXE_WRITE))
+    parent->effects |= FXE_WRITE;
+  return TRUE;
 }
 
 static gboolean
