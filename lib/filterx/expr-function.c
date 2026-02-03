@@ -349,8 +349,12 @@ _get_literal_string_from_expr(FilterXExpr *expr, gsize *len)
   if (!obj)
     goto error;
 
+  gsize str_len = 0;
   /* Literal message values don't exist, so we don't need to use the extractor. */
-  str = filterx_string_get_value_ref(obj, len);
+  str = filterx_string_get_value_ref_and_assert_nul(obj, &str_len);
+
+  if (len)
+    *len = str_len;
 
   /*
    * We can unref both obj and expr, the underlying string will be kept alive as long as the literal expr is alive,
@@ -370,6 +374,17 @@ filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 inde
     return NULL;
 
   return _get_literal_string_from_expr(expr, len);
+}
+
+gchar *
+filterx_function_args_get_literal_string_dup(FilterXFunctionArgs *self, guint64 index)
+{
+  gsize len;
+  const gchar *value = filterx_function_args_get_literal_string(self, index, &len);
+  if (!value)
+    return NULL;
+
+  return g_strndup(value, len);
 }
 
 gboolean
@@ -425,7 +440,6 @@ filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const 
   return filterx_literal_get_value(expr);
 }
 
-
 const gchar *
 filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name, gsize *len,
                                                gboolean *exists)
@@ -436,6 +450,17 @@ filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const 
     return NULL;
 
   return _get_literal_string_from_expr(expr, len);
+}
+
+gchar *
+filterx_function_args_get_named_literal_string_dup(FilterXFunctionArgs *self, const gchar *name, gboolean *exists)
+{
+  gsize len;
+  const gchar *value = filterx_function_args_get_named_literal_string(self, name, &len, exists);
+  if (!value)
+    return NULL;
+
+  return g_strndup(value, len);
 }
 
 gboolean

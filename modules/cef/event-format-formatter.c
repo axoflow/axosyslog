@@ -214,7 +214,7 @@ _append_non_separate_extension(FilterXObject *key, FilterXObject *value, gpointe
       for (gsize i = 0; i < ctx->config.header.num_fields - 1; i++)
         {
           const Field *field = &ctx->config.header.fields[i];
-          if (strcmp(field->name, key_str) == 0)
+          if (strn_eq_strz(key_str, field->name, key_len))
             {
               (*fields_to_find)--;
               return TRUE;

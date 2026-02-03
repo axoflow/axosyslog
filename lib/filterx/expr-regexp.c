@@ -103,7 +103,7 @@ filterx_expr_regexp_match_new(FilterXExpr *lhs, const gchar *pattern)
   self->super.free_fn = _regexp_match_free;
 
   self->lhs = lhs;
-  self->pattern = filterx_regexp_compile_pattern_defaults(pattern);
+  self->pattern = filterx_regexp_compile_pattern_defaults(pattern, strlen(pattern));
   if (!self->pattern)
     {
       filterx_expr_unref(&self->super);

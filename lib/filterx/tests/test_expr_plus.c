@@ -60,11 +60,9 @@ Test(expr_plus, test_string_success)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
-  gsize size;
-  const gchar *res = filterx_string_get_value_ref(obj, &size);
+  const gchar *res = filterx_string_get_value_as_cstr(obj);
 
   cr_assert_str_eq(res, "foobar");
-  cr_assert_eq(size, 6);
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
