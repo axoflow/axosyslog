@@ -175,7 +175,7 @@ _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -188,7 +188,7 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
 {
   FilterXGetSubscript *self = g_new0(FilterXGetSubscript, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(get_subscript));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(get_subscript), FXE_READ);
   self->super.eval = _eval_get_subscript;
   self->super.is_set = _isset;
   self->super.unset = _unset;

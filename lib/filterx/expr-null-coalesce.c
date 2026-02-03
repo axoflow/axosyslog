@@ -64,9 +64,6 @@ _optimize(FilterXExpr *s)
 {
   FilterXNullCoalesce *self = (FilterXNullCoalesce *) s;
 
-  if (filterx_binary_op_optimize_method(s))
-    g_assert_not_reached();
-
   if (!filterx_expr_is_literal(self->super.lhs))
     return NULL;
 
@@ -85,7 +82,7 @@ FilterXExpr *
 filterx_null_coalesce_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXNullCoalesce *self = g_new0(FilterXNullCoalesce, 1);
-  filterx_binary_op_init_instance(&self->super, "null_coalesce", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "null_coalesce", FXE_READ, lhs, rhs);
   self->super.super.eval = _eval_null_coalesce;
   self->super.super.optimize = _optimize;
   return &self->super.super;

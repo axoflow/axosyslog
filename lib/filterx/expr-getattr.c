@@ -145,7 +145,7 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -158,7 +158,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
 {
   FilterXGetAttr *self = g_new0(FilterXGetAttr, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr), FXE_READ);
   self->super.eval = _eval_getattr;
   self->super.unset = _unset;
   self->super.move = _move;

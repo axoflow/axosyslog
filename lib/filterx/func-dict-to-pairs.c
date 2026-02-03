@@ -180,7 +180,7 @@ _dict_to_pairs_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -191,7 +191,7 @@ FilterXExpr *
 filterx_function_dict_to_pairs_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionDictToPairs *self = g_new0(FilterXFunctionDictToPairs, 1);
-  filterx_function_init_instance(&self->super, "dict_to_pairs");
+  filterx_function_init_instance(&self->super, "dict_to_pairs", FXE_READ);
 
   self->super.super.eval = _dict_to_pairs_eval;
   self->super.super.walk_children = _dict_to_pairs_walk;

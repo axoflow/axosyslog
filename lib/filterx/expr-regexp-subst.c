@@ -387,7 +387,7 @@ _subst_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -398,7 +398,7 @@ FilterXExpr *
 filterx_function_regexp_subst_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFuncRegexpSubst *self = g_new0(FilterXFuncRegexpSubst, 1);
-  filterx_function_init_instance(&self->super, "regexp_subst");
+  filterx_function_init_instance(&self->super, "regexp_subst", FXE_READ);
   self->super.super.eval = _subst_eval;
   self->super.super.init = _subst_init;
   self->super.super.walk_children = _subst_walk;

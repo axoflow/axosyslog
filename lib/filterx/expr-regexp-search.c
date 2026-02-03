@@ -297,7 +297,7 @@ _regexp_search_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -310,7 +310,7 @@ filterx_function_regexp_search_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprRegexpSearch *self = g_new0(FilterXExprRegexpSearch, 1);
 
-  filterx_function_init_instance(&self->super, "regexp_search");
+  filterx_function_init_instance(&self->super, "regexp_search", FXE_READ);
   self->super.super.eval = _eval_regexp_search;
   self->super.super.init = _regexp_search_init;
   self->super.super.walk_children = _regexp_search_walk;

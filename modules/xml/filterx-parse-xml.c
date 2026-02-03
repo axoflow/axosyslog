@@ -714,7 +714,7 @@ _parse_xml_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -726,7 +726,7 @@ filterx_function_parse_xml_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseXml *self = g_new0(FilterXFunctionParseXml, 1);
 
-  filterx_function_init_instance(&self->super, "parse_xml");
+  filterx_function_init_instance(&self->super, "parse_xml", FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _parse_xml_walk;
   self->super.super.free_fn = _free;

@@ -78,6 +78,7 @@ _eval_variable(FilterXExpr *s)
   if (self->variable_type == FX_VAR_MESSAGE_TIED)
     {
       /* auto register message tied variables */
+      filterx_eval_context_make_writable(context);
       variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle);
       if (variable)
         {
@@ -101,6 +102,7 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXScope *scope = context->scope;
 
+  filterx_eval_context_make_writable(context);
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
   filterx_scope_set_variable(scope, variable, new_repr, variable->assigned);
 }
@@ -209,7 +211,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable), FXE_READ);
   self->super.walk_children = _variable_walk;
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;

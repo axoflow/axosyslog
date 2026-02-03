@@ -465,7 +465,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionSetFields *self = (FilterXFunctionSetFields *) s;
 
-  if (!filterx_expr_visit(&self->dict, f, user_data))
+  if (!filterx_expr_visit(s, &self->dict, f, user_data))
     return FALSE;
 
   for (guint i = 0; i < self->fields->len; i++)
@@ -477,7 +477,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
           for (guint j = 0; j < field->overrides->len; j++)
             {
               FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->overrides, j);
-              if (!filterx_expr_visit(expr, f, user_data))
+              if (!filterx_expr_visit(s, expr, f, user_data))
                 return FALSE;
             }
         }
@@ -487,7 +487,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
           for (guint j = 0; j < field->defaults->len; j++)
             {
               FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->defaults, j);
-              if (!filterx_expr_visit(expr, f, user_data))
+              if (!filterx_expr_visit(s, expr, f, user_data))
                 return FALSE;
             }
         }
@@ -497,7 +497,7 @@ _set_fields_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
           for (guint j = 0; j < field->replacements->len; j++)
             {
               FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(field->replacements, j);
-              if (!filterx_expr_visit(expr, f, user_data))
+              if (!filterx_expr_visit(s, expr, f, user_data))
                 return FALSE;
             }
         }
@@ -510,7 +510,8 @@ FilterXExpr *
 filterx_function_set_fields_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionSetFields *self = g_new0(FilterXFunctionSetFields, 1);
-  filterx_function_init_instance(&self->super, "set_fields");
+
+  filterx_function_init_instance(&self->super, "set_fields", FXE_WRITE);
 
   self->super.super.eval = _eval_fx_set_fields;
   self->super.super.walk_children = _set_fields_walk;

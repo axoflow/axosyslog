@@ -163,7 +163,7 @@ _simple_function_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
     {
       FilterXExpr **arg = (FilterXExpr **) &g_ptr_array_index(self->args, i);
 
-      if (!filterx_expr_visit(arg, f, user_data))
+      if (!filterx_expr_visit(s, arg, f, user_data))
         return FALSE;
     }
 
@@ -176,7 +176,7 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
 {
   FilterXSimpleFunction *self = g_new0(FilterXSimpleFunction, 1);
 
-  filterx_function_init_instance(&self->super, function_name);
+  filterx_function_init_instance(&self->super, function_name, FXE_READ);
   self->super.super.eval = _simple_eval;
   self->super.super.walk_children = _simple_function_walk;
   self->super.super.free_fn = _simple_free;
@@ -250,9 +250,9 @@ _function_free(FilterXExpr *s)
 }
 
 void
-filterx_function_init_instance(FilterXFunction *s, const gchar *function_name)
+filterx_function_init_instance(FilterXFunction *s, const gchar *function_name, FilterXEffect effects)
 {
-  filterx_expr_init_instance(&s->super, "function");
+  filterx_expr_init_instance(&s->super, "function", effects);
   s->function_name = g_strdup_printf("%s()", function_name);
   s->super.optimize = _function_optimize;
   s->super.init = _function_init;

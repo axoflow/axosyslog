@@ -99,7 +99,7 @@ static void
 filterx_assign_init_instance(FilterXAssign *self, const gchar *type,
                              FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  filterx_binary_op_init_instance(&self->super, type, lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, type, FXE_WRITE, lhs, rhs);
   self->super.super.ignore_falsy_result = TRUE;
 }
 

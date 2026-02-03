@@ -85,9 +85,6 @@ _eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber
 static void
 _optimize_arithmetic_operators_common(FilterXArithmeticOperator *self)
 {
-  if (filterx_binary_op_optimize_method(&self->super.super))
-    g_assert_not_reached();
-
   if (filterx_expr_is_literal(self->super.lhs))
     self->literal_lhs = filterx_literal_get_value(self->super.lhs);
 
@@ -142,7 +139,7 @@ FilterXExpr *
 filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "subs", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize_substraction;
   self->super.super.eval = _eval_substraction;
   self->super.super.free_fn = _free_arithmetic_common;
@@ -187,7 +184,7 @@ FilterXExpr *
 filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "mult", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "mult", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize_multiplication;
   self->super.super.eval = _eval_multiplication;
   self->super.super.free_fn = _free_arithmetic_common;
@@ -232,7 +229,7 @@ FilterXExpr *
 filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "subs", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize_division;
   self->super.super.eval = _eval_division;
   self->super.super.free_fn = _free_arithmetic_common;
@@ -304,7 +301,7 @@ FilterXExpr *
 filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "mod", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "mod", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize_modulo;
   self->super.super.eval = _eval_modulo;
   self->super.super.free_fn = _free_arithmetic_common;
@@ -353,7 +350,7 @@ FilterXExpr *
 filterx_arithmetic_operator_uminus_new(FilterXExpr *operand)
 {
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
-  filterx_unary_op_init_instance(self, "uminus", operand);
+  filterx_unary_op_init_instance(self, "uminus", FXE_READ, operand);
 
   self->super.eval = _eval_uminus;
 
