@@ -54,7 +54,7 @@ FilterXExpr *
 filterx_operator_plus_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorPlusAssign *self = g_new0(FilterXOperatorPlusAssign, 1);
-  filterx_binary_op_init_instance(&self->super, "plus-assign", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "plus-assign", FXE_WRITE, lhs, rhs);
   self->super.super.eval = _eval_plus_assign;
 
   return &self->super.super;
