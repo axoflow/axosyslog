@@ -49,7 +49,7 @@ _eval_fx_istype(FilterXExpr *s)
 {
   FilterXFunctionIsType *self = (FilterXFunctionIsType *) s;
 
-  FilterXObject *object = filterx_expr_eval(self->object_expr);
+  FilterXObject *object = filterx_expr_eval_typed(self->object_expr);
   if (!object)
     {
       filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_ISTYPE_USAGE, s, NULL);
