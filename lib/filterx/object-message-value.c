@@ -28,9 +28,9 @@
 #include "filterx/object-datetime.h"
 #include "filterx/object-list.h"
 #include "filterx/json-repr.h"
+#include "filterx/filterx-eval.h"
 #include "logmsg/type-hinting.h"
 #include "str-utils.h"
-
 
 gboolean
 filterx_message_value_get_string_ref(FilterXObject *s, const gchar **value, gsize *len)
@@ -397,7 +397,7 @@ _len(FilterXObject *s, guint64 *len)
 FilterXObject *
 filterx_message_value_new_borrowed(const gchar *repr, gssize repr_len, LogMessageValueType type)
 {
-  FilterXMessageValue *self = g_new0(FilterXMessageValue, 1);
+  FilterXMessageValue *self = filterx_new_object(FilterXMessageValue);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(message_value));
   self->repr = repr;

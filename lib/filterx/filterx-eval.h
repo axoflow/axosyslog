@@ -26,6 +26,7 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-allocator.h"
 #include "template/eval.h"
 
 #define FILTERX_CONTEXT_ERROR_STACK_SIZE (8)
@@ -68,11 +69,14 @@ struct _FilterXEvalContext
   FilterXObject *current_frame_meta;
   LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
+  FilterXAllocator *allocator;
+  FilterXAllocatorPosition allocator_position;
   FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
 
   guint8 failure_info_collect_falsy:1;
   GArray *failure_info;
+  gint weak_refs_offset;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
@@ -181,9 +185,32 @@ filterx_eval_store_weak_ref(FilterXObject *object)
 
 #define FILTERX_EVAL_END_CONTEXT(eval_context) \
     while(0); \
-    filterx_eval_end_context(&eval_context); \
+    \
     if (local_scope) \
       filterx_scope_clear(scope); \
+    filterx_eval_end_context(&eval_context); \
   } while(0)
+
+static inline FilterXObject *
+filterx_malloc_object(gsize object_size, gsize alloc_size)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXObject *result;
+
+  if (!context || !context->allocator || alloc_size > 4096)
+    {
+      result = (FilterXObject *) g_malloc0(alloc_size);
+    }
+  else
+    {
+      result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
+      result->allocator_used = TRUE;
+    }
+
+  return result;
+}
+
+void filterx_eval_global_init(void);
+void filterx_eval_global_deinit(void);
 
 #endif
