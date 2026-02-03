@@ -27,11 +27,16 @@
 #include "filterx/object-extractor.h"
 #include "scratch-buffers.h"
 
+typedef struct FilterXAssign
+{
+  FilterXBinaryOp super;
+} FilterXAssign;
+
 static inline FilterXObject *
-_assign(FilterXBinaryOp *self, FilterXObject *value)
+_assign(FilterXAssign *self, FilterXObject *value)
 {
   FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(value), NULL);
-  if (!filterx_expr_assign(self->lhs, &cloned))
+  if (!filterx_expr_assign(self->super.lhs, &cloned))
     {
       filterx_object_unref(cloned);
       return NULL;
@@ -51,9 +56,9 @@ _suppress_error(void)
 static FilterXObject *
 _nullv_assign_eval(FilterXExpr *s)
 {
-  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+  FilterXAssign *self = (FilterXAssign *) s;
 
-  FilterXObject *value = filterx_expr_eval(self->rhs);
+  FilterXObject *value = filterx_expr_eval(self->super.rhs);
 
   if (!value || filterx_object_extract_null(value))
     {
@@ -71,9 +76,9 @@ _nullv_assign_eval(FilterXExpr *s)
 static FilterXObject *
 _assign_eval(FilterXExpr *s)
 {
-  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
+  FilterXAssign *self = (FilterXAssign *) s;
 
-  FilterXObject *value = filterx_expr_eval(self->rhs);
+  FilterXObject *value = filterx_expr_eval(self->super.rhs);
 
   if (!value)
     {
@@ -90,24 +95,31 @@ _assign_eval(FilterXExpr *s)
   return result;
 }
 
+static void
+filterx_assign_init_instance(FilterXAssign *self, const gchar *type,
+                             FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  filterx_binary_op_init_instance(&self->super, type, lhs, rhs);
+  self->super.super.ignore_falsy_result = TRUE;
+}
 
 /* NOTE: takes the object reference */
 FilterXExpr *
 filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  FilterXBinaryOp *self = g_new0(FilterXBinaryOp, 1);
+  FilterXAssign *self = g_new0(FilterXAssign, 1);
 
-  filterx_binary_op_init_instance(self, "assign", lhs, rhs);
-  self->super.eval = _assign_eval;
-  self->super.ignore_falsy_result = TRUE;
-  return &self->super;
+  filterx_assign_init_instance(self, "assign", lhs, rhs);
+  self->super.super.eval = _assign_eval;
+  return &self->super.super;
 }
 
 FilterXExpr *
 filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  FilterXExpr *self = filterx_assign_new(lhs, rhs);
-  self->type = "nullv_assign";
-  self->eval = _nullv_assign_eval;
-  return self;
+  FilterXAssign *self = g_new0(FilterXAssign, 1);
+
+  filterx_assign_init_instance(self, "nullv-assign", lhs, rhs);
+  self->super.super.eval = _nullv_assign_eval;
+  return &self->super.super;
 }

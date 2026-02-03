@@ -53,6 +53,8 @@ struct _FilterXExpr
 
   /* assign a new value to this expr */
   gboolean (*assign)(FilterXExpr *self, FilterXObject **new_value);
+  /* += a value to this expr */
+  FilterXObject *(*plus_assign)(FilterXExpr *self, FilterXObject *new_value);
 
   /* is the expression set? */
   gboolean (*is_set)(FilterXExpr *self);
@@ -154,6 +156,14 @@ filterx_expr_assign(FilterXExpr *self, FilterXObject **new_value)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_expr_plus_assign(FilterXExpr *self, FilterXObject *value)
+{
+  if (self->plus_assign)
+    return self->plus_assign(self, value);
+  return NULL;
+}
+
 static inline gboolean
 filterx_expr_is_set(FilterXExpr *self)
 {
@@ -186,6 +196,7 @@ void filterx_expr_init_instance(FilterXExpr *self, const gchar *type);
 FilterXExpr *filterx_expr_new(void);
 FilterXExpr *filterx_expr_ref(FilterXExpr *self);
 void filterx_expr_unref(FilterXExpr *self);
+FilterXObject *filterx_expr_plus_assign_method(FilterXExpr *self, FilterXObject *value);
 void filterx_expr_free_method(FilterXExpr *self);
 
 gboolean filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg);
