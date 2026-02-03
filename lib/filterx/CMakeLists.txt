@@ -15,6 +15,7 @@ set(FILTERX_HEADERS
     filterx/expr-literal-container.h
     filterx/expr-literal.h
     filterx/expr-membership.h
+    filterx/expr-move.h
     filterx/expr-null-coalesce.h
     filterx/expr-plus.h
     filterx/expr-plus-assign.h
@@ -97,6 +98,7 @@ set(FILTERX_SOURCES
     filterx/expr-literal-container.c
     filterx/expr-literal.c
     filterx/expr-membership.c
+    filterx/expr-move.c
     filterx/expr-null-coalesce.c
     filterx/expr-plus.c
     filterx/expr-plus-assign.c

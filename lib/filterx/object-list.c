@@ -198,7 +198,11 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
 
       if (child_of_interest && filterx_ref_values_equal(el, child_of_interest))
         {
-          el = filterx_object_ref(child_of_interest);
+          /* child_of_interest is a movable, floating xref, which is grounded by this clone */
+          el = filterx_object_clone(child_of_interest);
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(el == child_of_interest);
+#endif
           child_found = TRUE;
         }
       else
