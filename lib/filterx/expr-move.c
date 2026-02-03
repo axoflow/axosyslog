@@ -46,7 +46,7 @@ _walk_children(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXExprMove *self = (FilterXExprMove *) s;
 
-  return filterx_expr_visit(&self->expr, f, user_data);
+  return filterx_expr_visit(s, &self->expr, f, user_data);
 }
 
 static void
@@ -62,7 +62,7 @@ FilterXExpr *
 filterx_function_move_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprMove *self = g_new0(FilterXExprMove, 1);
-  filterx_function_init_instance(&self->super, "move");
+  filterx_function_init_instance(&self->super, "move", FXE_WRITE);
 
   self->super.super.eval = _eval_move;
   self->super.super.walk_children = _walk_children;
