@@ -55,9 +55,9 @@ Test(filterx_string, test_frozen_string_deduplication)
 }
 
 static void
-_translate_to_incremented(gchar *target, const gchar *source, gsize len)
+_translate_to_incremented(gchar *target, const gchar *source, gsize *len)
 {
-  for (gsize i = 0; i < len; i++)
+  for (gsize i = 0; i < *len; i++)
     target[i] = source[i] + 1;
 }
 
@@ -65,6 +65,68 @@ Test(filterx_string, test_filterx_string_new_translate)
 {
   FilterXObject *fobj = filterx_string_new_translated("VMS", 3, _translate_to_incremented);
   assert_object_json_equals(fobj, "\"WNT\"");
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_string, test_filterx_string_new_from_json_literal)
+{
+  FilterXObject *fobj = filterx_string_new_from_json_literal("abc", -1);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\ndef", -1);
+  assert_object_json_equals(fobj, "\"abc\\ndef\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\\\def", -1);
+  assert_object_json_equals(fobj, "\"abc\\\\def\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\ndef\\nghi\\", -1);
+  assert_object_json_equals(fobj, "\"abc\\ndef\\nghi\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("\\", -1);
+  assert_object_json_equals(fobj, "\"\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\u0040def", -1);
+  assert_object_json_equals(fobj, "\"abc@def\"");
+  filterx_object_unref(fobj);
+
+  /* BOM */
+  fobj = filterx_string_new_from_json_literal("abc\\uFFFEdef", -1);
+  assert_object_json_equals(fobj, "\"abc\uFFFEdef\"");
+  filterx_object_unref(fobj);
+
+  /* trailing backslash */
+  fobj = filterx_string_new_from_json_literal("abc\\", -1);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+
+  /* trailing backslash with length constraint */
+  fobj = filterx_string_new_from_json_literal("abc\\n", 4);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_string, test_filterx_string_cache_json_escaping_need)
+{
+  FilterXObject *fobj = filterx_string_new("literal-string", -1);
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal-string\"");
+  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal-string\"");
+  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  filterx_object_unref(fobj);
+
+
+  fobj = filterx_string_new("literal\nstring", -1);
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal\\nstring\"");
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal\\nstring\"");
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
   filterx_object_unref(fobj);
 }
 

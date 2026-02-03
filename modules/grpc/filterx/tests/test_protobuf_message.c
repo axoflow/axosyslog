@@ -169,7 +169,7 @@ Test(filterx_protobuf_message, assign_vars)
                           "\"sub\": {\"foo\":\"FOO\", \"bar\":\"BAR\", \"baz\":\"BAZ\"},"
                           "\"repsub\": [{\"foo\": \"foo1\", \"bar\": \"bar1\", \"baz\": \"baz1\"},"
                           "{\"foo\": \"TIK\", \"bar\": \"TAK\", \"baz\": \"TOE\"}]"
-                          "};"
+                          "}"
                           , -1, &json_err);
   cr_assert_null(json_err);
 
