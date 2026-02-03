@@ -88,7 +88,6 @@ typedef struct _OverflowQueue
   struct iv_list_head items;
   gint len;
   gint non_flow_controlled_len;
-  gsize total_size;
 } OverflowQueue;
 
 typedef struct _LogQueueFifo
@@ -497,12 +496,10 @@ log_queue_fifo_pop_head(LogQueue *s, LogPathOptions *path_options)
       return NULL;
     }
   log_queue_queued_messages_dec(&self->super);
-  log_queue_memory_usage_sub(&self->super, log_msg_get_size(msg));
 
   /* push to backlog */
   log_msg_ref(msg);
   iv_list_add_tail(&node->list, &self->backlog_queue.items);
-  self->backlog_queue.total_size += log_msg_get_size(msg);
   self->backlog_queue.len++;
 
   if (!node->flow_control_requested)
@@ -528,6 +525,7 @@ log_queue_fifo_ack_backlog(LogQueue *s, gint rewind_count)
 
       iv_list_del(&node->list);
       self->backlog_queue.len--;
+      log_queue_memory_usage_sub(&self->super, log_msg_get_size(node->msg));
 
       if (!node->flow_control_requested)
         self->backlog_queue.non_flow_controlled_len--;
@@ -555,14 +553,12 @@ log_queue_fifo_rewind_backlog_all(LogQueue *s)
   LogQueueFifo *self = (LogQueueFifo *) s;
 
   iv_list_splice_tail_init(&self->backlog_queue.items, &self->output_queue.items);
-  log_queue_memory_usage_add(&self->super, self->backlog_queue.total_size);
 
   self->output_queue.len += self->backlog_queue.len;
   self->output_queue.non_flow_controlled_len += self->backlog_queue.non_flow_controlled_len;
   log_queue_queued_messages_add(&self->super, self->backlog_queue.len);
   self->backlog_queue.len = 0;
   self->backlog_queue.non_flow_controlled_len = 0;
-  self->backlog_queue.total_size = 0;
 }
 
 static void
@@ -595,9 +591,6 @@ log_queue_fifo_rewind_backlog(LogQueue *s, guint rewind_count)
         }
 
       log_queue_queued_messages_inc(&self->super);
-      gsize msg_size = log_msg_get_size(node->msg);
-      log_queue_memory_usage_add(&self->super, msg_size);
-      self->backlog_queue.total_size -= msg_size;
     }
 }
 

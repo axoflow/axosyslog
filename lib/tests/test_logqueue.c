@@ -276,10 +276,13 @@ Test(logqueue, log_queue_fifo_rewind_all_and_memory_usage)
   cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 10*size_when_single_msg);
 
   send_some_messages(q, 10, FALSE);
-  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 0);
+  /* messages are still in the backlog */
+  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 10*size_when_single_msg);
   log_queue_rewind_backlog_all(q);
   cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 10*size_when_single_msg);
-
+  send_some_messages(q, 10, FALSE);
+  log_queue_ack_backlog(q, 10);
+  cr_assert_eq(stats_counter_get(q->metrics.shared.memory_usage), 0);
   log_queue_unref(q);
 }
 
