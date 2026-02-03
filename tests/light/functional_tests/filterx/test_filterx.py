@@ -3094,3 +3094,15 @@ def test_string_slicing(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == '{"range":"mp","prefix":"exa","suffix":"mple","nrange":"pl","nprefix":"examp","nsuffix":"ple"}'
+
+
+def test_istype_unwraps_message_value(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            istype($MESSAGE, "string");
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
