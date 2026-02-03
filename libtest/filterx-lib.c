@@ -224,7 +224,7 @@ filterx_object_expr_new(FilterXObject *object)
 {
   FilterXObjectExpr *self = g_new0(FilterXObjectExpr, 1);
 
-  filterx_expr_init_instance(&self->super, "object-expr");
+  filterx_expr_init_instance(&self->super, "object-expr", FXE_READ);
   self->super.eval = _object_expr_eval;
   self->super.free_fn = _object_expr_free;
   self->object = object;
