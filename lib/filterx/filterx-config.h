@@ -25,15 +25,16 @@
 #include "module-config.h"
 #include "filterx/filterx-object.h"
 #include "filterx/object-string.h"
+#include "filterx/filterx-env.h"
 
 typedef struct _FilterXConfig
 {
   ModuleConfig super;
-  GPtrArray *frozen_objects;
-  GHashTable *frozen_deduplicated_objects;
-  GPtrArray *weak_refs;
+  /* config related objects, e.g. frozen string literals, etc */
+  FilterXEnvironment global_env;
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);
+void filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object);
 
 #endif

@@ -89,12 +89,6 @@ typedef struct _FilterXStrcasecmp
 
 } FilterXStrcasecmp;
 
-static gboolean
-_format_str_obj(FilterXObject *obj, const gchar **str, gsize *str_len)
-{
-  return filterx_object_extract_string_ref(obj, str, str_len);
-}
-
 static inline void
 _do_casefold(const gchar **str, gsize *str_len)
 {
@@ -110,7 +104,7 @@ static gboolean
 _obj_format(FilterXObject *obj, const gchar **str, gsize *str_len, gboolean ignore_case, FilterXExpr *expr_hint)
 {
   gboolean result = FALSE;
-  if (!_format_str_obj(obj, str, str_len))
+  if (!filterx_object_extract_string_ref(obj, str, str_len))
     {
       filterx_eval_push_error("Failed to extract string value: repr() failed", expr_hint, obj);
       goto exit;
@@ -440,7 +434,7 @@ _expr_affix_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -456,7 +450,7 @@ _function_affix_new(FilterXFunctionArgs *args,
 {
   FilterXExprAffix *self = g_new0(FilterXExprAffix, 1);
 
-  filterx_function_init_instance(&self->super, affix_name);
+  filterx_function_init_instance(&self->super, affix_name, FXE_READ);
   self->super.super.eval = _expr_affix_eval;
   self->super.super.optimize = _expr_affix_optimize;
   self->super.super.walk_children = _expr_affix_walk;
@@ -678,12 +672,12 @@ _strcasecmp_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   if (!self->a_literal)
     {
-      if (!filterx_expr_visit(&self->a.expr, f, user_data))
+      if (!filterx_expr_visit(s, &self->a.expr, f, user_data))
         return FALSE;
     }
   if (!self->b_literal)
     {
-      if (!filterx_expr_visit(&self->b.expr, f, user_data))
+      if (!filterx_expr_visit(s, &self->b.expr, f, user_data))
         return FALSE;
     }
   return TRUE;
@@ -694,7 +688,7 @@ filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXStrcasecmp *self = g_new0(FilterXStrcasecmp, 1);
 
-  filterx_function_init_instance(&self->super, "strcasecmp");
+  filterx_function_init_instance(&self->super, "strcasecmp", FXE_READ);
   self->super.super.eval = _strcasecmp_eval;
   self->super.super.optimize = _strcasecmp_optimize;
   self->super.super.walk_children = _strcasecmp_walk;

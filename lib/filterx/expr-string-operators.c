@@ -216,7 +216,7 @@ filterx_string_slicing_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -228,7 +228,7 @@ filterx_string_slicing_new(FilterXExpr *lhs, FilterXExpr *start, FilterXExpr *en
 {
   FilterXSlicingOperator *self = g_new0(FilterXSlicingOperator, 1);
 
-  filterx_expr_init_instance(&self->super, "string_slicing");
+  filterx_expr_init_instance(&self->super, "string_slicing", FXE_READ);
   self->super.optimize = filterx_string_slicing_optimize;
   self->super.walk_children = filterx_string_slicing_walk;
   self->super.free_fn = filterx_string_slicing_free;

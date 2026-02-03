@@ -230,7 +230,7 @@ _failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -241,7 +241,8 @@ FilterXExpr *
 filterx_fn_failure_info_enable_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoEnable *self = g_new0(FilterXFunctionFailureInfoEnable, 1);
-  filterx_function_init_instance(&self->super, "failure_info_enable");
+
+  filterx_function_init_instance(&self->super, "failure_info_enable", FXE_WORLD);
   self->super.super.eval = _failure_info_enable_eval;
   self->super.super.walk_children = _failure_info_walk;
 
@@ -261,7 +262,8 @@ FilterXExpr *
 filterx_fn_failure_info_clear_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunction *self = g_new0(FilterXFunction, 1);
-  filterx_function_init_instance(self, "failure_info_clear");
+
+  filterx_function_init_instance(self, "failure_info_clear", FXE_WORLD);
   self->super.eval = _failure_info_clear_eval;
   self->super.walk_children = _failure_info_walk;
 
@@ -280,7 +282,8 @@ FilterXExpr *
 filterx_fn_failure_info_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunction *self = g_new0(FilterXFunction, 1);
-  filterx_function_init_instance(self, "failure_info");
+
+  filterx_function_init_instance(self, "failure_info", FXE_WORLD);
   self->super.eval = _failure_info_eval;
   self->super.walk_children = _failure_info_walk;
 
@@ -308,7 +311,8 @@ FilterXExpr *
 filterx_fn_failure_info_meta_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFailureInfoMeta *self = g_new0(FilterXFunctionFailureInfoMeta, 1);
-  filterx_function_init_instance(&self->super, "failure_info_meta");
+
+  filterx_function_init_instance(&self->super, "failure_info_meta", FXE_WORLD);
   self->super.super.eval = _failure_info_meta_eval;
   self->super.super.walk_children = _failure_info_meta_walk;
   self->super.super.free_fn = _failure_info_meta_free;

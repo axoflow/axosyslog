@@ -95,7 +95,7 @@ _istype_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -163,7 +163,8 @@ FilterXExpr *
 filterx_function_istype_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionIsType *self = g_new0(FilterXFunctionIsType, 1);
-  filterx_function_init_instance(&self->super, "istype");
+
+  filterx_function_init_instance(&self->super, "istype", FXE_READ);
   self->super.super.eval = _eval_fx_istype;
   self->super.super.optimize = _optimize;
   self->super.super.walk_children = _istype_walk;

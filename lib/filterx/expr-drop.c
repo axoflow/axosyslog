@@ -44,7 +44,7 @@ FilterXExpr *
 filterx_expr_drop_msg(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self, "drop");
+  filterx_expr_init_instance(self, "drop", FXE_CONTROL);
   self->walk_children = _drop_walk;
   self->eval = _eval_drop;
 

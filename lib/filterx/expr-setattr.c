@@ -56,12 +56,6 @@ _setattr(FilterXSetAttr *self, FilterXObject *new_value)
       goto error;
     }
 
-  if (object->readonly)
-    {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "Object is readonly");
-      goto error;
-    }
-
   if (!filterx_object_setattr(object, self->attr, &cloned))
     {
       filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "setattr() method failed");
@@ -143,7 +137,7 @@ _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -156,7 +150,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
 {
   FilterXSetAttr *self = g_new0(FilterXSetAttr, 1);
 
-  filterx_expr_init_instance(&self->super, "setattr");
+  filterx_expr_init_instance(&self->super, "setattr", FXE_WRITE);
   self->super.eval = _setattr_eval;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
@@ -169,7 +163,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   self->super.ignore_falsy_result = TRUE;
 
   /* NOTE: name borrows the string value from the string object */
-  self->super.name = filterx_string_get_value_ref(self->attr, NULL);
+  self->super.name = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
   return &self->super;
 }
 

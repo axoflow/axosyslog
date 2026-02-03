@@ -166,7 +166,7 @@ _conditional_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -177,7 +177,7 @@ FilterXExpr *
 filterx_conditional_new(FilterXExpr *condition)
 {
   FilterXConditional *self = g_new0(FilterXConditional, 1);
-  filterx_expr_init_instance(&self->super, "conditional");
+  filterx_expr_init_instance(&self->super, "conditional", FXE_READ);
   self->super.eval = _eval_conditional;
   self->super.optimize = _optimize;
   self->super.walk_children = _conditional_walk;

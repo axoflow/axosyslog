@@ -28,14 +28,23 @@
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
 
-typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr **expr, gpointer user_data);
-
-typedef enum _FilterXExprWalkOrder
+#define FXE_EFFECT_BITFIELD_SIZE 3
+typedef enum
 {
-  FILTERX_EXPR_WALK_PRE_ORDER,
-  FILTERX_EXPR_WALK_POST_ORDER,
-  FILTERX_EXPR_WALK_CHILDREN,
-} FilterXExprWalkOrder;
+  /* reads variables */
+  FXE_READ=0,
+  /* writes to a variable */
+  FXE_WRITE=1 << 0,
+  /* impacts the outside world, e.g. I/O, metrics, etc */
+  FXE_WORLD=1 << 1,
+  /* control flow change, e.g. break */
+  FXE_CONTROL=1 << 2,
+  FXE_MAX=FXE_CONTROL,
+} FilterXEffect;
+
+G_STATIC_ASSERT((1 << FXE_EFFECT_BITFIELD_SIZE) > FXE_MAX);
+
+typedef gboolean (*FilterXExprWalkFunc)(FilterXExpr *parent, FilterXExpr **child, gpointer user_data);
 
 struct _FilterXExpr
 {
@@ -45,7 +54,7 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1;
+  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, effects:FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
    * with the unmarshaled version */
@@ -53,11 +62,15 @@ struct _FilterXExpr
 
   /* assign a new value to this expr */
   gboolean (*assign)(FilterXExpr *self, FilterXObject **new_value);
+  /* += a value to this expr */
+  FilterXObject *(*plus_assign)(FilterXExpr *self, FilterXObject *new_value);
 
   /* is the expression set? */
   gboolean (*is_set)(FilterXExpr *self);
   /* unset the expression */
   gboolean (*unset)(FilterXExpr *self);
+  /* move the expression */
+  FilterXObject *(*move)(FilterXExpr *self);
 
   gboolean (*init)(FilterXExpr *self, GlobalConfig *cfg);
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
@@ -112,6 +125,12 @@ filterx_expr_eval(FilterXExpr *self)
   return self->eval(self);
 }
 
+static inline gboolean
+filterx_expr_has_effect(FilterXExpr *expr, FilterXEffect effect)
+{
+  return !!(expr->effects & effect);
+}
+
 /*
  * Evaluate the expression and return the result as a typed FilterXObject.
  * This function will call filterx_expr_eval() and then unmarshal the result
@@ -154,6 +173,14 @@ filterx_expr_assign(FilterXExpr *self, FilterXObject **new_value)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_expr_plus_assign(FilterXExpr *self, FilterXObject *value)
+{
+  if (self->plus_assign)
+    return self->plus_assign(self, value);
+  return NULL;
+}
+
 static inline gboolean
 filterx_expr_is_set(FilterXExpr *self)
 {
@@ -170,10 +197,27 @@ filterx_expr_unset(FilterXExpr *self)
   return FALSE;
 }
 
+static inline FilterXObject *
+filterx_expr_move(FilterXExpr *self)
+{
+  if (self->move)
+    return self->move(self);
+  return NULL;
+}
+
 static inline gboolean
 filterx_expr_unset_available(FilterXExpr *self)
 {
   return self->unset != NULL;
+}
+
+
+/* move() method is always available a default implementation is derived
+ * from FilterXExpr, but we also need the unset() method in the generic one. */
+static inline gboolean
+filterx_expr_move_available(FilterXExpr *self)
+{
+  return filterx_expr_unset_available(self) && self->move != NULL;
 }
 
 void filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc);
@@ -182,10 +226,11 @@ EVTTAG *filterx_expr_format_location_tag(FilterXExpr *self);
 GString *filterx_expr_format_location(FilterXExpr *self);
 const gchar *filterx_expr_get_text(FilterXExpr *self);
 FilterXExpr *filterx_expr_optimize(FilterXExpr *self);
-void filterx_expr_init_instance(FilterXExpr *self, const gchar *type);
+void filterx_expr_init_instance(FilterXExpr *self, const gchar *type, FilterXEffect effects);
 FilterXExpr *filterx_expr_new(void);
 FilterXExpr *filterx_expr_ref(FilterXExpr *self);
 void filterx_expr_unref(FilterXExpr *self);
+FilterXObject *filterx_expr_plus_assign_method(FilterXExpr *self, FilterXObject *value);
 void filterx_expr_free_method(FilterXExpr *self);
 
 gboolean filterx_expr_init_method(FilterXExpr *self, GlobalConfig *cfg);
@@ -195,9 +240,9 @@ gboolean filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg);
 void filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg);
 
 static inline gboolean
-filterx_expr_visit(FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
+filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f, gpointer user_data)
 {
-  return f(expr, user_data);
+  return f(self, expr, user_data);
 }
 
 static inline gboolean
@@ -215,11 +260,11 @@ typedef struct _FilterXUnaryOp
   FilterXExpr *operand;
 } FilterXUnaryOp;
 
-FilterXExpr *filterx_unary_op_optimize_method(FilterXExpr *s);
 gboolean filterx_unary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_unary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_unary_op_free_method(FilterXExpr *s);
-void filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand);
+void filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXEffect effects,
+                                    FilterXExpr *operand);
 
 typedef struct _FilterXBinaryOp
 {
@@ -227,10 +272,10 @@ typedef struct _FilterXBinaryOp
   FilterXExpr *lhs, *rhs;
 } FilterXBinaryOp;
 
-FilterXExpr *filterx_binary_op_optimize_method(FilterXExpr *s);
 gboolean filterx_binary_op_init_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_binary_op_deinit_method(FilterXExpr *s, GlobalConfig *cfg);
 void filterx_binary_op_free_method(FilterXExpr *s);
-void filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs);
+void filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXEffect effects,
+                                     FilterXExpr *lhs, FilterXExpr *rhs);
 
 #endif

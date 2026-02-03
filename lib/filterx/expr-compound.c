@@ -43,6 +43,17 @@ static gboolean
 _eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
   FilterXObject *res = NULL;
+
+
+  /* NOTE: this is feature envy and should be implemented within
+   * filterx_expr_eval(), however that function does not depend on the
+   * FilterXEvalContext layer and introducing that dependency would make the
+   * whole dependency chain circular.
+   */
+
+  if (filterx_expr_has_effect(expr, FXE_WRITE))
+    filterx_eval_context_make_writable(NULL);
+
   *result = res = filterx_expr_eval(expr);
 
   if (!res)
@@ -206,10 +217,11 @@ static gboolean
 _expr_walk_cb(FilterXExpr **value, gpointer user_data)
 {
   gpointer *args = user_data;
-  FilterXExprWalkFunc f = args[0];
-  gpointer udata = args[1];
+  FilterXExpr *expr = args[0];
+  FilterXExprWalkFunc f = args[1];
+  gpointer udata = args[2];
 
-  return filterx_expr_visit(value, *f, udata);
+  return filterx_expr_visit(expr, value, *f, udata);
 }
 
 gboolean
@@ -217,7 +229,7 @@ _compound_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
-  gpointer args[] =  { f, user_data };
+  gpointer args[] =  { s, f, user_data };
   return filterx_expr_list_foreach_ref(&self->exprs, _expr_walk_cb, args);
 }
 
@@ -226,7 +238,7 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
   FilterXCompoundExpr *self = g_new0(FilterXCompoundExpr, 1);
 
-  filterx_expr_init_instance(&self->super, "compound");
+  filterx_expr_init_instance(&self->super, "compound", FXE_READ);
   self->super.eval = _eval_compound;
   self->super.init = _init;
   self->super.walk_children = _compound_walk;

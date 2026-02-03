@@ -76,7 +76,7 @@ filterx_template_new(LogTemplate *template)
 {
   FilterXTemplate *self = g_new0(FilterXTemplate, 1);
 
-  filterx_expr_init_instance(&self->super, "template");
+  filterx_expr_init_instance(&self->super, "template", FXE_READ);
   self->super.eval = _eval_template;
   self->super.walk_children = _template_walk;
   self->super.free_fn = _free;

@@ -78,6 +78,7 @@ _eval_variable(FilterXExpr *s)
   if (self->variable_type == FX_VAR_MESSAGE_TIED)
     {
       /* auto register message tied variables */
+      filterx_eval_context_make_writable(context);
       variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle);
       if (variable)
         {
@@ -101,6 +102,7 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXScope *scope = context->scope;
 
+  filterx_eval_context_make_writable(context);
   FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
   filterx_scope_set_variable(scope, variable, new_repr, variable->assigned);
 }
@@ -192,7 +194,7 @@ static inline FilterXObject *
 _dollar_msg_varname(const gchar *name)
 {
   gchar *dollar_name = g_strdup_printf("$%s", name);
-  FilterXObject *dollar_name_obj = filterx_string_new(dollar_name, -1);
+  FilterXObject *dollar_name_obj = filterx_string_new_frozen(dollar_name);
   g_free(dollar_name);
 
   return dollar_name_obj;
@@ -209,7 +211,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
 {
   FilterXVariableExpr *self = g_new0(FilterXVariableExpr, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(variable), FXE_READ);
   self->super.walk_children = _variable_walk;
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
@@ -227,10 +229,10 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
       self->handle_is_macro = log_msg_is_handle_macro(filterx_variable_handle_to_nv_handle(self->handle));
     }
   else
-    self->variable_name = filterx_string_new(name, -1);
+    self->variable_name = filterx_string_new_frozen(name);
 
   /* NOTE: name borrows the string value from the string object */
-  self->super.name = filterx_string_get_value_ref(self->variable_name, NULL);
+  self->super.name = filterx_string_get_value_ref_and_assert_nul(self->variable_name, NULL);
 
   return &self->super;
 }

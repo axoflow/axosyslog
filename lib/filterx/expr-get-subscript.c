@@ -97,24 +97,57 @@ _unset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to unset from object", s, "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Failed to evaluate expression");
       return FALSE;
     }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
     {
-      filterx_eval_push_error_static_info("Failed to unset from object", s, "Failed to evaluate key");
-      goto exit;
-    }
-
-  if (variable->readonly)
-    {
-      filterx_eval_push_error_static_info("Failed to unset from object", s, "Object is readonly");
+      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Failed to evaluate key");
       goto exit;
     }
 
   result = filterx_object_unset_key(variable, key);
+  if (!result)
+    {
+      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Object does not support unset()");
+      goto exit;
+    }
+
+exit:
+  filterx_object_unref(key);
+  filterx_object_unref(variable);
+  return result;
+}
+
+static FilterXObject *
+_move(FilterXExpr *s)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+
+  FilterXObject *result = NULL;
+
+  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Failed to evaluate expression");
+      return FALSE;
+    }
+
+  FilterXObject *key = filterx_expr_eval_typed(self->key);
+  if (!key)
+    {
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Failed to evaluate key");
+      goto exit;
+    }
+
+  result = filterx_object_move_key(variable, key);
+  if (!result)
+    {
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Object does not support move()");
+      goto exit;
+    }
 
 exit:
   filterx_object_unref(key);
@@ -140,7 +173,7 @@ _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -153,11 +186,12 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
 {
   FilterXGetSubscript *self = g_new0(FilterXGetSubscript, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(get_subscript));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(get_subscript), FXE_READ);
   self->super.eval = _eval_get_subscript;
   self->super.is_set = _isset;
   self->super.unset = _unset;
   self->super.walk_children = _get_subscript_walk;
+  self->super.move = _move;
   self->super.free_fn = _free;
   self->operand = operand;
   self->key = key;

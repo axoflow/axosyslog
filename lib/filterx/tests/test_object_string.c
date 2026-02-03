@@ -25,6 +25,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-function.h"
+#include "filterx/filterx-eval.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -46,18 +47,39 @@ Test(filterx_string, test_filterx_object_string_maps_to_the_right_json_value)
 
 Test(filterx_string, test_frozen_string_deduplication)
 {
-  FilterXObject *str = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str2 = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str3 = filterx_string_new_frozen("abcde", configuration);
+  FilterXEvalContext context;
+  filterx_eval_begin_compile(&context, configuration);
+  FilterXObject *str = filterx_string_new_frozen("abcd");
+  FilterXObject *str2 = filterx_string_new_frozen("abcd");
+  FilterXObject *str3 = filterx_string_new_frozen("abcde");
 
   cr_assert_eq(str, str2);
   cr_assert_neq(str, str3);
+  filterx_eval_end_compile(&context);
+}
+
+Test(filterx_string, test_string_taking_allocated_storage)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
+
+  assert_object_json_equals(str, "\"abcd\"");
+  filterx_object_unref(str);
+}
+
+Test(filterx_string, test_string_taking_slice_of_another_string)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
+  FilterXObject *str2 = filterx_string_new_slice(str, 1, 3);
+
+  assert_object_json_equals(str2, "\"bc\"");
+  filterx_object_unref(str2);
+  filterx_object_unref(str);
 }
 
 static void
-_translate_to_incremented(gchar *target, const gchar *source, gsize len)
+_translate_to_incremented(gchar *target, const gchar *source, gsize *len)
 {
-  for (gsize i = 0; i < len; i++)
+  for (gsize i = 0; i < *len; i++)
     target[i] = source[i] + 1;
 }
 
@@ -65,6 +87,68 @@ Test(filterx_string, test_filterx_string_new_translate)
 {
   FilterXObject *fobj = filterx_string_new_translated("VMS", 3, _translate_to_incremented);
   assert_object_json_equals(fobj, "\"WNT\"");
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_string, test_filterx_string_new_from_json_literal)
+{
+  FilterXObject *fobj = filterx_string_new_from_json_literal("abc", -1);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\ndef", -1);
+  assert_object_json_equals(fobj, "\"abc\\ndef\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\\\def", -1);
+  assert_object_json_equals(fobj, "\"abc\\\\def\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\ndef\\nghi\\", -1);
+  assert_object_json_equals(fobj, "\"abc\\ndef\\nghi\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("\\", -1);
+  assert_object_json_equals(fobj, "\"\"");
+  filterx_object_unref(fobj);
+
+  fobj = filterx_string_new_from_json_literal("abc\\u0040def", -1);
+  assert_object_json_equals(fobj, "\"abc@def\"");
+  filterx_object_unref(fobj);
+
+  /* BOM */
+  fobj = filterx_string_new_from_json_literal("abc\\uFFFEdef", -1);
+  assert_object_json_equals(fobj, "\"abc\uFFFEdef\"");
+  filterx_object_unref(fobj);
+
+  /* trailing backslash */
+  fobj = filterx_string_new_from_json_literal("abc\\", -1);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+
+  /* trailing backslash with length constraint */
+  fobj = filterx_string_new_from_json_literal("abc\\n", 4);
+  assert_object_json_equals(fobj, "\"abc\"");
+  filterx_object_unref(fobj);
+}
+
+Test(filterx_string, test_filterx_string_cache_json_escaping_need)
+{
+  FilterXObject *fobj = filterx_string_new("literal-string", -1);
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal-string\"");
+  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal-string\"");
+  cr_assert_not(filterx_string_is_json_escaping_needed(fobj));
+  filterx_object_unref(fobj);
+
+
+  fobj = filterx_string_new("literal\nstring", -1);
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal\\nstring\"");
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  assert_object_json_equals(fobj, "\"literal\\nstring\"");
+  cr_assert(filterx_string_is_json_escaping_needed(fobj));
   filterx_object_unref(fobj);
 }
 
@@ -98,8 +182,7 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
-  gsize size;
-  const gchar *str = filterx_string_get_value_ref(obj, &size);
+  const gchar *str = filterx_string_get_value_as_cstr(obj);
 
   cr_assert(strcmp("null", str) == 0);
 

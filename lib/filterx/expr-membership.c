@@ -124,9 +124,6 @@ _optimize_in(FilterXExpr *s)
 {
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
 
-  if (filterx_binary_op_optimize_method(s))
-    g_assert_not_reached();
-
   if (filterx_expr_is_literal(self->super.lhs))
     self->literal_lhs = filterx_literal_get_value(self->super.lhs);
 
@@ -153,7 +150,7 @@ filterx_membership_in_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorIn *self = g_new0(FilterXOperatorIn, 1);
 
-  filterx_binary_op_init_instance(&self->super, "in", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "in", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize_in;
   self->super.super.eval = _eval_in;
   self->super.super.free_fn = _free_in;

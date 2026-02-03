@@ -26,14 +26,17 @@
 #include "logpipe.h"
 #include "scratch-buffers.h"
 #include "tls-support.h"
+#include "apphook.h"
 
 TLS_BLOCK_START
 {
   FilterXEvalContext *eval_context;
+  FilterXAllocator eval_allocator;
 }
 TLS_BLOCK_END;
 
-#define eval_context __tls_deref(eval_context)
+#define eval_context   __tls_deref(eval_context)
+#define eval_allocator __tls_deref(eval_allocator)
 
 #define FAILURE_INFO_PREALLOC_SIZE 16
 
@@ -328,6 +331,26 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
   failure_info->error_count = context->error_count;
 }
 
+static void
+_failure_info_clear_entry(FilterXFailureInfo *failure_info)
+{
+  for (gint i = 0; i < failure_info->error_count; i++)
+    filterx_error_clear(&failure_info->errors[i]);
+  filterx_object_unref(failure_info->meta);
+}
+
+static void
+_clear_failure_info(GArray *failure_info)
+{
+  for (guint i = 0; i < failure_info->len; ++i)
+    {
+      FilterXFailureInfo *fi = &g_array_index(failure_info, FilterXFailureInfo, i);
+      _failure_info_clear_entry(fi);
+    }
+
+  g_array_set_size(failure_info, 0);
+}
+
 FilterXEvalResult
 filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
 {
@@ -386,35 +409,29 @@ filterx_eval_begin_context(FilterXEvalContext *context,
   if (previous_context)
     {
       context->weak_refs = previous_context->weak_refs;
+      context->allocator = previous_context->allocator;
+      if (previous_context->scope != scope)
+        {
+          /* Unless we have our own scope object, we need to reuse the
+           * allocator as well. This means that in that case we won't need
+           * to remember where we need to go back.
+           */
+          filterx_allocator_save_position(context->allocator, &context->allocator_position);
+        }
       context->failure_info = previous_context->failure_info;
       context->failure_info_collect_falsy = previous_context->failure_info_collect_falsy;
+      context->weak_refs_offset = context->weak_refs->len;
     }
   else
-    context->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+    {
+      context->weak_refs = g_ptr_array_new_full(32, (GDestroyNotify) filterx_object_unref);
+      filterx_allocator_init(&eval_allocator);
+      context->allocator = &eval_allocator;
+    }
   context->previous_context = previous_context;
 
   context->eval_control_modifier = FXC_UNSET;
   filterx_eval_set_context(context);
-}
-
-static void
-_failure_info_clear_entry(FilterXFailureInfo *failure_info)
-{
-  for (gint i = 0; i < failure_info->error_count; i++)
-    filterx_error_clear(&failure_info->errors[i]);
-  filterx_object_unref(failure_info->meta);
-}
-
-static void
-_clear_failure_info(GArray *failure_info)
-{
-  for (guint i = 0; i < failure_info->len; ++i)
-    {
-      FilterXFailureInfo *fi = &g_array_index(failure_info, FilterXFailureInfo, i);
-      _failure_info_clear_entry(fi);
-    }
-
-  g_array_set_size(failure_info, 0);
 }
 
 void
@@ -423,12 +440,22 @@ filterx_eval_end_context(FilterXEvalContext *context)
   if (!context->previous_context)
     {
       g_ptr_array_free(context->weak_refs, TRUE);
-
+      filterx_allocator_empty(&eval_allocator);
       if (context->failure_info)
         {
           _clear_failure_info(context->failure_info);
           g_array_free(context->failure_info, TRUE);
         }
+    }
+  else if (context->scope != context->previous_context->scope)
+    {
+      /* we can only drop our weakrefs/allocator if we are not reusing the
+       * scope object of the previous block. If we do, the scope object will
+       * be destroyed by the previous context, so we need to keep everything
+       * around that still be sitting in previous_context->scope.
+       */
+      g_ptr_array_set_size(context->weak_refs, context->weak_refs_offset);
+      filterx_allocator_restore_position(context->allocator, &context->allocator_position);
     }
 
   context->failure_info = NULL;
@@ -438,23 +465,47 @@ filterx_eval_end_context(FilterXEvalContext *context)
 }
 
 void
+filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env)
+{
+  memset(context, 0, sizeof(*context));
+  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  context->weak_refs = env->weak_refs;
+  context->eval_control_modifier = FXC_UNSET;
+  context->previous_context = filterx_eval_get_context();
+  context->env = env;
+  filterx_eval_set_context(context);
+}
+
+void
+filterx_eval_end_restricted_context(FilterXEvalContext *context)
+{
+  _clear_errors(context);
+  filterx_eval_set_context(context->previous_context);
+}
+
+void
 filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg)
 {
   FilterXConfig *config = filterx_config_get(cfg);
-
-  g_assert(config != NULL);
-  memset(context, 0, sizeof(*context));
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-  context->weak_refs = config->weak_refs;
-  context->eval_control_modifier = FXC_UNSET;
-  filterx_eval_set_context(context);
+  filterx_eval_begin_restricted_context(context, &config->global_env);
 }
 
 void
 filterx_eval_end_compile(FilterXEvalContext *context)
 {
-  _clear_errors(context);
-  filterx_eval_set_context(NULL);
+  filterx_eval_end_restricted_context(context);
+}
+
+void
+filterx_eval_freeze_object(FilterXObject **object)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (context && context->env)
+    {
+      /* only compile contexts have an env. We can only freeze objects during compile time. */
+      filterx_env_freeze_object(context->env, object);
+    }
 }
 
 void
@@ -519,4 +570,22 @@ filterx_format_eval_result(FilterXEvalResult result)
       break;
     }
   return evt_tag_str("result", eval_result);
+}
+
+static void
+_deinit_tls_allocator(gpointer user_data)
+{
+  filterx_allocator_clear(&eval_allocator);
+}
+
+void
+filterx_eval_global_init(void)
+{
+  register_application_thread_deinit_hook(_deinit_tls_allocator, NULL);
+}
+
+void
+filterx_eval_global_deinit(void)
+{
+  filterx_allocator_clear(&eval_allocator);
 }

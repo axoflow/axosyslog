@@ -214,7 +214,7 @@ _append_non_separate_extension(FilterXObject *key, FilterXObject *value, gpointe
       for (gsize i = 0; i < ctx->config.header.num_fields - 1; i++)
         {
           const Field *field = &ctx->config.header.fields[i];
-          if (strcmp(field->name, key_str) == 0)
+          if (strn_eq_strz(key_str, field->name, key_len))
             {
               (*fields_to_find)--;
               return TRUE;
@@ -347,7 +347,7 @@ _event_format_formatter_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer use
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -359,7 +359,7 @@ filterx_function_event_format_formatter_init_instance(FilterXFunctionEventFormat
                                                       const gchar *fn_name, FilterXFunctionArgs *args,
                                                       Config *config, GError **error)
 {
-  filterx_function_init_instance(&self->super, fn_name);
+  filterx_function_init_instance(&self->super, fn_name, FXE_READ);
 
   self->super.super.eval = _eval;
   self->super.super.walk_children = _event_format_formatter_walk;

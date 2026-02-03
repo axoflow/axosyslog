@@ -148,15 +148,13 @@ _eval(FilterXExpr *s)
   const gchar *input;
 
   FilterXObject *result = NULL;
-  if (!filterx_object_extract_string_ref(obj, &input, &len))
+  if (!filterx_object_extract_string_as_cstr_len(obj, &input, &len))
     {
       filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()", &self->super.super,
                                           "Input must be string, got: %s",
                                           filterx_object_get_type_name(obj));
       goto exit;
     }
-
-  APPEND_ZERO(input, input, len);
 
   result = _extract_key_values(self, input, len);
 
@@ -291,7 +289,7 @@ _parse_kv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -302,7 +300,8 @@ FilterXExpr *
 filterx_function_parse_kv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionParseKV *self = g_new0(FilterXFunctionParseKV, 1);
-  filterx_function_init_instance(&self->super, "parse_kv");
+
+  filterx_function_init_instance(&self->super, "parse_kv", FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _parse_kv_walk;
   self->super.super.free_fn = _free;

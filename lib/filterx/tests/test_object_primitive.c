@@ -43,6 +43,13 @@ Test(filterx_object, test_filterx_double_should_always_have_fraction_part)
   filterx_object_unref(fobj);
 }
 
+Test(filterx_object, test_filterx_double_with_precision_should_produce_just_enough_digits)
+{
+  FilterXObject *fobj = filterx_double_new_with_prec(1.1, 1);
+  _assert_repr_equals(fobj, "1.1");
+  filterx_object_unref(fobj);
+}
+
 Test(filterx_object, test_filterx_double_trailing_zeroes_are_removed)
 {
   /* we produce enough granularity when needed but do not produce trailing

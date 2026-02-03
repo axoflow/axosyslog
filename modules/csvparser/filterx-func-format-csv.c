@@ -289,7 +289,7 @@ _format_csv_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -300,7 +300,8 @@ FilterXExpr *
 filterx_function_format_csv_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatCSV *self = g_new0(FilterXFunctionFormatCSV, 1);
-  filterx_function_init_instance(&self->super, "format_csv");
+
+  filterx_function_init_instance(&self->super, "format_csv", FXE_READ);
 
   self->super.super.eval = _eval;
   self->super.super.walk_children = _format_csv_walk;

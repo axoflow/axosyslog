@@ -239,7 +239,7 @@ _update_metric_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -250,8 +250,8 @@ FilterXExpr *
 filterx_function_update_metric_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionUpdateMetric *self = g_new0(FilterXFunctionUpdateMetric, 1);
-  filterx_function_init_instance(&self->super, "update_metric");
 
+  filterx_function_init_instance(&self->super, "update_metric", FXE_WORLD);
   self->super.super.eval = _eval;
   self->super.super.optimize = _optimize;
   self->super.super.init = _init;

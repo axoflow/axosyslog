@@ -67,19 +67,39 @@ _unset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to unset from object", s, "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Failed to evaluate expression");
       return FALSE;
     }
 
-  if (variable->readonly)
+  result = filterx_object_unset_key(variable, self->attr);
+  if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to unset from object", s, "Object is readonly");
-      goto exit;
+      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Object does not support unset()");
     }
 
-  result = filterx_object_unset_key(variable, self->attr);
+  filterx_object_unref(variable);
+  return result;
+}
 
-exit:
+static FilterXObject *
+_move(FilterXExpr *s)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  FilterXObject *result = NULL;
+
+  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Failed to evaluate expression");
+      return NULL;
+    }
+
+  result = filterx_object_move_key(variable, self->attr);
+  if (!result)
+    {
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Object does not support move()");
+    }
+
   filterx_object_unref(variable);
   return result;
 }
@@ -119,7 +139,7 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -132,9 +152,10 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
 {
   FilterXGetAttr *self = g_new0(FilterXGetAttr, 1);
 
-  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr));
+  filterx_expr_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(getattr), FXE_READ);
   self->super.eval = _eval_getattr;
   self->super.unset = _unset;
+  self->super.move = _move;
   self->super.is_set = _isset;
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
@@ -143,7 +164,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   g_assert(filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string)));
   self->attr = attr_name;
   /* NOTE: name borrows the string value from the string object */
-  self->super.name = filterx_string_get_value_ref(self->attr, NULL);
+  self->super.name = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
   return &self->super;
 }
 

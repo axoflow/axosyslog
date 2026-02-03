@@ -320,7 +320,7 @@ _eval(FilterXExpr *s)
 
   gsize len;
   const gchar *input;
-  if (!filterx_object_extract_string_ref(obj, &input, &len))
+  if (!filterx_object_extract_string_as_cstr_len(obj, &input, &len))
     {
       filterx_eval_push_error_static_info("Failed to evaluate event format parser", &self->super.super,
                                           EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG);
@@ -455,7 +455,7 @@ _event_format_parser_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_d
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -466,7 +466,7 @@ gboolean
 filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, const gchar *fn_name,
                                       FilterXFunctionArgs *args, Config *cfg, GError **error)
 {
-  filterx_function_init_instance(&self->super, fn_name);
+  filterx_function_init_instance(&self->super, fn_name, FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _event_format_parser_walk;
   self->super.super.free_fn = _free;
