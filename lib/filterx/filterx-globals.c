@@ -245,11 +245,13 @@ filterx_global_init(void)
   filterx_null_global_init();
   filterx_datetime_global_init();
   filterx_builtin_functions_init();
+  filterx_eval_global_init();
 }
 
 void
 filterx_global_deinit(void)
 {
+  filterx_eval_global_deinit();
   filterx_builtin_functions_deinit();
   filterx_datetime_global_deinit();
   filterx_null_global_deinit();

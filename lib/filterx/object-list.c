@@ -178,7 +178,7 @@ _filterx_list_is_key_set(FilterXObject *s, FilterXObject *key)
 FilterXObject *
 filterx_list_new(void)
 {
-  FilterXListObject *self = g_new0(FilterXListObject, 1);
+  FilterXListObject *self = filterx_new_object(FilterXListObject);
   filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list));
 
   self->array = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
