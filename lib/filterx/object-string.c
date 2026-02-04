@@ -267,6 +267,11 @@ filterx_string_new_take(gchar *str, gssize str_len)
   return &self->super;
 }
 
+#define IS_UTF16_HIGH_SURROGATE(cp) (((cp) & 0xFC00) == 0xD800)
+#define IS_UTF16_LOW_SURROGATE(cp) (((cp) & 0xFC00) == 0xDC00)
+#define DECODE_UTF16_SURROGATE_PAIR(high, low) ((((high) & 0x3FF) << 10) + ((low) & 0x3FF) + 0x10000)
+#define UNICODE_REPLACEMENT_CP 0xFFFD
+
 static void
 _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
 {
@@ -275,6 +280,7 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
   gsize len = *source_len;
   const gchar *backslash;
   gssize remaining_len = len;
+  glong high_surrogate = 0;
 
   backslash = memchr(input_pos, '\\', len);
   while (backslash != NULL)
@@ -299,7 +305,39 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
           remaining_len--;
 
           if (scan_hex_int(&input_pos, (gsize *) &remaining_len, 4, &unicode_codepoint))
-            output_pos += g_unichar_to_utf8((gunichar) unicode_codepoint, output_pos);
+            {
+              if (IS_UTF16_HIGH_SURROGATE(unicode_codepoint))
+                {
+                  /* first half of a surrogate pair, do nothing but remember
+                   * the codepoint in high_surrogate */
+
+                  high_surrogate = unicode_codepoint;
+                  unicode_codepoint = 0;
+                }
+              else if (IS_UTF16_LOW_SURROGATE(unicode_codepoint))
+                {
+                  /* second half of a surrogate pair, try to combine the two halves */
+                  if (high_surrogate)
+                    {
+                      /* we have the tailing surrogate, decode them both */
+                      unicode_codepoint = DECODE_UTF16_SURROGATE_PAIR(high_surrogate, unicode_codepoint);
+                      high_surrogate = 0;
+                    }
+                  else
+                    {
+                      /* low surrogate, but the high surrogate is missing */
+                      unicode_codepoint = UNICODE_REPLACEMENT_CP;
+                    }
+                }
+              if (unicode_codepoint)
+                output_pos += g_unichar_to_utf8((gunichar) unicode_codepoint, output_pos);
+            }
+        }
+      else if (G_UNLIKELY(high_surrogate))
+        {
+          /* only high surrogate followed by something else, invalid sequence */
+          output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
+          high_surrogate = 0;
         }
       else
         {
@@ -341,6 +379,11 @@ _deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
           remaining_len--;
         }
       backslash = remaining_len > 0 ? memchr(input_pos, '\\', remaining_len) : NULL;
+    }
+  if (high_surrogate)
+    {
+      /* high surrogate at the end of the string without its pair */
+      output_pos += g_unichar_to_utf8((gunichar) 0xFFFD, output_pos);
     }
   if (remaining_len > 0)
     {
