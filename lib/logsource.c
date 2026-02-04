@@ -256,6 +256,12 @@ _process_reclaimed_window(LogSource *self)
   return reclaim_in_progress;
 }
 
+static inline gsize
+_get_dynamic_window_size(LogSource *self)
+{
+  return self->full_window_size - self->initial_window_size;
+}
+
 static void
 _release_dynamic_window(LogSource *self)
 {
@@ -264,7 +270,7 @@ _release_dynamic_window(LogSource *self)
 
   _process_reclaimed_window(self);
 
-  gsize dynamic_part = self->full_window_size - self->initial_window_size;
+  gsize dynamic_part = _get_dynamic_window_size(self);
   msg_trace("Releasing dynamic part of the window", evt_tag_int("dynamic_window_to_be_released", dynamic_part),
             log_pipe_location_tag(&self->super));
 
@@ -344,7 +350,7 @@ log_source_dynamic_window_release_available(LogSource *self)
     return;
 
   gsize empty_window = window_size_counter_get(&self->window_size, NULL);
-  gsize dynamic_part = self->full_window_size - self->initial_window_size;
+  gsize dynamic_part = _get_dynamic_window_size(self);
 
   gsize empty_dynamic = MIN(empty_window, dynamic_part);
 
@@ -364,7 +370,7 @@ log_source_dynamic_window_release_available(LogSource *self)
 static void
 _dynamic_window_rebalance(LogSource *self)
 {
-  gsize current_dynamic_win = self->full_window_size - self->initial_window_size;
+  gsize current_dynamic_win = _get_dynamic_window_size(self);
   gboolean have_to_increase = current_dynamic_win < self->dynamic_window.pool->balanced_window;
   gboolean have_to_decrease = current_dynamic_win > self->dynamic_window.pool->balanced_window;
 
