@@ -94,6 +94,26 @@ Test(filterx_string, test_filterx_string_new_from_json_literal)
   assert_object_json_equals(fobj, "\"abc@def\"");
   filterx_object_unref(fobj);
 
+  /* utf16, 𝄞 character and its utf8 representation */
+  fobj = filterx_string_new_from_json_literal("abc\\uD834\\uDD1Edef", -1);
+  assert_object_json_equals(fobj, "\"abc""\xf0\x9d\x84\x9e""def\"");
+  filterx_object_unref(fobj);
+
+  /* utf16, with only high surrogate on its own, replaced by unicode replacement character */
+  fobj = filterx_string_new_from_json_literal("abc\\uD834def", -1);
+  assert_object_json_equals(fobj, "\"abc""\xEF\xBF\xBD""def\"");
+  filterx_object_unref(fobj);
+
+  /* utf16, with only low surrogate on its own, replaced by unicode replacement character */
+  fobj = filterx_string_new_from_json_literal("abc\\uDD1Edef", -1);
+  assert_object_json_equals(fobj, "\"abc""\xEF\xBF\xBD""def\"");
+  filterx_object_unref(fobj);
+
+  /* utf16, high surrogate at the end of the string */
+  fobj = filterx_string_new_from_json_literal("abc\\uD834", -1);
+  assert_object_json_equals(fobj, "\"abc""\xEF\xBF\xBD""\"");
+  filterx_object_unref(fobj);
+
   /* BOM */
   fobj = filterx_string_new_from_json_literal("abc\\uFFFEdef", -1);
   assert_object_json_equals(fobj, "\"abc\uFFFEdef\"");
