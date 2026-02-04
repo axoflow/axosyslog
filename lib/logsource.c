@@ -425,12 +425,12 @@ _create_ack_tracker_if_not_exists(LogSource *self)
 static void
 _register_window_stats(LogSource *self)
 {
-  gint level = STATS_LEVEL4;
+  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : self->options->stats_level;
 
   stats_lock();
-  stats_register_counter(level, self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE,
+  stats_register_counter(STATS_LEVEL4, self->metrics.window_available_key, SC_TYPE_SINGLE_VALUE,
                          &self->metrics.window_available);
-  stats_register_counter(level, self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE,
+  stats_register_counter(STATS_LEVEL4, self->metrics.window_capacity_key, SC_TYPE_SINGLE_VALUE,
                          &self->metrics.window_capacity);
   stats_register_counter(level, self->metrics.window_full_total_key, SC_TYPE_SINGLE_VALUE,
                          &self->metrics.window_full_total);
@@ -538,8 +538,16 @@ _allocate_counter_keys(LogSource *self)
 
   stats_cluster_key_builder_push(kb);
   {
-    if (self->name)
-      stats_cluster_key_builder_add_label(kb, stats_cluster_label("connection", self->name));
+    if (stats_check_level(STATS_LEVEL4))
+      {
+        if (self->name)
+          stats_cluster_key_builder_add_label(kb, stats_cluster_label("connection", self->name));
+      }
+    else
+      {
+        /* whiteout peer_address so we get a less granular time series */
+        stats_cluster_key_builder_add_label(kb, stats_cluster_label("peer_address", ""));
+      }
 
     stats_cluster_key_builder_set_name(kb, "input_window_available");
     self->metrics.window_available_key = stats_cluster_key_builder_build_single(kb);
