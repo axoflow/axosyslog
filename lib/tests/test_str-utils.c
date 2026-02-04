@@ -88,6 +88,24 @@ ParameterizedTest(StrChrTestData *test_data, str_utils, test_str_utils_find_char
                "Expected the strchr() return value to point right to the specified offset");
 }
 
+Test(str_utils, strn_eq_strz_with_shorter_and_longer_asciiz_strings)
+{
+  /* sample string that has extra characters past the end */
+  const char *str = "foo```";
+  size_t str_len = 3;
+
+  /* exact match */
+  cr_assert(strn_eq_strz(str, "foo", str_len));
+
+  /* asciiz short */
+  cr_assert(!strn_eq_strz(str, "fo", str_len));
+  cr_assert(!strn_eq_strz(str, "", str_len));
+
+  /* asciiz long */
+  cr_assert(!strn_eq_strz(str, "foo`", str_len));
+  cr_assert(!strn_eq_strz(str, "fooabc", str_len));
+}
+
 Test(strsplit, when_tokens_not_limited_find_all_tokens)
 {
   gchar **tokens = strsplit("  ABB   CCC DDDD          111", ' ', 0);

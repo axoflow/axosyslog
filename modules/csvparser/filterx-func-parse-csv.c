@@ -84,10 +84,9 @@ _parse_list_argument(FilterXFunctionParseCSV *self, FilterXExpr *list_expr, GLis
     {
       FilterXObject *elt = filterx_sequence_get_subscript(list_obj, i);
 
-      const gchar *val;
-      gsize len;
-      if (filterx_object_extract_string_ref(elt, &val, &len))
-        *list = g_list_append(*list, g_strndup(val, len));
+      gchar *val;
+      if (filterx_object_extract_string_dup(elt, &val))
+        *list = g_list_append(*list, val);
       filterx_object_unref(elt);
     }
 
