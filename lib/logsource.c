@@ -33,6 +33,8 @@
 #include "timeutils/misc.h"
 #include "compat/time.h"
 #include "scratch-buffers.h"
+#include "mainloop.h"
+#include "mainloop-call.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -254,14 +256,21 @@ _process_reclaimed_window(LogSource *self)
   return reclaim_in_progress;
 }
 
+static inline gsize
+_get_dynamic_window_size(LogSource *self)
+{
+  return self->full_window_size - self->initial_window_size;
+}
+
 static void
 _release_dynamic_window(LogSource *self)
 {
   g_assert(self->ack_tracker == NULL);
+  main_loop_assert_main_thread();
 
   _process_reclaimed_window(self);
 
-  gsize dynamic_part = self->full_window_size - self->initial_window_size;
+  gsize dynamic_part = _get_dynamic_window_size(self);
   msg_trace("Releasing dynamic part of the window", evt_tag_int("dynamic_window_to_be_released", dynamic_part),
             log_pipe_location_tag(&self->super));
 
@@ -275,6 +284,7 @@ _release_dynamic_window(LogSource *self)
   dynamic_window_pool_unref(self->dynamic_window.pool);
 }
 
+/* runs in the main thread, the source is idle */
 static void
 _inc_balanced(LogSource *self, gsize inc)
 {
@@ -295,10 +305,10 @@ _inc_balanced(LogSource *self, gsize inc)
     log_source_wakeup(self);
 }
 
+/* runs in the main thread, the source is idle */
 static void
 _dec_balanced(LogSource *self, gsize dec)
 {
-
   gsize empty_window = window_size_counter_get(&self->window_size, NULL);
   gsize remaining_sub = 0;
 
@@ -330,10 +340,37 @@ _dec_balanced(LogSource *self, gsize dec)
   dynamic_window_release(&self->dynamic_window, dec);
 }
 
+void
+log_source_dynamic_window_release_available(LogSource *self)
+{
+  main_loop_assert_main_thread();
+  g_assert((self->super.flags & PIF_INITIALIZED) == 0);
+
+  if (!dynamic_window_is_enabled(&self->dynamic_window))
+    return;
+
+  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+  gsize dynamic_part = _get_dynamic_window_size(self);
+
+  gsize empty_dynamic = MIN(empty_window, dynamic_part);
+
+  msg_trace("Releasing available dynamic part of the window",
+            evt_tag_int("dynamic_window_to_be_released", empty_dynamic),
+            log_pipe_location_tag(&self->super));
+
+  self->full_window_size -= empty_dynamic;
+  stats_counter_sub(self->metrics.window_capacity, empty_dynamic);
+
+  window_size_counter_sub(&self->window_size, empty_dynamic, NULL);
+  stats_counter_sub(self->metrics.window_available, empty_dynamic);
+  dynamic_window_release(&self->dynamic_window, empty_dynamic);
+}
+
+/* runs in the main thread, the source is idle */
 static void
 _dynamic_window_rebalance(LogSource *self)
 {
-  gsize current_dynamic_win = self->full_window_size - self->initial_window_size;
+  gsize current_dynamic_win = _get_dynamic_window_size(self);
   gboolean have_to_increase = current_dynamic_win < self->dynamic_window.pool->balanced_window;
   gboolean have_to_decrease = current_dynamic_win > self->dynamic_window.pool->balanced_window;
 
@@ -355,6 +392,8 @@ _dynamic_window_rebalance(LogSource *self)
 void
 log_source_dynamic_window_realloc(LogSource *self)
 {
+  main_loop_assert_main_thread();
+
   /* it is safe to assume that the window size is not decremented while this function runs,
    * only incrementation is possible by destination threads */
 
@@ -809,6 +848,15 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
   self->ack_tracker = NULL;
 }
 
+static gpointer
+_release_dynamic_window_cb(gpointer c)
+{
+  LogSource *self = (LogSource *) c;
+  _release_dynamic_window(self);
+
+  return NULL;
+}
+
 void
 log_source_free(LogPipe *s)
 {
@@ -820,6 +868,10 @@ log_source_free(LogPipe *s)
   g_free(self->name);
   g_free(self->stats_id);
 
+  /* free() may run in a destination thread (last acked message) */
+  if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
+    main_loop_call(_release_dynamic_window_cb, self, TRUE);
+
   _unregister_window_stats(self);
   _deallocate_counter_keys(self);
   stats_cluster_key_builder_free(self->metrics.stats_kb);
@@ -828,8 +880,6 @@ log_source_free(LogPipe *s)
   log_pipe_free_method(s);
 
   ack_tracker_factory_unref(self->ack_tracker_factory);
-  if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
-    _release_dynamic_window(self);
 }
 
 void
