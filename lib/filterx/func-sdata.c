@@ -107,7 +107,8 @@ FilterXExpr *
 filterx_function_is_sdata_from_enterprise_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionIsSdataFromEnteprise *self = g_new0(FilterXFunctionIsSdataFromEnteprise, 1);
-  filterx_function_init_instance(&self->super, "is_sdata_from_enterprise");
+
+  filterx_function_init_instance(&self->super, "is_sdata_from_enterprise", FXE_READ);
 
   if (!_extract_args(self, args, error) || !filterx_function_args_check(args, error))
     goto error;

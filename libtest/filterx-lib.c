@@ -204,7 +204,7 @@ _non_literal_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXNonLiteralExpr *self = (FilterXNonLiteralExpr *) s;
 
-  return filterx_expr_visit(&self->block, f, user_data);
+  return filterx_expr_visit(s, &self->block, f, user_data);
 }
 
 FilterXExpr *
@@ -212,7 +212,7 @@ filterx_non_literal_new_from_expr(FilterXExpr *expr)
 {
   FilterXNonLiteralExpr *self = g_new0(FilterXNonLiteralExpr, 1);
 
-  filterx_expr_init_instance(&self->super, "non-literal");
+  filterx_expr_init_instance(&self->super, "non-literal", FXE_READ);
   self->super.eval = _non_literal_eval;
   self->super.init = _non_literal_init;
   self->super.deinit = _non_literal_deinit;
@@ -267,7 +267,7 @@ filterx_dummy_error_new(const gchar *msg)
 {
   FilterXDummyError *self = g_new0(FilterXDummyError, 1);
   self->msg = g_strdup(msg);
-  filterx_expr_init_instance(&self->super, "dummy");
+  filterx_expr_init_instance(&self->super, "dummy", FXE_READ);
   self->super.eval = _eval;
   self->super.walk_children = _dummy_error_walk;
   self->super.free_fn = _free;

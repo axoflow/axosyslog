@@ -62,7 +62,7 @@ _unset_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   for (guint i = 0; i < self->exprs->len; i++)
     {
       FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->exprs, i);
-      if (!filterx_expr_visit(expr, f, user_data))
+      if (!filterx_expr_visit(s, expr, f, user_data))
         return FALSE;
     }
 
@@ -73,7 +73,7 @@ FilterXExpr *
 filterx_function_unset_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExprUnset *self = g_new0(FilterXExprUnset, 1);
-  filterx_function_init_instance(&self->super, "unset");
+  filterx_function_init_instance(&self->super, "unset", FXE_WRITE);
 
   self->super.super.eval = _eval_unset;
   self->super.super.walk_children = _unset_walk;

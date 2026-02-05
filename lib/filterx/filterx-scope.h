@@ -98,6 +98,7 @@ filterx_scope_get_variable(FilterXScope *self, FilterXVariable *v)
 static inline void
 filterx_scope_set_variable(FilterXScope *self, FilterXVariable *v, FilterXObject **value, gboolean assignment)
 {
+  g_assert(self->write_protected == FALSE);
   if (filterx_variable_is_floating(v))
     {
       G_STATIC_ASSERT(sizeof(v->generation) == sizeof(self->generation));
@@ -113,6 +114,8 @@ filterx_scope_set_variable(FilterXScope *self, FilterXVariable *v, FilterXObject
 static inline void
 filterx_scope_unset_variable(FilterXScope *self, FilterXVariable *v)
 {
+  g_assert(self->write_protected == FALSE);
+
   if (filterx_variable_is_floating(v))
     filterx_variable_unset_value(v, self->generation);
   else
@@ -140,6 +143,13 @@ static inline gboolean
 filterx_scope_is_write_protected(FilterXScope *self)
 {
   return self->write_protected;
+}
+
+static inline void
+filterx_scope_make_writable(FilterXScope *self)
+{
+  g_assert(self->variables.len == 0);
+  self->write_protected = FALSE;
 }
 
 static inline FilterXScope *

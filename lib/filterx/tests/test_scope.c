@@ -56,6 +56,46 @@ Test(filterx_scope, test_scope_stacking)
   filterx_scope_free(s);
 }
 
+Test(filterx_scope, test_cannot_register_variable_in_write_protected_scope, .signal=SIGABRT)
+{
+  FilterXScope *s = filterx_scope_new(NULL);
+  filterx_scope_write_protect(s);
+
+  FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
+  filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
+
+  filterx_scope_free(s);
+}
+
+Test(filterx_scope, test_cannot_unset_variable_in_write_protected_scope, .signal=SIGABRT)
+{
+  FilterXScope *s = filterx_scope_new(NULL);
+
+  FilterXVariableHandle v_handle = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle);
+
+  filterx_scope_write_protect(s);
+
+  filterx_scope_unset_variable(s, v);
+
+  filterx_scope_free(s);
+}
+
+Test(filterx_scope, test_cannot_change_variable_in_write_protected_scope, .signal=SIGABRT)
+{
+  FilterXScope *s = filterx_scope_new(NULL);
+
+  FilterXVariableHandle v_handle = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle);
+
+  filterx_scope_write_protect(s);
+  FilterXObject *value = filterx_boolean_new(TRUE);
+  filterx_scope_set_variable(s, v, &value, TRUE);
+  filterx_object_unref(value);
+
+  filterx_scope_free(s);
+}
+
 Test(filterx_scope, test_scope_sync)
 {
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;

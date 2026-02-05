@@ -65,7 +65,7 @@ FilterXExpr *
 filterx_switch_case_new(FilterXExpr *value)
 {
   FilterXSwitchCase *self = g_new0(FilterXSwitchCase, 1);
-  filterx_unary_op_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(switch_case), value);
+  filterx_unary_op_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(switch_case), FXE_READ, value);
   return &self->super.super;
 }
 
@@ -283,20 +283,20 @@ _switch_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   if (self->selector)
     {
-      if (!filterx_expr_visit(&self->selector, f, user_data))
+      if (!filterx_expr_visit(s, &self->selector, f, user_data))
         return FALSE;
     }
 
   if (self->body)
     {
-      if (!filterx_expr_visit(&self->body, f, user_data))
+      if (!filterx_expr_visit(s, &self->body, f, user_data))
         return FALSE;
     }
 
   for (gsize i = 0; i < self->cases->len; i++)
     {
       FilterXExpr **expr = (FilterXExpr **) &g_ptr_array_index(self->cases, i);
-      if (!filterx_expr_visit(expr, f, user_data))
+      if (!filterx_expr_visit(s, expr, f, user_data))
         return FALSE;
     }
 
@@ -308,7 +308,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
 {
   FilterXSwitch *self = g_new0(FilterXSwitch, 1);
 
-  filterx_expr_init_instance(&self->super, "switch");
+  filterx_expr_init_instance(&self->super, "switch", FXE_READ);
   self->super.init = _init;
   self->super.optimize = _optimize;
   self->super.eval = _eval_switch;

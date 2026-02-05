@@ -455,7 +455,7 @@ _event_format_parser_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_d
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -466,7 +466,7 @@ gboolean
 filterx_function_parser_init_instance(FilterXFunctionEventFormatParser *self, const gchar *fn_name,
                                       FilterXFunctionArgs *args, Config *cfg, GError **error)
 {
-  filterx_function_init_instance(&self->super, fn_name);
+  filterx_function_init_instance(&self->super, fn_name, FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _event_format_parser_walk;
   self->super.super.free_fn = _free;

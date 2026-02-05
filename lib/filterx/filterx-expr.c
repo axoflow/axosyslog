@@ -147,19 +147,24 @@ filterx_expr_deinit_method(FilterXExpr *self, GlobalConfig *cfg)
 }
 
 static gboolean
-_init_child_exprs(FilterXExpr **expr, gpointer user_data)
+_init_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
   GlobalConfig *cfg = (GlobalConfig *) user_data;
 
-  return filterx_expr_init(*expr, cfg);
+  if (!filterx_expr_init(*child, cfg))
+    return FALSE;
+
+  if (*child && filterx_expr_has_effect(*child, FXE_WRITE))
+    parent->effects |= FXE_WRITE;
+  return TRUE;
 }
 
 static gboolean
-_deinit_child_exprs(FilterXExpr **expr, gpointer user_data)
+_deinit_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
   GlobalConfig *cfg = (GlobalConfig *) user_data;
 
-  filterx_expr_deinit(*expr, cfg);
+  filterx_expr_deinit(*child, cfg);
   return TRUE;
 }
 
@@ -203,9 +208,9 @@ filterx_expr_deinit(FilterXExpr *self, GlobalConfig *cfg)
 }
 
 static gboolean
-_optimize_child_exprs(FilterXExpr **expr, gpointer user_data)
+_optimize_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_data)
 {
-  *expr = filterx_expr_optimize(*expr);
+  *child = filterx_expr_optimize(*child);
   return TRUE;
 }
 
@@ -254,20 +259,21 @@ filterx_expr_free_method(FilterXExpr *self)
 }
 
 void
-filterx_expr_init_instance(FilterXExpr *self, const gchar *type)
+filterx_expr_init_instance(FilterXExpr *self, const gchar *type, FilterXEffect effects)
 {
   self->ref_cnt = 1;
   self->init = filterx_expr_init_method;
   self->deinit = filterx_expr_deinit_method;
   self->free_fn = filterx_expr_free_method;
   self->type = type;
+  self->effects = effects;
 }
 
 FilterXExpr *
 filterx_expr_new(void)
 {
   FilterXExpr *self = g_new0(FilterXExpr, 1);
-  filterx_expr_init_instance(self, "expr");
+  filterx_expr_init_instance(self, "expr", FXE_READ);
   return self;
 }
 
@@ -299,15 +305,6 @@ filterx_expr_unref(FilterXExpr *self)
     }
 }
 
-FilterXExpr *
-filterx_unary_op_optimize_method(FilterXExpr *s)
-{
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
-
-  self->operand = filterx_expr_optimize(self->operand);
-  return NULL;
-}
-
 void
 filterx_unary_op_free_method(FilterXExpr *s)
 {
@@ -322,14 +319,14 @@ filterx_unary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXUnaryOp *self = (FilterXUnaryOp *) s;
 
-  return filterx_expr_visit(&self->operand, f, user_data);
+  return filterx_expr_visit(s, &self->operand, f, user_data);
 }
 
 void
-filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXExpr *operand)
+filterx_unary_op_init_instance(FilterXUnaryOp *self, const gchar *name, FilterXEffect effects,
+                               FilterXExpr *operand)
 {
-  filterx_expr_init_instance(&self->super, name);
-  self->super.optimize = filterx_unary_op_optimize_method;
+  filterx_expr_init_instance(&self->super, name, effects);
   self->super.walk_children = filterx_unary_op_walk;
   self->super.free_fn = filterx_unary_op_free_method;
   self->operand = operand;
@@ -345,35 +342,25 @@ filterx_binary_op_free_method(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
-FilterXExpr *
-filterx_binary_op_optimize_method(FilterXExpr *s)
-{
-  FilterXBinaryOp *self = (FilterXBinaryOp *) s;
-
-  self->lhs = filterx_expr_optimize(self->lhs);
-  self->rhs = filterx_expr_optimize(self->rhs);
-  return NULL;
-}
-
 static gboolean
 filterx_binary_op_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXBinaryOp *self = (FilterXBinaryOp *) s;
 
-  if (!filterx_expr_visit(&self->lhs, f, user_data))
+  if (!filterx_expr_visit(s, &self->lhs, f, user_data))
     return FALSE;
 
-  if (!filterx_expr_visit(&self->rhs, f, user_data))
+  if (!filterx_expr_visit(s, &self->rhs, f, user_data))
     return FALSE;
 
   return TRUE;
 }
 
 void
-filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_binary_op_init_instance(FilterXBinaryOp *self, const gchar *name, FilterXEffect effects,
+                                FilterXExpr *lhs, FilterXExpr *rhs)
 {
-  filterx_expr_init_instance(&self->super, name);
-  self->super.optimize = filterx_binary_op_optimize_method;
+  filterx_expr_init_instance(&self->super, name, effects);
   self->super.walk_children = filterx_binary_op_walk;
   self->super.free_fn = filterx_binary_op_free_method;
   g_assert(lhs);

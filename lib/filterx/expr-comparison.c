@@ -272,8 +272,6 @@ _optimize(FilterXExpr *s)
 {
   FilterXComparison *self = (FilterXComparison *) s;
 
-  g_assert(!filterx_binary_op_optimize_method(s));
-
   if (filterx_expr_is_literal(self->super.lhs))
     self->literal_lhs = filterx_literal_get_value(self->super.lhs);
 
@@ -302,7 +300,7 @@ filterx_comparison_new(FilterXExpr *lhs, FilterXExpr *rhs, gint operator)
 {
   FilterXComparison *self = g_new0(FilterXComparison, 1);
 
-  filterx_binary_op_init_instance(&self->super, "comparison", lhs, rhs);
+  filterx_binary_op_init_instance(&self->super, "comparison", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize;
   self->super.super.eval = _eval_comparison;
   self->super.super.free_fn = _filterx_comparison_free;

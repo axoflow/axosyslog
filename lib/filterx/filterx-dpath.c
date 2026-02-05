@@ -305,7 +305,7 @@ filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_d
 {
   FilterXDPathLValue *self = (FilterXDPathLValue *) s;
 
-  if (!filterx_expr_visit(&self->variable, f, user_data))
+  if (!filterx_expr_visit(s, &self->variable, f, user_data))
     return FALSE;
 
   for (GList *elem = self->dpath_elements; elem; elem = elem->next)
@@ -313,7 +313,7 @@ filterx_dpath_lvalue_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_d
       FilterXDPathElement *dpath_elem = (FilterXDPathElement *) elem->data;
       if (dpath_elem->type == FILTERX_DPATH_ELEMENT_EXPR)
         {
-          if (!filterx_expr_visit(&dpath_elem->expr, f, user_data))
+          if (!filterx_expr_visit(s, &dpath_elem->expr, f, user_data))
             return FALSE;
         }
     }
@@ -332,7 +332,7 @@ filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **
     }
 
   FilterXDPathLValue *self = g_new0(FilterXDPathLValue, 1);
-  filterx_expr_init_instance(&self->super, "dpath_lvalue");
+  filterx_expr_init_instance(&self->super, "dpath_lvalue", FXE_READ);
 
   self->super.eval = _prohibit_eval;
   self->super.assign = filterx_dpath_lvalue_assign;

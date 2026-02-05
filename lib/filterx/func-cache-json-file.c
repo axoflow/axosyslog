@@ -243,7 +243,7 @@ FilterXExpr *
 filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionCacheJsonFile *self = g_new0(FilterXFunctionCacheJsonFile, 1);
-  filterx_function_init_instance(&self->super, "cache_json_file");
+  filterx_function_init_instance(&self->super, "cache_json_file", FXE_WORLD);
 
   self->super.super.eval = _eval;
   self->super.super.walk_children = _cache_json_file_walk;

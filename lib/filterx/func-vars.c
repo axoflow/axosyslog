@@ -104,7 +104,8 @@ FilterXExpr *
 filterx_function_vars_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionVars *self = g_new0(FilterXFunctionVars, 1);
-  filterx_function_init_instance(&self->super, "vars");
+
+  filterx_function_init_instance(&self->super, "vars", FXE_READ);
 
   self->super.super.eval = _filterx_function_vars_eval;
   self->super.super.walk_children = _vars_walk;
@@ -204,21 +205,89 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
   return TRUE;
 }
 
-FilterXObject *
-filterx_simple_function_load_vars(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+typedef struct _FilterXFunctionLoadVars
 {
-  if (!args || args_len != 1)
-    {
-      filterx_simple_function_argument_error(s, "Incorrect number of arguments");
-      return NULL;
-    }
+  FilterXFunction super;
+  FilterXExpr *vars_expr;
+} FilterXFunctionLoadVars;
 
-  FilterXObject *vars = args[0];
+static gboolean
+_load_vars_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
+
+  if (!filterx_expr_init(self->vars_expr, cfg))
+    return FALSE;
+
+  return filterx_function_init_method(&self->super, cfg);
+}
+
+static void
+_load_vars_deinit(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
+
+  filterx_expr_deinit(self->vars_expr, cfg);
+  filterx_function_deinit_method(&self->super, cfg);
+}
+
+static FilterXExpr *
+_load_vars_optimize(FilterXExpr *s)
+{
+  FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
+
+  self->vars_expr = filterx_expr_optimize(self->vars_expr);
+  return filterx_function_optimize_method(&self->super);
+}
+
+FilterXObject *
+_load_vars_eval(FilterXExpr *s)
+{
+  FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
+
+  FilterXObject *vars = filterx_expr_eval(self->vars_expr);
+  if (!vars)
+    return NULL;
+
   FilterXObject *vars_unwrapped = filterx_ref_unwrap_ro(vars);
 
+  filterx_eval_context_make_writable(NULL);
   FilterXScope *scope = filterx_eval_get_scope();
   gpointer user_data[] = { s, scope };
   gboolean success = filterx_object_iter(vars_unwrapped, _load_from_dict, user_data);
 
   return success ? filterx_boolean_new(TRUE) : NULL;
+}
+
+FilterXExpr *
+filterx_function_load_vars_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionLoadVars *self = g_new0(FilterXFunctionLoadVars, 1);
+
+  filterx_function_init_instance(&self->super, "load_vars", FXE_WRITE);
+
+  self->super.super.eval = _load_vars_eval;
+  self->super.super.init = _load_vars_init;
+  self->super.super.deinit = _load_vars_deinit;
+  self->super.super.optimize = _load_vars_optimize;
+
+  if (filterx_function_args_len(args) != 1)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "Incorrent number of arguments");
+      goto error;
+    }
+
+  self->vars_expr = filterx_function_args_get_expr(args, 0);
+
+  if (!filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
 }

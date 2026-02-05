@@ -434,7 +434,7 @@ _strptime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -446,7 +446,8 @@ FilterXExpr *
 filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrptime *self = g_new0(FilterXFunctionStrptime, 1);
-  filterx_function_init_instance(&self->super, "strptime");
+
+  filterx_function_init_instance(&self->super, "strptime", FXE_READ);
   self->super.super.eval = _strptime_eval;
   self->super.super.walk_children = _strptime_walk;
   self->super.super.free_fn = _strptime_free;
@@ -582,7 +583,7 @@ _strftime_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -594,7 +595,8 @@ FilterXExpr *
 filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionStrftime *self = g_new0(FilterXFunctionStrftime, 1);
-  filterx_function_init_instance(&self->super, "strftime");
+
+  filterx_function_init_instance(&self->super, "strftime", FXE_READ);
 
   self->super.super.eval = _strftime_eval;
   self->super.super.walk_children = _strftime_walk;

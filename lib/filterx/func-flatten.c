@@ -240,7 +240,7 @@ _flatten_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
 
@@ -289,7 +289,8 @@ FilterXExpr *
 filterx_function_flatten_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFlatten *self = g_new0(FilterXFunctionFlatten, 1);
-  filterx_function_init_instance(&self->super, "flatten");
+
+  filterx_function_init_instance(&self->super, "flatten", FXE_WRITE);
   self->super.super.eval = _eval_fx_flatten;
   self->super.super.walk_children = _flatten_walk;
   self->super.super.free_fn = _free;

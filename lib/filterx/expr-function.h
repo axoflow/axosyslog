@@ -69,7 +69,7 @@ enum FilterXFunctionError
   FILTERX_FUNCTION_ERROR_EVAL_ERROR,
 };
 
-void filterx_function_init_instance(FilterXFunction *s, const gchar *function_name);
+void filterx_function_init_instance(FilterXFunction *s, const gchar *function_name, FilterXEffect effects);
 FilterXExpr *filterx_function_optimize_method(FilterXFunction *s);
 gboolean filterx_function_init_method(FilterXFunction *s, GlobalConfig *cfg);
 void filterx_function_deinit_method(FilterXFunction *s, GlobalConfig *cfg);

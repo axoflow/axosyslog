@@ -133,8 +133,6 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <ptr> stmts
 %type <node> stmt
 %type <node> stmt_expr
-%type <node> complex_expr
-%type <node> __complex_expr
 %type <node> switch_case
 %type <ptr> cases
 %type <ptr> case
@@ -206,7 +204,7 @@ stmts
 stmt
 	: stmt_expr ';'				{
 						  CHECK_ERROR($1, @1, "failed to initialize statement");
-						  $$ = $1;
+						  $$ = _assign_location($1, lexer, &@1);
 						}
 	| ';'					{ $$ = NULL; }
 	| conditional				{ $$ = _assign_location($1, lexer, &@1); }
@@ -215,30 +213,9 @@ stmt
 
 stmt_expr
 	: expr
-	| complex_expr
-	;
-
-complex_expr: __complex_expr			{ $$ = _assign_location($1, lexer, &@1); }
-
-__complex_expr
-	: assignment
+	| assignment
 	| declaration
 	;
-
-plus_assignment
-	: variable KW_PLUS_ASSIGN expr		{ $$ = filterx_assign_new(filterx_expr_ref($1), filterx_operator_plus_new($1, $3)); }
-	| expr '[' expr ']' KW_PLUS_ASSIGN expr	{ $$ = filterx_set_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3), filterx_operator_plus_new(filterx_get_subscript_new($1, $3), $6)); }
-	| expr '.' identifier KW_PLUS_ASSIGN expr
-						{
-						  $$ = filterx_setattr_new(filterx_expr_ref($1),
-						                           filterx_string_new_frozen($3, configuration),
-						                           filterx_operator_plus_new(filterx_getattr_new($1, filterx_string_new_frozen($3, configuration)),
-						                           $5));
-						  free($3);
-						}
-	| dpath_lvalue KW_PLUS_ASSIGN expr { $$ = filterx_assign_new($1, $3); filterx_dpath_lvalue_set_add_mode($1, TRUE); }
-	;
-
 
 assignment
 	/* TODO extract lvalues */
@@ -257,6 +234,20 @@ nullv_assignment
 	| expr '[' expr ']' KW_NULLV_ASSIGN expr	{ $$ = filterx_nullv_set_subscript_new($1, $3, $6); }
 	| expr '[' ']' KW_NULLV_ASSIGN expr  		{ $$ = filterx_nullv_set_subscript_new($1, NULL, $5); }
 	| dpath_lvalue KW_NULLV_ASSIGN expr { $$ = filterx_nullv_assign_new($1, $3); }
+	;
+
+plus_assignment
+	: variable KW_PLUS_ASSIGN expr		{ $$ = filterx_assign_new(filterx_expr_ref($1), filterx_operator_plus_new($1, $3)); }
+	| expr '[' expr ']' KW_PLUS_ASSIGN expr	{ $$ = filterx_set_subscript_new(filterx_expr_ref($1), filterx_expr_ref($3), filterx_operator_plus_new(filterx_get_subscript_new($1, $3), $6)); }
+	| expr '.' identifier KW_PLUS_ASSIGN expr
+						{
+						  $$ = filterx_setattr_new(filterx_expr_ref($1),
+						                           filterx_string_new_frozen($3, configuration),
+						                           filterx_operator_plus_new(filterx_getattr_new($1, filterx_string_new_frozen($3, configuration)),
+						                           $5));
+						  free($3);
+						}
+	| dpath_lvalue KW_PLUS_ASSIGN expr	{ $$ = filterx_assign_new($1, $3); filterx_dpath_lvalue_set_add_mode($1, TRUE); }
 	;
 
 dpath_lvalue

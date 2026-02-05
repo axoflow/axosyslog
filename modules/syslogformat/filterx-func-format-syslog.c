@@ -436,7 +436,7 @@ FilterXExpr *
 filterx_function_format_syslog_5424_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionFormatSyslog5424 *self = g_new0(FilterXFunctionFormatSyslog5424, 1);
-  filterx_function_init_instance(&self->super, "format_syslog_5424");
+  filterx_function_init_instance(&self->super, "format_syslog_5424", FXE_READ);
 
   self->super.super.eval = _format_syslog_5424_eval;
   self->super.super.optimize = _format_syslog_5424_optimize;

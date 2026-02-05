@@ -147,7 +147,7 @@ _protobuf_message_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data
 
   for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
     {
-      if (!filterx_expr_visit(exprs[i], f, user_data))
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
         return FALSE;
     }
   return TRUE;
@@ -157,8 +157,8 @@ FilterXExpr *
 filterx_function_protobuf_message_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXProtobufMessage *self = g_new0(FilterXProtobufMessage, 1);
-  filterx_function_init_instance(&self->super, "protobuf_message");
 
+  filterx_function_init_instance(&self->super, "protobuf_message", FXE_READ);
   self->super.super.eval = _eval;
   self->super.super.walk_children = _protobuf_message_walk;
   self->super.super.free_fn = _free;
