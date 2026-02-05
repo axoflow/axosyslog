@@ -23,6 +23,7 @@
 #############################################################################
 from collections import namedtuple
 
+from helper_functions import buffer_params
 from helper_functions import check_abandoned_disk_buffer_metrics
 from helper_functions import check_both_disk_buffer_metrics
 from helper_functions import check_disk_buffer_files
@@ -34,8 +35,9 @@ from helper_functions import set_config_with_default_non_reliable_disk_buffer_va
 from helper_functions import trigger_to_create_abandoned_disk_buffer
 
 
-NUMBER_OF_MESSAGES_TO_FILL_FIRST_BUFFERS = 500 + 724 + 100  # FrontCache + QDISK + WINDOW
-NUMBER_OF_MESSAGES_TO_FILL_SECOND_BUFFERS = 1000 + 724 + 100  # FrontCache + QDISK + WINDOW
+NUMBER_OF_MESSAGES_TO_FILL_FIRST_BUFFERS = buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window
+# fill front_cache_output too
+NUMBER_OF_MESSAGES_TO_FILL_SECOND_BUFFERS = buffer_params.count_front_cache + NUMBER_OF_MESSAGES_TO_FILL_FIRST_BUFFERS
 
 BufferState = namedtuple(
     "BufferState", [

@@ -24,6 +24,7 @@
 from collections import namedtuple
 
 import pytest
+from helper_functions import buffer_params
 from helper_functions import check_disk_buffer_metrics_after_destination_alive
 from helper_functions import check_disk_buffer_metrics_after_reload
 from helper_functions import check_disk_buffer_metrics_after_restart_and_destination_alive
@@ -32,6 +33,7 @@ from helper_functions import check_disk_buffer_state_load_attempts
 from helper_functions import check_disk_buffer_state_save_attempts
 from helper_functions import check_if_source_suspended
 from helper_functions import fill_up_and_check_initial_disk_buffer_metrics
+from helper_functions import get_metric
 from helper_functions import loggen_send_messages
 from helper_functions import send_and_wait_for_messages_arrived
 from helper_functions import set_config_with_default_non_reliable_disk_buffer_values
@@ -39,13 +41,44 @@ from helper_functions import set_expected_metrics_state_when_sending_more_logs_t
 from helper_functions import set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_without_flow_control
 from helper_functions import validate_disk_buffer
 
+
+def test_expected_message_size_in_memory_match_current_reality(config, port_allocator, syslog_ng, loggen, dqtool):
+    config, network_source, network_destination = set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator)
+
+    syslog_ng.start(config)
+    # single message goes directly to qout, so stays in memory
+    loggen_send_messages(loggen, network_source, number=1)
+    size_of_message_in_memory = get_metric(config, "syslogng_disk_queue_memory_usage_bytes")
+    syslog_ng.stop()
+    assert size_of_message_in_memory == buffer_params.message_size_in_memory
+
+
+def test_expected_message_size_in_diskq_match_current_reality(config, port_allocator, syslog_ng, loggen, dqtool):
+    config, network_source, network_destination = set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator)
+
+    syslog_ng.start(config)
+    # 500 messages go to qout (stays in memory), and the rest goes to diskq
+    #
+    # NOTE: our disk usage metric has a granularity of 1kB, everything else is rounded DOWN
+    # we need store enough messages that are _exactly_ on a kB boundary.
+    # OR we need to fix the disk_usage metric
+
+    messages_to_measure = 256
+
+    assert (messages_to_measure * buffer_params.message_size_in_diskq) % 1024 == 0
+    loggen_send_messages(loggen, network_source, number=buffer_params.count_front_cache + messages_to_measure)
+    size_of_message_in_diskq = get_metric(config, "syslogng_disk_queue_disk_usage_bytes")
+    syslog_ng.stop()
+    assert size_of_message_in_diskq == messages_to_measure * buffer_params.message_size_in_diskq
+
+
 BufferState = namedtuple(
     "BufferState", [
         "syslogng_disk_queue_processed_events_total",
         "syslogng_disk_queue_disk_allocated_bytes",
         "syslogng_disk_queue_disk_usage_bytes",
         "syslogng_disk_queue_events",
-        # "syslogng_disk_queue_memory_usage_bytes",
+        "syslogng_disk_queue_memory_usage_bytes",
         "messages_in_disk_buffer",
     ],
 )
@@ -62,177 +95,177 @@ TCParams = namedtuple(
         TCParams(
             # FrontCache_MAX = 500, QDISK_MAX = 724, WINDOW_MAX = 100, 1 msg raw size = 1024 bytes, 1 msg nvtable size = 1528 bytes
             # [FrontCache_MAX-1]-[0 QDISK]-[0 WINDOW]
-            loggen_msg_number=499,
-            last_msg_id="0000000498",
+            loggen_msg_number=buffer_params.count_front_cache - 1,
+            last_msg_id=f"{buffer_params.count_front_cache - 2:010}",
             is_suspended_source=False,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=499,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache - 1,
                 syslogng_disk_queue_disk_allocated_bytes=4096,
                 syslogng_disk_queue_disk_usage_bytes=0,
-                syslogng_disk_queue_events=499,
-                # syslogng_disk_queue_memory_usage_bytes=499 * 1528,
+                syslogng_disk_queue_events=buffer_params.count_front_cache - 1,
+                syslogng_disk_queue_memory_usage_bytes=(buffer_params.count_front_cache - 1) * buffer_params.message_size_in_memory,
                 messages_in_disk_buffer=0,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=499,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache - 1,
                 syslogng_disk_queue_disk_allocated_bytes=4096,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
         TCParams(
             # [FrontCache_MAX]-[0 QDISK]-[0 WINDOW]
-            loggen_msg_number=500,
-            last_msg_id="0000000499",
+            loggen_msg_number=buffer_params.count_front_cache,
+            last_msg_id=f"{buffer_params.count_front_cache - 1:010}",
             is_suspended_source=False,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=500,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache,
                 syslogng_disk_queue_disk_allocated_bytes=4096,
                 syslogng_disk_queue_disk_usage_bytes=0,
-                syslogng_disk_queue_events=500,
-                # syslogng_disk_queue_memory_usage_bytes=500 * 1528,
+                syslogng_disk_queue_events=buffer_params.count_front_cache,
+                syslogng_disk_queue_memory_usage_bytes=buffer_params.count_front_cache * buffer_params.message_size_in_memory,
                 messages_in_disk_buffer=0,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=500,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache,
                 syslogng_disk_queue_disk_allocated_bytes=4096,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
         TCParams(
             # [FrontCache_MAX]-[1 QDISK]-[0 WINDOW]
-            loggen_msg_number=501,
-            last_msg_id="0000000500",
+            loggen_msg_number=buffer_params.count_front_cache + 1,
+            last_msg_id=f"{buffer_params.count_front_cache:010}",
             is_suspended_source=False,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=501,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + 1,
                 syslogng_disk_queue_disk_allocated_bytes=4096 + 1024,
                 syslogng_disk_queue_disk_usage_bytes=1024,
-                syslogng_disk_queue_events=501,
-                # syslogng_disk_queue_memory_usage_bytes=500 * 1528,
+                syslogng_disk_queue_events=buffer_params.count_front_cache + 1,
+                syslogng_disk_queue_memory_usage_bytes=buffer_params.count_front_cache * buffer_params.message_size_in_memory,
                 messages_in_disk_buffer=1,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=501,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + 1,
                 syslogng_disk_queue_disk_allocated_bytes=4096 + 1024,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
         TCParams(
             # [FrontCache_MAX]-[QDISK_MAX-1]-[0 WINDOW]
-            loggen_msg_number=1223,
-            last_msg_id="0000001222",
+            loggen_msg_number=buffer_params.count_front_cache + buffer_params.count_qdisk - 1,
+            last_msg_id=f"{buffer_params.count_front_cache + buffer_params.count_qdisk - 2:010}",
             is_suspended_source=False,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=1223,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk - 1,
                 syslogng_disk_queue_disk_allocated_bytes=1047552,
                 syslogng_disk_queue_disk_usage_bytes=1043456,
-                syslogng_disk_queue_events=1223,
-                # syslogng_disk_queue_memory_usage_bytes=500 * 1528,
-                messages_in_disk_buffer=723,
+                syslogng_disk_queue_events=buffer_params.count_front_cache + buffer_params.count_qdisk - 1,
+                syslogng_disk_queue_memory_usage_bytes=buffer_params.count_front_cache * buffer_params.message_size_in_memory,
+                messages_in_disk_buffer=buffer_params.count_qdisk - 1,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=1223,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk - 1,
                 syslogng_disk_queue_disk_allocated_bytes=1047552,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
         TCParams(
             # [FrontCache_MAX]-[QDISK_MAX]-[0 WINDOW]
-            loggen_msg_number=1224,
-            last_msg_id="0000001223",
+            loggen_msg_number=buffer_params.count_front_cache + buffer_params.count_qdisk,
+            last_msg_id=f"{buffer_params.count_front_cache + buffer_params.count_qdisk - 1:010}",
             is_suspended_source=False,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=1224,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=1044480,
-                syslogng_disk_queue_events=1224,
-                # syslogng_disk_queue_memory_usage_bytes=500 * 1528,
-                messages_in_disk_buffer=724,
+                syslogng_disk_queue_events=buffer_params.count_front_cache + buffer_params.count_qdisk,
+                syslogng_disk_queue_memory_usage_bytes=buffer_params.count_front_cache * buffer_params.message_size_in_memory,
+                messages_in_disk_buffer=buffer_params.count_qdisk,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=1224,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
         TCParams(
             # [FrontCache_MAX]-[QDISK_MAX]-[1 WINDOW]
-            loggen_msg_number=1225,
-            last_msg_id="0000001224",
+            loggen_msg_number=buffer_params.count_front_cache + buffer_params.count_qdisk + 1,
+            last_msg_id=f"{buffer_params.count_front_cache + buffer_params.count_qdisk:010}",
             is_suspended_source=False,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=1225,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk + 1,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=1044480,
-                syslogng_disk_queue_events=1225,
-                # syslogng_disk_queue_memory_usage_bytes=765528,
-                messages_in_disk_buffer=724,
+                syslogng_disk_queue_events=buffer_params.count_front_cache + buffer_params.count_qdisk + 1,
+                syslogng_disk_queue_memory_usage_bytes=(buffer_params.count_front_cache + 1) * buffer_params.message_size_in_memory,
+                messages_in_disk_buffer=buffer_params.count_qdisk,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=1225,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk + 1,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
         TCParams(
             # [FrontCache_MAX]-[QDISK_MAX]-[WINDOW_MAX-1]
-            loggen_msg_number=1323,
-            last_msg_id="0000001322",
+            loggen_msg_number=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window - 1,
+            last_msg_id=f"{buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window - 2:010}",
             is_suspended_source=False,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=1323,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window - 1,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=1044480,
-                syslogng_disk_queue_events=1323,
-                # syslogng_disk_queue_memory_usage_bytes=915272,
-                messages_in_disk_buffer=724,
+                syslogng_disk_queue_events=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window - 1,
+                syslogng_disk_queue_memory_usage_bytes=(buffer_params.count_front_cache + buffer_params.count_flow_control_window - 1) * buffer_params.message_size_in_memory,
+                messages_in_disk_buffer=buffer_params.count_qdisk,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=1323,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window - 1,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
         TCParams(
             # [FrontCache_MAX]-[QDISK_MAX]-[WINDOW_MAX]
-            loggen_msg_number=1324,
-            last_msg_id="0000001323",
+            loggen_msg_number=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window,
+            last_msg_id=f"{buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window - 1:010}",
             is_suspended_source=True,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=1324,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=1044480,
-                syslogng_disk_queue_events=1324,
-                # syslogng_disk_queue_memory_usage_bytes=916800,
-                messages_in_disk_buffer=724,
+                syslogng_disk_queue_events=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window,
+                syslogng_disk_queue_memory_usage_bytes=(buffer_params.count_front_cache + buffer_params.count_flow_control_window) * buffer_params.message_size_in_memory,
+                messages_in_disk_buffer=buffer_params.count_qdisk,
             ),
             after=BufferState(
-                syslogng_disk_queue_processed_events_total=1324,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
@@ -259,23 +292,23 @@ def test_fill_up_buffers_for_non_reliable_disk_buffer_with_flow_control_then_sen
     "params", [
         TCParams(
             # [FrontCache_MAX]-[QDISK_MAX]-[WINDOW_MAX]
-            loggen_msg_number=1324,
-            last_msg_id="0000001323",
+            loggen_msg_number=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window,
+            last_msg_id=f"{buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window - 1:010}",
             is_suspended_source=None,
             before=BufferState(
-                syslogng_disk_queue_processed_events_total=1324,
+                syslogng_disk_queue_processed_events_total=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window,
                 syslogng_disk_queue_disk_allocated_bytes=None,
                 syslogng_disk_queue_disk_usage_bytes=None,
-                syslogng_disk_queue_events=None,
-                # syslogng_disk_queue_memory_usage_bytes=None,
-                messages_in_disk_buffer=None,
+                syslogng_disk_queue_events=buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window,
+                syslogng_disk_queue_memory_usage_bytes=(buffer_params.count_front_cache + buffer_params.count_flow_control_window) * buffer_params.message_size_in_memory,
+                messages_in_disk_buffer=buffer_params.count_qdisk,
             ),
             after=BufferState(
                 syslogng_disk_queue_processed_events_total=0,
                 syslogng_disk_queue_disk_allocated_bytes=1048576,
                 syslogng_disk_queue_disk_usage_bytes=0,
                 syslogng_disk_queue_events=0,
-                # syslogng_disk_queue_memory_usage_bytes=0,
+                syslogng_disk_queue_memory_usage_bytes=0,
                 messages_in_disk_buffer=0,
             ),
         ),
@@ -301,18 +334,15 @@ def test_overwrite_buffers_with_reload_for_non_reliable_disk_buffer_with_flow_co
     # reload will cause the overwrite of the existing buffers, with reading extra logs into flow control window
     config, network_source, network_destination = set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator)
 
-    frontCache_size = 500
-    qdisk_size = 724
-    flow_control_window_size = 100
     extra_msg_number = 1000  # will be forwarded too
-    loggen_msg_counter_to_overflow_buffer = frontCache_size + qdisk_size + flow_control_window_size + extra_msg_number
-    params = set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_with_flow_control(frontCache_size, qdisk_size, flow_control_window_size, extra_msg_number)
+    loggen_msg_counter_to_overflow_buffer = buffer_params.count_front_cache + buffer_params.count_qdisk + buffer_params.count_flow_control_window + extra_msg_number
+    params = set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_with_flow_control(buffer_params.count_front_cache, buffer_params.count_qdisk, buffer_params.count_flow_control_window, extra_msg_number)
 
     syslog_ng.start(config)
     fill_up_and_check_initial_disk_buffer_metrics(config, loggen, dqtool, network_source, loggen_msg_counter_to_overflow_buffer, params.before_reload)
 
     syslog_ng.reload(config)
-    # axosyslog will read an extra flow_control_window_size messages into the flow control window
+    # axosyslog will read an extra buffer_params.count_flow_control_window messages into the flow control window
     check_disk_buffer_metrics_after_reload(config, dqtool, params.after_reload)
 
     network_destination.start_listener()
@@ -330,13 +360,11 @@ def test_fill_up_buffers_for_non_reliable_disk_buffer_without_flow_control_then_
     config, network_source, network_destination = set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator, flow_control=False)
 
     syslog_ng.start(config)
-    frontCache_size = 500
-    qdisk_size = 724
     extra_msg_number = 1000  # will be dropped
-    loggen_msg_counter_to_overflow_buffer = frontCache_size + qdisk_size + extra_msg_number
+    loggen_msg_counter_to_overflow_buffer = buffer_params.count_front_cache + buffer_params.count_qdisk + extra_msg_number
     loggen_send_messages(loggen, network_source, number=loggen_msg_counter_to_overflow_buffer)
 
-    expected_metrics_state = set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_without_flow_control(frontCache_size, qdisk_size, extra_msg_number)
+    expected_metrics_state = set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_without_flow_control(buffer_params.count_front_cache, buffer_params.count_qdisk, extra_msg_number)
     check_disk_buffer_metrics_after_sending_more_logs_than_buffer_can_handle(config, dqtool, expected_metrics_state.before)
 
     network_destination.start_listener()
