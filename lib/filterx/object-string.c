@@ -397,32 +397,35 @@ filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 }
 
 FilterXObject *
-filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
+_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len)
 {
   FilterXString *self = filterx_new_object(FilterXString);
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
-  if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    {
-      FilterXString *string = (FilterXString *) object;
-      g_assert(end <= string->str_len && start <= end);
-      self->str = &string->str[start];
-    }
-  else if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(message_value)))
-    {
-      FilterXMessageValue *mv = (FilterXMessageValue *) object;
-      g_assert(end <= mv->repr_len && start <= end);
-      self->str = &mv->repr[start];
-    }
-  else
-    {
-      return NULL;
-    }
-
   self->super.flags |= FILTERX_STRING_FLAG_STR_BORROWED_SLICE;
-  self->str_len = end - start;
+  self->str = str;
+  self->str_len = str_len;
   self->storage.slice = filterx_object_ref(object);
   return &self->super;
+}
+
+FilterXObject *
+_filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gsize end)
+{
+  const gchar *value;
+  gsize len;
+  if (!filterx_message_value_get_string_ref(object, &value, &len))
+    g_assert_not_reached();
+
+  g_assert(end <= len && start <= end);
+  const gchar *str = &value[start];
+  gsize str_len = end - start;
+
+  FilterXObject *cached = _filterx_string_resolve_from_cache(str, str_len);
+  if (cached)
+    return cached;
+
+  return _filterx_string_new_slice_from_borrowed_str_and_len(object, str, str_len);
 }
 
 static inline gsize
