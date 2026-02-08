@@ -772,7 +772,7 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 FilterXObject *
 filterx_dict_new(void)
 {
-  return filterx_dict_new_with_table(_table_new(32));
+  return filterx_dict_new_with_table(_table_new(16));
 }
 
 FilterXObject *
