@@ -298,13 +298,13 @@ filterx_object_ref(FilterXObject *self)
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
 
+  if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
+    return self;
+
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
       return filterx_object_dup(self);
     }
-
-  if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
-    return self;
 
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
