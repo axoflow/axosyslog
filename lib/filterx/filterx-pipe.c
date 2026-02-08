@@ -24,6 +24,8 @@
 #include "filterx/filterx-eval.h"
 #include "stats/stats-registry.h"
 
+#include <valgrind/cachegrind.h>
+
 typedef struct _LogFilterXPipe
 {
   LogPipe super;
@@ -83,7 +85,9 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
               log_pipe_location_tag(s),
               evt_tag_msg_reference(msg));
 
+    CACHEGRIND_START_INSTRUMENTATION;
     eval_res = filterx_eval_exec(&eval_context, self->block);
+    CACHEGRIND_STOP_INSTRUMENTATION;
 
     msg_trace("<<<<<< filterx rule evaluation result",
               filterx_format_eval_result(eval_res),
