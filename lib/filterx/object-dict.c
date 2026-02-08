@@ -81,6 +81,7 @@ typedef struct _FilterXDictTable
   guint32 entries_size;
   guint32 entries_num;
   guint32 empty_num;
+  guint8 element_size;
 
   /* indices can be an array of gint8, gint16, gint32 depending on the hash
    * table size, number of elements matches "size" */
@@ -117,14 +118,14 @@ _table_usable_entries(gsize table_size)
 static inline gsize
 _table_index_size(FilterXDictTable *table)
 {
-  return table->size * _table_index_element_size(table->size);
+  return table->size * table->element_size;
 }
 
 /* get the value of an index entry, -> entry_slot */
 static inline FilterXDictEntrySlot
 _table_get_index_entry(FilterXDictTable *table, FilterXDictIndexSlot slot)
 {
-  gint element_size = _table_index_element_size(table->size);
+  gint element_size = table->element_size;
   if (element_size == 1)
     {
       gint8 *indices = (gint8 *) table->indices;
@@ -152,7 +153,7 @@ _table_get_index_entry(FilterXDictTable *table, FilterXDictIndexSlot slot)
 static inline void
 _table_set_index_entry(FilterXDictTable *table, gsize index, FilterXDictEntrySlot value)
 {
-  gint element_size = _table_index_element_size(table->size);
+  gint element_size = table->element_size;
   if (element_size == 1)
     {
       gint8 *indices = (gint8 *) table->indices;
@@ -418,6 +419,7 @@ _table_new(gsize initial_size)
                                      entries_size * sizeof(FilterXDictEntry));
   table->size_log2 = table_size_log2;
   table->size = table_size;
+  table->element_size = _table_index_element_size(table->size);
   table->entries_size = entries_size;
   table->entries_num = 0;
   table->mask = (1 << table_size_log2) - 1;
@@ -427,7 +429,7 @@ _table_new(gsize initial_size)
    * least on computers with 2 complements representation of binary numbers
    * */
 
-  memset(&table->indices, -1, table_size * _table_index_element_size(table_size));
+  memset(&table->indices, -1, table_size * table->element_size);
   return table;
 }
 
@@ -474,7 +476,7 @@ static void
 _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container,
                    FilterXObject *child_of_interest)
 {
-  memcpy(&target->indices, &source->indices, target->size * _table_index_element_size(target->size));
+  memcpy(&target->indices, &source->indices, target->size * target->element_size);
 
   FilterXDictEntrySlot max = target->entries_num;
   FilterXDictEntry *ep = _table_get_entries(target);
