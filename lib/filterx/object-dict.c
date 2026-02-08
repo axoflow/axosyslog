@@ -76,11 +76,17 @@ typedef gboolean (*FilterXDictForeachFunc)(FilterXObject **, FilterXObject **, g
 typedef struct _FilterXDictTable
 {
   gint size_log2;
+  /* size of the table index, always a power of 2 */
   guint32 size;
+  /* mask to get the valuable bits from a hash to get under size (e.g. one less than size) */
   guint32 mask;
+  /* size of the entries array */
   guint32 entries_size;
+  /* number of actual entries in the entries array */
   guint32 entries_num;
-  guint32 empty_num;
+  /* how many of the entries are empty */
+  guint32 entries_empty;
+  /* size of an element in the index, 1/2/4 bytes */
   guint8 element_size;
 
   /* indices can be an array of gint8, gint16, gint32 depending on the hash
@@ -365,7 +371,7 @@ _table_unset(FilterXDictTable *table, FilterXObject *key)
 
   filterx_dict_entry_clear(entry);
   _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
-  table->empty_num++;
+  table->entries_empty++;
   return TRUE;
 }
 
@@ -381,7 +387,7 @@ _table_move(FilterXDictTable *table, FilterXObject *key)
   FilterXObject *result = filterx_object_ref(entry->value);
   filterx_dict_entry_clear(entry);
   _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
-  table->empty_num++;
+  table->entries_empty++;
   return result;
 }
 
@@ -404,7 +410,7 @@ _table_foreach(FilterXDictTable *table, FilterXDictForeachFunc func, gpointer us
 static gsize
 _table_size(FilterXDictTable *table)
 {
-  return table->entries_num - table->empty_num;
+  return table->entries_num - table->entries_empty;
 }
 
 static FilterXDictTable *
@@ -423,7 +429,7 @@ _table_new(gsize initial_size)
   table->entries_size = entries_size;
   table->entries_num = 0;
   table->mask = (1 << table_size_log2) - 1;
-  table->empty_num = 0;
+  table->entries_empty = 0;
 
   /* this should set all elements to -1, regardless of element size, at
    * least on computers with 2 complements representation of binary numbers
@@ -466,7 +472,7 @@ _table_resize(FilterXDictTable *target, FilterXDictTable *source)
   g_assert(target->size >= source->size);
 
   target->entries_num = source->entries_num;
-  target->empty_num = source->empty_num;
+  target->entries_empty = source->entries_empty;
   memcpy(_table_get_entries(target), _table_get_entries(source), source->entries_size * sizeof(FilterXDictEntry));
 
   _table_resize_index(target, source);
@@ -512,7 +518,7 @@ _table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *
   g_assert(target->size == source->size);
 
   target->entries_num = source->entries_num;
-  target->empty_num = source->empty_num;
+  target->entries_empty = source->entries_empty;
   memcpy(_table_get_entries(target), _table_get_entries(source), source->entries_size * sizeof(FilterXDictEntry));
 
   _table_clone_index(target, source, container, child_of_interest);
