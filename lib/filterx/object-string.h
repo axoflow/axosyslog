@@ -86,7 +86,6 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], 
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
-FilterXObject *filterx_string_new_slice(FilterXObject *string_, gsize start, gsize end);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
@@ -205,6 +204,32 @@ filterx_string_new(const gchar *str, gssize str_len)
   if (cached)
     return cached;
   return _filterx_string_new(str, str_len);
+}
+
+/* slow paths */
+FilterXObject *_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len);
+FilterXObject *_filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gsize end);
+
+static inline FilterXObject *
+filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
+{
+  const gchar *str;
+  gsize len;
+
+  str = filterx_string_get_value_ref(object, &len);
+  if (str)
+    {
+      const gchar *slice_start = &str[start];
+      gsize slice_len = end - start;
+
+      g_assert(end <= len && start <= end);
+      FilterXObject *cached = _filterx_string_resolve_from_cache(slice_start, slice_len);
+      if (cached)
+        return cached;
+      return _filterx_string_new_slice_from_borrowed_str_and_len(object, slice_start, slice_len);
+    }
+
+  return _filterx_string_new_slice_from_non_string(object, start, end);
 }
 
 static inline FilterXObject *
