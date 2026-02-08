@@ -75,7 +75,6 @@ enum
 typedef gboolean (*FilterXDictForeachFunc)(FilterXObject **, FilterXObject **, gpointer);
 typedef struct _FilterXDictTable
 {
-  gint size_log2;
   /* size of the table index, always a power of 2 */
   guint32 size;
   /* mask to get the valuable bits from a hash to get under size (e.g. one less than size) */
@@ -86,7 +85,8 @@ typedef struct _FilterXDictTable
   guint32 entries_num;
   /* how many of the entries are empty */
   guint32 entries_empty;
-  /* size of an element in the index, 1/2/4 bytes */
+  /* size of the index in _bytes */
+  guint32 index_size_bytes;
   guint8 element_size;
 
   /* indices can be an array of gint8, gint16, gint32 depending on the hash
@@ -119,12 +119,6 @@ static inline gsize
 _table_usable_entries(gsize table_size)
 {
   return (table_size << 1) / 3;
-}
-
-static inline gsize
-_table_index_size(FilterXDictTable *table)
-{
-  return table->size * table->element_size;
 }
 
 /* get the value of an index entry, -> entry_slot */
@@ -189,7 +183,7 @@ _table_set_index_entry(FilterXDictTable *table, gsize index, FilterXDictEntrySlo
 static inline FilterXDictEntry *
 _table_get_entries(FilterXDictTable *table)
 {
-  return (FilterXDictEntry *) ((gchar *) (table + 1) + _table_index_size(table));
+  return (FilterXDictEntry *) ((gchar *) (table + 1) + table->index_size_bytes);
 }
 
 static inline FilterXDictEntry *
@@ -311,7 +305,7 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
   entry->value = value;
 }
 
-static FilterXDictEntrySlot
+static inline FilterXDictEntrySlot
 _table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
 {
   guint hash = _table_hash_key(key);
@@ -419,23 +413,24 @@ _table_new(gsize initial_size)
   gint table_size_log2 = round_to_log2(initial_size);
   gsize table_size = pow2(table_size_log2);
   gsize entries_size = _table_usable_entries(table_size);
+  gsize element_size = _table_index_element_size(table_size);
 
   FilterXDictTable *table = g_malloc(sizeof(FilterXDictTable) +
-                                     table_size * _table_index_element_size(table_size) +
+                                     table_size * element_size +
                                      entries_size * sizeof(FilterXDictEntry));
-  table->size_log2 = table_size_log2;
   table->size = table_size;
-  table->element_size = _table_index_element_size(table->size);
+  table->mask = table_size - 1;
   table->entries_size = entries_size;
   table->entries_num = 0;
-  table->mask = (1 << table_size_log2) - 1;
   table->entries_empty = 0;
+  table->element_size = element_size;
+  table->index_size_bytes = table_size * element_size;
 
   /* this should set all elements to -1, regardless of element size, at
    * least on computers with 2 complements representation of binary numbers
    * */
 
-  memset(&table->indices, -1, table_size * table->element_size);
+  memset(&table->indices, -1, table_size * element_size);
   return table;
 }
 
