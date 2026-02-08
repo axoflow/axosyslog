@@ -326,6 +326,15 @@ filterx_object_ref(FilterXObject *self)
   return self;
 }
 
+static inline FilterXObject *
+filterx_object_ref_preserved(FilterXObject *self)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(filterx_object_is_preserved(self));
+#endif
+  return self;
+}
+
 static inline void
 filterx_object_unref(FilterXObject *self)
 {
