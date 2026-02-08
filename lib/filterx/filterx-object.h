@@ -240,8 +240,10 @@ _filterx_object_is_type(FilterXObject *object, FilterXType *type)
 static inline gboolean
 filterx_object_is_type(FilterXObject *object, FilterXType *type)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
   if (type->is_mutable && filterx_object_is_ref(object))
     g_assert("filterx_ref_unwrap() must be used before comparing to mutable types" && FALSE);
+#endif
 
   return _filterx_object_is_type(object, type);
 }
