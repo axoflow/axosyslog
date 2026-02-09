@@ -583,6 +583,9 @@ _filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
       return NULL;
     }
 
+  if (!self->table)
+    return NULL;
+
   FilterXObject *value = NULL;
   if (!_table_lookup(self->table, key, &value))
     return NULL;
@@ -600,6 +603,9 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
     }
+
+  if (!self->table)
+    self->table = _table_new(FILTERX_DICT_MIN_SIZE);
 
   self->table = _table_resize_if_needed(self->table);
   _table_insert(self->table, filterx_object_vref(key), filterx_object_cow_store(new_value));
@@ -619,6 +625,9 @@ _filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
       return FALSE;
     }
 
+  if (!self->table)
+    return FALSE;
+
   return _table_isset(self->table, key);
 }
 
@@ -633,6 +642,9 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
     }
+
+  if (!self->table)
+    return TRUE;
 
   return _table_unset(self->table, key);
 }
@@ -657,7 +669,12 @@ _filterx_dict_len(FilterXObject *s, guint64 *len)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  *len = _table_size(self->table);
+  if (self->table)
+    {
+      *len = _table_size(self->table);
+      return TRUE;
+    }
+  *len = 0;
   return TRUE;
 }
 
@@ -676,6 +693,8 @@ _filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
+  if (!self->table)
+    return TRUE;
   gpointer args[] = { func, user_data };
   return _table_foreach(self->table, _filterx_dict_foreach_inner, args);
 }
@@ -694,11 +713,14 @@ static FilterXObject *
 _filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, FilterXObject *child_of_interest)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
-  FilterXDictTable *new_table = _table_new(self->table->size);
+  FilterXDictTable *new_table = NULL;
 
-  _table_clone(new_table, self->table, container, child_of_interest);
-  FilterXObject *clone = filterx_dict_new_with_table(new_table);
-  return clone;
+  if (self->table)
+    {
+       new_table = _table_new(self->table->size);
+      _table_clone(new_table, self->table, container, child_of_interest);
+    }
+  return filterx_dict_new_with_table(new_table);
 }
 
 static FilterXObject *
@@ -723,6 +745,9 @@ _filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 
   filterx_object_freezer_keep(freezer, *pself);
+
+  if (!self->table)
+    return;
   g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 
   /* Mutable objects themselves should never be deduplicated,
@@ -756,12 +781,15 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 FilterXObject *
 filterx_dict_new(void)
 {
-  return filterx_dict_new_with_table(_table_new(FILTERX_DICT_MIN_SIZE));
+  return filterx_dict_new_with_table(NULL);
 }
 
 FilterXObject *
 filterx_dict_sized_new(gsize init_size)
 {
+  if (init_size == 0)
+    return filterx_dict_new_with_table(NULL);
+
   if (init_size < FILTERX_DICT_MIN_SIZE)
     init_size = FILTERX_DICT_MIN_SIZE;
   init_size = init_size * 3 / 2;
@@ -773,7 +801,8 @@ _filterx_dict_free(FilterXObject *s)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  _table_free(self->table, TRUE);
+  if (self->table)
+    _table_free(self->table, TRUE);
   filterx_object_free_method(s);
 }
 
