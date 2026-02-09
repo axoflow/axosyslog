@@ -336,10 +336,8 @@ filterx_object_check_early_allocation(FilterXObject *self)
 }
 
 static inline FilterXObject *
-filterx_object_ref(FilterXObject *self)
+filterx_object_vref(FilterXObject *self)
 {
-  if (!self)
-    return NULL;
 
   gint r = self->ref_cnt;
 
@@ -359,6 +357,14 @@ filterx_object_ref(FilterXObject *self)
 }
 
 static inline FilterXObject *
+filterx_object_ref(FilterXObject *self)
+{
+  if (!self)
+    return NULL;
+  return filterx_object_vref(self);
+}
+
+static inline FilterXObject *
 filterx_object_ref_preserved(FilterXObject *self)
 {
 #if SYSLOG_NG_ENABLE_DEBUG
@@ -368,11 +374,8 @@ filterx_object_ref_preserved(FilterXObject *self)
 }
 
 static inline void
-filterx_object_unref(FilterXObject *self)
+filterx_object_vunref(FilterXObject *self)
 {
-  if (!self)
-    return;
-
   gint r = self->ref_cnt;
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
@@ -404,6 +407,14 @@ filterx_object_unref(FilterXObject *self)
       self->type->free_fn(self);
       filterx_free_object(self);
     }
+}
+
+static inline void
+filterx_object_unref(FilterXObject *self)
+{
+  if (!self)
+    return;
+  filterx_object_vunref(self);
 }
 
 static inline FilterXObject *
