@@ -745,7 +745,7 @@ _filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 
   if (!self->table)
-    return TRUE;
+    return;
   filterx_object_freezer_keep(freezer, *pself);
   g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 
@@ -753,7 +753,6 @@ _filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(*pself == &self->super.super);
-  return TRUE;
 }
 
 FilterXDictAnchor
