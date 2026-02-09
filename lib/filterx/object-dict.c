@@ -71,6 +71,7 @@ enum
 
 #define FILTERX_DICT_MAX_SIZE G_MAXINT32
 #define FILTERX_DICT_INDEX_SLOT_NONE G_MAXUINT32
+#define FILTERX_DICT_MIN_SIZE 16
 
 typedef gboolean (*FilterXDictForeachFunc)(FilterXObject **, FilterXObject **, gpointer);
 typedef struct _FilterXDictTable
@@ -755,14 +756,14 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 FilterXObject *
 filterx_dict_new(void)
 {
-  return filterx_dict_new_with_table(_table_new(16));
+  return filterx_dict_new_with_table(_table_new(FILTERX_DICT_MIN_SIZE));
 }
 
 FilterXObject *
 filterx_dict_sized_new(gsize init_size)
 {
-  if (init_size < 16)
-    init_size = 16;
+  if (init_size < FILTERX_DICT_MIN_SIZE)
+    init_size = FILTERX_DICT_MIN_SIZE;
   init_size = init_size * 3 / 2;
   return filterx_dict_new_with_table(_table_new(init_size));
 }
