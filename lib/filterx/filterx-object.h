@@ -395,7 +395,7 @@ filterx_object_unmarshal(FilterXObject *self)
 {
   if (self->type->unmarshal)
     return self->type->unmarshal(self);
-  return filterx_object_ref(self);
+  return filterx_object_vref(self);
 }
 
 static inline gboolean
@@ -636,7 +636,7 @@ static inline FilterXObject *
 filterx_object_copy(FilterXObject *self)
 {
   if (self->readonly)
-    return filterx_object_ref(self);
+    return filterx_object_vref(self);
 
   if (self->floating_ref)
     {
@@ -730,7 +730,7 @@ filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
         return filterx_ref_float(self);
 
       FilterXObject *result = filterx_ref_float(filterx_object_copy(self));
-      filterx_object_unref(self);
+      filterx_object_vunref(self);
       return result;
     }
 }
