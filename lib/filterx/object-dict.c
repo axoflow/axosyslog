@@ -601,7 +601,7 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
     }
 
   self->table = _table_resize_if_needed(self->table);
-  _table_insert(self->table, filterx_object_ref(key), filterx_object_cow_store(new_value));
+  _table_insert(self->table, filterx_object_vref(key), filterx_object_cow_store(new_value));
 
   return TRUE;
 }
@@ -792,14 +792,14 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
 
   FilterXObject *arg_unwrapped = filterx_ref_unwrap_ro(arg);
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(dict)))
-    return filterx_object_ref(arg);
+    return filterx_object_vref(arg);
 
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       FilterXObject *self = filterx_dict_new();
       if (!filterx_mapping_merge(self, arg_unwrapped))
         {
-          filterx_object_unref(self);
+          filterx_object_vunref(self);
           return NULL;
         }
       return self;
@@ -822,7 +822,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
         }
       if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(mapping)))
         {
-          filterx_object_unref(self);
+          filterx_object_vunref(self);
           return NULL;
         }
       return self;

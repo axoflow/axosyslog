@@ -182,7 +182,7 @@ filterx_object_unhibernate_and_free(FilterXObject *self)
   g_assert(r == FILTERX_OBJECT_REFCOUNT_HIBERNATED);
 
   self->ref_cnt = 1;
-  filterx_object_unref(self);
+  filterx_object_vunref(self);
 }
 
 FilterXType FILTERX_TYPE_NAME(object) =
