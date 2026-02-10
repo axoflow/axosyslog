@@ -31,6 +31,10 @@
 /* the string holds a value that does not need escaping when generating a JSON string literal */
 #define FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED  0x02
 
+/* the string borrows its payload from another string, which we need to reference */
+#define FILTERX_STRING_FLAG_STR_BORROWED_SLICE     0x04
+
+
 /* cache indices */
 enum
 {
