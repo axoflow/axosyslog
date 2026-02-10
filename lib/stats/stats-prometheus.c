@@ -38,11 +38,13 @@
  * escaped as \\, \", and \n, respectively.
  */
 static gchar *
-stats_format_prometheus_sanitize_label_value(const gchar *value)
+stats_format_prometheus_sanitize_label_value(const gchar *value, gssize value_len)
 {
   GString *sanitized_value = scratch_buffers_alloc();
 
-  const gchar *value_end = value + strlen(value);
+  if (value_len < 0)
+    value_len = strlen(value);
+  const gchar *value_end = value + value_len;
 
   while (value < value_end)
     {
@@ -91,11 +93,13 @@ _is_str_empty(const gchar *str)
 }
 
 static gchar *
-stats_format_prometheus_sanitize_name(const gchar *name)
+stats_format_prometheus_sanitize_name(const gchar *name, gssize len)
 {
+  if (len < 0)
+    len = strlen(name);
   GString *sanitized_name = scratch_buffers_alloc();
 
-  for (const gchar *c = name; *c; ++c)
+  for (const gchar *c = name; len > 0; ++c, --len)
     {
       if (_is_valid_name_char(*c))
         g_string_append_c(sanitized_name, *c);
@@ -193,8 +197,8 @@ _append_formatted_label(GString *serialized_labels, const StatsClusterLabel *lab
     *comma_needed = TRUE;
 
   g_string_append_printf(serialized_labels, "%s=\"%s\"",
-                         stats_format_prometheus_sanitize_name(label->name),
-                         stats_format_prometheus_sanitize_label_value(label->value));
+                         stats_format_prometheus_sanitize_name(label->name, label->name_len),
+                         stats_format_prometheus_sanitize_label_value(label->value, label->value_len));
 }
 
 static inline gboolean
@@ -236,31 +240,31 @@ _format_legacy(StatsCluster *sc, gint type, StatsCounterItem *counter)
   gchar component[64];
 
   g_string_append_printf(record, PROMETHEUS_METRIC_PREFIX "%s",
-                         stats_format_prometheus_sanitize_name(stats_cluster_get_component_name(sc, component, sizeof(component))));
+                         stats_format_prometheus_sanitize_name(stats_cluster_get_component_name(sc, component, sizeof(component)), -1));
 
   if (!sc->key.legacy.component || sc->key.legacy.component == SCS_GLOBAL)
     {
       if (!_is_str_empty(sc->key.legacy.id))
-        g_string_append_printf(record, "_%s", stats_format_prometheus_sanitize_name(sc->key.legacy.id));
+        g_string_append_printf(record, "_%s", stats_format_prometheus_sanitize_name(sc->key.legacy.id, -1));
     }
   else
     {
       gboolean has_id = !_is_str_empty(sc->key.legacy.id);
       if (has_id)
-        g_string_append_printf(labels, "%s=\"%s\"", "id", stats_format_prometheus_sanitize_label_value(sc->key.legacy.id));
+        g_string_append_printf(labels, "%s=\"%s\"", "id", stats_format_prometheus_sanitize_label_value(sc->key.legacy.id, -1));
 
       if (!_is_str_empty(sc->key.legacy.instance))
         {
           if (has_id)
             g_string_append_c(labels, ',');
           g_string_append_printf(labels, "%s=\"%s\"", "stat_instance",
-                                 stats_format_prometheus_sanitize_label_value(sc->key.legacy.instance));
+                                 stats_format_prometheus_sanitize_label_value(sc->key.legacy.instance, -1));
         }
     }
 
   const gchar *type_name = stats_cluster_get_type_name(sc, type);
   if (g_strcmp0(type_name, "value") != 0)
-    g_string_append_printf(record, "_%s", stats_format_prometheus_sanitize_name(type_name));
+    g_string_append_printf(record, "_%s", stats_format_prometheus_sanitize_name(type_name, -1));
 
   if (labels->len != 0)
     g_string_append_printf(record, "{%s}", labels->str);
@@ -282,7 +286,7 @@ stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *c
 
   GString *record = scratch_buffers_alloc();
   g_string_append_printf(record, PROMETHEUS_METRIC_PREFIX "%s%s",
-                         stats_format_prometheus_sanitize_name(sc->key.name),
+                         stats_format_prometheus_sanitize_name(sc->key.name, -1),
                          stats_cluster_get_type_name_suffix(sc, type) ? : "");
 
   const gchar *labels = _format_labels(sc, type);

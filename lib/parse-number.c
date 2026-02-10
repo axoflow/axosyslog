@@ -22,6 +22,7 @@
  */
 
 #include "parse-number.h"
+#include "str-utils.h"
 
 #include <string.h>
 #include <errno.h>
@@ -165,7 +166,7 @@ _int64_from_string(const gchar *s, gchar **endptr, gint base, gint64 *d)
 }
 
 static gboolean
-_parse_double(const gchar *s, gchar **endptr, gdouble *d)
+_parse_double(const gchar *s, gchar **endptr, gint *prec, gdouble *d)
 {
   gdouble val;
 
@@ -178,6 +179,16 @@ _parse_double(const gchar *s, gchar **endptr, gdouble *d)
   if (*endptr == s)
     return FALSE;
 
+  if (prec)
+    {
+      const gchar *dot = strchr(s, '.');
+      *prec = 0;
+      if (dot)
+        {
+          for (gint i = 1; ch_isdigit(*(dot + i)); i++)
+            (*prec)++;
+        }
+    }
   *d = val;
   return TRUE;
 }
@@ -241,11 +252,11 @@ parse_int64_with_suffix(const gchar *s, gint64 *d)
 }
 
 gboolean
-parse_double(const gchar *s, gdouble *d)
+parse_double(const gchar *s, gdouble *d, gint *prec)
 {
   gchar *endptr;
 
-  if (!_parse_double(s, &endptr, d))
+  if (!_parse_double(s, &endptr, prec, d))
     return FALSE;
   if (*endptr)
     return FALSE;
@@ -275,9 +286,10 @@ parse_generic_number(const char *str, GenericNumber *number)
     }
 
   double float_value;
-  if (parse_double(str, &float_value))
+  gint prec;
+  if (parse_double(str, &float_value, &prec))
     {
-      gn_set_double(number, float_value, -1);
+      gn_set_double(number, float_value, prec);
       return TRUE;
     }
 

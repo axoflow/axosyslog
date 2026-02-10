@@ -26,13 +26,13 @@
 #include "filterx/filterx-eval.h"
 
 pcre2_code_8 *
-filterx_regexp_compile_pattern(const gchar *pattern, gboolean jit_enabled, gint opts)
+filterx_regexp_compile_pattern(const gchar *pattern, gsize pattern_len, gboolean jit_enabled, gint opts)
 {
   gint rc;
   PCRE2_SIZE error_offset;
   gint flags = opts | PCRE2_DUPNAMES;
 
-  pcre2_code_8 *compiled = pcre2_compile((PCRE2_SPTR) pattern, PCRE2_ZERO_TERMINATED, flags, &rc, &error_offset, NULL);
+  pcre2_code_8 *compiled = pcre2_compile((PCRE2_SPTR) pattern, (PCRE2_SIZE) pattern_len, flags, &rc, &error_offset, NULL);
   if (!compiled)
     {
       PCRE2_UCHAR error_message[128];
@@ -60,9 +60,9 @@ filterx_regexp_compile_pattern(const gchar *pattern, gboolean jit_enabled, gint 
 }
 
 pcre2_code_8 *
-filterx_regexp_compile_pattern_defaults(const gchar *pattern)
+filterx_regexp_compile_pattern_defaults(const gchar *pattern, gsize pattern_len)
 {
-  return filterx_regexp_compile_pattern(pattern, TRUE, 0);
+  return filterx_regexp_compile_pattern(pattern, pattern_len, TRUE, 0);
 }
 
 void

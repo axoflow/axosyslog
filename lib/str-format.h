@@ -59,6 +59,7 @@ gchar *format_hex_string_with_delimiter(gconstpointer str, gsize str_len, gchar 
                                         gchar delimiter);
 
 gboolean scan_positive_int(const gchar **buf, gint *left, gint field_width, gint *num);
+gboolean scan_hex_int(const gchar **buf, gsize *left, gint field_width, glong *num);
 gboolean scan_expect_char(const gchar **buf, gint *left, gchar value);
 gboolean scan_expect_str(const gchar **buf, gint *left, const gchar *value);
 

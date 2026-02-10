@@ -28,9 +28,9 @@
 #include "filterx/object-datetime.h"
 #include "filterx/object-list.h"
 #include "filterx/json-repr.h"
+#include "filterx/filterx-eval.h"
 #include "logmsg/type-hinting.h"
 #include "str-utils.h"
-
 
 gboolean
 filterx_message_value_get_string_ref(FilterXObject *s, const gchar **value, gsize *len)
@@ -237,7 +237,7 @@ _repr(FilterXObject *s, GString *repr)
       double val;
       if (!type_cast_to_double(self->repr, self->repr_len, &val, NULL))
         return FALSE;
-      return double_repr(val, repr);
+      return double_repr(val, -1, repr);
     }
     case LM_VT_DATETIME:
     {
@@ -302,7 +302,7 @@ _format_json(FilterXObject *s, GString *json)
       break;
 
     case LM_VT_STRING:
-      return string_format_json(self->repr, self->repr_len, json);
+      return string_format_json(self->repr, self->repr_len, TRUE, json);
     case LM_VT_BOOLEAN:
     {
       gboolean val;
@@ -357,6 +357,10 @@ static FilterXObject *
 _unmarshal(FilterXObject *s)
 {
   FilterXMessageValue *self = (FilterXMessageValue *) s;
+  if (self->type == LM_VT_STRING)
+    {
+      return filterx_string_new_slice(s, 0, self->repr_len);
+    }
   return filterx_unmarshal_repr(self->repr, self->repr_len, self->type);
 }
 
@@ -397,7 +401,7 @@ _len(FilterXObject *s, guint64 *len)
 FilterXObject *
 filterx_message_value_new_borrowed(const gchar *repr, gssize repr_len, LogMessageValueType type)
 {
-  FilterXMessageValue *self = g_new0(FilterXMessageValue, 1);
+  FilterXMessageValue *self = filterx_new_object(FilterXMessageValue);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(message_value));
   self->repr = repr;

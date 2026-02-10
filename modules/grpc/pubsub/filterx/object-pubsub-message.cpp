@@ -203,9 +203,9 @@ _format_json(FilterXObject *s, GString *json)
         g_string_append_c(json, ',');
       else
         first = FALSE;
-      string_format_json(key.c_str(), key.length(), json);
+      string_format_json(key.c_str(), key.length(), TRUE, json);
       g_string_append_c(json, ':');
-      string_format_json(value.c_str(), value.length(), json);
+      string_format_json(value.c_str(), value.length(), TRUE, json);
     }
   g_string_append_c(json, '}');
   g_string_append_c(json, '}');

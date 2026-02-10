@@ -738,6 +738,18 @@ log_msg_set_value_indirect(LogMessage *self, NVHandle handle, NVHandle ref_handl
   log_msg_set_value_indirect_with_type(self, handle, ref_handle, ofs, len, LM_VT_STRING);
 }
 
+void
+log_msg_shrink_payload(LogMessage *self)
+{
+  if (log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
+    {
+      guint32 old_size = self->payload->size;
+      nv_table_shrink(&self->payload);
+      guint32 new_size = self->payload->size;
+      log_msg_update_allocation(self, (new_size - old_size));
+    }
+}
+
 gboolean
 log_msg_values_foreach(const LogMessage *self, NVTableForeachFunc func, gpointer user_data)
 {
@@ -2004,6 +2016,7 @@ log_msg_tags_init(void)
   log_tags_register_predefined_tag("syslog.missing_timestamp", LM_T_SYSLOG_MISSING_TIMESTAMP);
   log_tags_register_predefined_tag("syslog.invalid_hostname", LM_T_SYSLOG_INVALID_HOSTNAME);
   log_tags_register_predefined_tag("syslog.unexpected_framing", LM_T_SYSLOG_UNEXPECTED_FRAMING);
+  log_tags_register_predefined_tag("syslog.missing_message", LM_T_SYSLOG_MISSING_MESSAGE);
   log_tags_register_predefined_tag("syslog.rfc3164_missing_header", LM_T_SYSLOG_RFC3164_MISSING_HEADER);
   log_tags_register_predefined_tag("syslog.rfc3164_invalid_program", LM_T_SYSLOG_RFC_3164_INVALID_PROGRAM);
 

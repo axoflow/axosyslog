@@ -100,14 +100,14 @@ Test(filterx_func_unset_empties, invalid_args)
   _assert_unset_empties_init_fail(NULL);
 
   /* non-literal recursive */
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE,
-                                                      filterx_non_literal_new(filterx_boolean_new(TRUE))));
+                                                      filterx_object_expr_new(filterx_boolean_new(TRUE))));
   _assert_unset_empties_init_fail(args);
   args = NULL;
 
   /* non-boolean recursive */
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE,
                                                       filterx_literal_new(filterx_string_new("", -1))));
   _assert_unset_empties_init_fail(args);
@@ -118,7 +118,7 @@ Test(filterx_func_unset_empties, default_empties)
 {
   const gchar *input = "[\"\", null, [], {}]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   _assert_unset_empties(args, "[]");
 }
 
@@ -130,12 +130,12 @@ Test(filterx_func_unset_empties, recursive)
 
   /* default is true */
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("[{\"foo\":\"\"}]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[{\"foo\":\"\"}]", -1, NULL))));
   _assert_unset_empties(args, "[]");
   args = NULL;
 
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("[{\"foo\":\"\"}]", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("[{\"foo\":\"\"}]", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE,
                                                       filterx_literal_new(filterx_boolean_new(FALSE))));
   _assert_unset_empties(args, "[{\"foo\":\"\"}]");
@@ -144,12 +144,12 @@ Test(filterx_func_unset_empties, recursive)
   /* list */
 
   /* default is true */
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_object_from_json("[[\"\"]]",
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_object_from_json("[[\"\"]]",
                                                       -1, NULL))));
   _assert_unset_empties(args, "[]");
   args = NULL;
 
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_object_from_json("[[\"\"]]",
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_object_from_json("[[\"\"]]",
                                                       -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE,
                                                       filterx_literal_new(filterx_boolean_new(FALSE))));
@@ -161,7 +161,7 @@ Test(filterx_func_unset_empties, target_resets_defaults)
 {
   const gchar *input = "[\"\",null,[],{}]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   FilterXExpr *targets = _list_generator_helper(filterx_string_new("anything", -1), NULL);
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -172,7 +172,7 @@ Test(filterx_func_unset_empties, target_null_only)
 {
   const gchar *input = "[\"\",null,[],{}]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   FilterXExpr *targets = _list_generator_helper(filterx_null_new(), NULL);
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -183,7 +183,7 @@ Test(filterx_func_unset_empties, target_empty_string_only)
 {
   const gchar *input = "[\"\",null,[],{}]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   FilterXExpr *targets = _list_generator_helper(filterx_string_new("", -1), NULL);
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -194,7 +194,7 @@ Test(filterx_func_unset_empties, target_empty_list_only)
 {
   const gchar *input = "[\"\",null,[],{}]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   FilterXExpr *targets = _list_generator_helper(filterx_list_new(), NULL);
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -205,7 +205,7 @@ Test(filterx_func_unset_empties, target_empty_dict_only)
 {
   const gchar *input = "[\"\",null,[],{}]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   FilterXExpr *targets = _list_generator_helper(filterx_dict_new(), NULL);
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -216,7 +216,7 @@ Test(filterx_func_unset_empties, target_empties_manual)
 {
   const gchar *input = "[\"\",null,[],{}]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   FilterXExpr *targets = _list_generator_helper(filterx_dict_new(),
                                                 filterx_list_new(),
                                                 filterx_string_new("", -1),
@@ -230,7 +230,7 @@ Test(filterx_func_unset_empties, target_empties_manual_and_strings)
 {
   const gchar *input = "[\"bar\",\"\",null,[],{},\"foo\",\"bar\",\"baz\"]";
   GList *args = g_list_append(NULL, filterx_function_arg_new(NULL,
-                                                             filterx_literal_new(filterx_object_from_json(input, -1, NULL))));
+                                                             filterx_object_expr_new(filterx_object_from_json(input, -1, NULL))));
   FilterXExpr *targets = _list_generator_helper(filterx_dict_new(),
                                                 filterx_list_new(),
                                                 filterx_string_new("", -1),
@@ -252,7 +252,7 @@ Test(filterx_func_unset_empties, string_targets)
   targets = _list_generator_helper(filterx_string_new("baz", -1),
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
   _assert_unset_empties(args, "{\"foo\":{\"tik\":\"tak\"}}");
@@ -264,7 +264,7 @@ Test(filterx_func_unset_empties, string_targets)
                                    filterx_dict_new(), //also remove empty dict
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
   _assert_unset_empties(args, "{}");
@@ -276,7 +276,7 @@ Test(filterx_func_unset_empties, string_targets)
                                    filterx_null_new(), // also remove null values
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
                                                           -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -289,7 +289,7 @@ Test(filterx_func_unset_empties, string_targets)
                                    filterx_null_new(), // also remove null values
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
                                                           -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -308,7 +308,7 @@ Test(filterx_func_unset_empties, replacement)
                                    filterx_string_new("tak", -1),
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_REPLACEMENT,
@@ -323,7 +323,7 @@ Test(filterx_func_unset_empties, replacement)
                                    filterx_null_new(), //also replace null
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
                                                           -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -343,7 +343,7 @@ Test(filterx_func_unset_empties, ignorecase)
   targets = _list_generator_helper(filterx_string_new("BAZ", -1),
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_IGNORECASE,
@@ -355,7 +355,7 @@ Test(filterx_func_unset_empties, ignorecase)
   targets = _list_generator_helper(filterx_string_new("BAZ", -1),
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
+                                                      filterx_object_expr_new(filterx_object_from_json("{\"foo\":{\"bar\":\"baz\",\"tik\":\"tak\"}}", -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_IGNORECASE,
@@ -369,7 +369,7 @@ Test(filterx_func_unset_empties, ignorecase)
                                    filterx_null_new(), // also remove null
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
                                                           -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));
@@ -382,7 +382,7 @@ Test(filterx_func_unset_empties, ignorecase)
                                    filterx_null_new(), // also remove null
                                    NULL);
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
+                                                      filterx_object_expr_new(filterx_object_from_json("[\"foo\",\"bar\",null,\"baz\"]",
                                                           -1, NULL))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS,
                                                       targets));

@@ -237,7 +237,7 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
       goto error;
     }
 
-  self->pattern = filterx_regexp_compile_pattern_defaults(pattern);
+  self->pattern = filterx_regexp_compile_pattern_defaults(pattern, pattern_len);
   if (!self->pattern)
     {
       filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,

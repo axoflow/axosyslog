@@ -23,6 +23,16 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
+#include "str-utils.h"
+
+/* storage for the string is allocated separately, needs an explicit free() */
+#define FILTERX_STRING_FLAG_STR_ALLOCATED          0x01
+
+/* the string holds a value that does not need escaping when generating a JSON string literal */
+#define FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED  0x02
+
+/* string is borrowing its payload from another string */
+#define FILTERX_STRING_FLAG_STR_BORROWED_SLICE     0x04
 
 /* cache indices */
 enum
@@ -50,16 +60,21 @@ struct _FilterXString
   const gchar *str;
   guint32 str_len;
   volatile guint32 hash;
-  gchar storage[];
+  union
+  {
+    FilterXObject *slice;
+    gchar bytes[0];
+  } storage;
 };
 
-typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize source_len);
+
+typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize *source_len);
 
 FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
 FILTERX_DECLARE_TYPE(protobuf);
 
-gboolean string_format_json(const gchar *str, gsize str_len, GString *json);
+gboolean string_format_json(const gchar *str, gsize str_len, gboolean json_escaping_needed, GString *json);
 gboolean bytes_format_json(const gchar *str, gsize str_len, GString *json);
 
 const gchar *filterx_bytes_get_value_ref(FilterXObject *s, gsize *length);
@@ -71,14 +86,15 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], 
 FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
+FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
+FilterXObject *filterx_string_new_slice(FilterXObject *string_, gsize start, gsize end);
+FilterXObject *filterx_string_new_frozen(const gchar *str);
+
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value.
- *
- * Also NOTE: the returned string may not be NUL terminated, although often
- * it will be. Generic code should handle the cases where it is not.
  */
 static inline const gchar *
 filterx_string_get_value_ref(FilterXObject *s, gsize *length)
@@ -88,11 +104,83 @@ filterx_string_get_value_ref(FilterXObject *s, gsize *length)
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
     return NULL;
 
-  if (length)
-    *length = self->str_len;
-  else
-    g_assert(self->str[self->str_len] == 0);
+  *length = self->str_len;
   return self->str;
+}
+
+/* get string value and assert if the terminating NUL is present, should
+ * only be used in cases where we are sure that the FilterXString is a
+ * literal string, which is always NUL terminated */
+static inline const gchar *
+filterx_string_get_value_ref_and_assert_nul(FilterXObject *s, gsize *length)
+{
+  gsize len = 0;
+  const gchar *str = filterx_string_get_value_ref(s, &len);
+  if (!str)
+    return NULL;
+
+#if SYSLOG_NG_ENABLE_DEBUG
+
+  /* in DEBUG mode we are _never_ NUL terminating FilterXString instances to
+   * trigger any issues that relate to length handling.  But we must use
+   * this hack below to turn them into NUL terminated if the application
+   * code correctly requests it using this function.
+    */
+  g_assert(str[len] == 0 || str[len] == '`');
+  ((gchar *) str)[len] = 0;
+#else
+  g_assert(str[len] == 0);
+#endif
+  if (length)
+    *length = len;
+  return str;
+}
+
+#define filterx_string_get_value_as_cstr(s) \
+  ({ \
+    gsize __len; \
+    const gchar *__str = filterx_string_get_value_ref(s, &__len); \
+    if (__str) { APPEND_ZERO(__str, __str, __len); } \
+    __str; \
+  })
+
+#define filterx_string_get_value_as_cstr_len(s, len) \
+  ({ \
+    const gchar *__str = filterx_string_get_value_ref(s, len); \
+    if (__str) { APPEND_ZERO(__str, __str, *len); } \
+    __str; \
+  })
+
+static inline gchar *
+filterx_string_strdup_value(FilterXObject *s)
+{
+  gsize len;
+  const gchar *str = filterx_string_get_value_ref(s, &len);
+  if (!str)
+    return NULL;
+  return g_strndup(str, len);
+}
+
+static inline void
+filterx_string_mark_safe_without_json_escaping(FilterXObject *s)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)));
+#endif
+
+  s->flags |= FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED;
+}
+
+static inline gboolean
+filterx_string_is_json_escaping_needed(FilterXObject *s)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)));
+#endif
+
+  if (s->flags & FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED)
+    return FALSE;
+  return TRUE;
 }
 
 static inline FilterXObject *
@@ -108,14 +196,6 @@ filterx_string_new(const gchar *str, gssize str_len)
       return filterx_object_ref(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
     }
   return _filterx_string_new(str, str_len);
-}
-
-static inline FilterXObject *
-filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
-{
-  FilterXObject *self = filterx_string_new(str, -1);
-  filterx_object_freeze(&self, cfg);
-  return self;
 }
 
 guint

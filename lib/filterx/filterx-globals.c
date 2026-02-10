@@ -52,9 +52,11 @@
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
 #include "filterx/expr-unset.h"
+#include "filterx/expr-move.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/func-keys.h"
 #include "filterx/json-repr.h"
+#include "apphook.h"
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
 static GHashTable *filterx_builtin_function_ctors = NULL;
@@ -144,6 +146,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("set_fields", filterx_function_set_fields_new));
   g_assert(filterx_builtin_function_ctor_register("regexp_subst", filterx_function_regexp_subst_new));
   g_assert(filterx_builtin_function_ctor_register("unset", filterx_function_unset_new));
+  g_assert(filterx_builtin_function_ctor_register("move", filterx_function_move_new));
   g_assert(filterx_builtin_function_ctor_register("flatten", filterx_function_flatten_new));
   g_assert(filterx_builtin_function_ctor_register("is_sdata_from_enterprise",
                                                   filterx_function_is_sdata_from_enterprise_new));
@@ -216,6 +219,18 @@ filterx_types_deinit(void)
 
 // Globals
 
+static void
+filterx_global_thread_init(gpointer user_data)
+{
+  filterx_json_repr_thread_init();
+}
+
+static void
+filterx_global_thread_deinit(gpointer user_data)
+{
+  filterx_json_repr_thread_deinit();
+}
+
 void
 filterx_global_init(void)
 {
@@ -245,11 +260,15 @@ filterx_global_init(void)
   filterx_null_global_init();
   filterx_datetime_global_init();
   filterx_builtin_functions_init();
+  filterx_eval_global_init();
+  register_application_thread_init_hook(filterx_global_thread_init, NULL);
+  register_application_thread_deinit_hook(filterx_global_thread_deinit, NULL);
 }
 
 void
 filterx_global_deinit(void)
 {
+  filterx_eval_global_deinit();
   filterx_builtin_functions_deinit();
   filterx_datetime_global_deinit();
   filterx_null_global_deinit();
