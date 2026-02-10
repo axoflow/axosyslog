@@ -54,7 +54,7 @@ GIT=$(shell which git || echo false)
 GIT_RELEASE_TAG=axosyslog-$(VERSION)
 CONFIGURE_OPTS=--enable-debug --enable-manpages --with-python=3 --prefix=/install $(CONFIGURE_ADD)
 DBLD_RULES=$(MAKE) --no-print-directory -f $(DBLD_DIR)/rules
-
+SHELL = /bin/bash
 DOCKER_INTERACTIVE=$(shell if tty -s; then echo "-ti"; else echo "-i"; fi)
 DOCKER_SHELL=$(DOCKER) run $(DOCKER_RUN_ARGS) --privileged --rm $(DOCKER_INTERACTIVE) ${CONTAINER_REGISTRY}/axosyslog-dbld-$* /dbld/shell $(if $(SHELL_COMMAND),"$(SHELL_COMMAND)",bash)
 
@@ -103,7 +103,9 @@ bootstrap: bootstrap-$(DEFAULT_IMAGE)
 bootstrap-%: setup
 	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm  -i  ${CONTAINER_REGISTRY}/axosyslog-dbld-$* /dbld/bootstrap
 
+make-%: export
 make-%: setup
+	export -p | egrep '(CFLAGS|LDFLAGS|PYTEST)' | grep -v MAKEFLAGS > $(DBLD_DIR)/make.env || true
 	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm -i  ${CONTAINER_REGISTRY}/axosyslog-dbld-$(DEFAULT_IMAGE) /dbld/make $(MAKE_ARGS) $*
 
 tarball-from-root: setup
