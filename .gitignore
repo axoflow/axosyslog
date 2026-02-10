@@ -40,6 +40,7 @@ autotools/m4/ax*.m4
 /lib/cfg-grammar.h
 /test-driver
 dbld/rules.conf
+dbld/make.env
 dbld/extra-files/
 debian/build-tree/
 debian/*.log

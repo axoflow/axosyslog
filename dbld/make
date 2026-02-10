@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/bin/bash -x
 
 set -e
 
 cd /build
-make ${VERSION:+VERSION=$VERSION} "$@"
+[ -f /dbld/make.env ] && . /dbld/make.env
+make ${VERSION:+VERSION=$VERSION} $@
