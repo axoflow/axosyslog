@@ -96,6 +96,8 @@ _create_dict_from_failure_info_entry(FilterXFailureInfo *fi)
   filterx_object_set_subscript(fx_finfo_entry, errors_key, &fx_errors);
   FILTERX_STRING_CLEAR_FROM_STACK(errors_key);
 
+  filterx_object_unref(fx_errors);
+
   return fx_finfo_entry;
 }
 
