@@ -77,7 +77,7 @@ _eval_fx_is_sdata_from(FilterXExpr *s)
   for (guint8 i = 0; i < msg->num_sdata && !contains; i++)
     {
       const gchar *value = log_msg_get_value_name(msg->sdata[i], NULL);
-      gchar *at_sign = strchr(value, '@');
+      const gchar *at_sign = strchr(value, '@');
       if (!at_sign)
         continue;
       contains = strncmp(at_sign+1, self->str_literal, self->str_literal_len) == 0;
