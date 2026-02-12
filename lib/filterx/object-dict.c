@@ -368,6 +368,22 @@ _table_unset(FilterXDictTable *table, FilterXObject *key)
   return TRUE;
 }
 
+/* clear dict entry but return the original value */
+static FilterXObject *
+_table_move(FilterXDictTable *table, FilterXObject *key)
+{
+  FilterXDictIndexSlot index_slot;
+  FilterXDictEntry *entry = _table_lookup_entry(table, key, &index_slot);
+  if (!entry)
+    return NULL;
+
+  FilterXObject *result = filterx_object_ref(entry->value);
+  filterx_dict_entry_clear(entry);
+  _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
+  table->empty_num++;
+  return result;
+}
+
 static gboolean
 _table_foreach(FilterXDictTable *table, FilterXDictForeachFunc func, gpointer user_data)
 {
@@ -473,7 +489,11 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
       ep->key = filterx_object_clone(ep->key);
       if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
         {
-          ep->value = filterx_object_ref(child_of_interest);
+          /* child_of_interest is a movable, floating xref, which is grounded by this clone */
+          ep->value = filterx_object_clone(child_of_interest);
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(ep->value == child_of_interest);
+#endif
           child_found = TRUE;
         }
       else
@@ -611,6 +631,21 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
     }
 
   return _table_unset(self->table, key);
+}
+
+static FilterXObject *
+_filterx_dict_move_key(FilterXObject *s, FilterXObject *key)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  const gchar *error = NULL;
+  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, key);
+      return FALSE;
+    }
+
+  return filterx_ref_float(_table_move(self->table, key));
 }
 
 static gboolean
@@ -824,6 +859,7 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .set_subscript = _filterx_dict_set_subscript,
                     .is_key_set = _filterx_dict_is_key_set,
                     .unset_key = _filterx_dict_unset_key,
+                    .move_key = _filterx_dict_move_key,
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
                     .make_readonly = _filterx_dict_make_readonly,
