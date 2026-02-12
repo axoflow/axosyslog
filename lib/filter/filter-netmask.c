@@ -75,10 +75,9 @@ filter_netmask_new(const gchar *cidr)
 {
   FilterNetmask *self = g_new0(FilterNetmask, 1);
   gchar buf[32];
-  gchar *slash;
 
   filter_expr_node_init_instance(&self->super);
-  slash = strchr(cidr, '/');
+  const gchar *slash = strchr(cidr, '/');
   if (strlen(cidr) >= sizeof(buf) || !slash)
     {
       g_inet_aton(cidr, &self->address);

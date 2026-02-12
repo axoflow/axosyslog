@@ -110,7 +110,7 @@ event_format_parser_parse_version(EventParserContext *ctx, const gchar *value, g
                                   FilterXObject *parsed_dict)
 {
   const gchar *log_signature = ctx->parser->config.signature;
-  gchar *colon_pos = memchr(value, ':', value_len);
+  const gchar *colon_pos = memchr(value, ':', value_len);
   if (!colon_pos || colon_pos == value)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &ctx->parser->super.super,
