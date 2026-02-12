@@ -278,7 +278,7 @@ _table_lookup_index_slot(FilterXDictTable *table, FilterXObject *key, guint hash
 }
 
 /* NOTE: consumes refs of both key/value */
-static void
+static inline void
 _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
 {
   guint hash = _table_hash_key(key);
@@ -321,7 +321,7 @@ _table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key, FilterXDic
   return _table_get_index_entry(table, *index_slot);
 }
 
-static FilterXDictEntry *
+static inline FilterXDictEntry *
 _table_lookup_entry(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
 {
   FilterXDictEntrySlot entry_slot = _table_lookup_entry_slot(table, key, index_slot);
@@ -331,7 +331,7 @@ _table_lookup_entry(FilterXDictTable *table, FilterXObject *key, FilterXDictInde
   return _table_get_entry(table, entry_slot);
 }
 
-static gboolean
+static inline gboolean
 _table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value)
 {
   FilterXDictEntry *entry = _table_lookup_entry(table, key, NULL);
@@ -343,7 +343,7 @@ _table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value
   return FALSE;
 }
 
-static gboolean
+static inline gboolean
 _table_isset(FilterXDictTable *table, FilterXObject *key)
 {
   guint hash = _table_hash_key(key);
@@ -356,7 +356,7 @@ _table_isset(FilterXDictTable *table, FilterXObject *key)
   return TRUE;
 }
 
-static gboolean
+static inline gboolean
 _table_unset(FilterXDictTable *table, FilterXObject *key)
 {
   FilterXDictIndexSlot index_slot;
@@ -371,7 +371,7 @@ _table_unset(FilterXDictTable *table, FilterXObject *key)
 }
 
 /* clear dict entry but return the original value */
-static FilterXObject *
+static inline FilterXObject *
 _table_move(FilterXDictTable *table, FilterXObject *key)
 {
   FilterXDictIndexSlot index_slot;
@@ -402,7 +402,7 @@ _table_foreach(FilterXDictTable *table, FilterXDictForeachFunc func, gpointer us
   return TRUE;
 }
 
-static gsize
+static inline gsize
 _table_size(FilterXDictTable *table)
 {
   return table->entries_num - table->entries_empty;
@@ -520,7 +520,7 @@ _table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *
   _table_clone_index(target, source, container, child_of_interest);
 }
 
-static void
+static inline void
 _table_free(FilterXDictTable *table, gboolean free_entries)
 {
   if (free_entries)
@@ -534,7 +534,7 @@ _table_free(FilterXDictTable *table, gboolean free_entries)
   g_free(table);
 }
 
-static FilterXDictTable *
+static inline FilterXDictTable *
 _table_resize_if_needed(FilterXDictTable *old_table)
 {
   if (old_table->entries_num < old_table->entries_size)
