@@ -188,14 +188,9 @@ _batch_timeout_expired(LogThreadedDestWorker *self)
 }
 
 static inline gboolean
-_batching_disabled_or_timeout_expired(LogThreadedDestWorker *self)
+_batching_disabled(LogThreadedDestWorker *self)
 {
-  if (self->owner->batch_timeout <= 0 ||
-      self->owner->batch_lines <= 1 ||
-      !self->enable_batching)
-    return TRUE;
-
-  return _batch_timeout_expired(self);
+  return self->owner->batch_timeout <= 0 || self->owner->batch_lines <= 1 || !self->enable_batching;
 }
 
 static void
@@ -600,7 +595,7 @@ _schedule_restart_on_next_flush(LogThreadedDestWorker *self)
 {
   if (self->suspended)
     _schedule_restart_on_suspend_timeout(self);
-  else if (!_batching_disabled_or_timeout_expired(self))
+  else if (!(_batching_disabled(self) || _batch_timeout_expired(self)))
     _schedule_restart_on_batch_timeout(self);
   else
     iv_task_register(&self->do_work);
@@ -642,7 +637,7 @@ _perform_work(gpointer data)
 
       /* Something is in the queue, buffer them up and flush (if needed) */
       _perform_inserts(self);
-      if (_batching_disabled_or_timeout_expired(self))
+      if (_batching_disabled(self) || _batch_timeout_expired(self))
         _perform_flush(self);
       _schedule_restart(self);
     }
@@ -654,7 +649,7 @@ _perform_work(gpointer data)
        * everything.  We are awoken either by the
        * _message_became_available_callback() or if the next flush time has
        * arrived.  */
-      gboolean should_flush = _batching_disabled_or_timeout_expired(self);
+      gboolean should_flush = _batching_disabled(self) || _batch_timeout_expired(self);
       msg_trace("Queue empty, flushing previously buffered data if needed",
                 evt_tag_str("should_flush", should_flush ? "YES" : "NO"),
                 evt_tag_str("driver", self->owner->super.super.id),
