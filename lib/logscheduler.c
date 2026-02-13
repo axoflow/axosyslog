@@ -398,11 +398,36 @@ log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *pa
   if (thread_index < 0 || thread_index >= self->num_input_threads)
     {
       _reinject_message(self->front_pipe, msg, path_options);
+      stats_counter_inc(self->parallelize_failed_events_total);
       return;
     }
 
   LogSchedulerThreadState *thread_state = &self->input_thread_states[thread_index];
   _queue_thread(self, thread_state, msg, path_options);
+}
+
+static void
+_init_scheduler_metrics(LogScheduler *self)
+{
+  stats_lock();
+  {
+    StatsClusterKey sc_key;
+    stats_cluster_single_key_set(&sc_key, "parallelize_failed_events_total", NULL, 0);
+    stats_register_counter(STATS_LEVEL2, &sc_key, SC_TYPE_SINGLE_VALUE, &self->parallelize_failed_events_total);
+  }
+  stats_unlock();
+}
+
+static void
+_deinit_scheduler_metrics(LogScheduler *self)
+{
+  stats_lock();
+  {
+    StatsClusterKey sc_key;
+    stats_cluster_single_key_set(&sc_key, "parallelize_failed_events_total", NULL, 0);
+    stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->parallelize_failed_events_total);
+  }
+  stats_unlock();
 }
 
 LogScheduler *
@@ -420,6 +445,7 @@ log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar
   self->options = options;
   self->front_pipe = log_pipe_ref(front_pipe);
 
+  _init_scheduler_metrics(self);
   _init_thread_states(self);
   _init_partitions(self);
   return self;
@@ -428,6 +454,7 @@ log_scheduler_new(LogSchedulerOptions *options, LogPipe *front_pipe, const gchar
 void
 log_scheduler_free(LogScheduler *self)
 {
+  _deinit_scheduler_metrics(self);
   log_pipe_unref(self->front_pipe);
   g_free(self->id);
   _free_partitions(self);
@@ -457,6 +484,7 @@ log_scheduler_deinit(LogScheduler *self)
 void
 log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *path_options)
 {
+  stats_counter_inc(self->parallelize_failed_events_total);
   _reinject_message(self->front_pipe, msg, path_options);
 }
 
