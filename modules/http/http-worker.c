@@ -93,6 +93,12 @@ _curl_debug_function(CURL *handle, curl_infotype type,
 
 #define HTTP_RESPONSE_MAX_LENGTH 1024
 
+static inline EVTTAG *
+_tag_request(HTTPDestinationWorker *self)
+{
+  return evt_tag_printf("request", "%.512s%s", self->request_body->str, self->request_body->len > 512 ? "..." : "");
+}
+
 static size_t
 _curl_write_function(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -370,6 +376,7 @@ _default_4XX(HTTPDestinationWorker *self, const gchar *url, glong http_code)
              "authorized or the URL is not found",
              evt_tag_str("url", url),
              evt_tag_int("status_code", http_code),
+             _tag_request(self),
              evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
              evt_tag_str("driver", owner->super.super.super.id),
              log_pipe_location_tag(&owner->super.super.super.super));
@@ -392,6 +399,7 @@ _default_5XX(HTTPDestinationWorker *self, const gchar *url, glong http_code)
   msg_notice("http: Server returned with a 5XX (server errors) status code, which indicates server failure",
              evt_tag_str("url", url),
              evt_tag_int("status_code", http_code),
+             _tag_request(self),
              evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
              evt_tag_str("driver", owner->super.super.super.id),
              log_pipe_location_tag(&owner->super.super.super.super));
@@ -492,7 +500,7 @@ _debug_response_info(HTTPDestinationWorker *self, const gchar *url, glong http_c
   msg_debug("http: HTTP response received",
             evt_tag_str("url", url),
             evt_tag_int("status_code", http_code),
-            evt_tag_printf("request", "%.512s%s", self->request_body->str, self->request_body->len > 512 ? "..." : ""),
+            _tag_request(self),
             evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
             evt_tag_int("body_size", self->request_body->len),
             evt_tag_int("batch_size", self->super.batch_size),
@@ -528,6 +536,7 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_str("action", "retry"),
                  evt_tag_str("url", url),
                  evt_tag_int("status_code", http_code),
+                 _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
@@ -538,6 +547,7 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_str("action", "drop"),
                  evt_tag_str("url", url),
                  evt_tag_int("status_code", http_code),
+                 _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
@@ -548,6 +558,7 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_str("action", "disconnect"),
                  evt_tag_str("url", url),
                  evt_tag_int("status_code", http_code),
+                 _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
