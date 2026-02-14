@@ -272,11 +272,7 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  if (s->flags & FILTERX_REF_FLAG_FLOATING)
-    {
-      /* this is where a floating ref becomes grounded */
-      return filterx_ref_ground(filterx_object_ref(s));
-    }
+  g_assert(s->floating_ref == FALSE);
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
