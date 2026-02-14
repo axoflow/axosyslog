@@ -190,15 +190,19 @@ filterx_allocator_save_position(FilterXAllocator *allocator, FilterXAllocatorPos
 void
 filterx_allocator_restore_position(FilterXAllocator *allocator, FilterXAllocatorPosition *pos)
 {
+  FilterXAllocatorPosition pos_zero = { 0 };
   g_assert(allocator->position_index == pos->position_index + 1);
   allocator->position_index--;
 
-  if (pos->area >= 0)
+  if (allocator->areas->len > 0)
     {
       msg_debug("Restoring FilterX allocator position",
                 evt_tag_int("position_index", pos->position_index),
                 evt_tag_int("area", pos->area),
                 evt_tag_int("used", pos->area_used));
+      if (pos->area < 0)
+        pos = &pos_zero;
+
       allocator->active_area = pos->area;
       FilterXArea *area = g_ptr_array_index(allocator->areas, pos->area);
       filterx_area_reset(area, pos->area_used);
