@@ -277,6 +277,13 @@ filterx_free_object(FilterXObject *object)
   g_free(object);
 }
 
+/* should have been called clone */
+static inline FilterXObject *
+filterx_object_dup(FilterXObject *self)
+{
+  return self->type->clone(self);
+}
+
 static inline FilterXObject *
 filterx_object_ref(FilterXObject *self)
 {
@@ -287,11 +294,7 @@ filterx_object_ref(FilterXObject *self)
 
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
-      /* we can't use filterx_object_clone() directly, as that's an inline
-       * function declared further below.  Also, filterx_object_clone() does
-       * not clone inmutable objects.  We only support allocating inmutable
-       * objects on the stack */
-      return self->type->clone(self);
+      return filterx_object_dup(self);
     }
 
   if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
@@ -460,7 +463,7 @@ filterx_object_clone_container(FilterXObject *self, FilterXObject *container, Fi
 }
 
 static inline FilterXObject *
-filterx_object_clone(FilterXObject *self)
+filterx_object_copy(FilterXObject *self)
 {
   if (self->readonly)
     return filterx_object_ref(self);
@@ -668,14 +671,14 @@ filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
   if (pself)
     {
       *pself = self;
-      return filterx_ref_float(filterx_object_clone(self));
+      return filterx_ref_float(filterx_object_copy(self));
     }
   else
     {
       if (self != saved_self)
         return filterx_ref_float(self);
 
-      FilterXObject *result = filterx_ref_float(filterx_object_clone(self));
+      FilterXObject *result = filterx_ref_float(filterx_object_copy(self));
       filterx_object_unref(self);
       return result;
     }

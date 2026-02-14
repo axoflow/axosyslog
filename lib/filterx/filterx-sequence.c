@@ -122,7 +122,7 @@ _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
   if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(sequence)))
     return NULL;
 
-  FilterXObject *cloned = filterx_object_clone(lhs_object);
+  FilterXObject *cloned = filterx_object_copy(lhs_object);
 
   if(!filterx_sequence_merge(cloned, rhs_object))
     goto error;

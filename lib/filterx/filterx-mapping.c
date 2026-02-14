@@ -34,7 +34,7 @@ _add_elem(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
 {
   FilterXObject *mapping = (FilterXObject *) user_data;
 
-  FilterXObject *new_value = filterx_object_clone(value_obj);
+  FilterXObject *new_value = filterx_object_copy(value_obj);
   gboolean success = filterx_object_set_subscript(mapping, key_obj, &new_value);
   filterx_object_unref(new_value);
 
@@ -137,7 +137,7 @@ _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
   if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(mapping)))
     return NULL;
 
-  FilterXObject *cloned = filterx_object_clone(lhs_object);
+  FilterXObject *cloned = filterx_object_copy(lhs_object);
 
   if (!filterx_mapping_merge(cloned, rhs_object))
     goto error;
