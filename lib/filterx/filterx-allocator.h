@@ -48,5 +48,10 @@ gpointer filterx_allocator_malloc(FilterXAllocator *allocator, gsize size, gsize
 void filterx_allocator_init(FilterXAllocator *allocator);
 void filterx_allocator_clear(FilterXAllocator *allocator);
 
+static inline gboolean
+filterx_allocator_alloc_size_supported(FilterXAllocator *allocator, gsize alloc_size)
+{
+  return alloc_size <= 4096;
+}
 
 #endif
