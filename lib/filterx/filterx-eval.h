@@ -208,7 +208,7 @@ filterx_eval_context_make_writable(FilterXEvalContext *context)
 }
 
 static inline FilterXObject *
-filterx_malloc_object(gsize object_size, gsize alloc_size)
+filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXObject *result;

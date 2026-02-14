@@ -265,8 +265,8 @@ filterx_object_is_preserved(FilterXObject *self)
 /* NOTE: these two macros actually require the inclusion of filterx-eval.h
  * which works in an implementation file, but not here */
 
-#define filterx_new_object(t) ((t *) filterx_malloc_object(sizeof(t), sizeof(t)))
-#define filterx_new_object_with_extra(t, extra) ((t *) filterx_malloc_object(sizeof(t), sizeof(t) + extra))
+#define filterx_new_object(t) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t)))
+#define filterx_new_object_with_extra(t, extra) ((t *) filterx_eval_malloc_object(sizeof(t), sizeof(t) + extra))
 
 static inline void
 filterx_free_object(FilterXObject *object)
