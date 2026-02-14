@@ -188,14 +188,9 @@ _batch_timeout_expired(LogThreadedDestWorker *self)
 }
 
 static inline gboolean
-_batching_disabled_or_timeout_expired(LogThreadedDestWorker *self)
+_batching_enabled(LogThreadedDestWorker *self)
 {
-  if (self->owner->batch_timeout <= 0 ||
-      self->owner->batch_lines <= 1 ||
-      !self->enable_batching)
-    return TRUE;
-
-  return _batch_timeout_expired(self);
+  return self->owner->batch_timeout > 0 && self->owner->batch_lines > 1 && self->enable_batching;
 }
 
 static void
@@ -600,7 +595,7 @@ _schedule_restart_on_next_flush(LogThreadedDestWorker *self)
 {
   if (self->suspended)
     _schedule_restart_on_suspend_timeout(self);
-  else if (!_batching_disabled_or_timeout_expired(self))
+  else if (_batching_enabled(self) && !_batch_timeout_expired(self))
     _schedule_restart_on_batch_timeout(self);
   else
     iv_task_register(&self->do_work);
@@ -642,8 +637,15 @@ _perform_work(gpointer data)
 
       /* Something is in the queue, buffer them up and flush (if needed) */
       _perform_inserts(self);
-      if (_batching_disabled_or_timeout_expired(self))
+
+      if (!_batching_enabled(self))
         _perform_flush(self);
+      else if (_batch_timeout_expired(self))
+        {
+          stats_counter_inc(self->owner->metrics.batch_timedout);
+          _perform_flush(self);
+        }
+
       _schedule_restart(self);
     }
   else if (self->batch_size > 0)
@@ -654,7 +656,16 @@ _perform_work(gpointer data)
        * everything.  We are awoken either by the
        * _message_became_available_callback() or if the next flush time has
        * arrived.  */
-      gboolean should_flush = _batching_disabled_or_timeout_expired(self);
+
+      gboolean should_flush = FALSE;
+      if (!_batching_enabled(self))
+        should_flush = TRUE;
+      else if (_batch_timeout_expired(self))
+        {
+          stats_counter_inc(self->owner->metrics.batch_timedout);
+          should_flush = TRUE;
+        }
+
       msg_trace("Queue empty, flushing previously buffered data if needed",
                 evt_tag_str("should_flush", should_flush ? "YES" : "NO"),
                 evt_tag_str("driver", self->owner->super.super.id),
@@ -1643,6 +1654,15 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
   }
   stats_cluster_key_builder_pop(kb);
 
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_batch_timedout_total");
+    stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
+    stats_cluster_key_builder_set_legacy_alias_name(kb, "");
+    self->metrics.batch_timedout_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
 
   gint lvl = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL2;
   stats_lock();
@@ -1654,6 +1674,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
     stats_register_counter(level, self->metrics.output_event_retries_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.output_event_retries);
     stats_register_counter(level, self->metrics.workers_key, SC_TYPE_SINGLE_VALUE, &self->metrics.workers);
+    stats_register_counter(level, self->metrics.batch_timedout_key, SC_TYPE_SINGLE_VALUE, &self->metrics.batch_timedout);
 
     if (self->worker_partition_autoscaling)
       {
@@ -1689,6 +1710,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
     stats_unregister_counter(self->metrics.active_partitions_key, SC_TYPE_SINGLE_VALUE,
                              &self->metrics.active_partitions);
     stats_unregister_counter(self->metrics.workers_key, SC_TYPE_SINGLE_VALUE, &self->metrics.workers);
+    stats_unregister_counter(self->metrics.batch_timedout_key, SC_TYPE_SINGLE_VALUE, &self->metrics.batch_timedout);
   }
   stats_unlock();
 
@@ -1701,6 +1723,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   stats_cluster_key_free(self->metrics.event_size_hist_key);
   stats_cluster_key_free(self->metrics.batch_size_events_hist_key);
   stats_cluster_key_free(self->metrics.batch_size_bytes_hist_key);
+  stats_cluster_key_free(self->metrics.batch_timedout_key);
 
 }
 
