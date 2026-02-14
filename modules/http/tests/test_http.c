@@ -139,6 +139,8 @@ ParameterizedTest(struct http_action_test_params *param, http, http_code_tests)
 {
   HTTPDestinationDriver *driver = (HTTPDestinationDriver *) http_dd_new(configuration);
   HTTPDestinationWorker *worker = (HTTPDestinationWorker *) http_dw_new(&driver->super, 0);
+  log_threaded_dest_worker_init(&worker->super);
+
   const gchar *url = "http://dummy.url";
 
   LogThreadedResult res =  default_map_http_status_to_worker_status(worker, url, param->http_code);
