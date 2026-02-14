@@ -87,8 +87,23 @@ filterx_area_alloc(FilterXArea *self, gsize new_size)
 static void
 filterx_area_reset(FilterXArea *self, gsize pos)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
+  memset(&self->mem[pos], '`', self->size - pos);
+#endif
   self->used = pos;
 }
+
+#if SYSLOG_NG_ENABLE_DEBUG
+static void
+filterx_area_shrink_for_debug_purposes(FilterXArea *self, gsize pos)
+{
+  filterx_area_reset(self, pos);
+
+  /* we behave as if this area was smaller, so that no further allocation is
+   * made from this area */
+  self->size = pos + sizeof(*self);
+}
+#endif
 
 static FilterXArea *
 filterx_area_new(gsize size)
@@ -185,6 +200,17 @@ filterx_allocator_save_position(FilterXAllocator *allocator, FilterXAllocatorPos
   pos->position_index = allocator->position_index++;
 }
 
+#if SYSLOG_NG_ENABLE_DEBUG
+static void
+filterx_allocator_shrink_for_debug_purposes(FilterXAllocator *allocator, FilterXAllocatorPosition *pos)
+{
+  /* free all the areas past the current one */
+  g_ptr_array_set_size(allocator->areas, pos->area + 1);
+  FilterXArea *area = g_ptr_array_index(allocator->areas, pos->area);
+  filterx_area_shrink_for_debug_purposes(area, pos->area_used);
+}
+#endif
+
 /* restore the allocator position to the previous one.  This can only be
  * restored in the same order */
 void
@@ -203,9 +229,13 @@ filterx_allocator_restore_position(FilterXAllocator *allocator, FilterXAllocator
       if (pos->area < 0)
         pos = &pos_zero;
 
+#if !SYSLOG_NG_ENABLE_DEBUG
       allocator->active_area = pos->area;
       FilterXArea *area = g_ptr_array_index(allocator->areas, pos->area);
       filterx_area_reset(area, pos->area_used);
+#else
+      filterx_allocator_shrink_for_debug_purposes(allocator, pos);
+#endif
     }
 }
 
@@ -224,6 +254,9 @@ filterx_allocator_empty(FilterXAllocator *allocator)
       filterx_area_reset(area, 0);
     }
   allocator->active_area = 0;
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_ptr_array_set_size(allocator->areas, 0);
+#endif
 }
 
 void
