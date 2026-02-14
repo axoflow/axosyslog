@@ -809,7 +809,7 @@ Test(otel_filterx, kvlist_through_logrecord)
   cr_assert(filterx_object_set_subscript(fx_kvlist, fx_key_0, &fx_foo));
 
   /* $log.attributes = $kvlist; */
-  FilterXObject *fx_kvlist_clone = filterx_object_clone(fx_kvlist);
+  FilterXObject *fx_kvlist_clone = filterx_object_copy(fx_kvlist);
   cr_assert(filterx_object_setattr_string(fx_logrecord, "attributes", &fx_kvlist_clone));
   filterx_object_unref(fx_kvlist_clone);
 
@@ -825,7 +825,7 @@ Test(otel_filterx, kvlist_through_logrecord)
   filterx_object_unref(fx_get_1);
   fx_get_1 = filterx_object_getattr_string(fx_logrecord, "attributes");
   cr_assert(fx_get_1);
-  FilterXObject *fx_inner_kvlist_clone = filterx_object_clone(fx_inner_kvlist);
+  FilterXObject *fx_inner_kvlist_clone = filterx_object_copy(fx_inner_kvlist);
   cr_assert(filterx_object_set_subscript(fx_get_1, fx_key_3, &fx_inner_kvlist_clone));
   filterx_object_unref(fx_inner_kvlist_clone);
 
@@ -1128,7 +1128,7 @@ Test(otel_filterx, array_through_logrecord)
   cr_assert(filterx_object_set_subscript(fx_array, nullptr, &fx_foo));
 
   /* $log.body = $array; */
-  FilterXObject *fx_array_clone = filterx_object_clone(fx_array);
+  FilterXObject *fx_array_clone = filterx_object_copy(fx_array);
   cr_assert(filterx_object_setattr_string(fx_logrecord, "body", &fx_array_clone));
   filterx_object_unref(fx_array_clone);
 
@@ -1144,7 +1144,7 @@ Test(otel_filterx, array_through_logrecord)
   filterx_object_unref(fx_get_1);
   fx_get_1 = filterx_object_getattr_string(fx_logrecord, "body");
   cr_assert(fx_get_1);
-  FilterXObject *fx_inner_array_clone = filterx_object_clone(fx_inner_array);
+  FilterXObject *fx_inner_array_clone = filterx_object_copy(fx_inner_array);
   cr_assert(filterx_object_set_subscript(fx_get_1, nullptr, &fx_inner_array_clone));
   filterx_object_unref(fx_inner_array_clone);
 
