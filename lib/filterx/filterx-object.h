@@ -462,13 +462,6 @@ filterx_object_clone_container(FilterXObject *self, FilterXObject *container, Fi
   return self->type->clone(self);
 }
 
-static inline FilterXObject *
-filterx_object_copy(FilterXObject *self)
-{
-  if (self->readonly)
-    return filterx_object_ref(self);
-  return self->type->clone(self);
-}
 
 static inline gboolean
 filterx_object_truthy(FilterXObject *self)
@@ -598,6 +591,13 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
 
 #include "filterx-ref.h"
 
+static inline FilterXObject *
+filterx_object_copy(FilterXObject *self)
+{
+  if (self->readonly)
+    return filterx_object_ref(self);
+  return self->type->clone(self);
+}
 
 /* NOTE: only use this to validate the type of a potentially ref wrapped
  * object, object is still not going to be compatible with the target type!
