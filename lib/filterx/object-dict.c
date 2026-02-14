@@ -486,18 +486,18 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
       if (!ep->key)
         continue;
 
-      ep->key = filterx_object_clone(ep->key);
+      ep->key = filterx_object_copy(ep->key);
       if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
         {
-          /* child_of_interest is a movable, floating xref, which is grounded by this clone */
-          ep->value = filterx_object_clone(child_of_interest);
+          /* child_of_interest is a movable, floating xref, which is grounded by this copy */
+          ep->value = filterx_object_copy(child_of_interest);
 #if SYSLOG_NG_ENABLE_DEBUG
           g_assert(ep->value == child_of_interest);
 #endif
           child_found = TRUE;
         }
       else
-        ep->value = filterx_object_clone(ep->value);
+        ep->value = filterx_object_copy(ep->value);
       filterx_ref_set_parent_container(ep->value, container);
     }
   g_assert(child_found || child_of_interest == NULL);

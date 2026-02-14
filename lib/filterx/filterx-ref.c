@@ -132,7 +132,7 @@
  *      old and new.  They also handle filterx_object_cow_prepare() if an
  *      object is not yet wrapped.
  *
- *   2) filterx_object_clone() does not explicitly wrap a bare object,
+ *   2) filterx_object_copy() does not explicitly wrap a bare object,
  *      but will clone the xref if it is already wrapped.
  *
  * The number of copies for objects are tracked by the
@@ -263,7 +263,7 @@
  *
  *   1) when storing a value in a list/dict `filterx_object_cow_store()`
  *
- *   2) filterx_object_clone() turns the floating xref into a simple xref,
+ *   2) filterx_object_copy() turns the floating xref into a simple xref,
  *      without generating a new clone.
  *
  */

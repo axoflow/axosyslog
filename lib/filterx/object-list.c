@@ -199,14 +199,14 @@ _filterx_list_clone_container(FilterXObject *s, FilterXObject *container, Filter
       if (child_of_interest && filterx_ref_values_equal(el, child_of_interest))
         {
           /* child_of_interest is a movable, floating xref, which is grounded by this clone */
-          el = filterx_object_clone(child_of_interest);
+          el = filterx_object_copy(child_of_interest);
 #if SYSLOG_NG_ENABLE_DEBUG
           g_assert(el == child_of_interest);
 #endif
           child_found = TRUE;
         }
       else
-        el = filterx_object_clone(el);
+        el = filterx_object_copy(el);
       filterx_ref_set_parent_container(el, container);
       g_ptr_array_add(clone->array, el);
     }
