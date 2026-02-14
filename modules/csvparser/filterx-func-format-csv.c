@@ -55,15 +55,6 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
   if (!value)
     value = self->default_value;
 
-  FilterXObject *value_unwrapped = filterx_ref_unwrap_ro(value);
-  if (filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(mapping)) ||
-      filterx_object_is_type(value_unwrapped, &FILTERX_TYPE_NAME(sequence)))
-    {
-      msg_debug("FilterX: format_csv(): skipping object, type not supported",
-                evt_tag_str("type", filterx_object_get_type_name(value)));
-      return TRUE;
-    }
-
   if (buffer->len)
     g_string_append_c(buffer, self->delimiter);
 
