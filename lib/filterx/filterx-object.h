@@ -188,10 +188,12 @@ struct _FilterXObject
    *
    *     allocator_used    -- object was allocated using the FilterX allocator
    *
+   *     floating_ref      -- object is a FilterXRef that is floating
+   *
    *     flags             -- to be used by descendant types
    *
    */
-  guint readonly:1, weak_referenced:1, is_dirty:1, allocator_used:1, flags:5;
+  guint readonly:1, weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, flags:5;
   FilterXType *type;
 };
 
@@ -596,6 +598,15 @@ filterx_object_copy(FilterXObject *self)
 {
   if (self->readonly)
     return filterx_object_ref(self);
+
+  if (self->floating_ref)
+    {
+#if SYSLOG_NG_ENABLE_DEBUG
+      g_assert(filterx_object_is_ref(self));
+#endif
+      return filterx_ref_ground_unchecked(filterx_object_ref(self));
+    }
+
   return self->type->clone(self);
 }
 
