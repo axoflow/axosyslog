@@ -227,6 +227,26 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
   return result;
 }
 
+/* unplug this object from the current context, and guarantee it remains
+ * available past the end of the scope, at least until the returned
+ * reference is dropped using filterx_object_unref(). */
+static inline void
+filterx_eval_retain_object(FilterXObject **pobject)
+{
+  FilterXObject *object = *pobject;
+  if (!object || filterx_object_is_preserved(object) || !object->allocator_used)
+    return;
+
+  FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXAllocator *saved_allocator = context->allocator;
+
+  /* NOTE: dup the object with a NULL allocator means we will allocate it from the heap */
+  context->allocator = NULL;
+  *pobject = filterx_object_dup(object);
+  filterx_object_unref(object);
+  context->allocator = saved_allocator;
+}
+
 void filterx_eval_global_init(void);
 void filterx_eval_global_deinit(void);
 
