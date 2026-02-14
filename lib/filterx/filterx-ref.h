@@ -43,14 +43,6 @@
  */
 
 
-/* floating reference, e.g.  this is a reference to an object that is yet to
- * be stored in a variable/attribute/etc.  While a reference is floating, we
- * don't need to clone another ref when storing it.  This avoids excessive
- * copies in copy-on-write as well as reduces the number of refs allocated
- * */
-
-#define FILTERX_REF_FLAG_FLOATING 0x1
-
 struct _FilterXRef
 {
   FilterXObject super;
@@ -123,6 +115,16 @@ filterx_ref_unset_parent_container(FilterXObject *s)
     }
 }
 
+static inline FilterXObject *
+filterx_ref_float_unchecked(FilterXObject *s)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(s->floating_ref == FALSE);
+#endif
+  s->floating_ref = TRUE;
+  return s;
+}
+
 /* mark this xref as a floating one, not yet stored anywhere, can be stored
  * without cloning.  If @s is not an xref, do nothing, otherwise @s must be
  * a non-floating reference, you can't float a ref twice! */
@@ -131,25 +133,31 @@ filterx_ref_float(FilterXObject *s)
 {
   if (s && !s->readonly && filterx_object_is_ref(s))
     {
-#if SYSLOG_NG_ENABLE_DEBUG
-      g_assert((s->flags & FILTERX_REF_FLAG_FLOATING) == 0);
-#endif
-      s->flags |= FILTERX_REF_FLAG_FLOATING;
+      filterx_ref_float_unchecked(s);
     }
   return s;
 }
+
 
 /* ground this xref (e.g.  make it not floating), the reverse of
  * filterx_ref_float().  This is to be used when the xref is stored
  * somewhere */
 static inline FilterXObject *
+filterx_ref_ground_unchecked(FilterXObject *s)
+{
+  FilterXRef *self = (FilterXRef *) s;
+
+  s->floating_ref = FALSE;
+  filterx_weakref_set(&self->parent_container, NULL);
+  return s;
+}
+
+static inline FilterXObject *
 filterx_ref_ground(FilterXObject *s)
 {
-  if (s && (s->flags & FILTERX_REF_FLAG_FLOATING) && filterx_object_is_ref(s))
+  if (s && filterx_object_is_ref(s))
     {
-      FilterXRef *self = (FilterXRef *) s;
-      s->flags &= ~FILTERX_REF_FLAG_FLOATING;
-      filterx_weakref_set(&self->parent_container, NULL);
+      return filterx_ref_ground_unchecked(s);
     }
   return s;
 }
