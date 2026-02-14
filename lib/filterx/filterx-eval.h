@@ -215,7 +215,8 @@ filterx_malloc_object(gsize object_size, gsize alloc_size)
 
   if (!context || !context->allocator || !filterx_allocator_alloc_size_supported(context->allocator, alloc_size))
     {
-      result = (FilterXObject *) g_malloc0(alloc_size);
+      result = (FilterXObject *) g_malloc(alloc_size);
+      memset(result, 0, object_size);
     }
   else
     {
