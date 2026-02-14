@@ -122,6 +122,7 @@ filterx_allocator_malloc(FilterXAllocator *allocator, gsize size, gsize zero_siz
 {
   FilterXArea *area;
 
+  g_assert(filterx_allocator_alloc_size_supported(allocator, size));
   if (allocator->areas->len == 0)
     {
       area = _create_new_area(allocator);
@@ -145,6 +146,12 @@ filterx_allocator_malloc(FilterXAllocator *allocator, gsize size, gsize zero_siz
           filterx_area_reset(area, 0);
         }
       res = filterx_area_alloc(area, size);
+
+      /* the allocation size MUST always fit into FILTERX_AREA_SIZE, thus we
+       * can never get NULLs from a fresh area.  Callers should always guard
+       * filterx_allocator_alloc() calls with
+       * filterx_allocator_alloc_size_supported(). */
+      g_assert(res != NULL);
     }
   memset(res, 0, ALIGN_SIZE(zero_size));
   return res;

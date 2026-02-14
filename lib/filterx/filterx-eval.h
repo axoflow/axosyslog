@@ -213,7 +213,7 @@ filterx_malloc_object(gsize object_size, gsize alloc_size)
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXObject *result;
 
-  if (!context || !context->allocator || alloc_size > 4096)
+  if (!context || !context->allocator || !filterx_allocator_alloc_size_supported(context->allocator, alloc_size))
     {
       result = (FilterXObject *) g_malloc0(alloc_size);
     }
