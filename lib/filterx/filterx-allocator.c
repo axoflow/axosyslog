@@ -65,11 +65,10 @@
 typedef struct _FilterXArea
 {
   gsize size, used;
-  gchar mem[] __attribute__ ((aligned (32)));
+  gchar mem[] __attribute__ ((aligned (16)));
 } FilterXArea;
 
-/* we align to 32 bytes to make sure memset() is fast */
-#define ALIGN_SIZE(x) (((x) + 0x1F) & ~0x1F)
+#define ALIGN_SIZE(x) (((x) + 0xF) & ~0xF)
 
 static gpointer
 filterx_area_alloc(FilterXArea *self, gsize new_size)
