@@ -327,7 +327,10 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
     }
 
   for (gint i = 0; i < context->error_count; i++)
-    filterx_error_copy(&context->errors[i], &failure_info->errors[i]);
+    {
+      filterx_error_copy(&context->errors[i], &failure_info->errors[i]);
+      filterx_eval_retain_object(&failure_info->errors[i].object);
+    }
   failure_info->error_count = context->error_count;
 }
 
