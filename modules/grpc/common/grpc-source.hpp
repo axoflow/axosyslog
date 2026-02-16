@@ -53,6 +53,11 @@ public:
   virtual const char *generate_persist_name() = 0;
   virtual LogThreadedSourceWorker *construct_worker(int worker_index) = 0;
 
+  void set_ip(std::string ipaddr)
+  {
+    this->ip = ipaddr;
+  }
+
   void set_port(unsigned int p)
   {
     this->port = p;
@@ -110,6 +115,7 @@ public:
   syslogng::grpc::ServerCredentialsBuilder credentials_builder;
 
 protected:
+  std::string ip;
   unsigned int port = 0;
   int fetch_limit = -1;
   int concurrent_requests = 2;
