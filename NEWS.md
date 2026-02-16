@@ -1,4 +1,4 @@
-4.22.0
+4.23.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -9,61 +9,114 @@ Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-pa
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
 
-
 ## Features
 
-  * FilterX `in` operator: Added support for `dict` keys for membership check.
+  * Memory queues: Reduced the amount of memory we use to store queued messages.
+
+    Savings can be as much as 50%, or 8GB less memory use to represent
+    1M messages (e.g. 8GB instead of 15GB, as measured by RSS).
+    ([#891](https://github.com/axoflow/axosyslog/pull/891))
+
+  * `network()`/`syslog()`: Added `extended-key-usage-verify(yes)` for TLS sources/destinations.
+    ([#907](https://github.com/axoflow/axosyslog/pull/907))
+
+  * FilterX: Added a new function called `move()`.
+
+    `move()` tells FilterX that the variable/expression specified as argument
+    can be moved to its new location, instead of copying it.
+    While FilterX optimizes most copies using its copy-on-write mechanism,
+    some cases can be faster by telling it that the old location is not needed
+    anymore. `move()` is equivalent to an `unset()` but is more explicit and
+    returns the moved value, unlike `unset()`.
+    ([#876](https://github.com/axoflow/axosyslog/pull/876))
+
+  * FilterX `format_isodate()` function: Added new function for datetime formatting.
+    ([#922](https://github.com/axoflow/axosyslog/pull/922))
+
+  * http: Added `force-content-compression()` option.
+
+    Usage:
 
     ```
-    my_dict = {"foo": "foovalue", "bar": "barvalue"};
-    my_needle = "foobar";
-
-    if (my_needle in my_dict) {
-      $MSG = "Found: " + my_dict[my_needle];
-    } else {
-      $MSG = "Not Found";
-    };
+    destination {
+      http(
+        url("http://example.com/endpoint")
+        content-compression("gzip")
+        force-content-compression(yes)
+      );
+    }
     ```
-    ([#888](https://github.com/axoflow/axosyslog/pull/888))
+    ([#916](https://github.com/axoflow/axosyslog/pull/916))
+
+  * `opentelemetry()` source: Added `ip()` option to specify bind address.
+    ([#949](https://github.com/axoflow/axosyslog/pull/949))
 
 
 ## Bugfixes
 
-  * `parallelize()`: Fixed occasional crashes on high load.
-    ([#904](https://github.com/axoflow/axosyslog/pull/904))
+  * FilterX `dict` and `list`: Fixed a potential crash when recursively inserting
+    a `dict` or `list` instance into itself.
+    ([#891](https://github.com/axoflow/axosyslog/pull/891))
 
-  * `parallelize()`: Fixed unoptimized parallelization with more `workers()` than CPU cores.
-    ([#906](https://github.com/axoflow/axosyslog/pull/906))
+  * FilterX `parse_kv()` function: Fixed improperly quoted key-value pair overwriting previous entry.
+    ([#921](https://github.com/axoflow/axosyslog/pull/921))
 
-  * FilterX `regexp_subst()` function: Fixed capture group references in the replacement argument.
+  * `json-parser()`: Fixed parsing JSON array of string with comma.
+    ([#923](https://github.com/axoflow/axosyslog/pull/923))
 
-    In the case of `global=true`, the value of capture group references were always used from
-    that of the first match, e.g. the 2nd and subseqent matches used an incorrect value.
-    ([#895](https://github.com/axoflow/axosyslog/pull/895))
+  * `metrics`: Made message memory usage metrics more accurate.
 
-  * `disk-buffer()`: Fixed various bugs.
+    AxoSyslog keeps track of memory usage by messages both globally and on
+    a per queue basis. The accounting behind those metrics were inaccurate,
+    the value shown being smaller than the actual memory use.
+    These inaccuracies were fixed.
+    ([#889](https://github.com/axoflow/axosyslog/pull/889))
 
-    * Fixed potential writes beyond the configured front-cache limit.
-    * Fixed a possible issue where memory usage metrics could reset on reload.
+  * `internal()` source: Fixed message loss during reload.
+    ([#944](https://github.com/axoflow/axosyslog/pull/944))
 
-    ([#901](https://github.com/axoflow/axosyslog/pull/901))
+  * `network()`/`syslog()`: Fix performance degradation around `dynamic-window-size()` when senders disconnect early.
+    ([#937](https://github.com/axoflow/axosyslog/pull/937))
+
+  * `network()`/`syslog()` sources: Fix a `dynamic-window()` crash on client disconnect while messages are pending.
+    ([#931](https://github.com/axoflow/axosyslog/pull/931))
+
+  * `network()`/`syslog()`: Fixed setting TLS-related macros, like `${.tls.x509_cn}`, for the first message.
+    ([#911](https://github.com/axoflow/axosyslog/pull/911))
+
+  * `config:` Fixed a bug where `@define`s and environment variables were not substituted in SCL arguments
+    in case those arguments were spread across multiple lines.
+    ([#920](https://github.com/axoflow/axosyslog/pull/920))
+
+  * `parallelize()`: Fix leaking messages and losing input window during reload.
+    ([#962](https://github.com/axoflow/axosyslog/pull/962))
+
 
 
 ## Other changes
 
-  * `disk-buffer()`: Various smaller improvements and QoL features.
+  * `http()`: Added debug and notice level request logging for failed requests.
+    ([#928](https://github.com/axoflow/axosyslog/pull/928))
 
-    * Added detailed debug logging for diskbuffer load and save operations,
-      exposing the internal state of the non-reliable diskbuffer.
-    * Improved front-cache balancing by enforcing the front-cache limit when
-      distributing items between front-cache and front-cache-output.
-    * Improved calculation of abandoned diskbuffer metrics by using existing
-      file header data instead of loading the entire buffer file,
-      significantly reducing reload time impact.
+  * FilterX `repr()` function: datetime representation now has microsecond resolution.
 
-    ([#901](https://github.com/axoflow/axosyslog/pull/901))
-    ([#902](https://github.com/axoflow/axosyslog/pull/902))
+    Before:
+    `2000-01-01T00:00:00.000+00:00`
 
+    After:
+    `2000-01-01T00:00:00.000000+00:00`
+    ([#919](https://github.com/axoflow/axosyslog/pull/919))
+
+  * Batching destinations: Added `syslogng_output_batch_timedout_total` metric.
+    ([#947](https://github.com/axoflow/axosyslog/pull/947))
+
+  * `parallelize()`: Added `syslogng_parallelize_failed_events_total` metric.
+    ([#924](https://github.com/axoflow/axosyslog/pull/924))
+
+  * `metrics`: Added a single `syslogng_input_window_full_total` on `stats(level(1))`
+
+    It shows the total number of input window full events for the whole config.
+    ([#938](https://github.com/axoflow/axosyslog/pull/938))
 
 [1] syslog-ng is a trademark of One Identity.
 
@@ -84,5 +137,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Attila Szakacs, Balazs Scheidler,
-BenBryzak-brisbaneqldgovau, László Várady, Szilard Parrag, shifter
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, Fᴀʙɪᴇɴ Wᴇʀɴʟɪ, Hofi,
+László Várady, Peter Czanik (CzP), Romain Tartière, Szilard Parrag
