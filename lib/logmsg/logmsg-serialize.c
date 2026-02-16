@@ -92,7 +92,7 @@ log_msg_serialize_with_ts_processed(LogMessage *self, SerializeArchive *sa, cons
 {
   LogMessageSerializationState state = { 0 };
 
-  state.version = LGM_V26;
+  state.version = LGM_V27;
   state.msg = self;
   state.sa = sa;
   state.processed = processed;
