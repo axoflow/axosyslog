@@ -552,12 +552,11 @@ void
 afinter_message_posted(LogMessage *msg)
 {
   g_mutex_lock(&internal_msg_lock);
-  if (!current_internal_source)
+
+  /* Messages should be queued even when the internal source is inactive to prevent message loss during reloads,
+   * while a new internal source is initializing. */
+  if (!current_internal_source && !internal_msg_queue)
     {
-      if (internal_msg_queue)
-        {
-          _release_internal_msg_queue();
-        }
       log_msg_unref(msg);
       goto exit;
     }
@@ -581,7 +580,8 @@ afinter_message_posted(LogMessage *msg)
       stats_counter_set(metrics.queue_capacity, current_internal_source->options->queue_capacity);
     }
 
-  if (g_queue_get_length(internal_msg_queue) >= current_internal_source->options->queue_capacity)
+  if (current_internal_source
+      && g_queue_get_length(internal_msg_queue) >= current_internal_source->options->queue_capacity)
     {
       stats_counter_inc(metrics.dropped);
       log_msg_unref(msg);
@@ -591,7 +591,7 @@ afinter_message_posted(LogMessage *msg)
   g_queue_push_tail(internal_msg_queue, msg);
   stats_counter_inc(metrics.queued);
 
-  if (current_internal_source->free_to_send)
+  if (current_internal_source && current_internal_source->free_to_send)
     iv_event_post(&current_internal_source->post);
 exit:
   g_mutex_unlock(&internal_msg_lock);
@@ -603,10 +603,21 @@ afinter_register_posted_hook(gint hook_type, gpointer user_data)
   msg_set_post_func(afinter_message_posted);
 }
 
+static void
+afinter_internal_queue_deinit(gint hook_type, gpointer user_data)
+{
+  g_mutex_lock(&internal_msg_lock);
+  /* release the queue only if there is no new internal source registered after reload */
+  if (!current_internal_source && internal_msg_queue)
+    _release_internal_msg_queue();
+  g_mutex_unlock(&internal_msg_lock);
+}
+
 void
 afinter_global_init(void)
 {
   register_application_hook(AH_CONFIG_CHANGED, afinter_register_posted_hook, NULL, AHM_RUN_ONCE);
+  register_application_hook(AH_CONFIG_CHANGED, afinter_internal_queue_deinit, NULL, AHM_RUN_REPEAT);
 }
 
 void
