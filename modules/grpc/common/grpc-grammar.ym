@@ -33,6 +33,7 @@
 }
 
 
+%token KW_IP
 %token KW_PORT
 %token KW_AUTH
 %token KW_INSECURE
@@ -101,6 +102,7 @@
 
 grpc_source_option
   : KW_PORT '(' positive_integer ')' { grpc_sd_set_port(last_driver, $3); }
+  | KW_IP '(' string ')' { grpc_sd_set_ip(last_driver, $3); free($3); }
   | KW_LOG_FETCH_LIMIT '(' nonnegative_integer ')' { grpc_sd_set_fetch_limit(last_driver, $3); }
   | KW_CONCURRENT_REQUESTS '(' positive_integer ')' { CHECK_ERROR($3 >= 2, @1, "concurrent-requests() must be greater than 1"); grpc_sd_set_concurrent_requests(last_driver, $3); }
   | KW_CHANNEL_ARGS '(' grpc_source_channel_args ')'

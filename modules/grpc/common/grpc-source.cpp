@@ -71,7 +71,8 @@ SourceDriver::prepare_server_builder(::grpc::ServerBuilder &builder)
   if (!this->credentials_builder.validate())
     return false;
 
-  std::string address = std::string("[::]:").append(std::to_string(port));
+  const std::string &ip_addr = this->ip.empty() ? "[::]" : this->ip;
+  std::string address = ip_addr + ":" + std::to_string(this->port);
 
   builder.AddListeningPort(address, credentials_builder.build());
 
@@ -101,6 +102,13 @@ SourceDriver::get_unique_id_fragment()
 }
 
 /* C Wrappers */
+
+void
+grpc_sd_set_ip(LogDriver *s, const gchar *ip)
+{
+  GrpcSourceDriver *self = (GrpcSourceDriver *) s;
+  self->cpp->set_ip(ip);
+}
 
 void
 grpc_sd_set_port(LogDriver *s, guint64 port)

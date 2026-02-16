@@ -33,6 +33,7 @@
 
 typedef struct GrpcSourceDriver_ GrpcSourceDriver;
 
+void grpc_sd_set_ip(LogDriver *s, const gchar *ip);
 void grpc_sd_set_port(LogDriver *s, guint64 port);
 void grpc_sd_set_fetch_limit(LogDriver *s, gint fetch_limit);
 void grpc_sd_set_concurrent_requests(LogDriver *s, gint concurrent_requests);

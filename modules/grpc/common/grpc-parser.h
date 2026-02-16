@@ -50,6 +50,7 @@
   { "time",                      KW_TIME }, \
   { "timeout",                   KW_TIMEOUT }, \
   { "max_pings_without_data",    KW_MAX_PINGS_WITHOUT_DATA }, \
+  { "ip",                        KW_IP }, \
   { "port",                      KW_PORT }, \
   { "peer_verify",               KW_PEER_VERIFY }, \
   { "optional_untrusted",        KW_OPTIONAL_UNTRUSTED }, \
