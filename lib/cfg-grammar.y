@@ -259,8 +259,9 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_WORKERS                     10086
 %token KW_BATCH_LINES                 10087
 %token KW_BATCH_TIMEOUT               10088
-%token KW_TRIM_LARGE_MESSAGES         10089
-%token KW_BATCH_SIZE                  10600
+%token KW_BATCH_IDLE_TIMEOUT          10089
+%token KW_TRIM_LARGE_MESSAGES         10600
+%token KW_BATCH_SIZE                  10601
 
 %token KW_STATS                       10400
 %token KW_FREQ                        10401
@@ -271,8 +272,8 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_HEALTHCHECK_FREQ            10406
 %token KW_WORKER_PARTITION_KEY        10407
 %token KW_WORKER_PARTITION_BUCKETS    10408
-%token KW_WORKER_PARTITION_AUTOSCALING 10601
-%token KW_WORKER_PARTITION_AUTOSCALING_WFO 10602
+%token KW_WORKER_PARTITION_AUTOSCALING 10602
+%token KW_WORKER_PARTITION_AUTOSCALING_WFO 10603
 
 %token KW_LOG_FLOW_CONTROL            10409
 
@@ -1426,6 +1427,7 @@ dest_driver_option
 threaded_dest_driver_batch_option
         : KW_BATCH_LINES '(' nonnegative_integer ')' { log_threaded_dest_driver_set_batch_lines(last_driver, $3); }
         | KW_BATCH_TIMEOUT '(' nonnegative_integer ')' { log_threaded_dest_driver_set_batch_timeout(last_driver, $3); }
+        | KW_BATCH_IDLE_TIMEOUT '(' nonnegative_integer ')' { log_threaded_dest_driver_set_batch_idle_timeout(last_driver, $3); }
         ;
 
 threaded_dest_driver_workers_option

@@ -104,6 +104,14 @@ log_threaded_dest_driver_set_batch_timeout(LogDriver *s, gint batch_timeout)
 }
 
 void
+log_threaded_dest_driver_set_batch_idle_timeout(LogDriver *s, gint batch_idle_timeout)
+{
+  LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
+
+  self->batch_idle_timeout = batch_idle_timeout;
+}
+
+void
 log_threaded_dest_driver_set_time_reopen(LogDriver *s, time_t time_reopen)
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
