@@ -753,7 +753,7 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
   if (thread_index >= 0)
     {
       /* fastpath, use per-thread input FIFOs */
-      if (!self->input_queues[thread_index].finish_cb_registered)
+      if (!main_loop_worker_batch_callback_registered(&self->input_queues[thread_index].cb))
         {
           /* this is the first item in the input FIFO, register a finish
            * callback to make sure it gets moved to the wait_queue if the
@@ -763,7 +763,6 @@ _push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *path_options)
            */
 
           main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
-          self->input_queues[thread_index].finish_cb_registered = TRUE;
           log_queue_ref(&self->super.super);
         }
 
@@ -845,7 +844,6 @@ _move_input(gpointer user_data)
         _move_part_of_input_to_disk_or_flow_control_window(self, &self->input_queues[thread_index]);
     }
 exit:
-  self->input_queues[thread_index].finish_cb_registered = FALSE;
   log_queue_unref(&self->super.super);
   return NULL;
 }
@@ -872,7 +870,6 @@ _free(LogQueue *s)
 
   for (gint i = 0; i < self->num_input_queues; i++)
     {
-      g_assert(self->input_queues[i].finish_cb_registered == FALSE);
       g_assert(self->input_queues[i].len == 0);
     }
 
