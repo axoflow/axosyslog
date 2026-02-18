@@ -133,16 +133,17 @@ Test(aux_data, test_add_nv_pair_to_a_NULL_aux_data_will_do_nothing)
 
 Test(aux_data, test_aux_data_functions_with_NULL_instance_does_nothing)
 {
-  aux = NULL;
+  LogTransportAuxData *a = NULL;
 
-  log_transport_aux_data_init(aux);
-  log_transport_aux_data_reinit(aux);
-  log_transport_aux_data_destroy(aux);
+  log_transport_aux_data_init(a);
+  log_transport_aux_data_reinit(a);
+  log_transport_aux_data_destroy(a);
 
-  log_transport_aux_data_init(aux);
+  log_transport_aux_data_init(a);
   /* set peer_addr twice to validate that peer_addr is correctly reference counted */
-  log_transport_aux_data_set_peer_addr_ref(aux, g_sockaddr_inet_new("1.2.3.4", 5555));
-  log_transport_aux_data_set_peer_addr_ref(aux, g_sockaddr_inet_new("1.2.3.4", 5555));
+  log_transport_aux_data_set_peer_addr_ref(a, g_sockaddr_inet_new("1.2.3.4", 5555));
+  log_transport_aux_data_set_peer_addr_ref(a, g_sockaddr_inet_new("1.2.3.4", 5555));
+  log_transport_aux_data_destroy(a);
 }
 
 static void
