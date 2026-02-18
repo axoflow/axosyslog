@@ -283,6 +283,7 @@ Test(filterx_expr, test_filterx_setattr)
   cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "bar");
   cr_assert(filterx_object_truthy(res));
   cr_assert(setattr->ignore_falsy_result);
+  filterx_object_unref(res);
 
   assert_object_json_equals(dict, "{\"foo\":\"bar\"}");
 
@@ -305,6 +306,7 @@ Test(filterx_expr, test_filterx_set_subscript)
   cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "bar");
   cr_assert(filterx_object_truthy(res));
   cr_assert(setattr->ignore_falsy_result);
+  filterx_object_unref(res);
 
   assert_object_json_equals(dict, "{\"foo\":\"bar\"}");
 
