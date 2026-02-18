@@ -72,28 +72,30 @@ _construct_merged_message(const gchar *name, const gchar *value)
 }
 
 static void
-assert_log_msg_clear_clears_all_properties(LogMessage *message, NVHandle nv_handle,
+assert_log_msg_clear_clears_all_properties(LogMessage **message, NVHandle nv_handle,
                                            NVHandle sd_handle, const gchar *tag_name)
 {
-  message->flags |= LF_LOCAL + LF_UTF8 + LF_INTERNAL + LF_MARK;
+  (*message)->flags |= LF_LOCAL + LF_UTF8 + LF_INTERNAL + LF_MARK;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
 
-  log_msg_make_writable(&message, &path_options);
-  log_msg_clear(message);
+  *message = log_msg_make_writable(message, &path_options);
 
-  cr_assert_str_empty(log_msg_get_value(message, nv_handle, NULL),
+  LogMessage *msg = *message;
+  log_msg_clear(msg);
+
+  cr_assert_str_empty(log_msg_get_value(msg, nv_handle, NULL),
                       "Message still contains value after log_msg_clear");
 
-  cr_assert_str_empty(log_msg_get_value(message, sd_handle, NULL),
+  cr_assert_str_empty(log_msg_get_value(msg, sd_handle, NULL),
                       "Message still contains sdata value after log_msg_clear");
 
-  cr_assert_null(message->saddr, "Message still contains an saddr after log_msg_clear");
-  cr_assert_not(log_msg_is_tag_by_name(message, tag_name),
+  cr_assert_null(msg->saddr, "Message still contains an saddr after log_msg_clear");
+  cr_assert_not(log_msg_is_tag_by_name(msg, tag_name),
                 "Message still contains a valid tag after log_msg_clear");
-  cr_assert((message->flags & LF_LOCAL) == 0, "Message still contains the 'local' flag after log_msg_clear");
-  cr_assert((message->flags & LF_UTF8) == 0, "Message still contains the 'utf8' flag after log_msg_clear");
-  cr_assert((message->flags & LF_MARK) == 0, "Message still contains the 'mark' flag after log_msg_clear");
-  cr_assert((message->flags & LF_INTERNAL) == 0, "Message still contains the 'internal' flag after log_msg_clear");
+  cr_assert((msg->flags & LF_LOCAL) == 0, "Message still contains the 'local' flag after log_msg_clear");
+  cr_assert((msg->flags & LF_UTF8) == 0, "Message still contains the 'utf8' flag after log_msg_clear");
+  cr_assert((msg->flags & LF_MARK) == 0, "Message still contains the 'mark' flag after log_msg_clear");
+  cr_assert((msg->flags & LF_INTERNAL) == 0, "Message still contains the 'internal' flag after log_msg_clear");
 }
 
 static void
@@ -180,9 +182,9 @@ Test(log_message, test_log_message_can_be_cleared)
 
   log_message_test_params_clone_message(params);
 
-  assert_log_msg_clear_clears_all_properties(params->message, params->nv_handle,
+  assert_log_msg_clear_clears_all_properties(&params->message, params->nv_handle,
                                              params->sd_handle, params->tag_name);
-  assert_log_msg_clear_clears_all_properties(params->cloned_message, params->nv_handle,
+  assert_log_msg_clear_clears_all_properties(&params->cloned_message, params->nv_handle,
                                              params->sd_handle, params->tag_name);
 
   log_message_test_params_free(params);
