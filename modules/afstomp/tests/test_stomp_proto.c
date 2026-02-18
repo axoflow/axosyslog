@@ -48,40 +48,48 @@ Test(stomp_proto, test_only_command)
 {
   stomp_frame frame;
 
-  stomp_parse_frame(g_string_new("CONNECTED\n\n"), &frame);
+  GString *data = g_string_new("CONNECTED\n\n");
+  stomp_parse_frame(data, &frame);
   assert_stomp_command(&frame, "CONNECTED");
   stomp_frame_deinit(&frame);
+  g_string_free(data, TRUE);
 }
 
 Test(stomp_proto, test_command_and_data)
 {
   stomp_frame frame;
 
-  stomp_parse_frame(g_string_new("CONNECTED\n\nalmafa"), &frame);
+  GString *data = g_string_new("CONNECTED\n\nalmafa");
+  stomp_parse_frame(data, &frame);
   assert_stomp_command(&frame, "CONNECTED");
   assert_stomp_body(&frame, "almafa");
   stomp_frame_deinit(&frame);
+  g_string_free(data, TRUE);
 };
 
 Test(stomp_proto, test_command_and_header_and_data)
 {
   stomp_frame frame;
 
-  stomp_parse_frame(g_string_new("CONNECTED\nheader_name:header_value\n\nbelafa"), &frame);
+  GString *data = g_string_new("CONNECTED\nheader_name:header_value\n\nbelafa");
+  stomp_parse_frame(data, &frame);
   assert_stomp_command(&frame, "CONNECTED");
   assert_stomp_header(&frame, "header_name", "header_value");
   assert_stomp_body(&frame, "belafa");
   stomp_frame_deinit(&frame);
+  g_string_free(data, TRUE);
 };
 
 Test(stomp_proto, test_command_and_header)
 {
   stomp_frame frame;
 
-  stomp_parse_frame(g_string_new("CONNECTED\nsession:ID:tusa-38077-1378214843533-2:1\n"), &frame);
+  GString *data = g_string_new("CONNECTED\nsession:ID:tusa-38077-1378214843533-2:1\n");
+  stomp_parse_frame(data, &frame);
   assert_stomp_command(&frame, "CONNECTED");
   assert_stomp_header(&frame, "session", "ID:tusa-38077-1378214843533-2:1");
   stomp_frame_deinit(&frame);
+  g_string_free(data, TRUE);
 };
 
 Test(stomp_proto, test_generate_gstring_from_frame)
@@ -95,12 +103,15 @@ Test(stomp_proto, test_generate_gstring_from_frame)
   actual = create_gstring_from_frame(&frame);
   cr_assert_str_eq(actual->str, "SEND\nheader_name:header_value\n\nbody", "Generated stomp frame does not match");
   stomp_frame_deinit(&frame);
+  g_string_free(actual, TRUE);
 };
 
 Test(stomp_proto, test_invalid_command)
 {
   stomp_frame frame;
 
-  cr_assert_not(stomp_parse_frame(g_string_new("CONNECTED\n no-colon\n"), &frame));
+  GString *data = g_string_new("CONNECTED\n no-colon\n");
+  cr_assert_not(stomp_parse_frame(data, &frame));
   stomp_frame_deinit(&frame);
+  g_string_free(data, TRUE);
 };

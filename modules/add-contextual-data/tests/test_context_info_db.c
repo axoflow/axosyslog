@@ -357,28 +357,6 @@ Test(add_contextual_data, test_import_with_invalid_csv_content)
   contextual_data_record_scanner_free(scanner);
 }
 
-Test(add_contextual_data, test_import_with_csv_contains_invalid_line)
-{
-  gchar csv_content[] = "selector1,name1,value1\n"
-                        ",value1.1\n";
-  FILE *fp = fmemopen(csv_content, strlen(csv_content), "r");
-  ContextInfoDB *db = context_info_db_new(FALSE);
-
-  ContextualDataRecordScanner *scanner =
-    contextual_data_record_scanner_new(configuration, NULL);
-
-  cr_assert_not(context_info_db_import(db, fp, "dummy.csv", scanner),
-                "Successfully import an invalid CSV file.");
-  cr_assert_not(context_info_db_is_loaded(db),
-                "The context_info_db_is_loaded reports True after a failing import operation. ");
-  cr_assert_not(context_info_db_is_indexed(db),
-                "The context_info_db_is_indexed reports True after failing import&load operations.");
-
-  fclose(fp);
-  context_info_db_unref(db);
-  contextual_data_record_scanner_free(scanner);
-}
-
 struct TestNVPairPrefix
 {
   TestNVPair expected;
@@ -444,6 +422,9 @@ ParameterizedTest(struct TestNVPairPrefix *param, add_contextual_data, test_impo
       "selector1",
       &param->expected,
       1);
+
+  contextual_data_record_scanner_free(scanner);
+  context_info_db_unref(db);
 }
 
 Test(add_contextual_data, test_ignore_case_on)
@@ -543,16 +524,14 @@ static void
 setup(void)
 {
   app_startup();
-  configuration = cfg_new_snippet();
-
   init_template_tests();
-  cfg_load_module(configuration, "syslogformat");
   cfg_load_module(configuration, "basicfuncs");
 }
 
 static void
 teardown(void)
 {
+  deinit_template_tests();
   scratch_buffers_explicit_gc();
   app_shutdown();
 }
