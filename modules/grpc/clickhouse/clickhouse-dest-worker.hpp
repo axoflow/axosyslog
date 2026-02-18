@@ -40,8 +40,8 @@ class DestWorker final : public syslogng::grpc::DestWorker
 public:
   DestWorker(GrpcDestWorker *s);
 
-  LogThreadedResult insert(LogMessage *msg);
-  LogThreadedResult flush(LogThreadedFlushMode mode);
+  LogThreadedResult insert(LogMessage *msg) override;
+  LogThreadedResult flush(LogThreadedFlushMode mode) override;
 
 protected:
   bool connect() override;

@@ -121,7 +121,8 @@ AM_CXXFLAGS += \
 	-Wundef \
 	-Wignored-qualifiers \
 	-Wfloat-conversion \
-	-Wunused-but-set-parameter
+	-Wunused-but-set-parameter \
+	-Wno-c99-designator
 endif
 
 if ENABLE_DEBUG
