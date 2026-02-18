@@ -104,7 +104,7 @@ FilterXObject *
 filterx_object_add_inplace_method(FilterXObject *self, FilterXObject *object)
 {
   /* simulate in-place addition by cloning self, adding it up and returning the new object */
-  FilterXObject *cloned = filterx_object_clone(self);
+  FilterXObject *cloned = filterx_object_copy(self);
   FilterXObject *result = filterx_object_add(cloned, object);
   filterx_object_unref(cloned);
   return result;
