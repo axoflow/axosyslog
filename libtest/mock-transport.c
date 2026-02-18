@@ -233,8 +233,7 @@ log_transport_mock_read_method(LogTransport *s, gpointer buf, gsize count, LogTr
       g_assert_not_reached();
     }
 
-  if (aux)
-    aux->peer_addr = g_sockaddr_inet_new("1.2.3.4", 5555);
+  log_transport_aux_data_set_peer_addr_ref(aux, g_sockaddr_inet_new("1.2.3.4", 5555));
 
 exit:
   if (count == 0 && self->eof_is_eagain)
