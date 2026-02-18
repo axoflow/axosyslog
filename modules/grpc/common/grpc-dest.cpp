@@ -138,7 +138,7 @@ DestDriver::deinit()
 bool
 DestDriver::handle_response(const ::grpc::Status &status, LogThreadedResult *ltr)
 {
-  if (status.error_code() >= GRPC_DEST_RESPONSE_ACTIONS_ARRAY_LEN)
+  if (static_cast<int>(status.error_code()) >= GRPC_DEST_RESPONSE_ACTIONS_ARRAY_LEN)
     {
       msg_error("Invalid gRPC status code", evt_tag_int("status_code", status.error_code()));
       return false;

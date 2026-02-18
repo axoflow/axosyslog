@@ -52,9 +52,9 @@ public:
   ~SourceDriver() override;
 
   bool init() override;
-  void format_stats_key(StatsClusterKeyBuilder *kb);
-  const char *generate_persist_name();
-  LogThreadedSourceWorker *construct_worker(int worker_index);
+  void format_stats_key(StatsClusterKeyBuilder *kb) override;
+  const char *generate_persist_name() override;
+  LogThreadedSourceWorker *construct_worker(int worker_index) override;
 
   /* services must exist for the lifetime of the server instance */
   std::unique_ptr<TraceService::AsyncService> trace_service;
@@ -82,8 +82,8 @@ public:
   ~SourceWorker() override;
 
   bool init() override;
-  void run();
-  void request_exit();
+  void run() override;
+  void request_exit() override;
 
 private:
   friend TraceServiceCall;

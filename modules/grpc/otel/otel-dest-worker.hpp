@@ -57,13 +57,13 @@ class DestWorker : public syslogng::grpc::DestWorker
 public:
   DestWorker(GrpcDestWorker *s);
 
-  LogThreadedResult insert(LogMessage *msg);
-  LogThreadedResult flush(LogThreadedFlushMode mode);
+  LogThreadedResult insert(LogMessage *msg) override;
+  LogThreadedResult flush(LogThreadedFlushMode mode) override;
 
 protected:
-  bool init();
-  void deinit();
-  bool connect();
+  bool init() override;
+  void deinit() override;
+  bool connect() override;
 
   void clear_current_msg_metadata();
   void get_metadata_for_current_msg(LogMessage *msg);

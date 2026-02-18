@@ -49,8 +49,8 @@ public:
   DestinationWorker(GrpcDestWorker *s) : syslogng::grpc::DestWorker(s) {};
   ~DestinationWorker() {};
 
-  LogThreadedResult insert(LogMessage *msg);
-  LogThreadedResult flush(LogThreadedFlushMode mode);
+  LogThreadedResult insert(LogMessage *msg) override;
+  LogThreadedResult flush(LogThreadedFlushMode mode) override;
 
 protected:
   bool init() override;
