@@ -517,7 +517,7 @@ log_reader_fetch_log(LogReader *self)
 {
   gint msg_count = 0;
   gboolean may_read = TRUE;
-  LogTransportAuxData aux_storage, *aux = &aux_storage;
+  LogTransportAuxData aux_storage = {0}, *aux = &aux_storage;
 
   if ((self->options->flags & LR_IGNORE_AUX_DATA))
     aux = NULL;
