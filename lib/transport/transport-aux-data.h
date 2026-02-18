@@ -93,23 +93,30 @@ log_transport_aux_data_move(LogTransportAuxData *dst, LogTransportAuxData *src)
 static inline void
 log_transport_aux_data_set_peer_addr_ref(LogTransportAuxData *self, GSockAddr *peer_addr)
 {
-  if (self)
+  if (!self)
     {
-      if (self->peer_addr)
-        g_sockaddr_unref(self->peer_addr);
-      self->peer_addr = peer_addr;
+      g_sockaddr_unref(peer_addr);
+      return;
     }
+
+  if (self->peer_addr)
+    g_sockaddr_unref(self->peer_addr);
+  self->peer_addr = peer_addr;
+
 }
 
 static inline void
 log_transport_aux_data_set_local_addr_ref(LogTransportAuxData *self, GSockAddr *local_addr)
 {
-  if (self)
+  if (!self)
     {
-      if (self->local_addr)
-        g_sockaddr_unref(self->local_addr);
-      self->local_addr = local_addr;
+      g_sockaddr_unref(local_addr);
+      return;
     }
+
+  if (self->local_addr)
+    g_sockaddr_unref(self->local_addr);
+  self->local_addr = local_addr;
 }
 
 static inline void
