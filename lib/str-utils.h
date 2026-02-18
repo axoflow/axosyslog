@@ -113,6 +113,16 @@ _strchr_optimized_for_single_char_haystack(const char *str, int c)
   return strchr(str + 1, c);
 }
 
+/* NOTE: given a NUL terminated string and a potentially non-NUL terminated one,
+ * check if they are equal */
+static inline gboolean
+strn_eq_strz(const char *str, const char *asciiz, size_t str_len)
+{
+  if (strncmp(asciiz, str, str_len) != 0)
+    return FALSE;
+  return asciiz[str_len] == 0;
+}
+
 /*
  * strsplit() splits the `str` into `maxtokens` pieces.
  * This version skips multiple `delims`.
@@ -157,6 +167,21 @@ static inline gboolean
 ch_isdigit(gchar c)
 {
   return c >= '0' && c <= '9';
+}
+
+static inline gboolean
+ch_isxdigit(gchar c)
+{
+  if (c >= '0' && c <= '9')
+    return TRUE;
+
+  if (c >= 'a' && c <= 'f')
+    return TRUE;
+
+  if (c >= 'A' && c <= 'F')
+    return TRUE;
+
+  return FALSE;
 }
 
 static inline gboolean

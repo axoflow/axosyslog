@@ -131,7 +131,7 @@ _double_add(FilterXObject *s, FilterXObject *object)
 }
 
 gboolean
-double_repr(double dbl, GString *repr)
+double_repr(double dbl, gint prec, GString *repr)
 {
   if (isnan(dbl))
     {
@@ -147,7 +147,15 @@ double_repr(double dbl, GString *repr)
     {
       gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
 
-      g_ascii_dtostr(buf, sizeof(buf), dbl);
+      /* NOTE: if precision is unknown, use up to 17 digits.  We are also using
+       * the %g format qualifier, which causes trailing zeroes to be removed.
+       * it is a good compromise between readability and accuracy.  The same
+       * format string is used by g_ascii_dtostr() */
+
+      if (prec >= 0)
+        snprintf(buf, sizeof(buf), "%.*f", prec, dbl);
+      else
+        snprintf(buf, sizeof(buf), "%.17g", dbl);
       gchar *dot = strchr(buf, '.');
       if (!dot && strchr(buf, 'e') == NULL)
         {
@@ -156,15 +164,14 @@ double_repr(double dbl, GString *repr)
         }
       else if (dot)
         {
-          gchar *last_useful_digit = NULL;
-          for (gchar *c = dot+1; *c; c++)
+          gchar *last_useful_digit = dot + 1;
+          for (gchar *c = last_useful_digit; *c; c++)
             {
               if (*c != '0')
                 last_useful_digit = c;
             }
           /* truncate trailing zeroes */
-          if (last_useful_digit)
-            *(last_useful_digit+1) = 0;
+          *(last_useful_digit+1) = 0;
         }
       g_string_append(repr, buf);
     }
@@ -176,7 +183,7 @@ _double_format_json(FilterXObject *s, GString *json)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
 
-  return double_repr(gn_as_double(&self->value), json);
+  return double_repr(gn_as_double(&self->value), self->value.precision, json);
 }
 
 static gboolean
@@ -184,15 +191,21 @@ _double_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
   *t = LM_VT_DOUBLE;
-  return double_repr(gn_as_double(&self->value), repr);
+  return double_repr(gn_as_double(&self->value), self->value.precision, repr);
+}
+
+FilterXObject *
+filterx_double_new_with_prec(gdouble value, gint prec)
+{
+  FilterXPrimitive *self = filterx_primitive_new(&FILTERX_TYPE_NAME(double));
+  gn_set_double(&self->value, value, prec);
+  return &self->super;
 }
 
 FilterXObject *
 filterx_double_new(gdouble value)
 {
-  FilterXPrimitive *self = filterx_primitive_new(&FILTERX_TYPE_NAME(double));
-  gn_set_double(&self->value, value, -1);
-  return &self->super;
+  return filterx_double_new_with_prec(value, -1);
 }
 
 gboolean
@@ -294,6 +307,29 @@ filterx_primitive_get_value(FilterXObject *s)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
   return self->value;
+}
+
+FilterXObject *
+filterx_primitive_new_from_gn(const GenericNumber *gn)
+{
+  FilterXType *type;
+
+  switch (gn->type)
+    {
+    case GN_DOUBLE:
+    case GN_NAN:
+      type = &FILTERX_TYPE_NAME(double);
+      break;
+    case GN_INT64:
+      type = &FILTERX_TYPE_NAME(integer);
+      break;
+    default:
+      g_assert_not_reached();
+    }
+  FilterXPrimitive *self = filterx_primitive_new(type);
+  self->value = *gn;
+  return &self->super;
+
 }
 
 FilterXObject *
