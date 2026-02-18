@@ -166,7 +166,7 @@ _pull_variable_from_parent_scope(FilterXScope *self, FilterXVariable *parent_var
 
   *v = *parent_variable;
   if (v->value)
-    v->value = filterx_object_clone(v->value);
+    v->value = filterx_object_copy(v->value);
 
   msg_trace("Filterx scope, cloning scope variable",
             evt_tag_str("variable", log_msg_get_value_name((filterx_variable_get_nv_handle(v)), NULL)));
