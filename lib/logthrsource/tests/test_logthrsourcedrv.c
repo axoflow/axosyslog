@@ -39,6 +39,8 @@ typedef struct _TestThreadedSourceDriver
   gboolean suspended;
   gboolean exit_requested;
   gboolean blocking_post;
+
+  GList *pending_msgs;
 } TestThreadedSourceDriver;
 
 MainLoopOptions main_loop_options = {0};
@@ -151,8 +153,18 @@ request_exit_and_wait_for_stop(TestThreadedSourceDriver *s)
 }
 
 static void
+_drop_msg(gpointer data)
+{
+  LogPathOptions options = LOG_PATH_OPTIONS_INIT;
+  log_msg_drop(data, &options, AT_PROCESSED);
+}
+
+static void
 destroy_test_threaded_source(TestThreadedSourceDriver *s)
 {
+  TestThreadedSourceDriver *self = (TestThreadedSourceDriver *) s;
+  g_list_free_full(self->pending_msgs, _drop_msg);
+
   cr_assert(log_pipe_deinit(&s->super.super.super.super));
   log_pipe_unref(&s->super.super.super.super);
 }
@@ -212,7 +224,9 @@ _worker_request_exit(LogThreadedSourceWorker *s)
 static void
 _do_not_ack_messages(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 {
-  log_msg_unref(msg);
+  TestThreadedSourceDriver *driver = (TestThreadedSourceDriver *) s;
+
+  driver->pending_msgs = g_list_append(driver->pending_msgs, msg);
 }
 
 TestSuite(logthrsourcedrv, .init = setup, .fini = teardown, .timeout = 10);
