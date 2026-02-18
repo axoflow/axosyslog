@@ -673,7 +673,7 @@ Test(log_proto, test_log_proto_text_server_io_eagain)
               LTM_EOF));
 
   Bookmark bookmark;
-  LogTransportAuxData aux;
+  LogTransportAuxData aux = {0};
   gboolean may_read = TRUE;
   const guchar *msg = NULL;
   gsize msg_len;

@@ -29,7 +29,7 @@ LogTransportAuxData *aux = NULL;
 static LogTransportAuxData *
 construct_empty_aux(void)
 {
-  LogTransportAuxData *self = g_new(LogTransportAuxData, 1);
+  LogTransportAuxData *self = g_new0(LogTransportAuxData, 1);
 
   log_transport_aux_data_init(self);
   return self;
@@ -95,7 +95,7 @@ Test(aux_data, test_aux_data_added_nvpairs_are_returned_by_foreach_in_order)
 
 Test(aux_data, test_aux_data_copy_creates_an_identical_copy)
 {
-  LogTransportAuxData aux_copy;
+  LogTransportAuxData aux_copy = {0};
   gchar *orig, *copy;
 
   log_transport_aux_data_copy(&aux_copy, aux);
@@ -110,7 +110,7 @@ Test(aux_data, test_aux_data_copy_creates_an_identical_copy)
 
 Test(aux_data, test_aux_data_copy_separates_the_copies)
 {
-  LogTransportAuxData aux_copy;
+  LogTransportAuxData aux_copy = {0};
   gchar *orig, *copy;
 
   log_transport_aux_data_copy(&aux_copy, aux);

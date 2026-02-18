@@ -70,6 +70,8 @@ log_transport_aux_data_reinit(LogTransportAuxData *self)
 static inline void
 log_transport_aux_data_copy(LogTransportAuxData *dst, LogTransportAuxData *src)
 {
+  log_transport_aux_data_destroy(dst);
+
   gsize data_to_copy = sizeof(*src) - sizeof(src->data) + src->end_ptr;
 
   if (dst)
@@ -83,6 +85,8 @@ log_transport_aux_data_copy(LogTransportAuxData *dst, LogTransportAuxData *src)
 static inline void
 log_transport_aux_data_move(LogTransportAuxData *dst, LogTransportAuxData *src)
 {
+  log_transport_aux_data_destroy(dst);
+
   gsize data_to_copy = sizeof(*src) - sizeof(src->data) + src->end_ptr;
 
   if (dst)

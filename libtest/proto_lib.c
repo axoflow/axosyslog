@@ -65,7 +65,7 @@ LogProtoStatus
 proto_server_fetch(LogProtoServer *proto, const guchar **msg, gsize *msg_len)
 {
   Bookmark bookmark;
-  LogTransportAuxData aux;
+  LogTransportAuxData aux = {0};
   GSockAddr *saddr;
   gboolean may_read = TRUE;
   LogProtoStatus status;
@@ -140,7 +140,7 @@ assert_proto_server_fetch_single_read(LogProtoServer *proto, const gchar *expect
   const guchar *msg = NULL;
   gsize msg_len = 0;
   LogProtoStatus status;
-  LogTransportAuxData aux;
+  LogTransportAuxData aux = {0};
   Bookmark bookmark;
   gboolean may_read = TRUE;
 
@@ -196,7 +196,7 @@ assert_proto_server_fetch_ignored_eof(LogProtoServer *proto)
   const guchar *msg = NULL;
   gsize msg_len = 0;
   LogProtoStatus status;
-  LogTransportAuxData aux;
+  LogTransportAuxData aux = {0};
   Bookmark bookmark;
   gboolean may_read = TRUE;
 
