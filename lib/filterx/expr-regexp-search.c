@@ -245,6 +245,7 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
       goto error;
     }
 
+  filterx_object_unref(pattern_obj);
   return filterx_expr_init_method(s, cfg);
 
 error:
