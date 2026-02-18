@@ -2114,6 +2114,7 @@ dnl ***************************************************************************
 
 if  test "x$with_sanitizer" != "xno"; then
    CFLAGS="$CFLAGS -O1 -fsanitize=$with_sanitizer -fno-omit-frame-pointer"
+   CXXFLAGS="$CXXFLAGS -O1 -fsanitize=$with_sanitizer -fno-omit-frame-pointer"
 fi
 
 dnl ***************************************************************************
