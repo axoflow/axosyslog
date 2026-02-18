@@ -313,6 +313,9 @@ Test(filter, test_match_with_overwritten_match_as_source)
   assert_log_message_match_value(msg, 1, "PTHREAD");
   assert_log_message_match_value(msg, 2, " ");
   assert_log_message_match_value(msg, 3, "support");
+
+  log_msg_unref(msg);
+  filter_expr_unref(filter);
 }
 
 Test(filter, test_match_with_overwritten_trivial_template_as_source)
@@ -332,6 +335,9 @@ Test(filter, test_match_with_overwritten_trivial_template_as_source)
   assert_log_message_match_value(msg, 1, "PTHREAD");
   assert_log_message_match_value(msg, 2, " ");
   assert_log_message_match_value(msg, 3, "support");
+
+  log_msg_unref(msg);
+  filter_expr_unref(filter);
 }
 
 Test(filter, test_match_with_value)
