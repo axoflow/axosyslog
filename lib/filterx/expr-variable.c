@@ -232,7 +232,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
     self->variable_name = filterx_string_new(name, -1);
 
   /* NOTE: name borrows the string value from the string object */
-  self->super.name = filterx_string_get_value_ref(self->variable_name, NULL);
+  self->super.name = filterx_string_get_value_ref_and_assert_nul(self->variable_name, NULL);
 
   return &self->super;
 }
