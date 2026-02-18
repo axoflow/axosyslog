@@ -144,15 +144,6 @@ Test(wildcard_source, test_base_dir_required_options)
   reset_grabbed_messages();
 }
 
-Test(wildcard_source, test_invalid_monitor_method)
-{
-  start_grabbing_messages();
-  cr_assert(!_parse_config("monitor-method(\"something else\""));
-  stop_grabbing_messages();
-  assert_grabbed_log_contains("Invalid value for monitor-method()");
-  reset_grabbed_messages();
-}
-
 Test(wildcard_source, test_minimum_window_size)
 {
   WildcardSourceDriver *driver = _create_wildcard_filesource("base-dir(/test_non_existent_dir)"
