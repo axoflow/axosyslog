@@ -125,7 +125,7 @@ _set_with_fallbacks(FilterXObject *dict, FilterXObject *key, GPtrArray *values)
           continue;
         }
 
-      FilterXObject *value_obj_cloned = filterx_object_clone(value_obj);
+      FilterXObject *value_obj_cloned = filterx_object_copy(value_obj);
       filterx_object_unref(value_obj);
 
       if (!filterx_object_set_subscript(dict, key, &value_obj_cloned))
@@ -238,7 +238,7 @@ _are_field_keys_equal(FilterXObject *key_a, FilterXObject *key_b)
   const gchar *key_a_str = filterx_string_get_value_ref(key_a, &len_a);
   const gchar *key_b_str = filterx_string_get_value_ref(key_b, &len_b);
 
-  return len_a == len_b && strcmp(key_a_str, key_b_str) == 0;
+  return strn_eq_strn(key_a_str, len_a, key_b_str, len_b);
 }
 
 static gboolean

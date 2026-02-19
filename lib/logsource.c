@@ -38,6 +38,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <valgrind/cachegrind.h>
 
 gboolean accurate_nanosleep = FALSE;
 
@@ -632,6 +633,8 @@ log_source_deinit(LogPipe *s)
 void
 log_source_post(LogSource *self, LogMessage *msg)
 {
+  CACHEGRIND_START_INSTRUMENTATION;
+
   GlobalConfig *cfg = log_pipe_get_config(&self->super);
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
@@ -672,6 +675,8 @@ log_source_post(LogSource *self, LogMessage *msg)
   scratch_buffers_mark(&mark);
   log_pipe_queue(&self->super, msg, &path_options);
   scratch_buffers_reclaim_marked(mark);
+
+  CACHEGRIND_STOP_INSTRUMENTATION;
 }
 
 static void

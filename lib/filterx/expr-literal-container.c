@@ -150,7 +150,10 @@ _literal_container_optimize(FilterXExpr *s)
   if (literal)
     return filterx_literal_new(container);
   else
-    self->sparse_container = container;
+    {
+      self->sparse_container = container;
+      filterx_eval_freeze_object(&self->sparse_container);
+    }
 
   return NULL;
 }
@@ -305,12 +308,12 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref,
 static FilterXObject *
 _literal_dict_eval_early(FilterXLiteralContainer *self)
 {
-  FilterXObject *dict_ref = filterx_dict_new();
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  FilterXObject *dict_ref = filterx_dict_sized_new(len);
   filterx_object_cow_prepare(&dict_ref);
 
   FilterXObject *dict = filterx_ref_unwrap_rw(dict_ref);
 
-  gsize len = filterx_pointer_list_get_length(&self->elements);
   for (gsize i = 0; i < len; i++)
     {
       FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);

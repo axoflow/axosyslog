@@ -60,11 +60,9 @@ Test(expr_plus, test_string_success)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
-  gsize size;
-  const gchar *res = filterx_string_get_value_ref(obj, &size);
+  const gchar *res = filterx_string_get_value_as_cstr(obj);
 
   cr_assert_str_eq(res, "foobar");
-  cr_assert_eq(size, 6);
 
   filterx_object_unref(obj);
   filterx_expr_unref(expr);
@@ -272,8 +270,8 @@ Test(expr_plus, test_double_add_wrong_type)
 
 Test(expr_plus, test_list_add_list)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\"]", -1, NULL));
-  FilterXExpr *rhs = filterx_literal_new(filterx_object_from_json("[\"tik\",\"tak\"]", -1, NULL));
+  FilterXExpr *lhs = filterx_object_expr_new(filterx_object_from_json("[\"foo\",\"bar\"]", -1, NULL));
+  FilterXExpr *rhs = filterx_object_expr_new(filterx_object_from_json("[\"tik\",\"tak\"]", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
@@ -291,7 +289,7 @@ Test(expr_plus, test_list_add_list)
 
 Test(expr_plus, test_list_add_wrong_type)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("[\"foo\",\"bar\"]", -1, NULL));
+  FilterXExpr *lhs = filterx_object_expr_new(filterx_object_from_json("[\"foo\",\"bar\"]", -1, NULL));
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
@@ -304,8 +302,8 @@ Test(expr_plus, test_list_add_wrong_type)
 
 Test(expr_plus, test_dict_add_dict)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
-  FilterXExpr *rhs = filterx_literal_new(filterx_object_from_json("{\"tik\":\"tak\"}", -1, NULL));
+  FilterXExpr *lhs = filterx_object_expr_new(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
+  FilterXExpr *rhs = filterx_object_expr_new(filterx_object_from_json("{\"tik\":\"tak\"}", -1, NULL));
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
   cr_assert_not_null(expr);
@@ -322,7 +320,7 @@ Test(expr_plus, test_dict_add_dict)
 
 Test(expr_plus, test_dict_add_wrong_type)
 {
-  FilterXExpr *lhs = filterx_literal_new(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
+  FilterXExpr *lhs = filterx_object_expr_new(filterx_object_from_json("{\"foo\":\"bar\"}", -1, NULL));
   FilterXExpr *rhs = filterx_literal_new(filterx_null_new());
 
   FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);

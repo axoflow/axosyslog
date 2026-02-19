@@ -200,6 +200,12 @@ _extract_failure_info_meta_args(FilterXFunctionFailureInfoMeta *self, FilterXFun
     }
 
   self->metadata_expr = filterx_function_args_get_expr(args, 0);
+  if (!filterx_expr_is_literal_dict(self->metadata_expr))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument is expected to be a literal dict. " FILTERX_FUNC_FAILURE_INFO_META_USAGE);
+      return FALSE;
+    }
   return TRUE;
 }
 
@@ -300,6 +306,33 @@ filterx_fn_failure_info_new(FilterXFunctionArgs *args, GError **error)
   return &self->super;
 }
 
+static gboolean
+_failure_info_meta_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
+
+  /* NOTE: this is a temporary restriction and assumes that optimize was
+   * run, if it wasn't, the literal container would remain a literal
+   * container, causing this step to bail out with a failure.
+   *
+   * The real solution is to implement filterx_eval_retain_object() for
+   * mutable object types, so this would also work with whatever types.  But
+   * that will always be slow and failure_info_meta() is not something that
+   * should be slow.
+   *
+   * I am delaying the retain_object() implementation for mutable objects,
+   * as I have a lot of  PRs lined up that touch the same code.
+   */
+
+  if (!filterx_expr_is_literal(self->metadata_expr))
+    {
+      msg_error("The metadata argument for failure_info_meta() has to be a literal",
+                filterx_expr_format_location_tag(s));
+      return FALSE;
+    }
+  return filterx_function_init_method(&self->super, cfg);
+}
+
 static void
 _failure_info_meta_free(FilterXExpr *s)
 {
@@ -315,6 +348,7 @@ filterx_fn_failure_info_meta_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionFailureInfoMeta *self = g_new0(FilterXFunctionFailureInfoMeta, 1);
 
   filterx_function_init_instance(&self->super, "failure_info_meta", FXE_WORLD);
+  self->super.super.init = _failure_info_meta_init;
   self->super.super.eval = _failure_info_meta_eval;
   self->super.super.walk_children = _failure_info_meta_walk;
   self->super.super.free_fn = _failure_info_meta_free;
