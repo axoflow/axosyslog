@@ -54,7 +54,7 @@ jobs:
             --enable-ebpf
             --with-python=3
             --enable-extra-warnings
-            `[ $CC = clang ] && echo '--enable-force-gnu99' || true`
+            `[ $CC = clang ] && echo '--enable-force-gnu99 --with-sanitizer=address' || true`
           "
           CMAKE_FLAGS="
             -DCMAKE_BUILD_TYPE=Debug
