@@ -167,6 +167,7 @@ event_format_parser_parse_extensions(EventParserContext *ctx, const gchar *input
       FILTERX_STRING_DECLARE_ON_STACK(key, "extensions", 10);
       filterx_object_set_subscript(parsed_dict, key, &dict_to_fill);
       FILTERX_STRING_CLEAR_FROM_STACK(key);
+      filterx_object_unref(dict_to_fill);
     }
 
   gboolean success = FALSE;
