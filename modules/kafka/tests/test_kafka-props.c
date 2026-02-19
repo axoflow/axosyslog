@@ -27,9 +27,6 @@
 #include "messages.h"
 #include "logmsg/logmsg.h"
 
-
-#define TESTDATA_DIR TOP_SRCDIR "/modules/kafka/tests/"
-
 static KafkaProperty *
 _get_nth_prop(GList *prop_list, gint n)
 {
@@ -73,19 +70,3 @@ Test(kafka_props, kafka_prop_list_allocation_and_destruction)
 
   kafka_property_list_free(pl);
 }
-
-static void
-setup(void)
-{
-  msg_init(FALSE);
-  log_tags_global_init();
-  log_msg_global_init();
-}
-
-static void
-teardown(void)
-{
-  msg_deinit();
-}
-
-TestSuite(kafka_props, .init = setup, .fini = teardown);
