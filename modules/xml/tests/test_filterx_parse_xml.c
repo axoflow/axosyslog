@@ -36,7 +36,7 @@
 #include "libtest/filterx-lib.h"
 
 static FilterXExpr *
-_create_parse_xml_expr(const gchar *raw_xml, FilterXObject *dict)
+_create_parse_xml_expr(const gchar *raw_xml)
 {
   FilterXFunctionArg *input = filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(raw_xml, -1)));
   GList *args_list = g_list_append(NULL, input);
@@ -54,7 +54,7 @@ _create_parse_xml_expr(const gchar *raw_xml, FilterXObject *dict)
 static void
 _assert_parse_xml_fail(const gchar *raw_xml)
 {
-  FilterXExpr *func = _create_parse_xml_expr(raw_xml, filterx_dict_new());
+  FilterXExpr *func = _create_parse_xml_expr(raw_xml);
 
   FilterXObject *result = init_and_eval_expr(func);
   cr_assert(!result);
@@ -65,9 +65,9 @@ _assert_parse_xml_fail(const gchar *raw_xml)
 }
 
 static void
-_assert_parse_xml_with_input_dict(const gchar *raw_xml, const gchar *expected_json, FilterXObject *output_dict)
+_assert_parse_xml_with_input_dict(const gchar *raw_xml, const gchar *expected_json)
 {
-  FilterXExpr *func = _create_parse_xml_expr(raw_xml, output_dict);
+  FilterXExpr *func = _create_parse_xml_expr(raw_xml);
 
   FilterXObject *result = init_and_eval_expr(func);
   cr_assert(result);
@@ -87,7 +87,7 @@ _assert_parse_xml_with_input_dict(const gchar *raw_xml, const gchar *expected_js
 static void
 _assert_parse_xml(const gchar *raw_xml, const gchar *expected_json)
 {
-  _assert_parse_xml_with_input_dict(raw_xml, expected_json, filterx_dict_new());
+  _assert_parse_xml_with_input_dict(raw_xml, expected_json);
 }
 
 Test(filterx_parse_xml, invalid_inputs)
@@ -152,8 +152,7 @@ Test(filterx_parse_xml, valid_inputs)
 
 Test(filterx_parse_xml, overwrite_existing_invalid_value)
 {
-  FilterXObject *dict = filterx_object_from_json("{\"a\":42}", -1, NULL);
-  _assert_parse_xml_with_input_dict("<a><b>foo</b></a>", "{\"a\":{\"b\":\"foo\"}}", dict);
+  _assert_parse_xml_with_input_dict("<a><b>foo</b></a>", "{\"a\":{\"b\":\"foo\"}}");
 }
 
 static void
