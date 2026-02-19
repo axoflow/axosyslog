@@ -1724,6 +1724,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   stats_cluster_key_free(self->metrics.batch_size_events_hist_key);
   stats_cluster_key_free(self->metrics.batch_size_bytes_hist_key);
   stats_cluster_key_free(self->metrics.batch_timedout_key);
+  stats_cluster_key_free(self->metrics.CPS_key);
 
 }
 
