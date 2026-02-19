@@ -35,7 +35,6 @@ static void
 setup(void)
 {
   app_startup();
-  configuration = cfg_new_snippet();
 
   init_template_tests();
   cfg_load_module(configuration, "basicfuncs");
@@ -44,8 +43,8 @@ setup(void)
 static void
 teardown(void)
 {
+  deinit_template_tests();
   app_shutdown();
-  cfg_free(configuration);
 }
 
 TestSuite(http, .init = setup, .fini = teardown);
@@ -149,6 +148,7 @@ ParameterizedTest(struct http_action_test_params *param, http, http_code_tests)
                param->http_code, param->explanation, log_threaded_result_to_str(res),
                log_threaded_result_to_str(param->expected_value));
 
+  log_threaded_dest_worker_deinit(&worker->super);
   log_threaded_dest_worker_free(&worker->super);
   log_pipe_unref((LogPipe *)driver);
 }
