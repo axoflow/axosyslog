@@ -104,6 +104,14 @@ log_threaded_dest_driver_set_batch_timeout(LogDriver *s, gint batch_timeout)
 }
 
 void
+log_threaded_dest_driver_set_batch_idle_timeout(LogDriver *s, gint batch_idle_timeout)
+{
+  LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
+
+  self->batch_idle_timeout = batch_idle_timeout;
+}
+
+void
 log_threaded_dest_driver_set_time_reopen(LogDriver *s, time_t time_reopen)
 {
   LogThreadedDestDriver *self = (LogThreadedDestDriver *) s;
@@ -185,6 +193,19 @@ _batch_timeout_expired(LogThreadedDestWorker *self)
   glong diff = timespec_diff_msec(&now, &self->last_flush_time);
 
   return (diff >= self->owner->batch_timeout);
+}
+
+static inline gboolean
+_batch_idle_timeout_expired(LogThreadedDestWorker *self)
+{
+  if (self->owner->batch_idle_timeout <= 0)
+    return FALSE;
+
+  iv_validate_now();
+  struct timespec now = iv_now;
+  glong diff = timespec_diff_msec(&now, &self->last_msg_insert_time);
+
+  return diff >= self->owner->batch_idle_timeout;
 }
 
 static inline gboolean
@@ -525,6 +546,9 @@ _perform_inserts(LogThreadedDestWorker *self)
       self->batch_size++;
       result = log_threaded_dest_worker_insert(self, msg);
 
+      iv_validate_now();
+      self->last_msg_insert_time = iv_now;
+
       _process_result(self, result);
 
       if (self->enable_batching && self->batch_size >= self->owner->batch_lines)
@@ -576,8 +600,20 @@ _schedule_restart_on_suspend_timeout(LogThreadedDestWorker *self)
 static void
 _schedule_restart_on_batch_timeout(LogThreadedDestWorker *self)
 {
-  self->timer_flush.expires = self->last_flush_time;
-  timespec_add_msec(&self->timer_flush.expires, self->owner->batch_timeout);
+  struct timespec restart_after = self->last_flush_time;
+  timespec_add_msec(&restart_after, self->owner->batch_timeout);
+
+  if (self->owner->batch_idle_timeout > 0)
+    {
+      struct timespec batch_idle_timeout = self->last_msg_insert_time;
+      timespec_add_msec(&batch_idle_timeout, self->owner->batch_idle_timeout);
+
+      if (timespec_diff_msec(&batch_idle_timeout, &restart_after) < 0)
+        restart_after = batch_idle_timeout;
+    }
+
+
+  self->timer_flush.expires = restart_after;
   iv_timer_register(&self->timer_flush);
 }
 
@@ -595,6 +631,8 @@ _schedule_restart_on_next_flush(LogThreadedDestWorker *self)
 {
   if (self->suspended)
     _schedule_restart_on_suspend_timeout(self);
+  else if (self->owner->batch_idle_timeout > 0 && !_batch_idle_timeout_expired(self))
+    _schedule_restart_on_batch_timeout(self);
   else if (_batching_enabled(self) && !_batch_timeout_expired(self))
     _schedule_restart_on_batch_timeout(self);
   else
@@ -640,7 +678,7 @@ _perform_work(gpointer data)
 
       if (!_batching_enabled(self))
         _perform_flush(self);
-      else if (_batch_timeout_expired(self))
+      else if (_batch_timeout_expired(self) || _batch_idle_timeout_expired(self))
         {
           stats_counter_inc(self->owner->metrics.batch_timedout);
           _perform_flush(self);
@@ -660,7 +698,7 @@ _perform_work(gpointer data)
       gboolean should_flush = FALSE;
       if (!_batching_enabled(self))
         should_flush = TRUE;
-      else if (_batch_timeout_expired(self))
+      else if (_batch_timeout_expired(self) || _batch_idle_timeout_expired(self))
         {
           stats_counter_inc(self->owner->metrics.batch_timedout);
           should_flush = TRUE;

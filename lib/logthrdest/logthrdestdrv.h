@@ -95,6 +95,7 @@ struct _LogThreadedDestWorker
   guint retries_counter;
   gint32 seq_num;
   struct timespec last_flush_time;
+  struct timespec last_msg_insert_time;
   gboolean enable_batching;
   gboolean suspended;
   time_t time_reopen;
@@ -175,6 +176,7 @@ struct _LogThreadedDestDriver
 
   gint batch_lines;
   gint batch_timeout;
+  gint batch_idle_timeout;
 
   gboolean under_termination;
   time_t time_reopen;
@@ -371,6 +373,7 @@ void log_threaded_dest_driver_set_worker_partition_buckets_ref(LogDriver *s, Log
 void log_threaded_dest_driver_set_flush_on_worker_key_change(LogDriver *s, gboolean f);
 void log_threaded_dest_driver_set_batch_lines(LogDriver *s, gint batch_lines);
 void log_threaded_dest_driver_set_batch_timeout(LogDriver *s, gint batch_timeout);
+void log_threaded_dest_driver_set_batch_idle_timeout(LogDriver *s, gint batch_idle_timeout);
 void log_threaded_dest_driver_set_time_reopen(LogDriver *s, time_t time_reopen);
 gboolean log_threaded_dest_driver_process_flag(LogDriver *driver, const gchar *flag);
 
