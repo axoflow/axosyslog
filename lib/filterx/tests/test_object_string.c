@@ -174,7 +174,7 @@ Test(filterx_string, test_filterx_string_cache_json_escaping_need)
 
 Test(filterx_string, test_filterx_string_frozen_json_escaping_need)
 {
-  FilterXObject *fobj = filterx_string_new_frozen("foo\"bar", configuration);
+  FilterXObject *fobj = filterx_string_new_frozen("foo\"bar");
   cr_assert(filterx_string_is_json_escaping_needed(fobj));
   assert_object_json_equals(fobj, "\"foo\\\"bar\"");
   cr_assert(filterx_string_is_json_escaping_needed(fobj));
