@@ -830,11 +830,13 @@ _pdbl_rule_action_start(PDBLoader *state, const gchar *element_name, const gchar
   if (strcmp(element_name, "message") == 0)
     {
       state->current_action->content_type = RAC_MESSAGE;
+      synthetic_message_init(&state->current_action->content.message);
       _process_message_element(state, attribute_names, attribute_values, &state->current_action->content.message, error);
     }
   else if (strcmp(element_name, "create-context") == 0)
     {
       state->current_action->content_type = RAC_CREATE_CONTEXT;
+      synthetic_context_init(&state->current_action->content.create_context.context);
       _process_create_context_element(state, attribute_names, attribute_values,
                                       &state->current_action->content.create_context.context, error);
     }
@@ -852,6 +854,7 @@ _pdbl_rule_action_create_context_start(PDBLoader *state, const gchar *element_na
 {
   if (strcmp(element_name, "message") == 0)
     {
+      synthetic_message_init(&state->current_action->content.create_context.message);
       _process_message_element(state, attribute_names, attribute_values,
                                &state->current_action->content.create_context.message, error);
     }
