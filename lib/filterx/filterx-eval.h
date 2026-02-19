@@ -26,6 +26,7 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-allocator.h"
 #include "template/eval.h"
 
 #define FILTERX_CONTEXT_ERROR_STACK_SIZE (8)
@@ -68,11 +69,14 @@ struct _FilterXEvalContext
   FilterXObject *current_frame_meta;
   LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
+  FilterXAllocator *allocator;
+  FilterXAllocatorPosition allocator_position;
   FilterXEvalControl eval_control_modifier;
   FilterXEvalContext *previous_context;
 
   guint8 failure_info_collect_falsy:1;
   GArray *failure_info;
+  gint weak_refs_offset;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
@@ -186,9 +190,10 @@ filterx_eval_store_weak_ref(FilterXObject *object)
 
 #define FILTERX_EVAL_END_CONTEXT(eval_context) \
     while(0); \
-    filterx_eval_end_context(&eval_context); \
+    \
     if (local_scope) \
       filterx_scope_clear(scope); \
+    filterx_eval_end_context(&eval_context); \
   } while(0)
 
 static inline void
@@ -201,5 +206,48 @@ filterx_eval_context_make_writable(FilterXEvalContext *context)
       filterx_scope_make_writable(context->scope);
     }
 }
+
+static inline FilterXObject *
+filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXObject *result;
+
+  if (!context || !context->allocator || !filterx_allocator_alloc_size_supported(context->allocator, alloc_size))
+    {
+      result = (FilterXObject *) g_malloc(alloc_size);
+      memset(result, 0, object_size);
+    }
+  else
+    {
+      result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
+      result->allocator_used = TRUE;
+    }
+
+  return result;
+}
+
+/* unplug this object from the current context, and guarantee it remains
+ * available past the end of the scope, at least until the returned
+ * reference is dropped using filterx_object_unref(). */
+static inline void
+filterx_eval_retain_object(FilterXObject **pobject)
+{
+  FilterXObject *object = *pobject;
+  if (!object || filterx_object_is_preserved(object) || !object->allocator_used)
+    return;
+
+  FilterXEvalContext *context = filterx_eval_get_context();
+  FilterXAllocator *saved_allocator = context->allocator;
+
+  /* NOTE: dup the object with a NULL allocator means we will allocate it from the heap */
+  context->allocator = NULL;
+  *pobject = filterx_object_dup(object);
+  filterx_object_unref(object);
+  context->allocator = saved_allocator;
+}
+
+void filterx_eval_global_init(void);
+void filterx_eval_global_deinit(void);
 
 #endif

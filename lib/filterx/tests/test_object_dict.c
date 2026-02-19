@@ -247,10 +247,10 @@ Test(filterx_dict, filterx_dict_array_repr)
   filterx_object_unref(obj);
 }
 
-Test(filterx_dict, filterx_dict_object_cloning_double)
+Test(filterx_dict, filterx_dict_object_copying_double)
 {
   FilterXObject *obj = filterx_object_from_json("{\"foo\": 3.14}", -1, NULL);
-  FilterXObject *obj_clone = filterx_object_clone(obj);
+  FilterXObject *obj_clone = filterx_object_copy(obj);
   cr_assert_not_null(obj_clone);
   filterx_object_unref(obj_clone);
   filterx_object_unref(obj);

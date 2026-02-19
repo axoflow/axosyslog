@@ -486,18 +486,18 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
       if (!ep->key)
         continue;
 
-      ep->key = filterx_object_clone(ep->key);
+      ep->key = filterx_object_copy(ep->key);
       if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
         {
-          /* child_of_interest is a movable, floating xref, which is grounded by this clone */
-          ep->value = filterx_object_clone(child_of_interest);
+          /* child_of_interest is a movable, floating xref, which is grounded by this copy */
+          ep->value = filterx_object_copy(child_of_interest);
 #if SYSLOG_NG_ENABLE_DEBUG
           g_assert(ep->value == child_of_interest);
 #endif
           child_found = TRUE;
         }
       else
-        ep->value = filterx_object_clone(ep->value);
+        ep->value = filterx_object_copy(ep->value);
       filterx_ref_set_parent_container(ep->value, container);
     }
   g_assert(child_found || child_of_interest == NULL);
@@ -679,7 +679,7 @@ _filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
 static FilterXObject *
 filterx_dict_new_with_table(FilterXDictTable *table)
 {
-  FilterXDictObject *self = g_new0(FilterXDictObject, 1);
+  FilterXDictObject *self = filterx_new_object(FilterXDictObject);
 
   filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(dict));
   self->table = table;
@@ -777,6 +777,7 @@ filterx_dict_sized_new(gsize init_size)
 {
   if (init_size < 16)
     init_size = 16;
+  init_size = init_size * 3 / 2;
   return filterx_dict_new_with_table(_table_new(init_size));
 }
 
