@@ -60,14 +60,12 @@ setup(void)
 {
   app_startup();
   init_parse_options_and_load_syslogformat(&parse_options);
-  init_template_tests();
   cfg_load_module(configuration, "stardate");
 }
 
 void
 teardown(void)
 {
-  deinit_template_tests();
   deinit_syslogformat_module();
   app_shutdown();
 }
