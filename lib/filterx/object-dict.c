@@ -71,16 +71,24 @@ enum
 
 #define FILTERX_DICT_MAX_SIZE G_MAXINT32
 #define FILTERX_DICT_INDEX_SLOT_NONE G_MAXUINT32
+#define FILTERX_DICT_MIN_SIZE 16
 
 typedef gboolean (*FilterXDictForeachFunc)(FilterXObject **, FilterXObject **, gpointer);
 typedef struct _FilterXDictTable
 {
-  gint size_log2;
+  /* size of the table index, always a power of 2 */
   guint32 size;
+  /* mask to get the valuable bits from a hash to get under size (e.g. one less than size) */
   guint32 mask;
+  /* size of the entries array */
   guint32 entries_size;
+  /* number of actual entries in the entries array */
   guint32 entries_num;
-  guint32 empty_num;
+  /* how many of the entries are empty */
+  guint32 entries_empty;
+  /* size of the index in _bytes */
+  guint32 index_size_bytes;
+  guint8 element_size;
 
   /* indices can be an array of gint8, gint16, gint32 depending on the hash
    * table size, number of elements matches "size" */
@@ -114,17 +122,11 @@ _table_usable_entries(gsize table_size)
   return (table_size << 1) / 3;
 }
 
-static inline gsize
-_table_index_size(FilterXDictTable *table)
-{
-  return table->size * _table_index_element_size(table->size);
-}
-
 /* get the value of an index entry, -> entry_slot */
 static inline FilterXDictEntrySlot
 _table_get_index_entry(FilterXDictTable *table, FilterXDictIndexSlot slot)
 {
-  gint element_size = _table_index_element_size(table->size);
+  gint element_size = table->element_size;
   if (element_size == 1)
     {
       gint8 *indices = (gint8 *) table->indices;
@@ -152,7 +154,7 @@ _table_get_index_entry(FilterXDictTable *table, FilterXDictIndexSlot slot)
 static inline void
 _table_set_index_entry(FilterXDictTable *table, gsize index, FilterXDictEntrySlot value)
 {
-  gint element_size = _table_index_element_size(table->size);
+  gint element_size = table->element_size;
   if (element_size == 1)
     {
       gint8 *indices = (gint8 *) table->indices;
@@ -182,7 +184,7 @@ _table_set_index_entry(FilterXDictTable *table, gsize index, FilterXDictEntrySlo
 static inline FilterXDictEntry *
 _table_get_entries(FilterXDictTable *table)
 {
-  return (FilterXDictEntry *) ((gchar *) (table + 1) + _table_index_size(table));
+  return (FilterXDictEntry *) ((gchar *) (table + 1) + table->index_size_bytes);
 }
 
 static inline FilterXDictEntry *
@@ -276,7 +278,7 @@ _table_lookup_index_slot(FilterXDictTable *table, FilterXObject *key, guint hash
 }
 
 /* NOTE: consumes refs of both key/value */
-static void
+static inline void
 _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
 {
   guint hash = _table_hash_key(key);
@@ -304,7 +306,7 @@ _table_insert(FilterXDictTable *table, FilterXObject *key, FilterXObject *value)
   entry->value = value;
 }
 
-static FilterXDictEntrySlot
+static inline FilterXDictEntrySlot
 _table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
 {
   guint hash = _table_hash_key(key);
@@ -319,7 +321,7 @@ _table_lookup_entry_slot(FilterXDictTable *table, FilterXObject *key, FilterXDic
   return _table_get_index_entry(table, *index_slot);
 }
 
-static FilterXDictEntry *
+static inline FilterXDictEntry *
 _table_lookup_entry(FilterXDictTable *table, FilterXObject *key, FilterXDictIndexSlot *index_slot)
 {
   FilterXDictEntrySlot entry_slot = _table_lookup_entry_slot(table, key, index_slot);
@@ -329,7 +331,7 @@ _table_lookup_entry(FilterXDictTable *table, FilterXObject *key, FilterXDictInde
   return _table_get_entry(table, entry_slot);
 }
 
-static gboolean
+static inline gboolean
 _table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value)
 {
   FilterXDictEntry *entry = _table_lookup_entry(table, key, NULL);
@@ -341,7 +343,7 @@ _table_lookup(FilterXDictTable *table, FilterXObject *key, FilterXObject **value
   return FALSE;
 }
 
-static gboolean
+static inline gboolean
 _table_isset(FilterXDictTable *table, FilterXObject *key)
 {
   guint hash = _table_hash_key(key);
@@ -354,7 +356,7 @@ _table_isset(FilterXDictTable *table, FilterXObject *key)
   return TRUE;
 }
 
-static gboolean
+static inline gboolean
 _table_unset(FilterXDictTable *table, FilterXObject *key)
 {
   FilterXDictIndexSlot index_slot;
@@ -364,12 +366,12 @@ _table_unset(FilterXDictTable *table, FilterXObject *key)
 
   filterx_dict_entry_clear(entry);
   _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
-  table->empty_num++;
+  table->entries_empty++;
   return TRUE;
 }
 
 /* clear dict entry but return the original value */
-static FilterXObject *
+static inline FilterXObject *
 _table_move(FilterXDictTable *table, FilterXObject *key)
 {
   FilterXDictIndexSlot index_slot;
@@ -380,7 +382,7 @@ _table_move(FilterXDictTable *table, FilterXObject *key)
   FilterXObject *result = filterx_object_ref(entry->value);
   filterx_dict_entry_clear(entry);
   _table_set_index_entry(table, index_slot, FXD_IX_DUMMY);
-  table->empty_num++;
+  table->entries_empty++;
   return result;
 }
 
@@ -400,10 +402,10 @@ _table_foreach(FilterXDictTable *table, FilterXDictForeachFunc func, gpointer us
   return TRUE;
 }
 
-static gsize
+static inline gsize
 _table_size(FilterXDictTable *table)
 {
-  return table->entries_num - table->empty_num;
+  return table->entries_num - table->entries_empty;
 }
 
 static FilterXDictTable *
@@ -412,22 +414,24 @@ _table_new(gsize initial_size)
   gint table_size_log2 = round_to_log2(initial_size);
   gsize table_size = pow2(table_size_log2);
   gsize entries_size = _table_usable_entries(table_size);
+  gsize element_size = _table_index_element_size(table_size);
 
   FilterXDictTable *table = g_malloc(sizeof(FilterXDictTable) +
-                                     table_size * _table_index_element_size(table_size) +
+                                     table_size * element_size +
                                      entries_size * sizeof(FilterXDictEntry));
-  table->size_log2 = table_size_log2;
   table->size = table_size;
+  table->mask = table_size - 1;
   table->entries_size = entries_size;
   table->entries_num = 0;
-  table->mask = (1 << table_size_log2) - 1;
-  table->empty_num = 0;
+  table->entries_empty = 0;
+  table->element_size = element_size;
+  table->index_size_bytes = table_size * element_size;
 
   /* this should set all elements to -1, regardless of element size, at
    * least on computers with 2 complements representation of binary numbers
    * */
 
-  memset(&table->indices, -1, table_size * _table_index_element_size(table_size));
+  memset(&table->indices, -1, table_size * element_size);
   return table;
 }
 
@@ -464,7 +468,7 @@ _table_resize(FilterXDictTable *target, FilterXDictTable *source)
   g_assert(target->size >= source->size);
 
   target->entries_num = source->entries_num;
-  target->empty_num = source->empty_num;
+  target->entries_empty = source->entries_empty;
   memcpy(_table_get_entries(target), _table_get_entries(source), source->entries_size * sizeof(FilterXDictEntry));
 
   _table_resize_index(target, source);
@@ -474,7 +478,7 @@ static void
 _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container,
                    FilterXObject *child_of_interest)
 {
-  memcpy(&target->indices, &source->indices, target->size * _table_index_element_size(target->size));
+  memcpy(&target->indices, &source->indices, target->size * target->element_size);
 
   FilterXDictEntrySlot max = target->entries_num;
   FilterXDictEntry *ep = _table_get_entries(target);
@@ -510,13 +514,13 @@ _table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *
   g_assert(target->size == source->size);
 
   target->entries_num = source->entries_num;
-  target->empty_num = source->empty_num;
+  target->entries_empty = source->entries_empty;
   memcpy(_table_get_entries(target), _table_get_entries(source), source->entries_size * sizeof(FilterXDictEntry));
 
   _table_clone_index(target, source, container, child_of_interest);
 }
 
-static void
+static inline void
 _table_free(FilterXDictTable *table, gboolean free_entries)
 {
   if (free_entries)
@@ -530,7 +534,7 @@ _table_free(FilterXDictTable *table, gboolean free_entries)
   g_free(table);
 }
 
-static FilterXDictTable *
+static inline FilterXDictTable *
 _table_resize_if_needed(FilterXDictTable *old_table)
 {
   if (old_table->entries_num < old_table->entries_size)
@@ -579,6 +583,9 @@ _filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
       return NULL;
     }
 
+  if (!self->table)
+    return NULL;
+
   FilterXObject *value = NULL;
   if (!_table_lookup(self->table, key, &value))
     return NULL;
@@ -597,8 +604,11 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
       return FALSE;
     }
 
+  if (!self->table)
+    self->table = _table_new(FILTERX_DICT_MIN_SIZE);
+
   self->table = _table_resize_if_needed(self->table);
-  _table_insert(self->table, filterx_object_ref(key), filterx_object_cow_store(new_value));
+  _table_insert(self->table, filterx_object_vref(key), filterx_object_cow_store(new_value));
 
   return TRUE;
 }
@@ -615,6 +625,9 @@ _filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
       return FALSE;
     }
 
+  if (!self->table)
+    return FALSE;
+
   return _table_isset(self->table, key);
 }
 
@@ -629,6 +642,9 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
     }
+
+  if (!self->table)
+    return TRUE;
 
   return _table_unset(self->table, key);
 }
@@ -653,7 +669,12 @@ _filterx_dict_len(FilterXObject *s, guint64 *len)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  *len = _table_size(self->table);
+  if (self->table)
+    {
+      *len = _table_size(self->table);
+      return TRUE;
+    }
+  *len = 0;
   return TRUE;
 }
 
@@ -672,6 +693,8 @@ _filterx_dict_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
+  if (!self->table)
+    return TRUE;
   gpointer args[] = { func, user_data };
   return _table_foreach(self->table, _filterx_dict_foreach_inner, args);
 }
@@ -690,11 +713,14 @@ static FilterXObject *
 _filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, FilterXObject *child_of_interest)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
-  FilterXDictTable *new_table = _table_new(self->table->size);
+  FilterXDictTable *new_table = NULL;
 
-  _table_clone(new_table, self->table, container, child_of_interest);
-  FilterXObject *clone = filterx_dict_new_with_table(new_table);
-  return clone;
+  if (self->table)
+    {
+       new_table = _table_new(self->table->size);
+      _table_clone(new_table, self->table, container, child_of_interest);
+    }
+  return filterx_dict_new_with_table(new_table);
 }
 
 static FilterXObject *
@@ -719,6 +745,9 @@ _filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 
   filterx_object_freezer_keep(freezer, *pself);
+
+  if (!self->table)
+    return;
   g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 
   /* Mutable objects themselves should never be deduplicated,
@@ -752,14 +781,17 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 FilterXObject *
 filterx_dict_new(void)
 {
-  return filterx_dict_new_with_table(_table_new(32));
+  return filterx_dict_new_with_table(NULL);
 }
 
 FilterXObject *
 filterx_dict_sized_new(gsize init_size)
 {
-  if (init_size < 16)
-    init_size = 16;
+  if (init_size == 0)
+    return filterx_dict_new_with_table(NULL);
+
+  if (init_size < FILTERX_DICT_MIN_SIZE)
+    init_size = FILTERX_DICT_MIN_SIZE;
   init_size = init_size * 3 / 2;
   return filterx_dict_new_with_table(_table_new(init_size));
 }
@@ -769,7 +801,8 @@ _filterx_dict_free(FilterXObject *s)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  _table_free(self->table, TRUE);
+  if (self->table)
+    _table_free(self->table, TRUE);
   filterx_object_free_method(s);
 }
 
@@ -789,14 +822,14 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
 
   FilterXObject *arg_unwrapped = filterx_ref_unwrap_ro(arg);
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(dict)))
-    return filterx_object_ref(arg);
+    return filterx_object_vref(arg);
 
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
       FilterXObject *self = filterx_dict_new();
       if (!filterx_mapping_merge(self, arg_unwrapped))
         {
-          filterx_object_unref(self);
+          filterx_object_vunref(self);
           return NULL;
         }
       return self;
@@ -819,7 +852,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
         }
       if (!filterx_object_is_type_or_ref(self, &FILTERX_TYPE_NAME(mapping)))
         {
-          filterx_object_unref(self);
+          filterx_object_vunref(self);
           return NULL;
         }
       return self;

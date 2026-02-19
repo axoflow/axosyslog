@@ -556,7 +556,7 @@ filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gsize args_len)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(string)))
-    return filterx_object_ref(object);
+    return filterx_object_vref(object);
 
   GString *buf = scratch_buffers_alloc();
 
@@ -579,7 +579,7 @@ filterx_typecast_bytes(FilterXExpr *s, FilterXObject *args[], gsize args_len)
     return NULL;
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(bytes)))
-    return filterx_object_ref(object);
+    return filterx_object_vref(object);
 
   const gchar *data;
   gsize size;
@@ -604,7 +604,7 @@ filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 
   if (filterx_object_is_type(object, &FILTERX_TYPE_NAME(protobuf)))
     {
-      filterx_object_ref(object);
+      filterx_object_vref(object);
       return object;
     }
 

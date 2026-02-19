@@ -75,7 +75,7 @@ _eval_in(FilterXExpr *s)
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
   FilterXObject *result = NULL;
 
-  FilterXObject *lhs_obj = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
+  FilterXObject *lhs_obj = self->literal_lhs ? filterx_object_vref(self->literal_lhs)
                            : filterx_expr_eval_typed(self->super.lhs);
 
   if (!lhs_obj)
@@ -86,7 +86,7 @@ _eval_in(FilterXExpr *s)
     }
 
 
-  FilterXObject *rhs_obj = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
+  FilterXObject *rhs_obj = self->literal_rhs ? filterx_object_vref(self->literal_rhs)
                            : filterx_expr_eval(self->super.rhs);
 
   if (!rhs_obj)
