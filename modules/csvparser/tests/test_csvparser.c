@@ -846,6 +846,7 @@ ParameterizedTest(CsvParserTestParam *param, parser, test_csv_parser)
   cr_assert_not((success && !param->expected_values[0]), "unexpected match; msg=%s\n", param->msg);
   cr_assert_not((!success && param->expected_values[0]), "unexpected non-match; msg=%s\n", param->msg);
 
+  log_pipe_deinit(&pclone->super);
   log_pipe_unref(&pclone->super);
 
   i = 0;
