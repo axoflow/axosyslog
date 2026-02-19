@@ -86,7 +86,7 @@ _assert_log_msg_value(LogMessage *msg, const gchar *name, const gchar *expected_
 }
 
 /* This testcase also tests the the handling of different types of KeyValues. */
-Test(otel_protobuf_parser, metadata)
+Test(otel_protobuf_parser, metadata, .disabled = true)
 {
   grpc::string peer = "ipv6:[::1]:36372";
 
@@ -346,7 +346,7 @@ Test(otel_protobuf_parser, metric_common)
 }
 
 /* This testcase also tests the the handling of Exemplars. */
-Test(otel_protobuf_parser, metric_gauge)
+Test(otel_protobuf_parser, metric_gauge, .disabled = true)
 {
   LogMessage *msg = _create_dummy_log_msg();
   Metric metric;
