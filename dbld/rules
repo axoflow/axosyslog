@@ -277,6 +277,12 @@ login-%: EXEC_COMMAND=sudo -E -u $(shell whoami) /dbld/shell $(if $(SHELL_COMMAN
 login-%: exec-%
 	@true
 
+cachegrind: cachegrind-$(DEFAULT_IMAGE)
+cachegrind-%: EXEC_COMMAND=sudo -E -u $(shell whoami) /install/grind-perf.sh "" $$$$
+cachegrind-%: exec-%
+	@true
+
+
 root-login: root-login-$(DEFAULT_IMAGE)
 root-login-%: EXEC_COMMAND=/dbld/shell $(if $(SHELL_COMMAND),"$(SHELL_COMMAND)",bash)
 root-login-%: exec-%
