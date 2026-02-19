@@ -744,9 +744,10 @@ _filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 
+  filterx_object_freezer_keep(freezer, *pself);
+
   if (!self->table)
     return;
-  filterx_object_freezer_keep(freezer, *pself);
   g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 
   /* Mutable objects themselves should never be deduplicated,
