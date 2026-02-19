@@ -34,6 +34,7 @@ set(FILTERX_HEADERS
     filterx/filterx-config.h
     filterx/filterx-error.h
     filterx/filterx-eval.h
+    filterx/filterx-env.h
     filterx/filterx-expr.h
     filterx/filterx-plist.h
     filterx/filterx-globals.h
@@ -45,6 +46,7 @@ set(FILTERX_HEADERS
     filterx/filterx-private.h
     filterx/filterx-ref.h
     filterx/filterx-scope.h
+    filterx/filterx-stashed-object.h
     filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
     filterx/filterx-dpath.h
@@ -117,6 +119,7 @@ set(FILTERX_SOURCES
     filterx/filterx-config.c
     filterx/filterx-error.c
     filterx/filterx-eval.c
+    filterx/filterx-env.c
     filterx/filterx-expr.c
     filterx/filterx-plist.c
     filterx/filterx-globals.c
@@ -128,6 +131,7 @@ set(FILTERX_SOURCES
     filterx/filterx-private.c
     filterx/filterx-ref.c
     filterx/filterx-scope.c
+    filterx/filterx-stashed-object.c
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
     filterx/filterx-dpath.c
