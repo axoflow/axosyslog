@@ -164,6 +164,7 @@ _init(LogPipe *s)
   GroupingBy *self = (GroupingBy *) s;
   GlobalConfig *cfg = log_pipe_get_config(s);
 
+  id_counter_unref(self->id_counter);
   self->id_counter = NULL;
 
   if (self->super.timeout < 1)
