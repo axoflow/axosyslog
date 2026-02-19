@@ -30,7 +30,6 @@
 #include "str-utils.h"
 #include "utf8utils.h"
 
-#define FILTERX_STRING_FLAG_STR_ALLOCATED 0x01
 
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
@@ -108,10 +107,13 @@ _string_repr(FilterXObject *s, GString *repr)
 }
 
 gboolean
-string_format_json(const gchar *str, gsize str_len, GString *json)
+string_format_json(const gchar *str, gsize str_len, gboolean json_escaping_needed, GString *json)
 {
   g_string_append_c(json, '"');
-  append_unsafe_utf8_as_escaped(json, str, str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  if (json_escaping_needed)
+    append_unsafe_utf8_as_escaped(json, str, str_len, AUTF8_UNSAFE_QUOTE, "\\u%04x", "\\\\x%02x");
+  else
+    g_string_append_len(json, str, str_len);
   g_string_append_c(json, '"');
   return TRUE;
 }
@@ -120,7 +122,20 @@ static gboolean
 _string_format_json(FilterXObject *s, GString *json)
 {
   FilterXString *self = (FilterXString *) s;
-  return string_format_json(self->str, self->str_len, json);
+  gsize orig_len = json->len;
+  const gint quote_characters_len = 2;
+
+  gboolean success = string_format_json(self->str, self->str_len, filterx_string_is_json_escaping_needed(s), json);
+
+  if ((self->str_len + quote_characters_len) == (json->len - orig_len))
+    {
+      /* no escapes were necessary, we only enclosed the original value in
+       * quotes: cache the result in our flags to avoid escaping the same
+       * string the next time */
+
+      filterx_string_mark_safe_without_json_escaping(s);
+    }
+  return success;
 }
 
 static FilterXObject *
@@ -167,11 +182,11 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   FilterXString *self = filterx_new_object_with_extra(FilterXString, str_len + 1);
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
-  self->str_len = str_len;
   if (translate)
-    translate(self->storage, str, str_len);
+    translate(self->storage, str, (gsize *) &str_len);
   else
     memcpy(self->storage, str, str_len);
+  self->str_len = str_len;
   self->storage[str_len] = 0;
   self->str = self->storage;
 
@@ -195,6 +210,8 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
     }
 
   _filterx_string_hash(self);
+  if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
+    filterx_string_mark_safe_without_json_escaping(&self->super);
   g_hash_table_insert(dedup_storage, dedup_key, self);
   return TRUE;
 }
@@ -248,6 +265,138 @@ filterx_string_new_take(gchar *str, gssize str_len)
   self->super.flags |= FILTERX_STRING_FLAG_STR_ALLOCATED;
 
   return &self->super;
+}
+
+#define IS_UTF16_HIGH_SURROGATE(cp) (((cp) & 0xFC00) == 0xD800)
+#define IS_UTF16_LOW_SURROGATE(cp) (((cp) & 0xFC00) == 0xDC00)
+#define DECODE_UTF16_SURROGATE_PAIR(high, low) ((((high) & 0x3FF) << 10) + ((low) & 0x3FF) + 0x10000)
+#define UNICODE_REPLACEMENT_CP 0xFFFD
+
+static void
+_deescape_json_string(gchar *target, const gchar *source, gsize *source_len)
+{
+  const gchar *input_pos = source;
+  gchar *output_pos = target;
+  gsize len = *source_len;
+  const gchar *backslash;
+  gssize remaining_len = len;
+  glong high_surrogate = 0;
+
+  backslash = memchr(input_pos, '\\', len);
+  while (backslash != NULL)
+    {
+      gssize segment_len = backslash - input_pos;
+
+      /* copy characters up to the backslash */
+      memcpy(output_pos, input_pos, segment_len);
+      output_pos += segment_len;
+      input_pos = backslash + 1;
+      remaining_len = len - (input_pos - source);
+
+      if (remaining_len <= 0)
+        break;
+
+      /* translate escaped character */
+      if (*input_pos == 'u')
+        {
+          glong unicode_codepoint;
+
+          input_pos++;
+          remaining_len--;
+
+          if (scan_hex_int(&input_pos, (gsize *) &remaining_len, 4, &unicode_codepoint))
+            {
+              if (IS_UTF16_HIGH_SURROGATE(unicode_codepoint))
+                {
+                  /* first half of a surrogate pair, do nothing but remember
+                   * the codepoint in high_surrogate */
+
+                  high_surrogate = unicode_codepoint;
+                  unicode_codepoint = 0;
+                }
+              else if (IS_UTF16_LOW_SURROGATE(unicode_codepoint))
+                {
+                  /* second half of a surrogate pair, try to combine the two halves */
+                  if (high_surrogate)
+                    {
+                      /* we have the tailing surrogate, decode them both */
+                      unicode_codepoint = DECODE_UTF16_SURROGATE_PAIR(high_surrogate, unicode_codepoint);
+                      high_surrogate = 0;
+                    }
+                  else
+                    {
+                      /* low surrogate, but the high surrogate is missing */
+                      unicode_codepoint = UNICODE_REPLACEMENT_CP;
+                    }
+                }
+              if (unicode_codepoint)
+                output_pos += g_unichar_to_utf8((gunichar) unicode_codepoint, output_pos);
+            }
+        }
+      else if (G_UNLIKELY(high_surrogate))
+        {
+          /* only high surrogate followed by something else, invalid sequence */
+          output_pos += g_unichar_to_utf8((gunichar) UNICODE_REPLACEMENT_CP, output_pos);
+          high_surrogate = 0;
+        }
+      else
+        {
+          gchar escaped_character = 0;
+
+          /* control character */
+          switch (*input_pos)
+            {
+            case '/':
+              escaped_character = '/';
+              break;
+            case 'b':
+              escaped_character = '\b';
+              break;
+            case 'f':
+              escaped_character = '\f';
+              break;
+            case 'n':
+              escaped_character = '\n';
+              break;
+            case 'r':
+              escaped_character = '\r';
+              break;
+            case 't':
+              escaped_character = '\t';
+              break;
+            case '\\':
+              escaped_character = '\\';
+              break;
+            case '"':
+              escaped_character = '"';
+              break;
+            default:
+              continue;
+            }
+          *output_pos = escaped_character;
+          output_pos++;
+          input_pos++;
+          remaining_len--;
+        }
+      backslash = remaining_len > 0 ? memchr(input_pos, '\\', remaining_len) : NULL;
+    }
+  if (high_surrogate)
+    {
+      /* high surrogate at the end of the string without its pair */
+      output_pos += g_unichar_to_utf8((gunichar) 0xFFFD, output_pos);
+    }
+  if (remaining_len > 0)
+    {
+      memcpy(output_pos, input_pos, remaining_len);
+      output_pos += remaining_len;
+    }
+  *source_len = output_pos - target;
+}
+
+FilterXObject *
+filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
+{
+  return &_string_new(str, str_len, _deescape_json_string)->super;
 }
 
 static inline gsize

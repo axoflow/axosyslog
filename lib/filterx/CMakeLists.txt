@@ -50,6 +50,7 @@ set(FILTERX_HEADERS
     filterx/filterx-sequence.h
     filterx/filterx-mapping.h
     filterx/json-repr.h
+    filterx/jsmn.h
     filterx/func-flags.h
     filterx/func-flatten.h
     filterx/func-cache-json-file.h

@@ -56,6 +56,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/func-keys.h"
 #include "filterx/json-repr.h"
+#include "apphook.h"
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
 static GHashTable *filterx_builtin_function_ctors = NULL;
@@ -218,6 +219,18 @@ filterx_types_deinit(void)
 
 // Globals
 
+static void
+filterx_global_thread_init(gpointer user_data)
+{
+  filterx_json_repr_thread_init();
+}
+
+static void
+filterx_global_thread_deinit(gpointer user_data)
+{
+  filterx_json_repr_thread_deinit();
+}
+
 void
 filterx_global_init(void)
 {
@@ -248,6 +261,8 @@ filterx_global_init(void)
   filterx_datetime_global_init();
   filterx_builtin_functions_init();
   filterx_eval_global_init();
+  register_application_thread_init_hook(filterx_global_thread_init, NULL);
+  register_application_thread_deinit_hook(filterx_global_thread_deinit, NULL);
 }
 
 void
