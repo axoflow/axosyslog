@@ -86,6 +86,7 @@ csv_parser_set_columns(LogParser *s, GList *columns)
 {
   CSVParser *self = (CSVParser *) s;
 
+  g_list_free_full(self->columns, (GDestroyNotify) csv_parser_column_free);
   self->columns = columns;
 }
 
@@ -332,6 +333,7 @@ csv_parser_free(LogPipe *s)
 
   csv_scanner_options_clean(&self->options);
   g_free(self->prefix);
+  g_list_free_full(self->columns, (GDestroyNotify) csv_parser_column_free);
   log_parser_free_method(s);
 }
 
