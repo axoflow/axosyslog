@@ -129,7 +129,7 @@ filterx_ref_unset_parent_container(FilterXObject *s)
 static inline FilterXObject *
 filterx_ref_float(FilterXObject *s)
 {
-  if (s && filterx_object_is_ref(s))
+  if (s && !s->readonly && filterx_object_is_ref(s))
     {
 #if SYSLOG_NG_ENABLE_DEBUG
       g_assert((s->flags & FILTERX_REF_FLAG_FLOATING) == 0);
@@ -145,7 +145,7 @@ filterx_ref_float(FilterXObject *s)
 static inline FilterXObject *
 filterx_ref_ground(FilterXObject *s)
 {
-  if (s && filterx_object_is_ref(s))
+  if (s && (s->flags & FILTERX_REF_FLAG_FLOATING) && filterx_object_is_ref(s))
     s->flags &= ~FILTERX_REF_FLAG_FLOATING;
   return s;
 }
