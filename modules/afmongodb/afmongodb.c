@@ -237,6 +237,15 @@ afmongodb_dd_private_uri_init(LogDriver *d)
   return TRUE;
 }
 
+void
+afmongodb_dd_private_uri_deinit(LogDriver *d)
+{
+  MongoDBDestDriver *self = (MongoDBDestDriver *)d;
+
+  if (self->uri_obj)
+    mongoc_uri_destroy(self->uri_obj);
+}
+
 gboolean
 afmongodb_dd_client_pool_init(MongoDBDestDriver *self)
 {
@@ -315,8 +324,7 @@ _deinit(LogPipe *s)
   if (self->pool)
     mongoc_client_pool_destroy(self->pool);
 
-  if (self->uri_obj)
-    mongoc_uri_destroy(self->uri_obj);
+  afmongodb_dd_private_uri_deinit(&self->super.super.super);
 
   return TRUE;
 }

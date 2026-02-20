@@ -66,6 +66,7 @@ _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
   cr_assert(filterx_object_truthy(result_obj));
 
   filterx_expr_deinit(expr, configuration);
+  filterx_expr_unref(expr);
 
   return result_obj;
 }

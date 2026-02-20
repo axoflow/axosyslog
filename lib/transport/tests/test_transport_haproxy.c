@@ -145,7 +145,7 @@ ParameterizedTest(ProtocolHeaderTestParams *params, log_transport_proxy, test_pr
   gint proxy_header_len = params->proxy_header_len ? : strlen(params->proxy_header);
   LogTransportStack stack;
   LogTransport *mock = log_transport_mock_stream_new(params->proxy_header, proxy_header_len, NULL);
-  LogTransportAuxData aux;
+  LogTransportAuxData aux = {0};
   gchar buf[1024];
   gssize rc;
 

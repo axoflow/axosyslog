@@ -109,6 +109,7 @@ pdb_action_free(PDBAction *self)
       synthetic_message_deinit(&self->content.message);
       break;
     case RAC_CREATE_CONTEXT:
+      synthetic_message_deinit(&self->content.create_context.message);
       synthetic_context_deinit(&self->content.create_context.context);
       break;
     default:

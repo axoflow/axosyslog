@@ -61,6 +61,7 @@ _set_subscript(FilterXSetSubscript *self, FilterXObject *key, FilterXObject *new
       goto error;
     }
 
+  filterx_object_unref(object);
   return cloned;
 error:
   filterx_object_unref(object);

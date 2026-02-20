@@ -197,6 +197,8 @@ ParameterizedTest(PatternizeParams *param, dbparser, test_frequent_words, .init 
 
           g_strfreev(expected_item);
         }
+
+      g_hash_table_destroy(wordlist);
     }
 
   // cleanup

@@ -117,6 +117,7 @@ _app_parser_generate_with_args(const gchar *topic, CfgArgs *args)
   GString *tmp = g_string_new("");
   cfg_args_set(args, "topic", topic);
   cfg_block_generator_generate(app_parser, configuration, args, tmp, "dummy-reference");
+  g_string_free(result, TRUE);
   result = _remove_comments(tmp);
   g_string_free(tmp, TRUE);
   cfg_args_unref(args);

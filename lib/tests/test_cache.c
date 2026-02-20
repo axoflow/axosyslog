@@ -142,6 +142,8 @@ Test(cache, cache_resolve_does_not_store_element)
   assert_cache_resolve(c, "key");
   assert_cache_lookup_uncached(c, "key");
   assert_cache_lookup_cached(c, "key");
+
+  cache_free(c);
 }
 
 Test(cache, test_free_calls_resolver_free_fn)

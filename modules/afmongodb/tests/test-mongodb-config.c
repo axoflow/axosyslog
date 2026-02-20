@@ -51,6 +51,7 @@ Test(mongodb_config, test_persist_name)
 
   cr_assert(afmongodb_dd_private_uri_init(mongodb));
   cr_assert_str_eq(log_pipe_get_persist_name(&mongodb->super), "afmongodb(127.0.0.2:27018,syslog,x,messages)");
+  afmongodb_dd_private_uri_deinit(mongodb);
 }
 
 Test(mongodb_config, test_stats_name)
@@ -63,6 +64,8 @@ Test(mongodb_config, test_stats_name)
   LogThreadedDestDriver *self = (LogThreadedDestDriver *)mongodb;
   const gchar *name = self->format_stats_key(self, NULL);
   cr_assert(name, "mongodb,127.0.0.2:27018,syslog,x,messages");
+
+  afmongodb_dd_private_uri_deinit(mongodb);
 }
 
 Test(mongodb_config, test_uri_components_are_parsed_and_reported_correctly)
@@ -71,16 +74,19 @@ Test(mongodb_config, test_uri_components_are_parsed_and_reported_correctly)
   cr_assert(afmongodb_dd_private_uri_init(mongodb));
   assert_uri_present_in_log("127.0.0.1:27017/syslog" SAFEOPTS, "syslog", "messages");
   reset_grabbed_messages();
+  afmongodb_dd_private_uri_deinit(mongodb);
 
   afmongodb_dd_set_uri(mongodb, "mongodb://%2Ftmp%2Fmongo.sock/syslog");
   cr_assert(afmongodb_dd_private_uri_init(mongodb));
   assert_uri_present_in_log("%2Ftmp%2Fmongo.sock/syslog", "syslog", "messages");
   reset_grabbed_messages();
+  afmongodb_dd_private_uri_deinit(mongodb);
 
   afmongodb_dd_set_uri(mongodb, "mongodb://localhost:1234/syslog-ng");
   cr_assert(afmongodb_dd_private_uri_init(mongodb));
   assert_uri_present_in_log("localhost:1234/syslog-ng", "syslog-ng", "messages");
   reset_grabbed_messages();
+  afmongodb_dd_private_uri_deinit(mongodb);
 }
 
 Test(mongodb_config, test_collection_option_is_consumed_and_reported_correctly)
@@ -88,6 +94,7 @@ Test(mongodb_config, test_collection_option_is_consumed_and_reported_correctly)
   afmongodb_dd_set_collection(mongodb, compile_template("messages2"));
   cr_assert(afmongodb_dd_private_uri_init(mongodb));
   assert_uri_present_in_log("127.0.0.1:27017/syslog" SAFEOPTS, "syslog", "messages2");
+  afmongodb_dd_private_uri_deinit(mongodb);
 }
 
 Test(mongodb_config, test_invalid_uris_are_reported_as_errors)
@@ -96,10 +103,12 @@ Test(mongodb_config, test_invalid_uris_are_reported_as_errors)
   cr_assert_not(afmongodb_dd_private_uri_init(mongodb));
   assert_grabbed_log_contains("Error parsing MongoDB URI; uri='INVALID-URI'");
   reset_grabbed_messages();
+  afmongodb_dd_private_uri_deinit(mongodb);
 
   afmongodb_dd_set_uri(mongodb, "mongodb://127.0.0.1:27017/");
   cr_assert_not(afmongodb_dd_private_uri_init(mongodb));
   assert_grabbed_log_contains("Missing DB name from MongoDB URI; uri='mongodb://127.0.0.1:27017/'");
+  afmongodb_dd_private_uri_deinit(mongodb);
 }
 
 static void
