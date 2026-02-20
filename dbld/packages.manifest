@@ -119,6 +119,7 @@ libmongoc-dev               [debian]
 #############################################################################
 
 clang                           [devshell]
+libclang-rt-dev                 [devshell]
 dirmngr                         [devshell]
 gdb                             [devshell]
 gdbserver                       [devshell]
