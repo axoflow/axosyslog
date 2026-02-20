@@ -444,12 +444,44 @@ typedef struct FilterXFunctionGuessTimezone_
 static FilterXObject *
 _guess_timezone_eval(FilterXExpr *s)
 {
-  return NULL;
+  FilterXFunctionGuessTimezone *self = (FilterXFunctionGuessTimezone *) s;
+
+  FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
+  if (!datetime_obj)
+    {
+      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_GUESS_TIMEZONE_USAGE, s, NULL);
+      return NULL;
+    }
+
+  UnixTime datetime = UNIX_TIME_INIT;
+
+  if (!filterx_object_extract_datetime(datetime_obj, &datetime))
+    {
+      filterx_object_unref(datetime_obj);
+      filterx_eval_push_error("First argument must be of datetime type. " FILTERX_FUNC_GUESS_TIMEZONE_USAGE, s, NULL);
+      return NULL;
+    }
+
+  unix_time_fix_timezone_assuming_the_time_matches_real_time(&datetime);
+
+  filterx_object_unref(datetime_obj);
+
+  return filterx_datetime_new(&datetime);
 }
 
 static gboolean
 _guess_timezone_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
+  FilterXFunctionGuessTimezone *self = (FilterXFunctionGuessTimezone *) s;
+
+  FilterXExpr **exprs[] = { &self->datetime_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
+        return FALSE;
+    }
+
   return TRUE;
 }
 
@@ -462,9 +494,36 @@ _guess_timezone_free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static FilterXExpr *
+_extract_guess_timezone_datetime_expr(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExpr *datetime_expr = filterx_function_args_get_expr(args, 0);
+  if (!datetime_expr)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be set: datetime. " FILTERX_FUNC_GUESS_TIMEZONE_USAGE);
+      return NULL;
+    }
+
+  return datetime_expr;
+}
+
 static gboolean
 _extract_guess_timezone_arg(FilterXFunctionGuessTimezone *self, FilterXFunctionArgs *args, GError **error)
 {
+  gsize len = filterx_function_args_len(args);
+
+  if (len != 1)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_GUESS_TIMEZONE_USAGE);
+      return FALSE;
+    }
+
+  self->datetime_expr = _extract_guess_timezone_datetime_expr(args, error);
+  if (!self->datetime_expr)
+    return FALSE;
+
   return TRUE;
 }
 
