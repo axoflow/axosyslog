@@ -759,7 +759,8 @@ filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
 
   if (pself)
     {
-      *pself = self;
+      if (*pself != self)
+        *pself = self;
       return filterx_ref_float(filterx_object_copy(self));
     }
   else
