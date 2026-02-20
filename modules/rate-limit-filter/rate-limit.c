@@ -24,6 +24,7 @@
 #include "timeutils/misc.h"
 #include "scratch-buffers.h"
 #include "str-utils.h"
+#include "mainloop-worker.h"
 #include <iv.h>
 
 typedef struct _RateLimit
@@ -31,8 +32,9 @@ typedef struct _RateLimit
   FilterExprNode super;
   LogTemplate *key_template;
   gint rate;
-  GMutex map_lock;
-  GHashTable *rate_limits;
+
+  gsize rate_limits_per_thread_size;
+  GHashTable **rate_limits_per_thread;
 } RateLimit;
 
 typedef struct _RateLimiter
@@ -40,7 +42,6 @@ typedef struct _RateLimiter
   gint tokens;
   gint rate;
   struct timespec last_check;
-  GMutex lock;
 } RateLimiter;
 
 static RateLimiter *
@@ -50,7 +51,6 @@ rate_limiter_new(gint rate)
 
   iv_validate_now();
   self->last_check = iv_now;
-  g_mutex_init(&self->lock);
   self->rate = rate;
   self->tokens = rate;
 
@@ -60,7 +60,6 @@ rate_limiter_new(gint rate)
 static void
 rate_limiter_free(RateLimiter *self)
 {
-  g_mutex_clear(&self->lock);
   g_free(self);
 }
 
@@ -70,38 +69,26 @@ rate_limiter_add_new_tokens(RateLimiter *self)
   iv_validate_now();
   struct timespec now = iv_now;
 
-  g_mutex_lock(&self->lock);
-  {
-    gint64 usec_since_last_fill = timespec_diff_usec(&now, &self->last_check);
-    gint64 num_new_tokens = (usec_since_last_fill * self->rate) / G_USEC_PER_SEC;
+  gint64 usec_since_last_fill = timespec_diff_usec(&now, &self->last_check);
+  gint64 num_new_tokens = (usec_since_last_fill * self->rate) / G_USEC_PER_SEC;
 
-    if (num_new_tokens)
-      {
-        self->tokens = (gint) MIN(self->rate, self->tokens + num_new_tokens);
-        self->last_check = now;
-      }
-  }
-  g_mutex_unlock(&self->lock);
+  if (num_new_tokens)
+    {
+      self->tokens = (gint) MIN(self->rate, self->tokens + num_new_tokens);
+      self->last_check = now;
+    }
 }
 
 static gboolean
 rate_limiter_try_consume_tokens(RateLimiter *self, gint num_tokens)
 {
-  gboolean within_ratelimit;
-  g_mutex_lock(&self->lock);
-  {
-    if (self->tokens >= num_tokens)
-      {
-        self->tokens -= num_tokens;
-        within_ratelimit = TRUE;
-      }
-    else
-      {
-        within_ratelimit = FALSE;
-      }
-  }
-  g_mutex_unlock(&self->lock);
-  return within_ratelimit;
+  if (self->tokens >= num_tokens)
+    {
+      self->tokens -= num_tokens;
+      return TRUE;
+    }
+
+  return FALSE;
 }
 
 static gboolean
@@ -145,19 +132,20 @@ rate_limit_eval(FilterExprNode *s, LogMessage **msgs, gint num_msg, LogTemplateE
   const gchar *key = rate_limit_generate_key(s, msg, options, &len);
   APPEND_ZERO(key, key, len);
 
-  RateLimiter *rl;
+  gint thread_index = main_loop_worker_get_thread_index();
+  if (thread_index < 0 || thread_index >= self->rate_limits_per_thread_size)
+    {
+      msg_warning_once("rate-limit() received messages from an unexpected thread, dropping messages...");
+      return FALSE ^ s->comp;
+    }
 
-  g_mutex_lock(&self->map_lock);
-  {
-    rl = g_hash_table_lookup(self->rate_limits, key);
-
-    if (!rl)
-      {
-        rl = rate_limiter_new(self->rate);
-        g_hash_table_insert(self->rate_limits, g_strdup(key), rl);
-      }
-  }
-  g_mutex_unlock(&self->map_lock);
+  GHashTable *rate_limits = self->rate_limits_per_thread[thread_index];
+  RateLimiter *rl = g_hash_table_lookup(rate_limits, key);
+  if (!rl)
+    {
+      rl = rate_limiter_new(self->rate);
+      g_hash_table_insert(rate_limits, g_strdup(key), rl);
+    }
 
   return rate_limiter_process_new_logs(rl, num_msg) ^ s->comp;
 }
@@ -168,8 +156,11 @@ rate_limit_free(FilterExprNode *s)
   RateLimit *self = (RateLimit *) s;
 
   log_template_unref(self->key_template);
-  g_hash_table_destroy(self->rate_limits);
-  g_mutex_clear(&self->map_lock);
+
+  for (gsize i = 0; i < self->rate_limits_per_thread_size; ++i)
+    g_hash_table_destroy(self->rate_limits_per_thread[i]);
+
+  g_free(self->rate_limits_per_thread);
 }
 
 static gboolean
@@ -182,6 +173,17 @@ rate_limit_init(FilterExprNode *s, GlobalConfig *cfg)
       msg_error("rate-limit: the rate() argument is required, and must be non zero in rate-limit filters");
       return FALSE;
     }
+
+  /* no FilterExprNode::deinit() */
+  if (self->rate_limits_per_thread_size != 0)
+    return TRUE;
+
+  gint max_threads = main_loop_worker_get_max_number_of_threads();
+  self->rate_limits_per_thread_size = max_threads + 16; // TODO
+
+  self->rate_limits_per_thread = g_new(GHashTable *, self->rate_limits_per_thread_size);
+  for (gsize i = 0; i < self->rate_limits_per_thread_size; ++i)
+    self->rate_limits_per_thread[i] = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)rate_limiter_free);
 
   return TRUE;
 }
@@ -223,8 +225,6 @@ rate_limit_new(void)
   self->super.eval = rate_limit_eval;
   self->super.free_fn = rate_limit_free;
   self->super.clone = rate_limit_clone;
-  g_mutex_init(&self->map_lock);
-  self->rate_limits = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)rate_limiter_free);
 
   return &self->super;
 }
