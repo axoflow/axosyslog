@@ -53,9 +53,8 @@ Test(add_contextual_data_template_selector, test_given_empty_selector_when_resol
 }
 
 static AddContextualDataSelector *
-_create_template_selector(const gchar *template_string)
+_create_template_selector(const gchar *template_string, GlobalConfig *cfg)
 {
-  GlobalConfig *cfg = cfg_new_snippet();
   LogTemplate *selector_template = log_template_new(cfg, NULL);
 
   cr_assert(log_template_compile(selector_template, template_string, NULL));
@@ -68,22 +67,28 @@ _create_template_selector(const gchar *template_string)
 Test(add_contextual_data_template_selector,
      test_given_template_selector_when_resolve_then_result_is_the_formatted_template_value)
 {
-  AddContextualDataSelector *selector = _create_template_selector("$HOST");
+  GlobalConfig *cfg = cfg_new_snippet();
+  AddContextualDataSelector *selector = _create_template_selector("$HOST", cfg);
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
 
   cr_assert_str_eq(resolved_selector, "localhost", "");
+  g_free(resolved_selector);
   log_msg_unref(msg);
   add_contextual_data_selector_free(selector);
+  cfg_free(cfg);
 }
 
 Test(add_contextual_data_template_selector, test_template_selector_cannot_be_resolved)
 {
-  AddContextualDataSelector *selector = _create_template_selector("$PROGRAM");
+  GlobalConfig *cfg = cfg_new_snippet();
+  AddContextualDataSelector *selector = _create_template_selector("$PROGRAM", cfg);
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
 
   cr_assert_str_eq(resolved_selector, "", "No template should be resolved.");
+  g_free(resolved_selector);
   log_msg_unref(msg);
   add_contextual_data_selector_free(selector);
+  cfg_free(cfg);
 }

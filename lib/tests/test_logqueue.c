@@ -435,5 +435,6 @@ Test(logqueue, log_queue_fifo_multiple_queues)
 
   log_queue_unref(queue_1);
 
+  stats_cluster_key_builder_free(queue_sck_builder);
   stats_cluster_key_builder_free(driver_sck_builder);
 }

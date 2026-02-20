@@ -102,6 +102,7 @@ Test(set_tag, clone_template)
 
   log_pipe_unref(&rewrite->super);
   log_pipe_unref(&clone->super);
+  log_template_unref(template);
 }
 
 Test(set_tag, clone_tag_id)
@@ -120,6 +121,7 @@ Test(set_tag, clone_tag_id)
 
   log_pipe_unref(&rewrite->super);
   log_pipe_unref(&clone->super);
+  log_template_unref(template);
 }
 
 static void

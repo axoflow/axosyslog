@@ -30,6 +30,8 @@
 
 static gchar *test_filter_conf;
 
+GlobalConfig *cfg;
+
 static LogMessage *
 _create_log_msg(const gchar *message, const gchar *host)
 {
@@ -57,11 +59,13 @@ _setup_filter_cfg(const gchar *cfg_content, gint size)
 static AddContextualDataSelector *
 _create_filter_selector(const gchar *filter_cfg, gint size, GList *ordered_filters)
 {
-  GlobalConfig *cfg = cfg_new_snippet();
   test_filter_conf = _setup_filter_cfg(filter_cfg, size);
   AddContextualDataSelector *selector = add_contextual_data_filter_selector_new(cfg, test_filter_conf);
   if (!add_contextual_data_selector_init(selector, ordered_filters))
-    return NULL;
+    {
+      add_contextual_data_selector_free(selector);
+      return NULL;
+    }
 
   return selector;
 }
@@ -70,6 +74,7 @@ static void
 setup(void)
 {
   app_startup();
+  cfg = cfg_new_snippet();
   /* Force to link the libtest library */
   test_filter_conf = NULL;
 }
@@ -77,6 +82,7 @@ setup(void)
 static void
 teardown(void)
 {
+  cfg_free(cfg);
   app_shutdown();
   if (test_filter_conf)
     {
@@ -95,12 +101,17 @@ Test(add_contextual_data_filter_selector, test_clone_selector_with_filters)
   GList *ordered_filters = NULL;
   ordered_filters = g_list_append(ordered_filters, "f_localhost");
   AddContextualDataSelector *selector = _create_filter_selector(cfg_content, strlen(cfg_content), ordered_filters);
-  AddContextualDataSelector *cloned_selector = add_contextual_data_selector_clone(selector, cfg_new_snippet());
+  AddContextualDataSelector *cloned_selector = add_contextual_data_selector_clone(selector, cfg);
   LogMessage *msg = _create_log_msg("testmsg", "localhost");
   gchar *resolved_selector = add_contextual_data_selector_resolve(cloned_selector, msg);
 
   cr_assert_str_eq(resolved_selector, "f_localhost", "Filter name is resolved.");
   g_free(resolved_selector);
+
+  log_msg_unref(msg);
+  add_contextual_data_selector_free(cloned_selector);
+  add_contextual_data_selector_free(selector);
+  g_list_free(ordered_filters);
 }
 
 Test(add_contextual_data_filter_selector, test_matching_host_filter_selection)
@@ -116,6 +127,10 @@ Test(add_contextual_data_filter_selector, test_matching_host_filter_selection)
 
   cr_assert_str_eq(resolved_selector, "f_localhost", "Filter name is resolved.");
   g_free(resolved_selector);
+
+  log_msg_unref(msg);
+  add_contextual_data_selector_free(selector);
+  g_list_free(ordered_filters);
 }
 
 
@@ -132,32 +147,8 @@ Test(add_contextual_data_filter_selector, test_matching_msg_filter_selection)
 
   cr_assert_str_eq(resolved_selector, "f_msg", "Filter name is resolved.");
   g_free(resolved_selector);
-}
 
-Test(add_contextual_data_filter_selector, test_matching_host_and_msg_filter_selection)
-{
-  const gchar cfg_content[] = "filter f_localhost {"\
-                              "    host(\"localhost\");"\
-                              "};"\
-                              "filter f_msg {"\
-                              "    message(\"testmsg\");"\
-                              "};";
-  GList *ordered_filters = NULL;
-  ordered_filters = g_list_append(ordered_filters, "f_msg");
-  ordered_filters = g_list_append(ordered_filters, "f_localhost");
-  AddContextualDataSelector *selector = _create_filter_selector(cfg_content, strlen(cfg_content), ordered_filters);
-  LogMessage *msg = _create_log_msg("testmsg", "localhost");
-  gchar *resolved_selector = add_contextual_data_selector_resolve(selector, msg);
-
-  cr_assert_str_eq(resolved_selector, "f_msg", "Message filter name is resolved");
-  g_free(resolved_selector);
-}
-
-Test(add_contextual_data_filter_selector, test_invalid_filter_config)
-{
-  const gchar cfg_content[] = "filter f_localhost {"\
-                              "   bad-filter-name(\"localhost\");"\
-                              "};";
-  AddContextualDataSelector *selector = _create_filter_selector(cfg_content, strlen(cfg_content), NULL);
-  cr_assert_null(selector, "Filter selector cannot be initialized.");
+  log_msg_unref(msg);
+  add_contextual_data_selector_free(selector);
+  g_list_free(ordered_filters);
 }

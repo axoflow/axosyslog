@@ -56,6 +56,7 @@ Test(transport, test_read_ahead_invokes_only_one_read_operation)
   cr_assert(rc == 9, "unexpected rc = %d", rc);
   cr_assert_str_eq(buf, "readahead");
 
+  log_transport_free(t);
 }
 
 Test(transport, test_read_ahead_bytes_get_shifted_into_the_actual_read)
@@ -76,6 +77,7 @@ Test(transport, test_read_ahead_bytes_get_shifted_into_the_actual_read)
   cr_assert(rc == 4, "unexpected rc = %d", rc);
   cr_assert_str_eq(buf, "read");
 
+  log_transport_free(t);
 }
 
 Test(transport, test_read_ahead_bytes_and_new_read_is_combined)
@@ -97,6 +99,7 @@ Test(transport, test_read_ahead_bytes_and_new_read_is_combined)
   cr_assert(rc == 5, "unexpected rc = %d", rc);
   cr_assert_str_eq(buf, "reada");
 
+  log_transport_free(t);
 }
 
 Test(transport, test_read_ahead_returns_the_same_buffer_any_number_of_times)
@@ -123,6 +126,7 @@ Test(transport, test_read_ahead_returns_the_same_buffer_any_number_of_times)
   cr_assert(log_transport_read(t, buf, 9, NULL) == 9);
   cr_assert_str_eq(buf, "readahead");
 
+  log_transport_free(t);
 }
 
 Test(transport, test_read_ahead_more_than_the_internal_buffer, .signal = SIGABRT)
@@ -137,6 +141,8 @@ Test(transport, test_read_ahead_more_than_the_internal_buffer, .signal = SIGABRT
 
   memset(buf, 0, sizeof(buf));
   cr_assert(log_transport_read_ahead(t, buf, 20, &moved_forward) == 20);
+
+  log_transport_free(t);
 }
 
 Test(transport, test_read_ahead_with_packets_split_in_half)
@@ -154,6 +160,8 @@ Test(transport, test_read_ahead_with_packets_split_in_half)
   rc = log_transport_read_ahead(t, buf, 8, &moved_forward);
   cr_assert(rc == 8, "unexpected rc = %d", rc);
   cr_assert_str_eq(buf, "12345678");
+
+  log_transport_free(t);
 }
 
 TestSuite(transport, .init = app_startup, .fini = app_shutdown);

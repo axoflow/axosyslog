@@ -673,15 +673,18 @@ Test(log_proto, test_log_proto_text_server_io_eagain)
               LTM_EOF));
 
   Bookmark bookmark;
-  LogTransportAuxData aux;
+  LogTransportAuxData aux = {0};
   gboolean may_read = TRUE;
   const guchar *msg = NULL;
   gsize msg_len;
 
   log_transport_aux_data_init(&aux);
   cr_assert_eq(log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_SUCCESS);
+  log_transport_aux_data_reinit(&aux);
   cr_assert_eq(log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_AGAIN);
+  log_transport_aux_data_reinit(&aux);
   cr_assert_eq(log_proto_server_fetch(proto, &msg, &msg_len, &may_read, &aux, &bookmark), LPS_EOF);
+  log_transport_aux_data_destroy(&aux);
 
   log_proto_server_free(proto);
 }
