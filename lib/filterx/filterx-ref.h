@@ -146,7 +146,11 @@ static inline FilterXObject *
 filterx_ref_ground(FilterXObject *s)
 {
   if (s && (s->flags & FILTERX_REF_FLAG_FLOATING) && filterx_object_is_ref(s))
-    s->flags &= ~FILTERX_REF_FLAG_FLOATING;
+    {
+      FilterXRef *self = (FilterXRef *) s;
+      s->flags &= ~FILTERX_REF_FLAG_FLOATING;
+      filterx_weakref_set(&self->parent_container, NULL);
+    }
   return s;
 }
 
