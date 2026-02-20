@@ -53,6 +53,7 @@
 
 %token KW_RATE_LIMIT
 %token KW_RATE
+%token KW_THREAD_LOCAL_RATE
 %token KW_KEY
 
 %type	<ptr> rate_limit
@@ -82,6 +83,10 @@ rate_limit_arg
   | KW_RATE '(' positive_integer ')'
       {
         rate_limit_set_rate(last_filter_expr, $3);
+      }
+  | KW_THREAD_LOCAL_RATE '(' positive_integer ')'
+      {
+        rate_limit_set_thread_local_rate(last_filter_expr, $3);
       }
   ;
 

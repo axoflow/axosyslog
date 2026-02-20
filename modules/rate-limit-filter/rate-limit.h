@@ -30,5 +30,6 @@ FilterExprNode *rate_limit_new(void);
 void rate_limit_set_key_template(FilterExprNode *s, LogTemplate *template);
 void rate_limit_set_key(FilterExprNode *s, NVHandle key_handle);
 void rate_limit_set_rate(FilterExprNode *s, gint rate);
+void rate_limit_set_thread_local_rate(FilterExprNode *s, gint rate);
 
 #endif
