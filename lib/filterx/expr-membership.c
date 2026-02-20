@@ -22,7 +22,7 @@
 #include "filterx/expr-membership.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-sequence.h"
-#include "filterx/object-dict.h"
+#include "filterx/filterx-mapping.h"
 #include "filterx/expr-literal.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object.h"
@@ -31,8 +31,6 @@
 typedef struct FilterXOperatorIn_
 {
   FilterXBinaryOp super;
-  FilterXObject *literal_lhs;
-  FilterXObject *literal_rhs;
 } FilterXOperatorIn;
 
 static FilterXObject *
@@ -69,15 +67,31 @@ _eval_in_list(FilterXOperatorIn *self, FilterXObject *list_obj, FilterXObject *n
   return filterx_boolean_new(FALSE);
 }
 
+FilterXObject *
+_eval_in_value(FilterXOperatorIn *self, FilterXObject *lhs_obj, FilterXObject *rhs_obj)
+{
+  FilterXObject *iterable_obj = filterx_ref_unwrap_ro(rhs_obj);
+
+  if (filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(mapping)))
+    return _eval_in_dict(self, iterable_obj, lhs_obj);
+  else if (filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(sequence)))
+    return _eval_in_list(self, iterable_obj, lhs_obj);
+  else
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
+                                          "Right hand side must be list or dict type, got: %s",
+                                          filterx_object_get_type_name(iterable_obj));
+      return NULL;
+    }
+}
+
 static FilterXObject *
 _eval_in(FilterXExpr *s)
 {
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
   FilterXObject *result = NULL;
 
-  FilterXObject *lhs_obj = self->literal_lhs ? filterx_object_vref(self->literal_lhs)
-                           : filterx_expr_eval_typed(self->super.lhs);
-
+  FilterXObject *lhs_obj = filterx_expr_eval_typed(self->super.lhs);
   if (!lhs_obj)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
@@ -86,9 +100,7 @@ _eval_in(FilterXExpr *s)
     }
 
 
-  FilterXObject *rhs_obj = self->literal_rhs ? filterx_object_vref(self->literal_rhs)
-                           : filterx_expr_eval(self->super.rhs);
-
+  FilterXObject *rhs_obj = filterx_expr_eval(self->super.rhs);
   if (!rhs_obj)
     {
       filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
@@ -96,23 +108,7 @@ _eval_in(FilterXExpr *s)
       goto exit;
     }
 
-  FilterXObject *iterable_obj = filterx_ref_unwrap_ro(rhs_obj);
-
-  gboolean is_list_obj = filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(sequence));
-  gboolean is_dict_obj = filterx_object_is_type(iterable_obj, &FILTERX_TYPE_NAME(dict));
-  if (!is_list_obj && !is_dict_obj)
-    {
-      filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
-                                          "Right hand side must be list or dict type, got: %s",
-                                          filterx_object_get_type_name(iterable_obj));
-      goto exit;
-    }
-
-  if (is_list_obj)
-    result = _eval_in_list(self, iterable_obj, lhs_obj);
-  else
-    result = _eval_in_dict(self, iterable_obj, lhs_obj);
-
+  result = _eval_in_value(self, lhs_obj, rhs_obj);
 exit:
   filterx_object_unref(rhs_obj);
   filterx_object_unref(lhs_obj);
@@ -123,24 +119,27 @@ static FilterXExpr *
 _optimize_in(FilterXExpr *s)
 {
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
+  FilterXObject *lhs_obj = NULL, *rhs_obj = NULL;
+  FilterXExpr *result = NULL;
 
   if (filterx_expr_is_literal(self->super.lhs))
-    self->literal_lhs = filterx_literal_get_value(self->super.lhs);
+    lhs_obj = filterx_literal_get_value(self->super.lhs);
 
   if (filterx_expr_is_literal(self->super.rhs))
-    self->literal_rhs = filterx_literal_get_value(self->super.rhs);
+    rhs_obj = filterx_literal_get_value(self->super.rhs);
 
-  if (self->literal_lhs && self->literal_rhs)
-    return filterx_literal_new(_eval_in(&self->super.super));
-  return NULL;
+  if (lhs_obj && rhs_obj)
+    result = filterx_literal_new(_eval_in_value(self, lhs_obj, rhs_obj));
+
+  filterx_object_unref(lhs_obj);
+  filterx_object_unref(rhs_obj);
+  return result;
 }
 
 static void
 _free_in(FilterXExpr *s)
 {
   FilterXOperatorIn *self = (FilterXOperatorIn *) s;
-  filterx_object_unref(self->literal_lhs);
-  filterx_object_unref(self->literal_rhs);
 
   filterx_binary_op_free_method(&self->super.super);
 }
