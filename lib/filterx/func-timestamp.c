@@ -26,8 +26,10 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
+#include "timeutils/cache.h"
 
 #define FILTERX_FUNC_SET_TIMESTAMP_USAGE "Usage: set_timestamp(datetime, stamp=[\"stamp\", \"recvd\"])"
+#define FILTERX_FUNC_FIX_TIMEZONE_USAGE "Usage: fix_timezone(datetime, timezone_str)"
 
 typedef struct FilterXFunctionSetTimestamp_
 {
@@ -273,6 +275,66 @@ filterx_function_get_timestamp_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.walk_children = _get_timestamp_walk;
 
   if (!_extract_get_timestamp_args(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+typedef struct FilterXFunctionFixTimezone_
+{
+  FilterXFunction super;
+  gchar *timezone;
+  FilterXExpr *datetime_expr;
+} FilterXFunctionFixTimezone;
+
+static FilterXObject *
+_fix_timezone_eval(FilterXExpr *s)
+{
+  return NULL;
+}
+
+static gboolean
+_fix_timezone_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
+static void
+_fix_timezone_free(FilterXExpr *s)
+{
+  FilterXFunctionFixTimezone *self = (FilterXFunctionFixTimezone *) s;
+
+  g_free(self->timezone);
+  filterx_expr_unref(self->datetime_expr);
+  filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_extract_fix_timezone_args(FilterXFunctionFixTimezone *self, FilterXFunctionArgs *args, GError **error)
+{
+  return TRUE;
+}
+
+/* Takes reference of args */
+FilterXExpr *
+filterx_function_fix_timezone_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionFixTimezone *self = g_new0(FilterXFunctionFixTimezone, 1);
+
+  filterx_function_init_instance(&self->super, "fix_timezone", FXE_READ);
+
+  self->super.super.eval = _fix_timezone_eval;
+  self->super.super.walk_children = _fix_timezone_walk;
+  self->super.super.free_fn = _fix_timezone_free;
+
+  if (!_extract_fix_timezone_args(self, args, error) ||
       !filterx_function_args_check(args, error))
     goto error;
 
