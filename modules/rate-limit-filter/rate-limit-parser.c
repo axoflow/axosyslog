@@ -35,6 +35,7 @@ static CfgLexerKeyword rate_limit_filter_keywords[] =
   { "throttle", KW_THROTTLE },
   { "rate_limit", KW_RATE_LIMIT },
   { "rate", KW_RATE },
+  { "thread_local_rate", KW_THREAD_LOCAL_RATE },
   { "template", KW_KEY, KWS_OBSOLETE, "The template() option is deprecated in favour of key()" },
   { "key", KW_KEY },
   { NULL }
