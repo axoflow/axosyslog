@@ -584,12 +584,74 @@ typedef struct FilterXFunctionSetTimezone_
 static FilterXObject *
 _set_timezone_eval(FilterXExpr *s)
 {
+  FilterXFunctionSetTimezone *self = (FilterXFunctionSetTimezone *) s;
+
+  FilterXObject *datetime_obj = NULL;
+  FilterXObject *timezone_obj = NULL;
+
+  datetime_obj = filterx_expr_eval(self->datetime_expr);
+  if (!datetime_obj)
+    {
+      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_SET_TIMEZONE_USAGE, s, NULL);
+      return NULL;
+    }
+
+  UnixTime datetime = UNIX_TIME_INIT;
+
+  if (!filterx_object_extract_datetime(datetime_obj, &datetime))
+    {
+      filterx_eval_push_error("First argument must be of datetime type. " FILTERX_FUNC_SET_TIMEZONE_USAGE, s, NULL);
+      goto error;
+    }
+
+  timezone_obj = filterx_expr_eval(self->timezone_expr);
+  if (!timezone_obj)
+    {
+      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_SET_TIMEZONE_USAGE, s, NULL);
+      goto error;
+    }
+
+  const gchar *timezone_str;
+  if (!filterx_object_extract_string_ref(timezone_obj, &timezone_str, NULL))
+    {
+      filterx_eval_push_error("Second argument must be of string type. " FILTERX_FUNC_SET_TIMEZONE_USAGE, s, NULL);
+      goto error;
+    }
+
+  TimeZoneInfo *tzinfo = cached_get_time_zone_info(timezone_str);
+
+  if (!tzinfo)
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate set_timezone", &self->super.super,
+                                          "Unknown timezone: %s", timezone_str);
+      goto error;
+    }
+
+  unix_time_set_timezone_with_tzinfo(&datetime, tzinfo);
+
+  filterx_object_unref(datetime_obj);
+  filterx_object_unref(timezone_obj);
+
+  return filterx_datetime_new(&datetime);
+error:
+  filterx_object_unref(datetime_obj);
+  filterx_object_unref(timezone_obj);
   return NULL;
 }
 
 static gboolean
 _set_timezone_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
+  FilterXFunctionSetTimezone *self = (FilterXFunctionSetTimezone *) s;
+
+  FilterXExpr **exprs[] = { &self->datetime_expr, &self->timezone_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
+        return FALSE;
+    }
+
   return TRUE;
 }
 
@@ -603,9 +665,54 @@ _set_timezone_free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static FilterXExpr *
+_extract_set_timezone_timezone_expr(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExpr *timezone_expr = filterx_function_args_get_expr(args, 1);
+  if (!timezone_expr)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be set: timezone. " FILTERX_FUNC_SET_TIMEZONE_USAGE);
+      return NULL;
+    }
+
+  return timezone_expr;
+}
+
+static FilterXExpr *
+_extract_set_timezone_datetime_expr(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExpr *datetime_expr = filterx_function_args_get_expr(args, 0);
+  if (!datetime_expr)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be set: datetime. " FILTERX_FUNC_SET_TIMEZONE_USAGE);
+      return NULL;
+    }
+
+  return datetime_expr;
+}
+
 static gboolean
 _extract_set_timezone_args(FilterXFunctionSetTimezone *self, FilterXFunctionArgs *args, GError **error)
 {
+  gsize len = filterx_function_args_len(args);
+
+  if (len != 2)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_SET_TIMEZONE_USAGE);
+      return FALSE;
+    }
+
+  self->datetime_expr = _extract_set_timezone_datetime_expr(args, error);
+  if (!self->datetime_expr)
+    return FALSE;
+
+  self->timezone_expr = _extract_set_timezone_timezone_expr(args, error);
+  if (!self->timezone_expr)
+    return FALSE;
+
   return TRUE;
 }
 
