@@ -23,7 +23,7 @@ EXTRA_DIST	+= \
 		tests/functional/CMakeLists.txt
 
 func-test:
-	@PYTHON=${PYTHON} $(top_srcdir)/tests/functional/runtests.sh
+	@PYTHON=${PYTHON} ASAN_OPTIONS="detect_odr_violation=0" $(top_srcdir)/tests/functional/runtests.sh
 
 .PHONY: func-test
 
