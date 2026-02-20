@@ -31,5 +31,6 @@ FilterXExpr *filterx_function_get_timestamp_new(FilterXFunctionArgs *args, GErro
 FilterXExpr *filterx_function_set_timestamp_new(FilterXFunctionArgs *args, GError **error);
 FilterXExpr *filterx_function_fix_timezone_new(FilterXFunctionArgs *args, GError **error);
 FilterXExpr *filterx_function_guess_timezone_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_set_timezone_new(FilterXFunctionArgs *args, GError **error);
 
 #endif
