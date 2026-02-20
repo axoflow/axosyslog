@@ -131,7 +131,7 @@ filterx_ref_float_unchecked(FilterXObject *s)
 static inline FilterXObject *
 filterx_ref_float(FilterXObject *s)
 {
-  if (s && !s->readonly && filterx_object_is_ref(s))
+  if (s && filterx_object_is_ref(s))
     {
       filterx_ref_float_unchecked(s);
     }
