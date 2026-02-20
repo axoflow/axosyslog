@@ -30,6 +30,7 @@
 
 #define FILTERX_FUNC_SET_TIMESTAMP_USAGE "Usage: set_timestamp(datetime, stamp=[\"stamp\", \"recvd\"])"
 #define FILTERX_FUNC_FIX_TIMEZONE_USAGE "Usage: fix_timezone(datetime, timezone_str)"
+#define FILTERX_FUNC_GUESS_TIMEZONE_USAGE "Usage: guess_timezone(datetime)"
 
 typedef struct FilterXFunctionSetTimestamp_
 {
@@ -433,3 +434,62 @@ error:
   filterx_expr_unref(&self->super.super);
   return NULL;
 }
+
+typedef struct FilterXFunctionGuessTimezone_
+{
+  FilterXFunction super;
+  FilterXExpr *datetime_expr;
+} FilterXFunctionGuessTimezone;
+
+static FilterXObject *
+_guess_timezone_eval(FilterXExpr *s)
+{
+  return NULL;
+}
+
+static gboolean
+_guess_timezone_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
+static void
+_guess_timezone_free(FilterXExpr *s)
+{
+  FilterXFunctionGuessTimezone *self = (FilterXFunctionGuessTimezone *) s;
+
+  filterx_expr_unref(self->datetime_expr);
+  filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_extract_guess_timezone_arg(FilterXFunctionGuessTimezone *self, FilterXFunctionArgs *args, GError **error)
+{
+  return TRUE;
+}
+
+/* Takes reference of args */
+FilterXExpr *
+filterx_function_guess_timezone_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionGuessTimezone *self = g_new0(FilterXFunctionGuessTimezone, 1);
+
+  filterx_function_init_instance(&self->super, "guess_timezone", FXE_READ);
+
+  self->super.super.eval = _guess_timezone_eval;
+  self->super.super.walk_children = _guess_timezone_walk;
+  self->super.super.free_fn = _guess_timezone_free;
+
+  if (!_extract_guess_timezone_arg(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
