@@ -189,6 +189,8 @@ dqtool_truncate(int argc, char *argv[])
 
       double reclaimed_gib = (orig_size - truncated_size) / 1024.0 / 1024.0 / 1024.0;
       printf("Disk-buffer %s has been truncated, reclaimed space: %f GiB\n", argv[i], reclaimed_gib);
+
+      disk_queue_options_destroy(&options);
     }
 
   return 0;
@@ -213,6 +215,7 @@ dqtool_cat(int argc, char *argv[])
         {
           fprintf(stderr, "Error compiling template: %s, error: %s\n", template->template_str, error->message);
           g_clear_error(&error);
+          disk_queue_options_destroy(&options);
           return 1;
         }
       g_free(template_string);
@@ -250,6 +253,7 @@ dqtool_cat(int argc, char *argv[])
       log_queue_disk_stop(lq, &persistent);
       log_queue_unref(lq);
     }
+  disk_queue_options_destroy(&options);
   g_string_free(msg, TRUE);
   return 0;
 }
@@ -270,6 +274,7 @@ dqtool_info(int argc, char *argv[])
       gboolean persistent;
       log_queue_disk_stop(lq, &persistent);
       log_queue_unref(lq);
+      disk_queue_options_destroy(&options);
     }
   return 0;
 }
