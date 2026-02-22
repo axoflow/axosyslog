@@ -1,0 +1,3 @@
+leak:^dlopen
+leak:^python_evaluate_global_code
+leak:libpython*.so

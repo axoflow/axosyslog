@@ -5,6 +5,7 @@ EXTRA_DIST += \
 	tests/copyright/policy \
 	tests/copyright/license.text.GPLv3+.txt \
 	tests/copyright/license.text.GPLv3+_SSL.txt \
+	tests/axosyslog-lsan.supp	\
 	tests/valgrind/unit-test-leak.supp	\
 	tests/build-log-cflags-propagation.sh	\
 	tests/CMakeLists.txt
