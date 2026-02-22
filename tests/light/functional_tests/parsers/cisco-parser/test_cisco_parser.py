@@ -23,7 +23,7 @@
 import json
 
 import pytest
-from axosyslog_light.common.network_operations import get_hostname
+from axosyslog_light.common.network_operations import get_short_hostname
 
 
 test_parameters = [
@@ -76,7 +76,7 @@ test_parameters = [
         r"<189>35: *Apr 29 14:00:16.059: %SYS-5-CONFIG_I: Configured from console by console",
         {
             "PRI": "189",
-            "HOST": get_hostname(),
+            "HOST": get_short_hostname(),
             "DATE": "Apr 29 14:00:16",
             "MSEC": "059",
             "_cisco": {
