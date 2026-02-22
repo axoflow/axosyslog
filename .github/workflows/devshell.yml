@@ -90,11 +90,11 @@ jobs:
       - name: make check
         id: make_check
         working-directory: ./build
-        run: make V=1 check || (mkdir -p ${COREFILES_DIR} && find . -executable -a -type f | tar -cf ${COREFILES_DIR}/test-binaries.tar  --files-from=- && cat test-suite.log && false)
+        run: make V=1 check -j $(nproc) || (mkdir -p ${COREFILES_DIR} && find . -executable -a -type f | tar -cf ${COREFILES_DIR}/test-binaries.tar  --files-from=- && cat test-suite.log && false)
 
       - name: make install
         working-directory: ./build
-        run: make install
+        run: make install -j $(nproc)
 
       - name: Python virtualenv for syslog-ng runtime
         run: ${SYSLOG_NG_INSTALL_DIR}/bin/syslog-ng-update-virtualenv -y
@@ -190,7 +190,7 @@ jobs:
       - name: distcheck
         run: |
           . tests/build-log-cflags-propagation.sh
-          exec_prop_check "make distcheck -j 3 V=1"
+          exec_prop_check "make distcheck -j 8 V=1"
 
   style-check:
     runs-on: ubuntu-latest
