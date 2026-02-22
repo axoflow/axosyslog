@@ -52,7 +52,9 @@ _py_evaluate_global_code(PythonConfig *pc, const gchar *filename, const gchar *c
    * its get_source() method is called.
    */
   PyObject *dict = PyModule_GetDict(module);
-  PyDict_SetItemString(dict, "__loader__", py_global_code_loader_new(code));
+  PyObject *code_loader = py_global_code_loader_new(code);
+  PyDict_SetItemString(dict, "__loader__", code_loader);
+  Py_XDECREF(code_loader);
 
   PyObject *code_object = Py_CompileString((char *) code, filename, Py_file_input);
   if (!code_object)

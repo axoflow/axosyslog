@@ -98,7 +98,6 @@ _py_switch_to_config_main_module(PythonConfig *pc)
 
   if (pc->main_module)
     {
-      Py_INCREF(pc->main_module);
       PyDict_SetItemString(modules, "_syslogng_main", pc->main_module);
     }
   else

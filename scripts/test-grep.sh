@@ -24,10 +24,6 @@
 
 # TODO fix them
 sanitizer_exception_list=(
-  "modules/python/tests/test_python_persist"
-  "modules/python/tests/test_python_template"
-  "modules/python/tests/test_python_persist_name"
-  "modules/python/tests/test_python_logmsg"
   "modules/correlation/tests/test_patterndb"
   "modules/secure-logging/tests/test_secure_logging"
   "modules/afmongodb/tests/test-mongodb-config"

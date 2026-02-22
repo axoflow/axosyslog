@@ -102,7 +102,9 @@ TestSuite(python_persist_name, .init = setup, .fini = teardown);
 static void
 _add_dummy_option(PythonOptions *options)
 {
-  python_options_add_option(options, python_option_string_new("key", "value"));
+  PythonOption *opt = python_option_string_new("key", "value");
+  python_options_add_option(options, opt);
+  python_option_unref(opt);
 }
 
 const gchar *python_destination_code = "\n\

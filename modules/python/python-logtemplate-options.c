@@ -44,6 +44,13 @@ py_log_template_options_new(LogTemplateOptions *template_options, GlobalConfig *
   return (PyObject *) self;
 }
 
+static void
+py_log_template_options_free(PyLogTemplateOptions *self)
+{
+  log_template_options_destroy(&self->template_options);
+  Py_TYPE(self)->tp_free((PyObject *) self);
+}
+
 int
 py_log_template_options_init(PyObject *s, PyObject *args, PyObject *kwds)
 {
@@ -65,7 +72,7 @@ PyTypeObject py_log_template_options_type =
   PyVarObject_HEAD_INIT(&PyType_Type, 0)
   .tp_name = "LogTemplateOptions",
   .tp_basicsize = sizeof(PyLogTemplateOptions),
-  .tp_dealloc = (destructor) PyObject_Del,
+  .tp_dealloc = (destructor) py_log_template_options_free,
   .tp_flags = Py_TPFLAGS_DEFAULT,
   .tp_doc = "LogTemplateOptions class encapsulating a syslog-ng LogTemplateOptions",
   .tp_init = py_log_template_options_init,
