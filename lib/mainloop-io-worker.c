@@ -47,19 +47,50 @@ _engage(MainLoopIOWorkerJob *self)
     self->engage(self->user_data);
 }
 
-gboolean
-main_loop_io_worker_job_submit(MainLoopIOWorkerJob *self, gpointer arg)
+static inline void
+_prepare_submit(MainLoopIOWorkerJob *self, gpointer arg)
 {
-  main_loop_assert_main_thread();
-
   g_assert(self->working == FALSE);
-  if (main_loop_workers_quit)
-    return FALSE;
 
   _engage(self);
   main_loop_worker_job_start();
   self->working = TRUE;
   self->arg = arg;
+}
+
+gboolean
+main_loop_io_worker_job_submit(MainLoopIOWorkerJob *self, gpointer arg)
+{
+  main_loop_assert_main_thread();
+
+  if (main_loop_workers_quit)
+    return FALSE;
+
+  _prepare_submit(self, arg);
+  iv_work_pool_submit_work(&main_loop_io_workers[self->type], &self->work_item);
+  return TRUE;
+}
+
+/*
+ * This function can submit an IO worker job, even if mainloop worker stop was requested.
+ *
+ * Only consider using this function if both of these apply:
+ *   1. There is a task that can only be processed with multiple IO worker jobs.
+ *      (e.g. Processing an unlimited list of message batches)
+ *   2. This task can only work with the current config.
+ *      (e.g. We must process the task before reload)
+ *
+ * Only use this function if you can guarantee the following:
+ *   1. Calling this function is done in another worker job's completion callback.
+ *      (this is needed so main_loop_workers_running is kept non-zero)
+ *   2. These chained job_force_submit() calls eventually end.
+ */
+gboolean
+main_loop_io_worker_job_force_submit(MainLoopIOWorkerJob *self, gpointer arg)
+{
+  main_loop_assert_main_thread();
+
+  _prepare_submit(self, arg);
   iv_work_pool_submit_work(&main_loop_io_workers[self->type], &self->work_item);
   return TRUE;
 }
@@ -69,13 +100,8 @@ void
 main_loop_io_worker_job_submit_continuation(MainLoopIOWorkerJob *self, gpointer arg)
 {
   main_loop_assert_worker_thread();
-  g_assert(self->working == FALSE);
 
-  _engage(self);
-  main_loop_worker_job_start();
-  self->working = TRUE;
-  self->arg = arg;
-
+  _prepare_submit(self, arg);
   iv_work_pool_submit_continuation(&main_loop_io_workers[self->type], &self->work_item);
 }
 #endif

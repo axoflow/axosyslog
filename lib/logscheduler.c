@@ -150,7 +150,7 @@ _complete(gpointer s, gpointer arg)
   g_mutex_unlock(&partition->batches_lock);
 
   if (needs_restart)
-    main_loop_io_worker_job_submit(&partition->io_job, NULL);
+    main_loop_io_worker_job_force_submit(&partition->io_job, NULL);
 }
 
 /* runs in the source thread */
@@ -236,6 +236,7 @@ void
 _partition_clear(LogSchedulerPartition *partition)
 {
   g_mutex_clear(&partition->batches_lock);
+  g_assert(iv_list_empty(&partition->batches));
   stats_lock();
   {
     stats_unregister_counter(&partition->metrics.assigned_events_total_key, SC_TYPE_SINGLE_VALUE,

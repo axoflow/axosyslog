@@ -51,6 +51,7 @@ typedef struct _MainLoopIOWorkerJob
 
 void main_loop_io_worker_job_init(MainLoopIOWorkerJob *self);
 gboolean main_loop_io_worker_job_submit(MainLoopIOWorkerJob *self, gpointer arg);
+gboolean main_loop_io_worker_job_force_submit(MainLoopIOWorkerJob *self, gpointer arg);
 
 #if SYSLOG_NG_HAVE_IV_WORK_POOL_SUBMIT_CONTINUATION
 void main_loop_io_worker_job_submit_continuation(MainLoopIOWorkerJob *self, gpointer arg);
