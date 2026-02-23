@@ -36,6 +36,6 @@ if [ ! -d debian ]; then
 fi
 
 ubuntu_patch_container_host_linux_tools
-deb_run_build_command dpkg-buildpackage -rfakeroot -d
+deb_run_build_command dpkg-buildpackage -j$(nproc) -rfakeroot -d
 
 capture_debs

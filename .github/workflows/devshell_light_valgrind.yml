@@ -80,7 +80,7 @@ jobs:
 
       - name: make install
         working-directory: ./build
-        run: make install
+        run: make install -j $(nproc)
 
       - name: Python virtualenv for syslog-ng runtime
         run: ${SYSLOG_NG_INSTALL_DIR}/bin/syslog-ng-update-virtualenv -y

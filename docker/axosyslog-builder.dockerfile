@@ -54,6 +54,7 @@ RUN \
     && USER=builder abuild-keygen -n -a -i \
     && git clone --depth 1 --branch "$ALPINE_VERSION-stable" git://git.alpinelinux.org/aports \
     && echo $REBUILD_DEPS \
+    && export MAKEFLAGS="-j$(nproc)" \
     && for pkg in $REBUILD_DEPS; do \
 	(cd aports/$pkg && \
         sed -i -e '/^pkgrel/s,[0-9]*$,999,' APKBUILD && \

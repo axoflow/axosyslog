@@ -45,6 +45,7 @@ RUN mkdir packages || true \
         sed -i -e "s|^pkgver=.*|pkgver=$SNAPSHOT_VERSION|" -e "s|^builddir=.*|builddir=\"\$srcdir/$tarball_name\"|" APKBUILD; \
         sed -i -e "s|^source=.*|source=\"$tarball_filename|" APKBUILD; \
        fi \
+    && export MAKEFLAGS="-j$(nproc)" \
     && abuild checksum \
     && abuild -r
 
