@@ -47,19 +47,26 @@ _engage(MainLoopIOWorkerJob *self)
     self->engage(self->user_data);
 }
 
-gboolean
-main_loop_io_worker_job_submit(MainLoopIOWorkerJob *self, gpointer arg)
+static inline void
+_prepare_submit(MainLoopIOWorkerJob *self, gpointer arg)
 {
-  main_loop_assert_main_thread();
-
   g_assert(self->working == FALSE);
-  if (main_loop_workers_quit)
-    return FALSE;
 
   _engage(self);
   main_loop_worker_job_start();
   self->working = TRUE;
   self->arg = arg;
+}
+
+gboolean
+main_loop_io_worker_job_submit(MainLoopIOWorkerJob *self, gpointer arg)
+{
+  main_loop_assert_main_thread();
+
+  if (main_loop_workers_quit)
+    return FALSE;
+
+  _prepare_submit(self, arg);
   iv_work_pool_submit_work(&main_loop_io_workers[self->type], &self->work_item);
   return TRUE;
 }
@@ -82,12 +89,8 @@ gboolean
 main_loop_io_worker_job_force_submit(MainLoopIOWorkerJob *self, gpointer arg)
 {
   main_loop_assert_main_thread();
-  g_assert(self->working == FALSE);
 
-  _engage(self);
-  main_loop_worker_job_start();
-  self->working = TRUE;
-  self->arg = arg;
+  _prepare_submit(self, arg);
   iv_work_pool_submit_work(&main_loop_io_workers[self->type], &self->work_item);
   return TRUE;
 }
@@ -97,13 +100,8 @@ void
 main_loop_io_worker_job_submit_continuation(MainLoopIOWorkerJob *self, gpointer arg)
 {
   main_loop_assert_worker_thread();
-  g_assert(self->working == FALSE);
 
-  _engage(self);
-  main_loop_worker_job_start();
-  self->working = TRUE;
-  self->arg = arg;
-
+  _prepare_submit(self, arg);
   iv_work_pool_submit_continuation(&main_loop_io_workers[self->type], &self->work_item);
 }
 #endif
