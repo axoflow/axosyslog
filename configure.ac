@@ -2115,6 +2115,7 @@ dnl ***************************************************************************
 if  test "x$with_sanitizer" != "xno"; then
    CFLAGS="$CFLAGS -O1 -fsanitize=$with_sanitizer -fno-omit-frame-pointer"
    CXXFLAGS="$CXXFLAGS -O1 -fsanitize=$with_sanitizer -fno-omit-frame-pointer"
+   LDFLAGS="$LDFLAGS -fsanitize=$with_sanitizer"
 fi
 
 dnl ***************************************************************************
@@ -2212,6 +2213,10 @@ else
 	SYSLOGNG_LINK='$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@'
 fi
 YFLAGS="-d"
+
+if test "$with_sanitizer" != "no" -a "$enable_cpp" = "yes"; then
+  SYSLOGNG_LINK='$(LIBTOOL) --mode=link $(CXX) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@'
+fi
 
 enable_value()
 {
