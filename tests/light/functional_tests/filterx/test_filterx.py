@@ -3157,3 +3157,41 @@ def test_fix_timezone_success(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "2000-01-01T00:00:00 +0100"
+
+
+def test_guess_timezone_invalid_number_of_args(config, syslog_ng):
+    _ = create_config(
+        config, """
+        $MSG = guess_timezone();
+""",
+    )
+    with pytest.raises(Exception) as exec_info:
+        syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
+
+
+def test_guess_timezone_wrong_argument_type(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        $MSG = guess_timezone("%Y-%m-%dT%H:%M:%S %z");
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_guess_timezone_success(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S");
+        guessed_datetime = guess_timezone(datetime);
+        $MSG = strftime("%Y-%m-%dT%H:%M:%S %z", guessed_datetime);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "2000-01-01T00:00:00 +0000"
