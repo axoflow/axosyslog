@@ -120,6 +120,7 @@ libmongoc-dev               [debian]
 
 clang                           [devshell]
 libclang-rt-dev                 [devshell]
+llvm                            [devshell]
 dirmngr                         [devshell]
 gdb                             [devshell]
 gdbserver                       [devshell]
