@@ -419,6 +419,9 @@ _py_init_bindings(PythonDestDriver *self)
 static void
 _py_free_bindings(PythonDestDriver *self)
 {
+  if (self->py.instance)
+    PyObject_DelAttrString(self->py.instance, "template_options");
+
   if (self->py._refs_to_clean)
     g_ptr_array_free(self->py._refs_to_clean, TRUE);
 }
