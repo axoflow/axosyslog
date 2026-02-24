@@ -35,7 +35,7 @@
     </refmeta>
     <refnamediv>
       <refname>slogkey</refname>
-      <refpurpose>Manage cryptographic keys for use with <command>syslog-ng</command> secure logging</refpurpose>
+      <refpurpose>Manage cryptographic keys for use with <command>AxoSyslog</command> secure logging</refpurpose>
     </refnamediv>
     <refsynopsisdiv>
       <cmdsynopsis>
@@ -45,7 +45,7 @@
     </refsynopsisdiv>
     <refsection version="5.0">
       <title>Description</title>
-      <para>The <command>slogkey</command> utility is used to manage cryptographic keys for use with the secure logging module of <command>syslog-ng</command>. Use this utility to create a master key, derive a host key to be used by a secure logging configuration and to display the current sequence counter of a key. The options determine the operating mode and are mutually exclusive.</para>
+      <para>The <command>slogkey</command> utility is used to manage cryptographic keys for use with the secure logging module of <command>AxoSyslog</command>. Use this utility to create a master key, derive a host key to be used by a secure logging configuration and to display the current sequence counter of a key. The options determine the operating mode and are mutually exclusive.</para>
     </refsection>
     <refsection>
       <title>Arguments</title>
@@ -140,9 +140,9 @@
         <link linkend="secure-logging.7"><command>secure-logging</command>(7)</link>
       </para>
       <note version="5.0">
-        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The syslog-ng Administrator Guide</command></link></para>
-        <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-        <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link></para>
+        <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+        <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
         <para>For specific information requests related to secure logging send a mail to the Airbus Secure Logging Team &lt;secure-logging@airbus.com&gt;.</para>
       </note>
     </refsection>

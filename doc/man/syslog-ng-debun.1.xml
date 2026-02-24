@@ -46,7 +46,7 @@
     <refsection xml:id="syslog-ng-debun-mandescription">
       <title>Description</title>
       <para>NOTE: The <command>syslog-ng-debun</command> application is distributed with the  system logging application, and is usually part of the  package. The latest version of the  application is available at .</para>
-      <para>This manual page is only an abstract, for the complete documentation of syslog-ng, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/">The syslog-ng Administrator Guide</link>.</para>
+      <para>This manual page is only an abstract, for the complete documentation of AxoSyslog, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/">AxoSyslog documentation</link>.</para>
       <para>The <command>syslog-ng-debun</command> tool collects and saves information about your  installation, making troubleshooting easier, especially if you ask help about your  related problem.</para>
     </refsection>
     <refsection>
@@ -190,7 +190,7 @@
       <synopsis>syslog-ng-debun -r -l</synopsis>
       <para>Similar to <command>syslog-ng-debun -r</command>, but without privacy-sensitive information. For example, the following is NOT collected: fstab, df output, mount info, ip / network interface configuration, DNS resolv info, and process tree.</para>
       <synopsis>syslog-ng-debun -r -d</synopsis>
-      <para>Similar to <command>syslog-ng-debun -r</command>, but it also stops syslog-ng, then restarts it in debug mode (<userinput>-Fedv --enable-core</userinput>). To stop debug mode, press Enter. The output of the debug mode collected into a separate file, and also added to the debug bundle.</para>
+      <para>Similar to <command>syslog-ng-debun -r</command>, but it also stops AxoSyslog, then restarts it in debug mode (<userinput>-Fedv --enable-core</userinput>). To stop debug mode, press Enter. The output of the debug mode collected into a separate file, and also added to the debug bundle.</para>
       <synopsis>syslog-ng-debun -r -s</synopsis>
       <para>Trace the system calls (using <command>strace</command> or <command>truss</command>) of an already running  process.</para>
       <synopsis>syslog-ng-debun -r -d -s</synopsis>
@@ -211,19 +211,19 @@
           <para>Wait 5 seconds (<userinput>-w 5</userinput>)</para>
         </listitem>
         <listitem>
-          <para>Stop syslog-ng</para>
+          <para>Stop AxoSyslog</para>
         </listitem>
         <listitem>
-          <para>Start syslog-ng in debug mode with default parameters (<userinput>-d</userinput>)</para>
+          <para>Start AxoSyslog in debug mode with default parameters (<userinput>-d</userinput>)</para>
         </listitem>
         <listitem>
           <para>Wait 10 seconds (<userinput>-t 10</userinput>)</para>
         </listitem>
         <listitem>
-          <para>Stop syslog-ng debugging</para>
+          <para>Stop AxoSyslog debugging</para>
         </listitem>
         <listitem>
-          <para>Start syslog-ng</para>
+          <para>Start AxoSyslog</para>
         </listitem>
         <listitem>
           <para>Stop packet capturing</para>
@@ -242,9 +242,9 @@
         <link linkend="syslog-ng.conf.5"><command>syslog-ng.conf</command>(5)</link>
       </para>
       <note version="5.0">
-        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The  4.23 Administrator Guide</command></link></para>
-        <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-        <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>The  4.23 Administrator Guide</command></link></para>
+        <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+        <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
       </note>
     </refsection>
     <refsection version="5.0">

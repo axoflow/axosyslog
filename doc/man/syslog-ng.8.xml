@@ -24,7 +24,7 @@
 <reference xmlns="http://docbook.org/ns/docbook" version="5.0">
   <info>
     <productname/>
-    <title>The syslog-ng manual page</title>
+    <title>The AxoSyslog manual page</title>
   </info>
   <refentry xml:id="syslog-ng.8">
     <refmeta>
@@ -35,18 +35,18 @@
     </refmeta>
     <refnamediv>
       <refname>syslog-ng</refname>
-      <refpurpose>syslog-ng system logger application</refpurpose>
+      <refpurpose>AxoSyslog system logger application</refpurpose>
     </refnamediv>
     <refsynopsisdiv>
       <cmdsynopsis>
-        <command>syslog-ng</command>
+        <command>AxoSyslog</command>
         <arg>options</arg>
       </cmdsynopsis>
     </refsynopsisdiv>
     <refsection version="5.0">
       <title>Description</title>
-      <para>This manual page is only an abstract, for the complete documentation of syslog-ng, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/"><command>The  Administrator Guide</command></link> or <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/log-management">the official syslog-ng website</link>.</para>
-      <para>The  application is a flexible and highly scalable system logging application. Typically, syslog-ng is used to manage log messages and implement centralized logging, where the aim is to collect the log messages of several devices on a single, central log server. The different devices - called syslog-ng clients - all run syslog-ng, and collect the log messages from the various applications, files, and other <emphasis>sources</emphasis>. The clients send all important log messages to the remote syslog-ng server, where the server sorts and stores them.</para>
+      <para>This manual page is only an abstract, for the complete documentation of AxoSyslog, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>The  Administrator Guide</command></link> or <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/">the official AxoSyslog website</link>.</para>
+      <para>The  application is a flexible and highly scalable system logging application. Typically, AxoSyslog is used to manage log messages and implement centralized logging, where the aim is to collect the log messages of several devices on a single, central log server. The different devices - called AxoSyslog clients - all run AxoSyslog, and collect the log messages from the various applications, files, and other <emphasis>sources</emphasis>. The clients send all important log messages to the remote AxoSyslog server, where the server sorts and stores them.</para>
     </refsection>
     <refsection>
       <title>Options</title>
@@ -96,14 +96,14 @@
                         <indexterm type="parameter"><primary>chroot</primary></indexterm>
                     </term>
           <listitem>
-            <para>Change root to the specified directory. The configuration file is read after chrooting so, the configuration file must be available within the chroot. That way it is also possible to reload the syslog-ng configuration after chrooting. However, note that the <parameter>--user</parameter> and <parameter>--group</parameter> options are resolved before chrooting.</para>
+            <para>Change root to the specified directory. The configuration file is read after chrooting so, the configuration file must be available within the chroot. That way it is also possible to reload the AxoSyslog configuration after chrooting. However, note that the <parameter>--user</parameter> and <parameter>--group</parameter> options are resolved before chrooting.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
           <term><command>--control &lt;file&gt; </command> or <command>-c &lt;file&gt;</command>
                     </term>
           <listitem>
-            <para>Set the location of the syslog-ng control socket. Default value: <filename>/var/run/syslog-ng.ctl</filename></para>
+            <para>Set the location of the AxoSyslog control socket. Default value: <filename>/var/run/syslog-ng.ctl</filename></para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -112,7 +112,7 @@
                         <indexterm type="parameter"><primary>debug</primary></indexterm>
                     </term>
           <listitem>
-            <para>Start syslog-ng in debug mode.</para>
+            <para>Start AxoSyslog in debug mode.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -126,7 +126,7 @@
             </indexterm>
           </term>
           <listitem>
-            <para>Enable syslog-ng to write core files in case of a crash to help support and debugging.</para>
+            <para>Enable AxoSyslog to write core files in case of a crash to help support and debugging.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -140,7 +140,7 @@
             </indexterm>
           </term>
           <listitem>
-            <para>Set the minimal number of required file descriptors (fd-s). This sets how many files syslog-ng can keep open simultaneously. Default value: <parameter>4096</parameter>. Note that this does not override the global ulimit setting of the host.</para>
+            <para>Set the minimal number of required file descriptors (fd-s). This sets how many files AxoSyslog can keep open simultaneously. Default value: <parameter>4096</parameter>. Note that this does not override the global ulimit setting of the host.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -196,7 +196,7 @@
             </indexterm>
           </term>
           <listitem>
-            <para>Run syslog-ng as root, without capability-support. This is the default behavior. On Linux, it is possible to run syslog-ng as non-root with capability-support if syslog-ng was compiled with the <parameter>--enable-linux-caps</parameter> option enabled. (Execute <command>syslog-ng --version</command> to display the list of enabled build parameters.)</para>
+            <para>Run AxoSyslog as root, without capability-support. This is the default behavior. On Linux, it is possible to run AxoSyslog as non-root with capability-support if AxoSyslog was compiled with the <parameter>--enable-linux-caps</parameter> option enabled. (Execute <command>syslog-ng --version</command> to display the list of enabled build parameters.)</para>
             <para>To run  with specific capabilities, use the <parameter>--caps</parameter> option.</para>
           </listitem>
         </varlistentry>
@@ -245,7 +245,7 @@
             </indexterm>
           </term>
           <listitem>
-            <para>Sets how to run syslog-ng: in the <parameter>foreground</parameter> (mainly used for debugging), in the <parameter>background</parameter> as a daemon, or in <parameter>safe-background</parameter> mode. By default, syslog-ng runs in <parameter>safe-background</parameter> mode. This mode creates a supervisor process called <parameter>supervising syslog-ng</parameter> , that restarts syslog-ng if it crashes.</para>
+            <para>Sets how to run AxoSyslog: in the <parameter>foreground</parameter> (mainly used for debugging), in the <parameter>background</parameter> as a daemon, or in <parameter>safe-background</parameter> mode. By default, AxoSyslog runs in <parameter>safe-background</parameter> mode. This mode creates a supervisor process called <parameter>supervising AxoSyslog</parameter> , that restarts AxoSyslog if it crashes.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -254,7 +254,7 @@
                         <indexterm type="parameter"><primary>stderr</primary></indexterm>
                     </term>
           <listitem>
-            <para>Log internal messages of syslog-ng to stderr. Mainly used for debugging purposes in conjunction with the <parameter>--foreground</parameter> option. If not specified, syslog-ng will log such messages to its internal source.</para>
+            <para>Log internal messages of AxoSyslog to stderr. Mainly used for debugging purposes in conjunction with the <parameter>--foreground</parameter> option. If not specified, AxoSyslog will log such messages to its internal source.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -273,7 +273,7 @@
                         <indexterm type="parameter"><primary>user</primary></indexterm>
                     </term>
           <listitem>
-            <para>Switch to the specified user after initializing the configuration file (and optionally chrooting). Note that it is not possible to reload the syslog-ng configuration if the specified user has no privilege to create the <filename>/dev/log</filename> file.</para>
+            <para>Switch to the specified user after initializing the configuration file (and optionally chrooting). Note that it is not possible to reload the AxoSyslog configuration if the specified user has no privilege to create the <filename>/dev/log</filename> file.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -283,7 +283,7 @@
                     </term>
           <listitem>
             <!-- FIXME does not have any arguments, what does it exactly do? -->
-            <para>Enable verbose logging used to troubleshoot syslog-ng.</para>
+            <para>Enable verbose logging used to troubleshoot AxoSyslog.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -326,9 +326,9 @@
         <link linkend="syslog-ng.conf.5"><command>syslog-ng.conf</command>(5)</link>
       </para>
       <note version="5.0">
-        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The  4.23 Administrator Guide</command></link></para>
-        <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-        <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>The  4.23 Administrator Guide</command></link></para>
+        <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+        <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
       </note>
     </refsection>
     <refsection version="5.0">
