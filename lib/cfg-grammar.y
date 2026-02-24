@@ -1659,11 +1659,13 @@ vp_option
         : KW_PAIR '(' string ':' template_content ')'
           {
             value_pairs_add_pair(last_value_pairs, $3, $5);
+            log_template_unref($5);
             free($3);
           }
         | KW_PAIR '(' string template_content ')'
           {
             value_pairs_add_pair(last_value_pairs, $3, $4);
+            log_template_unref($4);
             free($3);
           }
         | KW_KEY '(' string KW_REKEY '('
