@@ -241,7 +241,7 @@ _extract_get_timestamp_args(FilterXFunctionGetTimestamp *self, FilterXFunctionAr
   if (!idx_str)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "Second argument must be string type. " FILTERX_FUNC_GET_TIMESTAMP_USAGE);
+                  "Argument must be string type. " FILTERX_FUNC_GET_TIMESTAMP_USAGE);
       return FALSE;
     }
 
