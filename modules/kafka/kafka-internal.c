@@ -2,6 +2,7 @@
  * Copyright (c) 2020 Balabit
  * Copyright (c) 2020 Balazs Scheidler
  * Copyright (c) 2020 Vivin Peris
+ * Copyright (c) 2025 Hofi <hofione@gmail.com>
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 as published
@@ -32,7 +33,7 @@ topic_name_error_quark(void)
 }
 
 gboolean
-kafka_is_valid_topic_pattern(const gchar *name)
+kafka_is_valid_topic_name_pattern(const gchar *name)
 {
   const gchar *p;
   for (p = name; *p; p++)
@@ -49,35 +50,58 @@ kafka_is_valid_topic_pattern(const gchar *name)
 }
 
 gboolean
+kafka_validate_topic_pattern(const char *topic, GError **error)
+{
+  if (topic == NULL || *topic == 0)
+    return FALSE;
+
+  regex_t re;
+  int ret = regcomp(&re, topic, REG_EXTENDED | REG_NOSUB);
+  if (ret == 0)
+    {
+      regfree(&re);
+      return TRUE;
+    }
+  if (error)
+    g_set_error(error, TOPIC_NAME_ERROR, TOPIC_INVALID_PATTERN,
+                "kafka: topic name %s is illegal as it contains a badly formatted regex pattern", topic);
+  return FALSE;
+}
+
+gboolean
 kafka_validate_topic_name(const gchar *name, GError **error)
 {
   gint len = strlen(name);
 
   if (len == 0)
     {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_LENGTH_ZERO,
-                  "kafka: topic name is illegal, it can't be empty");
+      if (error)
+        g_set_error(error, TOPIC_NAME_ERROR, TOPIC_LENGTH_ZERO,
+                    "kafka: topic name is illegal, it can't be empty");
       return FALSE;
     }
 
   if ((!g_strcmp0(name, ".")) || !g_strcmp0(name, ".."))
     {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_DOT_TWO_DOTS,
-                  "kafka: topic name cannot be . or ..");
+      if (error)
+        g_set_error(error, TOPIC_NAME_ERROR, TOPIC_DOT_TWO_DOTS,
+                    "kafka: topic name cannot be . or ..");
       return FALSE;
     }
 
   if (len > 249)
     {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_EXCEEDS_MAX_LENGTH,
-                  "kafka: topic name cannot be longer than 249 characters");
+      if (error)
+        g_set_error(error, TOPIC_NAME_ERROR, TOPIC_EXCEEDS_MAX_LENGTH,
+                    "kafka: topic name cannot be longer than 249 characters");
       return FALSE;
     }
 
-  if (!kafka_is_valid_topic_pattern(name))
+  if (FALSE == kafka_is_valid_topic_name_pattern(name))
     {
-      g_set_error(error, TOPIC_NAME_ERROR, TOPIC_INVALID_PATTERN,
-                  "kafka: topic name %s is illegal as it contains characters other than pattern [-._a-zA-Z0-9]+", name);
+      if (error)
+        g_set_error(error, TOPIC_NAME_ERROR, TOPIC_INVALID_PATTERN,
+                    "kafka: topic name %s is illegal as it contains characters other than pattern [-._a-zA-Z0-9]+", name);
       return FALSE;
     }
 
@@ -119,9 +143,9 @@ kafka_conf_set_prop(rd_kafka_conf_t *conf, const gchar *name, const gchar *value
 {
   gchar errbuf[1024];
 
-  msg_debug("kafka: setting librdkafka config property",
-            evt_tag_str("name", name),
-            evt_tag_str("value", value));
+  kafka_msg_debug("kafka: setting librdkafka config property",
+                  evt_tag_str("name", name),
+                  evt_tag_str("value", value));
   if (rd_kafka_conf_set(conf, name, value, errbuf, sizeof(errbuf)) < 0)
     {
       msg_error("kafka: error setting librdkafka config property",
@@ -168,9 +192,10 @@ void
 kafka_log_partition_list(const rd_kafka_topic_partition_list_t *partitions)
 {
   for (int i = 0 ; i < partitions->cnt ; i++)
-    msg_debug("kafka: partition",
-              evt_tag_str("topic", partitions->elems[i].topic),
-              evt_tag_int("partition", (int) partitions->elems[i].partition));
+    msg_verbose("kafka: partition",
+                evt_tag_str("topic", partitions->elems[i].topic),
+                evt_tag_int("partition", (int) partitions->elems[i].partition),
+                evt_tag_long("offset", (long) partitions->elems[i].offset));
 }
 
 void
@@ -248,7 +273,8 @@ kafka_unregister_counters(KafkaSourceDriver *self,
 void
 kafka_options_defaults(KafkaOptions *self)
 {
-  self->poll_timeout = 1000;
+  self->poll_timeout = 10000; /* poll_timeout milliseconds - 10 seconds */
+  self->state_update_timeout = 1000; /* state_update_timeout milliseconds - 1 second */
   self->kafka_logging = KFL_DISABLED;
 }
 
@@ -303,6 +329,12 @@ inline void
 kafka_options_set_poll_timeout(KafkaOptions *self, gint poll_timeout)
 {
   self->poll_timeout = poll_timeout;
+}
+
+inline void
+kafka_options_set_state_update_timeout(KafkaOptions *self, gint state_update_timeout)
+{
+  self->state_update_timeout = state_update_timeout;
 }
 
 void
