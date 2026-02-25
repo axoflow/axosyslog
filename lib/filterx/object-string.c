@@ -30,6 +30,8 @@
 #include "str-utils.h"
 #include "utf8utils.h"
 
+#define FILTERX_STRING_FLAG_STR_ALLOCATED      0x01
+#define FILTERX_STRING_FLAG_STR_BORROWED_SLICE 0x02
 
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
@@ -95,6 +97,8 @@ _free(FilterXObject *s)
   FilterXString *self = (FilterXString *) s;
   if (self->super.flags & FILTERX_STRING_FLAG_STR_ALLOCATED)
     g_free((gchar *) self->str);
+  else if (self->super.flags & FILTERX_STRING_FLAG_STR_BORROWED_SLICE)
+    filterx_object_unref(self->storage.slice);
   filterx_object_free_method(s);
 }
 
@@ -183,20 +187,20 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
   if (translate)
-    translate(self->storage, str, (gsize *) &str_len);
+    translate(self->storage.bytes, str, (gsize *) &str_len);
   else
-    memcpy(self->storage, str, str_len);
+    memcpy(self->storage.bytes, str, str_len);
   self->str_len = str_len;
 
   /* NOTE: in DEBUG mode we always use a non-NUL termination to trigger
    * length handling bugs in newly introduced code */
 
+  self->str = self->storage.bytes;
 #if SYSLOG_NG_ENABLE_DEBUG
-  self->storage[str_len] = '`';
+  self->storage.bytes[str_len] = '`';
 #else
-  self->storage[str_len] = 0;
+  self->storage.bytes[str_len] = 0;
 #endif
-  self->str = self->storage;
 
   return self;
 }
@@ -393,6 +397,38 @@ FilterXObject *
 filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 {
   return &_string_new(str, str_len, _deescape_json_string)->super;
+}
+
+FilterXObject *
+_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len)
+{
+  FilterXString *self = filterx_new_object(FilterXString);
+  filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
+
+  self->super.flags |= FILTERX_STRING_FLAG_STR_BORROWED_SLICE;
+  self->str = str;
+  self->str_len = str_len;
+  self->storage.slice = filterx_object_ref(object);
+  return &self->super;
+}
+
+FilterXObject *
+_filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gsize end)
+{
+  const gchar *value;
+  gsize len;
+  if (!filterx_message_value_get_string_ref(object, &value, &len))
+    g_assert_not_reached();
+
+  g_assert(end <= len && start <= end);
+  const gchar *str = &value[start];
+  gsize str_len = end - start;
+
+  FilterXObject *cached = _filterx_string_resolve_from_cache(str, str_len);
+  if (cached)
+    return cached;
+
+  return _filterx_string_new_slice_from_borrowed_str_and_len(object, str, str_len);
 }
 
 static inline gsize
