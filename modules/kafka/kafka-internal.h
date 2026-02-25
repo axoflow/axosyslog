@@ -23,6 +23,11 @@
  *
  */
 
+/*
+ * Original Kafka source implementation sourced from https://github.com/syslog-ng/syslog-ng/pull/5564.
+ * The license has been upgraded from GPL-2.0-or-later to GPL-3.0-or-later.
+ */
+
 #ifndef KAFKA_INTERNAL_H_INCLUDED
 #define KAFKA_INTERNAL_H_INCLUDED
 
