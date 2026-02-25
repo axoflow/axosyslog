@@ -52,7 +52,7 @@ static FilterXObject *
 _search(const gchar *lhs, const gchar *pattern, FLAGSET flags)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
   _parse_search_flags(args, flags);
 
@@ -74,7 +74,7 @@ static void
 _assert_search_init_error(const gchar *lhs, const gchar *pattern)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(lhs, -1))));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new(lhs, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(pattern, -1))));
 
   GError *arg_err = NULL;

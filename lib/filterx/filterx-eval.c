@@ -334,6 +334,26 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
   failure_info->error_count = context->error_count;
 }
 
+static void
+_failure_info_clear_entry(FilterXFailureInfo *failure_info)
+{
+  for (gint i = 0; i < failure_info->error_count; i++)
+    filterx_error_clear(&failure_info->errors[i]);
+  filterx_object_unref(failure_info->meta);
+}
+
+static void
+_clear_failure_info(GArray *failure_info)
+{
+  for (guint i = 0; i < failure_info->len; ++i)
+    {
+      FilterXFailureInfo *fi = &g_array_index(failure_info, FilterXFailureInfo, i);
+      _failure_info_clear_entry(fi);
+    }
+
+  g_array_set_size(failure_info, 0);
+}
+
 FilterXEvalResult
 filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
 {
@@ -417,26 +437,6 @@ filterx_eval_begin_context(FilterXEvalContext *context,
   filterx_eval_set_context(context);
 }
 
-static void
-_failure_info_clear_entry(FilterXFailureInfo *failure_info)
-{
-  for (gint i = 0; i < failure_info->error_count; i++)
-    filterx_error_clear(&failure_info->errors[i]);
-  filterx_object_unref(failure_info->meta);
-}
-
-static void
-_clear_failure_info(GArray *failure_info)
-{
-  for (guint i = 0; i < failure_info->len; ++i)
-    {
-      FilterXFailureInfo *fi = &g_array_index(failure_info, FilterXFailureInfo, i);
-      _failure_info_clear_entry(fi);
-    }
-
-  g_array_set_size(failure_info, 0);
-}
-
 void
 filterx_eval_end_context(FilterXEvalContext *context)
 {
@@ -468,23 +468,47 @@ filterx_eval_end_context(FilterXEvalContext *context)
 }
 
 void
+filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env)
+{
+  memset(context, 0, sizeof(*context));
+  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+  context->weak_refs = env->weak_refs;
+  context->eval_control_modifier = FXC_UNSET;
+  context->previous_context = filterx_eval_get_context();
+  context->env = env;
+  filterx_eval_set_context(context);
+}
+
+void
+filterx_eval_end_restricted_context(FilterXEvalContext *context)
+{
+  _clear_errors(context);
+  filterx_eval_set_context(context->previous_context);
+}
+
+void
 filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg)
 {
   FilterXConfig *config = filterx_config_get(cfg);
-
-  g_assert(config != NULL);
-  memset(context, 0, sizeof(*context));
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-  context->weak_refs = config->weak_refs;
-  context->eval_control_modifier = FXC_UNSET;
-  filterx_eval_set_context(context);
+  filterx_eval_begin_restricted_context(context, &config->global_env);
 }
 
 void
 filterx_eval_end_compile(FilterXEvalContext *context)
 {
-  _clear_errors(context);
-  filterx_eval_set_context(NULL);
+  filterx_eval_end_restricted_context(context);
+}
+
+void
+filterx_eval_freeze_object(FilterXObject **object)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (context && context->env)
+    {
+      /* only compile contexts have an env. We can only freeze objects during compile time. */
+      filterx_env_freeze_object(context->env, object);
+    }
 }
 
 void

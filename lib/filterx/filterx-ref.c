@@ -363,29 +363,18 @@ _filterx_ref_free(FilterXObject *s)
 }
 
 static void
-_filterx_ref_make_readonly(FilterXObject *s)
-{
-  FilterXRef *self = (FilterXRef *) s;
-
-  filterx_object_make_readonly(self->value);
-}
-
-static gboolean
-_filterx_ref_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+_filterx_ref_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXRef *self = (FilterXRef *) *pself;
 
   FilterXObject *orig_value = self->value;
-
-  if (!filterx_object_dedup(&self->value, dedup_storage))
-    return FALSE;
+  filterx_object_freezer_keep(freezer, *pself);
+  filterx_object_freeze(&self->value, freezer);
 
   /* Mutable objects themselves should never be deduplicated,
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(orig_value == self->value);
-
-  return TRUE;
 }
 
 /* readonly methods */
@@ -554,7 +543,6 @@ _filterx_ref_new(FilterXObject *value)
   FilterXRef *self = filterx_new_object(FilterXRef);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
-  self->super.readonly = FALSE;
 
   self->value = value;
   g_atomic_counter_inc(&self->value->fx_ref_cnt);
@@ -581,7 +569,6 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add,
                     .add_inplace = _filterx_ref_add_inplace,
-                    .make_readonly = _filterx_ref_make_readonly,
-                    .dedup = _filterx_ref_dedup,
+                    .freeze = _filterx_ref_freeze,
                     .free_fn = _filterx_ref_free,
                    );

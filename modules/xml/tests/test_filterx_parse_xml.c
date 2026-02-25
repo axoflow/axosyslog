@@ -38,7 +38,7 @@
 static FilterXExpr *
 _create_parse_xml_expr(const gchar *raw_xml, FilterXObject *dict)
 {
-  FilterXFunctionArg *input = filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new(raw_xml, -1)));
+  FilterXFunctionArg *input = filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new(raw_xml, -1)));
   GList *args_list = g_list_append(NULL, input);
   GError *error = NULL;
   FilterXFunctionArgs *args = filterx_function_args_new(args_list, &error);

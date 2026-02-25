@@ -150,7 +150,10 @@ _literal_container_optimize(FilterXExpr *s)
   if (literal)
     return filterx_literal_new(container);
   else
-    self->sparse_container = container;
+    {
+      self->sparse_container = container;
+      filterx_eval_freeze_object(&self->sparse_container);
+    }
 
   return NULL;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,22 +19,22 @@
  * COPYING for details.
  *
  */
-#ifndef FILTERX_CONFIG_H_INCLUDED
-#define FILTERX_CONFIG_H_INCLUDED 1
 
-#include "module-config.h"
+#ifndef FILTERX_ENV_H_INCLUDED
+#define FILTERX_ENV_H_INCLUDED
+
 #include "filterx/filterx-object.h"
-#include "filterx/object-string.h"
-#include "filterx/filterx-env.h"
 
-typedef struct _FilterXConfig
+typedef struct _FilterXEnvironment
 {
-  ModuleConfig super;
-  /* config related objects, e.g. frozen string literals, etc */
-  FilterXEnvironment global_env;
-} FilterXConfig;
+  GPtrArray *frozen_objects;
+  GHashTable *deduplicated_objects;
+  GPtrArray *weak_refs;
+} FilterXEnvironment;
 
-FilterXConfig *filterx_config_get(GlobalConfig *cfg);
-void filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object);
+void filterx_env_freeze_object(FilterXEnvironment *self, FilterXObject **object);
+void filterx_env_move(FilterXEnvironment *target, FilterXEnvironment *source);
+void filterx_env_init(FilterXEnvironment *self);
+void filterx_env_clear(FilterXEnvironment *self);
 
 #endif
