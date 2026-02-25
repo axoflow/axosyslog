@@ -50,14 +50,20 @@ metrics_probe_test_get_stats_counter_value(const gchar *key, StatsClusterLabel *
   StatsClusterKey sc_key;
   stats_cluster_single_key_set(&sc_key, key, labels, labels_len);
 
+  StatsCluster *cluster;
+  StatsCounterItem *counter;
+
   stats_lock();
   {
-    StatsCounterItem *counter;
-    StatsCluster *cluster = stats_register_dynamic_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &counter);
-    cr_assert(cluster, "Cluster does not exist, probably we have reached max-stats-dynamics().");
+    cluster = stats_register_dynamic_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &counter);
+  }
+  stats_unlock();
 
-    value = stats_counter_get(counter);
+  cr_assert(cluster, "Cluster does not exist, probably we have reached max-stats-dynamics().");
+  value = stats_counter_get(counter);
 
+  stats_lock();
+  {
     stats_unregister_dynamic_counter(cluster, SC_TYPE_SINGLE_VALUE, &counter);
   }
   stats_unlock();
@@ -81,9 +87,9 @@ metrics_probe_test_assert_counter_value(const gchar *key, StatsClusterLabel *lab
           if (i != 0)
             g_string_append(formatted_labels, ", ");
 
-          g_string_append(formatted_labels, labels[i].name);
+          g_string_append_len(formatted_labels, labels[i].name, labels[i].name_len);
           g_string_append(formatted_labels, " => ");
-          g_string_append(formatted_labels, labels[i].value);
+          g_string_append_len(formatted_labels, labels[i].value, labels[i].value_len);
         }
 
       g_string_append_c(formatted_labels, ')');
