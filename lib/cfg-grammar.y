@@ -1723,7 +1723,7 @@ dyn_metrics_template_labels_opt
 dyn_metrics_template_label_template
         : string LL_ARROW template_content
           {
-            dyn_metrics_template_add_label_template(last_dyn_metrics_template, $1, $3);
+            dyn_metrics_template_add_label_template(last_dyn_metrics_template, $1, strlen($1), $3);
             free($1);
             log_template_unref($3);
           }
