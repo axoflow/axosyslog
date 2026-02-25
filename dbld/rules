@@ -158,7 +158,6 @@ docker-builder:
 	$(DOCKER) build $(DOCKER_BUILD_ARGS) --progress=plain -t ${CONTAINER_REGISTRY}/axosyslog-builder -f docker/axosyslog-builder.dockerfile docker
 
 docker: pkg-tarball
-	rm docker/apkbuild/axoflow/axosyslog/*.tar.gz || true
 	cp $(TARBALL) docker/apkbuild/axoflow/axosyslog
 	$(DOCKER) build $(DOCKER_BUILD_ARGS) --progress=plain --build-arg=SNAPSHOT_VERSION=$$(cat VERSION.txt)_git$$(date +%Y%m%d) --build-arg=PKG_TYPE=snapshot -t ${CONTAINER_REGISTRY}/axosyslog -t ${CONTAINER_REGISTRY}/axosyslog:dbld-snapshot -f docker/axosyslog.dockerfile docker
 
