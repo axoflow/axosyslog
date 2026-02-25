@@ -33,6 +33,7 @@
 #include "metrics/dyn-metrics-store.h"
 #include "timeutils/misc.h"
 #include "qdisk.h"
+#include "reloc.h"
 
 #include <errno.h>
 #include <iv.h>
@@ -375,6 +376,25 @@ _init(gint type, gpointer c)
   _update_all_dir_metrics(self);
 }
 
+// This runs during pre_pre_init because acquire queues are running during pre_init
+static void
+_find_abandoned_disk_buffers_in_default_dir(gint type, gpointer c)
+{
+  DiskQGlobalMetrics *self = &diskq_global_metrics;
+  const gchar *dir = get_installation_path_for(SYSLOG_NG_PATH_LOCALSTATEDIR);
+  g_mutex_lock(&self->lock);
+  {
+    GHashTable *tracked_files = g_hash_table_lookup(self->dirs, dir);
+    if (!tracked_files)
+      {
+        tracked_files = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+        _track_disk_buffer_files_in_dir(dir, tracked_files);
+        g_hash_table_insert(self->dirs, g_strdup(dir), tracked_files);
+      }
+  }
+  g_mutex_unlock(&self->lock);
+}
+
 static void
 _deinit(gint type, gpointer c)
 {
@@ -406,6 +426,7 @@ diskq_global_metrics_init(void)
     return;
 
   register_application_hook(AH_STARTUP, _new, NULL, AHM_RUN_ONCE);
+  register_application_hook(AH_CONFIG_PRE_PRE_INIT, _find_abandoned_disk_buffers_in_default_dir, NULL, AHM_RUN_REPEAT);
   register_application_hook(AH_CONFIG_CHANGED, _init, NULL, AHM_RUN_REPEAT);
   register_application_hook(AH_CONFIG_STOPPED, _deinit, NULL, AHM_RUN_REPEAT);
   register_application_hook(AH_SHUTDOWN, _free, NULL, AHM_RUN_ONCE);
