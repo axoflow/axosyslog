@@ -254,6 +254,18 @@ filterx_string_hash(FilterXObject *s)
   return _filterx_string_hash(self);
 }
 
+/* glib hash equal function */
+static inline gboolean
+filterx_string_equal(FilterXObject *s, FilterXObject *o)
+{
+  if (s == o)
+    return TRUE;
+
+  FilterXString *self = (FilterXString *) s;
+  FilterXString *other = (FilterXString *) o;
+  return strn_eq_strn(self->str, self->str_len, other->str, other->str_len);
+}
+
 void filterx_string_global_init(void);
 void filterx_string_global_deinit(void);
 
