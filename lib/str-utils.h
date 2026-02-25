@@ -113,6 +113,36 @@ _strchr_optimized_for_single_char_haystack(const char *str, int c)
   return strchr(str + 1, c);
 }
 
+/* NOTE: given a NUL terminated string and a potentially non-NUL terminated one,
+ * check if they are equal */
+static inline gboolean
+strn_eq_strz(const char *str, const char *asciiz, size_t str_len)
+{
+  if (strncmp(asciiz, str, str_len) != 0)
+    return FALSE;
+  return asciiz[str_len] == 0;
+}
+
+static inline gboolean
+strn_eq_strn(const char *str1, gsize str1_len, const char *str2, size_t str2_len)
+{
+  if (str1_len != str2_len)
+    return FALSE;
+  return memcmp(str1, str2, str1_len) == 0;
+}
+
+static inline guint
+strn_hash(const gchar *str, gsize str_len)
+{
+  const char *p;
+  guint32 h = 5381;
+
+  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
+    h = (h << 5) + h + *p;
+
+  return h;
+}
+
 /*
  * strsplit() splits the `str` into `maxtokens` pieces.
  * This version skips multiple `delims`.

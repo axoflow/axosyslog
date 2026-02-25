@@ -56,11 +56,11 @@ _append_inner_data_dict_element(FilterXObject *key, FilterXObject *value, gpoint
   if (value_str_len)
     {
       gchar *escaped_value = g_markup_escape_text(value_str, value_str_len);
-      g_string_append_printf(buffer, "<Data Name='%s'>%s</Data>", key_str, escaped_value);
+      g_string_append_printf(buffer, "<Data Name='%.*s'>%s</Data>", (gint) key_str_len, key_str, escaped_value);
       g_free(escaped_value);
     }
   else
-    g_string_append_printf(buffer, "<Data Name='%s' />", key_str);
+    g_string_append_printf(buffer, "<Data Name='%.*s' />", (gint) key_str_len, key_str);
   return TRUE;
 }
 
@@ -92,7 +92,7 @@ _append_data_element(FilterXObject *key, FilterXObject *value, gpointer user_dat
     }
 
   gchar *escaped_value = g_markup_escape_text(value_str, value_str_len);
-  self->append_leaf(key_str, escaped_value, strlen(escaped_value), buffer);
+  self->append_leaf(key_str, key_str_len, escaped_value, strlen(escaped_value), buffer);
   g_free (escaped_value);
   return TRUE;
 }
@@ -135,14 +135,12 @@ _insert_event_id_qualifier(const char *key_str, const char *value_str, GString *
 }
 
 static void
-_append_leaf(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer)
+_append_leaf_windows_event(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len, GString *buffer)
 {
-  if (g_strcmp0(key_str, "EventIDQualifiers") == 0)
+  if (strn_eq_strz(key_str, "EventIDQualifiers", key_str_len))
     _insert_event_id_qualifier(key_str, value_str, buffer);
-  else if(value_str_len)
-    g_string_append_printf(buffer, "<%s>%s</%s>", key_str, value_str, key_str);
   else
-    g_string_append_printf(buffer, "<%s/>", key_str);
+    append_leaf(key_str, key_str_len, value_str, value_str_len, buffer);
 }
 
 static gboolean
@@ -162,10 +160,10 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
       return FALSE;
     }
 
-  append_inner_dict_start_tag(key_str, buffer);
+  append_inner_dict_start_tag(key_str, key_str_len, buffer);
   gsize prev_buffer_len = buffer->len;
 
-  if (g_strcmp0(key_str, "EventData") == 0)
+  if (strn_eq_strz(key_str, "EventData", key_str_len))
     {
       FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
       if(!filterx_object_iter(dict_unwrapped, _append_data_dict, user_data))
@@ -178,7 +176,7 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
         return FALSE;
     }
 
-  append_inner_dict_end_tag(key_str, user_data, prev_buffer_len);
+  append_inner_dict_end_tag(key_str, key_str_len, user_data, prev_buffer_len);
 
   return TRUE;
 }
@@ -192,7 +190,7 @@ filterx_function_format_windows_eventlog_xml_new(FilterXFunctionArgs *args, GErr
   if (!self)
     return NULL;
   self->append_inner_dict = _append_inner_dict;
-  self->append_leaf = _append_leaf;
+  self->append_leaf = _append_leaf_windows_event;
 
   return s;
 }

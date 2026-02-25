@@ -114,7 +114,7 @@ _add_default_label_template(MetricsProbe *self, const gchar *label, const gchar 
 {
   LogTemplate *value_template = log_template_new(self->super.super.cfg, NULL);
   log_template_compile(value_template, value_template_str, NULL);
-  dyn_metrics_template_add_label_template(self->metrics_template, label, value_template);
+  dyn_metrics_template_add_label_template(self->metrics_template, label, -1, value_template);
   log_template_unref(value_template);
 }
 

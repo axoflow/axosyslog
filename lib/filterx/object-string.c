@@ -172,7 +172,15 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
     translate(self->storage, str, str_len);
   else
     memcpy(self->storage, str, str_len);
+
+  /* NOTE: in DEBUG mode we always use a non-NUL termination to trigger
+   * length handling bugs in newly introduced code */
+
+#if SYSLOG_NG_ENABLE_DEBUG
+  self->storage[str_len] = '`';
+#else
   self->storage[str_len] = 0;
+#endif
   self->str = self->storage;
 
   return self;
@@ -183,7 +191,7 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
 {
   FilterXString *self = (FilterXString *) *pself;
 
-  gchar *dedup_key = g_strdup_printf("string_%s", self->str);
+  gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
 
   FilterXObject *dedup_str = g_hash_table_lookup(dedup_storage, dedup_key);
   if (dedup_str)
@@ -199,18 +207,6 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   return TRUE;
 }
 
-static inline guint
-_hash_str(const gchar *str, gsize str_len)
-{
-  const char *p;
-  guint32 h = 5381;
-
-  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
-    h = (h << 5) + h + *p;
-
-  return h;
-}
-
 guint
 _filterx_string_hash(FilterXString *self)
 {
@@ -220,7 +216,7 @@ _filterx_string_hash(FilterXString *self)
    * arm).  */
 
   G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
-  self->hash = _hash_str(self->str, self->str_len);
+  self->hash = strn_hash(self->str, self->str_len);
   return self->hash;
 }
 
