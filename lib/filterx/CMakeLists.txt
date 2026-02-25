@@ -18,6 +18,7 @@ set(FILTERX_HEADERS
     filterx/expr-move.h
     filterx/expr-null-coalesce.h
     filterx/expr-plus.h
+    filterx/expr-plus-assign.h
     filterx/expr-regexp-common.h
     filterx/expr-regexp-search.h
     filterx/expr-regexp-subst.h
@@ -99,6 +100,7 @@ set(FILTERX_SOURCES
     filterx/expr-move.c
     filterx/expr-null-coalesce.c
     filterx/expr-plus.c
+    filterx/expr-plus-assign.c
     filterx/expr-regexp-common.c
     filterx/expr-regexp-search.c
     filterx/expr-regexp-subst.c
