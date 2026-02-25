@@ -62,7 +62,7 @@ _add_to_dict(FilterXVariable *variable, gpointer user_data)
   FILTERX_STRING_DECLARE_ON_STACK(name, name_str, name_len);
 
   FilterXObject *value = filterx_variable_get_value(variable);
-  FilterXObject *cloned_value = filterx_object_clone(value);
+  FilterXObject *cloned_value = filterx_object_copy(value);
   filterx_object_unref(value);
 
   gboolean success = filterx_object_set_subscript(vars, name, &cloned_value);
@@ -182,7 +182,7 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
       return FALSE;
     }
 
-  FilterXObject *cloned_value = filterx_object_clone(value);
+  FilterXObject *cloned_value = filterx_object_copy(value);
   filterx_scope_set_variable(scope, variable, &cloned_value, TRUE);
   filterx_object_unref(cloned_value);
 

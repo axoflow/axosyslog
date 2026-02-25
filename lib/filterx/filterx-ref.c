@@ -21,6 +21,7 @@
  */
 
 #include "filterx-object.h"
+#include "filterx-eval.h"
 
 /*
  * Copy-on-write architecture
@@ -131,7 +132,7 @@
  *      old and new.  They also handle filterx_object_cow_prepare() if an
  *      object is not yet wrapped.
  *
- *   2) filterx_object_clone() does not explicitly wrap a bare object,
+ *   2) filterx_object_copy() does not explicitly wrap a bare object,
  *      but will clone the xref if it is already wrapped.
  *
  * The number of copies for objects are tracked by the
@@ -262,7 +263,7 @@
  *
  *   1) when storing a value in a list/dict `filterx_object_cow_store()`
  *
- *   2) filterx_object_clone() turns the floating xref into a simple xref,
+ *   2) filterx_object_copy() turns the floating xref into a simple xref,
  *      without generating a new clone.
  *
  */
@@ -271,11 +272,7 @@ _filterx_ref_clone(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  if (s->flags & FILTERX_REF_FLAG_FLOATING)
-    {
-      /* this is where a floating ref becomes grounded */
-      return filterx_ref_ground(filterx_object_ref(s));
-    }
+  g_assert(s->floating_ref == FALSE);
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
@@ -528,7 +525,8 @@ _filterx_ref_new(FilterXObject *value)
   if (!value->type->is_mutable || filterx_object_is_ref(value))
     g_assert("filterx_ref_new() must only be used for a cowable object" && FALSE);
 #endif
-  FilterXRef *self = g_new0(FilterXRef, 1);
+//  FilterXRef *self = g_new0(FilterXRef, 1);
+  FilterXRef *self = filterx_new_object(FilterXRef);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
   self->super.readonly = FALSE;

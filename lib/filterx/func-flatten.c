@@ -147,7 +147,7 @@ _add_kvs(FilterXFunctionFlatten *self, FilterXObject *dict, GArray *kvs)
       FilterXFunctionFlattenKV *kv = &g_array_index(kvs, FilterXFunctionFlattenKV, i);
 
       /*
-       * NOTE: Normally we would need to filterx_object_clone() the object
+       * NOTE: Normally we would need to filterx_object_copy() the object
        * here to ensure we have a separate copy-on-write instance of it.
        * However, we already "own" our own a FilterXRef to it, in a different
        * location of the dict. We are basically moving that FilterXRef from one spot to another:

@@ -328,7 +328,7 @@ filterx_object_metrics_labels_get_value_ref(FilterXObject *s, gsize *len)
 FilterXObject *
 filterx_object_metrics_labels_new(guint reserved_size)
 {
-  FilterXObjectMetricsLabels *self = g_new0(FilterXObjectMetricsLabels, 1);
+  FilterXObjectMetricsLabels *self = filterx_new_object(FilterXObjectMetricsLabels);
   filterx_mapping_init_instance(&self->super, &FILTERX_TYPE_NAME(metrics_labels));
 
   self->labels = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), reserved_size);

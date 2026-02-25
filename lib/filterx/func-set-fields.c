@@ -125,7 +125,7 @@ _set_with_fallbacks(FilterXObject *dict, FilterXObject *key, GPtrArray *values)
           continue;
         }
 
-      FilterXObject *value_obj_cloned = filterx_object_clone(value_obj);
+      FilterXObject *value_obj_cloned = filterx_object_copy(value_obj);
       filterx_object_unref(value_obj);
 
       if (!filterx_object_set_subscript(dict, key, &value_obj_cloned))
