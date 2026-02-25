@@ -32,34 +32,70 @@
 #include "filterx/filterx-sequence.h"
 #include "filterx/object-extractor.h"
 #include "filterx/object-message-value.h"
+#include "filterx/filterx-eval.h"
+#include "generic-number.h"
+#include "parse-number.h"
 #include "scratch-buffers.h"
 #include "utf8utils.h"
+#include "tls-support.h"
+#include "str-utils.h"
 
 #include "logmsg/type-hinting.h"
+
+#define JSMN_STATIC 1
+#define JSMN_STRICT 1
+#define JSMN_PARENT_LINKS 1
+#include "jsmn.h"
+
+TLS_BLOCK_START
+{
+  jsmntok_t *jsmn_tokens;
+  gint jsmn_tokens_len;
+}
+TLS_BLOCK_END;
+
+#define jsmn_tokens      __tls_deref(jsmn_tokens)
+#define jsmn_tokens_len  __tls_deref(jsmn_tokens_len)
 
 /* JSON parsing */
 
 static FilterXObject *
-_convert_from_json_array(struct json_object *jso, GError **error)
+filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_t **tokens, jsmntok_t *sentinel);
+
+static FilterXObject *
+_convert_from_json_object(const gchar *json_text, gsize json_len,
+                          jsmntok_t **tokens, jsmntok_t *sentinel)
 {
-  FilterXObject *res = filterx_list_new();
+  FilterXObject *res = filterx_dict_new();
 
   filterx_object_cow_prepare(&res);
-  for (gsize i = 0; i < json_object_array_length(jso); i++)
-    {
-      struct json_object *el = json_object_array_get_idx(jso, i);
 
-      FilterXObject *o = filterx_object_from_json_object(el, error);
-      if (!o)
+  /* NOTE: skip object token */
+  jsmntok_t *token = *tokens;
+  gsize elements = token->size;
+  token++;
+  for (gint i = 0; i < elements && token < sentinel; i++)
+    {
+      FilterXObject *key = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel);
+      if (!key)
         goto error;
-      if (!filterx_sequence_append(res, &o))
+
+      FilterXObject *value = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel);
+      if (!value)
         {
-          filterx_object_unref(o);
-          g_set_error(error, 0, 0, "appending to list failed, index=%" G_GSIZE_FORMAT, i);
+          filterx_object_unref(key);
           goto error;
         }
-      filterx_object_unref(o);
+
+      gboolean success = filterx_object_set_subscript(res, key, &value);
+      filterx_object_unref(key);
+      filterx_object_unref(value);
+      if (!success)
+        {
+          goto error;
+        }
     }
+  *tokens = token;
   filterx_object_set_dirty(res, FALSE);
   return res;
 error:
@@ -68,29 +104,30 @@ error:
 }
 
 static FilterXObject *
-_convert_from_json_object(struct json_object *jso, GError **error)
+_convert_from_json_array(const gchar *json_text, gsize json_len,
+                         jsmntok_t **tokens, jsmntok_t *sentinel)
 {
-  FilterXObject *res = filterx_dict_new();
-
+  FilterXObject *res = filterx_list_new();
   filterx_object_cow_prepare(&res);
-  struct json_object_iter itr;
-  json_object_object_foreachC(jso, itr)
-  {
-    FILTERX_STRING_DECLARE_ON_STACK(key, itr.key, -1);
-    FilterXObject *o = filterx_object_from_json_object(itr.val, error);
-    if (!o)
-      goto error;
 
-    gboolean success = filterx_object_set_subscript(res, key, &o);
-    FILTERX_STRING_CLEAR_FROM_STACK(key);
-    if (!success)
-      {
-        filterx_object_unref(o);
-        g_set_error(error, 0, 0, "setting dictionary item failed, key=%s", itr.key);
+  /* NOTE: skip list token */
+  jsmntok_t *token = *tokens;
+  gsize elements = token->size;
+  token++;
+  for (gint i = 0; i < elements && token < sentinel; i++)
+    {
+      FilterXObject *o = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel);
+      if (!o)
         goto error;
-      }
-    filterx_object_unref(o);
-  }
+
+      gboolean success = filterx_sequence_append(res, &o);
+      filterx_object_unref(o);
+      if (!success)
+        {
+          goto error;
+        }
+    }
+  *tokens = token;
   filterx_object_set_dirty(res, FALSE);
   return res;
 error:
@@ -98,43 +135,213 @@ error:
   return NULL;
 }
 
-FilterXObject *
-filterx_object_from_json_object(struct json_object *jso, GError **error)
+static FilterXObject *
+_convert_from_json_number(const gchar *json_text, gsize json_len, jsmntok_t *token)
 {
-  enum json_type jst = json_object_get_type(jso);
+  gchar buf[64];
+  GenericNumber gn;
 
-  switch (jst)
+  gsize len = token->end - token->start;
+  if (len > sizeof(buf) - 1)
+    return NULL;
+  memcpy(buf, &json_text[token->start], len);
+  buf[len] = 0;
+
+  if (!parse_generic_number(buf, &gn))
+    return NULL;
+
+  return filterx_primitive_new_from_gn(&gn);
+}
+
+static FilterXObject *
+_convert_from_json_primitive(const gchar *json_text, gsize json_len,
+                             jsmntok_t **tokens, jsmntok_t *sentinel)
+{
+
+  FilterXObject *result = NULL;
+  jsmntok_t *token = *tokens;
+
+  switch (json_text[token->start])
     {
-    case json_type_null:
-      return filterx_null_new();
-    case json_type_double:
-      return filterx_double_new(json_object_get_double(jso));
-    case json_type_boolean:
-      return filterx_boolean_new(json_object_get_boolean(jso));
-    case json_type_int:
-      return filterx_integer_new(json_object_get_int64(jso));
-    case json_type_string:
-      return filterx_string_new(json_object_get_string(jso), json_object_get_string_len(jso));
-    case json_type_array:
-      return _convert_from_json_array(jso, error);
-    case json_type_object:
-      return _convert_from_json_object(jso, error);
+    case 't':
+      if (strn_eq_strz(&json_text[token->start], "true", token->end - token->start))
+        result = filterx_boolean_new(TRUE);
+      break;
+    case 'f':
+      if (strn_eq_strz(&json_text[token->start], "false", token->end - token->start))
+        result = filterx_boolean_new(FALSE);
+      break;
+    case 'n':
+      if (strn_eq_strz(&json_text[token->start], "null", token->end - token->start))
+        result = filterx_null_new();
+      break;
+    default:
+      result = _convert_from_json_number(json_text, json_len, token);
+      break;
+    }
+  if (result)
+    *tokens = token + 1;
+  return result;
+}
+
+
+static FilterXObject *
+_convert_from_json_string(const gchar *json_text, gsize json_len,
+                          jsmntok_t **tokens, jsmntok_t *sentinel)
+{
+
+  FilterXObject *result = NULL;
+  jsmntok_t *token = *tokens;
+
+  if (token->flags & JSMN_STRING_NO_ESCAPE)
+    {
+      result = filterx_string_new(&json_text[token->start], token->end - token->start);
+      filterx_string_mark_safe_without_json_escaping(result);
+    }
+  else
+    {
+      result = filterx_string_new_from_json_literal(&json_text[token->start], token->end - token->start);
+    }
+  if (result)
+    *tokens = token + 1;
+  return result;
+}
+
+static FilterXObject *
+filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_t **tokens, jsmntok_t *sentinel)
+{
+  FilterXObject *result = NULL;
+
+  jsmntok_t *token = *tokens;
+
+  if (token >= sentinel)
+    return NULL;
+
+  switch (token->type)
+    {
+    case JSMN_OBJECT:
+      result = _convert_from_json_object(json_text, json_len, &token, sentinel);
+      break;
+    case JSMN_ARRAY:
+      result = _convert_from_json_array(json_text, json_len, &token, sentinel);
+      break;
+    case JSMN_STRING:
+      g_assert(token->start <= token->end && token->end < json_len);
+      result = _convert_from_json_string(json_text, json_len, &token, sentinel);
+      break;
+    case JSMN_PRIMITIVE:
+      g_assert(token->start <= token->end && token->end < json_len);
+      result = _convert_from_json_primitive(json_text, json_len, &token, sentinel);
+      break;
+    case JSMN_UNDEFINED:
+      break;
     default:
       g_assert_not_reached();
     }
-  return NULL;
+  *tokens = token;
+  return result;
 }
 
 FilterXObject *
 filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
 {
-  g_return_val_if_fail(error == NULL || (*error) == NULL, NULL);
-  struct json_object *jso;
-  if (!type_cast_to_json(repr, repr_len, &jso, error))
-    return NULL;
+  const gint min_tokens = 256;
+  const gint max_tokens = 65536;
 
-  FilterXObject *res = filterx_object_from_json_object(jso, error);
-  json_object_put(jso);
+  g_return_val_if_fail(error == NULL || (*error) == NULL, NULL);
+
+  if (repr_len < 0)
+    repr_len = strlen(repr);
+
+  jsmn_parser parser;
+  jsmn_init(&parser);
+
+  if (jsmn_tokens == NULL)
+    {
+      jsmn_tokens_len = min_tokens;
+      jsmn_tokens = g_new(jsmntok_t, jsmn_tokens_len);
+    }
+
+  gint r;
+  gboolean try_again;
+  do
+    {
+      try_again = FALSE;
+
+      r = jsmn_parse(&parser, repr, repr_len, jsmn_tokens, jsmn_tokens_len);
+      if (r == JSMN_ERROR_NOMEM && jsmn_tokens_len < max_tokens)
+        {
+          jsmn_tokens_len *= 2;
+          jsmn_tokens = g_renew(jsmntok_t, jsmn_tokens, jsmn_tokens_len);
+          try_again = TRUE;
+        }
+    }
+  while (try_again);
+
+  if (r < 0)
+    {
+      switch (r)
+        {
+        case JSMN_ERROR_NOMEM:
+          g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_TOO_LARGE,
+                      "JSON text too large, number of tokens exceeds the maximum of %d tokens (size %ld bytes)",
+                      max_tokens, repr_len);
+          break;
+        case JSMN_ERROR_INVAL:
+          {
+            const gint excerpt_len = 20;
+            gint prologue_start = MAX((gint) parser.pos - excerpt_len, 0);
+            if (prologue_start < 0)
+              prologue_start = 0;
+            gint prologue_len = excerpt_len;
+            if (prologue_start + prologue_len > parser.pos)
+              prologue_len = parser.pos - prologue_start;
+
+            gint epilogue_len = excerpt_len;
+            if (parser.pos + epilogue_len + 1 > repr_len)
+              epilogue_len = repr_len - parser.pos - 1;
+            g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_INVALID,
+                        "JSON parse error at %d, excerpt: %.*s>%c<%.*s",
+                        parser.pos,
+                        prologue_len, &repr[prologue_start],
+                        repr[parser.pos],
+                        epilogue_len, &repr[parser.pos+1]);
+            break;
+          }
+        case JSMN_ERROR_PART:
+          {
+            const gint excerpt_len = 20;
+            gint prologue_start = (gint) parser.pos - excerpt_len;
+            if (prologue_start < 0)
+              prologue_start = 0;
+            gint prologue_len = excerpt_len;
+            if (prologue_start + prologue_len > parser.pos)
+              prologue_len = parser.pos - prologue_start;
+            g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_INCOMPLETE,
+                        "JSON text incomplete, excerpt: %.*s",
+                        prologue_len, &repr[prologue_start]);
+            break;
+          }
+        default:
+          g_assert_not_reached();
+        }
+      return NULL;
+    }
+
+  jsmntok_t *tokens = jsmn_tokens;
+  FilterXObject *res = filterx_object_from_jsmn_tokens(repr, repr_len, &tokens, tokens + r);
+
+  if (!res)
+    {
+      g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_STORE_ERROR, "Invalid JSON, unrecognized token");
+    }
+  else if (tokens != jsmn_tokens + r)
+    {
+      g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_STORE_ERROR, "Expected a single JSON object, multiple top-level objects found");
+      filterx_object_unref(res);
+      res = NULL;
+    }
+
   return res;
 }
 
@@ -158,7 +365,8 @@ filterx_parse_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   FilterXObject *res = filterx_object_from_json(repr, repr_len, &error);
   if (!res)
     {
-      filterx_simple_function_argument_error(s, "Argument must be a parseable JSON string");
+      filterx_eval_push_error_info_printf("Error parsing JSON string", s, "%s", error->message);
+      g_clear_error(&error);
       return NULL;
     }
   return res;
@@ -200,4 +408,22 @@ filterx_format_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 
   FilterXObject *arg = args[0];
   return _format_json(arg);
+}
+
+void
+filterx_json_repr_thread_init(void)
+{
+}
+
+void
+filterx_json_repr_thread_deinit(void)
+{
+  g_free(jsmn_tokens);
+  jsmn_tokens = NULL;
+}
+
+GQuark
+filterx_json_error_quark(void)
+{
+  return g_quark_from_static_string("filterx-json-error-quark");
 }

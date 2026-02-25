@@ -237,7 +237,7 @@ _repr(FilterXObject *s, GString *repr)
       double val;
       if (!type_cast_to_double(self->repr, self->repr_len, &val, NULL))
         return FALSE;
-      return double_repr(val, repr);
+      return double_repr(val, -1, repr);
     }
     case LM_VT_DATETIME:
     {
@@ -302,7 +302,7 @@ _format_json(FilterXObject *s, GString *json)
       break;
 
     case LM_VT_STRING:
-      return string_format_json(self->repr, self->repr_len, json);
+      return string_format_json(self->repr, self->repr_len, TRUE, json);
     case LM_VT_BOOLEAN:
     {
       gboolean val;

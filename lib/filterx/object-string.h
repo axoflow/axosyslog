@@ -24,6 +24,12 @@
 
 #include "filterx-object.h"
 
+/* storage for the string is allocated separately, needs an explicit free() */
+#define FILTERX_STRING_FLAG_STR_ALLOCATED          0x01
+
+/* the string holds a value that does not need escaping when generating a JSON string literal */
+#define FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED  0x02
+
 /* cache indices */
 enum
 {
@@ -53,13 +59,14 @@ struct _FilterXString
   gchar storage[];
 };
 
-typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize source_len);
+
+typedef void (*FilterXStringTranslateFunc)(gchar *target, const gchar *source, gsize *source_len);
 
 FILTERX_DECLARE_TYPE(string);
 FILTERX_DECLARE_TYPE(bytes);
 FILTERX_DECLARE_TYPE(protobuf);
 
-gboolean string_format_json(const gchar *str, gsize str_len, GString *json);
+gboolean string_format_json(const gchar *str, gsize str_len, gboolean json_escaping_needed, GString *json);
 gboolean bytes_format_json(const gchar *str, gsize str_len, GString *json);
 
 const gchar *filterx_bytes_get_value_ref(FilterXObject *s, gsize *length);
@@ -71,6 +78,7 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], 
 FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
+FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
@@ -93,6 +101,28 @@ filterx_string_get_value_ref(FilterXObject *s, gsize *length)
   else
     g_assert(self->str[self->str_len] == 0);
   return self->str;
+}
+
+static inline void
+filterx_string_mark_safe_without_json_escaping(FilterXObject *s)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)));
+#endif
+
+  s->flags |= FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED;
+}
+
+static inline gboolean
+filterx_string_is_json_escaping_needed(FilterXObject *s)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)));
+#endif
+
+  if (s->flags & FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED)
+    return FALSE;
+  return TRUE;
 }
 
 static inline FilterXObject *

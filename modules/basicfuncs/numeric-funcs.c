@@ -37,7 +37,17 @@ format_number(GString *result, LogMessageValueType *type, const GenericNumber *n
     }
 
   *type = LM_VT_DOUBLE;
-  g_string_append_printf(result, "%.*f", n->precision, gn_as_double(n));
+
+
+  /* NOTE: if precision is unknown, use up to 17 digits.  We are also using
+   * the %g format qualifier, which causes trailing zeroes to be removed.
+   * it is a good compromise between readability and accuracy.  The same
+   * format string is used by g_ascii_dtostr() */
+
+  if (n->precision >= 0)
+    g_string_append_printf(result, "%.*f", n->precision, gn_as_double(n));
+  else
+    g_string_append_printf(result, "%.17g", gn_as_double(n));
 }
 
 void
