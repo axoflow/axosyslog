@@ -19,7 +19,8 @@
  * COPYING for details.
  *
  */
-#include "filterx-config.h"
+#include "filterx/filterx-config.h"
+#include "filterx/filterx-eval.h"
 #include "cfg.h"
 
 #define MODULE_CONFIG_KEY "filterx"
@@ -29,9 +30,7 @@ filterx_config_free(ModuleConfig *s)
 {
   FilterXConfig *self = (FilterXConfig *) s;
 
-  g_ptr_array_unref(self->weak_refs);
-  g_ptr_array_unref(self->frozen_objects);
-  g_hash_table_unref(self->frozen_deduplicated_objects);
+  filterx_env_clear(&self->global_env);
   module_config_free_method(s);
 }
 
@@ -41,10 +40,7 @@ filterx_config_new(GlobalConfig *cfg)
   FilterXConfig *self = g_new0(FilterXConfig, 1);
 
   self->super.free_fn = filterx_config_free;
-  self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) _filterx_object_unfreeze_and_free);
-  self->frozen_deduplicated_objects = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
-                                                            (GDestroyNotify)_filterx_object_unfreeze_and_free);
-  self->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  filterx_env_init(&self->global_env);
   return self;
 }
 
@@ -58,4 +54,16 @@ filterx_config_get(GlobalConfig *cfg)
       g_hash_table_insert(cfg->module_config, g_strdup(MODULE_CONFIG_KEY), fxc);
     }
   return fxc;
+}
+
+void
+filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object)
+{
+  if (!cfg)
+    {
+      filterx_object_freeze(object, NULL);
+      return;
+    }
+  FilterXConfig *fxc = filterx_config_get(cfg);
+  filterx_env_freeze_object(&fxc->global_env, object);
 }

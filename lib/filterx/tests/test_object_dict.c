@@ -29,8 +29,10 @@
 #include "filterx/object-message-value.h"
 #include "filterx/expr-function.h"
 #include "filterx/json-repr.h"
+#include "filterx/filterx-config.h"
 #include "apphook.h"
 #include "scratch-buffers.h"
+#include "cfg.h"
 
 Test(filterx_dict, test_filterx_object_dict_from_repr)
 {
@@ -187,9 +189,7 @@ Test(filterx_dict, test_list_dedup)
   FilterXObject *list = _exec_list_func(filterx_string_new("[\"a\", \"b\", \"a\"]", -1));
   FilterXObject *orig_list = list;
 
-  GHashTable *dedup_store = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-  filterx_object_dedup(&list, dedup_store);
-  g_hash_table_unref(dedup_store);
+  filterx_config_freeze_object(configuration, &list);
 
   cr_assert_eq(list, orig_list);
 
@@ -204,9 +204,7 @@ Test(filterx_dict, test_dict_dedup)
   FilterXObject *dict = filterx_object_from_json("{\"a\": \"a\", \"b\": \"b\", \"c\": \"a\"}", -1, NULL);
   FilterXObject *orig_dict = dict;
 
-  GHashTable *dedup_store = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
-  filterx_object_dedup(&dict, dedup_store);
-  g_hash_table_unref(dedup_store);
+  filterx_config_freeze_object(configuration, &dict);
 
   cr_assert_eq(dict, orig_dict);
 
@@ -261,11 +259,13 @@ setup(void)
 {
   app_startup();
   init_libtest_filterx();
+  configuration = cfg_new_snippet();
 }
 
 static void
 teardown(void)
 {
+  cfg_free(configuration);
   scratch_buffers_explicit_gc();
   deinit_libtest_filterx();
   app_shutdown();

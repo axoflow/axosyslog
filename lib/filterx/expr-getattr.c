@@ -67,19 +67,16 @@ _unset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to unset from object", s, "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Failed to evaluate expression");
       return FALSE;
     }
 
-  if (variable->readonly)
+  result = filterx_object_unset_key(variable, self->attr);
+  if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to unset from object", s, "Object is readonly");
-      goto exit;
+      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Object does not support unset()");
     }
 
-  result = filterx_object_unset_key(variable, self->attr);
-
-exit:
   filterx_object_unref(variable);
   return result;
 }
@@ -97,15 +94,12 @@ _move(FilterXExpr *s)
       return NULL;
     }
 
-  if (variable->readonly)
+  result = filterx_object_move_key(variable, self->attr);
+  if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to move() from object", s, "Object is readonly");
-      goto exit;
+      filterx_eval_push_error_static_info("Failed to move() from object", s, "Object does not support move()");
     }
 
-  result = filterx_object_move_key(variable, self->attr);
-
-exit:
   filterx_object_unref(variable);
   return result;
 }
@@ -170,7 +164,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   g_assert(filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string)));
   self->attr = attr_name;
   /* NOTE: name borrows the string value from the string object */
-  self->super.name = filterx_string_get_value_ref(self->attr, NULL);
+  self->super.name = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
   return &self->super;
 }
 

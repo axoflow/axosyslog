@@ -18,6 +18,7 @@ set(FILTERX_HEADERS
     filterx/expr-move.h
     filterx/expr-null-coalesce.h
     filterx/expr-plus.h
+    filterx/expr-plus-assign.h
     filterx/expr-regexp-common.h
     filterx/expr-regexp-search.h
     filterx/expr-regexp-subst.h
@@ -33,6 +34,7 @@ set(FILTERX_HEADERS
     filterx/filterx-config.h
     filterx/filterx-error.h
     filterx/filterx-eval.h
+    filterx/filterx-env.h
     filterx/filterx-expr.h
     filterx/filterx-plist.h
     filterx/filterx-globals.h
@@ -44,12 +46,14 @@ set(FILTERX_HEADERS
     filterx/filterx-private.h
     filterx/filterx-ref.h
     filterx/filterx-scope.h
+    filterx/filterx-stashed-object.h
     filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
     filterx/filterx-dpath.h
     filterx/filterx-sequence.h
     filterx/filterx-mapping.h
     filterx/json-repr.h
+    filterx/jsmn.h
     filterx/func-flags.h
     filterx/func-flatten.h
     filterx/func-cache-json-file.h
@@ -99,6 +103,7 @@ set(FILTERX_SOURCES
     filterx/expr-move.c
     filterx/expr-null-coalesce.c
     filterx/expr-plus.c
+    filterx/expr-plus-assign.c
     filterx/expr-regexp-common.c
     filterx/expr-regexp-search.c
     filterx/expr-regexp-subst.c
@@ -114,6 +119,7 @@ set(FILTERX_SOURCES
     filterx/filterx-config.c
     filterx/filterx-error.c
     filterx/filterx-eval.c
+    filterx/filterx-env.c
     filterx/filterx-expr.c
     filterx/filterx-plist.c
     filterx/filterx-globals.c
@@ -125,6 +131,7 @@ set(FILTERX_SOURCES
     filterx/filterx-private.c
     filterx/filterx-ref.c
     filterx/filterx-scope.c
+    filterx/filterx-stashed-object.c
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
     filterx/filterx-dpath.c

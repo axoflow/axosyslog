@@ -42,8 +42,8 @@ FilterXObject *filterx_test_unknown_object_new(void);
 const gchar *filterx_test_unknown_object_marshaled_repr(gssize *len);
 const gchar *filterx_test_unknown_object_repr(gssize *len);
 
-FilterXExpr *filterx_non_literal_new(FilterXObject *object);
-FilterXExpr *filterx_non_literal_new_from_expr(FilterXExpr *expr);
+FilterXExpr *filterx_object_expr_new(FilterXObject *object);
+FilterXExpr *filterx_expr_wrapper_new(FilterXExpr *expr);
 FilterXExpr *filterx_dummy_error_new(const gchar *msg);
 
 void filterx_test_expr_set_location_with_text(FilterXExpr *expr, const gchar *filename,

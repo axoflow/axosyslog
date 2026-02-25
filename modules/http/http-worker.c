@@ -669,22 +669,18 @@ _update_status_code_metrics(HTTPDestinationWorker *self, const gchar *url, glong
   dyn_metrics_store_reset_labels_cache(self->metrics.cache);
 
   StatsClusterLabel *url_label = dyn_metrics_store_cache_label(self->metrics.cache);
-  url_label->name = "url";
-  url_label->value = url;
+  *url_label = stats_cluster_label("url", url);
 
   StatsClusterLabel *response_code_label = dyn_metrics_store_cache_label(self->metrics.cache);
   g_snprintf(self->metrics.requests_response_code_str_buffer, sizeof(self->metrics.requests_response_code_str_buffer),
              "%ld", http_code);
-  response_code_label->name = "response_code";
-  response_code_label->value = self->metrics.requests_response_code_str_buffer;
+  *response_code_label = stats_cluster_label("response_code", self->metrics.requests_response_code_str_buffer);
 
   StatsClusterLabel *driver_label = dyn_metrics_store_cache_label(self->metrics.cache);
-  driver_label->name = "driver";
-  driver_label->value = "http";
+  *driver_label = stats_cluster_label("driver", "http");
 
   StatsClusterLabel *id_label = dyn_metrics_store_cache_label(self->metrics.cache);
-  id_label->name = "id";
-  id_label->value = self->super.owner->super.super.id;
+  *id_label = stats_cluster_label("id", self->super.owner->super.super.id);
 
   StatsClusterKey key;
   stats_cluster_single_key_set(&key, "output_http_requests_total",

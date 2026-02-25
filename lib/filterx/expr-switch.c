@@ -106,18 +106,18 @@ _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_
   if (!case_value)
     return FALSE;
 
-  gsize len;
-  const gchar *str = filterx_string_get_value_ref(case_value, &len);
-  if (!str)
+  if (!filterx_object_is_type(case_value, &FILTERX_TYPE_NAME(string)))
     {
       filterx_object_unref(case_value);
       return FALSE;
     }
 
-  if (!g_hash_table_insert(self->literal_cache, g_strdup(str), filterx_expr_ref(&switch_case->super.super)))
+  /* NOTE: g_hash_table_insert() frees the key if it was a duplicate */
+  if (!g_hash_table_insert(self->literal_cache, filterx_object_ref(case_value), filterx_expr_ref(&switch_case->super.super)))
     {
+
       /* Switch case already exists, this is not allowed. */
-      _store_duplicate_cases_error(self, str);
+      _store_duplicate_cases_error(self, filterx_string_get_value_as_cstr(case_value));
     }
 
   filterx_object_unref(case_value);
@@ -169,15 +169,13 @@ _eval_body(FilterXSwitch *self, gssize target)
   return filterx_compound_expr_eval_ext(self->body, target);
 }
 
-static FilterXSwitchCase *
+static inline FilterXSwitchCase *
 _find_matching_literal_case(FilterXSwitch *self, FilterXObject *selector)
 {
-  gsize len;
-  const gchar *str = filterx_string_get_value_ref(selector, &len);
-  if (!str)
+  if (!filterx_object_is_type(selector, &FILTERX_TYPE_NAME(string)))
     return NULL;
 
-  return g_hash_table_lookup(self->literal_cache, str);
+  return g_hash_table_lookup(self->literal_cache, selector);
 }
 
 static FilterXSwitchCase *
@@ -315,7 +313,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->super.walk_children = _switch_walk;
   self->super.free_fn = _free;
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
-  self->literal_cache = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify) filterx_expr_unref);
+  self->literal_cache = g_hash_table_new_full((GHashFunc) filterx_string_hash, (GEqualFunc) filterx_string_equal, (GDestroyNotify) filterx_object_unref, (GDestroyNotify) filterx_expr_unref);
   self->selector = selector;
   self->default_target = -1;
   _build_switch_table(self, body);

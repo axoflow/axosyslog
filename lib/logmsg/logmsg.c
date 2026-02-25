@@ -2004,6 +2004,7 @@ log_msg_tags_init(void)
   log_tags_register_predefined_tag("syslog.missing_timestamp", LM_T_SYSLOG_MISSING_TIMESTAMP);
   log_tags_register_predefined_tag("syslog.invalid_hostname", LM_T_SYSLOG_INVALID_HOSTNAME);
   log_tags_register_predefined_tag("syslog.unexpected_framing", LM_T_SYSLOG_UNEXPECTED_FRAMING);
+  log_tags_register_predefined_tag("syslog.missing_message", LM_T_SYSLOG_MISSING_MESSAGE);
   log_tags_register_predefined_tag("syslog.rfc3164_missing_header", LM_T_SYSLOG_RFC3164_MISSING_HEADER);
   log_tags_register_predefined_tag("syslog.rfc3164_invalid_program", LM_T_SYSLOG_RFC_3164_INVALID_PROGRAM);
 

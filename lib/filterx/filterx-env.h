@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2025 Axoflow
- * Copyright (c) 2025 László Várady
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -21,21 +20,21 @@
  *
  */
 
-#ifndef FILTERX_DPATH_H
-#define FILTERX_DPATH_H
+#ifndef FILTERX_ENV_H_INCLUDED
+#define FILTERX_ENV_H_INCLUDED
 
-#include "filterx/filterx-expr.h"
-#include "filterx/expr-function.h"
+#include "filterx/filterx-object.h"
 
-typedef struct _FilterXDPathElement FilterXDPathElement;
+typedef struct _FilterXEnvironment
+{
+  GPtrArray *frozen_objects;
+  GHashTable *deduplicated_objects;
+  GPtrArray *weak_refs;
+} FilterXEnvironment;
 
-FilterXDPathElement *filterx_dpath_elem_object_new(FilterXObject *object);
-FilterXDPathElement *filterx_dpath_elem_expr_new(FilterXExpr *expr);
-
-/* lvalue setter */
-FilterXExpr *filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error);
-
-/* rvalue getter */
-FilterXExpr *filterx_dpath_fn_new(FilterXFunctionArgs *args, GError **error);
+void filterx_env_freeze_object(FilterXEnvironment *self, FilterXObject **object);
+void filterx_env_move(FilterXEnvironment *target, FilterXEnvironment *source);
+void filterx_env_init(FilterXEnvironment *self);
+void filterx_env_clear(FilterXEnvironment *self);
 
 #endif

@@ -49,12 +49,6 @@ _set_subscript(FilterXSetSubscript *self, FilterXObject *key, FilterXObject *new
       goto error;
     }
 
-  if (object->readonly)
-    {
-      filterx_eval_push_error("Object set-subscript failed, object is readonly", &self->super, key);
-      goto error;
-    }
-
   if (!filterx_object_set_subscript(object, key, &cloned))
     {
       filterx_eval_push_error("Object set-subscript failed", &self->super, key);

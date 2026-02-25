@@ -221,28 +221,28 @@ filterx_function_free_method(FilterXFunction *s)
   filterx_expr_free_method(&s->super);
 }
 
-static inline FilterXExpr *
+static FilterXExpr *
 _function_optimize(FilterXExpr *s)
 {
   FilterXFunction *self = (FilterXFunction *) s;
   return filterx_function_optimize_method(self);
 }
 
-static inline gboolean
+static gboolean
 _function_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunction *self = (FilterXFunction *) s;
   return filterx_function_init_method(self, cfg);
 }
 
-static inline void
+static void
 _function_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunction *self = (FilterXFunction *) s;
   return filterx_function_deinit_method(self, cfg);
 }
 
-static inline void
+static void
 _function_free(FilterXExpr *s)
 {
   FilterXFunction *self = (FilterXFunction *) s;
@@ -349,8 +349,12 @@ _get_literal_string_from_expr(FilterXExpr *expr, gsize *len)
   if (!obj)
     goto error;
 
+  gsize str_len = 0;
   /* Literal message values don't exist, so we don't need to use the extractor. */
-  str = filterx_string_get_value_ref(obj, len);
+  str = filterx_string_get_value_ref_and_assert_nul(obj, &str_len);
+
+  if (len)
+    *len = str_len;
 
   /*
    * We can unref both obj and expr, the underlying string will be kept alive as long as the literal expr is alive,
@@ -362,6 +366,19 @@ error:
   return str;
 }
 
+FilterXObject *
+filterx_function_args_get_literal_object(FilterXFunctionArgs *self, guint64 index)
+{
+  FilterXExpr *expr = _args_get_expr(self, index);
+  if (!expr)
+    return NULL;
+
+  if (!filterx_expr_is_literal(expr))
+    return NULL;
+
+  return filterx_literal_get_value(expr);
+}
+
 const gchar *
 filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 index, gsize *len)
 {
@@ -370,6 +387,17 @@ filterx_function_args_get_literal_string(FilterXFunctionArgs *self, guint64 inde
     return NULL;
 
   return _get_literal_string_from_expr(expr, len);
+}
+
+gchar *
+filterx_function_args_get_literal_string_dup(FilterXFunctionArgs *self, guint64 index)
+{
+  gsize len;
+  const gchar *value = filterx_function_args_get_literal_string(self, index, &len);
+  if (!value)
+    return NULL;
+
+  return g_strndup(value, len);
 }
 
 gboolean
@@ -425,7 +453,6 @@ filterx_function_args_get_named_literal_object(FilterXFunctionArgs *self, const 
   return filterx_literal_get_value(expr);
 }
 
-
 const gchar *
 filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name, gsize *len,
                                                gboolean *exists)
@@ -436,6 +463,17 @@ filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const 
     return NULL;
 
   return _get_literal_string_from_expr(expr, len);
+}
+
+gchar *
+filterx_function_args_get_named_literal_string_dup(FilterXFunctionArgs *self, const gchar *name, gboolean *exists)
+{
+  gsize len;
+  const gchar *value = filterx_function_args_get_named_literal_string(self, name, &len, exists);
+  if (!value)
+    return NULL;
+
+  return g_strndup(value, len);
 }
 
 gboolean
