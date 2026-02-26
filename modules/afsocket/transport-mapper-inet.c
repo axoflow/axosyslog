@@ -135,6 +135,7 @@ transport_mapper_inet_setup_stack(TransportMapper *s, LogTransportStack *stack)
     {
       LogTransportIndex switch_to;
 
+      /* NOTE: explicit transport(proxied-XXX), we customize the HAProxy transports here */
       if (_should_switch_to_tls_after_proxy_handshake(self))
         switch_to = LOG_TRANSPORT_TLS;
       else
@@ -142,6 +143,13 @@ transport_mapper_inet_setup_stack(TransportMapper *s, LogTransportStack *stack)
       if (!_setup_haproxy_transport(self, stack, initial_transport_index, switch_to))
         return FALSE;
       initial_transport_index = LOG_TRANSPORT_HAPROXY;
+    }
+  else
+    {
+      /* NOTE: haproxy auto-detection, HAProxy transport should use the active
+       * transport as it starts */
+      if (!_setup_haproxy_transport(self, stack, LOG_TRANSPORT_NONE, LOG_TRANSPORT_NONE))
+        return FALSE;
     }
 
   if (!log_transport_stack_switch(stack, initial_transport_index))
@@ -427,21 +435,6 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->delegate_tls_start_to_logproto = TRUE;
       self->super.transport_name = g_strdup("bsdsyslog+proxied-tls-passthrough");
     }
-  else if (strcasecmp(transport, "auto") == 0)
-    {
-      /* NOTE: this is temporary until TLS auto detection does not exist.
-       * In this case transport(auto) + tls() configuration means we want to
-       * start TLS first and then do the framing auto-detection.  If we have
-       * TLS auto-detection this entire block can be removed, as the "auto"
-       * proto would detect TLS and start it if needed.
-       */
-
-      self->super.logproto = self->super.transport;
-      self->super.sock_type = SOCK_STREAM;
-      self->super.sock_proto = IPPROTO_TCP;
-      self->allow_tls_configuration = TRUE;
-      self->super.transport_name = g_strdup_printf("bsdsyslog+%s", self->super.transport);
-    }
   else
     {
       self->super.logproto = self->super.transport;
@@ -558,22 +551,6 @@ transport_mapper_syslog_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->require_tls_configuration = TRUE;
       self->delegate_tls_start_to_logproto = TRUE;
       self->super.transport_name = g_strdup("rfc5425+proxied-tls-passthrough");
-    }
-  else if (strcasecmp(transport, "auto") == 0)
-    {
-      /* NOTE: this is temporary until TLS auto detection does not exist.
-       * In this case transport(auto) + tls() configuration means we want to
-       * start TLS first and then do the framing auto-detection.  If we have
-       * TLS auto-detection this entire block can be removed, as the "auto"
-       * proto would detect TLS and start it if needed.
-       */
-
-      self->super.logproto = self->super.transport;
-      self->super.sock_type = SOCK_STREAM;
-      self->super.sock_proto = IPPROTO_TCP;
-      self->server_port = SYSLOG_TRANSPORT_TCP_PORT;
-      self->allow_tls_configuration = TRUE;
-      self->super.transport_name = g_strdup_printf("rfc5424+%s", self->super.transport);
     }
   else
     {
