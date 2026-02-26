@@ -25,7 +25,7 @@
 #include "reloc.h"
 
 CacheResolver *path_resolver;
-Cache *path_cache;
+Cache *cache;
 
 typedef struct _LookupParameter
 {
@@ -50,7 +50,7 @@ ParameterizedTestParameters(reloc, test_path)
 ParameterizedTest(LookupParameter *test_data, reloc, test_path)
 {
   const gchar *result;
-  result = cache_lookup(path_cache, test_data->template);
+  result = cache_lookup(cache, test_data->template);
   cr_assert_str_eq(result, test_data->expected, "Expanded install path (%s) doesn't match expected value (%s)", result,
                    test_data->expected);
 }
@@ -59,7 +59,7 @@ static void
 setup(void)
 {
   path_resolver = path_resolver_new("/test");
-  path_cache = cache_new(path_resolver);
+  cache = cache_new(path_resolver);
 
   path_resolver_add_configure_variable(path_resolver, "${foo}", "/foo");
   path_resolver_add_configure_variable(path_resolver, "${bar}", "${foo}");
@@ -68,7 +68,7 @@ setup(void)
 static void
 teardown(void)
 {
-  cache_free(path_cache);
+  cache_free(cache);
 }
 
 TestSuite(reloc, .init = setup, .fini = teardown);
