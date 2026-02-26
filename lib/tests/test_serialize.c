@@ -55,4 +55,8 @@ Test(serialize, test_serialize)
 
   serialize_read_string(a, value);
   cr_assert_str_eq(value->str, "tarkabarka");
+
+  g_string_free(value, TRUE);
+  g_string_free(stream, TRUE);
+  serialize_archive_free(a);
 }

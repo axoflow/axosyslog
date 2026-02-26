@@ -185,6 +185,8 @@ Test(filterx_datetime, test_filterx_datetime_marshal)
   GString *repr = scratch_buffers_alloc();
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
   cr_assert_str_eq(repr->str, "1701350398.123000+01:00");
+
+  filterx_object_unref(obj);
 }
 
 Test(filterx_datetime, test_filterx_datetime_marshal_negative_offset)
@@ -197,6 +199,8 @@ Test(filterx_datetime, test_filterx_datetime_marshal_negative_offset)
   GString *repr = scratch_buffers_alloc();
   cr_assert(filterx_object_marshal(obj, repr, &lmvt));
   cr_assert_str_eq(repr->str, "1701350398.123000-3:00");
+
+  filterx_object_unref(obj);
 }
 
 Test(filterx_datetime, test_filterx_datetime_repr)

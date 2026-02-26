@@ -385,9 +385,6 @@ Test(expr_condition, test_condition_must_not_fail_on_empty_else_block)
 
 Test(expr_condition, test_condition_with_complex_expression_to_check_memory_leaks)
 {
-  GList *stmts = NULL;
-  stmts = g_list_append(stmts, filterx_literal_new(filterx_string_new("foobar", -1)));
-
   FilterXExpr *cond = filterx_conditional_new(filterx_literal_new(filterx_integer_new(0)));
   filterx_conditional_set_false_branch(cond,
                                        filterx_compound_expr_new_va(TRUE,

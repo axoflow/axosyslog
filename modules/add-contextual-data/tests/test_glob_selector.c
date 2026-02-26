@@ -29,10 +29,11 @@
 #include "cfg.h"
 #include "apphook.h"
 
+GlobalConfig *cfg;
+
 static AddContextualDataSelector *
 _create_glob_selector(const gchar *template_string, const gchar *glob1, ...)
 {
-  GlobalConfig *cfg = cfg_new_snippet();
   LogTemplate *glob_template = log_template_new(cfg, NULL);
 
   cr_assert(log_template_compile(glob_template, template_string, NULL));
@@ -40,7 +41,9 @@ _create_glob_selector(const gchar *template_string, const gchar *glob1, ...)
 
   va_list va;
   va_start(va, glob1);
-  add_contextual_data_selector_init(selector, string_vargs_to_list_va(glob1, va));
+  GList *l = string_vargs_to_list_va(glob1, va);
+  add_contextual_data_selector_init(selector, l);
+  string_list_free(l);
   va_end(va);
 
   AddContextualDataSelector *cloned = add_contextual_data_selector_clone(selector, cfg);
@@ -110,11 +113,13 @@ static void
 startup(void)
 {
   app_startup();
+  cfg = cfg_new_snippet();
 }
 
 static void
 teardown(void)
 {
+  cfg_free(cfg);
   scratch_buffers_explicit_gc();
   app_shutdown();
 }

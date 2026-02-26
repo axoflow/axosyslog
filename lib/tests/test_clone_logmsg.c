@@ -84,13 +84,13 @@ TestSuite(clone_logmsg, .init = setup, .fini = teardown);
 
 ParameterizedTestParameters(clone_logmsg, test_cloning_with_log_message)
 {
-  const gchar *messages[] =
+  static const gchar *messages[] =
   {
     "<7>1 2006-10-29T01:59:59.156+01:00 mymachine.example.com evntslog - ID47 [exampleSDID@0 iut=\"3\" eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] BOMAn application event log entry...",
     "<132>1 2006-10-29T01:59:59.156+01:00 mymachine evntslog - - [exampleSDID@0 iut=\"3\"] [eventSource=\"Application\" eventID=\"1011\"][examplePriority@0 class=\"high\"] BOMAn application event log entry...",
   };
 
-  return cr_make_param_array(const gchar *, messages, sizeof(messages) / sizeof(const gchar *));
+  return cr_make_param_array(const gchar *, messages, G_N_ELEMENTS(messages));
 }
 
 ParameterizedTest(const gchar *msg, clone_logmsg, test_cloning_with_log_message)

@@ -39,7 +39,6 @@ static void
 _init(AckRecord *self)
 {
   self->acked = FALSE;
-  log_msg_ref(self->original);
 
   log_msg_refcache_start_producer(self->original);
   log_msg_add_ack(self->original, &self->path_options);

@@ -62,5 +62,6 @@ ParameterizedTest(struct evt_tag_mem_params *params, evt_tag_mem, test)
 
   free(formatted_result);
   g_string_free(expected_result, TRUE);
+  evt_rec_free(event_rec);
   evt_ctx_free(ctx);
 }

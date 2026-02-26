@@ -42,5 +42,6 @@ void afmongodb_dd_set_write_concern(LogDriver *d, int32_t write_concern_level);
 LogTemplateOptions *afmongodb_dd_get_template_options(LogDriver *s);
 
 gboolean afmongodb_dd_private_uri_init(LogDriver *self);
+void afmongodb_dd_private_uri_deinit(LogDriver *self);
 
 #endif

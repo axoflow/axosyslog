@@ -32,6 +32,7 @@
 #include "plugin.h"
 #include "scratch-buffers.h"
 #include "hostname.h"
+#include "timeutils/cache.h"
 
 #include <time.h>
 #include <stdlib.h>
@@ -73,6 +74,7 @@ format_template_thread(gpointer s)
     }
   g_string_free(result, TRUE);
   scratch_buffers_allocator_deinit();
+  timeutils_cache_deinit();
   iv_deinit();
   return NULL;
 }
@@ -707,6 +709,7 @@ Test(template, test_type_hint_overrides_the_calculated_type)
   cr_assert_eq(type, LM_VT_STRING);
 
   log_msg_unref(msg);
+  g_string_free(formatted_value, TRUE);
   log_template_unref(template);
 }
 
@@ -754,6 +757,7 @@ Test(template, test_log_template_compile_with_invalid_type_hint_resets_the_type_
   result = log_template_compile_with_type_hint(template, "unknown(generic-string)", &error);
   cr_assert_not(result);
   cr_assert_neq(error, NULL);
+  g_clear_error(&error);
   cr_assert_eq(template->type_hint, LM_VT_NONE);
   log_template_unref(template);
 }

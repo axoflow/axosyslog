@@ -179,6 +179,8 @@ Test(filterx_cow, test_filterx_cow_make_grandchild_writable_creates_an_unshared_
   cr_assert(filterx_object_is_ref(cc));
   cr_assert(filterx_weakref_is_set_to(&((FilterXRef *) cc)->parent_container, c));
 
+  filterx_object_unref(c);
+  filterx_object_unref(cc);
   /* c'c */
   FilterXObject *c_comma_c = filterx_object_getattr(c_comma, _attr_string("cc"));
   cr_assert(filterx_object_is_ref(c_comma_c));
@@ -201,44 +203,6 @@ Test(filterx_cow, test_filterx_cow_make_grandchild_writable_creates_an_unshared_
 //  cr_assert_str_eq(c_comma_json->str, orig_json);
   cr_assert_str_eq(r_json->str, orig_json);
 
-#if 0
-
-  /* c_comma is now referencing the same object but is a separate ref instance */
-  cr_assert(c != c_comma);
-  cr_assert(filterx_object_is_ref(c_comma));
-
-  FilterXObject *c_comma_bak = c_comma;
-  cr_assert(!filterx_object_is_dirty(c_comma));
-  /* let's mutate through c_comma */
-  filterx_object_cow_make_writable(&c_comma);
-  /* we don't expect the ref to change, it's already our exclusive ref */
-  cr_assert(c_comma == c_comma_bak);
-  cr_assert(filterx_object_is_dirty(c_comma));
-
-
-#if 0
-
-  /* c first */
-  FilterXObject *cc = filterx_object_getattr(c, _attr_string("cc"));
-  cr_assert(filterx_object_is_ref(cc));
-
-  /* let's access the children for both c and c_comma and compare them */
-
-  FilterXObject *ccc = filterx_object_getattr(cc, _attr_string("ccc"));
-  cr_assert(filterx_object_is_type(ccc, &FILTERX_TYPE_NAME(string)));
-
-
-  /* access through c and c_comma still refers to the same dict, so all objects are equal */
-  cr_assert(c_comma_c == cc);
-  cr_assert(c_comma_cc == ccc);
-
-  filterx_object_unref(c_comma_cc);
-  filterx_object_unref(c_comma_c);
-  filterx_object_unref(ccc);
-  filterx_object_unref(cc);
-  filterx_object_unref(c);
-#endif
-#endif
   filterx_object_unref(c_comma_c);
   filterx_object_unref(c_comma);
   filterx_object_unref(r);

@@ -146,6 +146,7 @@ assert_invoke_failure(CfgLexerSubst *subst, const gchar *input, const gchar *exp
   cr_assert_null(result, "expected failure for value substitution, but success was returned");
   cr_assert_not_null(error, "expected a non-NULL error object for failure");
   cr_assert_str_eq(error->message, expected_error, "error message mismatch");
+  g_clear_error(&error);
   g_free(input_dup);
 }
 
