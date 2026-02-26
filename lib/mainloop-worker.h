@@ -65,6 +65,12 @@ void main_loop_worker_register_batch_callback(WorkerBatchCallback *cb);
 void main_loop_worker_invoke_batch_callbacks(void);
 void main_loop_worker_assert_batch_callbacks_were_processed(void);
 
+static inline gboolean
+main_loop_worker_batch_callback_registered(WorkerBatchCallback *cb)
+{
+  return !iv_list_empty(&cb->list);
+}
+
 typedef void (*WorkerExitNotificationFunc)(gpointer user_data);
 
 gint main_loop_worker_get_thread_index(void);

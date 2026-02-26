@@ -79,7 +79,7 @@ typedef struct _InputQueue
   guint32 len;
   guint32 non_flow_controlled_len;
   UnixTime first_message_recvd;
-  guint16 finish_cb_registered;
+  gsize total_size;
 } InputQueue;
 
 typedef struct _OverflowQueue
@@ -119,18 +119,6 @@ typedef struct _LogQueueFifo
  *
  */
 
-static void
-iv_list_update_msg_size(LogQueueFifo *self, struct iv_list_head *head)
-{
-  LogMessage *msg;
-  struct iv_list_head *ilh, *ilh2;
-  iv_list_for_each_safe(ilh, ilh2, head)
-  {
-    msg = iv_list_entry(ilh, LogMessageQueueNode, list)->msg;
-    log_queue_memory_usage_add(&self->super, log_msg_get_size(msg));
-  }
-}
-
 static gint64
 log_queue_fifo_get_length(LogQueue *s)
 {
@@ -160,7 +148,7 @@ log_queue_fifo_is_empty_racy(LogQueue *s)
       gint i;
       for (i = 0; i < self->num_input_queues && !has_message_in_queue; i++)
         {
-          has_message_in_queue |= self->input_queues[i].finish_cb_registered;
+          has_message_in_queue |= main_loop_worker_batch_callback_registered(&self->input_queues[i].cb);
         }
     }
   g_mutex_unlock(&self->super.lock);
@@ -196,6 +184,8 @@ log_queue_fifo_drop_messages_from_input_queue(LogQueueFifo *self, InputQueue *in
       iv_list_del(&node->list);
       input_queue->len--;
       log_queue_dropped_messages_inc(&self->super);
+      input_queue->total_size -= log_msg_get_size(node->msg);
+
       LogMessage *msg = log_msg_ref(node->msg);
       log_msg_free_queue_node(node);
 
@@ -257,13 +247,14 @@ log_queue_fifo_move_input_unlocked(LogQueueFifo *self, gint thread_index)
     }
 
   log_queue_queued_messages_add(&self->super, self->input_queues[thread_index].len);
-  iv_list_update_msg_size(self, &self->input_queues[thread_index].items);
+  log_queue_memory_usage_add(&self->super, self->input_queues[thread_index].total_size);
 
   iv_list_splice_tail_init(&self->input_queues[thread_index].items, &self->wait_queue.items);
   self->wait_queue.len += self->input_queues[thread_index].len;
   self->wait_queue.non_flow_controlled_len += self->input_queues[thread_index].non_flow_controlled_len;
   self->input_queues[thread_index].len = 0;
   self->input_queues[thread_index].non_flow_controlled_len = 0;
+  self->input_queues[thread_index].total_size = 0;
 }
 
 /* explicitly move input to the wait queue, to be called from the input thread */
@@ -291,7 +282,6 @@ log_queue_fifo_input_batch_callback(gpointer user_data)
   g_assert(thread_index >= 0);
 
   log_queue_fifo_move_input(self, thread_index);
-  self->input_queues[thread_index].finish_cb_registered = FALSE;
   log_queue_unref(&self->super);
   return NULL;
 }
@@ -345,7 +335,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
     {
       /* fastpath, use per-thread input FIFOs */
 
-      if (!self->input_queues[thread_index].finish_cb_registered)
+      if (!main_loop_worker_batch_callback_registered(&self->input_queues[thread_index].cb))
         {
           /* this is the first item in the input FIFO, register a finish
            * callback to make sure it gets moved to the wait_queue if the
@@ -355,7 +345,6 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
            */
 
           main_loop_worker_register_batch_callback(&self->input_queues[thread_index].cb);
-          self->input_queues[thread_index].finish_cb_registered = TRUE;
           log_queue_ref(&self->super);
           self->input_queues[thread_index].first_message_recvd = msg->timestamps[LM_TS_RECVD];
         }
@@ -363,6 +352,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
       log_msg_write_protect(msg);
       node = log_msg_alloc_queue_node(msg, path_options);
       iv_list_add_tail(&node->list, &self->input_queues[thread_index].items);
+      self->input_queues[thread_index].total_size += log_msg_get_size(msg);
       gsize qlen = ++self->input_queues[thread_index].len;
 
       if (!path_options->flow_control_requested)
@@ -503,7 +493,6 @@ log_queue_fifo_pop_head(LogQueue *s, LogPathOptions *path_options)
       return NULL;
     }
   log_queue_queued_messages_dec(&self->super);
-  log_queue_memory_usage_sub(&self->super, log_msg_get_size(msg));
 
   /* push to backlog */
   log_msg_ref(msg);
@@ -533,6 +522,7 @@ log_queue_fifo_ack_backlog(LogQueue *s, gint rewind_count)
 
       iv_list_del(&node->list);
       self->backlog_queue.len--;
+      log_queue_memory_usage_sub(&self->super, log_msg_get_size(node->msg));
 
       if (!node->flow_control_requested)
         self->backlog_queue.non_flow_controlled_len--;
@@ -559,7 +549,6 @@ log_queue_fifo_rewind_backlog_all(LogQueue *s)
 {
   LogQueueFifo *self = (LogQueueFifo *) s;
 
-  iv_list_update_msg_size(self, &self->backlog_queue.items);
   iv_list_splice_tail_init(&self->backlog_queue.items, &self->output_queue.items);
 
   self->output_queue.len += self->backlog_queue.len;
@@ -599,7 +588,6 @@ log_queue_fifo_rewind_backlog(LogQueue *s, guint rewind_count)
         }
 
       log_queue_queued_messages_inc(&self->super);
-      log_queue_memory_usage_add(&self->super, log_msg_get_size(node->msg));
     }
 }
 
@@ -667,7 +655,7 @@ log_queue_fifo_free(LogQueue *s)
 
   for (i = 0; i < self->num_input_queues; i++)
     {
-      g_assert(self->input_queues[i].finish_cb_registered == FALSE);
+      g_assert(!main_loop_worker_batch_callback_registered(&self->input_queues[i].cb));
       log_queue_fifo_free_queue(&self->input_queues[i].items);
     }
 

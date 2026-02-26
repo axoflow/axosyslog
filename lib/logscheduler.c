@@ -308,7 +308,6 @@ _flush_batches(gpointer s)
   for (gint partition_index = 0; partition_index < self->options->num_partitions; partition_index++)
     _move_batch_to_partition(self, thread_state, partition_index);
 
-  thread_state->batch_callback_registered = FALSE;
   return NULL;
 }
 
@@ -317,10 +316,9 @@ static void
 _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg,
               const LogPathOptions *path_options)
 {
-  if (!thread_state->batch_callback_registered)
+  if (!main_loop_worker_batch_callback_registered(&thread_state->batch_callback))
     {
       main_loop_worker_register_batch_callback(&thread_state->batch_callback);
-      thread_state->batch_callback_registered = TRUE;
     }
 
   guint partition_index = _get_partition_index(self, thread_state, msg);
