@@ -397,7 +397,7 @@ target_link_libraries(
     ${Gettext_LIBRARIES}
     ${IVYKIS_LIBRARY}
     ${JSONC_LIBRARY}
-    ${LIBPCRE_LIBRARIES}
+    PkgConfig::LIBPCRE
     ${Libsystemd_LIBRARIES}
     ${LIBUNWIND_LIBRARIES}
     resolv

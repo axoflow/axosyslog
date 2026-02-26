@@ -335,7 +335,7 @@ include(python_build_venv)
 include(openssl_functions)
 openssl_set_defines()
 
-pkg_check_modules(LIBPCRE REQUIRED libpcre2-8)
+pkg_check_modules(LIBPCRE REQUIRED IMPORTED_TARGET libpcre2-8)
 
 option (ENABLE_TCP_WRAPPER "Enable TCP wrapper support" ${WRAP_FOUND})
 set (SYSLOG_NG_ENABLE_TCP_WRAPPER ${ENABLE_TCP_WRAPPER})
