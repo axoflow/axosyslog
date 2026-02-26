@@ -174,10 +174,17 @@ plugin_construct_from_config(Plugin *self, CfgLexer *lexer, gpointer arg)
 static ModuleInfo *
 _get_module_info(GModule *mod)
 {
-  ModuleInfo *module_info = NULL;
+  if (!mod)
+    return NULL;
 
-  if (mod && g_module_symbol(mod, "module_info", (gpointer *) &module_info))
+  ModuleInfo *(*module_get_info)(void);
+  if (g_module_symbol(mod, "sng_module_get_info", (gpointer *) &module_get_info))
+    return module_get_info();
+
+  ModuleInfo *module_info = NULL;
+  if (g_module_symbol(mod, "module_info", (gpointer *) &module_info))
     return module_info;
+
   return NULL;
 }
 
