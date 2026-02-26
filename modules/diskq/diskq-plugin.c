@@ -43,15 +43,20 @@ static Plugin diskq_plugins[] =
 };
 
 #ifndef STATIC
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "disk_buffer",
-  .version = SYSLOG_NG_VERSION,
-  .description = "This module provides disk buffer based queuing mechanism",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = diskq_plugins,
-  .plugins_len = G_N_ELEMENTS(diskq_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "disk_buffer",
+    .version = SYSLOG_NG_VERSION,
+    .description = "This module provides disk buffer based queuing mechanism",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = diskq_plugins,
+    .plugins_len = G_N_ELEMENTS(diskq_plugins),
+  };
+
+  return &info;
+}
 #endif
 
 gboolean

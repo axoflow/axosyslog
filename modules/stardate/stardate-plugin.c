@@ -39,13 +39,18 @@ stardate_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "stardate",
-  .version = SYSLOG_NG_VERSION,
-  .description = "This function provides stardate template function: "
-  "fractional years. Example: $(stardate [--digits 2] $UNIXTIME).",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = stardate_plugins,
-  .plugins_len = G_N_ELEMENTS(stardate_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "stardate",
+    .version = SYSLOG_NG_VERSION,
+    .description = "This function provides stardate template function: "
+    "fractional years. Example: $(stardate [--digits 2] $UNIXTIME).",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = stardate_plugins,
+    .plugins_len = G_N_ELEMENTS(stardate_plugins),
+  };
+
+  return &info;
+}

@@ -41,15 +41,20 @@ static Plugin hook_commands_plugins[] =
 };
 
 #ifndef STATIC
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "hook-commands",
-  .version = SYSLOG_NG_VERSION,
-  .description = "This module provides setup/teardown commands for sources/destinations",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = hook_commands_plugins,
-  .plugins_len = G_N_ELEMENTS(hook_commands_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "hook-commands",
+    .version = SYSLOG_NG_VERSION,
+    .description = "This module provides setup/teardown commands for sources/destinations",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = hook_commands_plugins,
+    .plugins_len = G_N_ELEMENTS(hook_commands_plugins),
+  };
+
+  return &info;
+}
 #endif
 
 gboolean

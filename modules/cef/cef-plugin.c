@@ -44,12 +44,17 @@ cef_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "cef",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The CEF module provides CEF formatting support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = cef_plugins,
-  .plugins_len = G_N_ELEMENTS(cef_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "cef",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The CEF module provides CEF formatting support for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = cef_plugins,
+    .plugins_len = G_N_ELEMENTS(cef_plugins),
+  };
+
+  return &info;
+}

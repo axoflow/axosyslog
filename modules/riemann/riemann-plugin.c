@@ -43,12 +43,17 @@ riemann_module_init(PluginContext *context, CfgArgs *args G_GNUC_UNUSED)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "riemann",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The riemann module provides Riemann destination support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = &riemann_plugin,
-  .plugins_len = 1,
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "riemann",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The riemann module provides Riemann destination support for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = &riemann_plugin,
+    .plugins_len = 1,
+  };
+
+  return &info;
+}

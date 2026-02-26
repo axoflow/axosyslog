@@ -55,12 +55,17 @@ java_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "java",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The java module provides Java destination support for syslog-ng.",
-  .core_revision = "Dummy Revision",
-  .plugins = java_plugins,
-  .plugins_len = G_N_ELEMENTS(java_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "java",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The java module provides Java destination support for syslog-ng.",
+    .core_revision = "Dummy Revision",
+    .plugins = java_plugins,
+    .plugins_len = G_N_ELEMENTS(java_plugins),
+  };
+
+  return &info;
+}

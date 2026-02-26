@@ -194,12 +194,17 @@ cryptofuncs_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "cryptofuncs",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The cryptofuncs module provides cryptographic template functions.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = cryptofuncs_plugins,
-  .plugins_len = G_N_ELEMENTS(cryptofuncs_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "cryptofuncs",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The cryptofuncs module provides cryptographic template functions.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = cryptofuncs_plugins,
+    .plugins_len = G_N_ELEMENTS(cryptofuncs_plugins),
+  };
+
+  return &info;
+}

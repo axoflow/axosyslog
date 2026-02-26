@@ -42,12 +42,17 @@ rate_limit_filter_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "rate_limit_filter",
-  .version = SYSLOG_NG_VERSION,
-  .description = "Rate-limiting messages based on arbitrary keys",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = rate_limit_filter_plugins,
-  .plugins_len = G_N_ELEMENTS(rate_limit_filter_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "rate_limit_filter",
+    .version = SYSLOG_NG_VERSION,
+    .description = "Rate-limiting messages based on arbitrary keys",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = rate_limit_filter_plugins,
+    .plugins_len = G_N_ELEMENTS(rate_limit_filter_plugins),
+  };
+
+  return &info;
+}

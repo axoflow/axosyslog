@@ -37,13 +37,17 @@ graphite_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "graphite",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The graphite module provides graphite output for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = graphite_plugins,
-  .plugins_len = G_N_ELEMENTS(graphite_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "graphite",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The graphite module provides graphite output for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = graphite_plugins,
+    .plugins_len = G_N_ELEMENTS(graphite_plugins),
+  };
 
+  return &info;
+}

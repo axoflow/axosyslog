@@ -44,12 +44,17 @@ loki_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "loki",
-  .version = SYSLOG_NG_VERSION,
-  .description = "Grafana Loki plugins",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = loki_plugins,
-  .plugins_len = G_N_ELEMENTS(loki_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "loki",
+    .version = SYSLOG_NG_VERSION,
+    .description = "Grafana Loki plugins",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = loki_plugins,
+    .plugins_len = G_N_ELEMENTS(loki_plugins),
+  };
+
+  return &info;
+}

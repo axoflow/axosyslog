@@ -432,12 +432,17 @@ system_source_module_init(PluginContext *context, CfgArgs *args)
 }
 
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "system-source",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The system-source module provides support for determining the system log sources at run time.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = system_plugins,
-  .plugins_len = G_N_ELEMENTS(system_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "system-source",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The system-source module provides support for determining the system log sources at run time.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = system_plugins,
+    .plugins_len = G_N_ELEMENTS(system_plugins),
+  };
+
+  return &info;
+}

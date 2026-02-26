@@ -43,12 +43,17 @@ darwinosl_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "darwinosl",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The darwinosl module provides Darwin OSLog source drivers for syslog-ng where it is available.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = darwinosl_plugins,
-  .plugins_len = G_N_ELEMENTS(darwinosl_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "darwinosl",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The darwinosl module provides Darwin OSLog source drivers for syslog-ng where it is available.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = darwinosl_plugins,
+    .plugins_len = G_N_ELEMENTS(darwinosl_plugins),
+  };
+
+  return &info;
+}

@@ -702,12 +702,17 @@ afsmtp_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "afsmtp",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The afsmtp module provides SMTP destination support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = &afsmtp_plugin,
-  .plugins_len = 1,
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "afsmtp",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The afsmtp module provides SMTP destination support for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = &afsmtp_plugin,
+    .plugins_len = 1,
+  };
+
+  return &info;
+}
