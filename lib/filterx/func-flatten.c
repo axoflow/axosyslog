@@ -66,6 +66,7 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   GPtrArray *top_level_dict_keys = ((gpointer *) user_data)[2];
   GString *key_buffer = ((gpointer *) user_data)[3];
   gboolean is_top_level = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[4]);
+  gboolean safe_without_json_escaping = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[5]);
 
   FilterXObject *dict = filterx_ref_unwrap_ro(value);
   if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
@@ -81,10 +82,21 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
           filterx_eval_push_error("Failed to flatten object: Failed to call repr() on key", self->dict_expr, key);
           return FALSE;
         }
+      if (filterx_object_is_type(key, &FILTERX_TYPE_NAME(string)) &&
+          filterx_string_is_json_escaping_needed(key))
+        safe_without_json_escaping = FALSE;
+
       g_string_append_len(key_buffer, key_string, key_length);
       g_string_append(key_buffer, self->separator);
 
-      gpointer inner_user_data[] = { self, flattened_kvs, NULL, key_buffer, GINT_TO_POINTER(FALSE)};
+      gpointer inner_user_data[] = {
+        self,
+        flattened_kvs,
+        NULL,
+        key_buffer,
+        GINT_TO_POINTER(FALSE),
+        GINT_TO_POINTER(safe_without_json_escaping)
+      };
       gboolean result = filterx_object_iter(dict, _collect_modifications_from_elem, inner_user_data);
 
       g_string_truncate(key_buffer, orig_len);
@@ -109,6 +121,9 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   g_string_append_len(key_buffer, key_string, key_length);
 
   FilterXObject *flat_key = filterx_string_new(key_buffer->str, (gssize) MIN(key_buffer->len, G_MAXSSIZE));
+  if (safe_without_json_escaping)
+    filterx_string_mark_safe_without_json_escaping(flat_key);
+
   g_array_set_size(flattened_kvs, flattened_kvs->len+1);
   FilterXFunctionFlattenKV *kv = &g_array_index(flattened_kvs, FilterXFunctionFlattenKV, flattened_kvs->len-1);
   _kv_init(kv, flat_key, filterx_object_ref(value));
@@ -122,7 +137,7 @@ _collect_dict_modifications(FilterXFunctionFlatten *self, FilterXObject *dict,
                             GArray *flattened_kvs, GPtrArray *top_level_dict_keys)
 {
   GString *key_buffer = scratch_buffers_alloc();
-  gpointer user_data[] = { self, flattened_kvs, top_level_dict_keys, key_buffer, GINT_TO_POINTER(TRUE)};
+  gpointer user_data[] = { self, flattened_kvs, top_level_dict_keys, key_buffer, GINT_TO_POINTER(TRUE), GINT_TO_POINTER(TRUE) };
   return filterx_object_iter(dict, _collect_modifications_from_elem, user_data);
 }
 
