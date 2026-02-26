@@ -29,7 +29,7 @@ light-self-check pytest-self-check: light-venv
 	@$(LIGHT_PYTEST_CMD) $(LIGHT_SRC_DIR)/src/axosyslog_light
 
 light-check pytest-check: light-venv
-	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) -n auto $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
+	ASAN_OPTIONS="detect_odr_violation=0" LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) -n auto $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
 
 light-valgrind-check pytest-valgrind-check: light-venv
 	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no --run-under=valgrind

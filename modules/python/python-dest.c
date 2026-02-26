@@ -338,16 +338,6 @@ _py_init_bindings(PythonDestDriver *self)
       return FALSE;
     }
 
-  _inject_worker_insert_result_consts(self);
-
-  PyObject *py_log_template_options = py_log_template_options_new(&self->template_options, cfg);
-  PyObject_SetAttrString(self->py.class, "template_options", py_log_template_options);
-  Py_DECREF(py_log_template_options);
-
-  PyObject *py_seqnum = py_integer_pointer_new(&self->super.worker.instance.seq_num);
-  PyObject_SetAttrString(self->py.class, "seqnum", py_seqnum);
-  Py_DECREF(py_seqnum);
-
   self->py.instance = _py_invoke_function(self->py.class, NULL, self->binding.class, self->super.super.super.id);
   if (!self->py.instance)
     {
@@ -401,8 +391,18 @@ _py_init_bindings(PythonDestDriver *self)
       return FALSE;
     }
 
+  _inject_worker_insert_result_consts(self);
+
+  PyObject *py_log_template_options = py_log_template_options_new(&self->template_options, cfg);
+  PyObject_SetAttrString(self->py.instance, "template_options", py_log_template_options);
+  Py_DECREF(py_log_template_options);
+
+  PyObject *py_seqnum = py_integer_pointer_new(&self->super.worker.instance.seq_num);
+  PyObject_SetAttrString(self->py.instance, "seqnum", py_seqnum);
+  Py_DECREF(py_seqnum);
+
   PyObject *py_persist_name = py_get_persist_name(self);
-  PyObject_SetAttrString(self->py.class, "persist_name", py_persist_name);
+  PyObject_SetAttrString(self->py.instance, "persist_name", py_persist_name);
   Py_DECREF(py_persist_name);
 
   g_ptr_array_add(self->py._refs_to_clean, self->py.class);
@@ -419,6 +419,9 @@ _py_init_bindings(PythonDestDriver *self)
 static void
 _py_free_bindings(PythonDestDriver *self)
 {
+  if (self->py.instance)
+    PyObject_DelAttrString(self->py.instance, "template_options");
+
   if (self->py._refs_to_clean)
     g_ptr_array_free(self->py._refs_to_clean, TRUE);
 }

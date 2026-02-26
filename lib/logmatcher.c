@@ -695,6 +695,7 @@ static void
 log_matcher_pcre_re_free(LogMatcher *s)
 {
   LogMatcherPcreRe *self = (LogMatcherPcreRe *) s;
+  g_free(self->nv_prefix);
   pcre2_code_free(self->pattern);
   log_matcher_free_method(s);
 }

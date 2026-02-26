@@ -172,6 +172,7 @@ attribute_option
         : LL_IDENTIFIER '(' template_content ')'
           {
             value_pairs_add_pair(last_value_pairs, $1, $3);
+            log_template_unref($3);
             free($1);
           }
         | vp_option

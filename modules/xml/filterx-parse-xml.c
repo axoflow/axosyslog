@@ -648,6 +648,7 @@ _parse(FilterXFunctionParseXml *self, const gchar *raw_xml, gsize raw_xml_len)
         g_error_free(error);
       filterx_parse_xml_state_free(state);
       g_markup_parse_context_free(context);
+      filterx_object_unref(result);
       return NULL;
     }
 

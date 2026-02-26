@@ -44,7 +44,7 @@ Test(kafka_config, test_topic_is_mandatory)
 {
   LogDriver *driver = kafka_dd_new(configuration);
   kafka_dd_set_bootstrap_servers(driver, "localhost:9092");
-  cr_assert_not(kafka_dd_init(&driver->super));
+  cr_assert_not(log_pipe_init(&driver->super));
   assert_grabbed_log_contains("kafka: the topic() argument is required for kafka destinations");
 
   log_pipe_deinit(&driver->super);
@@ -55,7 +55,7 @@ Test(kafka_config, test_bootstrap_server_is_mandatory)
 {
   LogDriver *driver = kafka_dd_new(configuration);
   _setup_topic(driver, "test-topic");
-  cr_assert_not(kafka_dd_init(&driver->super));
+  cr_assert_not(log_pipe_init(&driver->super));
   assert_grabbed_log_contains("kafka: the bootstrap-servers() option is required for kafka destinations");
 
   log_pipe_deinit(&driver->super);
@@ -67,7 +67,7 @@ Test(kafka_config, test_mandatory_options)
   LogDriver *driver = kafka_dd_new(configuration);
   _setup_topic(driver, "default-test-topic");
   kafka_dd_set_bootstrap_servers(driver, "test-host:9092");
-  cr_assert(kafka_dd_init(&driver->super));
+  cr_assert(log_pipe_init(&driver->super));
 
   log_pipe_deinit(&driver->super);
   log_pipe_unref(&driver->super);
@@ -100,7 +100,7 @@ Test(kafka_config, cannot_override_protected_property)
   const gchar *bootstrap_servers_option = "test-host:9092";
   kafka_dd_set_bootstrap_servers(driver, bootstrap_servers_option);
   _setup_kafka_property(driver, "bootstrap.servers", "host2:9092");
-  cr_assert(kafka_dd_init(&driver->super));
+  cr_assert(log_pipe_init(&driver->super));
 
   _assert_configured_property((KafkaDestDriver *) driver, "bootstrap.servers", bootstrap_servers_option);
 
@@ -115,7 +115,7 @@ Test(kafka_config, protected_property_alias)
   const gchar *bootstrap_servers_option = "test-host:9092";
   kafka_dd_set_bootstrap_servers(driver, bootstrap_servers_option);
   _setup_kafka_property(driver, "metadata.broker.list", "host2:9092");
-  cr_assert(kafka_dd_init(&driver->super));
+  cr_assert(log_pipe_init(&driver->super));
 
   _assert_configured_property((KafkaDestDriver *) driver, "bootstrap.servers", bootstrap_servers_option);
 
@@ -131,7 +131,7 @@ Test(kafka_config, property_setting_works)
   _setup_kafka_property(driver, "retries", "1000");
   _setup_kafka_property(driver, "queue.buffering.max.messages", "65535");
   _setup_kafka_property(driver, "topic.partitioner", "consistent_random");
-  cr_assert(kafka_dd_init(&driver->super));
+  cr_assert(log_pipe_init(&driver->super));
 
   _assert_configured_property((KafkaDestDriver *) driver, "retries", "1000");
   _assert_configured_property((KafkaDestDriver *) driver, "queue.buffering.max.messages", "65535");

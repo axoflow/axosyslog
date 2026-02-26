@@ -259,6 +259,16 @@ _load_vars_eval(FilterXExpr *s)
   return success ? filterx_boolean_new(TRUE) : NULL;
 }
 
+static void
+_load_vars_free(FilterXExpr *s)
+{
+  FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
+
+  filterx_expr_unref(self->vars_expr);
+
+  filterx_function_free_method(&self->super);
+}
+
 FilterXExpr *
 filterx_function_load_vars_new(FilterXFunctionArgs *args, GError **error)
 {
@@ -270,6 +280,7 @@ filterx_function_load_vars_new(FilterXFunctionArgs *args, GError **error)
   self->super.super.init = _load_vars_init;
   self->super.super.deinit = _load_vars_deinit;
   self->super.super.optimize = _load_vars_optimize;
+  self->super.super.free_fn = _load_vars_free;
 
   if (filterx_function_args_len(args) != 1)
     {

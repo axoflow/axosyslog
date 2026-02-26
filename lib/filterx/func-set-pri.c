@@ -74,6 +74,8 @@ _set_pri_free(FilterXExpr *s)
 {
   FilterXFunctionSetPri *self = (FilterXFunctionSetPri *) s;
 
+  filterx_expr_unref(self->pri_expr);
+
   filterx_function_free_method(&self->super);
 }
 

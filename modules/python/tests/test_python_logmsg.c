@@ -212,9 +212,12 @@ ParameterizedTest(PyLogMessageSetValueTestParams *params, python_log_message, te
     cr_assert_str_eq(value, params->expected_log_msg_value);
     cr_assert(type == params->expected_log_msg_type);
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 static void
@@ -248,9 +251,12 @@ Test(python_log_message, test_python_logmessage_subscript)
     cr_assert_not_null(PyErr_Occurred());
     cr_assert(PyErr_ExceptionMatches(PyExc_KeyError));
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 Test(python_log_message, test_python_logmessage_subscript_no_typing_support)
@@ -272,9 +278,12 @@ Test(python_log_message, test_python_logmessage_subscript_no_typing_support)
     _run_scripts("result = test_msg['nonexistent']");
     _assert_python_variable_value("result", "b''");
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 typedef struct
@@ -378,9 +387,12 @@ ParameterizedTest(PyLogMessageGetTestParams *params, python_log_message, test_py
         _assert_python_variable_value("result", "'def'");
       }
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 Test(python_log_message, test_python_logmessage_get_with_default_value)
@@ -400,9 +412,12 @@ Test(python_log_message, test_python_logmessage_get_with_default_value)
     _run_scripts("result = test_msg.get('nonexistent')");
     _assert_python_variable_value("result", "None");
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 ParameterizedTestParameters(python_log_message, test_python_logmessage_get_as_str)
@@ -498,9 +513,12 @@ ParameterizedTest(PyLogMessageGetTestParams *params, python_log_message, test_py
         _assert_python_variable_value("result", "'def'");
       }
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 Test(python_log_message, test_python_logmessage_get_as_str_with_default_value)
@@ -520,9 +538,12 @@ Test(python_log_message, test_python_logmessage_get_as_str_with_default_value)
     _run_scripts("result = test_msg.get_as_str('nonexistent')");
     _assert_python_variable_value("result", "None");
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 Test(python_log_message, test_python_logmessage_set_value_no_typing_support)
@@ -541,9 +562,12 @@ Test(python_log_message, test_python_logmessage_set_value_no_typing_support)
     const gchar *script = "test_msg['test_field'] = 42\n";
     cr_assert_not(PyRun_String(script, Py_file_input, _python_main_dict, _python_main_dict));
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 Test(python_log_message, test_python_logmessage_get_value_no_typing_support)
@@ -575,9 +599,12 @@ Test(python_log_message, test_python_logmessage_get_value_no_typing_support)
     cr_assert(type == LM_VT_INTEGER);
     cr_assert_str_eq(value, "42");
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 Test(python_log_message, test_python_logmessage_set_value_indirect)
@@ -604,9 +631,12 @@ Test(python_log_message, test_python_logmessage_set_value_indirect)
 
     _assert_python_variable_value("indirect", "b'test_value'");
 
+    PyDict_DelItemString(_python_main_dict, "test_msg");
     Py_XDECREF(msg_object);
   }
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
 
 Test(python_log_message, test_py_is_log_message)
@@ -796,4 +826,6 @@ Test(python_log_message, test_python_logmessage_keys)
   Py_XDECREF(keys);
   Py_XDECREF(py_msg);
   PyGILState_Release(gstate);
+
+  log_msg_unref(msg);
 }
