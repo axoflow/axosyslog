@@ -196,6 +196,7 @@ static CfgLexerKeyword main_keywords[] =
   { "worker_partition_autoscaling_wfo", KW_WORKER_PARTITION_AUTOSCALING_WFO },
   { "batch_lines",        KW_BATCH_LINES },
   { "batch_timeout",      KW_BATCH_TIMEOUT },
+  { "batch_idle_timeout", KW_BATCH_IDLE_TIMEOUT },
   { "batch_size",         KW_BATCH_SIZE },
 
   { "read_old_records",   KW_READ_OLD_RECORDS},
