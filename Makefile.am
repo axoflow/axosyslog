@@ -25,7 +25,7 @@ DIST_SUBDIRS		=
 AM_MAKEFLAGS		= --no-print-directory
 AM_YFLAGS		= -Wno-yacc -Wno-other -Werror=conflicts-sr -Werror=conflicts-rr -Wcounterexamples
 
-AM_TESTS_ENVIRONMENT	= top_srcdir="$(top_srcdir)" CRITERION_TEST_PATTERN='!(*/*performance*)' ASAN_OPTIONS="detect_odr_violation=0" LSAN_OPTIONS="suppressions=$(top_srcdir)/tests/axosyslog-lsan.supp"
+AM_TESTS_ENVIRONMENT	= top_srcdir="$(top_srcdir)" CRITERION_TEST_PATTERN='!(*/*performance*)' LSAN_OPTIONS="suppressions=$(top_srcdir)/tests/axosyslog-lsan.supp"
 if ENABLE_SANITIZER
 LOG_COMPILER            = $(top_srcdir)/scripts/test-grep.sh
 endif
