@@ -98,6 +98,7 @@ class SyslogNg(object):
                 if not self._console_log_reader.wait_for_stop_message():
                     logger.warning("Stop message has not been found, this might be because of a very long console log")
             self._console_log_reader.check_for_unexpected_messages(unexpected_messages)
+            self._console_log_reader.close_all_fds()
             self.__validate_returncode(self._process.returncode)
             logger.info("syslog-ng process has been stopped with PID: {}\n".format(saved_pid))
         else:
