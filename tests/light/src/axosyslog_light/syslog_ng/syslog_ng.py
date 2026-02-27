@@ -91,17 +91,18 @@ class SyslogNg(object):
             result = self._syslog_ng_ctl.stop()
 
             # wait for stop and check stop result
-            self.__validate_returncode(result["exit_code"])
+            self.__validate_crash_returncode(result["exit_code"])
             if not wait_until_false(self.is_process_running):
                 self.__error_handling("syslog-ng did not stop")
             if self.start_params.stderr and self.start_params.debug and self.start_params.verbose:
                 if not self._console_log_reader.wait_for_stop_message():
                     logger.warning("Stop message has not been found, this might be because of a very long console log")
             self._console_log_reader.check_for_unexpected_messages(unexpected_messages)
+            self.__validate_returncode(self._process.returncode)
             logger.info("syslog-ng process has been stopped with PID: {}\n".format(saved_pid))
         else:
             if self._process is not None:
-                self.__validate_returncode(self._process.returncode)
+                self.__validate_crash_returncode(self._process.returncode)
             self._console_log_reader.check_for_unexpected_messages(unexpected_messages)
         self._process = None
 
@@ -112,7 +113,7 @@ class SyslogNg(object):
         result = self._syslog_ng_ctl.reload()
 
         # wait for reload and check reload result
-        self.__validate_returncode(result["exit_code"])
+        self.__validate_crash_returncode(result["exit_code"])
         if not self.__wait_for_control_socket_alive():
             self.__error_handling("Control socket not alive")
         if self.start_params.stderr and self.start_params.debug and self.start_params.verbose:
@@ -185,12 +186,12 @@ class SyslogNg(object):
         elif returncode == 1:
             raise Exception(f"syslog-ng config syntax error. See {stderr_path.absolute()} for details")
         else:
-            self.__validate_returncode(returncode)
+            self.__validate_crash_returncode(returncode)
 
     def __wait_for_control_socket_alive(self) -> bool:
         def is_alive(s: SyslogNg) -> bool:
             if not s.is_process_running():
-                self.__validate_returncode(self._process.returncode)
+                self.__validate_crash_returncode(self._process.returncode)
                 self.__error_handling("syslog-ng is not running")
             return s._syslog_ng_ctl.is_control_socket_alive()
         return wait_until_true(is_alive, self)
@@ -238,9 +239,15 @@ class SyslogNg(object):
         self._console_log_reader.dump_stderr()
         raise Exception(error_message)
 
-    def __validate_returncode(self, returncode: int):
+    def __validate_crash_returncode(self, returncode: int):
         if returncode not in [0, 1, 2]:
             # return code 1 is a directed way of termination (syntax error), it should not handle as a crash
             # return code 2 is a directed way of termination, it should not handle as a crash
             self._process = None
             assert False, "syslog-ng has crashed with return code: %s" % returncode
+
+    def __validate_returncode(self, returncode: int):
+        # only zero returncode is allowed
+        if returncode != 0:
+            self._process = None
+            assert False, "syslog-ng returned with error code: %s" % returncode
