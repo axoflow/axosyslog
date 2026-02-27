@@ -230,12 +230,12 @@ filterx_allocator_restore_position(FilterXAllocator *allocator, FilterXAllocator
         pos = &pos_zero;
 
 #if !SYSLOG_NG_ENABLE_DEBUG
-      allocator->active_area = pos->area;
       FilterXArea *area = g_ptr_array_index(allocator->areas, pos->area);
       filterx_area_reset(area, pos->area_used);
 #else
       filterx_allocator_shrink_for_debug_purposes(allocator, pos);
 #endif
+      allocator->active_area = pos->area;
     }
 }
 
