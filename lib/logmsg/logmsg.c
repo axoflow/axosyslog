@@ -481,7 +481,6 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
 {
   LogMessageQueueNode *node;
 
- #if 0
   gint cur_node = g_atomic_int_add(&msg->cur_node, 1);
   if (cur_node < msg->num_nodes)
     {
@@ -490,6 +489,7 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
     }
   else
     {
+      g_assert(cur_node <= LOGMSG_NODES_ASSERT);
       gint nodes = (volatile gint) logmsg_queue_node_max;
 
       /* this is a racy update, but it doesn't really hurt if we lose an
@@ -500,29 +500,11 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
        * pre-allocated space, we start allocating nodes dynamically from
        * heap.
        */
-      if (nodes < 32 && nodes <= msg->num_nodes)
+      if (nodes < LOGMSG_MAX_NODES && nodes <= msg->num_nodes)
         logmsg_queue_node_max = msg->num_nodes + 1;
       node = g_slice_new(LogMessageQueueNode);
       node->embedded = FALSE;
     }
-#else
-    gint cur_node;
-    do {
-        cur_node = g_atomic_int_get(&msg->cur_node);
-        if (cur_node >= msg->num_nodes)
-        {
-            node = g_slice_new(LogMessageQueueNode);
-            node->embedded = FALSE;
-            log_msg_init_queue_node(msg, node, path_options);
-            return node;
-        }
-    } while (!g_atomic_int_compare_and_exchange(&msg->cur_node,
-                                                cur_node,
-                                                cur_node + 1));
-    node = &msg->nodes[cur_node];
-    node->embedded = TRUE;
-
-#endif
   log_msg_init_queue_node(msg, node, path_options);
   return node;
 }
