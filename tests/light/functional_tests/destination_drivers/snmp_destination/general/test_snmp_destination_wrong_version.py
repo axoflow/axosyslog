@@ -21,9 +21,11 @@
 #
 #############################################################################
 import pytest
+from axosyslog_light.common.operations import ignore_asan_memleaks
 from axosyslog_light.helpers.snmptrapd.conftest import *  # noqa:F403, F401
 
 
+@ignore_asan_memleaks
 @pytest.mark.snmp
 def test_snmp_dest_wrong_version(config, syslog_ng, snmptrapd, snmp_test_params):
     generator_source = config.create_example_msg_generator_source(num=1)

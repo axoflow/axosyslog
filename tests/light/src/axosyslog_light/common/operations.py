@@ -20,9 +20,23 @@
 # COPYING for details.
 #
 #############################################################################
+import functools
+import os
 
 
 def cast_to_list(items):
     if isinstance(items, list):
         return items
     return [items]
+
+
+def ignore_asan_memleaks(func):
+    @functools.wraps(func)
+    def decorated_func(*args, **kwargs):
+        original_asan_options = os.environ.get("ASAN_OPTIONS", "")
+        os.environ["ASAN_OPTIONS"] = f"{original_asan_options}:detect_leaks=0"
+        try:
+            return func(*args, **kwargs)
+        finally:
+            os.environ["ASAN_OPTIONS"] = original_asan_options
+    return decorated_func

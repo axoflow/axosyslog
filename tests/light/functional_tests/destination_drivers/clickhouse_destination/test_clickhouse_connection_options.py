@@ -25,6 +25,7 @@ import uuid
 
 import pytest
 from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.common.operations import ignore_asan_memleaks
 from axosyslog_light.driver_io.clickhouse.clickhouse_io import ClickhouseClient
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_OPTIONS_WITH_SCHEMA
 from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
@@ -118,6 +119,7 @@ def test_clickhouse_destination_invalid_options_db_run(request, config, syslog_n
     assert syslog_ng.wait_for_message_in_console_log("ClickHouse server responded with an exception") != []
 
 
+@ignore_asan_memleaks
 @pytest.mark.parametrize(
     "ch_database, ch_table, ch_user", [
         (None, "test_table", "default"),

@@ -22,6 +22,7 @@
 #
 #############################################################################
 import pytest
+from axosyslog_light.common.operations import ignore_asan_memleaks
 
 
 test_parameters_raw = [
@@ -38,6 +39,7 @@ test_parameters_raw = [
 ]
 
 
+@ignore_asan_memleaks
 @pytest.mark.parametrize(
     "input_message, prefix, patterns, flags, template, compile_result, expected_result, expected_value", test_parameters_raw,
     ids=[

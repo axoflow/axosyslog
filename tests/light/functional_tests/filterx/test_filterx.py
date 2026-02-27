@@ -27,6 +27,7 @@ from datetime import datetime
 from datetime import timezone
 
 import pytest
+from axosyslog_light.common.operations import ignore_asan_memleaks
 from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
@@ -1042,6 +1043,7 @@ def test_unset(config, syslog_ng):
     assert file_true.read_log() == ""
 
 
+@ignore_asan_memleaks
 def test_strptime_error_result(config, syslog_ng):
     _ = create_config(
         config, """
@@ -1053,6 +1055,7 @@ def test_strptime_error_result(config, syslog_ng):
     assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
+@ignore_asan_memleaks
 def test_strftime_error_result(config, syslog_ng):
     _ = create_config(
         config, """
@@ -1119,6 +1122,7 @@ def test_strptime_failure_result(config, syslog_ng):
     assert file_true.read_log() == "null"
 
 
+@ignore_asan_memleaks
 def test_set_timestamp_wrong_param_error_result(config, syslog_ng):
     _ = create_config(
         config, """
@@ -1131,6 +1135,7 @@ def test_set_timestamp_wrong_param_error_result(config, syslog_ng):
     assert "syslog-ng config syntax error" in str(exec_info.value)
 
 
+@ignore_asan_memleaks
 def test_set_timestamp_invalid_stamp_value_error_result(config, syslog_ng):
     _ = create_config(
         config, """
@@ -1188,6 +1193,7 @@ def test_set_timestamp_set_recvd(config, syslog_ng):
     assert file_true.read_log() == "2000-01-01T00:00:00+02:00"
 
 
+@ignore_asan_memleaks
 def test_set_pri_no_arg_error_result(config, syslog_ng):
     _ = create_config(
         config, """
@@ -1315,6 +1321,7 @@ def test_regexp_nomatch(config, syslog_ng):
     assert file_true.read_log() == exp
 
 
+@ignore_asan_memleaks
 def test_regexp_match_error_in_pattern(config, syslog_ng):
     _ = create_config(
         config, r"""
@@ -1400,6 +1407,7 @@ def test_regexp_search(config, syslog_ng):
     }
 
 
+@ignore_asan_memleaks
 def test_regexp_search_error_in_pattern(config, syslog_ng):
     _ = create_config(
         config, r"""
@@ -1952,6 +1960,7 @@ def test_regexp_subst(config, syslog_ng):
     assert file_true.read_log() == exp
 
 
+@ignore_asan_memleaks
 def test_regexp_subst_all_args_are_mandatory(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, r"""
@@ -2873,6 +2882,7 @@ def test_arithmetic_operators_type(config, syslog_ng):
     assert file_true.read_log() == exp
 
 
+@ignore_asan_memleaks
 def test_format_xml_invalid_arg_number(config, syslog_ng):
     _ = create_config(
         config, """

@@ -21,6 +21,7 @@
 #
 #############################################################################
 import logging
+import os
 
 import psutil
 from axosyslog_light.executors.command_executor import prepare_executable_command
@@ -38,7 +39,7 @@ class ProcessExecutor(object):
         printable_command = prepare_printable_command(command)
         executable_command = prepare_executable_command(command)
         stdout, stderr = prepare_std_outputs(stdout_path, stderr_path)
-        env = psutil.Process().environ()
+        env = os.environ.copy()
         if "VIRTUAL_ENV" in env:
             del env["VIRTUAL_ENV"]
         logger.info("Following process will be started:\n{}\n".format(printable_command))
