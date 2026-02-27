@@ -292,8 +292,6 @@ struct _LogMessage
   /* number of nodes pre-allocated as a part of LogMessage at the tail end of the structure */
   guint8 num_nodes;
 
-  /* the next available node */
-  guint8 cur_node;
   /* is this message currently read only, used to track when we need to copy-on-write */
   guint8 write_protected;
   /* identifier of the source host */
@@ -316,6 +314,9 @@ struct _LogMessage
   GSockAddr *daddr;
 
   UnixTime timestamps[LM_TS_MAX];
+
+  /* the next available node */
+  volatile gint cur_node;
 
   /* preallocated LogQueueNodes used to insert this message into a LogQueue */
   LogMessageQueueNode nodes[0];

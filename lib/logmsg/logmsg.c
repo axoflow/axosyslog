@@ -481,9 +481,11 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
 {
   LogMessageQueueNode *node;
 
-  if (msg->cur_node < msg->num_nodes)
+ #if 0
+  gint cur_node = g_atomic_int_add(&msg->cur_node, 1);
+  if (cur_node < msg->num_nodes)
     {
-      node = &msg->nodes[msg->cur_node++];
+      node = &msg->nodes[cur_node];
       node->embedded = TRUE;
     }
   else
@@ -503,6 +505,24 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
       node = g_slice_new(LogMessageQueueNode);
       node->embedded = FALSE;
     }
+#else
+    gint cur_node;
+    do {
+        cur_node = g_atomic_int_get(&msg->cur_node);
+        if (cur_node >= msg->num_nodes)
+        {
+            node = g_slice_new(LogMessageQueueNode);
+            node->embedded = FALSE;
+            log_msg_init_queue_node(msg, node, path_options);
+            return node;
+        }
+    } while (!g_atomic_int_compare_and_exchange(&msg->cur_node,
+                                                cur_node,
+                                                cur_node + 1));
+    node = &msg->nodes[cur_node];
+    node->embedded = TRUE;
+
+#endif
   log_msg_init_queue_node(msg, node, path_options);
   return node;
 }
@@ -1490,7 +1510,7 @@ log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options)
   self->original = log_msg_ref(msg);
   self->ack_and_ref_and_abort_and_suspended = LOGMSG_REFCACHE_REF_TO_VALUE(1) + LOGMSG_REFCACHE_ACK_TO_VALUE(
                                                 0) + LOGMSG_REFCACHE_ABORT_TO_VALUE(0);
-  self->cur_node = 0;
+  g_atomic_int_set(&self->cur_node, 0);
   self->write_protected = FALSE;
 
   log_msg_add_ack(self, path_options);
