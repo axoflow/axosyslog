@@ -21,7 +21,6 @@
 # COPYING for details.
 #
 #############################################################################
-import time
 import uuid
 
 import pytest
@@ -30,6 +29,7 @@ from axosyslog_light.driver_io.clickhouse.clickhouse_io import ClickhouseClient
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_OPTIONS_WITH_SCHEMA
 from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 from axosyslog_light.syslog_ng_config.__init__ import stringify
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
 def test_clickhouse_destination_valid_options_db_run(request, config, syslog_ng, clickhouse_server, clickhouse_ports):
@@ -191,7 +191,8 @@ def test_clickhouse_destination_with_non_reliable_disk_buffer(request, config, s
     disk_buffer_max_size = 1324  # that number of messages can fit into the disk buffer with 1KiB message size
     loggen.start(LoggenStartParams(target=network_source.options["ip"], port=network_source.options["port"], inet=True, stream=True, rate=10000, size=1024, number=loggen_msg_number))
     wait_until_true(lambda: loggen.get_sent_message_count() == loggen_msg_number)
-    time.sleep(5)
+    assert wait_until_true(lambda: config.get_prometheus_samples([MetricFilter("syslogng_disk_queue_processed_events_total", {})])[0].value == disk_buffer_max_size)
+
     syslog_ng.stop()
 
     dqtool_info_output = dqtool.info(disk_buffer_file='./syslog-ng-00000.qf')

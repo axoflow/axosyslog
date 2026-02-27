@@ -40,7 +40,7 @@ from inputs_and_outputs_for_complex_types import complex_types_table_schema
 
 
 def configure_syslog_ng_with_clickhouse_dest(config, proto_file_data, clickhouse_ports):
-    file_source = config.create_file_source(file_name="input.log")
+    file_source = config.create_file_source(file_name="input.log", time_zone="Europe/Budapest")
     clickhouse_options_copy = CLICKHOUSE_OPTIONS.copy()
     filterx_expr = f'''
      $proto_var_value = protobuf_message(json($MSG), schema_file="{proto_file_data['proto_file_name']}");
