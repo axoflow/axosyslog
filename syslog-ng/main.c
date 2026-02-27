@@ -241,6 +241,12 @@ setup_caps (void)
 
 #endif
 
+static void
+set_argv_space(gint argc, gchar **argv)
+{
+  g_process_set_argv_space(argc, argv);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -254,7 +260,7 @@ main(int argc, char *argv[])
   z_mem_trace_init("syslog-ng.trace");
 
   g_process_set_name("syslog-ng");
-  g_process_set_argv_space(argc, (gchar **) argv);
+  set_argv_space(argc, (gchar **) argv);
 
   resolved_configurable_paths_init(&resolved_configurable_paths);
   resolve_paths_in_help_texts();
