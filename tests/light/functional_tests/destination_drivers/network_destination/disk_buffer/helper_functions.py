@@ -70,13 +70,11 @@ def validate_metrics(config, expected_metrics, abandoned=False, disk_buffer_file
 
     for metric_name, expected_value in expected_metrics._asdict().items():
         if metric_name.startswith("syslogng_"):
-            actual_value = get_metric(config, metric_name, labels=labels)
-            assert actual_value == expected_value, f"Metric {metric_name} expected: {expected_value}, actual: {actual_value}"
+            assert wait_until_true(lambda: get_metric(config, metric_name, labels=labels) == expected_value)
         if metric_name.startswith("delivered_") or metric_name.startswith("queued_") or metric_name.startswith("dropped_"):
             metric_prefix = metric_name.split("_")[0]
             metric_name = "_".join(metric_name.split("_")[1:])
-            actual_value = get_metric(config, metric_name, labels={"result": metric_prefix})
-            assert actual_value == expected_value, f"Metric {metric_name} with prefix {metric_prefix} expected: {expected_value}, actual: {actual_value}"
+            assert wait_until_true(lambda: get_metric(config, metric_name, labels={"result": metric_prefix}) == expected_value)
 
 
 def check_abandoned_disk_buffer_metrics(config, first_buffer_metrics):
