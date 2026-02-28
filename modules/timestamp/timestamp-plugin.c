@@ -61,12 +61,17 @@ timestamp_module_init(PluginContext *context, CfgArgs *args G_GNUC_UNUSED)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "timestamp",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The timestamp module provides support for manipulating timestamps in syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = timestamp_plugins,
-  .plugins_len = G_N_ELEMENTS(timestamp_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "timestamp",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The timestamp module provides support for manipulating timestamps in syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = timestamp_plugins,
+    .plugins_len = G_N_ELEMENTS(timestamp_plugins),
+  };
+
+  return &info;
+}

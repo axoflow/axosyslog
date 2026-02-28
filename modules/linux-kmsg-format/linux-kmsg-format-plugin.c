@@ -52,12 +52,17 @@ linux_kmsg_format_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "linux-kmsg-format",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The linux-kmsg-format module provides support for parsing linux 3.5+ /dev/kmsg-format messages.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = &linux_kmsg_format_plugin,
-  .plugins_len = 1,
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "linux-kmsg-format",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The linux-kmsg-format module provides support for parsing linux 3.5+ /dev/kmsg-format messages.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = &linux_kmsg_format_plugin,
+    .plugins_len = 1,
+  };
+
+  return &info;
+}

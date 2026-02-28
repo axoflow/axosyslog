@@ -46,12 +46,17 @@ json_plugin_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "json-plugin",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The json module provides JSON parsing & formatting support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = json_plugins,
-  .plugins_len = G_N_ELEMENTS(json_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "json-plugin",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The json module provides JSON parsing & formatting support for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = json_plugins,
+    .plugins_len = G_N_ELEMENTS(json_plugins),
+  };
+
+  return &info;
+}

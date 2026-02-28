@@ -157,12 +157,17 @@ basicfuncs_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "basicfuncs",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The basicfuncs module provides various template functions for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = basicfuncs_plugins,
-  .plugins_len = G_N_ELEMENTS(basicfuncs_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "basicfuncs",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The basicfuncs module provides various template functions for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = basicfuncs_plugins,
+    .plugins_len = G_N_ELEMENTS(basicfuncs_plugins),
+  };
+
+  return &info;
+}

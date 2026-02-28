@@ -45,12 +45,17 @@ metrics_probe_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "metrics-probe",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The metrics-probe module provides a way to produce custom metrics for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = metrics_probe_plugins,
-  .plugins_len = G_N_ELEMENTS(metrics_probe_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "metrics-probe",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The metrics-probe module provides a way to produce custom metrics for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = metrics_probe_plugins,
+    .plugins_len = G_N_ELEMENTS(metrics_probe_plugins),
+  };
+
+  return &info;
+}

@@ -122,12 +122,17 @@ afsocket_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "afsocket",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The afsocket module provides socket based transports for syslog-ng, such as the udp(), tcp() and syslog() drivers. This module is compiled with SSL support.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = afsocket_plugins,
-  .plugins_len = G_N_ELEMENTS(afsocket_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "afsocket",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The afsocket module provides socket based transports for syslog-ng, such as the udp(), tcp() and syslog() drivers. This module is compiled with SSL support.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = afsocket_plugins,
+    .plugins_len = G_N_ELEMENTS(afsocket_plugins),
+  };
+
+  return &info;
+}

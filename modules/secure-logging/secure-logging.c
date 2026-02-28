@@ -279,12 +279,17 @@ secure_logging_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "secure_logging",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The secure logging module provides template functions enabling forward integrity and confidentiality of logs.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = secure_logging_plugins,
-  .plugins_len = G_N_ELEMENTS(secure_logging_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "secure_logging",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The secure logging module provides template functions enabling forward integrity and confidentiality of logs.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = secure_logging_plugins,
+    .plugins_len = G_N_ELEMENTS(secure_logging_plugins),
+  };
+
+  return &info;
+}

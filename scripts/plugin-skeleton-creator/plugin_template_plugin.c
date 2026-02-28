@@ -42,12 +42,17 @@ gboolean
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "@PLUGIN_NAME_US@",
-  .version = SYSLOG_NG_VERSION,
-  .description = "Please fill this description",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = @PLUGIN_NAME_US@_plugins,
-  .plugins_len = G_N_ELEMENTS(@PLUGIN_NAME_US@_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "@PLUGIN_NAME_US@",
+    .version = SYSLOG_NG_VERSION,
+    .description = "Please fill this description",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = @PLUGIN_NAME_US@_plugins,
+    .plugins_len = G_N_ELEMENTS(@PLUGIN_NAME_US@_plugins),
+  };
+
+  return &info;
+}

@@ -42,12 +42,17 @@ azure_auth_header_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "azure_auth_header",
-  .version = SYSLOG_NG_VERSION,
-  .description = "HTTP authentication header support for Azure APIs",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = azure_auth_header_plugins,
-  .plugins_len = G_N_ELEMENTS(azure_auth_header_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "azure_auth_header",
+    .version = SYSLOG_NG_VERSION,
+    .description = "HTTP authentication header support for Azure APIs",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = azure_auth_header_plugins,
+    .plugins_len = G_N_ELEMENTS(azure_auth_header_plugins),
+  };
+
+  return &info;
+}

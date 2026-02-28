@@ -186,12 +186,17 @@ confgen_module_init(PluginContext *plugin_context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "confgen",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The confgen module provides support for dynamically generated configuration file snippets for syslog-ng, used for the SCL system() driver for example",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = NULL,
-  .plugins_len = 0,
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "confgen",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The confgen module provides support for dynamically generated configuration file snippets for syslog-ng, used for the SCL system() driver for example",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = NULL,
+    .plugins_len = 0,
+  };
+
+  return &info;
+}

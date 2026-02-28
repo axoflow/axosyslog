@@ -36,15 +36,20 @@ static Plugin afamqp_plugins[] =
   }
 };
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "afamqp",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The afamqp module provides AMQP destination support for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = afamqp_plugins,
-  .plugins_len = G_N_ELEMENTS(afamqp_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "afamqp",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The afamqp module provides AMQP destination support for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = afamqp_plugins,
+    .plugins_len = G_N_ELEMENTS(afamqp_plugins),
+  };
+
+  return &info;
+}
 
 gboolean
 afamqp_module_init(PluginContext *context, CfgArgs *args)
@@ -52,4 +57,3 @@ afamqp_module_init(PluginContext *context, CfgArgs *args)
   plugin_register(context, afamqp_plugins, G_N_ELEMENTS(afamqp_plugins));
   return TRUE;
 }
-

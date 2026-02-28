@@ -42,12 +42,17 @@ map_value_pairs_module_init(PluginContext *context, CfgArgs *args G_GNUC_UNUSED)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "map-value-pairs",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The map-names module provides the map-names() parser for syslog-ng.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = map_value_pairs_plugins,
-  .plugins_len = G_N_ELEMENTS(map_value_pairs_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "map-value-pairs",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The map-names module provides the map-names() parser for syslog-ng.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = map_value_pairs_plugins,
+    .plugins_len = G_N_ELEMENTS(map_value_pairs_plugins),
+  };
+
+  return &info;
+}

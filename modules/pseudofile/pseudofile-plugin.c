@@ -43,12 +43,17 @@ pseudofile_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "pseudofile",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The pseudofile module provides the pseudofile() destination for syslog-ng",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = pseudofile_plugins,
-  .plugins_len = G_N_ELEMENTS(pseudofile_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "pseudofile",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The pseudofile module provides the pseudofile() destination for syslog-ng",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = pseudofile_plugins,
+    .plugins_len = G_N_ELEMENTS(pseudofile_plugins),
+  };
+
+  return &info;
+}

@@ -50,12 +50,17 @@ systemd_journal_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo *sng_module_get_info(void)
 {
-  .canonical_name = "systemd-journal",
-  .version = SYSLOG_NG_VERSION,
-  .description = "The systemd-journal module provides systemd journal source drivers for syslog-ng where it is available.",
-  .core_revision = SYSLOG_NG_SOURCE_REVISION,
-  .plugins = systemd_journal_plugins,
-  .plugins_len = G_N_ELEMENTS(systemd_journal_plugins),
-};
+  static const ModuleInfo info =
+  {
+    .canonical_name = "systemd-journal",
+    .version = SYSLOG_NG_VERSION,
+    .description = "The systemd-journal module provides systemd journal source drivers for syslog-ng where it is available.",
+    .core_revision = SYSLOG_NG_SOURCE_REVISION,
+    .plugins = systemd_journal_plugins,
+    .plugins_len = G_N_ELEMENTS(systemd_journal_plugins),
+  };
+
+  return &info;
+}
