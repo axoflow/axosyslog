@@ -52,7 +52,7 @@ filterx_function_format_leef_format_version(EventFormatterContext *ctx, GString 
       goto exit;
     }
 
-  if (strcmp(version_str, "2.0") == 0)
+  if (strn_eq_strz(version_str, "2.0", version_len))
     event_format_formatter_context_set_header(ctx, &leef_v2_cfg.header);
 
   success = event_format_formatter_append_header(ctx, formatted, dict, &ctx->config.header.fields[0]);

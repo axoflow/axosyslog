@@ -146,7 +146,6 @@ filterx_expr_list_get_length(FilterXExprList *self)
   return filterx_pointer_list_get_length(self);
 }
 
-
 static inline void
 filterx_expr_list_init(FilterXExprList *self)
 {
@@ -157,6 +156,64 @@ static inline void
 filterx_expr_list_clear(FilterXExprList *self)
 {
   filterx_pointer_list_clear(self, (GDestroyNotify) filterx_expr_unref);
+}
+
+typedef gboolean (*FilterXObjectListForeachRefFunc)(FilterXObject **pvalue, gpointer user_data);
+typedef gboolean (*FilterXObjectListForeachFunc)(FilterXObject *value, gpointer user_data);
+typedef FilterXPointerList FilterXObjectList;
+
+static inline gboolean
+filterx_object_list_foreach_ref(FilterXObjectList *self, FilterXObjectListForeachRefFunc func, gpointer user_data)
+{
+  return filterx_pointer_list_foreach_ref(self, (FilterXPointerListForeachRefFunc) func, user_data);
+}
+
+static inline gboolean
+filterx_object_list_foreach(FilterXObjectList *self, FilterXObjectListForeachFunc func, gpointer user_data)
+{
+  return filterx_pointer_list_foreach(self, (FilterXPointerListForeachFunc) func, user_data);
+}
+
+static inline void
+filterx_object_list_seal(FilterXObjectList *self)
+{
+  filterx_pointer_list_seal(self);
+}
+
+static inline void
+filterx_object_list_add_ref(FilterXObjectList *self, FilterXObject *expr)
+{
+  filterx_pointer_list_add(self, expr);
+}
+
+static inline FilterXObject *
+filterx_object_list_index(FilterXObjectList *self, gsize index)
+{
+  return (FilterXObject *) filterx_pointer_list_index(self, index);
+}
+
+static inline FilterXObject *
+filterx_object_list_index_fast(FilterXObjectList *self, gsize index)
+{
+  return (FilterXObject *) filterx_pointer_list_index_fast(self, index);
+}
+
+static inline gsize
+filterx_object_list_get_length(FilterXObjectList *self)
+{
+  return filterx_pointer_list_get_length(self);
+}
+
+static inline void
+filterx_object_list_init(FilterXObjectList *self)
+{
+  filterx_pointer_list_init(self);
+}
+
+static inline void
+filterx_object_list_clear(FilterXObjectList *self)
+{
+  filterx_pointer_list_clear(self, (GDestroyNotify) filterx_object_unref);
 }
 
 #endif

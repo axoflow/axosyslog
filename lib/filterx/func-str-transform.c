@@ -119,14 +119,14 @@ filterx_simple_function_str_replace(FilterXExpr *s, FilterXObject *args[], gsize
     }
 
   const gchar *old_str;
-  if (!filterx_object_extract_string_ref(old, &old_str, NULL))
+  if (!filterx_object_extract_string_as_cstr(old, &old_str))
     {
       filterx_simple_function_argument_error(s, "Second argument must be string");
       return NULL;
     }
 
   const gchar *new_str;
-  if (!filterx_object_extract_string_ref(new, &new_str, NULL))
+  if (!filterx_object_extract_string_as_cstr(new, &new_str))
     {
       filterx_simple_function_argument_error(s, "Third argument must be string");
       return NULL;
@@ -139,7 +139,7 @@ filterx_simple_function_str_replace(FilterXExpr *s, FilterXObject *args[], gsize
       return NULL;
     }
 
-  GString *replaced = g_string_new(str);
+  GString *replaced = g_string_new_len(str, len);
 
   g_string_replace(replaced, old_str, new_str, limit_num);
   FilterXObject *result = filterx_string_new_take(replaced->str, (gssize) replaced->len);
@@ -164,7 +164,7 @@ _str_strip(FilterXExpr *s, FilterXObject *args[], gsize args_len, gchar *(*trans
   if (!str)
     return NULL;
 
-  gchar *trimmed = g_strdup(str);
+  gchar *trimmed = g_strndup(str, len);
   trimmed = transform(trimmed);
 
   FilterXObject *result = filterx_string_new_take(trimmed, (gssize) strlen(trimmed));
