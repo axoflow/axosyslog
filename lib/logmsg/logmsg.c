@@ -481,13 +481,15 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
 {
   LogMessageQueueNode *node;
 
-  if (msg->cur_node < msg->num_nodes)
+  gint cur_node = g_atomic_int_add(&msg->cur_node, 1);
+  if (cur_node < msg->num_nodes)
     {
-      node = &msg->nodes[msg->cur_node++];
+      node = &msg->nodes[cur_node];
       node->embedded = TRUE;
     }
   else
     {
+      g_assert(cur_node <= LOGMSG_NODES_ASSERT);
       gint nodes = (volatile gint) logmsg_queue_node_max;
 
       /* this is a racy update, but it doesn't really hurt if we lose an
@@ -498,7 +500,7 @@ log_msg_alloc_queue_node(LogMessage *msg, const LogPathOptions *path_options)
        * pre-allocated space, we start allocating nodes dynamically from
        * heap.
        */
-      if (nodes < 32 && nodes <= msg->num_nodes)
+      if (nodes < LOGMSG_MAX_NODES && nodes <= msg->num_nodes)
         logmsg_queue_node_max = msg->num_nodes + 1;
       node = g_slice_new(LogMessageQueueNode);
       node->embedded = FALSE;
@@ -1490,7 +1492,7 @@ log_msg_clone_cow(LogMessage *msg, const LogPathOptions *path_options)
   self->original = log_msg_ref(msg);
   self->ack_and_ref_and_abort_and_suspended = LOGMSG_REFCACHE_REF_TO_VALUE(1) + LOGMSG_REFCACHE_ACK_TO_VALUE(
                                                 0) + LOGMSG_REFCACHE_ABORT_TO_VALUE(0);
-  self->cur_node = 0;
+  g_atomic_int_set(&self->cur_node, 0);
   self->write_protected = FALSE;
 
   log_msg_add_ack(self, path_options);
