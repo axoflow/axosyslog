@@ -256,6 +256,8 @@ _load_vars_eval(FilterXExpr *s)
   gpointer user_data[] = { s, scope };
   gboolean success = filterx_object_iter(vars_unwrapped, _load_from_dict, user_data);
 
+  filterx_object_unref(vars);
+
   return success ? filterx_boolean_new(TRUE) : NULL;
 }
 
