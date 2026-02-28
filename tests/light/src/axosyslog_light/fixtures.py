@@ -147,18 +147,26 @@ def syslog_ng(request: pytest.FixtureRequest, testcase_parameters: TestcaseParam
         raise ValueError("Invalid runner")
 
     syslog_ng = SyslogNg(executor, syslog_ng_ctl, tc_parameters.INSTANCE_PATH, testcase_parameters, teardown)
-    teardown.register(syslog_ng.stop)
+    teardown.register_process_stop_callback(syslog_ng.stop)
     return syslog_ng
 
 
 class TeardownRegistry:
     teardown_callbacks = []
+    teardown_process_stop_callbacks = []
 
     def register(self, teardown_callback):
         TeardownRegistry.teardown_callbacks.append(teardown_callback)
 
+    def register_process_stop_callback(self, teardown_callback):
+        TeardownRegistry.teardown_process_stop_callbacks.append(teardown_callback)
+
     def execute_teardown_callbacks(self):
         for teardown_callback in TeardownRegistry.teardown_callbacks:
+            teardown_callback()
+
+    def execute_teardown_process_stop_callbacks(self):
+        for teardown_callback in TeardownRegistry.teardown_process_stop_callbacks:
             teardown_callback()
 
 
@@ -167,6 +175,7 @@ def teardown():
     teardown_registry = TeardownRegistry()
     yield teardown_registry
     teardown_registry.execute_teardown_callbacks()
+    teardown_registry.execute_teardown_process_stop_callbacks()
 
 
 @pytest.fixture
