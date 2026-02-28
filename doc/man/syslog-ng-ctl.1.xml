@@ -24,7 +24,7 @@
 <reference xmlns="http://docbook.org/ns/docbook" xml:id="syslog-ng-ctl-man-page" version="5.0">
   <info>
     <productname/>
-    <title>The syslog-ng control tool manual page</title>
+    <title>The AxoSyslog control tool manual page</title>
   </info>
   <refentry xml:id="syslog-ng-ctl.1">
     <refmeta>
@@ -46,8 +46,8 @@
     </refsynopsisdiv>
     <refsection xml:id="syslog-ng-ctl-mandescription">
       <title>Description</title>
-      <para>NOTE: The syslog-ng-ctl application is distributed with the  system logging application, and is usually part of the syslog-ng package. The latest version of the syslog-ng application is available at <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org">the official syslog-ng website</link>.</para>
-      <para>This manual page is only an abstract, for the complete documentation of syslog-ng, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/"><command>The  Administrator Guide</command></link>.</para>
+      <para>NOTE: The syslog-ng-ctl application is distributed with the  system logging application, and is usually part of the AxoSyslog package. The latest version of the AxoSyslog application is available at <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org">the official AxoSyslog website</link>.</para>
+      <para>This manual page is only an abstract, for the complete documentation of AxoSyslog, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>The  Administrator Guide</command></link>.</para>
       <para>The <command>syslog-ng-ctl</command> application is a utility that can be used to:</para>
       <itemizedlist>
         <listitem>
@@ -69,14 +69,14 @@
       </cmdsynopsis>
       <para>Use the <command>syslog-ng-ctl &lt;command&gt; --set=on</command> command to display verbose, trace, or debug messages. If you are trying to solve configuration problems, the verbose (and occasionally trace) messages are usually sufficient. Debug messages are needed mostly for finding software errors. After solving the problem, do not forget to turn these messages off using the <command>syslog-ng-ctl &lt;command&gt; --set=off</command>. Note that enabling debug messages does not enable verbose and trace messages.</para>
       <para>Use <command>syslog-ng-ctl &lt;command&gt;</command> without any parameters to display whether the particular type of messages are enabled or not.</para>
-      <para>If you need to use a non-standard control socket to access syslog-ng, use the <command>syslog-ng-ctl &lt;command&gt; --set=on --control=&lt;socket&gt;</command> command to specify the socket to use.</para>
+      <para>If you need to use a non-standard control socket to access AxoSyslog, use the <command>syslog-ng-ctl &lt;command&gt; --set=on --control=&lt;socket&gt;</command> command to specify the socket to use.</para>
       <variablelist>
         <varlistentry>
           <term>
             <command>verbose</command>
           </term>
           <listitem>
-            <para>Print verbose messages. If syslog-ng was started with the <parameter>--stderr</parameter> or <parameter>-e</parameter> option, the messages will be sent to stderr. If not specified, syslog-ng will log such messages to its internal source.</para>
+            <para>Print verbose messages. If AxoSyslog was started with the <parameter>--stderr</parameter> or <parameter>-e</parameter> option, the messages will be sent to stderr. If not specified, AxoSyslog will log such messages to its internal source.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -84,7 +84,7 @@
             <command>trace</command>
           </term>
           <listitem>
-            <para>Print trace messages of how messages are processed. If syslog-ng was started with the <parameter>--stderr</parameter> or <parameter>-e</parameter> option, the messages will be sent to stderr. If not specified, syslog-ng will log such messages to its internal source.</para>
+            <para>Print trace messages of how messages are processed. If AxoSyslog was started with the <parameter>--stderr</parameter> or <parameter>-e</parameter> option, the messages will be sent to stderr. If not specified, AxoSyslog will log such messages to its internal source.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -92,7 +92,7 @@
             <command>debug</command>
           </term>
           <listitem>
-            <para>Print debug messages. If syslog-ng was started with the <parameter>--stderr</parameter> or <parameter>-e</parameter> option, the messages will be sent to stderr. If not specified, syslog-ng will log such messages to its internal source.</para>
+            <para>Print debug messages. If AxoSyslog was started with the <parameter>--stderr</parameter> or <parameter>-e</parameter> option, the messages will be sent to stderr. If not specified, AxoSyslog will log such messages to its internal source.</para>
           </listitem>
         </varlistentry>
       </variablelist>
@@ -167,8 +167,8 @@ destination;df_facility_dot_err;;a;processed;0</synopsis>
     <refsection>
       <title>See also</title>
       <para>
-        <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/">
-          <command>The syslog-ng Administrator Guide</command>
+        <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/">
+          <command>AxoSyslog documentation</command>
         </link>
       </para>
       <para>
@@ -178,9 +178,9 @@ destination;df_facility_dot_err;;a;processed;0</synopsis>
         <link linkend="syslog-ng.8"><command>syslog-ng</command>(8)</link>
       </para>
       <note version="5.0">
-        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The  4.23 Administrator Guide</command></link></para>
-        <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-        <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>The  4.23 Administrator Guide</command></link></para>
+        <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+        <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
       </note>
     </refsection>
     <refsection version="5.0">

@@ -35,7 +35,7 @@
     </refmeta>
     <refnamediv>
       <refname>pdbtool</refname>
-      <refpurpose>An application to test and convert syslog-ng pattern database rules</refpurpose>
+      <refpurpose>An application to test and convert AxoSyslog pattern database rules</refpurpose>
     </refnamediv>
     <refsynopsisdiv>
       <cmdsynopsis>
@@ -46,8 +46,8 @@
     </refsynopsisdiv>
     <refsection xml:id="pdbtool-mandescription">
       <title>Description</title>
-      <para>This manual page is only an abstract, for the complete documentation of syslog-ng and pdbtool, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/"><command>The syslog-ng Administrator Guide</command></link>.</para>
-      <para>The syslog-ng application can match the contents of the log messages to a database of predefined message patterns (also called patterndb). By comparing the messages to the known patterns, syslog-ng is able to identify the exact type of the messages, tag the messages, and sort them into message classes. The message classes can be used to classify the type of the event described in the log message. The functionality of the pattern database is similar to that of the logcheck project, but the syslog-ng approach is faster, scales better, and is much easier to maintain compared to the regular expressions of logcheck.</para>
+      <para>This manual page is only an abstract, for the complete documentation of AxoSyslog and pdbtool, see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link>.</para>
+      <para>The AxoSyslog application can match the contents of the log messages to a database of predefined message patterns (also called patterndb). By comparing the messages to the known patterns, AxoSyslog is able to identify the exact type of the messages, tag the messages, and sort them into message classes. The message classes can be used to classify the type of the event described in the log message. The functionality of the pattern database is similar to that of the logcheck project, but the AxoSyslog approach is faster, scales better, and is much easier to maintain compared to the regular expressions of logcheck.</para>
       <para>The <command>pdbtool</command> application is a utility that can be used to:</para>
       <itemizedlist>
         <listitem>
@@ -104,7 +104,7 @@
         <command>dump</command>
         <arg>options</arg>
       </cmdsynopsis>
-      <para>Display the RADIX tree built from the patterns. This shows how are the patterns represented in syslog-ng and it might also help to track down pattern-matching problems. The dump utility can dump the tree used for matching the PROGRAM or the MESSAGE parts.</para>
+      <para>Display the RADIX tree built from the patterns. This shows how are the patterns represented in AxoSyslog and it might also help to track down pattern-matching problems. The dump utility can dump the tree used for matching the PROGRAM or the MESSAGE parts.</para>
       <variablelist>
         <varlistentry version="5.0">
           <term><command>--debug</command> or <command>-d</command>
@@ -117,7 +117,7 @@
           <term><command>--pdb</command> or <command>-p</command>
                     </term>
           <listitem>
-            <para>Name of the pattern database file to use.<!--  By default, syslog-ng and the pdbtool uses the
+            <para>Name of the pattern database file to use.<!--  By default, AxoSyslog and the pdbtool uses the
                     <filename>/var/lib/syslog-ng/patterndb.xml</filename> file.--></para>
           </listitem>
         </varlistentry>
@@ -221,7 +221,7 @@
           <term><command>--filter=&lt;filter-expression&gt;</command> or <command>-F</command>
                     </term>
           <listitem>
-            <para>Print only messages matching the specified syslog-ng filter expression.</para>
+            <para>Print only messages matching the specified AxoSyslog filter expression.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -235,7 +235,7 @@
           <term><command>--pdb</command> or <command>-p</command>
                     </term>
           <listitem>
-            <para>Name of the pattern database file to use.<!--By default, syslog-ng and the pdbtool uses the
+            <para>Name of the pattern database file to use.<!--By default, AxoSyslog and the pdbtool uses the
                     <filename>/var/lib/syslog-ng/patterndb.xml</filename> file.--></para>
           </listitem>
         </varlistentry>
@@ -250,7 +250,7 @@
           <term><command>--template=&lt;template-expression&gt;</command> or <command>-T</command>
                     </term>
           <listitem>
-            <para>A syslog-ng template expression that is used to format the output messages.</para>
+            <para>An AxoSyslog template expression that is used to format the output messages.</para>
           </listitem>
         </varlistentry>
         <varlistentry version="5.0">
@@ -274,7 +274,7 @@
         <command>merge</command>
         <arg>options</arg>
       </cmdsynopsis>
-      <para>Use the <command>merge</command> command to combine separate pattern database files into a single file (pattern databases are usually stored in separate files per applications to simplify maintenance). If a file uses an older database format, it is automatically updated to the latest format (V3). See the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/"><command>The syslog-ng Administrator Guide</command></link> for details on the different pattern database versions.</para>
+      <para>Use the <command>merge</command> command to combine separate pattern database files into a single file (pattern databases are usually stored in separate files per applications to simplify maintenance). If a file uses an older database format, it is automatically updated to the latest format (V3). See the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link> for details on the different pattern database versions.</para>
       <variablelist>
         <varlistentry version="5.0">
           <term><command>--debug</command> or <command>-d</command>
@@ -327,7 +327,7 @@
         <command>patternize</command>
         <arg>options</arg>
       </cmdsynopsis>
-      <para>Automatically create a pattern database from a log file containing a large number of log messages. The resulting pattern database is printed to the standard output (stdout). The <command>pdbtool patternize</command> command uses a data clustering technique to find similar log messages and replacing the differing parts with <parameter>@ESTRING:: @</parameter> parsers. For details on pattern databases and message parsers, see the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/"><command>The syslog-ng Administrator Guide</command></link>. The <command>patternize</command> command is available only in  version 3.2 and later.</para>
+      <para>Automatically create a pattern database from a log file containing a large number of log messages. The resulting pattern database is printed to the standard output (stdout). The <command>pdbtool patternize</command> command uses a data clustering technique to find similar log messages and replacing the differing parts with <parameter>@ESTRING:: @</parameter> parsers. For details on pattern databases and message parsers, see the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link>. The <command>patternize</command> command is available only in  version 3.2 and later.</para>
       <variablelist>
         <varlistentry version="5.0">
           <term><command>--debug</command> or <command>-d</command>
@@ -456,8 +456,8 @@
     <refsection>
       <title>See also</title>
       <para>
-        <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/">
-          <command>The syslog-ng Administrator Guide</command>
+        <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/">
+          <command>AxoSyslog documentation</command>
         </link>
       </para>
       <para>
@@ -467,9 +467,9 @@
         <link linkend="syslog-ng.8"><command>syslog-ng</command>(8)</link>
       </para>
       <note version="5.0">
-        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The  4.23 Administrator Guide</command></link></para>
-        <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-        <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>The  4.23 Administrator Guide</command></link></para>
+        <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+        <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
       </note>
     </refsection>
     <refsection version="5.0">

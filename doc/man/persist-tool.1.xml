@@ -45,11 +45,11 @@
         </refsynopsisdiv>
         <refsection xml:id="persist-tool-mandescription">
             <title>Description</title>
-            <para>NOTE: The persist-tool application is distributed with the syslog-ng system logging application, and is usually part of the syslog-ng package. The latest version of the syslog-ng application is available at the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/log-management">official syslog-ng website</link>.</para>
-            <para>This manual page is only an abstract, for the complete documentation of syslog-ng, see the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/support/documentation/"><command>The syslog-ng Administrator Guide</command></link>.</para>
+            <para>NOTE: The persist-tool application is distributed with the AxoSyslog system logging application, and is usually part of the AxoSyslog package. The latest version of the AxoSyslog application is available at the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/">official AxoSyslog website</link>.</para>
+            <para>This manual page is only an abstract, for the complete documentation of AxoSyslog, see the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link>.</para>
             <para>The <command>persist-tool</command> application is a utility that can be used to dump the content of the persist file, and manipulate its content.</para>
             <warning>
-                <para>Persist-tool is a special tool for syslog-ng experts. Do use the tool unless you know exactly what you are doing. Misconfiguring it will result in irrecoverable damage to the persist file, without any warning.</para>
+                <para>Persist-tool is a special tool for AxoSyslog experts. Do use the tool unless you know exactly what you are doing. Misconfiguring it will result in irrecoverable damage to the persist file, without any warning.</para>
             </warning>
             <note>
                 <para>Limitations:</para>
@@ -130,9 +130,9 @@ affile_sd_curpos(/var/aaa.txt)        OK</synopsis>
             <para><link linkend="syslog-ng.conf.5"> <command>syslog-ng.conf</command>(5)</link></para>
             <para><link linkend="syslog-ng.8"> <command>syslog-ng</command>(8)</link></para>
             <note version="5.0">
-                <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The  4.23 Administrator Guide</command></link></para>
-                <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-                <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+                <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>The  4.23 Administrator Guide</command></link></para>
+                <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+                <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
             </note>
         </refsection>
         <refsection version="5.0">
