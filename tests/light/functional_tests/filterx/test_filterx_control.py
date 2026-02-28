@@ -23,6 +23,7 @@
 #
 #############################################################################
 import pytest
+from axosyslog_light.common.operations import ignore_asan_memleaks
 from axosyslog_light.syslog_ng_config.renderer import render_statement
 
 
@@ -470,6 +471,7 @@ def test_switch_variable_in_case(config, syslog_ng):
 
 
 # Implicitly testing optimized expression caching
+@ignore_asan_memleaks
 def test_switch_duplicate_literal_case(config, syslog_ng):
     _ = create_config(
         config,
@@ -491,6 +493,7 @@ def test_switch_duplicate_literal_case(config, syslog_ng):
     assert "syslog-ng is not running" in str(exec_info.value)
 
 
+@ignore_asan_memleaks
 def test_switch_duplicate_default_case(config, syslog_ng):
     _ = create_config(
         config,

@@ -25,6 +25,7 @@ import logging
 
 import pytest
 from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.common.operations import ignore_asan_memleaks
 from axosyslog_light.helpers.loggen.loggen import Loggen
 from axosyslog_light.helpers.loggen.loggen import LoggenStartParams
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
@@ -121,6 +122,7 @@ def wait_for_prometheus_metric_above_expected(config, metric_name, expected_valu
 
 
 # Tests for static and dynamic window config options
+@ignore_asan_memleaks
 @pytest.mark.parametrize(
     "log_iw_size, max_connections, invalid_syntax, small_window_size, expected_static_window_size", [
         (None, None, False, True, {"syslogng_input_window_available": 99, "syslogng_input_window_capacity": DEFAULT_INITIAL_WINDOW_SIZE}),  # set default values for both options

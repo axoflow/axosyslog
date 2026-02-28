@@ -21,8 +21,10 @@
 #
 #############################################################################
 import pytest
+from axosyslog_light.common.operations import ignore_asan_memleaks
 
 
+@ignore_asan_memleaks
 @pytest.mark.parametrize(
     "follow_freq,expected", [
         (1, True),

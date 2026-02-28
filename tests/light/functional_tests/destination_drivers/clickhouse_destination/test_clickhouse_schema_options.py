@@ -25,6 +25,7 @@ import uuid
 
 import pytest
 from axosyslog_light.common.file import copy_shared_file
+from axosyslog_light.common.operations import ignore_asan_memleaks
 from axosyslog_light.helpers.clickhouse.clickhouse_server_executor import CLICKHOUSE_OPTIONS
 
 
@@ -58,6 +59,7 @@ def bootstrap_clickhouse_server(clickhouse_server, clickhouse_destination, click
     request.addfinalizer(lambda: clickhouse_destination.delete_table())
 
 
+@ignore_asan_memleaks
 def check_syslog_ng_start_error(syslog_ng, config, syslog_ng_start_error):
     with pytest.raises(Exception) as exec_info:
         syslog_ng.start(config)

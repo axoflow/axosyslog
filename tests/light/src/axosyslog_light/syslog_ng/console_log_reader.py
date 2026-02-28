@@ -39,6 +39,12 @@ class ConsoleLogReader(object):
         }
         self.__teardown = teardown
 
+    def close_all_fds(self):
+        for log_info in self.console_log_files.values():
+            file_obj = log_info["file"]
+            if hasattr(file_obj, "close") and file_obj.is_opened():
+                file_obj.close()
+
     def wait_for_start_message(self):
         syslog_ng_start_message = ["syslog-ng starting up;"]
         return self.wait_for_messages_in_console_log(syslog_ng_start_message)
