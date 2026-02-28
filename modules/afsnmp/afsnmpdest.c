@@ -486,10 +486,9 @@ snmpdest_dd_session_init(SNMPDestDriver *self)
   setenv("POSIXLY_CORRECT", "1", 1);
   gchar *args[24];
   gint argc = 0;
-  gint i;
 
   /* add a new 'cmdline' argument to the array */
-#define ADD_ARG(str) args[argc++] = str ? g_strdup(str) : g_strdup("")
+#define ADD_ARG(str) args[argc++] = str ? str : ""
 
   ADD_ARG("snmptrap");
   ADD_ARG("-v");
@@ -617,8 +616,6 @@ snmpdest_dd_session_init(SNMPDestDriver *self)
   return TRUE;
 
 error:
-  for (i = 0; i < argc; ++i)
-    g_free(args[i]);
   free_session(&self->session);
   return FALSE;
 
