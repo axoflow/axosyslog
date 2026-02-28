@@ -54,6 +54,24 @@ Test(filterx_string, test_frozen_string_deduplication)
   cr_assert_neq(str, str3);
 }
 
+Test(filterx_string, test_string_taking_allocated_storage)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
+
+  assert_object_json_equals(str, "\"abcd\"");
+  filterx_object_unref(str);
+}
+
+Test(filterx_string, test_string_taking_slice_of_another_string)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
+  FilterXObject *str2 = filterx_string_new_slice(str, 1, 3);
+
+  assert_object_json_equals(str2, "\"bc\"");
+  filterx_object_unref(str2);
+  filterx_object_unref(str);
+}
+
 static void
 _translate_to_incremented(gchar *target, const gchar *source, gsize *len)
 {
@@ -188,8 +206,7 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
-  gsize size;
-  const gchar *str = filterx_string_get_value_ref(obj, &size);
+  const gchar *str = filterx_string_get_value_as_cstr(obj);
 
   cr_assert(strcmp("null", str) == 0);
 

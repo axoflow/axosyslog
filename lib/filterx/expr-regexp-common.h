@@ -39,8 +39,8 @@ typedef struct FilterXReMatchState_
   FLAGSET flags;
 } FilterXReMatchState;
 
-pcre2_code_8 *filterx_regexp_compile_pattern(const gchar *pattern, gboolean jit_enabled, gint opts);
-pcre2_code_8 *filterx_regexp_compile_pattern_defaults(const gchar *pattern);
+pcre2_code_8 *filterx_regexp_compile_pattern(const gchar *pattern, gsize pattern_len, gboolean jit_enabled, gint opts);
+pcre2_code_8 *filterx_regexp_compile_pattern_defaults(const gchar *pattern, gsize pattern_len);
 
 void filterx_expr_rematch_state_init(FilterXReMatchState *state);
 void filterx_expr_rematch_state_cleanup(FilterXReMatchState *state);

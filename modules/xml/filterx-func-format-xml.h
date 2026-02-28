@@ -32,7 +32,7 @@ typedef struct FilterXFunctionFormatXML_
   FilterXFunction super;
   FilterXExpr *input;
   gboolean (*append_inner_dict)(FilterXObject *key, FilterXObject *dict, gpointer user_data);
-  void (*append_leaf)(const char *key_str, const char *value_str, gsize value_str_len, GString *buffer);
+  void (*append_leaf)(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len, GString *buffer);
 } FilterXFunctionFormatXML;
 
 FilterXExpr *filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error);
@@ -41,7 +41,8 @@ extern const char *XML_ERROR_STR;
 
 gboolean append_object(FilterXObject *key, FilterXObject *value, gpointer user_data);
 gboolean append_list(FilterXObject *key, FilterXObject *list, gpointer user_data);
-void append_inner_dict_start_tag(const char *key_str, GString *buffer);
-void append_inner_dict_end_tag(const char *key_str, gpointer user_data, gsize prev_buffer_len);
+void append_leaf(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len, GString *buffer);
+void append_inner_dict_start_tag(const char *key_str, gsize key_str_len, GString *buffer);
+void append_inner_dict_end_tag(const char *key_str, gsize key_str_len, gpointer user_data, gsize prev_buffer_len);
 
 #endif

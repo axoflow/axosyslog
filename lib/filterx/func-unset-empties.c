@@ -34,6 +34,7 @@
 #include "filterx/func-flags.h"
 #include "filterx/expr-literal-container.h"
 #include "filterx/expr-literal.h"
+#include "filterx/filterx-plist.h"
 
 #define FILTERX_FUNC_UNSET_EMPTIES_USAGE "Usage: unset_empties(object, " \
 FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_RECURSIVE"=bool, " \
@@ -54,7 +55,7 @@ typedef struct FilterXFunctionUnsetEmpties_
 {
   FilterXFunction super;
   FilterXExpr *object_expr;
-  GPtrArray *targets;
+  FilterXObjectList targets;
   FilterXObject *replacement;
   guint64 flags;
 } FilterXFunctionUnsetEmpties;
@@ -62,16 +63,21 @@ typedef struct FilterXFunctionUnsetEmpties_
 static gboolean _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj);
 static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj);
 
-typedef int (*str_cmp_fn)(const char *, const char *);
+typedef int (*str_cmp_fn)(const char *, const char *, size_t len);
 
 static inline gboolean
-_string_compare(FilterXFunctionUnsetEmpties *self, const gchar *str, str_cmp_fn cmp_fn)
+_string_compare(FilterXFunctionUnsetEmpties *self, FilterXObject *obj, const gchar *str, gsize str_len, str_cmp_fn cmp_fn)
 {
-  guint num_targets = self->targets ? self->targets->len : 0;
+  guint num_targets = filterx_pointer_list_get_length(&self->targets);
   for (guint i = 0; i < num_targets; i++)
     {
-      const gchar *target = g_ptr_array_index(self->targets, i);
-      if (cmp_fn(str, target) == 0)
+      FilterXObject *target_object = filterx_object_list_index_fast(&self->targets, i);
+      if (target_object == obj)
+        return TRUE;
+
+      /* we already checked the type, safe to cast */
+      FilterXString *target = (FilterXString *) target_object;
+      if (target->str_len == str_len && cmp_fn(str, target->str, str_len) == 0)
         return TRUE;
     }
   return FALSE;
@@ -91,10 +97,10 @@ _should_unset_string(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
 
   if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
     {
-      gboolean result = _string_compare(self, str, strcasecmp);
+      gboolean result = _string_compare(self, obj, str, str_len, strncasecmp);
       return result;
     }
-  return _string_compare(self, str, strcmp);
+  return _string_compare(self, obj, str, str_len, (str_cmp_fn) memcmp);
 }
 
 static gboolean
@@ -251,8 +257,8 @@ static void
 _free(FilterXExpr *s)
 {
   FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
-  if (self->targets)
-    g_ptr_array_free(self->targets, TRUE);
+
+  filterx_object_list_clear(&self->targets);
   filterx_expr_unref(self->object_expr);
   filterx_object_unref(self->replacement);
   filterx_function_free_method(&self->super);
@@ -368,19 +374,14 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
     }
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(string)))
     {
-      gsize len = 0;
-      const gchar *str = filterx_string_get_value_ref(target, &len);
+      gsize len;
+      g_assert(filterx_object_len(target, &len));
       if (len == 0)
         {
           set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_STRING, TRUE);
           return TRUE;
         }
-      if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE))
-        {
-          g_ptr_array_add(self->targets, g_strndup(str, len));
-          return TRUE;
-        }
-      g_ptr_array_add(self->targets, g_strndup(str, len));
+      filterx_object_list_add_ref(&self->targets, filterx_object_ref(target));
     }
   else
     {
@@ -453,7 +454,6 @@ _extract_target_objects(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *
   if (num_targets > 0)
     reset_flags(&self->flags, self->flags & (FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_IGNORECASE) |
                                              FLAG_VAL(FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE)));
-  self->targets = g_ptr_array_new_full(num_targets, (GDestroyNotify)g_free);
 
   gpointer user_data[] = { self, error };
   gboolean result = TRUE;
@@ -494,6 +494,15 @@ _extract_args(FilterXFunctionUnsetEmpties *self, FilterXFunctionArgs *args, GErr
 }
 
 static gboolean
+_unset_empties_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+
+  FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
+  filterx_object_list_seal(&self->targets);
+  return filterx_expr_init_method(s, cfg);
+}
+
+static gboolean
 _unset_empties_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionUnsetEmpties *self = (FilterXFunctionUnsetEmpties *) s;
@@ -515,8 +524,10 @@ filterx_function_unset_empties_new(FilterXFunctionArgs *args, GError **error)
   FilterXFunctionUnsetEmpties *self = g_new0(FilterXFunctionUnsetEmpties, 1);
   filterx_function_init_instance(&self->super, "unset_empties", FXE_WRITE);
   self->super.super.eval = _eval_fx_unset_empties;
+  self->super.super.init = _unset_empties_init;
   self->super.super.walk_children = _unset_empties_walk;
   self->super.super.free_fn = _free;
+  filterx_object_list_init(&self->targets);
 
   /* everything is enabled except ignorecase */
   reset_flags(&self->flags,
