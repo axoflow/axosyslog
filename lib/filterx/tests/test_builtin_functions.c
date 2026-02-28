@@ -101,6 +101,12 @@ _dummy_eval(FilterXExpr *s)
   return filterx_string_new("test-builtin-functions", -1);
 }
 
+static gboolean
+_dummy_walk(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data)
+{
+  return TRUE;
+}
+
 static FilterXExpr *
 _test_builtin_dummy_function_ctor(FilterXFunctionArgs *args, GError **error)
 {
@@ -108,6 +114,7 @@ _test_builtin_dummy_function_ctor(FilterXFunctionArgs *args, GError **error)
 
   filterx_function_init_instance(self, TEST_BUILTIN_FUNCTION_NAME, FXE_READ);
   self->super.eval = _dummy_eval;
+  self->super.walk_children = _dummy_walk;
 
   filterx_function_args_free(args);
   return &self->super;
