@@ -303,73 +303,6 @@ _format_syslog_5424_eval(FilterXExpr *s)
   return result;
 }
 
-static FilterXExpr *
-_format_syslog_5424_optimize(FilterXExpr *s)
-{
-  FilterXFunctionFormatSyslog5424 *self = (FilterXFunctionFormatSyslog5424 *) s;
-
-  self->pri_expr = filterx_expr_optimize(self->pri_expr);
-  self->timestamp_expr = filterx_expr_optimize(self->timestamp_expr);
-  self->host_expr = filterx_expr_optimize(self->host_expr);
-  self->program_expr = filterx_expr_optimize(self->program_expr);
-  self->pid_expr = filterx_expr_optimize(self->pid_expr);
-  self->msgid_expr = filterx_expr_optimize(self->msgid_expr);
-  self->message_expr = filterx_expr_optimize(self->message_expr);
-  return filterx_function_optimize_method(&self->super);
-}
-
-static gboolean
-_format_syslog_5424_init(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFormatSyslog5424 *self = (FilterXFunctionFormatSyslog5424 *) s;
-
-  if (!filterx_expr_init(self->pri_expr, cfg))
-    goto pri_error;
-  if (!filterx_expr_init(self->timestamp_expr, cfg))
-    goto timestamp_error;
-  if (!filterx_expr_init(self->host_expr, cfg))
-    goto host_error;
-  if (!filterx_expr_init(self->program_expr, cfg))
-    goto program_error;
-  if (!filterx_expr_init(self->pid_expr, cfg))
-    goto pid_error;
-  if (!filterx_expr_init(self->msgid_expr, cfg))
-    goto msgid_error;
-  if (!filterx_expr_init(self->message_expr, cfg))
-    goto message_error;
-  return filterx_function_init_method(&self->super, cfg);
-
-message_error:
-  filterx_expr_deinit(self->msgid_expr, cfg);
-msgid_error:
-  filterx_expr_deinit(self->pid_expr, cfg);
-pid_error:
-  filterx_expr_deinit(self->program_expr, cfg);
-program_error:
-  filterx_expr_deinit(self->host_expr, cfg);
-host_error:
-  filterx_expr_deinit(self->timestamp_expr, cfg);
-timestamp_error:
-  filterx_expr_deinit(self->pri_expr, cfg);
-pri_error:
-  return FALSE;
-}
-
-static void
-_format_syslog_5424_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionFormatSyslog5424 *self = (FilterXFunctionFormatSyslog5424 *) s;
-
-  filterx_expr_deinit(self->pri_expr, cfg);
-  filterx_expr_deinit(self->timestamp_expr, cfg);
-  filterx_expr_deinit(self->host_expr, cfg);
-  filterx_expr_deinit(self->program_expr, cfg);
-  filterx_expr_deinit(self->pid_expr, cfg);
-  filterx_expr_deinit(self->msgid_expr, cfg);
-  filterx_expr_deinit(self->message_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
 static void
 _format_syslog_5424_free(FilterXExpr *s)
 {
@@ -383,6 +316,30 @@ _format_syslog_5424_free(FilterXExpr *s)
   filterx_expr_unref(self->msgid_expr);
   filterx_expr_unref(self->message_expr);
   filterx_function_free_method(&self->super);
+}
+
+gboolean
+_format_syslog_5424_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionFormatSyslog5424 *self = (FilterXFunctionFormatSyslog5424 *) s;
+
+  FilterXExpr **exprs[] = {
+    &self->pri_expr,
+    &self->timestamp_expr,
+    &self->host_expr,
+    &self->program_expr,
+    &self->pid_expr,
+    &self->msgid_expr,
+    &self->message_expr,
+  };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
 }
 
 static gboolean
@@ -439,9 +396,7 @@ filterx_function_format_syslog_5424_new(FilterXFunctionArgs *args, GError **erro
   filterx_function_init_instance(&self->super, "format_syslog_5424", FXE_READ);
 
   self->super.super.eval = _format_syslog_5424_eval;
-  self->super.super.optimize = _format_syslog_5424_optimize;
-  self->super.super.init = _format_syslog_5424_init;
-  self->super.super.deinit = _format_syslog_5424_deinit;
+  self->super.super.walk_children = _format_syslog_5424_walk;
   self->super.super.free_fn = _format_syslog_5424_free;
 
   if (!_format_syslog_5424_extract_arguments(self, args, error) ||

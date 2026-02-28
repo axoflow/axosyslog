@@ -212,32 +212,11 @@ typedef struct _FilterXFunctionLoadVars
 } FilterXFunctionLoadVars;
 
 static gboolean
-_load_vars_init(FilterXExpr *s, GlobalConfig *cfg)
+_load_vars_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
 
-  if (!filterx_expr_init(self->vars_expr, cfg))
-    return FALSE;
-
-  return filterx_function_init_method(&self->super, cfg);
-}
-
-static void
-_load_vars_deinit(FilterXExpr *s, GlobalConfig *cfg)
-{
-  FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
-
-  filterx_expr_deinit(self->vars_expr, cfg);
-  filterx_function_deinit_method(&self->super, cfg);
-}
-
-static FilterXExpr *
-_load_vars_optimize(FilterXExpr *s)
-{
-  FilterXFunctionLoadVars *self = (FilterXFunctionLoadVars *) s;
-
-  self->vars_expr = filterx_expr_optimize(self->vars_expr);
-  return filterx_function_optimize_method(&self->super);
+  return filterx_expr_visit(s, &self->vars_expr, f, user_data);
 }
 
 FilterXObject *
@@ -255,6 +234,8 @@ _load_vars_eval(FilterXExpr *s)
   FilterXScope *scope = filterx_eval_get_scope();
   gpointer user_data[] = { s, scope };
   gboolean success = filterx_object_iter(vars_unwrapped, _load_from_dict, user_data);
+
+  filterx_object_unref(vars);
 
   return success ? filterx_boolean_new(TRUE) : NULL;
 }
@@ -277,9 +258,7 @@ filterx_function_load_vars_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "load_vars", FXE_WRITE);
 
   self->super.super.eval = _load_vars_eval;
-  self->super.super.init = _load_vars_init;
-  self->super.super.deinit = _load_vars_deinit;
-  self->super.super.optimize = _load_vars_optimize;
+  self->super.super.walk_children = _load_vars_walk;
   self->super.super.free_fn = _load_vars_free;
 
   if (filterx_function_args_len(args) != 1)

@@ -237,8 +237,10 @@ filterx_expr_visit(FilterXExpr *self, FilterXExpr **expr, FilterXExprWalkFunc f,
 static inline gboolean
 filterx_expr_walk_children(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data)
 {
-  if (!self || !self->walk_children)
+  if (!self)
     return TRUE;
+
+  g_assert(self->walk_children);
 
   return self->walk_children(self, f, user_data);
 }

@@ -2,3 +2,4 @@ leak:^dlopen
 leak:^set_argv_space
 leak:^python_evaluate_global_code
 leak:libpython*.so
+leak:^netsnmp_parse_args

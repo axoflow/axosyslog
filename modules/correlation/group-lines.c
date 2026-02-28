@@ -249,6 +249,7 @@ _init(LogPipe *s)
 {
   GroupLines *self = (GroupLines *) s;
 
+  id_counter_unref(self->id_counter);
   self->id_counter = NULL;
 
   if (self->super.timeout < 1)
