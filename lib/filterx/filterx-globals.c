@@ -168,6 +168,9 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("failure_info", filterx_fn_failure_info_new));
   g_assert(filterx_builtin_function_ctor_register("failure_info_meta", filterx_fn_failure_info_meta_new));
   g_assert(filterx_builtin_function_ctor_register("dict_to_pairs", filterx_function_dict_to_pairs_new));
+  g_assert(filterx_builtin_function_ctor_register("fix_timezone", filterx_function_fix_timezone_new));
+  g_assert(filterx_builtin_function_ctor_register("guess_timezone", filterx_function_guess_timezone_new));
+  g_assert(filterx_builtin_function_ctor_register("set_timezone", filterx_function_set_timezone_new));
 }
 
 static void
