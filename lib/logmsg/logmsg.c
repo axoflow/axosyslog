@@ -1520,7 +1520,10 @@ log_msg_sized_new(gsize payload_size)
   LogMessage *self = log_msg_alloc(payload_size <= 1024 ? payload_size : 0);
 
   if (!self->payload)
-    self->payload = nv_table_new(LM_V_MAX, 16, payload_size);
+    {
+      self->payload = nv_table_new(LM_V_MAX, 16, payload_size);
+      log_msg_update_allocation(self, nv_table_get_size(self->payload));
+    }
 
   log_msg_init(self);
   return self;
