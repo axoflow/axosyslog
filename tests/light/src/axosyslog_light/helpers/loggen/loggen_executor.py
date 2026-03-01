@@ -177,7 +177,7 @@ class LoggenExecutor(ABC):
         return self.proc
 
     def stop(self) -> None:
-        if self.proc is None:
+        if (self.proc is None and not self.proc.is_running()) or self.proc.poll() == 0:
             return
 
         self.proc.terminate()

@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package TestProto;
+
+message TestPerfProto {
+    map<string, string> MSG_DATA_json = 1;
+}

@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package TestProto;
+
+message TestPerfProto {
+    bool MSG_DATA_bool = 1;
+    bytes MSG_DATA_bytes = 2;
+    string MSG_DATA_datetime = 3;
+    bool MSG_DATA_dedup_metrics_labels = 4;
+    map<string, string> MSG_DATA_dict = 5;
+    double MSG_DATA_double = 6;
+    string MSG_DATA_format_json = 7;
+    map<string, string> MSG_DATA_get_sdata = 8;
+    bool MSG_DATA_has_sdata = 9;
+    int32 MSG_DATA_int = 10;
+    string MSG_DATA_isodate = 11;
+    repeated string MSG_DATA_json_array = 12;
+    map<string, string> MSG_DATA_json = 13;
+    int32 MSG_DATA_len = 14;
+    repeated string MSG_DATA_list = 15;
+    bool MSG_DATA_load_vars = 16;
+    string MSG_DATA_lower = 17;
+    map<string, string> MSG_DATA_metrics_labels = 18;
+    map<string, string> MSG_DATA_parse_json = 19;
+    bytes MSG_DATA_protobuf = 20;
+    string MSG_DATA_repr = 21;
+    string MSG_DATA_str_replace = 22;
+    string MSG_DATA_string = 23;
+    string MSG_DATA_upper = 24;
+}
