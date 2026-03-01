@@ -562,6 +562,28 @@ _unshare_payload_if_needed(LogMessage *self, gsize extra_space)
     }
 }
 
+static inline gboolean
+_grow_payload(LogMessage *self, const gchar *operation, gsize extra_space)
+{
+  /* error allocating string in payload, reallocate */
+  guint32 old_size = nv_table_get_size(self->payload);
+  if (!nv_table_realloc(&self->payload, extra_space))
+    {
+      /* can't grow the payload, it has reached the maximum size */
+      msg_info("Cannot grow message payload, maximum size has been reached",
+               evt_tag_str("operation", operation),
+               evt_tag_int("size", old_size),
+               evt_tag_int("extra_space", extra_space),
+               evt_tag_int("maximum_payload", NV_TABLE_MAX_BYTES),
+               evt_tag_printf("msg", "%p", self));
+      return FALSE;
+    }
+  guint32 new_size = nv_table_get_size(self->payload);
+  log_msg_update_allocation(self, (new_size - old_size));
+  stats_counter_inc(count_payload_reallocs);
+  return TRUE;
+}
+
 void
 log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
                             const gchar *value, gssize value_len,
@@ -599,20 +621,8 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
 
   while (!nv_table_add_value(self->payload, handle, name, name_len, value, value_len, type, &new_entry))
     {
-      /* error allocating string in payload, reallocate */
-      guint32 old_size = nv_table_get_size(self->payload);
-      if (!nv_table_realloc(&self->payload, name_len + 1 + value_len + 1))
-        {
-          /* can't grow the payload, it has reached the maximum size */
-          msg_info("Cannot store value for this log message, maximum size has been reached",
-                   evt_tag_int("maximum_payload", NV_TABLE_MAX_BYTES),
-                   evt_tag_str("name", name),
-                   evt_tag_printf("value", "%.32s%s", value, value_len > 32 ? "..." : ""));
-          break;
-        }
-      guint32 new_size = nv_table_get_size(self->payload);
-      log_msg_update_allocation(self, (new_size - old_size));
-      stats_counter_inc(count_payload_reallocs);
+      if (!_grow_payload(self, "set_value", name_len + value_len + 2))
+        break;
     }
 
   if (new_entry)
@@ -646,20 +656,8 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
 
   while (!nv_table_unset_value(self->payload, handle))
     {
-      /* error allocating string in payload, reallocate */
-      guint32 old_size = nv_table_get_size(self->payload);
-      if (!nv_table_realloc(&self->payload, 0))
-        {
-          /* can't grow the payload, it has reached the maximum size */
-          const gchar *name = log_msg_get_value_name(handle, NULL);
-          msg_info("Cannot unset value for this log message, maximum size has been reached",
-                   evt_tag_int("maximum_payload", NV_TABLE_MAX_BYTES),
-                   evt_tag_str("name", name));
-          break;
-        }
-      guint32 new_size = nv_table_get_size(self->payload);
-      log_msg_update_allocation(self, (new_size - old_size));
-      stats_counter_inc(count_payload_reallocs);
+      if (!_grow_payload(self, "unset_value", 0))
+        break;
     }
 
   if (_value_invalidates_legacy_header(handle))
@@ -714,16 +712,8 @@ log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle,
 
   while (!nv_table_add_value_indirect(self->payload, handle, name, name_len, &referenced_slice, type, &new_entry))
     {
-      /* error allocating string in payload, reallocate */
-      if (!nv_table_realloc(&self->payload, name_len + 1))
-        {
-          /* error growing the payload, skip without storing the value */
-          msg_info("Cannot store referenced value for this log message, maximum size has been reached",
-                   evt_tag_str("name", name),
-                   evt_tag_str("ref-name", log_msg_get_value_name(ref_handle, NULL)));
-          break;
-        }
-      stats_counter_inc(count_payload_reallocs);
+      if (!_grow_payload(self, "set_value_indirect", name_len + 1))
+        break;
     }
 
   if (new_entry)
