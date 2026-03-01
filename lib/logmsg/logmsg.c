@@ -585,7 +585,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
     {
       self->payload = nv_table_clone(self->payload, name_len + value_len + 2);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
-      log_msg_update_allocation(self, self->payload->size);
+      log_msg_update_allocation(self, nv_table_get_size(self->payload));
     }
 
   /* we need a loop here as a single realloc may not be enough. Might help
@@ -594,7 +594,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
   while (!nv_table_add_value(self->payload, handle, name, name_len, value, value_len, type, &new_entry))
     {
       /* error allocating string in payload, reallocate */
-      guint32 old_size = self->payload->size;
+      guint32 old_size = nv_table_get_size(self->payload);
       if (!nv_table_realloc(&self->payload, name_len + 1 + value_len + 1))
         {
           /* can't grow the payload, it has reached the maximum size */
@@ -604,7 +604,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
                    evt_tag_printf("value", "%.32s%s", value, value_len > 32 ? "..." : ""));
           break;
         }
-      guint32 new_size = self->payload->size;
+      guint32 new_size = nv_table_get_size(self->payload);
       log_msg_update_allocation(self, (new_size - old_size));
       stats_counter_inc(count_payload_reallocs);
     }
@@ -645,7 +645,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
   while (!nv_table_unset_value(self->payload, handle))
     {
       /* error allocating string in payload, reallocate */
-      guint32 old_size = self->payload->size;
+      guint32 old_size = nv_table_get_size(self->payload);
       if (!nv_table_realloc(&self->payload, 0))
         {
           /* can't grow the payload, it has reached the maximum size */
@@ -655,7 +655,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
                    evt_tag_str("name", name));
           break;
         }
-      guint32 new_size = self->payload->size;
+      guint32 new_size = nv_table_get_size(self->payload);
       log_msg_update_allocation(self, (new_size - old_size));
       stats_counter_inc(count_payload_reallocs);
     }
