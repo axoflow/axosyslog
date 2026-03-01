@@ -640,6 +640,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
     {
       self->payload = nv_table_clone(self->payload, 0);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
+      log_msg_update_allocation(self, nv_table_get_size(self->payload));
     }
 
   while (!nv_table_unset_value(self->payload, handle))
@@ -705,6 +706,7 @@ log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle,
     {
       self->payload = nv_table_clone(self->payload, name_len + 1);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
+      log_msg_update_allocation(self, nv_table_get_size(self->payload));
     }
 
   NVReferencedSlice referenced_slice =
