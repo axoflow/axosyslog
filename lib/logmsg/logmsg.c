@@ -551,6 +551,17 @@ log_msg_rename_value(LogMessage *self, NVHandle from, NVHandle to)
   log_msg_unset_value(self, from);
 }
 
+static inline void
+_unshare_payload_if_needed(LogMessage *self, gsize extra_space)
+{
+  if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
+    {
+      self->payload = nv_table_clone(self->payload, extra_space);
+      log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
+      log_msg_update_allocation(self, nv_table_get_size(self->payload));
+    }
+}
+
 void
 log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
                             const gchar *value, gssize value_len,
@@ -581,12 +592,7 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
                 evt_tag_msg_reference(self));
     }
 
-  if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
-    {
-      self->payload = nv_table_clone(self->payload, name_len + value_len + 2);
-      log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
-      log_msg_update_allocation(self, nv_table_get_size(self->payload));
-    }
+  _unshare_payload_if_needed(self, name_len + value_len + 2);
 
   /* we need a loop here as a single realloc may not be enough. Might help
    * if we pass how much bytes we need though. */
@@ -636,12 +642,7 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
                 evt_tag_msg_reference(self));
     }
 
-  if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
-    {
-      self->payload = nv_table_clone(self->payload, 0);
-      log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
-      log_msg_update_allocation(self, nv_table_get_size(self->payload));
-    }
+  _unshare_payload_if_needed(self, 0);
 
   while (!nv_table_unset_value(self->payload, handle))
     {
@@ -702,12 +703,7 @@ log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle,
                 evt_tag_msg_reference(self));
     }
 
-  if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
-    {
-      self->payload = nv_table_clone(self->payload, name_len + 1);
-      log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
-      log_msg_update_allocation(self, nv_table_get_size(self->payload));
-    }
+  _unshare_payload_if_needed(self, name_len + 1);
 
   NVReferencedSlice referenced_slice =
   {
