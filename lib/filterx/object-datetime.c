@@ -175,6 +175,7 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
       return NULL;
     }
 
+  unix_time_set_timezone_source(&ut, UNIX_TIME_TZ_PARSED);
   convert_wall_clock_time_to_unix_time(&wct, &ut);
   return filterx_datetime_new(&ut);
 }
@@ -335,6 +336,9 @@ _strptime_eval(FilterXExpr *s)
       else
         break;
     }
+
+  if(wct.wct_gmtoff != -1)
+    unix_time_set_timezone_source(&ut, UNIX_TIME_TZ_PARSED);
 
   wall_clock_time_guess_missing_fields(&wct);
 

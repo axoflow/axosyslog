@@ -41,6 +41,7 @@ _set_from_local_timespec(UnixTime *self, const struct timespec *ts)
   self->ut_sec = ts->tv_sec;
   self->ut_usec = ts->tv_nsec / 1000;
   self->ut_gmtoff = get_local_timezone_ofs(ts->tv_sec);
+  unix_time_set_timezone_source(self, UNIX_TIME_TZ_ASSUMED);
 }
 
 void
@@ -183,6 +184,7 @@ unix_time_fix_timezone(UnixTime *self, gint new_gmtoff)
     {
       self->ut_sec -= (new_gmtoff - implied_gmtoff);
       self->ut_gmtoff = new_gmtoff;
+      unix_time_set_timezone_source(self, UNIX_TIME_TZ_FIXED);
     }
 }
 
@@ -192,7 +194,10 @@ void
 unix_time_set_timezone(UnixTime *self, gint new_gmtoff)
 {
   if (new_gmtoff != -1)
-    self->ut_gmtoff = new_gmtoff;
+    {
+      self->ut_gmtoff = new_gmtoff;
+      unix_time_set_timezone_source(self, UNIX_TIME_TZ_FIXED);
+    }
 }
 
 /* change timezone, assuming that the original timezone was correct, but we
@@ -210,6 +215,7 @@ unix_time_fix_timezone_assuming_the_time_matches_real_time(UnixTime *self)
   long target_gmtoff = _guess_recv_timezone_offset_based_on_time_difference(self);
 
   unix_time_fix_timezone(self, target_gmtoff);
+  unix_time_set_timezone_source(self, UNIX_TIME_TZ_GUESSED);
   return target_gmtoff != -1;
 }
 
@@ -307,6 +313,7 @@ unix_time_fix_timezone_with_tzinfo(UnixTime *self, TimeZoneInfo *tzinfo)
                 {
                   /* step 2 changed ut_gmtoff to be an "old" offset. update gmtoff */
                   self->ut_gmtoff += fixed_gmtoff - alt_gmtoff;
+                  unix_time_set_timezone_source(self, UNIX_TIME_TZ_FIXED);
                 }
             }
         }
@@ -403,4 +410,57 @@ dump_unix_time(const UnixTime *ut, GString *output)
   g_string_append_printf(output, "    UTC Time: %s.%06u\n", utc_time_str, ut->ut_usec);
   g_string_append_printf(output, "    Local Time: %s.%06u (GMT offset: %d seconds)\n",
                          local_time_str, ut->ut_usec, ut->ut_gmtoff);
+}
+
+static void
+_unix_time_set_timezone_flags(UnixTime *self, gboolean is_explicit, gboolean is_adjusted)
+{
+  self->ut_gmtoff_explicit = is_explicit;
+  self->ut_gmtoff_adjusted = is_adjusted;
+}
+
+void
+unix_time_set_timezone_source(UnixTime *self, UnixTimeTimezoneSource tz_source)
+{
+  switch (tz_source)
+    {
+    case UNIX_TIME_TZ_PARSED:
+      _unix_time_set_timezone_flags(self, TRUE, FALSE);
+      break;
+    case UNIX_TIME_TZ_FIXED:
+      _unix_time_set_timezone_flags(self, TRUE, TRUE);
+      break;
+    case UNIX_TIME_TZ_GUESSED:
+      _unix_time_set_timezone_flags(self, FALSE, TRUE);
+      break;
+    case UNIX_TIME_TZ_ASSUMED:
+      _unix_time_set_timezone_flags(self, FALSE, FALSE);
+      break;
+    default:
+      g_assert_not_reached();
+    }
+}
+
+UnixTimeTimezoneSource
+unix_time_get_timezone_source(const UnixTime *self)
+{
+  if (self->ut_gmtoff_explicit && self->ut_gmtoff_adjusted)
+    return UNIX_TIME_TZ_FIXED;
+  else if (self->ut_gmtoff_explicit && !self->ut_gmtoff_adjusted)
+    return UNIX_TIME_TZ_PARSED;
+  else if (!self->ut_gmtoff_explicit && self->ut_gmtoff_adjusted)
+    return UNIX_TIME_TZ_GUESSED;
+  return UNIX_TIME_TZ_ASSUMED;
+}
+
+const char *
+unix_time_get_timezone_source_name(const UnixTime *self)
+{
+  if (self->ut_gmtoff_explicit && self->ut_gmtoff_adjusted)
+    return "fixed";
+  else if (self->ut_gmtoff_explicit && !self->ut_gmtoff_adjusted)
+    return "parsed";
+  else if (!self->ut_gmtoff_explicit && self->ut_gmtoff_adjusted)
+    return "guessed";
+  return "assumed";
 }
