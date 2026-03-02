@@ -23,6 +23,7 @@
 #define FILTERX_OBJECT_STRING_H_INCLUDED
 
 #include "filterx-object.h"
+#include "str-utils.h"
 
 /* storage for the string is allocated separately, needs an explicit free() */
 #define FILTERX_STRING_FLAG_STR_ALLOCATED          0x01
@@ -84,9 +85,6 @@ FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
 
 /* NOTE: Consider using filterx_object_extract_string_ref() to also support message_value.
- *
- * Also NOTE: the returned string may not be NUL terminated, although often
- * it will be. Generic code should handle the cases where it is not.
  */
 static inline const gchar *
 filterx_string_get_value_ref(FilterXObject *s, gsize *length)
@@ -96,10 +94,7 @@ filterx_string_get_value_ref(FilterXObject *s, gsize *length)
   if (!filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)))
     return NULL;
 
-  if (length)
-    *length = self->str_len;
-  else
-    g_assert(self->str[self->str_len] == 0);
+  *length = self->str_len;
   return self->str;
 }
 
@@ -123,6 +118,59 @@ filterx_string_is_json_escaping_needed(FilterXObject *s)
   if (s->flags & FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED)
     return FALSE;
   return TRUE;
+}
+
+/* get string value and assert if the terminating NUL is present, should
+ * only be used in cases where we are sure that the FilterXString is a
+ * literal string, which is always NUL terminated */
+static inline const gchar *
+filterx_string_get_value_ref_and_assert_nul(FilterXObject *s, gsize *length)
+{
+  gsize len = 0;
+  const gchar *str = filterx_string_get_value_ref(s, &len);
+  if (!str)
+    return NULL;
+
+#if SYSLOG_NG_ENABLE_DEBUG
+
+  /* in DEBUG mode we are _never_ NUL terminating FilterXString instances to
+   * trigger any issues that relate to length handling.  But we must use
+   * this hack below to turn them into NUL terminated if the application
+   * code correctly requests it using this function.
+    */
+  g_assert(str[len] == 0 || str[len] == '`');
+  ((gchar *) str)[len] = 0;
+#else
+  g_assert(str[len] == 0);
+#endif
+  if (length)
+    *length = len;
+  return str;
+}
+
+#define filterx_string_get_value_as_cstr(s) \
+  ({ \
+    gsize __len; \
+    const gchar *__str = filterx_string_get_value_ref(s, &__len); \
+    if (__str) { APPEND_ZERO(__str, __str, __len); } \
+    __str; \
+  })
+
+#define filterx_string_get_value_as_cstr_len(s, len) \
+  ({ \
+    const gchar *__str = filterx_string_get_value_ref(s, len); \
+    if (__str) { APPEND_ZERO(__str, __str, *len); } \
+    __str; \
+  })
+
+static inline gchar *
+filterx_string_strdup_value(FilterXObject *s)
+{
+  gsize len;
+  const gchar *str = filterx_string_get_value_ref(s, &len);
+  if (!str)
+    return NULL;
+  return g_strndup(str, len);
 }
 
 static inline FilterXObject *

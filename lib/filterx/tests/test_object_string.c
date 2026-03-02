@@ -188,8 +188,7 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
-  gsize size;
-  const gchar *str = filterx_string_get_value_ref(obj, &size);
+  const gchar *str = filterx_string_get_value_as_cstr(obj);
 
   cr_assert(strcmp("null", str) == 0);
 

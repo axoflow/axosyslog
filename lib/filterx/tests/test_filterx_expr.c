@@ -252,7 +252,7 @@ Test(filterx_expr, test_filterx_assign)
   FilterXObject *res = init_and_eval_expr(assign);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "foobar");
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "foobar");
   cr_assert(filterx_object_truthy(res));
   cr_assert(assign->ignore_falsy_result);
 
@@ -260,7 +260,7 @@ Test(filterx_expr, test_filterx_assign)
   FilterXObject *result_obj = init_and_eval_expr(result_var);
   cr_assert_not_null(result_obj);
   cr_assert(filterx_object_is_type(result_obj, &FILTERX_TYPE_NAME(string)));
-  const gchar *result_val = filterx_string_get_value_ref(result_obj, NULL);
+  const gchar *result_val = filterx_string_get_value_as_cstr(result_obj);
   cr_assert_str_eq("foobar", result_val);
 
   filterx_object_unref(res);
@@ -280,7 +280,7 @@ Test(filterx_expr, test_filterx_setattr)
   FilterXObject *res = init_and_eval_expr(setattr);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "bar");
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "bar");
   cr_assert(filterx_object_truthy(res));
   cr_assert(setattr->ignore_falsy_result);
   filterx_object_unref(res);
@@ -303,7 +303,7 @@ Test(filterx_expr, test_filterx_set_subscript)
   FilterXObject *res = init_and_eval_expr(setattr);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
-  cr_assert_str_eq(filterx_string_get_value_ref(res, NULL), "bar");
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(res), "bar");
   cr_assert(filterx_object_truthy(res));
   cr_assert(setattr->ignore_falsy_result);
   filterx_object_unref(res);
