@@ -627,7 +627,27 @@ typedef struct FilterXFunctionWasTimezoneReceived_
 static FilterXObject *
 _was_timezone_received_eval(FilterXExpr *s)
 {
-  return NULL;
+  FilterXFunctionWasTimezoneReceived *self = (FilterXFunctionWasTimezoneReceived *) s;
+
+  FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
+  if (!datetime_obj)
+    {
+      filterx_eval_push_error("Failed to evaluate argument. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE, s, NULL);
+      return NULL;
+    }
+
+  UnixTime datetime = UNIX_TIME_INIT;
+
+  if (!filterx_object_extract_datetime(datetime_obj, &datetime))
+    {
+      filterx_object_unref(datetime_obj);
+      filterx_eval_push_error("Argument must be of datetime type. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE, s, NULL);
+      return NULL;
+    }
+
+  filterx_object_unref(datetime_obj);
+
+  return filterx_boolean_new(datetime.is_original_tz == -1);
 }
 
 static gboolean
@@ -655,9 +675,36 @@ _was_timezone_received_free(FilterXExpr *s)
   filterx_function_free_method(&self->super);
 }
 
+static FilterXExpr *
+_extract_was_timezone_received_datetime_expr(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExpr *datetime_expr = filterx_function_args_get_expr(args, 0);
+  if (!datetime_expr)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "argument must be set: datetime. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE);
+      return NULL;
+    }
+
+  return datetime_expr;
+}
+
 static gboolean
 _extract_was_timezone_received_arg(FilterXFunctionWasTimezoneReceived *self, FilterXFunctionArgs *args, GError **error)
 {
+  gsize len = filterx_function_args_len(args);
+
+  if (len != 1)
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "invalid number of arguments. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE);
+      return FALSE;
+    }
+
+  self->datetime_expr = _extract_was_timezone_received_datetime_expr(args, error);
+  if (!self->datetime_expr)
+    return FALSE;
+
   return TRUE;
 }
 
