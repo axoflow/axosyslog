@@ -51,10 +51,10 @@ struct _UnixTime
    * is just 32 bits, contrary to all other gmtoff variables, as we are
    * squeezed in space with this struct.  32 bit is more than enough for
    * +/-24*3600 */
-  gint32 ut_gmtoff;
+  gint32 ut_gmtoff:31, is_original_tz:1;
 };
 
-#define UNIX_TIME_INIT { -1, 0, -1 }
+#define UNIX_TIME_INIT { -1, 0, -1, 0 }
 
 static inline gboolean
 unix_time_is_set(const UnixTime *ut)
@@ -66,6 +66,12 @@ static inline gboolean
 unix_time_is_timezone_set(const UnixTime *self)
 {
   return self->ut_gmtoff != -1;
+}
+
+static inline gboolean
+unix_time_is_timezone_original(const UnixTime *self)
+{
+  return self->is_original_tz == -1;
 }
 
 void unix_time_unset(UnixTime *ut);

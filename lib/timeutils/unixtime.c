@@ -44,6 +44,7 @@ unix_time_set_now(UnixTime *self)
   self->ut_sec = now.tv_sec;
   self->ut_usec = now.tv_nsec / 1000;
   self->ut_gmtoff = get_local_timezone_ofs(now.tv_sec);
+  self->is_original_tz = 0;
 }
 
 static glong
@@ -170,6 +171,7 @@ unix_time_fix_timezone(UnixTime *self, gint new_gmtoff)
     {
       self->ut_sec -= (new_gmtoff - implied_gmtoff);
       self->ut_gmtoff = new_gmtoff;
+      self->is_original_tz = 0;
     }
 }
 
@@ -179,7 +181,10 @@ void
 unix_time_set_timezone(UnixTime *self, gint new_gmtoff)
 {
   if (new_gmtoff != -1)
-    self->ut_gmtoff = new_gmtoff;
+    {
+      self->ut_gmtoff = new_gmtoff;
+      self->is_original_tz = 0;
+    }
 }
 
 /* change timezone, assuming that the original timezone was correct, but we
@@ -294,6 +299,7 @@ unix_time_fix_timezone_with_tzinfo(UnixTime *self, TimeZoneInfo *tzinfo)
                 {
                   /* step 2 changed ut_gmtoff to be an "old" offset. update gmtoff */
                   self->ut_gmtoff += fixed_gmtoff - alt_gmtoff;
+                  self->is_original_tz = 0;
                 }
             }
         }

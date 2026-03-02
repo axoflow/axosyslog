@@ -47,8 +47,8 @@ Test(syslog_ng_otlp, formatting_and_parsing)
 {
   LogMessage *msg = log_msg_new_empty();
 
-  UnixTime stamp = {.ut_sec = 1, .ut_usec = 2, .ut_gmtoff = 3};
-  UnixTime recvd = {.ut_sec = 4, .ut_usec = 5, .ut_gmtoff = 6};
+  UnixTime stamp = {.ut_sec = 1, .ut_usec = 2, .ut_gmtoff = 3, .is_original_tz = 0};
+  UnixTime recvd = {.ut_sec = 4, .ut_usec = 5, .ut_gmtoff = 6, .is_original_tz = 0};
   guint16 pri = LOG_KERN | LOG_ERR;
   const char *tag = "foo_tag";
   const char *host = "foo_host";
@@ -88,7 +88,6 @@ Test(syslog_ng_otlp, formatting_and_parsing)
   ProtobufParser::store_syslog_ng(msg, log_record);
 
   LogMessageValueType type;
-
   cr_assert_eq(memcmp(&msg->timestamps[LM_TS_STAMP], &stamp, sizeof(stamp)), 0);
   cr_assert_eq(memcmp(&msg->timestamps[LM_TS_RECVD], &recvd, sizeof(recvd)), 0);
   cr_assert_eq(msg->pri, pri);

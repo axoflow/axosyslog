@@ -209,12 +209,14 @@ type_cast_to_datetime_unixtime(const gchar *value, gssize value_len, UnixTime *u
   if (!_parse_fixed_point_timestamp_in_nsec(value, &endptr, &sec, &nsec))
     goto error;
 
+  ut->is_original_tz = 0;
   const guchar *tz_start = (guchar *) endptr;
   if (*tz_start != 0)
     {
       gint tz_length = strlen(endptr);
       if (!scan_iso_timezone(&tz_start, &tz_length, &tzofs))
         goto error;
+      ut->is_original_tz = -1;
     }
 
   ut->ut_sec = sec;

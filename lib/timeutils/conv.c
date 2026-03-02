@@ -56,9 +56,13 @@ convert_and_normalize_wall_clock_time_to_unix_time_with_tz_hint(WallClockTime *s
   dst->ut_usec = src->wct_usec;
 
   /* determine target gmtoff if it's coming from the timestamp or from the hint */
+  dst->is_original_tz = -1;
   gint target_gmtoff = src->wct_gmtoff;
   if (target_gmtoff == -1)
-    target_gmtoff = gmtoff_hint;
+    {
+      target_gmtoff = gmtoff_hint;
+      dst->is_original_tz = 0;
+    }
 
   /* FIRST: We convert the timestamp as it was in our local time zone. */
   gint unnormalized_hour = src->wct_hour;
@@ -72,6 +76,7 @@ convert_and_normalize_wall_clock_time_to_unix_time_with_tz_hint(WallClockTime *s
   if (target_gmtoff == -1)
     {
       target_gmtoff = local_gmtoff;
+      dst->is_original_tz = 0;
     }
   dst->ut_sec = dst->ut_sec
                 + local_gmtoff
