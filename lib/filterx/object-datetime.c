@@ -42,6 +42,7 @@
 
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"
 #define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(format_str, datetime)"
+#define FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE "Usage: was_timezone_received(datetime)"
 
 #define FILTERX_DATETIME_CACHE_SIZE 1
 FilterXObject *fx_datetime_cache[FILTERX_DATETIME_CACHE_SIZE];
@@ -607,6 +608,74 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
     {
       goto error;
     }
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+typedef struct FilterXFunctionWasTimezoneReceived_
+{
+  FilterXFunction super;
+  FilterXExpr *datetime_expr;
+} FilterXFunctionWasTimezoneReceived;
+
+static FilterXObject *
+_was_timezone_received_eval(FilterXExpr *s)
+{
+  return NULL;
+}
+
+static gboolean
+_was_timezone_received_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionWasTimezoneReceived *self = (FilterXFunctionWasTimezoneReceived *) s;
+
+  FilterXExpr **exprs[] = { &self->datetime_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+_was_timezone_received_free(FilterXExpr *s)
+{
+  FilterXFunctionWasTimezoneReceived *self = (FilterXFunctionWasTimezoneReceived *) s;
+
+  filterx_expr_unref(self->datetime_expr);
+  filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_extract_was_timezone_received_arg(FilterXFunctionWasTimezoneReceived *self, FilterXFunctionArgs *args, GError **error)
+{
+  return TRUE;
+}
+
+/* Takes reference of args */
+FilterXExpr *
+filterx_function_was_timezone_received_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionWasTimezoneReceived *self = g_new0(FilterXFunctionWasTimezoneReceived, 1);
+
+  filterx_function_init_instance(&self->super, "was_timezone_received", FXE_READ);
+
+  self->super.super.eval = _was_timezone_received_eval;
+  self->super.super.walk_children = _was_timezone_received_walk;
+  self->super.super.free_fn = _was_timezone_received_free;
+
+  if (!_extract_was_timezone_received_arg(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
 
   filterx_function_args_free(args);
   return &self->super.super;
