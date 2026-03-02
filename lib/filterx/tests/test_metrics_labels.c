@@ -85,7 +85,7 @@ Test(filterx_metrics_labels, const_literal_generator_empty_labels)
 
 Test(filterx_metrics_labels, non_literal_empty_labels)
 {
-  FilterXExpr *labels_expr = filterx_non_literal_new(filterx_test_dict_new());
+  FilterXExpr *labels_expr = filterx_object_expr_new(filterx_test_dict_new());
   FilterXMetricsLabels *metrics_labels = filterx_metrics_labels_new(labels_expr);
   filterx_expr_unref(labels_expr);
   cr_assert(metrics_labels);
@@ -148,7 +148,7 @@ Test(filterx_metrics_labels, non_const_literal_generator_labels)
   GList *label_exprs = NULL;
   label_exprs = _add_label_expr(label_exprs,
                                 filterx_literal_new(filterx_string_new("foo", -1)),
-                                filterx_non_literal_new(filterx_string_new("foovalue", -1)));
+                                filterx_object_expr_new(filterx_string_new("foovalue", -1)));
   label_exprs = _add_label_expr(label_exprs,
                                 filterx_literal_new(filterx_string_new("bar", -1)),
                                 filterx_literal_new(filterx_string_new("barvalue", -1)));
@@ -184,7 +184,7 @@ Test(filterx_metrics_labels, non_literal_key_in_literal_generator_labels)
 {
   GList *label_exprs = NULL;
   label_exprs = _add_label_expr(label_exprs,
-                                filterx_non_literal_new(filterx_string_new("foo", -1)),
+                                filterx_object_expr_new(filterx_string_new("foo", -1)),
                                 filterx_literal_new(filterx_string_new("foovalue", -1)));
 
   FilterXExpr *labels_expr = filterx_literal_dict_new(label_exprs);

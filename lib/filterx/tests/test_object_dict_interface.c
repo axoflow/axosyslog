@@ -55,7 +55,7 @@ static void
 _assert_key_value(FilterXObject *dict, const gchar *key, const gchar *value)
 {
   FilterXObject *v = _get_key(dict, key);
-  cr_assert_str_eq(filterx_string_get_value_ref(v, NULL), value);
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(v), value);
   filterx_object_unref(v);
 }
 

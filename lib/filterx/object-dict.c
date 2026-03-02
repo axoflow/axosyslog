@@ -704,44 +704,27 @@ _filterx_dict_clone(FilterXObject *s)
 }
 
 static gboolean
-_dedup_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
+_freeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
-  GHashTable *dedup_storage = (GHashTable *) user_data;
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
 
-  filterx_object_dedup(key, dedup_storage);
-  filterx_object_dedup(value, dedup_storage);
-
+  filterx_object_freeze(key, freezer);
+  filterx_object_freeze(value, freezer);
   return TRUE;
 }
 
-static gboolean
-_filterx_dict_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 
-  g_assert(_table_foreach(self->table, _dedup_dict_item, dedup_storage));
+  filterx_object_freezer_keep(freezer, *pself);
+  g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 
   /* Mutable objects themselves should never be deduplicated,
    * only immutable values INSIDE those recursive mutable objects.
    */
   g_assert(*pself == &self->super.super);
-  return TRUE;
-}
-
-static gboolean
-_readonly_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_make_readonly(*key);
-  filterx_object_make_readonly(*value);
-  return TRUE;
-}
-
-static void
-_filterx_dict_make_readonly(FilterXObject *s)
-{
-  FilterXDictObject *self = (FilterXDictObject *) s;
-
-  _table_foreach(self->table, _readonly_dict_item, NULL);
 }
 
 FilterXDictAnchor
@@ -863,6 +846,5 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .move_key = _filterx_dict_move_key,
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
-                    .make_readonly = _filterx_dict_make_readonly,
-                    .dedup = _filterx_dict_dedup,
+                    .freeze = _filterx_dict_freeze,
                    );

@@ -25,6 +25,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-function.h"
+#include "filterx/filterx-eval.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -46,12 +47,33 @@ Test(filterx_string, test_filterx_object_string_maps_to_the_right_json_value)
 
 Test(filterx_string, test_frozen_string_deduplication)
 {
-  FilterXObject *str = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str2 = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str3 = filterx_string_new_frozen("abcde", configuration);
+  FilterXEvalContext context;
+  filterx_eval_begin_compile(&context, configuration);
+  FilterXObject *str = filterx_string_new_frozen("abcd");
+  FilterXObject *str2 = filterx_string_new_frozen("abcd");
+  FilterXObject *str3 = filterx_string_new_frozen("abcde");
 
   cr_assert_eq(str, str2);
   cr_assert_neq(str, str3);
+  filterx_eval_end_compile(&context);
+}
+
+Test(filterx_string, test_string_taking_allocated_storage)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
+
+  assert_object_json_equals(str, "\"abcd\"");
+  filterx_object_unref(str);
+}
+
+Test(filterx_string, test_string_taking_slice_of_another_string)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
+  FilterXObject *str2 = filterx_string_new_slice(str, 1, 3);
+
+  assert_object_json_equals(str2, "\"bc\"");
+  filterx_object_unref(str2);
+  filterx_object_unref(str);
 }
 
 static void
@@ -152,7 +174,7 @@ Test(filterx_string, test_filterx_string_cache_json_escaping_need)
 
 Test(filterx_string, test_filterx_string_frozen_json_escaping_need)
 {
-  FilterXObject *fobj = filterx_string_new_frozen("foo\"bar", configuration);
+  FilterXObject *fobj = filterx_string_new_frozen("foo\"bar");
   cr_assert(filterx_string_is_json_escaping_needed(fobj));
   assert_object_json_equals(fobj, "\"foo\\\"bar\"");
   cr_assert(filterx_string_is_json_escaping_needed(fobj));
@@ -188,8 +210,7 @@ Test(filterx_string, test_filterx_string_typecast_null_object_arg)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(string)));
 
-  gsize size;
-  const gchar *str = filterx_string_get_value_ref(obj, &size);
+  const gchar *str = filterx_string_get_value_as_cstr(obj);
 
   cr_assert(strcmp("null", str) == 0);
 

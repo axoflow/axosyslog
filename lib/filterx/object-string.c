@@ -19,17 +19,15 @@
  * COPYING for details.
  *
  */
-#include "object-string.h"
-#include "object-extractor.h"
+#include "filterx/object-string.h"
+#include "filterx/object-extractor.h"
 #include "filterx/filterx-globals.h"
-#include "filterx-ref.h"
-#include "filterx-eval.h"
+#include "filterx/filterx-config.h"
+#include "filterx/filterx-eval.h"
 #include "str-utils.h"
 #include "scratch-buffers.h"
 #include "str-format.h"
-#include "str-utils.h"
 #include "utf8utils.h"
-
 
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
 
@@ -95,6 +93,8 @@ _free(FilterXObject *s)
   FilterXString *self = (FilterXString *) s;
   if (self->super.flags & FILTERX_STRING_FLAG_STR_ALLOCATED)
     g_free((gchar *) self->str);
+  else if (self->super.flags & FILTERX_STRING_FLAG_STR_BORROWED_SLICE)
+    filterx_object_unref(self->storage.slice);
   filterx_object_free_method(s);
 }
 
@@ -183,49 +183,38 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
   if (translate)
-    translate(self->storage, str, (gsize *) &str_len);
+    translate(self->storage.bytes, str, (gsize *) &str_len);
   else
-    memcpy(self->storage, str, str_len);
+    memcpy(self->storage.bytes, str, str_len);
   self->str_len = str_len;
-  self->storage[str_len] = 0;
-  self->str = self->storage;
+
+  /* NOTE: in DEBUG mode we always use a non-NUL termination to trigger
+   * length handling bugs in newly introduced code */
+
+  self->str = self->storage.bytes;
+#if SYSLOG_NG_ENABLE_DEBUG
+  self->storage.bytes[str_len] = '`';
+#else
+  self->storage.bytes[str_len] = 0;
+#endif
 
   return self;
 }
 
-static gboolean
-_string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_string_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXString *self = (FilterXString *) *pself;
 
-  gchar *dedup_key = g_strdup_printf("string_%s", self->str);
-
-  FilterXObject *dedup_str = g_hash_table_lookup(dedup_storage, dedup_key);
-  if (dedup_str)
+  gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
+  if (!filterx_object_freezer_dedup(freezer, pself, dedup_key))
     {
-      filterx_object_unref(*pself);
-      *pself = filterx_object_ref(dedup_str);
-      g_free(dedup_key);
-      return TRUE;
+      _filterx_string_hash(self);
+      if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
+        filterx_string_mark_safe_without_json_escaping(&self->super);
+
+      filterx_object_freezer_add(freezer, dedup_key, *pself);
     }
-
-  _filterx_string_hash(self);
-  if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
-    filterx_string_mark_safe_without_json_escaping(&self->super);
-  g_hash_table_insert(dedup_storage, dedup_key, self);
-  return TRUE;
-}
-
-static inline guint
-_hash_str(const gchar *str, gsize str_len)
-{
-  const char *p;
-  guint32 h = 5381;
-
-  for (p = str; str_len > 0 && *p != '\0'; p++, str_len--)
-    h = (h << 5) + h + *p;
-
-  return h;
 }
 
 guint
@@ -237,7 +226,7 @@ _filterx_string_hash(FilterXString *self)
    * arm).  */
 
   G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
-  self->hash = _hash_str(self->str, self->str_len);
+  self->hash = strn_hash(self->str, self->str_len);
   return self->hash;
 }
 
@@ -397,6 +386,46 @@ FilterXObject *
 filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 {
   return &_string_new(str, str_len, _deescape_json_string)->super;
+}
+
+FilterXObject *
+_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len)
+{
+  FilterXString *self = filterx_new_object(FilterXString);
+  filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
+
+  self->super.flags |= FILTERX_STRING_FLAG_STR_BORROWED_SLICE;
+  self->str = str;
+  self->str_len = str_len;
+  self->storage.slice = filterx_object_ref(object);
+  return &self->super;
+}
+
+FilterXObject *
+_filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gsize end)
+{
+  const gchar *value;
+  gsize len;
+  if (!filterx_message_value_get_string_ref(object, &value, &len))
+    g_assert_not_reached();
+
+  g_assert(end <= len && start <= end);
+  const gchar *str = &value[start];
+  gsize str_len = end - start;
+
+  FilterXObject *cached = _filterx_string_resolve_from_cache(str, str_len);
+  if (cached)
+    return cached;
+
+  return _filterx_string_new_slice_from_borrowed_str_and_len(object, str, str_len);
+}
+
+FilterXObject *
+filterx_string_new_frozen(const gchar *str)
+{
+  FilterXObject *self = filterx_string_new(str, -1);
+  filterx_eval_freeze_object(&self);
+  return self;
 }
 
 static inline gsize
@@ -600,7 +629,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .repr = _string_repr,
                     .add = _string_add,
                     .clone = _string_clone,
-                    .dedup = _string_dedup,
+                    .freeze = _string_freeze,
                     .free_fn = _free,
                    );
 
