@@ -142,7 +142,7 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_string)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  UnixTime ut_expected = { .ut_sec = 1710765240, .ut_usec = 0, .ut_gmtoff = 0 };
+  UnixTime ut_expected = { .ut_sec = 1710765240, .ut_usec = 0, .ut_gmtoff = 0, .ut_tz_source = UNIX_TIME_TZ_PARSED };
 
   UnixTime ut = filterx_datetime_get_value(obj);
   cr_assert(memcmp(&ut_expected, &ut, sizeof(UnixTime)) == 0);

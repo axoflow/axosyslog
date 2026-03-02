@@ -41,6 +41,7 @@ _set_from_local_timespec(UnixTime *self, const struct timespec *ts)
   self->ut_sec = ts->tv_sec;
   self->ut_usec = ts->tv_nsec / 1000;
   self->ut_gmtoff = get_local_timezone_ofs(ts->tv_sec);
+  unix_time_set_timezone_source(self, UNIX_TIME_TZ_ASSUMED);
 }
 
 void
@@ -183,6 +184,7 @@ unix_time_fix_timezone(UnixTime *self, gint new_gmtoff)
     {
       self->ut_sec -= (new_gmtoff - implied_gmtoff);
       self->ut_gmtoff = new_gmtoff;
+      unix_time_set_timezone_source(self, UNIX_TIME_TZ_FIXED);
     }
 }
 
@@ -192,7 +194,10 @@ void
 unix_time_set_timezone(UnixTime *self, gint new_gmtoff)
 {
   if (new_gmtoff != -1)
-    self->ut_gmtoff = new_gmtoff;
+    {
+      self->ut_gmtoff = new_gmtoff;
+      unix_time_set_timezone_source(self, UNIX_TIME_TZ_FIXED);
+    }
 }
 
 /* change timezone, assuming that the original timezone was correct, but we
@@ -210,6 +215,7 @@ unix_time_fix_timezone_assuming_the_time_matches_real_time(UnixTime *self)
   long target_gmtoff = _guess_recv_timezone_offset_based_on_time_difference(self);
 
   unix_time_fix_timezone(self, target_gmtoff);
+  unix_time_set_timezone_source(self, UNIX_TIME_TZ_GUESSED);
   return target_gmtoff != -1;
 }
 
@@ -307,6 +313,7 @@ unix_time_fix_timezone_with_tzinfo(UnixTime *self, TimeZoneInfo *tzinfo)
                 {
                   /* step 2 changed ut_gmtoff to be an "old" offset. update gmtoff */
                   self->ut_gmtoff += fixed_gmtoff - alt_gmtoff;
+                  unix_time_set_timezone_source(self, UNIX_TIME_TZ_FIXED);
                 }
             }
         }
@@ -403,4 +410,34 @@ dump_unix_time(const UnixTime *ut, GString *output)
   g_string_append_printf(output, "    UTC Time: %s.%06u\n", utc_time_str, ut->ut_usec);
   g_string_append_printf(output, "    Local Time: %s.%06u (GMT offset: %d seconds)\n",
                          local_time_str, ut->ut_usec, ut->ut_gmtoff);
+}
+
+void
+unix_time_set_timezone_source(UnixTime *self, UnixTimeTimezoneSource tz_source)
+{
+  self->ut_tz_source = tz_source;
+}
+
+UnixTimeTimezoneSource
+unix_time_get_timezone_source(const UnixTime *self)
+{
+  return self->ut_tz_source;
+}
+
+const char *
+unix_time_get_timezone_source_name(const UnixTime *self)
+{
+  switch (self->ut_tz_source)
+    {
+    case UNIX_TIME_TZ_PARSED:
+      return "parsed";
+    case UNIX_TIME_TZ_FIXED:
+      return "fixed";
+    case UNIX_TIME_TZ_GUESSED:
+      return "guessed";
+    case UNIX_TIME_TZ_ASSUMED:
+      return "assumed";
+    default:
+      g_assert_not_reached();
+    }
 }
