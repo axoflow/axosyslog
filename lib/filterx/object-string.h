@@ -31,6 +31,9 @@
 /* the string holds a value that does not need escaping when generating a JSON string literal */
 #define FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED  0x02
 
+/* string is borrowing its payload from another string */
+#define FILTERX_STRING_FLAG_STR_BORROWED_SLICE     0x04
+
 /* cache indices */
 enum
 {
@@ -57,7 +60,11 @@ struct _FilterXString
   const gchar *str;
   guint32 str_len;
   volatile guint32 hash;
-  gchar storage[];
+  union
+  {
+    FilterXObject *slice;
+    gchar bytes[0];
+  } storage;
 };
 
 
@@ -76,7 +83,6 @@ FilterXObject *filterx_typecast_string(FilterXExpr *s, FilterXObject *args[], gs
 FilterXObject *filterx_typecast_bytes(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
-FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
@@ -174,7 +180,7 @@ filterx_string_strdup_value(FilterXObject *s)
 }
 
 static inline FilterXObject *
-filterx_string_new(const gchar *str, gssize str_len)
+_filterx_string_resolve_from_cache(const gchar *str, gssize str_len)
 {
   if (str_len == 0 || str[0] == 0)
     {
@@ -185,7 +191,42 @@ filterx_string_new(const gchar *str, gssize str_len)
       gint index = str[0] - '0';
       return filterx_object_ref(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
     }
+  return NULL;
+}
+
+/* slow path */
+FilterXObject *_filterx_string_new(const gchar *str, gssize str_len);
+
+static inline FilterXObject *
+filterx_string_new(const gchar *str, gssize str_len)
+{
+  FilterXObject *cached = _filterx_string_resolve_from_cache(str, str_len);
+  if (cached)
+    return cached;
   return _filterx_string_new(str, str_len);
+}
+
+/* slow paths */
+FilterXObject *_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len);
+FilterXObject *_filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gsize end);
+
+static inline FilterXObject *
+filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
+{
+  const gchar *str;
+  gsize len;
+
+  str = filterx_string_get_value_ref(object, &len);
+  if (str)
+    {
+      g_assert(end <= len && start <= end);
+      FilterXObject *cached = _filterx_string_resolve_from_cache(str, end - start);
+      if (cached)
+        return cached;
+      return _filterx_string_new_slice_from_borrowed_str_and_len(object, &str[start], end - start);
+    }
+
+  return _filterx_string_new_slice_from_non_string(object, start, end);
 }
 
 static inline FilterXObject *
