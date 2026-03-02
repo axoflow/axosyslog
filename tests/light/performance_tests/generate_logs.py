@@ -420,3 +420,24 @@ def generate_eventlog_xml_message(target_length=512):
         xml_str += "<!-- filler -->" * ((target_length - len(xml_str)) // 15)
 
     return syslog_prefix + xml_str[:target_length] + "\n"
+
+
+def generate_sample_log(input_msg_type, msg_size):
+    if input_msg_type == "json":
+        return generate_json_message(msg_size)
+    elif input_msg_type == "csv":
+        return generate_csv_message(msg_size)
+    elif input_msg_type == "kv":
+        return generate_kv_message(msg_size)
+    elif input_msg_type == "cef":
+        return generate_cef_message(msg_size)
+    elif input_msg_type == "leef":
+        return generate_leef_message(msg_size)
+    elif input_msg_type == "eventlog_xml":
+        return generate_eventlog_xml_message(msg_size)
+    elif input_msg_type == "parsed_cef_json":
+        return generate_parsed_cef_json_message(msg_size)
+    elif input_msg_type == "parsed_leef_json":
+        return generate_parsed_leef_json_message(msg_size)
+    else:
+        raise ValueError(f"Unsupported input message type: {input_msg_type}")
