@@ -48,7 +48,7 @@
     </refsynopsisdiv>
     <refsection version="5.0">
       <title>Description</title>
-      <para>The <command>slogverify</command> utility is used to verify the integrity of cryptographically secured logs and to decrypt log entries produced in a <command>syslog-ng</command> secure logging environment.</para>
+      <para>The <command>slogverify</command> utility is used to verify the integrity of cryptographically secured logs and to decrypt log entries produced in a <command>AxoSyslog</command> secure logging environment.</para>
       <para>Normal mode: <command>slogverify -k &lt;host key file&gt; -m &lt;input MAC file&gt; &lt;input file&gt; &lt;output file&gt; [buffers]</command></para>
       <para>Iterative mode: <command>slogverify -i -p &lt;previous host key&gt; -r &lt;previous MAC&gt; -m &lt;current MAC&gt; &lt;input file&gt; &lt;output file&gt; [buffers]</command></para>
     </refsection>
@@ -60,7 +60,7 @@
           <term><command>input file</command>
           </term>
           <listitem>
-            <para>An encrypted log file from the syslog-ng secure logging environment that will be verified.</para>
+            <para>An encrypted log file from the AxoSyslog secure logging environment that will be verified.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -150,9 +150,9 @@
         <link linkend="secure-logging.7"><command>secure-logging</command>(7)</link>
       </para>
       <note version="5.0">
-        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The syslog-ng Administrator Guide</command></link></para>
-        <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-        <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+        <para>For the detailed documentation of  see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link></para>
+        <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+        <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
         <para>For specific information requests related to secure logging send a mail to the Airbus Secure Logging Team &lt;secure-logging@airbus.com&gt;.</para>
       </note>
     </refsection>
