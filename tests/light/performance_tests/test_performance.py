@@ -77,7 +77,7 @@ def pytest_generate_tests(metafunc):
 
 
 @pytest.mark.asyncio
-async def test_performance2(loggen, syslog_ng, syslog_ng_ctl, config, port_allocator, destination, filterx_rule, flow_control, clickhouse_server, clickhouse_ports, request, testcase_parameters, input_msg_type, msg_size, msg_counter):
+async def test_performance2(loggen, syslog_ng, syslog_ng_ctl, config, port_allocator, destination, filterx_rule, flow_control, clickhouse_server, clickhouse_ports, request, testcase_parameters, input_msg_type, msg_size, msg_counter, run_time):
     sample_log = generate_sample_log(input_msg_type, msg_size)
 
     #  config related start params: destination, filterx_rule, flow_control
@@ -97,7 +97,7 @@ async def test_performance2(loggen, syslog_ng, syslog_ng_ctl, config, port_alloc
         "input_msg_type": input_msg_type,
         "msg_size": msg_size,
         "msg_counter": msg_counter,
-        "run_time": 3,
+        "run_time": run_time,
         "sample_log": sample_log,
         "source_driver": source_driver,
     }
@@ -110,4 +110,12 @@ async def test_performance2(loggen, syslog_ng, syslog_ng_ctl, config, port_alloc
     syslog_ng.stop()
     #  cleanup()
 
-    print(f"Total time taken: {total_time:.2f} seconds")
+    total_delivered_msg = syslog_ng_worker.axosyslog_metrics[-1]["syslogng_output_events_total/delivered"][0].split()[1]
+    total_delivered_msg_size = syslog_ng_worker.axosyslog_metrics[-1]["syslogng_output_event_bytes_total"][0].split()[1]
+
+    logger.info(f"Total time taken: {total_time:.2f} seconds")
+    logger.info(f"Total messages delivered: {total_delivered_msg}")
+    logger.info(f"Throughput: {int(total_delivered_msg) / total_time:.2f} messages/second")
+    logger.info(f"Throughput: {int(total_delivered_msg_size) / total_time / 1024 / 1024:.2f} MB/second")
+
+    # print(f"Total time taken: {total_time:.2f} seconds")
