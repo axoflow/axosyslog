@@ -42,6 +42,7 @@
 
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"
 #define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(format_str, datetime)"
+#define FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE "Usage: get_timezone_source(datetime)"
 
 #define FILTERX_DATETIME_CACHE_SIZE 1
 FilterXObject *fx_datetime_cache[FILTERX_DATETIME_CACHE_SIZE];
@@ -610,6 +611,74 @@ filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error)
     {
       goto error;
     }
+
+  filterx_function_args_free(args);
+  return &self->super.super;
+
+error:
+  filterx_function_args_free(args);
+  filterx_expr_unref(&self->super.super);
+  return NULL;
+}
+
+typedef struct FilterXFunctionGetTimezoneSource_
+{
+  FilterXFunction super;
+  FilterXExpr *datetime_expr;
+} FilterXFunctionGetTimezoneSource;
+
+static FilterXObject *
+_get_timezone_source_eval(FilterXExpr *s)
+{
+  return NULL;
+}
+
+static gboolean
+_get_timezone_source_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXFunctionGetTimezoneSource *self = (FilterXFunctionGetTimezoneSource *) s;
+
+  FilterXExpr **exprs[] = { &self->datetime_expr };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
+    {
+      if (!filterx_expr_visit(s, exprs[i], f, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+static void
+_get_timezone_source_free(FilterXExpr *s)
+{
+  FilterXFunctionGetTimezoneSource *self = (FilterXFunctionGetTimezoneSource *) s;
+
+  filterx_expr_unref(self->datetime_expr);
+  filterx_function_free_method(&self->super);
+}
+
+static gboolean
+_extract_get_timezone_source_arg(FilterXFunctionGetTimezoneSource *self, FilterXFunctionArgs *args, GError **error)
+{
+  return TRUE;
+}
+
+/* Takes reference of args */
+FilterXExpr *
+filterx_function_get_timezone_source_new(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXFunctionGetTimezoneSource *self = g_new0(FilterXFunctionGetTimezoneSource, 1);
+
+  filterx_function_init_instance(&self->super, "get_timezone_source", FXE_READ);
+
+  self->super.super.eval = _get_timezone_source_eval;
+  self->super.super.walk_children = _get_timezone_source_walk;
+  self->super.super.free_fn = _get_timezone_source_free;
+
+  if (!_extract_get_timezone_source_arg(self, args, error) ||
+      !filterx_function_args_check(args, error))
+    goto error;
 
   filterx_function_args_free(args);
   return &self->super.super;
