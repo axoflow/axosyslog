@@ -47,8 +47,8 @@ Test(syslog_ng_otlp, formatting_and_parsing)
 {
   LogMessage *msg = log_msg_new_empty();
 
-  UnixTime stamp = {.ut_sec = 1, .ut_usec = 2, .ut_gmtoff = 3, .is_original_tz = 0};
-  UnixTime recvd = {.ut_sec = 4, .ut_usec = 5, .ut_gmtoff = 6, .is_original_tz = 0};
+  UnixTime stamp = {.ut_sec = 1, .ut_usec = 2, .ut_gmtoff = 3 };
+  UnixTime recvd = {.ut_sec = 4, .ut_usec = 5, .ut_gmtoff = 6 };
   guint16 pri = LOG_KERN | LOG_ERR;
   const char *tag = "foo_tag";
   const char *host = "foo_host";

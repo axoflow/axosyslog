@@ -42,7 +42,7 @@
 
 #define FILTERX_FUNC_STRPTIME_USAGE "Usage: strptime(time_str, format_str_1, ..., format_str_N)"
 #define FILTERX_FUNC_STRFTIME_USAGE "Usage: strftime(format_str, datetime)"
-#define FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE "Usage: was_timezone_received(datetime)"
+#define FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE "Usage: get_timezone_source(datetime)"
 
 #define FILTERX_DATETIME_CACHE_SIZE 1
 FilterXObject *fx_datetime_cache[FILTERX_DATETIME_CACHE_SIZE];
@@ -176,6 +176,7 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
       return NULL;
     }
 
+  unix_time_set_parsed_timezone(&ut);
   convert_wall_clock_time_to_unix_time(&wct, &ut);
   return filterx_datetime_new(&ut);
 }
@@ -338,6 +339,8 @@ _strptime_eval(FilterXExpr *s)
         break;
     }
 
+  if(wct.wct_gmtoff != -1)
+    unix_time_set_parsed_timezone(&ut);
   wall_clock_time_guess_missing_fields(&wct);
 
   if (end)
@@ -625,14 +628,14 @@ typedef struct FilterXFunctionWasTimezoneReceived_
 } FilterXFunctionWasTimezoneReceived;
 
 static FilterXObject *
-_was_timezone_received_eval(FilterXExpr *s)
+_get_timezone_source_eval(FilterXExpr *s)
 {
   FilterXFunctionWasTimezoneReceived *self = (FilterXFunctionWasTimezoneReceived *) s;
 
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate argument. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE, s, NULL);
+      filterx_eval_push_error("Failed to evaluate argument. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE, s, NULL);
       return NULL;
     }
 
@@ -641,17 +644,17 @@ _was_timezone_received_eval(FilterXExpr *s)
   if (!filterx_object_extract_datetime(datetime_obj, &datetime))
     {
       filterx_object_unref(datetime_obj);
-      filterx_eval_push_error("Argument must be of datetime type. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE, s, NULL);
+      filterx_eval_push_error("Argument must be of datetime type. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE, s, NULL);
       return NULL;
     }
 
   filterx_object_unref(datetime_obj);
 
-  return filterx_boolean_new(datetime.is_original_tz == -1);
+  return filterx_string_new(unix_time_get_timezone_source(&datetime), -1);
 }
 
 static gboolean
-_was_timezone_received_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+_get_timezone_source_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionWasTimezoneReceived *self = (FilterXFunctionWasTimezoneReceived *) s;
 
@@ -667,7 +670,7 @@ _was_timezone_received_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user
 }
 
 static void
-_was_timezone_received_free(FilterXExpr *s)
+_get_timezone_source_free(FilterXExpr *s)
 {
   FilterXFunctionWasTimezoneReceived *self = (FilterXFunctionWasTimezoneReceived *) s;
 
@@ -676,13 +679,13 @@ _was_timezone_received_free(FilterXExpr *s)
 }
 
 static FilterXExpr *
-_extract_was_timezone_received_datetime_expr(FilterXFunctionArgs *args, GError **error)
+_extract_get_timezone_source_datetime_expr(FilterXFunctionArgs *args, GError **error)
 {
   FilterXExpr *datetime_expr = filterx_function_args_get_expr(args, 0);
   if (!datetime_expr)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "argument must be set: datetime. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE);
+                  "argument must be set: datetime. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE);
       return NULL;
     }
 
@@ -690,18 +693,18 @@ _extract_was_timezone_received_datetime_expr(FilterXFunctionArgs *args, GError *
 }
 
 static gboolean
-_extract_was_timezone_received_arg(FilterXFunctionWasTimezoneReceived *self, FilterXFunctionArgs *args, GError **error)
+_extract_get_timezone_source_arg(FilterXFunctionWasTimezoneReceived *self, FilterXFunctionArgs *args, GError **error)
 {
   gsize len = filterx_function_args_len(args);
 
   if (len != 1)
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "invalid number of arguments. " FILTERX_FUNC_WAS_TIMEZONE_RECEIVED_USAGE);
+                  "invalid number of arguments. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE);
       return FALSE;
     }
 
-  self->datetime_expr = _extract_was_timezone_received_datetime_expr(args, error);
+  self->datetime_expr = _extract_get_timezone_source_datetime_expr(args, error);
   if (!self->datetime_expr)
     return FALSE;
 
@@ -710,17 +713,17 @@ _extract_was_timezone_received_arg(FilterXFunctionWasTimezoneReceived *self, Fil
 
 /* Takes reference of args */
 FilterXExpr *
-filterx_function_was_timezone_received_new(FilterXFunctionArgs *args, GError **error)
+filterx_function_get_timezone_source_new(FilterXFunctionArgs *args, GError **error)
 {
   FilterXFunctionWasTimezoneReceived *self = g_new0(FilterXFunctionWasTimezoneReceived, 1);
 
-  filterx_function_init_instance(&self->super, "was_timezone_received", FXE_READ);
+  filterx_function_init_instance(&self->super, "get_timezone_source", FXE_READ);
 
-  self->super.super.eval = _was_timezone_received_eval;
-  self->super.super.walk_children = _was_timezone_received_walk;
-  self->super.super.free_fn = _was_timezone_received_free;
+  self->super.super.eval = _get_timezone_source_eval;
+  self->super.super.walk_children = _get_timezone_source_walk;
+  self->super.super.free_fn = _get_timezone_source_free;
 
-  if (!_extract_was_timezone_received_arg(self, args, error) ||
+  if (!_extract_get_timezone_source_arg(self, args, error) ||
       !filterx_function_args_check(args, error))
     goto error;
 

@@ -171,7 +171,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("fix_timezone", filterx_function_fix_timezone_new));
   g_assert(filterx_builtin_function_ctor_register("guess_timezone", filterx_function_guess_timezone_new));
   g_assert(filterx_builtin_function_ctor_register("set_timezone", filterx_function_set_timezone_new));
-  g_assert(filterx_builtin_function_ctor_register("was_timezone_received", filterx_function_was_timezone_received_new));
+  g_assert(filterx_builtin_function_ctor_register("get_timezone_source", filterx_function_get_timezone_source_new));
 }
 
 static void

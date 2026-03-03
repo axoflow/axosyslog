@@ -37,7 +37,7 @@ FilterXObject *filterx_typecast_datetime(FilterXExpr *s, FilterXObject *args[], 
 FilterXObject *filterx_typecast_datetime_isodate(FilterXExpr *, FilterXObject *args[], gsize args_len);
 FilterXExpr *filterx_function_strptime_new(FilterXFunctionArgs *args, GError **error);
 FilterXExpr *filterx_function_strftime_new(FilterXFunctionArgs *args, GError **error);
-FilterXExpr *filterx_function_was_timezone_received_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_function_get_timezone_source_new(FilterXFunctionArgs *args, GError **error);
 
 gboolean datetime_repr(const UnixTime *ut, GString *repr);
 gboolean datetime_str(const UnixTime *ut, GString *repr);
