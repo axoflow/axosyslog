@@ -47,7 +47,7 @@ TLS_BLOCK_START
   {
     struct
     {
-      Cache *zones;
+      GHashTable *zones;
     } tzinfo;
     struct
     {
@@ -107,6 +107,11 @@ static struct
   gchar *tzname[2];
 } global_state;
 
+static struct
+{
+  Cache *zones;
+  GMutex lock;
+} global_tz_cache;
 
 static GMutex localtime_lock;
 
@@ -173,7 +178,10 @@ _clean_timeutils_cache(void)
   cache.tzofs.top_of_the_quarter = 0;
   memset(&cache.mktime.key, 0, sizeof(cache.mktime.key));
   if (cache.tzinfo.zones)
-    cache_clear(cache.tzinfo.zones);
+    {
+      g_hash_table_unref(cache.tzinfo.zones);
+      cache.tzinfo.zones = NULL;
+    }
 
   g_free(state.tzname[0]);
   state.tzname[0] = NULL;
@@ -465,13 +473,33 @@ get_local_timezone_ofs(time_t when)
   return gmtofs;
 }
 
+void
+tz_cache_global_deinit(void)
+{
+  if (global_tz_cache.zones)
+    {
+      cache_free(global_tz_cache.zones);
+      global_tz_cache.zones = NULL;
+    }
+}
 
 TimeZoneInfo *
 cached_get_time_zone_info(const gchar *tz)
 {
   if (!cache.tzinfo.zones)
-    cache.tzinfo.zones = time_zone_cache_new();
-  TimeZoneInfo *result = cache_lookup(cache.tzinfo.zones, tz);
+    cache.tzinfo.zones = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+  TimeZoneInfo *result = g_hash_table_lookup(cache.tzinfo.zones, tz);
+  if (!result)
+    {
+      gchar *global_key = NULL;
+      g_mutex_lock(&global_tz_cache.lock);
+      if (!global_tz_cache.zones)
+        global_tz_cache.zones = time_zone_cache_new();
+      cache_lookup_extended(global_tz_cache.zones, tz, &global_key, (gpointer *)&result);
+      g_mutex_unlock(&global_tz_cache.lock);
+      if (result && global_key)
+        g_hash_table_insert(cache.tzinfo.zones, global_key, result);
+    }
   return result;
 }
 

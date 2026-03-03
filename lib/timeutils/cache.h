@@ -68,5 +68,6 @@ time_t get_cached_realtime_sec(void);
 TimeZoneInfo *cached_get_time_zone_info(const gchar *tz);
 
 void invalidate_timeutils_cache(void);
+void tz_cache_global_deinit(void);
 
 #endif
