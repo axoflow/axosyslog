@@ -102,6 +102,8 @@ void msg_format_parse_into(MsgFormatOptions *options, LogMessage *msg,
 LogMessage *msg_format_construct_message(MsgFormatOptions *options, const guchar *data, gsize length);
 LogMessage *msg_format_parse(MsgFormatOptions *options, const guchar *data, gsize length);
 
+gsize msg_format_from_string(MsgFormatOptions *format_options, const char *msg_cstring, LogMessage **out_msg);
+
 gboolean msg_format_options_set_sdata_prefix(MsgFormatOptions *options, const gchar *prefix);
 
 void msg_format_options_defaults(MsgFormatOptions *options);
