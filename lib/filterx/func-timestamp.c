@@ -27,6 +27,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-eval.h"
 #include "timeutils/cache.h"
+#include "str-utils.h"
 
 #define FILTERX_FUNC_SET_TIMESTAMP_USAGE "Usage: set_timestamp(datetime, stamp=[\"stamp\", \"recvd\"])"
 #define FILTERX_FUNC_FIX_TIMEZONE_USAGE "Usage: fix_timezone(datetime, timezone)"
@@ -327,9 +328,17 @@ _fix_timezone_eval(FilterXExpr *s)
     }
 
   const gchar *timezone_str;
-  if (!filterx_object_extract_string_ref(timezone_obj, &timezone_str, NULL))
+  gsize timezone_len;
+  if (!filterx_object_extract_string_ref(timezone_obj, &timezone_str, &timezone_len))
     {
       filterx_eval_push_error("Second argument must be of string type. " FILTERX_FUNC_FIX_TIMEZONE_USAGE, s, NULL);
+      goto error;
+    }
+
+  APPEND_ZERO(timezone_str, timezone_str, timezone_len);
+  if (timezone_len == 0)
+    {
+      filterx_eval_push_error("Variable name must not be empty", s, timezone_obj);
       goto error;
     }
 
@@ -612,9 +621,17 @@ _set_timezone_eval(FilterXExpr *s)
     }
 
   const gchar *timezone_str;
-  if (!filterx_object_extract_string_ref(timezone_obj, &timezone_str, NULL))
+  gsize timezone_len;
+  if (!filterx_object_extract_string_ref(timezone_obj, &timezone_str, &timezone_len))
     {
       filterx_eval_push_error("Second argument must be of string type. " FILTERX_FUNC_SET_TIMEZONE_USAGE, s, NULL);
+      goto error;
+    }
+
+  APPEND_ZERO(timezone_str, timezone_str, timezone_len);
+  if (timezone_len == 0)
+    {
+      filterx_eval_push_error("Variable name must not be empty", s, timezone_obj);
       goto error;
     }
 
