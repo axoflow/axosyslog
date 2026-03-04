@@ -43,10 +43,10 @@ file_dst_output_name = Path("file_dst_output.txt")
 
 
 def start_syslog_ng(syslog_ng, config):
-    syslog_ng.start_params.trace = False
-    syslog_ng.start_params.debug = False
-    syslog_ng.start_params.verbose = False
-    syslog_ng.start_params.stderr = False
+    syslog_ng.start_params.trace = True
+    syslog_ng.start_params.debug = True
+    syslog_ng.start_params.verbose = True
+    syslog_ng.start_params.stderr = True
     syslog_ng.start(config)
     time.sleep(0.5)
 
@@ -57,6 +57,16 @@ def cleanup():
         file_dst_output_name.unlink()
     except Exception as e:
         logger.error(f"file destination does not exist: {file_dst_output_name}, error: {e}")
+
+
+def generate_report(total_time, loggen_stats, syslog_ng_worker):
+    total_delivered_msg = syslog_ng_worker.axosyslog_metrics[-1]["syslogng_output_events_total/delivered"][0].split()[1]
+    total_delivered_msg_size = syslog_ng_worker.axosyslog_metrics[-1]["syslogng_output_event_bytes_total"][0].split()[1]
+
+    logger.info(f"Total time taken: {total_time:.2f} seconds")
+    logger.info(f"Total messages delivered: {total_delivered_msg}")
+    logger.info(f"Throughput: {int(total_delivered_msg) / total_time:.2f} messages/second")
+    logger.info(f"Throughput: {int(total_delivered_msg_size) / total_time / 1024 / 1024:.2f} MB/second")
 
 
 def pytest_generate_tests(metafunc):
@@ -79,8 +89,6 @@ def pytest_generate_tests(metafunc):
 @pytest.mark.asyncio
 async def test_performance2(loggen, syslog_ng, syslog_ng_ctl, config, port_allocator, destination, filterx_rule, flow_control, clickhouse_server, clickhouse_ports, request, testcase_parameters, input_msg_type, msg_size, msg_counter, run_time):
     sample_log = generate_sample_log(input_msg_type, msg_size)
-
-    #  config related start params: destination, filterx_rule, flow_control
     config_start_params = {
         "destination": destination,
         "filterx_rule": filterx_rule,
@@ -90,9 +98,7 @@ async def test_performance2(loggen, syslog_ng, syslog_ng_ctl, config, port_alloc
         "clickhouse_ports": clickhouse_ports,
     }
     config, source_driver, destination_driver = build_performance_test_config(config, config_start_params, request, testcase_parameters, sample_log)
-    start_syslog_ng(syslog_ng, config)
 
-    #  loggen related start params: input_msg_type, msg_size, msg_counter, run_time
     loggen_start_params = {
         "input_msg_type": input_msg_type,
         "msg_size": msg_size,
@@ -102,20 +108,12 @@ async def test_performance2(loggen, syslog_ng, syslog_ng_ctl, config, port_alloc
         "source_driver": source_driver,
     }
     loggen_worker = LoggenWorker(loggen, loggen_start_params)
+
     syslog_ng_worker = SyslogNgWorker(syslog_ng_ctl, destination_driver)
 
+    start_syslog_ng(syslog_ng, config)
     total_time = await run_and_measure_performance(loggen_worker, syslog_ng_worker)
-    #  generate_report(total_time, loggen_worker.get_stats(), syslog_ng_worker)
-
     syslog_ng.stop()
-    #  cleanup()
 
-    total_delivered_msg = syslog_ng_worker.axosyslog_metrics[-1]["syslogng_output_events_total/delivered"][0].split()[1]
-    total_delivered_msg_size = syslog_ng_worker.axosyslog_metrics[-1]["syslogng_output_event_bytes_total"][0].split()[1]
-
-    logger.info(f"Total time taken: {total_time:.2f} seconds")
-    logger.info(f"Total messages delivered: {total_delivered_msg}")
-    logger.info(f"Throughput: {int(total_delivered_msg) / total_time:.2f} messages/second")
-    logger.info(f"Throughput: {int(total_delivered_msg_size) / total_time / 1024 / 1024:.2f} MB/second")
-
-    # print(f"Total time taken: {total_time:.2f} seconds")
+    generate_report(total_time, loggen_worker.get_stats(), syslog_ng_worker)
+    cleanup()
