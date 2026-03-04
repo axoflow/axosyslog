@@ -87,6 +87,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, format_json);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
+  INIT_TYPE_METHOD(type, add_inplace);
   INIT_TYPE_METHOD(type, free_fn);
 }
 
@@ -97,6 +98,16 @@ filterx_type_init(FilterXType *type)
 
   if (!filterx_type_register(type->name, type))
     msg_error("Reregistering filterx type", evt_tag_str("name", type->name));
+}
+
+FilterXObject *
+filterx_object_add_inplace_method(FilterXObject *self, FilterXObject *object)
+{
+  /* simulate in-place addition by cloning self, adding it up and returning the new object */
+  FilterXObject *cloned = filterx_object_clone(self);
+  FilterXObject *result = filterx_object_add(cloned, object);
+  filterx_object_unref(cloned);
+  return result;
 }
 
 void
@@ -191,5 +202,6 @@ FilterXType FILTERX_TYPE_NAME(object) =
 {
   .super_type = NULL,
   .name = "object",
+  .add_inplace = filterx_object_add_inplace_method,
   .free_fn = filterx_object_free_method,
 };
