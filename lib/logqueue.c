@@ -24,7 +24,9 @@
 #include "logqueue.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/aggregator/stats-aggregator-registry.h"
 #include "messages.h"
+#include "compat/pow2.h"
 #include "timeutils/misc.h"
 
 void
@@ -226,6 +228,34 @@ log_queue_check_items(LogQueue *self, gint *timeout, LogQueuePushNotifyFunc para
   return TRUE;
 }
 
+static inline void
+_register_aggregated_stats(LogQueue *self, StatsClusterKeyBuilder *kb)
+{
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "event_processing_latency_seconds");
+    stats_cluster_key_builder_add_label(kb, stats_cluster_label("measurement_point", "output"));
+    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
+    self->metrics.shared.processing_latency_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist(STATS_LEVEL2, self->metrics.shared.processing_latency_key, round_to_log2(1), 13,
+                                 &self->metrics.shared.processing_latency);
+  stats_aggregator_unlock();
+}
+
+static inline void
+_unregister_aggregated_stats(LogQueue *self)
+{
+  stats_aggregator_lock();
+  stats_unregister_aggregator(&self->metrics.shared.processing_latency);
+  stats_aggregator_unlock();
+
+  stats_cluster_key_free(self->metrics.shared.processing_latency_key);
+}
+
 static void
 _register_shared_counters(LogQueue *self, gint stats_level, StatsClusterKeyBuilder *builder)
 {
@@ -260,6 +290,8 @@ _register_shared_counters(LogQueue *self, gint stats_level, StatsClusterKeyBuild
                            &self->metrics.shared.memory_usage);
   }
   stats_unlock();
+
+  _register_aggregated_stats(self, builder);
 }
 
 static void
@@ -329,6 +361,8 @@ _unregister_shared_counters(LogQueue *self)
       }
   }
   stats_unlock();
+
+  _unregister_aggregated_stats(self);
 }
 
 static void
