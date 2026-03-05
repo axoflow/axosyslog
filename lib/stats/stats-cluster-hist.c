@@ -44,14 +44,12 @@ _counter_group_hist_get_type_label(StatsCounterGroup *self, StatsCluster *cluste
 static void
 _counter_group_hist_get_type_formatting(StatsCounterGroup *self,
                                         StatsCluster *cluster, gint type,
-                                        StatsClusterUnit *stored_unit,
-                                        StatsClusterFrameOfReference *frame_of_reference)
+                                        StatsClusterUnit *stored_unit)
 {
   if (type == SC_TYPE_HIST_SUM)
     return;
 
   *stored_unit = SCU_NONE;
-  *frame_of_reference = SCFOR_NONE;
 }
 
 static const gchar *

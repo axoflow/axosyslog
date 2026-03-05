@@ -72,18 +72,6 @@ _assert_built_sc_key_has_unit(const StatsClusterKeyBuilder *builder, KeyType typ
 }
 
 static void
-_assert_built_sc_key_has_frame_of_reference(const StatsClusterKeyBuilder *builder, KeyType type,
-                                            StatsClusterFrameOfReference frame_of_reference)
-{
-  StatsClusterKey *built_key = stats_cluster_key_builder_build_single(builder);
-
-  if (type == TEST_SINGLE)
-    cr_assert(built_key->formatting.frame_of_reference == frame_of_reference);
-
-  stats_cluster_key_free(built_key);
-}
-
-static void
 _assert_built_sc_key_equals_with_legacy(const StatsClusterKeyBuilder *builder, KeyType type, const gchar *name,
                                         StatsClusterLabel *labels, gssize labels_len, guint16 legacy_component,
                                         const gchar *legacy_id, const gchar *legacy_instance,
@@ -261,21 +249,6 @@ _test_builder(KeyType type)
       }
       stats_cluster_key_builder_pop(builder);
       _assert_built_sc_key_has_unit(builder, type, SCU_NANOSECONDS);
-    }
-    stats_cluster_key_builder_pop(builder);
-
-    /* Frame of reference */
-    stats_cluster_key_builder_push(builder);
-    {
-      stats_cluster_key_builder_set_frame_of_reference(builder, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
-      stats_cluster_key_builder_push(builder);
-      {
-        _assert_built_sc_key_has_frame_of_reference(builder, type, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
-        stats_cluster_key_builder_set_frame_of_reference(builder, SCFOR_ABSOLUTE);
-        _assert_built_sc_key_has_frame_of_reference(builder, type, SCFOR_ABSOLUTE);
-      }
-      stats_cluster_key_builder_pop(builder);
-      _assert_built_sc_key_has_frame_of_reference(builder, type, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
     }
     stats_cluster_key_builder_pop(builder);
 

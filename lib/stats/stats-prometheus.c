@@ -113,9 +113,7 @@ stats_format_prometheus_sanitize_name(const gchar *name, gssize len)
 }
 
 gchar *
-stats_format_prometheus_format_value(StatsClusterUnit stored_unit,
-                                     StatsClusterFrameOfReference frame_of_reference,
-                                     gsize stored_value)
+stats_format_prometheus_format_value(StatsClusterUnit stored_unit, gsize stored_value)
 {
   GString *value = scratch_buffers_alloc();
 
@@ -139,12 +137,6 @@ stats_format_prometheus_format_value(StatsClusterUnit stored_unit,
     case SCU_MINUTES:
       converted_int *= 60;
     case SCU_SECONDS:
-      if (frame_of_reference == SCFOR_RELATIVE_TO_TIME_OF_QUERY)
-        {
-          UnixTime now;
-          unix_time_set_now(&now);
-          converted_int = now.ut_sec - converted_int;
-        }
       g_string_printf(value, "%"G_GUINT64_FORMAT, converted_int);
       break;
 
@@ -171,11 +163,9 @@ gchar *
 stats_format_prometheus_format_counter_value(StatsCluster *sc, gint type)
 {
   StatsClusterUnit stored_unit;
-  StatsClusterFrameOfReference frame_of_reference;
 
-  stats_cluster_get_type_formatting(sc, type, &stored_unit, &frame_of_reference);
+  stats_cluster_get_type_formatting(sc, type, &stored_unit);
   return stats_format_prometheus_format_value(stored_unit,
-                                              frame_of_reference,
                                               stats_counter_get(&sc->counter_group.counters[type]));
 }
 
