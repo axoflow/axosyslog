@@ -206,48 +206,22 @@ Test(stats_prometheus, test_prometheus_format_label_escaping)
 
 Test(stats_prometheus, test_prometheus_format_value)
 {
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_NONE, SCFOR_NONE, 9), "9");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_NONE, 9), "9");
 
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_GIB, SCFOR_NONE, 9), "9663676416");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MIB, SCFOR_NONE, 9), "9437184");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_KIB, SCFOR_NONE, 9), "9216");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_BYTES, SCFOR_NONE, 9), "9");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_GIB, 9), "9663676416");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MIB, 9), "9437184");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_KIB, 9), "9216");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_BYTES, 9), "9");
 
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_HOURS, SCFOR_NONE, 9), "32400");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MINUTES, SCFOR_NONE, 9), "540");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_SECONDS, SCFOR_NONE, 9), "9");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_HOURS, 9), "32400");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MINUTES, 9), "540");
+  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_SECONDS, 9), "9");
 
-  gdouble actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_MILLISECONDS, SCFOR_NONE, 9), NULL);
+  gdouble actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_MILLISECONDS, 9), NULL);
   cr_assert_float_eq(actual, 0.009L, DBL_EPSILON);
 
-  actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_NANOSECONDS, SCFOR_NONE, 9), NULL);
+  actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_NANOSECONDS, 9), NULL);
   cr_assert_float_eq(actual, 9e-9, DBL_EPSILON);
-
-
-  /* Fri Jan 01 2100 01:01:01 GMT+0000 */
-  fake_time(INT_MAX);
-  fake_time_add(1954964814);
-
-  /* Relative to time of query */
-  /* None, bytes and milli/nanoseconds units are unaffected */
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_NONE, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "9");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_GIB, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "9663676416");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MIB, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "9437184");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_KIB, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "9216");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_BYTES, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "9");
-
-  actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_MILLISECONDS, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9),
-                          NULL);
-  cr_assert_float_eq(actual, 0.009L, DBL_EPSILON);
-
-  actual = g_ascii_strtod(stats_format_prometheus_format_value(SCU_NANOSECONDS, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9),
-                          NULL);
-  cr_assert_float_eq(actual, 9e-9, DBL_EPSILON);
-
-  /* Hours, minutes and seconds are affected */
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_HOURS, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "4102416061");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_MINUTES, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "4102447921");
-  cr_assert_str_eq(stats_format_prometheus_format_value(SCU_SECONDS, SCFOR_RELATIVE_TO_TIME_OF_QUERY, 9), "4102448452");
 }
 
 

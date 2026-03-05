@@ -986,7 +986,6 @@ _register_worker_stats(LogThreadedDestWorker *self)
   {
     stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_age_seconds");
     stats_cluster_key_builder_set_unit(kb, SCU_SECONDS);
-    stats_cluster_key_builder_set_frame_of_reference(kb, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
     self->metrics.message_delay_sample_age_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);

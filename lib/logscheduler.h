@@ -27,6 +27,7 @@
 #include "mainloop-io-worker.h"
 #include "template/templates.h"
 #include "stats/stats-counter.h"
+#include "stats/aggregator/stats-aggregator.h"
 
 #include <iv_list.h>
 #include <iv_event.h>
@@ -52,6 +53,8 @@ typedef struct _LogSchedulerPartition
     StatsClusterKey processed_events_total_key;
     StatsCounterItem *assigned_events_total;
     StatsCounterItem *processed_events_total;
+
+    StatsAggregator *processing_latency;
   } metrics;
 } LogSchedulerPartition;
 
@@ -80,6 +83,7 @@ typedef struct _LogScheduler
   gint num_input_threads;
   LogSchedulerPartition partitions[LOGSCHEDULER_MAX_PARTITIONS];
   StatsCounterItem *parallelize_failed_events_total;
+  StatsAggregator *processing_latency;
   LogSchedulerThreadState input_thread_states[];
 } LogScheduler;
 
