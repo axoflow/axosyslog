@@ -28,6 +28,7 @@
 #include "stats/stats-registry.h"
 #include "stats/stats-compat.h"
 #include "stats/stats-cluster-key-builder.h"
+#include "stats/aggregator/stats-aggregator.h"
 #include "window-size-counter.h"
 #include "dynamic-window.h"
 
@@ -86,6 +87,7 @@ struct _LogSource
     StatsCounterItem *window_available;
     StatsCounterItem *window_capacity;
     StatsCounterItem *window_full_total;
+    StatsAggregator *processing_latency;
 
     /* book-keeping */
     StatsClusterKeyBuilder *stats_kb;
@@ -94,6 +96,7 @@ struct _LogSource
     StatsClusterKey *window_available_key;
     StatsClusterKey *window_capacity_key;
     StatsClusterKey *window_full_total_key;
+    StatsClusterKey *processing_latency_key;
 
   } metrics;
 
