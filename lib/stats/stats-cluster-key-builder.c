@@ -38,7 +38,6 @@ typedef struct _BuilderOptions
   GArray *labels;
   GArray *legacy_labels;
   StatsClusterUnit unit;
-  StatsClusterFrameOfReference frame_of_reference;
 
   struct
   {
@@ -174,15 +173,6 @@ stats_cluster_key_builder_set_unit(StatsClusterKeyBuilder *self, StatsClusterUni
   BuilderOptions *options = _get_last_options(self);
 
   options->unit = unit;
-}
-
-void
-stats_cluster_key_builder_set_frame_of_reference(StatsClusterKeyBuilder *self,
-                                                 StatsClusterFrameOfReference frame_of_reference)
-{
-  BuilderOptions *options = _get_last_options(self);
-
-  options->frame_of_reference = frame_of_reference;
 }
 
 void
@@ -376,20 +366,6 @@ _get_unit(const StatsClusterKeyBuilder *self)
   return SCU_NONE;
 }
 
-StatsClusterFrameOfReference
-_get_frame_of_reference(const StatsClusterKeyBuilder *self)
-{
-  for (const GList *link = g_list_last(self->options_stack); link; link = link->prev)
-    {
-      const BuilderOptions *options = (const BuilderOptions *) link->data;
-
-      if (options->frame_of_reference != SCFOR_NONE)
-        return options->frame_of_reference;
-    }
-
-  return SCFOR_NONE;
-}
-
 StatsClusterKey *
 stats_cluster_key_builder_build_single(const StatsClusterKeyBuilder *self)
 {
@@ -407,7 +383,6 @@ stats_cluster_key_builder_build_single(const StatsClusterKeyBuilder *self)
       name = _format_name(self);
       stats_cluster_single_key_set(&temp_key, name, (StatsClusterLabel *) merged_labels->data, merged_labels->len);
       stats_cluster_key_add_unit(&temp_key, _get_unit(self));
-      stats_cluster_key_add_frame_of_reference(&temp_key, _get_frame_of_reference(self));
     }
 
   if (has_legacy_values)
@@ -499,7 +474,6 @@ stats_cluster_key_builder_build_hist(const StatsClusterKeyBuilder *self)
       name = _format_name(self);
       stats_cluster_hist_key_set(&temp_key, name, (StatsClusterLabel *) merged_labels->data, merged_labels->len);
       stats_cluster_key_add_unit(&temp_key, _get_unit(self));
-      stats_cluster_key_add_frame_of_reference(&temp_key, _get_frame_of_reference(self));
     }
   if (has_legacy_values)
     {

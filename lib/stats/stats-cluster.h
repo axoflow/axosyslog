@@ -61,19 +61,6 @@ typedef enum _StatsClusterUnit
   SCU_GIB,
 } StatsClusterUnit;
 
-typedef enum _StatsClusterFrameOfReference
-{
-  SCFOR_NONE = 0,
-  SCFOR_ABSOLUTE,
-
-  /*
-   * Only applicable for counters with seconds, minutes or hours unit.
-   * Has a 1 second precision.
-   * Results in a positive value for timestamps older than the time of query.
-   */
-  SCFOR_RELATIVE_TO_TIME_OF_QUERY,
-} StatsClusterFrameOfReference;
-
 typedef struct _StatsCounterGroup StatsCounterGroup;
 typedef struct _StatsCounterGroupInit StatsCounterGroupInit;
 typedef struct _StatsCluster StatsCluster;
@@ -85,7 +72,7 @@ struct _StatsCounterGroup
   guint16 capacity;
   gboolean (*get_type_label)(StatsCounterGroup *self, StatsCluster *cluster, gint type, StatsClusterLabel *label);
   void (*get_type_formatting)(StatsCounterGroup *self, StatsCluster *cluster, gint type,
-                              StatsClusterUnit *stored_unit, StatsClusterFrameOfReference *frame_of_reference);
+                              StatsClusterUnit *stored_unit);
   const gchar *(*get_type_name_suffix)(StatsCounterGroup *self, StatsCluster *cluster, gint type);
   void (*free_fn)(StatsCounterGroup *self);
 };
@@ -131,7 +118,6 @@ struct _StatsClusterKey
   struct
   {
     StatsClusterUnit stored_unit;
-    StatsClusterFrameOfReference frame_of_reference;
   } formatting;
 
   struct
@@ -146,8 +132,6 @@ struct _StatsClusterKey
 };
 
 void stats_cluster_key_add_unit(StatsClusterKey *key, StatsClusterUnit stored_unit);
-void stats_cluster_key_add_frame_of_reference(StatsClusterKey *key,
-                                              StatsClusterFrameOfReference frame_of_reference);
 
 
 /* NOTE: This struct can only be used by the stats implementation and not by client code. */
@@ -209,13 +193,12 @@ stats_cluster_get_type_label(StatsCluster *self, gint type, StatsClusterLabel *l
 
 static inline void
 stats_cluster_get_type_formatting(StatsCluster *self, gint type,
-                                  StatsClusterUnit *stored_unit,
-                                  StatsClusterFrameOfReference *frame_of_reference)
+                                  StatsClusterUnit *stored_unit)
 {
   *stored_unit = self->key.formatting.stored_unit;
-  *frame_of_reference = self->key.formatting.frame_of_reference;
+
   if (self->counter_group.get_type_formatting)
-    self->counter_group.get_type_formatting(&self->counter_group, self, type, stored_unit, frame_of_reference);
+    self->counter_group.get_type_formatting(&self->counter_group, self, type, stored_unit);
 }
 
 static inline const gchar *

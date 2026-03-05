@@ -102,8 +102,7 @@ _override_bucket_names(StatsAggregatorHistogram *self)
   for (gint i = 0; i < self->num_buckets - 1; i++)
     {
       const gchar *v =
-        stats_format_prometheus_format_value(self->super.key.formatting.stored_unit,
-                                             SCFOR_NONE, pow2(i+self->min_bucket));
+        stats_format_prometheus_format_value(self->super.key.formatting.stored_unit, pow2(i+self->min_bucket));
       g_ptr_array_add(bucket_names, g_strdup(v));
     }
   g_ptr_array_add(bucket_names, g_strdup("+Inf"));
