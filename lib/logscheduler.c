@@ -24,14 +24,34 @@
 #include "template/eval.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/stats-cluster-hist.h"
+#include "stats/aggregator/stats-aggregator-registry.h"
+#include "compat/pow2.h"
+#include "timeutils/unixtime.h"
+
+static inline void
+_update_processing_latency(StatsAggregator *processing_latency, LogMessage *msg)
+{
+  if (!processing_latency)
+    return;
+
+  UnixTime now;
+  unix_time_set_precise_now(&now);
+
+  gint64 latency = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
+  stats_aggregator_add_data_point(processing_latency, latency);
+}
 
 static void
-_reinject_message(LogPipe *front_pipe, LogMessage *msg, const LogPathOptions *path_options)
+_reinject_message(LogPipe *front_pipe, LogMessage *msg, const LogPathOptions *path_options,
+                  StatsAggregator *processing_latency)
 {
   if (front_pipe)
     log_pipe_queue(front_pipe, msg, path_options);
   else
     log_msg_drop(msg, path_options, AT_PROCESSED);
+
+  _update_processing_latency(processing_latency, msg);
 }
 
 #if SYSLOG_NG_HAVE_IV_WORK_POOL_SUBMIT_CONTINUATION
@@ -113,7 +133,7 @@ _work(gpointer s, gpointer arg)
           log_msg_free_queue_node(node);
 
           log_msg_refcache_start_consumer(msg, &path_options);
-          _reinject_message(partition->front_pipe, msg, &path_options);
+          _reinject_message(partition->front_pipe, msg, &path_options, partition->metrics.processing_latency);
           log_msg_refcache_stop();
 
           msgs_processed++;
@@ -201,7 +221,7 @@ _format_processed_events_key(LogSchedulerPartition *partition, const gchar *sche
 
 static void
 _partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe, gsize log_fetch_limit, const gchar *scheduler_id,
-                gint partition_index)
+                gint partition_index, StatsAggregator *processing_latency)
 {
   main_loop_io_worker_job_init(&partition->io_job);
   partition->io_job.type = MLIOJ_PROCESSING;
@@ -230,6 +250,7 @@ _partition_init(LogSchedulerPartition *partition, LogPipe *front_pipe, gsize log
                            &partition->metrics.processed_events_total);
   }
   stats_unlock();
+  partition->metrics.processing_latency = processing_latency;
 }
 
 void
@@ -247,6 +268,7 @@ _partition_clear(LogSchedulerPartition *partition)
     stats_cluster_key_cloned_free(&partition->metrics.processed_events_total_key);
   }
   stats_unlock();
+  partition->metrics.processing_latency = NULL;
 }
 
 /* LogSchedulerThreadState */
@@ -359,7 +381,8 @@ _init_partitions(LogScheduler *self)
 {
   for (gint i = 0; i < self->options->num_partitions; i++)
     {
-      _partition_init(&self->partitions[i], self->front_pipe, self->options->log_fetch_limit, self->id, i);
+      _partition_init(&self->partitions[i], self->front_pipe, self->options->log_fetch_limit, self->id, i,
+                      self->processing_latency);
     }
 }
 
@@ -389,20 +412,49 @@ log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *pa
 {
   if (self->options->num_partitions == 0 || !self->front_pipe)
     {
-      _reinject_message(self->front_pipe, msg, path_options);
+      _reinject_message(self->front_pipe, msg, path_options, self->processing_latency);
       return;
     }
 
   gint thread_index = main_loop_worker_get_thread_index();
   if (thread_index < 0 || thread_index >= self->num_input_threads)
     {
-      _reinject_message(self->front_pipe, msg, path_options);
+      _reinject_message(self->front_pipe, msg, path_options, self->processing_latency);
       stats_counter_inc(self->parallelize_failed_events_total);
       return;
     }
 
   LogSchedulerThreadState *thread_state = &self->input_thread_states[thread_index];
   _queue_thread(self, thread_state, msg, path_options);
+}
+
+static inline void
+_register_aggregated_stats(LogScheduler *self)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("parallelize", self->id),
+                                 stats_cluster_label("measurement_point", "input") };
+  stats_cluster_hist_key_set(&sc_key, "event_processing_latency_seconds", labels, G_N_ELEMENTS(labels));
+  stats_cluster_key_add_unit(&sc_key, SCU_MILLISECONDS);
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist(STATS_LEVEL2, &sc_key, round_to_log2(1), 13,
+                                 &self->processing_latency);
+  stats_aggregator_unlock();
+}
+
+static inline void
+_unregister_aggregated_stats(LogScheduler *self)
+{
+  StatsClusterKey sc_key;
+  StatsClusterLabel labels[] = { stats_cluster_label("parallelize", self->id),
+                                 stats_cluster_label("measurement_point", "input") };
+  stats_cluster_hist_key_set(&sc_key, "event_processing_latency_seconds", labels, G_N_ELEMENTS(labels));
+  stats_cluster_key_add_unit(&sc_key, SCU_MILLISECONDS);
+
+  stats_aggregator_lock();
+  stats_unregister_aggregator(&self->processing_latency);
+  stats_aggregator_unlock();
 }
 
 static void
@@ -415,6 +467,8 @@ _init_scheduler_metrics(LogScheduler *self)
     stats_register_counter(STATS_LEVEL2, &sc_key, SC_TYPE_SINGLE_VALUE, &self->parallelize_failed_events_total);
   }
   stats_unlock();
+
+  _register_aggregated_stats(self);
 }
 
 static void
@@ -427,6 +481,8 @@ _deinit_scheduler_metrics(LogScheduler *self)
     stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->parallelize_failed_events_total);
   }
   stats_unlock();
+
+  _unregister_aggregated_stats(self);
 }
 
 LogScheduler *
@@ -455,8 +511,8 @@ log_scheduler_free(LogScheduler *self)
 {
   _deinit_scheduler_metrics(self);
   log_pipe_unref(self->front_pipe);
-  g_free(self->id);
   _free_partitions(self);
+  g_free(self->id);
   g_free(self);
 }
 
@@ -484,7 +540,7 @@ void
 log_scheduler_push(LogScheduler *self, LogMessage *msg, const LogPathOptions *path_options)
 {
   stats_counter_inc(self->parallelize_failed_events_total);
-  _reinject_message(self->front_pipe, msg, path_options);
+  _reinject_message(self->front_pipe, msg, path_options, self->processing_latency);
 }
 
 LogScheduler *

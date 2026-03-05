@@ -27,11 +27,14 @@
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-logpipe.h"
 #include "stats/stats-cluster-single.h"
+#include "stats/aggregator/stats-aggregator-registry.h"
 #include "msg-stats.h"
 #include "ack-tracker/ack_tracker.h"
 #include "ack-tracker/ack_tracker_factory.h"
 #include "timeutils/misc.h"
+#include "timeutils/unixtime.h"
 #include "compat/time.h"
+#include "compat/pow2.h"
 #include "scratch-buffers.h"
 #include "mainloop.h"
 #include "mainloop-call.h"
@@ -489,6 +492,25 @@ _unregister_window_stats(LogSource *self)
   stats_unlock();
 }
 
+static inline void
+_register_aggregated_stats(LogSource *self)
+{
+  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL2;
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist(level, self->metrics.processing_latency_key, round_to_log2(1), 13,
+                                 &self->metrics.processing_latency);
+  stats_aggregator_unlock();
+}
+
+static inline void
+_unregister_aggregated_stats(LogSource *self)
+{
+  stats_aggregator_lock();
+  stats_unregister_aggregator(&self->metrics.processing_latency);
+  stats_aggregator_unlock();
+}
+
 static void
 _register_counters(LogSource *self)
 {
@@ -511,6 +533,7 @@ _register_counters(LogSource *self)
   stats_unlock();
 
   _register_window_stats(self);
+  _register_aggregated_stats(self);
   stats_byte_counter_init(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key, level, SBCP_KIB);
 }
 
@@ -518,6 +541,7 @@ static void
 _unregister_counters(LogSource *self)
 {
   stats_byte_counter_deinit(&self->metrics.recvd_bytes, self->metrics.recvd_bytes_key);
+  _unregister_aggregated_stats(self);
 
   stats_lock();
 
@@ -543,6 +567,7 @@ _deallocate_counter_keys(LogSource *self)
   stats_cluster_key_free(self->metrics.window_available_key);
   stats_cluster_key_free(self->metrics.window_capacity_key);
   stats_cluster_key_free(self->metrics.window_full_total_key);
+  stats_cluster_key_free(self->metrics.processing_latency_key);
 }
 
 static void
@@ -572,6 +597,15 @@ _allocate_counter_keys(LogSource *self)
   {
     stats_cluster_key_builder_set_name(kb, "input_event_bytes_total");
     self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "event_processing_latency_seconds");
+    stats_cluster_key_builder_add_label(kb, stats_cluster_label("measurement_point", "input"));
+    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
+    self->metrics.processing_latency_key = stats_cluster_key_builder_build_hist(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
@@ -709,6 +743,19 @@ _get_pid_string(void)
   return pid_string;
 }
 
+static inline void
+_update_processing_latency(LogSource *self, LogMessage *msg)
+{
+  if (!self->metrics.processing_latency)
+    return;
+
+  UnixTime now;
+  unix_time_set_precise_now(&now);
+
+  gint64 processing_latency = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
+  stats_aggregator_add_data_point(self->metrics.processing_latency, processing_latency);
+}
+
 static void
 log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options)
 {
@@ -754,6 +801,7 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
   stats_counter_set_time(self->metrics.last_message_seen, msg->timestamps[LM_TS_RECVD].ut_sec);
   stats_byte_counter_add(&self->metrics.recvd_bytes, msg->recvd_rawmsg_size);
   log_pipe_forward_msg(s, msg, path_options);
+  _update_processing_latency(self, msg);
 
   if (accurate_nanosleep && self->threaded && self->window_full_sleep_nsec > 0 && !log_source_free_to_send(self))
     {
