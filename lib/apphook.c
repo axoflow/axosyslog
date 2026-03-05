@@ -268,6 +268,7 @@ app_pre_shutdown(void)
 void
 app_shutdown(void)
 {
+  tz_cache_global_deinit();
   msg_stats_deinit();
   run_application_hook(AH_SHUTDOWN);
 
