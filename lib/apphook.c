@@ -326,7 +326,6 @@ app_config_pre_init(void)
 void
 app_config_stopped(void)
 {
-  tz_cache_global_deinit();
   run_application_hook(AH_CONFIG_STOPPED);
 }
 
