@@ -22,6 +22,7 @@
  */
 #include "str-repr/encode.h"
 #include "utf8utils.h"
+#include "str-utils.h"
 #include <string.h>
 
 void
@@ -48,6 +49,7 @@ str_repr_encode_append(GString *escaped_string, const gchar *str, gssize str_len
       /* NOTE: for non-NUL terminated strings, this would go over the end of
        * the string until the first NUL character.  It is not ideal at all,
        * but there's no strncspn() */
+      APPEND_ZERO(str, str, str_len);
 
       if ((strcspn(str, "\b\f\n\r\t\\ ")) < str_len ||
           (forbidden_chars && strcspn(str, forbidden_chars) < str_len))

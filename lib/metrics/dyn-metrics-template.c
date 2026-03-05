@@ -34,9 +34,9 @@ dyn_metrics_template_set_level(DynMetricsTemplate *self, gint level)
 }
 
 void
-dyn_metrics_template_add_label_template(DynMetricsTemplate *self, const gchar *label, LogTemplate *value_template)
+dyn_metrics_template_add_label_template(DynMetricsTemplate *self, const gchar *label, gssize label_len, LogTemplate *value_template)
 {
-  self->label_templates = g_list_append(self->label_templates, label_template_new(label, value_template));
+  self->label_templates = g_list_append(self->label_templates, label_template_new(label, label_len, value_template));
 }
 
 ValuePairs *
@@ -65,7 +65,9 @@ _add_dynamic_labels_vp_helper(const gchar *name, LogMessageValueType type, const
 
   StatsClusterLabel *label = dyn_metrics_store_cache_label(cache);
   label->name = name_buffer->str;
+  label->name_len = name_buffer->len;
   label->value = value_buffer->str;
+  label->value_len = value_buffer->len;
 
   return FALSE;
 }
