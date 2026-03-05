@@ -35,15 +35,28 @@ unix_time_unset(UnixTime *self)
   *self = val;
 }
 
+static inline void
+_set_from_local_timespec(UnixTime *self, const struct timespec *ts)
+{
+  self->ut_sec = ts->tv_sec;
+  self->ut_usec = ts->tv_nsec / 1000;
+  self->ut_gmtoff = get_local_timezone_ofs(ts->tv_sec);
+}
+
 void
 unix_time_set_now(UnixTime *self)
 {
   struct timespec now;
-
   get_cached_realtime(&now);
-  self->ut_sec = now.tv_sec;
-  self->ut_usec = now.tv_nsec / 1000;
-  self->ut_gmtoff = get_local_timezone_ofs(now.tv_sec);
+  _set_from_local_timespec(self, &now);
+}
+
+void
+unix_time_set_precise_now(UnixTime *self)
+{
+  struct timespec now;
+  clock_gettime(CLOCK_REALTIME, &now);
+  _set_from_local_timespec(self, &now);
 }
 
 static glong
