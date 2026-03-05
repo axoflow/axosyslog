@@ -50,6 +50,20 @@ cache_lookup(Cache *self, const gchar *key)
 }
 
 void
+cache_lookup_extended(Cache *self, const gchar *lookup_key, gchar **orig_key, gpointer *value)
+{
+  if(!g_hash_table_lookup_extended(self->hash_table, lookup_key, (gpointer *)orig_key, value))
+    {
+      *value = cache_resolve(self, lookup_key);
+      if (*value)
+        {
+          *orig_key = g_strdup(lookup_key);
+          g_hash_table_insert(self->hash_table, *orig_key, *value);
+        }
+    }
+}
+
+void
 cache_populate(Cache *self, const gchar *key, const gchar *value)
 {
   gpointer result = g_hash_table_lookup(self->hash_table, key);
