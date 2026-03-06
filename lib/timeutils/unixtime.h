@@ -50,11 +50,13 @@ struct _UnixTime
   /* zone offset in seconds, add this to UTC to get the time in local.  This
    * is just 32 bits, contrary to all other gmtoff variables, as we are
    * squeezed in space with this struct.  32 bit is more than enough for
-   * +/-24*3600 */
-  gint32 ut_gmtoff;
+   * +/-24*3600, so we take 2 bits, to indicate where the ut_gmtoff value originates from. */
+  gint32 ut_gmtoff:30;
+  guint8 ut_gmtoff_explicit:1;
+  guint8 ut_gmtoff_adjusted:1;
 };
 
-#define UNIX_TIME_INIT { -1, 0, -1 }
+#define UNIX_TIME_INIT { -1, 0, -1, 0, 0 }
 
 static inline gboolean
 unix_time_is_set(const UnixTime *ut)
@@ -62,11 +64,11 @@ unix_time_is_set(const UnixTime *ut)
   return ut->ut_sec != -1;
 }
 
-static inline gboolean
-unix_time_is_timezone_set(const UnixTime *self)
-{
-  return self->ut_gmtoff != -1;
-}
+void unix_time_set_parsed_timezone(UnixTime *self);
+void unix_time_set_fixed_timezone(UnixTime *self);
+void unix_time_set_guessed_timezone(UnixTime *self);
+void unix_time_set_assumed_timezone(UnixTime *self);
+const char *unix_time_get_timezone_source(const UnixTime *self);
 
 void unix_time_unset(UnixTime *ut);
 void unix_time_set_now(UnixTime *self);

@@ -3290,3 +3290,99 @@ def test_set_timezone_success(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "1999-12-31T23:00:00 +0100"
+
+
+def test_get_timezone_source_invalid_number_of_args(config, syslog_ng):
+    _ = create_config(
+        config, """
+        $MSG = get_timezone_source();
+""",
+    )
+    with pytest.raises(Exception) as exec_info:
+        syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
+
+
+def test_get_timezone_source_wrong_arguments(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        $MSG = get_timezone_source(1500);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_get_timezone_source_parsed_success(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+        $MSG = get_timezone_source(datetime);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "parsed"
+
+
+def test_get_timezone_source_assumed_success(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S");
+        $MSG = get_timezone_source(datetime);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "assumed"
+
+
+def test_get_timezone_source_guessed_success(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S");
+        guessed_datetime = guess_timezone(datetime);
+        $MSG = get_timezone_source(guessed_datetime);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "guessed"
+
+
+def test_get_timezone_source_fix_fixed_success(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S");
+        fixed_datetime = fix_timezone(datetime, "WET");
+        $MSG = get_timezone_source(fixed_datetime);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "fixed"
+
+
+def test_get_timezone_source_set_fixed_success(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+        datetime = strptime("2000-01-01T00:00:00", "%Y-%m-%dT%H:%M:%S");
+        set_datetime = set_timezone(datetime, "WET");
+        $MSG = get_timezone_source(set_datetime);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "fixed"

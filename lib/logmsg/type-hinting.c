@@ -215,6 +215,7 @@ type_cast_to_datetime_unixtime(const gchar *value, gssize value_len, UnixTime *u
       gint tz_length = strlen(endptr);
       if (!scan_iso_timezone(&tz_start, &tz_length, &tzofs))
         goto error;
+      unix_time_set_parsed_timezone(ut);
     }
 
   ut->ut_sec = sec;
