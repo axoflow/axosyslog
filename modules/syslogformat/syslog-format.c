@@ -834,6 +834,25 @@ _syslog_format_parse_sd_column(LogMessage *msg, const guchar **data, gint *lengt
   return TRUE;
 }
 
+static inline gboolean
+_sanitize_utf8_message_and_store(LogMessage *msg, const guchar *src, gint left)
+{
+  if (g_utf8_validate((gchar *) src, left, NULL))
+    {
+      msg->flags |= LF_UTF8;
+      return FALSE;
+    }
+
+  gchar buf[SANITIZE_UTF8_BUFFER_SIZE(left)];
+  gsize sanitized_length;
+  optimized_sanitize_utf8_to_escaped_binary(src, left, &sanitized_length, buf, sizeof(buf));
+  log_msg_set_value(msg, LM_V_MESSAGE, buf, sanitized_length);
+  log_msg_set_tag_by_id(msg, LM_T_MSG_UTF8_SANITIZED);
+  msg->flags |= LF_UTF8;
+
+  return TRUE;
+}
+
 gboolean
 _syslog_format_parse_message_column(LogMessage *msg,
                                     const guchar **data, gint *length,
@@ -864,18 +883,8 @@ _syslog_format_parse_message_column(LogMessage *msg,
 
       if ((parse_options->flags & LP_SANITIZE_UTF8))
         {
-          if (!g_utf8_validate((gchar *) src, left, NULL))
-            {
-              gchar buf[SANITIZE_UTF8_BUFFER_SIZE(left)];
-              gsize sanitized_length;
-              optimized_sanitize_utf8_to_escaped_binary(src, left, &sanitized_length, buf, sizeof(buf));
-              log_msg_set_value(msg, LM_V_MESSAGE, buf, sanitized_length);
-              log_msg_set_tag_by_id(msg, LM_T_MSG_UTF8_SANITIZED);
-              msg->flags |= LF_UTF8;
-              return TRUE;
-            }
-          else
-            msg->flags |= LF_UTF8;
+          if (_sanitize_utf8_message_and_store(msg, src, left))
+            return TRUE;
         }
       else if ((parse_options->flags & LP_VALIDATE_UTF8) && g_utf8_validate((gchar *) src, left, NULL))
         msg->flags |= LF_UTF8;
@@ -1014,22 +1023,8 @@ _syslog_format_parse_legacy_message(LogMessage *msg,
 
   if (parse_options->flags & LP_SANITIZE_UTF8)
     {
-      if (!g_utf8_validate((gchar *) src, left, NULL))
-        {
-          /* invalid utf8, sanitize it and then remember it is now utf8 clean */
-          gchar buf[SANITIZE_UTF8_BUFFER_SIZE(left)];
-          gsize sanitized_length;
-          optimized_sanitize_utf8_to_escaped_binary(src, left, &sanitized_length, buf, sizeof(buf));
-          log_msg_set_value(msg, LM_V_MESSAGE, buf, sanitized_length);
-          log_msg_set_tag_by_id(msg, LM_T_MSG_UTF8_SANITIZED);
-          msg->flags |= LF_UTF8;
-          return;
-        }
-      else
-        {
-          /* valid utf8, no need to sanitize, store it and mark it as utf8 clean */
-          msg->flags |= LF_UTF8;
-        }
+      if (_sanitize_utf8_message_and_store(msg, src, left))
+        return;
     }
   else if ((parse_options->flags & LP_VALIDATE_UTF8) && g_utf8_validate((gchar *) src, left, NULL))
     {
