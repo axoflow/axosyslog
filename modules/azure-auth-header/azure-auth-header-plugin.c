@@ -42,7 +42,7 @@ azure_auth_header_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo azure_auth_header_module_info =
 {
   .canonical_name = "azure_auth_header",
   .version = SYSLOG_NG_VERSION,

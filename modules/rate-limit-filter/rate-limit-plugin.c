@@ -42,7 +42,7 @@ rate_limit_filter_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo rate_limit_filter_module_info =
 {
   .canonical_name = "rate_limit_filter",
   .version = SYSLOG_NG_VERSION,

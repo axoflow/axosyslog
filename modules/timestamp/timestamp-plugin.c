@@ -61,7 +61,7 @@ timestamp_module_init(PluginContext *context, CfgArgs *args G_GNUC_UNUSED)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo timestamp_module_info =
 {
   .canonical_name = "timestamp",
   .version = SYSLOG_NG_VERSION,

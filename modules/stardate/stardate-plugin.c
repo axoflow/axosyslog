@@ -39,7 +39,7 @@ stardate_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo stardate_module_info =
 {
   .canonical_name = "stardate",
   .version = SYSLOG_NG_VERSION,

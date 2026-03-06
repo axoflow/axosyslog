@@ -75,7 +75,7 @@ affile_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo affile_module_info =
 {
   .canonical_name = "affile",
   .version = SYSLOG_NG_VERSION,

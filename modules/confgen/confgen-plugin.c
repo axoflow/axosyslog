@@ -186,7 +186,7 @@ confgen_module_init(PluginContext *plugin_context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo confgen_module_info =
 {
   .canonical_name = "confgen",
   .version = SYSLOG_NG_VERSION,

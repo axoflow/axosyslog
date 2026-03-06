@@ -53,7 +53,7 @@ kvformat_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo kvformat_module_info =
 {
   .canonical_name = "kvformat",
   .version = SYSLOG_NG_VERSION,

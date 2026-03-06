@@ -42,7 +42,7 @@ grpc_filterx_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo grpc_filterx_module_info =
 {
   .canonical_name = "grpc-filterx",
   .version = SYSLOG_NG_VERSION,

@@ -41,7 +41,7 @@ static Plugin hook_commands_plugins[] =
 };
 
 #ifndef STATIC
-const ModuleInfo module_info =
+const ModuleInfo hook_commands_module_info =
 {
   .canonical_name = "hook-commands",
   .version = SYSLOG_NG_VERSION,

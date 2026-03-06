@@ -45,7 +45,7 @@ geoip2_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo geoip2_plugin_module_info =
 {
   .canonical_name = "geoip2",
   .version = SYSLOG_NG_VERSION,

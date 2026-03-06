@@ -44,7 +44,7 @@ kafka_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo kafka_module_info =
 {
   .canonical_name = "kafka",
   .version = SYSLOG_NG_VERSION,

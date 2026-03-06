@@ -43,7 +43,7 @@ static Plugin diskq_plugins[] =
 };
 
 #ifndef STATIC
-const ModuleInfo module_info =
+const ModuleInfo disk_buffer_module_info =
 {
   .canonical_name = "disk_buffer",
   .version = SYSLOG_NG_VERSION,
