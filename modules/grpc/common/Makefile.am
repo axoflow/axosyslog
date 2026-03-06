@@ -38,7 +38,8 @@ modules_grpc_common_libgrpc_common_la_CXXFLAGS = \
   $(AM_CXXFLAGS) \
   $(PROTOBUF_CFLAGS) \
   $(GRPCPP_CFLAGS) \
-  $(GRPC_COMMON_CFLAGS)
+  $(GRPC_COMMON_CFLAGS) \
+  -fvisibility=hidden
 
 modules_grpc_common_libgrpc_common_la_LIBADD = $(MODULE_DEPS_LIBS) $(PROTOBUF_LIBS) $(GRPCPP_LIBS)
 modules_grpc_common_libgrpc_common_la_LDFLAGS = $(MODULE_LDFLAGS)

@@ -36,7 +36,7 @@ static Plugin afamqp_plugins[] =
   }
 };
 
-const ModuleInfo module_info =
+const ModuleInfo afamqp_module_info =
 {
   .canonical_name = "afamqp",
   .version = SYSLOG_NG_VERSION,
@@ -52,4 +52,3 @@ afamqp_module_init(PluginContext *context, CfgArgs *args)
   plugin_register(context, afamqp_plugins, G_N_ELEMENTS(afamqp_plugins));
   return TRUE;
 }
-

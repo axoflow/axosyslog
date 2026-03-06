@@ -46,7 +46,7 @@ pacctformat_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo pacctformat_module_info =
 {
   .canonical_name = "pacctformat",
   .version = SYSLOG_NG_VERSION,

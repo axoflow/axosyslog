@@ -43,7 +43,7 @@ riemann_module_init(PluginContext *context, CfgArgs *args G_GNUC_UNUSED)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo riemann_module_info =
 {
   .canonical_name = "riemann",
   .version = SYSLOG_NG_VERSION,

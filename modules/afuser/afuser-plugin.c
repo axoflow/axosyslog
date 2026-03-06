@@ -43,7 +43,7 @@ afuser_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo afuser_module_info =
 {
   .canonical_name = "afuser",
   .version = SYSLOG_NG_VERSION,

@@ -432,7 +432,7 @@ system_source_module_init(PluginContext *context, CfgArgs *args)
 }
 
 
-const ModuleInfo module_info =
+const ModuleInfo system_source_module_info =
 {
   .canonical_name = "system-source",
   .version = SYSLOG_NG_VERSION,

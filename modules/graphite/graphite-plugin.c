@@ -37,7 +37,7 @@ graphite_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo graphite_module_info =
 {
   .canonical_name = "graphite",
   .version = SYSLOG_NG_VERSION,
@@ -46,4 +46,3 @@ const ModuleInfo module_info =
   .plugins = graphite_plugins,
   .plugins_len = G_N_ELEMENTS(graphite_plugins),
 };
-

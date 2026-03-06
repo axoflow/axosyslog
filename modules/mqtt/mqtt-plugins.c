@@ -65,7 +65,7 @@ mqtt_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo mqtt_module_info =
 {
   .canonical_name = "mqtt",
   .version = SYSLOG_NG_VERSION,

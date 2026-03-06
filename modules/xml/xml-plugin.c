@@ -56,7 +56,7 @@ xml_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo xml_module_info =
 {
   .canonical_name = "xml",
   .version = SYSLOG_NG_VERSION,

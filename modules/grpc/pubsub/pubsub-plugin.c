@@ -48,7 +48,7 @@ google_pubsub_grpc_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo pubsub_module_info =
 {
   .canonical_name = "google_pubsub_grpc",
   .version = SYSLOG_NG_VERSION,

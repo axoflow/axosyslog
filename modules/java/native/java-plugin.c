@@ -55,7 +55,7 @@ java_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo mod_java_module_info =
 {
   .canonical_name = "java",
   .version = SYSLOG_NG_VERSION,

@@ -42,7 +42,7 @@ gboolean
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo @PLUGIN_NAME_US@_module_info =
 {
   .canonical_name = "@PLUGIN_NAME_US@",
   .version = SYSLOG_NG_VERSION,

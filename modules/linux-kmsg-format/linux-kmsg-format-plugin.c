@@ -52,7 +52,7 @@ linux_kmsg_format_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo linux_kmsg_format_module_info =
 {
   .canonical_name = "linux-kmsg-format",
   .version = SYSLOG_NG_VERSION,

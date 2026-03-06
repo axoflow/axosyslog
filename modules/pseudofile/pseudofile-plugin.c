@@ -43,7 +43,7 @@ pseudofile_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo pseudofile_module_info =
 {
   .canonical_name = "pseudofile",
   .version = SYSLOG_NG_VERSION,

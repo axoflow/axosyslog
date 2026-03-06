@@ -44,7 +44,7 @@ add_contextual_data_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo add_contextual_data_module_info =
 {
   .canonical_name = "add_contextual_data",
   .version = SYSLOG_NG_VERSION,

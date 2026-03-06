@@ -196,7 +196,7 @@ getent_plugin_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo tfgetent_module_info =
 {
   .canonical_name = "getent-plugin",
   .version = SYSLOG_NG_VERSION,
