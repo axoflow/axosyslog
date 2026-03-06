@@ -171,16 +171,6 @@ plugin_construct_from_config(Plugin *self, CfgLexer *lexer, gpointer arg)
  * Implementation of PluginContext
  *****************************************************************************/
 
-static ModuleInfo *
-_get_module_info(GModule *mod)
-{
-  ModuleInfo *module_info = NULL;
-
-  if (mod && g_module_symbol(mod, "module_info", (gpointer *) &module_info))
-    return module_info;
-  return NULL;
-}
-
 static inline gchar *
 _format_symbol_name(const gchar *module_name, const gchar *suffix)
 {
@@ -199,6 +189,32 @@ static gchar *
 _format_module_init_name(const gchar *module_name)
 {
   return _format_symbol_name(module_name, "module_init");
+}
+
+static gchar *
+_format_module_info_name(const gchar *name)
+{
+  return _format_symbol_name(name, "module_info");
+}
+
+static ModuleInfo *
+_get_module_info(GModule *mod, const gchar *name)
+{
+  if (!mod)
+    return NULL;
+
+  gchar *module_info_symbol = _format_module_info_name(name);
+
+  ModuleInfo *module_info = NULL;
+  if (g_module_symbol(mod, module_info_symbol, (gpointer *) &module_info))
+    goto exit;
+
+  /* backward compatibility with older modules */
+  g_module_symbol(mod, "module_info", (gpointer *) &module_info);
+
+exit:
+  g_free(module_info_symbol);
+  return module_info;
 }
 
 static GModule *
@@ -397,7 +413,7 @@ plugin_load_module(PluginContext *context, const gchar *module_name, CfgArgs *ar
       return FALSE;
     }
   g_module_make_resident(mod);
-  module_info = _get_module_info(mod);
+  module_info = _get_module_info(mod, module_name);
 
   if (module_info && module_info->canonical_name)
     {
@@ -512,7 +528,7 @@ plugin_discover_candidate_modules(PluginContext *context)
                         evt_tag_str("fname", fname),
                         evt_tag_str("module", module_name));
               mod = _dlopen_module_as_dir_and_filename(mod_paths[i], fname, module_name);
-              module_info = _get_module_info(mod);
+              module_info = _get_module_info(mod, module_name);
 
               if (module_info)
                 {
@@ -619,7 +635,7 @@ plugin_list_modules(FILE *out, gboolean verbose)
               module_name = g_strndup(so_basename, (gint) (strlen(so_basename) - strlen(G_MODULE_SUFFIX) - 1));
 
               mod = _dlopen_module_as_dir_and_filename(mod_paths[i], fname, module_name);
-              module_info = _get_module_info(mod);
+              module_info = _get_module_info(mod, module_name);
               if (verbose)
                 {
                   fprintf(out, "Module: %s\n", module_name);
