@@ -84,6 +84,7 @@
 #include "timeutils/unixtime.h"
 #include "timeutils/cache.h"
 #include "timeutils/misc.h"
+#include "timeutils/conv.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -295,6 +296,7 @@ wall_clock_time_strptime(WallClockTime *wct, const gchar *format, const gchar *i
   const char *new_fmt;
   const char *const *system_tznames;
   int system_tznames_len;
+  UnixTime sse_with_gmtoff = UNIX_TIME_INIT;
 
   bp = (const unsigned char *)input;
 
@@ -461,6 +463,7 @@ recurse:
               wct->wct_usec *= 10;
             }
 
+          sse_with_gmtoff.ut_usec = wct->wct_usec;
           bp = end;
           LEGAL_ALT(0);
           state |= S_USEC;
@@ -551,7 +554,8 @@ recurse:
               continue;
             }
 
-          cached_localtime(&sse, &wct->tm);
+          sse_with_gmtoff.ut_sec = sse;
+
           state |= S_YDAY | S_WDAY |
                    S_MON | S_MDAY | S_YEAR;
         }
@@ -875,6 +879,13 @@ out:
   if (!HAVE_USEC(state))
     {
       wct->wct_usec = 0;
+    }
+
+  if (sse_with_gmtoff.ut_sec != -1)
+    {
+      if (wct->wct_gmtoff != -1)
+        sse_with_gmtoff.ut_gmtoff = wct->wct_gmtoff;
+      convert_unix_time_to_wall_clock_time(&sse_with_gmtoff, wct);
     }
 
   return __UNCONST(bp);
