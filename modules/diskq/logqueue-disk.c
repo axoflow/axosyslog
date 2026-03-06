@@ -44,7 +44,7 @@
 
 #define B_TO_KiB(x) ((x) / 1024)
 
-QueueType log_queue_disk_type = "DISK";
+static QueueType log_queue_disk_type = "DISK";
 
 gboolean
 log_queue_disk_stop(LogQueue *s, gboolean *persistent)
