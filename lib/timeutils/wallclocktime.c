@@ -529,6 +529,9 @@ recurse:
         {
           time_t sse = 0;
           uint64_t rulim = TIME_MAX;
+          long int orig_wct_gmtoff = -1;
+          const char *orig_wct_zone = NULL;
+          int orig_wct_is_dst = -1;
 
           if (*bp < '0' || *bp > '9')
             {
@@ -551,7 +554,19 @@ recurse:
               continue;
             }
 
+          if(wct->wct_gmtoff != -1)
+            {
+              orig_wct_gmtoff = wct->wct_gmtoff;
+              orig_wct_zone = wct->wct_zone;
+              orig_wct_is_dst = wct->tm.tm_isdst;
+            }
           cached_localtime(&sse, &wct->tm);
+          if (orig_wct_gmtoff != -1 && wct->wct_gmtoff != orig_wct_gmtoff)
+            {
+              wct->wct_gmtoff = orig_wct_gmtoff;
+              wct->wct_zone = orig_wct_zone;
+              wct->tm.tm_isdst = orig_wct_is_dst;
+            }
           state |= S_YDAY | S_WDAY |
                    S_MON | S_MDAY | S_YEAR;
         }
