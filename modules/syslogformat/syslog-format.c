@@ -33,6 +33,7 @@
 #include "utf8utils.h"
 #include "str-utils.h"
 #include "syslog-names.h"
+#include "scratch-buffers.h"
 
 #include "logproto/logproto.h"
 
@@ -843,12 +844,17 @@ _sanitize_utf8_message_and_store(LogMessage *msg, const guchar *src, gint left)
       return FALSE;
     }
 
-  gchar buf[SANITIZE_UTF8_BUFFER_SIZE(left)];
+  ScratchBuffersMarker m;
+  GString *buf = scratch_buffers_alloc_and_mark(&m);
+  g_string_set_size(buf, SANITIZE_UTF8_BUFFER_SIZE(left));
+
   gsize sanitized_length;
-  optimized_sanitize_utf8_to_escaped_binary(src, left, &sanitized_length, buf, sizeof(buf));
-  log_msg_set_value(msg, LM_V_MESSAGE, buf, sanitized_length);
+  optimized_sanitize_utf8_to_escaped_binary(src, left, &sanitized_length, buf->str, buf->len);
+  log_msg_set_value(msg, LM_V_MESSAGE, buf->str, sanitized_length);
   log_msg_set_tag_by_id(msg, LM_T_MSG_UTF8_SANITIZED);
   msg->flags |= LF_UTF8;
+
+  scratch_buffers_reclaim_marked(m);
 
   return TRUE;
 }
