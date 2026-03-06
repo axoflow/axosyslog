@@ -181,19 +181,24 @@ _get_module_info(GModule *mod)
   return NULL;
 }
 
+static inline gchar *
+_format_symbol_name(const gchar *module_name, const gchar *suffix)
+{
+  gchar *symbol_name = g_strdup_printf("%s_%s", module_name, suffix);
+
+  for (gchar *c = symbol_name; *c; c++)
+    {
+      if (*c == '-')
+        *c = '_';
+    }
+
+  return symbol_name;
+}
+
 static gchar *
 _format_module_init_name(const gchar *module_name)
 {
-  gchar *module_init_func;
-  gchar *p;
-
-  module_init_func = g_strdup_printf("%s_module_init", module_name);
-  for (p = module_init_func; *p; p++)
-    {
-      if ((*p) == '-')
-        *p = '_';
-    }
-  return module_init_func;
+  return _format_symbol_name(module_name, "module_init");
 }
 
 static GModule *
