@@ -578,6 +578,29 @@ Test(wallclocktime, test_strftime_all_format_spec)
   cr_assert_str_eq(buf, expected);
 }
 
+Test(wallclocktime, test_strptime_seconds_since_epoch_timezone)
+{
+  WallClockTime wct = WALL_CLOCK_TIME_INIT;
+  WallClockTime wct2 = WALL_CLOCK_TIME_INIT;
+  gchar *end;
+
+  end = wall_clock_time_strptime(&wct, "%s.%f %z", "1770839645.592651 +0800");
+  cr_assert(*end == 0);
+  end = wall_clock_time_strptime(&wct2, "%z %s.%f", "+0800 1770839645.592651");
+  cr_assert(*end == 0);
+  cr_expect(wct.wct_year == wct2.wct_year);
+  cr_expect(wct.wct_mon == wct2.wct_mon);
+  cr_expect(wct.wct_mday == wct2.wct_mday);
+
+  cr_expect(wct.wct_hour == wct2.wct_hour);
+  cr_expect(wct.wct_min == wct2.wct_min);
+  cr_expect(wct.wct_sec == wct2.wct_sec);
+  cr_expect(wct.wct_usec == wct2.wct_usec);
+
+  cr_expect(wct.wct_gmtoff == wct2.wct_gmtoff);
+  cr_expect(wct.tm.tm_isdst == wct2.tm.tm_isdst);
+}
+
 static void
 setup(void)
 {
