@@ -62,12 +62,35 @@ Test(filterx_string, test_string_taking_allocated_storage)
   filterx_object_unref(str);
 }
 
-Test(filterx_string, test_string_taking_slice_of_another_string)
+Test(filterx_string, test_string_taking_a_short_slice_of_another_string)
 {
   FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
   FilterXObject *str2 = filterx_string_new_slice(str, 1, 3);
 
   assert_object_json_equals(str2, "\"bc\"");
+  cr_assert((str2->flags & FILTERX_STRING_FLAG_STR_BORROWED_SLICE) == 0);
+  filterx_object_unref(str2);
+  filterx_object_unref(str);
+}
+
+Test(filterx_string, test_string_taking_a_long_slice_of_another_string)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("0123456789abcdef"), 16);
+  FilterXObject *str2 = filterx_string_new_slice(str, 1, 15);
+
+  assert_object_json_equals(str2, "\"123456789abcde\"");
+  cr_assert((str2->flags & FILTERX_STRING_FLAG_STR_BORROWED_SLICE) != 0);
+  filterx_object_unref(str2);
+  filterx_object_unref(str);
+}
+
+Test(filterx_string, test_string_taking_an_cached_string_slice_results_in_a_cached_string)
+{
+  FilterXObject *str = filterx_string_new_take(g_strdup("ab1cd"), 5);
+  FilterXObject *str2 = filterx_string_new_slice(str, 2, 3);
+
+  assert_object_json_equals(str2, "\"1\"");
+  cr_assert(filterx_object_is_preserved(str2));
   filterx_object_unref(str2);
   filterx_object_unref(str);
 }

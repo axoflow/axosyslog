@@ -210,6 +210,8 @@ filterx_string_new(const gchar *str, gssize str_len)
 FilterXObject *_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len);
 FilterXObject *_filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gsize end);
 
+#define FILTERX_STRING_SHORT_SLICE_LIMIT 8
+
 static inline FilterXObject *
 filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
 {
@@ -226,6 +228,8 @@ filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
       FilterXObject *cached = _filterx_string_resolve_from_cache(slice_start, slice_len);
       if (cached)
         return cached;
+      if (slice_len < FILTERX_STRING_SHORT_SLICE_LIMIT)
+        return _filterx_string_new(slice_start, slice_len);
       return _filterx_string_new_slice_from_borrowed_str_and_len(object, slice_start, slice_len);
     }
 
