@@ -154,7 +154,7 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
 
   const gchar *str;
   gsize len;
-  if (!filterx_object_extract_string_ref(object, &str, &len))
+  if (!filterx_object_extract_string_as_cstr_len(object, &str, &len))
     return NULL;
 
   UnixTime ut = UNIX_TIME_INIT;

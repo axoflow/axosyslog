@@ -55,7 +55,7 @@ _assert_format_kv(GList *args, const gchar *expected_output)
   FilterXObject *obj = init_and_eval_expr(func);
   cr_assert(obj);
 
-  const gchar *output = filterx_string_get_value_ref(obj, NULL);
+  const gchar *output = filterx_string_get_value_as_cstr(obj);
   cr_assert(output);
 
   cr_assert_str_eq(output, expected_output);
@@ -87,7 +87,7 @@ Test(filterx_func_format_kv, test_invalid_args)
 
   /* non-literal value_separator */
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
-  args = g_list_append(args, filterx_function_arg_new("value_separator", filterx_non_literal_new(filterx_string_new("=",
+  args = g_list_append(args, filterx_function_arg_new("value_separator", filterx_object_expr_new(filterx_string_new("=",
                                                       -1))));
   _assert_format_kv_init_fail(args);
   args = NULL;
@@ -112,7 +112,7 @@ Test(filterx_func_format_kv, test_invalid_args)
 
   /* non-literal pair_separator */
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_test_dict_new())));
-  args = g_list_append(args, filterx_function_arg_new("pair_separator", filterx_non_literal_new(filterx_string_new("",
+  args = g_list_append(args, filterx_function_arg_new("pair_separator", filterx_object_expr_new(filterx_string_new("",
                                                       -1))));
   _assert_format_kv_init_fail(args);
   args = NULL;
