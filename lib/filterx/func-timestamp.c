@@ -327,12 +327,11 @@ _fix_timezone_eval(FilterXExpr *s)
     }
 
   const gchar *timezone_str;
-  if (!filterx_object_extract_string_ref(timezone_obj, &timezone_str, NULL))
+  if (!filterx_object_extract_string_as_cstr(timezone_obj, &timezone_str))
     {
       filterx_eval_push_error("Second argument must be of string type. " FILTERX_FUNC_FIX_TIMEZONE_USAGE, s, NULL);
       goto error;
     }
-
   TimeZoneInfo *tzinfo = cached_get_time_zone_info(timezone_str);
 
   if (!tzinfo)
@@ -612,12 +611,11 @@ _set_timezone_eval(FilterXExpr *s)
     }
 
   const gchar *timezone_str;
-  if (!filterx_object_extract_string_ref(timezone_obj, &timezone_str, NULL))
+  if (!filterx_object_extract_string_as_cstr(timezone_obj, &timezone_str))
     {
       filterx_eval_push_error("Second argument must be of string type. " FILTERX_FUNC_SET_TIMEZONE_USAGE, s, NULL);
       goto error;
     }
-
   TimeZoneInfo *tzinfo = cached_get_time_zone_info(timezone_str);
 
   if (!tzinfo)

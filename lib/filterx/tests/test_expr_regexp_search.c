@@ -104,7 +104,7 @@ _assert_list_elem(FilterXObject *list, gint64 index, const gchar *expected_value
   FilterXObject *elem = filterx_sequence_get_subscript(list, index);
   cr_assert(elem);
 
-  const gchar *value = filterx_string_get_value_ref(elem, NULL);
+  const gchar *value = filterx_string_get_value_as_cstr(elem);
   cr_assert_str_eq(value, expected_value);
 
   filterx_object_unref(elem);
@@ -117,7 +117,7 @@ _assert_dict_elem(FilterXObject *list, const gchar *key, const gchar *expected_v
   FilterXObject *elem = filterx_object_get_subscript(list, key_obj);
   cr_assert(elem);
 
-  const gchar *value = filterx_string_get_value_ref(elem, NULL);
+  const gchar *value = filterx_string_get_value_as_cstr(elem);
   cr_assert_str_eq(value, expected_value);
 
   filterx_object_unref(key_obj);
