@@ -66,6 +66,7 @@ struct _FilterXType
   gboolean (*str)(FilterXObject *self, GString *str);
   /* operators */
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
+  FilterXObject *(*add_inplace)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
   void (*make_readonly)(FilterXObject *self);
@@ -558,7 +559,7 @@ filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer us
 void _filterx_object_log_add_object_error(FilterXObject *self);
 
 static inline FilterXObject *
-filterx_object_add_object(FilterXObject *self, FilterXObject *object)
+filterx_object_add(FilterXObject *self, FilterXObject *object)
 {
   if (!self->type->add)
     {
@@ -567,6 +568,17 @@ filterx_object_add_object(FilterXObject *self, FilterXObject *object)
     }
 
   return self->type->add(self, object);
+}
+
+/*
+ * Add the value to @self, mutating @self if it is a mutable object.  The
+ * return value is usually the same as @self (if in-place addition was
+ * successful) or an alternative object instance, in case if it wasn't.
+ */
+static inline FilterXObject *
+filterx_object_add_inplace(FilterXObject *self, FilterXObject *object)
+{
+  return self->type->add_inplace(self, object);
 }
 
 static inline gboolean

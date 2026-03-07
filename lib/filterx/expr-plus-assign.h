@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2025 Axoflow
- * Copyright (c) 2025 László Várady
+ * Copyright (c) 2024 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,22 +19,11 @@
  * COPYING for details.
  *
  */
+#ifndef FILTERX_EXPR_PLUS_ASSIGN_H_INCLUDED
+#define FILTERX_EXPR_PLUS_ASSIGN_H_INCLUDED
 
-#ifndef FILTERX_DPATH_H
-#define FILTERX_DPATH_H
+#include "filterx-expr.h"
 
-#include "filterx/filterx-expr.h"
-#include "filterx/expr-function.h"
-
-typedef struct _FilterXDPathElement FilterXDPathElement;
-
-FilterXDPathElement *filterx_dpath_elem_object_new(FilterXObject *object);
-FilterXDPathElement *filterx_dpath_elem_expr_new(FilterXExpr *expr);
-
-/* lvalue setter */
-FilterXExpr *filterx_dpath_lvalue_new(FilterXExpr *variable, GList *dpath_elements, GError **error);
-
-/* rvalue getter */
-FilterXExpr *filterx_dpath_fn_new(FilterXFunctionArgs *args, GError **error);
+FilterXExpr *filterx_operator_plus_assign_new(FilterXExpr *lhs, FilterXExpr *rhs);
 
 #endif
