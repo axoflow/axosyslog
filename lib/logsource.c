@@ -90,18 +90,24 @@ _dynamic_window_release(LogSource *self, gsize size)
 static inline guint32
 _take_reclaimed_window(LogSource *self, guint32 window_size_increment)
 {
-  gssize old = atomic_gssize_sub(&self->window_size_to_be_reclaimed, window_size_increment);
-  gboolean reclaim_in_progress = (old > 0);
+  guint32 remaining_window_size_increment;
+  gssize reclaim;
 
-  if (!reclaim_in_progress)
+  gssize to_be_reclaimed, new_to_be_reclaimed;
+  do
     {
-      return window_size_increment;
+      to_be_reclaimed = atomic_gssize_get(&self->window_size_to_be_reclaimed);
+
+      if (G_LIKELY(to_be_reclaimed == 0))
+        return window_size_increment;
+
+      reclaim = MIN(window_size_increment, to_be_reclaimed);
+      remaining_window_size_increment = window_size_increment - reclaim;
+      new_to_be_reclaimed = to_be_reclaimed - reclaim;
     }
+  while (!atomic_gssize_compare_and_exchange(&self->window_size_to_be_reclaimed, to_be_reclaimed, new_to_be_reclaimed));
 
-  guint32 remaining_window_size_increment = MAX(window_size_increment - old, 0);
-  guint32 reclaimed = window_size_increment - remaining_window_size_increment;
-  atomic_gssize_add(&self->pending_reclaimed, reclaimed);
-
+  atomic_gssize_add(&self->pending_reclaimed, reclaim);
   return remaining_window_size_increment;
 }
 
