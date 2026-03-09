@@ -96,7 +96,7 @@ static gboolean
 _setup_haproxy_transport(TransportMapperInet *self, LogTransportStack *stack,
                          LogTransportIndex base_index, LogTransportIndex switch_to)
 {
-  log_transport_stack_add_factory(stack, transport_factory_haproxy_new(base_index, switch_to));
+  log_transport_stack_add_factory(stack, transport_factory_haproxy_new(base_index, switch_to, self->super.sock_type));
   return TRUE;
 }
 

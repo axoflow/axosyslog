@@ -136,7 +136,11 @@ ParameterizedTestParameters(log_transport_proxy, test_proxy_protocol_parse_heade
       .proxy_header_len = 28
     },
     {
-      "\r\n\r\n\0\r\nQUIT\n!\21\0\x0f\1\1\1\1\2\2\2\2\2025\255\234xxx", TRUE,
+      "\r\n\r\n", FALSE,
+      .proxy_header_len = 4
+    },
+    {
+      "\r\n\r\n\0\r\nQUIT\n!\21\0\x0f\1\1\1\1\2\2\2\2\2025\255\234\4\0\0", TRUE,
       .addresses = "source=AF_INET(1.1.1.1:33333) destination=AF_INET(2.2.2.2:44444)",
       .proxy_header_len = 31
     },
@@ -156,7 +160,7 @@ ParameterizedTest(ProtocolHeaderTestParams *params, log_transport_proxy, test_pr
 
   log_transport_stack_init(&stack, mock);
   log_transport_stack_add_transport(&stack,
-                                    LOG_TRANSPORT_HAPROXY, log_transport_haproxy_new(LOG_TRANSPORT_INITIAL, LOG_TRANSPORT_INITIAL));
+                                    LOG_TRANSPORT_HAPROXY, log_transport_haproxy_new(LOG_TRANSPORT_INITIAL, LOG_TRANSPORT_INITIAL, SOCK_STREAM));
   log_transport_stack_switch(&stack, LOG_TRANSPORT_HAPROXY);
   do
     {
