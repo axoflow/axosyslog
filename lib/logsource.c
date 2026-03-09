@@ -337,30 +337,33 @@ _inc_balanced(LogSource *self, gsize inc)
 static void
 _dec_balanced(LogSource *self, gsize dec)
 {
-  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
-  gsize remaining_sub = 0;
+  if (dec == 0)
+    return;
 
+  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+  gsize to_decrement_now = dec;
+  gsize to_reclaim_later = 0;
+
+  /* '<=' because we can't suspend the source here */
   if (empty_window <= dec)
     {
-      remaining_sub = dec - empty_window;
-      if (empty_window == 0)
-        dec = 0;
-      else
-        dec = empty_window - 1;
+      /* 1 empty slot has to remain because we can't suspend the source here */
+      to_decrement_now = MAX(((gssize) empty_window) - 1, 0);
+      to_reclaim_later = dec - to_decrement_now;
 
-      _reclaim_dynamic_window(self, remaining_sub);
+      _reclaim_dynamic_window(self, to_reclaim_later);
     }
 
-  gsize new_full_window_size = self->full_window_size - dec;
+  gsize new_full_window_size = self->full_window_size - to_decrement_now;
   msg_trace("Balance::decrease",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
             evt_tag_int("old_full_window_size", self->full_window_size),
             evt_tag_int("new_full_window_size", new_full_window_size),
-            evt_tag_int("to_be_reclaimed", remaining_sub));
+            evt_tag_int("to_be_reclaimed", to_reclaim_later));
 
-  _window_size_sub(self, dec, NULL);
-  _dynamic_window_release(self, dec);
+  _window_size_sub(self, to_decrement_now, NULL);
+  _dynamic_window_release(self, to_decrement_now);
 }
 
 void
