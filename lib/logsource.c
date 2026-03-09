@@ -264,34 +264,23 @@ static void
 _reclaim_dynamic_window(LogSource *self, gsize window_size)
 {
   g_assert(self->full_window_size - window_size >= self->initial_window_size);
-  atomic_gssize_set(&self->window_size_to_be_reclaimed, window_size);
+  atomic_gssize_add(&self->window_size_to_be_reclaimed, window_size);
 }
 
-static gboolean
+static void
 _process_reclaimed_window(LogSource *self)
 {
-  //check pending_reclaimed
   gssize total_reclaim = atomic_gssize_set_and_get(&self->pending_reclaimed, 0);
-  gssize to_be_reclaimed = atomic_gssize_get(&self->window_size_to_be_reclaimed);
-  gboolean reclaim_in_progress = (to_be_reclaimed > 0);
 
-  if (total_reclaim > 0)
-    _dynamic_window_release(self, total_reclaim);
-  else
-    {
-      //to avoid underflow, we need to set a value <= 0
-      if (to_be_reclaimed < 0) {
-        atomic_gssize_set(&self->window_size_to_be_reclaimed, 0);
-      }
-    }
+  if (total_reclaim <= 0)
+    return;
 
-  msg_trace("Checking if reclaim is in progress...",
+  _dynamic_window_release(self, total_reclaim);
+
+  msg_trace("Reclaiming window",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
-            evt_tag_printf("in progress", "%s", reclaim_in_progress ? "yes" : "no"),
             evt_tag_long("total_reclaim", total_reclaim));
-
-  return reclaim_in_progress;
 }
 
 static inline gsize
@@ -414,6 +403,7 @@ _dynamic_window_rebalance(LogSource *self)
     _dec_balanced(self, current_dynamic_win - self->dynamic_window.pool->balanced_window);
 }
 
+/* runs in the main thread, the source is idle */
 void
 log_source_dynamic_window_realloc(LogSource *self)
 {
@@ -422,7 +412,10 @@ log_source_dynamic_window_realloc(LogSource *self)
   /* it is safe to assume that the window size is not decremented while this function runs,
    * only incrementation is possible by destination threads */
 
-  if (!_process_reclaimed_window(self))
+  _process_reclaimed_window(self);
+
+  /* must be checked AFTER _process_reclaimed_window() */
+  if (!atomic_gssize_get(&self->window_size_to_be_reclaimed))
     _dynamic_window_rebalance(self);
 
   dynamic_window_stat_reset(&self->dynamic_window.stat);
