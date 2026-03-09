@@ -320,17 +320,17 @@ static void
 _inc_balanced(LogSource *self, gsize inc)
 {
   gsize old_full_window_size = self->full_window_size;
+
   gsize offered_dynamic = _dynamic_window_request(self, inc);
+  gsize old_window_size = _window_size_add(self, offered_dynamic, NULL);
+  if (old_window_size == 0 && offered_dynamic != 0)
+    log_source_wakeup(self);
 
   msg_trace("Balance::increase",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
             evt_tag_int("old_full_window_size", old_full_window_size),
             evt_tag_int("new_full_window_size", self->full_window_size));
-
-  gsize old_window_size = _window_size_add(self, offered_dynamic, NULL);
-  if (old_window_size == 0 && offered_dynamic != 0)
-    log_source_wakeup(self);
 }
 
 /* runs in the main thread, the source is idle */
