@@ -351,10 +351,7 @@ _dec_balanced(LogSource *self, gsize dec)
       _reclaim_dynamic_window(self, remaining_sub);
     }
 
-  _window_size_sub(self, dec, NULL);
-
   gsize new_full_window_size = self->full_window_size - dec;
-
   msg_trace("Balance::decrease",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
@@ -362,6 +359,7 @@ _dec_balanced(LogSource *self, gsize dec)
             evt_tag_int("new_full_window_size", new_full_window_size),
             evt_tag_int("to_be_reclaimed", remaining_sub));
 
+  _window_size_sub(self, dec, NULL);
   _dynamic_window_release(self, dec);
 }
 
