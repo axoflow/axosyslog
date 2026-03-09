@@ -127,7 +127,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
   gboolean need_to_resume_counter = !last_ack_type_is_suspended && suspended;
   if (need_to_resume_counter)
     window_size_counter_resume(&self->window_size);
-  if (old_window_size == 0 || need_to_resume_counter)
+  if ((window_size_increment != 0 && old_window_size == 0) || need_to_resume_counter)
     log_source_wakeup(self);
 }
 
