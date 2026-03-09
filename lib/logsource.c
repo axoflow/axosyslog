@@ -273,6 +273,14 @@ _reclaim_dynamic_window(LogSource *self, gsize window_size)
 static void
 _process_reclaimed_window(LogSource *self)
 {
+  {
+    /* _take_reclaimed_window() should only be called when messages are ACKed (_flow_control_window_size_adjust()),
+     * but a race condition in _dec_balanced() has to be compensated here.
+     */
+    gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+    (void) _take_reclaimed_window(self, empty_window);
+  }
+
   gssize total_reclaim = atomic_gssize_set_and_get(&self->pending_reclaimed, 0);
 
   if (total_reclaim <= 0)
@@ -346,6 +354,9 @@ _dec_balanced(LogSource *self, gsize dec)
       to_decrement_now = MAX(((gssize) empty_window) - 1, 0);
       to_reclaim_later = dec - to_decrement_now;
 
+      /* there is a race window between window_size_counter_get() and this,
+       * which has to be compensated in _process_reclaimed_window()
+       */
       _reclaim_dynamic_window(self, to_reclaim_later);
     }
 
