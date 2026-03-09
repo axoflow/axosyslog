@@ -67,6 +67,19 @@ _window_size_sub(LogSource *self, gsize value, gboolean *suspended)
   return window_size_counter_sub(&self->window_size, value, suspended);
 }
 
+static inline gsize
+_dynamic_window_request(LogSource *self, gsize size)
+{
+  main_loop_assert_main_thread();
+
+  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, size);
+
+  self->full_window_size += offered_dynamic;
+  stats_counter_add(self->metrics.window_capacity, offered_dynamic);
+
+  return offered_dynamic;
+}
+
 static inline void
 _dynamic_window_release(LogSource *self, gsize size)
 {
@@ -297,7 +310,6 @@ _release_all_dynamic_window(LogSource *self)
             log_pipe_location_tag(&self->super));
 
   _window_size_sub(self, dynamic_part, NULL);
-
   _dynamic_window_release(self, dynamic_part);
 
   dynamic_window_pool_unref(self->dynamic_window.pool);
@@ -307,16 +319,14 @@ _release_all_dynamic_window(LogSource *self)
 static void
 _inc_balanced(LogSource *self, gsize inc)
 {
-  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, inc);
+  gsize old_full_window_size = self->full_window_size;
+  gsize offered_dynamic = _dynamic_window_request(self, inc);
 
   msg_trace("Balance::increase",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
-            evt_tag_int("old_full_window_size", self->full_window_size),
-            evt_tag_int("new_full_window_size", self->full_window_size + offered_dynamic));
-
-  self->full_window_size += offered_dynamic;
-  stats_counter_add(self->metrics.window_capacity, offered_dynamic);
+            evt_tag_int("old_full_window_size", old_full_window_size),
+            evt_tag_int("new_full_window_size", self->full_window_size));
 
   gsize old_window_size = _window_size_add(self, offered_dynamic, NULL);
   if (old_window_size == 0 && offered_dynamic != 0)
