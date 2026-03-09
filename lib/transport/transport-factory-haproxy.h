@@ -26,6 +26,6 @@
 
 #include "transport/transport-stack.h"
 
-LogTransportFactory *transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to);
+LogTransportFactory *transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to, gint sock_type);
 
 #endif

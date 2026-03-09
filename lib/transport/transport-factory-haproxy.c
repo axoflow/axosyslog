@@ -29,18 +29,8 @@ typedef struct _LogTransportFactoryHAProxy
   LogTransportFactory super;
   LogTransportIndex base;
   LogTransportIndex switch_to;
+  gint sock_type;
 } LogTransportFactoryHAProxy;
-
-static inline gboolean
-_is_stream_based(gint fd)
-{
-  gint type;
-  socklen_t len = sizeof(type);
-
-  if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &len) < 0)
-    return TRUE;
-  return type == SOCK_STREAM;
-}
 
 static LogTransport *
 _construct_transport(const LogTransportFactory *s, LogTransportStack *stack)
@@ -49,11 +39,11 @@ _construct_transport(const LogTransportFactory *s, LogTransportStack *stack)
 
   return log_transport_haproxy_new(self->base == LOG_TRANSPORT_NONE ? stack->active_transport : self->base,
                                    self->switch_to == LOG_TRANSPORT_NONE ? stack->active_transport : self->switch_to,
-                                   _is_stream_based(stack->fd));
+                                   self->sock_type);
 }
 
 LogTransportFactory *
-transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to)
+transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to, gint sock_type)
 {
   LogTransportFactoryHAProxy *self = g_new0(LogTransportFactoryHAProxy, 1);
 
@@ -61,5 +51,6 @@ transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_t
   self->super.construct_transport = _construct_transport;
   self->base = base;
   self->switch_to = switch_to;
+  self->sock_type = sock_type;
   return &self->super;
 }
