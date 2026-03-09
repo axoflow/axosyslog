@@ -2353,7 +2353,7 @@ def test_parse_cef(config, syslog_ng):
         "5|" +
         "dummy_key1=value " +
         "dummy_key2=value containing pair separators that does not need to be escaped " +
-        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped " +
+        "dummy_key3=value=containing=value=separators=that=does=not=need=to=be=escaped " +
         "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped " +
         "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
     $MSG = json(parse_cef(custom_message));
@@ -2373,7 +2373,7 @@ def test_parse_cef(config, syslog_ng):
         "agent_severity": "5",
         "dummy_key1": "value",
         "dummy_key2": "value containing pair separators that does not need to be escaped",
-        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key3": "value=containing=value=separators=that=does=not=need=to=be=escaped",
         "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
     }
@@ -2390,8 +2390,7 @@ def test_parse_leef_version_1(config, syslog_ng):
         "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|" +
         "1234|" +
         "dummy_key1=value\t" +
-        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t" +
-        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t" +
+        "dummy_key3=value=containing=value=separators=that=does=not=need=to=be=escaped\t" +
         "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped\t" +
         "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
     $MSG = json(parse_leef(custom_message));
@@ -2408,8 +2407,7 @@ def test_parse_leef_version_1(config, syslog_ng):
         "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
         "event_id": "1234",
         "dummy_key1": "value",
-        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
-        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key3": "value=containing=value=separators=that=does=not=need=to=be=escaped",
         "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
     }
@@ -2426,8 +2424,7 @@ def test_parse_leef_version_2_no_delimiter(config, syslog_ng):
         "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped|" +
         "1234|" +
         "dummy_key1=value\t" +
-        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t" +
-        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t" +
+        "dummy_key3=value=containing=value=separators=that=does=not=need=to=be=escaped\t" +
         "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped\t" +
         "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
     $MSG = json(parse_leef(custom_message));
@@ -2444,8 +2441,7 @@ def test_parse_leef_version_2_no_delimiter(config, syslog_ng):
         "product_version": "dummy\tdevice\tversion\tcontaining\textension\tpair\tseparator\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
         "event_id": "1234",
         "dummy_key1": "value",
-        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
-        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key3": "value=containing=value=separators=that=does=not=need=to=be=escaped",
         "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
     }
@@ -2463,8 +2459,7 @@ def test_parse_leef_version_2_empty_delimiter(config, syslog_ng):
         "1234|" +
         "|" +
         "dummy_key1=value\t" +
-        "dummy_key2=value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped\t" +
-        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped\t" +
+        "dummy_key3=value=containing=value=separators=that=does=not=need=to=be=escaped\t" +
         "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped\t" +
         "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
     $MSG = json(parse_leef(custom_message));
@@ -2482,8 +2477,7 @@ def test_parse_leef_version_2_empty_delimiter(config, syslog_ng):
         "event_id": "1234",
         "leef_delimiter": "",
         "dummy_key1": "value",
-        "dummy_key2": "value\tcontaining\tpair\tseparators\tthat\tdoes\tnot\tneed\tto\tbe\tescaped",
-        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key3": "value=containing=value=separators=that=does=not=need=to=be=escaped",
         "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
     }
@@ -2502,7 +2496,7 @@ def test_parse_leef_version_2_space_delimiter(config, syslog_ng):
         " |" +
         "dummy_key1=value " +
         "dummy_key2=value containing pair separators that does not need to be escaped " +
-        "dummy_key3=value\\=containing\\=value\\=separators\\=that\\=needs\\=to\\=be\\=escaped " +
+        "dummy_key3=value=containing=value=separators=that=does=not=need=to=be=escaped " +
         "dummy_key4=value\\\\containing\\\\backslash\\\\that\\\\needs\\\\to\\\\be\\\\backslash\\\\escaped " +
         "dummy_key5=value|containing|header|separator|that|does|not|need|to|be|escaped";
     $MSG = json(parse_leef(custom_message));
@@ -2521,7 +2515,7 @@ def test_parse_leef_version_2_space_delimiter(config, syslog_ng):
         "leef_delimiter": " ",
         "dummy_key1": "value",
         "dummy_key2": "value containing pair separators that does not need to be escaped",
-        "dummy_key3": "value=containing=value=separators=that=needs=to=be=escaped",
+        "dummy_key3": "value=containing=value=separators=that=does=not=need=to=be=escaped",
         "dummy_key4": "value\\containing\\backslash\\that\\needs\\to\\be\\backslash\\escaped",
         "dummy_key5": "value|containing|header|separator|that|does|not|need|to|be|escaped",
     }
