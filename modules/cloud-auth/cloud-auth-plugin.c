@@ -35,7 +35,7 @@ static Plugin cloud_auth_plugins[] =
   },
 };
 
-const ModuleInfo module_info =
+const ModuleInfo cloud_auth_module_info =
 {
   .canonical_name = "cloud_auth",
   .version = SYSLOG_NG_VERSION,

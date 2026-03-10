@@ -48,7 +48,7 @@ afsnmp_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo afsnmp_module_info =
 {
   .canonical_name = "afsnmp",
   .version = SYSLOG_NG_VERSION,
@@ -57,4 +57,3 @@ const ModuleInfo module_info =
   .plugins = afsnmp_plugins,
   .plugins_len = G_N_ELEMENTS(afsnmp_plugins)
 };
-

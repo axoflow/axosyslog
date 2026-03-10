@@ -428,7 +428,7 @@ afmongodb_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo afmongodb_module_info =
 {
   .canonical_name = "afmongodb",
   .version = SYSLOG_NG_VERSION,

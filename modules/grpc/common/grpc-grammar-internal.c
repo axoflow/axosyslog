@@ -22,5 +22,5 @@
 #include "grpc-grammar-internal.h"
 #include "credentials/grpc-credentials-builder.h"
 
-GrpcServerCredentialsBuilderW *last_grpc_server_credentials_builder;
-GrpcClientCredentialsBuilderW *last_grpc_client_credentials_builder;
+__attribute__((visibility("hidden"))) GrpcServerCredentialsBuilderW *last_grpc_server_credentials_builder;
+__attribute__((visibility("hidden"))) GrpcClientCredentialsBuilderW *last_grpc_client_credentials_builder;

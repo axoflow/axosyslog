@@ -44,7 +44,7 @@ regexp_parser_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo regexp_parser_module_info =
 {
   .canonical_name = "regexp-parser",
   .version = SYSLOG_NG_VERSION,

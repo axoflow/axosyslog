@@ -45,7 +45,7 @@
 /*   return TRUE; */
 /* } */
 
-/* const ModuleInfo module_info = */
+/* const ModuleInfo example_destination_module_info = */
 /* { */
 /*   .canonical_name = "example_destination", */
 /*   .version = SYSLOG_NG_VERSION, */

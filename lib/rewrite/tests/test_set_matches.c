@@ -31,7 +31,7 @@
 #include "logmsg/logmsg.h"
 #include "scratch-buffers.h"
 
-GlobalConfig *configuration = NULL;
+GlobalConfig *cfg = NULL;
 LogMessage *msg;
 
 static void
@@ -48,7 +48,7 @@ _perform_rewrite(LogRewrite *rewrite, LogMessage *msg_)
 static void
 _perform_set_matches(LogTemplate *template, LogMessage *msg_)
 {
-  LogRewrite *rewrite = log_rewrite_set_matches_new(template, configuration);
+  LogRewrite *rewrite = log_rewrite_set_matches_new(template, cfg);
   log_template_unref(template);
 
   _perform_rewrite(rewrite, msg_);
@@ -57,7 +57,7 @@ _perform_set_matches(LogTemplate *template, LogMessage *msg_)
 static void
 _perform_unset_matches(LogMessage *msg_)
 {
-  LogRewrite *rewrite = log_rewrite_unset_matches_new(configuration);
+  LogRewrite *rewrite = log_rewrite_unset_matches_new(cfg);
 
   _perform_rewrite(rewrite, msg_);
 }
@@ -123,7 +123,7 @@ static void
 setup(void)
 {
   app_startup();
-  configuration = cfg_new_snippet();
+  cfg = cfg_new_snippet();
   start_grabbing_messages();
   msg = log_msg_new_empty();
 }
@@ -134,7 +134,7 @@ teardown(void)
   scratch_buffers_explicit_gc();
   log_msg_unref(msg);
   stop_grabbing_messages();
-  cfg_free(configuration);
+  cfg_free(cfg);
   app_shutdown();
 }
 

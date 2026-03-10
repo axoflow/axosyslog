@@ -42,7 +42,7 @@ map_value_pairs_module_init(PluginContext *context, CfgArgs *args G_GNUC_UNUSED)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo map_value_pairs_module_info =
 {
   .canonical_name = "map-value-pairs",
   .version = SYSLOG_NG_VERSION,

@@ -58,8 +58,6 @@ struct _LogQueueDisk
   gboolean (*stop_corrupted)(LogQueueDisk *s);
 };
 
-extern QueueType log_queue_disk_type;
-
 const gchar *log_queue_disk_get_filename(LogQueue *self);
 gboolean log_queue_disk_stop(LogQueue *self, gboolean *persistent);
 gboolean log_queue_disk_start(LogQueue *self);

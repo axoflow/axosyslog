@@ -122,7 +122,7 @@ afsocket_module_init(PluginContext *context, CfgArgs *args)
   return TRUE;
 }
 
-const ModuleInfo module_info =
+const ModuleInfo afsocket_module_info =
 {
   .canonical_name = "afsocket",
   .version = SYSLOG_NG_VERSION,
