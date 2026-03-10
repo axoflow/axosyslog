@@ -82,7 +82,7 @@ main_loop_io_worker_job_submit(MainLoopIOWorkerJob *self, gpointer arg)
  *
  * Only use this function if you can guarantee the following:
  *   1. Calling this function is done in another worker job's completion callback.
- *      (this is needed so main_loop_workers_running is kept non-zero)
+ *      (this is needed so main_loop_jobs_running is kept non-zero)
  *   2. These chained job_force_submit() calls eventually end.
  */
 gboolean
