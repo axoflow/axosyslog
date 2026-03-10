@@ -883,9 +883,20 @@ out:
 
   if (sse_with_gmtoff.ut_sec != -1)
     {
+      const char *orig_wct_zone = NULL;
+      int orig_wct_is_dst = -1;
       if (wct->wct_gmtoff != -1)
-        sse_with_gmtoff.ut_gmtoff = wct->wct_gmtoff;
+        {
+          sse_with_gmtoff.ut_gmtoff = wct->wct_gmtoff;
+          orig_wct_zone = wct->wct_zone;
+          orig_wct_is_dst = wct->tm.tm_isdst;
+        }
       convert_unix_time_to_wall_clock_time(&sse_with_gmtoff, wct);
+      if (sse_with_gmtoff.ut_gmtoff != -1)
+        {
+          wct->wct_zone = orig_wct_zone;
+          wct->tm.tm_isdst = orig_wct_is_dst;
+        }
     }
 
   return __UNCONST(bp);

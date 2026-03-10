@@ -599,6 +599,7 @@ Test(wallclocktime, test_strptime_seconds_since_epoch_timezone)
 
   cr_expect(wct.wct_gmtoff == wct2.wct_gmtoff);
   cr_expect(wct.tm.tm_isdst == wct2.tm.tm_isdst);
+  cr_assert_str_eq(wct.wct_zone, wct2.wct_zone);
 }
 
 static void
