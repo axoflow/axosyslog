@@ -41,6 +41,7 @@
 #include "scratch-buffers.h"
 #include "timeutils/format.h"
 #include "timeutils/misc.h"
+#include "compat/pow2.h"
 
 #include <assert.h>
 #include <string.h>
@@ -86,10 +87,8 @@ struct _LogWriter
     StatsAggregator *max_message_size;
     StatsAggregator *average_messages_size;
     StatsAggregator *CPS;
-    StatsClusterKey *message_delay_key;
-    StatsCounterItem *message_delay;
-    StatsClusterKey *message_delay_sample_age_key;
-    StatsCounterItem *message_delay_sample_age;
+    StatsClusterKey *message_latency_key;
+    StatsAggregator *message_latency;
 
     struct
     {
@@ -102,7 +101,6 @@ struct _LogWriter
   LogWriterOptions *options;
   LogMessage *last_msg;
   guint32 last_msg_count;
-  time_t last_delay_update;
   GString *line_buffer;
 
   gchar *stats_id;
@@ -1173,20 +1171,14 @@ log_writer_update_message_stats(LogWriter *self, const LogMessage *msg, gsize ms
   stats_aggregator_add_data_point(self->metrics.max_message_size, msg_len);
   stats_aggregator_add_data_point(self->metrics.average_messages_size, msg_len);
 
-  if (self->metrics.message_delay)
-    {
-      UnixTime now;
+  if (!self->metrics.message_latency)
+    return;
 
-      unix_time_set_now(&now);
-      gint64 diff = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
+  UnixTime now;
+  unix_time_set_precise_now(&now);
 
-      if (self->last_delay_update != now.ut_sec)
-        {
-          stats_counter_set_time(self->metrics.message_delay, diff);
-          stats_counter_set_time(self->metrics.message_delay_sample_age, now.ut_sec);
-          self->last_delay_update = now.ut_sec;
-        }
-    }
+  gint64 diff = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
+  stats_aggregator_add_data_point(self->metrics.message_latency, diff);
 }
 
 static gboolean
@@ -1456,6 +1448,10 @@ _register_aggregated_stats(LogWriter *self, StatsClusterKey *sc_key_input, gint 
                                                 stats_instance, "eps");
   stats_register_aggregator_cps(stats_level, &sc_key, sc_key_input, stats_type, &self->metrics.CPS);
 
+  gint level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL2;
+  stats_register_aggregator_hist(level, self->metrics.message_latency_key, round_to_log2(1), 20,
+                                 &self->metrics.message_latency);
+
   stats_aggregator_unlock();
 }
 
@@ -1464,6 +1460,7 @@ _unregister_aggregated_stats(LogWriter *self)
 {
   stats_aggregator_lock();
 
+  stats_unregister_aggregator(&self->metrics.message_latency);
   stats_unregister_aggregator(&self->metrics.max_message_size);
   stats_unregister_aggregator(&self->metrics.average_messages_size);
   stats_unregister_aggregator(&self->metrics.CPS);
@@ -1516,17 +1513,8 @@ _register_counters(LogWriter *self)
                                                 self->stats_id, stats_instance, "truncated_bytes");
   stats_register_counter(level, &sc_key_truncated_bytes, SC_TYPE_SINGLE_VALUE, &self->metrics.truncated.bytes);
 
-
-  stats_register_counter(level, self->metrics.message_delay_key, SC_TYPE_SINGLE_VALUE, &self->metrics.message_delay);
-  stats_register_counter(level, self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                         &self->metrics.message_delay_sample_age);
-
-  UnixTime now;
-
-  unix_time_set_now(&now);
-  stats_counter_set_time(self->metrics.message_delay_sample_age, now.ut_sec);
-
   stats_unlock();
+
   _register_aggregated_stats(self, self->metrics.output_events_key, level, SC_TYPE_WRITTEN);
 
   level = log_pipe_is_internal(&self->super) ? STATS_LEVEL3 : STATS_LEVEL1;
@@ -1586,10 +1574,6 @@ _unregister_counters(LogWriter *self)
     stats_cluster_single_key_legacy_set_with_name(&sc_key_truncated_bytes, self->options->stats_source | SCS_DESTINATION,
                                                   self->stats_id, stats_instance, "truncated_bytes");
     stats_unregister_counter(&sc_key_truncated_bytes, SC_TYPE_SINGLE_VALUE, &self->metrics.truncated.bytes);
-
-    stats_unregister_counter(self->metrics.message_delay_key, SC_TYPE_SINGLE_VALUE, &self->metrics.message_delay);
-    stats_unregister_counter(self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample_age);
   }
   stats_unlock();
   _unregister_aggregated_stats(self);
@@ -1648,11 +1632,8 @@ log_writer_free(LogPipe *s)
   if (self->metrics.written_bytes_key)
     stats_cluster_key_free(self->metrics.written_bytes_key);
 
-  if (self->metrics.message_delay_key)
-    stats_cluster_key_free(self->metrics.message_delay_key);
-
-  if (self->metrics.message_delay_sample_age_key)
-    stats_cluster_key_free(self->metrics.message_delay_sample_age_key);
+  if (self->metrics.message_latency_key)
+    stats_cluster_key_free(self->metrics.message_latency_key);
 
   ml_batched_timer_free(&self->mark_timer);
   ml_batched_timer_free(&self->suppress_timer);
@@ -1864,20 +1845,16 @@ _set_metric_options(LogWriter *self, const gchar *stats_id, StatsClusterKeyBuild
     stats_cluster_key_builder_set_name(self->metrics.stats_kb, "output_event_bytes_total");
     self->metrics.written_bytes_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
 
-    if (self->metrics.message_delay_key)
-      stats_cluster_key_free(self->metrics.message_delay_key);
+    if (self->metrics.message_latency_key)
+      stats_cluster_key_free(self->metrics.message_latency_key);
 
-    /* Up to 49 days and 17 hours on 32 bit machines. */
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "output_event_delay_sample_seconds");
-    stats_cluster_key_builder_set_unit(self->metrics.stats_kb, SCU_MILLISECONDS);
-    self->metrics.message_delay_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
-
-    if (self->metrics.message_delay_sample_age_key)
-      stats_cluster_key_free(self->metrics.message_delay_sample_age_key);
-
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "output_event_delay_sample_age_seconds");
-    stats_cluster_key_builder_set_unit(self->metrics.stats_kb, SCU_SECONDS);
-    self->metrics.message_delay_sample_age_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
+    stats_cluster_key_builder_push(self->metrics.stats_kb);
+    {
+      stats_cluster_key_builder_set_name(self->metrics.stats_kb, "output_event_latency_seconds");
+      stats_cluster_key_builder_set_unit(self->metrics.stats_kb, SCU_MILLISECONDS);
+      self->metrics.message_latency_key = stats_cluster_key_builder_build_hist(self->metrics.stats_kb);
+    }
+    stats_cluster_key_builder_pop(self->metrics.stats_kb);
   }
   stats_cluster_key_builder_pop(self->metrics.stats_kb);
 }
