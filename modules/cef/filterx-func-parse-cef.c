@@ -51,6 +51,8 @@ Config cef_cfg =
   .extensions = {
     .pair_separator = "  ",
     .value_separator = '=',
+    .escape_pair_separator = FALSE,
+    .escape_value_separator = TRUE,
   },
 };
 

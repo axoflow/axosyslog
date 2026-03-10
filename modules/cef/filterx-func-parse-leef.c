@@ -198,6 +198,8 @@ Config leef_v1_cfg =
   .extensions = {
     .pair_separator = "\t",
     .value_separator = '=',
+    .escape_pair_separator = TRUE,
+    .escape_value_separator = FALSE,
   },
 };
 
@@ -212,6 +214,8 @@ Config leef_v2_cfg =
   .extensions = {
     .pair_separator = "\t",
     .value_separator = '=',
+    .escape_pair_separator = TRUE,
+    .escape_value_separator = FALSE,
   },
 };
 

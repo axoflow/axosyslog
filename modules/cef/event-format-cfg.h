@@ -53,6 +53,7 @@ typedef struct _Extensions
 {
   gchar value_separator;
   gchar pair_separator[EVENT_FORMAT_PARSER_PAIR_SEPARATOR_MAX_LEN];
+  gboolean escape_pair_separator, escape_value_separator;
 } Extensions;
 
 typedef struct _Config

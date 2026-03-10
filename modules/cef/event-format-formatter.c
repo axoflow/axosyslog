@@ -152,6 +152,21 @@ _append_headers(EventFormatterContext *ctx, GString *formatted, FilterXObject *d
   return TRUE;
 }
 
+static inline gboolean
+_extension_value_char_needs_escaping(EventFormatterContext *ctx, gchar c)
+{
+  if (c == '\\')
+    return TRUE;
+
+  if (ctx->config.extensions.escape_pair_separator && c == ctx->config.extensions.pair_separator[0])
+    return TRUE;
+
+  if (ctx->config.extensions.escape_value_separator && c == ctx->config.extensions.value_separator)
+    return TRUE;
+
+  return FALSE;
+}
+
 static gboolean
 _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
@@ -184,7 +199,8 @@ _append_extension(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   for (gsize i = len_before_value; i < formatted->len; i++)
     {
-      if (formatted->str[i] == ctx->config.extensions.value_separator || formatted->str[i] == '\\')
+      // TODO: escape \t, etc. properly
+      if (_extension_value_char_needs_escaping(ctx, formatted->str[i]))
         g_string_insert_c(formatted, i++, '\\');
     }
 

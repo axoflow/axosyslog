@@ -69,6 +69,7 @@ _create_unescaped_string_obj(const gchar *value, gint value_len, const gchar *ch
 
   for (gint i = 0; i < value_len; i++)
     {
+      // TODO: escape \t, etc. properly
       if (value[i] == '\\' && i + 1 < value_len && strchr(chars_to_unescape, value[i + 1]))
         {
           g_string_append_c(unescaped, value[i + 1]);
@@ -143,7 +144,16 @@ _set_dict_value(EventParserContext *ctx, FilterXObject *out,
                 const gchar *key, gsize key_len,
                 const gchar *value, gsize value_len)
 {
-  const gchar chars_to_unescape[] = { '\\', ctx->config.extensions.value_separator, '\0' };
+  gchar chars_to_unescape[4] = { '\\' };
+  gsize chars_to_unescape_idx = 1;
+
+  if (ctx->config.extensions.escape_value_separator)
+    chars_to_unescape[chars_to_unescape_idx++] = ctx->config.extensions.value_separator;
+
+  if (ctx->config.extensions.escape_pair_separator)
+    chars_to_unescape[chars_to_unescape_idx++] = ctx->config.extensions.pair_separator[0];
+
+  chars_to_unescape[chars_to_unescape_idx] = '\0';
 
   FILTERX_STRING_DECLARE_ON_STACK(dict_key, key, key_len);
   FilterXObject *dict_val = _create_unescaped_string_obj(value, value_len, chars_to_unescape);
