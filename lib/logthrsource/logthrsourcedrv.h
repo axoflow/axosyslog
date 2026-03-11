@@ -57,7 +57,7 @@ struct _LogThreadedSourceWorker
   MainLoopThreadedWorker thread;
   LogThreadedSourceDriver *control;
   WakeupCondition wakeup_cond;
-  gboolean under_termination;
+  volatile gint under_termination;
   gint worker_index;
 
   gboolean (*thread_init)(LogThreadedSourceWorker *self);

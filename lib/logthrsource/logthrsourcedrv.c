@@ -132,7 +132,7 @@ log_threaded_source_worker_options_destroy(LogThreadedSourceWorkerOptions *optio
 static void
 _worker_suspend(LogThreadedSourceWorker *self)
 {
-  while (!log_threaded_source_worker_free_to_send(self) && !self->under_termination)
+  while (!log_threaded_source_worker_free_to_send(self) && !g_atomic_int_get(&self->under_termination))
     wakeup_cond_wait(&self->wakeup_cond);
 }
 
@@ -141,7 +141,7 @@ _worker_thread_init(MainLoopThreadedWorker *s)
 {
   LogThreadedSourceWorker *self = (LogThreadedSourceWorker *) s->data;
 
-  self->under_termination = FALSE;
+  g_atomic_int_set(&self->under_termination, FALSE);
 
   if (self->thread_init)
     return self->thread_init(self);
@@ -192,7 +192,7 @@ _worker_thread_request_exit(MainLoopThreadedWorker *s)
   msg_debug("Requesting worker thread exit",
             evt_tag_str("driver", self->control->super.super.id),
             evt_tag_int("worker_index", self->worker_index));
-  self->under_termination = TRUE;
+  g_atomic_int_set(&self->under_termination, TRUE);
   self->request_exit(self);
   _worker_wakeup(&self->super);
 }
