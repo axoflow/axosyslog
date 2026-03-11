@@ -3213,9 +3213,11 @@ def test_guess_timezone_success(config, syslog_ng):
     )
     syslog_ng.start(config)
 
+    test_datetime = datetime(year=2000, month=1, day=1, hour=0, minute=0, second=0).astimezone()
+
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "2000-01-01T00:00:00 +0000"
+    assert file_true.read_log() == test_datetime.strftime("%Y-%m-%dT%H:%M:%S %z")
 
 
 def test_set_timezone_invalid_number_of_args(config, syslog_ng):
