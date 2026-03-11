@@ -150,6 +150,7 @@ _setup_dd(void)
 {
   dd = test_threaded_dd_new(main_loop_get_current_config(main_loop));
 
+  cr_assert(log_pipe_pre_config_init(&dd->super.super.super.super));
   cr_assert(log_pipe_init(&dd->super.super.super.super));
   cr_assert(log_pipe_post_config_init(&dd->super.super.super.super));
 }
