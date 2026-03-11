@@ -90,8 +90,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
       return;
     }
 
-  if (!worker.super->super.under_termination)
-    new TraceServiceCall(worker, service, cq);
+  new TraceServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
@@ -149,8 +148,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
       return;
     }
 
-  if (!worker.super->super.under_termination)
-    new LogsServiceCall(worker, service, cq);
+  new LogsServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
@@ -216,8 +214,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
       return;
     }
 
-  if (!worker.super->super.under_termination)
-    new MetricsServiceCall(worker, service, cq);
+  new MetricsServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
