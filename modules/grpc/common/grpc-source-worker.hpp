@@ -44,7 +44,7 @@ public:
   virtual void deinit() {}
   virtual void run() = 0;
   virtual void request_exit() = 0;
-  void post(LogMessage *msg);
+  void blocking_post(LogMessage *msg);
 
 public:
   GrpcSourceWorker *super;
