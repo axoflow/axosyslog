@@ -109,7 +109,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 
           for (const Span &span : scope_spans.spans())
             {
-              if (worker.super->super.under_termination)
+              if (log_threaded_source_worker_is_under_termination(&worker.super->super))
                 {
                   response_status = ::grpc::Status(::grpc::StatusCode::UNAVAILABLE, "Server is unavailable");
                   break;
@@ -168,7 +168,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 
           for (const LogRecord &log_record : scope_logs.log_records())
             {
-              if (worker.super->super.under_termination)
+              if (log_threaded_source_worker_is_under_termination(&worker.super->super))
                 {
                   response_status = ::grpc::Status(::grpc::StatusCode::UNAVAILABLE, "Server is unavailable");
                   break;
@@ -235,7 +235,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 
           for (const Metric &metric : scope_metrics.metrics())
             {
-              if (worker.super->super.under_termination)
+              if (log_threaded_source_worker_is_under_termination(&worker.super->super))
                 {
                   response_status = ::grpc::Status(::grpc::StatusCode::UNAVAILABLE, "Server is unavailable");
                   break;
