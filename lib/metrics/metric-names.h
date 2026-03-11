@@ -25,6 +25,7 @@
 #define METRIC_NAMES_H
 
 #include "syslog-ng.h"
+#include <stdio.h>
 
 #define METRIC_PREFIX "syslogng_"
 #define METRIC(name) SYSLOG_NG_METRIC_NAMES[METRIC_##name]
@@ -101,5 +102,12 @@ typedef enum _MetricNames
 } MetricNames;
 
 extern const gchar *SYSLOG_NG_METRIC_NAMES[];
+
+static inline void
+metrics_list_names(FILE *out)
+{
+  for (int i = 0; i < METRIC_NAMES_MAX; i++)
+    fprintf(out, METRIC_PREFIX "%s\n", SYSLOG_NG_METRIC_NAMES[i]);
+}
 
 #endif

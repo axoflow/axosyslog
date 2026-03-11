@@ -27,6 +27,7 @@
 #include "memtrace.h"
 #include "children.h"
 #include "stats/stats-registry.h"
+#include "metrics/metric-names.h"
 #include "apphook.h"
 #include "alarms.h"
 #include "logqueue.h"
@@ -60,6 +61,7 @@
 
 static gboolean display_version = FALSE;
 static gboolean display_module_registry = FALSE;
+static gboolean display_metrics_registry = FALSE;
 static gboolean dummy = FALSE;
 
 static MainLoopOptions main_loop_options;
@@ -75,6 +77,7 @@ static GOptionEntry syslogng_options[] =
   { "module-registry",     0,         0, G_OPTION_ARG_NONE, &display_module_registry, "Display module information", NULL },
   { "no-module-discovery", 0,         0, G_OPTION_ARG_NONE, &main_loop_options.disable_module_discovery, "Disable module auto-discovery, all modules need to be loaded explicitly by the configuration", NULL },
   { "seed",              'S',         0, G_OPTION_ARG_NONE, &dummy, "Does nothing, the need to seed the random generator is autodetected", NULL},
+  { "metrics-registry",    0,         0, G_OPTION_ARG_NONE, &display_metrics_registry, "Display metric names", NULL },
 #ifdef YYDEBUG
   { "yydebug",           'y',         0, G_OPTION_ARG_NONE, &cfg_parser_debug, "Enable configuration parser debugging", NULL },
 #endif
@@ -296,6 +299,12 @@ main(int argc, char *argv[])
     {
       interactive_mode();
       plugin_list_modules(stdout, TRUE);
+      return 0;
+    }
+  if (display_metrics_registry)
+    {
+      interactive_mode();
+      metrics_list_names(stdout);
       return 0;
     }
 
