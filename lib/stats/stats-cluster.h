@@ -25,6 +25,7 @@
 
 #include "stats/stats-counter.h"
 #include "stats/stats-cluster-logpipe.h"
+#include "metrics/metric-names.h"
 
 enum
 {

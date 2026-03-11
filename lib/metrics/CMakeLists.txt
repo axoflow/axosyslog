@@ -1,5 +1,6 @@
 set(METRICS_HEADERS
     metrics/metrics.h
+    metrics/metric-names.h
     metrics/dyn-metrics-store.h
     metrics/dyn-metrics-cache.h
     metrics/dyn-metrics-template.h
@@ -8,6 +9,7 @@ set(METRICS_HEADERS
 
 set(METRICS_SOURCES
     metrics/metrics.c
+    metrics/metric-names.c
     metrics/dyn-metrics-store.c
     metrics/dyn-metrics-cache.c
     metrics/dyn-metrics-template.c
