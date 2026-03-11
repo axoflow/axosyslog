@@ -26,6 +26,7 @@
 
 #include "syslog-ng.h"
 
+#define METRIC_PREFIX "syslogng_"
 #define METRIC(name) SYSLOG_NG_METRIC_NAMES[METRIC_##name]
 
 #define METRIC_NAMES(M) \

@@ -43,7 +43,7 @@ _append_internal_src_queue_metrics(AFInterMetrics metrics, GString *reply)
   if (queue_capacity != 0)
     internal_queue_usage = queued / queue_capacity;
 
-  g_string_append_printf(reply, PROMETHEUS_METRIC_PREFIX
+  g_string_append_printf(reply, METRIC_PREFIX
                          "internal_events_queue_usage_ratio %s\n",
                          g_ascii_dtostr(double_buf, G_N_ELEMENTS(double_buf), internal_queue_usage));
 }
@@ -58,10 +58,10 @@ _send_healthcheck_reply(HealthCheckResult result, gpointer c)
   gdouble mainloop_io_worker_roundtrip_latency = result.mainloop_io_worker_roundtrip_latency / 1e9;
 
   GString *reply = g_string_new("OK ");
-  g_string_append_printf(reply, PROMETHEUS_METRIC_PREFIX
+  g_string_append_printf(reply, METRIC_PREFIX
                          "io_worker_latency_seconds %s\n",
                          g_ascii_dtostr(double_buf, G_N_ELEMENTS(double_buf), io_worker_latency));
-  g_string_append_printf(reply, PROMETHEUS_METRIC_PREFIX
+  g_string_append_printf(reply, METRIC_PREFIX
                          "mainloop_io_worker_roundtrip_latency_seconds %s\n",
                          g_ascii_dtostr(double_buf, G_N_ELEMENTS(double_buf), mainloop_io_worker_roundtrip_latency));
 
