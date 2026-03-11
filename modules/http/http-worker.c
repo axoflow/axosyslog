@@ -683,7 +683,7 @@ _update_status_code_metrics(HTTPDestinationWorker *self, const gchar *url, glong
   *id_label = stats_cluster_label("id", self->super.owner->super.super.id);
 
   StatsClusterKey key;
-  stats_cluster_single_key_set(&key, "output_http_requests_total",
+  stats_cluster_single_key_set(&key, METRIC(output_http_requests_total),
                                dyn_metrics_store_get_cached_labels(self->metrics.cache),
                                dyn_metrics_store_get_cached_labels_len(self->metrics.cache));
 

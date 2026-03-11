@@ -567,13 +567,13 @@ afinter_message_posted(LogMessage *msg)
 
       stats_lock();
       StatsClusterKey sc_key;
-      stats_cluster_logpipe_key_set(&sc_key, "internal_events_total", NULL, 0);
+      stats_cluster_logpipe_key_set(&sc_key, METRIC(internal_events_total), NULL, 0);
       stats_cluster_logpipe_key_add_legacy_alias(&sc_key, SCS_GLOBAL, "internal_source", NULL );
       stats_register_counter(0, &sc_key, SC_TYPE_QUEUED, &metrics.queued);
       stats_register_counter(0, &sc_key, SC_TYPE_DROPPED, &metrics.dropped);
       stats_register_counter(0, &sc_key, SC_TYPE_PROCESSED, &metrics.processed);
 
-      stats_cluster_single_key_set(&sc_key, "internal_events_queue_capacity", NULL, 0);
+      stats_cluster_single_key_set(&sc_key, METRIC(internal_events_queue_capacity), NULL, 0);
       stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &metrics.queue_capacity);
       stats_unlock();
 
@@ -627,13 +627,13 @@ afinter_global_deinit(void)
     {
       stats_lock();
       StatsClusterKey sc_key;
-      stats_cluster_logpipe_key_set(&sc_key, "internal_events_total", NULL, 0);
+      stats_cluster_logpipe_key_set(&sc_key, METRIC(internal_events_total), NULL, 0);
       stats_cluster_logpipe_key_add_legacy_alias(&sc_key, SCS_GLOBAL, "internal_source", NULL );
       stats_unregister_counter(&sc_key, SC_TYPE_QUEUED, &metrics.queued);
       stats_unregister_counter(&sc_key, SC_TYPE_DROPPED, &metrics.dropped);
       stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &metrics.processed);
 
-      stats_cluster_single_key_set(&sc_key, "internal_events_queue_capacity", NULL, 0);
+      stats_cluster_single_key_set(&sc_key, METRIC(internal_events_queue_capacity), NULL, 0);
       stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &metrics.queue_capacity);
       stats_unlock();
 

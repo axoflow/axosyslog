@@ -124,7 +124,7 @@ _register_counters(LogParser *self)
   stats_lock();
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("id", self->name) };
-  stats_cluster_logpipe_key_set(&sc_key, "parsed_events_total", labels, G_N_ELEMENTS(labels));
+  stats_cluster_logpipe_key_set(&sc_key, METRIC(parsed_events_total), labels, G_N_ELEMENTS(labels));
   stats_cluster_logpipe_key_add_legacy_alias(&sc_key, SCS_PARSER, self->name, NULL );
   stats_register_counter(level, &sc_key, SC_TYPE_DISCARDED, &self->super.discarded_messages);
   stats_register_counter(level, &sc_key, SC_TYPE_PROCESSED, &self->processed_messages);
@@ -151,7 +151,7 @@ _unregister_stats(LogParser *self)
   stats_lock();
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("id", self->name) };
-  stats_cluster_logpipe_key_set(&sc_key, "parsed_events_total", labels, G_N_ELEMENTS(labels));
+  stats_cluster_logpipe_key_set(&sc_key, METRIC(parsed_events_total), labels, G_N_ELEMENTS(labels));
   stats_cluster_logpipe_key_add_legacy_alias(&sc_key, SCS_PARSER, self->name, NULL );
   stats_unregister_counter(&sc_key, SC_TYPE_DISCARDED, &self->super.discarded_messages);
   stats_unregister_counter(&sc_key, SC_TYPE_PROCESSED, &self->processed_messages);

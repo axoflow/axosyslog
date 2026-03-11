@@ -31,8 +31,8 @@ _init_stats_keys(MetricsPipe *self, StatsClusterKey *ingress_sc_key, StatsCluste
   static StatsClusterLabel labels[labels_len];
 
   labels[0] = stats_cluster_label("id", self->log_path_name);
-  stats_cluster_single_key_set(ingress_sc_key, "route_ingress_total", labels, labels_len);
-  stats_cluster_single_key_set(egress_sc_key, "route_egress_total", labels, labels_len);
+  stats_cluster_single_key_set(ingress_sc_key, METRIC(route_ingress_total), labels, labels_len);
+  stats_cluster_single_key_set(egress_sc_key, METRIC(route_egress_total), labels, labels_len);
 }
 
 static void

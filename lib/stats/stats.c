@@ -237,7 +237,7 @@ stats_register_self_metrics(void)
   StatsClusterKey sc_key;
 
   stats_lock();
-  stats_cluster_single_key_set(&sc_key, "stats_level", NULL, 0);
+  stats_cluster_single_key_set(&sc_key, METRIC(stats_level), NULL, 0);
   stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &stats_level);
   stats_unlock();
 }
@@ -248,7 +248,7 @@ stats_unregister_self_metrics(void)
   StatsClusterKey sc_key;
 
   stats_lock();
-  stats_cluster_single_key_set(&sc_key, "stats_level", NULL, 0);
+  stats_cluster_single_key_set(&sc_key, METRIC(stats_level), NULL, 0);
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &stats_level);
   stats_unlock();
 }

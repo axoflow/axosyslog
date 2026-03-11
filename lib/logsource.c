@@ -585,7 +585,7 @@ _allocate_counter_keys(LogSource *self)
     gchar stats_instance[1024];
     const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(kb,
                                  stats_instance, sizeof(stats_instance));
-    stats_cluster_key_builder_set_name(kb, "input_events_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(input_events_total));
     stats_cluster_key_builder_set_legacy_alias(kb, self->options->stats_source | SCS_SOURCE,
                                                self->stats_id, instance_name);
     stats_cluster_key_builder_set_legacy_alias_name(kb, "processed");
@@ -595,14 +595,14 @@ _allocate_counter_keys(LogSource *self)
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "input_event_bytes_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(input_event_bytes_total));
     self->metrics.recvd_bytes_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "event_processing_latency_seconds");
+    stats_cluster_key_builder_set_name(kb, METRIC(event_processing_latency_seconds));
     stats_cluster_key_builder_add_label(kb, stats_cluster_label("measurement_point", "input"));
     stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
     self->metrics.processing_latency_key = stats_cluster_key_builder_build_hist(kb);
@@ -622,13 +622,13 @@ _allocate_counter_keys(LogSource *self)
         stats_cluster_key_builder_add_label(kb, stats_cluster_label("peer_address", ""));
       }
 
-    stats_cluster_key_builder_set_name(kb, "input_window_available");
+    stats_cluster_key_builder_set_name(kb, METRIC(input_window_available));
     self->metrics.window_available_key = stats_cluster_key_builder_build_single(kb);
 
-    stats_cluster_key_builder_set_name(kb, "input_window_capacity");
+    stats_cluster_key_builder_set_name(kb, METRIC(input_window_capacity));
     self->metrics.window_capacity_key = stats_cluster_key_builder_build_single(kb);
 
-    stats_cluster_key_builder_set_name(kb, "input_window_full_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(input_window_full_total));
     self->metrics.window_full_total_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
