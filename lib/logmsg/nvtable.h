@@ -467,7 +467,7 @@ nv_table_get_ofs_for_an_entry(NVTable *self, NVEntry *entry)
 }
 
 static inline gssize
-nv_table_get_memory_consumption(NVTable *self)
+nv_table_get_size(NVTable *self)
 {
   return self->size;
 }
