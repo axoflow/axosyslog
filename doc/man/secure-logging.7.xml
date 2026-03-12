@@ -44,7 +44,7 @@
     </refsynopsisdiv>
     <refsection version="5.0">
       <title>Description</title>
-      <para>Secure logging is an extension to <command>syslog-ng</command> providing forward integrity and confidentiality of system logs. It is implemented in form of a module and is configured as a template in the <command>syslog-ng</command> configuration file.</para>
+      <para>Secure logging is an extension to <command>AxoSyslog</command> providing forward integrity and confidentiality of system logs. It is implemented in form of a module and is configured as a template in the <command>AxoSyslog</command> configuration file.</para>
       <para>The main objective of the secure logging module is to provide tamper evident logging, i.e. to adequately protect log records of an information system and to provide a sensor indicating
 attack attempts. The secure logging module achieves this by authentically encrypting each
 log record with an individual cryptographic key used only once and protecting the integrity of
@@ -52,7 +52,7 @@ the whole log archive by a cryptographic authentication code. Each attempt to ta
 with either an individual log record or the log archive itself will be immediately detected
 during log archive verification. Therefore, an attacker can no longer tamper with log
       records without being detected.</para>
-      <para>In order to use the log file created by the secure logging module for analysis, the log file must first be decrypted and its integrity verified. This is achieved with a command line utility that is part of the secure logging module and is installed as part of the  <command>syslog-ng</command> package. This utility can easily be integrated into the import module of existing analysis environments. </para>
+      <para>In order to use the log file created by the secure logging module for analysis, the log file must first be decrypted and its integrity verified. This is achieved with a command line utility that is part of the secure logging module and is installed as part of the  <command>AxoSyslog</command> package. This utility can easily be integrated into the import module of existing analysis environments. </para>
       <para>
       The secure logging environment uses a cryptographic key for encrypting log entries. Each individual log entry is encrypted with its own key which is immediately discarded after successful encryption in order to provide forward integrity. An efficient algorithm generates the key for the next log entry based the key used for encrypting the previous log entry. The resulting chain of keys preserves forward integrity, i.e. a potential attacker cannot deduce the previous key from the current key.</para>
       <para>In order to ease log verification and analysis, a sequence number is added to each log entry. This sequence number is also added to the encryption key creating a one-to-one correspondence of the encryption key with the log entry. In order to prevent truncation attacks or deletion of individual log entries, a message authentication code (MAC) is iteratively applied to the complete log archive and stored in a separate file. It is used upon verification to check the integrity of the whole log archive. </para>
@@ -100,7 +100,7 @@ AgAAAAAAAAA=:5UVybnKL1EAbgC4CLfd8HpgurjREf4LEN61/yWHSD2hbXjRD4QmQdtbwguT1chzdItK
 </para>
 <para>The original log messages have been successfully restored. Additionally, the sequence counter is also prepended to the clear text messages. This helps when in analyzing problems with a particular log entry. As real log files will contain thousands of entries. the sequence counter eases identification of erroneous entries. 
 </para>
-            <para>Before the secure logging module can be used as part of an existing <command>syslog-ng</command> installation, several preparatory activities need to be performed. </para>
+            <para>Before the secure logging module can be used as part of an existing <command>AxoSyslog</command> installation, several preparatory activities need to be performed. </para>
     </refsection>
     <refsection version="5.0">
       <title>Key generation</title>
@@ -121,7 +121,7 @@ AgAAAAAAAAA=:5UVybnKL1EAbgC4CLfd8HpgurjREf4LEN61/yWHSD2hbXjRD4QmQdtbwguT1chzdItK
     </refsection>
     <refsection version="5.0">
       <title>Configuration</title>
-      <para>Secure logging is configured by adding the corresponding statements to the syslog-ng.conf file. See  <link linkend="syslog-ng.conf.5"><command>syslog-ng.conf</command>(5)</link> for information on how to configure <command>syslog-ng</command> using the configuration file. Details can be found in the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The syslog-ng Administrator Guide</command></link>.</para>
+      <para>Secure logging is configured by adding the corresponding statements to the syslog-ng.conf file. See  <link linkend="syslog-ng.conf.5"><command>syslog-ng.conf</command>(5)</link> for information on how to configure <command>AxoSyslog</command> using the configuration file. Details can be found in the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link>.</para>
 
       <para> Secure logging is implemented as a template and is configured accordingly. Apart from the actual template configuration, no other settings are required in order to activate secure logging. The secure logging is activated by placing the following statement in the configuration file</para>
       <para><command>template("$(slog --key-file  &lt;host key file&gt; --mac-file &lt;MAC file&gt; $RAWMSG)\n");</command></para>
@@ -134,7 +134,7 @@ AgAAAAAAAAA=:5UVybnKL1EAbgC4CLfd8HpgurjREf4LEN61/yWHSD2hbXjRD4QmQdtbwguT1chzdItK
            <command>slog</command>
           </term>
           <listitem>
-            <para>The name of the secure logging template function. This name can be also be found by calling <command>syslog-ng</command> with the <command>--module-registry</command> arguments and checking the <command>template-func</command> property of the secure logging module in the corresponding output.</para>
+            <para>The name of the secure logging template function. This name can be also be found by calling <command>AxoSyslog</command> with the <command>--module-registry</command> arguments and checking the <command>template-func</command> property of the secure logging module in the corresponding output.</para>
          </listitem>
         </varlistentry>
         <varlistentry>
@@ -142,14 +142,14 @@ AgAAAAAAAAA=:5UVybnKL1EAbgC4CLfd8HpgurjREf4LEN61/yWHSD2hbXjRD4QmQdtbwguT1chzdItK
            <command>--key-file</command> or <command>-k</command>
           </term>
           <listitem>
-            <para>The host key. &lt;host key file&gt; is the full path of the file storing the host key on the log host. If this arguments is not supplied or does not point to a valid regular key file, <command>syslog-ng</command> will not start and a display a corresponding error message.</para>
+            <para>The host key. &lt;host key file&gt; is the full path of the file storing the host key on the log host. If this arguments is not supplied or does not point to a valid regular key file, <command>AxoSyslog</command> will not start and a display a corresponding error message.</para>
          </listitem>
         </varlistentry>
         <varlistentry>
           <term><command>--mac-file</command> or <command>-m</command>
           </term>
           <listitem>
-            <para>The MAC file. &lt;MAC file&gt; is the full path of the MAC file on the log host. The file does not need to exist, as it will be automatically created upon the initial start. If the path is not correct, <command>syslog-ng</command> will not start and a display a corresponding error message.</para>
+            <para>The MAC file. &lt;MAC file&gt; is the full path of the MAC file on the log host. The file does not need to exist, as it will be automatically created upon the initial start. If the path is not correct, <command>AxoSyslog</command> will not start and a display a corresponding error message.</para>
           </listitem>
         </varlistentry>
         <varlistentry>
@@ -173,7 +173,7 @@ AgAAAAAAAAA=:5UVybnKL1EAbgC4CLfd8HpgurjREf4LEN61/yWHSD2hbXjRD4QmQdtbwguT1chzdItK
       <itemizedlist>
 	<listitem> <para>Sources must be line-oriented. Secure logging uses a line separator in order to distinguish between individual log entries. Sources which provide data in a different format, e.g. in the form of raw data obtained directly from a database system, cannot currently be used with the secure logging template, as the separation of log entries is not clearly defined for this type of data. </para>
         </listitem>
-	<listitem> <para>Only sources for which the <command>store-raw-message</command> flag is implemented and set do benefit from the integrity guarantee provided by the secure logging template. Secure logging aims at protecting the integrity of complete log messages including all associated meta-data, such as timestamps and host names. <command>syslog-ng</command> parses the log message into its internal format and provide easy access to parts of a message through macros. While this is convenient when rewriting log messages, it is not helpful for secure logging. <command>syslog-ng</command> provides the <command>store-raw-message</command> flag which provides access to a copy of the original log message after parsing. This is the log message processed and protected by the secure logging template. If the source does not support the <command>store-raw-message</command> flag, then the $MSG macro can also be used. However, in this case the integrity guarantee provided by secure logging is limited to the content that this macro provides.</para>
+	<listitem> <para>Only sources for which the <command>store-raw-message</command> flag is implemented and set do benefit from the integrity guarantee provided by the secure logging template. Secure logging aims at protecting the integrity of complete log messages including all associated meta-data, such as timestamps and host names. <command>AxoSyslog</command> parses the log message into its internal format and provide easy access to parts of a message through macros. While this is convenient when rewriting log messages, it is not helpful for secure logging. <command>AxoSyslog</command> provides the <command>store-raw-message</command> flag which provides access to a copy of the original log message after parsing. This is the log message processed and protected by the secure logging template. If the source does not support the <command>store-raw-message</command> flag, then the $MSG macro can also be used. However, in this case the integrity guarantee provided by secure logging is limited to the content that this macro provides.</para>
         </listitem>
 	    <listitem> <para>Log rotation of any kind cannot be used with destinations using secure logging. The reason is that log rotate will overwrite, i.e. delete previous log files. This destroys the cryptographic chain of trust of the log entries making recovery impossible. In order to allow for a an efficient handling of log files, the secure logging environment features iterative verification. Using iterative verification, a log file can be verified in steps. For this to work, the log file must first be downloaded from the log host, together with the corresponding host key and MAC file to a verification host. After this download the log file can be safely deleted from the log host. Verification is then performed on the verification host using the iterative mode of the <command>slogverify</command> utility. See  <link linkend="slogverify.1"><command>slogverify</command>(1)</link> for details.</para>
         </listitem>
@@ -388,9 +388,9 @@ log {
         <link linkend="slogverify.1"><command>slogverify</command>(1)</link>
       </para>
       <note version="5.0">
-        <para>For the detailed documentation of see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://www.balabit.com/documents/syslog-ng-ose-latest-guides/en/syslog-ng-ose-guide-admin/html/index.html"><command>The syslog-ng Administrator Guide</command></link></para>
-        <para>If you experience any problems or need help with syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://lists.balabit.hu/mailman/listinfo/syslog-ng"><command>syslog-ng mailing list</command></link>.</para>
-        <para>For news and notifications about of syslog-ng, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://syslog-ng.org/blogs/"><command>syslog-ng blogs</command></link>.</para>
+        <para>For the detailed documentation of see <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/docs/axosyslog-core/"><command>AxoSyslog documentation</command></link></para>
+        <para>If you experience any problems or need help with AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://discord.gg/4Fzy7D66Qq"><command>Axoflow Discord</command></link>.</para>
+        <para>For news and notifications about of AxoSyslog, visit the <link xmlns:ns1="http://www.w3.org/1999/xlink" ns1:href="https://axoflow.com/blog"><command>Axoflow blogs</command></link>.</para>
         <para>For specific information requests related to secure logging send a mail to the Airbus Secure Logging Team &lt;secure-logging@airbus.com&gt;.</para>
       </note>
     </refsection>
