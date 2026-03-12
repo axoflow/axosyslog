@@ -68,6 +68,8 @@ collector:
 # deployment to consume "syslog" traffic route it somewhere
 syslog:
   enabled: true
+  labels: {}
+  annotations: {}
   logFileStorage:
     enabled: false
     storageClass: standard
@@ -140,8 +142,22 @@ syslog:
         enabled: false
         url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
+  affinity: {}
+  nodeSelector: {}
+  resources: {}
+  # resources:
+  #   limits:
+  #     cpu: 100m
+  #     memory: 128Mi
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+  tolerations: []
+  hostAliases: []
+  secretMounts: []
   extraVolumes: []
   extraVolumeMounts: []
+  securityContext: {}
 metricsExporter:
   enabled: false  # deploy the axosyslog Deamonset with the axosyslog-metrics-exporter sidecar
   image:

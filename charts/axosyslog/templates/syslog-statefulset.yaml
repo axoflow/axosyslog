@@ -20,36 +20,68 @@ metadata:
     {{ $key }}: {{ $value | quote }}
     {{- end }}
   {{- end }}
-
-
 spec:
   replicas: 1
   serviceName: {{ template "axosyslog.fullname" . }}-syslog
   selector:
     matchLabels:
       {{- include "axosyslog.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
   template:
     metadata:
+      {{- if .Values.podAnnotations }}
       annotations:
         checksum/config: {{ tpl (toYaml .Values.syslog.config) . | sha256sum }}
-    {{- with .Values.podAnnotations }}
-        {{- toYaml . | nindent 8 }}
-    {{- end }}
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      {{- else }}
+      annotations:
+        checksum/config: {{ tpl (toYaml .Values.syslog.config) . | sha256sum }}
+      {{- end }}
       labels:
         app: {{ template "axosyslog.fullname" . }}-syslog
         {{- include "axosyslog.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ template "axosyslog.serviceAccountName" . }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-
+      tolerations: {{ toYaml ( .Values.tolerations | default .Values.syslog.tolerations ) | nindent 8 }}
+      nodeSelector: {{ toYaml ( .Values.nodeSelector | default .Values.syslog.nodeSelector ) | nindent 8 }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      affinity: {{ toYaml ( .Values.affinity | default .Values.syslog.affinity ) | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
+      {{- end }}
+      {{- if .Values.hostAliases | default .Values.syslog.hostAliases }}
+      hostAliases: {{ toYaml ( .Values.hostAliases | default .Values.syslog.hostAliases ) | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- range .Values.secretMounts | default .Values.syslog.secretMounts }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ .secretName }}
+      {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "axosyslog.fullname" . }}-syslog
+      {{- if .Values.extraVolumes | default .Values.syslog.extraVolumes }}
+{{ toYaml ( .Values.extraVolumes | default .Values.syslog.extraVolumes ) | indent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.syslog.securityContext ) | nindent 12 }}
+          resources: {{ toYaml ( .Values.syslog.resources | default .Values.resources ) | nindent 12 }}
           ports:
           - containerPort: 1514
             name: rfc3164-tcp
@@ -63,39 +95,34 @@ spec:
           - containerPort: 4317
             name: otlp
           volumeMounts:
+          {{- range .Values.secretMounts | default .Values.syslog.secretMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .path }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+          {{- end }}
           - mountPath: /etc/syslog-ng/syslog-ng.conf
             name: config
             subPath: syslog-ng.conf
-        {{- if .Values.syslog.logFileStorage.enabled }}
+          {{- if .Values.syslog.logFileStorage.enabled }}
           - mountPath: /var/log
             name: logs
-        {{- end }}
-        {{- if .Values.syslog.bufferStorage.enabled }}
+          {{- end }}
+          {{- if .Values.syslog.bufferStorage.enabled }}
           - mountPath: /var/lib/syslog-ng
             name: buffers
-        {{- end }}
-        {{- if .Values.extraVolumeMounts | default .Values.syslog.extraVolumeMounts }}
+          {{- end }}
+          {{- if .Values.extraVolumeMounts | default .Values.syslog.extraVolumeMounts }}
 {{ toYaml (.Values.extraVolumeMounts | default .Values.syslog.extraVolumeMounts ) | indent 10 }}
-        {{- end }}
-      volumes:
-      - name: config
-        configMap:
-          name: {{ include "axosyslog.fullname" . }}-syslog
-      {{- if .Values.extraVolumes | default .Values.syslog.extraVolumes }}
-{{ toYaml ( .Values.extraVolumes | default .Values.syslog.extraVolumes ) | indent 6 }}
-      {{- end }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+          {{- end }}
+          livenessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+            exec:
+              command: ["syslog-ng-ctl", "healthcheck", "--timeout", "5"]
   volumeClaimTemplates:
 {{- with .Values.syslog.logFileStorage }}
 {{- if .enabled }}
@@ -105,7 +132,7 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage:  {{ .size }}
+          storage: {{ .size }}
       storageClassName: {{ .storageClass }}
 {{- end }}
 {{- end }}
@@ -117,7 +144,7 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage:  {{ .size }}
+          storage: {{ .size }}
       storageClassName: {{ .storageClass }}
 {{- end }}
 {{- end }}
