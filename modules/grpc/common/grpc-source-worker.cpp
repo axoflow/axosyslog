@@ -37,7 +37,7 @@ SourceWorker::SourceWorker(GrpcSourceWorker *s) : super(s)
 }
 
 void
-SourceWorker::post(LogMessage *msg)
+SourceWorker::blocking_post(LogMessage *msg)
 {
   log_threaded_source_worker_blocking_post(&super->super, msg);
 }

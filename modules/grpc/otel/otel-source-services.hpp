@@ -90,8 +90,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
       return;
     }
 
-  if (!worker.super->super.under_termination)
-    new TraceServiceCall(worker, service, cq);
+  new TraceServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
@@ -109,7 +108,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 
           for (const Span &span : scope_spans.spans())
             {
-              if (worker.super->super.under_termination)
+              if (log_threaded_source_worker_is_under_termination(&worker.super->super))
                 {
                   response_status = ::grpc::Status(::grpc::StatusCode::UNAVAILABLE, "Server is unavailable");
                   break;
@@ -121,7 +120,7 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
               ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_spans_schema_url, scope,
                                                  scope_spans_schema_url);
               ProtobufParser::store_raw(msg, span);
-              worker.post(msg);
+              worker.blocking_post(msg);
 
               msgs_in_fetch_round++;
               if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
@@ -149,8 +148,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
       return;
     }
 
-  if (!worker.super->super.under_termination)
-    new LogsServiceCall(worker, service, cq);
+  new LogsServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
@@ -168,7 +166,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 
           for (const LogRecord &log_record : scope_logs.log_records())
             {
-              if (worker.super->super.under_termination)
+              if (log_threaded_source_worker_is_under_termination(&worker.super->super))
                 {
                   response_status = ::grpc::Status(::grpc::StatusCode::UNAVAILABLE, "Server is unavailable");
                   break;
@@ -188,7 +186,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
                                                      scope_logs_schema_url);
                   ProtobufParser::store_raw(msg, log_record);
                 }
-              worker.post(msg);
+              worker.blocking_post(msg);
 
               msgs_in_fetch_round++;
               if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())
@@ -216,8 +214,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
       return;
     }
 
-  if (!worker.super->super.under_termination)
-    new MetricsServiceCall(worker, service, cq);
+  new MetricsServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
@@ -235,7 +232,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 
           for (const Metric &metric : scope_metrics.metrics())
             {
-              if (worker.super->super.under_termination)
+              if (log_threaded_source_worker_is_under_termination(&worker.super->super))
                 {
                   response_status = ::grpc::Status(::grpc::StatusCode::UNAVAILABLE, "Server is unavailable");
                   break;
@@ -247,7 +244,7 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
               ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_metrics_schema_url, scope,
                                                  scope_metrics_schema_url);
               ProtobufParser::store_raw(msg, metric);
-              worker.post(msg);
+              worker.blocking_post(msg);
 
               msgs_in_fetch_round++;
               if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())

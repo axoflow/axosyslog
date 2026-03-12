@@ -57,7 +57,7 @@ struct _LogThreadedSourceWorker
   MainLoopThreadedWorker thread;
   LogThreadedSourceDriver *control;
   WakeupCondition wakeup_cond;
-  gboolean under_termination;
+  volatile gint under_termination;
   gint worker_index;
 
   gboolean (*thread_init)(LogThreadedSourceWorker *self);
@@ -138,6 +138,12 @@ void log_threaded_source_worker_init_instance(LogThreadedSourceWorker *self, Log
 void log_threaded_source_worker_free(LogPipe *s);
 
 void log_threaded_source_worker_close_batch(LogThreadedSourceWorker *self);
+
+static inline gboolean
+log_threaded_source_worker_is_under_termination(LogThreadedSourceWorker *self)
+{
+  return g_atomic_int_get(&self->under_termination);
+}
 
 /* blocking API */
 void log_threaded_source_worker_blocking_post(LogThreadedSourceWorker *self, LogMessage *msg);
