@@ -25,6 +25,6 @@
 
 #include "transport-adapter.h"
 
-LogTransport *log_transport_haproxy_new(LogTransportIndex base, LogTransportIndex flip);
+LogTransport *log_transport_haproxy_new(LogTransportIndex base, LogTransportIndex flip, gboolean stream_based);
 
 #endif

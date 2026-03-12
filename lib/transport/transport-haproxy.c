@@ -71,12 +71,15 @@ struct _LogTransportHAProxy
     LPPTS_PROXY_V1_READ_LINE,
     LPPTS_PROXY_V2_READ_HEADER,
     LPPTS_PROXY_V2_READ_PAYLOAD,
+    LPPTS_PROXY_V2_READ_PACKET,
   } header_fetch_state;
 
   /* 0 unknown, 1 or 2 indicate proxy header version */
+  gboolean stream_based;
   gint proxy_header_version;
   guchar proxy_header_buff[PROXY_PROTO_HDR_BUFFER_SIZE];
   gsize proxy_header_buff_len;
+  gsize proxy_header_len;
 };
 
 
@@ -287,9 +290,9 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self, struct proxy_hdr_v2 *pr
                               union proxy_addr *proxy_addr)
 {
   gint address_family = (proxy_hdr->fam & 0xF0) >> 4;
-  gint proxy_header_len = ntohs(proxy_hdr->len);
+  self->proxy_header_len = ntohs(proxy_hdr->len);
 
-  if (address_family == 1 && proxy_header_len >= sizeof(proxy_addr->ipv4_addr))
+  if (address_family == 1 && self->proxy_header_len >= sizeof(proxy_addr->ipv4_addr))
     {
       /* AF_INET */
       inet_ntop(AF_INET, (gchar *) &proxy_addr->ipv4_addr.src_addr, self->info.src_ip, sizeof(self->info.src_ip));
@@ -299,7 +302,7 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self, struct proxy_hdr_v2 *pr
       self->info.ip_version = 4;
       return TRUE;
     }
-  else if (address_family == 2 && proxy_header_len >= sizeof(proxy_addr->ipv6_addr))
+  else if (address_family == 2 && self->proxy_header_len >= sizeof(proxy_addr->ipv6_addr))
     {
       /* AF_INET6 */
       inet_ntop(AF_INET6, (gchar *) &proxy_addr->ipv6_addr.src_addr, self->info.src_ip, sizeof(self->info.src_ip));
@@ -317,7 +320,7 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self, struct proxy_hdr_v2 *pr
     }
 
   msg_error("PROXYv2 header does not have enough bytes to represent endpoint addresses or unknown address_family",
-            evt_tag_int("proxy_header_len", proxy_header_len),
+            evt_tag_int("proxy_header_len", self->proxy_header_len),
             evt_tag_int("address_family", address_family));
   return FALSE;
 }
@@ -361,7 +364,7 @@ _parse_proxy_header(LogTransportHAProxy *self)
 static Status
 _fetch_chunk(LogTransportHAProxy *self, gsize upto_bytes)
 {
-  g_assert(upto_bytes < sizeof(self->proxy_header_buff));
+  g_assert(upto_bytes <= sizeof(self->proxy_header_buff));
   if (self->proxy_header_buff_len < upto_bytes)
     {
       gssize rc = log_transport_adapter_read_method(&self->super.super,
@@ -389,6 +392,28 @@ _fetch_chunk(LogTransportHAProxy *self, gsize upto_bytes)
   if (self->proxy_header_buff_len == upto_bytes)
     return STATUS_SUCCESS;
   return STATUS_AGAIN;
+}
+
+static Status
+_fetch_packet(LogTransportHAProxy *self)
+{
+  gssize rc = log_transport_adapter_read_method(&self->super.super,
+                                                self->proxy_header_buff, sizeof(self->proxy_header_buff),
+                                                NULL);
+  if (rc < 0)
+    {
+      if (errno == EAGAIN)
+        return STATUS_AGAIN;
+      else
+        {
+          msg_error("I/O error occurred while reading proxy header",
+                    evt_tag_error(EVT_TAG_OSERROR));
+          return STATUS_ERROR;
+        }
+    }
+
+  self->proxy_header_buff_len = rc;
+  return STATUS_SUCCESS;
 }
 
 static inline Status
@@ -504,6 +529,9 @@ process_proxy_v2:
     /* fallthrough */
     case LPPTS_PROXY_V2_READ_PAYLOAD:
       return _fetch_proxy_v2_payload(self);
+    case LPPTS_PROXY_V2_READ_PACKET:
+      self->proxy_header_version = 2;
+      return _fetch_packet(self);
     default:
       g_assert_not_reached();
     }
@@ -597,23 +625,41 @@ _haproxy_read(LogTransport *s, gpointer buf, gsize buflen, LogTransportAuxData *
           return -1;
         }
 
-      if (!log_transport_stack_switch(self->super.super.stack, self->switch_to))
-        g_assert_not_reached();
+      if (self->stream_based)
+        {
+          if (!log_transport_stack_switch(self->super.super.stack, self->switch_to))
+            g_assert_not_reached();
 
-      errno = EAGAIN;
-      return -1;
+          errno = EAGAIN;
+          return -1;
+        }
+      else
+        {
+          LogTransportStack *stack = self->super.super.stack;
+          gsize payload_to_copy = MIN(buflen, self->proxy_header_buff_len - self->proxy_header_len);
+          memcpy(buf, &self->proxy_header_buff[self->proxy_header_len], payload_to_copy);
+          self->proxy_header_processed = FALSE;
+          log_transport_aux_data_copy(aux, &stack->aux_data);
+          return payload_to_copy;
+        }
+
     }
   g_assert_not_reached();
 }
 
 LogTransport *
-log_transport_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to)
+log_transport_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to, gboolean stream_based)
 {
   LogTransportHAProxy *self = g_new0(LogTransportHAProxy, 1);
 
   log_transport_adapter_init_instance(&self->super, "haproxy", base);
   self->super.super.read = _haproxy_read;
   self->switch_to = switch_to;
+  self->stream_based = stream_based;
+
+  /* for UDP, only v2 is supported */
+  if (!stream_based)
+    self->header_fetch_state = LPPTS_PROXY_V2_READ_PACKET;
 
   return &self->super.super;
 }
