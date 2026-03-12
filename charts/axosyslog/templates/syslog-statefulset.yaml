@@ -51,21 +51,21 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      tolerations: {{ toYaml ( .Values.tolerations | default .Values.syslog.tolerations ) | nindent 8 }}
-      nodeSelector: {{ toYaml ( .Values.nodeSelector | default .Values.syslog.nodeSelector ) | nindent 8 }}
+      tolerations: {{ toYaml ( default .Values.tolerations .Values.syslog.tolerations ) | nindent 8 }}
+      nodeSelector: {{ toYaml ( default .Values.nodeSelector .Values.syslog.nodeSelector ) | nindent 8 }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
-      affinity: {{ toYaml ( .Values.affinity | default .Values.syslog.affinity ) | nindent 8 }}
+      affinity: {{ toYaml ( default .Values.affinity .Values.syslog.affinity ) | nindent 8 }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- if .Values.dnsConfig }}
       dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
       {{- end }}
-      {{- if .Values.hostAliases | default .Values.syslog.hostAliases }}
-      hostAliases: {{ toYaml ( .Values.hostAliases | default .Values.syslog.hostAliases ) | nindent 8 }}
+      {{- if default .Values.hostAliases .Values.syslog.hostAliases }}
+      hostAliases: {{ toYaml ( default .Values.hostAliases .Values.syslog.hostAliases ) | nindent 8 }}
       {{- end }}
       volumes:
-      {{- range .Values.secretMounts | default .Values.syslog.secretMounts }}
+      {{- range default .Values.secretMounts .Values.syslog.secretMounts }}
         - name: {{ .name }}
           secret:
             secretName: {{ .secretName }}
@@ -73,15 +73,15 @@ spec:
         - name: config
           configMap:
             name: {{ include "axosyslog.fullname" . }}-syslog
-      {{- if .Values.extraVolumes | default .Values.syslog.extraVolumes }}
-{{ toYaml ( .Values.extraVolumes | default .Values.syslog.extraVolumes ) | indent 8 }}
+      {{- if default .Values.extraVolumes .Values.syslog.extraVolumes }}
+        {{- toYaml ( default .Values.extraVolumes .Values.syslog.extraVolumes ) | nindent 8 }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.syslog.securityContext ) | nindent 12 }}
-          resources: {{ toYaml ( .Values.syslog.resources | default .Values.resources ) | nindent 12 }}
+          securityContext: {{ toYaml ( default .Values.securityContext .Values.syslog.securityContext ) | nindent 12 }}
+          resources: {{ toYaml ( default .Values.resources .Values.syslog.resources ) | nindent 12 }}
           ports:
           - containerPort: 1514
             name: rfc3164-tcp
@@ -95,7 +95,7 @@ spec:
           - containerPort: 4317
             name: otlp
           volumeMounts:
-          {{- range .Values.secretMounts | default .Values.syslog.secretMounts }}
+          {{- range default .Values.secretMounts .Values.syslog.secretMounts }}
             - name: {{ .name }}
               mountPath: {{ .path }}
               {{- if .subPath }}
@@ -113,8 +113,8 @@ spec:
           - mountPath: /var/lib/syslog-ng
             name: buffers
           {{- end }}
-          {{- if .Values.extraVolumeMounts | default .Values.syslog.extraVolumeMounts }}
-{{ toYaml (.Values.extraVolumeMounts | default .Values.syslog.extraVolumeMounts ) | indent 10 }}
+          {{- if default .Values.extraVolumeMounts .Values.syslog.extraVolumeMounts }}
+            {{- toYaml ( default .Values.extraVolumeMounts .Values.syslog.extraVolumeMounts ) | nindent 10 }}
           {{- end }}
           livenessProbe:
             initialDelaySeconds: 5
@@ -148,5 +148,4 @@ spec:
       storageClassName: {{ .storageClass }}
 {{- end }}
 {{- end }}
-
 {{- end }}

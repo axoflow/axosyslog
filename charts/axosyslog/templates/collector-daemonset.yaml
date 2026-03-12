@@ -36,9 +36,13 @@ spec:
     metadata:
       {{- if .Values.podAnnotations }}
       annotations:
+        checksum/config: {{ tpl (toYaml .Values.collector.config) . | sha256sum }}
         {{- range $key, $value := .Values.podAnnotations }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
+      {{- else }}
+      annotations:
+        checksum/config: {{ tpl (toYaml .Values.collector.config) . | sha256sum }}
       {{- end }}
       name: "{{ template "axosyslog.fullname" . }}"
       labels:
@@ -55,12 +59,16 @@ spec:
       {{- if .Values.serviceAccount.create }}
       serviceAccountName: {{ template "axosyslog.serviceAccountName" . }}
       {{- end}}
-      tolerations: {{ toYaml ( .Values.tolerations | default .Values.collector.tolerations ) | nindent 8 }}
-      nodeSelector: {{ toYaml ( .Values.nodeSelector | default .Values.collector.nodeSelector ) | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      tolerations: {{ toYaml ( default .Values.tolerations .Values.collector.tolerations ) | nindent 8 }}
+      nodeSelector: {{ toYaml ( default .Values.nodeSelector .Values.collector.nodeSelector ) | nindent 8 }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
-      affinity: {{ toYaml ( .Values.affinity | default .Values.collector.affinity ) | nindent 8 }}
+      affinity: {{ toYaml ( default .Values.affinity .Values.collector.affinity ) | nindent 8 }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- if .Values.collector.hostNetworking }}
       hostNetwork: true
@@ -69,11 +77,11 @@ spec:
       {{- if .Values.dnsConfig }}
       dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
       {{- end }}
-      {{- if .Values.hostAliases | default .Values.collector.hostAliases }}
-      hostAliases: {{ toYaml ( .Values.hostAliases | default .Values.collector.hostAliases ) | nindent 8 }}
+      {{- if default .Values.hostAliases .Values.collector.hostAliases }}
+      hostAliases: {{ toYaml ( default .Values.hostAliases .Values.collector.hostAliases ) | nindent 8 }}
       {{- end }}
       volumes:
-      {{- range .Values.secretMounts | default .Values.collector.secretMounts }}
+      {{- range default .Values.secretMounts .Values.collector.secretMounts }}
         - name: {{ .name }}
           secret:
             secretName: {{ .secretName }}
@@ -92,12 +100,9 @@ spec:
             path: /var/run/docker.sock
         - name: var-lib-syslog-ng
           emptyDir: {}
-      {{- if .Values.extraVolumes | default .Values.collector.extraVolumes }}
-{{ toYaml ( .Values.extraVolumes | default .Values.collector.extraVolumes ) | indent 8 }}
+      {{- if default .Values.extraVolumes .Values.collector.extraVolumes }}
+        {{- toYaml ( default .Values.extraVolumes .Values.collector.extraVolumes ) | nindent 8 }}
       {{- end }}
-      {{- if .Values.imagePullSecrets }}
-      imagePullSecrets:
-{{ toYaml .Values.imagePullSecrets | indent 8 }}
       {{- end }}
       containers:
         - name: "axosyslog"
@@ -110,10 +115,10 @@ spec:
             - {{ . }}
             {{- end }}
           resources:
-{{ toYaml ( .Values.resources | default .Values.collector.resources ) | indent 12 }}
-          securityContext: {{ toYaml ( .Values.podSecurityContext | default .Values.collector.securityContext ) | nindent 12 }}
+{{ toYaml ( default .Values.resources .Values.collector.resources ) | indent 12 }}
+          securityContext: {{ toYaml ( default .Values.securityContext .Values.collector.securityContext ) | nindent 12 }}
           volumeMounts:
-            {{- range .Values.secretMounts | default .Values.collector.secretMounts }}
+            {{- range default .Values.secretMounts .Values.collector.secretMounts }}
             - name: {{ .name }}
               mountPath: {{ .path }}
               {{- if .subPath }}
@@ -131,8 +136,8 @@ spec:
               mountPath: /var/run/docker.sock
             - name: var-lib-syslog-ng
               mountPath: /var/lib/syslog-ng
-          {{- if .Values.extraVolumeMounts | default .Values.collector.extraVolumeMounts }}
-{{ toYaml (.Values.extraVolumeMounts | default .Values.collector.extraVolumeMounts ) | indent 12 }}
+          {{- if default .Values.extraVolumeMounts .Values.collector.extraVolumeMounts }}
+            {{- toYaml ( default .Values.extraVolumeMounts .Values.collector.extraVolumeMounts ) | nindent 12 }}
           {{- end }}
           livenessProbe:
             initialDelaySeconds: 5
@@ -157,6 +162,6 @@ spec:
               name: exporter
               protocol: TCP
           resources: {{ toYaml ( .Values.metricsExporter.resources ) | nindent 12 }}
-          securityContext: {{ toYaml ( .Values.metricsExporter.securityContext | default .Values.collector.securityContext ) | nindent 12 }}
+          securityContext: {{ toYaml ( default .Values.collector.securityContext .Values.metricsExporter.securityContext ) | nindent 12 }}
         {{- end }}
 {{- end }}
