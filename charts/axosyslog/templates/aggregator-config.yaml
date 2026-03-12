@@ -26,7 +26,11 @@ data:
       default-network-drivers(
         udp-port(1514)
         tcp-port(1514)
+        {{- if .tls }}
         rfc5424-tls-port(6514)
+        {{- else }}
+        rfc5424-tls-port(0)
+        {{- end }}
         rfc5424-tcp-port(1601)
         max-connections({{ .maxConnections | default 1000 }})
         log-iw-size({{ .initWindowSize | default 100000 }})

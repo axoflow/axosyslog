@@ -78,17 +78,23 @@ spec:
           securityContext: {{ toYaml ( default .Values.securityContext .Values.aggregator.securityContext ) | nindent 12 }}
           resources: {{ toYaml ( default .Values.resources .Values.aggregator.resources ) | nindent 12 }}
           ports:
+          {{- if .Values.aggregator.config.sources.syslog.enabled }}
           - containerPort: 1514
             name: rfc3164-tcp
           - containerPort: 1514
             protocol: UDP
             name: rfc3164-udp
+          {{- if .Values.aggregator.config.sources.syslog.tls }}
           - containerPort: 6514
             name: rfc5424-tls
+          {{- end }}
           - containerPort: 1601
             name: rfc5424-tcp
+          {{- end }}
+          {{- if .Values.aggregator.config.sources.axosyslogOtlp.enabled }}
           - containerPort: 4317
             name: otlp
+          {{- end }}
           volumeMounts:
           {{- range default .Values.secretMounts .Values.aggregator.secretMounts }}
             - name: {{ .name }}
