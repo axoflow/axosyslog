@@ -67,19 +67,19 @@ app.kubernetes.io/component: collector
 {{- end }}
 
 {{/*
-Syslog component selector labels.
+Aggregator component selector labels.
 */}}
-{{- define "axosyslog.syslog.selectorLabels" -}}
+{{- define "axosyslog.aggregator.selectorLabels" -}}
 {{ include "axosyslog.selectorLabels" . }}
-app.kubernetes.io/component: syslog
+app.kubernetes.io/component: aggregator
 {{- end }}
 
 {{/*
-Syslog component labels.
+Aggregator component labels.
 */}}
-{{- define "axosyslog.syslog.labels" -}}
+{{- define "axosyslog.aggregator.labels" -}}
 {{ include "axosyslog.labels" . }}
-app.kubernetes.io/component: syslog
+app.kubernetes.io/component: aggregator
 {{- end }}
 
 {{/*

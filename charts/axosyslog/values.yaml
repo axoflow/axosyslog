@@ -88,14 +88,14 @@ collector:
   # -- Use the host network namespace for collector pods
   hostNetworking: false
 
-# -- Syslog StatefulSet: receives incoming syslog/OTLP traffic (including from the collector) and routes it to destinations.
+# -- Aggregator StatefulSet: receives incoming syslog/OTLP traffic (including from the collector) and routes it to destinations.
 # @default -- See values.yaml
-syslog:
+aggregator:
   # @default -- true
   enabled: true
-  # -- Additional labels for the syslog StatefulSet and its pods
+  # -- Additional labels for the aggregator StatefulSet and its pods
   labels: {}
-  # -- Additional annotations for the syslog StatefulSet and its pods
+  # -- Additional annotations for the aggregator StatefulSet and its pods
   annotations: {}
   logFileStorage:
     # -- Enable persistent volume for written log files
@@ -112,7 +112,7 @@ syslog:
     # -- Size of the disk buffer PVC
     size: 10Gi
   config:
-    # -- Override the entire syslog-ng.conf content for the syslog component
+    # -- Override the entire syslog-ng.conf content for the aggregator
     raw: ""
     stats:
       level: 2
@@ -176,11 +176,11 @@ syslog:
         enabled: false
         url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
-  # -- Affinity rules for syslog pod scheduling
+  # -- Affinity rules for aggregator pod scheduling
   affinity: {}
-  # -- Node selector for syslog pod assignment
+  # -- Node selector for aggregator pod assignment
   nodeSelector: {}
-  # -- CPU/memory resource requests and limits for the syslog component. Falls back to global `resources` if not set.
+  # -- CPU/memory resource requests and limits for the aggregator. Falls back to global `resources` if not set.
   resources: {}
   # resources:
   #   limits:
@@ -189,17 +189,17 @@ syslog:
   #   requests:
   #     cpu: 100m
   #     memory: 128Mi
-  # -- Tolerations for syslog pod scheduling
+  # -- Tolerations for aggregator pod scheduling
   tolerations: []
-  # -- Custom entries added to /etc/hosts for syslog pods
+  # -- Custom entries added to /etc/hosts for aggregator pods
   hostAliases: []
-  # -- Secrets to mount as files into the syslog container
+  # -- Secrets to mount as files into the aggregator container
   secretMounts: []
-  # -- Additional volumes to add to the syslog pod
+  # -- Additional volumes to add to the aggregator pod
   extraVolumes: []
-  # -- Additional volume mounts to add to the syslog container
+  # -- Additional volume mounts to add to the aggregator container
   extraVolumeMounts: []
-  # -- Container-level security context for the syslog component
+  # -- Container-level security context for the aggregator
   securityContext: {}
 
 metricsExporter:
@@ -241,9 +241,9 @@ openShift:
     annotations: {}
 
 service:
-  # -- Create a Service for the syslog StatefulSet
+  # -- Create a Service for the aggregator StatefulSet
   create: true
-  # -- Additional ports to expose on the syslog Service
+  # -- Additional ports to expose on the aggregator Service
   extraPorts: []
   #  - protocol: TCP
   #    port: 514
@@ -263,9 +263,9 @@ podAnnotations: {}
 # -- Pod-level security context applied to all pods
 podSecurityContext: {}
 #   fsGroup: 2000
-# -- Default container-level security context for all components (overridden per component via collector.securityContext / syslog.securityContext)
+# -- Default container-level security context for all components (overridden per component via collector.securityContext / aggregator.securityContext)
 securityContext: {}
-# -- Default CPU/memory resource requests and limits for all components (overridden per component via collector.resources / syslog.resources)
+# -- Default CPU/memory resource requests and limits for all components (overridden per component via collector.resources / aggregator.resources)
 resources: {}
 #   limits:
 #     cpu: 100m

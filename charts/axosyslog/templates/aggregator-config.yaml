@@ -3,10 +3,10 @@ kind: ConfigMap
 metadata:
   labels:
     {{- include "axosyslog.labels" . | nindent 4 }}
-  name: {{ include "axosyslog.fullname" . }}-syslog
+  name: {{ include "axosyslog.fullname" . }}-aggregator
 data:
-{{- if .Values.syslog.config.raw }}
-  syslog-ng.conf: {{ tpl (toYaml .Values.syslog.config.raw) . | indent 2 }}
+{{- if .Values.aggregator.config.raw }}
+  syslog-ng.conf: {{ tpl (toYaml .Values.aggregator.config.raw) . | indent 2 }}
 {{- else }}
   syslog-ng.conf: |
     @version: {{ regexFind "^[0-9]+\\.[0-9]+" .Chart.AppVersion | default "current" }}
@@ -14,13 +14,13 @@ data:
 
     options {
       stats(
-        level({{ .Values.syslog.config.stats.level }})
+        level({{ .Values.aggregator.config.stats.level }})
       );
       ts-format(iso);
       frac-digits(6);
     };
 
-{{- with .Values.syslog.config.sources.syslog }}
+{{- with .Values.aggregator.config.sources.syslog }}
   {{- if .enabled }}
     source s_syslog {
       default-network-drivers(
@@ -56,7 +56,7 @@ data:
   {{- end }}
 {{- end }}
 
-{{- with .Values.syslog.config.sources.axosyslogOtlp }}
+{{- with .Values.aggregator.config.sources.axosyslogOtlp }}
   {{- if .enabled }}
     source s_syslogng_otlp {
       axosyslog-otlp();
@@ -65,14 +65,14 @@ data:
 {{- end }}
 
     log {
-{{- if .Values.syslog.config.sources.syslog.enabled }}
+{{- if .Values.aggregator.config.sources.syslog.enabled }}
       source (s_syslog);
 {{- end }}
-{{- if .Values.syslog.config.sources.axosyslogOtlp.enabled }}
+{{- if .Values.aggregator.config.sources.axosyslogOtlp.enabled }}
       source (s_syslogng_otlp);
 {{- end }}
 
-{{- with .Values.syslog.config.destinations.syslog }}
+{{- with .Values.aggregator.config.destinations.syslog }}
   {{- if .enabled }}
       destination {
         network(
@@ -89,7 +89,7 @@ data:
       };
   {{- end }}
 {{- end }}
-{{- with .Values.syslog.config.destinations.opensearch }}
+{{- with .Values.aggregator.config.destinations.opensearch }}
   {{- if .enabled }}
       destination {
         elasticsearch-http(
@@ -133,7 +133,7 @@ data:
       };
     {{- end }}
 {{- end }}
-{{- with .Values.syslog.config.destinations.axosyslogOtlp }}
+{{- with .Values.aggregator.config.destinations.axosyslogOtlp }}
   {{- if .enabled }}
       destination {
         axosyslog-otlp (
@@ -145,7 +145,7 @@ data:
       };
   {{- end }}
 {{- end }}
-{{- with .Values.syslog.config.destinations.file }}
+{{- with .Values.aggregator.config.destinations.file }}
   {{- if .enabled }}
       destination {
         file ({{ tpl .path $ | quote }}

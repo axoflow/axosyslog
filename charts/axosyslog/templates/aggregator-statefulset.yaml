@@ -1,38 +1,38 @@
-{{- if .Values.syslog.enabled }}
+{{- if .Values.aggregator.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ template "axosyslog.fullname" . }}-syslog
+  name: {{ template "axosyslog.fullname" . }}-aggregator
   namespace: {{ include "axosyslog.namespace" . }}
   labels:
-    {{- include "axosyslog.syslog.labels" . | nindent 4 }}
-    {{- range $key, $value := .Values.syslog.labels }}
+    {{- include "axosyslog.aggregator.labels" . | nindent 4 }}
+    {{- range $key, $value := .Values.aggregator.labels }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
-  {{- if .Values.syslog.annotations }}
+  {{- if .Values.aggregator.annotations }}
   annotations:
-    {{- range $key, $value := .Values.syslog.annotations }}
+    {{- range $key, $value := .Values.aggregator.annotations }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
   {{- end }}
 spec:
   replicas: 1
-  serviceName: {{ template "axosyslog.fullname" . }}-syslog
+  serviceName: {{ template "axosyslog.fullname" . }}-aggregator
   selector:
     matchLabels:
-      {{- include "axosyslog.syslog.selectorLabels" . | nindent 6 }}
+      {{- include "axosyslog.aggregator.selectorLabels" . | nindent 6 }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
   template:
     metadata:
       annotations:
-        checksum/config: {{ tpl (toYaml .Values.syslog.config) . | sha256sum }}
+        checksum/config: {{ tpl (toYaml .Values.aggregator.config) . | sha256sum }}
         {{- range $key, $value := .Values.podAnnotations }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
       labels:
-        {{- include "axosyslog.syslog.labels" . | nindent 8 }}
-        {{- range $key, $value := .Values.syslog.labels }}
+        {{- include "axosyslog.aggregator.labels" . | nindent 8 }}
+        {{- range $key, $value := .Values.aggregator.labels }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
     spec:
@@ -46,37 +46,37 @@ spec:
       {{- with .Values.podSecurityContext }}
       securityContext: {{ toYaml . | nindent 8 }}
       {{- end }}
-      tolerations: {{ toYaml ( default .Values.tolerations .Values.syslog.tolerations ) | nindent 8 }}
-      nodeSelector: {{ toYaml ( default .Values.nodeSelector .Values.syslog.nodeSelector ) | nindent 8 }}
+      tolerations: {{ toYaml ( default .Values.tolerations .Values.aggregator.tolerations ) | nindent 8 }}
+      nodeSelector: {{ toYaml ( default .Values.nodeSelector .Values.aggregator.nodeSelector ) | nindent 8 }}
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName }}
       {{- end }}
-      affinity: {{ toYaml ( default .Values.affinity .Values.syslog.affinity ) | nindent 8 }}
+      affinity: {{ toYaml ( default .Values.affinity .Values.aggregator.affinity ) | nindent 8 }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- if .Values.dnsConfig }}
       dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
       {{- end }}
-      {{- if default .Values.hostAliases .Values.syslog.hostAliases }}
-      hostAliases: {{ toYaml ( default .Values.hostAliases .Values.syslog.hostAliases ) | nindent 8 }}
+      {{- if default .Values.hostAliases .Values.aggregator.hostAliases }}
+      hostAliases: {{ toYaml ( default .Values.hostAliases .Values.aggregator.hostAliases ) | nindent 8 }}
       {{- end }}
       volumes:
-      {{- range default .Values.secretMounts .Values.syslog.secretMounts }}
+      {{- range default .Values.secretMounts .Values.aggregator.secretMounts }}
         - name: {{ .name }}
           secret:
             secretName: {{ .secretName }}
       {{- end }}
         - name: config
           configMap:
-            name: {{ include "axosyslog.fullname" . }}-syslog
-      {{- if default .Values.extraVolumes .Values.syslog.extraVolumes }}
-        {{- toYaml ( default .Values.extraVolumes .Values.syslog.extraVolumes ) | nindent 8 }}
+            name: {{ include "axosyslog.fullname" . }}-aggregator
+      {{- if default .Values.extraVolumes .Values.aggregator.extraVolumes }}
+        {{- toYaml ( default .Values.extraVolumes .Values.aggregator.extraVolumes ) | nindent 8 }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          securityContext: {{ toYaml ( default .Values.securityContext .Values.syslog.securityContext ) | nindent 12 }}
-          resources: {{ toYaml ( default .Values.resources .Values.syslog.resources ) | nindent 12 }}
+          securityContext: {{ toYaml ( default .Values.securityContext .Values.aggregator.securityContext ) | nindent 12 }}
+          resources: {{ toYaml ( default .Values.resources .Values.aggregator.resources ) | nindent 12 }}
           ports:
           - containerPort: 1514
             name: rfc3164-tcp
@@ -90,7 +90,7 @@ spec:
           - containerPort: 4317
             name: otlp
           volumeMounts:
-          {{- range default .Values.secretMounts .Values.syslog.secretMounts }}
+          {{- range default .Values.secretMounts .Values.aggregator.secretMounts }}
             - name: {{ .name }}
               mountPath: {{ .path }}
               {{- if .subPath }}
@@ -100,16 +100,16 @@ spec:
           - mountPath: /etc/syslog-ng/syslog-ng.conf
             name: config
             subPath: syslog-ng.conf
-          {{- if .Values.syslog.logFileStorage.enabled }}
+          {{- if .Values.aggregator.logFileStorage.enabled }}
           - mountPath: /var/log
             name: logs
           {{- end }}
-          {{- if .Values.syslog.bufferStorage.enabled }}
+          {{- if .Values.aggregator.bufferStorage.enabled }}
           - mountPath: /var/lib/syslog-ng
             name: buffers
           {{- end }}
-          {{- if default .Values.extraVolumeMounts .Values.syslog.extraVolumeMounts }}
-            {{- toYaml ( default .Values.extraVolumeMounts .Values.syslog.extraVolumeMounts ) | nindent 10 }}
+          {{- if default .Values.extraVolumeMounts .Values.aggregator.extraVolumeMounts }}
+            {{- toYaml ( default .Values.extraVolumeMounts .Values.aggregator.extraVolumeMounts ) | nindent 10 }}
           {{- end }}
           livenessProbe:
             initialDelaySeconds: 5
@@ -119,7 +119,7 @@ spec:
             exec:
               command: ["syslog-ng-ctl", "healthcheck", "--timeout", "5"]
   volumeClaimTemplates:
-{{- with .Values.syslog.logFileStorage }}
+{{- with .Values.aggregator.logFileStorage }}
 {{- if .enabled }}
   - metadata:
       name: logs
@@ -131,7 +131,7 @@ spec:
       storageClassName: {{ .storageClass }}
 {{- end }}
 {{- end }}
-{{- with .Values.syslog.bufferStorage }}
+{{- with .Values.aggregator.bufferStorage }}
 {{- if .enabled }}
   - metadata:
       name: buffers
