@@ -144,7 +144,9 @@ spec:
         {{- if .Values.metricsExporter.enabled }}
         - name: "metrics-exporter"
           image: "{{ .Values.metricsExporter.image.repository }}:{{ .Values.metricsExporter.image.tag }}"
-          imagePullPolicy: "{{ .Values.metricsExporter.image.pullPolicy }}"
+          {{- if .Values.metricsExporter.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.metricsExporter.image.pullPolicy | quote }}
+          {{- end }}
           args:
             - --socket.path=/var/lib/syslog-ng/syslog-ng.ctl
           volumeMounts:
