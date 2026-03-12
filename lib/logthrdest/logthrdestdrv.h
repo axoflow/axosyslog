@@ -107,19 +107,12 @@ struct _LogThreadedDestWorker
 
   struct
   {
-
     StatsByteCounter written_bytes;
     StatsCounterItem *output_unreachable;
-    StatsCounterItem *message_delay_sample;
-    StatsCounterItem *message_delay_sample_age;
-
-    gint64 last_delay_update;
 
     /* book keeping */
     StatsClusterKey *output_event_bytes_key;
     StatsClusterKey *output_unreachable_key;
-    StatsClusterKey *message_delay_sample_key;
-    StatsClusterKey *message_delay_sample_age_key;
   } metrics;
 
   gboolean (*init)(LogThreadedDestWorker *s);
@@ -154,6 +147,7 @@ struct _LogThreadedDestDriver
     StatsCounterItem *workers;
     StatsCounterItem *batch_timedout;
 
+    StatsAggregator *message_latency;
     StatsAggregator *event_size_hist;
     StatsAggregator *batch_size_events_hist;
     StatsAggregator *batch_size_bytes_hist;
@@ -169,6 +163,7 @@ struct _LogThreadedDestDriver
     StatsClusterKey *batch_size_bytes_hist_key;
     StatsClusterKey *batch_size_events_hist_key;
     StatsClusterKey *batch_timedout_key;
+    StatsClusterKey *message_latency_key;
     StatsClusterKey *event_size_hist_key;
     StatsClusterKey *request_latency_hist_key;
     StatsClusterKey *CPS_key;
@@ -260,6 +255,20 @@ log_threaded_dest_worker_disconnect(LogThreadedDestWorker *self)
   self->connected = FALSE;
 }
 
+static inline void
+log_threaded_dest_worker_update_message_latency(LogThreadedDestWorker *self, LogMessage *msg)
+{
+  if (!self->owner->metrics.message_latency)
+    return;
+
+  UnixTime now;
+  unix_time_set_precise_now(&now);
+
+  gint64 message_latency = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
+  stats_aggregator_add_data_point(self->owner->metrics.message_latency, message_latency);
+}
+
+
 static inline LogThreadedResult
 log_threaded_dest_worker_insert(LogThreadedDestWorker *self, LogMessage *msg)
 {
@@ -276,21 +285,8 @@ log_threaded_dest_worker_insert(LogThreadedDestWorker *self, LogMessage *msg)
 
   LogThreadedResult result = self->insert(self, msg);
 
-  if (self->metrics.message_delay_sample
-      && (result == LTR_QUEUED || result == LTR_SUCCESS || result == LTR_EXPLICIT_ACK_MGMT))
-    {
-      UnixTime now;
-
-      unix_time_set_now(&now);
-      gint64 diff_msec = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
-
-      if (self->metrics.last_delay_update != now.ut_sec)
-        {
-          stats_counter_set_time(self->metrics.message_delay_sample, diff_msec);
-          stats_counter_set_time(self->metrics.message_delay_sample_age, now.ut_sec);
-          self->metrics.last_delay_update = now.ut_sec;
-        }
-    }
+  if (result == LTR_QUEUED || result == LTR_SUCCESS || result == LTR_EXPLICIT_ACK_MGMT)
+    log_threaded_dest_worker_update_message_latency(self, msg);
 
   return result;
 }

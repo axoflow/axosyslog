@@ -974,44 +974,13 @@ _register_worker_stats(LogThreadedDestWorker *self)
   }
   stats_cluster_key_builder_pop(kb);
 
-  stats_cluster_key_builder_push(kb);
-  {
-    stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_seconds");
-    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
-    self->metrics.message_delay_sample_key = stats_cluster_key_builder_build_single(kb);
-  }
-  stats_cluster_key_builder_pop(kb);
-
-  stats_cluster_key_builder_push(kb);
-  {
-    stats_cluster_key_builder_set_name(kb, "output_event_delay_sample_age_seconds");
-    stats_cluster_key_builder_set_unit(kb, SCU_SECONDS);
-    stats_cluster_key_builder_set_frame_of_reference(kb, SCFOR_RELATIVE_TO_TIME_OF_QUERY);
-    self->metrics.message_delay_sample_age_key = stats_cluster_key_builder_build_single(kb);
-  }
-  stats_cluster_key_builder_pop(kb);
-
   stats_byte_counter_init(&self->metrics.written_bytes, self->metrics.output_event_bytes_key, level, SBCP_KIB);
   stats_lock();
   {
-
     stats_register_counter(level, self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
                            &self->metrics.output_unreachable);
-
-    /* Up to 49 days and 17 hours on 32 bit machines. */
-    stats_register_counter(level, self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
-                           &self->metrics.message_delay_sample);
-
-    stats_register_counter(level, self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                           &self->metrics.message_delay_sample_age);
   }
   stats_unlock();
-
-
-  UnixTime now;
-  unix_time_set_now(&now);
-  stats_counter_set_time(self->metrics.message_delay_sample_age, now.ut_sec);
-  self->metrics.last_delay_update = now.ut_sec;
 
   stats_cluster_key_builder_free(kb);
 }
@@ -1025,19 +994,11 @@ _unregister_worker_stats(LogThreadedDestWorker *self)
   {
     stats_unregister_counter(self->metrics.output_unreachable_key, SC_TYPE_SINGLE_VALUE,
                              &self->metrics.output_unreachable);
-
-    stats_unregister_counter(self->metrics.message_delay_sample_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample);
-
-    stats_unregister_counter(self->metrics.message_delay_sample_age_key, SC_TYPE_SINGLE_VALUE,
-                             &self->metrics.message_delay_sample_age);
   }
   stats_unlock();
 
   stats_cluster_key_free(self->metrics.output_event_bytes_key);
   stats_cluster_key_free(self->metrics.output_unreachable_key);
-  stats_cluster_key_free(self->metrics.message_delay_sample_key);
-  stats_cluster_key_free(self->metrics.message_delay_sample_age_key);
 }
 
 gboolean
@@ -1583,6 +1544,10 @@ _register_driver_aggregated_stats(LogThreadedDestDriver *self)
   stats_register_aggregator_cps(level, self->metrics.CPS_key, self->metrics.processed_key, SC_TYPE_SINGLE_VALUE,
                                 &self->metrics.CPS);
 
+  gint latency_level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL2;
+  stats_register_aggregator_hist(latency_level, self->metrics.message_latency_key, round_to_log2(1), 20,
+                                 &self->metrics.message_latency);
+
   stats_aggregator_unlock();
 }
 
@@ -1595,6 +1560,7 @@ _unregister_driver_aggregated_stats(LogThreadedDestDriver *self)
   stats_unregister_aggregator(&self->metrics.batch_size_events_hist);
   stats_unregister_aggregator(&self->metrics.batch_size_bytes_hist);
   stats_unregister_aggregator(&self->metrics.request_latency_hist);
+  stats_unregister_aggregator(&self->metrics.message_latency);
   stats_unregister_aggregator(&self->metrics.CPS);
 
   stats_aggregator_unlock();
@@ -1701,6 +1667,14 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
   }
   stats_cluster_key_builder_pop(kb);
 
+  stats_cluster_key_builder_push(kb);
+  {
+    stats_cluster_key_builder_set_name(kb, "output_event_latency_seconds");
+    stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
+    self->metrics.message_latency_key = stats_cluster_key_builder_build_hist(kb);
+  }
+  stats_cluster_key_builder_pop(kb);
+
 
   gint lvl = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL2;
   stats_lock();
@@ -1763,6 +1737,7 @@ _unregister_driver_stats(LogThreadedDestDriver *self)
   stats_cluster_key_free(self->metrics.batch_size_bytes_hist_key);
   stats_cluster_key_free(self->metrics.batch_timedout_key);
   stats_cluster_key_free(self->metrics.CPS_key);
+  stats_cluster_key_free(self->metrics.message_latency_key);
 
 }
 

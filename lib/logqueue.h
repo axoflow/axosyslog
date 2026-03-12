@@ -27,6 +27,8 @@
 #include "logmsg/logmsg.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-key-builder.h"
+#include "stats/aggregator/stats-aggregator.h"
+#include "timeutils/unixtime.h"
 
 typedef void (*LogQueuePushNotifyFunc)(gpointer user_data);
 
@@ -40,10 +42,12 @@ typedef struct _LogQueueMetrics
   {
     StatsClusterKey *output_events_sc_key;
     StatsClusterKey *memory_usage_sc_key;
+    StatsClusterKey *processing_latency_key;
 
     StatsCounterItem *queued_messages;
     StatsCounterItem *memory_usage;
     StatsCounterItem *dropped_messages;
+    StatsAggregator *processing_latency;
   } shared;
 
   struct
@@ -114,8 +118,22 @@ log_queue_is_empty_racy(LogQueue *self)
 }
 
 static inline void
+log_queue_update_processing_latency(LogQueue *self, LogMessage *msg)
+{
+  if (!self->metrics.shared.processing_latency)
+    return;
+
+  UnixTime now;
+  unix_time_set_precise_now(&now);
+
+  gint64 processing_latency = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
+  stats_aggregator_add_data_point(self->metrics.shared.processing_latency, processing_latency);
+}
+
+static inline void
 log_queue_push_tail(LogQueue *self, LogMessage *msg, const LogPathOptions *path_options)
 {
+  log_queue_update_processing_latency(self, msg);
   self->push_tail(self, msg, path_options);
   stats_counter_inc(self->metrics.owned.processed_messages);
 }

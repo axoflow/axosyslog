@@ -71,6 +71,9 @@ unix_time_is_timezone_set(const UnixTime *self)
 void unix_time_unset(UnixTime *ut);
 void unix_time_set_now(UnixTime *self);
 
+/* for measuring latency within a single worker job/task */
+void unix_time_set_precise_now(UnixTime *self);
+
 void unix_time_set_timezone(UnixTime *self, gint new_gmtoff);
 void unix_time_set_timezone_with_tzinfo(UnixTime *self, TimeZoneInfo *tzinfo);
 void unix_time_fix_timezone(UnixTime *self, gint new_gmtoff);
