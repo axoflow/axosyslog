@@ -5,14 +5,9 @@ metadata:
   name: {{ template "axosyslog.fullname" . }}
   namespace: {{ include "axosyslog.namespace" . }}
   labels:
-    app: "{{ template "axosyslog.fullname" . }}"
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    heritage: {{ .Release.Service | quote }}
-    release: {{ .Release.Name | quote }}
-    {{- with .Values.podMonitor.labels }}
-    {{- range $key, $value := . }}
+    {{- include "axosyslog.collector.labels" . | nindent 4 }}
+    {{- range $key, $value := .Values.podMonitor.labels }}
     {{ $key }}: {{ $value | quote }}
-    {{- end }}
     {{- end }}
   {{- with .Values.podMonitor.annotations }}
   annotations:
@@ -23,8 +18,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: "{{ template "axosyslog.fullname" . }}"
-      release: {{ .Release.Name | quote }}
+      {{- include "axosyslog.collector.selectorLabels" . | nindent 6 }}
   podMetricsEndpoints:
   - port: exporter
 {{- end }}

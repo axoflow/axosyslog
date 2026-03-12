@@ -6,14 +6,9 @@ metadata:
   name: {{ template "axosyslog.fullname" . }}-collector
   namespace: {{ include "axosyslog.namespace" . }}
   labels:
-    app: {{ template "axosyslog.fullname" . }}-collector
-    chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-    heritage: {{ .Release.Service | quote }}
-    release: {{ .Release.Name | quote }}
-    {{- if .Values.collector.labels }}
+    {{- include "axosyslog.collector.labels" . | nindent 4 }}
     {{- range $key, $value := .Values.collector.labels }}
     {{ $key }}: {{ $value | quote }}
-    {{- end }}
     {{- end }}
   {{- if .Values.collector.annotations }}
   annotations:
@@ -24,8 +19,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: "{{ template "axosyslog.fullname" . }}"
-      release: {{ .Release.Name | quote }}
+      {{- include "axosyslog.collector.selectorLabels" . | nindent 6 }}
   updateStrategy:
     {{- if eq .Values.updateStrategy "RollingUpdate" }}
     rollingUpdate:
@@ -34,34 +28,26 @@ spec:
     type: {{ .Values.updateStrategy }}
   template:
     metadata:
-      {{- if .Values.podAnnotations }}
       annotations:
         checksum/config: {{ tpl (toYaml .Values.collector.config) . | sha256sum }}
         {{- range $key, $value := .Values.podAnnotations }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
-      {{- else }}
-      annotations:
-        checksum/config: {{ tpl (toYaml .Values.collector.config) . | sha256sum }}
-      {{- end }}
-      name: "{{ template "axosyslog.fullname" . }}"
       labels:
-        app: "{{ template "axosyslog.fullname" . }}"
-        chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
-        heritage: {{ .Release.Service | quote }}
-        release: {{ .Release.Name | quote }}
-        {{- if .Values.collector.labels }}
+        {{- include "axosyslog.collector.labels" . | nindent 8 }}
         {{- range $key, $value := .Values.collector.labels }}
         {{ $key }}: {{ $value | quote }}
-        {{- end }}
         {{- end }}
     spec:
       {{- if .Values.serviceAccount.create }}
       serviceAccountName: {{ template "axosyslog.serviceAccountName" . }}
-      {{- end}}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{ toYaml . | nindent 8 }}
       {{- end }}
       tolerations: {{ toYaml ( default .Values.tolerations .Values.collector.tolerations ) | nindent 8 }}
       nodeSelector: {{ toYaml ( default .Values.nodeSelector .Values.collector.nodeSelector ) | nindent 8 }}
@@ -103,19 +89,17 @@ spec:
       {{- if default .Values.extraVolumes .Values.collector.extraVolumes }}
         {{- toYaml ( default .Values.extraVolumes .Values.collector.extraVolumes ) | nindent 8 }}
       {{- end }}
-      {{- end }}
       containers:
-        - name: "axosyslog"
+        - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - "--persist-file"
             - "/var/log/syslog-ng.persist"
             {{- range .Values.image.extraArgs }}
             - {{ . }}
             {{- end }}
-          resources:
-{{ toYaml ( default .Values.resources .Values.collector.resources ) | indent 12 }}
+          resources: {{ toYaml ( default .Values.resources .Values.collector.resources ) | nindent 12 }}
           securityContext: {{ toYaml ( default .Values.securityContext .Values.collector.securityContext ) | nindent 12 }}
           volumeMounts:
             {{- range default .Values.secretMounts .Values.collector.secretMounts }}

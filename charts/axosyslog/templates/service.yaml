@@ -3,9 +3,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ template "axosyslog.fullname" . }}-syslog
+  namespace: {{ include "axosyslog.namespace" . }}
+  labels:
+    {{- include "axosyslog.syslog.labels" . | nindent 4 }}
 spec:
   selector:
-    app: {{ template "axosyslog.fullname" . }}-syslog
+    {{- include "axosyslog.syslog.selectorLabels" . | nindent 4 }}
   type: NodePort
   ports:
 {{ if .Values.service.extraPorts }}
