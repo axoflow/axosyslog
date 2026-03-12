@@ -1,18 +1,28 @@
 image:
+  # -- Container image repository
   repository: ghcr.io/axoflow/axosyslog
+  # -- Image pull policy
   pullPolicy: IfNotPresent
+  # -- Image tag (defaults to Chart.AppVersion)
   tag: ""
+  # -- Additional arguments passed to the syslog-ng process
   extraArgs: []
 
+# -- Secrets for pulling images from private registries
 imagePullSecrets: []
+# -- Override the chart name
 nameOverride: ""
+# -- Override the fully qualified chart name
 fullnameOverride: ""
 
-# collector daemonset to tail /var/log/pods
+# -- Collector DaemonSet: runs on every node to tail /var/log/pods and forward logs to destinations.
+# @default -- See values.yaml
 collector:
+  # @default -- true
   enabled: true
   config:
-    raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
+    # -- Override the entire syslog-ng.conf content for the collector
+    raw: ""
     stats:
       level: 2
     sources:
@@ -51,35 +61,59 @@ collector:
         enabled: false
         url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
+  # -- Additional labels for the collector DaemonSet and its pods
   labels: {}
+  # -- Additional annotations for the collector DaemonSet and its pods
   annotations: {}
+  # -- Affinity rules for collector pod scheduling
   affinity: {}
+  # -- Node selector for collector pod assignment
   nodeSelector: {}
+  # -- CPU/memory resource requests and limits for the collector. Falls back to global `resources` if not set.
   resources: {}
+  # -- Tolerations for collector pod scheduling
   tolerations: []
+  # -- Custom entries added to /etc/hosts for collector pods
   hostAliases: []
+  # -- Secrets to mount as files into the collector container
   secretMounts: []
+  # -- Additional volumes to add to the collector pod
   extraVolumes: []
+  # -- Additional volume mounts to add to the collector container
   extraVolumeMounts: []
+  # -- Container-level security context for the collector
   securityContext: {}
+  # -- Maximum number of unavailable pods during a DaemonSet rolling update
   maxUnavailable: 1
+  # -- Use the host network namespace for collector pods
   hostNetworking: false
 
-# deployment to consume "syslog" traffic route it somewhere
+# -- Syslog StatefulSet: receives incoming syslog/OTLP traffic (including from the collector) and routes it to destinations.
+# @default -- See values.yaml
 syslog:
+  # @default -- true
   enabled: true
+  # -- Additional labels for the syslog StatefulSet and its pods
   labels: {}
+  # -- Additional annotations for the syslog StatefulSet and its pods
   annotations: {}
   logFileStorage:
+    # -- Enable persistent volume for written log files
     enabled: false
+    # -- StorageClass for the log file PVC
     storageClass: standard
+    # -- Size of the log file PVC
     size: 50Gi
   bufferStorage:
+    # -- Enable persistent volume for syslog-ng disk buffers
     enabled: false
+    # -- StorageClass for the disk buffer PVC
     storageClass: standard
+    # -- Size of the disk buffer PVC
     size: 10Gi
   config:
-    raw: ""  # Use this to manually set the contents of the syslog-ng.conf file.
+    # -- Override the entire syslog-ng.conf content for the syslog component
+    raw: ""
     stats:
       level: 2
     sources:
@@ -142,8 +176,11 @@ syslog:
         enabled: false
         url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
+  # -- Affinity rules for syslog pod scheduling
   affinity: {}
+  # -- Node selector for syslog pod assignment
   nodeSelector: {}
+  # -- CPU/memory resource requests and limits for the syslog component. Falls back to global `resources` if not set.
   resources: {}
   # resources:
   #   limits:
@@ -152,39 +189,61 @@ syslog:
   #   requests:
   #     cpu: 100m
   #     memory: 128Mi
+  # -- Tolerations for syslog pod scheduling
   tolerations: []
+  # -- Custom entries added to /etc/hosts for syslog pods
   hostAliases: []
+  # -- Secrets to mount as files into the syslog container
   secretMounts: []
+  # -- Additional volumes to add to the syslog pod
   extraVolumes: []
+  # -- Additional volume mounts to add to the syslog container
   extraVolumeMounts: []
+  # -- Container-level security context for the syslog component
   securityContext: {}
+
 metricsExporter:
-  enabled: false  # deploy the axosyslog Deamonset with the axosyslog-metrics-exporter sidecar
+  # -- Deploy axosyslog-metrics-exporter as a sidecar on the collector DaemonSet
+  enabled: false
   image:
+    # -- Metrics exporter image repository
     repository: ghcr.io/axoflow/axosyslog-metrics-exporter
+    # -- Metrics exporter image tag
     tag: latest
+    # -- Metrics exporter image pull policy (omitted when unset, letting Kubernetes apply its default)
     pullPolicy: ~ # use k8s default behavior (Always for :latest, IfNotPresent otherwise)
+  # -- CPU/memory resource requests and limits for the metrics exporter sidecar
   resources: {}
+  # -- Container-level security context for the metrics exporter sidecar
   securityContext: {}
 
 podMonitor:
-  enabled: false  # deploy the PodMonitor CR for Prometheus Operator (requires metricsExporter.enabled)
+  # -- Deploy a PodMonitor CR for Prometheus Operator (requires metricsExporter.enabled)
+  enabled: false
+  # -- Additional labels for the PodMonitor
   labels: {}
+  # -- Additional annotations for the PodMonitor
   annotations: {}
 
-
 rbac:
+  # -- Create ClusterRole and ClusterRoleBinding for the collector
   create: true
+  # -- Additional RBAC rules to add to the ClusterRole
   extraRules: []
 
 openShift:
+  # -- Enable OpenShift-specific resources
   enabled: false
   securityContextConstraints:
+    # -- Create a SecurityContextConstraints resource for OpenShift
     create: true
+    # -- Annotations for the SecurityContextConstraints resource
     annotations: {}
 
 service:
+  # -- Create a Service for the syslog StatefulSet
   create: true
+  # -- Additional ports to expose on the syslog Service
   extraPorts: []
   #  - protocol: TCP
   #    port: 514
@@ -192,14 +251,21 @@ service:
   #    port: 601
 
 serviceAccount:
+  # -- Create a ServiceAccount for the pods
   create: true
+  # -- Annotations for the ServiceAccount
   annotations: {}
 
+# -- Namespace override (defaults to Release.Namespace)
 namespace: ""
+# -- Annotations applied to all pods
 podAnnotations: {}
+# -- Pod-level security context applied to all pods
 podSecurityContext: {}
 #   fsGroup: 2000
+# -- Default container-level security context for all components (overridden per component via collector.securityContext / syslog.securityContext)
 securityContext: {}
+# -- Default CPU/memory resource requests and limits for all components (overridden per component via collector.resources / syslog.resources)
 resources: {}
 #   limits:
 #     cpu: 100m
@@ -207,16 +273,25 @@ resources: {}
 #   requests:
 #     cpu: 100m
 #     memory: 128Mi
+# -- Default node selector for all pods (overridden per component)
 nodeSelector: {}
+# -- Default tolerations for all pods (overridden per component)
 tolerations: []
+# -- Default affinity rules for all pods (overridden per component)
 affinity: {}
+# -- Update strategy type for the DaemonSet and StatefulSet
 updateStrategy: RollingUpdate
+# -- Priority class name for all pods
 priorityClassName: ""
+# -- Custom DNS configuration for all pods
 dnsConfig: {}
+# -- Default custom /etc/hosts entries for all pods (overridden per component)
 hostAliases: []
+# -- Default secrets to mount as files (overridden per component)
 secretMounts: []
+# -- Default extra volumes for all pods (overridden per component)
 extraVolumes: []
+# -- Default extra volume mounts for all pods (overridden per component)
 extraVolumeMounts: []
-## How long (in seconds) a pod may take to exit (useful with lifecycle hooks to ensure lb deregistration is done)
-##
+# -- Time in seconds given to pods to terminate gracefully
 terminationGracePeriodSeconds: 30
