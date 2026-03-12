@@ -4,6 +4,7 @@ EXTRA_DIST += lib/metrics/CMakeLists.txt
 
 metricsinclude_HEADERS = \
 	lib/metrics/metrics.h	\
+	lib/metrics/metric-names.h	\
 	lib/metrics/dyn-metrics-store.h	\
 	lib/metrics/dyn-metrics-cache.h	\
 	lib/metrics/dyn-metrics-template.h	\
@@ -11,6 +12,7 @@ metricsinclude_HEADERS = \
 
 metrics_sources = \
 	lib/metrics/metrics.c	\
+	lib/metrics/metric-names.c	\
 	lib/metrics/dyn-metrics-store.c	\
 	lib/metrics/dyn-metrics-cache.c	\
 	lib/metrics/dyn-metrics-template.c	\

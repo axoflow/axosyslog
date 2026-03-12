@@ -841,13 +841,13 @@ _register_packet_stats(AFSocketSourceDriver *self, StatsClusterLabel *labels, gs
 
   StatsClusterKey sc_key;
 
-  stats_cluster_single_key_set(&sc_key, "socket_receive_dropped_packets_total", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_receive_dropped_packets_total), labels, labels_len);
   stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.socket_dropped_packets);
 
-  stats_cluster_single_key_set(&sc_key, "socket_receive_buffer_max_bytes", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_receive_buffer_max_bytes), labels, labels_len);
   stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.socket_receive_buffer_max);
 
-  stats_cluster_single_key_set(&sc_key, "socket_receive_buffer_used_bytes", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_receive_buffer_used_bytes), labels, labels_len);
   stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.socket_receive_buffer_used);
 }
 
@@ -856,13 +856,13 @@ _unregister_packet_stats(AFSocketSourceDriver *self, StatsClusterLabel *labels, 
 {
   StatsClusterKey sc_key;
 
-  stats_cluster_single_key_set(&sc_key, "socket_receive_dropped_packets_total", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_receive_dropped_packets_total), labels, labels_len);
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.socket_dropped_packets);
 
-  stats_cluster_single_key_set(&sc_key, "socket_receive_buffer_max_bytes", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_receive_buffer_max_bytes), labels, labels_len);
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.socket_receive_buffer_max);
 
-  stats_cluster_single_key_set(&sc_key, "socket_receive_buffer_used_bytes", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_receive_buffer_used_bytes), labels, labels_len);
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.socket_receive_buffer_used);
 }
 
@@ -1186,7 +1186,7 @@ _register_stream_stats(AFSocketSourceDriver *self, StatsClusterLabel *labels, gs
 
   StatsClusterKey sc_key;
 
-  stats_cluster_single_key_set(&sc_key, "socket_connections", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_connections), labels, labels_len);
   stats_cluster_single_key_add_legacy_alias_with_name(&sc_key,
                                                       self->transport_mapper->stats_source | SCS_SOURCE,
                                                       self->super.super.group,
@@ -1196,12 +1196,12 @@ _register_stream_stats(AFSocketSourceDriver *self, StatsClusterLabel *labels, gs
   stats_register_external_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->num_connections);
   _connections_count_set(self, 0);
 
-  stats_cluster_single_key_set(&sc_key, "socket_max_connections", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_max_connections), labels, labels_len);
   stats_register_external_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->max_connections);
 
   level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL1;
 
-  stats_cluster_single_key_set(&sc_key, "socket_rejected_connections_total", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_rejected_connections_total), labels, labels_len);
   stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.rejected_connections);
 }
 
@@ -1210,7 +1210,7 @@ _unregister_stream_stats(AFSocketSourceDriver *self, StatsClusterLabel *labels, 
 {
   StatsClusterKey sc_key;
 
-  stats_cluster_single_key_set(&sc_key, "socket_connections", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_connections), labels, labels_len);
   stats_cluster_single_key_add_legacy_alias_with_name(&sc_key,
                                                       self->transport_mapper->stats_source | SCS_SOURCE,
                                                       self->super.super.group,
@@ -1219,10 +1219,10 @@ _unregister_stream_stats(AFSocketSourceDriver *self, StatsClusterLabel *labels, 
 
   stats_unregister_external_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->num_connections);
 
-  stats_cluster_single_key_set(&sc_key, "socket_max_connections", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_max_connections), labels, labels_len);
   stats_unregister_external_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->max_connections);
 
-  stats_cluster_single_key_set(&sc_key, "socket_rejected_connections_total", labels, labels_len);
+  stats_cluster_single_key_set(&sc_key, METRIC(socket_rejected_connections_total), labels, labels_len);
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.rejected_connections);
 }
 

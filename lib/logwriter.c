@@ -1822,7 +1822,7 @@ _set_metric_options(LogWriter *self, const gchar *stats_id, StatsClusterKeyBuild
     const gchar *instance_name = stats_cluster_key_builder_format_legacy_stats_instance(self->metrics.stats_kb,
                                  stats_instance, sizeof(stats_instance));
 
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "output_events_total");
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, METRIC(output_events_total));
     stats_cluster_key_builder_set_legacy_alias(self->metrics.stats_kb, self->options->stats_source | SCS_DESTINATION,
                                                self->stats_id, instance_name);
     stats_cluster_key_builder_add_label(self->metrics.stats_kb, stats_cluster_label("id", self->stats_id));
@@ -1842,7 +1842,7 @@ _set_metric_options(LogWriter *self, const gchar *stats_id, StatsClusterKeyBuild
     if (self->metrics.written_bytes_key)
       stats_cluster_key_free(self->metrics.written_bytes_key);
 
-    stats_cluster_key_builder_set_name(self->metrics.stats_kb, "output_event_bytes_total");
+    stats_cluster_key_builder_set_name(self->metrics.stats_kb, METRIC(output_event_bytes_total));
     self->metrics.written_bytes_key = stats_cluster_key_builder_build_single(self->metrics.stats_kb);
 
     if (self->metrics.message_latency_key)
@@ -1850,7 +1850,7 @@ _set_metric_options(LogWriter *self, const gchar *stats_id, StatsClusterKeyBuild
 
     stats_cluster_key_builder_push(self->metrics.stats_kb);
     {
-      stats_cluster_key_builder_set_name(self->metrics.stats_kb, "output_event_latency_seconds");
+      stats_cluster_key_builder_set_name(self->metrics.stats_kb, METRIC(output_event_latency_seconds));
       stats_cluster_key_builder_set_unit(self->metrics.stats_kb, SCU_MILLISECONDS);
       self->metrics.message_latency_key = stats_cluster_key_builder_build_hist(self->metrics.stats_kb);
     }

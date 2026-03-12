@@ -209,14 +209,14 @@ static void
 _format_assigned_events_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
                             StatsClusterKey *sc_key)
 {
-  _format_sc_key(partition, scheduler_id, partition_index, sc_key, "parallelized_assigned_events_total");
+  _format_sc_key(partition, scheduler_id, partition_index, sc_key, METRIC(parallelized_assigned_events_total));
 }
 
 static void
 _format_processed_events_key(LogSchedulerPartition *partition, const gchar *scheduler_id, gint partition_index,
                              StatsClusterKey *sc_key)
 {
-  _format_sc_key(partition, scheduler_id, partition_index, sc_key, "parallelized_processed_events_total");
+  _format_sc_key(partition, scheduler_id, partition_index, sc_key, METRIC(parallelized_processed_events_total));
 }
 
 static void
@@ -434,7 +434,7 @@ _register_aggregated_stats(LogScheduler *self)
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("parallelize", self->id),
                                  stats_cluster_label("measurement_point", "input") };
-  stats_cluster_hist_key_set(&sc_key, "event_processing_latency_seconds", labels, G_N_ELEMENTS(labels));
+  stats_cluster_hist_key_set(&sc_key, METRIC(event_processing_latency_seconds), labels, G_N_ELEMENTS(labels));
   stats_cluster_key_add_unit(&sc_key, SCU_MILLISECONDS);
 
   stats_aggregator_lock();
@@ -449,7 +449,7 @@ _unregister_aggregated_stats(LogScheduler *self)
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("parallelize", self->id),
                                  stats_cluster_label("measurement_point", "input") };
-  stats_cluster_hist_key_set(&sc_key, "event_processing_latency_seconds", labels, G_N_ELEMENTS(labels));
+  stats_cluster_hist_key_set(&sc_key, METRIC(event_processing_latency_seconds), labels, G_N_ELEMENTS(labels));
   stats_cluster_key_add_unit(&sc_key, SCU_MILLISECONDS);
 
   stats_aggregator_lock();
@@ -463,7 +463,7 @@ _init_scheduler_metrics(LogScheduler *self)
   stats_lock();
   {
     StatsClusterKey sc_key;
-    stats_cluster_single_key_set(&sc_key, "parallelize_failed_events_total", NULL, 0);
+    stats_cluster_single_key_set(&sc_key, METRIC(parallelize_failed_events_total), NULL, 0);
     stats_register_counter(STATS_LEVEL2, &sc_key, SC_TYPE_SINGLE_VALUE, &self->parallelize_failed_events_total);
   }
   stats_unlock();
@@ -477,7 +477,7 @@ _deinit_scheduler_metrics(LogScheduler *self)
   stats_lock();
   {
     StatsClusterKey sc_key;
-    stats_cluster_single_key_set(&sc_key, "parallelize_failed_events_total", NULL, 0);
+    stats_cluster_single_key_set(&sc_key, METRIC(parallelize_failed_events_total), NULL, 0);
     stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->parallelize_failed_events_total);
   }
   stats_unlock();

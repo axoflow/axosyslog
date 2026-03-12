@@ -128,7 +128,7 @@ _init(LogPipe *s)
 
   if (!self->metrics_template->key && !self->metrics_template->label_templates)
     {
-      dyn_metrics_template_set_key(self->metrics_template, "classified_events_total");
+      dyn_metrics_template_set_key(self->metrics_template, METRIC(classified_events_total));
 
       _add_default_label_template(self, "app", "${APP}");
       _add_default_label_template(self, "host", "${HOST}");

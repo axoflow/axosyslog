@@ -56,7 +56,7 @@ _register_tag(const gchar *name, guint id)
   stats_lock();
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("id", name) };
-  stats_cluster_single_key_set(&sc_key, "tagged_events_total", labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
   stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, name, NULL, "processed");
   stats_register_counter(3, &sc_key, SC_TYPE_SINGLE_VALUE, &new_tag.counter);
   stats_unlock();
@@ -214,7 +214,7 @@ log_tags_reinit_stats(void)
 
       StatsClusterKey sc_key;
       StatsClusterLabel labels[] = { stats_cluster_label("id", elem->name) };
-      stats_cluster_single_key_set(&sc_key, "tagged_events_total", labels, G_N_ELEMENTS(labels));
+      stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
       stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, elem->name, NULL, "processed");
 
       if (stats_check_level(3))
@@ -248,7 +248,7 @@ log_tags_global_deinit(void)
       LogTag *elem = &g_array_index(log_tags, LogTag, id);
 
       StatsClusterLabel labels[] = { stats_cluster_label("id", elem->name) };
-      stats_cluster_single_key_set(&sc_key, "tagged_events_total", labels, G_N_ELEMENTS(labels));
+      stats_cluster_single_key_set(&sc_key, METRIC(tagged_events_total), labels, G_N_ELEMENTS(labels));
       stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_TAG, elem->name, NULL, "processed");
       stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &elem->counter);
       g_free(elem->name);

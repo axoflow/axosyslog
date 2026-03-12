@@ -599,13 +599,13 @@ _register_metrics(MainLoop *self)
 
   stats_lock();
   StatsClusterKey k;
-  stats_cluster_single_key_set(&k, "last_config_reload_timestamp_seconds", NULL, 0);
+  stats_cluster_single_key_set(&k, METRIC(last_config_reload_timestamp_seconds), NULL, 0);
   stats_register_counter(0, &k, SC_TYPE_SINGLE_VALUE, &self->metrics.last_reload);
 
-  stats_cluster_single_key_set(&k, "last_successful_config_reload_timestamp_seconds", NULL, 0);
+  stats_cluster_single_key_set(&k, METRIC(last_successful_config_reload_timestamp_seconds), NULL, 0);
   stats_register_counter(0, &k, SC_TYPE_SINGLE_VALUE, &self->metrics.last_successful_reload);
 
-  stats_cluster_single_key_set(&k, "last_config_file_modification_timestamp_seconds", NULL, 0);
+  stats_cluster_single_key_set(&k, METRIC(last_config_file_modification_timestamp_seconds), NULL, 0);
   stats_register_counter(0, &k, SC_TYPE_SINGLE_VALUE, &self->metrics.last_cfgfile_mtime);
   stats_unlock();
 }
@@ -615,13 +615,13 @@ _unregister_metrics(MainLoop *self)
 {
   stats_lock();
   StatsClusterKey k;
-  stats_cluster_single_key_set(&k, "last_config_reload_timestamp_seconds", NULL, 0);
+  stats_cluster_single_key_set(&k, METRIC(last_config_reload_timestamp_seconds), NULL, 0);
   stats_unregister_counter(&k, SC_TYPE_SINGLE_VALUE, &self->metrics.last_reload);
 
-  stats_cluster_single_key_set(&k, "last_successful_config_reload_timestamp_seconds", NULL, 0);
+  stats_cluster_single_key_set(&k, METRIC(last_successful_config_reload_timestamp_seconds), NULL, 0);
   stats_unregister_counter(&k, SC_TYPE_SINGLE_VALUE, &self->metrics.last_successful_reload);
 
-  stats_cluster_single_key_set(&k, "last_config_file_modification_timestamp_seconds", NULL, 0);
+  stats_cluster_single_key_set(&k, METRIC(last_config_file_modification_timestamp_seconds), NULL, 0);
   stats_unregister_counter(&k, SC_TYPE_SINGLE_VALUE, &self->metrics.last_cfgfile_mtime);
   stats_unlock();
 }

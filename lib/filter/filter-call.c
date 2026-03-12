@@ -92,7 +92,7 @@ filter_call_init(FilterExprNode *s, GlobalConfig *cfg)
       stats_lock();
       StatsClusterKey sc_key;
       StatsClusterLabel labels[] = { stats_cluster_label("id", self->rule) };
-      stats_cluster_logpipe_key_set(&sc_key, "filtered_events_total", labels, G_N_ELEMENTS(labels));
+      stats_cluster_logpipe_key_set(&sc_key, METRIC(filtered_events_total), labels, G_N_ELEMENTS(labels));
       stats_cluster_logpipe_key_add_legacy_alias(&sc_key, SCS_FILTER, self->rule, NULL );
       stats_register_counter(1, &sc_key, SC_TYPE_MATCHED, &self->super.matched);
       stats_register_counter(1, &sc_key, SC_TYPE_NOT_MATCHED, &self->super.not_matched);
@@ -120,7 +120,7 @@ filter_call_free(FilterExprNode *s)
   stats_lock();
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("id", self->rule) };
-  stats_cluster_logpipe_key_set(&sc_key, "filtered_events_total", labels, G_N_ELEMENTS(labels));
+  stats_cluster_logpipe_key_set(&sc_key, METRIC(filtered_events_total), labels, G_N_ELEMENTS(labels));
   stats_cluster_logpipe_key_add_legacy_alias(&sc_key, SCS_FILTER, self->rule, NULL );
   stats_unregister_counter(&sc_key, SC_TYPE_MATCHED, &self->super.matched);
   stats_unregister_counter(&sc_key, SC_TYPE_NOT_MATCHED, &self->super.not_matched);

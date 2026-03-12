@@ -233,7 +233,7 @@ _register_aggregated_stats(LogQueue *self, StatsClusterKeyBuilder *kb)
 {
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "event_processing_latency_seconds");
+    stats_cluster_key_builder_set_name(kb, METRIC(event_processing_latency_seconds));
     stats_cluster_key_builder_add_label(kb, stats_cluster_label("measurement_point", "output"));
     stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
     self->metrics.shared.processing_latency_key = stats_cluster_key_builder_build_hist(kb);
@@ -264,7 +264,7 @@ _register_shared_counters(LogQueue *self, gint stats_level, StatsClusterKeyBuild
 
   stats_cluster_key_builder_push(builder);
   {
-    stats_cluster_key_builder_set_name(builder, "output_events_total");
+    stats_cluster_key_builder_set_name(builder, METRIC(output_events_total));
     self->metrics.shared.output_events_sc_key = stats_cluster_key_builder_build_logpipe(builder);
   }
   stats_cluster_key_builder_pop(builder);

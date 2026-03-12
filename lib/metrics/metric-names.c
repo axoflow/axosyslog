@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2023 László Várady
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,21 +20,10 @@
  * COPYING for details.
  *
  */
-#ifndef STATS_PROMETHEUS_H_INCLUDED
-#define STATS_PROMETHEUS_H_INCLUDED 1
 
-#include "syslog-ng.h"
-#include "stats-cluster.h"
+#include "metric-names.h"
 
-typedef void (*StatsPrometheusRecordFunc)(const char *record, gpointer user_data);
-
-GString *stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *counter);
-
-void stats_generate_prometheus(StatsPrometheusRecordFunc process_record, gpointer user_data, gboolean with_legacy,
-                               gboolean *cancelled);
-void stats_prometheus_format_labels_append(StatsClusterLabel *labels, gsize labels_len, GString *buf);
-
-gchar *stats_format_prometheus_format_value(StatsClusterUnit stored_unit, gsize stored_value);
-gchar *stats_format_prometheus_format_counter_value(StatsCluster *sc, gint type);
-
-#endif
+const gchar *SYSLOG_NG_METRIC_NAMES[METRIC_NAMES_MAX] =
+{
+  METRIC_NAMES(TO_STRING_ELEM)
+};

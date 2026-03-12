@@ -541,7 +541,7 @@ afsocket_dd_register_stats(AFSocketDestDriver *self)
 
   gint level = log_pipe_is_internal(&self->super.super.super) ? STATS_LEVEL3 : STATS_LEVEL0;
   StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "output_unreachable", labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_set(&sc_key, METRIC(output_unreachable), labels, G_N_ELEMENTS(labels));
 
   stats_lock();
   stats_register_counter(level, &sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.output_unreachable);
@@ -560,7 +560,7 @@ afsocket_dd_unregister_stats(AFSocketDestDriver *self)
   };
 
   StatsClusterKey sc_key;
-  stats_cluster_single_key_set(&sc_key, "output_unreachable", labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_set(&sc_key, METRIC(output_unreachable), labels, G_N_ELEMENTS(labels));
 
   stats_lock();
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &self->metrics.output_unreachable);

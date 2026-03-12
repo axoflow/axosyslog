@@ -65,7 +65,7 @@ DestDriverMetrics::create_grpc_request_cluster(const ::grpc::StatusCode &respons
   StatsCluster *cluster;
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_grpc_requests_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_grpc_requests_total));
     stats_cluster_key_builder_add_label(kb, stats_cluster_label("response_code", response_code_label.c_str()));
     StatsClusterKey *sc_key = stats_cluster_key_builder_build_single(kb);
 

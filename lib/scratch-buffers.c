@@ -24,6 +24,7 @@
 #include "tls-support.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
+#include "metrics/metric-names.h"
 #include "timeutils/cache.h"
 #include "messages.h"
 #include "apphook.h"
@@ -307,10 +308,10 @@ scratch_buffers_register_stats(void)
   StatsClusterKey sc_key;
 
   stats_lock();
-  stats_cluster_single_key_set(&sc_key, "scratch_buffers_count", NULL, 0);
+  stats_cluster_single_key_set(&sc_key, METRIC(scratch_buffers_count), NULL, 0);
   stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_GLOBAL, "scratch_buffers_count", NULL, "queued");
   stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &stats_scratch_buffers_count);
-  stats_cluster_single_key_set(&sc_key, "scratch_buffers_bytes", NULL, 0);
+  stats_cluster_single_key_set(&sc_key, METRIC(scratch_buffers_bytes), NULL, 0);
   stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_GLOBAL, "scratch_buffers_bytes", NULL, "queued");
   stats_register_counter(0, &sc_key, SC_TYPE_SINGLE_VALUE, &stats_scratch_buffers_bytes);
   stats_unlock();
@@ -322,10 +323,10 @@ scratch_buffers_unregister_stats(void)
   StatsClusterKey sc_key;
 
   stats_lock();
-  stats_cluster_single_key_set(&sc_key, "scratch_buffers_count", NULL, 0);
+  stats_cluster_single_key_set(&sc_key, METRIC(scratch_buffers_count), NULL, 0);
   stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_GLOBAL, "scratch_buffers_count", NULL, "queued");
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &stats_scratch_buffers_count);
-  stats_cluster_single_key_set(&sc_key, "scratch_buffers_bytes", NULL, 0);
+  stats_cluster_single_key_set(&sc_key, METRIC(scratch_buffers_bytes), NULL, 0);
   stats_cluster_single_key_add_legacy_alias_with_name(&sc_key, SCS_GLOBAL, "scratch_buffers_bytes", NULL, "queued");
   stats_unregister_counter(&sc_key, SC_TYPE_SINGLE_VALUE, &stats_scratch_buffers_bytes);
   stats_unlock();

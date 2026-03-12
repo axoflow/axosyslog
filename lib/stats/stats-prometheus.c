@@ -229,7 +229,7 @@ _format_legacy(StatsCluster *sc, gint type, StatsCounterItem *counter)
 
   gchar component[64];
 
-  g_string_append_printf(record, PROMETHEUS_METRIC_PREFIX "%s",
+  g_string_append_printf(record, METRIC_PREFIX "%s",
                          stats_format_prometheus_sanitize_name(stats_cluster_get_component_name(sc, component, sizeof(component)), -1));
 
   if (!sc->key.legacy.component || sc->key.legacy.component == SCS_GLOBAL)
@@ -275,7 +275,7 @@ stats_prometheus_format_counter(StatsCluster *sc, gint type, StatsCounterItem *c
     return _format_legacy(sc, type, counter);
 
   GString *record = scratch_buffers_alloc();
-  g_string_append_printf(record, PROMETHEUS_METRIC_PREFIX "%s%s",
+  g_string_append_printf(record, METRIC_PREFIX "%s%s",
                          stats_format_prometheus_sanitize_name(sc->key.name, -1),
                          stats_cluster_get_type_name_suffix(sc, type) ? : "");
 

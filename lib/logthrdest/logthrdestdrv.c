@@ -961,7 +961,7 @@ _register_worker_stats(LogThreadedDestWorker *self)
     stats_cluster_key_builder_add_label(kb, stats_cluster_label("id", self->owner->super.super.id ? : ""));
     _format_stats_key(self->owner, kb);
 
-    stats_cluster_key_builder_set_name(kb, "output_event_bytes_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_event_bytes_total));
     self->metrics.output_event_bytes_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
@@ -969,7 +969,7 @@ _register_worker_stats(LogThreadedDestWorker *self)
   _init_worker_sck_builder(self, kb);
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_unreachable");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_unreachable));
     self->metrics.output_unreachable_key = stats_cluster_key_builder_build_single(kb);
   }
   stats_cluster_key_builder_pop(kb);
@@ -1576,14 +1576,14 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_events_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_events_total));
     self->metrics.output_events_key = stats_cluster_key_builder_build_logpipe(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_event_retries_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_event_retries_total));
     stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
     stats_cluster_key_builder_set_legacy_alias_name(kb, "");
     self->metrics.output_event_retries_key = stats_cluster_key_builder_build_single(kb);
@@ -1613,7 +1613,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_request_latency_seconds");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_request_latency_seconds));
     stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
     self->metrics.request_latency_hist_key = stats_cluster_key_builder_build_hist(kb);
   }
@@ -1621,28 +1621,28 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_event_size_bytes");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_event_size_bytes));
     self->metrics.event_size_hist_key = stats_cluster_key_builder_build_hist(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_batch_size_bytes");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_batch_size_bytes));
     self->metrics.batch_size_bytes_hist_key = stats_cluster_key_builder_build_hist(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_batch_size_events");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_batch_size_events));
     self->metrics.batch_size_events_hist_key = stats_cluster_key_builder_build_hist(kb);
   }
   stats_cluster_key_builder_pop(kb);
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_active_worker_partitions");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_active_worker_partitions));
     stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
     stats_cluster_key_builder_set_legacy_alias_name(kb, "");
     self->metrics.active_partitions_key = stats_cluster_key_builder_build_single(kb);
@@ -1651,7 +1651,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_workers");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_workers));
     stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
     stats_cluster_key_builder_set_legacy_alias_name(kb, "");
     self->metrics.workers_key = stats_cluster_key_builder_build_single(kb);
@@ -1660,7 +1660,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_batch_timedout_total");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_batch_timedout_total));
     stats_cluster_key_builder_set_legacy_alias(kb, -1, "", "");
     stats_cluster_key_builder_set_legacy_alias_name(kb, "");
     self->metrics.batch_timedout_key = stats_cluster_key_builder_build_single(kb);
@@ -1669,7 +1669,7 @@ _register_driver_stats(LogThreadedDestDriver *self, StatsClusterKeyBuilder *kb)
 
   stats_cluster_key_builder_push(kb);
   {
-    stats_cluster_key_builder_set_name(kb, "output_event_latency_seconds");
+    stats_cluster_key_builder_set_name(kb, METRIC(output_event_latency_seconds));
     stats_cluster_key_builder_set_unit(kb, SCU_MILLISECONDS);
     self->metrics.message_latency_key = stats_cluster_key_builder_build_hist(kb);
   }
