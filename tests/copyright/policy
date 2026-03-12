@@ -93,6 +93,7 @@ lib/compat/cpp-(start|end).\h$
 lib/compat/curl.\h$
 lib/compat/getline.\c$
 lib/compat/json.\h$
+lib/compat/valgrind.\h$
 lib/healthcheck
 lib/healthcheck/tests
 lib/file-monitor\.[ch]
