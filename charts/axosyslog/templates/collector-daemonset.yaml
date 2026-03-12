@@ -34,7 +34,7 @@ spec:
     type: {{ .Values.updateStrategy }}
   template:
     metadata:
-      {{- if .Values.podAnnotation }}
+      {{- if .Values.podAnnotations }}
       annotations:
         {{- range $key, $value := .Values.podAnnotations }}
         {{ $key }}: {{ $value | quote }}
