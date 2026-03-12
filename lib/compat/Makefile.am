@@ -24,6 +24,7 @@ compatinclude_HEADERS		= 	\
 	lib/compat/cpp-end.h	\
 	lib/compat/pow2.h	\
 	lib/compat/curl.h	\
+	lib/compat/valgrind.h	\
 	lib/compat/inttypes.h
 
 compat_sources			= 	\
