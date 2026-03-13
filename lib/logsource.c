@@ -53,21 +53,64 @@ log_source_wakeup(LogSource *self)
   msg_diagnostics("Source has been resumed", log_pipe_location_tag(&self->super));
 }
 
+static inline gsize
+_window_size_add(LogSource *self, gsize value, gboolean *suspended)
+{
+  stats_counter_add(self->metrics.window_available, value);
+  return window_size_counter_add(&self->window_size, value, suspended);
+}
+
+static inline gsize
+_window_size_sub(LogSource *self, gsize value, gboolean *suspended)
+{
+  stats_counter_sub(self->metrics.window_available, value);
+  return window_size_counter_sub(&self->window_size, value, suspended);
+}
+
+static inline gsize
+_dynamic_window_request(LogSource *self, gsize size)
+{
+  main_loop_assert_main_thread();
+
+  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, size);
+
+  self->full_window_size += offered_dynamic;
+  stats_counter_add(self->metrics.window_capacity, offered_dynamic);
+
+  return offered_dynamic;
+}
+
+static inline void
+_dynamic_window_release(LogSource *self, gsize size)
+{
+  main_loop_assert_main_thread();
+
+  self->full_window_size -= size;
+  stats_counter_sub(self->metrics.window_capacity, size);
+  dynamic_window_release(&self->dynamic_window, size);
+}
+
 static inline guint32
 _take_reclaimed_window(LogSource *self, guint32 window_size_increment)
 {
-  gssize old = atomic_gssize_sub(&self->window_size_to_be_reclaimed, window_size_increment);
-  gboolean reclaim_in_progress = (old > 0);
+  guint32 remaining_window_size_increment;
+  gssize reclaim;
 
-  if (!reclaim_in_progress)
+  gssize to_be_reclaimed, new_to_be_reclaimed;
+  do
     {
-      return window_size_increment;
+      to_be_reclaimed = atomic_gssize_get(&self->window_size_to_be_reclaimed);
+
+      if (G_LIKELY(to_be_reclaimed == 0))
+        return window_size_increment;
+
+      reclaim = MIN(window_size_increment, to_be_reclaimed);
+      remaining_window_size_increment = window_size_increment - reclaim;
+      new_to_be_reclaimed = to_be_reclaimed - reclaim;
     }
+  while (!atomic_gssize_compare_and_exchange(&self->window_size_to_be_reclaimed, to_be_reclaimed, new_to_be_reclaimed));
 
-  guint32 remaining_window_size_increment = MAX(window_size_increment - old, 0);
-  guint32 reclaimed = window_size_increment - remaining_window_size_increment;
-  atomic_gssize_add(&self->pending_reclaimed, reclaimed);
-
+  atomic_gssize_add(&self->pending_reclaimed, reclaim);
   return remaining_window_size_increment;
 }
 
@@ -79,8 +122,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
   if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
     window_size_increment = _take_reclaimed_window(self, window_size_increment);
 
-  gsize old_window_size = window_size_counter_add(&self->window_size, window_size_increment, &suspended);
-  stats_counter_add(self->metrics.window_available, window_size_increment);
+  gsize old_window_size = _window_size_add(self, window_size_increment, &suspended);
 
   msg_diagnostics("Window size adjustment",
                   evt_tag_int("old_window_size", old_window_size),
@@ -91,7 +133,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
   gboolean need_to_resume_counter = !last_ack_type_is_suspended && suspended;
   if (need_to_resume_counter)
     window_size_counter_resume(&self->window_size);
-  if (old_window_size == 0 || need_to_resume_counter)
+  if ((window_size_increment != 0 && old_window_size == 0) || need_to_resume_counter)
     log_source_wakeup(self);
 }
 
@@ -225,38 +267,31 @@ static void
 _reclaim_dynamic_window(LogSource *self, gsize window_size)
 {
   g_assert(self->full_window_size - window_size >= self->initial_window_size);
-  atomic_gssize_set(&self->window_size_to_be_reclaimed, window_size);
+  atomic_gssize_add(&self->window_size_to_be_reclaimed, window_size);
 }
 
-static gboolean
+static void
 _process_reclaimed_window(LogSource *self)
 {
-  //check pending_reclaimed
+  {
+    /* _take_reclaimed_window() should only be called when messages are ACKed (_flow_control_window_size_adjust()),
+     * but a race condition in _dec_balanced() has to be compensated here.
+     */
+    gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+    (void) _take_reclaimed_window(self, empty_window);
+  }
+
   gssize total_reclaim = atomic_gssize_set_and_get(&self->pending_reclaimed, 0);
-  gssize to_be_reclaimed = atomic_gssize_get(&self->window_size_to_be_reclaimed);
-  gboolean reclaim_in_progress = (to_be_reclaimed > 0);
 
-  if (total_reclaim > 0)
-    {
-      self->full_window_size -= total_reclaim;
-      stats_counter_sub(self->metrics.window_capacity, total_reclaim);
-      dynamic_window_release(&self->dynamic_window, total_reclaim);
-    }
-  else
-    {
-      //to avoid underflow, we need to set a value <= 0
-      if (to_be_reclaimed < 0) {
-        atomic_gssize_set(&self->window_size_to_be_reclaimed, 0);
-      }
-    }
+  if (total_reclaim <= 0)
+    return;
 
-  msg_trace("Checking if reclaim is in progress...",
+  _dynamic_window_release(self, total_reclaim);
+
+  msg_trace("Reclaiming window",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
-            evt_tag_printf("in progress", "%s", reclaim_in_progress ? "yes" : "no"),
             evt_tag_long("total_reclaim", total_reclaim));
-
-  return reclaim_in_progress;
 }
 
 static inline gsize
@@ -266,7 +301,7 @@ _get_dynamic_window_size(LogSource *self)
 }
 
 static void
-_release_dynamic_window(LogSource *self)
+_release_all_dynamic_window(LogSource *self)
 {
   g_assert(self->ack_tracker == NULL);
   main_loop_assert_main_thread();
@@ -277,12 +312,8 @@ _release_dynamic_window(LogSource *self)
   msg_trace("Releasing dynamic part of the window", evt_tag_int("dynamic_window_to_be_released", dynamic_part),
             log_pipe_location_tag(&self->super));
 
-  self->full_window_size -= dynamic_part;
-  stats_counter_sub(self->metrics.window_capacity, dynamic_part);
-
-  window_size_counter_sub(&self->window_size, dynamic_part, NULL);
-  stats_counter_sub(self->metrics.window_available, dynamic_part);
-  dynamic_window_release(&self->dynamic_window, dynamic_part);
+  _window_size_sub(self, dynamic_part, NULL);
+  _dynamic_window_release(self, dynamic_part);
 
   dynamic_window_pool_unref(self->dynamic_window.pool);
 }
@@ -291,56 +322,54 @@ _release_dynamic_window(LogSource *self)
 static void
 _inc_balanced(LogSource *self, gsize inc)
 {
-  gsize offered_dynamic = dynamic_window_request(&self->dynamic_window, inc);
+  gsize old_full_window_size = self->full_window_size;
+
+  gsize offered_dynamic = _dynamic_window_request(self, inc);
+  gsize old_window_size = _window_size_add(self, offered_dynamic, NULL);
+  if (old_window_size == 0 && offered_dynamic != 0)
+    log_source_wakeup(self);
 
   msg_trace("Balance::increase",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
-            evt_tag_int("old_full_window_size", self->full_window_size),
-            evt_tag_int("new_full_window_size", self->full_window_size + offered_dynamic));
-
-  self->full_window_size += offered_dynamic;
-  stats_counter_add(self->metrics.window_capacity, offered_dynamic);
-
-  gsize old_window_size = window_size_counter_add(&self->window_size, offered_dynamic, NULL);
-  stats_counter_add(self->metrics.window_available, offered_dynamic);
-  if (old_window_size == 0 && offered_dynamic != 0)
-    log_source_wakeup(self);
+            evt_tag_int("old_full_window_size", old_full_window_size),
+            evt_tag_int("new_full_window_size", self->full_window_size));
 }
 
 /* runs in the main thread, the source is idle */
 static void
 _dec_balanced(LogSource *self, gsize dec)
 {
-  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
-  gsize remaining_sub = 0;
+  if (dec == 0)
+    return;
 
+  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+  gsize to_decrement_now = dec;
+  gsize to_reclaim_later = 0;
+
+  /* '<=' because we can't suspend the source here */
   if (empty_window <= dec)
     {
-      remaining_sub = dec - empty_window;
-      if (empty_window == 0)
-        dec = 0;
-      else
-        dec = empty_window - 1;
+      /* 1 empty slot has to remain because we can't suspend the source here */
+      to_decrement_now = MAX(((gssize) empty_window) - 1, 0);
+      to_reclaim_later = dec - to_decrement_now;
 
-      _reclaim_dynamic_window(self, remaining_sub);
+      /* there is a race window between window_size_counter_get() and this,
+       * which has to be compensated in _process_reclaimed_window()
+       */
+      _reclaim_dynamic_window(self, to_reclaim_later);
     }
 
-  window_size_counter_sub(&self->window_size, dec, NULL);
-  stats_counter_sub(self->metrics.window_available, dec);
-
-  gsize new_full_window_size = self->full_window_size - dec;
-
+  gsize new_full_window_size = self->full_window_size - to_decrement_now;
   msg_trace("Balance::decrease",
             log_pipe_location_tag(&self->super),
             evt_tag_printf("connection", "%p", self),
             evt_tag_int("old_full_window_size", self->full_window_size),
             evt_tag_int("new_full_window_size", new_full_window_size),
-            evt_tag_int("to_be_reclaimed", remaining_sub));
+            evt_tag_int("to_be_reclaimed", to_reclaim_later));
 
-  self->full_window_size = new_full_window_size;
-  stats_counter_set(self->metrics.window_capacity, new_full_window_size);
-  dynamic_window_release(&self->dynamic_window, dec);
+  _window_size_sub(self, to_decrement_now, NULL);
+  _dynamic_window_release(self, to_decrement_now);
 }
 
 void
@@ -361,12 +390,8 @@ log_source_dynamic_window_release_available(LogSource *self)
             evt_tag_int("dynamic_window_to_be_released", empty_dynamic),
             log_pipe_location_tag(&self->super));
 
-  self->full_window_size -= empty_dynamic;
-  stats_counter_sub(self->metrics.window_capacity, empty_dynamic);
-
-  window_size_counter_sub(&self->window_size, empty_dynamic, NULL);
-  stats_counter_sub(self->metrics.window_available, empty_dynamic);
-  dynamic_window_release(&self->dynamic_window, empty_dynamic);
+  _window_size_sub(self, empty_dynamic, NULL);
+  _dynamic_window_release(self, empty_dynamic);
 }
 
 /* runs in the main thread, the source is idle */
@@ -392,6 +417,7 @@ _dynamic_window_rebalance(LogSource *self)
     _dec_balanced(self, current_dynamic_win - self->dynamic_window.pool->balanced_window);
 }
 
+/* runs in the main thread, the source is idle */
 void
 log_source_dynamic_window_realloc(LogSource *self)
 {
@@ -400,7 +426,10 @@ log_source_dynamic_window_realloc(LogSource *self)
   /* it is safe to assume that the window size is not decremented while this function runs,
    * only incrementation is possible by destination threads */
 
-  if (!_process_reclaimed_window(self))
+  _process_reclaimed_window(self);
+
+  /* must be checked AFTER _process_reclaimed_window() */
+  if (!atomic_gssize_get(&self->window_size_to_be_reclaimed))
     _dynamic_window_rebalance(self);
 
   dynamic_window_stat_reset(&self->dynamic_window.stat);
@@ -682,8 +711,7 @@ log_source_post(LogSource *self, LogMessage *msg)
   log_msg_add_ack(msg, &path_options);
   msg->ack_func = log_source_msg_ack;
 
-  gint old_window_size = window_size_counter_sub(&self->window_size, 1, NULL);
-  stats_counter_sub(self->metrics.window_available, 1);
+  gint old_window_size = _window_size_sub(self, 1, NULL);
 
   if (G_UNLIKELY(old_window_size == 1))
     {
@@ -897,10 +925,10 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
 }
 
 static gpointer
-_release_dynamic_window_cb(gpointer c)
+_release_all_dynamic_window_cb(gpointer c)
 {
   LogSource *self = (LogSource *) c;
-  _release_dynamic_window(self);
+  _release_all_dynamic_window(self);
 
   return NULL;
 }
@@ -918,7 +946,7 @@ log_source_free(LogPipe *s)
 
   /* free() may run in a destination thread (last acked message) */
   if (G_UNLIKELY(dynamic_window_is_enabled(&self->dynamic_window)))
-    main_loop_call(_release_dynamic_window_cb, self, TRUE);
+    main_loop_call(_release_all_dynamic_window_cb, self, TRUE);
 
   _unregister_window_stats(self);
   _deallocate_counter_keys(self);
