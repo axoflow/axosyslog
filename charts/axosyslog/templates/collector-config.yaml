@@ -52,7 +52,7 @@ data:
   {{- if .enabled }}
       destination {
         network(
-          {{ .address | quote }}
+          {{ tpl .address $ | quote }}
           port({{ .port }})
           transport({{ .transport }})
     {{- if .template }}

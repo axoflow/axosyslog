@@ -56,3 +56,4 @@ modules/python-modules/syslogng.egg-info
 tests/light/src/axosyslog_light.egg-info
 tests/light/dist
 aclocal.m4-e
+.envrc

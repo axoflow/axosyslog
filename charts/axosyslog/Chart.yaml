@@ -1,6 +1,32 @@
 apiVersion: v2
 name: axosyslog
-description: AxoSyslog for Kubernetes
+description: AxoSyslog is the cloud-native syslog-ng for Kubernetes
 type: application
 version: 0.19.0
 appVersion: "4.22.0"
+kubeVersion: ">=1.22.0-0"
+home: https://axoflow.com/docs/axosyslog-core/
+sources:
+  - https://github.com/axoflow/axosyslog
+keywords:
+  - logging
+  - syslog
+  - syslog-ng
+  - observability
+  - axoflow
+  - axosyslog
+  - opentelemetry
+  - otlp
+icon: https://raw.githubusercontent.com/axoflow/axosyslog/main/doc/axosyslog-white.svg
+maintainers:
+  - name: Axoflow
+    email: support@axoflow.com
+    url: https://axoflow.com/docs/axosyslog-core/support
+annotations:
+  artifacthub.io/links: |
+    - name: documentation
+      url: https://axoflow.com/docs/axosyslog-core
+    - name: support
+      url: https://axoflow.com/docs/axosyslog-core/support
+    - name: issues
+      url: https://github.com/axoflow/axosyslog/issues

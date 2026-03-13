@@ -19,7 +19,7 @@ defaults:
     working-directory: charts/axosyslog
 
 jobs:
-  axosyslog:
+  helm-lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -28,3 +28,26 @@ jobs:
       - name: Linter
         run: |
           docker run -v${PWD}:${PWD} alpine/helm lint ${PWD}
+
+  helm-docs:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Install helm-docs
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install helm-docs
+        run: go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+
+      - name: Generate docs
+        run: scripts/helm-docs.sh
+
+      - name: Check README is up to date
+        run: git diff --exit-code charts/axosyslog/README.md
