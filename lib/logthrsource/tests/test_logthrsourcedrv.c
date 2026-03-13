@@ -142,6 +142,7 @@ create_threaded_source_blocking(void)
 static void
 start_test_threaded_source(TestThreadedSourceDriver *s)
 {
+  cr_assert(log_pipe_pre_config_init(&s->super.super.super.super));
   cr_assert(log_pipe_init(&s->super.super.super.super));
   cr_assert(log_pipe_post_config_init(&s->super.super.super.super));
 }
@@ -175,6 +176,8 @@ setup(void)
   app_startup();
   main_loop = main_loop_get_instance();
   main_loop_init(main_loop, &main_loop_options);
+  main_loop_worker_allocate_thread_space(1);
+  main_loop_worker_finalize_thread_space();
 }
 
 static void

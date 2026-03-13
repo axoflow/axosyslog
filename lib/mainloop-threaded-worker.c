@@ -50,18 +50,31 @@ _thread_init(MainLoopThreadedWorker *self)
   return result;
 }
 
-static void
-_thread_deinit(MainLoopThreadedWorker *self)
+static gpointer
+_thread_stop(gpointer s)
 {
-  if (self->thread_deinit)
-    self->thread_deinit(self);
-  main_loop_call((MainLoopTaskFunc) main_loop_worker_job_complete, NULL, TRUE);
-  main_loop_worker_thread_stop();
+  MainLoopThreadedWorker *self = s;
+
+  main_loop_assert_main_thread();
 
   g_mutex_lock(&self->lock);
   self->startup.finished = FALSE;
   self->startup.result = FALSE;
   g_mutex_unlock(&self->lock);
+
+  main_loop_worker_job_complete();
+
+  return NULL;
+}
+
+static void
+_thread_deinit(MainLoopThreadedWorker *self)
+{
+  if (self->thread_deinit)
+    self->thread_deinit(self);
+
+  main_loop_call(_thread_stop, self, TRUE);
+  main_loop_worker_thread_stop();
 }
 
 static void
