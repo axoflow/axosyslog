@@ -39,6 +39,8 @@ collector:
       syslog:
         enabled: true
         transport: tcp
+        address: '{{ include "axosyslog.fullname" . }}-aggregator.{{ include "axosyslog.namespace" . }}.svc.cluster.local'
+        port: 514
         template: "$(format-json .*)"
         extraOptionsRaw: "time-reopen(10)"
       opensearch:
@@ -57,7 +59,7 @@ collector:
         extraOptionsRaw: "time-reopen(10)"
       axosyslogOtlp:
         enabled: false
-        url: "192.168.77.133:4317"
+        url: '{{ include "axosyslog.fullname" . }}-aggregator.{{ include "axosyslog.namespace" . }}.svc.cluster.local:4317'
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
   # -- Additional labels for the collector DaemonSet and its pods
   labels: {}
