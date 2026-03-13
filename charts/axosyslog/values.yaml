@@ -93,6 +93,8 @@ collector:
 aggregator:
   # @default -- true
   enabled: true
+  # -- Number of aggregator replicas
+  replicaCount: 1
   # -- Additional labels for the aggregator StatefulSet and its pods
   labels: {}
   # -- Additional annotations for the aggregator StatefulSet and its pods

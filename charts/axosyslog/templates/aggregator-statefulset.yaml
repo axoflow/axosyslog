@@ -16,7 +16,7 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.aggregator.replicaCount }}
   serviceName: {{ template "axosyslog.fullname" . }}-aggregator
   selector:
     matchLabels:
