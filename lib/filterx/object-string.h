@@ -178,12 +178,12 @@ filterx_string_new(const gchar *str, gssize str_len)
 {
   if (str_len == 0 || str[0] == 0)
     {
-      return filterx_object_ref(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+      return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
     }
   else if (str[0] >= '0' && str[0] < '9' && (str_len == 1 || str[1] == 0))
     {
       gint index = str[0] - '0';
-      return filterx_object_ref(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
+      return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
     }
   return _filterx_string_new(str, str_len);
 }
