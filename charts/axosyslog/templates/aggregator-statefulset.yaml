@@ -80,19 +80,23 @@ spec:
           ports:
           {{- if .Values.aggregator.config.sources.syslog.enabled }}
           - containerPort: 1514
+            protocol: TCP
             name: rfc3164-tcp
           - containerPort: 1514
             protocol: UDP
             name: rfc3164-udp
           {{- if .Values.aggregator.config.sources.syslog.tls }}
           - containerPort: 6514
+            protocol: TCP
             name: rfc5424-tls
           {{- end }}
           - containerPort: 1601
+            protocol: TCP
             name: rfc5424-tcp
           {{- end }}
           {{- if .Values.aggregator.config.sources.axosyslogOtlp.enabled }}
           - containerPort: 4317
+            protocol: TCP
             name: otlp
           {{- end }}
           volumeMounts:
