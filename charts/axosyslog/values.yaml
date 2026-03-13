@@ -28,33 +28,31 @@ collector:
     sources:
       kubernetes:
         enabled: true
-        #prefix: "k8s~"
-        #keyDelimiter: "~"
-        #maxContainers: 4096
+        # prefix: "k8s~"
+        # keyDelimiter: "~"
+        # maxContainers: 4096
     rewrites:
       set: {}
-      #  foo: "${foovalue}"
-      #  bar: "${barvalue}"
+        # foo: "${foovalue}"
+        # bar: "${barvalue}"
     destinations:
       syslog:
-        enabled: false
+        enabled: true
         transport: tcp
-        address: localhost
-        port: 12345
         template: "$(format-json .*)"
         extraOptionsRaw: "time-reopen(10)"
       opensearch:
         enabled: false
-        url: http://my-release-opensearch.default.svc.cluster.local:9200
-        index: "test-axoflow-index"
-        user: "admin"
-        password: "admin"
-        tls:
-          CAFile: "/path/to/CAFile.pem"
-          CADir: "/path/to/CADir/"
-          Cert: "/path/to/Cert.pem"
-          Key: "/path/to/Key.pem"
-          peerVerify: false
+        # url: http://my-release-opensearch.default.svc.cluster.local:9200
+        # index: "test-axoflow-index"
+        # user: "admin"
+        # password: "admin"
+        # tls:
+        #   CAFile: "/path/to/CAFile.pem"
+        #   CADir: "/path/to/CADir/"
+        #   Cert: "/path/to/Cert.pem"
+        #   Key: "/path/to/Key.pem"
+        #   peerVerify: false
         template: "$(format-json .*)"
         extraOptionsRaw: "time-reopen(10)"
       axosyslogOtlp:
@@ -121,62 +119,61 @@ aggregator:
     sources:
       syslog:
         enabled: true
-        # node ports for the syslog service
+        ## node ports for the syslog service
         rfc3164UdpPort: 30514
         rfc3164TcpPort: 30514
         rfc5424TlsPort: 30614
         rfc5424TcpPort: 30601
-        #maxConnections: 1000
-        #initWindowSize: 150000
-        #tls:
-        #  CAFile: "/path/to/CAFile.pem"
-        #  CADir: "/path/to/CADir/"
-        #  Cert: "/path/to/Cert.pem"
-        #  Key: "/path/to/Key.pem"
-        #  peerVerify: false
+        # maxConnections: 1000
+        # initWindowSize: 150000
+        # tls:
+        #   CAFile: "/path/to/CAFile.pem"
+        #   CADir: "/path/to/CADir/"
+        #   Cert: "/path/to/Cert.pem"
+        #   Key: "/path/to/Key.pem"
+        #   peerVerify: false
       axosyslogOtlp:
         enabled: true
-        # nodePort
         port: 30317
         extraOptionsRaw: ""
 
     rewrites:
       set: {}
-      #  foo: "${foovalue}"
-      #  bar: "${barvalue}"
+        # foo: "${foovalue}"
+        # bar: "${barvalue}"
     destinations:
       file:
         enabled: true
         path: "/var/log/syslog"
-        #template: "$ISODATE $HOST $MSGHDR$MSG\n"
+        # template: "$ISODATE $HOST $MSGHDR$MSG\n"
         extraOptionsRaw: "create-dirs(yes)"
       syslog:
-        enabled: true
+        enabled: false
         transport: tcp
-        address: 192.168.77.133
-        port: 12345
-        # convert incoming data to JSON
-        #template: "$(format-json .*)\n"
-        # use standard syslog logfile
-        #template: "$ISODATE $HOST $MSGHDR$MSG\n"
+        # address: ""
+        # port: 514
+        ## convert incoming data to JSON
+        # template: "$(format-json .*)\n"
+        ## use standard syslog logfile
+        # template: "$ISODATE $HOST $MSGHDR$MSG\n"
         extraOptionsRaw: "time-reopen(10)"
       opensearch:
-        enabled: true
-        url: http://my-release-opensearch.default.svc.cluster.local:9200
-        index: "test-axoflow-index"
-        user: "admin"
-        password: "admin"
-        #tls:
-        #  CAFile: "/path/to/CAFile.pem"
-        #  CADir: "/path/to/CADir/"
-        #  Cert: "/path/to/Cert.pem"
-        #  Key: "/path/to/Key.pem"
-        #  peerVerify: false
-        #template: "$(format-json --scope rfc5424 --exclude DATE --key ISODATE @timestamp=${ISODATE})"
+        enabled: false
+        # url: http://my-release-opensearch.default.svc.cluster.local:9200
+        # index: "test-axoflow-index"
+        # user: "admin"
+        # password: "admin"
+        # tls:
+        #   CAFile: "/path/to/CAFile.pem"
+        #   CADir: "/path/to/CADir/"
+        #   Cert: "/path/to/Cert.pem"
+        #   Key: "/path/to/Key.pem"
+        #   peerVerify: false
+        # template: "$(format-json --scope rfc5424 --exclude DATE --key ISODATE @timestamp=${ISODATE})"
         extraOptionsRaw: "time-reopen(10)"
       axosyslogOtlp:
         enabled: false
-        url: "192.168.77.133:4317"
+        # url: "192.168.77.133:4317"
         extraOptionsRaw: "time-reopen(1) batch-timeout(1000) batch-lines(1000)"
   # -- Affinity rules for aggregator pod scheduling
   affinity: {}
