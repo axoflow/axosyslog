@@ -192,6 +192,51 @@ jobs:
           . tests/build-log-cflags-propagation.sh
           exec_prop_check "make distcheck -j 8 V=1"
 
+  callgrind:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set ENV variables
+        run: |
+          . .github/workflows/gh-tools.sh
+
+          # Setup build time environment variables
+          CONFIGURE_OPTS="
+            --prefix=/install
+            --disable-debug
+            --enable-all-modules
+            --disable-java
+            --disable-java-modules
+            --enable-ebpf
+            --with-python=3
+            --enable-extra-warnings
+          "
+          MAKE_ARGS="-j $(nproc)"
+          DEFAULT_IMAGE=devshell
+          gh_export CONFIGURE_OPTS MAKE_ARGS DEFAULT_IMAGE
+
+      - name: Build the binaries (PR)
+        run: |
+          dbld/rules bootstrap
+          dbld/rules make-install
+
+      - name: callgrind (PR)
+        run: |
+          dbld/rules callgrind CALLGRIND_PROFILE=pr
+
+      - name: print-profile
+        run: |
+          cat dbld/build/callgrind/pr/callgrind_annotate.txt
+
+      - name: "Artifact: callgrind_annotate.txt"
+        uses: actions/upload-artifact@v4
+        with:
+          name: callgrind_annotate.txt
+          path: dbld/build/callgrind/*/callgrind_annotate.txt
+
   style-check:
     runs-on: ubuntu-latest
     container:
