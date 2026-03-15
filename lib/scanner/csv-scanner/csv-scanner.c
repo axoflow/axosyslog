@@ -262,21 +262,34 @@ _decode_xbyte(gchar xdigit1, gchar xdigit2)
 }
 
 static void
-_parse_character_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
+_parse_characters_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
 {
   gchar ch;
+  const gchar *backslash = strchrnul(self->src, '\\');
+  const gchar *quote = strchrnul(self->src, self->current_quote);
+  const gchar *nexthop = MIN(backslash, quote);
+
+  if (nexthop > self->src)
+    {
+      gsize len = nexthop - self->src;
+      g_string_append_len(self->current_value, self->src, len);
+      self->src += len;
+      if (*nexthop == 0)
+        return;
+    }
+
   /* quoted character */
   if (self->options->dialect == CSV_SCANNER_ESCAPE_DOUBLE_CHAR &&
-           *self->src == self->current_quote &&
-           *(self->src+1) == self->current_quote)
+      *self->src == self->current_quote &&
+      *(self->src+1) == self->current_quote)
     {
       self->src++;
       ch = *self->src;
       *nonliteral_input = TRUE;
     }
   else if (self->options->dialect == CSV_SCANNER_ESCAPE_BACKSLASH &&
-      *self->src == '\\' &&
-      *(self->src + 1))
+           *self->src == '\\' &&
+           *(self->src + 1))
     {
       self->src++;
       ch = *self->src;
@@ -481,7 +494,7 @@ _parse_value_with_whitespace_and_delimiter(CSVScanner *self)
       if (self->current_quote)
         {
           /* within quotation marks */
-          _parse_character_with_quotation(self, &nonliteral_input);
+          _parse_characters_with_quotation(self, &nonliteral_input);
         }
       else
         {
