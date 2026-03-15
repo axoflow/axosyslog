@@ -267,7 +267,15 @@ _parse_character_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
 {
   gchar ch;
   /* quoted character */
-  if (self->options->dialect == CSV_SCANNER_ESCAPE_BACKSLASH &&
+  if (self->options->dialect == CSV_SCANNER_ESCAPE_DOUBLE_CHAR &&
+           *self->src == self->current_quote &&
+           *(self->src+1) == self->current_quote)
+    {
+      self->src++;
+      ch = *self->src;
+      *nonliteral_input = TRUE;
+    }
+  else if (self->options->dialect == CSV_SCANNER_ESCAPE_BACKSLASH &&
       *self->src == '\\' &&
       *(self->src + 1))
     {
@@ -318,14 +326,6 @@ _parse_character_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
               break;
             }
         }
-    }
-  else if (self->options->dialect == CSV_SCANNER_ESCAPE_DOUBLE_CHAR &&
-           *self->src == self->current_quote &&
-           *(self->src+1) == self->current_quote)
-    {
-      self->src++;
-      ch = *self->src;
-      *nonliteral_input = TRUE;
     }
   else if (*self->src == self->current_quote)
     {
