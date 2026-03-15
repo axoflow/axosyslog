@@ -48,7 +48,11 @@ void
 csv_scanner_options_set_delimiters(CSVScannerOptions *options, const gchar *delimiters)
 {
   g_free(options->delimiters);
-  options->delimiters = g_strdup(delimiters);
+
+  if (!delimiters || strcmp(delimiters, ",") == 0)
+    options->delimiters = NULL;
+  else
+    options->delimiters = g_strdup(delimiters);
 }
 
 void
@@ -147,6 +151,8 @@ csv_scanner_options_validate(CSVScannerOptions *options, gint expected_columns)
  * CSVScanner
  ************************************************************************/
 
+#define DEFAULT_DELIM_CHAR ','
+
 static gboolean
 _is_whitespace_char(gchar ch)
 {
@@ -156,7 +162,9 @@ _is_whitespace_char(gchar ch)
 static gboolean
 _is_delimiter_char(CSVScanner *self, gchar ch)
 {
-  return _strchr_optimized_for_single_char_haystack(self->options->delimiters, ch) != NULL;
+  if (self->options->delimiters)
+    return _strchr_optimized_for_single_char_haystack(self->options->delimiters, ch) != NULL;
+  return ch == DEFAULT_DELIM_CHAR;
 }
 
 static void
