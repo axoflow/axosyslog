@@ -153,6 +153,12 @@ _is_whitespace_char(gchar ch)
   return (ch == ' ' || ch == '\t');
 }
 
+static gboolean
+_is_delimiter_char(CSVScanner *self, gchar ch)
+{
+  return _strchr_optimized_for_single_char_haystack(self->options->delimiters, ch) != NULL;
+}
+
 static void
 _skip_whitespace(CSVScanner *self, const gchar **src)
 {
@@ -170,7 +176,7 @@ _skip_whitespace(CSVScanner *self, const gchar **src)
        * new value to be extracted.  */
       while (_is_whitespace_char(**src))
         {
-          if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, **src))
+          if (_is_delimiter_char(self, **src))
             break;
           (*src)++;
         }
@@ -375,7 +381,7 @@ _parse_character_delimiters_at_current_position(CSVScanner *self, gboolean *nonl
       self->src++;
       *nonliteral_input = quoted = TRUE;
     }
-  if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, *self->src) != NULL)
+  if (_is_delimiter_char(self, *self->src))
     {
       if (quoted)
         return FALSE;
