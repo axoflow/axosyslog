@@ -25,8 +25,7 @@
 #include "string-list.h"
 #include "scratch-buffers.h"
 #include "messages.h"
-
-#include <string.h>
+#include "compat/string.h"
 
 /************************************************************************
  * CSVScannerOptions
@@ -414,10 +413,60 @@ _parse_delimiter(CSVScanner *self, gboolean *nonliteral_input)
 }
 
 static void
-_parse_unquoted_literal_character(CSVScanner *self)
+_parse_unquoted_literal_characters_generic(CSVScanner *self)
 {
   g_string_append_c(self->current_value, *self->src);
   self->src++;
+}
+
+static void
+_parse_unquoted_literal_characters(CSVScanner *self, gboolean *nonliteral_input)
+{
+  if (self->options->string_delimiters || self->options->delimiters)
+    {
+      _parse_unquoted_literal_characters_generic(self);
+      return;
+    }
+
+  const gchar *delim = strchrnul(self->src, DEFAULT_DELIM_CHAR);
+  const gchar *backslash = NULL;
+  while (delim > self->src)
+    {
+      if (self->options->dialect == CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER)
+        {
+          if (!backslash)
+            backslash = strchrnul(self->src, '\\');
+          if (*backslash && backslash < delim)
+            {
+              /* backslash before the delimiter, let's copy the value and the escaped character to self->current_value */
+
+              gsize len = backslash - self->src;
+              gboolean escaped_delimiter = (backslash + 1) == delim;
+
+              g_string_append_len(self->current_value, self->src, len);
+              self->src += len + 1;
+              g_string_append_c(self->current_value, *self->src);
+              self->src++;
+
+              if (escaped_delimiter)
+                delim = strchrnul(self->src, DEFAULT_DELIM_CHAR);
+              backslash = NULL;
+              *nonliteral_input = TRUE;
+              continue;
+            }
+          else
+            {
+              /* backslash is outside of the current value */
+            }
+        }
+
+      /* copy everything up to the delimier */
+      gsize len = delim - self->src;
+
+      g_string_append_len(self->current_value, self->src, len);
+      self->src += len;
+      break;
+    }
 }
 
 static void
@@ -439,7 +488,7 @@ _parse_value_with_whitespace_and_delimiter(CSVScanner *self)
           /* unquoted value */
           if (_parse_delimiter(self, &nonliteral_input))
             break;
-          _parse_unquoted_literal_character(self);
+          _parse_unquoted_literal_characters(self, &nonliteral_input);
         }
     }
   if (nonliteral_input)
