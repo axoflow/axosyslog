@@ -523,7 +523,7 @@ _get_value_length_without_right_whitespace(CSVScanner *self)
   return len;
 }
 
-static void
+static inline void
 _translate_rstrip_whitespace(CSVScanner *self)
 {
   if (self->options->flags & CSV_SCANNER_STRIP_WHITESPACE)
