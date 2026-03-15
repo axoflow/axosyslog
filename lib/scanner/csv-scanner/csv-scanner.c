@@ -82,6 +82,14 @@ csv_scanner_options_set_quote_pairs(CSVScannerOptions *options, const gchar *quo
   g_free(options->quotes_start);
   g_free(options->quotes_end);
 
+  /* this is the fast-path, NULL values will trigger the hard-coded implementation */
+  if (!quote_pairs || strcmp(quote_pairs, "\"\"''") == 0)
+    {
+      options->quotes_start = NULL;
+      options->quotes_end = NULL;
+      return;
+    }
+
   options->quotes_start = g_malloc((strlen(quote_pairs) / 2) + 1);
   options->quotes_end = g_malloc((strlen(quote_pairs) / 2) + 1);
 
@@ -170,7 +178,7 @@ _skip_whitespace(CSVScanner *self, const gchar **src)
 }
 
 static void
-_parse_opening_quote_character(CSVScanner *self)
+_parse_opening_quote_character_generic(CSVScanner *self)
 {
   const gchar *quote = _strchr_optimized_for_single_char_haystack(self->options->quotes_start, *self->src);
 
@@ -183,6 +191,26 @@ _parse_opening_quote_character(CSVScanner *self)
   else
     {
       /* we didn't start with a quote character, no need for escaping, delimiter terminates */
+      self->current_quote = 0;
+    }
+}
+
+static void
+_parse_opening_quote_character(CSVScanner *self)
+{
+  if (self->options->quotes_start)
+    {
+      _parse_opening_quote_character_generic(self);
+      return;
+    }
+  if (*self->src == '"' || *self->src == '\'')
+    {
+      /* ok, quote character found */
+      self->current_quote = *self->src;
+      self->src++;
+    }
+  else
+    {
       self->current_quote = 0;
     }
 }
