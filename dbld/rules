@@ -52,7 +52,7 @@ TARBALL_BASENAME=axosyslog-$(VERSION).tar.gz
 TARBALL=$(BUILD_DIR)/$(TARBALL_BASENAME)
 GIT=$(shell which git || echo false)
 GIT_RELEASE_TAG=axosyslog-$(VERSION)
-CONFIGURE_OPTS=--enable-debug --enable-manpages --with-python=3 --prefix=/install $(CONFIGURE_ADD)
+CONFIGURE_OPTS ?= --enable-debug --enable-manpages --with-python=3 --prefix=/install $(CONFIGURE_ADD)
 DBLD_RULES=$(MAKE) --no-print-directory -f $(DBLD_DIR)/rules
 SHELL = /bin/bash
 DOCKER_INTERACTIVE=$(shell if tty -s; then echo "-ti"; else echo "-i"; fi)
