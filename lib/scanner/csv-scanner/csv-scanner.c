@@ -148,9 +148,9 @@ csv_scanner_options_validate(CSVScannerOptions *options, gint expected_columns)
  ************************************************************************/
 
 static gboolean
-_is_whitespace_char(const gchar *str)
+_is_whitespace_char(gchar ch)
 {
-  return (*str == ' ' || *str == '\t');
+  return (ch == ' ' || ch == '\t');
 }
 
 static void
@@ -159,7 +159,7 @@ _skip_whitespace(CSVScanner *self, const gchar **src)
   if (self->current_quote)
     {
       /* quoted value, all whitespace is to be removed, even if the delimiter is considered whitespace */
-      while (_is_whitespace_char(*src))
+      while (_is_whitespace_char(**src))
         (*src)++;
     }
   else
@@ -168,7 +168,7 @@ _skip_whitespace(CSVScanner *self, const gchar **src)
        * whitespace.  This plays a role in case the delimiter is either a
        * space or a tab.  In those cases, a new delimiter starts the next
        * new value to be extracted.  */
-      while (_is_whitespace_char(*src))
+      while (_is_whitespace_char(**src))
         {
           if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, **src))
             break;
@@ -441,7 +441,7 @@ _get_value_length_without_right_whitespace(CSVScanner *self)
    * part of delimiters.  In any other case we won't have delimiters as
    * whitespace on the right side (as they started the next value) */
 
-  while (len > 0 && _is_whitespace_char(self->current_value->str + len - 1))
+  while (len > 0 && _is_whitespace_char(*(self->current_value->str + len - 1)))
     len--;
 
   return len;
