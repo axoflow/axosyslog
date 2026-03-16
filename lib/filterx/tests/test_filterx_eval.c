@@ -46,7 +46,7 @@ _create_embedded_exprs(gint depth, gboolean set_location)
 
   for (gint i = 0; i < depth - 1; i++)
     {
-      fx_root = filterx_non_literal_new_from_expr(fx_root);
+      fx_root = filterx_expr_wrapper_new(fx_root);
 
       GString *text = scratch_buffers_alloc();
       g_string_printf(text, "dummy-error-%d", i + 1);
