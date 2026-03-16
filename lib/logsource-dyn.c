@@ -257,7 +257,8 @@ log_source_dynamic_window_realloc(LogSource *self)
   _release_reclaimed_dynamic_window(self);
 
   /* must be checked AFTER _release_reclaimed_dynamic_window() */
-  if (!atomic_gssize_get(&self->window_size_to_be_reclaimed))
+  gboolean reclaim_in_progress = atomic_gssize_get(&self->window_size_to_be_reclaimed);
+  if (!reclaim_in_progress)
     _rebalance_dynamic_window(self);
 
   dynamic_window_stat_reset(&self->dynamic_window.stat);
