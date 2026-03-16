@@ -198,6 +198,17 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Find base and head commits
+        id: commits
+        run: |
+          . .github/workflows/gh-tools.sh
+
+          BASE_HEAD=$(git rev-parse HEAD^1)
+          PR_HEAD=$(git rev-parse HEAD)
+          gh_output BASE_HEAD PR_HEAD
 
       - name: Set ENV variables
         run: |
@@ -230,6 +241,15 @@ jobs:
       - name: print-profile
         run: |
           cat dbld/build/callgrind/pr/callgrind_annotate.txt
+
+      - name: Build the binaries (BASE)
+        run: |
+          git checkout ${{ steps.commits.outputs.BASE_HEAD }}
+          dbld/rules make-install
+
+      - name: callgrind (BASE)
+        run: |
+          dbld/rules callgrind CALLGRIND_PROFILE=base
 
       - name: "Artifact: callgrind_annotate.txt"
         uses: actions/upload-artifact@v4
