@@ -484,6 +484,11 @@ log_reader_handle_line(LogReader *self, const guchar *line, gsize length, LogTra
             evt_tag_msg_reference(m));
 
   msg_format_parse_into(&self->options->parse_options, m, line, &length);
+  if (length == 0 && !(self->options->flags & LR_EMPTY_LINES))
+    {
+      log_msg_unref(m);
+      return TRUE;
+    }
 
   _log_reader_insert_msg_length_stats(self, length);
 
@@ -572,15 +577,11 @@ log_reader_fetch_log(LogReader *self)
           /* no more messages for now */
           break;
         }
-      if (msg_len > 0 || (self->options->flags & LR_EMPTY_LINES))
+      msg_count++;
+      if (!log_reader_handle_line(self, msg, msg_len, aux))
         {
-          msg_count++;
-
-          if (!log_reader_handle_line(self, msg, msg_len, aux))
-            {
-              /* window is full, don't generate further messages */
-              break;
-            }
+          /* window is full, don't generate further messages */
+          break;
         }
     }
   log_transport_aux_data_destroy(aux);
