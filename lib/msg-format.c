@@ -33,7 +33,8 @@
 static gsize
 _rstripped_message_length(const guchar *data, gsize length)
 {
-  while (length > 0 && (data[length - 1] == '\n' || data[length - 1] == '\0'))
+  const guint32 rstrip_character_bitmask = (1 << '\r') | (1 << '\n') | (1 << 0);
+  while (length > 0 && data[length - 1] < 32 && (rstrip_character_bitmask & (1 << data[length - 1])))
     length--;
   return length;
 }
