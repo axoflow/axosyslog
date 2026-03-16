@@ -1215,9 +1215,6 @@ syslog_format_handler(const MsgFormatOptions *parse_options,
 {
   gboolean success;
 
-  while (length > 0 && (data[length - 1] == '\n' || data[length - 1] == '\0'))
-    length--;
-
   msg->initial_parse = TRUE;
   if (parse_options->flags & LP_SYSLOG_PROTOCOL)
     success = _syslog_format_parse_syslog_proto(parse_options, data, length, msg, problem_position);

@@ -168,6 +168,7 @@ pacct_construct_proto(const MsgFormatOptions *options, LogTransport *transport,
 
 MsgFormatHandler pacct_handler =
 {
+  .binary_clean = TRUE,
   .construct_proto = pacct_construct_proto,
   .parse = &pacct_format_handler
 };
