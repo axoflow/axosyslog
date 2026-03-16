@@ -138,16 +138,20 @@ log_source_gather_dynamic_window_reclamation(LogSource *self, guint32 window_siz
   return remaining_window_size_increment;
 }
 
+static inline void
+_compensate_reclamation_race_condition(LogSource *self)
+{
+  /* log_source_gather_dynamic_window_reclamation() should only be called when messages are ACKed
+   * (in _flow_control_window_size_adjust()), but a race condition in _dec_balanced() has to be compensated.
+   */
+  gsize empty_window = window_size_counter_get(&self->window_size, NULL);
+  (void) log_source_gather_dynamic_window_reclamation(self, empty_window);
+}
+
 static void
 _release_reclaimed_dynamic_window(LogSource *self)
 {
-  {
-    /* log_source_gather_dynamic_window_reclamation() should only be called when messages are ACKed
-     * (in _flow_control_window_size_adjust()), but a race condition in _dec_balanced() has to be compensated here.
-     */
-    gsize empty_window = window_size_counter_get(&self->window_size, NULL);
-    (void) log_source_gather_dynamic_window_reclamation(self, empty_window);
-  }
+  _compensate_reclamation_race_condition(self);
 
   gssize total_reclaim = atomic_gssize_set_and_get(&self->pending_reclamation, 0);
 
@@ -204,10 +208,11 @@ _dec_balanced(LogSource *self, gsize dec)
       to_decrement_now = MAX(((gssize) empty_window) - 1, 0);
       to_reclaim_later = dec - to_decrement_now;
 
-      /* there is a race window between window_size_counter_get() and this,
-       * which has to be compensated in _release_reclaimed_dynamic_window()
+      /* there is a race window between window_size_counter_get() and this call,
+       * which has to be compensated in _release_reclaimed_dynamic_window() too
        */
       _request_dynamic_window_reclamation(self, to_reclaim_later);
+      _compensate_reclamation_race_condition(self);
     }
 
   gsize new_full_window_size = self->full_window_size - to_decrement_now;
