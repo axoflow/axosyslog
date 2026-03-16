@@ -221,28 +221,28 @@ filterx_function_free_method(FilterXFunction *s)
   filterx_expr_free_method(&s->super);
 }
 
-static inline FilterXExpr *
+static FilterXExpr *
 _function_optimize(FilterXExpr *s)
 {
   FilterXFunction *self = (FilterXFunction *) s;
   return filterx_function_optimize_method(self);
 }
 
-static inline gboolean
+static gboolean
 _function_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunction *self = (FilterXFunction *) s;
   return filterx_function_init_method(self, cfg);
 }
 
-static inline void
+static void
 _function_deinit(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunction *self = (FilterXFunction *) s;
   return filterx_function_deinit_method(self, cfg);
 }
 
-static inline void
+static void
 _function_free(FilterXExpr *s)
 {
   FilterXFunction *self = (FilterXFunction *) s;

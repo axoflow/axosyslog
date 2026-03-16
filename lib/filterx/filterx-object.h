@@ -221,6 +221,11 @@ static inline gboolean
 _filterx_object_is_type(FilterXObject *object, FilterXType *type)
 {
   FilterXType *self_type = object->type;
+  if (G_LIKELY(type == self_type))
+    {
+      return TRUE;
+    }
+  self_type = self_type->super_type;
   while (self_type)
     {
       if (type == self_type)
@@ -233,8 +238,10 @@ _filterx_object_is_type(FilterXObject *object, FilterXType *type)
 static inline gboolean
 filterx_object_is_type(FilterXObject *object, FilterXType *type)
 {
+#if SYSLOG_NG_ENABLE_DEBUG
   if (type->is_mutable && filterx_object_is_ref(object))
     g_assert("filterx_ref_unwrap() must be used before comparing to mutable types" && FALSE);
+#endif
 
   return _filterx_object_is_type(object, type);
 }
@@ -305,6 +312,15 @@ filterx_object_ref(FilterXObject *self)
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
   g_atomic_counter_inc(&self->ref_cnt);
+  return self;
+}
+
+static inline FilterXObject *
+filterx_object_ref_preserved(FilterXObject *self)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert(filterx_object_is_preserved(self));
+#endif
   return self;
 }
 
@@ -681,7 +697,8 @@ filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
 
   if (pself)
     {
-      *pself = self;
+      if (*pself != self)
+        *pself = self;
       return filterx_ref_float(filterx_object_copy(self));
     }
   else

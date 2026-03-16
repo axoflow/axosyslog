@@ -114,14 +114,14 @@ filterx_boolean_unwrap(FilterXObject *s, gboolean *value)
 static inline FilterXObject *
 filterx_boolean_new(gboolean value)
 {
-  return filterx_object_ref(fx_bool_cache[!!(value)]);
+  return filterx_object_ref_preserved(fx_bool_cache[!!(value)]);
 }
 
 static inline FilterXObject *
 filterx_integer_new(gint64 value)
 {
   if (value >= FILTERX_INTEGER_CACHE_MIN && value <= FILTERX_INTEGER_CACHE_MAX)
-    return filterx_object_ref(fx_integer_cache[(FILTERX_INTEGER_CACHE_IDX(value))]);
+    return filterx_object_ref_preserved(fx_integer_cache[(FILTERX_INTEGER_CACHE_IDX(value))]);
 
   return _filterx_integer_new(value);
 }
