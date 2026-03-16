@@ -374,7 +374,7 @@ _handle_target_object(FilterXFunctionUnsetEmpties *self, FilterXObject *target, 
     }
   else if (filterx_object_is_type(target, &FILTERX_TYPE_NAME(string)))
     {
-      gsize len;
+      guint64 len;
       g_assert(filterx_object_len(target, &len));
       if (len == 0)
         {
