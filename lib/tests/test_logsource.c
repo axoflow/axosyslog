@@ -385,7 +385,7 @@ Test(log_source, test_dynamic_window)
   cr_assert(log_source_is_dynamic_window_enabled(source));
 
   /* currently unused */
-  log_source_dynamic_window_update_statistics(source);
+  log_source_update_dynamic_window_statistics(source);
 
   pool->balanced_window = 200;
   log_source_dynamic_window_realloc(source);

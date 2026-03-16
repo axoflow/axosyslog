@@ -280,7 +280,7 @@ afsocket_sd_kill_connection(AFSocketSourceConnection *connection)
 {
   log_pipe_deinit(&connection->super);
 
-  log_source_dynamic_window_release_available(&connection->reader->super);
+  log_source_release_available_dynamic_window(&connection->reader->super);
 
   /* Remove the circular reference between the connection and its
    * reader (through the connection->reader and reader->control
@@ -589,7 +589,7 @@ _dynamic_window_timer_start(AFSocketSourceDriver *self)
 static void
 _dynamic_window_update_statistics_cb(AFSocketSourceConnection *conn)
 {
-  log_source_dynamic_window_update_statistics(&conn->reader->super);
+  log_source_update_dynamic_window_statistics(&conn->reader->super);
 }
 
 static void

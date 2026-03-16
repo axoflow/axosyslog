@@ -236,6 +236,7 @@ lib_libsyslog_ng_la_SOURCES		= \
 	lib/logqueue-fifo.c		\
 	lib/logreader.c			\
 	lib/logsource.c			\
+	lib/logsource-dyn.c \
 	lib/logwriter.c			\
 	lib/mainloop.c			\
 	lib/signal-handler.c		\
