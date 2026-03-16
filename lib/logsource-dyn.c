@@ -292,7 +292,7 @@ log_source_release_available_dynamic_window(LogSource *self)
 }
 
 void
-log_source_release_all_dynamic_window(LogSource *self)
+log_source_destroy_dynamic_window(LogSource *self)
 {
   g_assert(self->ack_tracker == NULL);
   main_loop_assert_main_thread();
@@ -307,6 +307,7 @@ log_source_release_all_dynamic_window(LogSource *self)
   _release_dynamic_window(self, dynamic_part);
 
   dynamic_window_pool_unref(self->dynamic_window.pool);
+  dynamic_window_set_pool(&self->dynamic_window, NULL);
 }
 
 void

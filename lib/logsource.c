@@ -686,10 +686,10 @@ log_source_init_instance(LogSource *self, GlobalConfig *cfg)
 }
 
 static gpointer
-_release_all_dynamic_window_cb(gpointer c)
+_destroy_dynamic_window_cb(gpointer c)
 {
   LogSource *self = (LogSource *) c;
-  log_source_release_all_dynamic_window(self);
+  log_source_destroy_dynamic_window(self);
 
   return NULL;
 }
@@ -707,7 +707,7 @@ log_source_free(LogPipe *s)
 
   /* free() may run in a destination thread (last acked message) */
   if (G_UNLIKELY(log_source_is_dynamic_window_enabled(self)))
-    main_loop_call(_release_all_dynamic_window_cb, self, TRUE);
+    main_loop_call(_destroy_dynamic_window_cb, self, TRUE);
 
   _unregister_window_stats(self);
   _deallocate_counter_keys(self);

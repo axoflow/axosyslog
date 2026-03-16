@@ -174,7 +174,7 @@ void log_source_global_init(void);
 void log_source_dynamic_window_realloc(LogSource *self);
 
 /* private */
-void log_source_release_all_dynamic_window(LogSource *self);
+void log_source_destroy_dynamic_window(LogSource *self);
 guint32 log_source_gather_dynamic_window_reclamation(LogSource *self, guint32 window_size_increment);
 
 #endif
