@@ -29,6 +29,7 @@
 #include "syslog-names.h"
 #include "scratch-buffers.h"
 #include "http-signals.h"
+#include "timeutils/format.h"
 
 #define HTTP_HEADER_FORMAT_ERROR http_header_format_error_quark()
 
@@ -91,13 +92,63 @@ _curl_debug_function(CURL *handle, curl_infotype type,
   return 0;
 }
 
-#define HTTP_RESPONSE_MAX_LENGTH 1024
-
 static inline EVTTAG *
 _tag_request(HTTPDestinationWorker *self)
 {
-  return evt_tag_printf("request", "%.512s%s", self->request_body->str, self->request_body->len > 512 ? "..." : "");
+  if (self->response_signal.offending_request_len)
+    return evt_tag_mem("request-slice",
+                       &self->request_body->str[self->response_signal.offending_request_start],
+                       self->response_signal.offending_request_len);
+  else
+    return evt_tag_printf("request", "%.512s%s", self->request_body->str, self->request_body->len > 512 ? "..." : "");
 }
+
+static EVTTAG *
+_tag_message(HTTPDestinationWorker *self)
+{
+  LogMessage *msg = NULL;
+
+  if (!self->super.queue)
+    goto unavailable;
+
+  guint batch_index = self->response_signal.offending_message;
+  msg = log_queue_peek_backlog(self->super.queue, batch_index);
+
+  if (!msg)
+    goto unavailable;
+
+  GString *message_details = scratch_buffers_alloc();
+
+  g_string_append_c(message_details, '@');
+  append_format_unix_time(&msg->timestamps[LM_TS_RECVD], message_details, TS_FMT_UNIX, -1, 6);
+  g_string_append_c(message_details, ' ');
+
+  gchar source[MAX_SOCKADDR_STRING], dest[MAX_SOCKADDR_STRING];
+  g_sockaddr_format(msg->saddr, source, sizeof(source), GSA_ADDRESS_PORT);
+  g_sockaddr_format(msg->saddr, dest, sizeof(dest), GSA_ADDRESS_PORT);
+
+  g_string_append_printf(message_details, "[%s->%s] ", source, dest);
+
+  gssize len;
+  const gchar *payload = log_msg_get_value(msg, LM_V_RAWMSG, &len);
+  if (!payload || len == 0)
+    payload = log_msg_get_value(msg, LM_V_MESSAGE, &len);
+  if (!payload)
+    goto unavailable;
+
+  g_string_append_len(message_details, payload, MIN(len, 512));
+  if (len > 512)
+    g_string_append_len(message_details, "...", 3);
+
+  log_msg_unref(msg);
+  return evt_tag_str("message", message_details->str);
+
+unavailable:
+  log_msg_unref(msg);
+  return evt_tag_str("message", "(not available)");
+}
+
+#define HTTP_RESPONSE_MAX_LENGTH 1024
 
 static size_t
 _curl_write_function(char *ptr, size_t size, size_t nmemb, void *userdata)
@@ -379,6 +430,8 @@ _default_4XX(HTTPDestinationWorker *self, const gchar *url, glong http_code)
              evt_tag_int("status_code", http_code),
              _tag_request(self),
              evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+             evt_tag_int("message_index", self->response_signal.offending_message),
+             _tag_message(self),
              evt_tag_str("driver", owner->super.super.super.id),
              log_pipe_location_tag(&owner->super.super.super.super));
 
@@ -402,6 +455,8 @@ _default_5XX(HTTPDestinationWorker *self, const gchar *url, glong http_code)
              evt_tag_int("status_code", http_code),
              _tag_request(self),
              evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+             evt_tag_int("message_index", self->response_signal.offending_message),
+             _tag_message(self),
              evt_tag_str("driver", owner->super.super.super.id),
              log_pipe_location_tag(&owner->super.super.super.super));
   if (http_code == 508)
@@ -539,6 +594,8 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_int("status_code", http_code),
                  _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+                 evt_tag_int("message_index", self->response_signal.offending_message),
+                 _tag_message(self),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
       return LTR_ERROR;
@@ -550,6 +607,8 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_int("status_code", http_code),
                  _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+                 evt_tag_int("message_index", self->response_signal.offending_message),
+                 _tag_message(self),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
       return LTR_DROP;
@@ -561,6 +620,8 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_int("status_code", http_code),
                  _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+                 evt_tag_int("message_index", self->response_signal.offending_message),
+                 _tag_message(self),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
       return LTR_NOT_CONNECTED;
