@@ -712,7 +712,9 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
   HttpResponseReceivedSignalData signal_data =
   {
     .result = HTTP_SLOT_SUCCESS,
-    .http_code = http_code
+    .http_code = http_code,
+    .response_body = self->response_buffer,
+    .offending_message = 0,
   };
 
   EMIT(owner->super.super.super.signal_slot_connector, signal_http_response_received, &signal_data);
