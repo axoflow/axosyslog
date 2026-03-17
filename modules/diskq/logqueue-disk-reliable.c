@@ -139,7 +139,7 @@ _get_length(LogQueue *s)
 }
 
 static void
-_ack_backlog(LogQueue *s, gint num_msg_to_ack)
+_ack_backlog(LogQueue *s, guint num_msg_to_ack)
 {
   LogQueueDiskReliable *self = (LogQueueDiskReliable *)s;
   LogMessage *msg;

@@ -509,7 +509,7 @@ log_queue_fifo_pop_head(LogQueue *s, LogPathOptions *path_options)
  * Can only run from the output thread.
  */
 static void
-log_queue_fifo_ack_backlog(LogQueue *s, gint rewind_count)
+log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
 {
   LogQueueFifo *self = (LogQueueFifo *) s;
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
