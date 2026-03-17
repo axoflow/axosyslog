@@ -423,7 +423,7 @@ _maybe_move_messages_among_queue_segments(LogQueueDiskNonReliable *self)
 
 /* runs only in the output thread */
 static void
-_ack_backlog(LogQueue *s, gint num_msg_to_ack)
+_ack_backlog(LogQueue *s, guint num_msg_to_ack)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
   LogMessage *msg;
