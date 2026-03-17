@@ -108,6 +108,21 @@ convert_unix_time_to_wall_clock_time_with_tz_override(const UnixTime *src, WallC
   time_t t = src->ut_sec + gmtoff;
   cached_gmtime_wct(&t, dst);
   dst->wct_gmtoff = gmtoff;
-  dst->wct_zone = NULL;
   dst->wct_usec = src->ut_usec;
+
+  /* NOTE: we are converting to a target timezone, but that timezone is
+   * specified only via the gmtoff (and not via a timezone name, like CET).
+   *
+   * This means that in most cases we are unable to set wct_zone (which is
+   * the timezone name) and neither can we set wct_isdst (which stores
+   * whether we are in daylight saving).
+   *
+   * We could potentially set both in case we fall back to the local
+   * timezone (e.g.  gmtoff_override is -1), but since we don't actually use
+   * wct_zone and wct_isdst in our code, I didn't spend the time.  These
+   * fields just mimic similar fields in struct tm (tm_zone and tm_isdst).
+   */
+
+  dst->wct_zone = NULL;
+  dst->wct_isdst = -1;
 }
