@@ -151,7 +151,7 @@ msg_format_process_message(MsgFormatOptions *options, LogMessage *msg,
 
 gboolean
 msg_format_try_parse_into(MsgFormatOptions *options, LogMessage *msg,
-                          const guchar *data, gsize length,
+                          const guchar *data, gsize *data_len,
                           gsize *problem_position)
 {
   if (G_UNLIKELY(!options->format_handler))
@@ -162,9 +162,10 @@ msg_format_try_parse_into(MsgFormatOptions *options, LogMessage *msg,
       log_msg_set_value(msg, LM_V_MESSAGE, buf, -1);
       return FALSE;
     }
+  gsize length = *data_len;
 
   if (!options->format_handler->binary_clean)
-    length = _rstripped_message_length(data, length);
+    *data_len = length = _rstripped_message_length(data, length);
   msg_format_preprocess_message(options, msg, data, length);
 
   if (!msg_format_process_message(options, msg, data, length, problem_position))
@@ -176,12 +177,13 @@ msg_format_try_parse_into(MsgFormatOptions *options, LogMessage *msg,
 
 void
 msg_format_parse_into(MsgFormatOptions *options, LogMessage *msg,
-                      const guchar *data, gsize length)
+                      const guchar *data, gsize *data_len)
 {
   gsize problem_position = 0;
 
-  if (!msg_format_try_parse_into(options, msg, data, length, &problem_position))
+  if (!msg_format_try_parse_into(options, msg, data, data_len, &problem_position))
     {
+      gsize length = *data_len;
       if (options->flags & LP_PIGGYBACK_ERRORS)
         msg_format_inject_parse_error(options, msg, data, length, problem_position);
       else
@@ -222,7 +224,7 @@ msg_format_parse(MsgFormatOptions *options, const guchar *data, gsize length)
   LogMessage *msg = msg_format_construct_message(options, data, length);
 
   msg_trace("Initial message parsing follows");
-  msg_format_parse_into(options, msg, data, length);
+  msg_format_parse_into(options, msg, data, &length);
   return msg;
 }
 

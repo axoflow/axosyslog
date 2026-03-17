@@ -474,7 +474,7 @@ set:
 }
 
 static gboolean
-log_reader_handle_line(LogReader *self, const guchar *line, gint length, LogTransportAuxData *aux)
+log_reader_handle_line(LogReader *self, const guchar *line, gsize length, LogTransportAuxData *aux)
 {
   LogMessage *m;
 
@@ -483,7 +483,7 @@ log_reader_handle_line(LogReader *self, const guchar *line, gint length, LogTran
             evt_tag_mem("input", line, length),
             evt_tag_msg_reference(m));
 
-  msg_format_parse_into(&self->options->parse_options, m, line, length);
+  msg_format_parse_into(&self->options->parse_options, m, line, &length);
 
   _log_reader_insert_msg_length_stats(self, length);
 
