@@ -49,6 +49,9 @@ struct _HttpResponseReceivedSignalData
 {
   HttpSlotResultType result;
   glong http_code;
+  GString *response_body;
+  /* returned by the plugin to indicate which message in the batch had issues */
+  guint offending_message;
 };
 
 #define signal_http_header_request SIGNAL(http, header_request, HttpHeaderRequestSignalData *)
