@@ -533,6 +533,31 @@ log_queue_fifo_ack_backlog(LogQueue *s, guint rewind_count)
     }
 }
 
+/*
+ * Can only run from the output thread.
+ */
+static LogMessage *
+log_queue_fifo_peek_backlog(LogQueue *s, guint n)
+{
+  LogQueueFifo *self = (LogQueueFifo *) s;
+  struct iv_list_head *lh = self->backlog_queue.items.next;
+  gint pos = 0;
+
+  if (n >= self->backlog_queue.len)
+    return NULL;
+
+  iv_list_for_each(lh, &self->backlog_queue.items)
+    {
+      LogMessageQueueNode *node;
+      if (pos == n)
+        {
+          node = iv_list_entry(lh, LogMessageQueueNode, list);
+          return log_msg_ref(node->msg);
+        }
+      pos++;
+    }
+  g_assert_not_reached();
+}
 
 /*
  * log_queue_rewind_backlog_all:
@@ -692,6 +717,7 @@ log_queue_fifo_new(gint log_fifo_size, const gchar *persist_name, gint stats_lev
   self->super.pop_head = log_queue_fifo_pop_head;
   self->super.peek_head = log_queue_fifo_peek_head;
   self->super.ack_backlog = log_queue_fifo_ack_backlog;
+  self->super.peek_backlog = log_queue_fifo_peek_backlog;
   self->super.rewind_backlog = log_queue_fifo_rewind_backlog;
   self->super.rewind_backlog_all = log_queue_fifo_rewind_backlog_all;
 

@@ -442,6 +442,30 @@ _ack_backlog(LogQueue *s, guint num_msg_to_ack)
 }
 
 /* runs only in the output thread */
+static LogMessage *
+_peek_backlog(LogQueue *s, guint n)
+{
+  LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *) s;
+  struct iv_list_head *lh = self->backlog.items.next;
+  gint pos = 0;
+
+  if (n >= self->backlog.len)
+    return NULL;
+
+  iv_list_for_each(lh, &self->backlog.items)
+    {
+      LogMessageQueueNode *node;
+      if (pos == n)
+        {
+          node = iv_list_entry(lh, LogMessageQueueNode, list);
+          return log_msg_ref(node->msg);
+        }
+      pos++;
+    }
+  g_assert_not_reached();
+}
+
+/* runs only in the output thread */
 static void
 _rewind_backlog(LogQueue *s, guint rewind_count)
 {
@@ -968,6 +992,7 @@ _set_logqueue_virtual_functions(LogQueue *s)
 {
   s->get_length = _get_length;
   s->ack_backlog = _ack_backlog;
+  s->peek_backlog = _peek_backlog;
   s->rewind_backlog = _rewind_backlog;
   s->rewind_backlog_all = _rewind_backlog_all;
   s->pop_head = _pop_head;
