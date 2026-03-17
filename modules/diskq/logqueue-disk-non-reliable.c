@@ -84,6 +84,20 @@ _pop_node_from_memory_queue_head(LogQueueDiskMemoryQueue *memory_queue, LogMessa
   return FALSE;
 }
 
+static gboolean
+_pop_node_from_memory_queue_tail(LogQueueDiskMemoryQueue *memory_queue, LogMessageQueueNode **node)
+{
+  if (memory_queue->len > 0)
+    {
+      *node = iv_list_entry(memory_queue->items.prev, LogMessageQueueNode, list);
+      memory_queue->len--;
+      iv_list_del_init(&(*node)->list);
+
+      return TRUE;
+    }
+  return FALSE;
+}
+
 static void
 _extract_queue_node(LogMessageQueueNode *node, LogMessage **pmsg, LogPathOptions *path_options)
 {
@@ -442,7 +456,7 @@ _rewind_backlog(LogQueue *s, guint rewind_count)
   for (i = 0; i < rewind_count; i++)
     {
       LogMessageQueueNode *node;
-      if (!_pop_node_from_memory_queue_head(&self->backlog, &node))
+      if (!_pop_node_from_memory_queue_tail(&self->backlog, &node))
         return;
 
       _push_node_to_memory_queue_head(&self->front_cache_output, node);
