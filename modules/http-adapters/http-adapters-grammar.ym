@@ -1,0 +1,79 @@
+/*
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code top {
+
+}
+
+
+%code {
+
+#include "http-adapters-parser.h"
+#include "cfg-grammar-internal.h"
+#include "cfg-parser.h"
+#include "plugin.h"
+
+#include <string.h>
+
+}
+
+%define api.prefix {http_adapters_}
+
+/* this parameter is needed in order to instruct bison to use a complete
+ * argument list for yylex/yyerror */
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogDriver **instance}
+%parse-param {gpointer arg}
+
+%token KW_RESPONSE_ADAPTER
+
+%type   <ptr> driver
+%type   <ptr> http_response_adapter
+
+/* INCLUDE_DECLS */
+
+%%
+
+start
+    : driver
+          {
+            *instance = $1;
+            if (yychar != HTTP_ADAPTERS_EMPTY)
+              cfg_lexer_unput_token(lexer, &yylval);
+            YYACCEPT;
+          }
+    ;
+
+driver
+    : LL_CONTEXT_INNER_DEST http_response_adapter      { $$ = $2; }
+    ;
+
+http_response_adapter
+    :
+    ;
+
+
+/* INCLUDE_RULES */
+
+%%
