@@ -714,6 +714,8 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
   {
     .result = HTTP_SLOT_SUCCESS,
     .http_code = http_code,
+    .batch_size = self->super.batch_size,
+    .request_body = self->request_body,
     .response_body = self->response_buffer,
     .offending_message = 0,
   };
