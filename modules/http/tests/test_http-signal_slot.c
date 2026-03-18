@@ -95,7 +95,7 @@ notify_signal_slot_finish(void)
 }
 
 static void
-_check(const gchar *expected_body, HttpHeaderRequestSignalData *data)
+_check(const gchar *expected_body, HttpRequestSignalData *data)
 {
   cr_assert_str_eq(data->request_body->str, expected_body);
 
@@ -107,7 +107,7 @@ Test(test_http_signal_slot, basic)
   SignalSlotConnector *ssc = driver->super.super.super.signal_slot_connector;
 
   const gchar *test_msg = "test message";
-  CONNECT(ssc, signal_http_header_request, _check, test_msg);
+  CONNECT(ssc, signal_http_request, _check, test_msg);
 
   cr_assert(log_pipe_init((LogPipe *)driver));
   cr_assert(log_pipe_post_config_init((LogPipe *)driver));
@@ -129,7 +129,7 @@ Test(test_http_signal_slot, single_with_prefix_suffix)
 
   SignalSlotConnector *ssc = driver->super.super.super.signal_slot_connector;
 
-  CONNECT(ssc, signal_http_header_request, _check, "[almafa]");
+  CONNECT(ssc, signal_http_request, _check, "[almafa]");
 
   cr_assert(log_pipe_init((LogPipe *)driver));
   cr_assert(log_pipe_post_config_init((LogPipe *)driver));
@@ -153,7 +153,7 @@ Test(test_http_signal_slot, batch_with_prefix_suffix)
 
   SignalSlotConnector *ssc = driver->super.super.super.signal_slot_connector;
 
-  CONNECT(ssc, signal_http_header_request, _check, "[1,2]");
+  CONNECT(ssc, signal_http_request, _check, "[1,2]");
 
   cr_assert(log_pipe_init((LogPipe *)driver));
   cr_assert(log_pipe_post_config_init((LogPipe *)driver));

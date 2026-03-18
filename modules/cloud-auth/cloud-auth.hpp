@@ -32,7 +32,7 @@ class Authenticator
 {
 public:
   virtual ~Authenticator() {};
-  virtual void handle_http_header_request(HttpHeaderRequestSignalData *data) = 0;
+  virtual void handle_http_header_request(HttpRequestSignalData *data) = 0;
 };
 
 }

@@ -78,7 +78,7 @@ ServiceAccountAuthenticator::ServiceAccountAuthenticator(const char *key_path, c
 }
 
 void
-ServiceAccountAuthenticator::handle_http_header_request(HttpHeaderRequestSignalData *data)
+ServiceAccountAuthenticator::handle_http_header_request(HttpRequestSignalData *data)
 {
   /* Scratch Buffers are marked at this point in http-worker.c */
   GString *buffer = scratch_buffers_alloc();
@@ -135,7 +135,7 @@ UserManagedServiceAccountAuthenticator::~UserManagedServiceAccountAuthenticator(
 }
 
 void
-UserManagedServiceAccountAuthenticator::add_token_to_headers(HttpHeaderRequestSignalData *data,
+UserManagedServiceAccountAuthenticator::add_token_to_headers(HttpRequestSignalData *data,
     const std::string &token)
 {
   /* Scratch Buffers are marked at this point in http-worker.c */
@@ -245,7 +245,7 @@ UserManagedServiceAccountAuthenticator::parse_token_and_expiry_from_response(con
 }
 
 void
-UserManagedServiceAccountAuthenticator::handle_http_header_request(HttpHeaderRequestSignalData *data)
+UserManagedServiceAccountAuthenticator::handle_http_header_request(HttpRequestSignalData *data)
 {
   std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 

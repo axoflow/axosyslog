@@ -27,8 +27,8 @@
 #include "signal-slot-connector/signal-slot-connector.h"
 #include "list-adt.h"
 
-typedef struct _HttpHeaderRequestSignalData HttpHeaderRequestSignalData;
-typedef struct _HttpResponseReceivedSignalData HttpResponseReceivedSignalData;
+typedef struct _HttpRequestSignalData HttpRequestSignalData;
+typedef struct _HttpResponseSignalData HttpResponseSignalData;
 
 typedef enum
 {
@@ -38,14 +38,14 @@ typedef enum
   HTTP_SLOT_PLUGIN_ERROR,
 } HttpSlotResultType;
 
-struct _HttpHeaderRequestSignalData
+struct _HttpRequestSignalData
 {
   HttpSlotResultType result;
   List *request_headers;
   GString *request_body;
 };
 
-struct _HttpResponseReceivedSignalData
+struct _HttpResponseSignalData
 {
   HttpSlotResultType result;
   glong http_code;
@@ -54,8 +54,7 @@ struct _HttpResponseReceivedSignalData
   guint offending_message;
 };
 
-#define signal_http_header_request SIGNAL(http, header_request, HttpHeaderRequestSignalData *)
-
-#define signal_http_response_received SIGNAL(http, response_received, HttpResponseReceivedSignalData *)
+#define signal_http_request SIGNAL(http, request, HttpRequestSignalData *)
+#define signal_http_response SIGNAL(http, response, HttpResponseSignalData *)
 
 #endif
