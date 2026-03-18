@@ -37,6 +37,7 @@ static CfgLexerKeyword systemd_journal_keywords[] =
   { "namespace",                  KW_NAMESPACE },
   { "matches",                    KW_MATCHES },
   { "match_boot",                 KW_MATCH_BOOT },
+  { "read_old_on_error",          KW_READ_OLD_RECORDS_ON_ERROR },
   { NULL }
 };
 

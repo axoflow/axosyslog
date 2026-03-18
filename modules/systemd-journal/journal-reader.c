@@ -411,7 +411,7 @@ _skip_old_records(JournalReader *self)
   int rc = sd_journal_next(self->journal);
   if (rc < 0)
     {
-      msg_error("systemd-journal: Error processing read-old-records(no), sd_journal_next() failed after sd_journal_seek_tail()",
+      msg_error("systemd-journal: Error skipping old records, sd_journal_next() failed after sd_journal_seek_tail()",
                 evt_tag_errno("error", -rc));
       return FALSE;
     }
@@ -478,10 +478,12 @@ _seek_to_saved_state(JournalReader *self)
     {
       persist_state_unmap_entry(self->persist_state, self->persist_handle);
 
-      return _seek_to_head(self);
+      msg_error("systemd-journal: Failed to seek the journal to the last saved cursor position.",
+                evt_tag_str("cursor", state->cursor));
+      return self->options->read_old_records_on_error ? _seek_to_head(self) : _skip_old_records(self);
     }
 
-  msg_debug("systemd-journal: Seeking the journal to the last cursor position",
+  msg_debug("systemd-journal: Seeking the journal to the last saved cursor position",
             evt_tag_str("cursor", state->cursor));
 
   persist_state_unmap_entry(self->persist_state, self->persist_handle);
@@ -1022,6 +1024,12 @@ journal_reader_options_set_match_boot(JournalReaderOptions *self, gboolean enabl
 }
 
 void
+journal_reader_options_set_read_old_records_on_error(JournalReaderOptions *self, gboolean enable)
+{
+  self->read_old_records_on_error = enable;
+}
+
+void
 journal_reader_options_defaults(JournalReaderOptions *options)
 {
   log_source_options_defaults(&options->super);
@@ -1032,6 +1040,7 @@ journal_reader_options_defaults(JournalReaderOptions *options)
   options->max_field_size = DEFAULT_FIELD_SIZE;
   options->match_boot = FALSE;
   options->super.read_old_records = TRUE;
+  options->read_old_records_on_error = options->super.read_old_records;
 }
 
 void
