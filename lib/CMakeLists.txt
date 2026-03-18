@@ -221,6 +221,7 @@ set(LIB_SOURCES
     logscheduler.c
     logscheduler-pipe.c
     logsource.c
+    logsource-dyn.c
     logwriter.c
     mainloop.c
     signal-handler.c

@@ -76,7 +76,7 @@ struct _LogSource
   /* full_window_size = static + dynamic */
   gsize full_window_size;
   atomic_gssize window_size_to_be_reclaimed;
-  atomic_gssize pending_reclaimed;
+  atomic_gssize pending_reclamation;
 
   struct
   {
@@ -157,14 +157,24 @@ void log_source_flow_control_adjust(LogSource *self, guint32 window_size_increme
 void log_source_flow_control_adjust_when_suspended(LogSource *self, guint32 window_size_increment);
 void log_source_flow_control_suspend(LogSource *self);
 void log_source_disable_bookmark_saving(LogSource *self);
+
 void log_source_enable_dynamic_window(LogSource *self, DynamicWindowPool *window_ctr);
-void log_source_dynamic_window_update_statistics(LogSource *self);
-void log_source_dynamic_window_release_available(LogSource *self);
-gboolean log_source_is_dynamic_window_enabled(LogSource *self);
+void log_source_update_dynamic_window_statistics(LogSource *self);
+void log_source_release_available_dynamic_window(LogSource *self);
+
+static inline gboolean
+log_source_is_dynamic_window_enabled(LogSource *self)
+{
+  return dynamic_window_is_enabled(&self->dynamic_window);
+}
 
 void log_source_global_init(void);
 
 /* protected */
 void log_source_dynamic_window_realloc(LogSource *self);
+
+/* private */
+void log_source_destroy_dynamic_window(LogSource *self);
+guint32 log_source_gather_dynamic_window_reclamation(LogSource *self, guint32 window_size_increment);
 
 #endif
