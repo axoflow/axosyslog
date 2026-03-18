@@ -238,19 +238,19 @@ _set_error_from_slot_result(const gchar *signal,
 static void
 _collect_rest_headers(HTTPDestinationWorker *self, GError **error)
 {
-  HttpRequestSignalData signal_data =
+  self->request_signal = ((HttpRequestSignalData)
   {
     .result = HTTP_SLOT_SUCCESS,
     .batch_size = self->super.batch_size,
     .request_headers = self->request_headers,
-    .request_body = self->request_body
-  };
+    .request_body = self->request_body,
+  });
 
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  EMIT(owner->super.super.super.signal_slot_connector, signal_http_request, &signal_data);
+  EMIT(owner->super.super.super.signal_slot_connector, signal_http_request, &self->request_signal);
 
-  _set_error_from_slot_result(signal_http_request, signal_data.result, error);
+  _set_error_from_slot_result(signal_http_request, self->request_signal.result, error);
 }
 
 static void
@@ -710,7 +710,7 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
 
   _update_status_code_metrics(self, url, http_code);
 
-  HttpResponseSignalData signal_data =
+  self->response_signal = ((HttpResponseSignalData)
   {
     .result = HTTP_SLOT_SUCCESS,
     .http_code = http_code,
@@ -718,11 +718,12 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
     .request_body = self->request_body,
     .response_body = self->response_buffer,
     .offending_message = 0,
-  };
+    0
+  });
 
-  EMIT(owner->super.super.super.signal_slot_connector, signal_http_response, &signal_data);
+  EMIT(owner->super.super.super.signal_slot_connector, signal_http_response, &self->response_signal);
 
-  if (signal_data.result == HTTP_SLOT_RESOLVED)
+  if (self->response_signal.result == HTTP_SLOT_RESOLVED)
     {
       msg_debug("http: HTTP error resolved issue, retry",
                 evt_tag_long("http_code", http_code));
