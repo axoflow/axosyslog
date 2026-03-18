@@ -241,6 +241,7 @@ _collect_rest_headers(HTTPDestinationWorker *self, GError **error)
   HttpRequestSignalData signal_data =
   {
     .result = HTTP_SLOT_SUCCESS,
+    .batch_size = self->super.batch_size,
     .request_headers = self->request_headers,
     .request_body = self->request_body
   };

@@ -41,6 +41,7 @@ typedef enum
 struct _HttpRequestSignalData
 {
   HttpSlotResultType result;
+  guint batch_size;
   List *request_headers;
   GString *request_body;
 };
