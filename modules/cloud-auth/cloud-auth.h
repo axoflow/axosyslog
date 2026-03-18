@@ -39,7 +39,7 @@ typedef struct _CloudAuthenticator CloudAuthenticator;
 gboolean cloud_authenticator_init(CloudAuthenticator *s);
 void cloud_authenticator_deinit(CloudAuthenticator *s);
 void cloud_authenticator_free(CloudAuthenticator *s);
-void cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpHeaderRequestSignalData *data);
+void cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpRequestSignalData *data);
 
 /* Plugins */
 

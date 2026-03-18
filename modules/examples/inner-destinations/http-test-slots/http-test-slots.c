@@ -40,7 +40,7 @@ http_test_slots_plugin_set_header(HttpTestSlotsPlugin *self, const gchar *header
 }
 
 static void
-_slot_append_test_headers(HttpTestSlotsPlugin *self, HttpHeaderRequestSignalData *data)
+_slot_append_test_headers(HttpTestSlotsPlugin *self, HttpRequestSignalData *data)
 {
   list_append(data->request_headers, self->header);
 }
@@ -53,7 +53,7 @@ _attach(LogDriverPlugin *s, LogDriver *driver)
   msg_debug("HttpTestSlotsPlugin::attach()",
             evt_tag_printf("SignalSlotConnector", "%p", ssc));
 
-  CONNECT(ssc, signal_http_header_request, _slot_append_test_headers, s);
+  CONNECT(ssc, signal_http_request, _slot_append_test_headers, s);
 
   return TRUE;
 }
@@ -66,7 +66,7 @@ _detach(LogDriverPlugin *s, LogDriver *driver)
   msg_debug("HttpTestSlotsPlugin::detach()",
             evt_tag_printf("SignalSlotConnector", "%p", ssc));
 
-  DISCONNECT(ssc, signal_http_header_request, _slot_append_test_headers, s);
+  DISCONNECT(ssc, signal_http_request, _slot_append_test_headers, s);
 }
 
 static void

@@ -171,7 +171,7 @@ azure_auth_header_content_type_set(AzureAuthHeaderPlugin *self, const gchar *con
 }
 
 static void
-_slot_append_headers(AzureAuthHeaderPlugin *self, HttpHeaderRequestSignalData *data)
+_slot_append_headers(AzureAuthHeaderPlugin *self, HttpRequestSignalData *data)
 {
   _append_headers(self, data->request_headers, data->request_body);
 }
@@ -186,7 +186,7 @@ _attach(LogDriverPlugin *s, LogDriver *driver)
             evt_tag_printf("SignalSlotConnector", "%p", ssc),
             evt_tag_printf("AzureAuthHeaderPlugin", "%p", s));
 
-  CONNECT(ssc, signal_http_header_request, _slot_append_headers, self);
+  CONNECT(ssc, signal_http_request, _slot_append_headers, self);
 
   return TRUE;
 }
@@ -197,7 +197,7 @@ _detach(LogDriverPlugin *s, LogDriver *driver)
   AzureAuthHeaderPlugin *self = (AzureAuthHeaderPlugin *)s;
 
   SignalSlotConnector *ssc = driver->signal_slot_connector;
-  DISCONNECT(ssc, signal_http_header_request, _slot_append_headers, self);
+  DISCONNECT(ssc, signal_http_request, _slot_append_headers, self);
 }
 
 static void

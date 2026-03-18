@@ -223,14 +223,14 @@ _set_error_from_slot_result(const gchar *signal,
       g_set_error(error, HTTP_HEADER_FORMAT_ERROR,
                   HTTP_HEADER_FORMAT_SLOT_CRITICAL_ERROR,
                   "Critical error during slot execution, signal:%s",
-                  signal_http_header_request);
+                  signal_http_request);
       break;
     case HTTP_SLOT_PLUGIN_ERROR:
     default:
       g_set_error(error, HTTP_HEADER_FORMAT_ERROR,
                   HTTP_HEADER_FORMAT_SLOT_NON_CRITICAL_ERROR,
                   "Non-critical error during slot execution, signal:%s",
-                  signal_http_header_request);
+                  signal_http_request);
       break;
     }
 }
@@ -238,7 +238,7 @@ _set_error_from_slot_result(const gchar *signal,
 static void
 _collect_rest_headers(HTTPDestinationWorker *self, GError **error)
 {
-  HttpHeaderRequestSignalData signal_data =
+  HttpRequestSignalData signal_data =
   {
     .result = HTTP_SLOT_SUCCESS,
     .request_headers = self->request_headers,
@@ -247,9 +247,9 @@ _collect_rest_headers(HTTPDestinationWorker *self, GError **error)
 
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  EMIT(owner->super.super.super.signal_slot_connector, signal_http_header_request, &signal_data);
+  EMIT(owner->super.super.super.signal_slot_connector, signal_http_request, &signal_data);
 
-  _set_error_from_slot_result(signal_http_header_request, signal_data.result, error);
+  _set_error_from_slot_result(signal_http_request, signal_data.result, error);
 }
 
 static void
@@ -709,7 +709,7 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
 
   _update_status_code_metrics(self, url, http_code);
 
-  HttpResponseReceivedSignalData signal_data =
+  HttpResponseSignalData signal_data =
   {
     .result = HTTP_SLOT_SUCCESS,
     .http_code = http_code,
@@ -717,7 +717,7 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
     .offending_message = 0,
   };
 
-  EMIT(owner->super.super.super.signal_slot_connector, signal_http_response_received, &signal_data);
+  EMIT(owner->super.super.super.signal_slot_connector, signal_http_response, &signal_data);
 
   if (signal_data.result == HTTP_SLOT_RESOLVED)
     {

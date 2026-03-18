@@ -41,7 +41,7 @@ public:
                             const char *app_secret, const char *scope);
   ~AzureMonitorAuthenticator() {};
 
-  void handle_http_header_request(HttpHeaderRequestSignalData *data);
+  void handle_http_header_request(HttpRequestSignalData *data);
 
 private:
   std::string auth_url;
@@ -51,7 +51,7 @@ private:
   std::string cached_token;
   std::chrono::system_clock::time_point refresh_token_after;
 
-  void add_token_to_header(HttpHeaderRequestSignalData *data);
+  void add_token_to_header(HttpRequestSignalData *data);
   bool parse_token_and_expiry_from_response(const std::string &response_payload,
                                             std::string &token, long *expiry);
   static size_t curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp);

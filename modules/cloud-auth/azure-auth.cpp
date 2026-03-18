@@ -47,7 +47,7 @@ AzureMonitorAuthenticator::AzureMonitorAuthenticator(const char *tenant_id,
   auth_body.append(scope);
 }
 
-void AzureMonitorAuthenticator::handle_http_header_request(HttpHeaderRequestSignalData *data)
+void AzureMonitorAuthenticator::handle_http_header_request(HttpRequestSignalData *data)
 {
   std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
 
@@ -91,7 +91,7 @@ void AzureMonitorAuthenticator::handle_http_header_request(HttpHeaderRequestSign
 }
 
 void
-AzureMonitorAuthenticator::add_token_to_header(HttpHeaderRequestSignalData *data)
+AzureMonitorAuthenticator::add_token_to_header(HttpRequestSignalData *data)
 {
   /* Scratch Buffers are marked at this point in http-worker.c */
   GString *auth_buffer = scratch_buffers_alloc();

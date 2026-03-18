@@ -244,7 +244,7 @@ _get_default_error_code(PythonHttpHeaderPlugin *self)
 }
 
 static void
-_append_headers(PythonHttpHeaderPlugin *self, HttpHeaderRequestSignalData *data)
+_append_headers(PythonHttpHeaderPlugin *self, HttpRequestSignalData *data)
 {
   PyObject *py_list = NULL,
             *py_args = NULL,
@@ -321,7 +321,7 @@ cleanup:
 }
 
 static void
-_on_http_response_received(PythonHttpHeaderPlugin *self, HttpResponseReceivedSignalData *data)
+_on_http_response_received(PythonHttpHeaderPlugin *self, HttpResponseSignalData *data)
 {
   if (!self->py.on_http_response_received)
     return;
@@ -384,8 +384,8 @@ _attach(LogDriverPlugin *s, LogDriver *driver)
 
   SignalSlotConnector *ssc = driver->signal_slot_connector;
 
-  CONNECT(ssc, signal_http_header_request, _append_headers, self);
-  CONNECT(ssc, signal_http_response_received, _on_http_response_received, self);
+  CONNECT(ssc, signal_http_request, _append_headers, self);
+  CONNECT(ssc, signal_http_response, _on_http_response_received, self);
 
   return TRUE;
 }
@@ -396,8 +396,8 @@ _detach(LogDriverPlugin *s, LogDriver *driver)
   PythonHttpHeaderPlugin *self = (PythonHttpHeaderPlugin *) s;
   SignalSlotConnector *ssc = driver->signal_slot_connector;
 
-  DISCONNECT(ssc, signal_http_header_request, _append_headers, self);
-  DISCONNECT(ssc, signal_http_response_received, _on_http_response_received, self);
+  DISCONNECT(ssc, signal_http_request, _append_headers, self);
+  DISCONNECT(ssc, signal_http_response, _on_http_response_received, self);
 
   python_binding_deinit(&self->binding);
 }
