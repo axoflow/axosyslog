@@ -49,9 +49,13 @@ struct _HttpRequestSignalData
 struct _HttpResponseSignalData
 {
   HttpSlotResultType result;
-  glong http_code;
+  guint http_code;
+  guint batch_size;
+  GString *request_body;
   GString *response_body;
-  /* returned by the plugin to indicate which message in the batch had issues */
+  /* output */
+
+  /* indicates the offending message that triggered an error */
   guint offending_message;
 };
 
