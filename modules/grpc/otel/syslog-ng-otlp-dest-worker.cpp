@@ -28,14 +28,14 @@ using namespace opentelemetry::proto::logs::v1;
 ScopeLogs *
 SyslogNgDestWorker::lookup_scope_logs(LogMessage *msg)
 {
-  if (logs_service_request.resource_logs_size() > 0)
-    return logs_service_request.mutable_resource_logs(0)->mutable_scope_logs(0);
+  if (logs_service_request->resource_logs_size() > 0)
+    return logs_service_request->mutable_resource_logs(0)->mutable_scope_logs(0);
 
   clear_current_msg_metadata();
   formatter.get_metadata_for_syslog_ng(current_msg_metadata.resource, current_msg_metadata.resource_schema_url,
                                        current_msg_metadata.scope, current_msg_metadata.scope_schema_url);
 
-  ResourceLogs *resource_logs = logs_service_request.add_resource_logs();
+  ResourceLogs *resource_logs = logs_service_request->add_resource_logs();
   resource_logs->mutable_resource()->CopyFrom(current_msg_metadata.resource);
   resource_logs->set_schema_url(current_msg_metadata.resource_schema_url);
 
