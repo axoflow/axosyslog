@@ -4,6 +4,8 @@ module_LTLIBRARIES      += modules/http-adapters/libhttp-adapters.la
 modules_http_adapters_libhttp_adapters_la_SOURCES = \
   modules/http-adapters/http-adapter.c \
   modules/http-adapters/http-adapter.h \
+  modules/http-adapters/splunk-adapter.c \
+  modules/http-adapters/splunk-adapter.h \
   modules/http-adapters/http-adapters-grammar.y \
   modules/http-adapters/http-adapters-plugin.c \
   modules/http-adapters/http-adapters-parser.h \
@@ -35,3 +37,5 @@ EXTRA_DIST        +=      \
   modules/http-adapters/CMakeLists.txt
 
 .PHONY: modules/http-adapters/ mod-http-adapters
+
+include modules/http-adapters/tests/Makefile.am
