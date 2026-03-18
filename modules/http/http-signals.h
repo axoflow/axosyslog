@@ -57,6 +57,8 @@ struct _HttpResponseSignalData
 
   /* indicates the offending message that triggered an error */
   guint offending_message;
+  gsize offending_request_start;
+  gsize offending_request_len;
 };
 
 #define signal_http_request SIGNAL(http, request, HttpRequestSignalData *)
