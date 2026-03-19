@@ -288,9 +288,9 @@ http_dd_set_accept_encoding(LogDriver *d, const gchar *encoding)
 {
   HTTPDestinationDriver *self = (HTTPDestinationDriver *) d;
 
-  if (self->accept_encoding != NULL)
-    g_string_free(self->accept_encoding, TRUE);
 #if SYSLOG_NG_HTTP_COMPRESSION_ENABLED
+  if (self->accept_encoding)
+    g_string_free(self->accept_encoding, TRUE);
   if (strcmp(encoding, CURL_COMPRESSION_LITERAL_ALL) == 0)
     self->accept_encoding = g_string_new("");
   else
@@ -482,7 +482,8 @@ http_dd_free(LogPipe *s)
   g_string_free(self->delimiter, TRUE);
   log_template_unref(self->body_prefix_template);
   g_string_free(self->body_suffix, TRUE);
-  g_string_free(self->accept_encoding, TRUE);
+  if (self->accept_encoding)
+    g_string_free(self->accept_encoding, TRUE);
   log_template_unref(self->body_template);
 
   curl_global_cleanup();
@@ -528,7 +529,7 @@ http_dd_new(GlobalConfig *cfg)
   self->batch_bytes = 0;
   self->body_suffix = g_string_new("");
   self->delimiter = g_string_new("\n");
-  self->accept_encoding = g_string_new("");
+  self->accept_encoding = (SYSLOG_NG_HTTP_COMPRESSION_ENABLED ? g_string_new("") : NULL);
   self->load_balancer = http_load_balancer_new();
   curl_version_info_data *curl_info = curl_version_info(CURLVERSION_NOW);
   if (!self->user_agent)
