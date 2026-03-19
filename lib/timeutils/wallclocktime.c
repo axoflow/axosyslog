@@ -655,6 +655,8 @@ recurse:
            *          Military
            * [A-IL-M] = -1 ... -9 (J not used)
            * [N-Y]  = +1 ... +12
+           * We recognize these extra "well-known" formats:
+           * UTC
            */
           if (mandatory)
             while (isspace(*bp))
@@ -666,12 +668,18 @@ recurse:
             case 'G':
               if (*bp++ != 'M')
                 return NULL;
-            /*FALLTHROUGH*/
+              if (*bp++ != 'T')
+                return NULL;
+              goto utc;
+              break;
             case 'U':
               if (*bp++ != 'T')
                 return NULL;
+              if (*bp == 'C')
+                bp++;
             /*FALLTHROUGH*/
             case 'Z':
+utc:
               wct->tm.tm_isdst = 0;
               wct->wct_gmtoff = 0;
               wct->wct_zone = utc;

@@ -140,10 +140,14 @@ ParameterizedTestParameters(date, test_date_parser)
     { "2015-01-26 00:40:07 PDT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07-07:00" },
     { "2015-01-26 00:40:07 EDT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07-04:00" },
     { "2015-01-26 00:40:07 CET", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+01:00" },
+    { "2015-01-26 00:40:07 GMT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
+    { "2015-01-26 00:40:07 UT", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
+    { "2015-01-26 00:40:07 UTC", NULL, "%Y-%m-%d %H:%M:%S %z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
 
     //The same test as above but using %Z instead of %z
     /* RFC 2822 */
     { "Tue, 27 Jan 2015 11:48:46 +0200", NULL, "%a, %d %b %Y %T %Z", LM_TS_STAMP, "2015-01-27T11:48:46+02:00" },
+    { "2015-01-26 00:40:07 UTC", NULL, "%Y-%m-%d %H:%M:%S %Z", LM_TS_STAMP, "2015-01-26T00:40:07+00:00" },
 
     /* Apache-like */
     { "21/Jan/2015:14:40:07 +0500", NULL, "%d/%b/%Y:%T %Z", LM_TS_STAMP, "2015-01-21T14:40:07+05:00" },
