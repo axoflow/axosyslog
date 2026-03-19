@@ -66,6 +66,7 @@ jobs:
             --disable-java
             --disable-java-modules
             --disable-pacct
+            --disable-stackdump
           "
           CMAKE_CONFIGURE_FLAGS="
             -DCMAKE_BUILD_TYPE=Debug
@@ -79,6 +80,7 @@ jobs:
             -DENABLE_JAVA=OFF
             -DENABLE_JAVA_MODULES=OFF
             -DENABLE_PACCT=OFF
+            -DENABLE_LIBUNWIND=OFF
           "
           PATH="${HOMEBREW_PREFIX}/opt/bison/bin:${HOMEBREW_PREFIX}/opt/libnet/bin:${HOMEBREW_PREFIX}/opt/net-snmp/bin:${HOMEBREW_PREFIX}/bin:${HOMEBREW_PREFIX}/sbin:${PYTHONUSERBASE}/bin:${PATH}"
 
