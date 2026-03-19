@@ -92,7 +92,7 @@ log_msg_serialize_with_ts_processed(LogMessage *self, SerializeArchive *sa, cons
 {
   LogMessageSerializationState state = { 0 };
 
-  state.version = LGM_V26;
+  state.version = LGM_V27;
   state.msg = self;
   state.sa = sa;
   state.processed = processed;
@@ -549,6 +549,6 @@ log_msg_deserialize(SerializeArchive *sa)
      g_sockaddr_len(msg->saddr) + g_sockaddr_len(msg->daddr) +
      (sizeof(msg->tags[0]) * msg->num_tags) +
      (sizeof(msg->nodes[0]) * msg->num_nodes) +
-     (msg->payload ? nv_table_get_memory_consumption(msg->payload) : 0);
+     (msg->payload ? nv_table_get_size(msg->payload) : 0);
   return msg;
 }
