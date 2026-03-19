@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 László Várady
+ * Copyright (c) 2024-2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -282,7 +282,7 @@ _filterx_ref_clone_value_if_shared(FilterXRef *self, FilterXRef *child_of_intere
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
     return;
 
-  FilterXObject *cloned = filterx_object_clone_container(self->value, &self->super, &child_of_interest->super);
+  FilterXObject *cloned = filterx_object_clone_container(self->value, &self->super, &child_of_interest->super, FALSE);
 
   g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
   filterx_object_unref(self->value);
@@ -517,6 +517,21 @@ _filterx_ref_add(FilterXObject *s, FilterXObject *object)
   return filterx_object_add_object(self->value, object);
 }
 
+FilterXObject *
+filterx_ref_dup(FilterXObject *s)
+{
+  FilterXObject *value = ((FilterXRef *) s)->value;
+
+  FilterXRef *dup = filterx_new_object(FilterXRef);
+
+  filterx_object_init_instance(&dup->super, &FILTERX_TYPE_NAME(ref));
+  dup->super.readonly = FALSE;
+
+  dup->value = filterx_object_clone_container(value, &dup->super, NULL, TRUE);
+  g_atomic_counter_inc(&dup->value->fx_ref_cnt);
+
+  return &dup->super;
+}
 
 /* NOTE: fastpath is in the header as an inline function */
 FilterXObject *

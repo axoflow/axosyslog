@@ -44,7 +44,8 @@ struct _FilterXType
   FilterXObject *(*unmarshal)(FilterXObject *self);
   gboolean (*marshal)(FilterXObject *self, GString *repr, LogMessageValueType *t);
   FilterXObject *(*clone)(FilterXObject *self);
-  FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest);
+  FilterXObject *(*clone_container)(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest,
+                                    gboolean dup);
   gboolean (*truthy)(FilterXObject *self);
 
   /* attribute access */
@@ -286,12 +287,7 @@ filterx_free_object(FilterXObject *object)
   g_free(object);
 }
 
-/* should have been called clone */
-static inline FilterXObject *
-filterx_object_dup(FilterXObject *self)
-{
-  return self->type->clone(self);
-}
+static inline FilterXObject *filterx_object_dup(FilterXObject *self);
 
 static inline FilterXObject *
 filterx_object_ref(FilterXObject *self)
@@ -473,10 +469,11 @@ filterx_object_marshal_append(FilterXObject *self, GString *repr, LogMessageValu
 }
 
 static inline FilterXObject *
-filterx_object_clone_container(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest)
+filterx_object_clone_container(FilterXObject *self, FilterXObject *container, FilterXObject *child_of_interest,
+                               gboolean dup)
 {
   if (self->type->clone_container)
-    return self->type->clone_container(self, container, child_of_interest);
+    return self->type->clone_container(self, container, child_of_interest, dup);
   return self->type->clone(self);
 }
 
@@ -608,6 +605,17 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
   }
 
 #include "filterx-ref.h"
+
+/* should have been called clone */
+static inline FilterXObject *
+filterx_object_dup(FilterXObject *self)
+{
+  /* bypass CoW */
+  if (filterx_object_is_ref(self))
+    return filterx_ref_dup(self);
+
+  return self->type->clone(self);
+}
 
 static inline FilterXObject *
 filterx_object_copy(FilterXObject *self)

@@ -474,9 +474,15 @@ _table_resize(FilterXDictTable *target, FilterXDictTable *source)
   _table_resize_index(target, source);
 }
 
+static inline FilterXObject *
+_object_clone(FilterXObject *o, gboolean dup)
+{
+  return dup ? filterx_object_dup(o) : filterx_object_copy(o);
+}
+
 static void
 _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container,
-                   FilterXObject *child_of_interest)
+                   FilterXObject *child_of_interest, gboolean dup)
 {
   memcpy(&target->indices, &source->indices, target->size * target->element_size);
 
@@ -490,18 +496,18 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
       if (!ep->key)
         continue;
 
-      ep->key = filterx_object_copy(ep->key);
+      ep->key = _object_clone(ep->key, dup);
       if (child_of_interest && filterx_ref_values_equal(ep->value, child_of_interest))
         {
           /* child_of_interest is a movable, floating xref, which is grounded by this copy */
-          ep->value = filterx_object_copy(child_of_interest);
+          ep->value = _object_clone(child_of_interest, dup);
 #if SYSLOG_NG_ENABLE_DEBUG
           g_assert(ep->value == child_of_interest);
 #endif
           child_found = TRUE;
         }
       else
-        ep->value = filterx_object_copy(ep->value);
+        ep->value = _object_clone(ep->value, dup);
       filterx_ref_set_parent_container(ep->value, container);
     }
   g_assert(child_found || child_of_interest == NULL);
@@ -509,7 +515,7 @@ _table_clone_index(FilterXDictTable *target, FilterXDictTable *source, FilterXOb
 
 static void
 _table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *container,
-             FilterXObject *child_of_interest)
+             FilterXObject *child_of_interest, gboolean dup)
 {
   g_assert(target->size == source->size);
 
@@ -517,7 +523,7 @@ _table_clone(FilterXDictTable *target, FilterXDictTable *source, FilterXObject *
   target->entries_empty = source->entries_empty;
   memcpy(_table_get_entries(target), _table_get_entries(source), source->entries_size * sizeof(FilterXDictEntry));
 
-  _table_clone_index(target, source, container, child_of_interest);
+  _table_clone_index(target, source, container, child_of_interest, dup);
 }
 
 static inline void
@@ -710,7 +716,8 @@ filterx_dict_new_with_table(FilterXDictTable *table)
 }
 
 static FilterXObject *
-_filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, FilterXObject *child_of_interest)
+_filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, FilterXObject *child_of_interest,
+                              gboolean dup)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
   FilterXDictTable *new_table = NULL;
@@ -718,7 +725,7 @@ _filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, Filter
   if (self->table)
     {
        new_table = _table_new(self->table->size);
-      _table_clone(new_table, self->table, container, child_of_interest);
+      _table_clone(new_table, self->table, container, child_of_interest, dup);
     }
   return filterx_dict_new_with_table(new_table);
 }
@@ -726,7 +733,7 @@ _filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, Filter
 static FilterXObject *
 _filterx_dict_clone(FilterXObject *s)
 {
-  return _filterx_dict_clone_container(s, NULL, NULL);
+  return _filterx_dict_clone_container(s, NULL, NULL, FALSE);
 }
 
 static gboolean

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 László Várady
+ * Copyright (c) 2024-2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -162,6 +162,7 @@ filterx_ref_ground(FilterXObject *s)
   return s;
 }
 
+FilterXObject *filterx_ref_dup(FilterXObject *s);
 FilterXObject *_filterx_ref_new(FilterXObject *value);
 
 #endif
