@@ -1,4 +1,4 @@
-4.23.0
+4.24.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -9,114 +9,107 @@ Packages are available in our [APT](https://github.com/axoflow/axosyslog/#deb-pa
 
 Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/) for all the details.
 
+
 ## Features
 
-  * Memory queues: Reduced the amount of memory we use to store queued messages.
+  * Supported metrics now can be queried with `syslog-ng --metrics-registry`
+    ([#993](https://github.com/axoflow/axosyslog/pull/993))
 
-    Savings can be as much as 50%, or 8GB less memory use to represent
-    1M messages (e.g. 8GB instead of 15GB, as measured by RSS).
-    ([#891](https://github.com/axoflow/axosyslog/pull/891))
+  * `http()` and other threaded destinations: add `batch-idle-timeout()` option
 
-  * `network()`/`syslog()`: Added `extended-key-usage-verify(yes)` for TLS sources/destinations.
-    ([#907](https://github.com/axoflow/axosyslog/pull/907))
+    While `batch-timeout()` defines the maximum amount of time a batch may wait before it is sent (starting from the first message),
+    the new `batch-idle-timeout()` measures the elapsed time since the last message was added to the batch.
 
-  * FilterX: Added a new function called `move()`.
+    Whichever timeout expires first will close and send the batch.
 
-    `move()` tells FilterX that the variable/expression specified as argument
-    can be moved to its new location, instead of copying it.
-    While FilterX optimizes most copies using its copy-on-write mechanism,
-    some cases can be faster by telling it that the old location is not needed
-    anymore. `move()` is equivalent to an `unset()` but is more explicit and
-    returns the moved value, unlike `unset()`.
-    ([#876](https://github.com/axoflow/axosyslog/pull/876))
+    `batch-idle-timeout()` defaults to 0 (disabled).
+    ([#950](https://github.com/axoflow/axosyslog/pull/950))
 
-  * FilterX `format_isodate()` function: Added new function for datetime formatting.
-    ([#922](https://github.com/axoflow/axosyslog/pull/922))
+  * `fix-timestamp()`, `guess_timestamp()` and `set_timestamp()`: new filterx functions.
 
-  * http: Added `force-content-compression()` option.
-
-    Usage:
-
+    Example usage:
     ```
-    destination {
-      http(
-        url("http://example.com/endpoint")
-        content-compression("gzip")
-        force-content-compression(yes)
-      );
-    }
+    datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
+    timezone = "CET";
+    fixed_datetime = fix_timezone(datetime, timezone);
+    guessed_datetime = guess_timezone(datetime);
+    set_datetime = set_timezone(datetime, "CET");
     ```
-    ([#916](https://github.com/axoflow/axosyslog/pull/916))
+    ([#960](https://github.com/axoflow/axosyslog/pull/960))
 
-  * `opentelemetry()` source: Added `ip()` option to specify bind address.
-    ([#949](https://github.com/axoflow/axosyslog/pull/949))
+  * `get_timezone_source()`: new filterx function
+
+    Returns a string indicating where the timezone information originates from.
+    Possible values:
+     - `"parsed"`: the timezone info is explicitly parsed from the timestamp
+     - `"assumed"`: the timestamp didn't contain timezone info, default used (currently local timezone)
+     - `"fixed"`: the timezone info was set using `fix_timezone()` or `set_timezone()` functions
+     - `"guessed"`: the timezone info was set using `guess_timezone()` function
+
+    Example usage:
+    ```
+    if (get_timezone_source(timestamp) === "assumed") {
+      timestamp = fix_timezone(timestamp, "CET");
+    };
+    ```
+    ([#979](https://github.com/axoflow/axosyslog/pull/979))
+
+  * network-load-balancer: add support for failover
+
+    The confgen script for `network-load-balancer` now supports failover, generating the list of failover servers for each destination automatically.
+    ([#908](https://github.com/axoflow/axosyslog/pull/908))
 
 
 ## Bugfixes
 
-  * FilterX `dict` and `list`: Fixed a potential crash when recursively inserting
-    a `dict` or `list` instance into itself.
-    ([#891](https://github.com/axoflow/axosyslog/pull/891))
+  * FilterX LEEF formatter/parser: fix escaping of `=` in extension values
+    ([#986](https://github.com/axoflow/axosyslog/pull/986))
 
-  * FilterX `parse_kv()` function: Fixed improperly quoted key-value pair overwriting previous entry.
-    ([#921](https://github.com/axoflow/axosyslog/pull/921))
+  * `dynamic-window-size()`: fix occasional crash and incorrect window calculation
+    ([#988](https://github.com/axoflow/axosyslog/pull/988))
 
-  * `json-parser()`: Fixed parsing JSON array of string with comma.
-    ([#923](https://github.com/axoflow/axosyslog/pull/923))
+  * `opentelemetry()` and other threaded sources: fix occasional crash during reload
+    ([#989](https://github.com/axoflow/axosyslog/pull/989))
 
-  * `metrics`: Made message memory usage metrics more accurate.
+  * Fix various memory leaks
+    ([#978](https://github.com/axoflow/axosyslog/pull/978), [#954](https://github.com/axoflow/axosyslog/pull/954),
+    [#953](https://github.com/axoflow/axosyslog/pull/953), [#982](https://github.com/axoflow/axosyslog/pull/982))
 
-    AxoSyslog keeps track of memory usage by messages both globally and on
-    a per queue basis. The accounting behind those metrics were inaccurate,
-    the value shown being smaller than the actual memory use.
-    These inaccuracies were fixed.
-    ([#889](https://github.com/axoflow/axosyslog/pull/889))
+  * `network()`/`syslog()` sources and parser: fix crash when using the `sanitize-utf8` flag on large invalid messages
+    ([#985](https://github.com/axoflow/axosyslog/pull/985))
 
-  * `internal()` source: Fixed message loss during reload.
-    ([#944](https://github.com/axoflow/axosyslog/pull/944))
+  * `opentelemetry()` source: fixed a bug causing the source to hang on reload
+    ([#991](https://github.com/axoflow/axosyslog/pull/991))
 
-  * `network()`/`syslog()`: Fix performance degradation around `dynamic-window-size()` when senders disconnect early.
-    ([#937](https://github.com/axoflow/axosyslog/pull/937))
+  * `strptime()`: fix parsing `%s` format.
+    ([#984](https://github.com/axoflow/axosyslog/pull/984))
 
-  * `network()`/`syslog()` sources: Fix a `dynamic-window()` crash on client disconnect while messages are pending.
-    ([#931](https://github.com/axoflow/axosyslog/pull/931))
+  * `disk-buffer()`: detect abandoned metrics in default directory
+    ([#965](https://github.com/axoflow/axosyslog/pull/965))
 
-  * `network()`/`syslog()`: Fixed setting TLS-related macros, like `${.tls.x509_cn}`, for the first message.
-    ([#911](https://github.com/axoflow/axosyslog/pull/911))
-
-  * `config:` Fixed a bug where `@define`s and environment variables were not substituted in SCL arguments
-    in case those arguments were spread across multiple lines.
-    ([#920](https://github.com/axoflow/axosyslog/pull/920))
-
-  * `parallelize()`: Fix leaking messages and losing input window during reload.
-    ([#962](https://github.com/axoflow/axosyslog/pull/962))
-
+  * `date-parser()` and FilterX `strptime()`: accept "UTC" in `%z`/`%Z`
+    ([#1002](https://github.com/axoflow/axosyslog/pull/1002))
 
 
 ## Other changes
 
-  * `http()`: Added debug and notice level request logging for failed requests.
-    ([#928](https://github.com/axoflow/axosyslog/pull/928))
+  * `disk-buffer()`: the serialization format has been upgraded to `v27`
+    ([#933](https://github.com/axoflow/axosyslog/pull/933))
 
-  * FilterX `repr()` function: datetime representation now has microsecond resolution.
+  * FilterX: JSON-related functionality is now powered by `jsmn`, resulting in improved performance
+    ([#882](https://github.com/axoflow/axosyslog/pull/882))
 
-    Before:
-    `2000-01-01T00:00:00.000+00:00`
+  * New metrics:
 
-    After:
-    `2000-01-01T00:00:00.000000+00:00`
-    ([#919](https://github.com/axoflow/axosyslog/pull/919))
+    - `syslogng_event_processing_latency_seconds{measurement_point="input/output"}`
+      - Histogram of the latency from message receipt to full processing, from the source or destination perspective.
+    - `syslogng_output_event_latency_seconds`
+      - Histogram of the latency from message receipt to delivery, from the destination perspective.
 
-  * Batching destinations: Added `syslogng_output_batch_timedout_total` metric.
-    ([#947](https://github.com/axoflow/axosyslog/pull/947))
+    `output_event_delay_sample_seconds` has been removed in favor of `output_event_latency_seconds`.
+    ([#983](https://github.com/axoflow/axosyslog/pull/983))
 
-  * `parallelize()`: Added `syslogng_parallelize_failed_events_total` metric.
-    ([#924](https://github.com/axoflow/axosyslog/pull/924))
 
-  * `metrics`: Added a single `syslogng_input_window_full_total` on `stats(level(1))`
-
-    It shows the total number of input window full events for the whole config.
-    ([#938](https://github.com/axoflow/axosyslog/pull/938))
 
 [1] syslog-ng is a trademark of One Identity.
 
@@ -137,5 +130,6 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Andras Mitzki, Attila Szakacs, Balazs Scheidler, Fᴀʙɪᴇɴ Wᴇʀɴʟɪ, Hofi,
-László Várady, Peter Czanik (CzP), Romain Tartière, Szilard Parrag
+Akos Zalavary, Andras Mitzki, Attila Szakacs, Balazs Scheidler,
+Daniele Ferla, Kevin Mainardis, László Várady, Romain Tartière,
+Szilard Parrag, Tamás Kosztyu, shifter
