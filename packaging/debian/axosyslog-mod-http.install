@@ -1,2 +1,3 @@
 usr/lib/syslog-ng/*/libhttp.so
+usr/lib/syslog-ng/*/libhttp-adapters.so
 usr/lib/syslog-ng/*/libazure-auth-header.so
