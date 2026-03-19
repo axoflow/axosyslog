@@ -928,6 +928,7 @@ AC_CHECK_FUNCS(strdup		\
 	pwrite			\
 	posix_fallocate		\
 	strcasestr		\
+	strchrnul		\
 	memrchr			\
 	localtime_r		\
 	getprotobynumber_r	\
