@@ -50,12 +50,12 @@ struct _FilterXRef
   FilterXWeakRef parent_container;
 };
 
-gboolean _filterx_ref_cow_parents(FilterXObject *s, gpointer user_data);
+gboolean _filterx_ref_cow_recurse(FilterXObject *s, gpointer user_data);
 
 static inline void
 _filterx_ref_cow(FilterXRef *self)
 {
-  _filterx_ref_cow_parents(&self->super, NULL);
+  _filterx_ref_cow_recurse(&self->super, NULL);
 }
 
 /* Call them only where downcasting to a specific type is needed, the returned object should only be used locally. */
