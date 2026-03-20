@@ -135,6 +135,7 @@ error:
 
 FILTERX_DEFINE_TYPE(sequence, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
+                    .is_abstract = TRUE,
                     .format_json = _format_json,
                     .add = _add,
                    );

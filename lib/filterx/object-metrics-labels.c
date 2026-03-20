@@ -253,10 +253,10 @@ _clone(FilterXObject *s)
     {
       StatsClusterLabel *label = &g_array_index(self->labels, StatsClusterLabel, i);
       StatsClusterLabel *cloned_label = &g_array_index(cloned->labels, StatsClusterLabel, i);
-      
+
       *cloned_label = *label;
     }
-    
+
   for (guint i = 0; i < self->objects->len; i++)
     {
       g_ptr_array_add(cloned->objects, filterx_object_ref(g_ptr_array_index(self->objects, i)));

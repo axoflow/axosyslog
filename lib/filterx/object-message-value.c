@@ -444,8 +444,15 @@ _free(FilterXObject *s)
   filterx_object_free_method(s);
 }
 
+static FilterXObject *
+_message_value_clone(FilterXObject *s)
+{
+  FilterXMessageValue *self = (FilterXMessageValue *) s;
+  return filterx_message_value_new(self->repr, self->repr_len, self->type);
+}
 
 FILTERX_DEFINE_TYPE(message_value, FILTERX_TYPE_NAME(object),
+                    .clone = _message_value_clone,
                     .free_fn = _free,
                     .truthy = _truthy,
                     .marshal = _marshal,

@@ -29,7 +29,7 @@
 #include "apphook.h"
 
 
-FILTERX_DEFINE_TYPE(dummy_base, FILTERX_TYPE_NAME(object));
+FILTERX_DEFINE_TYPE(dummy_base, FILTERX_TYPE_NAME(object), .is_abstract = TRUE);
 
 Test(type_registry, test_type_registry_registering_existing_key_returns_false)
 {

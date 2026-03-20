@@ -146,6 +146,7 @@ error:
 
 FILTERX_DEFINE_TYPE(mapping, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
+                    .is_abstract = TRUE,
                     .getattr = _getattr,
                     .setattr = _setattr,
                     .format_json = _format_json,

@@ -330,10 +330,11 @@ deinit_libtest_filterx(void)
   filterx_eval_end_context(&filterx_env.context);
 }
 
-FILTERX_DEFINE_TYPE(test_dict, FILTERX_TYPE_NAME(object));
-FILTERX_DEFINE_TYPE(test_list, FILTERX_TYPE_NAME(object));
+FILTERX_DEFINE_TYPE(test_dict, FILTERX_TYPE_NAME(object), .is_abstract = TRUE);
+FILTERX_DEFINE_TYPE(test_list, FILTERX_TYPE_NAME(object), .is_abstract = TRUE);
 FILTERX_DEFINE_TYPE(test_unknown_object, FILTERX_TYPE_NAME(object),
                     .is_mutable = FALSE,
+                    .is_abstract = TRUE,
                     .truthy = _unknown_truthy,
                     .marshal = _unknown_marshal,
                     .repr = _unknown_repr,
