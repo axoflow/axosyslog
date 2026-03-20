@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 László Várady
+ * Copyright (c) 2024-2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -179,7 +179,7 @@
  * The reason is simple: a changed child needs to be updated in the
  * container, which is a child of its container, etc.  Basically any "clone"
  * operation is carried out all the way up to the top
- * (`_filterx_ref_cow_parents()` function).
+ * (`_filterx_ref_cow_recurse()` function).
  *
  * In order to carry out these update operations, we need to keep track of
  * the parent container.  This is done by the `FilterXRef->parent_container`
@@ -282,7 +282,7 @@ _filterx_ref_clone_value_if_shared(FilterXRef *self, FilterXRef *child_of_intere
   if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
     return;
 
-  FilterXObject *cloned = filterx_object_clone_container(self->value, &self->super, &child_of_interest->super);
+  FilterXObject *cloned = filterx_object_clone_container(self->value, &self->super, &child_of_interest->super, FALSE);
 
   g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
   filterx_object_unref(self->value);
@@ -292,12 +292,12 @@ _filterx_ref_clone_value_if_shared(FilterXRef *self, FilterXRef *child_of_intere
 }
 
 gboolean
-_filterx_ref_cow_parents(FilterXObject *s, gpointer user_data)
+_filterx_ref_cow_recurse(FilterXObject *s, gpointer user_data)
 {
   FilterXRef *self = (FilterXRef *) s;
   FilterXRef *child_of_interest = (FilterXRef *) user_data;
 
-  filterx_weakref_invoke(&self->parent_container, _filterx_ref_cow_parents, self);
+  filterx_weakref_invoke(&self->parent_container, _filterx_ref_cow_recurse, self);
   _filterx_ref_clone_value_if_shared(self, child_of_interest);
   filterx_object_set_dirty(&self->super, TRUE);
   return TRUE;
@@ -517,6 +517,22 @@ _filterx_ref_add(FilterXObject *s, FilterXObject *object)
   return filterx_object_add_object(self->value, object);
 }
 
+FilterXObject *
+filterx_ref_dup(FilterXObject *s)
+{
+  FilterXObject *value = ((FilterXRef *) s)->value;
+
+  FilterXRef *dup = filterx_new_object(FilterXRef);
+
+  filterx_object_init_instance(&dup->super, &FILTERX_TYPE_NAME(ref));
+  dup->super.readonly = FALSE;
+
+  dup->value = filterx_object_clone_container(value, &dup->super, NULL, TRUE);
+  g_atomic_counter_inc(&dup->value->fx_ref_cnt);
+
+  return &dup->super;
+}
+
 /* NOTE: fastpath is in the header as an inline function */
 FilterXObject *
 _filterx_ref_new(FilterXObject *value)
@@ -525,7 +541,7 @@ _filterx_ref_new(FilterXObject *value)
   if (!value->type->is_mutable || filterx_object_is_ref(value))
     g_assert("filterx_ref_new() must only be used for a cowable object" && FALSE);
 #endif
-//  FilterXRef *self = g_new0(FilterXRef, 1);
+
   FilterXRef *self = filterx_new_object(FilterXRef);
 
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));

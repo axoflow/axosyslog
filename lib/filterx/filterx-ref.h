@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 László Várady
+ * Copyright (c) 2024-2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -50,12 +50,12 @@ struct _FilterXRef
   FilterXWeakRef parent_container;
 };
 
-gboolean _filterx_ref_cow_parents(FilterXObject *s, gpointer user_data);
+gboolean _filterx_ref_cow_recurse(FilterXObject *s, gpointer user_data);
 
 static inline void
 _filterx_ref_cow(FilterXRef *self)
 {
-  _filterx_ref_cow_parents(&self->super, NULL);
+  _filterx_ref_cow_recurse(&self->super, NULL);
 }
 
 /* Call them only where downcasting to a specific type is needed, the returned object should only be used locally. */
@@ -162,6 +162,7 @@ filterx_ref_ground(FilterXObject *s)
   return s;
 }
 
+FilterXObject *filterx_ref_dup(FilterXObject *s);
 FilterXObject *_filterx_ref_new(FilterXObject *value);
 
 #endif
