@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# arguments
+prof="${1:-}"
+config="${2:-/dbld/callgrind-syslog-ng.conf}"
+samples="${3:-/dbld/callgrind-samples.log}"
+dbld_root="${4:-/}"
+
+# variables
+mkdir -p /build/callgrind
+if [ "$prof" = "" ]; then
+	outdir=`mktemp -d -p /build/callgrind report-$(date +%H%M%S).XXXX`
+else
+	outdir="/build/callgrind/$prof"
+	mkdir -p "${outdir}"
+fi
+
+
+(cd /source && git log -1) >> "$outdir/git-commit"
+
+export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
+
+# Cache layout is coming from my i7-1365U P cores
+valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes \
+	--I1=65536,8,64 --D1=32768,8,64 --LL=12582912,12,64  --cache-sim=yes \
+	--instr-atstart=no \
+	--callgrind-out-file="${outdir}/callgrind.out.%p"  \
+	/install/sbin/syslog-ng -Fef "$config" 2>"$outdir/summary.txt" &
+# wait until syslog-ng starts up
+i=0
+while ! grep -q "Accepting connections" "$outdir/summary.txt"; do
+	sleep 0.5
+	i=$[i+1]
+	if [ $i -gt 20 ]; then
+		echo "Timeout waiting for startup, waiting for process to exit"
+		wait %1
+		cat "$outdir/summary.txt"
+		exit 1
+	fi
+done
+cat "$samples" | nc -q0 localhost 2000
+kill -INT %1
+wait %1
+cat "$outdir/summary.txt"
+callgrind_annotate --threshold=50 ${outdir}/callgrind.out.* > "${outdir}/callgrind_annotate.txt"
+echo -en "\n\nTo see profile details do:\nless "
+echo "${outdir}/callgrind_annotate.txt" | sed -e "s,^/,$dbld_root/,"

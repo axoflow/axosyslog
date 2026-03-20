@@ -13,9 +13,9 @@ include tests/light/src/axosyslog_light/Makefile.am
 
 if HAVE_POETRY
 
-PYTEST_SUBDIR=
+PYTEST_SUBDIR ?=
 PYTEST_VERBOSE=false
-PYTEST_OPTS=
+PYTEST_OPTS ?=
 
 LIGHT_SRC_DIR=$(abs_top_srcdir)/tests/light
 LIGHT_POETRY_CMD=$(POETRY) -C $(LIGHT_SRC_DIR)
