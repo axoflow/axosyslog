@@ -221,6 +221,7 @@ _parse_proxy_v1_unknown_header(LogTransportHAProxy *self, const guchar *msg, gsi
     return TRUE;
 
   msg_warning("PROXY UNKNOWN header contains unexpected parameters",
+              evt_tag_int("version", self->proxy_header_version),
               evt_tag_mem("parameters", msg, msg_len));
 
   return TRUE;
@@ -351,7 +352,8 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self)
       return TRUE;
     }
 
-  msg_error("PROXYv2 header does not have enough bytes to represent endpoint addresses or unknown address_family",
+  msg_error("PROXY header does not have enough bytes to represent endpoint addresses or unknown address_family",
+            evt_tag_int("version", self->proxy_header_version),
             evt_tag_int("proxy_header_len", self->proto_v2.header_len),
             evt_tag_int("address_family", address_family));
   return FALSE;
@@ -576,6 +578,7 @@ _fetch_until_newline(LogTransportHAProxy *self)
     }
 
   msg_error("PROXY proto header with invalid header length",
+            evt_tag_int("version", self->proxy_header_version),
             evt_tag_int("max_parsable_length", sizeof(self->proxy_header_buff)-1),
             evt_tag_int("max_length_by_spec", PROXY_PROTO_HDR_MAX_LEN_RFC),
             evt_tag_long("length", self->proxy_header_buff_len),
@@ -591,7 +594,8 @@ _fetch_proxy_v2_payload(LogTransportHAProxy *self)
 
   if (proxy_header_len > sizeof(self->proxy_header_buff))
     {
-      msg_error("PROXYv2 proto header with invalid header length",
+      msg_error("PROXY proto header with invalid header length",
+                evt_tag_int("version", self->proxy_header_version),
                 evt_tag_int("max_parsable_length", sizeof(self->proxy_header_buff)),
                 evt_tag_long("length", proxy_header_len));
       return STATUS_ERROR;
@@ -708,36 +712,43 @@ _fetch_and_process_proxy_header(LogTransportHAProxy *self, LogTransportAuxData *
   if (status == STATUS_EOF)
     {
       /* truncated header */
-      msg_error("Truncated PROXY protocol header",
+      msg_error("PROXY protocol header truncated",
+                evt_tag_int("version", self->proxy_header_version),
                 evt_tag_mem("header", self->proxy_header_buff, self->proxy_header_buff_len));
       return STATUS_ERROR;
     }
   else if (status != STATUS_SUCCESS)
     return status;
 
-  gboolean parsable = _parse_proxy_header(self);
-
   msg_debug("PROXY protocol header received",
             evt_tag_int("version", self->proxy_header_version),
             self->proxy_header_version == 1
             ? evt_tag_mem("header", self->proxy_header_buff, self->proxy_header_buff_len)
             : evt_tag_str("header", "<binary_data>"),
-            evt_tag_int("health-check", self->info.unknown));
+            evt_tag_int("header_len", self->proxy_header_buff_len));
+
+  gboolean parsable = _parse_proxy_header(self);
 
   if (parsable)
     {
-      msg_trace("PROXY protocol header parsed successfully");
-
       if (self->info.unknown)
         return STATUS_EOF;
 
       _save_addresses(self, aux);
 
+      gchar buf1[MAX_SOCKADDR_STRING], buf2[MAX_SOCKADDR_STRING];
+      msg_debug("PROXY protocol header parsed successfully",
+                evt_tag_int("version", self->proxy_header_version),
+                evt_tag_str("peer-addr", aux->peer_addr ? g_sockaddr_format(aux->peer_addr, buf1, sizeof(buf1), GSA_ADDRESS_PORT) : "n/a"),
+                evt_tag_str("local-addr", aux->local_addr ? g_sockaddr_format(aux->local_addr, buf2, sizeof(buf2), GSA_ADDRESS_PORT) : "n/a"),
+                evt_tag_int("health-check", self->info.unknown));
+
       return STATUS_SUCCESS;
     }
   else
     {
-      msg_error("Error parsing PROXY protocol header");
+      msg_error("Error parsing PROXY protocol header",
+                evt_tag_int("version", self->proxy_header_version));
       return STATUS_ERROR;
     }
 }
