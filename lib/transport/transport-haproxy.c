@@ -510,26 +510,24 @@ process_proxy_v2:
 }
 
 static void
-_save_addresses(LogTransportHAProxy *self)
+_save_addresses(LogTransportHAProxy *self, LogTransportAuxData *aux)
 {
-  LogTransportStack *stack = self->super.super.stack;
-
   if (self->info.unknown)
     return;
 
   if (self->info.ip_version == 4)
     {
-      log_transport_aux_data_set_peer_addr_ref(&stack->aux_data,
+      log_transport_aux_data_set_peer_addr_ref(aux,
                                                g_sockaddr_inet_new(self->info.src_ip, self->info.src_port));
-      log_transport_aux_data_set_local_addr_ref(&stack->aux_data,
+      log_transport_aux_data_set_local_addr_ref(aux,
                                                 g_sockaddr_inet_new(self->info.dst_ip, self->info.dst_port));
     }
 #if SYSLOG_NG_ENABLE_IPV6
   else if (self->info.ip_version == 6)
     {
-      log_transport_aux_data_set_peer_addr_ref(&stack->aux_data,
+      log_transport_aux_data_set_peer_addr_ref(aux,
                                                g_sockaddr_inet6_new(self->info.src_ip, self->info.src_port));
-      log_transport_aux_data_set_local_addr_ref(&stack->aux_data,
+      log_transport_aux_data_set_local_addr_ref(aux,
                                                 g_sockaddr_inet6_new(self->info.dst_ip, self->info.dst_port));
     }
 #endif
@@ -562,12 +560,14 @@ _proccess_proxy_header(LogTransportHAProxy *self)
 
   if (parsable)
     {
+      LogTransportStack *stack = self->super.super.stack;
+
       msg_trace("PROXY protocol header parsed successfully");
 
       if (self->info.unknown)
         return STATUS_EOF;
 
-      _save_addresses(self);
+      _save_addresses(self, &stack->aux_data);
 
       return STATUS_SUCCESS;
     }
