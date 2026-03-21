@@ -13,9 +13,10 @@ include tests/light/src/axosyslog_light/Makefile.am
 
 if HAVE_POETRY
 
-PYTEST_SUBDIR=
-PYTEST_VERBOSE=false
-PYTEST_OPTS=
+PYTEST_SUBDIR ?=
+PYTEST_VERBOSE ?= false
+PYTEST_OPTS ?=
+PYTEST_WORKERS ?= -n auto
 
 LIGHT_SRC_DIR=$(abs_top_srcdir)/tests/light
 LIGHT_POETRY_CMD=$(POETRY) -C $(LIGHT_SRC_DIR)
@@ -29,7 +30,7 @@ light-self-check pytest-self-check: light-venv
 	@$(LIGHT_PYTEST_CMD) $(LIGHT_SRC_DIR)/src/axosyslog_light
 
 light-check pytest-check: light-venv
-	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) -n auto $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
+	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_WORKERS) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
 
 light-valgrind-check pytest-valgrind-check: light-venv
 	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no --run-under=valgrind
