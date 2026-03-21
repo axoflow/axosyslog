@@ -70,13 +70,6 @@ _integer_add(FilterXObject *s, FilterXObject *object)
   return NULL;
 }
 
-static FilterXObject *
-_integer_clone(FilterXObject *s)
-{
-  FilterXPrimitive *self = (FilterXPrimitive *) s;
-  return filterx_integer_new(gn_as_int64(&self->value));
-}
-
 gboolean
 integer_repr(gint64 val, GString *repr)
 {
@@ -421,25 +414,49 @@ _repr(FilterXObject *s, GString *repr)
   return filterx_object_marshal_append(s, repr, &t);
 }
 
+static FilterXObject *
+_integer_clone(FilterXObject *s)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+  return filterx_integer_new(gn_as_int64(&self->value));
+}
+
+static FilterXObject *
+_double_clone(FilterXObject *s)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+  return filterx_double_new(gn_as_double(&self->value));
+}
+
+static FilterXObject *
+_boolean_clone(FilterXObject *s)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+  return filterx_boolean_new(!gn_is_zero(&self->value));
+}
+
 FILTERX_DEFINE_TYPE(primitive, FILTERX_TYPE_NAME(object),
+                    .is_abstract = TRUE,
                     .truthy = _truthy,
                     .repr = _repr,
                    );
 
 FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(primitive),
                     .marshal = _integer_marshal,
+                    .clone = _integer_clone,
                     .format_json = _integer_format_json,
                     .add = _integer_add,
-                    .clone = _integer_clone,
                    );
 
 FILTERX_DEFINE_TYPE(double, FILTERX_TYPE_NAME(primitive),
+                    .clone = _double_clone,
                     .marshal = _double_marshal,
                     .format_json = _double_format_json,
                     .add = _double_add,
                    );
 
 FILTERX_DEFINE_TYPE(boolean, FILTERX_TYPE_NAME(primitive),
+                    .clone = _boolean_clone,
                     .marshal = _bool_marshal,
                     .format_json = _bool_format_json,
                    );

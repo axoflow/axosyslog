@@ -37,8 +37,8 @@
 
 FILTERX_DECLARE_TYPE(dummy_base);
 FILTERX_DECLARE_TYPE(dummy);
-FILTERX_DEFINE_TYPE(dummy_base, FILTERX_TYPE_NAME(object));
-FILTERX_DEFINE_TYPE(dummy, FILTERX_TYPE_NAME(dummy_base));
+FILTERX_DEFINE_TYPE(dummy_base, FILTERX_TYPE_NAME(object), .is_abstract = TRUE);
+FILTERX_DEFINE_TYPE(dummy, FILTERX_TYPE_NAME(dummy_base), .is_abstract = TRUE);
 
 Test(filterx_func_istype, null_args)
 {

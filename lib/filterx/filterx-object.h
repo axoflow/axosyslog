@@ -38,7 +38,7 @@ struct _FilterXType
   FilterXType *super_type;
   const gchar *name;
   const gchar *ref_name;
-  gboolean is_mutable;
+  guint8 is_mutable:1, is_abstract:1;
 
   /* WARNING: adding a new method here requires an implementation in FilterXRef as well */
   FilterXObject *(*unmarshal)(FilterXObject *self);

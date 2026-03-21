@@ -88,6 +88,13 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
   INIT_TYPE_METHOD(type, free_fn);
+
+  if (!type->is_abstract)
+    {
+      g_assert(type->clone);
+      g_assert(type->truthy);
+      g_assert(type->format_json);
+    }
 }
 
 void

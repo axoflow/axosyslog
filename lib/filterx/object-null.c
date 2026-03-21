@@ -74,7 +74,14 @@ filterx_null_new(void)
   return filterx_object_ref(null_object);
 }
 
+static FilterXObject *
+_null_clone(FilterXObject *self)
+{
+  return filterx_null_new();
+}
+
 FILTERX_DEFINE_TYPE(null, FILTERX_TYPE_NAME(object),
+                    .clone = _null_clone,
                     .marshal = _marshal,
                     .format_json = _format_json,
                     .repr = _null_repr,

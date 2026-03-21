@@ -163,15 +163,6 @@ _string_add(FilterXObject *s, FilterXObject *object)
   return result;
 }
 
-/* we support clone of stack allocated strings */
-static FilterXObject *
-_string_clone(FilterXObject *s)
-{
-  FilterXString *self = (FilterXString *) s;
-
-  return filterx_string_new(self->str, self->str_len);
-}
-
 static inline FilterXString *
 _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate)
 {
@@ -619,21 +610,46 @@ filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   return NULL;
 }
 
+static FilterXObject *
+_string_clone(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  return filterx_string_new(self->str, self->str_len);
+}
+
+static FilterXObject *
+_bytes_clone(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  return filterx_bytes_new(self->str, self->str_len);
+}
+
+static FilterXObject *
+_protobuf_clone(FilterXObject *s)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  return filterx_protobuf_new(self->str, self->str_len);
+}
+
 /* these types are independent type-wise but share a lot of the details */
 
 FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
+                    .clone = _string_clone,
                     .marshal = _marshal,
                     .len = _len,
                     .format_json = _string_format_json,
                     .truthy = _truthy,
                     .repr = _string_repr,
                     .add = _string_add,
-                    .clone = _string_clone,
                     .dedup = _string_dedup,
                     .free_fn = _free,
                    );
 
 FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
+                    .clone = _bytes_clone,
                     .marshal = _bytes_marshal,
                     .len = _len,
                     .format_json = _bytes_format_json,
@@ -644,6 +660,7 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                    );
 
 FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
+                    .clone = _protobuf_clone,
                     .len = _len,
                     .marshal = _protobuf_marshal,
                     .format_json = _bytes_format_json,

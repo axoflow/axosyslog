@@ -736,7 +736,15 @@ error:
   return NULL;
 }
 
+static FilterXObject *
+_datetime_clone(FilterXObject *s)
+{
+  FilterXDateTime *self = (FilterXDateTime *) s;
+  return filterx_datetime_new(&self->ut);
+}
+
 FILTERX_DEFINE_TYPE(datetime, FILTERX_TYPE_NAME(object),
+                    .clone = _datetime_clone,
                     .truthy = _truthy,
                     .format_json = _format_json,
                     .marshal = _marshal,
