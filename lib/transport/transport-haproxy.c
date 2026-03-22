@@ -80,8 +80,9 @@ struct _LogTransportHAProxy
   struct
   {
     struct proxy_hdr_v2 *header;
-    gsize header_len;
     union proxy_addr *addr;
+    struct proxy_tlv *tlvs;
+    gint header_len, addr_len, tlvs_len;
   } proto_v2;
 };
 
@@ -133,10 +134,35 @@ union proxy_addr
   } ipv6_addr;
   struct
   {
+    /* zero bytes */
+  } unspec_addr;
+  struct
+  {
     /* for AF_UNIX sockets, len = 216 */
     uint8_t src_addr[108];
     uint8_t dst_addr[108];
   } unix_addr;
+};
+
+#define PP2_TYPE_ALPN           0x01
+#define PP2_TYPE_AUTHORITY      0x02
+#define PP2_TYPE_CRC32C         0x03
+#define PP2_TYPE_NOOP           0x04
+#define PP2_TYPE_UNIQUE_ID      0x05
+#define PP2_TYPE_SSL            0x20
+#define PP2_SUBTYPE_SSL_VERSION 0x21
+#define PP2_SUBTYPE_SSL_CN      0x22
+#define PP2_SUBTYPE_SSL_CIPHER  0x23
+#define PP2_SUBTYPE_SSL_SIG_ALG 0x24
+#define PP2_SUBTYPE_SSL_KEY_ALG 0x25
+#define PP2_TYPE_NETNS          0x30
+
+struct proxy_tlv
+{
+  uint8_t type;
+  uint8_t length_hi;
+  uint8_t length_lo;
+  uint8_t value[0];
 };
 
 #define PROXY_HDR_TCP4 "PROXY TCP4 "
@@ -302,6 +328,7 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self)
       self->info.src_port = ntohs(proxy_addr->ipv4_addr.src_port);
       self->info.dst_port = ntohs(proxy_addr->ipv4_addr.dst_port);
       self->info.ip_version = 4;
+      self->proto_v2.addr_len = sizeof(proxy_addr->ipv4_addr);
       return TRUE;
     }
   else if (address_family == 2 && self->proto_v2.header_len >= sizeof(proxy_addr->ipv6_addr))
@@ -312,12 +339,14 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self)
       self->info.src_port = ntohs(proxy_addr->ipv6_addr.src_port);
       self->info.dst_port = ntohs(proxy_addr->ipv6_addr.dst_port);
       self->info.ip_version = 6;
+      self->proto_v2.addr_len = sizeof(proxy_addr->ipv6_addr);
       return TRUE;
     }
   else if (address_family == 0)
     {
       /* AF_UNSPEC */
       self->info.unknown = TRUE;
+      self->proto_v2.addr_len = sizeof(proxy_addr->unspec_addr);
       return TRUE;
     }
 
@@ -325,6 +354,99 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self)
             evt_tag_int("proxy_header_len", self->proto_v2.header_len),
             evt_tag_int("address_family", address_family));
   return FALSE;
+}
+
+#define PTRDIFF(a, b) (ptrdiff_t) (((gchar *) (a)) - ((gchar *) (b)))
+#define PP_TF_SKIP 0x01
+#define PP_TF_TEXT 0x02
+
+struct pp_type_desc
+{
+  const gchar *desc;
+  guint flags;
+} pp_type_desc[] =
+{
+  [PP2_TYPE_ALPN] = { .desc = "ALPN", .flags = PP_TF_TEXT },
+  [PP2_TYPE_AUTHORITY] = { .desc = "Authority", .flags = PP_TF_TEXT },
+  [PP2_TYPE_CRC32C] = { .desc = "CRC32", .flags = PP_TF_SKIP },
+  [PP2_TYPE_NOOP] = { .desc = "NOOP", .flags = PP_TF_SKIP },
+  [PP2_TYPE_UNIQUE_ID] = { .desc = "UniqueID", .flags = PP_TF_TEXT },
+  [PP2_TYPE_SSL] = { .desc = "SSL" },
+  [PP2_SUBTYPE_SSL_VERSION] = { 0 },
+  [PP2_SUBTYPE_SSL_CN] = { 0 },
+  [PP2_SUBTYPE_SSL_CIPHER] = { 0 },
+  [PP2_SUBTYPE_SSL_SIG_ALG] = { 0 },
+  [PP2_SUBTYPE_SSL_KEY_ALG] = { 0 },
+  [PP2_TYPE_NETNS] = { .desc = "NetNS", .flags = PP_TF_TEXT },
+};
+
+static gboolean
+_iter_v2_tlvs(struct proxy_tlv *tlvs, gsize tlvs_len)
+{
+  guint tlv_len = 0;
+  guint tlv_pos = 0;
+  for (struct proxy_tlv *tlv = tlvs;
+       PTRDIFF(tlv, tlvs) < tlvs_len;
+       tlv = (struct proxy_tlv *) (tlv->value + tlv_len))
+    {
+      tlv_pos = PTRDIFF(tlv, tlvs);
+      tlv_len = (tlv->length_hi << 8) + tlv->length_lo;
+      if (tlv_pos + sizeof(*tlv) + tlv_len > tlvs_len)
+        {
+          msg_error("PROXY header TLV points outside of the proxy header",
+                    evt_tag_int("type", tlv->type),
+                    evt_tag_int("pos", tlv_pos),
+                    evt_tag_int("length", tlv_len),
+                    evt_tag_int("tlvs_length", tlvs_len));
+          return FALSE;
+        }
+
+      struct pp_type_desc *td = NULL;
+      if (tlv->type < G_N_ELEMENTS(pp_type_desc))
+        {
+          td = &pp_type_desc[tlv->type];
+          if (!td->desc)
+            td = NULL;
+        }
+      else
+        {
+          td = NULL;
+        }
+      if (td)
+        {
+          if (td->flags & PP_TF_SKIP)
+            continue;
+          msg_debug("PROXY header TLV",
+                    evt_tag_int("type", tlv->type),
+                    evt_tag_str("type", td->desc),
+                    (td->flags & PP_TF_TEXT)
+                    ? evt_tag_mem("value", tlv->value, tlv_len)
+                    : evt_tag_memdump("value", tlv->value, tlv_len));
+        }
+      else
+        {
+          msg_debug("PROXY header TLV",
+                    evt_tag_int("type", tlv->type),
+                    evt_tag_memdump("value", tlv->value, tlv_len));
+        }
+    }
+  return TRUE;
+}
+
+static gboolean
+_parse_proxy_v2_tlvs(LogTransportHAProxy *self)
+{
+  g_assert(self->proto_v2.header_len >= self->proto_v2.addr_len);
+  self->proto_v2.tlvs_len = self->proto_v2.header_len - self->proto_v2.addr_len;
+  self->proto_v2.tlvs = (struct proxy_tlv *) ((gchar *) self->proto_v2.addr + self->proto_v2.addr_len);
+
+  msg_trace("PROXY header TLV block details",
+            evt_tag_int("version", self->proxy_header_version),
+            evt_tag_int("header_len", self->proto_v2.header_len),
+            evt_tag_int("addr_len", self->proto_v2.addr_len),
+            evt_tag_int("tlvs_len", self->proto_v2.tlvs_len));
+
+  return _iter_v2_tlvs(self->proto_v2.tlvs, self->proto_v2.tlvs_len);
 }
 
 static gboolean
@@ -344,15 +466,20 @@ _parse_proxy_v2_header(LogTransportHAProxy *self)
     {
       /* LOCAL connection */
       self->info.unknown = TRUE;
-      return TRUE;
+
     }
   else if ((proxy_hdr->ver_cmd & 0xF) == 1)
     {
       /* PROXY connection */
-      return _parse_proxy_v2_proxy_address(self);
     }
+  else
+    return FALSE;
 
-  return FALSE;
+  if (!_parse_proxy_v2_proxy_address(self))
+    return FALSE;
+  if (!_parse_proxy_v2_tlvs(self))
+    return FALSE;
+  return TRUE;
 }
 
 gboolean
