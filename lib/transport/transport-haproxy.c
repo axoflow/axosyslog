@@ -369,7 +369,7 @@ _parse_proxy_header(LogTransportHAProxy *self)
 static Status
 _fetch_chunk(LogTransportHAProxy *self, gsize upto_bytes)
 {
-  g_assert(upto_bytes < sizeof(self->proxy_header_buff));
+  g_assert(upto_bytes <= sizeof(self->proxy_header_buff));
   if (self->proxy_header_buff_len < upto_bytes)
     {
       gssize rc = log_transport_adapter_read_method(&self->super.super,
