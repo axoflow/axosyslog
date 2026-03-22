@@ -60,15 +60,8 @@ filterx_mapping_normalize_key(FilterXObject *key, const gchar **key_string, gsiz
     }
   else
     {
-      if (!(filterx_object_is_type(key, &FILTERX_TYPE_NAME(string)) ||
-            (filterx_object_is_type(key, &FILTERX_TYPE_NAME(message_value)) &&
-             filterx_message_value_get_type(key) == LM_VT_STRING)))
-        {
-          *error = "Key must be a string";
-          return FALSE;
-        }
+      return filterx_object_hashable(key);
     }
-  return TRUE;
 }
 
 static inline void
