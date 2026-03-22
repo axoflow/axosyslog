@@ -59,6 +59,7 @@ set(FILTERX_HEADERS
     filterx/jsmn.h
     filterx/func-flags.h
     filterx/func-flatten.h
+    filterx/func-aggregate.h
     filterx/func-cache-json-file.h
     filterx/func-istype.h
     filterx/func-len.h
@@ -150,6 +151,7 @@ set(FILTERX_SOURCES
     filterx/filterx-mapping.c
     filterx/json-repr.c
     filterx/func-flatten.c
+    filterx/func-aggregate.c
     filterx/func-cache-json-file.c
     filterx/func-istype.c
     filterx/func-len.c
