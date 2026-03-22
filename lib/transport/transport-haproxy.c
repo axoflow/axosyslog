@@ -77,6 +77,12 @@ struct _LogTransportHAProxy
   gint proxy_header_version;
   guchar proxy_header_buff[PROXY_PROTO_HDR_BUFFER_SIZE];
   gsize proxy_header_buff_len;
+  struct
+  {
+    struct proxy_hdr_v2 *header;
+    gsize header_len;
+    union proxy_addr *addr;
+  } proto_v2;
 };
 
 
@@ -283,13 +289,12 @@ _parse_proxy_v1_header(LogTransportHAProxy *self)
 }
 
 static gboolean
-_parse_proxy_v2_proxy_address(LogTransportHAProxy *self, struct proxy_hdr_v2 *proxy_hdr,
-                              union proxy_addr *proxy_addr)
+_parse_proxy_v2_proxy_address(LogTransportHAProxy *self)
 {
-  gint address_family = (proxy_hdr->fam & 0xF0) >> 4;
-  gint proxy_header_len = ntohs(proxy_hdr->len);
+  gint address_family = (self->proto_v2.header->fam & 0xF0) >> 4;
+  union proxy_addr *proxy_addr = self->proto_v2.addr;
 
-  if (address_family == 1 && proxy_header_len >= sizeof(proxy_addr->ipv4_addr))
+  if (address_family == 1 && self->proto_v2.header_len >= sizeof(proxy_addr->ipv4_addr))
     {
       /* AF_INET */
       inet_ntop(AF_INET, (gchar *) &proxy_addr->ipv4_addr.src_addr, self->info.src_ip, sizeof(self->info.src_ip));
@@ -299,7 +304,7 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self, struct proxy_hdr_v2 *pr
       self->info.ip_version = 4;
       return TRUE;
     }
-  else if (address_family == 2 && proxy_header_len >= sizeof(proxy_addr->ipv6_addr))
+  else if (address_family == 2 && self->proto_v2.header_len >= sizeof(proxy_addr->ipv6_addr))
     {
       /* AF_INET6 */
       inet_ntop(AF_INET6, (gchar *) &proxy_addr->ipv6_addr.src_addr, self->info.src_ip, sizeof(self->info.src_ip));
@@ -317,7 +322,7 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self, struct proxy_hdr_v2 *pr
     }
 
   msg_error("PROXYv2 header does not have enough bytes to represent endpoint addresses or unknown address_family",
-            evt_tag_int("proxy_header_len", proxy_header_len),
+            evt_tag_int("proxy_header_len", self->proto_v2.header_len),
             evt_tag_int("address_family", address_family));
   return FALSE;
 }
@@ -325,13 +330,16 @@ _parse_proxy_v2_proxy_address(LogTransportHAProxy *self, struct proxy_hdr_v2 *pr
 static gboolean
 _parse_proxy_v2_header(LogTransportHAProxy *self)
 {
-  struct proxy_hdr_v2 *proxy_hdr = (struct proxy_hdr_v2 *) self->proxy_header_buff;
-  union proxy_addr *proxy_addr = (union proxy_addr *)(proxy_hdr + 1);
+  self->proto_v2.header = (struct proxy_hdr_v2 *) self->proxy_header_buff;
+  self->proto_v2.header_len = ntohs(self->proto_v2.header->len);
+
+  struct proxy_hdr_v2 *proxy_hdr = self->proto_v2.header;
 
   /* is this proxy v2 */
   if ((proxy_hdr->ver_cmd & 0xF0) != 0x20)
     return FALSE;
 
+  self->proto_v2.addr = (union proxy_addr *)(proxy_hdr + 1);
   if ((proxy_hdr->ver_cmd & 0xF) == 0)
     {
       /* LOCAL connection */
@@ -341,7 +349,7 @@ _parse_proxy_v2_header(LogTransportHAProxy *self)
   else if ((proxy_hdr->ver_cmd & 0xF) == 1)
     {
       /* PROXY connection */
-      return _parse_proxy_v2_proxy_address(self, proxy_hdr, proxy_addr);
+      return _parse_proxy_v2_proxy_address(self);
     }
 
   return FALSE;
