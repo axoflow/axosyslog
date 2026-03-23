@@ -200,7 +200,7 @@ AC_ARG_ENABLE(example-modules,
               [  --enable-example-modules Enable example modules.],, enable_example_modules="yes")
 
 AC_ARG_ENABLE(force_gnu99,
-              [  --enable-force-gnu99      Enforce C99 with gnu extensions.],, force_gnu99="no")
+              [  --enable-force-gnu99      Enforce C99 with gnu extensions.],, enable_force_gnu99="no")
 
 AC_ARG_ENABLE(extra-warnings,
               [  --enable-extra-warnings      Enable extra compiler warnings (recommended).],, enable_extra_warnings="no")
@@ -658,7 +658,7 @@ CFLAGS_ADD="${CFLAGS_ADD} -pthread"
 
 dnl The current supported standard is C99 with gnu extensions
 
-if test "x$force_gnu99" = "xyes"; then
+if test "x$enable_force_gnu99" = "xyes"; then
 	CFLAGS_ADD="${CFLAGS_ADD} -std=gnu99"
 fi
 
