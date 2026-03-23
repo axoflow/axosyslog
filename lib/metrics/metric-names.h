@@ -78,7 +78,6 @@
   M(parallelized_assigned_events_total) \
   M(parallelized_processed_events_total) \
   M(parsed_events_total) \
-  M(processed_events_total) \
   M(route_egress_total) \
   M(route_ingress_total) \
   M(scratch_buffers_bytes) \
