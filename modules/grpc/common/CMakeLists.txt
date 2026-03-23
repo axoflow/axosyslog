@@ -20,7 +20,8 @@ set(GRPC_COMMON_CPP_SOURCES
   grpc-grammar-internal.h
   grpc-grammar-internal.c
   grpc-source-worker.hpp
-  grpc-source-worker.cpp)
+  grpc-source-worker.cpp
+  protobuf-arena.hpp)
 
 set(GRPC_COMMON_GRAMMAR ${PROJECT_SOURCE_DIR}/modules/grpc/common/grpc-grammar.ym PARENT_SCOPE)
 
