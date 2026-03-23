@@ -21,6 +21,8 @@
  */
 #include "filterx/filterx-scope.h"
 #include "filterx/object-message-value.h"
+#include "filterx/object-string.h"
+#include "filterx/object-null.h"
 #include "scratch-buffers.h"
 #include "syslog-ng.h"
 
@@ -212,16 +214,8 @@ filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle)
 static FilterXObject *
 _pull_variable_from_message(FilterXScope *self, NVHandle handle)
 {
-  gssize value_len;
-  LogMessageValueType t;
-
-  const gchar *value = log_msg_get_value_if_set_with_type(self->msg, handle, &value_len, &t);
-  if (!value)
-    return NULL;
-
-  return filterx_message_value_new_borrowed(value, value_len, t);
+  return filterx_extract_object_from_logmsg(self->msg, handle);
 }
-
 
 FilterXVariable *
 filterx_scope_register_variable(FilterXScope *self,
