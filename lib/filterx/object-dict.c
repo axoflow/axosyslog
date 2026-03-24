@@ -197,27 +197,13 @@ _table_get_entry(FilterXDictTable *table, FilterXDictEntrySlot index)
 static inline guint
 _table_hash_key(FilterXObject *key)
 {
-  return filterx_string_hash(key);
+  return filterx_object_hash(key);
 }
 
 static inline gboolean
 _table_key_equals(FilterXObject *key1, FilterXObject *key2)
 {
-  if (key1 == key2)
-    return TRUE;
-
-  const gchar *key1_str, *key2_str;
-  gsize key1_len, key2_len;
-
-  if (!filterx_object_extract_string_ref(key1, &key1_str, &key1_len))
-    g_assert_not_reached();
-  if (!filterx_object_extract_string_ref(key2, &key2_str, &key2_len))
-    g_assert_not_reached();
-
-  if (key1_len != key2_len)
-    return FALSE;
-
-  return memcmp(key1_str, key2_str, key1_len) == 0;
+  return filterx_object_equal(key1, key2);
 }
 
 #define PERTURB_SHIFT 5
@@ -448,7 +434,7 @@ _table_resize_index(FilterXDictTable *target, FilterXDictTable *source)
       if (!ep->key)
         continue;
 
-      guint32 hash = filterx_string_hash(ep->key);
+      guint32 hash = _table_hash_key(ep->key);
       FilterXDictIndexSlot slot = hash & mask;
       FilterXDictIndexSlot perturb = hash;
 

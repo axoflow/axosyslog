@@ -199,7 +199,6 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
   FilterXString *self = (FilterXString *) *pself;
 
   gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
-
   FilterXObject *dedup_str = g_hash_table_lookup(dedup_storage, dedup_key);
   if (dedup_str)
     {
@@ -209,24 +208,26 @@ _string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
       return TRUE;
     }
 
-  _filterx_string_hash(self);
+  filterx_object_hash(&self->super);
   if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
     filterx_string_mark_safe_without_json_escaping(&self->super);
   g_hash_table_insert(dedup_storage, dedup_key, self);
   return TRUE;
 }
 
-guint
-_filterx_string_hash(FilterXString *self)
+static guint
+_string_hash(FilterXObject *s)
 {
-  /* NOTE: this is a data race, as self->hash is written without atomics and
-   * also without mutexes.  Since self->hash is aligned, and is just 32
-   * bits, torn writes do not happen in modern architectures (x86, x86_64,
-   * arm).  */
+  FilterXString *self = (FilterXString *) s;
+  return strn_hash(self->str, self->str_len);
+}
 
-  G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
-  self->hash = strn_hash(self->str, self->str_len);
-  return self->hash;
+static gboolean
+_string_equal(FilterXObject *s, FilterXObject *o)
+{
+  FilterXString *self = (FilterXString *) s;
+  FilterXString *other = (FilterXString *) o;
+  return strn_eq_strn(self->str, self->str_len, other->str, other->str_len);
 }
 
 FilterXObject *
@@ -644,6 +645,8 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .truthy = _truthy,
                     .repr = _string_repr,
                     .add = _string_add,
+                    .hash = _string_hash,
+                    .equal = _string_equal,
                     .dedup = _string_dedup,
                     .free_fn = _free,
                    );
