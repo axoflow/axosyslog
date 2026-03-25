@@ -181,6 +181,7 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
       return;
     }
 
+  SourceDriver &owner = static_cast<SourceDriver &>(worker.get_owner());
   ::grpc::Status response_status = ::grpc::Status::OK;
 
   TLSPeerInfo peer_info = { 0 };
@@ -216,9 +217,16 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
                 }
               else
                 {
-                  ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
-                                                     scope_logs_schema_url);
-                  ProtobufParser::store_raw(msg, log_record);
+                  if (owner.mode == OSM_LOGMESSAGE)
+                    {
+                      ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
+                                                         scope_logs_schema_url);
+                      ProtobufParser::store_raw(msg, log_record);
+                    }
+                  else
+                    {
+                      g_assert_not_reached();
+                    }
                 }
               _store_peer_info(msg, peer_info);
               worker.blocking_post(msg);

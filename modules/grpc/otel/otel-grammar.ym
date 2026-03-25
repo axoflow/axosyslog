@@ -55,8 +55,11 @@
 %token KW_AXOSYSLOG_OTLP
 %token KW_SET_HOSTNAME
 %token KW_KEEP_ALIVE
+%token KW_MODE
+%token KW_LOGMESSAGE
 
 %type <ptr> source_otel
+%type <num> source_otel_mode
 %type <ptr> parser_otel
 %type <ptr> destination_otel
 %type <ptr> destination_syslog_ng_otlp
@@ -91,6 +94,11 @@ source_otel_options
 source_otel_option
   : grpc_source_option
   | KW_KEEP_ALIVE '(' yesno ')' { log_threaded_source_driver_set_reload_keep_alive(last_driver, $3); }
+  | KW_MODE '(' source_otel_mode ')' { otel_sd_set_mode(last_driver, $3); }
+  ;
+
+source_otel_mode
+  : KW_LOGMESSAGE { $$ = OSM_LOGMESSAGE; }
   ;
 
 parser_otel
