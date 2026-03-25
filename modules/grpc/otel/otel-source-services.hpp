@@ -148,8 +148,8 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
       return;
     }
 
+  SourceDriver &owner = static_cast<SourceDriver &>(worker.get_owner());
   ::grpc::Status response_status = ::grpc::Status::OK;
-
   int msgs_in_fetch_round = 0;
 
   for (const ResourceLogs &resource_logs : request.resource_logs())
@@ -180,9 +180,16 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
                 }
               else
                 {
-                  ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
-                                                     scope_logs_schema_url);
-                  ProtobufParser::store_raw(msg, log_record);
+                  if (owner.mode == OSM_LOGMESSAGE)
+                    {
+                      ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
+                                                         scope_logs_schema_url);
+                      ProtobufParser::store_raw(msg, log_record);
+                    }
+                  else
+                    {
+                      g_assert_not_reached();
+                    }
                 }
               worker.blocking_post(msg);
 
