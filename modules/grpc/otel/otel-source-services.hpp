@@ -86,11 +86,10 @@ syslogng::grpc::otel::TraceServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
+      new TraceServiceCall(worker, service, cq);
       delete this;
       return;
     }
-
-  new TraceServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
@@ -144,11 +143,10 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
+      new LogsServiceCall(worker, service, cq);
       delete this;
       return;
     }
-
-  new LogsServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
@@ -210,11 +208,10 @@ syslogng::grpc::otel::MetricsServiceCall::Proceed(bool ok)
 {
   if (status == FINISH || !ok)
     {
+      new MetricsServiceCall(worker, service, cq);
       delete this;
       return;
     }
-
-  new MetricsServiceCall(worker, service, cq);
 
   ::grpc::Status response_status = ::grpc::Status::OK;
 
