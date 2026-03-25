@@ -59,8 +59,9 @@ log_proto_auto_server_poll_prepare(LogProtoServer *s, GIOCondition *cond, gint *
 {
   LogProtoAutoServer *self = (LogProtoAutoServer *) s;
 
-  if (log_transport_stack_poll_prepare(&self->super.transport_stack, cond))
-    return LPPA_FORCE_SCHEDULE_FETCH;
+  /* LPPA_FORCE_SCHEDULE_FETCH based on log_transport_stack_poll_prepare()
+   * should NOT be requested here as read_ahead() is used */
+  log_transport_stack_poll_prepare(&self->super.transport_stack, cond);
 
   if (*cond == 0)
     *cond = G_IO_IN;
