@@ -22,24 +22,54 @@
 #include "logproto-auto-server.h"
 #include "logproto-text-server.h"
 #include "logproto-framed-server.h"
+#include "logproto.h"
 #include "messages.h"
+
+#define DETECT_BUFFER_SIZE 16
+G_STATIC_ASSERT(DETECT_BUFFER_SIZE >= RFC6587_MAX_FRAME_LEN_DIGITS + 1);
 
 typedef struct _LogProtoAutoServer
 {
   LogProtoServer super;
 } LogProtoAutoServer;
 
+static inline gboolean
+_is_frame_octet_count(const gchar *detect_buffer, gsize detect_buffer_len, gboolean *need_more_data)
+{
+  if (!g_ascii_isdigit(detect_buffer[0]))
+    return FALSE;
+
+  for (gsize i = 1; i < detect_buffer_len; i++)
+    {
+      if (g_ascii_isdigit(detect_buffer[i]) && i < RFC6587_MAX_FRAME_LEN_DIGITS)
+        continue;
+
+      if (detect_buffer[i] == ' ')
+        return TRUE;
+
+      return FALSE;
+    }
+
+  *need_more_data = TRUE;
+  return TRUE;
+}
+
 static LogProtoServer *
 _construct_detected_proto(LogProtoAutoServer *self, const gchar *detect_buffer, gsize detect_buffer_len)
 {
   gint fd = self->super.transport_stack.fd;
 
-  if (g_ascii_isdigit(detect_buffer[0]))
+  gboolean need_more_data = FALSE;
+  if (_is_frame_octet_count(detect_buffer, detect_buffer_len, &need_more_data))
     {
+      if (need_more_data)
+        return NULL;
+
       msg_debug("Auto-detected octet-counted-framing, using framed protocol",
                 evt_tag_int("fd", fd));
       return log_proto_framed_server_new(NULL, self->super.options);
     }
+
   if (detect_buffer[0] == '<')
     {
       msg_debug("Auto-detected non-transparent-framing, using simple text protocol",
@@ -73,7 +103,7 @@ static LogProtoStatus
 log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogProtoServer **proto_replacement)
 {
   LogProtoAutoServer *self = (LogProtoAutoServer *) s;
-  gchar detect_buffer[8];
+  gchar detect_buffer[DETECT_BUFFER_SIZE];
   gboolean moved_forward;
   gint rc;
 
@@ -88,6 +118,9 @@ log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogPro
     }
 
   *proto_replacement = _construct_detected_proto(self, detect_buffer, rc);
+  if (!*proto_replacement)
+    return LPS_AGAIN;
+
   return LPS_SUCCESS;
 }
 
