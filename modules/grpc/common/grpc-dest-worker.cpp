@@ -32,6 +32,7 @@
 #include "scratch-buffers.h"
 #include "compat/cpp-end.h"
 
+
 using namespace syslogng::grpc;
 
 /* C++ Implementations */
