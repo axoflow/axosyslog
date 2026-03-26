@@ -21,14 +21,22 @@
 # COPYING for details.
 #
 #############################################################################
+import pytest
 from axosyslog_light.driver_io.network.network_io import NetworkIO
 
 
-def _test_auto_detect(config, syslog_ng, port_allocator, framed):
-    NUMBER_OF_MESSAGES = 10
-    INPUT_MESSAGES = ["<2>Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * NUMBER_OF_MESSAGES
-    EXPECTED_MESSAGES = ["Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * NUMBER_OF_MESSAGES
+_test_cases = [
+    (
+        ["<2>Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * 10,
+        ["Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * 10,
+    ),
+]
+_test_case_ids = [
+    "legacy_syslog",
+]
 
+
+def _test_auto_detect(config, syslog_ng, port_allocator, framed, input_message, expected_message):
     OUTPUT_FILE = "output.log"
 
     syslog_source = config.create_syslog_source(
@@ -42,14 +50,16 @@ def _test_auto_detect(config, syslog_ng, port_allocator, framed):
 
     syslog_ng.start(config)
 
-    syslog_source.write_logs(INPUT_MESSAGES, transport=NetworkIO.Transport.TCP, framed=framed)
+    syslog_source.write_logs(input_message, transport=NetworkIO.Transport.TCP, framed=framed)
 
-    assert file_destination.read_logs(NUMBER_OF_MESSAGES) == EXPECTED_MESSAGES
-
-
-def test_auto_framing(config, syslog_ng, port_allocator):
-    _test_auto_detect(config, syslog_ng, port_allocator, True)
+    assert file_destination.read_all() == expected_message
 
 
-def test_auto_no_framing(config, syslog_ng, port_allocator):
-    _test_auto_detect(config, syslog_ng, port_allocator, False)
+@pytest.mark.parametrize("input_message, expected_message", _test_cases, ids=_test_case_ids)
+def test_auto_framing(config, syslog_ng, port_allocator, input_message, expected_message):
+    _test_auto_detect(config, syslog_ng, port_allocator, True, input_message, expected_message)
+
+
+@pytest.mark.parametrize("input_message, expected_message", _test_cases, ids=_test_case_ids)
+def test_auto_no_framing(config, syslog_ng, port_allocator, input_message, expected_message):
+    _test_auto_detect(config, syslog_ng, port_allocator, False, input_message, expected_message)
