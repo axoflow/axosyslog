@@ -30,9 +30,14 @@ _test_cases = [
         ["<2>Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * 10,
         ["Oct 11 22:14:15 myhostname sshd[1234]: message 0"] * 10,
     ),
+    (
+        ['192.168.1.42 - - [26/Mar/2026:08:01:14 +0000] "GET / HTTP/1.1" 200 3456 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"'],
+        ['192.168.1.42 - - [26/Mar/2026:08:01:14 +0000] "GET / HTTP/1.1" 200 3456 "-" "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"'],
+    ),
 ]
 _test_case_ids = [
     "legacy_syslog",
+    "http",
 ]
 
 
@@ -52,7 +57,15 @@ def _test_auto_detect(config, syslog_ng, port_allocator, framed, input_message, 
 
     syslog_source.write_logs(input_message, transport=NetworkIO.Transport.TCP, framed=framed)
 
-    assert file_destination.read_all() == expected_message
+    # Use endswith instead of equality because syslog-ng can prepend a actual
+    # timestamp+hostname message header (e.g. HTTP access logs).
+    # For example, the expected HTTP message
+    #   '192.168.1.42 - - [26/Mar/2026:08:01:14 +0000] "GET / HTTP/1.1" ...'
+    # arrives as:
+    #   'Mar 26 06:13:20 localhost 192.168.1.42 - - [26/Mar/2026:08:01:14 +0000] "GET / HTTP/1.1" ...'
+    # For BSD syslog messages the actual output equals the expected string, so
+    # endswith is also satisfied for those.
+    assert all(actual.endswith(expected) for actual, expected in zip(file_destination.read_all(), expected_message))
 
 
 @pytest.mark.parametrize("input_message, expected_message", _test_cases, ids=_test_case_ids)
