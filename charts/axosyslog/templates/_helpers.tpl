@@ -31,7 +31,15 @@ Create chart name and version as used by the chart label.
 {{- end }}
 
 {{/*
-Common labels
+Selector labels (immutable, used in spec.selector.matchLabels).
+*/}}
+{{- define "axosyslog.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "axosyslog.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Common labels (superset of selectorLabels, used on all metadata.labels).
 */}}
 {{- define "axosyslog.labels" -}}
 helm.sh/chart: {{ include "axosyslog.chart" . }}
@@ -43,11 +51,35 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
 {{/*
-Selector labels
+Collector component selector labels.
 */}}
-{{- define "axosyslog.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "axosyslog.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{- define "axosyslog.collector.selectorLabels" -}}
+{{ include "axosyslog.selectorLabels" . }}
+app.kubernetes.io/component: collector
+{{- end }}
+
+{{/*
+Collector component labels.
+*/}}
+{{- define "axosyslog.collector.labels" -}}
+{{ include "axosyslog.labels" . }}
+app.kubernetes.io/component: collector
+{{- end }}
+
+{{/*
+Aggregator component selector labels.
+*/}}
+{{- define "axosyslog.aggregator.selectorLabels" -}}
+{{ include "axosyslog.selectorLabels" . }}
+app.kubernetes.io/component: aggregator
+{{- end }}
+
+{{/*
+Aggregator component labels.
+*/}}
+{{- define "axosyslog.aggregator.labels" -}}
+{{ include "axosyslog.labels" . }}
+app.kubernetes.io/component: aggregator
 {{- end }}
 
 {{/*

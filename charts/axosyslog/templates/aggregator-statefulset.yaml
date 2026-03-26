@@ -1,0 +1,156 @@
+{{- if .Values.aggregator.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ template "axosyslog.fullname" . }}-aggregator
+  namespace: {{ include "axosyslog.namespace" . }}
+  labels:
+    {{- include "axosyslog.aggregator.labels" . | nindent 4 }}
+    {{- range $key, $value := .Values.aggregator.labels }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- if .Values.aggregator.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.aggregator.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  replicas: {{ .Values.aggregator.replicaCount }}
+  serviceName: {{ template "axosyslog.fullname" . }}-aggregator
+  selector:
+    matchLabels:
+      {{- include "axosyslog.aggregator.selectorLabels" . | nindent 6 }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ tpl (toYaml .Values.aggregator.config) . | sha256sum }}
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      labels:
+        {{- include "axosyslog.aggregator.labels" . | nindent 8 }}
+        {{- range $key, $value := .Values.aggregator.labels }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ template "axosyslog.serviceAccountName" . }}
+      {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{ toYaml . | nindent 8 }}
+      {{- end }}
+      tolerations: {{ toYaml ( default .Values.tolerations .Values.aggregator.tolerations ) | nindent 8 }}
+      nodeSelector: {{ toYaml ( default .Values.nodeSelector .Values.aggregator.nodeSelector ) | nindent 8 }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
+      affinity: {{ toYaml ( default .Values.affinity .Values.aggregator.affinity ) | nindent 8 }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.dnsConfig }}
+      dnsConfig: {{ toYaml .Values.dnsConfig | nindent 8 }}
+      {{- end }}
+      {{- if default .Values.hostAliases .Values.aggregator.hostAliases }}
+      hostAliases: {{ toYaml ( default .Values.hostAliases .Values.aggregator.hostAliases ) | nindent 8 }}
+      {{- end }}
+      volumes:
+      {{- range default .Values.secretMounts .Values.aggregator.secretMounts }}
+        - name: {{ .name }}
+          secret:
+            secretName: {{ .secretName }}
+      {{- end }}
+        - name: config
+          configMap:
+            name: {{ include "axosyslog.fullname" . }}-aggregator
+      {{- if default .Values.extraVolumes .Values.aggregator.extraVolumes }}
+        {{- toYaml ( default .Values.extraVolumes .Values.aggregator.extraVolumes ) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext: {{ toYaml ( default .Values.securityContext .Values.aggregator.securityContext ) | nindent 12 }}
+          resources: {{ toYaml ( default .Values.resources .Values.aggregator.resources ) | nindent 12 }}
+          ports:
+          {{- if .Values.aggregator.config.sources.syslog.enabled }}
+          - containerPort: 1514
+            protocol: TCP
+            name: rfc3164-tcp
+          - containerPort: 1514
+            protocol: UDP
+            name: rfc3164-udp
+          {{- if .Values.aggregator.config.sources.syslog.tls }}
+          - containerPort: 6514
+            protocol: TCP
+            name: rfc5424-tls
+          {{- end }}
+          - containerPort: 1601
+            protocol: TCP
+            name: rfc5424-tcp
+          {{- end }}
+          {{- if .Values.aggregator.config.sources.axosyslogOtlp.enabled }}
+          - containerPort: 4317
+            protocol: TCP
+            name: otlp
+          {{- end }}
+          volumeMounts:
+          {{- range default .Values.secretMounts .Values.aggregator.secretMounts }}
+            - name: {{ .name }}
+              mountPath: {{ .path }}
+              {{- if .subPath }}
+              subPath: {{ .subPath }}
+              {{- end }}
+          {{- end }}
+          - mountPath: /etc/syslog-ng/syslog-ng.conf
+            name: config
+            subPath: syslog-ng.conf
+          {{- if .Values.aggregator.logFileStorage.enabled }}
+          - mountPath: /var/log
+            name: logs
+          {{- end }}
+          {{- if .Values.aggregator.bufferStorage.enabled }}
+          - mountPath: /var/lib/syslog-ng
+            name: buffers
+          {{- end }}
+          {{- if default .Values.extraVolumeMounts .Values.aggregator.extraVolumeMounts }}
+            {{- toYaml ( default .Values.extraVolumeMounts .Values.aggregator.extraVolumeMounts ) | nindent 10 }}
+          {{- end }}
+          livenessProbe:
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+            exec:
+              command: ["syslog-ng-ctl", "healthcheck", "--timeout", "5"]
+  volumeClaimTemplates:
+{{- with .Values.aggregator.logFileStorage }}
+{{- if .enabled }}
+  - metadata:
+      name: logs
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .size }}
+      storageClassName: {{ .storageClass }}
+{{- end }}
+{{- end }}
+{{- with .Values.aggregator.bufferStorage }}
+{{- if .enabled }}
+  - metadata:
+      name: buffers
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .size }}
+      storageClassName: {{ .storageClass }}
+{{- end }}
+{{- end }}
+{{- end }}
