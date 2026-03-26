@@ -26,18 +26,39 @@
 #include <google/protobuf/arena.h>
 #include <google/protobuf/stubs/common.h>
 
+#include <memory>
+#include <vector>
+
 namespace syslogng {
 namespace grpc {
 
-template <typename T>
-T *arena_create_message(google::protobuf::Arena *arena)
+class SmartArena
 {
+  static constexpr size_t DefaultInitialSize = 256;
+
+private:
+  std::vector<char> arena_buffer;
+  std::unique_ptr<google::protobuf::Arena> arena;
+
+public:
+  SmartArena(size_t initial_size = DefaultInitialSize);
+
+  google::protobuf::Arena *get();
+
+  template <typename T>
+  T *CreateMessage()
+  {
 #if GOOGLE_PROTOBUF_VERSION >= 5026000
-  return google::protobuf::Arena::Create<T>(arena);
+    return google::protobuf::Arena::Create<T>(arena.get());
 #else
-  return google::protobuf::Arena::CreateMessage<T>(arena);
+    return google::protobuf::Arena::CreateMessage<T>(arena.get());
 #endif
-}
+  }
+
+  size_t SpaceAllocated();
+  size_t SpaceUsed();
+  uint64_t Reset();
+};
 
 }
 }

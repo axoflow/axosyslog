@@ -33,7 +33,8 @@ modules_grpc_common_libgrpc_common_la_SOURCES = \
   modules/grpc/common/grpc-source.cpp \
   modules/grpc/common/grpc-source-worker.hpp \
   modules/grpc/common/grpc-source-worker.cpp \
-  modules/grpc/common/protobuf-arena.hpp
+  modules/grpc/common/protobuf-arena.hpp \
+  modules/grpc/common/protobuf-arena.cpp
 
 modules_grpc_common_libgrpc_common_la_CXXFLAGS = \
   $(AM_CXXFLAGS) \
