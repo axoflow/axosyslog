@@ -803,6 +803,7 @@ AC_CHECK_HEADERS(
   door.h \
   tcpd.h \
   malloc.h \
+  valgrind/callgrind.h
 )
 
 AC_CHECK_TYPES([struct ucred, struct cmsgcred], [], [], [#define _GNU_SOURCE 1

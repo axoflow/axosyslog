@@ -206,6 +206,7 @@ check_symbol_exists(timezone time.h SYSLOG_NG_HAVE_TIMEZONE)
 check_include_files(utmp.h SYSLOG_NG_HAVE_UTMP_H)
 check_include_files(utmpx.h SYSLOG_NG_HAVE_UTMPX_H)
 check_include_files(dlfcn.h SYSLOG_NG_HAVE_DLFCN_H)
+check_include_files(valgrind/callgrind.h SYSLOG_NG_HAVE_VALGRIND_CALLGRIND_H)
 check_include_files(getopt.h SYSLOG_NG_HAVE_GETOPT_H)
 check_include_files(door.h SYSLOG_NG_HAVE_DOOR_H)
 
