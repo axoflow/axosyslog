@@ -28,9 +28,8 @@
 #include <grpcpp/client_context.h>
 #include <grpcpp/create_channel.h>
 #include <grpcpp/security/credentials.h>
-#include <google/protobuf/arena.h>
-
 #include "grpc-dest.hpp"
+#include "protobuf-arena.hpp"
 
 typedef struct GrpcDestWorker_ GrpcDestWorker;
 
@@ -61,7 +60,7 @@ protected:
   GrpcDestWorker *super;
   DestDriver &owner;
   bool connected;
-  google::protobuf::Arena arena;
+  SmartArena arena;
   std::shared_ptr<::grpc::Channel> channel;
 };
 

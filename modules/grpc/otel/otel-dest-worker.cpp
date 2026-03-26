@@ -21,8 +21,6 @@
  *
  */
 
-#include "common/protobuf-arena.hpp"
-
 #include <grpc/grpc.h>
 #include <grpcpp/channel.h>
 #include <grpcpp/client_context.h>
@@ -76,14 +74,14 @@ DestWorker::connect()
 
 DestWorker::DestWorker(GrpcDestWorker *s)
   : syslogng::grpc::DestWorker(s),
-    logs_service_request(syslogng::grpc::arena_create_message<ExportLogsServiceRequest>(&arena)),
-    logs_service_response(syslogng::grpc::arena_create_message<ExportLogsServiceResponse>(&arena)),
+    logs_service_request(arena.CreateMessage<ExportLogsServiceRequest>()),
+    logs_service_response(arena.CreateMessage<ExportLogsServiceResponse>()),
     logs_current_batch_bytes(0),
-    metrics_service_request(syslogng::grpc::arena_create_message<ExportMetricsServiceRequest>(&arena)),
-    metrics_service_response(syslogng::grpc::arena_create_message<ExportMetricsServiceResponse>(&arena)),
+    metrics_service_request(arena.CreateMessage<ExportMetricsServiceRequest>()),
+    metrics_service_response(arena.CreateMessage<ExportMetricsServiceResponse>()),
     metrics_current_batch_bytes(0),
-    trace_service_request(syslogng::grpc::arena_create_message<ExportTraceServiceRequest>(&arena)),
-    trace_service_response(syslogng::grpc::arena_create_message<ExportTraceServiceResponse>(&arena)),
+    trace_service_request(arena.CreateMessage<ExportTraceServiceRequest>()),
+    trace_service_response(arena.CreateMessage<ExportTraceServiceResponse>()),
     spans_current_batch_bytes(0),
     formatter(s->super.owner->super.super.super.cfg)
 {
@@ -532,12 +530,12 @@ exit:
 
   arena.Reset();
 
-  logs_service_request = syslogng::grpc::arena_create_message<ExportLogsServiceRequest>(&arena);
-  logs_service_response = syslogng::grpc::arena_create_message<ExportLogsServiceResponse>(&arena);
-  metrics_service_request = syslogng::grpc::arena_create_message<ExportMetricsServiceRequest>(&arena);
-  metrics_service_response = syslogng::grpc::arena_create_message<ExportMetricsServiceResponse>(&arena);
-  trace_service_request = syslogng::grpc::arena_create_message<ExportTraceServiceRequest>(&arena);
-  trace_service_response = syslogng::grpc::arena_create_message<ExportTraceServiceResponse>(&arena);
+  logs_service_request = arena.CreateMessage<ExportLogsServiceRequest>();
+  logs_service_response = arena.CreateMessage<ExportLogsServiceResponse>();
+  metrics_service_request = arena.CreateMessage<ExportMetricsServiceRequest>();
+  metrics_service_response = arena.CreateMessage<ExportMetricsServiceResponse>();
+  trace_service_request = arena.CreateMessage<ExportTraceServiceRequest>();
+  trace_service_response = arena.CreateMessage<ExportTraceServiceResponse>();
 
   logs_current_batch_bytes = metrics_current_batch_bytes = spans_current_batch_bytes = 0;
 
