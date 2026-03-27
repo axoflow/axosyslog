@@ -84,6 +84,6 @@ py_reloc_global_init(void)
   PyObject *module = PyImport_AddModule("_syslogng");
   PyModule_AddFunctions(module, py_reloc_methods);
 
-  PyObject *cfg_file = py_string_from_string(resolved_configurable_paths.cfgfilename, -1);
+  PyObject *cfg_file = py_string_from_string(resolved_configurable_paths.cfgfilename ?: "" , -1);
   PyModule_AddObject(module, "cfg_file", cfg_file);
 }
