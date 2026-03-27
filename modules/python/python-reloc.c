@@ -22,6 +22,7 @@
 #include "python-reloc.h"
 #include "python-types.h"
 #include "reloc.h"
+#include "resolved-configurable-paths.h"
 
 static PyObject *
 py_get_installation_path_for(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -49,4 +50,7 @@ py_reloc_global_init(void)
 {
   PyObject *module = PyImport_AddModule("_syslogng");
   PyModule_AddFunctions(module, py_reloc_methods);
+
+  PyObject *cfg_file = py_string_from_string(resolved_configurable_paths.cfgfilename, -1);
+  PyModule_AddObject(module, "cfg_file", cfg_file);
 }
