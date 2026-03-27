@@ -67,6 +67,7 @@ static CfgLexerKeyword pragma_keywords[] =
 {
   { "version",            KW_VERSION, },
   { "current",            KW_VERSION_CURRENT },
+  { "april_fools",        KW_VERSION_CURRENT },
   { "include",            KW_INCLUDE, },
   { "module",             KW_MODULE, },
   { "define",             KW_DEFINE, },
