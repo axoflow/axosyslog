@@ -50,7 +50,8 @@ SCL_SUBDIRS	= \
 	websense	\
 	telegram	\
 	windowseventlog \
-	azure
+	azure \
+	vibe
 
 
 SCL_CONFIGS	= scl.conf syslog-ng.conf

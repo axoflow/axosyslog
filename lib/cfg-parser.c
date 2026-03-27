@@ -56,6 +56,7 @@ static CfgLexerKeyword main_keywords[] =
   { "parser",             KW_PARSER },
   { "rewrite",            KW_REWRITE },
   { "destination",        KW_DESTINATION },
+  { "vibe",               KW_VIBE },
   { "log",                KW_LOG },
   { "junction",           KW_JUNCTION },
   { "channel",            KW_CHANNEL },

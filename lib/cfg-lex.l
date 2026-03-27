@@ -158,7 +158,7 @@ yy_subst_input(CfgLexer *self, gchar *buf, gsize buf_size)
 #define YY_USER_ACTION                                                  \
   do {                                                                  \
     CFG_LTYPE *cur_lloc = &yyextra->include_stack[yyextra->include_depth].lloc; \
-    if (YY_START == INITIAL || YY_START == filterx || YY_START == block) \
+    if (YY_START == INITIAL || YY_START == filterx || YY_START == block || YY_START == vibe) \
       {                                                                 \
         cur_lloc->first_column = cur_lloc->last_column;                 \
       }                                                                 \
@@ -291,6 +291,7 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
 %x block_content
 %x block_string
 %x block_qstring
+%x vibe
 %%
 
 <INITIAL,filterx>\#        {
@@ -566,6 +567,15 @@ word	[^ \#'"\(\)\{\}\[\]\\;\r\n\t,|\.@:]
                              _cfg_lex_extend_token_location_to_next_line(yyextra);
                            }
 
+
+<vibe>[^\}]+               { g_string_append(yyextra->string_buffer, yytext); }
+<vibe>\}                   {
+                             yy_pop_state(yyscanner);
+                             yylval->cptr = strdup(yyextra->string_buffer->str);
+                             unput(yytext[0]);
+                             return LL_STRING;
+                           }
+
 <INITIAL,filterx><<EOF>>   {
                              if (!cfg_lexer_start_next_include(yyextra))
                                {
@@ -642,6 +652,14 @@ cfg_lexer_push_slashstring_state(CfgLexer *self)
   g_string_truncate(self->string_buffer, 0);
   yy_push_state(slash_string, self->state);
 }
+
+void
+cfg_lexer_push_vibe_state(CfgLexer *self)
+{
+  g_string_truncate(self->string_buffer, 0);
+  yy_push_state(vibe, self->state);
+}
+
 
 void
 cfg_lexer_pop_filterx_state(CfgLexer *self)

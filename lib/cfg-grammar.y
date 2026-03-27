@@ -225,6 +225,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_FILTER                      10001
 %token KW_PARSER                      10002
 %token KW_DESTINATION                 10003
+%token KW_VIBE                        99999
 %token KW_LOG                         10004
 %token KW_OPTIONS                     10005
 %token KW_INCLUDE                     10006
@@ -560,6 +561,7 @@ stmt
 	| options_stmt
 	| block_stmt
 	| plugin_stmt
+	| KW_VIBE '{' { cfg_lexer_push_vibe_state(lexer); } string '}'
 	;
 
 expr_stmt
@@ -803,6 +805,7 @@ log_item
         | KW_REWRITE '{' rewrite_content '}'    { $$ = log_expr_node_new_rewrite(NULL, $3, &@$); }
         | KW_DESTINATION '(' string ')'		{ $$ = log_expr_node_new_destination_reference($3, &@$); free($3); }
         | KW_DESTINATION '{' dest_content '}'   { $$ = log_expr_node_new_destination(NULL, $3, &@$); }
+        | KW_VIBE '{' { cfg_lexer_push_vibe_state(lexer); } string '}' { $$ = NULL; }
         | log_scheduler                         { $$ = $1; }
         | log_conditional			{ $$ = $1; }
         | log_junction                          { $$ = $1; }

@@ -51,6 +51,7 @@ set(SCL_DIRS
     websense
     windowseventlog
     azure
+    vibe
 )
 
 install(DIRECTORY ${SCL_DIRS} DESTINATION share/syslog-ng/include/scl
