@@ -22,6 +22,8 @@
 #include "python-reloc.h"
 #include "python-types.h"
 #include "reloc.h"
+#include "mainloop.h"
+#include "mainloop-call.h"
 #include "resolved-configurable-paths.h"
 
 static PyObject *
@@ -39,9 +41,25 @@ py_get_installation_path_for(PyObject *self, PyObject *args, PyObject *kwargs)
   return py_string_from_string(result_str, -1);
 }
 
+static PyObject *
+py_reload(PyObject *self, PyObject *args)
+{
+  main_loop_call((MainLoopTaskFunc) main_loop_reload_config, main_loop_get_instance(), FALSE);
+  Py_RETURN_NONE;
+}
+
+static PyObject *
+py_main_loop_call_thread_init(PyObject *self, PyObject *args)
+{
+  main_loop_call_thread_init();
+  Py_RETURN_NONE;
+}
+
 static PyMethodDef py_reloc_methods[] =
 {
   { "get_installation_path_for", (PyCFunction) py_get_installation_path_for, METH_VARARGS | METH_KEYWORDS, "Resolve an installation path template" },
+  { "reload", (PyCFunction) py_reload, METH_NOARGS, "Reload" },
+  { "main_loop_call_thread_init", (PyCFunction) py_main_loop_call_thread_init, METH_NOARGS, "Initialize main loop call support for the current thread" },
   { NULL }
 };
 
