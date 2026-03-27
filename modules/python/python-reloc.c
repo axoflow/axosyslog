@@ -49,6 +49,13 @@ py_reload(PyObject *self, PyObject *args)
 }
 
 static PyObject *
+py_exit(PyObject *self, PyObject *args)
+{
+  main_loop_call((MainLoopTaskFunc) main_loop_exit, main_loop_get_instance(), FALSE);
+  Py_RETURN_NONE;
+}
+
+static PyObject *
 py_main_loop_call_thread_init(PyObject *self, PyObject *args)
 {
   main_loop_call_thread_init();
@@ -65,6 +72,7 @@ static PyMethodDef py_reloc_methods[] =
 {
   { "get_installation_path_for", (PyCFunction) py_get_installation_path_for, METH_VARARGS | METH_KEYWORDS, "Resolve an installation path template" },
   { "reload", (PyCFunction) py_reload, METH_NOARGS, "Reload" },
+  { "exit", (PyCFunction) py_exit, METH_NOARGS, "Exit" },
   { "main_loop_call_thread_init", (PyCFunction) py_main_loop_call_thread_init, METH_NOARGS, "Initialize main loop call support for the current thread" },
   { "was_last_reload_successful", (PyCFunction) py_was_last_reload_successful, METH_NOARGS, "Returns whether the last reload was successful" },
   { NULL }
