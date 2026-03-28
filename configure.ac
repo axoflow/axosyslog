@@ -1045,7 +1045,7 @@ dnl ***************************************************************************
 GLIB_ADDONS="gmodule-2.0 gthread-2.0"
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= $GLIB_MIN_VERSION $GLIB_ADDONS,,)
 
-if test "$linking_mode" != "dynamic"; then
+if test "$linking_mode" = "mixed"; then
 	# strip out -ldl & -lrt as it cannot be linked statically
 	GLIB_LIBS=`echo $GLIB_LIBS | tr ' ' '\n' | egrep -v "^(-ldld?)|(-lrt)$" | tr '\n' ' '`
 
@@ -2208,8 +2208,7 @@ if test "x$linking_mode" = "xdynamic"; then
 		TOOL_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS"
 		CORE_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS"
 	fi
-
-else
+elif test "x$linking_mode" = "xmixed"; then
 	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_NO_LIBTOOL_LIBS $SECRETSTORAGE_NO_LIBTOOL_LIBS $LD_START_STATIC -Wl,${WHOLE_ARCHIVE_OPT} $GLIB_LIBS $PCRE2_LIBS $OPENSSL_LIBS $REGEX_LIBS $JSON_LIBS $LIBUNWIND_LIBS -Wl,${NO_WHOLE_ARCHIVE_OPT} $IVYKIS_NO_LIBTOOL_LIBS $LD_END_STATIC $LIBCAP_LIBS $DL_LIBS"
 	TOOL_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $IVYKIS_LIBS $DL_LIBS $OPENSSL_LIBS $JSON_LIBS"
 	CORE_DEPS_LIBS=""
@@ -2217,6 +2216,14 @@ else
 	# bypass libtool in case we want to do mixed linking because it
 	# doesn't support -Wl,-Bstatic -Wl,-Bdynamic on a per-library basis.
 	SYSLOGNG_LINK='$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@'
+elif test "x$linking_mode" = "xmonolithic"; then
+	enable_shared=no
+	enable_static=yes
+	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $GLIB_LIBS $PCRE2_LIBS $OPENSSL_LIBS $REGEX_LIBS $JSON_LIBS $LIBUNWIND_LIBS $IVYKIS_LIBS $LIBCAP_LIBS $DL_LIBS"
+	TOOL_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $IVYKIS_LIBS $DL_LIBS $OPENSSL_LIBS $JSON_LIBS"
+	CORE_DEPS_LIBS=""
+else
+	AC_MSG_ERROR([Unknown value specified for the --with-linking-mode command line option: $linking_mode])
 fi
 YFLAGS="-d"
 
@@ -2299,8 +2306,10 @@ AC_DEFINE_UNQUOTED(ENABLE_STACKDUMP, `enable_value $enable_stackdump`, [Enable s
 AC_DEFINE_UNQUOTED(SYSTEMD_JOURNAL_MODE, `journald_mode`, [Systemd-journal support mode])
 AC_DEFINE_UNQUOTED(HAVE_INOTIFY, `enable_value $ac_cv_func_inotify_init`, [Have inotify])
 AC_DEFINE_UNQUOTED(USE_CONST_IVYKIS_MOCK, `enable_value $IVYKIS_VERSION_UPDATED`, [ivykis version is greater than $IVYKIS_UPDATED_VERSION])
+AC_DEFINE_UNQUOTED(ENABLE_BUILTIN_MODULES, `test $linking_mode = monolithic && echo 1 || echo 0`, [Builting modules are linked into the executable])
 
 AM_CONDITIONAL(ENABLE_ENV_WRAPPER, [test "$enable_env_wrapper" = "yes"])
+AM_CONDITIONAL(ENABLE_BUILTIN_MODULES, [test "$linking_mode" = "monolithic"])
 AM_CONDITIONAL(ENABLE_SYSTEMD, [test "$enable_systemd" = "yes"])
 AM_CONDITIONAL(ENABLE_SYSTEMD_UNIT_INSTALL, [test "$systemdsystemunitdir" != ""])
 AM_CONDITIONAL(ENABLE_SQL, [test "$enable_sql" = "yes"])

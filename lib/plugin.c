@@ -529,14 +529,23 @@ plugin_extract_candidate_plugins(PluginContext *context, const gchar *module_nam
  * The called function can call plugin_extract_candidate_plugins() to
  * register any module_info struct that is built in.
  */
+#if SYSLOG_NG_ENABLE_BUILTIN_MODULES
 extern void register_builtin_modules(PluginContext *context) __attribute__((weak));
 
 static void
 plugin_discover_builtin_modules(PluginContext *context)
 {
-  if (register_builtin_modules)
-    register_builtin_modules(context);
+  register_builtin_modules(context);
 }
+
+#else
+
+static void
+plugin_discover_builtin_modules(PluginContext *context)
+{
+}
+
+#endif
 
 static void
 plugin_discover_loadable_modules(PluginContext *context)
