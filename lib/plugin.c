@@ -520,15 +520,11 @@ plugin_extract_candidate_plugins(PluginContext *context, const gchar *module_nam
     }
 }
 
-void
-plugin_discover_candidate_modules(PluginContext *context)
+static void
+plugin_discover_loadable_modules(PluginContext *context)
 {
   GModule *mod;
   gchar **mod_paths;
-
-  if (context->candidate_plugins)
-    g_hash_table_unref(context->candidate_plugins);
-  context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
 
   mod_paths = g_strsplit(context->module_path ? : "", G_SEARCHPATH_SEPARATOR_S, 0);
   for (gint i = 0; mod_paths[i]; i++)
@@ -572,6 +568,17 @@ plugin_discover_candidate_modules(PluginContext *context)
       g_dir_close(dir);
     }
   g_strfreev(mod_paths);
+
+}
+
+void
+plugin_discover_candidate_modules(PluginContext *context)
+{
+  if (context->candidate_plugins)
+    g_hash_table_unref(context->candidate_plugins);
+  context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
+
+  plugin_discover_loadable_modules(context);
 }
 
 void
