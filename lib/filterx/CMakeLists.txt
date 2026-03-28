@@ -67,6 +67,7 @@ set(FILTERX_HEADERS
     filterx/func-repr.h
     filterx/func-failure-info.h
     filterx/func-dict-to-pairs.h
+    filterx/func-uuid.h
     filterx/object-datetime.h
     filterx/object-dict.h
     filterx/object-extractor.h
@@ -147,6 +148,7 @@ set(FILTERX_SOURCES
     filterx/func-repr.c
     filterx/func-failure-info.c
     filterx/func-dict-to-pairs.c
+    filterx/func-uuid.c
     filterx/object-datetime.c
     filterx/object-dict.c
     filterx/object-list.c

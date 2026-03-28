@@ -23,6 +23,7 @@
 import base64
 import json
 import math
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -1158,3 +1159,16 @@ def test_flatten_when_moving_references(config, syslog_ng):
         '[1,2,3,4,5],' \
         '{"inner_inner_field":2}' \
         ']'
+
+
+def test_uuid(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = string(uuid());
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    uuid_str = file_final.read_log().strip()
+    assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", uuid_str)

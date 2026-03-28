@@ -48,6 +48,7 @@
 #include "filterx/func-cache-json-file.h"
 #include "filterx/func-failure-info.h"
 #include "filterx/func-dict-to-pairs.h"
+#include "filterx/func-uuid.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
@@ -112,6 +113,7 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("str_lstrip", filterx_simple_function_str_lstrip));
   g_assert(filterx_builtin_simple_function_register("str_rstrip", filterx_simple_function_str_rstrip));
   g_assert(filterx_builtin_simple_function_register("str_replace", filterx_simple_function_str_replace));
+  g_assert(filterx_builtin_simple_function_register("uuid", filterx_simple_function_uuid));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
   g_assert(filterx_builtin_simple_function_register("get_sdata",
