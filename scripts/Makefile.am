@@ -8,7 +8,8 @@ EXTRA_DIST	+= scripts/update-patterndb.in \
 	scripts/test-grep.sh	\
 	scripts/style-checker.sh	\
 	scripts/build-python-venv.sh \
-	scripts/syslog-ng-update-virtualenv.in
+	scripts/syslog-ng-update-virtualenv.in \
+	scripts/gen-builtin-modules.py
 
 
 install-exec-local:
