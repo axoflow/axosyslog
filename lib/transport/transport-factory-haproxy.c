@@ -29,6 +29,7 @@ typedef struct _LogTransportFactoryHAProxy
   LogTransportFactory super;
   LogTransportIndex base;
   LogTransportIndex switch_to;
+  gint sock_type;
 } LogTransportFactoryHAProxy;
 
 static LogTransport *
@@ -37,11 +38,12 @@ _construct_transport(const LogTransportFactory *s, LogTransportStack *stack)
   LogTransportFactoryHAProxy *self = (LogTransportFactoryHAProxy *) s;
 
   return log_transport_haproxy_new(self->base == LOG_TRANSPORT_NONE ? stack->active_transport : self->base,
-                                   self->switch_to == LOG_TRANSPORT_NONE ? stack->active_transport : self->switch_to);
+                                   self->switch_to == LOG_TRANSPORT_NONE ? stack->active_transport : self->switch_to,
+                                   self->sock_type);
 }
 
 LogTransportFactory *
-transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to)
+transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to, gint sock_type)
 {
   LogTransportFactoryHAProxy *self = g_new0(LogTransportFactoryHAProxy, 1);
 
@@ -49,5 +51,6 @@ transport_factory_haproxy_new(LogTransportIndex base, LogTransportIndex switch_t
   self->super.construct_transport = _construct_transport;
   self->base = base;
   self->switch_to = switch_to;
+  self->sock_type = sock_type;
   return &self->super;
 }
