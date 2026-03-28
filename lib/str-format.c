@@ -122,7 +122,8 @@ format_padded_int64_into_buffer(gchar *result, gsize result_len,
     field_len = len;
 
   /* reverse the characters */
-  memset(result, pad_char, field_len - len);
+  for (i = 0; i < field_len - len; i++)
+    result[i] = pad_char;
   for (i = 0; i < len; i++)
     {
       result[field_len - i - 1] = num[i];
