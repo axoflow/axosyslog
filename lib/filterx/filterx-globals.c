@@ -50,6 +50,7 @@
 #include "filterx/func-dict-to-pairs.h"
 #include "filterx/func-uuid.h"
 #include "filterx/func-digest.h"
+#include "filterx/func-encode.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
@@ -119,6 +120,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("sha1", filterx_simple_function_sha1));
   g_assert(filterx_builtin_simple_function_register("sha256", filterx_simple_function_sha256));
   g_assert(filterx_builtin_simple_function_register("sha512", filterx_simple_function_sha512));
+  g_assert(filterx_builtin_simple_function_register("base64_encode", filterx_simple_function_base64_encode));
+  g_assert(filterx_builtin_simple_function_register("base64_decode", filterx_simple_function_base64_decode));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
   g_assert(filterx_builtin_simple_function_register("get_sdata",

@@ -69,6 +69,7 @@ set(FILTERX_HEADERS
     filterx/func-dict-to-pairs.h
     filterx/func-uuid.h
     filterx/func-digest.h
+    filterx/func-encode.h
     filterx/object-datetime.h
     filterx/object-dict.h
     filterx/object-extractor.h
@@ -151,6 +152,7 @@ set(FILTERX_SOURCES
     filterx/func-dict-to-pairs.c
     filterx/func-uuid.c
     filterx/func-digest.c
+    filterx/func-encode.c
     filterx/object-datetime.c
     filterx/object-dict.c
     filterx/object-list.c

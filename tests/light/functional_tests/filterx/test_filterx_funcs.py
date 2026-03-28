@@ -1201,3 +1201,27 @@ def test_digest(config, syslog_ng):
             "digest_custom": base64.b64encode(hashlib.md5(b"kortefa").digest()).decode(),
         }, separators=(",", ":"),
     )
+
+
+def test_base64(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "encode_string": base64_encode("foobar"),
+        "encode_bytes": base64_encode(${values.bytes}),
+        "decode": base64_decode("Zm9vYmFy"),
+        "roundtrip": base64_decode(base64_encode("szilvafa")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "encode_string": base64.b64encode(b"foobar").decode(),
+            "encode_bytes": base64.b64encode(b"binary whatever").decode(),
+            "decode": base64.b64encode(b"foobar").decode(),
+            "roundtrip": base64.b64encode(b"szilvafa").decode(),
+        }, separators=(",", ":"),
+    )

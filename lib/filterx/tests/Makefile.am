@@ -36,7 +36,8 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_scope \
 		lib/filterx/tests/test_filterx_eval \
 		lib/filterx/tests/test_func_uuid \
-		lib/filterx/tests/test_func_digest
+		lib/filterx/tests/test_func_digest \
+		lib/filterx/tests/test_func_encode
 
 EXTRA_DIST += lib/filterx/tests/CMakeLists.txt
 
@@ -149,3 +150,6 @@ lib_filterx_tests_test_func_uuid_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_func_digest_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_func_digest_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_func_encode_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_func_encode_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
