@@ -59,4 +59,14 @@ size_t strnlen(const char *s, size_t maxlen);
 ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
 #endif
 
+#ifndef SYSLOG_NG_HAVE_STRCHRNUL
+static inline char *strchrnul(const char *s, int c)
+{
+  char *p = strchr(s, c);
+  if (!p)
+    p = s + strlen(s);
+  return p;
+}
+#endif
+
 #endif

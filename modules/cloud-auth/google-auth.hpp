@@ -44,7 +44,7 @@ public:
                               uint64_t token_validity_duration);
   ~ServiceAccountAuthenticator() {};
 
-  void handle_http_header_request(HttpHeaderRequestSignalData *data);
+  void handle_http_header_request(HttpRequestSignalData *data);
 
 private:
   std::string audience;
@@ -62,10 +62,10 @@ public:
   UserManagedServiceAccountAuthenticator(const char *name, const char *metadata_url);
   ~UserManagedServiceAccountAuthenticator();
 
-  void handle_http_header_request(HttpHeaderRequestSignalData *data);
+  void handle_http_header_request(HttpRequestSignalData *data);
 
 private:
-  static void add_token_to_headers(HttpHeaderRequestSignalData *data, const std::string &token);
+  static void add_token_to_headers(HttpRequestSignalData *data, const std::string &token);
   static size_t curl_write_callback(void *contents, size_t size, size_t nmemb, void *userp);
   bool send_token_get_request(std::string &response_payload_buffer);
   bool parse_token_and_expiry_from_response(const std::string &response_payload, std::string &token, long *expiry);

@@ -175,6 +175,9 @@ modules/java/(native|proxies|src)
 modules/native
 modules/http/http-signals.h
 modules/http/compression\.[ch]
+modules/http-adapters/.*\.[ch]
+modules/http-adapters/http-adapters-grammar.ym
+modules/http-adapters/tests/.*\.[ch]
 tests/loggen
 persist-tool
 modules/python-modules/syslogng/__init__\.py
