@@ -23,6 +23,7 @@ modules_grpc_common_libgrpc_common_la_SOURCES = \
   modules/grpc/common/grpc-parser.h \
   modules/grpc/common/grpc-grammar-internal.h \
   modules/grpc/common/grpc-grammar-internal.c \
+  modules/grpc/common/grpc-signals.h \
   modules/grpc/common/grpc-dest.h \
   modules/grpc/common/grpc-dest.hpp \
   modules/grpc/common/grpc-dest.cpp \
