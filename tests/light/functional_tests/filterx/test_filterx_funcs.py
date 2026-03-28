@@ -21,6 +21,7 @@
 #
 #############################################################################
 import base64
+import hashlib
 import json
 import math
 import re
@@ -1172,3 +1173,31 @@ def test_uuid(config, syslog_ng):
     assert file_final.get_stats()["processed"] == 1
     uuid_str = file_final.read_log().strip()
     assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", uuid_str)
+
+
+def test_digest(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "md5": md5("foobar"),
+        "sha1": sha1("foobar"),
+        "sha256": sha256("foobar"),
+        "sha512": sha512("foobar"),
+        "digest_default": digest("foobar"),
+        "digest_custom": digest("kortefa", alg="md5"),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "md5": hashlib.md5(b"foobar").hexdigest(),
+            "sha1": hashlib.sha1(b"foobar").hexdigest(),
+            "sha256": hashlib.sha256(b"foobar").hexdigest(),
+            "sha512": hashlib.sha512(b"foobar").hexdigest(),
+            "digest_default": base64.b64encode(hashlib.sha256(b"foobar").digest()).decode(),
+            "digest_custom": base64.b64encode(hashlib.md5(b"kortefa").digest()).decode(),
+        }, separators=(",", ":"),
+    )

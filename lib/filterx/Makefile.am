@@ -71,6 +71,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-failure-info.h \
 	lib/filterx/func-dict-to-pairs.h \
 	lib/filterx/func-uuid.h \
+	lib/filterx/func-digest.h \
 	lib/filterx/object-datetime.h \
 	lib/filterx/object-dict.h \
 	lib/filterx/object-list.h \
@@ -152,6 +153,7 @@ filterx_sources = 				\
 	lib/filterx/func-failure-info.c \
 	lib/filterx/func-dict-to-pairs.c \
 	lib/filterx/func-uuid.c \
+	lib/filterx/func-digest.c \
 	lib/filterx/object-datetime.c \
 	lib/filterx/object-dict.c \
 	lib/filterx/object-list.c \
