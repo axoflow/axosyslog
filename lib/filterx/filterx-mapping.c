@@ -144,6 +144,15 @@ error:
   return NULL;
 }
 
+static FilterXObject *
+_add_inplace(FilterXObject *lhs_object, FilterXObject *rhs_object)
+{
+  if (!filterx_mapping_merge(lhs_object, rhs_object))
+    return NULL;
+
+  return filterx_object_ref(lhs_object);
+}
+
 FILTERX_DEFINE_TYPE(mapping, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .is_abstract = TRUE,
@@ -151,4 +160,5 @@ FILTERX_DEFINE_TYPE(mapping, FILTERX_TYPE_NAME(object),
                     .setattr = _setattr,
                     .format_json = _format_json,
                     .add = _add,
+                    .add_inplace = _add_inplace,
                    );

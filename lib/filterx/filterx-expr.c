@@ -94,6 +94,23 @@ filterx_expr_get_text(FilterXExpr *self)
 }
 
 FilterXObject *
+filterx_expr_plus_assign_method(FilterXExpr *self, FilterXObject *value)
+{
+  FilterXObject *object = filterx_expr_eval_typed(self);
+  if (!object)
+    return NULL;
+
+  FilterXObject *res = filterx_object_add_inplace(object, value);
+  filterx_object_unref(object);
+  if (res != object)
+    {
+      /* add_inpace() returned a different object, store the replacement */
+      filterx_expr_assign(self, &res);
+    }
+  return res;
+}
+
+FilterXObject *
 filterx_expr_move_method(FilterXExpr *self)
 {
   FilterXObject *result = filterx_expr_eval(self);
@@ -281,6 +298,7 @@ filterx_expr_init_instance(FilterXExpr *self, const gchar *type, FilterXEffect e
   self->deinit = filterx_expr_deinit_method;
   self->move = filterx_expr_move_method;
   self->free_fn = filterx_expr_free_method;
+  self->plus_assign = filterx_expr_plus_assign_method;
   self->type = type;
   self->effects = effects;
 }
