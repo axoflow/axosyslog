@@ -490,18 +490,48 @@ plugin_has_discovery_run(PluginContext *context)
 }
 
 void
+plugin_extract_candidate_plugins(PluginContext *context, const gchar *module_name, ModuleInfo *module_info)
+{
+  for (gint i = 0; i < module_info->plugins_len; i++)
+    {
+      Plugin *plugin = &module_info->plugins[i];
+      PluginCandidate *candidate_plugin;
+
+      candidate_plugin = (PluginCandidate *) g_hash_table_lookup(context->candidate_plugins, plugin);
+
+      msg_debug("Registering candidate plugin",
+                evt_tag_str("module", module_name),
+                evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
+                evt_tag_str("name", plugin->name));
+      if (candidate_plugin)
+        {
+          msg_debug("Duplicate plugin candidate, overriding previous registration with the new one",
+                    evt_tag_str("old-module", candidate_plugin->module_name),
+                    evt_tag_str("new-module", module_name),
+                    evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
+                    evt_tag_str("name", plugin->name));
+          plugin_candidate_set_module_name(candidate_plugin, module_name);
+        }
+      else
+        {
+          candidate_plugin = plugin_candidate_new(plugin->type, plugin->name, module_name);
+          g_hash_table_insert(context->candidate_plugins, candidate_plugin, candidate_plugin);
+        }
+    }
+}
+
+void
 plugin_discover_candidate_modules(PluginContext *context)
 {
   GModule *mod;
   gchar **mod_paths;
-  gint i, j;
 
   if (context->candidate_plugins)
     g_hash_table_unref(context->candidate_plugins);
   context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
 
   mod_paths = g_strsplit(context->module_path ? : "", G_SEARCHPATH_SEPARATOR_S, 0);
-  for (i = 0; mod_paths[i]; i++)
+  for (gint i = 0; mod_paths[i]; i++)
     {
       GDir *dir;
       const gchar *fname;
@@ -531,34 +561,7 @@ plugin_discover_candidate_modules(PluginContext *context)
               module_info = _get_module_info(mod, module_name);
 
               if (module_info)
-                {
-                  for (j = 0; j < module_info->plugins_len; j++)
-                    {
-                      Plugin *plugin = &module_info->plugins[j];
-                      PluginCandidate *candidate_plugin;
-
-                      candidate_plugin = (PluginCandidate *) g_hash_table_lookup(context->candidate_plugins, plugin);
-
-                      msg_debug("Registering candidate plugin",
-                                evt_tag_str("module", module_name),
-                                evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
-                                evt_tag_str("name", plugin->name));
-                      if (candidate_plugin)
-                        {
-                          msg_debug("Duplicate plugin candidate, overriding previous registration with the new one",
-                                    evt_tag_str("old-module", candidate_plugin->module_name),
-                                    evt_tag_str("new-module", module_name),
-                                    evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
-                                    evt_tag_str("name", plugin->name));
-                          plugin_candidate_set_module_name(candidate_plugin, module_name);
-                        }
-                      else
-                        {
-                          candidate_plugin = plugin_candidate_new(plugin->type, plugin->name, module_name);
-                          g_hash_table_insert(context->candidate_plugins, candidate_plugin, candidate_plugin);
-                        }
-                    }
-                }
+                plugin_extract_candidate_plugins(context, module_name, module_info);
               g_free(module_name);
               if (mod)
                 g_module_close(mod);

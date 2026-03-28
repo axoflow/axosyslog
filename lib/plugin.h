@@ -104,6 +104,7 @@ gboolean plugin_is_module_available(PluginContext *context, const gchar *module_
 void plugin_list_modules(FILE *out, gboolean verbose);
 
 gboolean plugin_has_discovery_run(PluginContext *context);
+void plugin_extract_candidate_plugins(PluginContext *context, const gchar *module_name, ModuleInfo *module_info);
 void plugin_discover_candidate_modules(PluginContext *context);
 
 void plugin_context_share_candidates(PluginContext *context, PluginContext *src_context);
