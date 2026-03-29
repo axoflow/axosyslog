@@ -218,6 +218,7 @@ jobs:
           # Setup build time environment variables
           CONFIGURE_OPTS="
             --prefix=/install
+            --with-linking-mode=monolithic
             --disable-debug
             --enable-all-modules
             --disable-java
