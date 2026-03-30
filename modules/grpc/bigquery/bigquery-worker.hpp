@@ -83,7 +83,8 @@ private:
       google::cloud::bigquery::storage::v1::AppendRowsResponse>> batch_writer;
 
   /* batch state */
-  google::cloud::bigquery::storage::v1::AppendRowsRequest current_batch;
+  google::cloud::bigquery::storage::v1::AppendRowsRequest *current_batch;
+  google::cloud::bigquery::storage::v1::AppendRowsResponse *append_rows_response;
   size_t batch_size = 0;
   size_t current_batch_bytes = 0;
 };

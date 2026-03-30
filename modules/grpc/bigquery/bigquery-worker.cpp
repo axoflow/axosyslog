@@ -46,7 +46,9 @@ using syslogng::grpc::bigquery::DestinationDriver;
 using google::protobuf::FieldDescriptor;
 
 DestinationWorker::DestinationWorker(GrpcDestWorker *s)
-  : syslogng::grpc::DestWorker(s)
+  : syslogng::grpc::DestWorker(s),
+    current_batch(arena.CreateMessage<google::cloud::bigquery::storage::v1::AppendRowsRequest>()),
+    append_rows_response(arena.CreateMessage<google::cloud::bigquery::storage::v1::AppendRowsResponse>())
 {
   std::stringstream table_name;
   DestinationDriver *owner_ = this->get_owner();
@@ -141,12 +143,15 @@ DestinationWorker::prepare_batch()
 {
   this->batch_size = 0;
   this->current_batch_bytes = 0;
-  this->current_batch = google::cloud::bigquery::storage::v1::AppendRowsRequest{};
 
-  this->current_batch.set_write_stream(write_stream.name());
-  this->current_batch.set_trace_id("syslog-ng-bigquery");
+  this->arena.Reset();
+  this->current_batch = arena.CreateMessage<google::cloud::bigquery::storage::v1::AppendRowsRequest>();
+  this->append_rows_response = arena.CreateMessage<google::cloud::bigquery::storage::v1::AppendRowsResponse>();
+
+  this->current_batch->set_write_stream(write_stream.name());
+  this->current_batch->set_trace_id("syslog-ng-bigquery");
   google::cloud::bigquery::storage::v1::AppendRowsRequest_ProtoData *proto_rows =
-    this->current_batch.mutable_proto_rows();
+    this->current_batch->mutable_proto_rows();
   google::cloud::bigquery::storage::v1::ProtoSchema *schema = proto_rows->mutable_writer_schema();
   this->get_owner()->log_message_protobuf_formatter.get_schema_descriptor().CopyTo(schema->mutable_proto_descriptor());
 }
@@ -164,7 +169,7 @@ DestinationWorker::insert(LogMessage *msg)
   std::string serialized_row;
   size_t row_bytes = 0;
 
-  google::cloud::bigquery::storage::v1::ProtoRows *rows = this->current_batch.mutable_proto_rows()->mutable_rows();
+  google::cloud::bigquery::storage::v1::ProtoRows *rows = this->current_batch->mutable_proto_rows()->mutable_rows();
 
   google::protobuf::Message *message = nullptr;
 
@@ -244,40 +249,39 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
     return LTR_SUCCESS;
 
   LogThreadedResult result;
-  google::cloud::bigquery::storage::v1::AppendRowsResponse append_rows_response;
 
-  if (!this->batch_writer->Write(current_batch))
+  if (!this->batch_writer->Write(*this->current_batch))
     {
       msg_error("Error writing BigQuery batch", log_pipe_location_tag((LogPipe *) this->super->super.owner));
       result = LTR_ERROR;
       goto error;
     }
 
-  if (!this->batch_writer->Read(&append_rows_response))
+  if (!this->batch_writer->Read(this->append_rows_response))
     {
       msg_error("Error reading BigQuery batch response", log_pipe_location_tag((LogPipe *) this->super->super.owner));
       result = LTR_ERROR;
       goto error;
     }
 
-  if (this->get_owner()->handle_response(_append_rows_response_get_status(append_rows_response), &result))
+  if (this->get_owner()->handle_response(_append_rows_response_get_status(*this->append_rows_response), &result))
     {
       if (result == LTR_SUCCESS)
         goto success;
       goto error;
     }
 
-  if (append_rows_response.has_error() && append_rows_response.error().code() != ::grpc::StatusCode::ALREADY_EXISTS)
+  if (this->append_rows_response->has_error() && this->append_rows_response->error().code() != ::grpc::StatusCode::ALREADY_EXISTS)
     {
       msg_error("Error in BigQuery batch",
-                evt_tag_str("error", append_rows_response.error().message().c_str()),
-                evt_tag_int("code", append_rows_response.error().code()),
+                evt_tag_str("error", this->append_rows_response->error().message().c_str()),
+                evt_tag_int("code", this->append_rows_response->error().code()),
                 log_pipe_location_tag((LogPipe *) this->super->super.owner));
 
       result = LTR_ERROR;
 
-      if (append_rows_response.row_errors_size() != 0)
-        result = handle_row_errors(append_rows_response);
+      if (this->append_rows_response->row_errors_size() != 0)
+        result = handle_row_errors(*this->append_rows_response);
 
       goto error;
     }
@@ -290,7 +294,7 @@ success:
   result = LTR_SUCCESS;
 
 error:
-  this->get_owner()->metrics.insert_grpc_request_stats(_append_rows_response_get_status(append_rows_response));
+  this->get_owner()->metrics.insert_grpc_request_stats(_append_rows_response_get_status(*this->append_rows_response));
   this->prepare_batch();
   return result;
 }
