@@ -25,6 +25,7 @@
 #include "filterx/object-extractor.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "str-format.h"
 
 /* base64 */
 
@@ -128,3 +129,73 @@ filterx_simple_function_urldecode(FilterXExpr *s, FilterXObject *args[], gsize a
   return filterx_string_new_take(decoded, (gssize) strlen(decoded));
 }
 
+/* hex */
+
+FilterXObject *
+filterx_simple_function_hex_encode(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args == NULL || args_len != 1)
+    {
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
+      return NULL;
+    }
+
+  const gchar *input;
+  gsize input_len;
+
+  if (!filterx_object_extract_string_ref(args[0], &input, &input_len) &&
+      !filterx_object_extract_bytes_ref(args[0], &input, &input_len))
+    {
+      filterx_simple_function_argument_error(s, "Argument must be a string or bytes");
+      return NULL;
+    }
+
+  gchar *hex = g_malloc(input_len * 2 + 1);
+  format_hex_string(input, input_len, hex, input_len * 2 + 1);
+  return filterx_string_new_take(hex, (gssize)(input_len * 2));
+}
+
+FilterXObject *
+filterx_simple_function_hex_decode(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args == NULL || args_len != 1)
+    {
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
+      return NULL;
+    }
+
+  const gchar *input;
+  gsize input_len;
+
+  if (!filterx_object_extract_string_ref(args[0], &input, &input_len))
+    {
+      filterx_simple_function_argument_error(s, "Argument must be a string");
+      return NULL;
+    }
+
+  if (input_len % 2 != 0)
+    {
+      filterx_simple_function_argument_error(s, "Hex string must have even length");
+      return NULL;
+    }
+
+  gssize out_len = input_len / 2;
+  gchar *out = g_malloc(out_len);
+  const gchar *buf = input;
+  gsize left = input_len;
+
+  for (gsize i = 0; i < out_len; i++)
+    {
+      glong byte_val;
+      if (!scan_hex_int(&buf, &left, 2, &byte_val))
+        {
+          g_free(out);
+          filterx_eval_push_error_info_printf("hex_decode() failed", s,
+                                              "invalid hex character at position %" G_GSIZE_FORMAT, i * 2);
+          return NULL;
+        }
+      out[i] = (gchar) byte_val;
+    }
+
+  return filterx_bytes_new_take(out, out_len);
+}

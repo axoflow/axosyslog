@@ -278,5 +278,156 @@ teardown(void)
   app_shutdown();
 }
 
+/* hex */
+
+static FilterXExpr *
+_create_hex_encode_expr(FilterXObject *arg)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+
+  GError *error = NULL;
+  FilterXExpr *fn = filterx_simple_function_new("hex_encode", filterx_function_args_new(args, NULL),
+                                                filterx_simple_function_hex_encode, &error);
+  cr_assert_null(error);
+  return fn;
+}
+
+static FilterXExpr *
+_create_hex_decode_expr(FilterXObject *arg)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+
+  GError *error = NULL;
+  FilterXExpr *fn = filterx_simple_function_new("hex_decode", filterx_function_args_new(args, NULL),
+                                                filterx_simple_function_hex_decode, &error);
+  cr_assert_null(error);
+  return fn;
+}
+
+Test(filterx_func_hex, encode_string)
+{
+  FilterXExpr *fn = _create_hex_encode_expr(filterx_string_new("foo", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  assert_object_repr_equals(res, "666f6f");
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, encode_bytes)
+{
+  FilterXExpr *fn = _create_hex_encode_expr(filterx_bytes_new("\x00\x01\x0f\xff", 4));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  assert_object_repr_equals(res, "00010fff");
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, encode_wrong_arg_type)
+{
+  FilterXExpr *fn = _create_hex_encode_expr(filterx_integer_new(42));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_null(res);
+
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, decode_lowercase)
+{
+  FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("666f6f", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(bytes)));
+
+  gsize len;
+  const gchar *value = filterx_bytes_get_value_ref(res, &len);
+  cr_assert_not_null(value);
+  cr_assert_eq(len, 3);
+  cr_assert(memcmp(value, "foo", 3) == 0);
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, decode_uppercase)
+{
+  FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("666F6F", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(bytes)));
+
+  gsize len;
+  const gchar *value = filterx_bytes_get_value_ref(res, &len);
+  cr_assert_not_null(value);
+  cr_assert_eq(len, 3);
+  cr_assert(memcmp(value, "foo", 3) == 0);
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, decode_odd_length)
+{
+  FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("666f6", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_null(res);
+
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, decode_invalid_char)
+{
+  FilterXExpr *fn = _create_hex_decode_expr(filterx_string_new("66zz6f", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_null(res);
+
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, decode_wrong_arg_type)
+{
+  FilterXExpr *fn = _create_hex_decode_expr(filterx_integer_new(42));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_null(res);
+
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_hex, encode_decode_roundtrip)
+{
+  FilterXExpr *encode_fn = _create_hex_encode_expr(filterx_bytes_new("\xde\xad\xbe\xef", 4));
+  FilterXObject *encoded = init_and_eval_expr(encode_fn);
+  cr_assert_not_null(encoded);
+
+  FilterXExpr *decode_fn = _create_hex_decode_expr(filterx_object_ref(encoded));
+  FilterXObject *decoded = init_and_eval_expr(decode_fn);
+  cr_assert_not_null(decoded);
+
+  gsize len;
+  const gchar *value = filterx_bytes_get_value_ref(decoded, &len);
+  cr_assert_not_null(value);
+  cr_assert_eq(len, 4);
+  cr_assert(memcmp(value, "\xde\xad\xbe\xef", 4) == 0);
+
+  filterx_object_unref(decoded);
+  filterx_expr_unref(decode_fn);
+  filterx_object_unref(encoded);
+  filterx_expr_unref(encode_fn);
+}
+
 TestSuite(filterx_func_base64, .init = setup, .fini = teardown);
 TestSuite(filterx_func_url, .init = setup, .fini = teardown);
+TestSuite(filterx_func_hex, .init = setup, .fini = teardown);

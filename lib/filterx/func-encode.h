@@ -32,4 +32,7 @@ FilterXObject *filterx_simple_function_base64_decode(FilterXExpr *s, FilterXObje
 FilterXObject *filterx_simple_function_urlencode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_simple_function_urldecode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
+FilterXObject *filterx_simple_function_hex_encode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_hex_decode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
 #endif

@@ -1277,3 +1277,27 @@ def test_utf8(config, syslog_ng):
             "sanitize_invalid_idempotent": "\\x80\\x81\\x82",
         }, separators=(",", ":"), ensure_ascii=False,
     )
+
+
+def test_hex(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "encode_string": hex_encode("foobar"),
+        "encode_bytes": hex_encode(${values.bytes}),
+        "decode": hex_decode("666f6f626172"),
+        "roundtrip": hex_decode(hex_encode("szilvafa")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "encode_string": b"foobar".hex(),
+            "encode_bytes": b"binary whatever".hex(),
+            "decode": base64.b64encode(b"foobar").decode(),
+            "roundtrip": base64.b64encode(b"szilvafa").decode(),
+        }, separators=(",", ":"),
+    )
