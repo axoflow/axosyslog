@@ -88,6 +88,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
   INIT_TYPE_METHOD(type, add_inplace);
+  INIT_TYPE_METHOD(type, is_member_of);
   INIT_TYPE_METHOD(type, free_fn);
 
   if (!type->is_abstract)

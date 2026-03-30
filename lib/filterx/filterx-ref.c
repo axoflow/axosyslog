@@ -476,6 +476,13 @@ _filterx_ref_is_key_set(FilterXObject *s, FilterXObject *key)
   return filterx_object_is_key_set(self->value, key);
 }
 
+static FilterXObject *
+_filterx_ref_is_member_of(FilterXObject *s, FilterXObject *member)
+{
+  FilterXRef *self = (FilterXRef *) s;
+  return filterx_object_is_member_of(self->value, member);
+}
+
 static gboolean
 _filterx_ref_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data)
 {
@@ -603,6 +610,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .get_subscript = _filterx_ref_get_subscript,
                     .set_subscript = _filterx_ref_set_subscript,
                     .is_key_set = _filterx_ref_is_key_set,
+                    .is_member_of = _filterx_ref_is_member_of,
                     .unset_key = _filterx_ref_unset_key,
                     .move_key = _filterx_ref_move_key,
                     .iter = _filterx_ref_iter,

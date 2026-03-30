@@ -68,6 +68,7 @@ struct _FilterXType
   /* operators */
   FilterXObject *(*add)(FilterXObject *self, FilterXObject *object);
   FilterXObject *(*add_inplace)(FilterXObject *self, FilterXObject *container, FilterXObject *object);
+  FilterXObject *(*is_member_of)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
   void (*make_readonly)(FilterXObject *self);
@@ -584,6 +585,14 @@ static inline FilterXObject *
 filterx_object_add_inplace(FilterXObject *self, FilterXObject *object)
 {
   return self->type->add_inplace(self, NULL, object);
+}
+
+static inline FilterXObject *
+filterx_object_is_member_of(FilterXObject *self, FilterXObject *object)
+{
+  if (self->type->is_member_of)
+    return self->type->is_member_of(self, object);
+  return NULL;
 }
 
 static inline gboolean
