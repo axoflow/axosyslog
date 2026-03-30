@@ -73,6 +73,7 @@ set(FILTERX_HEADERS
     filterx/func-encode.h
     filterx/func-glob.h
     filterx/object-datetime.h
+    filterx/object-subnet.h
     filterx/object-dict.h
     filterx/object-extractor.h
     filterx/object-list.h
@@ -158,6 +159,7 @@ set(FILTERX_SOURCES
     filterx/func-encode.c
     filterx/func-glob.c
     filterx/object-datetime.c
+    filterx/object-subnet.c
     filterx/object-dict.c
     filterx/object-list.c
     filterx/object-message-value.c

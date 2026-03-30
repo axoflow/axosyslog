@@ -76,6 +76,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-encode.h \
 	lib/filterx/func-glob.h \
 	lib/filterx/object-datetime.h \
+	lib/filterx/object-subnet.h \
 	lib/filterx/object-dict.h \
 	lib/filterx/object-list.h \
 	lib/filterx/object-extractor.h \
@@ -161,6 +162,7 @@ filterx_sources = 				\
 	lib/filterx/func-encode.c \
 	lib/filterx/func-glob.c \
 	lib/filterx/object-datetime.c \
+	lib/filterx/object-subnet.c \
 	lib/filterx/object-dict.c \
 	lib/filterx/object-list.c \
 	lib/filterx/object-message-value.c \
