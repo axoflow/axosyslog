@@ -390,49 +390,48 @@ plugin_load_module(PluginContext *context, const gchar *module_name, CfgArgs *ar
   GModule *mod;
   static GModule *main_module_handle;
   gboolean (*init_func)(PluginContext *context, CfgArgs *args);
-  gchar *module_init_func;
   gboolean result;
   ModuleInfo *module_info;
 
-  /* lookup in the main executable */
   if (!main_module_handle)
     main_module_handle = g_module_open(NULL, 0);
-  module_init_func = _format_module_init_name(module_name);
 
-  if (g_module_symbol(main_module_handle, module_init_func, (gpointer *) &init_func))
+  /* lookup in the main executable */
+  module_info = _get_module_info(main_module_handle, module_name);
+  if (!module_info)
     {
-      /* already linked in, no need to load explicitly */
-      goto call_init;
+      /* try to load it from external .so */
+      mod = _dlopen_module_on_path(module_name, context->module_path);
+      if (!mod)
+        return FALSE;
+      g_module_make_resident(mod);
+
+      module_info = _get_module_info(mod, module_name);
+      if (!module_info)
+        {
+          msg_error("No ModuleInfo structure found in plugin",
+                    evt_tag_str("module", module_name));
+          return FALSE;
+        }
+    }
+  else
+    {
+      mod = main_module_handle;
     }
 
-  /* try to load it from external .so */
-  mod = _dlopen_module_on_path(module_name, context->module_path);
-  if (!mod)
-    {
-      g_free(module_init_func);
-      return FALSE;
-    }
-  g_module_make_resident(mod);
-  module_info = _get_module_info(mod, module_name);
-
-  if (module_info && module_info->canonical_name)
-    {
-      g_free(module_init_func);
-      module_init_func = _format_module_init_name(module_info->canonical_name ? : module_name);
-    }
-
+  /* call init function */
+  gchar *module_init_func = _format_module_init_name(module_info->canonical_name ? : module_name);
   if (!g_module_symbol(mod, module_init_func, (gpointer *) &init_func))
     {
-      msg_error("Error finding init function in module",
+      msg_error("Error finding module init function",
                 evt_tag_str("module", module_name),
                 evt_tag_str("symbol", module_init_func),
                 evt_tag_str("error", g_module_error()));
       g_free(module_init_func);
       return FALSE;
     }
-
-call_init:
   g_free(module_init_func);
+
   result = (*init_func)(context, args);
   if (result)
     msg_verbose("Module loaded and initialized successfully",
