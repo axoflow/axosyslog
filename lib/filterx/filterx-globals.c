@@ -122,6 +122,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("sha512", filterx_simple_function_sha512));
   g_assert(filterx_builtin_simple_function_register("base64_encode", filterx_simple_function_base64_encode));
   g_assert(filterx_builtin_simple_function_register("base64_decode", filterx_simple_function_base64_decode));
+  g_assert(filterx_builtin_simple_function_register("urlencode", filterx_simple_function_urlencode));
+  g_assert(filterx_builtin_simple_function_register("urldecode", filterx_simple_function_urldecode));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
   g_assert(filterx_builtin_simple_function_register("get_sdata",

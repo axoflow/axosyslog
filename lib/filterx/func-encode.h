@@ -29,4 +29,7 @@
 FilterXObject *filterx_simple_function_base64_encode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 FilterXObject *filterx_simple_function_base64_decode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
+FilterXObject *filterx_simple_function_urlencode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_urldecode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
 #endif

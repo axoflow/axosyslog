@@ -1225,3 +1225,29 @@ def test_base64(config, syslog_ng):
             "roundtrip": base64.b64encode(b"szilvafa").decode(),
         }, separators=(",", ":"),
     )
+
+
+def test_urlencode(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "encode_plain": urlencode("foobar"),
+        "encode_special": urlencode("kortefa/szilvafa?alma=1&dio=2"),
+        "decode_plain": urldecode("foobar"),
+        "decode_encoded": urldecode("kortefa%2Fszilvafa%3Falma%3D1%26dio%3D2"),
+        "roundtrip": urldecode(urlencode("kortefa/szilvafa?alma=1&dio=2")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "encode_plain": "foobar",
+            "encode_special": "kortefa%2Fszilvafa%3Falma%3D1%26dio%3D2",
+            "decode_plain": "foobar",
+            "decode_encoded": "kortefa/szilvafa?alma=1&dio=2",
+            "roundtrip": "kortefa/szilvafa?alma=1&dio=2",
+        }, separators=(",", ":"),
+    )

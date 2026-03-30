@@ -76,3 +76,54 @@ filterx_simple_function_base64_decode(FilterXExpr *s, FilterXObject *args[], gsi
   decoded_len = g_base64_decode_step(input, input_len, decoded, &state, &save);
   return filterx_bytes_new_take((gchar *) decoded, (gssize) decoded_len);
 }
+
+/* urlencode */
+
+FilterXObject *
+filterx_simple_function_urlencode(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args == NULL || args_len != 1)
+    {
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
+      return NULL;
+    }
+
+  const gchar *input;
+
+  if (!filterx_object_extract_string_as_cstr(args[0], &input))
+    {
+      filterx_simple_function_argument_error(s, "Argument must be a string");
+      return NULL;
+    }
+
+  gchar *encoded = g_uri_escape_string(input, NULL, FALSE);
+  return filterx_string_new_take(encoded, (gssize) strlen(encoded));
+}
+
+FilterXObject *
+filterx_simple_function_urldecode(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args == NULL || args_len != 1)
+    {
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
+      return NULL;
+    }
+
+  const gchar *input;
+
+  if (!filterx_object_extract_string_as_cstr(args[0], &input))
+    {
+      filterx_simple_function_argument_error(s, "Argument must be a string");
+      return NULL;
+    }
+
+  gchar *decoded = g_uri_unescape_string(input, NULL);
+  if (!decoded)
+    {
+      filterx_eval_push_error_info_printf("Failed to decode URL-encoded string", s,
+                                          "invalid URL encoding: %s", input);
+      return NULL;
+    }
+
+  return filterx_string_new_take(decoded, (gssize) strlen(decoded));
+}

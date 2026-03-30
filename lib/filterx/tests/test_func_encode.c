@@ -148,6 +148,121 @@ Test(filterx_func_base64, encode_decode_roundtrip)
   filterx_expr_unref(encode_fn);
 }
 
+/* urlencode */
+
+static FilterXExpr *
+_create_urlencode_expr(FilterXObject *arg)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+
+  GError *error = NULL;
+  FilterXExpr *fn = filterx_simple_function_new("urlencode", filterx_function_args_new(args, NULL),
+                                                filterx_simple_function_urlencode, &error);
+  cr_assert_null(error);
+  return fn;
+}
+
+static FilterXExpr *
+_create_urldecode_expr(FilterXObject *arg)
+{
+  GList *args = NULL;
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+
+  GError *error = NULL;
+  FilterXExpr *fn = filterx_simple_function_new("urldecode", filterx_function_args_new(args, NULL),
+                                                filterx_simple_function_urldecode, &error);
+  cr_assert_null(error);
+  return fn;
+}
+
+Test(filterx_func_url, encode_plain_string)
+{
+  FilterXExpr *fn = _create_urlencode_expr(filterx_string_new("foobar", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  assert_object_repr_equals(res, "foobar");
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_url, encode_special_chars)
+{
+  FilterXExpr *fn = _create_urlencode_expr(filterx_string_new("korte fa/szilva?alma=1&korte=2", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  assert_object_repr_equals(res, "korte%20fa%2Fszilva%3Falma%3D1%26korte%3D2");
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_url, encode_wrong_arg_type)
+{
+  FilterXExpr *fn = _create_urlencode_expr(filterx_integer_new(42));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_null(res);
+
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_url, decode_plain_string)
+{
+  FilterXExpr *fn = _create_urldecode_expr(filterx_string_new("foobar", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  assert_object_repr_equals(res, "foobar");
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_url, decode_percent_encoded)
+{
+  FilterXExpr *fn = _create_urldecode_expr(filterx_string_new("korte%20fa%2Fszilva%3Falma%3D1%26korte%3D2", -1));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_not_null(res);
+  assert_object_repr_equals(res, "korte fa/szilva?alma=1&korte=2");
+
+  filterx_object_unref(res);
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_url, decode_wrong_arg_type)
+{
+  FilterXExpr *fn = _create_urldecode_expr(filterx_integer_new(42));
+  FilterXObject *res = init_and_eval_expr(fn);
+
+  cr_assert_null(res);
+
+  filterx_expr_unref(fn);
+}
+
+Test(filterx_func_url, encode_decode_roundtrip)
+{
+  const gchar *original = "kortefa/szilvafa?alma=1&dio=2";
+  FilterXExpr *encode_fn = _create_urlencode_expr(filterx_string_new(original, -1));
+  FilterXObject *encoded = init_and_eval_expr(encode_fn);
+  cr_assert_not_null(encoded);
+
+  FilterXExpr *decode_fn = _create_urldecode_expr(filterx_object_ref(encoded));
+  FilterXObject *decoded = init_and_eval_expr(decode_fn);
+  cr_assert_not_null(decoded);
+
+  assert_object_repr_equals(decoded, original);
+
+  filterx_object_unref(decoded);
+  filterx_expr_unref(decode_fn);
+  filterx_object_unref(encoded);
+  filterx_expr_unref(encode_fn);
+}
+
 static void
 setup(void)
 {
@@ -164,3 +279,4 @@ teardown(void)
 }
 
 TestSuite(filterx_func_base64, .init = setup, .fini = teardown);
+TestSuite(filterx_func_url, .init = setup, .fini = teardown);
