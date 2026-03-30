@@ -1251,3 +1251,29 @@ def test_urlencode(config, syslog_ng):
             "roundtrip": "kortefa/szilvafa?alma=1&dio=2",
         }, separators=(",", ":"),
     )
+
+
+def test_utf8(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "validate_valid": utf8_validate("körtefa"),
+        "validate_invalid": utf8_validate("\x80\x81\x82"),
+        "sanitize_valid": utf8_sanitize("körtefa"),
+        "sanitize_invalid": utf8_sanitize("\x80\x81\x82"),
+        "sanitize_invalid_idempotent": utf8_sanitize(utf8_sanitize("\x80\x81\x82")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "validate_valid": True,
+            "validate_invalid": False,
+            "sanitize_valid": "körtefa",
+            "sanitize_invalid": "\\x80\\x81\\x82",
+            "sanitize_invalid_idempotent": "\\x80\\x81\\x82",
+        }, separators=(",", ":"), ensure_ascii=False,
+    )

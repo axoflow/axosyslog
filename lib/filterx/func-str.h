@@ -31,4 +31,7 @@ FilterXExpr *filterx_function_endswith_new(FilterXFunctionArgs *args, GError **e
 FilterXExpr *filterx_function_includes_new(FilterXFunctionArgs *args, GError **error);
 FilterXExpr *filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error);
 
+FilterXObject *filterx_simple_function_utf8_validate(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_utf8_sanitize(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
 #endif

@@ -32,6 +32,7 @@
 #include "filterx/filterx-sequence.h"
 #include "scratch-buffers.h"
 #include "str-utils.h"
+#include "utf8utils.h"
 
 #define FILTERX_FUNC_STARTSWITH_USAGE "Usage: startswith(string, prefix, ignorecase=true)" \
 "or startswith(string, [prefix_1, prefix_2, ..], ignorecase=true)"
@@ -718,4 +719,54 @@ error:
   filterx_function_args_free(args);
   filterx_expr_unref(&self->super.super);
   return NULL;
+}
+
+/* utf8 */
+
+FilterXObject *
+filterx_simple_function_utf8_validate(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args == NULL || args_len != 1)
+    {
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
+      return NULL;
+    }
+
+  const gchar *input;
+  gsize input_len;
+
+  if (!filterx_object_extract_string_ref(args[0], &input, &input_len))
+    {
+      filterx_simple_function_argument_error(s, "Argument must be a string");
+      return NULL;
+    }
+
+  return filterx_boolean_new(g_utf8_validate(input, (gssize) input_len, NULL));
+}
+
+FilterXObject *
+filterx_simple_function_utf8_sanitize(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+{
+  if (args == NULL || args_len != 1)
+    {
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
+      return NULL;
+    }
+
+  FilterXObject *string_arg = args[0];
+  const gchar *input;
+  gsize input_len;
+  if (!filterx_object_extract_string_ref(string_arg, &input, &input_len))
+    {
+      filterx_simple_function_argument_error(s, "Argument must be a string");
+      return NULL;
+    }
+
+  if (g_utf8_validate(input, (gssize) input_len, NULL))
+    return filterx_object_ref(string_arg);
+
+  GString *sanitized = g_string_sized_new(input_len);
+  append_unsafe_utf8_as_escaped_binary(sanitized, input, input_len, 0);
+  gsize sanitized_len = sanitized->len;
+  return filterx_string_new_take(g_string_free(sanitized, FALSE), (gssize) sanitized_len);
 }

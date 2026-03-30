@@ -127,3 +127,4 @@ filterx_simple_function_urldecode(FilterXExpr *s, FilterXObject *args[], gsize a
 
   return filterx_string_new_take(decoded, (gssize) strlen(decoded));
 }
+

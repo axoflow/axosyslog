@@ -124,6 +124,8 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("base64_decode", filterx_simple_function_base64_decode));
   g_assert(filterx_builtin_simple_function_register("urlencode", filterx_simple_function_urlencode));
   g_assert(filterx_builtin_simple_function_register("urldecode", filterx_simple_function_urldecode));
+  g_assert(filterx_builtin_simple_function_register("utf8_validate", filterx_simple_function_utf8_validate));
+  g_assert(filterx_builtin_simple_function_register("utf8_sanitize", filterx_simple_function_utf8_sanitize));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
   g_assert(filterx_builtin_simple_function_register("get_sdata",
