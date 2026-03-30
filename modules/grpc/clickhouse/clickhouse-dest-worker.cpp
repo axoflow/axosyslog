@@ -61,7 +61,9 @@ DestWorker::connect()
 }
 
 DestWorker::DestWorker(GrpcDestWorker *s)
-  : syslogng::grpc::DestWorker(s)
+  : syslogng::grpc::DestWorker(s),
+    query_info(arena.CreateMessage<::clickhouse::grpc::QueryInfo>()),
+    query_result(arena.CreateMessage<::clickhouse::grpc::Result>())
 {
 }
 
@@ -167,15 +169,15 @@ drop:
 }
 
 void
-DestWorker::prepare_query_info(::clickhouse::grpc::QueryInfo &query_info)
+DestWorker::prepare_query_info()
 {
   DestDriver *owner_ = this->get_owner();
 
-  query_info.set_database(owner_->get_database());
-  query_info.set_user_name(owner_->get_user());
-  query_info.set_password(owner_->get_password());
-  query_info.set_query(owner_->get_query());
-  query_info.set_input_data(this->query_data.str());
+  this->query_info->set_database(owner_->get_database());
+  this->query_info->set_user_name(owner_->get_user());
+  this->query_info->set_password(owner_->get_password());
+  this->query_info->set_query(owner_->get_query());
+  this->query_info->set_input_data(this->query_data.str());
 }
 
 static LogThreadedResult
@@ -239,6 +241,10 @@ DestWorker::prepare_batch()
   this->batch_size = 0;
   this->current_batch_bytes = 0;
   this->client_context.reset();
+
+  this->arena.Reset();
+  this->query_info = arena.CreateMessage<::clickhouse::grpc::QueryInfo>();
+  this->query_result = arena.CreateMessage<::clickhouse::grpc::Result>();
 }
 
 LogThreadedResult
@@ -247,12 +253,9 @@ DestWorker::flush(LogThreadedFlushMode mode)
   if (this->batch_size == 0)
     return LTR_SUCCESS;
 
-  ::clickhouse::grpc::QueryInfo query_info;
-  ::clickhouse::grpc::Result query_result;
+  this->prepare_query_info();
 
-  this->prepare_query_info(query_info);
-
-  ::grpc::Status status = this->stub->ExecuteQuery(this->client_context.get(), query_info, &query_result);
+  ::grpc::Status status = this->stub->ExecuteQuery(this->client_context.get(), *this->query_info, this->query_result);
 
   LogThreadedResult result;
   if (owner.handle_response(status, &result))
@@ -266,9 +269,9 @@ DestWorker::flush(LogThreadedFlushMode mode)
   if (result != LTR_SUCCESS)
     goto error;
 
-  if (query_result.has_exception())
+  if (this->query_result->has_exception())
     {
-      const ::clickhouse::grpc::Exception &exception = query_result.exception();
+      const ::clickhouse::grpc::Exception &exception = this->query_result->exception();
       ErrorAction action = classify_clickhouse_error((ClickHouseErrorCode)exception.code());
       msg_error("ClickHouse server responded with an exception",
                 evt_tag_int("code", exception.code()),

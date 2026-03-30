@@ -53,13 +53,16 @@ private:
   bool insert_query_data_from_jsonvar(LogMessage *msg);
   bool insert_query_data_from_schema(LogMessage *msg);
   bool should_initiate_flush();
-  void prepare_query_info(::clickhouse::grpc::QueryInfo &query_info);
+  void prepare_query_info();
   void prepare_batch();
   DestDriver *get_owner();
 
 private:
   std::unique_ptr<::clickhouse::grpc::ClickHouse::Stub> stub;
   std::unique_ptr<::grpc::ClientContext> client_context;
+
+  ::clickhouse::grpc::QueryInfo *query_info;
+  ::clickhouse::grpc::Result *query_result;
 
   std::ostringstream query_data;
   size_t batch_size = 0;
