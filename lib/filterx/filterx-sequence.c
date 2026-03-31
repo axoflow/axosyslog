@@ -59,6 +59,18 @@ filterx_sequence_unset(FilterXObject *s, gint64 index)
   return result;
 }
 
+static gboolean
+_add_elem(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
+{
+  FilterXObject *sequence = (FilterXObject *) user_data;
+
+  FilterXObject *new_value = filterx_object_ref(value_obj);
+  gboolean success = filterx_sequence_append(sequence, &new_value);
+  filterx_object_unref(new_value);
+
+  return success;
+}
+
 gboolean
 filterx_sequence_merge(FilterXObject *s, FilterXObject *other)
 {
@@ -66,22 +78,7 @@ filterx_sequence_merge(FilterXObject *s, FilterXObject *other)
   if (!filterx_object_is_type(other, &FILTERX_TYPE_NAME(sequence)))
     return FALSE;
 
-  guint64 len;
-  if (!filterx_object_len(other, &len))
-    return FALSE;
-
-  for (guint64 i = 0; i < len; i++)
-    {
-      FilterXObject *value_obj = filterx_sequence_get_subscript(other, (gint64) MIN(i, G_MAXINT64));
-      gboolean success = filterx_sequence_append(s, &value_obj);
-
-      filterx_object_unref(value_obj);
-
-      if (!success)
-        return FALSE;
-    }
-
-  return TRUE;
+  return filterx_object_iter(other, _add_elem, s);
 }
 
 static gboolean
