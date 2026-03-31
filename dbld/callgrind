@@ -66,6 +66,6 @@ cat "$samples" | nc -q0 localhost 2000
 kill -INT %1
 wait %1
 cat "$outdir/summary.txt"
-callgrind_annotate --threshold=50 ${outdir}/callgrind.out.* > "${outdir}/callgrind_annotate.txt"
+callgrind_annotate --tree=both --threshold=80 ${outdir}/callgrind.out.* > "${outdir}/callgrind_annotate.txt"
 echo -en "\n\nTo see profile details do:\nless "
 echo "${outdir}/callgrind_annotate.txt" | sed -e "s,^/,$dbld_root/,"
