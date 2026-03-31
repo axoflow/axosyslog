@@ -230,8 +230,10 @@ _filterx_list_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
     {
       FilterXObject *value = g_ptr_array_index(self->array, i);
       FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, i);
-      func(index_obj, value, user_data);
+      gboolean result = func(index_obj, value, user_data);
       FILTERX_INTEGER_CLEAR_FROM_STACK(index_obj);
+      if (!result)
+        return FALSE;
     }
   return TRUE;
 }
