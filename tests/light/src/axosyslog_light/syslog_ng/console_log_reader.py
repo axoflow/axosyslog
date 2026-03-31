@@ -99,6 +99,16 @@ class ConsoleLogReader(object):
                     logger.error("Found unexpected message in console log: {}".format(console_log_message))
                     raise Exception("Unexpected error log in console", console_log_message)
 
+    def get_sanitizer_errors(self):
+        stderr_path = self.console_log_files["stderr"]["path"]
+        if not stderr_path.exists():
+            return []
+        lines = stderr_path.read_text().splitlines()
+        for i, line in enumerate(lines):
+            if re.search(r"ERROR: (LeakSanitizer|AddressSanitizer)", line):
+                return lines[i:]
+        return []
+
     def dump_stderr(self, last_n_lines=10):
         stderr = self.__get_all_console_logs()
         logger.error("\n".join(stderr.split("\n")[-last_n_lines:]))
