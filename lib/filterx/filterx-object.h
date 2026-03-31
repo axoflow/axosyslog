@@ -191,10 +191,14 @@ struct _FilterXObject
    *
    *     floating_ref      -- object is a FilterXRef that is floating
    *
+   *     early_allocation  -- object was allocated during compile time
+   *
+   *     early_allocation_checked -- the early_allocation check was already done
+   *
    *     flags             -- to be used by descendant types
    *
    */
-  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, flags:5;
+  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1, flags:5;
   FilterXType *type;
 };
 
@@ -282,6 +286,20 @@ filterx_free_object(FilterXObject *object)
 
 static inline FilterXObject *filterx_object_dup(FilterXObject *self);
 
+void _filterx_object_assert_object_is_not_shared(FilterXObject *self);
+
+static inline void
+filterx_object_check_early_allocation(FilterXObject *self)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  if (G_UNLIKELY(!self->early_allocation_checked))
+    {
+      _filterx_object_assert_object_is_not_shared(self);
+      self->early_allocation_checked = TRUE;
+    }
+#endif
+}
+
 static inline FilterXObject *
 filterx_object_ref(FilterXObject *self)
 {
@@ -298,6 +316,7 @@ filterx_object_ref(FilterXObject *self)
   if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return self;
 
+  filterx_object_check_early_allocation(self);
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
   g_atomic_counter_inc(&self->ref_cnt);
@@ -342,6 +361,7 @@ filterx_object_unref(FilterXObject *self)
   if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return;
 
+  filterx_object_check_early_allocation(self);
   g_assert(r > 0);
 
   if (g_atomic_counter_dec_and_test(&self->ref_cnt))
@@ -660,7 +680,7 @@ filterx_object_dup(FilterXObject *self)
 static inline FilterXObject *
 filterx_object_copy(FilterXObject *self)
 {
-  if (self->readonly)
+  if (!self->type->is_mutable)
     return filterx_object_ref(self);
 
   if (self->floating_ref)
