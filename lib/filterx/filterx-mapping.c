@@ -45,7 +45,9 @@ gboolean
 filterx_mapping_merge(FilterXObject *s, FilterXObject *other)
 {
   other = filterx_ref_unwrap_ro(other);
-  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(mapping)));
+  if (!filterx_object_is_type(other, &FILTERX_TYPE_NAME(mapping)))
+    return FALSE;
+
   return filterx_object_iter(other, _add_elem, s);
 }
 
@@ -64,20 +66,12 @@ _add_elem_to_list(FilterXObject *key_obj, FilterXObject *value_obj, gpointer use
 gboolean
 filterx_mapping_keys(FilterXObject *s, FilterXObject **keys)
 {
-  g_assert(s);
-  g_assert(keys);
   FilterXObject *obj = filterx_ref_unwrap_ro(s);
-  if (!filterx_object_is_type(obj, &FILTERX_TYPE_NAME(mapping)))
-    goto error;
-  g_assert(filterx_object_is_type(*keys, &FILTERX_TYPE_NAME(sequence)));
 
   gboolean result = filterx_object_iter(obj, _add_elem_to_list, *keys);
 
   filterx_object_unref(s);
   return result;
-error:
-  filterx_object_unref(s);
-  return FALSE;
 }
 
 static FilterXObject *
@@ -129,10 +123,6 @@ _format_json(FilterXObject *value, GString *json)
 static FilterXObject *
 _add(FilterXObject *lhs_object, FilterXObject *rhs_object)
 {
-  rhs_object = filterx_ref_unwrap_ro(rhs_object);
-  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(mapping)))
-    return NULL;
-
   FilterXObject *cloned = filterx_object_copy(lhs_object);
 
   if (!filterx_mapping_merge(cloned, rhs_object))

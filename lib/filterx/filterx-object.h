@@ -503,8 +503,6 @@ filterx_object_getattr(FilterXObject *self, FilterXObject *attr)
 static inline gboolean
 filterx_object_setattr(FilterXObject *self, FilterXObject *attr, FilterXObject **new_value)
 {
-  g_assert(!self->readonly);
-
   if (self->type->setattr)
     return self->type->setattr(self, attr, new_value);
   return FALSE;
@@ -523,8 +521,6 @@ filterx_object_get_subscript(FilterXObject *self, FilterXObject *key)
 static inline gboolean
 filterx_object_set_subscript(FilterXObject *self, FilterXObject *key, FilterXObject **new_value)
 {
-  g_assert(!self->readonly);
-
   if (self->type->set_subscript)
     return self->type->set_subscript(self, key, new_value);
   return FALSE;
@@ -541,8 +537,6 @@ filterx_object_is_key_set(FilterXObject *self, FilterXObject *key)
 static inline gboolean
 filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
 {
-  g_assert(!self->readonly);
-
   if (self->type->unset_key)
     return self->type->unset_key(self, key);
   return FALSE;
@@ -551,8 +545,6 @@ filterx_object_unset_key(FilterXObject *self, FilterXObject *key)
 static inline FilterXObject *
 filterx_object_move_key(FilterXObject *self, FilterXObject *key)
 {
-  g_assert(!self->readonly);
-
   if (self->type->move_key)
     return self->type->move_key(self, key);
   return NULL;

@@ -172,25 +172,7 @@ Test(filterx_mapping, test_keys_nested)
   filterx_object_unref(keys);
 }
 
-Test(filterx_mapping, test_keys_null_dict, .signal=SIGABRT)
-{
-  FilterXObject *keys = filterx_list_new();
-  cr_assert_not_null(keys);
-
-  filterx_mapping_keys(NULL, &keys);
-
-  filterx_object_unref(keys);
-}
-
-Test(filterx_mapping, test_keys_null_keys, .signal=SIGABRT)
-{
-  FilterXObject *dict = filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}, \"bar\":{\"baz\": null}}", -1, NULL);
-  cr_assert_not_null(dict);
-
-  filterx_mapping_keys(dict, NULL);
-}
-
-Test(filterx_mapping, test_keys_key_type_is_not_list, .signal=SIGABRT)
+Test(filterx_mapping, test_keys_key_type_is_not_list)
 {
   FilterXObject *dict = filterx_object_from_json("{\"foo\":{\"bar\":\"baz\"}, \"bar\":{\"baz\": null}}", -1, NULL);
   cr_assert_not_null(dict);
@@ -198,7 +180,7 @@ Test(filterx_mapping, test_keys_key_type_is_not_list, .signal=SIGABRT)
   FilterXObject *keys = filterx_string_new("this is string", -1);
   cr_assert_not_null(keys);
 
-  filterx_mapping_keys(dict, &keys);
+  cr_assert_not(filterx_mapping_keys(dict, &keys));
 
   filterx_object_unref(keys);
 }
