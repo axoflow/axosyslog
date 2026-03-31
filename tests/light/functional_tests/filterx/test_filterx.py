@@ -2103,6 +2103,66 @@ def test_plus_equal_grammar_rules(config, syslog_ng):
     assert file_true.read_log() == exp
 
 
+def test_plus_equal_dict_and_list(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = {};
+            $MSG.foo = {};
+            # this does not work because dicts only support string keys for now
+            $MSG.foo += ["foo", "bar"];
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_plus_equal_dict_and_primitive(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = {};
+            $MSG.foo = {};
+            # 5 is not iterable
+            $MSG.foo += 5;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_plus_equal_list_and_dict(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = {};
+            $MSG.foo = [];
+            # this does not work because dicts only support string keys for now
+            $MSG.foo += {"foo":"foovalue", "bar":"barvalue"};
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
+def test_plus_equal_list_and_primitive(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, r"""
+            $MSG = {};
+            $MSG.foo = [];
+            # 5 is not iterable
+            $MSG.foo += 5;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+
+
 def test_get_sdata(config, syslog_ng):
     file_true = config.create_file_destination(file_name="dest-true.log", template='"$MSG\n"')
     file_false = config.create_file_destination(file_name="dest-false.log", template='"$MSG\n"')
