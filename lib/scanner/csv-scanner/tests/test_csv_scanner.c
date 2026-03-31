@@ -571,6 +571,106 @@ Test(csv_scanner, escaped_unquoted_delimiter)
   csv_scanner_deinit(&scanner);
 }
 
+Test(csv_scanner, escaped_unquoted_default_comma_delimiter)
+{
+  _default_options_with_flags(CSV_SCANNER_STRIP_WHITESPACE);
+
+  csv_scanner_options_set_dialect(&options, CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER);
+  csv_scanner_init(&scanner, &options, "foo\\,bar,last");
+  csv_scanner_set_expected_columns(&scanner, 2);
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "foo,bar"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, "last"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
+Test(csv_scanner, escaped_unquoted_default_comma_multiple_quoted_delimiters)
+{
+  _default_options_with_flags(CSV_SCANNER_STRIP_WHITESPACE);
+
+  csv_scanner_options_set_dialect(&options, CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER);
+  csv_scanner_init(&scanner, &options, "foo\\,bar\\,baz,last");
+  csv_scanner_set_expected_columns(&scanner, 2);
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "foo,bar,baz"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, "last"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
+Test(csv_scanner, escaped_unquoted_default_comma_backslash_in_value)
+{
+  _default_options_with_flags(CSV_SCANNER_STRIP_WHITESPACE);
+
+  csv_scanner_options_set_dialect(&options, CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER);
+  csv_scanner_init(&scanner, &options, "foo\\',bar,last");
+  csv_scanner_set_expected_columns(&scanner, 3);
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "foo'"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, "bar"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(2, "last"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
+Test(csv_scanner, escaped_unquoted_default_comma_backslash_outside_of_the_value)
+{
+  _default_options_with_flags(CSV_SCANNER_STRIP_WHITESPACE);
+
+  csv_scanner_options_set_dialect(&options, CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER);
+  csv_scanner_init(&scanner, &options, "foo,bar\\,last");
+  csv_scanner_set_expected_columns(&scanner, 2);
+
+  cr_expect(_column_index_equals(0));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(0, "foo"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(_scan_next());
+  cr_expect(_column_equals(1, "bar,last"));
+  cr_expect(!_scan_complete());
+
+  cr_expect(!_scan_next());
+  cr_expect(_scan_complete());
+  csv_scanner_deinit(&scanner);
+}
+
 static void
 setup(void)
 {

@@ -25,8 +25,7 @@
 #include "string-list.h"
 #include "scratch-buffers.h"
 #include "messages.h"
-
-#include <string.h>
+#include "compat/string.h"
 
 /************************************************************************
  * CSVScannerOptions
@@ -48,7 +47,11 @@ void
 csv_scanner_options_set_delimiters(CSVScannerOptions *options, const gchar *delimiters)
 {
   g_free(options->delimiters);
-  options->delimiters = g_strdup(delimiters);
+
+  if (!delimiters || strcmp(delimiters, ",") == 0)
+    options->delimiters = NULL;
+  else
+    options->delimiters = g_strdup(delimiters);
 }
 
 void
@@ -81,6 +84,14 @@ csv_scanner_options_set_quote_pairs(CSVScannerOptions *options, const gchar *quo
 
   g_free(options->quotes_start);
   g_free(options->quotes_end);
+
+  /* this is the fast-path, NULL values will trigger the hard-coded implementation */
+  if (!quote_pairs || strcmp(quote_pairs, "\"\"''") == 0)
+    {
+      options->quotes_start = NULL;
+      options->quotes_end = NULL;
+      return;
+    }
 
   options->quotes_start = g_malloc((strlen(quote_pairs) / 2) + 1);
   options->quotes_end = g_malloc((strlen(quote_pairs) / 2) + 1);
@@ -139,10 +150,20 @@ csv_scanner_options_validate(CSVScannerOptions *options, gint expected_columns)
  * CSVScanner
  ************************************************************************/
 
+#define DEFAULT_DELIM_CHAR ','
+
 static gboolean
-_is_whitespace_char(const gchar *str)
+_is_whitespace_char(gchar ch)
 {
-  return (*str == ' ' || *str == '\t');
+  return (ch == ' ' || ch == '\t');
+}
+
+static gboolean
+_is_delimiter_char(CSVScanner *self, gchar ch)
+{
+  if (self->options->delimiters)
+    return _strchr_optimized_for_single_char_haystack(self->options->delimiters, ch) != NULL;
+  return ch == DEFAULT_DELIM_CHAR;
 }
 
 static void
@@ -151,7 +172,7 @@ _skip_whitespace(CSVScanner *self, const gchar **src)
   if (self->current_quote)
     {
       /* quoted value, all whitespace is to be removed, even if the delimiter is considered whitespace */
-      while (_is_whitespace_char(*src))
+      while (_is_whitespace_char(**src))
         (*src)++;
     }
   else
@@ -160,9 +181,9 @@ _skip_whitespace(CSVScanner *self, const gchar **src)
        * whitespace.  This plays a role in case the delimiter is either a
        * space or a tab.  In those cases, a new delimiter starts the next
        * new value to be extracted.  */
-      while (_is_whitespace_char(*src))
+      while (_is_whitespace_char(**src))
         {
-          if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, **src))
+          if (_is_delimiter_char(self, **src))
             break;
           (*src)++;
         }
@@ -170,7 +191,7 @@ _skip_whitespace(CSVScanner *self, const gchar **src)
 }
 
 static void
-_parse_opening_quote_character(CSVScanner *self)
+_parse_opening_quote_character_generic(CSVScanner *self)
 {
   const gchar *quote = _strchr_optimized_for_single_char_haystack(self->options->quotes_start, *self->src);
 
@@ -183,6 +204,26 @@ _parse_opening_quote_character(CSVScanner *self)
   else
     {
       /* we didn't start with a quote character, no need for escaping, delimiter terminates */
+      self->current_quote = 0;
+    }
+}
+
+static void
+_parse_opening_quote_character(CSVScanner *self)
+{
+  if (self->options->quotes_start)
+    {
+      _parse_opening_quote_character_generic(self);
+      return;
+    }
+  if (*self->src == '"' || *self->src == '\'')
+    {
+      /* ok, quote character found */
+      self->current_quote = *self->src;
+      self->src++;
+    }
+  else
+    {
       self->current_quote = 0;
     }
 }
@@ -221,13 +262,34 @@ _decode_xbyte(gchar xdigit1, gchar xdigit2)
 }
 
 static void
-_parse_character_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
+_parse_characters_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
 {
   gchar ch;
+  const gchar *backslash = strchrnul(self->src, '\\');
+  const gchar *quote = strchrnul(self->src, self->current_quote);
+  const gchar *nexthop = MIN(backslash, quote);
+
+  if (nexthop > self->src)
+    {
+      gsize len = nexthop - self->src;
+      g_string_append_len(self->current_value, self->src, len);
+      self->src += len;
+      if (*nexthop == 0)
+        return;
+    }
+
   /* quoted character */
-  if (self->options->dialect == CSV_SCANNER_ESCAPE_BACKSLASH &&
-      *self->src == '\\' &&
-      *(self->src + 1))
+  if (self->options->dialect == CSV_SCANNER_ESCAPE_DOUBLE_CHAR &&
+      *self->src == self->current_quote &&
+      *(self->src+1) == self->current_quote)
+    {
+      self->src++;
+      ch = *self->src;
+      *nonliteral_input = TRUE;
+    }
+  else if (self->options->dialect == CSV_SCANNER_ESCAPE_BACKSLASH &&
+           *self->src == '\\' &&
+           *(self->src + 1))
     {
       self->src++;
       ch = *self->src;
@@ -276,14 +338,6 @@ _parse_character_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
               break;
             }
         }
-    }
-  else if (self->options->dialect == CSV_SCANNER_ESCAPE_DOUBLE_CHAR &&
-           *self->src == self->current_quote &&
-           *(self->src+1) == self->current_quote)
-    {
-      self->src++;
-      ch = *self->src;
-      *nonliteral_input = TRUE;
     }
   else if (*self->src == self->current_quote)
     {
@@ -347,7 +401,7 @@ _parse_character_delimiters_at_current_position(CSVScanner *self, gboolean *nonl
       self->src++;
       *nonliteral_input = quoted = TRUE;
     }
-  if (_strchr_optimized_for_single_char_haystack(self->options->delimiters, *self->src) != NULL)
+  if (_is_delimiter_char(self, *self->src))
     {
       if (quoted)
         return FALSE;
@@ -372,10 +426,60 @@ _parse_delimiter(CSVScanner *self, gboolean *nonliteral_input)
 }
 
 static void
-_parse_unquoted_literal_character(CSVScanner *self)
+_parse_unquoted_literal_characters_generic(CSVScanner *self)
 {
   g_string_append_c(self->current_value, *self->src);
   self->src++;
+}
+
+static void
+_parse_unquoted_literal_characters(CSVScanner *self, gboolean *nonliteral_input)
+{
+  if (self->options->string_delimiters || self->options->delimiters)
+    {
+      _parse_unquoted_literal_characters_generic(self);
+      return;
+    }
+
+  const gchar *delim = strchrnul(self->src, DEFAULT_DELIM_CHAR);
+  const gchar *backslash = NULL;
+  while (delim > self->src)
+    {
+      if (self->options->dialect == CSV_SCANNER_ESCAPE_UNQUOTED_DELIMITER)
+        {
+          if (!backslash)
+            backslash = strchrnul(self->src, '\\');
+          if (*backslash && backslash < delim)
+            {
+              /* backslash before the delimiter, let's copy the value and the escaped character to self->current_value */
+
+              gsize len = backslash - self->src;
+              gboolean escaped_delimiter = (backslash + 1) == delim;
+
+              g_string_append_len(self->current_value, self->src, len);
+              self->src += len + 1;
+              g_string_append_c(self->current_value, *self->src);
+              self->src++;
+
+              if (escaped_delimiter)
+                delim = strchrnul(self->src, DEFAULT_DELIM_CHAR);
+              backslash = NULL;
+              *nonliteral_input = TRUE;
+              continue;
+            }
+          else
+            {
+              /* backslash is outside of the current value */
+            }
+        }
+
+      /* copy everything up to the delimier */
+      gsize len = delim - self->src;
+
+      g_string_append_len(self->current_value, self->src, len);
+      self->src += len;
+      break;
+    }
 }
 
 static void
@@ -390,14 +494,14 @@ _parse_value_with_whitespace_and_delimiter(CSVScanner *self)
       if (self->current_quote)
         {
           /* within quotation marks */
-          _parse_character_with_quotation(self, &nonliteral_input);
+          _parse_characters_with_quotation(self, &nonliteral_input);
         }
       else
         {
           /* unquoted value */
           if (_parse_delimiter(self, &nonliteral_input))
             break;
-          _parse_unquoted_literal_character(self);
+          _parse_unquoted_literal_characters(self, &nonliteral_input);
         }
     }
   if (nonliteral_input)
@@ -413,13 +517,13 @@ _get_value_length_without_right_whitespace(CSVScanner *self)
    * part of delimiters.  In any other case we won't have delimiters as
    * whitespace on the right side (as they started the next value) */
 
-  while (len > 0 && _is_whitespace_char(self->current_value->str + len - 1))
+  while (len > 0 && _is_whitespace_char(*(self->current_value->str + len - 1)))
     len--;
 
   return len;
 }
 
-static void
+static inline void
 _translate_rstrip_whitespace(CSVScanner *self)
 {
   if (self->options->flags & CSV_SCANNER_STRIP_WHITESPACE)
