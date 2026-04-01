@@ -49,7 +49,7 @@ Test(log_proto, test_log_proto_framed_server_simple_messages)
               "32 \x00\x00\x00\xe1\x00\x00\x00\x72\x00\x00\x00\x76\x00\x00\x00\xed"      /* |...á...r...v...í| */
               "\x00\x00\x00\x7a\x00\x00\x00\x74\x00\x00\x01\x71\x00\x00\x00\x72", 35,    /* |...z...t...ű...r|  */
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "0123456789ABCDEF0123456789ABCDEF", -1);
   assert_proto_server_fetch(proto, "01234567\n\n", -1);
   assert_proto_server_fetch(proto, "01234567\0\0", 10);
@@ -74,7 +74,7 @@ Test(log_proto, test_log_proto_framed_server_io_error)
               "32 0123456789ABCDEF0123456789ABCDEF", -1,
               LTM_INJECT_ERROR(EIO),
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "0123456789ABCDEF0123456789ABCDEF", -1);
   assert_proto_server_fetch_failure(proto, LPS_ERROR, "Error reading RFC6587 style framed data");
   log_proto_server_free(proto);
@@ -90,7 +90,7 @@ Test(log_proto, test_log_proto_framed_server_invalid_header)
             log_transport_mock_stream_new(
               "1q 0123456789ABCDEF0123456789ABCDEF", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch_failure(proto, LPS_ERROR, "Invalid frame header");
   log_proto_server_free(proto);
 }
@@ -104,7 +104,7 @@ Test(log_proto, test_log_proto_framed_server_too_long_line)
             log_transport_mock_stream_new(
               "48 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch_failure(proto, LPS_ERROR, "Incoming frame larger than log_msg_size()");
   log_proto_server_free(proto);
 }
@@ -121,7 +121,7 @@ Test(log_proto, test_log_proto_framed_server_too_long_line_trimmed)
             log_transport_mock_stream_new(
               "48 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "0123456789ABCDEF0123456789ABCDEF", 32);
   assert_proto_server_fetch_failure(proto, LPS_EOF, NULL);
   log_proto_server_free(proto);
@@ -144,7 +144,7 @@ Test(log_proto, test_log_proto_framed_server_too_long_line_trimmed_multiple_cycl
               "7 1abcdef", -1,
               "1 2", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "0",  1);
   assert_proto_server_fetch(proto, "1a", 2);
   assert_proto_server_fetch(proto, "2",  1);
@@ -175,7 +175,7 @@ Test(log_proto, test_log_proto_framed_server_too_long_line_trimmed_frame_at_the_
               "12345674",  -1,
               " 2abc",     -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "01\n",     3);
   assert_proto_server_fetch(proto, "1abcdefg", 8);
   // dropping: 1234567
@@ -196,7 +196,7 @@ Test(log_proto, test_log_proto_framed_server_too_long_line_trimmed_one_big_messa
             log_transport_mock_stream_new(
               "2 ab16 0123456789ABCDEF", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "ab",          2);
   assert_proto_server_fetch(proto, "0123456789", 10);
   log_proto_server_free(proto);
@@ -214,7 +214,7 @@ Test(log_proto, test_log_proto_framed_server_message_exceeds_buffer)
             log_transport_mock_records_new(
               "16 0123456789ABCDE\n16 0123456789ABCDE\n", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "0123456789ABCDE\n", -1);
   assert_proto_server_fetch(proto, "0123456789ABCDE\n", -1);
   log_proto_server_free(proto);
@@ -234,7 +234,7 @@ Test(log_proto, test_log_proto_framed_server_buffer_shift_before_fetch)
               "7 012345\n4", 10,
               " 123\n", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "012345\n", -1);
   assert_proto_server_fetch(proto, "123\n", -1);
   log_proto_server_free(proto);
@@ -254,7 +254,7 @@ Test(log_proto, test_log_proto_framed_server_buffer_shift_to_make_space_for_a_fr
               "6 01234\n4 ", 10,
               "123\n", -1,
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "01234\n", -1);
   assert_proto_server_fetch(proto, "123\n", -1);
   log_proto_server_free(proto);
@@ -272,7 +272,7 @@ Test(log_proto, test_log_proto_framed_server_multi_read)
               "6 fooba", -1,
               LTM_INJECT_ERROR(EIO),
               LTM_EOF),
-            get_inited_proto_server_options());
+            get_inited_proto_server_options(), NULL);
   assert_proto_server_fetch(proto, "foobar\n", -1);
   /* with multi-read, we get the injected failure at the 2nd fetch */
   assert_proto_server_fetch_failure(proto, LPS_ERROR, "Error reading RFC6587 style framed data");
