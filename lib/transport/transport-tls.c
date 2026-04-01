@@ -26,6 +26,9 @@
 #include "transport/transport-adapter.h"
 
 #include "messages.h"
+#include "stats/stats-cluster-key-builder.h"
+#include "stats/stats-cluster-single.h"
+#include "stats/stats-registry.h"
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -36,6 +39,8 @@ typedef struct _LogTransportTLS
   LogTransportAdapter super;
   TLSSession *tls_session;
   gboolean sending_shutdown;
+
+  StatsClusterKeyBuilder *kb;
 } LogTransportTLS;
 
 const gchar *TLS_TRANSPORT_NAME = "tls";
@@ -202,6 +207,44 @@ log_transport_tls_aux_data_add_peer_info(LogTransportTLS *self, LogTransportAuxD
   return TRUE;
 }
 
+static void
+_inc_tls_handshake_error_counter(LogTransportTLS *self)
+{
+  if (!self->kb)
+    return;
+
+  gulong ssl_error = ERR_peek_error();
+  const char *lib = ERR_lib_error_string(ssl_error) ? : "";
+  const char *reason = ERR_reason_error_string(ssl_error) ? : "";
+
+  char tls_error[32];
+  g_snprintf(tls_error, sizeof(tls_error), "%08lX", ssl_error);
+
+  char tls_error_string[256];
+  g_snprintf(tls_error_string, sizeof(tls_error_string), "%s::%s", lib, reason);
+
+  stats_cluster_key_builder_push(self->kb);
+  stats_cluster_key_builder_set_name(self->kb, METRIC(input_transport_errors_total));
+  stats_cluster_key_builder_add_label(self->kb, stats_cluster_label("reason", "tls-handshake"));
+  stats_cluster_key_builder_add_label(self->kb, stats_cluster_label("tls_error", tls_error));
+  stats_cluster_key_builder_add_label(self->kb, stats_cluster_label("tls_error_string", tls_error_string));
+
+  StatsClusterKey *key = stats_cluster_key_builder_build_single(self->kb);
+  stats_cluster_key_builder_pop(self->kb);
+
+  StatsCluster *cluster;
+  StatsCounterItem *counter;
+  stats_lock();
+  {
+    cluster = stats_register_dynamic_counter(STATS_LEVEL1, key, SC_TYPE_SINGLE_VALUE, &counter);
+    stats_counter_inc(counter);
+    stats_unregister_dynamic_counter(cluster, SC_TYPE_SINGLE_VALUE, &counter);
+  }
+  stats_unlock();
+
+  stats_cluster_key_free(key);
+}
+
 static gssize
 log_transport_tls_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTransportAuxData *aux)
 {
@@ -269,6 +312,8 @@ log_transport_tls_read_method(LogTransport *s, gpointer buf, gsize buflen, LogTr
   return rc;
 tls_error:
 
+  _inc_tls_handshake_error_counter(self);
+
   msg_error("SSL error while reading stream",
             tls_context_format_tls_error_tag(self->tls_session->ctx),
             tls_context_format_location_tag(self->tls_session->ctx));
@@ -332,6 +377,8 @@ log_transport_tls_write_method(LogTransport *s, const gpointer buf, gsize buflen
 
 tls_error:
 
+  _inc_tls_handshake_error_counter(self);
+
   msg_error("SSL error while writing stream",
             tls_context_format_tls_error_tag(self->tls_session->ctx),
             tls_context_format_location_tag(self->tls_session->ctx));
@@ -362,6 +409,7 @@ log_transport_tls_shutdown_method(LogTransport *s)
 }
 
 static void log_transport_tls_free_method(LogTransport *s);
+static void log_transport_tls_register_stats(LogTransport *s, StatsClusterKeyBuilder *kb);
 
 LogTransport *
 log_transport_tls_new(TLSSession *tls_session, LogTransportIndex base)
@@ -374,6 +422,7 @@ log_transport_tls_new(TLSSession *tls_session, LogTransportIndex base)
   self->super.super.write = log_transport_tls_write_method;
   self->super.super.shutdown = log_transport_tls_shutdown_method;
   self->super.super.free_fn = log_transport_tls_free_method;
+  self->super.super.register_stats = log_transport_tls_register_stats;
   self->tls_session = tls_session;
 
   BIO *bio = BIO_transport_new(self);
@@ -388,6 +437,14 @@ log_transport_tls_free_method(LogTransport *s)
 
   tls_session_free(self->tls_session);
   log_transport_adapter_free_method(s);
+}
+
+static void
+log_transport_tls_register_stats(LogTransport *s, StatsClusterKeyBuilder *kb)
+{
+  LogTransportTLS *self = (LogTransportTLS *) s;
+
+  self->kb = kb;
 }
 
 void
