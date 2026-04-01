@@ -338,6 +338,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       FilterXObject *self = filterx_list_new();
+      filterx_object_cow_prepare(&self);
       if (!filterx_sequence_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);
