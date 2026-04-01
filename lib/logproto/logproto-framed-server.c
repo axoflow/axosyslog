@@ -425,7 +425,8 @@ log_proto_framed_server_free(LogProtoServer *s)
 }
 
 LogProtoServer *
-log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions *options)
+log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions *options,
+                            StatsClusterKeyBuilder *kb)
 {
   LogProtoFramedServer *self = g_new0(LogProtoFramedServer, 1);
 

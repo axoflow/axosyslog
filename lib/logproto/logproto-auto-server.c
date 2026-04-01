@@ -32,6 +32,7 @@ G_STATIC_ASSERT(LOG_TRANSPORT_RA_BUFFER_SIZE >= RFC6587_MAX_FRAME_LEN_DIGITS + 1
 typedef struct _LogProtoAutoServer
 {
   LogProtoServer super;
+  StatsClusterKeyBuilder *kb;
 } LogProtoAutoServer;
 
 static inline gboolean
@@ -68,7 +69,7 @@ _construct_detected_proto(LogProtoAutoServer *self, const gchar *detect_buffer, 
 
       msg_debug("Auto-detected octet-counted-framing, using framed protocol",
                 evt_tag_int("fd", fd));
-      return log_proto_framed_server_new(NULL, self->super.options);
+      return log_proto_framed_server_new(NULL, self->super.options, self->kb);
     }
 
   if (detect_buffer[0] == '<')
@@ -125,7 +126,8 @@ log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogPro
 }
 
 LogProtoServer *
-log_proto_auto_server_new(LogTransport *transport, const LogProtoServerOptions *options)
+log_proto_auto_server_new(LogTransport *transport, const LogProtoServerOptions *options,
+                          StatsClusterKeyBuilder *kb)
 {
   LogProtoAutoServer *self = g_new0(LogProtoAutoServer, 1);
 
@@ -135,5 +137,6 @@ log_proto_auto_server_new(LogTransport *transport, const LogProtoServerOptions *
   log_proto_server_init(&self->super, transport, options);
   self->super.handshake = log_proto_auto_handshake;
   self->super.poll_prepare = log_proto_auto_server_poll_prepare;
+  self->kb = kb;
   return &self->super;
 }

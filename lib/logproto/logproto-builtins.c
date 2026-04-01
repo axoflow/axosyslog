@@ -39,8 +39,8 @@ DEFINE_LOG_PROTO_SERVER(log_proto_text);
 DEFINE_LOG_PROTO_SERVER(log_proto_text_with_nuls);
 DEFINE_LOG_PROTO_SERVER(log_proto_nul_terminated);
 DEFINE_LOG_PROTO_CLIENT(log_proto_framed);
-DEFINE_LOG_PROTO_SERVER(log_proto_framed);
-DEFINE_LOG_PROTO_SERVER(log_proto_auto);
+DEFINE_LOG_PROTO_SERVER_WITH_KB(log_proto_framed);
+DEFINE_LOG_PROTO_SERVER_WITH_KB(log_proto_auto);
 
 static Plugin framed_server_plugins[] =
 {
