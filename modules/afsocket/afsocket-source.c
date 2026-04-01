@@ -163,6 +163,8 @@ afsocket_sc_init(LogPipe *s)
           return FALSE;
         }
 
+      log_transport_stack_register_stats(&proto->transport_stack, kb);
+
       self->reader = log_reader_new(s->cfg);
       log_pipe_set_options(&self->reader->super.super, &self->super.options);
       log_reader_open(self->reader, proto, poll_fd_events_new(self->sock));
