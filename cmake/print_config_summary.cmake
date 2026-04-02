@@ -145,7 +145,7 @@ function(print_config_summary)
       _print_separator()
     endif()
 
-    list(APPEND _importantVariableNames "IVYKIS_INTERNAL" "BUILD_TESTING" "CMAKE_C_COMPILER" "CMAKE_CXX_COMPILER" "CMAKE_OBJC_COMPILER")
+    list(APPEND _importantVariableNames "IVYKIS_INTERNAL" "BUILD_TESTING" "SANITIZER" "CMAKE_C_COMPILER" "CMAKE_CXX_COMPILER" "CMAKE_OBJC_COMPILER")
     if (APPLE)
       list(APPEND _importantVariableNames "FORCE_CLASSIC_LINKING")
     endif()
