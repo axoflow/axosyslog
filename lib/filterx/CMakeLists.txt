@@ -80,6 +80,7 @@ set(FILTERX_HEADERS
     filterx/object-dict.h
     filterx/object-extractor.h
     filterx/object-list.h
+    filterx/object-tuple.h
     filterx/object-message-value.h
     filterx/object-metrics-labels.h
     filterx/object-null.h
@@ -168,6 +169,7 @@ set(FILTERX_SOURCES
     filterx/object-ip.c
     filterx/object-dict.c
     filterx/object-list.c
+    filterx/object-tuple.c
     filterx/object-message-value.c
     filterx/object-metrics-labels.c
     filterx/object-null.c

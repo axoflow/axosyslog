@@ -28,6 +28,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "filterx/object-tuple.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-subnet.h"
 #include "filterx/object-ip.h"
@@ -94,6 +95,7 @@ _simple_init(void)
   filterx_builtin_simple_functions_init_private(&filterx_builtin_simple_functions);
   g_assert(filterx_builtin_simple_function_register("dict", filterx_dict_new_from_args));
   g_assert(filterx_builtin_simple_function_register("list", filterx_list_new_from_args));
+  g_assert(filterx_builtin_simple_function_register("tuple", filterx_tuple_new_from_args));
   g_assert(filterx_builtin_simple_function_register("json", filterx_dict_new_from_args));
   g_assert(filterx_builtin_simple_function_register("json_array", filterx_list_new_from_args));
   g_assert(filterx_builtin_simple_function_register("format_json", filterx_format_json_call));
@@ -267,6 +269,7 @@ filterx_global_init(void)
   filterx_type_init(&FILTERX_TYPE_NAME(mapping));
   filterx_type_init(&FILTERX_TYPE_NAME(dict));
   filterx_type_init(&FILTERX_TYPE_NAME(list));
+  filterx_type_init(&FILTERX_TYPE_NAME(tuple));
 
   filterx_type_init(&FILTERX_TYPE_NAME(null));
   filterx_type_init(&FILTERX_TYPE_NAME(integer));
