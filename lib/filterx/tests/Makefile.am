@@ -3,6 +3,7 @@ lib_filterx_tests_TESTS		 =              \
 		lib/filterx/tests/test_object_message	\
 		lib/filterx/tests/test_object_datetime	\
 		lib/filterx/tests/test_object_dict	\
+		lib/filterx/tests/test_object_tuple	\
 		lib/filterx/tests/test_object_null	\
 		lib/filterx/tests/test_object_string	\
 		lib/filterx/tests/test_object_protobuf	\
@@ -58,6 +59,9 @@ lib_filterx_tests_test_object_datetime_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_object_dict_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_object_dict_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
+
+lib_filterx_tests_test_object_tuple_CFLAGS  = $(TEST_CFLAGS)
+lib_filterx_tests_test_object_tuple_LDADD   = $(TEST_LDADD) $(JSON_LIBS)
 
 lib_filterx_tests_test_object_null_CFLAGS  = $(TEST_CFLAGS)
 lib_filterx_tests_test_object_null_LDADD   = $(TEST_LDADD) $(JSON_LIBS)

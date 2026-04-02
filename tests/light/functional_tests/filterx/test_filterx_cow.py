@@ -590,3 +590,60 @@ def test_plus_on_child_of_shared_hierarchy(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == """["foo","bar","foobar"]--{"child":["foo","bar"]}"""
+
+
+def test_list_mutable_elements_from_tuple_cause_clone_when_whanged_through_tuple(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {'foo':'foovalue','bar':'barvalue'};
+                t = tuple([1,2,3,d]);
+                l = list(t);
+                unset(t[3].foo);
+                $MSG = string(t) + '--' + string(l);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """(1,2,3,{"bar":"barvalue"})--[1,2,3,{"foo":"foovalue","bar":"barvalue"}]"""
+
+
+def test_list_mutable_elements_from_tuple_cause_clone_when_whanged_through_list(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {'foo':'foovalue','bar':'barvalue'};
+                t = tuple([1,2,3,d]);
+                l = list(t);
+                l[3];
+                unset(l[3].foo);
+                $MSG = string(t) + '--' + string(l);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """(1,2,3,{"foo":"foovalue","bar":"barvalue"})--[1,2,3,{"bar":"barvalue"}]"""
+
+
+def test_tuple_changing_mutable_elements_cause_clone(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {'foo':'foovalue','bar':'barvalue'};
+                t = tuple([1,2,3,[4,5,6,d]]);
+                unset(d.foo);
+                $MSG = string(t) + '--' + string(d);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """(1,2,3,[4,5,6,{"foo":"foovalue","bar":"barvalue"}])--{"bar":"barvalue"}"""
