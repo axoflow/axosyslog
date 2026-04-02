@@ -33,7 +33,8 @@
 static gsize
 _rstripped_message_length(const guchar *data, gsize length)
 {
-  while (length > 0 && (data[length - 1] == '\n' || data[length - 1] == '\0'))
+  const guint32 rstrip_character_bitmask = (1 << '\r') | (1 << '\n') | (1 << 0);
+  while (length > 0 && data[length - 1] < 32 && (rstrip_character_bitmask & (1 << data[length - 1])))
     length--;
   return length;
 }
@@ -77,8 +78,7 @@ msg_format_preprocess_message(MsgFormatOptions *options, LogMessage *msg,
 {
   if (options->flags & LP_STORE_RAW_MESSAGE)
     {
-      log_msg_set_value(msg, LM_V_RAWMSG,
-                        (gchar *) data, _rstripped_message_length(data, length));
+      log_msg_set_value(msg, LM_V_RAWMSG, (gchar *) data, length);
     }
 }
 
@@ -133,7 +133,7 @@ msg_format_process_message(MsgFormatOptions *options, LogMessage *msg,
               gchar buf[SANITIZE_UTF8_BUFFER_SIZE(length)];
               gsize sanitized_length;
               optimized_sanitize_utf8_to_escaped_binary(data, length, &sanitized_length, buf, sizeof(buf));
-              log_msg_set_value(msg, LM_V_MESSAGE, buf, _rstripped_message_length((guchar *) buf, sanitized_length));
+              log_msg_set_value(msg, LM_V_MESSAGE, buf, sanitized_length);
               log_msg_set_tag_by_id(msg, LM_T_MSG_UTF8_SANITIZED);
               msg->flags |= LF_UTF8;
               return TRUE;
@@ -144,14 +144,14 @@ msg_format_process_message(MsgFormatOptions *options, LogMessage *msg,
       else if ((options->flags & LP_VALIDATE_UTF8) && g_utf8_validate((gchar *) data, length, NULL))
         msg->flags |= LF_UTF8;
 
-      log_msg_set_value(msg, LM_V_MESSAGE, (gchar *) data, _rstripped_message_length(data, length));
+      log_msg_set_value(msg, LM_V_MESSAGE, (gchar *) data, length);
       return TRUE;
     }
 }
 
 gboolean
 msg_format_try_parse_into(MsgFormatOptions *options, LogMessage *msg,
-                          const guchar *data, gsize length,
+                          const guchar *data, gsize *data_len,
                           gsize *problem_position)
 {
   if (G_UNLIKELY(!options->format_handler))
@@ -162,7 +162,10 @@ msg_format_try_parse_into(MsgFormatOptions *options, LogMessage *msg,
       log_msg_set_value(msg, LM_V_MESSAGE, buf, -1);
       return FALSE;
     }
+  gsize length = *data_len;
 
+  if (!options->format_handler->binary_clean)
+    *data_len = length = _rstripped_message_length(data, length);
   msg_format_preprocess_message(options, msg, data, length);
 
   if (!msg_format_process_message(options, msg, data, length, problem_position))
@@ -174,14 +177,15 @@ msg_format_try_parse_into(MsgFormatOptions *options, LogMessage *msg,
 
 void
 msg_format_parse_into(MsgFormatOptions *options, LogMessage *msg,
-                      const guchar *data, gsize length)
+                      const guchar *data, gsize *data_len)
 {
   gsize problem_position = 0;
 
-  if (!msg_format_try_parse_into(options, msg, data, length, &problem_position))
+  if (!msg_format_try_parse_into(options, msg, data, data_len, &problem_position))
     {
+      gsize length = *data_len;
       if (options->flags & LP_PIGGYBACK_ERRORS)
-        msg_format_inject_parse_error(options, msg, data, _rstripped_message_length(data, length), problem_position);
+        msg_format_inject_parse_error(options, msg, data, length, problem_position);
       else
         log_msg_set_value(msg, LM_V_MESSAGE, (gchar *) data, length);
 
@@ -220,7 +224,7 @@ msg_format_parse(MsgFormatOptions *options, const guchar *data, gsize length)
   LogMessage *msg = msg_format_construct_message(options, data, length);
 
   msg_trace("Initial message parsing follows");
-  msg_format_parse_into(options, msg, data, length);
+  msg_format_parse_into(options, msg, data, &length);
   return msg;
 }
 

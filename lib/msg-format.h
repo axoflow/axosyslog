@@ -86,6 +86,7 @@ struct _MsgFormatHandler
    * match the requirements of the "format" in question.  This is used by
    * the "pacct" plugin to set the record length the proper size
    */
+  gboolean binary_clean;
   LogProtoServer *(*construct_proto)(const MsgFormatOptions *options, LogTransport *transport,
                                      const LogProtoServerOptions *proto_options);
   gboolean (*parse)(const MsgFormatOptions *options, LogMessage *msg,
@@ -94,10 +95,10 @@ struct _MsgFormatHandler
 };
 
 gboolean msg_format_try_parse_into(MsgFormatOptions *options, LogMessage *msg,
-                                   const guchar *data, gsize length,
+                                   const guchar *data, gsize *length,
                                    gsize *problem_position);
 void msg_format_parse_into(MsgFormatOptions *options, LogMessage *msg,
-                           const guchar *data, gsize length);
+                           const guchar *data, gsize *length);
 
 LogMessage *msg_format_construct_message(MsgFormatOptions *options, const guchar *data, gsize length);
 LogMessage *msg_format_parse(MsgFormatOptions *options, const guchar *data, gsize length);

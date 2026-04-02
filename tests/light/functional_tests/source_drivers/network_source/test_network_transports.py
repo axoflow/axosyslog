@@ -88,7 +88,7 @@ def _test_network_transports(
         )
         assert file_destination.read_log() == EXPECTED_PROXIED_MESSAGE
     else:
-        source.write_log(INPUT_MESSAGE, transport=client_transport)
+        source.write_log(INPUT_MESSAGE + "\r\n", transport=client_transport)
         assert file_destination.read_log().endswith(INPUT_MESSAGE)
 
 

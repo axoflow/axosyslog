@@ -194,7 +194,7 @@ _log_message_from_string(const char *msg_cstring, MsgFormatOptions *format_optio
 {
   gsize msg_len = strlen(msg_cstring);
   *out_msg = msg_format_construct_message(format_options, (const guchar *) msg_cstring, msg_len);
-  msg_format_parse_into(format_options, *out_msg, (const guchar *) msg_cstring, msg_len);
+  msg_format_parse_into(format_options, *out_msg, (const guchar *) msg_cstring, &msg_len);
   return msg_len;
 }
 
