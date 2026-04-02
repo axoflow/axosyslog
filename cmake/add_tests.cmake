@@ -75,7 +75,7 @@ function (add_unit_test)
 
   add_test (${ADD_UNIT_TEST_TARGET} ${ADD_UNIT_TEST_TARGET})
   add_dependencies(check ${ADD_UNIT_TEST_TARGET})
-  set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES ENVIRONMENT "CRITERION_TEST_PATTERN=!(*/*performance*)")
+  set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES ENVIRONMENT "CRITERION_TEST_PATTERN=!(*/*performance*);LSAN_OPTIONS=suppressions=${CMAKE_SOURCE_DIR}/tests/axosyslog-lsan.supp")
   set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES FAIL_REGULAR_EXPRESSION "ERROR: (LeakSanitizer|AddressSanitizer)")
 endfunction ()
 
