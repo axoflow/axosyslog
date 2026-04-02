@@ -36,7 +36,7 @@ else()
 endif()
 
 
-set(LOCALINSTALL_POETRY_DIR "${CMAKE_SOURCE_DIR}/stm32-tools/poetry")
+set(LOCALINSTALL_POETRY_DIR "${CMAKE_BINARY_DIR}/stm32-tools/poetry")
 message(STATUS "Downloading poetry install script to: ${LOCALINSTALL_POETRY_DIR}")
 
 message(STATUS "Installing Poetry")
@@ -59,7 +59,7 @@ unset(Poetry_EXECUTABLE CACHE)
 find_program(
 	Poetry_EXECUTABLE
 	poetry
-	PATHS ${CMAKE_SOURCE_DIR}/stm32-tools/poetry/bin
+	PATHS ${LOCALINSTALL_POETRY_DIR}/bin
 	NO_DEFAULT_PATH
 	REQUIRED
 )
