@@ -27,6 +27,8 @@
 #include "syslog-ng.h"
 #include "transport/transport-aux-data.h"
 
+#define LOG_TRANSPORT_RA_BUFFER_SIZE 16
+
 typedef enum _LogTransportIOCond
 {
   LTIO_NOTHING = 0,
@@ -69,7 +71,7 @@ struct _LogTransport
   /* read ahead */
   struct
   {
-    gchar buf[16];
+    gchar buf[LOG_TRANSPORT_RA_BUFFER_SIZE];
     gint buf_len;
     gint pos;
   } ra;
@@ -153,6 +155,7 @@ log_transport_read(LogTransport *self, gpointer buf, gsize count, LogTransportAu
 }
 
 gssize log_transport_read_ahead(LogTransport *self, gpointer buf, gsize count, gboolean *moved_forward);
+const gchar *log_transport_look_ahead(LogTransport *self, gint *payload_len);
 
 void log_transport_init_instance(LogTransport *s, const gchar *name, gint fd);
 void log_transport_free_method(LogTransport *s);

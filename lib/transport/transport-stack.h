@@ -181,6 +181,13 @@ log_transport_stack_read_ahead(LogTransportStack *self, gpointer buf, gsize coun
   return log_transport_read_ahead(transport, buf, count, moved_forward);
 }
 
+static inline const gchar *
+log_transport_stack_look_ahead(LogTransportStack *self, gint *payload_len)
+{
+  LogTransport *transport = log_transport_stack_get_active(self);
+  return log_transport_look_ahead(transport, payload_len);
+}
+
 void log_transport_stack_add_factory(LogTransportStack *self, LogTransportFactory *);
 void log_transport_stack_add_transport(LogTransportStack *self, gint index, LogTransport *);
 gboolean log_transport_stack_switch(LogTransportStack *self, gint index);
