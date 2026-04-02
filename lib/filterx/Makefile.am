@@ -84,6 +84,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/object-ip.h \
 	lib/filterx/object-dict.h \
 	lib/filterx/object-list.h \
+	lib/filterx/object-tuple.h \
 	lib/filterx/object-extractor.h \
 	lib/filterx/object-message-value.h \
 	lib/filterx/object-metrics-labels.h \
@@ -178,6 +179,7 @@ lib_filterx_libfilterx_la_SOURCES = \
 	lib/filterx/object-dict.c \
 	lib/filterx/object-ip.c \
 	lib/filterx/object-list.c \
+	lib/filterx/object-tuple.c \
 	lib/filterx/object-message-value.c \
 	lib/filterx/object-metrics-labels.c \
 	lib/filterx/object-null.c \
