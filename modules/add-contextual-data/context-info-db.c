@@ -25,6 +25,7 @@
 #include "messages.h"
 #include "scratch-buffers.h"
 #include "compat/string.h"
+#include "str-utils.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -160,7 +161,7 @@ _str_case_insensitive_djb2_hash(const gchar *str)
   int c;
 
   while ((c = *str++))
-    hash = ((hash << 5) + hash) + g_ascii_toupper(c);
+    hash = ((hash << 5) + hash) + ch_toupper(c);
 
   return hash;
 }

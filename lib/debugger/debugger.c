@@ -30,6 +30,7 @@
 #include "compat/time.h"
 #include "scratch-buffers.h"
 #include "cfg-source.h"
+#include "str-utils.h"
 
 #include <iv_signal.h>
 #include <stdio.h>
@@ -291,7 +292,7 @@ _cmd_list(Debugger *self, gint argc, gchar *argv[])
           if (self->breakpoint_site)
             _set_current_location(self, self->breakpoint_site->pipe->expr_node);
         }
-      else if (isdigit(argv[1][0]))
+      else if (ch_isdigit(argv[1][0]))
         {
           gint target_lineno = atoi(argv[1]);
           if (target_lineno <= 0)

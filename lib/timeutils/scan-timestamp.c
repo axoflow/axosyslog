@@ -23,6 +23,7 @@
 #include "timeutils/scan-timestamp.h"
 #include "timeutils/wallclocktime.h"
 #include "str-format.h"
+#include "str-utils.h"
 #include "timeutils/cache.h"
 
 #include <ctype.h>
@@ -202,7 +203,7 @@ __is_bsd_rfc_3164_nopad_day(const guchar *src, guint32 left)
   if (src[3] != ' ')
     return FALSE;
 
-  if (!isdigit(src[4]))
+  if (!ch_isdigit(src[4]))
     return FALSE;
 
   return src[5] == ' ' && src[8] == ':' && src[11] == ':';
@@ -260,10 +261,10 @@ __is_bsd_pix_or_asa(const guchar *src, guint32 left)
           && src[14] == ':'
           && src[17] == ':'
           && (src[20] == ':' || src[20] == ' ')
-          && isdigit(src[7])
-          && isdigit(src[8])
-          && isdigit(src[9])
-          && isdigit(src[10])
+          && ch_isdigit(src[7])
+          && ch_isdigit(src[8])
+          && ch_isdigit(src[9])
+          && ch_isdigit(src[10])
          );
 }
 
@@ -300,10 +301,10 @@ __is_bsd_linksys(const guchar *src, guint32 left)
           && src[9] == ':'
           && src[12] == ':'
           && src[15] == ' '
-          && isdigit(src[16])
-          && isdigit(src[17])
-          && isdigit(src[18])
-          && isdigit(src[19])
+          && ch_isdigit(src[16])
+          && ch_isdigit(src[17])
+          && ch_isdigit(src[18])
+          && ch_isdigit(src[19])
           && isspace(src[20])
          );
 }
@@ -350,14 +351,14 @@ __parse_usec(const guchar **data, gint *length)
 
       src++;
       (*length)--;
-      while (*length > 0 && div < 10e5 && isdigit(*src))
+      while (*length > 0 && div < 10e5 && ch_isdigit(*src))
         {
           frac = 10 * frac + (*src) - '0';
           div = div * 10;
           src++;
           (*length)--;
         }
-      while (*length > 0 && isdigit(*src))
+      while (*length > 0 && ch_isdigit(*src))
         {
           src++;
           (*length)--;
@@ -373,12 +374,12 @@ __has_iso_timezone(const guchar *src, gint length)
 {
   return (length >= 6) &&
          (*src == '+' || *src == '-') &&
-         isdigit(*(src+1)) &&
-         isdigit(*(src+2)) &&
+         ch_isdigit(*(src+1)) &&
+         ch_isdigit(*(src+2)) &&
          *(src+3) == ':' &&
-         isdigit(*(src+4)) &&
-         isdigit(*(src+5)) &&
-         (length < 7 || !isdigit(*(src+6)));
+         ch_isdigit(*(src+4)) &&
+         ch_isdigit(*(src+5)) &&
+         (length < 7 || !ch_isdigit(*(src+6)));
 }
 
 static guint32

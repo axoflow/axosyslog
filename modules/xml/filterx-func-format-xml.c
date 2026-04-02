@@ -27,6 +27,7 @@
 #include "scratch-buffers.h"
 #include "filterx/filterx-mapping.h"
 #include "filterx/filterx-sequence.h"
+#include "str-utils.h"
 
 #define FILTERX_FUNC_FORMAT_XML_USAGE "Usage: format_xml([dict])"
 const char *XML_ERROR_STR = "Failed to convert to xml";
@@ -220,7 +221,7 @@ _is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
 
   // '@' character and "#text" string are reserved for attributes and text respectively,
   // so we consider them valid
-  if (!(isalpha(tag_str[0]) || tag_str[0] == '_' || tag_str[0] == '@' || strn_eq_strz(tag_str, "#text", tag_str_len)))
+  if (!(ch_isalpha(tag_str[0]) || tag_str[0] == '_' || tag_str[0] == '@' || strn_eq_strz(tag_str, "#text", tag_str_len)))
     {
       filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
                                           "Dict key must begin with a letter or '_' character");

@@ -1031,7 +1031,7 @@ log_msg_sdata_append_key_escaped(GString *result, const gchar *sstr, gssize len)
 
   for (gssize i = 0; i < len; i++)
     {
-      if (!isascii(ustr[i]) || ustr[i] == '=' || ustr[i] == ' '
+      if (!ch_isascii(ustr[i]) || ustr[i] == '=' || ustr[i] == ' '
           || ustr[i] == '[' || ustr[i] == ']' || ustr[i] == '"')
         {
           gchar hex_code[4];

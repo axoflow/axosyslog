@@ -118,6 +118,29 @@ log_transport_read_ahead(LogTransport *self, gpointer buf, gsize buflen, gboolea
   return 0;
 }
 
+const gchar *
+log_transport_look_ahead(LogTransport *self, gint *payload_len)
+{
+  gsize buffer_space = sizeof(self->ra.buf);
+  gsize count = buffer_space - self->ra.buf_len;
+  gint rc = 0;
+
+  if (count > 0)
+    {
+      rc = self->read(self, &self->ra.buf[self->ra.buf_len], count, NULL);
+      if (rc < 0)
+        {
+          *payload_len = rc;
+          return NULL;
+        }
+    }
+
+  self->ra.buf_len += rc;
+
+  *payload_len = self->ra.buf_len;
+  return self->ra.buf;
+}
+
 
 void
 log_transport_free_method(LogTransport *s)

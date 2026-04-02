@@ -23,6 +23,7 @@
 
 #include "radix.h"
 #include "compat/pcre.h"
+#include "str-utils.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -396,7 +397,7 @@ _r_parser_lladdr(gchar *str, gint *len, gint count, gint parts, gpointer state, 
 
   for (i = 1; i <= parts; i++)
     {
-      if (!g_ascii_isxdigit(str[*len]) || !g_ascii_isxdigit(str[*len + 1]))
+      if (!ch_isxdigit(str[*len]) || !ch_isxdigit(str[*len + 1]))
         {
           if ( i > 1 )
             {
@@ -435,7 +436,7 @@ r_parser_lladdr(gchar *str, gint *len, const gchar *param, gpointer state, RPars
     {
       *len = 0;
       parts = 0;
-      while (g_ascii_isdigit(param[*len]))
+      while (ch_isdigit(param[*len]))
         {
           parts = parts * 10 + g_ascii_digit_value(param[*len]);
           (*len)++;
@@ -475,7 +476,7 @@ r_parser_ipv4(gchar *str, gint *len, const gchar *param, gpointer state, RParser
           dots++;
           octet = -1;
         }
-      else if (g_ascii_isdigit(str[*len]))
+      else if (ch_isdigit(str[*len]))
         {
           if (octet == -1)
             octet = 0;
@@ -526,7 +527,7 @@ r_parser_ipv6(gchar *str, gint *len, const gchar *param, gpointer state, RParser
           colons++;
           octet = -1;
         }
-      else if (g_ascii_isxdigit(str[*len]))
+      else if (ch_isxdigit(str[*len]))
         {
           if (octet == -1)
             octet = 0;
@@ -580,7 +581,7 @@ r_parser_ip(gchar *str, gint *len, const gchar *param, gpointer state, RParserMa
 static inline void
 _scan_digits(gchar *str, gint *len)
 {
-  while (g_ascii_isdigit(str[*len]))
+  while (ch_isdigit(str[*len]))
     (*len)++;
 }
 
@@ -605,7 +606,7 @@ r_parser_float(gchar *str, gint *len, const gchar *param, gpointer state, RParse
       if ((str[*len] == '-') || (str[*len] == '+'))
         (*len)++;
 
-      while (g_ascii_isdigit(str[*len]))
+      while (ch_isdigit(str[*len]))
         (*len)++;
     }
 
@@ -632,13 +633,13 @@ r_parser_number(gchar *str, gint *len, const gchar *param, gpointer state, RPars
       *len += 2;
       min_len += 2;
 
-      while (g_ascii_isxdigit(str[*len]))
+      while (ch_isxdigit(str[*len]))
         (*len)++;
 
     }
   else
     {
-      while (g_ascii_isdigit(str[*len]))
+      while (ch_isdigit(str[*len]))
         (*len)++;
     }
 

@@ -24,6 +24,7 @@
 #include "timeutils/zonedb.h"
 #include "reloc.h"
 #include "messages.h"
+#include "str-utils.h"
 
 #include <ctype.h>
 #include <string.h>
@@ -545,9 +546,9 @@ time_zone_info_new(const gchar *tz)
     return self;
 
   if ((*tz == '+' || *tz == '-') && strlen(tz) == 6 &&
-      isdigit((int) *(tz+1)) && isdigit((int) *(tz+2)) &&
-      (*(tz+3) == ':') && isdigit((int) *(tz+4)) &&
-      isdigit((int) *(tz+5)))
+      ch_isdigit((int) *(tz+1)) && ch_isdigit((int) *(tz+2)) &&
+      (*(tz+3) == ':') && ch_isdigit((int) *(tz+4)) &&
+      ch_isdigit((int) *(tz+5)))
     {
       /* timezone offset */
       gint sign = *tz == '-' ? -1 : 1;

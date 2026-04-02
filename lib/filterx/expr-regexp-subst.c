@@ -34,6 +34,7 @@
 #include "filterx/filterx-eval.h"
 #include "compat/pcre.h"
 #include "scratch-buffers.h"
+#include "str-utils.h"
 #include <ctype.h>
 
 DEFINE_FUNC_FLAG_NAMES(FilterXRegexpSubstFlags,
@@ -73,11 +74,11 @@ _next_matchgrp_ref(gchar *from, gchar **to)
   g_assert(to);
   while (*from != '\0')
     {
-      if ((*from == '\\') && isdigit(*(from + 1)))
+      if ((*from == '\\') && ch_isdigit(*(from + 1)))
         {
           gchar *start = from;
           from += 2;
-          while (isdigit(*from) && from - start <= FILTERX_FUNC_REGEXP_SUBST_GRP_ID_MAX_DIGITS)
+          while (ch_isdigit(*from) && from - start <= FILTERX_FUNC_REGEXP_SUBST_GRP_ID_MAX_DIGITS)
             {
               from++;
             }
@@ -105,7 +106,7 @@ _parse_machgrp_ref(const gchar *from, const gchar *to, gint *value)
   from++;
   *value = 0;
 
-  while (from < to && isdigit(*from))
+  while (from < to && ch_isdigit(*from))
     {
       *value = (*value * 10) + (*from - '0');
       from++;

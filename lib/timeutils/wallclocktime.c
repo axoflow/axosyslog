@@ -85,6 +85,7 @@
 #include "timeutils/cache.h"
 #include "timeutils/misc.h"
 #include "timeutils/conv.h"
+#include "str-utils.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -432,7 +433,7 @@ recurse:
 
         case 'f':
         {
-          if (!(*bp == '.' || isdigit(*bp)))
+          if (!(*bp == '.' || ch_isdigit(*bp)))
             {
               /* %f is optional, and is empty */
               wct->wct_usec = 0;
@@ -449,7 +450,7 @@ recurse:
            * We have read up to 6 digits, but if the message has
            * sub-microsecond precision, eat-up the digits we cannot handle.
            */
-          while (isdigit(*end))
+          while (ch_isdigit(*end))
             {
               end++;
             }
@@ -602,7 +603,7 @@ recurse:
          */
           do
             bp++;
-          while (isdigit(*bp));
+          while (ch_isdigit(*bp));
           continue;
 
         case 'V': /* The ISO 8601:1988 week number as decimal */
@@ -746,7 +747,7 @@ utc:
           offs = 0;
           for (i = 0; i < 4; )
             {
-              if (isdigit(*bp))
+              if (ch_isdigit(*bp))
                 {
                   offs = offs * 10 + (*bp++ - '0');
                   i++;

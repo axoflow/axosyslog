@@ -27,6 +27,7 @@
 #include "template/escaping.h"
 #include "template/repr.h"
 #include "timeutils/format.h"
+#include "str-utils.h"
 #include "cfg.h"
 
 gboolean
@@ -230,8 +231,8 @@ _split_type_and_template(gchar *spec, gchar **value, gchar **type)
     sp++;
 
   if (*sp != '(' ||
-      !((g_ascii_toupper(spec[0]) >= 'A' &&
-         g_ascii_toupper(spec[0]) <= 'Z') ||
+      !((ch_toupper(spec[0]) >= 'A' &&
+         ch_toupper(spec[0]) <= 'Z') ||
         spec[0] == '_'))
     {
       *value = spec;

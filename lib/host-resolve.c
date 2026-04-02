@@ -27,6 +27,7 @@
 #include "tls-support.h"
 #include "compat/socket.h"
 #include "apphook.h"
+#include "str-utils.h"
 
 #include <iv.h>
 
@@ -58,7 +59,7 @@ normalize_hostname(gchar *result, gsize result_size, const gchar *hostname)
 
   for (i = 0; hostname[i] && i < (result_size - 1); i++)
     {
-      result[i] = g_ascii_tolower(hostname[i]);
+      result[i] = ch_tolower(hostname[i]);
     }
   result[i] = '\0'; /* the closing \0 is not copied by the previous loop */
 }

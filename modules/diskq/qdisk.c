@@ -30,6 +30,7 @@
 #include "reloc.h"
 #include "compat/lfs.h"
 #include "scratch-buffers.h"
+#include "str-utils.h"
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -281,7 +282,7 @@ qdisk_is_file_a_disk_buffer_file(const gchar *filename)
 
   for (gint i = prefix_len; i < extension_start; i++)
     {
-      if (!g_ascii_isdigit(filename[i]))
+      if (!ch_isdigit(filename[i]))
         return FALSE;
     }
 

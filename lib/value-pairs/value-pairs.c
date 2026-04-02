@@ -29,6 +29,7 @@
 #include "template/macros.h"
 #include "cfg-parser.h"
 #include "string-list.h"
+#include "str-utils.h"
 #include "scratch-buffers.h"
 #include "cfg.h"
 
@@ -656,7 +657,7 @@ vp_walker_skip_sdata_enterprise_id(const gchar *name)
       ++name;
       name += strspn(name, "0123456789");
     }
-  while (*name == '.' && isdigit(*(name + 1)));
+  while (*name == '.' && ch_isdigit(*(name + 1)));
   return name;
 }
 
