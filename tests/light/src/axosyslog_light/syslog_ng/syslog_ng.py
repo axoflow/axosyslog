@@ -250,5 +250,8 @@ class SyslogNg(object):
     def __validate_returncode(self, returncode: int):
         # only zero returncode is allowed
         if returncode != 0:
+            sanitizer_errors = self._console_log_reader.get_sanitizer_errors()
             self._process = None
+            if sanitizer_errors:
+                assert False, "syslog-ng returned with error code: %s\n%s" % (returncode, "\n".join(sanitizer_errors))
             assert False, "syslog-ng returned with error code: %s" % returncode
