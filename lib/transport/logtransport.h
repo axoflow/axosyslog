@@ -26,6 +26,7 @@
 
 #include "syslog-ng.h"
 #include "transport/transport-aux-data.h"
+#include "stats/stats-cluster-key-builder.h"
 
 #define LOG_TRANSPORT_RA_BUFFER_SIZE 16
 
@@ -67,6 +68,7 @@ struct _LogTransport
   gssize (*writev)(LogTransport *self, struct iovec *iov, gint iov_count);
   void (*shutdown)(LogTransport *self);
   void (*free_fn)(LogTransport *self);
+  void (*register_stats)(LogTransport *self, StatsClusterKeyBuilder *kb);
 
   /* read ahead */
   struct
