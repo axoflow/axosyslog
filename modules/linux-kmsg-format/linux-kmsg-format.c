@@ -26,6 +26,7 @@
 #include "messages.h"
 #include "cfg.h"
 #include "str-format.h"
+#include "str-utils.h"
 #include "scratch-buffers.h"
 #include "timeutils/cache.h"
 
@@ -102,7 +103,7 @@ kmsg_parse_prio(const guchar *data, gsize *pos, gsize length, LogMessage *msg)
 
   while (*pos < length && data[*pos] != ',')
     {
-      if (isdigit(data[*pos]))
+      if (ch_isdigit(data[*pos]))
         pri = pri * 10 + ((data[*pos]) - '0');
       else
         return FALSE;
@@ -122,7 +123,7 @@ kmsg_parse_seq(const guchar *data, gsize *pos, gsize length, LogMessage *msg)
 
   while (*pos < length && data[*pos] != ',')
     {
-      if (!isdigit(data[*pos]))
+      if (!ch_isdigit(data[*pos]))
         return TRUE;
       (*pos)++;
     }
@@ -141,7 +142,7 @@ kmsg_parse_timestamp(const guchar *data, gsize *pos, gsize length, LogMessage *m
 
   while (*pos < length && data[*pos] != ',' && data[*pos] != ';')
     {
-      if (isdigit(data[*pos]))
+      if (ch_isdigit(data[*pos]))
         timestamp = timestamp * 10 + ((data[*pos]) - '0');
       else
         return FALSE;
@@ -398,7 +399,7 @@ kmsg_init_boot_time(void)
   /* Read the seconds part */
   while (pos < rc && buf[pos] != '.')
     {
-      if (isdigit(buf[pos]))
+      if (ch_isdigit(buf[pos]))
         boot_time.tv_sec = boot_time.tv_sec * 10 + ((buf[pos]) - '0');
       else
         {
@@ -412,7 +413,7 @@ kmsg_init_boot_time(void)
   /* Then the microsecond part */
   while (pos < rc && buf[pos] != ' ')
     {
-      if (isdigit(buf[pos]))
+      if (ch_isdigit(buf[pos]))
         boot_time.tv_usec = boot_time.tv_usec * 10 + ((buf[pos]) - '0');
       else
         {

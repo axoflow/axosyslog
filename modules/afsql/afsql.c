@@ -347,7 +347,7 @@ static gboolean _sql_identifier_is_valid_char(gchar c)
   return ((c == '.') ||
           (c == '_') ||
           (c >= '0' && c <= '9') ||
-          (g_ascii_tolower(c) >= 'a' && g_ascii_tolower(c) <= 'z'));
+          (ch_tolower(c) >= 'a' && ch_tolower(c) <= 'z'));
 }
 
 static gboolean

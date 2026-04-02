@@ -451,13 +451,13 @@ ipv6_heuristics_feed_gchar(IPv6Heuristics *self, gchar c)
   if (self->heuristic_failed)
     return FALSE;
 
-  if (c != ':' && !g_ascii_isxdigit(c))
+  if (c != ':' && !ch_isxdigit(c))
     {
       self->heuristic_failed = TRUE;
       return FALSE;
     }
 
-  if (g_ascii_isxdigit(c))
+  if (ch_isxdigit(c))
     {
       if (++self->digits_in_segment > 4)
         {

@@ -23,6 +23,7 @@
 #include "logproto-framed-server.h"
 #include "logproto.h"
 #include "messages.h"
+#include "str-utils.h"
 
 #include <errno.h>
 #include <ctype.h>
@@ -151,7 +152,7 @@ log_proto_framed_server_extract_frame_length(LogProtoFramedServer *self, gboolea
   self->frame_len = 0;
   for (i = self->buffer_pos; i < self->buffer_end; i++)
     {
-      if (isdigit(self->buffer[i]) && (i - self->buffer_pos < RFC6587_MAX_FRAME_LEN_DIGITS))
+      if (ch_isdigit(self->buffer[i]) && (i - self->buffer_pos < RFC6587_MAX_FRAME_LEN_DIGITS))
         {
           self->frame_len = self->frame_len * 10 + (self->buffer[i] - '0');
         }

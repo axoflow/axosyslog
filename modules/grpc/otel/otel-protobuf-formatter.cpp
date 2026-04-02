@@ -29,6 +29,7 @@
 #include "scanner/list-scanner/list-scanner.h"
 #include "compat/cpp-end.h"
 #include "compat/inttypes.h"
+#include "str-utils.h"
 
 #include <syslog.h>
 
@@ -493,7 +494,7 @@ _is_number(const char *name)
 {
   for (int i = 0; i < 3; i++)
     {
-      if (!g_ascii_isdigit(name[i]))
+      if (!ch_isdigit(name[i]))
         break;
 
       if (name[i+1] == '\0')

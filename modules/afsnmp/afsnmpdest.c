@@ -40,6 +40,7 @@
 #include "stats/stats.h"
 #include "logmsg/nvtable.h"
 #include "logqueue.h"
+#include "str-utils.h"
 
 #include "afsnmpdest.h"
 #include "afsnmp-parser.h"
@@ -233,7 +234,7 @@ _is_hexadecimal(const gchar *s, gint length)
   gint i;
   for (i = 0; i < length; ++i)
     {
-      if (!g_ascii_isxdigit(s[i]))
+      if (!ch_isxdigit(s[i]))
         {
           return FALSE;
         }

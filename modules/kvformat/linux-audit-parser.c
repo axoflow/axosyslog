@@ -21,6 +21,7 @@
 #include "linux-audit-parser.h"
 #include "scanner/kv-scanner/kv-scanner.h"
 #include "utf8utils.h"
+#include "str-utils.h"
 
 #include <string.h>
 #include <ctype.h>
@@ -103,7 +104,7 @@ _is_field_hex_encoded(const gchar *field)
 {
   gint i;
 
-  if (field[0] == 'a' && isdigit(field[1]))
+  if (field[0] == 'a' && ch_isdigit(field[1]))
     return TRUE;
 
   for (i = 0; hexcoded_fields[i]; i++)
@@ -119,7 +120,7 @@ parse_linux_audit_style_hexdump(KVScanner *self)
 {
   if (!self->value_was_quoted &&
       (self->value->len % 2) == 0 &&
-      isxdigit(self->value->str[0]) &&
+      ch_isxdigit(self->value->str[0]) &&
       _is_field_hex_encoded(self->key->str))
     {
       if (!_parse_linux_audit_hexstring(self->decoded_value, self->value->str, self->value->len))
