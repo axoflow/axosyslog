@@ -23,11 +23,11 @@
 #include "logproto-text-server.h"
 #include "logproto-framed-server.h"
 #include "logproto.h"
+#include "transport/logtransport.h"
 #include "messages.h"
 #include "str-utils.h"
 
-#define DETECT_BUFFER_SIZE 16
-G_STATIC_ASSERT(DETECT_BUFFER_SIZE >= RFC6587_MAX_FRAME_LEN_DIGITS + 1);
+G_STATIC_ASSERT(LOG_TRANSPORT_RA_BUFFER_SIZE >= RFC6587_MAX_FRAME_LEN_DIGITS + 1);
 
 typedef struct _LogProtoAutoServer
 {
@@ -104,11 +104,10 @@ static LogProtoStatus
 log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogProtoServer **proto_replacement)
 {
   LogProtoAutoServer *self = (LogProtoAutoServer *) s;
-  gchar detect_buffer[DETECT_BUFFER_SIZE];
-  gboolean moved_forward;
-  gint rc;
 
-  rc = log_transport_stack_read_ahead(&self->super.transport_stack, detect_buffer, sizeof(detect_buffer), &moved_forward);
+  gint rc;
+  const gchar *detect_buffer = log_transport_stack_look_ahead(&self->super.transport_stack, &rc);
+
   if (rc == 0)
     return LPS_EOF;
   else if (rc < 0)
