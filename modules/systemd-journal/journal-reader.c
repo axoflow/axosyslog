@@ -26,7 +26,6 @@
 #include "logpipe.h"
 #include "messages.h"
 #include "poll-fd-events.h"
-#include "mainloop-io-worker.h"
 #include "persist-state.h"
 #include "persistable-state-header.h"
 #include "ack-tracker/ack_tracker.h"
