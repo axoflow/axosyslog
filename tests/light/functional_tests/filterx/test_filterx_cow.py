@@ -533,3 +533,43 @@ def test_list_unset_causes_clone(config, syslog_ng):
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == """[1,2,3,[4,5,6,{"foo":"foovalue","bar":"barvalue"}]]--[1,2,3,[4,5,6]]"""
+
+
+def test_list_mutable_elements_appended_from_another_list_cause_clone_when_whanged_through_l1(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {'foo':'foovalue','bar':'barvalue'};
+                l1 = [1,2,3];
+                l2 = [4,5,6,d];
+                l1 += l2;
+                unset(l1[-1].foo);
+                $MSG = string(l1) + '--' + string(l2);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """[1,2,3,4,5,6,{"bar":"barvalue"}]--[4,5,6,{"foo":"foovalue","bar":"barvalue"}]"""
+
+
+def test_list_mutable_elements_appended_from_another_list_cause_clone_when_whanged_through_l2(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {'foo':'foovalue','bar':'barvalue'};
+                l1 = [1,2,3];
+                l2 = [4,5,6,d];
+                l1 += l2;
+                unset(l2[-1].foo);
+                $MSG = string(l1) + '--' + string(l2);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """[1,2,3,4,5,6,{"foo":"foovalue","bar":"barvalue"}]--[4,5,6,{"bar":"barvalue"}]"""
