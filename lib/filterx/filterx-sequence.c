@@ -117,11 +117,11 @@ _format_json(FilterXObject *value, GString *json)
 }
 
 static FilterXObject *
-_add(FilterXObject *lhs_object, FilterXObject *rhs_object)
+_add(FilterXObject *self, FilterXObject *other)
 {
-  FilterXObject *cloned = filterx_object_copy(lhs_object);
+  FilterXObject *cloned = filterx_object_copy(self);
 
-  if(!filterx_sequence_merge(cloned, rhs_object))
+  if(!filterx_sequence_merge(cloned, other))
     goto error;
 
   return cloned;

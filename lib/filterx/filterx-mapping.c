@@ -120,12 +120,12 @@ _format_json(FilterXObject *value, GString *json)
   return TRUE;
 }
 
-static FilterXObject *
-_add(FilterXObject *lhs_object, FilterXObject *rhs_object)
+ static FilterXObject *
+_add(FilterXObject *self, FilterXObject *other)
 {
-  FilterXObject *cloned = filterx_object_copy(lhs_object);
+  FilterXObject *cloned = filterx_object_copy(self);
 
-  if (!filterx_mapping_merge(cloned, rhs_object))
+  if (!filterx_mapping_merge(cloned, other))
     goto error;
 
   return cloned;
