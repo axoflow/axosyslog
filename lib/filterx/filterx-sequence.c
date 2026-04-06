@@ -64,7 +64,7 @@ _add_elem(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
 {
   FilterXObject *sequence = (FilterXObject *) user_data;
 
-  FilterXObject *new_value = filterx_object_ref(value_obj);
+  FilterXObject *new_value = filterx_object_copy(value_obj);
   gboolean success = filterx_sequence_append(sequence, &new_value);
   filterx_object_unref(new_value);
 
