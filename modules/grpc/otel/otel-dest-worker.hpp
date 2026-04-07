@@ -90,14 +90,14 @@ protected:
   std::unique_ptr<MetricsService::Stub> metrics_service_stub;
   std::unique_ptr<TraceService::Stub> trace_service_stub;
 
-  ExportLogsServiceRequest logs_service_request;
-  ExportLogsServiceResponse logs_service_response;
+  ExportLogsServiceRequest *logs_service_request;
+  ExportLogsServiceResponse *logs_service_response;
   size_t logs_current_batch_bytes;
-  ExportMetricsServiceRequest metrics_service_request;
-  ExportMetricsServiceResponse metrics_service_response;
+  ExportMetricsServiceRequest *metrics_service_request;
+  ExportMetricsServiceResponse *metrics_service_response;
   size_t metrics_current_batch_bytes;
-  ExportTraceServiceRequest trace_service_request;
-  ExportTraceServiceResponse trace_service_response;
+  ExportTraceServiceRequest *trace_service_request;
+  ExportTraceServiceResponse *trace_service_response;
   size_t spans_current_batch_bytes;
 
   ProtobufFormatter formatter;

@@ -65,7 +65,8 @@ private:
   std::unique_ptr<::google::pubsub::v1::Publisher::Stub> stub;
   std::unique_ptr<::grpc::ClientContext> client_context;
 
-  ::google::pubsub::v1::PublishRequest request;
+  ::google::pubsub::v1::PublishRequest *request;
+  ::google::pubsub::v1::PublishResponse *response;
   size_t batch_size = 0;
   size_t current_batch_bytes = 0;
 

@@ -55,6 +55,13 @@ struct _LokiDestWorker
   DestinationWorker *cpp;
 };
 
+DestinationWorker::DestinationWorker(GrpcDestWorker *s)
+  : syslogng::grpc::DestWorker(s),
+    current_batch(arena.CreateMessage<logproto::PushRequest>()),
+    response(arena.CreateMessage<logproto::PushResponse>())
+{
+}
+
 bool
 DestinationWorker::init()
 {
@@ -92,10 +99,14 @@ DestinationWorker::connect()
 void
 DestinationWorker::prepare_batch()
 {
-  this->current_batch = logproto::PushRequest{};
-  this->current_batch.add_streams();
-  this->current_batch_bytes = 0;
   this->client_context.reset();
+  this->current_batch_bytes = 0;
+
+  this->arena.Reset();
+  this->current_batch = arena.CreateMessage<logproto::PushRequest>();
+  this->response = arena.CreateMessage<logproto::PushResponse>();
+
+  this->current_batch->add_streams();
 }
 
 bool
@@ -108,7 +119,7 @@ void
 DestinationWorker::set_labels(LogMessage *msg)
 {
   DestinationDriver *owner_ = this->get_owner();
-  logproto::StreamAdapter *stream = this->current_batch.mutable_streams(0);
+  logproto::StreamAdapter *stream = this->current_batch->mutable_streams(0);
 
   LogTemplateEvalOptions options = {&owner_->template_options, LTZ_SEND, this->super->super.seq_num, NULL, LM_VT_STRING};
 
@@ -159,7 +170,7 @@ LogThreadedResult
 DestinationWorker::insert(LogMessage *msg)
 {
   DestinationDriver *owner_ = this->get_owner();
-  logproto::StreamAdapter *stream = this->current_batch.mutable_streams(0);
+  logproto::StreamAdapter *stream = this->current_batch->mutable_streams(0);
 
   if (stream->entries_size() == 0)
     this->set_labels(msg);
@@ -205,9 +216,8 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
     return LTR_SUCCESS;
 
   LogThreadedResult result;
-  logproto::PushResponse response{};
 
-  ::grpc::Status status = this->stub->Push(client_context.get(), this->current_batch, &response);
+  ::grpc::Status status = this->stub->Push(client_context.get(), *this->current_batch, this->response);
   this->get_owner()->metrics.insert_grpc_request_stats(status);
 
   if (this->get_owner()->handle_response(status, &result))

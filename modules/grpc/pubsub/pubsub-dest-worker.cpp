@@ -61,7 +61,9 @@ DestWorker::connect()
 }
 
 DestWorker::DestWorker(GrpcDestWorker *s)
-  : syslogng::grpc::DestWorker(s)
+  : syslogng::grpc::DestWorker(s),
+    request(arena.CreateMessage<::google::pubsub::v1::PublishRequest>()),
+    response(arena.CreateMessage<::google::pubsub::v1::PublishResponse>())
 {
 }
 
@@ -166,7 +168,7 @@ DestWorker::insert(LogMessage *msg)
 
   size_t message_bytes = 0;
 
-  ::google::pubsub::v1::PubsubMessage *message = this->request.add_messages();
+  ::google::pubsub::v1::PubsubMessage *message = this->request->add_messages();
 
   if (owner_->proto_var)
     {
@@ -186,11 +188,11 @@ DestWorker::insert(LogMessage *msg)
     {
       this->client_context = std::make_unique<::grpc::ClientContext>();
       prepare_context_dynamic(*this->client_context, msg);
-      this->request.set_topic(this->format_topic(msg));
+      this->request->set_topic(this->format_topic(msg));
     }
 
   msg_trace("Message added to Google Pub/Sub batch",
-            evt_tag_str("project/topic", this->request.topic().c_str()),
+            evt_tag_str("project/topic", this->request->topic().c_str()),
             log_pipe_location_tag(&this->super->super.owner->super.super.super));
 
   if (this->should_initiate_flush())
@@ -251,11 +253,14 @@ permanent_error:
 void
 DestWorker::prepare_batch()
 {
-  this->request.clear_topic();
-  this->request.clear_messages();
+  this->client_context.reset();
+
+  this->arena.Reset();
+  this->request = arena.CreateMessage<::google::pubsub::v1::PublishRequest>();
+  this->response = arena.CreateMessage<::google::pubsub::v1::PublishResponse>();
+
   this->batch_size = 0;
   this->current_batch_bytes = 0;
-  this->client_context.reset();
 }
 
 LogThreadedResult
@@ -264,9 +269,7 @@ DestWorker::flush(LogThreadedFlushMode mode)
   if (this->batch_size == 0)
     return LTR_SUCCESS;
 
-  ::google::pubsub::v1::PublishResponse response;
-
-  ::grpc::Status status = this->stub->Publish(this->client_context.get(), this->request, &response);
+  ::grpc::Status status = this->stub->Publish(this->client_context.get(), *this->request, this->response);
 
   LogThreadedResult result;
   if (!owner.handle_response(status, &result))
@@ -279,7 +282,7 @@ DestWorker::flush(LogThreadedFlushMode mode)
   log_threaded_dest_driver_insert_batch_length_stats(this->super->super.owner, this->current_batch_bytes);
 
   msg_debug("Google Pub/Sub batch delivered",
-            evt_tag_str("project/topic", this->request.topic().c_str()),
+            evt_tag_str("project/topic", this->request->topic().c_str()),
             log_pipe_location_tag(&this->super->super.owner->super.super.super));
 
 exit:

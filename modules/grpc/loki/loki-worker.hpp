@@ -46,7 +46,7 @@ namespace loki {
 class DestinationWorker final: public syslogng::grpc::DestWorker
 {
 public:
-  DestinationWorker(GrpcDestWorker *s) : syslogng::grpc::DestWorker(s) {};
+  DestinationWorker(GrpcDestWorker *s);
   ~DestinationWorker() {};
 
   LogThreadedResult insert(LogMessage *msg) override;
@@ -67,7 +67,8 @@ private:
 private:
   std::unique_ptr<::grpc::ClientContext> client_context;
   std::unique_ptr<logproto::Pusher::Stub> stub;
-  logproto::PushRequest current_batch;
+  logproto::PushRequest *current_batch;
+  logproto::PushResponse *response;
   size_t current_batch_bytes = 0;
 };
 
