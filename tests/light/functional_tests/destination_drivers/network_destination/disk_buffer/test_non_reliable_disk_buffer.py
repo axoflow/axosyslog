@@ -24,6 +24,7 @@
 from collections import namedtuple
 
 import pytest
+from axosyslog_light.common.blocking import wait_until_true
 from helper_functions import buffer_params
 from helper_functions import check_disk_buffer_metrics_after_destination_alive
 from helper_functions import check_disk_buffer_metrics_after_reload
@@ -53,9 +54,8 @@ def test_expected_message_size_in_memory_match_current_reality(config, port_allo
     syslog_ng.start(config)
     # single message goes directly to qout, so stays in memory
     loggen_send_messages(loggen, network_source, number=1)
-    size_of_message_in_memory = get_metric(config, "syslogng_disk_queue_memory_usage_bytes")
+    assert wait_until_true(lambda: get_metric(config, "syslogng_disk_queue_memory_usage_bytes") == buffer_params.message_size_in_memory)
     syslog_ng.stop()
-    assert size_of_message_in_memory == buffer_params.message_size_in_memory
 
 
 #
@@ -77,9 +77,8 @@ def test_expected_message_size_in_diskq_match_current_reality(config, port_alloc
 
     assert (messages_to_measure * buffer_params.message_size_in_diskq) % 1024 == 0
     loggen_send_messages(loggen, network_source, number=buffer_params.count_front_cache + messages_to_measure)
-    size_of_message_in_diskq = get_metric(config, "syslogng_disk_queue_disk_usage_bytes")
+    assert wait_until_true(lambda: get_metric(config, "syslogng_disk_queue_disk_usage_bytes") == messages_to_measure * buffer_params.message_size_in_diskq)
     syslog_ng.stop()
-    assert size_of_message_in_diskq == messages_to_measure * buffer_params.message_size_in_diskq
 
 
 BufferState = namedtuple(
