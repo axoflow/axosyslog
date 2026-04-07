@@ -167,6 +167,9 @@ _assign_location(FilterXExpr *expr, CfgLexer *lexer, CFG_LTYPE *lloc)
 %type <ptr> list_literal
 %type <ptr> list_element
 %type <ptr> list_elements
+%type <ptr> tuple_literal
+%type <ptr> tuple_element
+%type <ptr> tuple_elements
 %type <ptr> dpath_element
 %type <ptr> dpath_elements
 %type <ptr> regexp_match
@@ -380,6 +383,7 @@ literal
 	: literal_object			{ FilterXObject *literal = $1; $$ = filterx_literal_new(literal); }
 	| dict_literal
 	| list_literal
+	| tuple_literal
 	;
 
 literal_object
@@ -473,6 +477,22 @@ list_elements
 	;
 
 list_element
+	: expr					{ $$ = filterx_literal_element_new(NULL, $1); }
+	;
+
+tuple_literal
+	: '(' tuple_elements ')'
+          {
+            $$ = filterx_literal_tuple_new($2);
+          }
+	;
+
+tuple_elements
+	: tuple_element ',' tuple_elements	{ $$ = g_list_prepend($3, $1); }
+	|					{ $$ = NULL; }
+	;
+
+tuple_element
 	: expr					{ $$ = filterx_literal_element_new(NULL, $1); }
 	;
 
