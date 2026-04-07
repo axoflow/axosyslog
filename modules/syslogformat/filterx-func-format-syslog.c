@@ -217,8 +217,8 @@ _format_syslog_5424_eval(FilterXExpr *s)
     return NULL;
 
   gint64 pri;
-  const gchar *pri_str;
-  gsize pri_str_len;
+  const gchar *pri_str = NULL;
+  gsize pri_str_len = 0;
   FilterXObject *pri_obj = _get_pri(self, logmsg, &pri, &pri_str, &pri_str_len);
 
   WallClockTime timestamp;

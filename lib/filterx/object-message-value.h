@@ -53,6 +53,7 @@ gboolean filterx_message_value_get_json(FilterXObject *s, struct json_object **v
 
 /* unmarshal a message representation into a FilterXObject */
 FilterXObject *filterx_unmarshal_repr(const gchar *repr, gssize repr_len, LogMessageValueType t);
+FilterXObject *filterx_extract_object_from_logmsg(LogMessage *msg, NVHandle handle);
 
 static inline LogMessageValueType
 filterx_message_value_get_type(FilterXObject *s)

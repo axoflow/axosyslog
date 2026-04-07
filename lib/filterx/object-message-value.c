@@ -462,3 +462,23 @@ FILTERX_DEFINE_TYPE(message_value, FILTERX_TYPE_NAME(object),
                     .repr = _repr,
                     .str = _str,
                    );
+
+FilterXObject *
+filterx_extract_object_from_logmsg(LogMessage *msg, NVHandle handle)
+{
+  gssize value_len;
+  LogMessageValueType t;
+
+  const gchar *value = log_msg_get_value_if_set_with_type(msg, handle, &value_len, &t);
+  if (!value)
+    return NULL;
+  switch (t)
+    {
+    case LM_VT_STRING:
+      return filterx_string_new_borrowed(value, value_len);
+    case LM_VT_NULL:
+      return filterx_null_new();
+    default:
+      return filterx_message_value_new_borrowed(value, value_len, t);
+    }
+}

@@ -276,6 +276,12 @@ filterx_string_equal(FilterXObject *s, FilterXObject *o)
   return strn_eq_strn(self->str, self->str_len, other->str, other->str_len);
 }
 
+static inline FilterXObject *
+filterx_string_new_borrowed(const gchar *str, gssize str_len)
+{
+  return _filterx_string_new_slice_from_borrowed_str_and_len(NULL, str, str_len);
+}
+
 void filterx_string_global_init(void);
 void filterx_string_global_deinit(void);
 
