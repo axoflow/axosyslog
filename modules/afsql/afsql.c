@@ -228,7 +228,7 @@ afsql_dd_set_create_statement_append(LogDriver *s, const gchar *create_statement
  *
  * NOTE: This function can only be called from the database thread.
  **/
-static gboolean
+gboolean
 afsql_dd_run_query(AFSqlDestDriver *self, const gchar *query, gboolean silent, dbi_result *result)
 {
   dbi_result db_res;

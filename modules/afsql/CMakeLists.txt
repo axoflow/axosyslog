@@ -24,3 +24,4 @@ add_module(
   SOURCES ${AFSQL_SOURCES}
 )
 
+add_test_subdirectory(tests)
