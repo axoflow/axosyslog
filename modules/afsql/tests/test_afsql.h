@@ -27,5 +27,6 @@
 
 gboolean afsql_dd_run_query(AFSqlDestDriver *self, const gchar *query, gboolean silent,
                              dbi_result *result);
+GString *afsql_dd_build_insert_command(AFSqlDestDriver *self, LogMessage *msg, GString *table);
 
 #endif /* TEST_AFSQL_H_INCLUDED */

@@ -903,7 +903,7 @@ afsql_dd_append_value_to_be_inserted(AFSqlDestDriver *self,
   return TRUE;
 }
 
-static GString *
+GString *
 afsql_dd_build_insert_command(AFSqlDestDriver *self, LogMessage *msg, GString *table)
 {
   GString *insert_command = g_string_sized_new(256);

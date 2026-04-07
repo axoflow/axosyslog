@@ -63,6 +63,27 @@ dbi_result_free(dbi_result result)
   return 0;
 }
 
+size_t
+dbi_conn_quote_string_copy(dbi_conn conn, const char *orig, char **dest)
+{
+  if (!orig || !dest)
+    return 0;
+
+  /* Minimal SQL quoting: wrap in single quotes, escape internal single quotes */
+  GString *quoted = g_string_new("'");
+  for (const char *s = orig; *s; s++)
+    {
+      if (*s == '\'')
+        g_string_append(quoted, "\\'");
+      else
+        g_string_append_c(quoted, *s);
+    }
+  g_string_append_c(quoted, '\'');
+  size_t quoted_len = quoted->len;
+  *dest = g_string_free(quoted, FALSE);
+  return quoted_len;
+}
+
 /* --- no-op stubs for the rest of afsql.c --- */
 
 dbi_conn
@@ -97,14 +118,6 @@ dbi_conn_set_option(dbi_conn conn, const char *key, const char *value)
 int
 dbi_conn_set_option_numeric(dbi_conn conn, const char *key, int value)
 {
-  return 0;
-}
-
-size_t
-dbi_conn_quote_string_copy(dbi_conn conn, const char *orig, char **dest)
-{
-  if (dest)
-    *dest = NULL;
   return 0;
 }
 

@@ -23,35 +23,8 @@
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
 
-#include "test_afsql.h"
-#include "mock-dbi.h"
+#include "afsql_test_helpers.h"
 #include "apphook.h"
-
-/* ----------------------------- helpers ----------------------------- */
-
-static AFSqlDestDriver *
-_create_driver(void)
-{
-  AFSqlDestDriver *self = g_new0(AFSqlDestDriver, 1);
-  self->type     = g_strdup("mysql");
-  self->host     = g_strdup("localhost");
-  self->port     = g_strdup("3306");
-  self->user     = g_strdup("testuser");
-  self->database = g_strdup("testdb");
-  /* dbi_ctx is intentionally left NULL; mock-dbi ignores the conn handle */
-  return self;
-}
-
-static void
-_free_driver(AFSqlDestDriver *self)
-{
-  g_free(self->type);
-  g_free(self->host);
-  g_free(self->port);
-  g_free(self->user);
-  g_free(self->database);
-  g_free(self);
-}
 
 /* ----------------------------- fixtures ----------------------------- */
 
