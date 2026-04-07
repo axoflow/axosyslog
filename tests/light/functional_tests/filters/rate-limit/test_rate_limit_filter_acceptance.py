@@ -20,9 +20,14 @@
 # COPYING for details.
 #
 #############################################################################
+import logging
+from datetime import datetime
+
 import pytest
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.message_builder.log_message import LogMessage
+
+logger = logging.getLogger(__name__)
 
 
 def generate_messages_with_different_program_fields(bsd_formatter, number_of_all_messages, different_program_fields):
@@ -35,6 +40,33 @@ def generate_messages_with_different_program_fields(bsd_formatter, number_of_all
         input_messages.append(bsd_formatter.format_message(log_message))
         program_idx += 1
     return input_messages
+
+
+def validate_rate_limit_filter_stats(stats_validation_data):
+    filter_stats = stats_validation_data["rate_limit_filter_config_object"].get_stats()
+    if filter_stats != {
+        'matched': stats_validation_data["expected_number_of_matched_messages"],
+        'not_matched': stats_validation_data["expected_number_of_not_matched_messages"],
+    }:
+        incoming_log_for_first_and_last_msg = stats_validation_data["syslog_ng"].wait_for_messages_in_console_log(
+            [
+                "message idx: 1',",
+                "message idx: 100',",
+            ],
+        )
+        incoming_timestamp_for_the_first_msg = incoming_log_for_first_and_last_msg[0].split("[")[1].split("]")[0]
+        incoming_timestamp_for_the_last_msg = incoming_log_for_first_and_last_msg[1].split("[")[1].split("]")[0]
+
+        t1 = datetime.fromisoformat(incoming_timestamp_for_the_first_msg)
+        t2 = datetime.fromisoformat(incoming_timestamp_for_the_last_msg)
+        diff_in_ms = (t2 - t1).total_seconds() * 1000
+        if stats_validation_data["token_refill_period_ms"] < diff_in_ms:
+            logger.error(
+                "Rate limit filter stats are not as expected. Expected: {'matched': %s, 'not_matched': %s}, but got: %s. The time difference between the first and the last message is %s ms, which is more than the token refill period: %s ms. This indicates that the filter is not working as expected."
+                % (stats_validation_data["expected_number_of_matched_messages"], stats_validation_data["expected_number_of_not_matched_messages"], filter_stats, diff_in_ms, stats_validation_data["token_refill_period_ms"]),
+            )
+
+    assert filter_stats == {'matched': stats_validation_data["expected_number_of_matched_messages"], 'not_matched': stats_validation_data["expected_number_of_not_matched_messages"]}
 
 
 @pytest.mark.parametrize(
@@ -61,4 +93,14 @@ def test_rate_limit_filter_acceptance(config, syslog_ng, port_allocator, bsd_for
     input_messages = generate_messages_with_different_program_fields(bsd_formatter=bsd_formatter, number_of_all_messages=message_counter, different_program_fields=different_program_fields)
     s_network.write_logs(input_messages, rate=message_rate_by_sec, rate_burst_start=True)
 
-    assert wait_until_true(lambda: f_rate_limit.get_stats() == {'matched': expected_number_of_matched_messages, 'not_matched': expected_number_of_not_matched_messages})
+    assert wait_until_true(lambda: "processed" in s_network.get_stats() and s_network.get_stats()["processed"] == message_counter)
+    assert wait_until_true(lambda: "written" in d_file.get_stats() and d_file.get_stats()["written"] == expected_number_of_matched_messages)
+
+    stats_validation_data = {
+        "syslog_ng": syslog_ng,
+        "rate_limit_filter_config_object": f_rate_limit,
+        "expected_number_of_matched_messages": expected_number_of_matched_messages,
+        "expected_number_of_not_matched_messages": expected_number_of_not_matched_messages,
+        "token_refill_period_ms": 1000 / rate_limit_rate_by_sec,
+    }
+    validate_rate_limit_filter_stats(stats_validation_data)
