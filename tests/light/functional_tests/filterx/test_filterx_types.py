@@ -110,6 +110,34 @@ def test_type_list(config, syslog_ng):
     assert msg["json"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
 
 
+def test_type_tuple(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    variable = {};
+    variable.just_an_expr = ("alma");
+    variable.singleton = ("alma",);
+    variable.pair = ("alma","korte");
+    variable.triplet = ("alma","korte","barack");
+    variable.four = ("alma","korte","barack","dio");
+    variable.five = ("alma","korte","barack","dio","szilva");
+    variable.six = ("alma","korte","barack","dio","szilva","mango");
+    variable.trailing_comma = ("alma","korte","barack",);
+
+    $MSG = {};
+    $MSG.repr = repr(variable);
+    $MSG.string = string(variable);
+    $MSG.json = format_json(variable);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    msg = json.loads(file_final.read_log())
+    assert msg["repr"] == """{"just_an_expr":"alma","singleton":("alma",),"pair":("alma","korte"),"triplet":("alma","korte","barack"),"four":("alma","korte","barack","dio"),"five":("alma","korte","barack","dio","szilva"),"six":("alma","korte","barack","dio","szilva","mango"),"trailing_comma":("alma","korte","barack")}"""
+    assert msg["string"] == msg["repr"]
+    assert msg["json"] == """{"just_an_expr":"alma","singleton":["alma"],"pair":["alma","korte"],"triplet":["alma","korte","barack"],"four":["alma","korte","barack","dio"],"five":["alma","korte","barack","dio","szilva"],"six":["alma","korte","barack","dio","szilva","mango"],"trailing_comma":["alma","korte","barack"]}"""
+
+
 def test_type_bytes(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
