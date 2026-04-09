@@ -59,11 +59,11 @@ Test(filterx_datetime, test_filterx_object_datetime_str_yields_unix_time)
   filterx_object_unref(fobj);
 }
 
-Test(filterx_datetime, test_filterx_object_datetime_repr_yields_isotime)
+Test(filterx_datetime, test_filterx_object_datetime_repr_yields_datetime_constructor)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
   FilterXObject *fobj = filterx_datetime_new(&ut);
-  assert_object_repr_equals(fobj, "2023-11-30T14:19:58.123000+01:00");
+  assert_object_repr_equals(fobj, "datetime(1701350398.123000)");
   filterx_object_unref(fobj);
 }
 
@@ -172,7 +172,7 @@ Test(filterx_datetime, test_filterx_datetime_repr_method)
   cr_assert(ut.ut_sec == 3600);
   GString *repr = scratch_buffers_alloc();
   cr_assert(datetime_repr(&ut, repr));
-  cr_assert_str_eq(repr->str, "1970-01-01T01:00:00.000000+00:00");
+  cr_assert_str_eq(repr->str, "datetime(3600.000000)");
 }
 
 Test(filterx_datetime, test_filterx_datetime_marshal)
@@ -211,7 +211,7 @@ Test(filterx_datetime, test_filterx_datetime_repr)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  assert_object_repr_equals(obj, "2024-03-18T12:34:13.000000+09:00");
+  assert_object_repr_equals(obj, "datetime(1710732853.000000)");
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -226,7 +226,7 @@ Test(filterx_datetime, test_filterx_datetime_repr_isodate_Z)
   cr_assert_not_null(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  assert_object_repr_equals(args[0], test_time_str);
+  assert_object_str_equals(args[0], test_time_str);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -280,7 +280,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_non_matching_timefmt)
 
 Test(filterx_datetime, test_filterx_datetime_strptime_matching_timefmt)
 {
-  const gchar *test_time_str = "2024-04-08T10:11:12Z";
+  const gchar *test_time_str = "2024-04-08T10:11:12.567Z";
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(test_time_str, -1))));
   args = g_list_append(args, filterx_function_arg_new(NULL, filterx_literal_new(filterx_string_new(datefmt_isodate,
@@ -293,7 +293,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_timefmt)
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  assert_object_repr_equals(obj, "2024-04-08T10:11:12.000000+00:00");
+  assert_object_repr_equals(obj, "datetime(1712571072.567000)");
 
   filterx_object_unref(obj);
   filterx_expr_unref(func_expr);
@@ -316,7 +316,7 @@ Test(filterx_datetime, test_filterx_datetime_strptime_matching_nth_timefmt)
   cr_assert(obj);
   cr_assert(filterx_object_is_type(obj, &FILTERX_TYPE_NAME(datetime)));
 
-  assert_object_repr_equals(obj, "2024-04-08T10:11:12.000000+01:00");
+  assert_object_repr_equals(obj, "datetime(1712567472.000000)");
 
   filterx_object_unref(obj);
   filterx_expr_unref(func_expr);

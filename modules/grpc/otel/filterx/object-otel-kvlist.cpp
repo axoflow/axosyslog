@@ -608,7 +608,10 @@ _repr(FilterXObject *s, GString *repr)
   try
     {
       std::string cstring = self->cpp->repr();
-      g_string_assign(repr, cstring.c_str());
+      g_string_append(repr, s->type->name);
+      g_string_append_c(repr, '(');
+      g_string_append_len(repr, cstring.c_str(), cstring.length());
+      g_string_append_c(repr, ')');
     }
   catch (const std::runtime_error &e)
     {

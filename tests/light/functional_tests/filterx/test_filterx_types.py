@@ -86,7 +86,7 @@ def test_type_dict(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
+    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":datetime(1139650496.123000)}"""
     assert msg["string"] == msg["repr"]
     assert msg["json"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
 
@@ -105,7 +105,7 @@ def test_type_list(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
+    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":datetime(1139650496.123000)}"""
     assert msg["string"] == msg["repr"]
     assert msg["json"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
 
@@ -124,8 +124,8 @@ def test_type_bytes(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == """74657374206d657373616765"""
-    assert msg["string"] == msg["repr"]
+    assert msg["repr"] == """bytes("test message")"""
+    assert msg["string"] == """test message"""
     assert msg["json"] == '"dGVzdCBtZXNzYWdl"'
 
 
@@ -143,8 +143,8 @@ def test_type_protobuf(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == """74657374206d657373616765"""
-    assert msg["string"] == msg["repr"]
+    assert msg["repr"] == """protobuf("test message")"""
+    assert msg["string"] == """test message"""
     assert msg["json"] == '"dGVzdCBtZXNzYWdl"'
 
 
@@ -208,7 +208,7 @@ def test_type_bool(config, syslog_ng):
 def test_type_datetime(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
-    variable=datetime('2006-02-11T10:34:56+01:00');
+    variable=datetime('2006-02-11T10:34:56.000+01:00');
     $MSG = json();
     $MSG.repr = repr(variable);
     $MSG.string = string(variable);
@@ -219,7 +219,7 @@ def test_type_datetime(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == '2006-02-11T10:34:56.000000+01:00'
+    assert msg["repr"] == 'datetime(1139650496.000000)'
     assert msg["string"] == '1139650496.000000'
     # FIXME: this could possibly be a number instead of a string
     assert msg["json"] == '"1139650496.000000"'
@@ -239,6 +239,120 @@ def test_type_metrics_labels(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == """{foo="foovalue",bar="barvalue"}"""
+    assert msg["repr"] == """metrics_labels('{foo="foovalue",bar="barvalue"}')"""
     assert msg["string"] == msg["repr"]
     assert msg["json"] == '{"foo":"foovalue","bar":"barvalue"}'
+
+
+def test_type_otel_array(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    variable=otel_array([1, 2]);
+    $MSG = json();
+    $MSG.repr = repr(variable);
+    $MSG.string = string(variable);
+    $MSG.json = format_json(variable);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    msg = json.loads(file_final.read_log())
+    assert msg["repr"] == """otel_array({"values":[{"intValue":"1"},{"intValue":"2"}]})"""
+    assert msg["string"] == msg["repr"]
+    assert msg["json"] == '[1,2]'
+
+
+def test_type_otel_kvlist(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    variable=otel_kvlist({'foo': 42});
+    $MSG = json();
+    $MSG.repr = repr(variable);
+    $MSG.string = string(variable);
+    $MSG.json = format_json(variable);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    msg = json.loads(file_final.read_log())
+    assert msg["repr"] == """otel_kvlist({"values":[{"key":"foo","value":{"intValue":"42"}}]})"""
+    assert msg["string"] == msg["repr"]
+    assert msg["json"] == '{"foo":42}'
+
+
+def test_type_otel_logrecord(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    variable=otel_logrecord({"body":"payload", "attributes":{"foo":"bar"}});
+    $MSG = json();
+    $MSG.repr = repr(variable);
+    $MSG.string = string(variable);
+    $MSG.json = format_json(variable);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    msg = json.loads(file_final.read_log())
+    assert msg["repr"] == """otel_logrecord({"body":{"stringValue":"payload"},"attributes":[{"key":"foo","value":{"stringValue":"bar"}}]})"""
+    assert msg["string"] == msg["repr"]
+    assert msg["json"] == '{"body":"payload","attributes":{"foo":"bar"}}'
+
+
+def test_type_otel_resource(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    variable=otel_resource({"attributes":{"resource":"res-attribute"}, "dropped_attributes_count": 444});
+    $MSG = json();
+    $MSG.repr = repr(variable);
+    $MSG.string = string(variable);
+    $MSG.json = format_json(variable);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    msg = json.loads(file_final.read_log())
+    assert msg["repr"] == """otel_resource({"attributes":[{"key":"resource","value":{"stringValue":"res-attribute"}}],"droppedAttributesCount":444})"""
+    assert msg["string"] == msg["repr"]
+    assert msg["json"] == '{"attributes":{"resource":"res-attribute"},"dropped_attributes_count":444}'
+
+
+def test_type_otel_scope(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    variable=otel_scope({"name":$MESSAGE, "version":"one", "attributes":{"foo":"bar"}, "dropped_attributes_count": 333});
+    $MSG = json();
+    $MSG.repr = repr(variable);
+    $MSG.string = string(variable);
+    $MSG.json = format_json(variable);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    msg = json.loads(file_final.read_log())
+    assert msg["repr"] == """otel_scope({"name":"foobar","version":"one","attributes":[{"key":"foo","value":{"stringValue":"bar"}}],"droppedAttributesCount":333})"""
+    assert msg["string"] == msg["repr"]
+    assert msg["json"] == '{"name":"foobar","version":"one","attributes":{"foo":"bar"},"dropped_attributes_count":333}'
+
+
+def test_type_pubsub_message(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    variable=pubsub_message('msg', {'k': 'v'});
+    $MSG = json();
+    $MSG.repr = repr(variable);
+    $MSG.string = string(variable);
+    $MSG.json = format_json(variable);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    msg = json.loads(file_final.read_log())
+    assert msg["repr"] == """pubsub_message({"data":"bXNn","attributes":{"k":"v"}})"""
+    assert msg["string"] == msg["repr"]
+    assert msg["json"] == """{"data":"bXNn","attributes":{"k":"v"}}"""

@@ -267,8 +267,8 @@ Test(filterx_string, test_filterx_string_typecast_from_bytes)
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
-  cr_assert(size == 21, "size: %d", size);
-  cr_assert(memcmp("001f2062797465205c73657175656e6365207f20ff", str, size) == 0);
+  cr_assert(size == 21, "size: %d", (gint) size);
+  cr_assert(memcmp("\x00\x1f byte \\sequence \x7f \xff", str, size) == 0);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -284,8 +284,8 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
-  cr_assert(size == 23, "size: %d", size);
-  cr_assert(memcmp("ff6e6f7420612076616c69642070726f746f6275662120d9", str, size) == 0);
+  cr_assert(size == 23, "size: %d", (gint) size);
+  cr_assert(memcmp("\xffnot a valid protobuf! \xd9", str, size) == 0);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
