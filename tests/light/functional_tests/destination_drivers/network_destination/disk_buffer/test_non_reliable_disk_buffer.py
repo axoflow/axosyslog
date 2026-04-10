@@ -339,8 +339,7 @@ def test_fill_up_buffers_for_non_reliable_disk_buffer_with_flow_control_then_aft
     syslog_ng.stop()
 
 
-def test_overwrite_buffers_with_reload_for_non_reliable_disk_buffer_with_flow_control_then_send_out_all_logs(config, port_allocator, syslog_ng, loggen, dqtool):
-    # reload will cause the overwrite of the existing buffers, with reading extra logs into flow control window
+def test_keep_buffers_with_reload_for_non_reliable_disk_buffer_with_flow_control_then_send_out_all_logs(config, port_allocator, syslog_ng, loggen, dqtool):
     config, network_source, network_destination = set_config_with_default_non_reliable_disk_buffer_values(config, port_allocator)
 
     extra_msg_number = 1000  # will be forwarded too
@@ -351,8 +350,8 @@ def test_overwrite_buffers_with_reload_for_non_reliable_disk_buffer_with_flow_co
     fill_up_and_check_initial_disk_buffer_metrics(config, loggen, dqtool, network_source, loggen_msg_counter_to_overflow_buffer, params.before_reload)
 
     syslog_ng.reload(config)
-    # axosyslog will read an extra buffer_params.count_flow_control_window messages into the flow control window
-    check_disk_buffer_metrics_after_reload(config, dqtool, params.after_reload)
+    # axosyslog will not read an extra buffer_params.count_flow_control_window messages into the flow control window
+    check_disk_buffer_metrics_after_reload(config, dqtool, params.before_reload)
 
     network_destination.start_listener()
     assert network_destination.read_until_logs([f"seq: {params.last_msg_id}"])
@@ -361,8 +360,8 @@ def test_overwrite_buffers_with_reload_for_non_reliable_disk_buffer_with_flow_co
     syslog_ng.stop()
     validate_disk_buffer(dqtool, 0, disk_buffer_file="./syslog-ng-00000.qf")
     check_if_source_suspended(syslog_ng, params.is_suspended_source)
-    check_disk_buffer_state_load_attempts(syslog_ng, expected_load_attempts=2)
-    check_disk_buffer_state_save_attempts(syslog_ng, expected_save_attempts=2)
+    check_disk_buffer_state_load_attempts(syslog_ng, expected_load_attempts=1)
+    check_disk_buffer_state_save_attempts(syslog_ng, expected_save_attempts=1)
 
 
 def test_fill_up_buffers_for_non_reliable_disk_buffer_without_flow_control_then_send_out_all_logs(config, port_allocator, syslog_ng, loggen, dqtool):
