@@ -293,7 +293,7 @@ wall_clock_time_strptime(WallClockTime *wct, const gchar *format, const gchar *i
   unsigned char c;
   const unsigned char *bp, *ep, *zname;
   int alt_format, i, split_year = 0, neg = 0, state = 0,
-                     day_offset = -1, week_offset = 0, offs, mandatory;
+                                              day_offset = -1, week_offset = 0, offs, mandatory;
   const char *new_fmt;
   const char *const *system_tznames;
   int system_tznames_len;

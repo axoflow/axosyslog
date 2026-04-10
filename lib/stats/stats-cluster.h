@@ -109,8 +109,8 @@ stats_cluster_label(const gchar *name, const gchar *value)
   return (StatsClusterLabel)
   {
     .name = name, .value = value,
-    .name_len = (guint32) (name ? strlen(name) : 0),
-    .value_len = (guint32) (value ? strlen(value) : 0),
+                  .name_len = (guint32) (name ? strlen(name) : 0),
+                  .value_len = (guint32) (value ? strlen(value) : 0),
   };
 }
 
@@ -120,8 +120,8 @@ stats_cluster_label_len(const gchar *name, gsize name_len, const gchar *value, g
   return (StatsClusterLabel)
   {
     .name = name, .value = value,
-    .name_len = (guint32) name_len,
-    .value_len = (guint32) value_len,
+                  .name_len = (guint32) name_len,
+                  .value_len = (guint32) value_len,
   };
 }
 

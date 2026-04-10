@@ -250,7 +250,8 @@ rate_limit_init(FilterExprNode *s, GlobalConfig *cfg)
 
   self->rate_limits_per_thread = g_new(GHashTable *, self->rate_limits_per_thread_size);
   for (gsize i = 0; i < self->rate_limits_per_thread_size; ++i)
-    self->rate_limits_per_thread[i] = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)rate_limiter_free);
+    self->rate_limits_per_thread[i] = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
+                                                            (GDestroyNotify)rate_limiter_free);
 
   return TRUE;
 }

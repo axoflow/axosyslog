@@ -324,7 +324,7 @@ Test(add_contextual_data, test_import_from_csv_with_crlf_line_ending,
 
 Test(add_contextual_data, test_import_from_csv_with_escaped_double_quote,
      .description = "RFC 4180: If double-quotes are used to enclose fields, then a double-quote appearing inside a "
-                    "field must be escaped by preceding it with another double quote.")
+               "field must be escaped by preceding it with another double quote.")
 {
   gchar csv_content[] = "selector1,name1,\"c\"\"cc\"";
 

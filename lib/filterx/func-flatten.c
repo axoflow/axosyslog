@@ -89,7 +89,8 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
       g_string_append_len(key_buffer, key_string, key_length);
       g_string_append(key_buffer, self->separator);
 
-      gpointer inner_user_data[] = {
+      gpointer inner_user_data[] =
+      {
         self,
         flattened_kvs,
         NULL,

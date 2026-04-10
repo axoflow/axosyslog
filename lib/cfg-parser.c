@@ -244,7 +244,7 @@ void
 syntax_error_footer(void)
 {
   fprintf(stderr, "\nsyslog-ng documentation: %s\n"
-          "contact: %s\n", PRODUCT_DOCUMENTATION, PRODUCT_CONTACT);
+                  "contact: %s\n", PRODUCT_DOCUMENTATION, PRODUCT_CONTACT);
 }
 
 void

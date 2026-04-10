@@ -54,7 +54,12 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, effects:FXE_EFFECT_BITFIELD_SIZE;
+  guint32 ignore_falsy_result:1,
+          suppress_from_trace:1,
+          inited:1,
+          optimized:1,
+        effects:
+          FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
    * with the unmarshaled version */

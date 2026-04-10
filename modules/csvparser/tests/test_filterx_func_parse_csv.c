@@ -266,7 +266,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_greedy)
                                                       filterx_literal_new(filterx_string_new("foo,bar,baz,tik,tak,toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(_generate_string_list("1st", "2nd",
-                                                          "3rd", "rest", NULL)))); // columns
+                                                        "3rd", "rest", NULL)))); // columns
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_GREEDY,
                                                       filterx_literal_new(filterx_boolean_new(TRUE)))); // greedy
 
@@ -299,7 +299,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_non_greedy)
                                                       filterx_literal_new(filterx_string_new("foo,bar,baz,tik,tak,toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS,
                                                       filterx_literal_new(_generate_string_list("1st", "2nd",
-                                                          "3rd", "rest", NULL)))); // columns
+                                                        "3rd", "rest", NULL)))); // columns
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_GREEDY,
                                                       filterx_literal_new(filterx_boolean_new(FALSE)))); // greedy
 
@@ -332,7 +332,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_strip_whitespace)
                                                       filterx_literal_new(filterx_string_new("  foo ,    bar  , baz   ,    tik tak toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
                                                       filterx_literal_new(filterx_string_new(",",
-                                                          -1)))); // delimiter
+                                                        -1)))); // delimiter
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
                                                       filterx_literal_new(filterx_boolean_new(TRUE)))); // strip_whitespace
 
@@ -365,7 +365,7 @@ Test(filterx_func_parse_csv, test_optional_argument_flag_not_to_strip_whitespace
                                                       filterx_literal_new(filterx_string_new("  foo ,    bar  , baz   ,    tik tak toe", -1))));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_DELIMITER,
                                                       filterx_literal_new(filterx_string_new(",",
-                                                          -1)))); // delimiter
+                                                        -1)))); // delimiter
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PARSE_CSV_ARG_NAME_STRIP_WHITESPACES,
                                                       filterx_literal_new(filterx_boolean_new(FALSE)))); // strip_whitespace
 
