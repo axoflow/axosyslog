@@ -166,25 +166,25 @@ filterx_eval_store_weak_ref(FilterXObject *object)
 
 #define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg) \
   do { \
-    FilterXScope *scope = NULL; \
+    FilterXScope *fx_scope = NULL; \
     gboolean local_scope = FALSE; \
     \
     if (previous_context) \
-      scope = filterx_scope_reuse(previous_context->scope); \
+      fx_scope = filterx_scope_reuse(previous_context->scope); \
     \
-    if (!scope) \
+    if (!fx_scope) \
       { \
         gsize alloc_size = filterx_scope_get_alloc_size(); \
-        scope = g_alloca(alloc_size); \
-        filterx_scope_init_instance(scope, alloc_size, previous_context ? previous_context->scope : NULL); \
+        fx_scope = g_alloca(alloc_size); \
+        filterx_scope_init_instance(fx_scope, alloc_size, previous_context ? previous_context->scope : NULL); \
         local_scope = TRUE; \
         if (previous_context) \
           { \
             /* we start being write protected */ \
-            filterx_scope_write_protect(scope); \
+            filterx_scope_write_protect(fx_scope); \
           } \
       } \
-    filterx_eval_begin_context(&eval_context, previous_context, scope, msg); \
+    filterx_eval_begin_context(&eval_context, previous_context, fx_scope, msg); \
     do
 
 
@@ -192,7 +192,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     while(0); \
     \
     if (local_scope) \
-      filterx_scope_clear(scope); \
+      filterx_scope_clear(fx_scope); \
     filterx_eval_end_context(&eval_context); \
   } while(0)
 
