@@ -99,6 +99,7 @@ source_otel_option
 
 source_otel_mode
   : KW_LOGMESSAGE { $$ = OSM_LOGMESSAGE; }
+  | KW_FILTERX { $$ = OSM_FILTERX; }
   ;
 
 parser_otel

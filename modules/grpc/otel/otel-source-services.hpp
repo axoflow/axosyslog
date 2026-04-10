@@ -31,6 +31,13 @@
 #include "otel-servicecall.hpp"
 #include "otel-source.hpp"
 #include "otel-protobuf-parser.hpp"
+#include "filterx/object-otel-resource.hpp"
+#include "filterx/object-otel-scope.hpp"
+#include "filterx/object-otel-logrecord.hpp"
+
+#include "compat/cpp-start.h"
+#include "filterx/filterx-eval.h"
+#include "compat/cpp-end.h"
 
 #include <grpcpp/grpcpp.h>
 
@@ -79,6 +86,15 @@ private:
 
 }
 }
+}
+
+static void
+_filterx_inject_var(FilterXScope *scope, const gchar *name, FilterXObject *obj)
+{
+  FilterXVariableHandle handle = filterx_map_varname_to_handle(name, FX_VAR_DECLARED_FLOATING);
+  FilterXVariable *var = filterx_scope_register_variable(scope, FX_VAR_DECLARED_FLOATING, handle);
+  filterx_scope_set_variable(scope, var, &obj, TRUE);
+  filterx_object_unref(obj);
 }
 
 template <> void
@@ -177,21 +193,30 @@ syslogng::grpc::otel::LogsServiceCall::Proceed(bool ok)
                                                           scope_logs_schema_url))
                 {
                   ProtobufParser::store_syslog_ng(msg, log_record);
+                  worker.blocking_post(msg);
+                }
+              else if (owner.mode == OSM_LOGMESSAGE)
+                {
+                  ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
+                                                     scope_logs_schema_url);
+                  ProtobufParser::store_raw(msg, log_record);
+                  worker.blocking_post(msg);
                 }
               else
                 {
-                  if (owner.mode == OSM_LOGMESSAGE)
-                    {
-                      ProtobufParser::store_raw_metadata(msg, ctx.peer(), resource, resource_logs_schema_url, scope,
-                                                         scope_logs_schema_url);
-                      ProtobufParser::store_raw(msg, log_record);
-                    }
-                  else
-                    {
-                      g_assert_not_reached();
-                    }
+                  FilterXEvalContext eval_context;
+                  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, NULL, msg)
+                  {
+                    _filterx_inject_var(eval_context.scope, "resource",
+                                        filterx_otel_resource_new_from_protobuf_object(resource));
+                    _filterx_inject_var(eval_context.scope, "scope",
+                                        filterx_otel_scope_new_from_protobuf_object(scope));
+                    _filterx_inject_var(eval_context.scope, "log",
+                                        filterx_otel_logrecord_new_from_protobuf_object(log_record));
+                    worker.blocking_post(msg, &eval_context);
+                  }
+                  FILTERX_EVAL_END_CONTEXT(eval_context);
                 }
-              worker.blocking_post(msg);
 
               msgs_in_fetch_round++;
               if (msgs_in_fetch_round == worker.get_owner().get_fetch_limit())

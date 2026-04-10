@@ -34,6 +34,7 @@
 typedef enum
 {
   OSM_LOGMESSAGE,
+  OSM_FILTERX,
 } OtelSourceMode;
 
 LogDriver *otel_sd_new(GlobalConfig *cfg);
