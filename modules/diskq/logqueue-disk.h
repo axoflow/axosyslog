@@ -77,6 +77,7 @@ void log_queue_disk_drop_message(LogQueueDisk *self, LogMessage *msg, const LogP
 void log_queue_disk_drop_msg_and_suspend_src(LogQueueDisk *self, LogMessage *msg, const LogPathOptions *path_options);
 gboolean log_queue_disk_serialize_msg(LogQueueDisk *self, LogMessage *msg, GString *serialized);
 gboolean log_queue_disk_deserialize_msg(LogQueueDisk *self, GString *serialized, LogMessage **msg);
+QueueType log_queue_disk_get_type(void);
 void log_queue_disk_set_options(LogQueueDisk *self, DiskQueueOptions *options);
 gboolean log_queue_disk_has_compatible_options(LogQueueDisk *self, DiskQueueOptions *options);
 
