@@ -1144,7 +1144,8 @@ _load_non_reliable_queues(QDisk *self, QDiskMemQLoadFunc func, gpointer user_dat
     return FALSE;
   if (!_try_to_load_queue(self, QDISK_MQ_BACKLOG, func, user_data, &self->hdr->backlog_pos, "backlog"))
     return FALSE;
-  if (!_try_to_load_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &self->hdr->flow_control_window_pos, "flow_control_window"))
+  if (!_try_to_load_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &self->hdr->flow_control_window_pos,
+                          "flow_control_window"))
     return FALSE;
 
   return TRUE;
@@ -1190,7 +1191,8 @@ qdisk_write_serialized_string_to_file(QDisk *self, GString const *serialized, gi
 }
 
 static gboolean
-_save_queue(QDisk *self, QDiskMemoryQueueType type, QDiskMemQSaveFunc func, gpointer user_data, QDiskQueuePosition *q_pos)
+_save_queue(QDisk *self, QDiskMemoryQueueType type, QDiskMemQSaveFunc func, gpointer user_data,
+            QDiskQueuePosition *q_pos)
 {
   LogMessage *msg;
   SerializeArchive *sa;
@@ -1260,16 +1262,17 @@ _save_state(QDisk *self, QDiskMemQSaveFunc func, gpointer user_data)
   QDiskQueuePosition backlog_pos = { 0 };
   QDiskQueuePosition flow_control_window_pos = { 0 };
 
-  if (func) {
-    if (!_save_queue(self, QDISK_MQ_FRONT_CACHE, func, user_data, &front_cache_pos))
-      return FALSE;
+  if (func)
+    {
+      if (!_save_queue(self, QDISK_MQ_FRONT_CACHE, func, user_data, &front_cache_pos))
+        return FALSE;
 
-    if (!_save_queue(self, QDISK_MQ_BACKLOG, func, user_data, &backlog_pos))
-      return FALSE;
+      if (!_save_queue(self, QDISK_MQ_BACKLOG, func, user_data, &backlog_pos))
+        return FALSE;
 
-    if (!_save_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &flow_control_window_pos))
-      return FALSE;
-  }
+      if (!_save_queue(self, QDISK_MQ_FLOW_CONTROL_WINDOW, func, user_data, &flow_control_window_pos))
+        return FALSE;
+    }
 
   memcpy(self->hdr->magic, self->file_id, sizeof(self->hdr->magic));
 
@@ -1731,9 +1734,9 @@ gint64
 qdisk_get_hdr_total_length(QDisk *self)
 {
   return self->hdr->length +
-  self->hdr->backlog_pos.count +
-  self->hdr->front_cache_pos.count +
-  self->hdr->flow_control_window_pos.count;
+         self->hdr->backlog_pos.count +
+         self->hdr->front_cache_pos.count +
+         self->hdr->flow_control_window_pos.count;
 }
 
 

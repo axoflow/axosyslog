@@ -141,7 +141,7 @@ _list_partition(struct iv_list_head *src, struct iv_list_head *dst, gint index)
 
   struct iv_list_head *pos = src->next;
   for (gint i = 1; i < index && pos->next != src; i++)
-      pos = pos->next;
+    pos = pos->next;
 
   if (pos->next == src)
     return FALSE;
@@ -164,12 +164,12 @@ _redistribute_front_cache_items(LogQueueDiskNonReliable *self)
   if (self->front_cache_output.len == 0)
     return;
   if (self->front_cache_output.len <= self->front_cache.limit)
-  {
-    iv_list_splice_tail_init(&self->front_cache_output.items, &self->front_cache.items);
-    self->front_cache.len = self->front_cache_output.len;
-    self->front_cache_output.len = 0;
-    return;
-  }
+    {
+      iv_list_splice_tail_init(&self->front_cache_output.items, &self->front_cache.items);
+      self->front_cache.len = self->front_cache_output.len;
+      self->front_cache_output.len = 0;
+      return;
+    }
   gint numof_msgs_move = self->front_cache.limit;
   gint index = self->front_cache_output.len - numof_msgs_move;
 
@@ -184,9 +184,9 @@ static void
 _log_internal_state(LogQueueDiskNonReliable *self, const gchar *operation)
 {
   msg_info("Non-reliable disk-buffer state",
-          evt_tag_str("operation", operation),
-          evt_tag_str("filename", qdisk_get_filename(self->super.qdisk)),
-          evt_tag_long("number_of_messages", log_queue_get_length(&self->super.super)));
+           evt_tag_str("operation", operation),
+           evt_tag_str("filename", qdisk_get_filename(self->super.qdisk)),
+           evt_tag_long("number_of_messages", log_queue_get_length(&self->super.super)));
 
   msg_debug("Non-reliable disk-buffer internal state",
             evt_tag_str("operation", operation),
@@ -236,7 +236,7 @@ _get_length(LogQueue *s)
   if (!qdisk_started(self->super.qdisk))
     return 0;
 
-   return self->front_cache.len
+  return self->front_cache.len
          + self->front_cache_output.len
          + qdisk_get_length(self->super.qdisk)
          + self->flow_control_window.len;
@@ -344,7 +344,7 @@ _move_messages_from_overflow(LogQueueDiskNonReliable *self)
 static gboolean
 _move_messages_from_disk_to_front_cache_queue(LogQueueDiskNonReliable *self, LogQueueDiskMemoryQueue *queue)
 {
-    while (queue->len < queue->limit)
+  while (queue->len < queue->limit)
     {
       if (qdisk_get_length(self->super.qdisk) <= 0)
         break;
@@ -920,7 +920,7 @@ _stop(LogQueueDisk *s, gboolean *persistent)
 
   gboolean result = FALSE;
 
-  _log_internal_state(self,"save");
+  _log_internal_state(self, "save");
   // for compatibility reasons we save a single queue for front_cache and front_cache_output
   // move the rest to front_cache_output, saving as a single queue
   if (self->front_cache.len > 0)

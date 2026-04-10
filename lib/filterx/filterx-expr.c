@@ -188,7 +188,7 @@ filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg)
 {
   if (!self || self->inited)
     return TRUE;
-    
+
   /* init children first */
   if (!filterx_expr_walk_children(self, _init_child_exprs, cfg))
     goto failure;

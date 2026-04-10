@@ -79,7 +79,7 @@ plugin_equal(gconstpointer p1, gconstpointer p2)
       if ((c1 == '-' || c1 == '_') &&
           (c2 == '-' || c2 == '_'))
         continue;
-  }
+    }
   if (pb1->name[i] == 0 && pb2->name[i] == 0)
     return TRUE;
   return FALSE;
@@ -498,7 +498,8 @@ plugin_discover_candidate_modules(PluginContext *context)
 
   if (context->candidate_plugins)
     g_hash_table_unref(context->candidate_plugins);
-  context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
+  context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL,
+                                                     (GDestroyNotify) plugin_candidate_free);
 
   mod_paths = g_strsplit(context->module_path ? : "", G_SEARCHPATH_SEPARATOR_S, 0);
   for (i = 0; mod_paths[i]; i++)
@@ -650,9 +651,9 @@ plugin_list_modules(FILE *out, gboolean verbose)
                           gchar **lines;
 
                           fprintf(out, "Status: ok\n"
-                                  "Version: %s\n"
-                                  "Core-Revision: %s\n"
-                                  "Description:\n", module_info->version, module_info->core_revision);
+                                       "Version: %s\n"
+                                       "Core-Revision: %s\n"
+                                       "Description:\n", module_info->version, module_info->core_revision);
 
                           lines = g_strsplit(module_info->description, "\n", 0);
                           for (k = 0; lines[k]; k++)

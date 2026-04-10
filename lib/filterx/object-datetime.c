@@ -194,10 +194,10 @@ FilterXObject *
 filterx_simple_function_format_isodate(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   if (!args || args_len != 1)
-  {
-    filterx_simple_function_argument_error(s, "Requires exactly one argument");
-    return NULL;
-  }
+    {
+      filterx_simple_function_argument_error(s, "Requires exactly one argument");
+      return NULL;
+    }
 
   FilterXObject *datetime_obj = (FilterXObject *) args[0];
   if (!datetime_obj)
