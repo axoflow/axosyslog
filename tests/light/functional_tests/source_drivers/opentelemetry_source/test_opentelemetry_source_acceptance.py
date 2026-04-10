@@ -324,3 +324,99 @@ def test_opentelemetry_source_acceptance_batch(
 
     for expected_log in expected_logs:
         assert json.loads(file_destination.read_log()) == expected_log
+
+
+@pytest.mark.parametrize(
+    "resource, resource_output, scope, scope_output, log, log_output",
+    [
+        (RESOURCE_1, RESOURCE_1_OUTPUT, SCOPE_1, SCOPE_1_OUTPUT, LOG_1, LOG_1_OUTPUT),
+        (RESOURCE_1, RESOURCE_1_OUTPUT, None, dict(), LOG_1, LOG_1_OUTPUT),
+        (None, dict(), SCOPE_1, SCOPE_1_OUTPUT, LOG_1, LOG_1_OUTPUT),
+        (None, dict(), None, dict(), LOG_1, LOG_1_OUTPUT),
+        (RESOURCE_1, RESOURCE_1_OUTPUT, SCOPE_1, SCOPE_1_OUTPUT, None, {"body": None}),
+        (RESOURCE_1, RESOURCE_1_OUTPUT, None, dict(), None, {"body": None}),
+        (None, dict(), SCOPE_1, SCOPE_1_OUTPUT, None, {"body": None}),
+        (None, dict(), None, dict(), None, {"body": None}),
+    ],
+    ids=[
+        "w_resource_w_scope_w_log",
+        "w_resource_wo_scope_w_log",
+        "wo_resource_w_scope_w_log",
+        "wo_resource_wo_scope_w_log",
+        "w_resource_w_scope_wo_log",
+        "w_resource_wo_scope_wo_log",
+        "wo_resource_w_scope_wo_log",
+        "wo_resource_wo_scope_wo_log",
+    ],
+)
+def test_opentelemetry_source_filterx_mode_single_log(
+    syslog_ng: SyslogNg,
+    config: SyslogNgConfig,
+    port_allocator,
+    resource: typing.Optional[OTelResource],
+    resource_output: typing.Dict[str, typing.Any],
+    scope: typing.Optional[OTelScope],
+    scope_output: typing.Dict[str, typing.Any],
+    log: typing.Optional[OTelLog],
+    log_output: typing.Dict[str, typing.Any],
+) -> None:
+    opentelemetry_source = config.create_opentelemetry_source(port=port_allocator(), mode="filterx")
+    filterx = config.create_filterx(r"""
+        $MSG = {
+            "resource": dict(resource),
+            "scope": dict(scope),
+            "log": dict(log),
+        };""")
+    file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
+    config.create_logpath(statements=[opentelemetry_source, filterx, file_destination])
+
+    syslog_ng.start(config)
+    opentelemetry_source.write_log(resource=resource, scope=scope, log=log)
+    assert json.loads(file_destination.read_log()) == {
+        "resource": resource_output,
+        "scope": scope_output,
+        "log": log_output,
+    }
+
+
+def test_opentelemetry_source_filterx_mode_batch(
+    syslog_ng: SyslogNg,
+    config: SyslogNgConfig,
+    port_allocator,
+) -> None:
+    opentelemetry_source = config.create_opentelemetry_source(port=port_allocator(), mode="filterx")
+    filterx = config.create_filterx(r"""
+        $MSG = {
+            "resource": dict(resource),
+            "scope": dict(scope),
+            "log": dict(log),
+        };""")
+    file_destination = config.create_file_destination(file_name="output.log", template=TEMPLATE)
+    config.create_logpath(statements=[opentelemetry_source, filterx, file_destination])
+
+    logs: typing.List[OTelResourceScopeLog] = [
+        OTelResourceScopeLog(RESOURCE_1, SCOPE_1, LOG_1),
+        OTelResourceScopeLog(RESOURCE_2, SCOPE_1, LOG_1),
+        OTelResourceScopeLog(RESOURCE_1, SCOPE_1, LOG_2),
+        OTelResourceScopeLog(RESOURCE_2, SCOPE_1, LOG_2),
+        OTelResourceScopeLog(RESOURCE_1, SCOPE_2, LOG_1),
+        OTelResourceScopeLog(RESOURCE_2, SCOPE_2, LOG_1),
+        OTelResourceScopeLog(RESOURCE_1, SCOPE_2, LOG_2),
+        OTelResourceScopeLog(RESOURCE_2, SCOPE_2, LOG_2),
+    ]
+    expected_logs = [
+        {"resource": RESOURCE_1_OUTPUT, "scope": SCOPE_1_OUTPUT, "log": LOG_1_OUTPUT},
+        {"resource": RESOURCE_1_OUTPUT, "scope": SCOPE_1_OUTPUT, "log": LOG_2_OUTPUT},
+        {"resource": RESOURCE_1_OUTPUT, "scope": SCOPE_2_OUTPUT, "log": LOG_1_OUTPUT},
+        {"resource": RESOURCE_1_OUTPUT, "scope": SCOPE_2_OUTPUT, "log": LOG_2_OUTPUT},
+        {"resource": RESOURCE_2_OUTPUT, "scope": SCOPE_1_OUTPUT, "log": LOG_1_OUTPUT},
+        {"resource": RESOURCE_2_OUTPUT, "scope": SCOPE_1_OUTPUT, "log": LOG_2_OUTPUT},
+        {"resource": RESOURCE_2_OUTPUT, "scope": SCOPE_2_OUTPUT, "log": LOG_1_OUTPUT},
+        {"resource": RESOURCE_2_OUTPUT, "scope": SCOPE_2_OUTPUT, "log": LOG_2_OUTPUT},
+    ]
+
+    syslog_ng.start(config)
+    opentelemetry_source.write_logs(logs)
+
+    for expected_log in expected_logs:
+        assert json.loads(file_destination.read_log()) == expected_log
