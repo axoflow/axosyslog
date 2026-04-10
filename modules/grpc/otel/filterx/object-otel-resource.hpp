@@ -47,6 +47,7 @@ class Resource : public Base
 public:
   Resource(FilterXOtelResource *s);
   Resource(FilterXOtelResource *s, FilterXObject *protobuf_object);
+  Resource(FilterXOtelResource *s, const opentelemetry::proto::resource::v1::Resource &resource);
   Resource(Resource &o) = delete;
   Resource(Resource &&o) = delete;
 
@@ -75,6 +76,9 @@ protected:
 }
 }
 }
+
+FilterXObject *filterx_otel_resource_new_from_protobuf_object(
+  const opentelemetry::proto::resource::v1::Resource &resource);
 
 #include "compat/cpp-start.h"
 
