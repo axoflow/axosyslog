@@ -518,13 +518,20 @@ log_threaded_source_worker_close_batch(LogThreadedSourceWorker *self)
 void
 log_threaded_source_worker_post(LogThreadedSourceWorker *self, LogMessage *msg)
 {
+  log_threaded_source_worker_post_with_filterx_context(self, msg, NULL);
+}
+
+void
+log_threaded_source_worker_post_with_filterx_context(LogThreadedSourceWorker *self, LogMessage *msg,
+                                                     FilterXEvalContext *filterx_context)
+{
   msg_debug("Incoming log message",
             evt_tag_str("input", log_msg_get_value(msg, LM_V_MESSAGE, NULL)),
             evt_tag_str("driver", self->control->super.super.id),
             evt_tag_int("worker_index", self->worker_index),
             evt_tag_msg_reference(msg));
   _apply_message_attributes(self->control, msg);
-  log_source_post(&self->super, msg);
+  log_source_post_with_filterx_context(&self->super, msg, filterx_context);
 
   if (self->control->auto_close_batches)
     log_threaded_source_worker_close_batch(self);
@@ -539,7 +546,14 @@ log_threaded_source_worker_free_to_send(LogThreadedSourceWorker *self)
 void
 log_threaded_source_worker_blocking_post(LogThreadedSourceWorker *self, LogMessage *msg)
 {
-  log_threaded_source_worker_post(self, msg);
+  log_threaded_source_worker_blocking_post_with_filterx_context(self, msg, NULL);
+}
+
+void
+log_threaded_source_worker_blocking_post_with_filterx_context(LogThreadedSourceWorker *self, LogMessage *msg,
+    FilterXEvalContext *filterx_context)
+{
+  log_threaded_source_worker_post_with_filterx_context(self, msg, filterx_context);
 
   /* unlocked, as only this thread can decrease the window size */
   if (!self->control->auto_close_batches && !log_threaded_source_worker_free_to_send(self))
