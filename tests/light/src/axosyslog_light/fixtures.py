@@ -106,6 +106,9 @@ def pytest_addoption(parser):
     )
 
 
+_test_results = []
+
+
 def get_current_date():
     return datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f")
 
@@ -123,6 +126,14 @@ def pytest_collection_modifyitems(config, items):
 def pytest_runtest_logreport(report):
     if report.outcome == "failed":
         logger.error("\n{}".format(report.longrepr))
+    if report.when == "call":
+        _test_results.append(
+            {
+                "nodeid": report.nodeid,
+                "outcome": report.outcome,
+                "longrepr": str(report.longrepr) if report.longrepr else None,
+            },
+        )
 
 
 # Pytest Fixtures
@@ -300,7 +311,27 @@ def pytest_sessionstart(session):
         session_data["base_number_of_open_fds"] = base_number_of_open_fds
 
 
+def _write_testsuite_summary(session):
+    if xdist.is_xdist_worker(session):
+        return
+    try:
+        reports_dir = Path(session.config.getoption("--reports")).resolve().absolute()
+    except TypeError:
+        reports_dir = Path("reports", get_current_date()).resolve().absolute()
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    summary_path = Path(reports_dir, "testsuite_summary.reportlog")
+    with summary_path.open("a") as f:
+        for result in _test_results:
+            status = result["outcome"].upper()
+            f.write(f"{status}: {result['nodeid']}\n")
+            if result["longrepr"]:
+                f.write(f"{result['longrepr']}\n")
+                f.write("\n")
+
+
 def pytest_sessionfinish(session, exitstatus):
+    _write_testsuite_summary(session)
+
     if xdist.is_xdist_controller(session):
         return
 
