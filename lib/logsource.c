@@ -22,6 +22,7 @@
  */
 
 #include "logsource.h"
+#include "filterx/filterx-eval.h"
 #include "messages.h"
 #include "host-resolve.h"
 #include "stats/stats-registry.h"
@@ -454,8 +455,8 @@ log_source_deinit(LogPipe *s)
   return TRUE;
 }
 
-void
-log_source_post(LogSource *self, LogMessage *msg)
+static void
+_log_source_post(LogSource *self, LogMessage *msg, FilterXEvalContext *filterx_context)
 {
   valgrind_start_instrumentation();
 
@@ -463,6 +464,7 @@ log_source_post(LogSource *self, LogMessage *msg)
 
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
   path_options.flow_control_requested = cfg->flow_control;
+  path_options.filterx_context = filterx_context;
 
   if (path_options.flow_control_requested)
     msg_trace("Enabling flow control", log_pipe_location_tag(&self->super), evt_tag_msg_reference(msg));
@@ -500,6 +502,18 @@ log_source_post(LogSource *self, LogMessage *msg)
   scratch_buffers_reclaim_marked(mark);
 
   valgrind_stop_instrumentation();
+}
+
+void
+log_source_post(LogSource *self, LogMessage *msg)
+{
+  _log_source_post(self, msg, NULL);
+}
+
+void
+log_source_post_with_filterx_context(LogSource *self, LogMessage *msg, FilterXEvalContext *filterx_context)
+{
+  _log_source_post(self, msg, filterx_context);
 }
 
 static void
