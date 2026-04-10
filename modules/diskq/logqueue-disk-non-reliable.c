@@ -882,6 +882,9 @@ _free(LogQueue *s)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
 
+  gboolean persistent;
+  log_queue_disk_stop(&self->super.super, &persistent);
+
   for (gint i = 0; i < self->num_input_queues; i++)
     {
       g_assert(self->input_queues[i].len == 0);

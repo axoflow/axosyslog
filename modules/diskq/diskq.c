@@ -140,23 +140,34 @@ _acquire_queue(LogDestDriver *dd, const gchar *persist_name, gint stats_level,
 {
   DiskQDestPlugin *self = log_driver_get_plugin(&dd->super, DiskQDestPlugin, DISKQ_PLUGIN_NAME);
   GlobalConfig *cfg = log_pipe_get_config(&dd->super.super);
-  LogQueue *queue;
+  LogQueue *queue = NULL;
   gchar *persist_qfile_name, *new_qfile_name = NULL;
 
   if (persist_name)
-    log_queue_unref(cfg_persist_config_fetch(cfg, persist_name));
+    queue = cfg_persist_config_fetch(cfg, persist_name);
+
+  if (queue && (!log_queue_has_type(queue, log_queue_disk_get_type()) ||
+      !log_queue_disk_has_compatible_options((LogQueueDisk *)queue, &self->options)))
+    {
+      log_queue_unref(queue);
+      queue = NULL;
+    }
 
   persist_qfile_name = persist_state_lookup_string(cfg->state, persist_name, NULL, NULL);
-  queue = _create_and_start_disk_queue_with_filename_from_persist(
-            self, persist_qfile_name, persist_name, stats_level, driver_sck_builder, queue_sck_builder);
+
   if (queue)
-    goto exit;
+    log_queue_disk_set_options((LogQueueDisk *)queue, &self->options);
+  else
+    queue = _create_and_start_disk_queue_with_filename_from_persist(
+              self, persist_qfile_name, persist_name, stats_level, driver_sck_builder, queue_sck_builder);
 
-  new_qfile_name = qdisk_get_next_filename(self->options.dir, self->options.reliable);
-  queue = _create_and_start_disk_queue_with_new_filename(self, new_qfile_name, persist_name, stats_level,
-                                                         driver_sck_builder, queue_sck_builder);
+  if (!queue)
+    {
+      new_qfile_name = qdisk_get_next_filename(self->options.dir, self->options.reliable);
+      queue = _create_and_start_disk_queue_with_new_filename(self, new_qfile_name, persist_name, stats_level,
+                                                             driver_sck_builder, queue_sck_builder);
+    }
 
-exit:
   if (queue)
     {
       log_queue_set_throttle(queue, dd->throttle);
@@ -174,22 +185,21 @@ exit:
 }
 
 void
+_free_queue(LogQueue *queue)
+{
+  diskq_global_metrics_file_released(log_queue_disk_get_filename(queue));
+  log_queue_unref(queue);
+}
+
+void
 _release_queue(LogDestDriver *dd, LogQueue *queue)
 {
   GlobalConfig *cfg = log_pipe_get_config(&dd->super.super);
-  gboolean persistent;
-
-  log_queue_disk_stop(queue, &persistent);
-  diskq_global_metrics_file_released(log_queue_disk_get_filename(queue));
 
   if (queue->persist_name)
-    {
-      cfg_persist_config_add(cfg, queue->persist_name, queue, (GDestroyNotify) log_queue_unref);
-    }
+    cfg_persist_config_add(cfg, queue->persist_name, queue, (GDestroyNotify) _free_queue);
   else
-    {
-      log_queue_unref(queue);
-    }
+    _free_queue(queue);
 }
 
 static gboolean
