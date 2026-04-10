@@ -491,3 +491,8 @@ log_queue_disk_deserialize_msg(LogQueueDisk *self, GString *serialized, LogMessa
 
   return TRUE;
 }
+void
+log_queue_disk_set_options(LogQueueDisk *self, DiskQueueOptions *options)
+{
+  qdisk_set_options(self->qdisk, options);
+}

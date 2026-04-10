@@ -1805,6 +1805,12 @@ qdisk_free(QDisk *self)
   g_free(self);
 }
 
+void
+qdisk_set_options(QDisk *self, DiskQueueOptions *options)
+{
+  self->options = options;
+}
+
 QDisk *
 qdisk_new(DiskQueueOptions *options, const gchar *file_id, const gchar *filename)
 {
