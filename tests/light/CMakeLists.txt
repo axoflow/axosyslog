@@ -11,7 +11,8 @@ add_custom_target(light-self-check
 
 add_custom_target(light-check
    COMMAND ${LIGHT_POETRY_CMD} install
-   COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/functional_tests -n auto --installdir=${CMAKE_INSTALL_PREFIX} $$EXTRA_ARGS)
+   COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/functional_tests -m "not timing" -n auto --installdir=${CMAKE_INSTALL_PREFIX} $$EXTRA_ARGS
+   COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/functional_tests -m "timing" -n0 --installdir=${CMAKE_INSTALL_PREFIX} $$EXTRA_ARGS)
 
 add_custom_target(light-linters
    COMMAND ${LIGHT_POETRY_CMD} install
