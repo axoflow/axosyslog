@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025 Airbus Commercial Aircraft
+ * Copyright (c) 2019-2026 Airbus Commercial Aircraft
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -217,7 +217,6 @@ gboolean iterativeMode(char *prevKey, char *prevMAC, char *curMAC, char *inputlo
 //
 int main(int argc, char *argv[])
 {
-  int index = 0;
   SLogOptions options[] =
   {
     { "iterative", 'i', "Iterative verification", NULL, NULL },
@@ -263,20 +262,15 @@ int main(int argc, char *argv[])
   msg_init(TRUE);
 
   // Assign option arguments
-  index = 1;
-  hostKey = options[index].arg;
-  index++;
-  curMacFile = options[index].arg;
-  index++;
-  prevHostKey = options[index].arg;
-  index++;
-  prevMacFile = options[index].arg;
-  index++;
+  int index = 1;
+  hostKey = options[index++].arg;
+  curMacFile = options[index++].arg;
+  prevHostKey = options[index++].arg;
+  prevMacFile = options[index++].arg;
 
   // Input and output file arguments
   index = 1;
-  inputLog = argv[index];
-  index++;
+  inputLog = argv[index++];
   if(!g_file_test(inputLog, G_FILE_TEST_IS_REGULAR))
     {
       GString *errorMsg = g_string_new(FILE_ERROR);
@@ -285,8 +279,7 @@ int main(int argc, char *argv[])
       return 1; //-- ERROR
     }
 
-  outputLog = argv[index];
-  index++;
+  outputLog = argv[index++];
   if(outputLog == NULL)
     {
       (void) slog_usage(context, group, NULL);
@@ -337,7 +330,7 @@ int main(int argc, char *argv[])
       gboolean result = normalMode(hostKey, curMacFile, inputLog, outputLog, bufSize);
       if (!result)
         {
-          ret = 1; // ERROR
+          ret = 1; //-- ERROR
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025 Airbus Commercial Aircraft
+ * Copyright (c) 2019-2026 Airbus Commercial Aircraft
  * Copyright (c) 2024 Gergo Ferenc Kovacs
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -165,12 +165,9 @@ int main(int argc, char **argv)
   else if (host)
     {
       // Arguments
-      gchar *masterKeyFileName = argv[index];
-      index++;
-      gchar *macAddr = argv[index];
-      index++;
-      gchar *serial = argv[index];
-      index++;
+      gchar *masterKeyFileName = argv[index++];
+      gchar *macAddr = argv[index++];
+      gchar *serial = argv[index++];
       gchar *hostKeyFileName = argv[index];
 
       guchar masterKey[KEY_LENGTH] = { 0 };

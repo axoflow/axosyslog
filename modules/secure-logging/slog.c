@@ -1115,7 +1115,6 @@ gboolean readKey(guchar *destKey, guint64 *destCounter, gchar *keypath)
 gboolean writeKey(guchar *key, guint64 counter, gchar *keypath)
 {
   SLogFile *f = create_file(keypath, "w+");
-
   if (f == NULL)
     {
       return FALSE; //-- ERROR
@@ -1137,9 +1136,7 @@ gboolean writeKey(guchar *key, guint64 counter, gchar *keypath)
   if (!result)
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Error key write_to_file"));
-      (void) close_file(f);
-      g_free(f);
-      return FALSE; //-- ERROR
+      goto CLEANUP_WRITEKEY; //-- ERROR
     }
 
   guint64 littleEndianCounter = GINT64_TO_LE(counter);
@@ -1156,6 +1153,7 @@ gboolean writeKey(guchar *key, guint64 counter, gchar *keypath)
                 evt_tag_long("Line: ", __LINE__),
                 evt_tag_str("Reason", "Bad CMAC"));
       cmacOk = FALSE;
+      goto CLEANUP_WRITEKEY; //-- ERROR
     }
 
   // Write CMAC
@@ -1163,9 +1161,7 @@ gboolean writeKey(guchar *key, guint64 counter, gchar *keypath)
   if (!result)
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Error MAC write_to_file"));
-      (void) close_file(f);
-      g_free(f);
-      return FALSE; //-- ERROR
+      goto CLEANUP_WRITEKEY; //-- ERROR
     }
 
   // Write counter
@@ -1173,15 +1169,15 @@ gboolean writeKey(guchar *key, guint64 counter, gchar *keypath)
   if (!result)
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Error littleEndianCounter write_to_file"));
-      (void) close_file(f);
-      g_free(f);
-      return FALSE; //-- ERROR
+      goto CLEANUP_WRITEKEY; //-- ERROR
     }
 
-  result = close_file(f);
-  if (!result)
+CLEANUP_WRITEKEY:
+  gboolean result2 = close_file(f);
+  if (!result2)
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Error close_file"));
+      result = FALSE; //-- ERROR
     }
   g_free(f);
   return result && cmacOk;
@@ -2130,9 +2126,8 @@ gboolean validFileNameArgCheckDirOnly(const gchar *option_name, const gchar *val
                   dirname = NULL;
                   break;
                 }
-            }
           g_free (dirname);
-
+            }
         }
 
       // Reset for next option argument to check
