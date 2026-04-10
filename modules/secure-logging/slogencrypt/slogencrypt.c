@@ -20,13 +20,12 @@
  *
  */
 
+#include <glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-
-#include <glib.h>
-
+#include <locale.h>
 #include "messages.h"
 #include "slog.h"
 #include "compat/string.h"
@@ -38,14 +37,16 @@ static char *inputMACpath = NULL;
 static char *outputMACpath = NULL;
 static char *inputlogpath = NULL;
 static char *outputlogpath = NULL;
-static guint64 bufSize = DEF_BUF_SIZE;
 
+static guint64 bufSize = DEF_BUF_SIZE;
 
 //
 // main logic: 0 usually indicates success, and non-zero values indicate an error
 //
 int main(int argc, char *argv[])
 {
+  setlocale(LC_ALL, "");
+
   SLogOptions options[] =
   {
     { "key-file", 'k', "Current host key file", "FILE", NULL },
@@ -231,7 +232,7 @@ int main(int argc, char *argv[])
     {
       //-- This is normal the first time, slogencrypt is called.
       msg_info(SLOG_INFO_PREFIX,
-               evt_tag_str("Reason", "MAC file, specified by parameter -m, was not found and is created now (initial MAC file)."),
+               evt_tag_str("Reason", "MAC file was not found and is created now (initial MAC file)."),
                evt_tag_str("file", inputMACpath));
       create_initial_mac0(key, mac);
       if (writeAggregatedMAC(inputMACpath, mac) == FALSE)
@@ -240,6 +241,28 @@ int main(int argc, char *argv[])
           msg_error(SLOG_ERROR_PREFIX,
                       evt_tag_str("Reason", "writeAggregatedMAC was not successful!"),
                       evt_tag_str("file", inputMACpath));
+          fclose(inputFile);
+          fclose(outputFile);
+          g_option_context_free(context);
+          return -1; //-- ERROR
+        }
+      char pathMac0[PATH_MAX]; //-- full path of MAC0 file mac0.dat
+      if (get_path_mac0(inputMACpath, pathMac0, PATH_MAX) == FALSE)
+        {
+          msg_error(SLOG_ERROR_PREFIX,
+                    evt_tag_str("Reason", "unable to extract path for MAC0!"),
+                    evt_tag_str("file", inputMACpath));
+          fclose(inputFile);
+          fclose(outputFile);
+          g_option_context_free(context);
+          return -1; //-- ERROR
+        }
+      if (writeAggregatedMAC(pathMac0, mac) == FALSE)
+        {
+          //-- ERROR: file was not written.
+          msg_error(SLOG_ERROR_PREFIX,
+                    evt_tag_str("Reason", "writeAggregatedMAC (MAC0) was not successful!"),
+                    evt_tag_str("file", inputMACpath));
           fclose(inputFile);
           fclose(outputFile);
           g_option_context_free(context);
@@ -302,10 +325,12 @@ int main(int argc, char *argv[])
 
       // Remove trailing '\n' from string
       g_string_truncate(inputGString, (inputGString->len)-1);
-
       gsize outputmacdata_capacity = G_N_ELEMENTS(outputmacdata);
-
-      outcome = sLogEntry(counter, inputGString, key, mac, result,
+      outcome = sLogEntry(counter,
+                          inputGString,
+                          key,
+                          mac,
+                          result,
                           outputmacdata,
                 outputmacdata_capacity);
       if (!outcome)

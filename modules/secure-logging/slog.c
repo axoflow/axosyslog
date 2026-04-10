@@ -26,6 +26,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
+#include <locale.h>
 
 #include <openssl/cmac.h>
 #include <openssl/rand.h>
@@ -145,11 +147,11 @@ gboolean create_initial_mac0(guchar mainKey[KEY_LENGTH], guchar mac[CMAC_LENGTH]
 }
 
 
-
 /**
- * Gets the path to mac0.dat based on the directory of pathAggMac.
+ * Gets the path for MAC0 based on pathAggMac.
  * Returns TRUE on success, FALSE otherwise.
  */
+
 gboolean get_path_mac0(const gchar *pathAggMac, gchar *pathMac0, size_t sizePathMac0)
 {
   gboolean retval = FALSE;

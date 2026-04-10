@@ -27,7 +27,7 @@
 #include <stdlib.h>
 
 #include <glib.h>
-
+#include <locale.h>
 #include <openssl/rand.h>
 #include <openssl/evp.h>
 #include <openssl/sha.h>
@@ -55,6 +55,7 @@ static GOptionEntry entries[] =
 //
 int main(int argc, char **argv)
 {
+  setlocale(LC_ALL, "");
   GError *error = NULL;
   GOptionContext *context = g_option_context_new("- secure logging key management\n\n  " \
                                                  "Master key generation:\tslogkey -m MASTERKEY\n  " \

@@ -26,7 +26,7 @@
 #include <errno.h>
 
 #include <glib.h>
-
+#include <locale.h>
 #include "messages.h"
 #include "slog.h"
 
@@ -204,7 +204,7 @@ gboolean iterativeMode(char *prevKey, char *prevMAC, char *curMAC, char *inputlo
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason",
                                                "There is a problem with log verification. Please check log manually"));
-      return FALSE; //-- ERROR (note: fix bug, was 1)
+      return FALSE; //-- ERROR
 
     }
 
@@ -217,6 +217,8 @@ gboolean iterativeMode(char *prevKey, char *prevMAC, char *curMAC, char *inputlo
 //
 int main(int argc, char *argv[])
 {
+  setlocale(LC_ALL, "");
+
   SLogOptions options[] =
   {
     { "iterative", 'i', "Iterative verification", NULL, NULL },
