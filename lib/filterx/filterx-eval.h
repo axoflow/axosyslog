@@ -181,7 +181,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     if (!fx_scope) \
       { \
         gsize alloc_size = filterx_scope_get_alloc_size(scope_var_layout); \
-        fx_scope = g_alloca(alloc_size); \
+        fx_scope = (FilterXScope *) g_alloca(alloc_size); \
         filterx_scope_init_instance(fx_scope, alloc_size, previous_context ? previous_context->scope : NULL, scope_var_layout); \
         local_scope = TRUE; \
       } \
