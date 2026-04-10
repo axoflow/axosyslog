@@ -175,17 +175,17 @@ filterx_eval_store_weak_ref(FilterXObject *object)
 
 #define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg, scope_var_layout) \
   do { \
-    FilterXScope *scope = NULL; \
+    FilterXScope *fx_scope = NULL; \
     gboolean local_scope = FALSE; \
     \
-    if (!scope) \
+    if (!fx_scope) \
       { \
         gsize alloc_size = filterx_scope_get_alloc_size(scope_var_layout); \
-        scope = g_alloca(alloc_size); \
-        filterx_scope_init_instance(scope, alloc_size, previous_context ? previous_context->scope : NULL, scope_var_layout); \
+        fx_scope = g_alloca(alloc_size); \
+        filterx_scope_init_instance(fx_scope, alloc_size, previous_context ? previous_context->scope : NULL, scope_var_layout); \
         local_scope = TRUE; \
       } \
-    filterx_eval_begin_context(&eval_context, previous_context, scope, msg); \
+    filterx_eval_begin_context(&eval_context, previous_context, fx_scope, msg); \
     do
 
 
@@ -193,7 +193,7 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     while(0); \
     \
     if (local_scope) \
-      filterx_scope_clear(scope); \
+      filterx_scope_clear(fx_scope); \
     filterx_eval_end_context(&eval_context); \
   } while(0)
 
