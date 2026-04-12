@@ -62,6 +62,14 @@ Test(filterx_string, test_string_taking_allocated_storage)
   filterx_object_unref(str);
 }
 
+Test(filterx_string, test_string_with_a_single_nul_character)
+{
+  FilterXObject *str = filterx_string_new("\x00", 1);
+
+  assert_object_str_equals(str, "\x00");
+  filterx_object_unref(str);
+}
+
 Test(filterx_string, test_string_taking_a_short_slice_of_another_string)
 {
   FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
@@ -259,6 +267,7 @@ Test(filterx_string, test_filterx_string_typecast_from_bytes)
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
+  cr_assert(size == 21, "size: %d", size);
   cr_assert(memcmp("001f2062797465205c73657175656e6365207f20ff", str, size) == 0);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
@@ -275,6 +284,7 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
+  cr_assert(size == 23, "size: %d", size);
   cr_assert(memcmp("ff6e6f7420612076616c69642070726f746f6275662120d9", str, size) == 0);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
