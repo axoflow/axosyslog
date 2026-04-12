@@ -75,7 +75,7 @@ log {{
 def test_type_dict(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
-    variable={"foo":"foovalue", "bar": "barvalue", "int":5, "null":null, "double": 3.14, "datetime":datetime('2006-02-11T10:34:56+01:00')};
+    variable={"foo":"foovalue", "bar": "barvalue", "int":5, "null":null, "double": 3.14, "datetime":datetime('2006-02-11T10:34:56.123+01:00')};
     $MSG = json();
     $MSG.repr = repr(variable);
     $MSG.string = string(variable);
@@ -86,15 +86,15 @@ def test_type_dict(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.000000"}"""
+    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
     assert msg["string"] == msg["repr"]
-    assert msg["json"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.000000"}"""
+    assert msg["json"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
 
 
 def test_type_list(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
-    variable={"foo":"foovalue", "bar": "barvalue", "int":5, "null":null, "double": 3.14, "datetime":datetime('2006-02-11T10:34:56+01:00')};
+    variable={"foo":"foovalue", "bar": "barvalue", "int":5, "null":null, "double": 3.14, "datetime":datetime('2006-02-11T10:34:56.123+01:00')};
     $MSG = json();
     $MSG.repr = repr(variable);
     $MSG.string = string(variable);
@@ -105,9 +105,9 @@ def test_type_list(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     msg = json.loads(file_final.read_log())
-    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.000000"}"""
+    assert msg["repr"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
     assert msg["string"] == msg["repr"]
-    assert msg["json"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.000000"}"""
+    assert msg["json"] == """{"foo":"foovalue","bar":"barvalue","int":5,"null":null,"double":3.1400000000000001,"datetime":"1139650496.123000"}"""
 
 
 def test_type_bytes(config, syslog_ng):
