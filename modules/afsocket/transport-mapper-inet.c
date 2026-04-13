@@ -96,7 +96,7 @@ static gboolean
 _setup_haproxy_transport(TransportMapperInet *self, LogTransportStack *stack,
                          LogTransportIndex base_index, LogTransportIndex switch_to)
 {
-  log_transport_stack_add_factory(stack, transport_factory_haproxy_new(base_index, switch_to));
+  log_transport_stack_add_factory(stack, transport_factory_haproxy_new(base_index, switch_to, self->super.sock_type));
   return TRUE;
 }
 
@@ -405,6 +405,15 @@ transport_mapper_network_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->proxied = TRUE;
       self->super.transport_name = g_strdup("bsdsyslog+proxied-tcp");
     }
+  else if (strcasecmp(transport, "proxied-udp") == 0)
+    {
+      /* plain haproxy -> plain syslog */
+      self->super.logproto = "dgram";
+      self->super.sock_type = SOCK_DGRAM;
+      self->super.sock_proto = IPPROTO_UDP;
+      self->proxied = TRUE;
+      self->super.transport_name = g_strdup("bsdsyslog+proxied-udp");
+    }
   else if (strcasecmp(transport, "proxied-tls") == 0)
     {
       /* SSL haproxy -> SSL syslog */
@@ -534,6 +543,16 @@ transport_mapper_syslog_apply_transport(TransportMapper *s, GlobalConfig *cfg)
       self->super.sock_proto = IPPROTO_TCP;
       self->proxied = TRUE;
       self->super.transport_name = g_strdup("rfc6587+proxied-tcp");
+    }
+  else if (strcasecmp(transport, "proxied-udp") == 0)
+    {
+      /* plain HAProxy -> plain syslog */
+      self->server_port = SYSLOG_TRANSPORT_UDP_PORT;
+      self->super.logproto = "dgram";
+      self->super.sock_type = SOCK_DGRAM;
+      self->super.sock_proto = IPPROTO_UDP;
+      self->proxied = TRUE;
+      self->super.transport_name = g_strdup("rfc6587+proxied-udp");
     }
   else if (strcasecmp(transport, "proxied-tls") == 0)
     {

@@ -98,6 +98,26 @@ evt_tag_mem(const char *tag, const void *value, size_t len)
   return p;
 }
 
+char hexdigits[] = "0123456789abcdef";
+
+EVTTAG *
+evt_tag_memdump(const char *tag, const void *value, size_t len)
+{
+  char *buf = malloc(len*2 + 1);
+
+  for (size_t i = 0; i < len; i++)
+    {
+      unsigned char ch = ((unsigned char *) value)[i];
+      buf[i*2] = hexdigits[(ch & 0xF0) >> 4];
+      buf[i*2+1] = hexdigits[ch & 0xF];
+    }
+  buf[len*2] = 0;
+
+  EVTTAG *p = evt_tag_str(tag, buf);
+  free(buf);
+  return p;
+}
+
 EVTTAG *
 evt_tag_int(const char *tag, int value)
 {
