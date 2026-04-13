@@ -26,9 +26,18 @@
 
 using namespace syslogng::grpc;
 
+static std::unique_ptr<google::protobuf::Arena>
+_make_arena(char *buffer, size_t size)
+{
+  google::protobuf::ArenaOptions options;
+  options.initial_block = buffer;
+  options.initial_block_size = size;
+  return std::unique_ptr<google::protobuf::Arena>(new google::protobuf::Arena(options));
+}
+
 SmartArena::SmartArena(size_t initial_size)
   : arena_buffer(initial_size),
-    arena(std::make_unique<google::protobuf::Arena>(arena_buffer.data(), arena_buffer.size()))
+    arena(_make_arena(arena_buffer.data(), arena_buffer.size()))
 {}
 
 size_t SmartArena::DefaultInitialSize = 256;
@@ -62,7 +71,7 @@ SmartArena::Reset()
       size_t new_size = std::max(used, DefaultInitialSize);
       arena.reset();
       arena_buffer.resize(new_size);
-      arena = std::make_unique<google::protobuf::Arena>(arena_buffer.data(), arena_buffer.size());
+      arena = _make_arena(arena_buffer.data(), arena_buffer.size());
       return used;
     }
 
