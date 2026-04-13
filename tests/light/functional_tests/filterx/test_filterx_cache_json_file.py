@@ -21,7 +21,11 @@
 # COPYING for details.
 #
 #############################################################################
+import json
 import os
+
+import pytest
+from test_filterx import create_config
 
 
 def test_filterx_cache_json_file_reloads_its_content_automatically_on_write_close(syslog_ng, config):
@@ -97,3 +101,40 @@ def test_filterx_cache_json_file_reload_with_nested_object(syslog_ng, config):
         file.write('{"nested": {"msg": "autoupdated"}}')
 
     assert destination.read_until_logs(["autoupdated"])
+
+
+@pytest.mark.parametrize(
+    "default_value", [
+        {"key": "value"},
+        {"key1": "value1", "key2": "value2"},
+        {"key": ["value", "value2", {"nested_key": "nested_value"}]},
+    ],
+)
+def test_cache_json_file_no_file_default_value(config, syslog_ng, default_value):
+    (file_true, file_false) = create_config(
+        config, f"""
+        $MSG = cache_json_file("./test.json", default_value={json.dumps(default_value)});
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == json.dumps(default_value, separators=(",", ":"))
+
+
+@pytest.mark.parametrize(
+    "default_value", [
+        "string",
+        ["list", "of", "values"],
+    ],
+)
+def test_cache_json_file_default_value_non_dict(config, syslog_ng, default_value):
+    _ = create_config(
+        config, f"""
+        $MSG = cache_json_file("./test.json", default_value={json.dumps(default_value)});
+""",
+    )
+    with pytest.raises(Exception) as exec_info:
+        syslog_ng.start(config)
+    assert "syslog-ng config syntax error" in str(exec_info.value)
