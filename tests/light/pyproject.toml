@@ -19,7 +19,7 @@ exclude = [
 python = "^3.10"
 prometheus-client = "^0.21.1"
 psutil = "^7.0.0"
-pytest = "^8.3.5"
+pytest = ">=8.3.5,<10.0.0"
 pytest-mock = "^3.14.0"
 opentelemetry-sdk = "^1.31.1"
 opentelemetry-exporter-otlp-proto-grpc = "^1.31.1"
