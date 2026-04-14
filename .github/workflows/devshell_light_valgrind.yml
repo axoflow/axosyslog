@@ -98,7 +98,7 @@ jobs:
 
       - name: "Prepare artifact: light-reports"
         id: prepare-light-reports
-        if: always() && steps.light.outcome == 'failure'
+        if: always() && steps.light-valgrind-check.outcome != 'skipped'
         run: |
           REPORTS_DIR=$GITHUB_WORKSPACE/tests/light/reports
           cp -r ${REPORTS_DIR} /tmp/light-reports
