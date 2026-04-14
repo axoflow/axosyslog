@@ -526,13 +526,13 @@ _debugger_thread_func(Debugger *self)
   self->breakpoint_site = NULL;
 
   printf("axosyslog interactive debugger\n"
-         "Copyright (c) 2024 Axoflow and contributors\n\n"
+         "Copyright (c) 2024-2026 Axoflow and contributors\n\n"
 
          "This program comes with ABSOLUTELY NO WARRANTY;\n"
          "This is free software, and you are welcome to redistribute it\n"
          "under certain conditions;\n"
          "See https://github.com/axoflow/axosyslog/blob/main/COPYING\n"
-         "License LGPLV2.1+ and GPLv2+\n\n"
+         "License GPL-3.0-or-later\n\n"
 
          "For help, type \"help\".\n");
 
