@@ -69,11 +69,16 @@ gboolean normalMode(char *hostkey, char *MACfile, char *inputlog, char *outputlo
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read MAC"), evt_tag_str("file", MACfile));
       return FALSE; //-- ERROR
     }
+  else
+    {
+      fclose(bigMAC);
+      bigMAC = NULL;
+    }
 
   guchar MAC[CMAC_LENGTH]; //-- aggregated MAC
   if (!readAggregatedMAC(MACfile, MAC))
     {
-      msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Unable to read MAC"), evt_tag_str("file", MACfile));
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read MAC"), evt_tag_str("file", MACfile));
     }
 
   //-- initial MAC0 ---
@@ -84,7 +89,7 @@ gboolean normalMode(char *hostkey, char *MACfile, char *inputlog, char *outputlo
     {
       if (!readAggregatedMAC(pathMac0, MAC0))
         {
-          msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Unable to read MAC0"), evt_tag_str("file", pathMac0));
+          msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read MAC0"), evt_tag_str("file", pathMac0));
         }
       else
         {
@@ -93,7 +98,7 @@ gboolean normalMode(char *hostkey, char *MACfile, char *inputlog, char *outputlo
     }
   else
     {
-      msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Invalid pathMac0")); //-- fileVerify will fail later
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Invalid pathMac0")); //-- fileVerify will fail later
     }
 
 
@@ -153,6 +158,11 @@ gboolean iterativeMode(char *prevKey, char *prevMAC, char *curMAC, char *inputlo
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read previous MAC"), evt_tag_str("file", prevMAC));
       return FALSE; //-- ERROR
     }
+  else
+    {
+      fclose(previousBigMAC);
+      previousBigMAC = NULL;
+    }
 
   guchar previousMAC[CMAC_LENGTH];
   if (!readAggregatedMAC(prevMAC, previousMAC))
@@ -166,6 +176,11 @@ gboolean iterativeMode(char *prevKey, char *prevMAC, char *curMAC, char *inputlo
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read current MAC"), evt_tag_str("file", curMAC));
       return FALSE; //-- ERROR
+    }
+  else
+    {
+      fclose(currentBigMAC);
+      currentBigMAC = NULL;
     }
 
   guchar currentMAC[CMAC_LENGTH];
