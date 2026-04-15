@@ -45,6 +45,8 @@ static guint64 bufSize = DEF_BUF_SIZE;
 //
 int main(int argc, char *argv[])
 {
+  int retval = 0; //-- 0: SUCCESS (no error)
+
   setlocale(LC_ALL, "");
 
   SLogOptions options[] =
@@ -68,25 +70,13 @@ int main(int argc, char *argv[])
 
   g_option_group_add_entries(group, entries);
   g_option_context_set_main_group(context, group);
-
-
   if (!g_option_context_parse (context, &argc, &argv, &error))
     {
-      // Fix: In case there is no mac file yet available, this tool shall not
-      // fail. Therefore only given mac file folder is checked instead full
-      // file name. This is done by replacement of validFileNameArg by validFileNameArgCheckDirOnly
-
       g_print("!g_opton_context_parse, argc: %d\n", argc);
       GString *errorMsg = g_string_new(error->message);
       (void) slog_usage(context, group, errorMsg);
       return 1; //-- ERROR
     }
-
-  // Note: When Options -k, --key-file or -m, --mac-file are not provided, the
-  // corresponding validFileNameArg is not called and therefore no check is
-  // performed!
-  // The argument checks therefore must be done by checking for NULL or by verifying
-  // argc in case of ordered arguments.
 
   // Note: When all data is provided correctly, argc is 5 or 6 after parsing
   if(argc < 5 || argc > 6)
@@ -132,7 +122,6 @@ int main(int argc, char *argv[])
 
   // Input and output file arguments
   index = 1;
-
   newhostKeypath = argv[index++];
   if (newhostKeypath == NULL)
     {
@@ -191,7 +180,6 @@ int main(int argc, char *argv[])
   if (argc == 6)
     {
       int result = sscanf(argv[index], "%"G_GUINT64_FORMAT, &bufSize);
-
       if (result == EOF || bufSize <= MIN_BUF_SIZE || bufSize > MAX_BUF_SIZE)
         {
           msg_error(SLOG_ERROR_PREFIX,
@@ -204,6 +192,12 @@ int main(int argc, char *argv[])
         }
     }
 
+  //
+  //-- Done argument parsing ---
+  //
+
+  char *line = NULL;
+  FILE *outputFile = NULL;
   // Open input file
   FILE *inputFile = fopen(inputlogpath, "r");
   if (inputFile == NULL)
@@ -211,20 +205,19 @@ int main(int argc, char *argv[])
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Unable to open input log file!"),
                 evt_tag_str("file", inputlogpath));
-      g_option_context_free(context);
-      return -1; //-- ERROR
+      retval = -1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
 
   // Open output file
-  FILE *outputFile = fopen(outputlogpath,  "w");
+  outputFile = fopen(outputlogpath,  "w");
   if (outputFile == NULL)
     {
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Unable to open output log file!"),
                 evt_tag_str("file", outputlogpath));
-      fclose(inputFile);
-      g_option_context_free(context);
-      return -1; //-- ERROR
+      retval = -1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
 
   //-- initial MAC file ---
@@ -241,10 +234,8 @@ int main(int argc, char *argv[])
           msg_error(SLOG_ERROR_PREFIX,
                       evt_tag_str("Reason", "writeAggregatedMAC was not successful!"),
                       evt_tag_str("file", inputMACpath));
-          fclose(inputFile);
-          fclose(outputFile);
-          g_option_context_free(context);
-          return -1; //-- ERROR
+          retval = -1; //-- ERROR
+          goto CLEANUP_SLOGENCRYPT;
         }
       char pathMac0[PATH_MAX]; //-- full path of MAC0 file mac0.dat
       if (get_path_mac0(inputMACpath, pathMac0, PATH_MAX) == FALSE)
@@ -252,32 +243,25 @@ int main(int argc, char *argv[])
           msg_error(SLOG_ERROR_PREFIX,
                     evt_tag_str("Reason", "unable to extract path for MAC0!"),
                     evt_tag_str("file", inputMACpath));
-          fclose(inputFile);
-          fclose(outputFile);
-          g_option_context_free(context);
-          return -1; //-- ERROR
+          retval = -1; //-- ERROR
+          goto CLEANUP_SLOGENCRYPT;
         }
       if (writeAggregatedMAC(pathMac0, mac) == FALSE)
         {
-          //-- ERROR: file was not written.
           msg_error(SLOG_ERROR_PREFIX,
                     evt_tag_str("Reason", "writeAggregatedMAC (MAC0) was not successful!"),
                     evt_tag_str("file", inputMACpath));
-          fclose(inputFile);
-          fclose(outputFile);
-          g_option_context_free(context);
-          return -1; //-- ERROR
+
+          retval = -1; //-- ERROR, file not written
+          goto CLEANUP_SLOGENCRYPT;
         }
       if (!g_file_test(inputMACpath, G_FILE_TEST_IS_REGULAR))
         {
-          //-- ERROR: File not found!
           msg_error(SLOG_ERROR_PREFIX,
                       evt_tag_str("Reason", "Initial MAC file was not written as expected!"),
                       evt_tag_str("file", inputMACpath));
-          fclose(inputFile);
-          fclose(outputFile);
-          g_option_context_free(context);
-          return -1; //-- ERROR
+          retval = -1; //-- ERROR, File not found!
+          goto CLEANUP_SLOGENCRYPT;
         }
     }
 
@@ -287,19 +271,21 @@ int main(int argc, char *argv[])
       msg_error(SLOG_ERROR_PREFIX,
                   evt_tag_str("Reason", "Unable to open input MAC file!"),
                   evt_tag_str("file", inputMACpath));
-      fclose(inputFile);
-      fclose(outputFile);
-      g_option_context_free(context);
-      return -1; //-- ERROR
+
+      retval = -1; //-- ERROR, File not found!
+      goto CLEANUP_SLOGENCRYPT;
     }
 
-  size_t readLen = 0;
-  char *line = NULL;
-  gboolean outcome = TRUE;
+
+  //
+  //-- Read and process input file
+  //
 
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "Importing data..."));
 
   // Parse data
+  size_t readLen = 0;
+  gboolean outcome = TRUE;
   while(getline(&line, &readLen, inputFile)!=-1)
     {
       guchar outputmacdata[CMAC_LENGTH];
@@ -338,17 +324,10 @@ int main(int argc, char *argv[])
           msg_warning(SLOG_WARNING_PREFIX,
                       evt_tag_str("Reason", "Unable to encrypt log entry!"),
                       evt_tag_str("line", inputGString->str));
-          fclose(inputFile);
-          fclose(outputFile);
-          g_option_context_free(context);
           g_string_free(result, TRUE);
           g_string_free(inputGString, TRUE);
-          if (NULL != line)
-            {
-              free(line);
-              line = NULL;
-            }
-          return -1; //-- ERROR;
+          retval = -1; //-- ERROR
+          goto CLEANUP_SLOGENCRYPT;
         }
 
       fprintf(outputFile, "%s\n", result->str);
@@ -359,17 +338,10 @@ int main(int argc, char *argv[])
       if (!outcome)
         {
           msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Unable to evolve key!"));
-          fclose(inputFile);
-          fclose(outputFile);
-          g_option_context_free(context);
       g_string_free(result, TRUE);
       g_string_free(inputGString, TRUE);
-          if (NULL != line)
-            {
-              free(line);
-              line = NULL;
-            }
-          return -1; //-- ERROR
+          retval = -1; //-- ERROR, failed to evolve key!
+          goto CLEANUP_SLOGENCRYPT;
         }
 
       g_string_free(result, TRUE);
@@ -379,24 +351,18 @@ int main(int argc, char *argv[])
           free(line);
       line = NULL;
     }
-
       counter++;
       readLen = 0;
-    }
+
+    } //-- while (getline
+
 
   // Write whole log MAC
   if (!writeAggregatedMAC(outputMACpath, mac))
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Problem with output MAC file!"));
-      fclose(inputFile);
-      fclose(outputFile);
-      g_option_context_free(context);
-      if (NULL != line)
-        {
-          free(line);
-          line = NULL;
-        }
-      return -1; //-- ERROR
+      retval = -1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
 
   // Write key
@@ -406,27 +372,37 @@ int main(int argc, char *argv[])
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Unable to write new host key"),
                 evt_tag_str("file", outputlogpath));
+      retval = -1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
+    }
+
+
+CLEANUP_SLOGENCRYPT:
+
+  if (NULL != inputFile)
+    {
       fclose(inputFile);
+      inputFile = NULL;
+    }
+  if (NULL != outputFile)
+    {
       fclose(outputFile);
+      outputFile = NULL;
+    }
       g_option_context_free(context);
       if (NULL != line)
         {
           free(line);
           line = NULL;
         }
-      return -1; //-- ERROR
-    }
-
-  fclose(inputFile);
-  fclose(outputFile);
-  g_option_context_free(context);
-  if (NULL != line)
+  if (0 == retval)
     {
-      free(line);
-      line = NULL;
+      msg_info("slogencrypt: All data successfully imported.");
+    }
+  else
+    {
+      msg_info("slogencrypt: Error occurred.");
     }
 
-  msg_info("All data successfully imported.");
-
-  return 0; //-- SUCCESS
+  return retval; //-- 0 when SUCCES
 }
