@@ -169,6 +169,8 @@ openShift:
 
 service:
   create: true
+  type: NodePort  # NodePort, LoadBalancer, or ClusterIP
+  # loadBalancerIP: ""  # set when type is LoadBalancer
   extraPorts: []
   #  - protocol: TCP
   #    port: 514
