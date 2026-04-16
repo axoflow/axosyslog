@@ -16,7 +16,7 @@ TS := $(shell date +"%Y-%m-%d-%H-%M-%S-%6N")
 
 PYTEST_SUBDIR ?=
 PYTEST_VERBOSE ?= false
-PYTEST_OPTS ?= --reports reports/$(TS)/
+PYTEST_OPTS ?=
 PYTEST_WORKERS ?= -n auto
 
 LIGHT_SRC_DIR=$(abs_top_srcdir)/tests/light
@@ -32,8 +32,8 @@ light-self-check pytest-self-check: light-venv
 
 light-check pytest-check: light-venv
 	exit_code=0; \
-	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_WORKERS) $(PYTEST_OPTS) -m "not timing" --installdir=${prefix} --show-capture=no || exit_code=1; \
-	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) -m timing -n0 --installdir=${prefix} --show-capture=no || exit_code=1; \
+	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_WORKERS) --reports reports/$(TS)/ $(PYTEST_OPTS) -m "not timing" --installdir=${prefix} --show-capture=no || exit_code=1; \
+	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) --reports reports/$(TS)/ $(PYTEST_OPTS) -m timing -n0 --installdir=${prefix} --show-capture=no || exit_code=1; \
 	exit $$exit_code
 
 light-valgrind-check pytest-valgrind-check: light-venv
