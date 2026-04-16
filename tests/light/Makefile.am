@@ -12,10 +12,11 @@ include tests/light/src/axosyslog_light/Makefile.am
 
 
 if HAVE_POETRY
+TS := $(shell date +"%Y-%m-%d-%H-%M-%S-%6N")
 
 PYTEST_SUBDIR ?=
 PYTEST_VERBOSE ?= false
-PYTEST_OPTS ?=
+PYTEST_OPTS ?= --reports reports/$(TS)/
 PYTEST_WORKERS ?= -n auto
 
 LIGHT_SRC_DIR=$(abs_top_srcdir)/tests/light
@@ -30,7 +31,10 @@ light-self-check pytest-self-check: light-venv
 	@$(LIGHT_PYTEST_CMD) $(LIGHT_SRC_DIR)/src/axosyslog_light
 
 light-check pytest-check: light-venv
-	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_WORKERS) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no
+	exit_code=0; \
+	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_WORKERS) $(PYTEST_OPTS) -m "not timing" --installdir=${prefix} --show-capture=no || exit_code=1; \
+	LSAN_OPTIONS="suppressions=$(abs_top_srcdir)/tests/axosyslog-lsan.supp" $(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) -m timing -n0 --installdir=${prefix} --show-capture=no || exit_code=1; \
+	exit $$exit_code
 
 light-valgrind-check pytest-valgrind-check: light-venv
 	$(LIGHT_PYTEST_CMD) -o log_cli=$(PYTEST_VERBOSE) $(LIGHT_SRC_DIR)/functional_tests/$(PYTEST_SUBDIR) $(PYTEST_OPTS) --installdir=${prefix} --show-capture=no --run-under=valgrind

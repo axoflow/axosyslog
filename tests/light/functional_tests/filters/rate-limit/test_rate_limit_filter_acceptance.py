@@ -37,6 +37,7 @@ def generate_messages_with_different_program_fields(bsd_formatter, number_of_all
     return input_messages
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize(
     "message_counter, message_rate_by_sec, different_program_fields, rate_limit_rate_by_sec, expected_number_of_matched_messages, expected_number_of_not_matched_messages", [
         # All incoming messages=100, which arrives in one sec where every PROGRAM field is the same. From same PROGRAM fields we accept 100 in one sec. At the end we will have 100 matched and 0 not matched messages.
