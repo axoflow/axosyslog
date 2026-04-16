@@ -26,6 +26,7 @@
 #include "filterx/filterx-sequence.h"
 #include "filterx/filterx-mapping.h"
 #include "filterx/expr-literal.h"
+#include "filterx/expr-literal-container.h"
 #include "filterx/filterx-eval.h"
 #include "scratch-buffers.h"
 #include "file-monitor.h"
@@ -38,7 +39,7 @@
 #include <errno.h>
 #include <glib.h>
 
-#define FILTERX_FUNC_CACHE_JSON_FILE_USAGE "Usage: cache_json_file(\"/path/to/file.json\")"
+#define FILTERX_FUNC_CACHE_JSON_FILE_USAGE "Usage: cache_json_file(\"/path/to/file.json\", default_value=[dict])"
 
 #define CACHE_JSON_FILE_ERROR cache_json_file_error_quark()
 
@@ -64,6 +65,7 @@ typedef struct FilterXFunctionCacheJsonFile_
   gchar *filepath;
   gpointer cached_json;
   FileMonitor *file_monitor;
+  FilterXExpr *default_value;
 } FilterXFunctionCacheJsonFile;
 
 static gchar *
@@ -124,12 +126,34 @@ _load_json_file(const gchar *filepath, GError **error)
   return result;
 }
 
+static gboolean
+_cache_json_file_init(FilterXExpr *s, GlobalConfig *cfg)
+{
+  FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
+
+  if (self->default_value)
+    {
+      if (!filterx_expr_is_literal(self->default_value))
+        {
+          msg_error("The default_value argument for cache_json_file() has to be a literal",
+                    filterx_expr_format_location_tag(s));
+          return FALSE;
+        }
+    }
+  return filterx_function_init_method(&self->super, cfg);
+}
+
 static FilterXObject *
 _eval(FilterXExpr *s)
 {
   FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
+
   FilterXObject *cached_json = g_atomic_pointer_get(&self->cached_json);
-  return filterx_object_ref(cached_json);
+
+  if (cached_json)
+    return filterx_object_ref(cached_json);
+
+  return filterx_expr_eval_typed(self->default_value);
 }
 
 static void
@@ -138,6 +162,7 @@ _free(FilterXExpr *s)
   FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
 
   filterx_object_unref(self->cached_json);
+  filterx_expr_unref(self->default_value);
   g_free(self->filepath);
   if (self->file_monitor)
     {
@@ -207,7 +232,39 @@ _file_monitor_callback(const FileMonitorEvent *event, gpointer user_data)
 gboolean
 _cache_json_file_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
-  /* no child expressions */
+  FilterXFunctionCacheJsonFile *self = (FilterXFunctionCacheJsonFile *) s;
+
+  return filterx_expr_visit(s, &self->default_value, f, user_data);
+}
+
+static FilterXExpr *
+_extract_cache_json_file_default_value_dict(FilterXFunctionArgs *args, GError **error)
+{
+  FilterXExpr *default_value = filterx_function_args_get_named_expr(args, "default_value");
+
+  if (!default_value)
+    return NULL;
+
+  if (!filterx_expr_is_literal_dict(default_value))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "default_value argument must a literal dict. " FILTERX_FUNC_CACHE_JSON_FILE_USAGE);
+      return NULL;
+    }
+
+  return default_value;
+}
+
+static gboolean
+_try_load_from_file_with_default(FilterXFunctionCacheJsonFile *self, GError **error)
+{
+  if (_load_json_file_version(self, error))
+    return TRUE;
+
+  if (!self->default_value)
+    return FALSE;
+
+  g_clear_error(error);
   return TRUE;
 }
 
@@ -218,18 +275,28 @@ filterx_function_cache_json_file_new(FilterXFunctionArgs *args, GError **error)
   filterx_function_init_instance(&self->super, "cache_json_file", FXE_WORLD);
 
   self->super.super.eval = _eval;
+  self->super.super.init = _cache_json_file_init;
   self->super.super.walk_children = _cache_json_file_walk;
   self->super.super.free_fn = _free;
 
+  self->default_value = _extract_cache_json_file_default_value_dict(args, error);
+  if (*error)
+    goto error;
   self->filepath = _extract_filepath(args, error);
   if (!self->filepath)
     goto error;
 
-  if (!_load_json_file_version(self, error))
-    goto error;
-
   if (!filterx_function_args_check(args, error))
     goto error;
+
+  if (!_try_load_from_file_with_default(self, error))
+    goto error;
+
+  if (self->cached_json)
+    {
+      filterx_expr_unref(self->default_value);
+      self->default_value = NULL;
+    }
 
   self->file_monitor = file_monitor_new(self->filepath);
   file_monitor_add_watch(self->file_monitor, _file_monitor_callback, self);
