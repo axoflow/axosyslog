@@ -498,8 +498,11 @@ if (SANITIZER)
   if (SANITIZER MATCHES address-all)
     SET(SANITIZE_MODE "address")
     SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize-address-use-after-scope -fsanitize-address-use-after-return=runtime")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize-address-use-after-scope -fsanitize-address-use-after-return=runtime")
   endif()
   SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O1 -fsanitize=${SANITIZE_MODE} -fno-omit-frame-pointer -fno-optimize-sibling-calls")
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -fsanitize=${SANITIZE_MODE} -fno-omit-frame-pointer -fno-optimize-sibling-calls")
+  add_link_options(-fsanitize=${SANITIZE_MODE})
 endif()
 
 

@@ -33,6 +33,12 @@
  * Parsing nodes.
  **************************************************************/
 
+static inline gboolean
+_char_in_set(const gchar *set, gchar c)
+{
+  return c && strchr(set, c) != NULL;
+}
+
 /* FIXME: maybe we should return gchar with the result */
 
 gboolean
@@ -288,7 +294,7 @@ r_parser_set(gchar *str, gint *len, const gchar *param, gpointer state, RParserM
   if (!param)
     return FALSE;
 
-  while (strchr(param, str[*len]))
+  while (_char_in_set(param, str[*len]))
     (*len)++;
 
   if (*len > 0)
@@ -316,7 +322,7 @@ r_parser_email(gchar *str, gint *len, const gchar *param, gpointer state, RParse
   *len = 0;
 
   if (param)
-    while (strchr(param, str[*len]))
+    while (_char_in_set(param, str[*len]))
       (*len)++;
 
   if (match)
@@ -326,7 +332,7 @@ r_parser_email(gchar *str, gint *len, const gchar *param, gpointer state, RParse
   if (str[*len] == '.')
     return FALSE;
 
-  while (g_ascii_isalnum(str[*len]) || (strchr(email, str[*len])))
+  while (g_ascii_isalnum(str[*len]) || (_char_in_set(email, str[*len])))
     (*len)++;
   /* last character of e-mail can not be a period */
   if (str[*len-1] == '.')
@@ -354,7 +360,7 @@ r_parser_email(gchar *str, gint *len, const gchar *param, gpointer state, RParse
 
   end = *len;
   if (param)
-    while (strchr(param, str[*len]))
+    while (_char_in_set(param, str[*len]))
       (*len)++;
 
   if (match)

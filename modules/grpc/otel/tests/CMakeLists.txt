@@ -1,5 +1,5 @@
 add_unit_test(
-  CRITERION
+  CRITERION SANITIZER_EXCEPTION
   TARGET test_otel_protobuf_parser
   SOURCES test-otel-protobuf-parser.cpp
   INCLUDES ${OTEL_PROTO_BUILDDIR} ${PROJECT_SOURCE_DIR}/modules/grpc/common

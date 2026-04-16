@@ -25,8 +25,8 @@
 #include "test-source.h"
 #include "journald-mock.h"
 
-#include "journald-helper.c"
-#include "journal-reader.c"
+#include "journald-helper.h"
+#include "journal-reader.h"
 #include "apphook.h"
 
 static GlobalConfig *cfg;

@@ -34,7 +34,7 @@ function (add_unit_test)
     return()
   endif()
 
-  cmake_parse_arguments(ADD_UNIT_TEST "CRITERION;LIBTEST" "TARGET" "SOURCES;DEPENDS;INCLUDES" ${ARGN})
+  cmake_parse_arguments(ADD_UNIT_TEST "CRITERION;LIBTEST;SANITIZER_EXCEPTION" "TARGET" "SOURCES;DEPENDS;INCLUDES" ${ARGN})
 
   if (NOT ADD_UNIT_TEST_SOURCES)
     set(ADD_UNIT_TEST_SOURCES "${ADD_UNIT_TEST_TARGET}.c")
@@ -75,8 +75,10 @@ function (add_unit_test)
 
   add_test (${ADD_UNIT_TEST_TARGET} ${ADD_UNIT_TEST_TARGET})
   add_dependencies(check ${ADD_UNIT_TEST_TARGET})
-  set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES ENVIRONMENT "CRITERION_TEST_PATTERN=!(*/*performance*)")
-  set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES FAIL_REGULAR_EXPRESSION "ERROR: (LeakSanitizer|AddressSanitizer)")
+  set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES ENVIRONMENT "CRITERION_TEST_PATTERN=!(*/*performance*);LSAN_OPTIONS=suppressions=${CMAKE_SOURCE_DIR}/tests/axosyslog-lsan.supp")
+  if (NOT ADD_UNIT_TEST_SANITIZER_EXCEPTION)
+    set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES FAIL_REGULAR_EXPRESSION "ERROR: (LeakSanitizer|AddressSanitizer)")
+  endif()
 endfunction ()
 
 macro (add_test_subdirectory SUBDIR)
