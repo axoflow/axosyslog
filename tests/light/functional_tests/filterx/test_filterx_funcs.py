@@ -1301,3 +1301,64 @@ def test_hex(config, syslog_ng):
             "roundtrip": base64.b64encode(b"szilvafa").decode(),
         }, separators=(",", ":"),
     )
+
+
+def test_glob_match_returns_true_on_match(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    result = json();
+    result.wildcard_ext = glob_match("filename.log", ["*.log"]);
+    result.wildcard_path = glob_match("/var/log/syslog", ["/var/log/*"]);
+    result.question_mark = glob_match("file.txt", ["file.???"]);
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"wildcard_ext":true,"wildcard_path":true,"question_mark":true}'
+
+
+def test_glob_match_works_with_a_string_pattern(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    result = json();
+    result.match = glob_match("filename.log", "*.log");
+    result.nomatch = glob_match("filename.log", "*.txt");
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"match":true,"nomatch":false}'
+
+
+def test_glob_match_returns_false_when_no_pattern_matches(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    result = json();
+    result.no_match = glob_match("filename.txt", ["*.log"]);
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"no_match":false}'
+
+
+def test_glob_match_multiple_patterns(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    result = json();
+    result.first_matches = glob_match("filename.log", ["*.log", "*.txt"]);
+    result.second_matches = glob_match("filename.txt", ["*.log", "*.txt"]);
+    result.none_matches = glob_match("filename.cfg", ["*.log", "*.txt"]);
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"first_matches":true,"second_matches":true,"none_matches":false}'

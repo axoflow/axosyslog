@@ -74,6 +74,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/func-uuid.h \
 	lib/filterx/func-digest.h \
 	lib/filterx/func-encode.h \
+	lib/filterx/func-glob.h \
 	lib/filterx/object-datetime.h \
 	lib/filterx/object-dict.h \
 	lib/filterx/object-list.h \
@@ -158,6 +159,7 @@ filterx_sources = 				\
 	lib/filterx/func-uuid.c \
 	lib/filterx/func-digest.c \
 	lib/filterx/func-encode.c \
+	lib/filterx/func-glob.c \
 	lib/filterx/object-datetime.c \
 	lib/filterx/object-dict.c \
 	lib/filterx/object-list.c \

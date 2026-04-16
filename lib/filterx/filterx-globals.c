@@ -51,6 +51,7 @@
 #include "filterx/func-uuid.h"
 #include "filterx/func-digest.h"
 #include "filterx/func-encode.h"
+#include "filterx/func-glob.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
@@ -132,6 +133,7 @@ _simple_init(void)
                                                     filterx_simple_function_has_sdata));
   g_assert(filterx_builtin_simple_function_register("get_sdata",
                                                     filterx_simple_function_get_sdata));
+  g_assert(filterx_builtin_simple_function_register("glob_match", filterx_simple_function_glob_match));
 }
 
 static void
