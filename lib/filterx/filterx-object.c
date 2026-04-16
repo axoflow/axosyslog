@@ -87,6 +87,7 @@ _filterx_type_init_methods(FilterXType *type)
   INIT_TYPE_METHOD(type, format_json);
   INIT_TYPE_METHOD(type, len);
   INIT_TYPE_METHOD(type, add);
+  INIT_TYPE_METHOD(type, add_inplace);
   INIT_TYPE_METHOD(type, free_fn);
 
   if (!type->is_abstract)
@@ -104,6 +105,21 @@ filterx_type_init(FilterXType *type)
 
   if (!filterx_type_register(type->name, type))
     msg_error("Reregistering filterx type", evt_tag_str("name", type->name));
+}
+
+FilterXObject *
+filterx_object_add_inplace_method(FilterXObject *self, FilterXObject *container, FilterXObject *object)
+{
+  FilterXObject *result = filterx_object_add(self, object);
+
+  /* NOTE: inmutable objects are not to change @self, rather they will
+   * return a new object.  This assumption may be lifted later (when the
+   * object is not shared), in that case this assert should be removed.
+   * Mutable objects are handled differently though FilterXRef, see the
+   * implementation of add/inline_add there.  */
+
+  g_assert(result != self);
+  return result;
 }
 
 void
@@ -198,5 +214,6 @@ FilterXType FILTERX_TYPE_NAME(object) =
 {
   .super_type = NULL,
   .name = "object",
+  .add_inplace = filterx_object_add_inplace_method,
   .free_fn = filterx_object_free_method,
 };

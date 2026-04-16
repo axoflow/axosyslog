@@ -230,8 +230,10 @@ _filterx_list_iter(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_d
     {
       FilterXObject *value = g_ptr_array_index(self->array, i);
       FILTERX_INTEGER_DECLARE_ON_STACK(index_obj, i);
-      func(index_obj, value, user_data);
+      gboolean result = func(index_obj, value, user_data);
       FILTERX_INTEGER_CLEAR_FROM_STACK(index_obj);
+      if (!result)
+        return FALSE;
     }
   return TRUE;
 }
@@ -336,6 +338,7 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   if (filterx_object_is_type(arg_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     {
       FilterXObject *self = filterx_list_new();
+      filterx_object_cow_prepare(&self);
       if (!filterx_sequence_merge(self, arg_unwrapped))
         {
           filterx_object_unref(self);

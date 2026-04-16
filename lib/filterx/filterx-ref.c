@@ -510,11 +510,43 @@ _filterx_ref_len(FilterXObject *s, guint64 *len)
   return filterx_object_len(self->value, len);
 }
 
+/*
+ * simulate an add() using cow.  We first clone the ref, then do a
+ * copy-on-write as we merge in the elements and then return the new ref.
+ * mutable objects that support copy-on-write do not need an add() method,
+ * the ref wrapper takes care of it.
+ */
 static FilterXObject *
-_filterx_ref_add(FilterXObject *s, FilterXObject *object)
+_filterx_ref_add_method(FilterXObject *s, FilterXObject *object)
+{
+  FilterXObject *cloned = filterx_ref_float_unchecked(_filterx_ref_clone(s));
+  FilterXObject *value = filterx_ref_add_inplace(cloned, object);
+  if (!value)
+    {
+      filterx_object_unref(cloned);
+      return NULL;
+    }
+  filterx_object_unref(value);
+  return cloned;
+}
+
+static FilterXObject *
+_filterx_ref_add_inplace_method(FilterXObject *s, FilterXObject *container, FilterXObject *object)
 {
   FilterXRef *self = (FilterXRef *) s;
-  return filterx_object_add_object(self->value, object);
+
+  g_assert(container == NULL);
+  _filterx_ref_cow(self);
+  FilterXObject *new_object = filterx_ref_add_inplace(s, object);
+  if (!new_object)
+    return NULL;
+
+  /* the returned object needs to be a ref, either the same that we passed
+   * to add_inplace() or a new one if the value is to be replaced
+   * completely.  */
+
+  g_assert(filterx_object_is_ref(new_object));
+  return new_object;
 }
 
 FilterXObject *
@@ -532,6 +564,7 @@ filterx_ref_dup(FilterXObject *s)
 
   return &dup->super;
 }
+
 
 /* NOTE: fastpath is in the header as an inline function */
 FilterXObject *
@@ -570,7 +603,8 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .repr = _filterx_ref_repr_append,
                     .str = _filterx_ref_str_append,
                     .len = _filterx_ref_len,
-                    .add = _filterx_ref_add,
+                    .add = _filterx_ref_add_method,
+                    .add_inplace = _filterx_ref_add_inplace_method,
                     .make_readonly = _filterx_ref_make_readonly,
                     .dedup = _filterx_ref_dedup,
                     .free_fn = _filterx_ref_free,

@@ -59,27 +59,26 @@ filterx_sequence_unset(FilterXObject *s, gint64 index)
   return result;
 }
 
+static gboolean
+_add_elem(FilterXObject *key_obj, FilterXObject *value_obj, gpointer user_data)
+{
+  FilterXObject *sequence = (FilterXObject *) user_data;
+
+  FilterXObject *new_value = filterx_object_copy(value_obj);
+  gboolean success = filterx_sequence_append(sequence, &new_value);
+  filterx_object_unref(new_value);
+
+  return success;
+}
+
 gboolean
 filterx_sequence_merge(FilterXObject *s, FilterXObject *other)
 {
   other = filterx_ref_unwrap_ro(other);
-  g_assert(filterx_object_is_type(other, &FILTERX_TYPE_NAME(sequence)));
+  if (!filterx_object_is_type(other, &FILTERX_TYPE_NAME(sequence)))
+    return FALSE;
 
-  guint64 len;
-  g_assert(filterx_object_len(other, &len));
-
-  for (guint64 i = 0; i < len; i++)
-    {
-      FilterXObject *value_obj = filterx_sequence_get_subscript(other, (gint64) MIN(i, G_MAXINT64));
-      gboolean success = filterx_sequence_append(s, &value_obj);
-
-      filterx_object_unref(value_obj);
-
-      if (!success)
-        return FALSE;
-    }
-
-  return TRUE;
+  return filterx_object_iter(other, _add_elem, s);
 }
 
 static gboolean
@@ -115,16 +114,11 @@ _format_json(FilterXObject *value, GString *json)
 }
 
 static FilterXObject *
-_add(FilterXObject *lhs_object, FilterXObject *rhs_object)
+_add(FilterXObject *self, FilterXObject *other)
 {
-  rhs_object = filterx_ref_unwrap_ro(rhs_object);
+  FilterXObject *cloned = filterx_object_copy(self);
 
-  if (!filterx_object_is_type(rhs_object, &FILTERX_TYPE_NAME(sequence)))
-    return NULL;
-
-  FilterXObject *cloned = filterx_object_copy(lhs_object);
-
-  if(!filterx_sequence_merge(cloned, rhs_object))
+  if(!filterx_sequence_merge(cloned, other))
     goto error;
 
   return cloned;
@@ -133,9 +127,19 @@ error:
   return NULL;
 }
 
+static FilterXObject *
+_add_inplace(FilterXObject *self, FilterXObject *container, FilterXObject *other)
+{
+  if (!filterx_sequence_merge(container, other))
+    return NULL;
+
+  return filterx_object_ref(container);
+}
+
 FILTERX_DEFINE_TYPE(sequence, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .is_abstract = TRUE,
                     .format_json = _format_json,
                     .add = _add,
+                    .add_inplace = _add_inplace,
                    );
