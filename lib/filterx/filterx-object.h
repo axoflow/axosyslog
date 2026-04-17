@@ -688,7 +688,7 @@ filterx_object_cow_prepare(FilterXObject **pself)
 
 
 /* Perform a lazy copy (e.g.  copy-on-write) of @self and return the new
- * copy. This function does nothing for inmutable data types.
+ * copy. This function does nothing for immutable data types.
  *
  * For copy-on-write to work, all references to @self need to be done
  * through refs, but our @self argument may still point to a bare, but

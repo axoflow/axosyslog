@@ -127,7 +127,7 @@
  *      newly created object.
  *
  *   2) filterx_object_cow_fork() and fork2() are to be used when the filterx
- *      language is using a copying construct (e.g.  assigmnent, setattr or
+ *      language is using a copying construct (e.g.  assignment, setattr or
  *      set_subscript).  These functions return both "copies" of the object:
  *      old and new.  They also handle filterx_object_cow_prepare() if an
  *      object is not yet wrapped.
