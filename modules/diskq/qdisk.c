@@ -1811,6 +1811,14 @@ qdisk_set_options(QDisk *self, DiskQueueOptions *options)
   self->options = options;
 }
 
+gboolean
+qdisk_is_compatible(QDisk *self, DiskQueueOptions *options)
+{
+  return (self->options->front_cache_size == options->front_cache_size &&
+          self->options->reliable == options->reliable &&
+          self->options->flow_control_window_bytes == options->flow_control_window_bytes);
+}
+
 QDisk *
 qdisk_new(DiskQueueOptions *options, const gchar *file_id, const gchar *filename)
 {
