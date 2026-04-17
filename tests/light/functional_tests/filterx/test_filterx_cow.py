@@ -573,3 +573,20 @@ def test_list_mutable_elements_appended_from_another_list_cause_clone_when_whang
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == """[1,2,3,4,5,6,{"foo":"foovalue","bar":"barvalue"}]--[4,5,6,{"bar":"barvalue"}]"""
+
+
+def test_plus_on_child_of_shared_hierarchy(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {'child':['foo','bar']};
+                result = d.child + ['foobar'];
+                $MSG = string(result) + '--' + string(d);
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == """["foo","bar","foobar"]--{"child":["foo","bar"]}"""
