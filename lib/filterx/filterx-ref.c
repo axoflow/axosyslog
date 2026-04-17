@@ -519,7 +519,13 @@ _filterx_ref_len(FilterXObject *s, guint64 *len)
 static FilterXObject *
 _filterx_ref_add_method(FilterXObject *s, FilterXObject *object)
 {
-  FilterXObject *cloned = filterx_ref_float_unchecked(_filterx_ref_clone(s));
+  /* filterx_object_copy() handles both non-floating and floating inputs:
+   * for non-floating it clones,
+   * for floating it grounds s in place (clearing parent_container) and returns it.
+   * Either way we then float the result: it is a fresh
+   * temporary with no parent_container, so the CoW inside add_inplace does
+   * not propagate up into a shared source hierarchy. */
+  FilterXObject *cloned = filterx_ref_float_unchecked(filterx_object_copy(s));
   FilterXObject *value = filterx_ref_add_inplace(cloned, object);
   if (!value)
     {
