@@ -32,3 +32,6 @@ add_unit_test(LIBTEST CRITERION TARGET test_scope DEPENDS json-plugin ${JSONC_LI
 add_unit_test(LIBTEST CRITERION TARGET test_func_format_json DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_filterx_eval DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_func_uuid DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_func_digest DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_func_encode DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_func_str_utf8 DEPENDS json-plugin ${JSONC_LIBRARY})

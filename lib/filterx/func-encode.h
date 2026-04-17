@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2024 Axoflow
- * Copyright (c) 2024 Szilard Parrag
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Attila Szakacs <attila.szakacs@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -21,17 +21,18 @@
  *
  */
 
-#ifndef FILTERX_FUNC_STR_H_INCLUDED
-#define FILTERX_FUNC_STR_H_INCLUDED
+#ifndef FILTERX_FUNC_ENCODE_H_INCLUDED
+#define FILTERX_FUNC_ENCODE_H_INCLUDED
 
 #include "filterx/expr-function.h"
 
-FilterXExpr *filterx_function_startswith_new(FilterXFunctionArgs *args, GError **error);
-FilterXExpr *filterx_function_endswith_new(FilterXFunctionArgs *args, GError **error);
-FilterXExpr *filterx_function_includes_new(FilterXFunctionArgs *args, GError **error);
-FilterXExpr *filterx_function_strcasecmp_new(FilterXFunctionArgs *args, GError **error);
+FilterXObject *filterx_simple_function_base64_encode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_base64_decode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
-FilterXObject *filterx_simple_function_utf8_validate(FilterXExpr *s, FilterXObject *args[], gsize args_len);
-FilterXObject *filterx_simple_function_utf8_sanitize(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_urlencode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_urldecode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+
+FilterXObject *filterx_simple_function_hex_encode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
+FilterXObject *filterx_simple_function_hex_decode(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
 #endif

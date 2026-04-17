@@ -21,6 +21,7 @@
 #
 #############################################################################
 import base64
+import hashlib
 import json
 import math
 import re
@@ -1172,3 +1173,131 @@ def test_uuid(config, syslog_ng):
     assert file_final.get_stats()["processed"] == 1
     uuid_str = file_final.read_log().strip()
     assert re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", uuid_str)
+
+
+def test_digest(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "md5": md5("foobar"),
+        "sha1": sha1("foobar"),
+        "sha256": sha256("foobar"),
+        "sha512": sha512("foobar"),
+        "digest_default": digest("foobar"),
+        "digest_custom": digest("kortefa", alg="md5"),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "md5": hashlib.md5(b"foobar").hexdigest(),
+            "sha1": hashlib.sha1(b"foobar").hexdigest(),
+            "sha256": hashlib.sha256(b"foobar").hexdigest(),
+            "sha512": hashlib.sha512(b"foobar").hexdigest(),
+            "digest_default": base64.b64encode(hashlib.sha256(b"foobar").digest()).decode(),
+            "digest_custom": base64.b64encode(hashlib.md5(b"kortefa").digest()).decode(),
+        }, separators=(",", ":"),
+    )
+
+
+def test_base64(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "encode_string": base64_encode("foobar"),
+        "encode_bytes": base64_encode(${values.bytes}),
+        "decode": base64_decode("Zm9vYmFy"),
+        "roundtrip": base64_decode(base64_encode("szilvafa")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "encode_string": base64.b64encode(b"foobar").decode(),
+            "encode_bytes": base64.b64encode(b"binary whatever").decode(),
+            "decode": base64.b64encode(b"foobar").decode(),
+            "roundtrip": base64.b64encode(b"szilvafa").decode(),
+        }, separators=(",", ":"),
+    )
+
+
+def test_urlencode(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "encode_plain": urlencode("foobar"),
+        "encode_special": urlencode("kortefa/szilvafa?alma=1&dio=2"),
+        "decode_plain": urldecode("foobar"),
+        "decode_encoded": urldecode("kortefa%2Fszilvafa%3Falma%3D1%26dio%3D2"),
+        "roundtrip": urldecode(urlencode("kortefa/szilvafa?alma=1&dio=2")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "encode_plain": "foobar",
+            "encode_special": "kortefa%2Fszilvafa%3Falma%3D1%26dio%3D2",
+            "decode_plain": "foobar",
+            "decode_encoded": "kortefa/szilvafa?alma=1&dio=2",
+            "roundtrip": "kortefa/szilvafa?alma=1&dio=2",
+        }, separators=(",", ":"),
+    )
+
+
+def test_utf8(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "validate_valid": utf8_validate("körtefa"),
+        "validate_invalid": utf8_validate("\x80\x81\x82"),
+        "sanitize_valid": utf8_sanitize("körtefa"),
+        "sanitize_invalid": utf8_sanitize("\x80\x81\x82"),
+        "sanitize_invalid_idempotent": utf8_sanitize(utf8_sanitize("\x80\x81\x82")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "validate_valid": True,
+            "validate_invalid": False,
+            "sanitize_valid": "körtefa",
+            "sanitize_invalid": "\\x80\\x81\\x82",
+            "sanitize_invalid_idempotent": "\\x80\\x81\\x82",
+        }, separators=(",", ":"), ensure_ascii=False,
+    )
+
+
+def test_hex(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = {
+        "encode_string": hex_encode("foobar"),
+        "encode_bytes": hex_encode(${values.bytes}),
+        "decode": hex_decode("666f6f626172"),
+        "roundtrip": hex_decode(hex_encode("szilvafa")),
+    };
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == json.dumps(
+        {
+            "encode_string": b"foobar".hex(),
+            "encode_bytes": b"binary whatever".hex(),
+            "decode": base64.b64encode(b"foobar").decode(),
+            "roundtrip": base64.b64encode(b"szilvafa").decode(),
+        }, separators=(",", ":"),
+    )

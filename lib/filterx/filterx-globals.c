@@ -49,6 +49,8 @@
 #include "filterx/func-failure-info.h"
 #include "filterx/func-dict-to-pairs.h"
 #include "filterx/func-uuid.h"
+#include "filterx/func-digest.h"
+#include "filterx/func-encode.h"
 #include "filterx/expr-regexp-search.h"
 #include "filterx/expr-regexp-subst.h"
 #include "filterx/expr-regexp.h"
@@ -114,6 +116,18 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("str_rstrip", filterx_simple_function_str_rstrip));
   g_assert(filterx_builtin_simple_function_register("str_replace", filterx_simple_function_str_replace));
   g_assert(filterx_builtin_simple_function_register("uuid", filterx_simple_function_uuid));
+  g_assert(filterx_builtin_simple_function_register("md5", filterx_simple_function_md5));
+  g_assert(filterx_builtin_simple_function_register("sha1", filterx_simple_function_sha1));
+  g_assert(filterx_builtin_simple_function_register("sha256", filterx_simple_function_sha256));
+  g_assert(filterx_builtin_simple_function_register("sha512", filterx_simple_function_sha512));
+  g_assert(filterx_builtin_simple_function_register("base64_encode", filterx_simple_function_base64_encode));
+  g_assert(filterx_builtin_simple_function_register("base64_decode", filterx_simple_function_base64_decode));
+  g_assert(filterx_builtin_simple_function_register("urlencode", filterx_simple_function_urlencode));
+  g_assert(filterx_builtin_simple_function_register("urldecode", filterx_simple_function_urldecode));
+  g_assert(filterx_builtin_simple_function_register("utf8_validate", filterx_simple_function_utf8_validate));
+  g_assert(filterx_builtin_simple_function_register("utf8_sanitize", filterx_simple_function_utf8_sanitize));
+  g_assert(filterx_builtin_simple_function_register("hex_encode", filterx_simple_function_hex_encode));
+  g_assert(filterx_builtin_simple_function_register("hex_decode", filterx_simple_function_hex_decode));
   g_assert(filterx_builtin_simple_function_register("has_sdata",
                                                     filterx_simple_function_has_sdata));
   g_assert(filterx_builtin_simple_function_register("get_sdata",
@@ -174,6 +188,7 @@ _ctors_init(void)
   g_assert(filterx_builtin_function_ctor_register("guess_timezone", filterx_function_guess_timezone_new));
   g_assert(filterx_builtin_function_ctor_register("set_timezone", filterx_function_set_timezone_new));
   g_assert(filterx_builtin_function_ctor_register("get_timezone_source", filterx_function_get_timezone_source_new));
+  g_assert(filterx_builtin_function_ctor_register("digest", filterx_function_digest_new));
 }
 
 static void
