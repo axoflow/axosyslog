@@ -578,7 +578,6 @@ _extract_raw_xml(FilterXFunctionParseXml *self, FilterXObject *xml_obj, gsize *l
       filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super,
                                           "Input must be a string, got: %s",
                                           filterx_object_get_type_name(xml_obj));
-      filterx_object_unref(xml_obj);
       return NULL;
     }
 
