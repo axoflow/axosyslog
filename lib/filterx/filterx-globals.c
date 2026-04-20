@@ -30,6 +30,7 @@
 #include "filterx/object-list.h"
 #include "filterx/object-datetime.h"
 #include "filterx/object-subnet.h"
+#include "filterx/object-ip.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-sequence.h"
 #include "filterx/filterx-mapping.h"
@@ -99,6 +100,7 @@ _simple_init(void)
   g_assert(filterx_builtin_simple_function_register("parse_json", filterx_parse_json_call));
   g_assert(filterx_builtin_simple_function_register("datetime", filterx_typecast_datetime));
   g_assert(filterx_builtin_simple_function_register("subnet", filterx_typecast_subnet));
+  g_assert(filterx_builtin_simple_function_register("ip", filterx_typecast_ip));
   g_assert(filterx_builtin_simple_function_register("isodate", filterx_typecast_datetime_isodate));
   g_assert(filterx_builtin_simple_function_register("string", filterx_typecast_string));
   g_assert(filterx_builtin_simple_function_register("repr", filterx_simple_function_repr));
@@ -277,6 +279,7 @@ filterx_global_init(void)
 
   filterx_type_init(&FILTERX_TYPE_NAME(datetime));
   filterx_type_init(&FILTERX_TYPE_NAME(subnet));
+  filterx_type_init(&FILTERX_TYPE_NAME(ip));
   filterx_type_init(&FILTERX_TYPE_NAME(message_value));
 
   filterx_type_init(&FILTERX_TYPE_NAME(metrics_labels));

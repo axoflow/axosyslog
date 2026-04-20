@@ -1436,3 +1436,41 @@ def test_subnet_host_bits_are_masked(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == "subnet('192.168.0.0/255.255.255.0')"
+
+
+def test_ip_ipv4_repr(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = repr(ip("192.168.1.1"));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "ip('192.168.1.1')"
+
+
+def test_ip_ipv6_repr(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = repr(ip("2001:db8::1"));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "ip('2001:db8::1')"
+
+
+def test_ip_typecast_from_variable(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    addr = "10.1.2.3";
+    net = subnet("10.0.0.0/8");
+    $MSG = string(ip(addr) in net);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "true"
