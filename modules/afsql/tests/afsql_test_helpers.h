@@ -60,6 +60,7 @@ _free_driver(AFSqlDestDriver *self)
   g_free(self->database);
   g_free(self->quote_as_string);
   g_free(self->null_value);
+  log_template_unref(self->table);
   g_free(self);
 }
 

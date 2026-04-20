@@ -776,13 +776,14 @@ afsql_dd_disconnect(LogThreadedDestDriver *s)
   self->transaction_active = FALSE;
 }
 
-static GString *
+GString *
 afsql_dd_ensure_accessible_database_table(AFSqlDestDriver *self, LogMessage *msg)
 {
   GString *table = g_string_sized_new(32);
 
   LogTemplateEvalOptions options = {&self->template_options, LTZ_LOCAL, 0, NULL, LM_VT_STRING};
   log_template_format(self->table, msg, &options, table);
+  _sanitize_sql_identifier(table->str);
 
   if (!afsql_dd_ensure_table_is_syslogng_conform(self, table))
     {

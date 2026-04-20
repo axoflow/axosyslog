@@ -407,23 +407,24 @@ ParameterizedTest(ValueInjectionParam *p, sql_injection, value_is_safe)
 }
 
 /*
- * Table name injection: documents that a table name derived from a log
- * message template is inserted bare into the SQL command.  This is the
- * injection surface identified in the code review.
+ * Table name injection: verifies that hostile characters in a table name
+ * derived from a log-message template are replaced with underscores before
+ * the name is used in any SQL statement.
  */
 typedef struct
 {
   gchar description[64];
   gchar table_payload[80];
+  gchar sanitized_form[80];
 } TableInjectionParam;
 
 ParameterizedTestParameters(sql_injection, table_name_is_not_escaped)
 {
   static TableInjectionParam params[] =
   {
-    { "semicolon + DROP TABLE",         "logs; DROP TABLE users; --"       },
-    { "single quote breaks out",        "logs' WHERE 1=1 --"               },
-    { "UNION SELECT via table name",    "t UNION SELECT * FROM secrets --" },
+    { "semicolon + DROP TABLE",      "logs; DROP TABLE users; --",       "logs__DROP_TABLE_users____"        },
+    { "single quote breaks out",     "logs' WHERE 1=1 --",               "logs__WHERE_1_1___"                },
+    { "UNION SELECT via table name", "t UNION SELECT * FROM secrets --", "t_UNION_SELECT___FROM_secrets___"  },
   };
   return cr_make_param_array(TableInjectionParam, params,
                              sizeof(params) / sizeof(params[0]));
@@ -437,17 +438,59 @@ ParameterizedTest(TableInjectionParam *p, sql_injection, table_name_is_not_escap
   _set_fields(driver, cols, tmpls, 1);
 
   LogMessage *msg = log_msg_new_empty();
-  GString *table  = _make_table(p->table_payload);
+  GString *table  = _make_table(p->sanitized_form);
   GString *cmd    = afsql_dd_build_insert_command(driver, msg, table);
 
-  /*
-   * Documents the current (unsafe) behaviour: the payload appears verbatim.
-   * Once table-name escaping is implemented these assertions should be
-   * inverted.
-   */
-  cr_assert(g_strstr_len(cmd->str, -1, p->table_payload) != NULL,
-            "[%s] Expected bare payload in command (documents unescaped table name), got: %s",
+  /* Raw hostile payload must NOT appear verbatim in the SQL command. */
+  cr_assert(g_strstr_len(cmd->str, -1, p->table_payload) == NULL,
+            "[%s] Hostile payload found verbatim in command: %s",
             p->description, cmd->str);
+
+  /* Sanitized (underscore-replaced) form MUST appear. */
+  cr_assert(g_strstr_len(cmd->str, -1, p->sanitized_form) != NULL,
+            "[%s] Expected sanitized form '%s' in command, got: %s",
+            p->description, p->sanitized_form, cmd->str);
+
+  g_string_free(cmd, TRUE);
+  g_string_free(table, TRUE);
+  log_msg_unref(msg);
+}
+
+/*
+ * When AFSQL_DDF_DONT_CREATE_TABLES is set, afsql_dd_ensure_table_is_syslogng_conform
+ * returns TRUE immediately, skipping its own _sanitize_sql_identifier call.  The only
+ * sanitization is then the line added by the GHSA-qwf9-6222-m24m fix inside
+ * afsql_dd_ensure_accessible_database_table, immediately after log_template_format.
+ */
+Test(sql_injection, dont_create_tables_flag_sanitizes_table_name)
+{
+  driver = _create_driver();
+  driver->super.flags |= AFSQL_DDF_DONT_CREATE_TABLES;
+
+  driver->table = log_template_new(configuration, NULL);
+  log_template_compile_literal_string(driver->table, "logs;evil'table (name)");
+
+  const gchar *cols[]  = { "col" };
+  const gchar *tmpls[] = { "v" };
+  _set_fields(driver, cols, tmpls, 1);
+
+  LogMessage *msg = log_msg_new_empty();
+
+  GString *table = afsql_dd_ensure_accessible_database_table(driver, msg);
+  cr_assert_not_null(table, "ensure_accessible_database_table returned NULL unexpectedly");
+
+  cr_assert(g_strstr_len(table->str, -1, ";") == NULL,
+            "Semicolon survived sanitization: %s", table->str);
+  cr_assert(g_strstr_len(table->str, -1, "'") == NULL,
+            "Single quote survived sanitization: %s", table->str);
+  cr_assert(g_strstr_len(table->str, -1, "(") == NULL,
+            "Opening paren survived sanitization: %s", table->str);
+  cr_assert(g_strstr_len(table->str, -1, " ") == NULL,
+            "Space survived sanitization: %s", table->str);
+
+  GString *cmd = afsql_dd_build_insert_command(driver, msg, table);
+  cr_assert(g_strstr_len(cmd->str, -1, "logs_evil_table__name_") != NULL,
+            "Sanitized table name not found in INSERT command: %s", cmd->str);
 
   g_string_free(cmd, TRUE);
   g_string_free(table, TRUE);
