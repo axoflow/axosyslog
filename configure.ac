@@ -1400,6 +1400,8 @@ CPPFLAGS="$CPPFLAGS $LIBMONGO_CFLAGS"
 
 AC_CHECK_DECLS([mongoc_uri_set_option_as_int32], [], [], [[#include <mongoc/mongoc.h>]])
 AC_CHECK_DECLS([MONGOC_URI_SERVERSELECTIONTIMEOUTMS], [], [], [[#include <mongoc/mongoc.h>]])
+AC_CHECK_DECLS([bson_append_array_unsafe_begin], [], [], [[#include <mongoc/mongoc.h>
+#include <bson/bson.h>]])
 
 CPPFLAGS="$CPPFLAGS_SAVE"
 fi

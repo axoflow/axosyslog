@@ -30,6 +30,15 @@
 
 #include <mongoc/mongoc.h>
 
+/* Compatibility macros for BSON array API
+ * Note: BSON_APPEND_ARRAY_BEGIN already exists and uses strlen(), but we pass -1 for auto-length.
+ */
+#if SYSLOG_NG_HAVE_DECL_BSON_APPEND_ARRAY_UNSAFE_BEGIN
+# define BSON_APPEND_ARRAY_BEGIN_AUTOLEN(b, k, c) bson_append_array_unsafe_begin(b, k, -1, c)
+#else
+# define BSON_APPEND_ARRAY_BEGIN_AUTOLEN(b, k, c) bson_append_array_begin(b, k, -1, c)
+#endif
+
 typedef struct _MongoDBDestDriver
 {
   LogThreadedDestDriver super;

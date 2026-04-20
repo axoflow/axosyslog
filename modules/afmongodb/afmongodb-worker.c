@@ -365,7 +365,7 @@ _vp_process_value(const gchar *name, const gchar *prefix, LogMessageValueType ty
       ListScanner scanner;
       gint i = 0;
 
-      bson_append_array_begin(o, name, -1, &array);
+      BSON_APPEND_ARRAY_BEGIN_AUTOLEN(o, name, &array);
 
       list_scanner_init(&scanner);
       list_scanner_input_string(&scanner, value, value_len);
