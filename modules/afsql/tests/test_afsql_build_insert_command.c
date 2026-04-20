@@ -496,3 +496,49 @@ Test(sql_injection, dont_create_tables_flag_sanitizes_table_name)
   g_string_free(table, TRUE);
   log_msg_unref(msg);
 }
+
+/*
+ * afsql_dd_build_insert_command() must return NULL when passed a table name
+ * that contains characters outside [a-zA-Z0-9_.], catching any future
+ * regression where an unsanitized name bypasses the primary taint-source fix.
+ */
+typedef struct
+{
+  gchar description[64];
+  gchar raw_table[64];
+} UnsanitizedTableParam;
+
+ParameterizedTestParameters(sql_injection, unsanitized_table_returns_null)
+{
+  static UnsanitizedTableParam params[] =
+  {
+    { "semicolon injection",   "logs; DROP TABLE users; --" },
+    { "single quote breakout", "logs' WHERE 1=1 --"         },
+    { "space in name",         "bad table"                  },
+    { "parenthesis payload",   "bad(table)"                 },
+  };
+  return cr_make_param_array(UnsanitizedTableParam, params,
+                             sizeof(params) / sizeof(params[0]));
+}
+
+ParameterizedTest(UnsanitizedTableParam *p, sql_injection, unsanitized_table_returns_null)
+{
+  driver = _create_driver();
+  const gchar *cols[]  = { "col" };
+  const gchar *tmpls[] = { "v" };
+  _set_fields(driver, cols, tmpls, 1);
+
+  LogMessage *msg   = log_msg_new_empty();
+  GString    *table = _make_table(p->raw_table);
+
+  GString *cmd = afsql_dd_build_insert_command(driver, msg, table);
+
+  cr_assert_null(cmd,
+                 "[%s] Expected NULL for unsanitized table '%s', got: %s",
+                 p->description, p->raw_table, cmd ? cmd->str : "(null)");
+
+  if (cmd)
+    g_string_free(cmd, TRUE);
+  g_string_free(table, TRUE);
+  log_msg_unref(msg);
+}

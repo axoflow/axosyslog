@@ -907,6 +907,13 @@ afsql_dd_append_value_to_be_inserted(AFSqlDestDriver *self,
 GString *
 afsql_dd_build_insert_command(AFSqlDestDriver *self, LogMessage *msg, GString *table)
 {
+  if (!_is_sql_identifier_sanitized(table->str))
+    {
+      msg_error("Table name contains invalid characters, dropping message",
+                evt_tag_str("table", table->str));
+      return NULL;
+    }
+
   GString *insert_command = g_string_sized_new(256);
   GString *value = g_string_sized_new(512);
   gint i, j;
