@@ -485,8 +485,8 @@ Test(expr_comparison, test_string_to_numeric_string_based_comparison)
 Test(expr_comparison, test_string_to_null_string_based_comparison)
 {
   _assert_comparison(filterx_string_new("3", 1), filterx_null_new(), FCMPX_EQ | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("3", 1), filterx_null_new(), FCMPX_LT | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("3", 1), filterx_null_new(), FCMPX_GT | FCMPX_STRING_BASED, TRUE);
+  _assert_comparison(filterx_string_new("3", 1), filterx_null_new(), FCMPX_LT | FCMPX_STRING_BASED, TRUE);
+  _assert_comparison(filterx_string_new("3", 1), filterx_null_new(), FCMPX_GT | FCMPX_STRING_BASED, FALSE);
   _assert_comparison(filterx_string_new("3", 1), filterx_null_new(), FCMPX_NE | FCMPX_STRING_BASED, TRUE);
 }
 
@@ -518,22 +518,22 @@ Test(expr_comparison, test_string_to_boolean_string_based_comparison)
 Test(expr_comparison, test_string_to_datetime_string_based_comparison)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
-  _assert_comparison(filterx_string_new("1701350398.123000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.123000", -1), filterx_datetime_new(&ut),
                      FCMPX_EQ | FCMPX_STRING_BASED, TRUE);
-  _assert_comparison(filterx_string_new("1701350398.123000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.123000", -1), filterx_datetime_new(&ut),
                      FCMPX_LT | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("1701350398.123000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.123000", -1), filterx_datetime_new(&ut),
                      FCMPX_GT | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("1701350398.123000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.123000", -1), filterx_datetime_new(&ut),
                      FCMPX_NE | FCMPX_STRING_BASED, FALSE);
 
-  _assert_comparison(filterx_string_new("1701350398.124000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.124000", -1), filterx_datetime_new(&ut),
                      FCMPX_EQ | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("1701350398.124000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.124000", -1), filterx_datetime_new(&ut),
                      FCMPX_LT | FCMPX_STRING_BASED, FALSE);
-  _assert_comparison(filterx_string_new("1701350398.124000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.124000", -1), filterx_datetime_new(&ut),
                      FCMPX_GT | FCMPX_STRING_BASED, TRUE);
-  _assert_comparison(filterx_string_new("1701350398.124000+01:00", 23), filterx_datetime_new(&ut),
+  _assert_comparison(filterx_string_new("1701350398.124000", -1), filterx_datetime_new(&ut),
                      FCMPX_NE | FCMPX_STRING_BASED, TRUE);
 }
 

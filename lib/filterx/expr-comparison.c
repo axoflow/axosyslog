@@ -87,8 +87,7 @@ _convert_filterx_object_to_string(FilterXObject *obj, gsize *len)
     }
 
   GString *buffer = scratch_buffers_alloc();
-  LogMessageValueType lmvt;
-  if (!filterx_object_marshal(obj, buffer, &lmvt))
+  if (!filterx_object_str(obj, buffer))
     return NULL;
 
   *len = buffer->len;
