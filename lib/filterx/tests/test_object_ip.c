@@ -25,6 +25,7 @@
 #include "libtest/filterx-lib.h"
 
 #include "filterx/object-ip.h"
+#include "filterx/object-subnet.h"
 #include "filterx/object-string.h"
 #include "filterx/object-primitive.h"
 #include "filterx/filterx-object.h"
@@ -140,6 +141,102 @@ Test(filterx_object_ip, ipv4_format_json)
   cr_assert_not_null(obj);
   assert_object_json_equals(obj, "\"172.16.0.1\"");
   filterx_object_unref(obj);
+}
+
+/* Membership via subnet */
+
+Test(filterx_object_ip, ipv4_ip_member_of_subnet)
+{
+  FilterXObject *subnet = filterx_subnet_new_from_cidr("192.168.0.0/24");
+  FilterXObject *ip = filterx_ip_new_from_string("192.168.0.100");
+
+  FilterXObject *result = filterx_object_is_member_of(subnet, ip);
+  cr_assert_not_null(result);
+
+  gboolean b;
+  cr_assert(filterx_boolean_unwrap(result, &b));
+  cr_assert(b);
+
+  filterx_object_unref(result);
+  filterx_object_unref(ip);
+  filterx_object_unref(subnet);
+}
+
+Test(filterx_object_ip, ipv4_ip_not_member_of_subnet)
+{
+  FilterXObject *subnet = filterx_subnet_new_from_cidr("192.168.0.0/24");
+  FilterXObject *ip = filterx_ip_new_from_string("192.168.1.1");
+
+  FilterXObject *result = filterx_object_is_member_of(subnet, ip);
+  cr_assert_not_null(result);
+
+  gboolean b;
+  cr_assert(filterx_boolean_unwrap(result, &b));
+  cr_assert_not(b);
+
+  filterx_object_unref(result);
+  filterx_object_unref(ip);
+  filterx_object_unref(subnet);
+}
+
+Test(filterx_object_ip, ipv6_ip_member_of_subnet)
+{
+  FilterXObject *subnet = filterx_subnet_new_from_cidr("2001:db8::/32");
+  FilterXObject *ip = filterx_ip_new_from_string("2001:db8::1");
+
+  FilterXObject *result = filterx_object_is_member_of(subnet, ip);
+  cr_assert_not_null(result);
+
+  gboolean b;
+  cr_assert(filterx_boolean_unwrap(result, &b));
+  cr_assert(b);
+
+  filterx_object_unref(result);
+  filterx_object_unref(ip);
+  filterx_object_unref(subnet);
+}
+
+Test(filterx_object_ip, ipv6_ip_not_member_of_subnet)
+{
+  FilterXObject *subnet = filterx_subnet_new_from_cidr("2001:db8::/32");
+  FilterXObject *ip = filterx_ip_new_from_string("2001:db9::1");
+
+  FilterXObject *result = filterx_object_is_member_of(subnet, ip);
+  cr_assert_not_null(result);
+
+  gboolean b;
+  cr_assert(filterx_boolean_unwrap(result, &b));
+  cr_assert_not(b);
+
+  filterx_object_unref(result);
+  filterx_object_unref(ip);
+  filterx_object_unref(subnet);
+}
+
+Test(filterx_object_ip, ipv4_subnet_rejects_ipv6_ip)
+{
+  FilterXObject *subnet = filterx_subnet_new_from_cidr("192.168.0.0/24");
+  FilterXObject *ip = filterx_ip_new_from_string("2001:db8::1");
+
+  FilterXObject *result = filterx_object_is_member_of(subnet, ip);
+  cr_assert_not_null(result);
+  cr_assert(filterx_object_falsy(result));
+
+  filterx_object_unref(ip);
+  filterx_object_unref(subnet);
+}
+
+Test(filterx_object_ip, ipv6_subnet_rejects_ipv4_ip)
+{
+  FilterXObject *subnet = filterx_subnet_new_from_cidr("2001:db8::/32");
+  FilterXObject *ip = filterx_ip_new_from_string("192.168.0.1");
+
+  FilterXObject *result = filterx_object_is_member_of(subnet, ip);
+  cr_assert_not_null(result);
+  cr_assert(filterx_object_falsy(result));
+
+  filterx_object_unref(ip);
+  filterx_object_unref(subnet);
 }
 
 /* Typecast */

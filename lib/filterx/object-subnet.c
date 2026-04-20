@@ -21,6 +21,7 @@
  *
  */
 #include "filterx/object-subnet.h"
+#include "filterx/object-ip.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-globals.h"
 #include "filterx/object-extractor.h"
@@ -306,17 +307,41 @@ _subnet_is_string_member_of(FilterXSubnet *self, FilterXObject *member)
 }
 
 static FilterXObject *
+_subnet_is_ip_member_of(FilterXSubnet *self, FilterXObject *member)
+{
+  switch (self->family)
+    {
+    case AF_INET:
+      {
+        const struct in_addr *addr = filterx_ip_get_v4(member);
+        if (addr)
+          return filterx_boolean_new((addr->s_addr & self->ipv4.netmask.s_addr) == self->ipv4.address.s_addr);
+        break;
+      }
+    case AF_INET6:
+      {
+        const struct in6_addr *addr = filterx_ip_get_v6(member);
+        if (addr)
+          {
+            struct in6_addr masked = *addr;
+            _apply_ipv6_mask(self, &masked);
+            return filterx_boolean_new(memcmp(masked.s6_addr, self->ipv6.address.s6_addr, sizeof(masked.s6_addr)) == 0);
+          }
+        break;
+      }
+    default:
+      g_assert_not_reached();
+    }
+  return filterx_boolean_new(FALSE);
+}
+
+static FilterXObject *
 _subnet_is_member_of(FilterXObject *s, FilterXObject *member)
 {
   FilterXSubnet *self = (FilterXSubnet *) s;
-  FilterXObject *result;
 
-  const gchar *str;
-  if (!filterx_object_extract_string_as_cstr(member, &str))
-    {
-      filterx_eval_push_error("Failed to check subnet() membership, argument is not a string", NULL, member);
-      return NULL;
-    }
+  if (filterx_object_is_type(member, &FILTERX_TYPE_NAME(ip)))
+    return _subnet_is_ip_member_of(self, member);
 
   return _subnet_is_string_member_of(self, member);
 }
