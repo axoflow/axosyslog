@@ -60,7 +60,7 @@ filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object)
 {
   if (!cfg)
     {
-      filterx_object_freeze(object, NULL);
+      filterx_object_freeze(*object, NULL);
       return;
     }
   FilterXConfig *fxc = filterx_config_get(cfg);
