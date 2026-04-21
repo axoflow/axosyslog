@@ -1,3 +1,5 @@
+include lib/filterx/jit/Makefile.am
+
 filterxincludedir			= ${pkgincludedir}/filterx
 
 filterxinclude_HEADERS = 			\
@@ -53,7 +55,6 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-dpath.h \
 	lib/filterx/filterx-sequence.h \
 	lib/filterx/filterx-mapping.h \
-	lib/filterx/filterx-jit.h \
 	lib/filterx/json-repr.h \
 	lib/filterx/func-flags.h \
 	lib/filterx/func-flatten.h \
@@ -90,6 +91,7 @@ filterxinclude_HEADERS = 			\
 
 
 filterx_sources = 				\
+	$(filterxjit_sources) \
 	lib/filterx/expr-arithmetic-operators.c \
 	lib/filterx/expr-assign.c \
 	lib/filterx/expr-boolalg.c \
@@ -142,7 +144,6 @@ filterx_sources = 				\
 	lib/filterx/filterx-dpath.c \
 	lib/filterx/filterx-sequence.c \
 	lib/filterx/filterx-mapping.c \
-	lib/filterx/filterx-jit.c \
 	lib/filterx/json-repr.c \
 	lib/filterx/func-flatten.c \
 	lib/filterx/func-cache-json-file.c \

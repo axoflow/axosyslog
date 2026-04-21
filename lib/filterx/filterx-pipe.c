@@ -23,7 +23,7 @@
 #include "filterx/filterx-pipe.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-config.h"
-#include "filterx/filterx-jit.h"
+#include "filterx/jit/jit.h"
 #include "stats/stats-registry.h"
 
 typedef struct _LogFilterXPipe

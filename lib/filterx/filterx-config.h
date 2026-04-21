@@ -24,7 +24,7 @@
 
 #include "module-config.h"
 #include "filterx/filterx-object.h"
-#include "filterx/filterx-jit.h"
+#include "filterx/jit/jit.h"
 #include "filterx/object-string.h"
 
 typedef struct _FilterXConfig

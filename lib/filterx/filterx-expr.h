@@ -24,7 +24,7 @@
 #ifndef FILTERX_EXPR_H_INCLUDED
 #define FILTERX_EXPR_H_INCLUDED
 
-#include "filterx-jit.h"
+#include "filterx/jit/jit.h"
 #include "filterx-object.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
