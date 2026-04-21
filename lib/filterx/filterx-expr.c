@@ -47,6 +47,20 @@ filterx_expr_set_location_with_text(FilterXExpr *self, CFG_LTYPE *lloc, const gc
     }
 }
 
+static inline void
+_remove_carriage_return(GString *str)
+{
+  for (gsize i = 0; i < str->len; )
+    {
+      if (str->str[i] == '\r')
+        {
+          g_string_erase(str, i, 1);
+          continue;
+        }
+      i++;
+    }
+}
+
 void
 filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
 {
@@ -57,6 +71,7 @@ filterx_expr_set_location(FilterXExpr *self, CfgLexer *lexer, CFG_LTYPE *lloc)
   g_free(self->expr_text);
   GString *res = g_string_sized_new(0);
   cfg_source_extract_token_text(lexer, lloc, res);
+  _remove_carriage_return(res);
   self->expr_text = g_string_free(res, FALSE);
 }
 
@@ -205,7 +220,7 @@ filterx_expr_init(FilterXExpr *self, GlobalConfig *cfg)
 {
   if (!self || self->inited)
     return TRUE;
-    
+
   /* init children first */
   if (!filterx_expr_walk_children(self, _init_child_exprs, cfg))
     goto failure;
