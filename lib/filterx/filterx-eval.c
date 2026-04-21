@@ -335,11 +335,19 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
 }
 
 FilterXEvalResult
-filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
+filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, FilterXJITExecFunc jit_exec)
 {
   FilterXEvalResult result = FXE_FAILURE;
 
-  FilterXObject *res = filterx_expr_eval(expr);
+  FilterXObject *res = NULL;
+  if (jit_exec)
+    {
+      FilterXJITExecState jit_exec_state = {0};
+      res = jit_exec(&jit_exec_state);
+    }
+  else
+    res = filterx_expr_eval(expr);
+
   if (!res)
     {
       g_assert(context->error_count);

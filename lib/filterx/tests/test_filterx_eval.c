@@ -85,7 +85,7 @@ Test(filterx_eval, test_filterx_eval_full_error_stack)
   {
     FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE, TRUE);
 
-    cr_assert_eq(filterx_eval_exec(&eval_context, expr), FXE_FAILURE);
+    cr_assert_eq(filterx_eval_exec(&eval_context, expr, NULL), FXE_FAILURE);
 
     for (gint i = 0; i < FILTERX_CONTEXT_ERROR_STACK_SIZE; i++)
       _assert_error_in_logs(i);
@@ -107,7 +107,7 @@ Test(filterx_eval, test_filterx_eval_error_stack_overflow)
   {
     FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE + 1, TRUE);
 
-    cr_assert_eq(filterx_eval_exec(&eval_context, expr), FXE_FAILURE);
+    cr_assert_eq(filterx_eval_exec(&eval_context, expr, NULL), FXE_FAILURE);
 
     assert_grabbed_log_contains("FilterX: Reached maximum error stack size.");
 
@@ -132,7 +132,7 @@ Test(filterx_eval, test_filterx_eval_error_stack_location_backfill)
     FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE, FALSE);
 
     filterx_test_expr_set_location_with_text(expr, "syslog-ng.conf", 0, 0, 0, 10, "dummy-error");
-    cr_assert_eq(filterx_eval_exec(&eval_context, expr), FXE_FAILURE);
+    cr_assert_eq(filterx_eval_exec(&eval_context, expr, NULL), FXE_FAILURE);
 
     assert_grabbed_log_contains("FILTERX ERROR; err_idx='[1/8]', expr='syslog-ng.conf:0:0|\t"
                                 "dummy-error', error='Dummy error'");
