@@ -24,6 +24,7 @@
 
 #include "module-config.h"
 #include "filterx/filterx-object.h"
+#include "filterx/filterx-jit.h"
 #include "filterx/object-string.h"
 
 typedef struct _FilterXConfig
@@ -32,6 +33,7 @@ typedef struct _FilterXConfig
   GPtrArray *frozen_objects;
   GHashTable *frozen_deduplicated_objects;
   GPtrArray *weak_refs;
+  FilterXJIT *jit;
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);

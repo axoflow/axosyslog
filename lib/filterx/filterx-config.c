@@ -20,7 +20,10 @@
  *
  */
 #include "filterx-config.h"
+#include "syslog-ng.h"
+#include "messages.h"
 #include "cfg.h"
+#include "apphook.h"
 
 #define MODULE_CONFIG_KEY "filterx"
 
@@ -29,10 +32,52 @@ filterx_config_free(ModuleConfig *s)
 {
   FilterXConfig *self = (FilterXConfig *) s;
 
+  filterx_jit_free(self->jit);
   g_ptr_array_unref(self->weak_refs);
   g_ptr_array_unref(self->frozen_objects);
   g_hash_table_unref(self->frozen_deduplicated_objects);
   module_config_free_method(s);
+}
+
+static void
+_finalize_jit(gint type, gpointer user_data)
+{
+  FilterXJIT *jit = user_data;
+
+  GError *error = NULL;
+  if (filterx_jit_finalize(jit, &error))
+    return;
+
+  msg_warning("FilterX JIT module finalization failed, falling back to interpreted evaluation",
+              evt_tag_str("error", error ? error->message : "unknown"));
+  g_clear_error(&error);
+
+#if SYSLOG_NG_ENABLE_DEBUG
+  g_assert_not_reached();
+#endif
+}
+
+static inline FilterXJIT *
+_create_jit(void)
+{
+#if SYSLOG_NG_ENABLE_JIT
+  /* TODO: filterx-jit(yes/no) global option */
+  GError *error = NULL;
+  FilterXJIT *jit = filterx_jit_new(FILTERX_JIT_MODULE_NAME, &error);
+
+  if (!jit)
+    {
+      msg_error("Error creating FilterX JIT compiler", evt_tag_str("error", error ? error->message : "unknown"));
+      g_clear_error(&error);
+      return NULL;
+    }
+
+  register_application_hook(AH_CONFIG_POST_INIT, _finalize_jit, jit, AHM_RUN_ONCE);
+
+  return jit;
+#else
+  return NULL;
+#endif
 }
 
 FilterXConfig *
@@ -45,6 +90,7 @@ filterx_config_new(GlobalConfig *cfg)
   self->frozen_deduplicated_objects = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
                                                             (GDestroyNotify)_filterx_object_unfreeze_and_free);
   self->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
+  self->jit = _create_jit();
   return self;
 }
 
