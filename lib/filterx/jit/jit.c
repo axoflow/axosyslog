@@ -20,7 +20,7 @@
  *
  */
 
-#include "filterx-jit.h"
+#include "filterx/jit/jit.h"
 
 #if SYSLOG_NG_ENABLE_JIT
 

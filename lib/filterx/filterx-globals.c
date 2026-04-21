@@ -60,7 +60,7 @@
 #include "filterx/expr-unset.h"
 #include "filterx/expr-move.h"
 #include "filterx/filterx-eval.h"
-#include "filterx/filterx-jit.h"
+#include "filterx/jit/jit.h"
 #include "filterx/func-keys.h"
 #include "filterx/json-repr.h"
 #include "apphook.h"
