@@ -72,6 +72,7 @@ struct _FilterXType
   FilterXObject *(*is_member_of)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
+  void (*dedup)(FilterXObject **pself, FilterXObjectFreezer *freezer);
   void (*freeze)(FilterXObject **pself, FilterXObjectFreezer *freezer);
   void (*free_fn)(FilterXObject *self);
 };
@@ -254,6 +255,7 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
+void filterx_object_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer);
 void filterx_object_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer);
 void filterx_object_freeze_finish(FilterXObject *self);
 void filterx_object_hibernate(FilterXObject *self);
@@ -652,7 +654,6 @@ filterx_object_freezer_add(FilterXObjectFreezer *self, gchar *key, FilterXObject
 static inline gboolean
 filterx_object_freezer_dedup(FilterXObjectFreezer *self, FilterXObject **pobject, gchar *key)
 {
-  g_assert(!filterx_object_is_preserved(*pobject));
   FilterXObject *dedup_object = filterx_object_freezer_get(self, key);
   if (dedup_object)
     {

@@ -264,6 +264,23 @@ _filterx_list_clone(FilterXObject *s)
 }
 
 static gboolean
+_dedup_list_item(gsize index, FilterXObject **value, gpointer user_data)
+{
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
+
+  filterx_object_dedup(value, freezer);
+  return TRUE;
+}
+
+static void
+_filterx_list_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
+{
+  FilterXListObject *self = (FilterXListObject *) *pself;
+
+  g_assert(filterx_list_foreach(self, _dedup_list_item, freezer));
+}
+
+static gboolean
 _freeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
 {
   FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
@@ -398,4 +415,5 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .iter = _filterx_list_iter,
                     .len = _filterx_list_len,
                     .freeze = _filterx_list_freeze,
+                    .dedup = _filterx_list_dedup,
                    );
