@@ -780,27 +780,22 @@ _freeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data
 {
   FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
 
-  filterx_object_freeze(key, freezer);
-  filterx_object_freeze(value, freezer);
+  filterx_object_freeze(*key, freezer);
+  filterx_object_freeze(*value, freezer);
   return TRUE;
 }
 
 static void
-_filterx_dict_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
+_filterx_dict_freeze(FilterXObject *s, FilterXObjectFreezer *freezer)
 {
-  FilterXDictObject *self = (FilterXDictObject *) *pself;
+  FilterXDictObject *self = (FilterXDictObject *) s;
 
-  filterx_object_freezer_keep(freezer, *pself);
+  filterx_object_freezer_keep(freezer, s);
 
   if (!self->table)
     return;
 
   g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
-
-  /* Mutable objects themselves should never be deduplicated,
-   * only immutable values INSIDE those recursive mutable objects.
-   */
-  g_assert(*pself == &self->super.super);
 }
 
 FilterXDictAnchor

@@ -285,23 +285,18 @@ _freeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
 {
   FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
 
-  filterx_object_freeze(value, freezer);
+  filterx_object_freeze(*value, freezer);
 
   return TRUE;
 }
 
 static void
-_filterx_list_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
+_filterx_list_freeze(FilterXObject *s, FilterXObjectFreezer *freezer)
 {
-  FilterXListObject *self = (FilterXListObject *) *pself;
+  FilterXListObject *self = (FilterXListObject *) s;
 
-  filterx_object_freezer_keep(freezer, *pself);
+  filterx_object_freezer_keep(freezer, s);
   g_assert(filterx_list_foreach(self, _freeze_list_item, freezer));
-
-  /* Mutable objects themselves should never be deduplicated,
-   * only immutable values INSIDE those recursive mutable objects.
-   */
-  g_assert(*pself == &self->super.super);
 }
 
 static void

@@ -73,7 +73,7 @@ struct _FilterXType
 
   /* lifecycle management (caching, deduplication) */
   void (*dedup)(FilterXObject **pself, FilterXObjectFreezer *freezer);
-  void (*freeze)(FilterXObject **pself, FilterXObjectFreezer *freezer);
+  void (*freeze)(FilterXObject *self, FilterXObjectFreezer *freezer);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -256,7 +256,7 @@ gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_na
 
 FilterXObject *filterx_object_new(FilterXType *type);
 void filterx_object_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer);
-void filterx_object_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer);
+void filterx_object_freeze(FilterXObject *self, FilterXObjectFreezer *freezer);
 void filterx_object_freeze_finish(FilterXObject *self);
 void filterx_object_hibernate(FilterXObject *self);
 void filterx_object_unhibernate_and_free(FilterXObject *self);
