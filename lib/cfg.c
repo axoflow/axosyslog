@@ -307,6 +307,8 @@ cfg_init(GlobalConfig *cfg)
   if (!cfg_tree_start(&cfg->tree))
     return FALSE;
 
+  app_config_post_init();
+
   /*
    * TLDR: A half-initialized pipeline turned out to be really hard to deinitialize
    * correctly when dedicated source/destination threads are spawned (because we
