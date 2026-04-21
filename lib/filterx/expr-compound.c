@@ -256,6 +256,149 @@ _compound_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return filterx_expr_list_foreach_ref(&self->exprs, _expr_walk_cb, args);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+typedef enum
+{
+  FXC_STEP_CONTINUE = 0,
+  FXC_STEP_STOP_FALSE = 1,
+  FXC_STEP_STOP_TRUE = 2,
+} FXCompoundExprStepAction;
+
+__attribute__((used))
+gint32
+fx_jit_process_expr_result(FilterXObject *current_result, FilterXExpr *child,
+                           FilterXEvalContext *context, FilterXObject **last_result)
+{
+  /* unref() previous child */
+  filterx_object_unref(*last_result);
+
+  if (!current_result)
+    {
+      *last_result = NULL;
+      return FXC_STEP_STOP_FALSE;
+    }
+
+  if (!_process_expr_result(child, current_result))
+    {
+      filterx_object_unref(current_result);
+      *last_result = NULL;
+      return FXC_STEP_STOP_FALSE;
+    }
+
+  if (_is_control_modifier_set(context))
+    {
+      filterx_object_unref(current_result);
+      *last_result = NULL;
+      return FXC_STEP_STOP_TRUE;
+    }
+
+  *last_result = current_result;
+  return FXC_STEP_CONTINUE;
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_process_compound_result(FilterXCompoundExpr *self, gint32 success, FilterXObject *result)
+{
+  return _process_compound_result(self, success, result);
+}
+
+static inline FilterXIRValue
+_emit_eval_get_context(FilterXJIT *jit)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  return fx_jit_emit_extern_call(jit, "filterx_eval_get_context", ffi->ptr_ty, NULL, NULL, 0);
+}
+
+static inline FilterXIRValue
+_emit_process_compound_result(FilterXJIT *jit, FilterXCompoundExpr *self, FilterXIRValue success, FilterXIRValue result)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  return fx_jit_emit_extern_call(jit, "fx_jit_process_compound_result", ffi->ptr_ty,
+                                 (LLVMTypeRef[]){ ffi->ptr_ty, ffi->i32_ty, ffi->ptr_ty },
+                                 (FilterXIRValue[]){ fx_jit_emit_const_ptr(jit, self), success, result }, 3);
+}
+
+static inline FilterXIRValue
+_emit_process_expr_result(FilterXJIT *jit, FilterXIRValue result, FilterXExpr *child, FilterXIRValue eval_ctx, FilterXIRValue result_slot)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  return fx_jit_emit_extern_call(jit, "fx_jit_process_expr_result", ffi->i32_ty,
+                                (LLVMTypeRef[]){ ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty },
+                                (FilterXIRValue[]){ result, fx_jit_emit_const_ptr(jit, child),
+                                                    eval_ctx, result_slot }, 4);
+}
+
+static FilterXIRValue
+_compound_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  FilterXIRValue eval_ctx = _emit_eval_get_context(jit);
+  FilterXIRValue result_slot = LLVMBuildAlloca(ir, ffi->ptr_ty, "result");
+  FilterXIRValue success_slot = LLVMBuildAlloca(ir, ffi->i32_ty, "success");
+
+  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
+  LLVMBuildStore(ir, LLVMConstInt(ffi->i32_ty, TRUE, FALSE), success_slot);
+
+  FilterXIRSequence mark_failure = filterx_jit_ir_create_sequence(jit, "mark_failure", block);
+  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "finish", block);
+
+  gsize n = filterx_expr_list_get_length(&self->exprs);
+  if (n == 0)
+    {
+      LLVMBuildBr(ir, finish);
+      goto exit;
+    }
+
+  FilterXIRValue prev_switch = NULL;
+  for (gsize i = 0; i < n; i++)
+    {
+      FilterXExpr *child = filterx_expr_list_index_fast(&self->exprs, i);
+      FilterXIRSequence stmt_seq = filterx_jit_ir_add_new_sequence_to_block(jit, filterx_expr_get_text(child), block);
+
+      if (prev_switch)
+        LLVMAddCase(prev_switch, LLVMConstInt(ffi->i32_ty, FXC_STEP_CONTINUE, FALSE), stmt_seq);
+      else
+        LLVMBuildBr(ir, stmt_seq);
+
+      filterx_jit_ir_set_insert_point_to_sequence_tail(jit, stmt_seq);
+
+      if (filterx_expr_has_effect(child, FXE_WRITE))
+        fx_jit_emit_eval_context_make_writable(jit, eval_ctx);
+
+      FilterXIRValue result = filterx_expr_compile_or_eval(child, jit);
+      FilterXIRValue action = _emit_process_expr_result(jit, result, child, eval_ctx, result_slot);
+
+      prev_switch = LLVMBuildSwitch(ir, action, mark_failure, 2);
+      LLVMAddCase(prev_switch, LLVMConstInt(ffi->i32_ty, FXC_STEP_STOP_TRUE, FALSE), finish);
+    }
+  LLVMAddCase(prev_switch, LLVMConstInt(ffi->i32_ty, FXC_STEP_CONTINUE, FALSE), finish);
+
+exit:
+  /* mark failure */
+  filterx_jit_ir_add_sequence_to_block(jit, mark_failure, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, mark_failure);
+  LLVMBuildStore(ir, LLVMConstInt(ffi->i32_ty, FALSE, FALSE), success_slot);
+  LLVMBuildBr(ir, finish);
+
+  /* finish */
+  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
+  FilterXIRValue result_val = LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+  FilterXIRValue success_val = LLVMBuildLoad2(ir, ffi->i32_ty, success_slot, "success");
+  return _emit_process_compound_result(jit, self, success_val, result_val);
+}
+
+#endif
+
 FilterXExpr *
 filterx_compound_expr_new(gboolean return_value_of_last_expr)
 {
@@ -266,6 +409,9 @@ filterx_compound_expr_new(gboolean return_value_of_last_expr)
   self->super.init = _init;
   self->super.walk_children = _compound_walk;
   self->super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _compound_compile;
+#endif
   self->return_value_of_last_expr = return_value_of_last_expr;
   filterx_expr_list_init(&self->exprs);
 
