@@ -306,6 +306,7 @@ cfg_init(GlobalConfig *cfg)
   app_config_pre_init();
   if (!cfg_tree_start(&cfg->tree))
     return FALSE;
+  app_config_post_init();
 
   /*
    * TLDR: A half-initialized pipeline turned out to be really hard to deinitialize
