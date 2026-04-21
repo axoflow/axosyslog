@@ -200,7 +200,7 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
 }
 
 static void
-_string_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
+_string_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXString *self = (FilterXString *) *pself;
 
@@ -672,7 +672,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .add = _string_add,
                     .hash = _string_hash,
                     .equal = _string_equal,
-                    .freeze = _string_freeze,
+                    .dedup = _string_dedup,
                     .free_fn = _free,
                    );
 

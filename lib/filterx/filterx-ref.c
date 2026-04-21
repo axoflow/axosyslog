@@ -363,6 +363,20 @@ _filterx_ref_free(FilterXObject *s)
 }
 
 static void
+_filterx_ref_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
+{
+  FilterXRef *self = (FilterXRef *) *pself;
+
+  FilterXObject *orig_value = self->value;
+  filterx_object_dedup(&self->value, freezer);
+
+  /* Mutable objects themselves should never be deduplicated,
+   * only immutable values INSIDE those recursive mutable objects.
+   */
+  g_assert(orig_value == self->value);
+}
+
+static void
 _filterx_ref_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXRef *self = (FilterXRef *) *pself;
@@ -606,6 +620,7 @@ FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .len = _filterx_ref_len,
                     .add = _filterx_ref_add_method,
                     .add_inplace = _filterx_ref_add_inplace_method,
+                    .dedup = _filterx_ref_dedup,
                     .freeze = _filterx_ref_freeze,
                     .free_fn = _filterx_ref_free,
                    );

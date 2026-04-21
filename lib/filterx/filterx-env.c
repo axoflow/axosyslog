@@ -89,6 +89,7 @@ filterx_env_freeze_object(FilterXEnvironment *self, FilterXObject **object)
 
   FilterXObjectFreezer freezer;
   filterx_env_freezer_init(&freezer, self);
+  filterx_object_dedup(object, &freezer);
   filterx_object_freeze(object, &freezer);
 }
 
