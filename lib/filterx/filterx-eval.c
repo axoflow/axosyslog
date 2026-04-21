@@ -488,6 +488,18 @@ filterx_eval_end_compile(FilterXEvalContext *context)
   filterx_eval_set_context(NULL);
 }
 
+FilterXEvalControl
+filterx_eval_get_control_modifier(FilterXEvalContext *context)
+{
+  return context->eval_control_modifier;
+}
+
+void
+filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier)
+{
+  context->eval_control_modifier = modifier;
+}
+
 void
 filterx_eval_enable_failure_info(FilterXEvalContext *context, gboolean collect_falsy)
 {

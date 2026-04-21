@@ -104,6 +104,9 @@ void filterx_eval_end_context(FilterXEvalContext *context);
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
 
+FilterXEvalControl filterx_eval_get_control_modifier(FilterXEvalContext *context);
+void filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier);
+
 void filterx_eval_enable_failure_info(FilterXEvalContext *context, gboolean collect_falsy);
 void filterx_eval_clear_failure_info(FilterXEvalContext *context);
 GArray *filterx_eval_get_failure_info(FilterXEvalContext *context);
