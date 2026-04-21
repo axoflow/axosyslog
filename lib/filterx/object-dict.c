@@ -755,6 +755,27 @@ _filterx_dict_clone(FilterXObject *s)
 }
 
 static gboolean
+_dedup_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
+{
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
+
+  filterx_object_dedup(key, freezer);
+  filterx_object_dedup(value, freezer);
+  return TRUE;
+}
+
+static void
+_filterx_dict_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
+{
+  FilterXDictObject *self = (FilterXDictObject *) *pself;
+
+  if (!self->table)
+    return;
+
+  g_assert(_table_foreach(self->table, _dedup_dict_item, freezer));
+}
+
+static gboolean
 _freeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
   FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
@@ -907,4 +928,5 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
                     .freeze = _filterx_dict_freeze,
+                    .dedup = _filterx_dict_dedup,
                    );

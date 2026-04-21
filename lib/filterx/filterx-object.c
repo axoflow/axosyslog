@@ -156,6 +156,20 @@ filterx_object_freeze_finish(FilterXObject *self)
 /* NOTE: we expect an exclusive reference, as it is not thread safe to be
  * called on the same object from multiple threads */
 void
+filterx_object_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
+{
+  FilterXObject *self = *pself;
+
+  if (!freezer)
+    return;
+
+  if (self->type->dedup)
+    self->type->dedup(pself, freezer);
+}
+
+/* NOTE: we expect an exclusive reference, as it is not thread safe to be
+ * called on the same object from multiple threads */
+void
 filterx_object_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 {
   FilterXObject *self = *pself;
