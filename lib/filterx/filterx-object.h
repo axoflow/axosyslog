@@ -658,7 +658,6 @@ filterx_object_freezer_dedup(FilterXObjectFreezer *self, FilterXObject **pobject
     {
       filterx_object_unref(*pobject);
       *pobject = filterx_object_ref(dedup_object);
-      g_free(key);
       return TRUE;
     }
   return FALSE;
