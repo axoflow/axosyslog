@@ -56,13 +56,19 @@ filterx_config_get(GlobalConfig *cfg)
 }
 
 void
+filterx_config_dedup_object(GlobalConfig *cfg, FilterXObject **object)
+{
+  if (!cfg)
+    return;
+  FilterXConfig *fxc = filterx_config_get(cfg);
+  filterx_env_dedup_object(&fxc->global_env, object);
+}
+
+void
 filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object)
 {
   if (!cfg)
-    {
-      filterx_object_freeze(*object, NULL);
-      return;
-    }
+    return;
   FilterXConfig *fxc = filterx_config_get(cfg);
   filterx_env_freeze_object(&fxc->global_env, object);
 }

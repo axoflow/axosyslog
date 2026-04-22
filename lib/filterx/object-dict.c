@@ -757,15 +757,15 @@ _filterx_dict_clone(FilterXObject *s)
 static gboolean
 _dedup_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
-  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
+  FilterXObjectDeduplicator *dedup = (FilterXObjectDeduplicator *) user_data;
 
-  filterx_object_dedup(key, freezer);
-  filterx_object_dedup(value, freezer);
+  filterx_object_dedup(key, dedup);
+  filterx_object_dedup(value, dedup);
   return TRUE;
 }
 
 static void
-_filterx_dict_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
+_filterx_dict_dedup(FilterXObject **pself, FilterXObjectDeduplicator *freezer)
 {
   FilterXDictObject *self = (FilterXDictObject *) *pself;
 

@@ -31,6 +31,7 @@ typedef struct _FilterXObject FilterXObject;
 typedef struct _FilterXRef FilterXRef;
 typedef struct _FilterXExpr FilterXExpr;
 typedef struct _FilterXObjectFreezer FilterXObjectFreezer;
+typedef struct _FilterXObjectDeduplicator FilterXObjectDeduplicator;
 
 typedef gboolean (*FilterXObjectIterFunc)(FilterXObject *key, FilterXObject *value, gpointer user_data);
 
@@ -72,7 +73,7 @@ struct _FilterXType
   FilterXObject *(*is_member_of)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
-  void (*dedup)(FilterXObject **pself, FilterXObjectFreezer *freezer);
+  void (*dedup)(FilterXObject **pself, FilterXObjectDeduplicator *freezer);
   void (*freeze)(FilterXObject *self, FilterXObjectFreezer *freezer);
   void (*free_fn)(FilterXObject *self);
 };
@@ -255,7 +256,7 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
-void filterx_object_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer);
+void filterx_object_dedup(FilterXObject **pself, FilterXObjectDeduplicator *dedup);
 void filterx_object_freeze(FilterXObject *self, FilterXObjectFreezer *freezer);
 void filterx_object_freeze_finish(FilterXObject *self);
 void filterx_object_hibernate(FilterXObject *self);
@@ -610,25 +611,43 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
 
 /* helper class to facilitate freezing objects, a frozen object has a
  * different lifetime (its refcount is disabled) */
-struct _FilterXObjectFreezer
+struct _FilterXObjectDeduplicator
 {
-  FilterXObject *(*get)(FilterXObjectFreezer *self, const gchar *key);
-  void (*add)(FilterXObjectFreezer *self, gchar *key, FilterXObject *object);
-  void (*keep)(FilterXObjectFreezer *self, FilterXObject *object);
+  FilterXObject *(*get)(FilterXObjectDeduplicator *self, const gchar *key);
+  void (*add)(FilterXObjectDeduplicator *self, gchar *key, FilterXObject *object);
   gpointer user_data;
 };
 
 static inline FilterXObject *
-filterx_object_freezer_get(FilterXObjectFreezer *self, const gchar *key)
+filterx_object_deduplicator_get(FilterXObjectDeduplicator *self, const gchar *key)
 {
-  FilterXObject *result = self->get(self, key);
-
-  if (!result)
-    return NULL;
-
-  g_assert(filterx_object_is_preserved(result));
-  return result;
+  return self->get(self, key);
 }
+
+static inline void
+filterx_object_deduplicator_add(FilterXObjectDeduplicator *self, gchar *key, FilterXObject *object)
+{
+  self->add(self, key, object);
+}
+
+static inline gboolean
+filterx_object_deduplicator_dedup(FilterXObjectDeduplicator *self, FilterXObject **pobject, gchar *key)
+{
+  FilterXObject *dedup_object = filterx_object_deduplicator_get(self, key);
+  if (dedup_object)
+    {
+      filterx_object_unref(*pobject);
+      *pobject = filterx_object_ref(dedup_object);
+      return TRUE;
+    }
+  return FALSE;
+}
+
+struct _FilterXObjectFreezer
+{
+  void (*keep)(FilterXObjectFreezer *self, FilterXObject *object);
+  gpointer user_data;
+};
 
 static inline void
 filterx_object_freezer_keep(FilterXObjectFreezer *self, FilterXObject *object)
@@ -638,30 +657,6 @@ filterx_object_freezer_keep(FilterXObjectFreezer *self, FilterXObject *object)
       self->keep(self, object);
       filterx_object_freeze_finish(object);
     }
-}
-
-static inline void
-filterx_object_freezer_add(FilterXObjectFreezer *self, gchar *key, FilterXObject *object)
-{
-  if (!filterx_object_is_preserved(object))
-    {
-      filterx_object_freezer_keep(self, object);
-      self->add(self, key, object);
-    }
-}
-
-
-static inline gboolean
-filterx_object_freezer_dedup(FilterXObjectFreezer *self, FilterXObject **pobject, gchar *key)
-{
-  FilterXObject *dedup_object = filterx_object_freezer_get(self, key);
-  if (dedup_object)
-    {
-      filterx_object_unref(*pobject);
-      *pobject = filterx_object_ref(dedup_object);
-      return TRUE;
-    }
-  return FALSE;
 }
 
 #include "filterx-ref.h"
