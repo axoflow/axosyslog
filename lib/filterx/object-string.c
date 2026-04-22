@@ -206,6 +206,10 @@ _string_freeze(FilterXObject **pself, FilterXObjectFreezer *freezer)
 
       filterx_object_freezer_add(freezer, dedup_key, *pself);
     }
+  else
+    {
+      g_free(dedup_key);
+    }
 }
 
 guint
