@@ -23,7 +23,7 @@
 #include "filterx/filterx-env.h"
 
 static FilterXObject *
-_get_frozen_object(FilterXObjectFreezer *self, const gchar *key)
+_get_object(FilterXObjectDeduplicator *self, const gchar *key)
 {
   FilterXEnvironment *env = (FilterXEnvironment *) self->user_data;
 
@@ -31,15 +31,23 @@ _get_frozen_object(FilterXObjectFreezer *self, const gchar *key)
 }
 
 static void
-_add_frozen_object(FilterXObjectFreezer *self, gchar *key, FilterXObject *object)
+_add_object(FilterXObjectDeduplicator *self, gchar *key, FilterXObject *object)
 {
   FilterXEnvironment *env = (FilterXEnvironment *) self->user_data;
 
   g_hash_table_insert(env->deduplicated_objects, key, object);
 }
 
+void
+filterx_env_deduplicator_init(FilterXObjectDeduplicator *self, FilterXEnvironment *env)
+{
+  self->get = _get_object;
+  self->add = _add_object;
+  self->user_data = env;
+}
+
 static void
-_keep_frozen_object(FilterXObjectFreezer *self, FilterXObject *object)
+_keep_object(FilterXObjectFreezer *self, FilterXObject *object)
 {
   FilterXEnvironment *env = (FilterXEnvironment *) self->user_data;
 
@@ -49,14 +57,12 @@ _keep_frozen_object(FilterXObjectFreezer *self, FilterXObject *object)
 void
 filterx_env_freezer_init(FilterXObjectFreezer *self, FilterXEnvironment *env)
 {
-  self->get = _get_frozen_object;
-  self->add = _add_frozen_object;
-  self->keep = _keep_frozen_object;
+  self->keep = _keep_object;
   self->user_data = env;
 }
 
 static void
-_prepare_for_object_freeze(FilterXEnvironment *self)
+_prepare_for_object_freeze_or_dedup(FilterXEnvironment *self)
 {
   if (!self->frozen_objects)
     self->frozen_objects = g_ptr_array_new();
@@ -83,13 +89,24 @@ _destroy_frozen_objects(GPtrArray *frozen_objects)
 }
 
 void
+filterx_env_dedup_object(FilterXEnvironment *self, FilterXObject **object)
+{
+  _prepare_for_object_freeze_or_dedup(self);
+
+  /* deduplicate */
+  FilterXObjectDeduplicator dedup;
+  filterx_env_deduplicator_init(&dedup, self);
+  filterx_object_dedup(object, &dedup);
+}
+
+void
 filterx_env_freeze_object(FilterXEnvironment *self, FilterXObject **object)
 {
-  _prepare_for_object_freeze(self);
+  filterx_env_dedup_object(self, object);
 
+  /* freeze */
   FilterXObjectFreezer freezer;
   filterx_env_freezer_init(&freezer, self);
-  filterx_object_dedup(object, &freezer);
   filterx_object_freeze(*object, &freezer);
 }
 
