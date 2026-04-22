@@ -21,6 +21,8 @@
  */
 
 #include "filterx/jit/jit.h"
+#include "filterx/jit/jit-private.h"
+#include "filterx/jit/ffi.h"
 
 #if SYSLOG_NG_ENABLE_JIT
 
@@ -32,20 +34,6 @@
 #include <llvm-c/Transforms/PassBuilder.h>
 
 #include <stdio.h>
-
-struct _FilterXJIT
-{
-  gchar *mod_name;
-
-  LLVMOrcThreadSafeContextRef ts_ctx;
-  LLVMContextRef ctx;
-  LLVMModuleRef mod;
-  LLVMBuilderRef ir;
-  LLVMOrcLLJITRef j;
-  FilterXIRValue current_ir_block;
-
-  gboolean mod_finalized;
-};
 
 static inline void
 _fxjit_error(const gchar *error_msg, GError **error)
@@ -294,6 +282,8 @@ filterx_jit_new(const gchar *module_name, GError **error)
     goto error;
 
   _setup_optimizations(self);
+
+  filterx_jit_ffi_init(self);
 
   return self;
 
