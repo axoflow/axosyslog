@@ -193,18 +193,18 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
 }
 
 static void
-_string_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
+_string_dedup(FilterXObject **pself, FilterXObjectDeduplicator *dedup)
 {
   FilterXString *self = (FilterXString *) *pself;
 
   gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
-  if (!filterx_object_freezer_dedup(freezer, pself, dedup_key))
+  if (!filterx_object_deduplicator_dedup(dedup, pself, dedup_key))
     {
       _filterx_string_hash(self);
       if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
         filterx_string_mark_safe_without_json_escaping(&self->super);
 
-      filterx_object_freezer_add(freezer, dedup_key, *pself);
+      filterx_object_deduplicator_add(dedup, dedup_key, *pself);
     }
   else
     {

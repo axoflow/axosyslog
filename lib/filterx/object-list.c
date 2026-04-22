@@ -266,18 +266,18 @@ _filterx_list_clone(FilterXObject *s)
 static gboolean
 _dedup_list_item(gsize index, FilterXObject **value, gpointer user_data)
 {
-  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
+  FilterXObjectDeduplicator *dedup = (FilterXObjectDeduplicator *) user_data;
 
-  filterx_object_dedup(value, freezer);
+  filterx_object_dedup(value, dedup);
   return TRUE;
 }
 
 static void
-_filterx_list_dedup(FilterXObject **pself, FilterXObjectFreezer *freezer)
+_filterx_list_dedup(FilterXObject **pself, FilterXObjectDeduplicator *dedup)
 {
   FilterXListObject *self = (FilterXListObject *) *pself;
 
-  g_assert(filterx_list_foreach(self, _dedup_list_item, freezer));
+  g_assert(filterx_list_foreach(self, _dedup_list_item, dedup));
 }
 
 static gboolean
