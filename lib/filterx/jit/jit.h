@@ -40,6 +40,7 @@ typedef struct _FilterXJIT FilterXJIT;
 #define FILTERX_JIT_MODULE_NAME "filterx.jit"
 
 #if SYSLOG_NG_ENABLE_JIT
+#include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
 #include <llvm-c/LLJIT.h>
 typedef LLVMValueRef FilterXIRValue;
