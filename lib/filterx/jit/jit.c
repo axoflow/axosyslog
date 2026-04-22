@@ -72,13 +72,16 @@ static inline gboolean
 _verify_module(FilterXJIT *self, GError **error)
 {
   gchar *error_msg = NULL;
-  if (!LLVMVerifyModule(self->mod, LLVMReturnStatusAction, &error_msg))
+  gboolean module_broken = LLVMVerifyModule(self->mod, LLVMReturnStatusAction, &error_msg);
+  if (module_broken)
     {
       _fxjit_error(error_msg, error);
       LLVMDisposeMessage(error_msg);
       return FALSE;
     }
 
+  /* LLVMVerifyModule() allocates an error string even when there were no errors */
+  LLVMDisposeMessage(error_msg);
   return TRUE;
 }
 
