@@ -21,4 +21,11 @@
 #
 #############################################################################
 # flake8: noqa: F401, F403
+import pytest
 from axosyslog_light.fixtures import *
+
+
+def pytest_sessionfinish(session, exitstatus):
+    # Return with 0 return code in case no tests were collected
+    if ( exitstatus == pytest.ExitCode.NO_TESTS_COLLECTED):
+        session.exitstatus = 0
