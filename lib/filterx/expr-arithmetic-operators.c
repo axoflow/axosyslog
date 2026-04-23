@@ -36,50 +36,58 @@ typedef struct FilterXArithmeticOperator_
   FilterXObject *literal_rhs;
 } FilterXArithmeticOperator;
 
+
+/* consumes operand objects */
 static gboolean
-_eval_arithmetic_operators_common(FilterXArithmeticOperator *self, GenericNumber *lhs_number,
-                                  GenericNumber *rhs_number, GenericNumber *result)
+_extract_operands_into_generic_numbers(FilterXObject *lhs_object, FilterXObject *rhs_object,
+                 GenericNumber *lhs_number, GenericNumber *rhs_number, FilterXExpr *expr)
 {
-  FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
-                              : filterx_expr_eval_typed(self->super.lhs);
+  gboolean ok = FALSE;
+
   if (!lhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
                                           "Failed to evaluate left hand side");
-      return FALSE;
+      goto exit;
     }
-
   if (!filterx_object_extract_generic_number(lhs_object, lhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
                                           "Left hand side must be a double or integer, got: %s",
                                           filterx_object_get_type_name(lhs_object));
-      filterx_object_unref(lhs_object);
-      return FALSE;
+      goto exit;
     }
-  filterx_object_unref(lhs_object);
-
-  FilterXObject *rhs_object = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
-                              : filterx_expr_eval(self->super.rhs);
-
   if (!rhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
                                           "Failed to evaluate right hand side");
-      return FALSE;
+      goto exit;
     }
-
   if (!filterx_object_extract_generic_number(rhs_object, rhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
                                           "right hand side must be a double or integer, got: %s",
                                           filterx_object_get_type_name(rhs_object));
-      filterx_object_unref(lhs_object);
-      return FALSE;
+      goto exit;
     }
-  filterx_object_unref(rhs_object);
+  ok = TRUE;
 
-  return TRUE;
+exit:
+  filterx_object_unref(lhs_object);
+  filterx_object_unref(rhs_object);
+  return ok;
+}
+
+static inline FilterXObject *
+_eval_lhs(FilterXArithmeticOperator *self)
+{
+  return self->literal_lhs ? filterx_object_ref(self->literal_lhs) : filterx_expr_eval_typed(self->super.lhs);
+}
+
+static inline FilterXObject *
+_eval_rhs(FilterXArithmeticOperator *self)
+{
+  return self->literal_rhs ? filterx_object_ref(self->literal_rhs) : filterx_expr_eval(self->super.rhs);
 }
 
 static void
@@ -103,17 +111,17 @@ _free_arithmetic_common(FilterXExpr *s)
 }
 
 static FilterXObject *
-_eval_substraction(FilterXExpr *s)
+_do_substraction(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
-  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
   GenericNumber lhs_number, rhs_number, result;
 
-  if(!_eval_arithmetic_operators_common(self, &lhs_number, &rhs_number, &result))
+  if (!_extract_operands_into_generic_numbers(lhs, rhs, &lhs_number, &rhs_number, expr))
     return NULL;
 
   if (lhs_number.type == GN_NAN || rhs_number.type == GN_NAN)
     return NULL;
-  else if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
+
+  if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
     {
       gn_set_int64(&result, gn_as_int64(&lhs_number) - gn_as_int64(&rhs_number));
       return filterx_integer_new(gn_as_int64(&result));
@@ -121,6 +129,13 @@ _eval_substraction(FilterXExpr *s)
 
   gn_set_double(&result, gn_as_double(&lhs_number) - gn_as_double(&rhs_number), -1);
   return filterx_double_new(gn_as_double(&result));
+}
+
+static FilterXObject *
+_eval_substraction(FilterXExpr *s)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  return _do_substraction(_eval_lhs(self), _eval_rhs(self), s);
 }
 
 static FilterXExpr *
@@ -136,17 +151,17 @@ _optimize_substraction(FilterXExpr *s)
 }
 
 static FilterXObject *
-_eval_multiplication(FilterXExpr *s)
+_do_multiplication(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
-  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
   GenericNumber lhs_number, rhs_number, result;
 
-  if(!_eval_arithmetic_operators_common(self, &lhs_number, &rhs_number, &result))
+  if (!_extract_operands_into_generic_numbers(lhs, rhs, &lhs_number, &rhs_number, expr))
     return NULL;
 
   if (lhs_number.type == GN_NAN || rhs_number.type == GN_NAN)
     return NULL;
-  else if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
+
+  if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
     {
       gn_set_int64(&result, gn_as_int64(&lhs_number) * gn_as_int64(&rhs_number));
       return filterx_integer_new(gn_as_int64(&result));
@@ -154,6 +169,13 @@ _eval_multiplication(FilterXExpr *s)
 
   gn_set_double(&result, gn_as_double(&lhs_number) * gn_as_double(&rhs_number), -1);
   return filterx_double_new(gn_as_double(&result));
+}
+
+static FilterXObject *
+_eval_multiplication(FilterXExpr *s)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  return _do_multiplication(_eval_lhs(self), _eval_rhs(self), s);
 }
 
 static FilterXExpr *
@@ -169,17 +191,17 @@ _optimize_multiplication(FilterXExpr *s)
 }
 
 static FilterXObject *
-_eval_division(FilterXExpr *s)
+_do_division(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
-  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
   GenericNumber lhs_number, rhs_number, result;
 
-  if(!_eval_arithmetic_operators_common(self, &lhs_number, &rhs_number, &result))
+  if (!_extract_operands_into_generic_numbers(lhs, rhs, &lhs_number, &rhs_number, expr))
     return NULL;
 
   if (lhs_number.type == GN_NAN || rhs_number.type == GN_NAN)
     return NULL;
-  else if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
+
+  if (lhs_number.type == GN_INT64 && rhs_number.type == GN_INT64)
     {
       gn_set_int64(&result, gn_as_int64(&lhs_number) / gn_as_int64(&rhs_number));
       return filterx_integer_new(gn_as_int64(&result));
@@ -187,6 +209,13 @@ _eval_division(FilterXExpr *s)
 
   gn_set_double(&result, gn_as_double(&lhs_number) / gn_as_double(&rhs_number), -1);
   return filterx_double_new(gn_as_double(&result));
+}
+
+static FilterXObject *
+_eval_division(FilterXExpr *s)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  return _do_division(_eval_lhs(self), _eval_rhs(self), s);
 }
 
 static FilterXExpr *
@@ -201,54 +230,54 @@ _optimize_division(FilterXExpr *s)
   return NULL;
 }
 
+static FilterXObject *
+_do_modulo(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  gint64 lhs_number, rhs_number;
+  FilterXObject *result = NULL;
 
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr,
+                                          "Failed to evaluate left hand side");
+      goto exit;
+    }
+
+  if (!filterx_object_extract_integer(lhs, &lhs_number))
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", expr,
+                                          "Left hand side must be an integer, got: %s",
+                                          filterx_object_get_type_name(lhs));
+      goto exit;
+    }
+
+  if (!rhs)
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr,
+                                          "Failed to evaluate right hand side");
+      goto exit;
+    }
+
+  if (!filterx_object_extract_integer(rhs, &rhs_number))
+    {
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", expr,
+                                          "Right hand side must be an integer, got: %s",
+                                          filterx_object_get_type_name(rhs));
+      goto exit;
+    }
+  result = filterx_integer_new(lhs_number % rhs_number);
+
+exit:
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
 
 static FilterXObject *
 _eval_modulo(FilterXExpr *s)
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
-  gint64 lhs_number, rhs_number;
-
-  FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
-                              : filterx_expr_eval_typed(self->super.lhs);
-  if (!lhs_object)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", &self->super.super,
-                                          "Failed to evaluate left hand side");
-      return NULL;
-    }
-
-  if(!filterx_object_extract_integer(lhs_object, &lhs_number))
-    {
-      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", &self->super.super,
-                                          "Left hand side must be an integer, got: %s",
-                                          filterx_object_get_type_name(lhs_object));
-      filterx_object_unref(lhs_object);
-      return NULL;
-    }
-  filterx_object_unref(lhs_object);
-
-  FilterXObject *rhs_object = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
-                              : filterx_expr_eval(self->super.rhs);
-
-  if (!rhs_object)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", &self->super.super,
-                                          "Failed to evaluate right hand side");
-      return NULL;
-    }
-
-  if(!filterx_object_extract_integer(rhs_object, &rhs_number))
-    {
-      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", &self->super.super,
-                                          "Right hand side must be an integer, got: %s",
-                                          filterx_object_get_type_name(rhs_object));
-      filterx_object_unref(rhs_object);
-      return NULL;
-    }
-  filterx_object_unref(rhs_object);
-
-  return filterx_integer_new(lhs_number % rhs_number);
+  return _do_modulo(_eval_lhs(self), _eval_rhs(self), s);
 }
 
 static FilterXExpr *
@@ -264,40 +293,49 @@ _optimize_modulo(FilterXExpr *s)
 }
 
 static FilterXObject *
-_eval_uminus(FilterXExpr *s)
+_do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 {
-  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
   GenericNumber operand, result;
+  FilterXObject *out = NULL;
 
-  FilterXObject *operand_obj = filterx_expr_eval_typed(self->operand);
   if (!operand_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", &self->super,
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
                                           "Failed to evaluate operand");
-      return FALSE;
+      goto exit;
     }
 
   if (!filterx_object_extract_generic_number(operand_obj, &operand))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", &self->super,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
                                           "Operand must be a double or integer, got: %s",
                                           filterx_object_get_type_name(operand_obj));
-      filterx_object_unref(operand_obj);
-      return FALSE;
+      goto exit;
     }
-  filterx_object_unref(operand_obj);
 
   if (operand.type == GN_NAN)
-    return NULL;
+    goto exit;
 
   if (operand.type == GN_INT64)
     {
       gn_set_int64(&result, -gn_as_int64(&operand));
-      return filterx_integer_new(gn_as_int64(&result));
+      out = filterx_integer_new(gn_as_int64(&result));
+      goto exit;
     }
 
   gn_set_double(&result, -gn_as_double(&operand), -1);
-  return filterx_double_new(gn_as_double(&result));
+  out = filterx_double_new(gn_as_double(&result));
+
+exit:
+  filterx_object_unref(operand_obj);
+  return out;
+}
+
+static FilterXObject *
+_eval_uminus(FilterXExpr *s)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+  return _do_uminus(filterx_expr_eval_typed(self->operand), &self->super);
 }
 
 FilterXExpr *
