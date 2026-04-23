@@ -47,6 +47,7 @@ class LogRecord : public Base
 public:
   LogRecord(FilterXOtelLogRecord *super);
   LogRecord(FilterXOtelLogRecord *super, FilterXObject *protobuf_object);
+  LogRecord(FilterXOtelLogRecord *super_, const opentelemetry::proto::logs::v1::LogRecord &logrecord_);
   LogRecord(LogRecord &o) = delete;
   LogRecord(LogRecord &&o) = delete;
   std::string marshal(void);
@@ -73,6 +74,9 @@ protected:
 }
 
 #include "compat/cpp-start.h"
+
+FilterXObject *filterx_otel_logrecord_new_from_protobuf_object(
+  const opentelemetry::proto::logs::v1::LogRecord &logrecord);
 
 struct FilterXOtelLogRecord_
 {

@@ -47,6 +47,7 @@ class Scope : public Base
 public:
   Scope(FilterXOtelScope *s);
   Scope(FilterXOtelScope *s, FilterXObject *protobuf_object);
+  Scope(FilterXOtelScope *s, const opentelemetry::proto::common::v1::InstrumentationScope &scope);
   Scope(Scope &o) = delete;
   Scope(Scope &&o) = delete;
 
@@ -75,6 +76,9 @@ protected:
 }
 }
 }
+
+FilterXObject *filterx_otel_scope_new_from_protobuf_object(
+  const opentelemetry::proto::common::v1::InstrumentationScope &scope);
 
 #include "compat/cpp-start.h"
 

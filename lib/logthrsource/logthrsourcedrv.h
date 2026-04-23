@@ -147,9 +147,13 @@ log_threaded_source_worker_is_under_termination(LogThreadedSourceWorker *self)
 
 /* blocking API */
 void log_threaded_source_worker_blocking_post(LogThreadedSourceWorker *self, LogMessage *msg);
+void log_threaded_source_worker_blocking_post_with_filterx_context(LogThreadedSourceWorker *self, LogMessage *msg,
+    FilterXEvalContext *filterx_context);
 
 /* non-blocking API, use it wisely (thread boundaries); call close_batch() at least before suspending */
 void log_threaded_source_worker_post(LogThreadedSourceWorker *self, LogMessage *msg);
+void log_threaded_source_worker_post_with_filterx_context(LogThreadedSourceWorker *self, LogMessage *msg,
+                                                          FilterXEvalContext *filterx_context);
 gboolean log_threaded_source_worker_free_to_send(LogThreadedSourceWorker *self);
 
 #endif

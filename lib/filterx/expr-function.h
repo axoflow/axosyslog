@@ -89,7 +89,8 @@ FilterXObject *filterx_function_args_get_named_literal_object(FilterXFunctionArg
 
 const gchar *filterx_function_args_get_named_literal_string(FilterXFunctionArgs *self, const gchar *name,
                                                             gsize *len, gboolean *exists);
-gchar *filterx_function_args_get_named_literal_string_dup(FilterXFunctionArgs *self, const gchar *name, gboolean *exists);
+gchar *filterx_function_args_get_named_literal_string_dup(FilterXFunctionArgs *self, const gchar *name,
+                                                          gboolean *exists);
 gboolean filterx_function_args_get_named_literal_boolean(FilterXFunctionArgs *self, const gchar *name,
                                                          gboolean *exists, gboolean *error);
 gint64 filterx_function_args_get_named_literal_integer(FilterXFunctionArgs *self, const gchar *name,

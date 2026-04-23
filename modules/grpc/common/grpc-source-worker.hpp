@@ -45,6 +45,7 @@ public:
   virtual void run() = 0;
   virtual void request_exit() = 0;
   void blocking_post(LogMessage *msg);
+  void blocking_post(LogMessage *msg, FilterXEvalContext *filterx_context);
 
 public:
   GrpcSourceWorker *super;

@@ -75,8 +75,8 @@ log_queue_disk_load_hdr(LogQueue *s)
 gboolean
 log_queue_disk_unload_hdr(LogQueue *s)
 {
-    LogQueueDisk *self = (LogQueueDisk *) s;
-    return qdisk_unload_hdr(self->qdisk);
+  LogQueueDisk *self = (LogQueueDisk *) s;
+  return qdisk_unload_hdr(self->qdisk);
 }
 
 gboolean

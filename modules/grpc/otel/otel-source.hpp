@@ -56,6 +56,8 @@ public:
   const char *generate_persist_name() override;
   LogThreadedSourceWorker *construct_worker(int worker_index) override;
 
+  OtelSourceMode mode;
+
   /* services must exist for the lifetime of the server instance */
   std::unique_ptr<TraceService::AsyncService> trace_service;
   std::unique_ptr<LogsService::AsyncService> logs_service;
@@ -75,7 +77,8 @@ private:
   std::list<std::unique_ptr<::grpc::ServerCompletionQueue>> cqs;
 };
 
-class SourceWorker : public syslogng::grpc::SourceWorker
+class SourceWorker :
+  public syslogng::grpc::SourceWorker
 {
 public:
   SourceWorker(GrpcSourceWorker *s, std::unique_ptr<::grpc::ServerCompletionQueue> queue);

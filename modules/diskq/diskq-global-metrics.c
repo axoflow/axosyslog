@@ -271,7 +271,8 @@ _init_dir_sc_keys(StatsClusterKey *available_bytes_sc_key, const gchar *dir)
   static StatsClusterLabel labels[labels_len];
   labels[0] = stats_cluster_label("dir", dir);
 
-  stats_cluster_single_key_set(available_bytes_sc_key, METRIC(disk_queue_dir_available_bytes), labels, G_N_ELEMENTS(labels));
+  stats_cluster_single_key_set(available_bytes_sc_key, METRIC(disk_queue_dir_available_bytes), labels,
+                               G_N_ELEMENTS(labels));
   /* Up to 4096 TiB with 32 bit atomic counters. */
   stats_cluster_key_add_unit(available_bytes_sc_key, SCU_MIB);
 }

@@ -366,7 +366,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
            */
 
           gint64 input_queue_age_msec =
-              unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
+            unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
 
           flush_input_queue = input_queue_age_msec > 100;
         }
