@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Linter
         run: |
@@ -37,6 +39,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install helm-docs
         uses: actions/setup-go@v5

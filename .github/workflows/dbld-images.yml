@@ -56,6 +56,8 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set container registry
         run: |

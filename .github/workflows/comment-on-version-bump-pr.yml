@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Checkout AxoSyslog source
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Check if version bump PR is open
         run: |

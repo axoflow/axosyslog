@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout AxoSyslog source
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Prepare docker image
         run: ./dbld/rules cache-image-tarball
@@ -44,6 +46,8 @@ jobs:
     steps:
       - name: Checkout AxoSyslog source
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Download source tarball artifact
         uses: actions/download-artifact@v8.0.1

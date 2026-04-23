@@ -38,6 +38,9 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v6.0.2
 
+        with:
+          persist-credentials: false
+
       - id: registry
         name: registry
         run: |
@@ -76,6 +79,9 @@ jobs:
 
       - name: Checkout source
         uses: actions/checkout@v6.0.2
+
+        with:
+          persist-credentials: false
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4.0.0

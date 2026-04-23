@@ -41,6 +41,8 @@ jobs:
     steps:
       - name: Checkout AxoSyslog source
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: "Comment: job started"
         if: github.event_name == 'pull_request'
@@ -99,6 +101,8 @@ jobs:
     steps:
       - name: Checkout AxoSyslog source
         uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Download release tarball artifact
         uses: actions/download-artifact@v8.0.1
