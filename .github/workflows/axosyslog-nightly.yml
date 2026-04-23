@@ -24,8 +24,10 @@ jobs:
           route: GET /repos/${{github.repository}}/actions/workflows/axosyslog-nightly.yml/runs?per_page=1&status=success
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: |
-          echo "The previous nightly was built from commit ${{ fromJson(steps.previous-nightly.outputs.data).workflow_runs[0].head_sha }}"
+      - env:
+          PREV_NIGHTLY_COMMIT_HASH: ${{ fromJson(steps.previous-nightly.outputs.data).workflow_runs[0].head_sha }}
+        run: |
+          echo "The previous nightly was built from commit ${PREV_NIGHTLY_COMMIT_HASH}"
 
   tarball:
     if: needs.precheck.outputs.nightly-needed == 'true'
@@ -119,6 +121,8 @@ jobs:
     steps:
       - name: Clean up old images
         uses: actions/github-script@v9.0.0
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           script: |
             const nightliesToKeep = 60
@@ -148,7 +152,7 @@ jobs:
 
             console.log(`Removing the following images: ${oldSnapshotTags}`)
 
-            const bearerToken = btoa('${{ secrets.GITHUB_TOKEN }}')
+            const bearerToken = btoa(process.env.TOKEN)
             const manifestsRequests = oldSnapshotTags.map((t) => {
                 const manifest = fetch(`https://ghcr.io/v2/${image}/manifests/${t}`, {
                     method: "GET",

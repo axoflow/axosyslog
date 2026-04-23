@@ -43,8 +43,10 @@ jobs:
           echo "platform-matrix=$PLATFORM_MATRIX" >> $GITHUB_OUTPUT
       - id: registry
         name: registry
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/axosyslog"
+          IMAGE_NAME="ghcr.io/${REPOSITORY_OWNER}/axosyslog"
           IMAGE_NAME="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
           echo "image-name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
@@ -175,10 +177,11 @@ jobs:
         if: inputs.type == 'stable'
         env:
           IMAGE_NAME: ${{ needs.prepare.outputs.image-name }}
+          GITHUB_REF: ${{ github.ref }}
         run: |
           previous_docker_tag_short=$(echo $previous_docker_tag | cut -d"-" -f1)
           previous_docker_tag_rebuild_num=$(echo $previous_docker_tag | cut -d"-" -f2)
-          current_git_tag=$(echo ${{ github.ref }} | cut -d"-" -f2)
+          current_git_tag=$(echo ${GITHUB_REF} | cut -d"-" -f2)
           if [[ $current_git_tag =~ ^[0-9]+.[0-9]+.[0-9]+$ ]]; then
             function version { echo "$@" | awk -F. '{ printf("%d%03d%03d\n", $1,$2,$3); }'; }
             if [ $(version $current_git_tag) -gt $(version $previous_docker_tag_short) ]; then
@@ -205,9 +208,10 @@ jobs:
           TYPE: ${{ inputs.type }}
           SNAPSHOT_TAGS: ${{ inputs.snapshot-tags }}
           IMAGE_NAME: ${{ needs.prepare.outputs.image-name }}
+          GENERATED_TAGS: ${{ steps.docker-metadata-tags.outputs.tags }}
         run: |
           if [[ "$TYPE" = "stable" ]]; then
-            TAGS='${{ steps.docker-metadata-tags.outputs.tags }}'
+            TAGS='${GENERATED_TAGS}'
           elif [[ "$TYPE" = "snapshot" ]]; then
             TAGS="$(echo "$SNAPSHOT_TAGS" | sed "s|[^,]*|$IMAGE_NAME:&|g")"
           else

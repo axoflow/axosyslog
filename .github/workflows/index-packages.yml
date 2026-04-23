@@ -50,17 +50,21 @@ jobs:
           persist-credentials: false
 
       - name: Prepare environment
+        env:
+          CUSTOM_RUN_ID: ${{ inputs.run-id }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+          GPG_KEY_BASE64: ${{ secrets.gpg-key-base64 }}
         run: |
           . "${GITHUB_WORKSPACE}/.github/workflows/gh-tools.sh"
 
-          if [[ -n "${{ inputs.run-id }}" ]]; then
-            RUN_ID="${{ inputs.run-id }}"
+          if [[ -n "${CUSTOM_RUN_ID}" ]]; then
+            RUN_ID="${CUSTOM_RUN_ID}"
           else
-            RUN_ID="${{ github.run_id }}"
+            RUN_ID="${CURRENT_RUN_ID}"
           fi
           gh_export RUN_ID
 
-          echo "${{ secrets.gpg-key-base64 }}" | base64 --decode > "${GPG_KEY_PATH}"
+          echo "${GPG_KEY_BASE64}" | base64 --decode > "${GPG_KEY_PATH}"
 
       - name: Build docker image
         run: |
@@ -71,14 +75,18 @@ jobs:
           docker run -v "${PWD}:${PWD}" -w "${PWD}" --detach --name "${DOCKER_CONTAINER_NAME}" -t "${DOCKER_IMAGE}"
 
       - name: Index packages
+        env:
+          GPG_PASSPHRASE: ${{ secrets.gpg-key-passphrase }}
+          PKG_TYPE: ${{ inputs.pkg-type }}
+          CONFIG_BASE64: ${{ secrets.config-base64 }}
         run: |
-          echo "${{ secrets.gpg-key-passphrase }}" | \
+          echo "${GPG_PASSPHRASE}" | \
           docker exec \
             --interactive \
             ${DOCKER_CONTAINER_NAME} \
             ./index-packages.py \
-              --suite "${{ inputs.pkg-type }}" \
-              --config-content "$(echo '${{ secrets.config-base64 }}' | base64 --decode)" \
+              --suite "${PKG_TYPE}" \
+              --config-content "$(echo '${CONFIG_BASE64}' | base64 --decode)" \
               --run-id "${RUN_ID}" \
               --gpg-key-passphrase-from-stdin \
               --log-file "${VERBOSE_LOG_PATH}"

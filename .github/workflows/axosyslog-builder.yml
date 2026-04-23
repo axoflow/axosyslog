@@ -44,8 +44,10 @@ jobs:
 
       - id: registry
         name: registry
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/axosyslog-builder"
+          IMAGE_NAME="ghcr.io/${REPOSITORY_OWNER}/axosyslog-builder"
           IMAGE_NAME="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
 
           version_tag="$(sed -n 's/^ARG ALPINE_VERSION=\(.*\)$/\1/p' docker/axosyslog-builder.dockerfile)"

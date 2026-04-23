@@ -36,6 +36,8 @@ jobs:
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
       - name: Setup environment
+        env:
+          CC: ${{ matrix.cc }}
         run: |
           . .github/workflows/gh-tools.sh
 
@@ -47,7 +49,6 @@ jobs:
 
           # Setup build time environment variables
           PYTHONUSERBASE="${HOME}/python_packages"
-          CC="${{ matrix.cc }}"
           CXX=`[ $CC = gcc ] && echo g++ || echo clang++`
           SYSLOG_NG_INSTALL_DIR=${HOME}/install/syslog-ng
           CONFIGURE_FLAGS="
@@ -265,8 +266,10 @@ jobs:
       - name: Build the binaries (BASE)
         id: build_base
         continue-on-error: true
+        env:
+          BASE_HEAD: ${{ steps.commits.outputs.BASE_HEAD }}
         run: |
-          git checkout ${{ steps.commits.outputs.BASE_HEAD }}
+          git checkout ${BASE_HEAD}
           dbld/rules make-install
 
       - name: callgrind (BASE)
@@ -379,7 +382,9 @@ jobs:
 
       - name: Commits check (Pull request)
         if: github.event_name == 'pull_request'
-        run: tests/commits/check.sh origin/${{ github.base_ref }}..HEAD
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: tests/commits/check.sh origin/${BASE_REF}..HEAD
 
       - name: Commits check (Push)
         if: github.event_name == 'push'

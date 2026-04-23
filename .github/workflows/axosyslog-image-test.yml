@@ -70,9 +70,10 @@ jobs:
             SNAPSHOT_VERSION=${{ needs.tarball.outputs.snapshot-version }}
 
       - name: Smoke test
+        env:
+          SYSLOG_NG_IMAGE: axosyslog:test
+          SYSLOG_NG_VERSION: ${{ needs.tarball.outputs.snapshot-version }}
         run: |
-          export SYSLOG_NG_IMAGE="axosyslog:test"
-          export SYSLOG_NG_VERSION="${{ needs.tarball.outputs.snapshot-version }}"
           docker/tests/smoke.sh
 
       - name: Scan docker image on CVEs

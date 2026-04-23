@@ -47,11 +47,13 @@ jobs:
 
       - name: "Comment: job started"
         if: github.event_name == 'pull_request'
+        env:
+          PR_NUMBER: ${{ github.event.number }}
         run: |
           COMMENT="${WORKFLOW_NAME} started: ${CURRENT_WORKFLOW_RUN_URL}."
 
           gh pr comment \
-            "${{ github.event.number }}" \
+            "${PR_NUMBER}" \
             --body "${COMMENT}"
 
       - name: Setup environment
@@ -111,12 +113,16 @@ jobs:
           name: release-tarball
 
       - name: Create draft release
+        env:
+          RELEASE_TAG: ${{ needs.create-release-tarball.outputs.RELEASE_TAG }}
+          RELEASE_NAME: ${{ needs.create-release-tarball.outputs.RELEASE_NAME }}
+          TARBALL_NAME: ${{ needs.create-release-tarball.outputs.TARBALL_NAME }}
         run: |
           gh release create \
-            "${{ needs.create-release-tarball.outputs.RELEASE_TAG }}" \
-            "${{ needs.create-release-tarball.outputs.TARBALL_NAME }}" \
+            "${RELEASE_TAG} \
+            "${TARBALL_NAME}" \
             --draft \
-            --title "${{ needs.create-release-tarball.outputs.RELEASE_NAME }}" \
+            --title "${RELEASE_NAME}" \
             --notes-file "NEWS.md"
 
   comment-workflow-result:
@@ -125,8 +131,12 @@ jobs:
     if: always() && (github.event.pull_request.merged && contains(github.event.pull_request.labels.*.name, 'version-bump'))
     steps:
       - name: "Comment: job status"
+        env:
+          REPO: ${{ github.repository }}
+          PR_ID: ${{ github.event.number }}
+          RESULT: ${{ needs.create-draft-release.result }}
         run: |
-          if [[ "${{ needs.create-draft-release.result }}" = "success" ]]
+          if [[ "${RESULT}" = "success" ]]
           then
             COMMENT="${WORKFLOW_NAME} finished successfully. Please check the Releases page: ${RELEASES_URL}"
           else
@@ -134,6 +144,6 @@ jobs:
           fi
 
           gh pr comment \
-            --repo "${{ github.repository }}" \
-            "${{ github.event.number }}" \
+            --repo "${REPO}" \
+            "${PR_ID}" \
             --body "${COMMENT}"

@@ -18,10 +18,12 @@ jobs:
   pre-check:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'axoflow'
+    env:
+      GITHUB_REF: ${{ github.ref }}
     steps:
       - name: Validate tag
         run: |
-          if [[ ! "${{ github.ref }}" =~ ^refs/tags/axosyslog-[0-9]+ ]]; then
+          if [[ ! "${GITHUB_REF}" =~ ^refs/tags/axosyslog-[0-9]+ ]]; then
             echo "Please start the workflow on a 'axosyslog-[0-9]+*' tag"
             false
           fi
@@ -33,6 +35,7 @@ jobs:
       actions: read  # list workflow runs to find the matching draft-release run
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPOSITORY_OWNER: ${{ github.repository_owner }}
     outputs:
       DRAFT_RELEASE_RUN_ID: ${{ steps.find-and-export-run-id.outputs.DRAFT_RELEASE_RUN_ID }}
     steps:
@@ -40,7 +43,7 @@ jobs:
         id: find-and-export-run-id
         run: |
           DRAFT_RELEASE_RUN_ID=$(gh run list \
-            --repo "${{ github.repository_owner }}/axosyslog" \
+            --repo "${REPOSITORY_OWNER}/axosyslog" \
             --workflow "Draft release" \
             --json "status,conclusion,updatedAt,databaseId" \
             --jq '[ .[] | select(.status=="completed") | select(.conclusion=="success") ] | max_by(.updatedAt) | .databaseId')

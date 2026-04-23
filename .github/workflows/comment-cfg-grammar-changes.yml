@@ -44,27 +44,36 @@ jobs:
 
       - name: Get PR ID
         id: pr-id
+        env:
+          HEAD_REPO_URL: ${{ github.event.workflow_run.head_repository.url }}
+          REPO_URL: ${{ github.event.workflow_run.repository.url }}
+          REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_REPO_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
         run: |
           # The pull_requests array always come empty when querying a workflow run's data if it is started from a fork. This might be a GitHub bug.
           # There is also no json field in the `gh run view` command, which could give us the PR ID, so we can only query it based on the fork and branch.
           # See https://github.com/orgs/community/discussions/25220
 
-          if [[ "${{ github.event.workflow_run.head_repository.url }}" == "${{ github.event.workflow_run.repository.url }}" ]]; then
-            PR_ID=$(gh pr view -R "${{ github.repository }}" "${{ github.event.workflow_run.head_branch }}" --json "number" --jq ".number")
+          if [[ "${HEAD_REPO_URL}" == "${REPO_URL}" ]]; then
+            PR_ID=$(gh pr view -R "${REPO}" "${HEAD_BRANCH}" --json "number" --jq ".number")
           else
             # PR is from a fork
-            PR_ID=$(gh pr view -R "${{ github.repository }}" "${{ github.event.workflow_run.head_repository.owner.login }}:${{ github.event.workflow_run.head_branch }}" --json "number" --jq ".number")
+            PR_ID=$(gh pr view -R "${REPO}" "${HEAD_REPO_OWNER}:${HEAD_BRANCH}" --json "number" --jq ".number")
           fi
 
           echo "pr-id=${PR_ID}" >> $GITHUB_OUTPUT
 
       - name: Update or remove PR comment
+        env:
+            REPO: ${{ github.repository }}
+            PR_ID: ${{ steps.pr-id.outputs.pr-id }}
         run: |
           EXISTING_COMMENT_ID=$( \
             gh api \
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
-              /repos/${{ github.repository }}/issues/${{ steps.pr-id.outputs.pr-id }}/comments \
+              /repos/${REPO}/issues/${PR_ID}/comments \
               --jq '.[] | select(.user.login=="github-actions[bot]") | select(.user.type=="Bot") | select(.user.id==41898282) | select(.body | startswith("#### This Pull Request introduces config grammar changes")) | .id')
 
           if [[ -s "${GITHUB_WORKSPACE}/comment" ]]; then
@@ -73,7 +82,7 @@ jobs:
                 -H "Accept: application/vnd.github+json" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 --method PATCH \
-                /repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID} \
+                /repos/${REPO}/issues/comments/${EXISTING_COMMENT_ID} \
                 --input ${GITHUB_WORKSPACE}/comment
               echo -e "\n::notice::Updated comment: ${EXISTING_COMMENT_ID}"
             else
@@ -81,7 +90,7 @@ jobs:
                 -H "Accept: application/vnd.github+json" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 --method POST \
-                /repos/${{ github.repository }}/issues/${{ steps.pr-id.outputs.pr-id }}/comments \
+                /repos/${REPO}/issues/${PR_ID}/comments \
                 --input ${GITHUB_WORKSPACE}/comment
               echo -e "\n::notice::Created new comment"
             fi
@@ -91,7 +100,7 @@ jobs:
                 -H "Accept: application/vnd.github+json" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 --method DELETE \
-                /repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}
+                /repos/${REPO}/issues/comments/${EXISTING_COMMENT_ID}
               echo -e "\n::notice::Removed comment: ${EXISTING_COMMENT_ID}"
             else
               echo -e "\n::notice::Nothing to do"

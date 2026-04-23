@@ -48,9 +48,12 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install --yes syslog-ng
 
       - name: Add OSE repository
+        env:
+          PKG_TYPE: ${{ inputs.pkg-type }}
+          DISTRO: ${{ matrix.distro }}
         run: |
           wget -qO - https://pkg.axoflow.io/axoflow-code-signing-pub.asc | gpg --dearmor > /usr/share/keyrings/axoflow-code-signing-pub.gpg
-          echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt ${{ inputs.pkg-type }} $(echo ${{ matrix.distro }} | sed 's/:/-/g')" | tee --append /etc/apt/sources.list.d/axosyslog.list
+          echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt ${PKG_TYPE} $(echo "${DISTRO}" | sed 's/:/-/g')" | tee --append /etc/apt/sources.list.d/axosyslog.list
           apt-get update -qq
 
       - name: Install the last but one AxoSyslog package
@@ -69,18 +72,23 @@ jobs:
         id: syslog_ng_revision
 
       - name: Check revision
+        env:
+          PKG_TYPE: ${{ inputs.pkg-type }}
+          REVISION: ${{ steps.syslog_ng_revision.outputs.REVISION }}
         run: |
-          if [ "${{ inputs.pkg-type }}" = "nightly" ]; then
-            echo "${{ steps.syslog_ng_revision.outputs.REVISION }}" | egrep '^[0-9]{1}\.[0-9]{1,2}\.[0-9]{1,2}[a-zA-Z0-9.]*-snapshot\+[0-9]{8}T[0-9]{6}$'
-          elif [ "${{ inputs.pkg-type }}" = "stable" ]; then
-            echo "${{ steps.syslog_ng_revision.outputs.REVISION }}" | egrep '^[0-9]{1}\.[0-9]{1,2}\.[0-9]{1,2}-[0-9]{1,2}$'
+          if [ "${PKG_TYPE}" = "nightly" ]; then
+            echo "${REVISION}" | egrep '^[0-9]{1}\.[0-9]{1,2}\.[0-9]{1,2}[a-zA-Z0-9.]*-snapshot\+[0-9]{8}T[0-9]{6}$'
+          elif [ "${PKG_TYPE}" = "stable" ]; then
+            echo "${REVISION}" | egrep '^[0-9]{1}\.[0-9]{1,2}\.[0-9]{1,2}-[0-9]{1,2}$'
           fi
 
       - name: Check if installed package version matches with install revision
+        env:
+          REVISION: ${{ steps.syslog_ng_revision.outputs.REVISION }}
         run: |
-          echo "Installed revision value: ${{ steps.syslog_ng_revision.outputs.REVISION }}"
+          echo "Installed revision value: ${REVISION}"
           dpkg-query --show axosyslog\*
-          dpkg-query -f='${db:Status-Status}\t${package}\t${version}\t\n' --show axosyslog\* | grep ^installed | while read installed_axosyslog_package ; do echo $installed_axosyslog_package | grep ${{ steps.syslog_ng_revision.outputs.REVISION }} ; done
+          dpkg-query -f='${db:Status-Status}\t${package}\t${version}\t\n' --show axosyslog\* | grep ^installed | while read installed_axosyslog_package ; do echo $installed_axosyslog_package | grep ${REVISION} ; done
 
       - name: Check if syslog-ng can start with default config
         run: |
