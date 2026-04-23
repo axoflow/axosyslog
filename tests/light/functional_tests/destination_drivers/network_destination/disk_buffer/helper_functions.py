@@ -161,7 +161,8 @@ def check_disk_buffer_state_save_attempts(syslog_ng, expected_save_attempts):
 def trigger_to_create_abandoned_disk_buffer(network_destination, config, port_allocator, syslog_ng):
     network_destination.options["port"] = port_allocator()
     network_destination.options["disk_buffer"]["front-cache-size"] = 2000
-    syslog_ng.reload(config)
+    syslog_ng.stop()
+    syslog_ng.start(config)
     return network_destination
 
 
@@ -227,7 +228,7 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
     )
     TCParams = namedtuple(
         "TCParams", [
-            "last_msg_id", "is_suspended_source", "before_reload", "after_reload", "after_dst_alive",
+            "last_msg_id", "is_suspended_source", "before_reload", "after_dst_alive",
         ],
     )
     return TCParams(
@@ -242,17 +243,6 @@ def set_expected_metrics_state_when_sending_more_logs_than_buffer_can_handle_wit
             syslogng_disk_queue_disk_usage_bytes=1044480,
             syslogng_disk_queue_events=frontCache_size + qdisk_size + flow_control_window_size,
             syslogng_disk_queue_memory_usage_bytes=(frontCache_size + flow_control_window_size) * buffer_params.message_size_in_memory,
-            messages_in_disk_buffer=qdisk_size,
-        ),
-        after_reload=BufferState(
-            delivered_syslogng_output_events_total=0,
-            queued_syslogng_output_events_total=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
-            dropped_syslogng_output_events_total=0,
-            syslogng_disk_queue_processed_events_total=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
-            syslogng_disk_queue_disk_allocated_bytes=1048576,
-            syslogng_disk_queue_disk_usage_bytes=1044480,
-            syslogng_disk_queue_events=frontCache_size + qdisk_size + flow_control_window_size + flow_control_window_size,
-            syslogng_disk_queue_memory_usage_bytes=(frontCache_size + 2 * flow_control_window_size) * buffer_params.message_size_in_memory,
             messages_in_disk_buffer=qdisk_size,
         ),
         after_dst_alive=BufferState(

@@ -456,6 +456,8 @@ _free(LogQueue *s)
 {
   LogQueueDiskReliable *self = (LogQueueDiskReliable *)s;
 
+  gboolean persistent;
+  log_queue_disk_stop(&self->super.super, &persistent);
 
   if (self->flow_control_window)
     {

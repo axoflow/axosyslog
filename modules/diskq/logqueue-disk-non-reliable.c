@@ -797,6 +797,11 @@ static void
 _maybe_move_part_of_input_to_front_cache(LogQueueDiskNonReliable *self, InputQueue *input_queue)
 {
   g_mutex_lock(&self->super.super.lock);
+
+  // The user can set a smaller front_cache size, than what we loaded from the disk
+  if (self->front_cache.len > self->front_cache.limit)
+    goto exit;
+
   gint num_msgs_to_send_to_front_cache = (qdisk_get_length(self->super.qdisk) == 0 && self->flow_control_window.len == 0)?
                                          MIN(self->front_cache.limit - self->front_cache.len, input_queue->len) : 0;
 
@@ -881,6 +886,9 @@ static void
 _free(LogQueue *s)
 {
   LogQueueDiskNonReliable *self = (LogQueueDiskNonReliable *)s;
+
+  gboolean persistent;
+  log_queue_disk_stop(&self->super.super, &persistent);
 
   for (gint i = 0; i < self->num_input_queues; i++)
     {

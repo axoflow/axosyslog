@@ -491,3 +491,21 @@ log_queue_disk_deserialize_msg(LogQueueDisk *self, GString *serialized, LogMessa
 
   return TRUE;
 }
+
+QueueType
+log_queue_disk_get_type(void)
+{
+  return log_queue_disk_type;
+}
+
+void
+log_queue_disk_set_options(LogQueueDisk *self, DiskQueueOptions *options)
+{
+  qdisk_set_options(self->qdisk, options);
+}
+
+gboolean
+log_queue_disk_has_compatible_options(LogQueueDisk *self, DiskQueueOptions *options)
+{
+  return qdisk_is_compatible(self->qdisk, options);
+}
