@@ -338,6 +338,102 @@ _eval_uminus(FilterXExpr *s)
   return _do_uminus(filterx_expr_eval_typed(self->operand), &self->super);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_arithmetic_sub(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_substraction(lhs, rhs, expr);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_arithmetic_mul(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_multiplication(lhs, rhs, expr);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_arithmetic_div(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_division(lhs, rhs, expr);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_arithmetic_mod(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_modulo(lhs, rhs, expr);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_arithmetic_uminus(FilterXObject *operand, FilterXExpr *expr)
+{
+  return _do_uminus(operand, expr);
+}
+
+static FilterXIRValue
+_compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue lhs = self->literal_lhs
+                       ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
+                       : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+  FilterXIRValue rhs = self->literal_rhs
+                       ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
+                       : filterx_expr_compile_or_eval(self->super.rhs, jit);
+
+  FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
+}
+
+static FilterXIRValue
+_compile_substraction(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_sub");
+}
+
+static FilterXIRValue
+_compile_multiplication(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_mul");
+}
+
+static FilterXIRValue
+_compile_division(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_div");
+}
+
+static FilterXIRValue
+_compile_modulo(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_mod");
+}
+
+static FilterXIRValue
+_compile_uminus(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXUnaryOp *self = (FilterXUnaryOp *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue operand = filterx_expr_compile_or_eval_typed(self->operand, jit);
+  FilterXIRValue args[] = { operand, fx_jit_emit_const_ptr(jit, s) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, "fx_jit_arithmetic_uminus", ffi->ptr_ty, param_tys, args, 2);
+}
+
+#endif
+
 FilterXExpr *
 filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
@@ -346,6 +442,9 @@ filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.optimize = _optimize_substraction;
   self->super.super.eval = _eval_substraction;
   self->super.super.free_fn = _free_arithmetic_common;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_substraction;
+#endif
 
   return &self->super.super;
 }
@@ -358,6 +457,9 @@ filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.optimize = _optimize_division;
   self->super.super.eval = _eval_division;
   self->super.super.free_fn = _free_arithmetic_common;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_division;
+#endif
 
   return &self->super.super;
 }
@@ -370,6 +472,9 @@ filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.optimize = _optimize_modulo;
   self->super.super.eval = _eval_modulo;
   self->super.super.free_fn = _free_arithmetic_common;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_modulo;
+#endif
 
   return &self->super.super;
 }
@@ -382,6 +487,9 @@ filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rh
   self->super.super.optimize = _optimize_multiplication;
   self->super.super.eval = _eval_multiplication;
   self->super.super.free_fn = _free_arithmetic_common;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_multiplication;
+#endif
 
   return &self->super.super;
 }
@@ -393,6 +501,9 @@ filterx_arithmetic_operator_uminus_new(FilterXExpr *operand)
   filterx_unary_op_init_instance(self, "uminus", FXE_READ, operand);
 
   self->super.eval = _eval_uminus;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _compile_uminus;
+#endif
 
   return &self->super;
 }
