@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,43 +20,29 @@
  *
  */
 
-#include "cloud-auth.hpp"
+#include "driver.h"
+#include "cfg-parser.h"
+#include "http-adapters-grammar.h"
 
-gboolean
-cloud_authenticator_init(CloudAuthenticator *s)
+extern int http_adapters_debug;
+
+int http_adapters_parse(CfgLexer *lexer, LogDriver **instance, gpointer arg);
+
+static CfgLexerKeyword http_adapters_keywords[] =
 {
-  g_assert(s->init);
-  g_assert(!s->cpp);
+  { "response_adapter", KW_RESPONSE_ADAPTER },
+  { NULL }
+};
 
-  if (!s->init(s))
-    return FALSE;
-
-  g_assert(s->cpp);
-
-  return TRUE;
-}
-
-void
-cloud_authenticator_deinit(CloudAuthenticator *s)
+CfgParser http_adapters_parser =
 {
-  if (s->cpp)
-    delete s->cpp;
-}
+#if SYSLOG_NG_ENABLE_DEBUG
+  .debug_flag = &http_adapters_debug,
+#endif
+  .name = "http-adapters",
+  .keywords = http_adapters_keywords,
+  .parse = (gint (*)(CfgLexer *, gpointer *, gpointer)) http_adapters_parse,
+  .cleanup = (void (*)(gpointer)) log_pipe_unref,
+};
 
-void
-cloud_authenticator_free(CloudAuthenticator *s)
-{
-  if (!s)
-    return;
-
-  if (s->free_fn)
-    s->free_fn(s);
-
-  g_free(s);
-}
-
-void
-cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpRequestSignalData *data)
-{
-  s->cpp->handle_http_header_request(data);
-}
+CFG_PARSER_IMPLEMENT_LEXER_BINDING(http_adapters_, HTTP_ADAPTERS_, LogDriver **)

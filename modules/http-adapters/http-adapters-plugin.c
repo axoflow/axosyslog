@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,43 +20,32 @@
  *
  */
 
-#include "cloud-auth.hpp"
+#include "http-adapters-parser.h"
+#include "plugin.h"
+#include "plugin-types.h"
+
+static Plugin http_adapters_plugins[] =
+{
+  {
+    .type = LL_CONTEXT_INNER_DEST,
+    .name = "response_adapter",
+    .parser = &http_adapters_parser,
+  },
+};
 
 gboolean
-cloud_authenticator_init(CloudAuthenticator *s)
+http_adapters_module_init(PluginContext *context, CfgArgs *args)
 {
-  g_assert(s->init);
-  g_assert(!s->cpp);
-
-  if (!s->init(s))
-    return FALSE;
-
-  g_assert(s->cpp);
-
+  plugin_register(context, http_adapters_plugins, G_N_ELEMENTS(http_adapters_plugins));
   return TRUE;
 }
 
-void
-cloud_authenticator_deinit(CloudAuthenticator *s)
+const ModuleInfo http_adapters_module_info =
 {
-  if (s->cpp)
-    delete s->cpp;
-}
-
-void
-cloud_authenticator_free(CloudAuthenticator *s)
-{
-  if (!s)
-    return;
-
-  if (s->free_fn)
-    s->free_fn(s);
-
-  g_free(s);
-}
-
-void
-cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpRequestSignalData *data)
-{
-  s->cpp->handle_http_header_request(data);
-}
+  .canonical_name = "http-adapters",
+  .version = SYSLOG_NG_VERSION,
+  .description = "The http-adapters implements destination specific logic from common HTTP destinations.",
+  .core_revision = SYSLOG_NG_SOURCE_REVISION,
+  .plugins = http_adapters_plugins,
+  .plugins_len = G_N_ELEMENTS(http_adapters_plugins),
+};

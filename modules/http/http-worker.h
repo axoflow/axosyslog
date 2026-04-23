@@ -30,6 +30,7 @@
 #include "http-curl-header-list.h"
 #include "compression.h"
 #include "metrics/dyn-metrics-store.h"
+#include "http-signals.h"
 
 typedef struct _HTTPDestinationWorker
 {
@@ -43,6 +44,9 @@ typedef struct _HTTPDestinationWorker
   GString *url_buffer;
   GString *response_buffer;
   LogMessage *msg_for_templates;
+
+  HttpRequestSignalData request_signal;
+  HttpResponseSignalData response_signal;
 
   struct
   {

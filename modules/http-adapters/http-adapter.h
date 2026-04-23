@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,43 +20,32 @@
  *
  */
 
-#include "cloud-auth.hpp"
+#ifndef HTTP_ADAPTER_H_INCLUDED
+#define HTTP_ADAPTER_H_INCLUDED 1
 
-gboolean
-cloud_authenticator_init(CloudAuthenticator *s)
+#include "driver.h"
+#include "modules/http/http-signals.h"
+
+typedef struct _HttpAdapter HttpAdapter;
+
+struct _HttpAdapter
 {
-  g_assert(s->init);
-  g_assert(!s->cpp);
+  LogDriverPlugin super;
+  void (*adapt_response)(HttpAdapter *self, HttpResponseSignalData *data);
+};
 
-  if (!s->init(s))
-    return FALSE;
-
-  g_assert(s->cpp);
-
-  return TRUE;
+static inline void
+http_adapter_adapt_response(HttpAdapter *self, HttpResponseSignalData *data)
+{
+  self->adapt_response(self, data);
 }
 
-void
-cloud_authenticator_deinit(CloudAuthenticator *s)
+static inline void
+http_adapter_free(HttpAdapter *self)
 {
-  if (s->cpp)
-    delete s->cpp;
+  log_driver_plugin_free(&self->super);
 }
 
-void
-cloud_authenticator_free(CloudAuthenticator *s)
-{
-  if (!s)
-    return;
+void http_adapter_init_instance(HttpAdapter *self);
 
-  if (s->free_fn)
-    s->free_fn(s);
-
-  g_free(s);
-}
-
-void
-cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpRequestSignalData *data)
-{
-  s->cpp->handle_http_header_request(data);
-}
+#endif

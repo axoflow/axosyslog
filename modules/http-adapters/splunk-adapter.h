@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,43 +20,11 @@
  *
  */
 
-#include "cloud-auth.hpp"
+#ifndef SPLUNK_ADAPTER_H_INCLUDED
+#define SPLUNK_ADAPTER_H_INCLUDED 1
 
-gboolean
-cloud_authenticator_init(CloudAuthenticator *s)
-{
-  g_assert(s->init);
-  g_assert(!s->cpp);
+#include "http-adapter.h"
 
-  if (!s->init(s))
-    return FALSE;
+HttpAdapter *splunk_adapter_new(void);
 
-  g_assert(s->cpp);
-
-  return TRUE;
-}
-
-void
-cloud_authenticator_deinit(CloudAuthenticator *s)
-{
-  if (s->cpp)
-    delete s->cpp;
-}
-
-void
-cloud_authenticator_free(CloudAuthenticator *s)
-{
-  if (!s)
-    return;
-
-  if (s->free_fn)
-    s->free_fn(s);
-
-  g_free(s);
-}
-
-void
-cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpRequestSignalData *data)
-{
-  s->cpp->handle_http_header_request(data);
-}
+#endif

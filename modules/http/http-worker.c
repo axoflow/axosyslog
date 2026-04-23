@@ -29,6 +29,7 @@
 #include "syslog-names.h"
 #include "scratch-buffers.h"
 #include "http-signals.h"
+#include "timeutils/format.h"
 
 #define HTTP_HEADER_FORMAT_ERROR http_header_format_error_quark()
 
@@ -91,13 +92,75 @@ _curl_debug_function(CURL *handle, curl_infotype type,
   return 0;
 }
 
-#define HTTP_RESPONSE_MAX_LENGTH 1024
-
 static inline EVTTAG *
 _tag_request(HTTPDestinationWorker *self)
 {
-  return evt_tag_printf("request", "%.512s%s", self->request_body->str, self->request_body->len > 512 ? "..." : "");
+  gsize ors = self->response_signal.offending_request_start;
+  if (ors > self->request_body->len)
+    ors = self->request_body->len;
+
+  gsize orl = self->response_signal.offending_request_len;
+  if (ors + orl > self->request_body->len)
+    orl = self->request_body->len - ors;
+  if (orl)
+    return evt_tag_mem("request-slice", &self->request_body->str[ors], orl);
+  else
+    return evt_tag_printf("request", "%.512s%s", self->request_body->str, self->request_body->len > 512 ? "..." : "");
 }
+
+static EVTTAG *
+_tag_message(HTTPDestinationWorker *self)
+{
+  LogMessage *msg = NULL;
+
+  if (!self->super.queue)
+    goto unavailable;
+
+  guint batch_index = self->response_signal.offending_message;
+  msg = log_queue_peek_backlog(self->super.queue, batch_index);
+
+  if (!msg)
+    goto unavailable;
+
+  GString *message_details = scratch_buffers_alloc();
+
+  g_string_append_c(message_details, '@');
+  append_format_unix_time(&msg->timestamps[LM_TS_RECVD], message_details, TS_FMT_UNIX, -1, 6);
+  g_string_append_c(message_details, ' ');
+
+  gchar source[MAX_SOCKADDR_STRING], dest[MAX_SOCKADDR_STRING];
+  if (msg->saddr)
+    g_sockaddr_format(msg->saddr, source, sizeof(source), GSA_ADDRESS_PORT);
+  else
+    g_strlcpy(source, "0.0.0.0:0", sizeof(source));
+
+  if (msg->daddr)
+    g_sockaddr_format(msg->daddr, dest, sizeof(dest), GSA_ADDRESS_PORT);
+  else
+    g_strlcpy(dest, "0.0.0.0:0", sizeof(dest));
+
+  g_string_append_printf(message_details, "[%s->%s] ", source, dest);
+
+  gssize len;
+  const gchar *payload = log_msg_get_value(msg, LM_V_RAWMSG, &len);
+  if (!payload || len == 0)
+    payload = log_msg_get_value(msg, LM_V_MESSAGE, &len);
+  if (!payload)
+    goto unavailable;
+
+  g_string_append_len(message_details, payload, MIN(len, 512));
+  if (len > 512)
+    g_string_append_len(message_details, "...", 3);
+
+  log_msg_unref(msg);
+  return evt_tag_str("message", message_details->str);
+
+unavailable:
+  log_msg_unref(msg);
+  return evt_tag_str("message", "(not available)");
+}
+
+#define HTTP_RESPONSE_MAX_LENGTH 1024
 
 static size_t
 _curl_write_function(char *ptr, size_t size, size_t nmemb, void *userdata)
@@ -223,14 +286,14 @@ _set_error_from_slot_result(const gchar *signal,
       g_set_error(error, HTTP_HEADER_FORMAT_ERROR,
                   HTTP_HEADER_FORMAT_SLOT_CRITICAL_ERROR,
                   "Critical error during slot execution, signal:%s",
-                  signal_http_header_request);
+                  signal_http_request);
       break;
     case HTTP_SLOT_PLUGIN_ERROR:
     default:
       g_set_error(error, HTTP_HEADER_FORMAT_ERROR,
                   HTTP_HEADER_FORMAT_SLOT_NON_CRITICAL_ERROR,
                   "Non-critical error during slot execution, signal:%s",
-                  signal_http_header_request);
+                  signal_http_request);
       break;
     }
 }
@@ -238,18 +301,19 @@ _set_error_from_slot_result(const gchar *signal,
 static void
 _collect_rest_headers(HTTPDestinationWorker *self, GError **error)
 {
-  HttpHeaderRequestSignalData signal_data =
+  self->request_signal = ((HttpRequestSignalData)
   {
     .result = HTTP_SLOT_SUCCESS,
+    .batch_size = self->super.batch_size,
     .request_headers = self->request_headers,
-    .request_body = self->request_body
-  };
+    .request_body = self->request_body,
+  });
 
   HTTPDestinationDriver *owner = (HTTPDestinationDriver *) self->super.owner;
 
-  EMIT(owner->super.super.super.signal_slot_connector, signal_http_header_request, &signal_data);
+  EMIT(owner->super.super.super.signal_slot_connector, signal_http_request, &self->request_signal);
 
-  _set_error_from_slot_result(signal_http_header_request, signal_data.result, error);
+  _set_error_from_slot_result(signal_http_request, self->request_signal.result, error);
 }
 
 static void
@@ -378,6 +442,8 @@ _default_4XX(HTTPDestinationWorker *self, const gchar *url, glong http_code)
              evt_tag_int("status_code", http_code),
              _tag_request(self),
              evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+             evt_tag_int("message_index", self->response_signal.offending_message),
+             _tag_message(self),
              evt_tag_str("driver", owner->super.super.super.id),
              log_pipe_location_tag(&owner->super.super.super.super));
 
@@ -401,6 +467,8 @@ _default_5XX(HTTPDestinationWorker *self, const gchar *url, glong http_code)
              evt_tag_int("status_code", http_code),
              _tag_request(self),
              evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+             evt_tag_int("message_index", self->response_signal.offending_message),
+             _tag_message(self),
              evt_tag_str("driver", owner->super.super.super.id),
              log_pipe_location_tag(&owner->super.super.super.super));
   if (http_code == 508)
@@ -538,6 +606,8 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_int("status_code", http_code),
                  _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+                 evt_tag_int("message_index", self->response_signal.offending_message),
+                 _tag_message(self),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
       return LTR_ERROR;
@@ -549,6 +619,8 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_int("status_code", http_code),
                  _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+                 evt_tag_int("message_index", self->response_signal.offending_message),
+                 _tag_message(self),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
       return LTR_DROP;
@@ -560,6 +632,8 @@ _custom_map_http_result(HTTPDestinationWorker *self, const gchar *url, HttpRespo
                  evt_tag_int("status_code", http_code),
                  _tag_request(self),
                  evt_tag_mem("response", self->response_buffer->str, self->response_buffer->len),
+                 evt_tag_int("message_index", self->response_signal.offending_message),
+                 _tag_message(self),
                  evt_tag_str("driver", owner->super.super.super.id),
                  log_pipe_location_tag(&owner->super.super.super.super));
       return LTR_NOT_CONNECTED;
@@ -709,15 +783,20 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
 
   _update_status_code_metrics(self, url, http_code);
 
-  HttpResponseReceivedSignalData signal_data =
+  self->response_signal = ((HttpResponseSignalData)
   {
     .result = HTTP_SLOT_SUCCESS,
-    .http_code = http_code
-  };
+    .http_code = http_code,
+    .batch_size = self->super.batch_size,
+    .request_body = self->request_body,
+    .response_body = self->response_buffer,
+    .offending_message = 0,
+    0
+  });
 
-  EMIT(owner->super.super.super.signal_slot_connector, signal_http_response_received, &signal_data);
+  EMIT(owner->super.super.super.signal_slot_connector, signal_http_response, &self->response_signal);
 
-  if (signal_data.result == HTTP_SLOT_RESOLVED)
+  if (self->response_signal.result == HTTP_SLOT_RESOLVED)
     {
       msg_debug("http: HTTP error resolved issue, retry",
                 evt_tag_long("http_code", http_code));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Attila Szakacs
+ * Copyright (c) 2026 Balazs Scheidler <balazs.scheidler@axoflow.com>
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -20,43 +20,14 @@
  *
  */
 
-#include "cloud-auth.hpp"
+#ifndef HTTP_ADAPTERS_PARSER_H_INCLUDED
+#define HTTP_ADAPTERS_PARSER_H_INCLUDED
 
-gboolean
-cloud_authenticator_init(CloudAuthenticator *s)
-{
-  g_assert(s->init);
-  g_assert(!s->cpp);
+#include "cfg-parser.h"
+#include "driver.h"
 
-  if (!s->init(s))
-    return FALSE;
+extern CfgParser http_adapters_parser;
 
-  g_assert(s->cpp);
+CFG_PARSER_DECLARE_LEXER_BINDING(http_adapters_, HTTPADAPTERS_, LogDriver **)
 
-  return TRUE;
-}
-
-void
-cloud_authenticator_deinit(CloudAuthenticator *s)
-{
-  if (s->cpp)
-    delete s->cpp;
-}
-
-void
-cloud_authenticator_free(CloudAuthenticator *s)
-{
-  if (!s)
-    return;
-
-  if (s->free_fn)
-    s->free_fn(s);
-
-  g_free(s);
-}
-
-void
-cloud_authenticator_handle_http_header_request(CloudAuthenticator *s, HttpRequestSignalData *data)
-{
-  s->cpp->handle_http_header_request(data);
-}
+#endif

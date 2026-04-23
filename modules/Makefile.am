@@ -26,6 +26,7 @@ include modules/getent/Makefile.am
 include modules/graphite/Makefile.am
 include modules/hook-commands/Makefile.am
 include modules/http/Makefile.am
+include modules/http-adapters/Makefile.am
 include modules/java/Makefile.am
 include modules/java-modules/Makefile.am
 include modules/json/Makefile.am
@@ -61,7 +62,7 @@ SYSLOG_NG_CORE_JAR=$(top_builddir)/modules/java/syslog-ng-core/libs/syslog-ng-co
 
 SYSLOG_NG_MODULES	=	\
 	mod-afsocket mod-afstreams mod-affile mod-afprog \
-	mod-usertty mod-amqp mod-mongodb mod-smtp mod-http mod-json \
+	mod-usertty mod-amqp mod-mongodb mod-smtp mod-http mod-http-adapters mod-json \
 	mod-syslogformat mod-linux-kmsg mod-pacctformat \
 	mod-confgen mod-system-source mod-csvparser mod-correlation \
 	mod-basicfuncs mod-cryptofuncs mod-geoip2 mod-afstomp \
@@ -79,7 +80,7 @@ modules modules/: ${SYSLOG_NG_MODULES}
 modules_test_subdirs	=	\
 	modules_afsocket modules_afstreams modules_affile \
 	modules_afprog modules_usertty modules_afamqp \
-	modules_afmongodb modules_afsmtp modules_http modules_json \
+	modules_afmongodb modules_afsmtp modules_http modules_http_adapters modules_json \
 	modules_syslogformat modules_linux_kmsg \
 	modules_pacctformat modules_confgen modules_system_source \
 	modules_csvparser modules_correlation modules_basicfuncs \

@@ -162,6 +162,13 @@ _grpc() {
 		usr/lib/syslog-ng/libclickhouse.so
 }
 
+_http() {
+	pkgdesc="$pkgdesc (http module)"
+
+	_submv usr/lib/syslog-ng/libhttp.so \
+		usr/lib/syslog-ng/libhttp-adapters.so
+}
+
 _module() {
 	local name="${subpkgname#$pkgname-}"
 	pkgdesc="$pkgdesc (${name//-/ } module)"

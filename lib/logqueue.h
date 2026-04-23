@@ -87,7 +87,8 @@ struct _LogQueue
   void (*push_tail)(LogQueue *self, LogMessage *msg, const LogPathOptions *path_options);
   LogMessage *(*pop_head)(LogQueue *self, LogPathOptions *path_options);
   LogMessage *(*peek_head)(LogQueue *self);
-  void (*ack_backlog)(LogQueue *self, gint n);
+  void (*ack_backlog)(LogQueue *self, guint n);
+  LogMessage *(*peek_backlog)(LogQueue *self, guint n);
   void (*rewind_backlog)(LogQueue *self, guint rewind_count);
   void (*rewind_backlog_all)(LogQueue *self);
 
@@ -164,6 +165,14 @@ static inline LogMessage *
 log_queue_pop_head_ignore_throttle(LogQueue *self, LogPathOptions *path_options)
 {
   return self->pop_head(self, path_options);
+}
+
+static inline LogMessage *
+log_queue_peek_backlog(LogQueue *self, guint n)
+{
+  if (self->peek_backlog)
+    return self->peek_backlog(self, n);
+  return NULL;
 }
 
 static inline void
