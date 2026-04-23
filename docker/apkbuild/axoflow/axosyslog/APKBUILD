@@ -44,6 +44,7 @@ makedepends="
 	riemann-c-client-dev
 	tzdata
 	zlib-dev
+	valgrind-dev
 	"
 subpackages="
 	$pkgname-scl::noarch
