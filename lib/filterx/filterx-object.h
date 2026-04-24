@@ -291,25 +291,31 @@ filterx_free_object(FilterXObject *object)
 static inline FilterXObject *filterx_object_dup(FilterXObject *self);
 
 static inline FilterXObject *
-filterx_object_ref(FilterXObject *self)
+filterx_object_vref(FilterXObject *self)
 {
-  if (!self)
-    return NULL;
 
   gint r = g_atomic_counter_get(&self->ref_cnt);
+
+  if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
+    return self;
 
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
       return filterx_object_dup(self);
     }
 
-  if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
-    return self;
-
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
   g_atomic_counter_inc(&self->ref_cnt);
   return self;
+}
+
+static inline FilterXObject *
+filterx_object_ref(FilterXObject *self)
+{
+  if (!self)
+    return NULL;
+  return filterx_object_vref(self);
 }
 
 static inline FilterXObject *
@@ -322,11 +328,8 @@ filterx_object_ref_preserved(FilterXObject *self)
 }
 
 static inline void
-filterx_object_unref(FilterXObject *self)
+filterx_object_vunref(FilterXObject *self)
 {
-  if (!self)
-    return;
-
   gint r = g_atomic_counter_get(&self->ref_cnt);
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
@@ -360,6 +363,14 @@ filterx_object_unref(FilterXObject *self)
 }
 
 static inline void
+filterx_object_unref(FilterXObject *self)
+{
+  if (!self)
+    return;
+  filterx_object_vunref(self);
+}
+
+static inline void
 filterx_object_make_readonly(FilterXObject *self)
 {
   if (self->type->make_readonly)
@@ -384,7 +395,7 @@ filterx_object_unmarshal(FilterXObject *self)
 {
   if (self->type->unmarshal)
     return self->type->unmarshal(self);
-  return filterx_object_ref(self);
+  return filterx_object_vref(self);
 }
 
 static inline gboolean
@@ -625,7 +636,7 @@ static inline FilterXObject *
 filterx_object_copy(FilterXObject *self)
 {
   if (self->readonly)
-    return filterx_object_ref(self);
+    return filterx_object_vref(self);
 
   if (self->floating_ref)
     {
@@ -719,7 +730,7 @@ filterx_object_cow_fork2(FilterXObject *self, FilterXObject **pself)
         return filterx_ref_float(self);
 
       FilterXObject *result = filterx_ref_float(filterx_object_copy(self));
-      filterx_object_unref(self);
+      filterx_object_vunref(self);
       return result;
     }
 }
