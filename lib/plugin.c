@@ -390,49 +390,48 @@ plugin_load_module(PluginContext *context, const gchar *module_name, CfgArgs *ar
   GModule *mod;
   static GModule *main_module_handle;
   gboolean (*init_func)(PluginContext *context, CfgArgs *args);
-  gchar *module_init_func;
   gboolean result;
   ModuleInfo *module_info;
 
-  /* lookup in the main executable */
   if (!main_module_handle)
     main_module_handle = g_module_open(NULL, 0);
-  module_init_func = _format_module_init_name(module_name);
 
-  if (g_module_symbol(main_module_handle, module_init_func, (gpointer *) &init_func))
+  /* lookup in the main executable */
+  module_info = _get_module_info(main_module_handle, module_name);
+  if (!module_info)
     {
-      /* already linked in, no need to load explicitly */
-      goto call_init;
+      /* try to load it from external .so */
+      mod = _dlopen_module_on_path(module_name, context->module_path);
+      if (!mod)
+        return FALSE;
+      g_module_make_resident(mod);
+
+      module_info = _get_module_info(mod, module_name);
+      if (!module_info)
+        {
+          msg_error("No ModuleInfo structure found in plugin",
+                    evt_tag_str("module", module_name));
+          return FALSE;
+        }
+    }
+  else
+    {
+      mod = main_module_handle;
     }
 
-  /* try to load it from external .so */
-  mod = _dlopen_module_on_path(module_name, context->module_path);
-  if (!mod)
-    {
-      g_free(module_init_func);
-      return FALSE;
-    }
-  g_module_make_resident(mod);
-  module_info = _get_module_info(mod, module_name);
-
-  if (module_info && module_info->canonical_name)
-    {
-      g_free(module_init_func);
-      module_init_func = _format_module_init_name(module_info->canonical_name ? : module_name);
-    }
-
+  /* call init function */
+  gchar *module_init_func = _format_module_init_name(module_info->canonical_name ? : module_name);
   if (!g_module_symbol(mod, module_init_func, (gpointer *) &init_func))
     {
-      msg_error("Error finding init function in module",
+      msg_error("Error finding module init function",
                 evt_tag_str("module", module_name),
                 evt_tag_str("symbol", module_init_func),
                 evt_tag_str("error", g_module_error()));
       g_free(module_init_func);
       return FALSE;
     }
-
-call_init:
   g_free(module_init_func);
+
   result = (*init_func)(context, args);
   if (result)
     msg_verbose("Module loaded and initialized successfully",
@@ -490,18 +489,72 @@ plugin_has_discovery_run(PluginContext *context)
 }
 
 void
-plugin_discover_candidate_modules(PluginContext *context)
+plugin_extract_candidate_plugins(PluginContext *context, const gchar *module_name, ModuleInfo *module_info)
+{
+  for (gint i = 0; i < module_info->plugins_len; i++)
+    {
+      Plugin *plugin = &module_info->plugins[i];
+      PluginCandidate *candidate_plugin;
+
+      candidate_plugin = (PluginCandidate *) g_hash_table_lookup(context->candidate_plugins, plugin);
+
+      msg_debug("Registering candidate plugin",
+                evt_tag_str("module", module_name),
+                evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
+                evt_tag_str("name", plugin->name));
+      if (candidate_plugin)
+        {
+          msg_debug("Duplicate plugin candidate, overriding previous registration with the new one",
+                    evt_tag_str("old-module", candidate_plugin->module_name),
+                    evt_tag_str("new-module", module_name),
+                    evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
+                    evt_tag_str("name", plugin->name));
+          plugin_candidate_set_module_name(candidate_plugin, module_name);
+        }
+      else
+        {
+          candidate_plugin = plugin_candidate_new(plugin->type, plugin->name, module_name);
+          g_hash_table_insert(context->candidate_plugins, candidate_plugin, candidate_plugin);
+        }
+    }
+}
+
+/*
+ * BUILTIN MODULES:
+ *
+ * The main syslog-ng binary can include builtin modules.  To do that, the
+ * main binary should export a register_builtin_modules() function, which
+ * will be called when the plugin discovery is performed.
+ *
+ * The called function can call plugin_extract_candidate_plugins() to
+ * register any module_info struct that is built in.
+ */
+#if SYSLOG_NG_ENABLE_BUILTIN_MODULES
+extern void register_builtin_modules(PluginContext *context) __attribute__((weak));
+
+static void
+plugin_discover_builtin_modules(PluginContext *context)
+{
+  register_builtin_modules(context);
+}
+
+#else
+
+static void
+plugin_discover_builtin_modules(PluginContext *context)
+{
+}
+
+#endif
+
+static void
+plugin_discover_loadable_modules(PluginContext *context)
 {
   GModule *mod;
   gchar **mod_paths;
-  gint i, j;
-
-  if (context->candidate_plugins)
-    g_hash_table_unref(context->candidate_plugins);
-  context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
 
   mod_paths = g_strsplit(context->module_path ? : "", G_SEARCHPATH_SEPARATOR_S, 0);
-  for (i = 0; mod_paths[i]; i++)
+  for (gint i = 0; mod_paths[i]; i++)
     {
       GDir *dir;
       const gchar *fname;
@@ -531,34 +584,7 @@ plugin_discover_candidate_modules(PluginContext *context)
               module_info = _get_module_info(mod, module_name);
 
               if (module_info)
-                {
-                  for (j = 0; j < module_info->plugins_len; j++)
-                    {
-                      Plugin *plugin = &module_info->plugins[j];
-                      PluginCandidate *candidate_plugin;
-
-                      candidate_plugin = (PluginCandidate *) g_hash_table_lookup(context->candidate_plugins, plugin);
-
-                      msg_debug("Registering candidate plugin",
-                                evt_tag_str("module", module_name),
-                                evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
-                                evt_tag_str("name", plugin->name));
-                      if (candidate_plugin)
-                        {
-                          msg_debug("Duplicate plugin candidate, overriding previous registration with the new one",
-                                    evt_tag_str("old-module", candidate_plugin->module_name),
-                                    evt_tag_str("new-module", module_name),
-                                    evt_tag_str("context", cfg_lexer_lookup_context_name_by_type(plugin->type)),
-                                    evt_tag_str("name", plugin->name));
-                          plugin_candidate_set_module_name(candidate_plugin, module_name);
-                        }
-                      else
-                        {
-                          candidate_plugin = plugin_candidate_new(plugin->type, plugin->name, module_name);
-                          g_hash_table_insert(context->candidate_plugins, candidate_plugin, candidate_plugin);
-                        }
-                    }
-                }
+                plugin_extract_candidate_plugins(context, module_name, module_info);
               g_free(module_name);
               if (mod)
                 g_module_close(mod);
@@ -569,6 +595,18 @@ plugin_discover_candidate_modules(PluginContext *context)
       g_dir_close(dir);
     }
   g_strfreev(mod_paths);
+
+}
+
+void
+plugin_discover_candidate_modules(PluginContext *context)
+{
+  if (context->candidate_plugins)
+    g_hash_table_unref(context->candidate_plugins);
+  context->candidate_plugins = g_hash_table_new_full(plugin_hash, plugin_equal, NULL, (GDestroyNotify) plugin_candidate_free);
+
+  plugin_discover_builtin_modules(context);
+  plugin_discover_loadable_modules(context);
 }
 
 void

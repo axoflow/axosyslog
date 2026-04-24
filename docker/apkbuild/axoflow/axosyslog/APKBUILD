@@ -50,39 +50,10 @@ subpackages="
 	$pkgname-scl::noarch
 	$pkgname-dev
 	$pkgname-doc
-	$pkgname-python3:_python3
-	$pkgname-grpc:_grpc
 	"
 source="https://github.com/axoflow/axosyslog/releases/download/axosyslog-$pkgver/axosyslog-$pkgver.tar.gz
 	"
 builddir="$srcdir/axosyslog-$pkgver"
-
-_modules="
-	add-contextual-data
-	amqp:afamqp
-	cloud-auth:cloud_auth
-	ebpf
-	examples
-	geoip2:geoip2-plugin
-	graphite
-	http
-	json:json-plugin
-	kafka
-	map-value-pairs
-	mongodb:afmongodb
-	mqtt
-	redis
-	riemann
-	snmp:afsnmp
-	sql:afsql
-	stardate
-	stomp:afstomp
-	tags-parser
-	xml
-	"
-for _i in $_modules; do
-	subpackages="$subpackages $pkgname-${_i%%:*}:_module"
-done
 
 build() {
 	CFLAGS="$CFLAGS -flto=auto -g -O3" \
@@ -90,6 +61,7 @@ build() {
 		--prefix=/usr \
 		--sysconfdir=/etc/syslog-ng \
 		--localstatedir=/var/lib/syslog-ng \
+		--with-linking-mode=monolithic \
 		--enable-extra-warnings \
 		--enable-ipv6 \
 		--enable-manpages \
@@ -124,6 +96,7 @@ package() {
 	rm -f usr/lib/libsyslog-ng-native-connector.a
 
 	install -d -m 700 "$pkgdir"/var/lib/syslog-ng
+	install="$pkgname.post-install"
 }
 
 scl() {
@@ -142,41 +115,6 @@ dev() {
 
 	_submv usr/share/syslog-ng/tools \
 		usr/share/syslog-ng/xsd
-}
-
-_python3() {
-	pkgdesc="$pkgdesc (python3 module)"
-	depends="$pkgname=$pkgver-r$pkgrel python3"
-	install="$subpkgname.post-install"
-
-	_submv usr/lib/syslog-ng/libmod-python.so usr/lib/syslog-ng/python usr/bin/syslog-ng-update-virtualenv
-}
-
-_grpc() {
-	pkgdesc="$pkgdesc (grpc module)"
-
-	_submv usr/lib/syslog-ng/libotel.so \
-		usr/lib/syslog-ng/libloki.so \
-		usr/lib/syslog-ng/libbigquery.so \
-		usr/lib/syslog-ng/libpubsub.so \
-		usr/lib/syslog-ng/libclickhouse.so
-}
-
-_http() {
-	pkgdesc="$pkgdesc (http module)"
-
-	_submv usr/lib/syslog-ng/libhttp.so \
-		usr/lib/syslog-ng/libhttp-adapters.so
-}
-
-_module() {
-	local name="${subpkgname#$pkgname-}"
-	pkgdesc="$pkgdesc (${name//-/ } module)"
-
-	local libname=$(printf '%s\n' $_modules | grep "^$name:" | cut -d: -f2)
-	local soname="lib${libname:-$name}.so"
-
-	_submv usr/lib/syslog-ng/$soname
 }
 
 _submv() {

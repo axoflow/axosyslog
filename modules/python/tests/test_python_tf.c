@@ -64,7 +64,7 @@ setup(void)
   CfgArgs *args = cfg_args_new();
 
   cfg_args_set(args, "use-virtualenv", "no");
-  cfg_load_module_with_args(configuration, "python", args);
+  cfg_load_module_with_args(configuration, "mod-python", args);
   cfg_args_unref(args);
   _init_python_main();
 }

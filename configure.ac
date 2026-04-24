@@ -220,7 +220,7 @@ AC_ARG_WITH(sanitizer,
               ,,with_sanitizer="no")
 
 AC_ARG_WITH(linking-mode,
-              [  --with-linking-mode        Specify linking mode, one of dynamic,mixed,monolithic.],,with_linking_mode="auto")
+              [  --with-linking-mode        Specify linking mode, one of dynamic,monolithic.],,with_linking_mode="auto")
 
 AC_ARG_ENABLE(force-classic-linking,
               [  --enable-force-classic-linking  Link using ld-classic (default: no)],, enable_force_classic_linking="no")
@@ -732,10 +732,6 @@ fi
 
 linking_mode=$with_linking_mode
 
-dnl ***************************************************************************
-dnl Check for --whole-archive flag
-dnl ***************************************************************************
-
 if test $ostype = "Darwin"; then
   # -all_load loads all members of static archive libraries, it can't be selectively disabled (do not use -noall_load)
   # use -force_load for each static library if mixed linking needs to be supported on macOS
@@ -957,7 +953,6 @@ dnl libevtlog headers/libraries (remove after relicensing libevtlog)
 dnl ***************************************************************************
 
 EVTLOG_LIBS="\$(top_builddir)/lib/eventlog/src/libevtlog.la"
-EVTLOG_NO_LIBTOOL_LIBS="\$(top_builddir)/lib/eventlog/src/.libs/libevtlog.so"
 EVTLOG_CFLAGS="-I\$(top_srcdir)/lib/eventlog/src -I\$(top_builddir)/lib/eventlog/src"
 
 dnl ***************************************************************************
@@ -965,7 +960,6 @@ dnl secret storage libraries
 dnl ***************************************************************************
 
 SECRETSTORAGE_LIBS="\$(top_builddir)/lib/secret-storage/libsecret-storage.la"
-SECRETSTORAGE_NO_LIBTOOL_LIBS="\$(top_builddir)/lib/secret-storage/.libs/libsecret-storage.so"
 
 dnl ***************************************************************************
 dnl libwrap headers/libraries
@@ -1045,30 +1039,6 @@ dnl ***************************************************************************
 GLIB_ADDONS="gmodule-2.0 gthread-2.0"
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= $GLIB_MIN_VERSION $GLIB_ADDONS,,)
 
-if test "$linking_mode" != "dynamic"; then
-	# strip out -ldl & -lrt as it cannot be linked statically
-	GLIB_LIBS=`echo $GLIB_LIBS | tr ' ' '\n' | egrep -v "^(-ldld?)|(-lrt)$" | tr '\n' ' '`
-
-	#
-	# NOTE: this is fragile, but for now it works.  It relies the
-	# alphabetic order of glib gmodule gthread.  the problem is that
-	# when we link in glib statically and reexporting it from the main
-	# program, we are using --W,-lwhole-archive.  And if we do that, the
-	# static glib library cannot be listed multiple times, as the linker
-	# complains about symbol duplications.
-	#
-	# This set script will just remove all duplications, but then the
-	# order might be changed, but fortunately it also matches the proper
-	# order.
-	#
-	GLIB_LIBS=`echo $GLIB_LIBS | tr ' ' '\n' | sort | uniq | tr '\n' ' '`
-
-	old_LIBS=$LIBS
-	LIBS="$LD_START_STATIC $GLIB_LIBS $LD_END_STATIC $BASE_LIBS"
-	AC_CHECK_FUNC(g_hash_table_new, blb_cv_static_glib=yes, blb_cv_static_glib=no)
-	LIBS=$old_LIBS
-fi
-
 old_CPPFLAGS=$CPPFLAGS
 CPPFLAGS="$GLIB_CFLAGS"
 old_LDFLAGS=$LDFLAGS
@@ -1115,10 +1085,6 @@ if test "x$blb_cv_glib_sane" = "xno"; then
 	AC_MSG_ERROR([Glib headers inconsistent with current compiler setting. You might be using 32 bit Glib with a 64 bit compiler, check PKG_CONFIG_PATH])
 fi
 
-if test "x$linking_mode" != "xdynamic" -a "x$blb_cv_static_glib" = "xno"; then
-	AC_MSG_ERROR([static GLib libraries not found (a file named libglib-2.0.a), either link GLib dynamically using the --with-linking-mode=dynamic or install a static GLib])
-fi
-
 dnl ***************************************************************************
 dnl geoip2 headers/libraries
 dnl ***************************************************************************
@@ -1150,18 +1116,6 @@ fi
 dnl ***************************************************************************
 dnl pcre headers/libraries
 dnl ***************************************************************************
-
-if test "x$linking_mode" = "xmixed"; then
-
-	# check if we have a pcre bundled in glib. In case glib is
-        # dynamic it doesn't matter as glib doesn't export those
-        # symbols.  But in case glib is static, linking it through
-        # glib and through libpcre would clash.
-        old_LIBS="$LIBS"
-        LIBS="$LD_START_STATIC $GLIB_LIBS $LD_END_STATIC $LIBS"
-        AC_CHECK_FUNC(pcre_compile2, AC_MSG_ERROR([You cannot use a GLib embedded PCRE in mixed linking mode]))
-        LIBS="$old_LIBS"
-fi
 
 PKG_CHECK_MODULES(PCRE2, libpcre2-8 >= $PCRE2_MIN_VERSION,, PCRE2_LIBS="")
 
@@ -1336,9 +1290,6 @@ if test "x$with_ivykis" = "xinternal"; then
 
 		IVYKIS_VERSION_UPDATED="yes"
 
-		# LIBS to use when libtool is not applicable (when linking the main syslog-ng executable in mixed linking mode)
-		IVYKIS_NO_LIBTOOL_LIBS="-Wl,${WHOLE_ARCHIVE_OPT} -L\$(top_builddir)/lib/ivykis/src/.libs -livykis -Wl,${NO_WHOLE_ARCHIVE_OPT}"
-
 		AC_DEFINE(HAVE_IV_WORK_POOL_SUBMIT_CONTINUATION, 1)
 	else
 		AC_MSG_ERROR([Internal ivykis sources not found in lib/ivykis. This is a hard dependency, unable to build syslog-ng without them.])
@@ -1351,8 +1302,6 @@ else
 	# in case we're using a system installed ivykis, we can link against
 	# it even without libtool and without extra linker arguments (as
 	# we're linking dynamically)
-
-	IVYKIS_NO_LIBTOOL_LIBS="$IVYKIS_LIBS"
 
 	dnl check if iv_work_pool_submit_continuation is available in the system ivykis
 	old_LIBS=$LIBS
@@ -2145,16 +2094,12 @@ CPPFLAGS="$CPPFLAGS $libsystemd_CFLAGS $GLIB_CFLAGS $EVTLOG_CFLAGS $PCRE2_CFLAGS
 # There are two major linking modes currently:
 #   1) dynamic: all libraries are linked dynamically, and assumed to be available as dynamic libraries
 #
-#   2) mixed: typical system provided libraries are linked dynamicaly, the
-#      rest is linked statically (Glib etc).  Please note that _only_ the
-#      main syslog-ng executable is linked this way so that it can be
-#      started early during startup, tools and unit tests are linked
-#      dynamically the same way.
+#   2) monolithic: modules are linked into the main executable, everything else is linked dynamically
 #
 # The following variables are introduced and AC_SUBSTed to be used in Makefiles:
 #
 # SYSLOGNG_DEPS_LIBS:
-#       includes all dependendent libraries used by binary that can be linked in mixed mode (e.g. only the syslog-ng binary).
+#       includes all dependendent libraries used by the main binary (e.g. only the syslog-ng binary).
 #
 # TOOL_DEPS_LIBS:
 #       executables (e.g. tools & unit test programs) that link against
@@ -2184,6 +2129,14 @@ if test -z "$MODULE_LDFLAGS"; then
 fi
 MODULE_DEPS_LIBS="\$(top_builddir)/lib/libsyslog-ng.la"
 
+# syslog-ng binary is linked with the default link command (e.g. libtool)
+
+if test "$enable_cpp" = "yes"; then
+  SYSLOGNG_LINK='$(CXXLINK)'
+else
+  SYSLOGNG_LINK='$(LINK)'
+fi
+
 if test "x$linking_mode" = "xdynamic"; then
 	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS"
 
@@ -2200,23 +2153,17 @@ if test "x$linking_mode" = "xdynamic"; then
 		TOOL_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS"
 		CORE_DEPS_LIBS="$SYSLOGNG_DEPS_LIBS"
 	fi
-
-	# syslog-ng binary is linked with the default link command (e.g. libtool)
-	SYSLOGNG_LINK='$(LINK)'
-else
-	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_NO_LIBTOOL_LIBS $SECRETSTORAGE_NO_LIBTOOL_LIBS $LD_START_STATIC -Wl,${WHOLE_ARCHIVE_OPT} $GLIB_LIBS $PCRE2_LIBS $OPENSSL_LIBS $REGEX_LIBS $JSON_LIBS $LIBUNWIND_LIBS -Wl,${NO_WHOLE_ARCHIVE_OPT} $IVYKIS_NO_LIBTOOL_LIBS $LD_END_STATIC $LIBCAP_LIBS $DL_LIBS"
+elif test "x$linking_mode" = "xmonolithic"; then
+	enable_shared=no
+	enable_static=yes
+	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $RESOLV_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $GLIB_LIBS $PCRE2_LIBS $OPENSSL_LIBS $REGEX_LIBS $JSON_LIBS $LIBUNWIND_LIBS $IVYKIS_LIBS $LIBCAP_LIBS $DL_LIBS"
 	TOOL_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $IVYKIS_LIBS $DL_LIBS $OPENSSL_LIBS $JSON_LIBS"
 	CORE_DEPS_LIBS=""
-
-	# bypass libtool in case we want to do mixed linking because it
-	# doesn't support -Wl,-Bstatic -Wl,-Bdynamic on a per-library basis.
-	SYSLOGNG_LINK='$(CCLD) $(AM_CFLAGS) $(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@'
+else
+	AC_MSG_ERROR([Unknown value specified for the --with-linking-mode command line option: $linking_mode])
 fi
 YFLAGS="-d"
 
-if test "$with_sanitizer" != "no" -a "$enable_cpp" = "yes"; then
-  SYSLOGNG_LINK='$(LIBTOOL) --mode=link $(CXX) $(AM_CXXFLAGS) $(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@'
-fi
 
 enable_value()
 {
@@ -2296,8 +2243,10 @@ AC_DEFINE_UNQUOTED(ENABLE_STACKDUMP, `enable_value $enable_stackdump`, [Enable s
 AC_DEFINE_UNQUOTED(SYSTEMD_JOURNAL_MODE, `journald_mode`, [Systemd-journal support mode])
 AC_DEFINE_UNQUOTED(HAVE_INOTIFY, `enable_value $ac_cv_func_inotify_init`, [Have inotify])
 AC_DEFINE_UNQUOTED(USE_CONST_IVYKIS_MOCK, `enable_value $IVYKIS_VERSION_UPDATED`, [ivykis version is greater than $IVYKIS_UPDATED_VERSION])
+AC_DEFINE_UNQUOTED(ENABLE_BUILTIN_MODULES, `test $linking_mode = monolithic && echo 1 || echo 0`, [Builting modules are linked into the executable])
 
 AM_CONDITIONAL(ENABLE_ENV_WRAPPER, [test "$enable_env_wrapper" = "yes"])
+AM_CONDITIONAL(ENABLE_BUILTIN_MODULES, [test "$linking_mode" = "monolithic"])
 AM_CONDITIONAL(ENABLE_SYSTEMD, [test "$enable_systemd" = "yes"])
 AM_CONDITIONAL(ENABLE_SYSTEMD_UNIT_INSTALL, [test "$systemdsystemunitdir" != ""])
 AM_CONDITIONAL(ENABLE_SQL, [test "$enable_sql" = "yes"])
