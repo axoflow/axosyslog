@@ -39,11 +39,49 @@ typedef struct _FilterXCompoundExpr
   gboolean return_value_of_last_expr;
 } FilterXCompoundExpr;
 
+static inline gboolean
+_process_expr_result(FilterXExpr *expr, FilterXObject *result)
+{
+  gboolean success = expr->ignore_falsy_result || filterx_object_truthy(result);
+
+  if (((!success && debug_flag) || trace_flag) && !expr->suppress_from_trace)
+    {
+      ScratchBuffersMarker mark;
+      GString *buf = scratch_buffers_alloc_and_mark(&mark);
+
+      if (!filterx_object_repr(result, buf))
+        {
+          LogMessageValueType t;
+          if (!filterx_object_marshal(result, buf, &t))
+            g_assert_not_reached();
+        }
+
+      if (!success)
+        msg_debug("FILTERX FALSY",
+                  filterx_expr_format_location_tag(expr),
+                  evt_tag_mem("value", buf->str, buf->len),
+                  evt_tag_str("type", filterx_object_get_type_name(result)));
+      else
+        msg_trace("FILTERX ESTEP",
+                  filterx_expr_format_location_tag(expr),
+                  evt_tag_mem("value", buf->str, buf->len),
+                  evt_tag_int("truthy", filterx_object_truthy(result)),
+                  evt_tag_str("type", filterx_object_get_type_name(result)));
+      scratch_buffers_reclaim_marked(mark);
+    }
+
+  if (!success)
+    {
+      filterx_eval_push_falsy_error("bailing out due to a falsy expr", expr, result);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 static gboolean
 _eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
-  FilterXObject *res = NULL;
-
   /* NOTE: this is feature envy and should be implemented within
    * filterx_expr_eval(), however that function does not depend on the
    * FilterXEvalContext layer and introducing that dependency would make the
@@ -53,46 +91,12 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
   if (filterx_expr_has_effect(expr, FXE_WRITE))
     filterx_eval_context_make_writable(NULL);
 
-  *result = res = filterx_expr_eval(expr);
+  *result = filterx_expr_eval(expr);
 
-  if (!res)
+  if (!(*result))
     return FALSE;
 
-  gboolean success = expr->ignore_falsy_result || filterx_object_truthy(res);
-
-  if (((!success && debug_flag) || trace_flag) && !expr->suppress_from_trace)
-    {
-      ScratchBuffersMarker mark;
-      GString *buf = scratch_buffers_alloc_and_mark(&mark);
-
-      if (!filterx_object_repr(res, buf))
-        {
-          LogMessageValueType t;
-          if (!filterx_object_marshal(res, buf, &t))
-            g_assert_not_reached();
-        }
-
-      if (!success)
-        msg_debug("FILTERX FALSY",
-                  filterx_expr_format_location_tag(expr),
-                  evt_tag_mem("value", buf->str, buf->len),
-                  evt_tag_str("type", filterx_object_get_type_name(res)));
-      else
-        msg_trace("FILTERX ESTEP",
-                  filterx_expr_format_location_tag(expr),
-                  evt_tag_mem("value", buf->str, buf->len),
-                  evt_tag_int("truthy", filterx_object_truthy(res)),
-                  evt_tag_str("type", filterx_object_get_type_name(res)));
-      scratch_buffers_reclaim_marked(mark);
-    }
-
-  if (!success)
-    {
-      filterx_eval_push_falsy_error("bailing out due to a falsy expr", expr, res);
-      return FALSE;
-    }
-
-  return TRUE;
+  return _process_expr_result(expr, *result);
 }
 
 static inline gboolean
