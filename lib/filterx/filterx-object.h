@@ -63,6 +63,10 @@ struct _FilterXType
   gboolean (*len)(FilterXObject *self, guint64 *len);
   gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
+  /* hashing */
+  guint (*hash)(FilterXObject *s);
+  gboolean (*equal)(FilterXObject *s, FilterXObject *other);
+
   /* conversion to other data types */
   gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
@@ -201,6 +205,7 @@ struct _FilterXObject
    *
    */
   guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1, flags:5;
+  volatile guint32 hash;
   FilterXType *type;
 };
 
@@ -555,6 +560,47 @@ filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer us
   return self->type->iter(self, func, user_data);
 }
 
+static inline gboolean
+filterx_object_hashable(FilterXObject *self)
+{
+  return self->type->hash && self->type->equal;
+}
+
+static inline guint
+filterx_object_hash(FilterXObject *self)
+{
+  /* zero hash value will not be cached, but that's extremely rare */
+
+  if (self->hash)
+    return self->hash;
+
+  /* NOTE: this is a data race, as self->hash is written without atomics and
+   * also without mutexes.  Since self->hash is aligned, and is just 32
+   * bits, torn writes do not happen in modern architectures (x86, x86_64,
+   * arm).  */
+
+  G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
+
+  /* although this is racy for parallel access on the same object, it's not
+   * really a problem, as the hash algorithm should have the same result,
+   * so worst case, we calculate the hash 2 times.
+   */
+  self->hash = self->type->hash(self);
+  return self->hash;
+}
+
+static inline gboolean
+filterx_object_equal(FilterXObject *self, FilterXObject *other)
+{
+  if (self == other)
+    return TRUE;
+
+  if (self->type != other->type)
+    return FALSE;
+
+  return self->type->equal(self, other);
+}
+
 void _filterx_object_log_add_object_error(FilterXObject *self);
 
 static inline FilterXObject *
@@ -606,6 +652,7 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
     .fx_ref_cnt = { .counter = 0 }, \
     .weak_referenced = FALSE, \
     .is_dirty = FALSE, \
+    .hash = 0, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
 
