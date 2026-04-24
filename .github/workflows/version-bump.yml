@@ -23,7 +23,8 @@
 
 name: Version bump
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
@@ -35,6 +36,8 @@ on:
 jobs:
   version-bump:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GITHUB_TOKEN: ${{ secrets.PAT_FOR_ACTIONS }}
       RELEASE_VERSION: ${{ github.event.inputs.release_version }}
