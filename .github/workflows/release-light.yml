@@ -63,7 +63,7 @@ jobs:
     needs:
       - release-build
     permissions:
-      id-token: write
+      id-token: write  # OIDC authentication for trusted PyPI publishing
 
     steps:
       - name: Retrieve release distributions
