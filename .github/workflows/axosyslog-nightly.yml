@@ -1,6 +1,7 @@
 name: AxoSyslog nightly
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
@@ -11,6 +12,8 @@ on:
 jobs:
   precheck:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read  # query previous nightly workflow run to detect duplicate builds
     outputs:
       nightly-needed: ${{ github.event_name != 'schedule' || fromJson(steps.previous-nightly.outputs.data).workflow_runs[0].head_sha != github.sha }}
     steps:
@@ -97,6 +100,9 @@ jobs:
   publish-image:
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: tarball
+    permissions:
+      contents: read  # checkout source
+      packages: write  # push image to GHCR
     with:
       type: snapshot
       snapshot-tarball-artifact: source-tarball
@@ -108,6 +114,8 @@ jobs:
     if: github.ref == 'refs/heads/main'
     needs: publish-image
     runs-on: ubuntu-latest
+    permissions:
+      packages: write  # delete old nightly images from GHCR
     steps:
       - name: Clean up old images
         uses: actions/github-script@v9.0.0
