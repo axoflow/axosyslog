@@ -31,6 +31,7 @@ concurrency:
 
 jobs:
   prepare:
+    name: Prepare
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
@@ -61,6 +62,7 @@ jobs:
           echo "tag=${tag}" >> $GITHUB_OUTPUT
           echo "tag=${tag}"
   tarball:
+    name: Build tarball
     needs: prepare
     runs-on: ubuntu-latest
     outputs:

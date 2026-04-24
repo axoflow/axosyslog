@@ -12,6 +12,7 @@ concurrency:
 
 jobs:
   check-cfg-grammar-changes:
+    name: Check config grammar changes
     runs-on: ubuntu-latest
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

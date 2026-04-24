@@ -17,6 +17,7 @@ permissions: {}
 
 jobs:
   cleanup-untagged-images:
+    name: Clean up untagged images
     permissions:
       packages: write  # delete untagged images from GHCR
     runs-on: ubuntu-latest

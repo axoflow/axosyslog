@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   general:
+    name: General
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest

@@ -14,6 +14,7 @@ permissions: {}
 
 jobs:
   update-or-remove-comment-on-pr:
+    name: Update or remove PR comment
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write  # post/update/delete grammar diff comment on PR

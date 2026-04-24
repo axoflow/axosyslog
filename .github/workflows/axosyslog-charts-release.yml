@@ -17,6 +17,7 @@ concurrency:
 
 jobs:
   release:
+    name: Release Helm charts
     runs-on: ubuntu-latest
     permissions:
       contents: write  # create GitHub release and push to gh-pages branch

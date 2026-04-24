@@ -23,6 +23,7 @@ defaults:
 
 jobs:
   helm-lint:
+    name: Lint Helm charts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -35,6 +36,7 @@ jobs:
           docker run -v${PWD}:${PWD} alpine/helm lint ${PWD}
 
   helm-docs:
+    name: Check Helm docs are up-to-date
     runs-on: ubuntu-latest
     defaults:
       run:

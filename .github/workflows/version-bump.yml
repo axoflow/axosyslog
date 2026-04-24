@@ -39,6 +39,7 @@ concurrency:
 
 jobs:
   version-bump:
+    name: Version bump
     runs-on: ubuntu-latest
     permissions:
       contents: read

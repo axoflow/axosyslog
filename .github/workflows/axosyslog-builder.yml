@@ -26,6 +26,7 @@ concurrency:
 
 jobs:
   prepare:
+    name: Prepare
     runs-on: ubuntu-latest
     outputs:
       platform-matrix: ${{ steps.platforms.outputs.platform-matrix }}
@@ -62,6 +63,7 @@ jobs:
 
 
   image-build:
+    name: Build image
     if: github.repository_owner == 'axoflow' || github.event_name != 'schedule'
     runs-on: ${{ matrix.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     needs: prepare
@@ -131,6 +133,7 @@ jobs:
           retention-days: 1
 
   merge-and-push:
+    name: Merge and push
     runs-on: ubuntu-latest
     needs: [prepare, image-build]
     permissions:

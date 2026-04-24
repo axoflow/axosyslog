@@ -23,6 +23,7 @@ defaults:
 
 jobs:
   package-indexer-checks:
+    name: Package indexer checks
     runs-on: ubuntu-latest
     env:
       DOCKER_IMAGE: package-indexer

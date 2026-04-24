@@ -14,6 +14,7 @@ concurrency:
 
 jobs:
   create-source-tarball:
+    name: Create source tarball
     runs-on: ubuntu-latest
     steps:
       - name: Checkout AxoSyslog source

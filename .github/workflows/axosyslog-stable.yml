@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   pre-check:
+    name: Pre-check
     runs-on: ubuntu-latest
     if: github.repository_owner == 'axoflow'
     env:
@@ -33,6 +34,7 @@ jobs:
           fi
 
   find-draft-release-run:
+    name: Find draft release run
     needs: pre-check
     runs-on: ubuntu-latest
     permissions:

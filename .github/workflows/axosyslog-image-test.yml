@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   tarball:
+    name: Build tarball
     runs-on: ubuntu-latest
     outputs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
@@ -44,6 +45,7 @@ jobs:
           path: dbld/build/*.tar.gz
 
   build-and-test:
+    name: Build and test
     runs-on: ubuntu-latest
     needs: tarball
     steps:

@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   general:
+    name: General
     strategy:
       matrix:
         version: [26-intel, 14]
