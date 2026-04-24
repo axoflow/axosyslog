@@ -8,7 +8,8 @@
 
 name: Comment on version bump PR
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   push:
@@ -18,6 +19,9 @@ on:
 jobs:
   comment-on-version-bump-pr:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # checkout source
+      pull-requests: write  # comment on version bump PR about new commits on main
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       COMMIT_URL: https://github.com/${{ github.repository_owner }}/axosyslog/commit/${{ github.sha }}
