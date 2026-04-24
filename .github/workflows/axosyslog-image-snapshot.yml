@@ -22,6 +22,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.type || 'branch' }}-${{ inputs.custom-image-tag || '' }}
   cancel-in-progress: true
@@ -90,7 +93,9 @@ jobs:
           path: dbld/build/*.tar.*
 
   publish-image:
-    permissions: write-all
+    permissions:
+      contents: read  # checkout source
+      packages: write  # push image to GHCR
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: [prepare, tarball]
     with:
