@@ -1,0 +1,12 @@
+{{ template "chart.baseHead" . }}
+
+## Introduction
+
+This chart bootstraps [AxoSyslog](https://axoflow.com/docs/axosyslog-core/) on a [Kubernetes](http://kubernetes.io) cluster.
+
+The chart deploys two complementary components that can run side by side:
+
+- A **collector DaemonSet** that tails pod logs from `/var/log/pods` and forwards them to configured destinations.
+- A **syslog StatefulSet** that receives incoming syslog/OTLP traffic, which can include logs forwarded by the collector.
+
+{{ template "chart.valuesSection" . }}

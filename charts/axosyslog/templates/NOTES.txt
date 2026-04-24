@@ -1,2 +1,2 @@
-1. Watch the {{ template "axosyslog.fullname" . }} container start.
-  $ kubectl get pods --namespace={{ .Release.Namespace }} -l app={{ template "axosyslog.fullname" . }} -w
+1. Watch the {{ template "axosyslog.fullname" . }} containers start.
+  $ kubectl get pods --namespace={{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/name={{ include "axosyslog.name" . }} -w
