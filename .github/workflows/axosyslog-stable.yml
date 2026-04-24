@@ -14,6 +14,10 @@ on:
       - 'axosyslog-[0-9]+*'
 
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   pre-check:
     runs-on: ubuntu-latest

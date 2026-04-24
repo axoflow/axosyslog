@@ -16,6 +16,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   comment-on-version-bump-pr:
     runs-on: ubuntu-latest

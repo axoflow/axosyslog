@@ -23,6 +23,10 @@ on:
     types: [closed]
 
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 env:
   GITHUB_TOKEN: ${{ secrets.PAT_FOR_ACTIONS }}
   WORKFLOW_NAME: "**Draft release** workflow"

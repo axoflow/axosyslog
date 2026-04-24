@@ -9,6 +9,10 @@ on:
         default: 'axosyslog'
         type: string
 
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.image_name }}
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:
