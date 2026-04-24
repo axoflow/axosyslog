@@ -92,19 +92,19 @@ Test(filterx_protobuf_message, invalid_args)
   args = NULL;
 
   /* no schema or schema_file */
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_test_dict_new())));
   _assert_protobuf_message_init_fail(args);
   args = NULL;
 
   /* no schema not yet implemented */
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PROTOBUF_MESSAGE_ARG_NAME_SCHEMA,
                                                       filterx_literal_new(filterx_test_dict_new())));
   _assert_protobuf_message_init_fail(args);
   args = NULL;
 
   /* wrong file name */
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PROTOBUF_MESSAGE_ARG_NAME_SCHEMA_FILE,
                                                       filterx_literal_new(filterx_string_new("wrong.filename", -1))));
   _assert_protobuf_message_init_fail(args);
@@ -125,7 +125,7 @@ Test(filterx_protobuf_message, load_proto_from_file)
   _helper_create_proto_file(test_proto);
 
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_test_dict_new())));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_test_dict_new())));
   args = g_list_append(args, filterx_function_arg_new(FILTERX_FUNC_PROTOBUF_MESSAGE_ARG_NAME_SCHEMA_FILE,
                                                       filterx_literal_new(filterx_string_new(test_pb_msg_filepath, -1))));
 
@@ -173,7 +173,7 @@ Test(filterx_protobuf_message, assign_vars)
                           , -1, &json_err);
   cr_assert_null(json_err);
 
-  FilterXExpr *expr = filterx_non_literal_new(dict);
+  FilterXExpr *expr = filterx_object_expr_new(dict);
 
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL, expr));

@@ -124,6 +124,16 @@ filterx_object_add_inplace_method(FilterXObject *self, FilterXObject *container,
 }
 
 void
+_filterx_object_assert_object_is_not_shared(FilterXObject *self)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+  if (filterx_eval_context_is_production(context))
+    {
+      g_assert(!self->early_allocation);
+    }
+}
+
+void
 filterx_object_free_method(FilterXObject *self)
 {
   /* empty */
@@ -137,50 +147,35 @@ filterx_object_new(FilterXType *type)
   return self;
 }
 
+void
+filterx_object_freeze_finish(FilterXObject *self)
+{
+  self->ref_cnt = FILTERX_OBJECT_REFCOUNT_FROZEN;
+}
+
 /* NOTE: we expect an exclusive reference, as it is not thread safe to be
  * called on the same object from multiple threads */
 void
-filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg)
+filterx_object_dedup(FilterXObject **pself, FilterXObjectDeduplicator *dedup)
 {
   FilterXObject *self = *pself;
-  FilterXConfig *fx_cfg = filterx_config_get(cfg);
 
-  /* Mutable or recursive objects should never be frozen.
-   * Use filterx_object_make_readonly() instead, that is enough to avoid clones.
-   */
-  g_assert(!filterx_object_is_ref(self) && !self->type->is_mutable);
+  if (self->type->dedup)
+    self->type->dedup(pself, dedup);
+}
 
+/* NOTE: we expect an exclusive reference, as it is not thread safe to be
+ * called on the same object from multiple threads */
+void
+filterx_object_freeze(FilterXObject *self, FilterXObjectFreezer *freezer)
+{
   if (filterx_object_is_preserved(self))
     return;
 
-  if (filterx_object_dedup(pself, fx_cfg->frozen_deduplicated_objects))
-    {
-      /* NOTE: filterx_object_dedup() may change self to replace with an already frozen version */
-      if (self != *pself)
-        return;
-    }
+  if (self->type->freeze)
+    self->type->freeze(self, freezer);
   else
-    g_ptr_array_add(fx_cfg->frozen_objects, self);
-
-  /* no change in the object, so we are freezing self */
-  filterx_object_make_readonly(self);
-  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_FROZEN);
-}
-
-void
-_filterx_object_unfreeze_and_free(FilterXObject *self)
-{
-  if (!self)
-    return;
-
-  gint r = g_atomic_counter_get(&self->ref_cnt);
-  if (r == FILTERX_OBJECT_REFCOUNT_HIBERNATED)
-    return;
-
-  g_assert(r == FILTERX_OBJECT_REFCOUNT_FROZEN);
-
-  g_atomic_counter_set(&self->ref_cnt, 1);
-  filterx_object_unref(self);
+    filterx_object_freezer_keep(freezer, self);
 }
 
 void
@@ -190,12 +185,10 @@ filterx_object_hibernate(FilterXObject *self)
   g_assert(!filterx_object_is_preserved(self));
 
   /* Mutable or recursive objects should never be hibernated.
-   * Use filterx_object_make_readonly() instead, that is enough to avoid clones.
    */
   g_assert(!filterx_object_is_ref(self) && !self->type->is_mutable);
 
-  filterx_object_make_readonly(self);
-  g_atomic_counter_set(&self->ref_cnt, FILTERX_OBJECT_REFCOUNT_HIBERNATED);
+  self->ref_cnt = FILTERX_OBJECT_REFCOUNT_HIBERNATED;
 }
 
 void
@@ -204,10 +197,10 @@ filterx_object_unhibernate_and_free(FilterXObject *self)
   if (!self)
     return;
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
+  gint r = self->ref_cnt;
   g_assert(r == FILTERX_OBJECT_REFCOUNT_HIBERNATED);
 
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   filterx_object_unref(self);
 }
 
