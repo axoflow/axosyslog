@@ -60,10 +60,10 @@ public:
   ~KVList();
 
   std::string marshal();
-  bool set_subscript(FilterXObject *key, FilterXObject **value);
-  bool is_key_set(FilterXObject *key) const;
-  FilterXObject *get_subscript(FilterXObject *key);
-  bool unset_key(FilterXObject *key);
+  bool set_subscript(const gchar *key, gsize key_len, FilterXObject **value);
+  bool is_key_set(const gchar *key, gsize key_len) const;
+  FilterXObject *get_subscript(const gchar *key, gsize key_len);
+  bool unset_key(const gchar *key, gsize key_len);
   uint64_t len() const;
   bool iter(FilterXObjectIterFunc func, gpointer user_data) const;
   const RepeatedPtrField<KeyValue> &get_value() const;

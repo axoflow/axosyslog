@@ -76,11 +76,11 @@ LogRecord::marshal(void)
 }
 
 bool
-LogRecord::set_subscript(FilterXObject *key, FilterXObject **value)
+LogRecord::set_subscript(const gchar *key, gsize key_len, FilterXObject **value)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -99,11 +99,11 @@ LogRecord::set_subscript(FilterXObject *key, FilterXObject **value)
 }
 
 FilterXObject *
-LogRecord::get_subscript(FilterXObject *key)
+LogRecord::get_subscript(const gchar *key, gsize key_len)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -116,11 +116,11 @@ LogRecord::get_subscript(FilterXObject *key)
 }
 
 bool
-LogRecord::unset_key(FilterXObject *key)
+LogRecord::unset_key(const gchar *key, gsize key_len)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -133,11 +133,11 @@ LogRecord::unset_key(FilterXObject *key)
 }
 
 bool
-LogRecord::is_key_set(FilterXObject *key)
+LogRecord::is_key_set(const gchar *key, gsize key_len)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(this->logRecord, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -189,63 +189,71 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
+_set_subscript(FilterXObject *s, FilterXObject *k, FilterXObject **new_value)
 {
   FilterXOtelLogRecord *self = (FilterXOtelLogRecord *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return FALSE;
     }
 
-  return self->cpp->set_subscript(key, new_value);
+  return self->cpp->set_subscript(key, key_len, new_value);
 }
 
 static FilterXObject *
-_get_subscript(FilterXObject *s, FilterXObject *key)
+_get_subscript(FilterXObject *s, FilterXObject *k)
 {
   FilterXOtelLogRecord *self = (FilterXOtelLogRecord *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return NULL;
     }
 
-  return self->cpp->get_subscript(key);
+  return self->cpp->get_subscript(key, key_len);
 }
 
 static gboolean
-_unset_key(FilterXObject *s, FilterXObject *key)
+_unset_key(FilterXObject *s, FilterXObject *k)
 {
   FilterXOtelLogRecord *self = (FilterXOtelLogRecord *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return FALSE;
     }
 
-  return self->cpp->unset_key(key);
+  return self->cpp->unset_key(key, key_len);
 }
 
 static gboolean
-_is_key_set(FilterXObject *s, FilterXObject *key)
+_is_key_set(FilterXObject *s, FilterXObject *k)
 {
   FilterXOtelLogRecord *self = (FilterXOtelLogRecord *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return FALSE;
     }
 
-  return self->cpp->is_key_set(key);
+  return self->cpp->is_key_set(key, key_len);
 }
 
 static gboolean

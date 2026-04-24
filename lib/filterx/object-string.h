@@ -59,7 +59,6 @@ struct _FilterXString
   FilterXObject super;
   const gchar *str;
   guint32 str_len;
-  volatile guint32 hash;
   union
   {
     FilterXObject *slice;
@@ -244,38 +243,6 @@ filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
   return self;
 }
 
-guint
-_filterx_string_hash(FilterXString *self);
-
-static inline guint
-filterx_string_hash(FilterXObject *s)
-{
-  g_assert(filterx_object_is_type(s, &FILTERX_TYPE_NAME(string)));
-
-  FilterXString *self = (FilterXString *) s;
-  if (self->hash)
-    return self->hash;
-
-  /* although this is racy for parallel access on the same object, it's not
-   * really a problem, as the hash algorithm should have the same result,
-   * so worst case, we calculate the hash 2 times.
-   */
-
-  return _filterx_string_hash(self);
-}
-
-/* glib hash equal function */
-static inline gboolean
-filterx_string_equal(FilterXObject *s, FilterXObject *o)
-{
-  if (s == o)
-    return TRUE;
-
-  FilterXString *self = (FilterXString *) s;
-  FilterXString *other = (FilterXString *) o;
-  return strn_eq_strn(self->str, self->str_len, other->str, other->str_len);
-}
-
 static inline FilterXObject *
 filterx_string_new_borrowed(const gchar *str, gssize str_len)
 {
@@ -290,7 +257,6 @@ void filterx_string_global_deinit(void);
     FILTERX_OBJECT_STACK_INIT(string), \
     .str = (cstr), \
     .str_len = (((gssize) cstr_len) == -1 ? (guint32) strlen(cstr) : (guint32) (cstr_len)), \
-    .hash = 0, \
   }
 
 #define FILTERX_STRING_DECLARE_ON_STACK(_name, cstr, cstr_len) \
