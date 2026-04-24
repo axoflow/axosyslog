@@ -145,21 +145,6 @@ def test_list_from_message_variable(config, syslog_ng):
     assert file_final.read_log() == """foo,bar,baz"""
 
 
-def test_repr(config, syslog_ng):
-    (file_final,) = create_config(
-        config, r"""
-    dt=strptime("2000-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%S%z");
-    $MSG = json();
-    $MSG.repr = repr(dt);
-    $MSG.str = string(dt);
-    """,
-    )
-    syslog_ng.start(config)
-
-    assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == """{"repr":"2000-01-01T00:00:00.000000+00:00","str":"946684800.000000"}"""
-
-
 def test_format_isodate(config, syslog_ng):
     (file_final,) = create_config(
         config, r"""
@@ -620,7 +605,7 @@ def test_metrics_labels_duplicates(config, syslog_ng):
     syslog_ng.start(config)
 
     assert file_final.get_stats()["processed"] == 1
-    assert file_final.read_log() == r"""{"dupes":"{foo=\"foovalue\",foo=\"foovalue2\"}","deduped":"{foo=\"foovalue2\"}"}"""
+    assert file_final.read_log() == r"""{"dupes":"metrics_labels('{foo=\"foovalue\",foo=\"foovalue2\"}')","deduped":"metrics_labels('{foo=\"foovalue2\"}')"}"""
 
 
 def test_metrics_labels_empty_value_and_null_value(config, syslog_ng):

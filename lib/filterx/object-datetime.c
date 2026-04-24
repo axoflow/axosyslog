@@ -184,9 +184,9 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
 gboolean
 datetime_repr(const UnixTime *ut, GString *repr)
 {
-  WallClockTime wct = WALL_CLOCK_TIME_INIT;
-  convert_unix_time_to_wall_clock_time(ut, &wct);
-  append_format_wall_clock_time(&wct, repr, TS_FMT_ISO, 6);
+  g_string_append(repr, "datetime(");
+  append_format_unix_time(ut, repr, TS_FMT_UNIX, -1, 6);
+  g_string_append_c(repr, ')');
   return TRUE;
 }
 

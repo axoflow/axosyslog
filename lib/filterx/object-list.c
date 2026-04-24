@@ -96,7 +96,20 @@ _filterx_list_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 static gboolean
 _filterx_list_repr(FilterXObject *s, GString *repr)
 {
-  return filterx_object_to_json(s, repr);
+  FilterXListObject *self = (FilterXListObject *) s;
+  g_string_append_c(repr, '[');
+
+  for (gsize i = 0; i < self->array->len; i++)
+    {
+      FilterXObject *elt = (FilterXObject *) g_ptr_array_index(self->array, i);
+      if (!filterx_object_repr_append(elt, repr))
+        return FALSE;
+      if (i < self->array->len - 1)
+        g_string_append_c(repr, ',');
+    }
+
+  g_string_append_c(repr, ']');
+  return TRUE;
 }
 
 static FilterXObject *
