@@ -1,6 +1,7 @@
 name: Compile dbld-images
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   pull_request:
@@ -32,6 +33,9 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # checkout source
+      packages: write  # push dbld images to GHCR
     strategy:
       matrix:
         image:
