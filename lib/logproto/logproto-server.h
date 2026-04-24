@@ -194,6 +194,24 @@ log_proto_server_set_ack_tracker(LogProtoServer *s, AckTracker *ack_tracker)
 }
 
 #define DEFINE_LOG_PROTO_SERVER(prefix, options...) \
+  static LogProtoServer *                                               \
+  prefix ## _server_new_wrapper(LogTransport *transport,                \
+                                const LogProtoServerOptions *opts,      \
+                                StatsClusterKeyBuilder *kb) \
+  {                                                                     \
+    return prefix ## _server_new(transport, opts);                      \
+  }                                                                     \
+  static gpointer                                                       \
+  prefix ## _server_plugin_construct(Plugin *self)                      \
+  {                                                                     \
+    static LogProtoServerFactory proto = {                              \
+      .construct = prefix ## _server_new_wrapper,               \
+      ##options \
+    };                                                                  \
+    return &proto;                                                      \
+  }
+
+#define DEFINE_LOG_PROTO_SERVER_WITH_KB(prefix, options...) \
   static gpointer                                                       \
   prefix ## _server_plugin_construct(Plugin *self)                      \
   {                                                                     \
@@ -222,15 +240,16 @@ typedef struct _LogProtoServerFactory LogProtoServerFactory;
 
 struct _LogProtoServerFactory
 {
-  LogProtoServer *(*construct)(LogTransport *transport, const LogProtoServerOptions *options);
+  LogProtoServer *(*construct)(LogTransport *transport, const LogProtoServerOptions *options,
+                               StatsClusterKeyBuilder *kb);
   gint default_inet_port;
 };
 
 static inline LogProtoServer *
 log_proto_server_factory_construct(LogProtoServerFactory *self, LogTransport *transport,
-                                   const LogProtoServerOptions *options)
+                                   const LogProtoServerOptions *options, StatsClusterKeyBuilder *kb)
 {
-  return self->construct(transport, options);
+  return self->construct(transport, options, kb);
 }
 
 LogProtoServerFactory *log_proto_server_get_factory(PluginContext *context, const gchar *name);
