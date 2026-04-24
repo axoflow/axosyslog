@@ -65,7 +65,9 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
+  g_string_append(repr, "metrics_labels('");
   _marshal(s, repr, NULL);
+  g_string_append(repr, "')");
   return TRUE;
 }
 
@@ -86,7 +88,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -127,7 +129,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -176,7 +178,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -200,7 +202,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   const gchar *key_str;
   gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, &key_str, &key_len, &error))
+  if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;

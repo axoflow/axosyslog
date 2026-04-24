@@ -34,6 +34,7 @@ set(FILTERX_HEADERS
     filterx/filterx-config.h
     filterx/filterx-error.h
     filterx/filterx-eval.h
+    filterx/filterx-env.h
     filterx/filterx-expr.h
     filterx/filterx-plist.h
     filterx/filterx-globals.h
@@ -45,6 +46,7 @@ set(FILTERX_HEADERS
     filterx/filterx-private.h
     filterx/filterx-ref.h
     filterx/filterx-scope.h
+    filterx/filterx-stashed-object.h
     filterx/filterx-variable.h
     filterx/filterx-weakrefs.h
     filterx/filterx-dpath.h
@@ -78,6 +80,7 @@ set(FILTERX_HEADERS
     filterx/object-dict.h
     filterx/object-extractor.h
     filterx/object-list.h
+    filterx/object-tuple.h
     filterx/object-message-value.h
     filterx/object-metrics-labels.h
     filterx/object-null.h
@@ -123,6 +126,7 @@ set(FILTERX_SOURCES
     filterx/filterx-config.c
     filterx/filterx-error.c
     filterx/filterx-eval.c
+    filterx/filterx-env.c
     filterx/filterx-expr.c
     filterx/filterx-plist.c
     filterx/filterx-globals.c
@@ -134,6 +138,7 @@ set(FILTERX_SOURCES
     filterx/filterx-private.c
     filterx/filterx-ref.c
     filterx/filterx-scope.c
+    filterx/filterx-stashed-object.c
     filterx/filterx-variable.c
     filterx/filterx-weakrefs.c
     filterx/filterx-dpath.c
@@ -164,6 +169,7 @@ set(FILTERX_SOURCES
     filterx/object-ip.c
     filterx/object-dict.c
     filterx/object-list.c
+    filterx/object-tuple.c
     filterx/object-message-value.c
     filterx/object-metrics-labels.c
     filterx/object-null.c

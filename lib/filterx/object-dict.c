@@ -197,27 +197,13 @@ _table_get_entry(FilterXDictTable *table, FilterXDictEntrySlot index)
 static inline guint
 _table_hash_key(FilterXObject *key)
 {
-  return filterx_string_hash(key);
+  return filterx_object_hash(key);
 }
 
 static inline gboolean
 _table_key_equals(FilterXObject *key1, FilterXObject *key2)
 {
-  if (key1 == key2)
-    return TRUE;
-
-  const gchar *key1_str, *key2_str;
-  gsize key1_len, key2_len;
-
-  if (!filterx_object_extract_string_ref(key1, &key1_str, &key1_len))
-    g_assert_not_reached();
-  if (!filterx_object_extract_string_ref(key2, &key2_str, &key2_len))
-    g_assert_not_reached();
-
-  if (key1_len != key2_len)
-    return FALSE;
-
-  return memcmp(key1_str, key2_str, key1_len) == 0;
+  return filterx_object_equal(key1, key2);
 }
 
 #define PERTURB_SHIFT 5
@@ -448,7 +434,7 @@ _table_resize_index(FilterXDictTable *target, FilterXDictTable *source)
       if (!ep->key)
         continue;
 
-      guint32 hash = filterx_string_hash(ep->key);
+      guint32 hash = _table_hash_key(ep->key);
       FilterXDictIndexSlot slot = hash & mask;
       FilterXDictIndexSlot perturb = hash;
 
@@ -572,9 +558,41 @@ _filterx_dict_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 static gboolean
+_repr_dict_elem(FilterXObject **key, FilterXObject **value, gpointer user_data)
+{
+  gpointer *args = (gpointer *) user_data;
+  GString *repr = (GString *) args[0];
+  gboolean *first = (gboolean *) args[1];
+
+  if (!(*first))
+    g_string_append_c(repr, ',');
+  else
+    *first = FALSE;
+
+  if (!filterx_object_repr_append(*key, repr))
+    return FALSE;
+  g_string_append_c(repr, ':');
+
+  return filterx_object_repr_append(*value, repr);
+}
+
+static gboolean
 _filterx_dict_repr(FilterXObject *s, GString *repr)
 {
-  return filterx_object_to_json(s, repr);
+  FilterXDictObject *self = (FilterXDictObject *) s;
+  gboolean first = TRUE;
+  gpointer args[] = { repr, &first };
+
+  g_string_append_c(repr, '{');
+
+  if (self->table)
+    {
+      if (!_table_foreach(self->table, _repr_dict_elem, args))
+        return FALSE;
+    }
+
+  g_string_append_c(repr, '}');
+  return TRUE;
 }
 
 static FilterXObject *
@@ -583,7 +601,7 @@ _filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -604,7 +622,7 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -625,7 +643,7 @@ _filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -643,7 +661,7 @@ _filterx_dict_is_member_of(FilterXObject *s, FilterXObject *member)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(member, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(member, &error))
     {
       filterx_eval_push_error(error, NULL, member);
       return FALSE;
@@ -661,7 +679,7 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -679,7 +697,7 @@ _filterx_dict_move_key(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -757,46 +775,45 @@ _filterx_dict_clone(FilterXObject *s)
 static gboolean
 _dedup_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
-  GHashTable *dedup_storage = (GHashTable *) user_data;
+  FilterXObjectDeduplicator *dedup = (FilterXObjectDeduplicator *) user_data;
 
-  filterx_object_dedup(key, dedup_storage);
-  filterx_object_dedup(value, dedup_storage);
-
-  return TRUE;
-}
-
-static gboolean
-_filterx_dict_dedup(FilterXObject **pself, GHashTable *dedup_storage)
-{
-  FilterXDictObject *self = (FilterXDictObject *) *pself;
-
-  if (!self->table)
-    return TRUE;
-
-  g_assert(_table_foreach(self->table, _dedup_dict_item, dedup_storage));
-
-  /* Mutable objects themselves should never be deduplicated,
-   * only immutable values INSIDE those recursive mutable objects.
-   */
-  g_assert(*pself == &self->super.super);
-  return TRUE;
-}
-
-static gboolean
-_readonly_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_make_readonly(*key);
-  filterx_object_make_readonly(*value);
+  filterx_object_dedup(key, dedup);
+  filterx_object_dedup(value, dedup);
   return TRUE;
 }
 
 static void
-_filterx_dict_make_readonly(FilterXObject *s)
+_filterx_dict_dedup(FilterXObject **pself, FilterXObjectDeduplicator *freezer)
+{
+  FilterXDictObject *self = (FilterXDictObject *) *pself;
+
+  if (!self->table)
+    return;
+
+  g_assert(_table_foreach(self->table, _dedup_dict_item, freezer));
+}
+
+static gboolean
+_freeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
+{
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
+
+  filterx_object_freeze(*key, freezer);
+  filterx_object_freeze(*value, freezer);
+  return TRUE;
+}
+
+static void
+_filterx_dict_freeze(FilterXObject *s, FilterXObjectFreezer *freezer)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  if (self->table)
-    _table_foreach(self->table, _readonly_dict_item, NULL);
+  filterx_object_freezer_keep(freezer, s);
+
+  if (!self->table)
+    return;
+
+  g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 }
 
 FilterXDictAnchor
@@ -923,6 +940,6 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .move_key = _filterx_dict_move_key,
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
-                    .make_readonly = _filterx_dict_make_readonly,
+                    .freeze = _filterx_dict_freeze,
                     .dedup = _filterx_dict_dedup,
                    );

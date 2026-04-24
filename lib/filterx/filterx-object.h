@@ -30,6 +30,8 @@ typedef struct _FilterXType FilterXType;
 typedef struct _FilterXObject FilterXObject;
 typedef struct _FilterXRef FilterXRef;
 typedef struct _FilterXExpr FilterXExpr;
+typedef struct _FilterXObjectFreezer FilterXObjectFreezer;
+typedef struct _FilterXObjectDeduplicator FilterXObjectDeduplicator;
 
 typedef gboolean (*FilterXObjectIterFunc)(FilterXObject *key, FilterXObject *value, gpointer user_data);
 
@@ -61,6 +63,10 @@ struct _FilterXType
   gboolean (*len)(FilterXObject *self, guint64 *len);
   gboolean (*iter)(FilterXObject *s, FilterXObjectIterFunc func, gpointer user_data);
 
+  /* hashing */
+  guint (*hash)(FilterXObject *s);
+  gboolean (*equal)(FilterXObject *s, FilterXObject *other);
+
   /* conversion to other data types */
   gboolean (*format_json)(FilterXObject *self, GString *json);
   gboolean (*repr)(FilterXObject *self, GString *repr);
@@ -71,8 +77,8 @@ struct _FilterXType
   FilterXObject *(*is_member_of)(FilterXObject *self, FilterXObject *object);
 
   /* lifecycle management (caching, deduplication) */
-  void (*make_readonly)(FilterXObject *self);
-  gboolean (*dedup)(FilterXObject **pself, GHashTable *dedup_storage);
+  void (*dedup)(FilterXObject **pself, FilterXObjectDeduplicator *freezer);
+  void (*freeze)(FilterXObject *self, FilterXObjectFreezer *freezer);
   void (*free_fn)(FilterXObject *self);
 };
 
@@ -177,12 +183,10 @@ G_STATIC_ASSERT(__FILTERX_OBJECT_REFCOUNT_MAX == G_MAXINT32);
 
 struct _FilterXObject
 {
-  GAtomicCounter ref_cnt;
+  guint32 ref_cnt;
   GAtomicCounter fx_ref_cnt;
 
   /* NOTE:
-   *
-   *     readonly          -- marks the object as unmodifiable,
    *
    *     weak_referenced   -- marks that this object is referenced via a at
    *                          least one weakref already.
@@ -193,19 +197,23 @@ struct _FilterXObject
    *
    *     floating_ref      -- object is a FilterXRef that is floating
    *
+   *     early_allocation  -- object was allocated during compile time
+   *
+   *     early_allocation_checked -- the early_allocation check was already done
+   *
    *     flags             -- to be used by descendant types
    *
    */
-  guint readonly:1, weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, flags:5;
+  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1, flags:5;
+  volatile guint32 hash;
   FilterXType *type;
 };
 
 static inline void
 filterx_object_init_instance(FilterXObject *self, FilterXType *type)
 {
-  g_atomic_counter_set(&self->ref_cnt, 1);
+  self->ref_cnt = 1;
   self->type = type;
-  self->readonly = !type->is_mutable;
 }
 
 static inline gboolean
@@ -253,23 +261,18 @@ FilterXObject *filterx_object_getattr_string(FilterXObject *self, const gchar *a
 gboolean filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, FilterXObject **new_value);
 
 FilterXObject *filterx_object_new(FilterXType *type);
-void filterx_object_freeze(FilterXObject **pself, GlobalConfig *cfg);
-void _filterx_object_unfreeze_and_free(FilterXObject *self);
+void filterx_object_dedup(FilterXObject **pself, FilterXObjectDeduplicator *dedup);
+void filterx_object_freeze(FilterXObject *self, FilterXObjectFreezer *freezer);
+void filterx_object_freeze_finish(FilterXObject *self);
 void filterx_object_hibernate(FilterXObject *self);
 void filterx_object_unhibernate_and_free(FilterXObject *self);
 void filterx_object_init_instance(FilterXObject *self, FilterXType *type);
 void filterx_object_free_method(FilterXObject *self);
 
 static inline gboolean
-filterx_object_is_readonly(FilterXObject *self)
-{
-  return self->readonly;
-}
-
-static inline gboolean
 filterx_object_is_preserved(FilterXObject *self)
 {
-  return g_atomic_counter_get(&self->ref_cnt) >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
+  return self->ref_cnt >= FILTERX_OBJECT_REFCOUNT_PRESERVED;
 }
 
 /* NOTE: these two macros actually require the inclusion of filterx-eval.h
@@ -291,13 +294,27 @@ filterx_free_object(FilterXObject *object)
 
 static inline FilterXObject *filterx_object_dup(FilterXObject *self);
 
+void _filterx_object_assert_object_is_not_shared(FilterXObject *self);
+
+static inline void
+filterx_object_check_early_allocation(FilterXObject *self)
+{
+#if SYSLOG_NG_ENABLE_DEBUG
+  if (G_UNLIKELY(!self->early_allocation_checked))
+    {
+      _filterx_object_assert_object_is_not_shared(self);
+      self->early_allocation_checked = TRUE;
+    }
+#endif
+}
+
 static inline FilterXObject *
 filterx_object_ref(FilterXObject *self)
 {
   if (!self)
     return NULL;
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
+  gint r = self->ref_cnt;
 
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
@@ -307,9 +324,10 @@ filterx_object_ref(FilterXObject *self)
   if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return self;
 
+  filterx_object_check_early_allocation(self);
   g_assert(r + 1 < FILTERX_OBJECT_REFCOUNT_BARRIER && r > 0);
 
-  g_atomic_counter_inc(&self->ref_cnt);
+  self->ref_cnt++;
   return self;
 }
 
@@ -328,7 +346,7 @@ filterx_object_unref(FilterXObject *self)
   if (!self)
     return;
 
-  gint r = g_atomic_counter_get(&self->ref_cnt);
+  gint r = self->ref_cnt;
   if (G_UNLIKELY(r == FILTERX_OBJECT_REFCOUNT_STACK))
     {
       /* NOTE: Normally, stack based allocations are only used by a single
@@ -344,40 +362,21 @@ filterx_object_unref(FilterXObject *self)
        * means, that we won't have actual race here.
        */
 
-      g_atomic_counter_set(&self->ref_cnt, 0);
+      self->ref_cnt = 0;
       return;
     }
 
   if (r >= FILTERX_OBJECT_REFCOUNT_PRESERVED)
     return;
 
+  filterx_object_check_early_allocation(self);
   g_assert(r > 0);
 
-  if (g_atomic_counter_dec_and_test(&self->ref_cnt))
+  if (--self->ref_cnt == 0)
     {
       self->type->free_fn(self);
       filterx_free_object(self);
     }
-}
-
-static inline void
-filterx_object_make_readonly(FilterXObject *self)
-{
-  if (self->type->make_readonly)
-    self->type->make_readonly(self);
-
-  self->readonly = TRUE;
-}
-
-static inline gboolean
-filterx_object_dedup(FilterXObject **pself, GHashTable *dedup_storage)
-{
-  FilterXObject *self = *pself;
-
-  if (!self->type->dedup)
-    return FALSE;
-
-  return self->type->dedup(pself, dedup_storage);
 }
 
 static inline FilterXObject *
@@ -479,7 +478,6 @@ filterx_object_clone_container(FilterXObject *self, FilterXObject *container, Fi
   return self->type->clone(self);
 }
 
-
 static inline gboolean
 filterx_object_truthy(FilterXObject *self)
 {
@@ -562,6 +560,47 @@ filterx_object_iter(FilterXObject *self, FilterXObjectIterFunc func, gpointer us
   return self->type->iter(self, func, user_data);
 }
 
+static inline gboolean
+filterx_object_hashable(FilterXObject *self)
+{
+  return self->type->hash && self->type->equal;
+}
+
+static inline guint
+filterx_object_hash(FilterXObject *self)
+{
+  /* zero hash value will not be cached, but that's extremely rare */
+
+  if (self->hash)
+    return self->hash;
+
+  /* NOTE: this is a data race, as self->hash is written without atomics and
+   * also without mutexes.  Since self->hash is aligned, and is just 32
+   * bits, torn writes do not happen in modern architectures (x86, x86_64,
+   * arm).  */
+
+  G_STATIC_ASSERT(sizeof(self->hash) == sizeof(guint32));
+
+  /* although this is racy for parallel access on the same object, it's not
+   * really a problem, as the hash algorithm should have the same result,
+   * so worst case, we calculate the hash 2 times.
+   */
+  self->hash = self->type->hash(self);
+  return self->hash;
+}
+
+static inline gboolean
+filterx_object_equal(FilterXObject *self, FilterXObject *other)
+{
+  if (self == other)
+    return TRUE;
+
+  if (self->type != other->type)
+    return FALSE;
+
+  return self->type->equal(self, other);
+}
+
 void _filterx_object_log_add_object_error(FilterXObject *self);
 
 static inline FilterXObject *
@@ -609,13 +648,63 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
 
 #define FILTERX_OBJECT_STACK_INIT(_type) \
   { \
-    .ref_cnt = { .counter = FILTERX_OBJECT_REFCOUNT_STACK }, \
+    .ref_cnt = FILTERX_OBJECT_REFCOUNT_STACK, \
     .fx_ref_cnt = { .counter = 0 }, \
-    .readonly = TRUE, \
     .weak_referenced = FALSE, \
     .is_dirty = FALSE, \
+    .hash = 0, \
     .type = &FILTERX_TYPE_NAME(_type) \
   }
+
+/* helper class to facilitate freezing objects, a frozen object has a
+ * different lifetime (its refcount is disabled) */
+struct _FilterXObjectDeduplicator
+{
+  FilterXObject *(*get)(FilterXObjectDeduplicator *self, const gchar *key);
+  void (*add)(FilterXObjectDeduplicator *self, gchar *key, FilterXObject *object);
+  gpointer user_data;
+};
+
+static inline FilterXObject *
+filterx_object_deduplicator_get(FilterXObjectDeduplicator *self, const gchar *key)
+{
+  return self->get(self, key);
+}
+
+static inline void
+filterx_object_deduplicator_add(FilterXObjectDeduplicator *self, gchar *key, FilterXObject *object)
+{
+  self->add(self, key, object);
+}
+
+static inline gboolean
+filterx_object_deduplicator_dedup(FilterXObjectDeduplicator *self, FilterXObject **pobject, gchar *key)
+{
+  FilterXObject *dedup_object = filterx_object_deduplicator_get(self, key);
+  if (dedup_object)
+    {
+      filterx_object_unref(*pobject);
+      *pobject = filterx_object_ref(dedup_object);
+      return TRUE;
+    }
+  return FALSE;
+}
+
+struct _FilterXObjectFreezer
+{
+  void (*keep)(FilterXObjectFreezer *self, FilterXObject *object);
+  gpointer user_data;
+};
+
+static inline void
+filterx_object_freezer_keep(FilterXObjectFreezer *self, FilterXObject *object)
+{
+  if (!filterx_object_is_preserved(object))
+    {
+      self->keep(self, object);
+      filterx_object_freeze_finish(object);
+    }
+}
 
 #include "filterx-ref.h"
 
@@ -633,7 +722,7 @@ filterx_object_dup(FilterXObject *self)
 static inline FilterXObject *
 filterx_object_copy(FilterXObject *self)
 {
-  if (self->readonly)
+  if (!self->type->is_mutable)
     return filterx_object_ref(self);
 
   if (self->floating_ref)

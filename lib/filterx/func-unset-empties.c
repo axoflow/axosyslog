@@ -421,7 +421,11 @@ _target_iterator(gsize index, FilterXExpr *value, gpointer user_data)
       else if (filterx_expr_is_literal_dict(value))
         set_flag(&self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_REPLACE_EMPTY_DICT, TRUE);
       else
-        g_assert_not_reached();
+        {
+          g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                      FILTERX_FUNC_UNSET_EMPTIES_ARG_NAME_TARGETS" argument must be a list or a dict! " FILTERX_FUNC_UNSET_EMPTIES_USAGE);
+          return FALSE;
+        }
       return TRUE;
     }
   else

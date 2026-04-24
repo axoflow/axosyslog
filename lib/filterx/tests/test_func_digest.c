@@ -50,7 +50,7 @@ static FilterXExpr *
 _create_simple_digest_expr(FilterXObject *arg, FilterXSimpleFunctionProto fn, const gchar *fn_name)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
 
   GError *error = NULL;
   FilterXExpr *fn_expr = filterx_simple_function_new(fn_name, filterx_function_args_new(args, NULL), fn, &error);
@@ -62,7 +62,7 @@ static FilterXExpr *
 _create_digest_expr(FilterXObject *arg, const gchar *alg)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(arg)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(arg)));
   if (alg)
     args = g_list_append(args, filterx_function_arg_new("alg", filterx_literal_new(filterx_string_new(alg, -1))));
 
@@ -79,7 +79,7 @@ Test(filterx_func_digest, md5_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "acbd18db4cc2f85cedef654fccc4a4d8");
+  assert_object_str_equals(res, "acbd18db4cc2f85cedef654fccc4a4d8");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -92,7 +92,7 @@ Test(filterx_func_digest, sha1_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33");
+  assert_object_str_equals(res, "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -105,7 +105,7 @@ Test(filterx_func_digest, sha256_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae");
+  assert_object_str_equals(res, "2c26b46b68ffc68ff99b453c1d30413413422d706483bfa0f98a5e886266e7ae");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -118,7 +118,7 @@ Test(filterx_func_digest, sha512_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res,
+  assert_object_str_equals(res,
                             "f7fbba6e0636f890e56fbbf3283e524c"
                             "6fa3204ae298382d624741d0dc663832"
                             "6e282c41be5e4254d8820772c5518a2c"
@@ -135,7 +135,7 @@ Test(filterx_func_digest, digest_bytes_input)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "37b59afd592725f9305e484a5d7f5168");
+  assert_object_str_equals(res, "37b59afd592725f9305e484a5d7f5168");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -186,7 +186,7 @@ Test(filterx_func_digest, digest_unknown_alg)
 {
   GList *args = NULL;
   args = g_list_append(args, filterx_function_arg_new(NULL,
-                                                      filterx_non_literal_new(filterx_string_new("foo", -1))));
+                                                      filterx_object_expr_new(filterx_string_new("foo", -1))));
   args = g_list_append(args, filterx_function_arg_new("alg",
                                                       filterx_literal_new(filterx_string_new("bogus_alg", -1))));
 
