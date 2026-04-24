@@ -50,10 +50,10 @@ public:
   LogRecord(LogRecord &o) = delete;
   LogRecord(LogRecord &&o) = delete;
   std::string marshal(void);
-  FilterXObject *get_subscript(FilterXObject *key);
-  bool set_subscript(FilterXObject *key, FilterXObject **value);
-  bool unset_key(FilterXObject *key);
-  bool is_key_set(FilterXObject *key);
+  FilterXObject *get_subscript(const gchar *key, gsize key_len);
+  bool set_subscript(const gchar *key, gsize key_len, FilterXObject **value);
+  bool unset_key(const gchar *key, gsize key_len);
+  bool is_key_set(const gchar *key, gsize key_len);
   uint64_t len() const;
   bool iter(FilterXObjectIterFunc func, void *user_data);
   const opentelemetry::proto::logs::v1::LogRecord &get_value() const;

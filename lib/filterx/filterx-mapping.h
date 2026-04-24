@@ -41,7 +41,7 @@ gboolean filterx_mapping_keys(FilterXObject *s, FilterXObject **keys);
 FILTERX_DECLARE_TYPE(mapping);
 
 static inline gboolean
-filterx_mapping_normalize_key(FilterXObject *key, const gchar **key_string, gsize *key_len, const gchar **error)
+filterx_mapping_normalize_key_as_string(FilterXObject *key, const gchar **key_string, gsize *key_len, const gchar **error)
 {
   if (!key)
     {
@@ -49,19 +49,29 @@ filterx_mapping_normalize_key(FilterXObject *key, const gchar **key_string, gsiz
       return FALSE;
     }
 
-  if (key_string)
+  if (!filterx_object_extract_string_ref(key, key_string, key_len))
     {
-      if (!filterx_object_extract_string_ref(key, key_string, key_len))
-        {
-          *error = "Key must be a string";
-          return FALSE;
-        }
-      return TRUE;
+      *error = "Key must be a string";
+      return FALSE;
     }
-  else
+  return TRUE;
+}
+
+static inline gboolean
+filterx_mapping_normalize_key(FilterXObject *key, const gchar **error)
+{
+  if (!key)
     {
-      return filterx_object_hashable(key);
+      *error = "Key is mandatory";
+      return FALSE;
     }
+
+  if (!filterx_object_hashable(key))
+    {
+      *error = "Key must be hashable";
+      return FALSE;
+    }
+  return TRUE;
 }
 
 static inline void

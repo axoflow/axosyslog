@@ -569,7 +569,7 @@ _filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return NULL;
@@ -590,7 +590,7 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -611,7 +611,7 @@ _filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -629,7 +629,7 @@ _filterx_dict_is_member_of(FilterXObject *s, FilterXObject *member)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(member, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(member, &error))
     {
       filterx_eval_push_error(error, NULL, member);
       return FALSE;
@@ -647,7 +647,7 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
@@ -665,7 +665,7 @@ _filterx_dict_move_key(FilterXObject *s, FilterXObject *key)
   FilterXDictObject *self = (FilterXDictObject *) s;
 
   const gchar *error = NULL;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key(key, &error))
     {
       filterx_eval_push_error(error, NULL, key);
       return FALSE;
