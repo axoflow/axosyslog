@@ -327,6 +327,7 @@ deinit_libtest_filterx(void)
 {
   log_msg_unref(filterx_env.msg);
   filterx_scope_free(filterx_env.scope);
+  filterx_eval_clear_errors();
   filterx_eval_end_context(&filterx_env.context);
 }
 

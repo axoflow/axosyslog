@@ -29,6 +29,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/object-extractor.h"
 #include "filterx/json-repr.h"
+#include "filterx/expr-comparison.h"
 #include "logmsg/type-hinting.h"
 #include "utf8utils.h"
 #include "str-format.h"
@@ -174,6 +175,24 @@ _filterx_list_is_key_set(FilterXObject *s, FilterXObject *key)
   const gchar *error;
   return filterx_sequence_normalize_index(key, self->array->len, &normalized_index, FALSE, &error);
 }
+
+static FilterXObject *
+_filterx_list_is_member_of(FilterXObject *s, FilterXObject *member)
+{
+  FilterXListObject *self = (FilterXListObject *) s;
+
+  member = filterx_ref_unwrap_ro(member);
+  for (guint64 i = 0; i < self->array->len; i++)
+    {
+      FilterXObject *elt = (FilterXObject *) g_ptr_array_index(self->array, i);
+
+      if (filterx_compare_objects(member, elt, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
+        return filterx_boolean_new(TRUE);
+    }
+
+  return filterx_boolean_new(FALSE);
+}
+
 
 FilterXObject *
 filterx_list_new(void)
@@ -388,6 +407,7 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .get_subscript = _filterx_list_get_subscript,
                     .set_subscript = _filterx_list_set_subscript,
                     .is_key_set = _filterx_list_is_key_set,
+                    .is_member_of = _filterx_list_is_member_of,
                     .unset_key = _filterx_list_unset_key,
                     .iter = _filterx_list_iter,
                     .len = _filterx_list_len,

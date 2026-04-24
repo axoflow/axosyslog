@@ -36,3 +36,5 @@ add_unit_test(LIBTEST CRITERION TARGET test_func_digest DEPENDS json-plugin ${JS
 add_unit_test(LIBTEST CRITERION TARGET test_func_encode DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_func_str_utf8 DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_func_glob DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_object_subnet DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_object_ip DEPENDS json-plugin ${JSONC_LIBRARY})

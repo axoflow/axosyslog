@@ -637,6 +637,24 @@ _filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
   return _table_isset(self->table, key);
 }
 
+static FilterXObject *
+_filterx_dict_is_member_of(FilterXObject *s, FilterXObject *member)
+{
+  FilterXDictObject *self = (FilterXDictObject *) s;
+
+  const gchar *error = NULL;
+  if (!filterx_mapping_normalize_key(member, NULL, NULL, &error))
+    {
+      filterx_eval_push_error(error, NULL, member);
+      return FALSE;
+    }
+
+  if (!self->table)
+    return FALSE;
+
+  return filterx_boolean_new(_table_isset(self->table, member));
+}
+
 static gboolean
 _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
 {
@@ -900,6 +918,7 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .get_subscript = _filterx_dict_get_subscript,
                     .set_subscript = _filterx_dict_set_subscript,
                     .is_key_set = _filterx_dict_is_key_set,
+                    .is_member_of = _filterx_dict_is_member_of,
                     .unset_key = _filterx_dict_unset_key,
                     .move_key = _filterx_dict_move_key,
                     .iter = _filterx_dict_iter,

@@ -1362,3 +1362,163 @@ def test_glob_match_multiple_patterns(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '{"first_matches":true,"second_matches":true,"none_matches":false}'
+
+
+def test_subnet_ipv4_membership(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    net = subnet("192.168.0.0/24");
+    result = json();
+    result.member = "192.168.0.100" in net;
+    result.non_member = "192.168.1.1" in net;
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"member":true,"non_member":false}'
+
+
+def test_subnet_ipv6_membership(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    net = subnet("2001:db8::/32");
+    result = json();
+    result.member = "2001:db8::1" in net;
+    result.non_member = "2001:db9::1" in net;
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"member":true,"non_member":false}'
+
+
+def test_subnet_repr(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = repr(subnet("192.168.0.0/24"));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "subnet('192.168.0.0/255.255.255.0')"
+
+
+def test_subnet_typecast_from_variable(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    cidr = "10.0.0.0/8";
+    net = subnet(cidr);
+    result = json();
+    result.member = "10.1.2.3" in net;
+    result.non_member = "11.0.0.1" in net;
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"member":true,"non_member":false}'
+
+
+def test_subnet_host_bits_are_masked(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    # host bits in 192.168.0.5/24 should be masked: stored as 192.168.0.0/255.255.255.0
+    $MSG = repr(subnet("192.168.0.5/24"));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "subnet('192.168.0.0/255.255.255.0')"
+
+
+def test_ip_ipv4_repr(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = repr(ip("192.168.1.1"));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "ip('192.168.1.1')"
+
+
+def test_ip_ipv6_repr(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = repr(ip("2001:db8::1"));
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "ip('2001:db8::1')"
+
+
+def test_ip_ipv4_in_subnet(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    net = subnet("192.168.0.0/24");
+    result = json();
+    result.member = ip("192.168.0.100") in net;
+    result.non_member = ip("192.168.1.1") in net;
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"member":true,"non_member":false}'
+
+
+def test_ip_ipv6_in_subnet(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    net = subnet("2001:db8::/32");
+    result = json();
+    result.member = ip("2001:db8::1") in net;
+    result.non_member = ip("2001:db9::1") in net;
+    $MSG = result;
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == '{"member":true,"non_member":false}'
+
+
+def test_ip_typecast_from_variable(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    addr = "10.1.2.3";
+    net = subnet("10.0.0.0/8");
+    $MSG = string(ip(addr) in net);
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "true"
+
+
+def test_ip_family_mismatch_fails(config, syslog_ng):
+    (file_final,) = create_config(
+        config, r"""
+    $MSG = "ok";
+    net = subnet("192.168.0.0/24");
+    if (ip("2001:db8::1") in net) {
+        $MSG = "should not reach here";
+    }
+    """,
+    )
+    syslog_ng.start(config)
+
+    assert file_final.get_stats()["processed"] == 1
+    assert file_final.read_log() == "ok"
