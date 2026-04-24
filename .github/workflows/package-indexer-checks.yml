@@ -10,6 +10,9 @@ on:
       - "packaging/package-indexer/**"
       - ".github/workflows/package-indexer-checks.yml"
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

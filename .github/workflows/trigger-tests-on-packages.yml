@@ -12,6 +12,9 @@ on:
           - stable
 
 
+permissions:
+  contents: read
+
 jobs:
   test-packages:
     uses: ./.github/workflows/test-apt-packages.yml

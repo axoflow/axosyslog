@@ -12,6 +12,9 @@ on:
       run-id:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   index-packages:
     uses: ./.github/workflows/index-packages.yml
