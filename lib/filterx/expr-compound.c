@@ -126,28 +126,34 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result, gsize start_index
   return TRUE;
 }
 
+static inline FilterXObject *
+_process_compound_result(FilterXCompoundExpr *self, gboolean success, FilterXObject *result)
+{
+  if (!success)
+    {
+      filterx_object_unref(result);
+      return NULL;
+    }
+
+  if (!result || !self->return_value_of_last_expr)
+    {
+      filterx_object_unref(result);
+
+      /* an empty list of statements, or a compound statement where the
+        * result is ignored.  implicitly TRUE */
+      result = filterx_boolean_new(TRUE);
+    }
+
+  return result;
+}
+
 static FilterXObject *
 _eval_compound_start(FilterXCompoundExpr *self, gsize start_index)
 {
   FilterXObject *result = NULL;
 
-  if (!_eval_exprs(self, &result, start_index))
-    {
-      filterx_object_unref(result);
-      result = NULL;
-    }
-  else
-    {
-      if (!result || !self->return_value_of_last_expr)
-        {
-          filterx_object_unref(result);
-
-          /* an empty list of statements, or a compound statement where the
-           * result is ignored.  implicitly TRUE */
-          result = filterx_boolean_new(TRUE);
-        }
-    }
-
+  gboolean success = _eval_exprs(self, &result, start_index);
+  result = _process_compound_result(self, success, result);
   return result;
 }
 
