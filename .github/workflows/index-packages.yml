@@ -24,9 +24,14 @@ defaults:
     working-directory: packaging/package-indexer
 
 
+permissions:
+  contents: read
+
 jobs:
   index-packages:
     name: ${{ inputs.pkg-type }}
+    permissions:
+      contents: read
 
     runs-on: ubuntu-latest
 

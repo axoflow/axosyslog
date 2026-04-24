@@ -38,9 +38,12 @@ on:
         required: true
 
 
+permissions: {}
+
 jobs:
   upload-packages:
     name: ${{ matrix.distro.name }} (${{ matrix.distro.type }})
+    permissions: {}
 
     runs-on: ubuntu-latest
 

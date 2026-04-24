@@ -9,6 +9,8 @@ on:
         default: 'axosyslog'
         type: string
 
+permissions: {}
+
 jobs:
   cleanup-untagged-images:
     permissions:

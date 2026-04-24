@@ -10,9 +10,12 @@ on:
         required: true
         type: string
 
+permissions: {}
+
 jobs:
   test-apt-packages:
     name: ${{ matrix.distro }}
+    permissions: {}
     strategy:
       matrix:
         distro:
