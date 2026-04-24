@@ -757,46 +757,45 @@ _filterx_dict_clone(FilterXObject *s)
 static gboolean
 _dedup_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
 {
-  GHashTable *dedup_storage = (GHashTable *) user_data;
+  FilterXObjectDeduplicator *dedup = (FilterXObjectDeduplicator *) user_data;
 
-  filterx_object_dedup(key, dedup_storage);
-  filterx_object_dedup(value, dedup_storage);
-
-  return TRUE;
-}
-
-static gboolean
-_filterx_dict_dedup(FilterXObject **pself, GHashTable *dedup_storage)
-{
-  FilterXDictObject *self = (FilterXDictObject *) *pself;
-
-  if (!self->table)
-    return TRUE;
-
-  g_assert(_table_foreach(self->table, _dedup_dict_item, dedup_storage));
-
-  /* Mutable objects themselves should never be deduplicated,
-   * only immutable values INSIDE those recursive mutable objects.
-   */
-  g_assert(*pself == &self->super.super);
-  return TRUE;
-}
-
-static gboolean
-_readonly_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_make_readonly(*key);
-  filterx_object_make_readonly(*value);
+  filterx_object_dedup(key, dedup);
+  filterx_object_dedup(value, dedup);
   return TRUE;
 }
 
 static void
-_filterx_dict_make_readonly(FilterXObject *s)
+_filterx_dict_dedup(FilterXObject **pself, FilterXObjectDeduplicator *freezer)
+{
+  FilterXDictObject *self = (FilterXDictObject *) *pself;
+
+  if (!self->table)
+    return;
+
+  g_assert(_table_foreach(self->table, _dedup_dict_item, freezer));
+}
+
+static gboolean
+_freeze_dict_item(FilterXObject **key, FilterXObject **value, gpointer user_data)
+{
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
+
+  filterx_object_freeze(*key, freezer);
+  filterx_object_freeze(*value, freezer);
+  return TRUE;
+}
+
+static void
+_filterx_dict_freeze(FilterXObject *s, FilterXObjectFreezer *freezer)
 {
   FilterXDictObject *self = (FilterXDictObject *) s;
 
-  if (self->table)
-    _table_foreach(self->table, _readonly_dict_item, NULL);
+  filterx_object_freezer_keep(freezer, s);
+
+  if (!self->table)
+    return;
+
+  g_assert(_table_foreach(self->table, _freeze_dict_item, freezer));
 }
 
 FilterXDictAnchor
@@ -923,6 +922,6 @@ FILTERX_DEFINE_TYPE(dict, FILTERX_TYPE_NAME(mapping),
                     .move_key = _filterx_dict_move_key,
                     .iter = _filterx_dict_iter,
                     .len = _filterx_dict_len,
-                    .make_readonly = _filterx_dict_make_readonly,
+                    .freeze = _filterx_dict_freeze,
                     .dedup = _filterx_dict_dedup,
                    );
