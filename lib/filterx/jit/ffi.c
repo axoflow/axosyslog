@@ -50,6 +50,13 @@ fx_jit_expr_eval_typed(FilterXExpr *self)
 
 __attribute__((used))
 FilterXObject *
+fx_jit_expr_make_typed_object(FilterXExpr *self, FilterXObject *obj)
+{
+  return filterx_expr_make_typed_object(self, obj);
+}
+
+__attribute__((used))
+FilterXObject *
 fx_jit_object_ref(FilterXObject *self)
 {
   return filterx_object_ref(self);
@@ -174,6 +181,13 @@ fx_jit_emit_expr_eval_typed(FilterXJIT *jit, FilterXExpr *expr)
 {
   LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr) };
   return _emit_call(jit, jit->ffi.expr_eval_typed, args, 1);
+}
+
+FilterXIRValue
+fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue obj)
+{
+  LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr), obj };
+  return _emit_call(jit, jit->ffi.expr_make_typed_object, args, 2);
 }
 
 FilterXIRValue
