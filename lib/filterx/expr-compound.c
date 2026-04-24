@@ -44,7 +44,6 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
   FilterXObject *res = NULL;
 
-
   /* NOTE: this is feature envy and should be implemented within
    * filterx_expr_eval(), however that function does not depend on the
    * FilterXEvalContext layer and introducing that dependency would make the
@@ -88,9 +87,27 @@ _eval_expr(FilterXExpr *expr, FilterXObject **result)
     }
 
   if (!success)
-    filterx_eval_push_falsy_error("bailing out due to a falsy expr", expr, res);
+    {
+      filterx_eval_push_falsy_error("bailing out due to a falsy expr", expr, res);
+      return FALSE;
+    }
 
-  return success;
+  return TRUE;
+}
+
+static inline gboolean
+_is_control_modifier_set(FilterXEvalContext *context)
+{
+  if (G_UNLIKELY(context->eval_control_modifier != FXC_UNSET))
+    {
+      /* code flow modifier detected, short circuiting */
+      if (context->eval_control_modifier == FXC_BREAK)
+        context->eval_control_modifier = FXC_UNSET;
+
+      return TRUE;
+    }
+
+  return FALSE;
 }
 
 /* return value indicates if the list of expessions ran through.  *result
@@ -110,19 +127,15 @@ _eval_exprs(FilterXCompoundExpr *self, FilterXObject **result, gsize start_index
       if (!_eval_expr(expr, result))
         return FALSE;
 
-      if (G_UNLIKELY(context->eval_control_modifier != FXC_UNSET))
+      if (_is_control_modifier_set(context))
         {
-          /* code flow modifier detected, short circuiting */
-          if (context->eval_control_modifier == FXC_BREAK)
-            context->eval_control_modifier = FXC_UNSET;
-
           filterx_object_unref(*result);
           *result = NULL;
-          return TRUE;
+          break;
         }
     }
-  /* we exit the loop with a ref to *result, which we return */
 
+  /* we exit the loop with a ref to *result, which we return */
   return TRUE;
 }
 
