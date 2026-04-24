@@ -41,6 +41,8 @@ The following table lists the configurable parameters of the AxoSyslog Collector
 |  openShift.securityContextConstraints.annotations  | Annotations to apply to SecurityContextConstraints |  {}  |
 |  serviceAccount.create  | Whether to create a service account |  false  |
 |  serviceAccount.annotations  | Annotations to apply to the service account |  {}  |
+|  service.type | Type of the service to create | NodePort |
+|  service.loadBalancerIP | IP to use if service.type is LoadBalancer | "" |
 |  namespace  | The Kubernetes namespace to deploy to |  ""  |
 |  podAnnotations  | Additional annotations to apply to the pod |  {}  |
 |  podSecurityContext  | Security context for the pod |  {}  |
