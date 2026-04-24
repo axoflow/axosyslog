@@ -4,7 +4,8 @@
 
 name: AxoSyslog stable
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
@@ -28,6 +29,8 @@ jobs:
   find-draft-release-run:
     needs: pre-check
     runs-on: ubuntu-latest
+    permissions:
+      actions: read  # list workflow runs to find the matching draft-release run
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     outputs:
@@ -69,5 +72,8 @@ jobs:
   publish-image:
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: find-draft-release-run
+    permissions:
+      contents: read  # checkout source
+      packages: write  # push image to GHCR
     with:
       type: stable
