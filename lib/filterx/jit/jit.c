@@ -59,7 +59,7 @@ _llvm_error_to_fxjit_error(LLVMErrorRef err, GError **error)
 {
   gchar *message = LLVMGetErrorMessage(err);
   _fxjit_error(message, error);
-  LLVMDisposeMessage(message);
+  LLVMDisposeErrorMessage(message);
 }
 
 static inline void
