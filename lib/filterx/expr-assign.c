@@ -92,6 +92,51 @@ _nullv_assign_eval(FilterXExpr *s)
   return _do_nullv_assign(self, filterx_expr_eval(self->super.rhs));
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_assign(FilterXExpr *s, FilterXObject *value)
+{
+  return _do_assign((FilterXAssign *) s, value);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_nullv_assign(FilterXExpr *s, FilterXObject *value)
+{
+  return _do_nullv_assign((FilterXAssign *) s, value);
+}
+
+static FilterXIRValue
+_compile_assignment(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue value = filterx_expr_compile_or_eval(self->super.rhs, jit);
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), value };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 2);
+}
+
+static FilterXIRValue
+_assign_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_assignment(s, jit, "fx_jit_do_assign");
+}
+
+static FilterXIRValue
+_nullv_assign_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_assignment(s, jit, "fx_jit_do_nullv_assign");
+}
+
+#endif
+
 static void
 filterx_assign_init_instance(FilterXAssign *self, const gchar *type,
                              FilterXExpr *lhs, FilterXExpr *rhs)
@@ -108,6 +153,9 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 
   filterx_assign_init_instance(self, "assign", lhs, rhs);
   self->super.super.eval = _assign_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _assign_compile;
+#endif
   return &self->super.super;
 }
 
@@ -118,5 +166,8 @@ filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 
   filterx_assign_init_instance(self, "nullv-assign", lhs, rhs);
   self->super.super.eval = _nullv_assign_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _nullv_assign_compile;
+#endif
   return &self->super.super;
 }
