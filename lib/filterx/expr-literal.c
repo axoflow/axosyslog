@@ -58,6 +58,21 @@ _literal_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+static FilterXIRValue
+_literal_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXLiteral *self = (FilterXLiteral *) s;
+
+  return fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->object));
+}
+
+#endif
+
 /* NOTE: takes the object reference */
 void
 filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
@@ -68,6 +83,9 @@ filterx_literal_init_instance(FilterXLiteral *s, FilterXObject *object)
   self->super.eval = _eval_literal;
   self->super.walk_children = _literal_walk;
   self->super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _literal_compile;
+#endif
   self->object = object;
 }
 
