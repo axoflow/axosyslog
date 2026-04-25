@@ -166,6 +166,58 @@ _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
+{
+  return _do_setattr((FilterXSetAttr *) s, lhs, cloned);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_nullv_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
+{
+  return _do_nullv_setattr((FilterXSetAttr *) s, lhs, cloned);
+}
+
+static inline FilterXIRValue
+_emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  /* NOTE: we need to fork the rhs first, so that the lhs will notice it is
+   * shared and can clone accordingly.  This is needed to make sure
+   * something like `d.sub = d` works.
+   */
+
+  FilterXIRValue rhs = filterx_expr_compile_or_eval(self->new_value, jit);
+  FilterXIRValue cloned = fx_jit_emit_object_cow_fork2(jit, rhs);
+  FilterXIRValue lhs = filterx_expr_compile_or_eval_typed(self->object, jit);
+
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), lhs, cloned };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
+}
+
+static FilterXIRValue
+_setattr_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_setattr");
+}
+
+static FilterXIRValue
+_nullv_setattr_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_nullv_setattr");
+}
+
+#endif
+
 /* Takes reference of object and new_value */
 FilterXExpr *
 filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *new_value)
@@ -176,6 +228,9 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   self->super.eval = _setattr_eval;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _setattr_compile;
+#endif
   self->object = object;
 
   g_assert(filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string)));
@@ -193,7 +248,12 @@ FilterXExpr *
 filterx_nullv_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *new_value)
 {
   FilterXExpr *self = filterx_setattr_new(object, attr_name, new_value);
+
   self->type = "nullv_setattr";
   self->eval = _nullv_setattr_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->compile = _nullv_setattr_compile;
+#endif
+
   return self;
 }
