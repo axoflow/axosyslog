@@ -33,28 +33,28 @@ typedef struct _FilterXGetAttr
 } FilterXGetAttr;
 
 static FilterXObject *
-_eval_getattr(FilterXExpr *s)
+_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
 {
-  FilterXGetAttr *self = (FilterXGetAttr *) s;
-
-  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
-
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to get-attribute from object", s, "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to get-attribute from object", expr,
+                                          "Failed to evaluate expression");
       return NULL;
     }
 
-  FilterXObject *attr = filterx_object_getattr(variable, self->attr);
-  if (!attr)
-    {
-      filterx_eval_push_error_static_info("Failed to get-attribute from object", s, "Failed to evaluate key");
-      goto exit;
-    }
+  FilterXObject *result = filterx_object_getattr(variable, attr);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to get-attribute from object", expr, "Failed to evaluate key");
 
-exit:
   filterx_object_unref(variable);
-  return attr;
+  return result;
+}
+
+static FilterXObject *
+_eval_getattr(FilterXExpr *s)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  return _do_getattr(filterx_expr_eval_typed(self->operand), self->attr, s);
 }
 
 static gboolean
