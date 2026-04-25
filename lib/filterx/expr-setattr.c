@@ -38,40 +38,45 @@ typedef struct _FilterXSetAttr
   FilterXExpr *new_value;
 } FilterXSetAttr;
 
-static inline FilterXObject *
-_setattr(FilterXSetAttr *self, FilterXObject *new_value)
+/* cloned must be cow_fork2-ed by the caller *before* lhs is evaluated, so
+ * that the lhs traversal sees the rhs as shared and clones along the path
+ * accordingly (e.g. for `d.x.y = d`). Both lhs and cloned are owned by us. */
+static FilterXObject *
+_do_setattr(FilterXSetAttr *self, FilterXObject *lhs, FilterXObject *cloned)
 {
-  /* NOTE: we need to fork the rhs first, so that the lhs will notice it is
-   * shared and can clone accordingly.  This is needed to make sure
-   * something like `d.sub = d` works.
-   */
+  if (!cloned)
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
+                                          "Failed to evaluate right hand side");
+      goto error;
+    }
 
-  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
-
-  FilterXObject *object = filterx_expr_eval_typed(self->object);
-  if (!object)
+  if (!lhs)
     {
       filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
                                           "Failed to evaluate expression");
       goto error;
     }
 
-  if (object->readonly)
+  if (lhs->readonly)
     {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "Object is readonly");
+      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
+                                          "Object is readonly");
       goto error;
     }
 
-  if (!filterx_object_setattr(object, self->attr, &cloned))
+  if (!filterx_object_setattr(lhs, self->attr, &cloned))
     {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super, "setattr() method failed");
+      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
+                                          "setattr() method failed");
       goto error;
     }
 
-  filterx_object_unref(object);
+  filterx_object_unref(lhs);
   return cloned;
+
 error:
-  filterx_object_unref(object);
+  filterx_object_unref(lhs);
   filterx_object_unref(cloned);
   return NULL;
 }
@@ -85,42 +90,53 @@ _suppress_error(void)
 }
 
 static FilterXObject *
-_nullv_setattr_eval(FilterXExpr *s)
+_do_nullv_setattr(FilterXSetAttr *self, FilterXObject *lhs, FilterXObject *cloned)
 {
-  FilterXSetAttr *self = (FilterXSetAttr *) s;
-  FilterXObject *result = NULL;
-
-  FilterXObject *new_value = filterx_expr_eval(self->new_value);
-  if (!new_value || filterx_object_extract_null(new_value))
+  if (!cloned)
     {
-      if (!new_value)
-        return _suppress_error();
-
-      return new_value;
+      filterx_object_unref(lhs);
+      return _suppress_error();
     }
 
-  result = _setattr(self, new_value);
-  filterx_object_unref(new_value);
-  return result;
+  if (filterx_object_extract_null(cloned))
+    {
+      filterx_object_unref(lhs);
+      return cloned;
+    }
+
+  return _do_setattr(self, lhs, cloned);
 }
 
 static FilterXObject *
 _setattr_eval(FilterXExpr *s)
 {
   FilterXSetAttr *self = (FilterXSetAttr *) s;
-  FilterXObject *result = NULL;
 
-  FilterXObject *new_value = filterx_expr_eval(self->new_value);
-  if (!new_value)
-    {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
-                                          "Failed to evaluate right hand side");
-      return NULL;
-    }
+  /* NOTE: we need to fork the rhs first, so that the lhs will notice it is
+   * shared and can clone accordingly.  This is needed to make sure
+   * something like `d.sub = d` works.
+   */
 
-  result = _setattr(self, new_value);
-  filterx_object_unref(new_value);
-  return result;
+  FilterXObject *rhs = filterx_expr_eval(self->new_value);
+  FilterXObject *cloned = rhs ? filterx_object_cow_fork2(rhs, NULL) : NULL;
+  FilterXObject *lhs = cloned ? filterx_expr_eval_typed(self->object) : NULL;
+  return _do_setattr(self, lhs, cloned);
+}
+
+static FilterXObject *
+_nullv_setattr_eval(FilterXExpr *s)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  /* NOTE: we need to fork the rhs first, so that the lhs will notice it is
+   * shared and can clone accordingly.  This is needed to make sure
+   * something like `d.sub = d` works.
+   */
+
+  FilterXObject *rhs = filterx_expr_eval(self->new_value);
+  FilterXObject *cloned = rhs ? filterx_object_cow_fork2(rhs, NULL) : NULL;
+  FilterXObject *lhs = cloned ? filterx_expr_eval_typed(self->object) : NULL;
+  return _do_nullv_setattr(self, lhs, cloned);
 }
 
 static void
