@@ -135,18 +135,6 @@ _optimize_substraction(FilterXExpr *s)
   return NULL;
 }
 
-FilterXExpr *
-filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
-{
-  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
-  self->super.super.optimize = _optimize_substraction;
-  self->super.super.eval = _eval_substraction;
-  self->super.super.free_fn = _free_arithmetic_common;
-
-  return &self->super.super;
-}
-
 static FilterXObject *
 _eval_multiplication(FilterXExpr *s)
 {
@@ -178,18 +166,6 @@ _optimize_multiplication(FilterXExpr *s)
   if (self->literal_lhs && self->literal_rhs)
     return filterx_literal_new(_eval_multiplication(&self->super.super));
   return NULL;
-}
-
-FilterXExpr *
-filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs)
-{
-  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "mult", FXE_READ, lhs, rhs);
-  self->super.super.optimize = _optimize_multiplication;
-  self->super.super.eval = _eval_multiplication;
-  self->super.super.free_fn = _free_arithmetic_common;
-
-  return &self->super.super;
 }
 
 static FilterXObject *
@@ -225,17 +201,7 @@ _optimize_division(FilterXExpr *s)
   return NULL;
 }
 
-FilterXExpr *
-filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
-{
-  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
-  self->super.super.optimize = _optimize_division;
-  self->super.super.eval = _eval_division;
-  self->super.super.free_fn = _free_arithmetic_common;
 
-  return &self->super.super;
-}
 
 static FilterXObject *
 _eval_modulo(FilterXExpr *s)
@@ -297,18 +263,6 @@ _optimize_modulo(FilterXExpr *s)
   return NULL;
 }
 
-FilterXExpr *
-filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
-{
-  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
-  filterx_binary_op_init_instance(&self->super, "mod", FXE_READ, lhs, rhs);
-  self->super.super.optimize = _optimize_modulo;
-  self->super.super.eval = _eval_modulo;
-  self->super.super.free_fn = _free_arithmetic_common;
-
-  return &self->super.super;
-}
-
 static FilterXObject *
 _eval_uminus(FilterXExpr *s)
 {
@@ -344,6 +298,54 @@ _eval_uminus(FilterXExpr *s)
 
   gn_set_double(&result, -gn_as_double(&operand), -1);
   return filterx_double_new(gn_as_double(&result));
+}
+
+FilterXExpr *
+filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
+  filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
+  self->super.super.optimize = _optimize_substraction;
+  self->super.super.eval = _eval_substraction;
+  self->super.super.free_fn = _free_arithmetic_common;
+
+  return &self->super.super;
+}
+
+FilterXExpr *
+filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
+  filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
+  self->super.super.optimize = _optimize_division;
+  self->super.super.eval = _eval_division;
+  self->super.super.free_fn = _free_arithmetic_common;
+
+  return &self->super.super;
+}
+
+FilterXExpr *
+filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
+  filterx_binary_op_init_instance(&self->super, "mod", FXE_READ, lhs, rhs);
+  self->super.super.optimize = _optimize_modulo;
+  self->super.super.eval = _eval_modulo;
+  self->super.super.free_fn = _free_arithmetic_common;
+
+  return &self->super.super;
+}
+
+FilterXExpr *
+filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
+  filterx_binary_op_init_instance(&self->super, "mult", FXE_READ, lhs, rhs);
+  self->super.super.optimize = _optimize_multiplication;
+  self->super.super.eval = _eval_multiplication;
+  self->super.super.free_fn = _free_arithmetic_common;
+
+  return &self->super.super;
 }
 
 FilterXExpr *
