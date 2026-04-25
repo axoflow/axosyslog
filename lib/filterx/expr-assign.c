@@ -32,17 +32,37 @@ typedef struct FilterXAssign
   FilterXBinaryOp super;
 } FilterXAssign;
 
-static inline FilterXObject *
-_assign(FilterXAssign *self, FilterXObject *value)
+static FilterXObject *
+_do_assign(FilterXAssign *self, FilterXObject *value)
 {
-  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(value), NULL);
+  FilterXObject *cloned = NULL;
+
+  if (!value)
+    {
+      filterx_eval_push_error_static_info("Failed to assign value", &self->super.super,
+                                          "Failed to evaluate right hand side");
+      return NULL;
+    }
+
+  /* cow_fork2 consumes the ref on value */
+  cloned = filterx_object_cow_fork2(value, NULL);
+
   if (!filterx_expr_assign(self->super.lhs, &cloned))
     {
+      filterx_eval_push_error_static_info("Failed to assign value", &self->super.super,
+                                          "assign() method failed");
       filterx_object_unref(cloned);
       return NULL;
     }
 
   return cloned;
+}
+
+static FilterXObject *
+_assign_eval(FilterXExpr *s)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+  return _do_assign(self, filterx_expr_eval(self->super.rhs));
 }
 
 static inline FilterXObject *
@@ -54,49 +74,22 @@ _suppress_error(void)
 }
 
 static FilterXObject *
-_nullv_assign_eval(FilterXExpr *s)
+_do_nullv_assign(FilterXAssign *self, FilterXObject *value)
 {
-  FilterXAssign *self = (FilterXAssign *) s;
+  if (!value)
+    return _suppress_error();
 
-  FilterXObject *value = filterx_expr_eval(self->super.rhs);
+  if (filterx_object_extract_null(value))
+    return value;
 
-  if (!value || filterx_object_extract_null(value))
-    {
-      if (!value)
-        return _suppress_error();
-
-      return value;
-    }
-
-  FilterXObject *result = _assign(self, value);
-  filterx_object_unref(value);
-
-  if (!result)
-    filterx_eval_push_error_static_info("Failed to assign value", s, "assign() method failed");
-
-  return result;
+  return _do_assign(self, value);
 }
 
 static FilterXObject *
-_assign_eval(FilterXExpr *s)
+_nullv_assign_eval(FilterXExpr *s)
 {
   FilterXAssign *self = (FilterXAssign *) s;
-
-  FilterXObject *value = filterx_expr_eval(self->super.rhs);
-
-  if (!value)
-    {
-      filterx_eval_push_error_static_info("Failed to assign value", s, "Failed to evaluate right hand side");
-      return NULL;
-    }
-
-  FilterXObject *result = _assign(self, value);
-  filterx_object_unref(value);
-
-  if (!result)
-    filterx_eval_push_error_static_info("Failed to assign value", s, "assign() method failed");
-
-  return result;
+  return _do_nullv_assign(self, filterx_expr_eval(self->super.rhs));
 }
 
 static void
