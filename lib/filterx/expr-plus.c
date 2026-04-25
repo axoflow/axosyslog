@@ -95,6 +95,38 @@ _filterx_operator_plus_free(FilterXExpr *s)
   filterx_binary_op_free_method(s);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_plus(lhs, rhs, expr);
+}
+
+static FilterXIRValue
+_compile_plus(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue lhs = self->literal_lhs
+                       ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
+                       : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+  FilterXIRValue rhs = self->literal_rhs
+                       ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
+                       : filterx_expr_compile_or_eval(self->super.rhs, jit);
+
+  FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, "fx_jit_do_plus", ffi->ptr_ty, param_tys, args, 3);
+}
+
+#endif
+
 FilterXExpr *
 filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
@@ -103,6 +135,9 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.optimize = _optimize;
   self->super.super.eval = _eval_plus;
   self->super.super.free_fn = _filterx_operator_plus_free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_plus;
+#endif
 
   return &self->super.super;
 }
