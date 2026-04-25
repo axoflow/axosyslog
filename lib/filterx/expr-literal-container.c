@@ -113,13 +113,16 @@ filterx_literal_container_len(FilterXExpr *s)
 }
 
 static inline FilterXObject *
-_literal_container_eval_expr(FilterXExpr *expr, gboolean early_eval)
+_literal_container_eval_expr(FilterXExpr *expr, gboolean early_eval, gboolean support_sparse_container)
 {
   if (early_eval)
     {
       if (filterx_expr_is_literal(expr))
         return filterx_literal_get_value(expr);
-      return filterx_null_new();
+      if (support_sparse_container)
+        return filterx_null_new();
+      else
+        return NULL;
     }
   else
     return filterx_expr_eval(expr);
@@ -225,13 +228,13 @@ _literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
   FilterXObject *value = NULL;
   gboolean success = FALSE;
 
-  key = _literal_container_eval_expr(elem->key, early_eval);
+  key = _literal_container_eval_expr(elem->key, early_eval, TRUE);
   if (!key)
     {
       goto exit;
     }
 
-  value = _literal_container_eval_expr(elem->value, early_eval);
+  value = _literal_container_eval_expr(elem->value, early_eval, TRUE);
   if (!value && !elem->nullv)
     {
       goto exit;
@@ -421,7 +424,7 @@ _literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
   FilterXObject *value = NULL;
   gboolean success = FALSE;
 
-  value = _literal_container_eval_expr(elem->value, early_eval);
+  value = _literal_container_eval_expr(elem->value, early_eval, FALSE);
   if (!value)
     {
       goto exit;
@@ -530,12 +533,9 @@ _literal_tuple_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *e
 {
   FilterXObject *value = NULL;
 
-  value = _literal_container_eval_expr(elem->value, early_eval);
+  value = _literal_container_eval_expr(elem->value, early_eval, FALSE);
   if (!value)
-    {
-      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
-      return FALSE;
-    }
+    return FALSE;
 
   value = filterx_object_cow_fork2(value, NULL);
   filterx_tuple_set_subscript(result, filterx_tuple_get_length(result), value);
