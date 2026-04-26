@@ -49,18 +49,10 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
-static FilterXObject *
-_eval_conditional(FilterXExpr *s)
+static gboolean
+_condition_is_truthy(FilterXConditional *self, FilterXObject *condition_value)
 {
-  FilterXConditional *self = (FilterXConditional *) s;
-  FilterXObject *condition_value = filterx_expr_eval(self->condition);
-  FilterXObject *result = NULL;
-
-  if (!condition_value)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate condition");
-      return NULL;
-    }
+  gboolean truthy = filterx_object_truthy(condition_value);
 
   if (trace_flag)
     {
@@ -74,15 +66,32 @@ _eval_conditional(FilterXExpr *s)
             g_assert_not_reached();
         }
 
-      msg_trace(filterx_object_truthy(condition_value) ? "FILTERX CONDT" : "FILTERX CONDF",
+      msg_trace(truthy ? "FILTERX CONDT" : "FILTERX CONDF",
                 filterx_expr_format_location_tag(self->condition),
                 evt_tag_mem("value", buf->str, buf->len),
-                evt_tag_int("truthy", filterx_object_truthy(condition_value)),
+                evt_tag_int("truthy", truthy),
                 evt_tag_str("type", filterx_object_get_type_name(condition_value)));
+
       scratch_buffers_reclaim_marked(mark);
     }
 
-  if (filterx_object_truthy(condition_value))
+  return truthy;
+}
+
+static FilterXObject *
+_eval_conditional(FilterXExpr *s)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+  FilterXObject *condition_value = filterx_expr_eval(self->condition);
+  FilterXObject *result = NULL;
+
+  if (!condition_value)
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate condition");
+      return NULL;
+    }
+
+  if (_condition_is_truthy(self, condition_value))
     {
       if (self->true_branch)
         result = filterx_expr_eval(self->true_branch);
