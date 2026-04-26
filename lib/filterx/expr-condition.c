@@ -182,6 +182,91 @@ _conditional_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+gboolean
+fx_jit_condition_is_truthy(FilterXConditional *self, FilterXObject *condition_value)
+{
+  return _condition_is_truthy(self, condition_value);
+}
+
+static inline FilterXIRValue
+_emit_condition_is_truthy(FilterXJIT *jit, FilterXConditional *self, FilterXIRValue condition_value)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  return fx_jit_emit_extern_call(jit, "fx_jit_condition_is_truthy", ffi->i32_ty,
+                                 (LLVMTypeRef[]){ ffi->ptr_ty, ffi->ptr_ty },
+                                 (FilterXIRValue[]){ fx_jit_emit_const_ptr(jit, self), condition_value }, 2);
+}
+
+static FilterXIRValue
+_compile_conditional(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  FilterXIRValue result_slot = LLVMBuildAlloca(ir, ffi->ptr_ty, "result");
+  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
+
+  FilterXIRSequence cond_null = filterx_jit_ir_create_sequence(jit, "conditional_null", block);
+  FilterXIRSequence cond_check = filterx_jit_ir_create_sequence(jit, "conditional_check", block);
+  FilterXIRSequence true_branch = filterx_jit_ir_create_sequence(jit, "conditional_true", block);
+  FilterXIRSequence false_branch = filterx_jit_ir_create_sequence(jit, "conditional_false", block);
+  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "conditional_finish", block);
+
+  FilterXIRValue condition_value = filterx_expr_compile_or_eval(self->condition, jit);
+
+  /* if (!condition_value) { push_error; goto finish; } */
+  FilterXIRValue is_null = LLVMBuildIsNull(ir, condition_value, "is_null");
+  LLVMBuildCondBr(ir, is_null, cond_null, cond_check);
+  filterx_jit_ir_add_sequence_to_block(jit, cond_null, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, cond_null);
+  fx_jit_emit_eval_push_error_static_info(jit, "Failed to evaluate conditional", s, "Failed to evaluate condition");
+  LLVMBuildBr(ir, finish);
+
+  /* if (_condition_is_truthy(self, condition_value)) */
+  filterx_jit_ir_add_sequence_to_block(jit, cond_check, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, cond_check);
+  FilterXIRValue truthy = _emit_condition_is_truthy(jit, self, condition_value);
+  FilterXIRValue is_truthy = LLVMBuildICmp(ir, LLVMIntNE, truthy, LLVMConstInt(ffi->i32_ty, 0, FALSE), "is_truthy");
+  LLVMBuildCondBr(ir, is_truthy, true_branch, false_branch);
+
+  /* true_branch */
+  filterx_jit_ir_add_sequence_to_block(jit, true_branch, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, true_branch);
+  if (self->true_branch)
+    {
+      fx_jit_emit_object_unref(jit, condition_value);
+      LLVMBuildStore(ir, filterx_expr_compile_or_eval(self->true_branch, jit), result_slot);
+    }
+  else
+    LLVMBuildStore(ir, condition_value, result_slot);
+  LLVMBuildBr(ir, finish);
+
+  /* false_branch */
+  filterx_jit_ir_add_sequence_to_block(jit, false_branch, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, false_branch);
+  fx_jit_emit_object_unref(jit, condition_value);
+  if (self->false_branch)
+    LLVMBuildStore(ir, filterx_expr_compile_or_eval(self->false_branch, jit), result_slot);
+  else
+    LLVMBuildStore(ir, fx_jit_emit_boolean_new(jit, TRUE), result_slot);
+  LLVMBuildBr(ir, finish);
+
+  /* finish */
+  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
+  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+}
+
+#endif
+
 FilterXExpr *
 filterx_conditional_new(FilterXExpr *condition)
 {
@@ -191,6 +276,9 @@ filterx_conditional_new(FilterXExpr *condition)
   self->super.optimize = _optimize;
   self->super.walk_children = _conditional_walk;
   self->super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _compile_conditional;
+#endif
   self->super.suppress_from_trace = TRUE;
   self->condition = condition;
   return &self->super;
