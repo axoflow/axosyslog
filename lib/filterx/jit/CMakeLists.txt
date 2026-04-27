@@ -1,12 +1,12 @@
 set(FILTERX_JIT_HEADERS
-    jit/jit.h
-    jit/jit-private.h
-    jit/ffi.h
+    filterx/jit/jit.h
+    filterx/jit/jit-private.h
+    filterx/jit/ffi.h
     PARENT_SCOPE
     )
 
 set(FILTERX_JIT_SOURCES
-    jit/jit.c
-    jit/ffi.c
+    filterx/jit/jit.c
+    filterx/jit/ffi.c
     PARENT_SCOPE
     )
