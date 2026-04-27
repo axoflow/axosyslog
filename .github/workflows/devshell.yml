@@ -32,6 +32,7 @@ jobs:
 
       - name: Setup environment
         run: |
+          apt-get install --yes llvm-dev
           . .github/workflows/gh-tools.sh
 
           # Setup corefiles
@@ -164,6 +165,7 @@ jobs:
 
       - name: Set ENV variables
         run: |
+          apt-get install --yes llvm-dev
           . .github/workflows/gh-tools.sh
 
           DISTCHECK_CONFIGURE_FLAGS="
