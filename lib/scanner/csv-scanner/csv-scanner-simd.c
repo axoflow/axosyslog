@@ -24,7 +24,27 @@
 #include "csv-scanner-simd.h"
 #include "compat/glib.h"
 
+static gboolean cpu_supports_simd;
+
+gboolean
+csv_is_simd_available(void)
+{
+  return cpu_supports_simd;
+}
+
 /* Per-function target attribute lets GCC and clang emit AVX2 code */
+#if defined(SYSLOG_NG_MANUAL_AVX2) && !defined(SYSLOG_NG_MANUAL_NEON)
+
+void
+csv_detect_cpu_features(void)
+{
+  cpu_supports_simd = __builtin_cpu_supports("avx2");
+}
+
+/* Per-function target attribute lets GCC and clang emit AVX2 code for
+ * this TU without requiring -mavx2 on the command line.  Clang does not
+ * treat #pragma GCC target the same as GCC, so the attribute form is the
+ * portable option. */
 #define AVX2_FN __attribute__((target("avx2")))
 
 /* Parser-level chunk: two AVX2 ymm loads (32 B each) → one 64-bit hit
@@ -301,26 +321,36 @@ static inline void
 _find_n(const char *start, gsize max_len, const gchar *chars, int n,
         CSVSimdFindResult *result)
 {
-  __m256i needles[4];
-  for (int k = 0; k < n; k++)
-    needles[k] = _mm256_set1_epi8(chars[k]);
-
-  gsize offset = 0;
-  while (offset + SIMD_PARSER_CHUNK_BYTES <= max_len)
+  if (G_LIKELY(cpu_supports_simd))
     {
-      if (_find_in_chunk(start, offset, needles, n, result))
-        return;
-      offset += SIMD_PARSER_CHUNK_BYTES;
+      __m256i needles[4];
+      for (int k = 0; k < n; k++)
+        needles[k] = _mm256_set1_epi8(chars[k]);
+
+      gsize offset = 0;
+      while (offset + SIMD_PARSER_CHUNK_BYTES <= max_len)
+        {
+          if (_find_in_chunk(start, offset, needles, n, result))
+            return;
+          offset += SIMD_PARSER_CHUNK_BYTES;
+        }
+
+      if (offset < max_len)
+        {
+          _scalar_search_impl(start, offset, max_len - offset, chars, n, result);
+          return;
+        }
     }
-
-  if (offset < max_len)
+  else
     {
-      _scalar_search_impl(start, offset, max_len - offset, chars, n, result);
+      // fallback path on CPUs without AVX2
+      _scalar_search_impl(start, 0, max_len, chars, n, result);
       return;
     }
 
   result->offset = -1;
   result->which = 0;
+
 }
 
 AVX2_FN
@@ -425,3 +455,160 @@ csv_simd_trim_trailing_whitespace(const gchar *input, gint32 start_ofs, gint32 e
     end_ofs--;
   return end_ofs;
 }
+
+#elif defined(SYSLOG_NG_MANUAL_NEON) && !defined(SYSLOG_NG_MANUAL_AVX2)
+
+#include <sys/auxv.h>
+#include <asm/hwcap.h>
+
+void
+csv_detect_cpu_features(void)
+{
+  cpu_supports_simd = getauxval (AT_HWCAP) & HWCAP_NEON;
+}
+
+gboolean
+csv_simd_parse(const gchar *input, gsize len, GArray *fields_array)
+{
+  return FALSE;
+}
+
+void
+csv_simd_find_either(const char *start, gsize max_len, gchar c1, gchar c2, CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+void
+csv_simd_find_either3(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+void
+csv_simd_find_either4(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, gchar c4,
+                           CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+gint
+csv_simd_find_delimiter_or_quote(const char *start, gsize max_len, gchar delimiter, gchar quote_char)
+{
+  return -1;
+}
+
+void
+csv_simd_find_delim_quote_space(const char *start, gsize max_len, gchar delimiter, gchar quote_char,
+                                     CSVSimdFindTripleResult *result)
+{
+  result->offset = -1;
+  result->which = 0;
+  return;
+}
+
+gint32
+csv_simd_trim_leading_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+gint32
+csv_simd_trim_trailing_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+#else
+
+gboolean
+csv_simd_parse(const gchar *input, gsize len, GArray *fields_array)
+{
+  return FALSE;
+}
+
+static inline void
+_scalar_search_impl(const char *start, gsize offset, gsize remaining, const gchar *chars, gsize num_chars,
+                    CSVSimdFindResult *result)
+{
+  for (gsize i = 0; i < remaining; i++)
+    {
+      gchar ch = start[offset + i];
+      for (gsize j = 0; j < num_chars; j++)
+        {
+          if (ch == chars[j])
+            {
+              result->offset = offset + i;
+              result->which = j;
+              return;
+            }
+        }
+    }
+  result->offset = -1;
+  result->which = 0;
+}
+
+void
+csv_simd_find_either(const char *start, gsize max_len, gchar c1, gchar c2, CSVSimdFindResult *self)
+{
+  const gchar chars[2] = { c1, c2 };
+  _scalar_search_impl(start, 0, max_len, chars, 2, self);
+}
+
+void
+csv_simd_find_either3(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+void
+csv_simd_find_either4(const char *start, gsize max_len, gchar c1, gchar c2, gchar c3, gchar c4,
+                           CSVSimdFindResult *self)
+{
+  self->offset = -1;
+  self->which = 0;
+  return;
+}
+
+gint
+csv_simd_find_delimiter_or_quote(const char *start, gsize max_len, gchar delimiter, gchar quote_char)
+{
+  return -1;
+}
+
+void
+csv_simd_find_delim_quote_space(const char *start, gsize max_len, gchar delimiter, gchar quote_char,
+                                     CSVSimdFindTripleResult *result)
+{
+  result->offset = -1;
+  result->which = 0;
+  return;
+}
+
+gint32
+csv_simd_trim_leading_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+gint32
+csv_simd_trim_trailing_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs)
+{
+  return -1;
+}
+
+void
+csv_detect_cpu_features(void)
+{
+  cpu_supports_simd = 0;
+}
+
+#endif

@@ -26,7 +26,19 @@
 
 #include "syslog-ng.h"
 #include <stdint.h>
+
+#ifdef SYSLOG_NG_MANUAL_AVX2
+
 #include <immintrin.h>
+
+#endif /* SYSLOG_NG_MANUAL_AVX2 */
+
+#ifdef SYSLOG_NG_MANUAL_NEON
+
+#include ???
+
+#endif /* SYSLOG_NG_MANUAL_NEON */
+
 
 /************************************************************************
  * SIMD primitives
@@ -77,5 +89,7 @@ void csv_simd_find_delim_quote_space(const char *start, gsize max_len, gchar del
  * Returns new offset after trimming. Uses AVX2 to scan 32 bytes at a time. */
 gint32 csv_simd_trim_leading_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs);
 gint32 csv_simd_trim_trailing_whitespace(const gchar *input, gint32 start_ofs, gint32 end_ofs);
+void csv_detect_cpu_features(void);
+gboolean csv_is_simd_available(void);
 
 #endif
