@@ -70,6 +70,10 @@ _nullv_assign_eval(FilterXExpr *s)
 
   FilterXObject *result = _assign(self, value);
   filterx_object_unref(value);
+
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to assign value", s, "assign() method failed");
+
   return result;
 }
 

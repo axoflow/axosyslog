@@ -342,6 +342,7 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr)
   FilterXObject *res = filterx_expr_eval(expr);
   if (!res)
     {
+      g_assert(context->error_count);
       /* Open coded as this function is context specific. */
       if (debug_flag)
         {
