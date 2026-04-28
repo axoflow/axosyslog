@@ -1,4 +1,4 @@
-4.24.0
+4.25.0
 ======
 
 AxoSyslog is binary-compatible with syslog-ng [1] and serves as a drop-in replacement.
@@ -12,102 +12,125 @@ Check out the [AxoSyslog documentation](https://axoflow.com/docs/axosyslog-core/
 
 ## Features
 
-  * Supported metrics now can be queried with `syslog-ng --metrics-registry`
-    ([#993](https://github.com/axoflow/axosyslog/pull/993))
+  * `syslog()`/`network()`: HAProxy protocol v2 support over UDP
 
-  * `http()` and other threaded destinations: add `batch-idle-timeout()` option
+    When `transport(proxied-udp)` is configured, the original client address and port are available as `${SOURCEIP}`,
+    `${SOURCEPORT}`, `${DESTIP}`, and `${DESTPORT}`.
+    ([#987](https://github.com/axoflow/axosyslog/pull/987))
 
-    While `batch-timeout()` defines the maximum amount of time a batch may wait before it is sent (starting from the first message),
-    the new `batch-idle-timeout()` measures the elapsed time since the last message was added to the batch.
+  * FilterX: Added new function: `uuid()` that generates a random UUID v4 string.
+    ([#1018](https://github.com/axoflow/axosyslog/pull/1018))
 
-    Whichever timeout expires first will close and send the batch.
+  * FilterX: Added various crypto hash digest functions.
 
-    `batch-idle-timeout()` defaults to 0 (disabled).
-    ([#950](https://github.com/axoflow/axosyslog/pull/950))
+    These functions compute the hash of a string or bytes and return the result as a hex string:
+    * `md5()`
+    * `sha1()`
+    * `sha256()`
+    * `sha512()`
 
-  * `fix-timestamp()`, `guess_timestamp()` and `set_timestamp()`: new filterx functions.
+    The generic `digest(input, alg="sha256")` function accepts an optional algorithm
+    name and returns the raw hash as a bytes object.
+    ([#1019](https://github.com/axoflow/axosyslog/pull/1019))
 
-    Example usage:
+  * FilterX: Added `utf8_validate()` and `utf8_sanitize()` string functions.
+
+    * `utf8_validate()` checks whether the string contains valid UTF-8 sequences and returns a boolean
+    * `utf8_sanitize()` replaces invalid byte sequences with their `\xNN` escaped representation
+    ([#1019](https://github.com/axoflow/axosyslog/pull/1019))
+
+  * FilterX: Added various encoding/decoding functions.
+
+    * `base64_encode()`/`base64_decode()` (bytes <-> string)
+    * `urlencode()`/`urldecode()` (string <-> string)
+    * `hex_encode()`/`hex_decode()` (bytes <-> string)
+    ([#1019](https://github.com/axoflow/axosyslog/pull/1019))
+
+  * New FilterX types `subnet()` and `ip()`: these new types encapsulate an
+    IPv4/IPv6 subnet (in CIDR notation) or a single IP address. Both types takes
+    their string representation and will return an ERROR if the format cannot be
+    parsed.
+
+    Example configuration:
+
+        a = subnet("192.168.0.0/24");
+
+        "192.168.0.5" in a;
+        "192.168.1.5" in a or true;
+        ip("192.168.0.11") in a;
+
+        a6 = subnet("DEAD:BEEF::1/64");
+
+        "DEAD:BEEF::2" in a6;
+        "DEAD:BABE::1" in a6 or true;
+        ip("DEAD:BEEF::00ac") in a6;
+    ([#1021](https://github.com/axoflow/axosyslog/pull/1021))
+
+  * FilterX `glob_match()` function: this function will match a filename against
+    a single-, or a list of glob-style patterns.
+
+    Example:
+
+        glob_match(filename, "*.zip");
+        glob_match(filename, ["*.zip", "*.7z"]);
+    ([#1039](https://github.com/axoflow/axosyslog/pull/1039))
+
+  * FilterX `cache_json_file`: add deafult_value parameter to FilterX function
+
+    If the file is not present, or an error occurs when reading it, the default_value will be used, if provided.
+
+    Example:
     ```
-    datetime = strptime("2000-01-01T00:00:00 +0200", "%Y-%m-%dT%H:%M:%S %z");
-    timezone = "CET";
-    fixed_datetime = fix_timezone(datetime, timezone);
-    guessed_datetime = guess_timezone(datetime);
-    set_datetime = set_timezone(datetime, "CET");
+    cache_json_file("./test.json", default_value={"key": "value"});
     ```
-    ([#960](https://github.com/axoflow/axosyslog/pull/960))
-
-  * `get_timezone_source()`: new filterx function
-
-    Returns a string indicating where the timezone information originates from.
-    Possible values:
-     - `"parsed"`: the timezone info is explicitly parsed from the timestamp
-     - `"assumed"`: the timestamp didn't contain timezone info, default used (currently local timezone)
-     - `"fixed"`: the timezone info was set using `fix_timezone()` or `set_timezone()` functions
-     - `"guessed"`: the timezone info was set using `guess_timezone()` function
-
-    Example usage:
-    ```
-    if (get_timezone_source(timestamp) === "assumed") {
-      timestamp = fix_timezone(timestamp, "CET");
-    };
-    ```
-    ([#979](https://github.com/axoflow/axosyslog/pull/979))
-
-  * network-load-balancer: add support for failover
-
-    The confgen script for `network-load-balancer` now supports failover, generating the list of failover servers for each destination automatically.
-    ([#908](https://github.com/axoflow/axosyslog/pull/908))
+    ([#1034](https://github.com/axoflow/axosyslog/pull/1034))
 
 
 ## Bugfixes
 
-  * FilterX LEEF formatter/parser: fix escaping of `=` in extension values
-    ([#986](https://github.com/axoflow/axosyslog/pull/986))
+  * `disk-buffer()`: keep the queue alive during reload
 
-  * `dynamic-window-size()`: fix occasional crash and incorrect window calculation
-    ([#988](https://github.com/axoflow/axosyslog/pull/988))
+    Keeping the disk-buffer alive on reload fixes a bug, where a full disk-buffer can
+    grow infinitely by reloading. It can also cause significant reload speedup.
+    ([#1030](https://github.com/axoflow/axosyslog/pull/1030))
 
-  * `opentelemetry()` and other threaded sources: fix occasional crash during reload
-    ([#989](https://github.com/axoflow/axosyslog/pull/989))
+  * `disk-buffer()`: fix message ordering issue when a message batch failed to be delivered
+    ([#1005](https://github.com/axoflow/axosyslog/pull/1005))
 
-  * Fix various memory leaks
-    ([#978](https://github.com/axoflow/axosyslog/pull/978), [#954](https://github.com/axoflow/axosyslog/pull/954),
-    [#953](https://github.com/axoflow/axosyslog/pull/953), [#982](https://github.com/axoflow/axosyslog/pull/982))
+  * CR (`\r`) characters are now removed from line endings, empty UDP datagrams are dropped
+    ([#1000](https://github.com/axoflow/axosyslog/pull/1000))
 
-  * `network()`/`syslog()` sources and parser: fix crash when using the `sanitize-utf8` flag on large invalid messages
-    ([#985](https://github.com/axoflow/axosyslog/pull/985))
+  * FilterX `parse_xml()`: fix crash in case of invalid XML
+    ([#1041](https://github.com/axoflow/axosyslog/pull/1041))
 
-  * `opentelemetry()` source: fixed a bug causing the source to hang on reload
-    ([#991](https://github.com/axoflow/axosyslog/pull/991))
+  * FilterX: fix crash when using the `+` operator on dicts
+    ([#1040](https://github.com/axoflow/axosyslog/pull/1040))
 
-  * `strptime()`: fix parsing `%s` format.
-    ([#984](https://github.com/axoflow/axosyslog/pull/984))
-
-  * `disk-buffer()`: detect abandoned metrics in default directory
-    ([#965](https://github.com/axoflow/axosyslog/pull/965))
-
-  * `date-parser()` and FilterX `strptime()`: accept "UTC" in `%z`/`%Z`
-    ([#1002](https://github.com/axoflow/axosyslog/pull/1002))
+  * FilterX: fix error handling of the `=??` operator
+    ([#1053](https://github.com/axoflow/axosyslog/pull/1053))
 
 
 ## Other changes
 
-  * `disk-buffer()`: the serialization format has been upgraded to `v27`
-    ([#933](https://github.com/axoflow/axosyslog/pull/933))
+  * `opentelemetry()`, `axosyslog-otlp`, `loki()`, `google-pubsub`, `clickhouse`, `bigquery` : improve performance by using gRPC arenas for allocation
+    ([#1015](https://github.com/axoflow/axosyslog/pull/1015))
 
-  * FilterX: JSON-related functionality is now powered by `jsmn`, resulting in improved performance
-    ([#882](https://github.com/axoflow/axosyslog/pull/882))
+  * New metrics: `syslogng_input_transport_errors_total` for syslog framing and TLS errors
+    ([#1026](https://github.com/axoflow/axosyslog/pull/1026))
 
-  * New metrics:
+  * `http()`: error reporting improvements of batched sending
+    ([#1001](https://github.com/axoflow/axosyslog/pull/1001))
 
-    - `syslogng_event_processing_latency_seconds{measurement_point="input/output"}`
-      - Histogram of the latency from message receipt to full processing, from the source or destination perspective.
-    - `syslogng_output_event_latency_seconds`
-      - Histogram of the latency from message receipt to delivery, from the destination perspective.
+  * Network sources: `transport(auto)` detections became more robust
+    ([#1013](https://github.com/axoflow/axosyslog/pull/1013))
 
-    `output_event_delay_sample_seconds` has been removed in favor of `output_event_latency_seconds`.
-    ([#983](https://github.com/axoflow/axosyslog/pull/983))
+  * `syslog-ng --interactive`: new debugger commands - step, continue, follow, trace
+    ([#340](https://github.com/axoflow/axosyslog/pull/340))
+
+  * FilterX performance optimizations
+
+  * Contribution Guide: added section on how to contribute AI-assisted code
+    ([#1043](https://github.com/axoflow/axosyslog/pull/1043))
 
 
 
@@ -130,6 +153,5 @@ of AxoSyslog, contribute.
 
 We would like to thank the following people for their contribution:
 
-Akos Zalavary, Andras Mitzki, Attila Szakacs, Balazs Scheidler,
-Daniele Ferla, Kevin Mainardis, László Várady, Romain Tartière,
-Szilard Parrag, Tamás Kosztyu, shifter
+Andras Mitzki, Attila Szakacs, Balazs Scheidler, László Várady,
+Szilard Parrag, Tamás Kosztyu
