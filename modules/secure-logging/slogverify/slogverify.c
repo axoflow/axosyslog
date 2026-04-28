@@ -79,6 +79,7 @@ gboolean normalMode(char *hostkey, char *MACfile, char *inputlog, char *outputlo
   if (!readAggregatedMAC(MACfile, MAC))
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read MAC"), evt_tag_str("file", MACfile));
+      return FALSE; //-- ERROR
     }
 
   //-- initial MAC0 ---
@@ -90,6 +91,7 @@ gboolean normalMode(char *hostkey, char *MACfile, char *inputlog, char *outputlo
       if (!readAggregatedMAC(pathMac0, MAC0))
         {
           msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read MAC0"), evt_tag_str("file", pathMac0));
+          return FALSE; //-- ERROR
         }
       else
         {
@@ -99,6 +101,7 @@ gboolean normalMode(char *hostkey, char *MACfile, char *inputlog, char *outputlo
   else
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Invalid pathMac0")); //-- fileVerify will fail later
+      return FALSE; //-- ERROR
     }
 
 
@@ -167,7 +170,8 @@ gboolean iterativeMode(char *prevKey, char *prevMAC, char *curMAC, char *inputlo
   guchar previousMAC[CMAC_LENGTH];
   if (!readAggregatedMAC(prevMAC, previousMAC))
     {
-      msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Unable to read previous MAC"), evt_tag_str("file", prevMAC));
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read previous MAC"), evt_tag_str("file", prevMAC));
+      return FALSE; //-- ERROR
     }
 
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "Reading current MAC file"), evt_tag_str("name", curMAC));
@@ -186,7 +190,8 @@ gboolean iterativeMode(char *prevKey, char *prevMAC, char *curMAC, char *inputlo
   guchar currentMAC[CMAC_LENGTH];
   if (!readAggregatedMAC(curMAC, currentMAC))
     {
-      msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Unable to read current MAC"), evt_tag_str("file", curMAC));
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Unable to read current MAC"), evt_tag_str("file", curMAC));
+      return FALSE; //-- ERROR
     }
 
   FILE *input = fopen(inputlog, "r");

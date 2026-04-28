@@ -185,7 +185,7 @@ gboolean get_path_mac0(const gchar *pathAggMac, gchar *pathMac0, size_t sizePath
             }
           else
             {
-              msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Destination buffer too small for path"));
+              msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Destination buffer too small for path"));
             }
           g_free(full_path);
         }
@@ -561,7 +561,6 @@ gboolean cmac(guchar *key, const void *input,
 #if OPENSSL_VERSION_NUMBER >= 0x30000000L
 
   EVP_MAC *mac = EVP_MAC_fetch(NULL, "CMAC", NULL);
-  EVP_MAC_CTX *ctx = NULL;
   if (mac == NULL)
     {
       msg_error(SLOG_ERROR_PREFIX,
@@ -579,7 +578,7 @@ gboolean cmac(guchar *key, const void *input,
     OSSL_PARAM_END,
   };
 
-  ctx = EVP_MAC_CTX_new(mac);
+  EVP_MAC_CTX *ctx = EVP_MAC_CTX_new(mac);
   if (ctx == NULL)
     {
       msg_error(SLOG_ERROR_PREFIX,
@@ -1013,6 +1012,8 @@ gboolean readAggregatedMAC(gchar *filename, guchar *outputBuffer)
       cmacOk = FALSE;
     }
 
+  if (TRUE == cmacOk)
+    {
   if (0 != memcmp(testOutput, &macdata[CMAC_LENGTH], CMAC_LENGTH))
     {
       msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "MAC computation invalid"));
@@ -1022,9 +1023,12 @@ gboolean readAggregatedMAC(gchar *filename, guchar *outputBuffer)
     {
       msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "MAC successfully loaded"));
     }
+    }
 
+  if (TRUE == cmacOk)
+    {
   memcpy(outputBuffer, macdata, CMAC_LENGTH);
-
+    }
   result = close_file(f);
   if (!result)
     {
@@ -1102,14 +1106,21 @@ gboolean readKey(guchar *destKey, guint64 *destCounter, gchar *keypath)
       cmacOk = FALSE;
     }
 
+  if (TRUE == cmacOk)
+    {
   if (0!=memcmp(testOutput, &keydata[KEY_LENGTH], CMAC_LENGTH))
     {
       msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Host key corrupted. CMAC in key file not matching"));
       result = FALSE;
     }
+    }
 
+  if (TRUE == cmacOk)
+    {
   memcpy(destKey, keydata, KEY_LENGTH);
   *destCounter = GUINT64_FROM_LE(littleEndianCounter);
+    }
+
   result = close_file(f);
   if (!result)
     {
@@ -1187,8 +1198,7 @@ gboolean writeKey(guchar *key, guint64 counter, gchar *keypath)
     }
 
 CLEANUP_WRITEKEY:
-  gboolean result2 = close_file(f);
-  if (!result2)
+  if (!close_file(f))
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Error close_file"));
       result = FALSE; //-- ERROR
