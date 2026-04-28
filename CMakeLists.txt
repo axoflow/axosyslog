@@ -488,6 +488,12 @@ endif()
 
 add_compile_options(${IMPORTANT_WARNINGS} ${ACCEPTABLE_WARNINGS} ${EXTRA_WARNINGS})
 
+option(ENABLE_MANUAL_SIMD "Enable handcrafted vectorization code" ON)
+if (ENABLE_MANUAL_SIMD)
+  include(CheckCCompilerFlag)
+  check_c_compiler_flag(-mavx2 SYSLOG_NG_MANUAL_AVX2)
+endif()
+
 # Sanatizer configuration
 set(SANITIZER "OFF" CACHE STRING "Enable clang sanitizer")
 
