@@ -251,26 +251,124 @@ filterx_eval_restore_allocator(gpointer *saved_state)
   *saved_state = NULL;
 }
 
+/*
+ * Retaining an object:
+ *
+ * Sometimes we need to retain an object for longer than what its initial
+ * allocation can warrant (e.g.  allocated from a thread specific allocator
+ * and we need to keep it until aggregation finishes).  An important
+ * constraint is that retained objects only allow read only access.
+ *
+ * The FX_RETAIN_* enums determine how long we want to make sure an object
+ * remains accessible.  A return value can refer to the same object (in case
+ * the current allocation suffices), or it can duplicate the object, in
+ * which case the caller will have its own copy.
+ *
+ * In both cases, only read only access is permitted, otherwise an object
+ * could potentially be accessed from multiple threads.
+ *
+ * An object instance can be allocated in one of the following ways:
+ *
+ * Shared access (multiple threads use the same object):
+ * -----------------------------------------------------
+ *   1) allocated early, at configuration load time and then frozen (filterx_object_is_hibernated())
+ *
+ *   2) allocated during runtime, frozen for a longer period, but then freed
+ *      asynchronously (e.g.  cache_json_file()) (filterx_object_is_frozen())
+ *
+ * Exclusive access (a single thread has access):
+ * ----------------------------------------------
+ *   3) allocated during runtime for pipeline access, using a pipeline
+ *      allocator that frees objects en-masse, the reference count exists
+ *      (for now) but does not drive the freeing of the object.  Once the
+ *      message is delivered, all objects are freed.
+ *      (filterx_object_is_refcounted() && object->allocator_used)
+ *
+ *   4) allocated during runtime for a single thread access, not using a
+ *      pipeline allocator, e.g.  the reference count drives the freeing of the
+ *      object. (filterx_object_is_refcounted() && !object->allocator_used)
+ */
+
+typedef enum
+{
+  /* retain this object at least up to the last delivery of the current
+   * message */
+  FX_RETAIN_UNTIL_FINAL_DELIVERY,
+  /* retain this object at least up to the next configuration reload */
+  FX_RETAIN_UNTIL_RELOAD,
+
+  /* retain this object independently from configurations, e.g.  until its
+   * reference count is larger than zero, even in face of configuration
+   * reloads */
+  FX_RETAIN_DECOUPLE_CONFIG,
+} FilterXEvalRetainGoal;
+
+static inline gboolean
+filterx_eval_retain_dup_needed(FilterXObject *object, FilterXEvalRetainGoal goal)
+{
+  if (!object)
+    return FALSE;
+
+  /* at any goals, we need to get our of the allocator's purview */
+  if (object->allocator_used)
+    return TRUE;
+
+  switch (goal)
+    {
+    case FX_RETAIN_UNTIL_FINAL_DELIVERY:
+      return FALSE;
+    case FX_RETAIN_UNTIL_RELOAD:
+      if (object->early_allocation)
+        {
+          /* early allocated objects, these are always preserved and will be good until reload */
+#if SYSLOG_NG_ENABLE_DEBUG
+          g_assert(filterx_object_is_preserved(object));
+#endif
+          return FALSE;
+        }
+      /* refcounted and hibnerated objects don't need duplication */
+      if (filterx_object_is_refcounted(object) ||
+          filterx_object_is_hibernated(object))
+        return FALSE;
+      /* the remaining case is stashed objects, which are not safe to keep
+       * around, so let's duplicate those */
+
+#if SYSLOG_NG_ENABLE_DEBUG
+      g_assert(filterx_object_is_frozen(object));
+#endif
+      return TRUE;
+    case FX_RETAIN_DECOUPLE_CONFIG:
+      /* we want a proper reference counted object, allocated on the heap,
+       * preserved objects are not good enough as we want them to survive a
+       * reload */
+      if (!filterx_object_is_preserved(object))
+        return FALSE;
+      return TRUE;
+    default:
+      g_assert_not_reached();
+    }
+}
+
 /* unplug this object from the current context, and guarantee it remains
  * available past the end of the scope, at least until the returned
  * reference is dropped using filterx_object_unref(). */
 static inline FilterXObject *
-filterx_eval_retain_dup(FilterXObject *object)
+filterx_eval_retain_dup(FilterXObject *object, FilterXEvalRetainGoal goal)
 {
-  if (!object || filterx_object_is_preserved(object) || !object->allocator_used)
+  if (!filterx_eval_retain_dup_needed(object, goal))
     return filterx_object_ref(object);
   else
     return filterx_object_dup(object);
 }
 
 static inline void
-filterx_eval_retain_object(FilterXObject **pobject)
+filterx_eval_retain_object(FilterXObject **pobject, FilterXEvalRetainGoal goal)
 {
   FilterXObject *object = *pobject;
   gpointer allocator_state;
 
   filterx_eval_disable_allocator(&allocator_state);
-  *pobject = filterx_eval_retain_dup(object);
+  *pobject = filterx_eval_retain_dup(object, goal);
   filterx_eval_restore_allocator(&allocator_state);
   filterx_object_unref(object);
 }
