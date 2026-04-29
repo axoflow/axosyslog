@@ -41,6 +41,7 @@
 
 #include "filter/filter-expr-parser.h"
 #include "filter/filter-pipe.h"
+#include "filterx/filterx-config.h"
 #include "filterx/filterx-parser.h"
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-pipe.h"

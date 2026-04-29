@@ -262,7 +262,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_BATCH_IDLE_TIMEOUT          10089
 %token KW_TRIM_LARGE_MESSAGES         10600
 %token KW_BATCH_SIZE                  10601
-
+%token KW_FILTERX_JIT                 10602
 
 %token KW_STATS                       10400
 %token KW_FREQ                        10401
@@ -1146,6 +1146,7 @@ options_item
 	| KW_RECV_TIME_ZONE '(' string ')'	{ configuration->recv_time_zone = g_strdup($3); free($3); }
 	| KW_MIN_IW_SIZE_PER_READER '(' positive_integer ')' { configuration->min_iw_size_per_reader = $3; }
 	| KW_LOG_LEVEL '(' string ')'		{ CHECK_ERROR(cfg_set_log_level(configuration, $3), @3, "Unknown log-level() option"); free($3); }
+	| KW_FILTERX_JIT '(' yesno ')' { FilterXConfig *fx_cfg = filterx_config_get(configuration); filterx_config_enable_jit(fx_cfg, $3); }
 	| { last_template_options = &configuration->template_options; } template_option
 	| { last_host_resolve_options = &configuration->host_resolve_options; } host_resolve_option
 	| { last_stats_options = &configuration->stats_options; last_healthcheck_options = &configuration->healthcheck_options; } stat_option
