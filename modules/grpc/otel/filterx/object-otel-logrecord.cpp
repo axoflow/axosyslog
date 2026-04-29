@@ -52,6 +52,12 @@ LogRecord::LogRecord(FilterXOtelLogRecord *super_) : super(super_)
 {
 }
 
+LogRecord::LogRecord(FilterXOtelLogRecord *super_,
+                     const opentelemetry::proto::logs::v1::LogRecord &logrecord_) : super(super_)
+{
+  this->logRecord.CopyFrom(logrecord_);
+}
+
 LogRecord::LogRecord(FilterXOtelLogRecord *super_, FilterXObject *protobuf_object) : super(super_)
 {
   const gchar *value;
@@ -350,6 +356,15 @@ filterx_otel_logrecord_new_from_args(FilterXExpr *s, FilterXObject *args[], gsiz
       return NULL;
     }
 
+  return &self->super.super;
+}
+
+FilterXObject *
+filterx_otel_logrecord_new_from_protobuf_object(const opentelemetry::proto::logs::v1::LogRecord &logrecord)
+{
+  FilterXOtelLogRecord *self = g_new0(FilterXOtelLogRecord, 1);
+  _init_instance(self);
+  self->cpp = new LogRecord(self, logrecord);
   return &self->super.super;
 }
 

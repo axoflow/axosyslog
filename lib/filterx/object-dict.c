@@ -742,7 +742,7 @@ _filterx_dict_clone_container(FilterXObject *s, FilterXObject *container, Filter
 
   if (self->table)
     {
-       new_table = _table_new(self->table->size);
+      new_table = _table_new(self->table->size);
       _table_clone(new_table, self->table, container, child_of_interest, dup);
     }
   return filterx_dict_new_with_table(new_table);

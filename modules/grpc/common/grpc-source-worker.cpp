@@ -42,6 +42,13 @@ SourceWorker::blocking_post(LogMessage *msg)
   log_threaded_source_worker_blocking_post(&super->super, msg);
 }
 
+void
+SourceWorker::blocking_post(LogMessage *msg, FilterXEvalContext *filterx_context)
+{
+  log_threaded_source_worker_blocking_post_with_filterx_context(&super->super, msg, filterx_context);
+}
+
+
 /* C Wrappers */
 
 static void

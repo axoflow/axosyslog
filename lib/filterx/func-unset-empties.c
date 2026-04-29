@@ -66,7 +66,8 @@ static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *
 typedef int (*str_cmp_fn)(const char *, const char *, size_t len);
 
 static inline gboolean
-_string_compare(FilterXFunctionUnsetEmpties *self, FilterXObject *obj, const gchar *str, gsize str_len, str_cmp_fn cmp_fn)
+_string_compare(FilterXFunctionUnsetEmpties *self, FilterXObject *obj, const gchar *str, gsize str_len,
+                str_cmp_fn cmp_fn)
 {
   guint num_targets = filterx_pointer_list_get_length(&self->targets);
   for (guint i = 0; i < num_targets; i++)

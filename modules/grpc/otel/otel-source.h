@@ -31,7 +31,14 @@
 #include "driver.h"
 #include "credentials/grpc-credentials-builder.h"
 
+typedef enum
+{
+  OSM_LOGMESSAGE,
+  OSM_FILTERX,
+} OtelSourceMode;
+
 LogDriver *otel_sd_new(GlobalConfig *cfg);
+void otel_sd_set_mode(LogDriver *s, OtelSourceMode mode);
 
 #include "compat/cpp-end.h"
 

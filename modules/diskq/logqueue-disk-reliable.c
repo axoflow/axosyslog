@@ -79,9 +79,9 @@ static void
 _log_internal_state(LogQueueDisk *self, const gchar *operation)
 {
   msg_info("Reliable disk-buffer state",
-          evt_tag_str("operation", operation),
-          evt_tag_str("filename", qdisk_get_filename(self->qdisk)),
-          evt_tag_long("number_of_messages", log_queue_get_length(&self->super)));
+           evt_tag_str("operation", operation),
+           evt_tag_str("filename", qdisk_get_filename(self->qdisk)),
+           evt_tag_long("number_of_messages", log_queue_get_length(&self->super)));
 
   msg_debug("Reliable disk-buffer internal state",
             evt_tag_str("filename", qdisk_get_filename(self->qdisk)),

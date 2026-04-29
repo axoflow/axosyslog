@@ -200,7 +200,9 @@ Test(filterx_dict, test_list_dedup)
   cr_assert_eq(val_0, val_2);
   cr_assert_neq(val_0, val_1);
 
-  filterx_object_unref(val_2); filterx_object_unref(val_1); filterx_object_unref(val_0);
+  filterx_object_unref(val_2);
+  filterx_object_unref(val_1);
+  filterx_object_unref(val_0);
   filterx_object_unref(list);
 }
 
@@ -226,8 +228,12 @@ Test(filterx_dict, test_dict_dedup)
   cr_assert_eq(val_a, val_c);
   cr_assert_neq(val_a, val_b);
 
-  filterx_object_unref(val_c); filterx_object_unref(val_b); filterx_object_unref(val_a);
-  filterx_object_unref(c); filterx_object_unref(b); filterx_object_unref(a);
+  filterx_object_unref(val_c);
+  filterx_object_unref(val_b);
+  filterx_object_unref(val_a);
+  filterx_object_unref(c);
+  filterx_object_unref(b);
+  filterx_object_unref(a);
   filterx_object_unref(dict);
 }
 

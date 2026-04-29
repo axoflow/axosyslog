@@ -40,6 +40,11 @@ Resource::Resource(FilterXOtelResource *s) : super(s)
 {
 }
 
+Resource::Resource(FilterXOtelResource *s, const opentelemetry::proto::resource::v1::Resource &resource_) : super(s)
+{
+  this->resource.CopyFrom(resource_);
+}
+
 Resource::Resource(FilterXOtelResource *s, FilterXObject *protobuf_object) : super(s)
 {
   const gchar *value;
@@ -331,6 +336,15 @@ filterx_otel_resource_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize
       return NULL;
     }
 
+  return &self->super.super;
+}
+
+FilterXObject *
+filterx_otel_resource_new_from_protobuf_object(const opentelemetry::proto::resource::v1::Resource &resource)
+{
+  FilterXOtelResource *self = g_new0(FilterXOtelResource, 1);
+  _init_instance(self);
+  self->cpp = new Resource(self, resource);
   return &self->super.super;
 }
 

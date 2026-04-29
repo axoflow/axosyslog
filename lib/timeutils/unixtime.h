@@ -27,7 +27,8 @@
 #include "timeutils/zoneinfo.h"
 #include <stdint.h>
 
-typedef enum {
+typedef enum
+{
   UNIX_TIME_TZ_ASSUMED,
   UNIX_TIME_TZ_PARSED,
   UNIX_TIME_TZ_FIXED,

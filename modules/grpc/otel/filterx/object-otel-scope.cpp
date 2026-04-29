@@ -40,6 +40,11 @@ Scope::Scope(FilterXOtelScope *s) : super(s)
 {
 }
 
+Scope::Scope(FilterXOtelScope *s, const opentelemetry::proto::common::v1::InstrumentationScope &scope_) : super(s)
+{
+  this->scope.CopyFrom(scope_);
+}
+
 Scope::Scope(FilterXOtelScope *s, FilterXObject *protobuf_object) : super(s)
 {
   const gchar *value;
@@ -331,6 +336,15 @@ filterx_otel_scope_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
       return NULL;
     }
 
+  return &self->super.super;
+}
+
+FilterXObject *
+filterx_otel_scope_new_from_protobuf_object(const opentelemetry::proto::common::v1::InstrumentationScope &scope)
+{
+  FilterXOtelScope *self = g_new0(FilterXOtelScope, 1);
+  _init_instance(self);
+  self->cpp = new Scope(self, scope);
   return &self->super.super;
 }
 
