@@ -24,6 +24,9 @@
 #include "logproto.h"
 #include "messages.h"
 #include "str-utils.h"
+#include "gsocket.h"
+#include "stats/stats-registry.h"
+#include "stats/stats-cluster-single.h"
 
 #include <errno.h>
 #include <ctype.h>
@@ -63,6 +66,12 @@ typedef struct _LogProtoFramedServer
   /* auxiliary data (e.g. GSockAddr, other transport related meta
    * data) associated with the already buffered data */
   LogTransportAuxData buffer_aux;
+
+  struct
+  {
+    StatsClusterKey *invalid_frame_header_key;
+    StatsCounterItem *invalid_frame_header_counter;
+  } metrics;
 } LogProtoFramedServer;
 
 static LogProtoPrepareAction
@@ -143,10 +152,40 @@ log_proto_framed_server_fetch_data(LogProtoFramedServer *self, gboolean *may_rea
   return TRUE;
 }
 
+static void
+_handle_invalid_frame_header(LogProtoFramedServer *self, guint32 frame_start)
+{
+  gchar peer_buf[MAX_SOCKADDR_STRING] = "unknown";
+  gchar local_buf[MAX_SOCKADDR_STRING] = "unknown";
+
+  GSockAddr *peer_addr = g_socket_get_peer_name(self->super.transport_stack.fd);
+  if (peer_addr)
+    {
+      g_sockaddr_format(peer_addr, peer_buf, sizeof(peer_buf), GSA_FULL);
+      g_sockaddr_unref(peer_addr);
+    }
+
+  GSockAddr *local_addr = g_socket_get_local_name(self->super.transport_stack.fd);
+  if (local_addr)
+    {
+      g_sockaddr_format(local_addr, local_buf, sizeof(local_buf), GSA_FULL);
+      g_sockaddr_unref(local_addr);
+    }
+
+  msg_error("Invalid frame header",
+            evt_tag_mem("header", &self->buffer[frame_start],
+                        MIN(self->buffer_end - frame_start, RFC6587_MAX_FRAME_LEN_DIGITS)),
+            evt_tag_str("peer_addr", peer_buf),
+            evt_tag_str("local_addr", local_buf));
+
+  stats_counter_inc(self->metrics.invalid_frame_header_counter);
+}
+
 static gboolean
 log_proto_framed_server_extract_frame_length(LogProtoFramedServer *self, gboolean *need_more_data)
 {
   gint i;
+  guint32 frame_start = self->buffer_pos;
 
   *need_more_data = TRUE;
   self->frame_len = 0;
@@ -164,8 +203,7 @@ log_proto_framed_server_extract_frame_length(LogProtoFramedServer *self, gboolea
         }
       else
         {
-          msg_error("Invalid frame header",
-                    evt_tag_mem("header", &self->buffer[self->buffer_pos], (i - self->buffer_pos)));
+          _handle_invalid_frame_header(self, frame_start);
           return FALSE;
         }
     }
@@ -396,6 +434,27 @@ _step_state_machine(LogProtoFramedServer *self, const guchar **msg, gsize *msg_l
     }
 }
 
+static void
+_register_stats(LogProtoFramedServer *self, StatsClusterKeyBuilder *kb)
+{
+  if (!kb)
+    return;
+
+  stats_cluster_key_builder_push(kb);
+  stats_cluster_key_builder_set_name(kb, METRIC(input_transport_errors_total));
+  stats_cluster_key_builder_add_label(kb, stats_cluster_label("reason", "invalid-frame-header"));
+
+  self->metrics.invalid_frame_header_key = stats_cluster_key_builder_build_single(kb);
+  stats_cluster_key_builder_pop(kb);
+
+  stats_lock();
+  {
+    stats_register_counter(STATS_LEVEL1, self->metrics.invalid_frame_header_key, SC_TYPE_SINGLE_VALUE,
+                           &self->metrics.invalid_frame_header_counter);
+  }
+  stats_unlock();
+}
+
 static LogProtoStatus
 log_proto_framed_server_fetch(LogProtoServer *s, const guchar **msg, gsize *msg_len, gboolean *may_read,
                               LogTransportAuxData *aux, Bookmark *bookmark)
@@ -414,10 +473,31 @@ log_proto_framed_server_fetch(LogProtoServer *s, const guchar **msg, gsize *msg_
   return status;
 }
 
+
+
+static void
+_unregister_stats(LogProtoFramedServer *self)
+{
+  if (!self->metrics.invalid_frame_header_key)
+    return;
+
+  stats_lock();
+  {
+    stats_unregister_counter(self->metrics.invalid_frame_header_key, SC_TYPE_SINGLE_VALUE,
+                             &self->metrics.invalid_frame_header_counter);
+  }
+  stats_unlock();
+
+  stats_cluster_key_free(self->metrics.invalid_frame_header_key);
+  self->metrics.invalid_frame_header_key = NULL;
+}
+
 static void
 log_proto_framed_server_free(LogProtoServer *s)
 {
   LogProtoFramedServer *self = (LogProtoFramedServer *) s;
+
+  _unregister_stats(self);
   g_free(self->buffer);
 
   log_transport_aux_data_destroy(&self->buffer_aux);
@@ -425,7 +505,8 @@ log_proto_framed_server_free(LogProtoServer *s)
 }
 
 LogProtoServer *
-log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions *options)
+log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions *options,
+                            StatsClusterKeyBuilder *kb)
 {
   LogProtoFramedServer *self = g_new0(LogProtoFramedServer, 1);
 
@@ -435,5 +516,8 @@ log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions
   self->super.free_fn = log_proto_framed_server_free;
   self->half_message_in_buffer = FALSE;
   self->state = LPFSS_FRAME_READ;
+
+  _register_stats(self, kb);
+
   return &self->super;
 }

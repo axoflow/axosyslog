@@ -25,6 +25,7 @@
 
 #include "logproto-server.h"
 
-LogProtoServer *log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions *options);
+LogProtoServer *log_proto_framed_server_new(LogTransport *transport, const LogProtoServerOptions *options,
+                                            StatsClusterKeyBuilder *kb);
 
 #endif

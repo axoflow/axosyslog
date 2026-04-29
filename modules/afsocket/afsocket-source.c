@@ -142,21 +142,28 @@ afsocket_sc_init(LogPipe *s)
   AFSocketSourceConnection *self = (AFSocketSourceConnection *) s;
   LogProtoServer *proto;
 
+  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
+  afsocket_sc_format_stats_key(self, kb);
+
   gboolean restored_kept_alive_source = !!self->reader;
   if (!restored_kept_alive_source)
     {
       proto = log_proto_server_factory_construct(self->owner->proto_factory, NULL,
-                                                 &self->owner->reader_options.proto_options.super);
+                                                 &self->owner->reader_options.proto_options.super, kb);
       if (!proto)
         {
+          stats_cluster_key_builder_free(kb);
           return FALSE;
         }
 
       if (!transport_mapper_setup_stack(self->owner->transport_mapper, &proto->transport_stack, self->sock))
         {
           log_proto_server_free(proto);
+          stats_cluster_key_builder_free(kb);
           return FALSE;
         }
+
+      log_transport_stack_register_stats(&proto->transport_stack, kb);
 
       self->reader = log_reader_new(s->cfg);
       log_pipe_set_options(&self->reader->super.super, &self->super.options);
@@ -164,9 +171,6 @@ afsocket_sc_init(LogPipe *s)
       log_reader_set_peer_addr(self->reader, self->peer_addr);
       log_reader_set_local_addr(self->reader, self->local_addr);
     }
-
-  StatsClusterKeyBuilder *kb = stats_cluster_key_builder_new();
-  afsocket_sc_format_stats_key(self, kb);
   log_reader_set_options(self->reader, &self->super,
                          &self->owner->reader_options,
                          self->owner->super.super.id,
