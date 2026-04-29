@@ -263,6 +263,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_TRIM_LARGE_MESSAGES         10600
 %token KW_BATCH_SIZE                  10601
 
+
 %token KW_STATS                       10400
 %token KW_FREQ                        10401
 %token KW_LEVEL                       10402
@@ -272,10 +273,10 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_HEALTHCHECK_FREQ            10406
 %token KW_WORKER_PARTITION_KEY        10407
 %token KW_WORKER_PARTITION_BUCKETS    10408
-%token KW_WORKER_PARTITION_AUTOSCALING 10602
-%token KW_WORKER_PARTITION_AUTOSCALING_WFO 10603
+%token KW_WORKER_PARTITION_AUTOSCALING 10409
+%token KW_WORKER_PARTITION_AUTOSCALING_WFO 10410
 
-%token KW_LOG_FLOW_CONTROL            10409
+%token KW_LOG_FLOW_CONTROL            10411
 
 %token KW_CHAIN_HOSTNAMES             10090
 %token KW_NORMALIZE_HOSTNAMES         10091
@@ -401,8 +402,8 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_NO                          10381
 %token KW_AUTO                        10382
 
-%token KW_IFDEF                       10410
-%token KW_ENDIF                       10411
+%token KW_IFDEF                       10383
+%token KW_ENDIF                       10384
 
 %token LL_DOTDOT                      10420
 %token LL_DOTDOTDOT                   10421
