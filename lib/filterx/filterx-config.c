@@ -32,7 +32,6 @@ filterx_config_free(ModuleConfig *s)
 {
   FilterXConfig *self = (FilterXConfig *) s;
 
-  filterx_jit_free(self->jit);
   g_ptr_array_unref(self->weak_refs);
   g_ptr_array_unref(self->frozen_objects);
   g_hash_table_unref(self->frozen_deduplicated_objects);
@@ -65,7 +64,6 @@ static inline FilterXJIT *
 _create_jit(void)
 {
 #if SYSLOG_NG_ENABLE_JIT
-  /* TODO: filterx-jit(yes/no) global option */
   GError *error = NULL;
   FilterXJIT *jit = filterx_jit_new(FILTERX_JIT_MODULE_NAME, &error);
 
@@ -84,17 +82,49 @@ _create_jit(void)
 #endif
 }
 
+static gboolean
+filterx_config_init(ModuleConfig *s, GlobalConfig *cfg)
+{
+  FilterXConfig *self = (FilterXConfig *) s;
+
+  if (self->enable_jit == TRUE)
+    {
+#if !SYSLOG_NG_ENABLE_JIT
+      msg_error("Error enabling filterx-jit(), AxoSyslog was compiled without FilterX JIT support");
+      return FALSE;
+#endif
+    }
+
+  if (self->enable_jit == -1)
+    self->enable_jit = TRUE;
+
+  if (self->enable_jit)
+    self->jit = _create_jit();
+
+  return TRUE;
+}
+
+static void
+filterx_config_deinit(ModuleConfig *s, GlobalConfig *cfg)
+{
+  FilterXConfig *self = (FilterXConfig *) s;
+
+  filterx_jit_free(self->jit);
+}
+
 FilterXConfig *
 filterx_config_new(GlobalConfig *cfg)
 {
   FilterXConfig *self = g_new0(FilterXConfig, 1);
 
+  self->super.init = filterx_config_init;
+  self->super.deinit = filterx_config_deinit;
   self->super.free_fn = filterx_config_free;
   self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) _filterx_object_unfreeze_and_free);
   self->frozen_deduplicated_objects = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
                                                             (GDestroyNotify)_filterx_object_unfreeze_and_free);
   self->weak_refs = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_object_unref);
-  self->jit = _create_jit();
+  self->enable_jit = -1;
   return self;
 }
 
