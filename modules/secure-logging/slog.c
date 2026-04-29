@@ -782,14 +782,14 @@ gboolean PRF(guchar *key, guchar *originalInput,
   size_t output_len = sizeof(outputLength);
   size_t gsize_len = sizeof(gsize);
 
-  // i || Label || 00 || Context || outputLength;
+  //-- content:  i || Label || 00 || Context || outputLength;
   gsize myInputLength = gsize_len + label_len + 1 + context_len + output_len;
 
   guchar *input = g_new0(guchar, myInputLength);
 
   for (gsize i = 0 ; i < n ; i++)
     {
-      // input = i || Label || 00 || Context || outputLength;
+      //-- content of input:  i || Label || 00 || Context || outputLength;
       memcpy(input, &i, gsize_len);
       memcpy(input + gsize_len, label, label_len);
       input[gsize_len + label_len] = 0;

@@ -29,6 +29,8 @@
 #include "messages.h"
 #include "slog.h"
 #include "compat/string.h"
+#include <fcntl.h>
+#include <sys/stat.h>
 
 // Arguments and options
 static char *hostkeypath = NULL;
@@ -198,6 +200,17 @@ int main(int argc, char *argv[])
 
   char *line = NULL;
   FILE *outputFile = NULL;
+  char *p_path_check = realpath(inputlogpath, NULL);
+  if (NULL == p_path_check)
+    {
+      msg_error(SLOG_ERROR_PREFIX,
+                evt_tag_str("Reason", "Failed to check inputlogpath!"),
+                evt_tag_str("file", inputlogpath));
+      retval = -1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
+    }
+  free(p_path_check);
+  p_path_check = NULL;
   // Open input file
   FILE *inputFile = fopen(inputlogpath, "r");
   if (inputFile == NULL)
@@ -210,7 +223,13 @@ int main(int argc, char *argv[])
     }
 
   // Open output file
-  outputFile = fopen(outputlogpath,  "w");
+  // CI GitHub CodeQL / File created without restricting permissions:
+  // outputFile = fopen(outputlogpath,  "w");
+  int fd = open(outputlogpath, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+  if (fd != -1)
+    {
+      outputFile = fdopen(fd, "w");
+    }
   if (outputFile == NULL)
     {
       msg_error(SLOG_ERROR_PREFIX,
