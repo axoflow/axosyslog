@@ -16,7 +16,9 @@ For brief development guidelines and architecture overview, see
     2. [Feature requests](#feature-requests)
     3. [Testing](#testing)
 2. [Pull requests](#pull-requests)
-3. [Additional resources](#additional-resources)
+3. [AI-assisted contributions](#ai-assisted-contributions)
+4. [Licensing](#licensing)
+5. [Additional resources](#additional-resources)
 
 ## Issues
 
@@ -173,6 +175,22 @@ and will assign themselves. We try to add feedback as soon as possible.
 
 If you get stuck with a regression test, feel free to ask for help. Sometimes it is difficult to understand the test logs.
 
+## AI-assisted contributions
+
+When a contribution is made with significant assistance from an LLM (AI), or involves AI-generated code, it should be
+indicated in the commit message for tracking purposes.
+
+The contribution should include an `Assisted-by: NAME:MODEL` tag, for example:
+```
+Assisted-by: Claude:claude-opus-4-7
+```
+
+AI agents MUST NOT add Signed-off-by tags. The person submitting the pull request is responsible for
+
+- Reviewing all AI-generated code
+- Ensuring compliance with licensing requirements
+- Adding their own Signed-off-by tag to certify the [DCO](DCO.md)
+- Taking full responsibility for the contribution
 
 ## Licensing
 
