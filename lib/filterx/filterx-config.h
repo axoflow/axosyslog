@@ -27,6 +27,8 @@
 #include "filterx/jit/jit.h"
 #include "filterx/object-string.h"
 
+#include <string.h>
+
 typedef struct _FilterXConfig
 {
   ModuleConfig super;
@@ -35,6 +37,7 @@ typedef struct _FilterXConfig
   GPtrArray *weak_refs;
 
   gboolean enable_jit;
+  FilterXJITDebugInfo jit_debug_info;
   FilterXJIT *jit;
 } FilterXConfig;
 
@@ -44,6 +47,33 @@ static inline void
 filterx_config_enable_jit(FilterXConfig *self, gboolean enable)
 {
   self->enable_jit = enable;
+}
+
+static inline gboolean
+filterx_config_lookup_jit_debug_info(const gchar *name, FilterXJITDebugInfo *mode)
+{
+  if (strcmp(name, "filterx") == 0)
+    *mode = FILTERX_JIT_DEBUG_INFO_FILTERX;
+#if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
+  else if (strcmp(name, "llvm-ir") == 0)
+    *mode = FILTERX_JIT_DEBUG_INFO_LLVM_IR;
+#else
+  else if (strcmp(name, "llvm-ir") == 0)
+    {
+      msg_error("filterx-jit-debug-info(llvm-ir) is not supported on this platform");
+      return FALSE;
+    }
+#endif
+  else
+    return FALSE;
+
+  return TRUE;
+}
+
+static inline void
+filterx_config_set_jit_debug_info(FilterXConfig *self, FilterXJITDebugInfo mode)
+{
+  self->jit_debug_info = mode;
 }
 
 #endif

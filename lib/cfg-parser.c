@@ -145,6 +145,7 @@ static CfgLexerKeyword main_keywords[] =
   { "use_uniqid",         KW_USE_UNIQID },
   { "log_level",          KW_LOG_LEVEL },
   { "filterx_jit",        KW_FILTERX_JIT },
+  { "filterx_jit_debug_info", KW_FILTERX_JIT_DEBUG_INFO },
 
   { "log_fifo_size",      KW_LOG_FIFO_SIZE },
   { "log_fetch_limit",    KW_LOG_FETCH_LIMIT },

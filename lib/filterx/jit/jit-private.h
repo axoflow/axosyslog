@@ -23,6 +23,8 @@
 #ifndef FILTERX_JIT_PRIVATE_H
 #define FILTERX_JIT_PRIVATE_H
 
+#include "syslog-ng.h"
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/ffi.h"
@@ -41,11 +43,15 @@ struct _FilterXJIT
   LLVMModuleRef mod;
   LLVMBuilderRef ir;
   LLVMOrcLLJITRef j;
-  LLVMDIBuilderRef debug;
 
   FilterXIRValue current_ir_block;
   LLVMMetadataRef current_debug_info_block;
+
   FilterXJITFFI ffi;
+
+  FilterXJITDebugInfo debug_info_mode;
+  LLVMDIBuilderRef debug;
+  gint debug_ir_text_memfd;
 
   gboolean mod_finalized;
 };
