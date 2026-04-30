@@ -32,8 +32,15 @@
 #include <llvm-c/LLJIT.h>
 #include <llvm-c/Orc.h>
 #include <llvm-c/Transforms/PassBuilder.h>
+#include <llvm-c/OrcEE.h>
+#include <llvm-c/ExecutionEngine.h>
+#include <llvm-c/DebugInfo.h>
 
 #include <stdio.h>
+#include <string.h>
+
+#define DEBUG_VERSION_KEY "Debug Info Version"
+#define DWARF_VERSION_KEY "Dwarf Version"
 
 static inline void
 _fxjit_error(const gchar *error_msg, GError **error)
@@ -98,6 +105,33 @@ filterx_jit_get_ir_builder(FilterXJIT *self)
   return self->ir;
 }
 
+static inline LLVMMetadataRef
+_create_debug_info_block(FilterXJIT *self, const gchar *block_name, const gchar *file, gint line)
+{
+  LLVMMetadataRef di_file = LLVMDIBuilderCreateFile(self->debug, file, strlen(file), "", 0);
+  LLVMMetadataRef subroutine_ty = LLVMDIBuilderCreateSubroutineType(self->debug, di_file, NULL, 0, LLVMDIFlagZero);
+
+  return LLVMDIBuilderCreateFunction(self->debug, di_file, block_name, strlen(block_name),
+                                     block_name, strlen(block_name), di_file, line, subroutine_ty, FALSE, TRUE, line,
+                                     LLVMDIFlagZero, FALSE);
+}
+
+void
+filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column)
+{
+  g_assert(!self->mod_finalized);
+
+  if (!self->current_debug_info_block)
+    {
+      const gchar *block_name = LLVMGetValueName(self->current_ir_block);
+      self->current_debug_info_block = _create_debug_info_block(self, block_name, file, line);
+      LLVMSetSubprogram(self->current_ir_block, self->current_debug_info_block);
+    }
+
+  LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(self->ctx, line, column, self->current_debug_info_block, NULL);
+  LLVMSetCurrentDebugLocation2(self->ir, loc);
+}
+
 static inline gchar *
 _create_fully_qualified_block_name(FilterXJIT *self, const gchar *block_name)
 {
@@ -134,10 +168,14 @@ filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result)
 
   LLVMBuildRet(self->ir, result);
 
-  FilterXIRValue fn = self->current_ir_block;
-  self->current_ir_block = NULL;
+  if (self->current_debug_info_block)
+    LLVMDIBuilderFinalizeSubprogram(self->debug, self->current_debug_info_block);
 
-  _assert_verify_block(self, fn);
+  _assert_verify_block(self, self->current_ir_block);
+
+  self->current_ir_block = NULL;
+  self->current_debug_info_block = NULL;
+  LLVMSetCurrentDebugLocation2(self->ir, NULL);
 }
 
 FilterXIRValue
@@ -182,6 +220,9 @@ filterx_jit_finalize(FilterXJIT *self, GError **error)
 {
   if (self->mod_finalized)
     return TRUE;
+
+  if (self->debug)
+    LLVMDIBuilderFinalize(self->debug);
 
   if (!_verify_module(self, error))
     return FALSE;
@@ -253,6 +294,37 @@ _setup_optimizations(FilterXJIT *self)
   LLVMOrcIRTransformLayerSetTransform(transform, _optimize_transform, self);
 }
 
+static LLVMOrcObjectLayerRef
+_create_object_layer_with_gdb_listener(void *ctx, LLVMOrcExecutionSessionRef es, const char *triple)
+{
+  LLVMOrcObjectLayerRef object_layer = LLVMOrcCreateRTDyldObjectLinkingLayerWithSectionMemoryManager(es);
+  LLVMOrcRTDyldObjectLinkingLayerRegisterJITEventListener(object_layer, LLVMCreateGDBRegistrationListener());
+  return object_layer;
+}
+
+static inline void
+_setup_debug_info(FilterXJIT *self, LLVMOrcLLJITBuilderRef jit_builder)
+{
+  LLVMOrcLLJITBuilderSetObjectLinkingLayerCreator(jit_builder, _create_object_layer_with_gdb_listener, NULL);
+
+  LLVMValueRef di_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), LLVMDebugMetadataVersion(), FALSE);
+  LLVMValueRef dwarf_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), 4, FALSE);
+
+  LLVMAddModuleFlag(self->mod, LLVMModuleFlagBehaviorWarning, DEBUG_VERSION_KEY, strlen(DEBUG_VERSION_KEY),
+                    LLVMValueAsMetadata(di_version));
+  LLVMAddModuleFlag(self->mod, LLVMModuleFlagBehaviorWarning, DWARF_VERSION_KEY, strlen(DWARF_VERSION_KEY),
+                    LLVMValueAsMetadata(dwarf_version));
+
+  self->debug = LLVMCreateDIBuilder(self->mod);
+
+  const gchar *dummy_file_name = "<filterx>";
+  LLVMMetadataRef file = LLVMDIBuilderCreateFile(self->debug, dummy_file_name, strlen(dummy_file_name), "", 0);
+
+  const gchar *producer = "AxoSyslog FilterX JIT";
+  LLVMDIBuilderCreateCompileUnit(self->debug, LLVMDWARFSourceLanguageC, file, producer, strlen(producer), FALSE, "", 0,
+                                 0, "", 0, LLVMDWARFEmissionFull, 0, FALSE, FALSE, "", 0, "", 0);
+}
+
 FilterXJIT *
 filterx_jit_new(const gchar *module_name, GError **error)
 {
@@ -272,7 +344,10 @@ filterx_jit_new(const gchar *module_name, GError **error)
   self->mod = LLVMModuleCreateWithNameInContext(self->mod_name, self->ctx);
   self->ir = LLVMCreateBuilderInContext(self->ctx);
 
-  LLVMErrorRef err = LLVMOrcCreateLLJIT(&self->j, LLVMOrcCreateLLJITBuilder());
+  LLVMOrcLLJITBuilderRef jit_builder = LLVMOrcCreateLLJITBuilder();
+  _setup_debug_info(self, jit_builder);
+
+  LLVMErrorRef err = LLVMOrcCreateLLJIT(&self->j, jit_builder);
   if (err)
     {
       _llvm_error_to_fxjit_error(err, error);
@@ -299,6 +374,8 @@ filterx_jit_free(FilterXJIT *self)
   if (!self)
     return;
 
+  if (self->debug)
+    LLVMDisposeDIBuilder(self->debug);
   if (self->j)
     LLVMOrcDisposeLLJIT(self->j);
   LLVMDisposeBuilder(self->ir);
