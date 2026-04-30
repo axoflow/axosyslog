@@ -47,7 +47,7 @@ static guint64 bufSize = DEF_BUF_SIZE;
 //
 int main(int argc, char *argv[])
 {
-  int retval = 0; //-- 0: SUCCESS (no error)
+  gint retval = 0; //-- 0: SUCCESS, main logic
 
   setlocale(LC_ALL, "");
 
@@ -67,11 +67,23 @@ int main(int argc, char *argv[])
 
   GError *error = NULL;
   GOptionContext *context =
-    g_option_context_new("NEWKEY NEWMAC INPUTLOG OUTPUTLOG [COUNTER] - Encrypt log files using secure logging");
+    g_option_context_new("NEWKEY NEWMAC INPUTLOG OUTPUTLOG [COUNTER] - Encrypt log files using secure logging\n\n" \
+                         "Example:\n" \
+                         "  ./slogencrypt\n" \
+                         "  --key-file ./current_host.key\n" \
+                         "  --mac-file ./current_mac.dat\n" \
+                         "  ./new_host.key\n" \
+                         "  ./new_mac.dat\n" \
+                         "  ./input_log.txt\n" \
+                         "  ./output_log.out\n"
+                        );
+
   GOptionGroup *group = g_option_group_new("Basic options", "Basic log encryption options", "basic", &options, NULL);
 
   g_option_group_add_entries(group, entries);
   g_option_context_set_main_group(context, group);
+
+
   if (!g_option_context_parse (context, &argc, &argv, &error))
     {
       g_print("!g_opton_context_parse, argc: %d\n", argc);
@@ -99,21 +111,24 @@ int main(int argc, char *argv[])
   memset(mac, 0, nm);
 
   // Assign option arguments
+  char *p_path_check = NULL;
   int index = 0;
+
   hostkeypath = options[index++].arg;
-  if (NULL == hostkeypath)
+  p_path_check = realpath(hostkeypath, NULL);
+  if (NULL == p_path_check)
     {
-      g_print("ERROR: Option --key-file or -k with a valid path to a Host key is missing!\n\n");
-      msg_error(SLOG_ERROR_PREFIX,
-                evt_tag_str("Reason",
-                            "Option --key-file or -k with a valid path to a Host key is missing!"));
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Failed to check key-file!"));
       (void) slog_usage(context, group, NULL);
       return 1; //-- ERROR
     }
+  free(p_path_check);
+  p_path_check = NULL;
 
   inputMACpath = options[index].arg;
   if (NULL == inputMACpath)
     {
+      //-- Note: might be generated
       g_print("ERROR: Option --mac-file or -m does not provide a valid path to a MAC file!\n\n");
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason",
@@ -200,7 +215,8 @@ int main(int argc, char *argv[])
 
   char *line = NULL;
   FILE *outputFile = NULL;
-  char *p_path_check = realpath(inputlogpath, NULL);
+
+  p_path_check = realpath(inputlogpath, NULL);
   if (NULL == p_path_check)
     {
       msg_error(SLOG_ERROR_PREFIX,
