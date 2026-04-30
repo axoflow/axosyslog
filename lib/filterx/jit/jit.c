@@ -38,6 +38,8 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 #define DEBUG_VERSION_KEY "Debug Info Version"
 #define DWARF_VERSION_KEY "Dwarf Version"
@@ -120,6 +122,9 @@ void
 filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column)
 {
   g_assert(!self->mod_finalized);
+
+  if (self->debug_info_mode != FILTERX_JIT_DEBUG_INFO_FILTERX)
+    return;
 
   if (!self->current_debug_info_block)
     {
@@ -227,11 +232,114 @@ filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, const gchar *seq_name
   return LLVMAppendBasicBlockInContext(self->ctx, block, seq_name);
 }
 
+#if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
+
+static gint
+_count_newlines(const gchar *text)
+{
+  gint n = 0;
+  for (const gchar *p = text; *p; p++)
+    if (*p == '\n')
+      n++;
+  return n;
+}
+
+/*
+ * LLVM IR debug info
+ * Renders each function with one instruction per line into a memfd.
+ */
+static gboolean
+_emit_llvm_ir_debug_info(FilterXJIT *self, GError **error)
+{
+  self->debug_ir_text_memfd = memfd_create(self->mod_name, MFD_CLOEXEC);
+  if (self->debug_ir_text_memfd < 0)
+    {
+      _fxjit_error("memfd_create failed", error);
+      return FALSE;
+    }
+
+  gchar path[64];
+  g_snprintf(path, sizeof(path), "/proc/%d/fd/%d", (int) getpid(), self->debug_ir_text_memfd);
+  LLVMMetadataRef di_file = LLVMDIBuilderCreateFile(self->debug, path, strlen(path), "", 0);
+
+  GString *ir_text = g_string_new(NULL);
+  gint line = 1;
+
+  for (LLVMValueRef fn = LLVMGetFirstFunction(self->mod); fn; fn = LLVMGetNextFunction(fn))
+    {
+      if (!LLVMGetFirstBasicBlock(fn))
+        continue;
+
+      const gchar *fn_name = LLVMGetValueName(fn);
+      g_string_append_printf(ir_text, "define @\"%s\" {\n", fn_name);
+      gint fn_line = line++;
+
+      LLVMMetadataRef subroutine_ty = LLVMDIBuilderCreateSubroutineType(self->debug, di_file, NULL, 0, LLVMDIFlagZero);
+      LLVMMetadataRef sp = LLVMDIBuilderCreateFunction(self->debug, di_file, fn_name, strlen(fn_name),
+                                                       fn_name, strlen(fn_name), di_file, fn_line, subroutine_ty,
+                                                       FALSE, TRUE, fn_line, LLVMDIFlagZero, FALSE);
+      LLVMSetSubprogram(fn, sp);
+
+      gboolean first_sequence = TRUE;
+      for (FilterXIRSequence seq = LLVMGetFirstBasicBlock(fn); seq; seq = LLVMGetNextBasicBlock(seq))
+        {
+          if (!first_sequence)
+            {
+              g_string_append_c(ir_text, '\n');
+              line++;
+            }
+          first_sequence = FALSE;
+
+          const gchar *bb_name = LLVMGetBasicBlockName(seq);
+          g_string_append_printf(ir_text, "%s:\n", bb_name ? bb_name : "");
+          line++;
+
+          for (LLVMValueRef inst = LLVMGetFirstInstruction(seq); inst; inst = LLVMGetNextInstruction(inst))
+            {
+              gchar *inst_text = LLVMPrintValueToString(inst);
+              g_string_append(ir_text, inst_text);
+              g_string_append_c(ir_text, '\n');
+
+              LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(self->ctx, line, 1, sp, NULL);
+              LLVMInstructionSetDebugLoc(inst, loc);
+
+              line += 1 + _count_newlines(inst_text);
+              LLVMDisposeMessage(inst_text);
+            }
+        }
+
+      g_string_append(ir_text, "}\n\n");
+      line += 2;
+
+      LLVMDIBuilderFinalizeSubprogram(self->debug, sp);
+    }
+
+  ssize_t written = write(self->debug_ir_text_memfd, ir_text->str, ir_text->len);
+  g_string_free(ir_text, TRUE);
+  if (written < 0)
+    {
+      _fxjit_error("Failed to write IR text to memfd", error);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
+#endif
+
 gboolean
 filterx_jit_finalize(FilterXJIT *self, GError **error)
 {
   if (self->mod_finalized)
     return TRUE;
+
+#if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
+  if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
+    {
+      if (!_emit_llvm_ir_debug_info(self, error))
+        return FALSE;
+    }
+#endif
 
   if (self->debug)
     LLVMDIBuilderFinalize(self->debug);
@@ -302,6 +410,10 @@ _setup_c_symbol_generator(FilterXJIT *self, GError **error)
 static inline void
 _setup_optimizations(FilterXJIT *self)
 {
+  /* Disable optimizations when debugging IR code */
+  if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
+    return;
+
   LLVMOrcIRTransformLayerRef transform = LLVMOrcLLJITGetIRTransformLayer(self->j);
   LLVMOrcIRTransformLayerSetTransform(transform, _optimize_transform, self);
 }
@@ -338,12 +450,14 @@ _setup_debug_info(FilterXJIT *self, LLVMOrcLLJITBuilderRef jit_builder)
 }
 
 FilterXJIT *
-filterx_jit_new(const gchar *module_name, GError **error)
+filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError **error)
 {
   FilterXJIT *self = g_new0(FilterXJIT, 1);
 
   // TODO: use Itanium name mangling and namespaces
   self->mod_name = g_strdup(module_name);
+  self->debug_info_mode = debug_info;
+  self->debug_ir_text_memfd = -1;
 
 #if SYSLOG_NG_HAVE_DECL_LLVMORCCREATENEWTHREADSAFECONTEXTFROMLLVMCONTEXT
   self->ctx = LLVMContextCreate();
@@ -396,6 +510,9 @@ filterx_jit_free(FilterXJIT *self)
     LLVMDisposeModule(self->mod);
   LLVMOrcDisposeThreadSafeContext(self->ts_ctx);
 
+  if (self->debug_ir_text_memfd >= 0)
+    close(self->debug_ir_text_memfd);
+
   g_free(self->mod_name);
   g_free(self);
 }
@@ -415,7 +532,7 @@ filterx_jit_global_deinit(void)
 
 #else
 
-FilterXJIT *filterx_jit_new(const gchar *module_name, GError **error) { return NULL; }
+FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError **error) { return NULL; }
 void filterx_jit_free(FilterXJIT *self) {}
 void filterx_jit_global_init(void) {}
 void filterx_jit_global_deinit(void) {}
