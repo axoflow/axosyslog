@@ -30,6 +30,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
 #include <llvm-c/LLJIT.h>
+#include <llvm-c/DebugInfo.h>
 
 struct _FilterXJIT
 {
@@ -40,8 +41,10 @@ struct _FilterXJIT
   LLVMModuleRef mod;
   LLVMBuilderRef ir;
   LLVMOrcLLJITRef j;
+  LLVMDIBuilderRef debug;
 
   FilterXIRValue current_ir_block;
+  LLVMMetadataRef current_debug_info_block;
   FilterXJITFFI ffi;
 
   gboolean mod_finalized;

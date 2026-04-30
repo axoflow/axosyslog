@@ -371,6 +371,10 @@ _compound_compile(FilterXExpr *s, FilterXJIT *jit)
 
       filterx_jit_ir_set_insert_point_to_sequence_tail(jit, stmt_seq);
 
+      if (child->lloc)
+        filterx_jit_ir_set_source_location(jit, child->lloc->name ? : "<filterx>",
+                                           child->lloc->first_line, child->lloc->first_column);
+
       if (filterx_expr_has_effect(child, FXE_WRITE))
         fx_jit_emit_eval_context_make_writable(jit, eval_ctx);
 
