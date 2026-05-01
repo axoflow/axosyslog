@@ -101,7 +101,7 @@ filterx_jit_get_ir_builder(FilterXJIT *self)
 static inline gchar *
 _create_fully_qualified_block_name(FilterXJIT *self, const gchar *block_name)
 {
-  return g_strconcat(self->mod_name, ".", block_name, NULL);
+  return g_strconcat(self->mod_name, "::", block_name, NULL);
 }
 
 static inline LLVMTypeRef
