@@ -503,6 +503,7 @@ LT_INIT([dlopen disable-static])
 if test "x$with_python" = "xauto"; then
   AM_PATH_PYTHON(,,[:])
 else
+  AC_PATH_PROGS([PYTHON], [python$with_python])
   AM_PATH_PYTHON([$with_python],,[:])
 fi
 
