@@ -146,6 +146,17 @@ _block_function_type(FilterXJIT *self)
   return LLVMFunctionType(ptr_ty, params, G_N_ELEMENTS(params), FALSE);
 }
 
+static inline void
+_set_unwind_attributes(FilterXJIT *self, FilterXIRValue block)
+{
+  LLVMAddTargetDependentFunctionAttr(block, "frame-pointer", "non-leaf");
+
+  const gchar *uwtable = "uwtable";
+  unsigned uwtable_kind = LLVMGetEnumAttributeKindForName(uwtable, strlen(uwtable));
+  LLVMAttributeRef uw = LLVMCreateEnumAttribute(self->ctx, uwtable_kind, 2 /* UWTableKind::Async */);
+  LLVMAddAttributeAtIndex(block, LLVMAttributeFunctionIndex, uw);
+}
+
 void
 filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
 {
@@ -154,6 +165,7 @@ filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
 
   gchar *fqn = _create_fully_qualified_block_name(self, block_name);
   self->current_ir_block = LLVMAddFunction(self->mod, fqn, _block_function_type(self));
+  _set_unwind_attributes(self, self->current_ir_block);
   g_free(fqn);
 
   FilterXIRSequence entry = filterx_jit_ir_add_new_sequence_to_block(self, "entry", self->current_ir_block);
