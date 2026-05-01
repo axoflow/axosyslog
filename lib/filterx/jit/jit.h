@@ -37,7 +37,7 @@
 
 typedef struct _FilterXJIT FilterXJIT;
 
-#define FILTERX_JIT_MODULE_NAME "filterx.jit"
+#define FILTERX_JIT_MODULE_NAME "filterx::jit"
 
 #if SYSLOG_NG_ENABLE_JIT
 #include <llvm-c/Core.h>
