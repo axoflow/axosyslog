@@ -215,6 +215,7 @@ int main(int argc, char *argv[])
 
   char *line = NULL;
   FILE *outputFile = NULL;
+  FILE *inputFile = NULL;
 
   p_path_check = realpath(inputlogpath, NULL);
   if (NULL == p_path_check)
@@ -228,7 +229,7 @@ int main(int argc, char *argv[])
   free(p_path_check);
   p_path_check = NULL;
   // Open input file
-  FILE *inputFile = fopen(inputlogpath, "r");
+  inputFile = fopen(inputlogpath, "r");
   if (inputFile == NULL)
     {
       msg_error(SLOG_ERROR_PREFIX,
