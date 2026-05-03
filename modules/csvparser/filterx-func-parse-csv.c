@@ -176,12 +176,22 @@ _run_parsing(FilterXFunctionParseCSV *self,
         }
       result = filterx_dict_sized_new(num_of_columns);
     }
-  else
-    result = filterx_list_new();
 
   CSVScannerOptions local_opts = {0};
   CSVScanner scanner;
   _init_scanner(self, string_delimiters, num_of_columns, input, &scanner, &local_opts);
+
+  /* If no `columns` is given the result is a list whose final length we don't
+   * know in advance — but the SIMD fast path pre-parses every field before
+   * yielding, so we can ask the scanner up-front and skip GPtrArray realloc
+   * churn while filling.  Falls back to the unsized constructor if the fast
+   * path didn't activate. */
+  if (!columns)
+    {
+      gint count_hint = csv_scanner_peek_field_count(&scanner);
+      result = (count_hint >= 0) ? filterx_list_sized_new((gsize) count_hint)
+                                 : filterx_list_new();
+    }
 
   guint64 index = 0;
   gboolean ok = TRUE;
@@ -189,15 +199,23 @@ _run_parsing(FilterXFunctionParseCSV *self,
   gboolean finished = FALSE;
   while (!finished && csv_scanner_scan_next(&scanner) && ok)
     {
-      const gchar *value = csv_scanner_get_current_value(&scanner);
-      gsize value_len = csv_scanner_get_current_value_len(&scanner);
       FilterXObject *val;
       gsize start, end;
 
+      /* Slice path: build a borrowed-slice string directly from the input
+       * buffer.  Skip get_current_value()/get_current_value_len() because
+       * they would force the scanner's deferred on-demand copy of bytes
+       * that we are about to discard. */
       if (csv_scanner_get_value_slice(&scanner, &start, &end))
-        val = filterx_string_new_slice(input_obj, start, end);
+        {
+          val = filterx_string_new_slice(input_obj, start, end);
+        }
       else
-        val = filterx_string_new(value, value_len);
+        {
+          const gchar *value = csv_scanner_get_current_value(&scanner);
+          gsize value_len = csv_scanner_get_current_value_len(&scanner);
+          val = filterx_string_new(value, value_len);
+        }
       if (columns)
         {
           if (is_list_object)
