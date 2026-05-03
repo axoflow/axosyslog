@@ -204,6 +204,19 @@ filterx_list_new(void)
   return &self->super.super;
 }
 
+/* Like filterx_list_new() but pre-allocates space for `reserved_size`
+ * elements, avoiding GPtrArray realloc churn when the caller knows the
+ * field count up-front (e.g. parse_csv after the SIMD fast-path scan). */
+FilterXObject *
+filterx_list_sized_new(gsize reserved_size)
+{
+  FilterXListObject *self = filterx_new_object(FilterXListObject);
+  filterx_sequence_init_instance(&self->super, &FILTERX_TYPE_NAME(list));
+
+  self->array = g_ptr_array_new_full(reserved_size, (GDestroyNotify) filterx_object_unref);
+  return &self->super.super;
+}
+
 static inline FilterXObject *
 _object_clone(FilterXObject *o, gboolean dup)
 {
