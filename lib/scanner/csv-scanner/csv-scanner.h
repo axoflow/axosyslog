@@ -26,6 +26,7 @@
 #define CSVSCANNER_H_INCLUDED
 
 #include "syslog-ng.h"
+#include "csv-scanner-simd.h"
 
 typedef enum
 {
