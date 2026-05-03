@@ -77,6 +77,7 @@ typedef struct
     CSV_STATE_FINISH,
   } state;
   const gchar *input;
+  const gchar *input_end;     /* one past the NUL terminator of input */
   const gchar *src;
   GString *current_value;
   const gchar *current_value_start_pos;

@@ -21,6 +21,7 @@
  *
  */
 #include "csv-scanner.h"
+#include "csv-scanner-simd.h"
 #include "str-utils.h"
 #include "string-list.h"
 #include "scratch-buffers.h"
@@ -265,9 +266,15 @@ static void
 _parse_characters_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
 {
   gchar ch;
-  const gchar *backslash = strchrnul(self->src, '\\');
-  const gchar *quote = strchrnul(self->src, self->current_quote);
-  const gchar *nexthop = MIN(backslash, quote);
+  CSVSimdFindResult result;
+  gsize remaining = self->input_end - self->src;
+  csv_simd_find_either(self->src, remaining, '\\', self->current_quote, &result);
+  const gchar *nexthop;
+
+  if (result.offset >= 0)
+    nexthop = self->src + result.offset;
+  else
+    nexthop = self->src + remaining;  /* no match: scan to end of input */
 
   if (nexthop > self->src)
     {
@@ -489,6 +496,40 @@ _parse_value_with_whitespace_and_delimiter(CSVScanner *self)
   gboolean nonliteral_input = FALSE;
 
   self->current_value_start_ofs = self->src - self->input;
+
+  /* SIMD fast path for simple unquoted values with default delimiter */
+  if (!self->current_quote && !self->options->string_delimiters && !self->options->delimiters &&
+      self->options->dialect == CSV_SCANNER_ESCAPE_NONE && !(self->options->flags & CSV_SCANNER_STRIP_WHITESPACE))
+    {
+      gsize remaining = self->input_end - self->src;
+      CSVSimdFindResult result;
+      /* Find delimiter, double-quote, or single-quote in a single SIMD pass */
+      csv_simd_find_either3(self->src, remaining, DEFAULT_DELIM_CHAR, '"', '\'', &result);
+
+      if (result.offset > 0)
+        {
+          /* Found delimiter or quote, copy up to it */
+          g_string_append_len(self->current_value, self->src, result.offset);
+          self->src += result.offset;
+          if (*self->src == DEFAULT_DELIM_CHAR)
+            {
+              self->src++;
+              return;
+            }
+          /* Fall through to handle quote */
+          self->current_quote = *self->src;
+          self->src++;
+          goto continuation;
+        }
+      else if (result.offset == 0)
+        {
+          /* Delimiter at start */
+          self->src++;
+          return;
+        }
+    }
+
+continuation:
   while (*self->src)
     {
       if (self->current_quote)
@@ -651,6 +692,7 @@ csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *i
   memset(scanner, 0, sizeof(*scanner));
   scanner->state = CSV_STATE_INITIAL;
   scanner->input = scanner->src = input;
+  scanner->input_end = input + strlen(input);
   scanner->current_value = scratch_buffers_alloc();
   scanner->current_value_start_pos = NULL;
   scanner->current_column = 0;
