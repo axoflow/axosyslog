@@ -85,6 +85,18 @@ typedef struct
   gint current_column;
   gint expected_columns;
   gchar current_quote;
+
+  /* Deferred field copying: store offset, copy on-demand */
+  gint32 deferred_field_start;
+  gint32 deferred_field_len;
+
+  /* SIMD fast-path: pre-computed field offsets when options are simple enough */
+  GArray *fast_path_fields;          /* GArray of CSVFieldOfs */
+  CSVFieldOfs *fast_path_fields_data; /* cached fast_path_fields->data, valid while active */
+  gint fast_path_fields_len;          /* cached fast_path_fields->len, valid while active */
+  gint fast_path_current_field;
+  gboolean fast_path_tried;
+  gboolean fast_path_active;
 } CSVScanner;
 
 
@@ -92,6 +104,12 @@ gboolean csv_scanner_append_rest(CSVScanner *self);
 gboolean csv_scanner_scan_next(CSVScanner *pstate);
 gchar *csv_scanner_dup_current_value(CSVScanner *self);
 void csv_scanner_set_expected_columns(CSVScanner *scanner, gint expected_columns);
+
+/* Eagerly attempt SIMD pre-parse and report the number of fields the SIMD
+ * fast path will yield, or -1 if the fast path is not available for the
+ * current input/options.  Useful for sizing the output container before
+ * the per-field scan_next loop. */
+gint csv_scanner_peek_field_count(CSVScanner *self);
 
 void csv_scanner_init(CSVScanner *pstate, CSVScannerOptions *options, const gchar *input);
 void csv_scanner_deinit(CSVScanner *pstate);
@@ -105,12 +123,24 @@ csv_scanner_get_current_column(CSVScanner *self)
 static inline const gchar *
 csv_scanner_get_current_value(CSVScanner *self)
 {
+  /* Copy on-demand: if deferred, copy now */
+  if (self->deferred_field_len > 0 && self->current_value->len == 0)
+    {
+      g_string_append_len(self->current_value,
+                          self->input + self->deferred_field_start,
+                          self->deferred_field_len);
+      self->deferred_field_len = 0;
+    }
   return self->current_value->str;
 }
 
 static inline gint
 csv_scanner_get_current_value_len(CSVScanner *self)
 {
+  /* If a deferred copy is pending, its length is the field length —
+   * no need to materialize the copy just to read the length. */
+  if (self->deferred_field_len > 0)
+    return self->deferred_field_len;
   return self->current_value->len;
 }
 
@@ -121,7 +151,12 @@ csv_scanner_get_value_slice(CSVScanner *self, gsize *start, gsize *end)
     return FALSE;
 
   *start = self->current_value_start_ofs;
-  *end = *start + self->current_value->len;
+  /* Use the deferred field length when the on-demand copy hasn't fired
+   * yet (current_value->len is 0 at that point); otherwise the existing
+   * current_value holds the field. */
+  *end = *start + (self->deferred_field_len > 0
+                   ? (gsize) self->deferred_field_len
+                   : self->current_value->len);
   return TRUE;
 }
 
