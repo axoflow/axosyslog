@@ -48,6 +48,7 @@ typedef struct FilterXFunctionFailureInfoMeta_
 {
   FilterXFunction super;
   FilterXExpr *metadata_expr;
+  FilterXObject *metadata;
 } FilterXFunctionFailureInfoMeta;
 
 static inline void
@@ -144,9 +145,7 @@ _failure_info_meta_eval(FilterXExpr *s)
   if (!filterx_eval_get_failure_info(context))
     goto exit;
 
-  FilterXObject *metadata_object = filterx_expr_eval_typed(self->metadata_expr);
-  filterx_eval_set_current_frame_meta(context, metadata_object);
-  filterx_object_unref(metadata_object);
+  filterx_eval_set_current_frame_meta(context, self->metadata);
 
 exit:
   return filterx_boolean_new(TRUE);
@@ -200,12 +199,14 @@ _extract_failure_info_meta_args(FilterXFunctionFailureInfoMeta *self, FilterXFun
     }
 
   self->metadata_expr = filterx_function_args_get_expr(args, 0);
-  if (!filterx_expr_is_literal_dict(self->metadata_expr))
+  if (!filterx_expr_is_literal(self->metadata_expr) && !filterx_expr_is_literal_container(self->metadata_expr))
     {
       g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
-                  "argument is expected to be a literal dict. " FILTERX_FUNC_FAILURE_INFO_META_USAGE);
+                  "argument must be literal. %s", FILTERX_FUNC_FAILURE_INFO_META_USAGE);
+      filterx_expr_unref(self->metadata_expr);
       return FALSE;
     }
+
   return TRUE;
 }
 
@@ -233,16 +234,7 @@ gboolean
 _failure_info_meta_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
-
-  FilterXExpr **exprs[] = { &self->metadata_expr };
-
-  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
-    {
-      if (!filterx_expr_visit(s, exprs[i], f, user_data))
-        return FALSE;
-    }
-
-  return TRUE;
+  return filterx_expr_visit(s, &self->metadata_expr, f, user_data);
 }
 
 FilterXExpr *
@@ -311,18 +303,7 @@ _failure_info_meta_init(FilterXExpr *s, GlobalConfig *cfg)
 {
   FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
 
-  /* NOTE: this is a temporary restriction and assumes that optimize was
-   * run, if it wasn't, the literal container would remain a literal
-   * container, causing this step to bail out with a failure.
-   *
-   * The real solution is to implement filterx_eval_retain_object() for
-   * mutable object types, so this would also work with whatever types.  But
-   * that will always be slow and failure_info_meta() is not something that
-   * should be slow.
-   *
-   * I am delaying the retain_object() implementation for mutable objects,
-   * as I have a lot of  PRs lined up that touch the same code.
-   */
+  /* This assumes that optimize has already run */
 
   if (!filterx_expr_is_literal(self->metadata_expr))
     {
@@ -330,6 +311,9 @@ _failure_info_meta_init(FilterXExpr *s, GlobalConfig *cfg)
                 filterx_expr_format_location_tag(s));
       return FALSE;
     }
+
+  self->metadata = filterx_literal_get_value(self->metadata_expr);
+
   return filterx_function_init_method(&self->super, cfg);
 }
 
@@ -338,6 +322,7 @@ _failure_info_meta_free(FilterXExpr *s)
 {
   FilterXFunctionFailureInfoMeta *self = (FilterXFunctionFailureInfoMeta *) s;
 
+  filterx_object_unref(self->metadata);
   filterx_expr_unref(self->metadata_expr);
   filterx_function_free_method(&self->super);
 }
