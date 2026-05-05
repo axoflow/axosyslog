@@ -1500,7 +1500,6 @@ _find_node_recursively(RFindNodeState *state, RNode *root, gchar *key, gint keyl
   if (literal_prefix_inputlen == keylen && (literal_prefix_radixlen == root->keylen || root->keylen == -1))
     {
       /* key completely consumed by the literal */
-
       if (state->applicable_nodes)
         {
           /* collect all matching nodes */
@@ -1510,6 +1509,17 @@ _find_node_recursively(RFindNodeState *state, RNode *root, gchar *key, gint keyl
 
       if (root->value)
         return root;
+
+      /* Parser nodes can have children that match empty suffixes (e.g. OPTIONALSET). */
+      if (root->keylen == -1)
+        {
+          gchar *remaining_key = key + literal_prefix_inputlen;
+          gint remaining_keylen = keylen - literal_prefix_inputlen;
+
+          /* Input exhausted; only parser children can match. */
+          RNode *ret = _find_child_by_parser(state, root, remaining_key, remaining_keylen);
+          return ret;
+        }
     }
   else if ((root->keylen < 1) || (literal_prefix_inputlen < keylen && literal_prefix_radixlen >= root->keylen))
     {

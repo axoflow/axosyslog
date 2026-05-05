@@ -794,6 +794,74 @@ Test(pattern_db, test_program_template)
   log_template_unref(template);
 }
 
+Test(pattern_db, test_value_with_type_attribute)
+{
+  gchar *filename;
+  PatternDB *patterndb = _create_pattern_db(pdb_test_value_with_type, &filename);
+
+  /* Test that typed test values are loaded and memory is properly managed */
+  assert_msg_matches_and_nvpair_equals(patterndb, "test typed values: 42 hello world",
+                                       "count", "42");
+  assert_msg_matches_and_nvpair_equals(patterndb, "test typed values: 42 hello world",
+                                       "message", "hello");
+  assert_msg_matches_and_nvpair_equals(patterndb, "test typed values: 42 hello world",
+                                       "level", "world");
+
+  _destroy_pattern_db(patterndb, filename);
+  g_free(filename);
+}
+
+Test(pattern_db, test_optionalset_at_end_of_pattern)
+{
+  /* OPTIONALSET as last parser must match zero chars at end-of-input and the
+     subsequent named-value extraction must not overshoot. */
+  gchar *filename;
+  PatternDB *patterndb = _create_pattern_db(pdb_test_optionalset_at_end_of_pattern, &filename);
+
+  /* Trailing space present: OPTIONALSET consumes the literal space. */
+  assert_msg_matches_and_has_tag(patterndb,
+                                 "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966] ",
+                                 ".classifier.system", TRUE);
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966] ",
+                                       "id", "dcef7d1c-6b79-48c6-a1ac-39cdc9bff966");
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966] ",
+                                       "s", " ");
+
+  /* No trailing space: OPTIONALSET must match zero chars at end-of-input. */
+  assert_msg_matches_and_has_tag(patterndb,
+                                 "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]",
+                                 ".classifier.system", TRUE);
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]",
+                                       "id", "dcef7d1c-6b79-48c6-a1ac-39cdc9bff966");
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]",
+                                       "s", "");
+
+  _destroy_pattern_db(patterndb, filename);
+  g_free(filename);
+}
+
+Test(pattern_db, test_set_at_end_of_input_does_not_match_zero_chars)
+{
+  /* @SET@ must require at least one matching char; at end-of-input it must
+     not silently match the terminating NUL. */
+  gchar *filename;
+  PatternDB *patterndb = _create_pattern_db(pdb_test_set_at_end_of_input, &filename);
+
+  LogMessage *msg = _construct_message("prog1", "prefix");
+  cr_assert_not(_process(patterndb, msg),
+                "SET at end-of-input must not match when there are no chars to consume");
+  log_msg_unref(msg);
+
+  assert_msg_matches_and_nvpair_equals(patterndb, "prefix ", "s", " ");
+
+  _destroy_pattern_db(patterndb, filename);
+  g_free(filename);
+}
+
 void setup(void)
 {
   app_startup();
