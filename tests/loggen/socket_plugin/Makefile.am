@@ -14,7 +14,7 @@ tests_loggen_socket_plugin_libloggen_socket_plugin_la_LIBADD = \
 	tests/loggen/libloggen_plugin.la
 
 tests_loggen_socket_plugin_libloggen_socket_plugin_la_LDFLAGS	=	\
-	$(MODULE_LDFLAGS)
+	$(LOGGENPLUGIN_LDFLAGS)
 
 tests/loggen/socket_plugin tests/loggen/socket_plugin/: \
 	tests/loggen/socket_plugin/libloggen_socket_plugin.la

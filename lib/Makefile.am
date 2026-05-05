@@ -53,7 +53,7 @@ LSNG_AGE		= 0
 
 lib_LTLIBRARIES				+= lib/libsyslog-ng.la
 lib_libsyslog_ng_la_LIBADD		= @CORE_DEPS_LIBS@ $(libsystemd_LIBS) $(top_builddir)/lib/secret-storage/libsecret-storage.la
-lib_libsyslog_ng_la_LDFLAGS		= -no-undefined -release ${LSNG_RELEASE} \
+lib_libsyslog_ng_la_LDFLAGS		= @CORE_LDFLAGS@ -no-undefined -release ${LSNG_RELEASE} \
 					  -version-info ${LSNG_CURRENT}:${LSNG_REVISION}:${LSNG_AGE}
 
 lib_test_subdirs			= lib_filter lib_filterx lib_logproto lib_parser lib_rewrite lib_template lib_stats lib_control
