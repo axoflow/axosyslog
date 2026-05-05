@@ -48,8 +48,6 @@ static void
 log_pipe_queue_slow_path(LogPipe *self, LogMessage *msg, const LogPathOptions *path_options)
 {
   LogPathOptions local_path_options;
-  if ((self->flags & PIF_SYNC_FILTERX_TO_MSG))
-    filterx_eval_sync_message(path_options->filterx_context, &msg, path_options);
 
   if (G_UNLIKELY(self->flags &
                  (PIF_HARD_FLOW_CONTROL | PIF_NO_HARD_FLOW_CONTROL | PIF_JUNCTION_END | PIF_CONDITIONAL_MIDPOINT)))
@@ -80,9 +78,6 @@ log_pipe_queue_slow_path(LogPipe *self, LogMessage *msg, const LogPathOptions *p
 static inline gboolean
 _is_fastpath(LogPipe *self)
 {
-  if (self->flags & PIF_SYNC_FILTERX_TO_MSG)
-    return FALSE;
-
   if (self->flags & (PIF_HARD_FLOW_CONTROL | PIF_NO_HARD_FLOW_CONTROL | PIF_JUNCTION_END | PIF_CONDITIONAL_MIDPOINT))
     return FALSE;
 
@@ -93,6 +88,9 @@ void
 log_pipe_queue(LogPipe *self, LogMessage *msg, const LogPathOptions *path_options)
 {
   g_assert((self->flags & PIF_INITIALIZED) != 0);
+
+  if ((self->flags & PIF_SYNC_FILTERX_TO_MSG))
+    filterx_eval_sync_message(path_options->filterx_context, &msg, path_options);
 
   if (G_UNLIKELY((self->flags & PIF_CONFIG_RELATED) != 0 && pipe_single_step_hook))
     {
