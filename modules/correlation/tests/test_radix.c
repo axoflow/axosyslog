@@ -272,6 +272,7 @@ Test(dbparser, test_parsers, .init = test_setup, .fini = test_teardown)
   insert_node(root, "AAA@SET:set@AAA");
   insert_node(root, "AAA@OPTIONALSET@AAA");
   insert_node(root, "AAA@OPTIONALSET:set@AAA");
+
   insert_node(root, "AAA@MACADDR@AAA");
   insert_node(root, "newline@NUMBER@\n2ndline\n");
   insert_node(root, "AAA@PCRE:set@AAA");
@@ -1005,6 +1006,12 @@ ParameterizedTestParameters(dbparser, test_radix_search_matches)
       .expected_pattern = {"set", "  ", NULL},
     },
     {
+      .node_to_insert = {"@SET:set:  @", NULL},
+      .key = "  ",
+      .expected_pattern = {"set", "  ", NULL},
+    },
+    /* test_optional_set_matches */
+    {
       .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
       .key = " aaa",
       .expected_pattern = {"set", " ", NULL},
@@ -1018,6 +1025,17 @@ ParameterizedTestParameters(dbparser, test_radix_search_matches)
       .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
       .key = "aaa",
       .expected_pattern = {"set", "", NULL},
+    },
+    {
+      .node_to_insert = {"@OPTIONALSET:set:  @", NULL},
+      .key = "  ",
+      .expected_pattern = {"set", "  ", NULL},
+    },
+    /* test_optional_set_matches at the end */
+    {
+      .node_to_insert = {"@QSTRING:q:[]@@OPTIONALSET:s: @", NULL},
+      .key = "[AAA]  ",
+      .expected_pattern = {"q", "AAA", "s", "  ", NULL},
     },
     /* test_mcaddr_matches */
     {
@@ -1045,6 +1063,16 @@ ParameterizedTestParameters(dbparser, test_radix_search_matches)
       .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
       .key = "[blint@balabit.hu]",
       .expected_pattern = {"email", "blint@balabit.hu", NULL},
+    },
+    {
+      .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
+      .key = "a@b.c",
+      .expected_pattern = {"email", "a@b.c", NULL},
+    },
+    {
+      .node_to_insert = {"@EMAIL:email:[<]>@", NULL },
+      .key = "<a@b.c>",
+      .expected_pattern = {"email", "a@b.c", NULL},
     },
     /* test_hostname_matches */
     {

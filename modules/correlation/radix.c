@@ -288,7 +288,8 @@ r_parser_set(gchar *str, gint *len, const gchar *param, gpointer state, RParserM
   if (!param)
     return FALSE;
 
-  while (strchr(param, str[*len]))
+  /* Guard against matching '\0' via strchr(param, '\0'). */
+  while (str[*len] && strchr(param, str[*len]))
     (*len)++;
 
   if (*len > 0)
@@ -316,8 +317,11 @@ r_parser_email(gchar *str, gint *len, const gchar *param, gpointer state, RParse
   *len = 0;
 
   if (param)
-    while (strchr(param, str[*len]))
-      (*len)++;
+    {
+      /* Guard against matching '\0' via strchr(param, '\0'). */
+      while (str[*len] && strchr(param, str[*len]))
+        (*len)++;
+    }
 
   if (match)
     match->ofs = *len;
@@ -326,7 +330,8 @@ r_parser_email(gchar *str, gint *len, const gchar *param, gpointer state, RParse
   if (str[*len] == '.')
     return FALSE;
 
-  while (g_ascii_isalnum(str[*len]) || (strchr(email, str[*len])))
+  /* Guard against matching '\0' via strchr(email, '\0'). */
+  while (str[*len] && (g_ascii_isalnum(str[*len]) || (strchr(email, str[*len]))))
     (*len)++;
   /* last character of e-mail can not be a period */
   if (str[*len-1] == '.')
@@ -354,8 +359,11 @@ r_parser_email(gchar *str, gint *len, const gchar *param, gpointer state, RParse
 
   end = *len;
   if (param)
-    while (strchr(param, str[*len]))
-      (*len)++;
+    {
+      /* Guard against matching '\0' via strchr(param, '\0'). */
+      while (str[*len] && strchr(param, str[*len]))
+        (*len)++;
+    }
 
   if (match)
     match->len = end - *len - match->ofs;
