@@ -86,11 +86,14 @@ DestinationWorker::init()
 {
   DestinationDriver *owner = this->get_owner();
 
-  auto location_result = arrow::flight::Location::Parse(owner->get_url());
+  const std::string &raw_url = owner->get_url();
+  std::string url = (raw_url.find("://") == std::string::npos) ? "grpc://" + raw_url : raw_url;
+
+  auto location_result = arrow::flight::Location::Parse(url);
   if (!location_result.ok())
     {
       msg_error("arrow-flight: Failed to parse URL",
-                evt_tag_str("url", owner->get_url().c_str()),
+                evt_tag_str("url", url.c_str()),
                 evt_tag_str("error", location_result.status().ToString().c_str()),
                 log_pipe_location_tag(&this->super->super.owner->super.super.super));
       return false;
