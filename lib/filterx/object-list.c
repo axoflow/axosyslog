@@ -266,39 +266,37 @@ _filterx_list_clone(FilterXObject *s)
 static gboolean
 _dedup_list_item(gsize index, FilterXObject **value, gpointer user_data)
 {
-  GHashTable *dedup_storage = (GHashTable *) user_data;
+  FilterXObjectDeduplicator *dedup = (FilterXObjectDeduplicator *) user_data;
 
-  filterx_object_dedup(value, dedup_storage);
-
-  return TRUE;
-}
-
-static gboolean
-_filterx_list_dedup(FilterXObject **pself, GHashTable *dedup_storage)
-{
-  FilterXListObject *self = (FilterXListObject *) *pself;
-
-  g_assert(filterx_list_foreach(self, _dedup_list_item, dedup_storage));
-
-  /* Mutable objects themselves should never be deduplicated,
-   * only immutable values INSIDE those recursive mutable objects.
-   */
-  g_assert(*pself == &self->super.super);
-  return TRUE;
-}
-
-static gboolean
-_readonly_list_item(gsize index, FilterXObject **value, gpointer user_data)
-{
-  filterx_object_make_readonly(*value);
+  filterx_object_dedup(value, dedup);
   return TRUE;
 }
 
 static void
-_filterx_list_make_readonly(FilterXObject *s)
+_filterx_list_dedup(FilterXObject **pself, FilterXObjectDeduplicator *dedup)
+{
+  FilterXListObject *self = (FilterXListObject *) *pself;
+
+  g_assert(filterx_list_foreach(self, _dedup_list_item, dedup));
+}
+
+static gboolean
+_freeze_list_item(gsize index, FilterXObject **value, gpointer user_data)
+{
+  FilterXObjectFreezer *freezer = (FilterXObjectFreezer *) user_data;
+
+  filterx_object_freeze(*value, freezer);
+
+  return TRUE;
+}
+
+static void
+_filterx_list_freeze(FilterXObject *s, FilterXObjectFreezer *freezer)
 {
   FilterXListObject *self = (FilterXListObject *) s;
-  filterx_list_foreach(self, _readonly_list_item, NULL);
+
+  filterx_object_freezer_keep(freezer, s);
+  g_assert(filterx_list_foreach(self, _freeze_list_item, freezer));
 }
 
 static void
@@ -411,6 +409,6 @@ FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .unset_key = _filterx_list_unset_key,
                     .iter = _filterx_list_iter,
                     .len = _filterx_list_len,
-                    .make_readonly = _filterx_list_make_readonly,
+                    .freeze = _filterx_list_freeze,
                     .dedup = _filterx_list_dedup,
                    );

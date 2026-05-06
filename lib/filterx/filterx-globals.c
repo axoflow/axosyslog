@@ -62,6 +62,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/func-keys.h"
 #include "filterx/json-repr.h"
+#include "filterx/filterx-stashed-object.h"
 #include "apphook.h"
 
 static GHashTable *filterx_builtin_simple_functions = NULL;
@@ -283,6 +284,7 @@ filterx_global_init(void)
   filterx_type_init(&FILTERX_TYPE_NAME(message_value));
 
   filterx_type_init(&FILTERX_TYPE_NAME(metrics_labels));
+  filterx_type_init(&FILTERX_TYPE_NAME(stash_reference));
   filterx_string_global_init();
 
   filterx_primitive_global_init();
