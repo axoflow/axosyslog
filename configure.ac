@@ -739,11 +739,11 @@ dnl ***************************************************************************
 if test $ostype = "Darwin"; then
   # -all_load loads all members of static archive libraries, it can't be selectively disabled (do not use -noall_load)
   # use -force_load for each static library if mixed linking needs to be supported on macOS
-  WHOLE_ARCHIVE_OPT="-all_load"
-  NO_WHOLE_ARCHIVE_OPT=""
+  LD_WHOLE_ARCHIVE="-Wl,-all_load"
+  LD_NO_WHOLE_ARCHIVE=""
 else
-  WHOLE_ARCHIVE_OPT="--whole-archive"
-  NO_WHOLE_ARCHIVE_OPT="--no-whole-archive"
+  LD_WHOLE_ARCHIVE="-Wl,--whole-archive"
+  LD_NO_WHOLE_ARCHIVE="-Wl,--no-whole-archive"
 fi
 
 dnl ***************************************************************************
@@ -1330,7 +1330,7 @@ if test "x$with_ivykis" = "xinternal"; then
 		# these can only be used in lib as it assumes
 		# the current directory just one below ivykis
 
-		IVYKIS_LIBS="-Wl,${WHOLE_ARCHIVE_OPT} -L\$(top_builddir)/lib/ivykis/src -livykis -Wl,${NO_WHOLE_ARCHIVE_OPT}"
+		IVYKIS_LIBS="${LD_WHOLE_ARCHIVE} -L\$(top_builddir)/lib/ivykis/src -livykis ${LD_NO_WHOLE_ARCHIVE}"
 		IVYKIS_CFLAGS="-isystem \$(top_srcdir)/lib/ivykis/src/include -isystem \$(top_builddir)/lib/ivykis/src/include"
                 INTERNAL_IVYKIS_CFLAGS="-isystem \${includedir}/syslog-ng/ivykis"
 
