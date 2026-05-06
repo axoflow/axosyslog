@@ -23,3 +23,34 @@ endif ()
 if (NOT ENABLE_ARROW_FLIGHT)
   return()
 endif ()
+
+set(ARROW_FLIGHT_CPP_SOURCES
+  arrow-flight-dest.h
+  arrow-flight-dest.hpp
+  arrow-flight-dest.cpp
+  arrow-flight-worker.h
+  arrow-flight-worker.hpp
+  arrow-flight-worker.cpp
+)
+
+set(ARROW_FLIGHT_SOURCES
+  arrow-flight-parser.h
+  arrow-flight-plugin.c
+  arrow-flight-parser.c
+)
+
+add_module(
+  TARGET arrow-flight-cpp
+  SOURCES ${ARROW_FLIGHT_CPP_SOURCES}
+  DEPENDS ArrowFlight::arrow_flight_shared
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}
+  LIBRARY_TYPE STATIC
+)
+
+add_module(
+  TARGET arrow-flight
+  GRAMMAR arrow-flight-grammar
+  DEPENDS arrow-flight-cpp
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}
+  SOURCES ${ARROW_FLIGHT_SOURCES}
+)

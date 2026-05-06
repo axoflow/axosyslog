@@ -1,0 +1,84 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Attila Szakacs <attila.szakacs@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code top {
+#include "arrow-flight-parser.h"
+
+}
+
+
+%code {
+
+#include "cfg-grammar-internal.h"
+#include "plugin.h"
+#include "syslog-names.h"
+
+#include "arrow-flight-dest.h"
+
+#include <stdlib.h>
+
+}
+
+%define api.prefix {arrow_flight_}
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogDriver **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_ARROW_FLIGHT
+%token KW_URL
+
+%type <ptr> arrow_flight_dest
+
+%%
+
+start
+  : LL_CONTEXT_DESTINATION arrow_flight_dest { YYACCEPT; }
+  ;
+
+arrow_flight_dest
+  : KW_ARROW_FLIGHT
+    {
+      last_driver = *instance = arrow_flight_dd_new(configuration);
+    }
+    '(' _inner_dest_context_push arrow_flight_dest_options _inner_dest_context_pop ')' { $$ = last_driver; }
+  ;
+
+arrow_flight_dest_options
+  : arrow_flight_dest_option arrow_flight_dest_options
+  |
+  ;
+
+arrow_flight_dest_option
+  : KW_URL '(' string ')' { arrow_flight_dd_set_url(last_driver, $3); free($3); }
+  | threaded_dest_driver_general_option
+  | threaded_dest_driver_workers_option
+  | threaded_dest_driver_batch_option
+  ;
+
+/* INCLUDE_RULES */
+
+%%
