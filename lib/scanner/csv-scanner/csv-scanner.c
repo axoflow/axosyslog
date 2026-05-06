@@ -751,10 +751,12 @@ _scan_next_from_fast_path(CSVScanner *self)
   self->deferred_field_start = f->start_ofs;
   self->deferred_field_len = f->end_ofs - f->start_ofs;
 
-  /* `src` is only inspected by csv_scanner_is_scan_complete() / has_input_left() /
-   * append_rest, all of which give the right answer if it's left at any
-   * pre-input_end position during iteration.  We update it once when fields
-   * run out (above) — no per-field maintenance. */
+  /* Track src at the position past the consumed field so
+   * csv_scanner_is_scan_complete() and has_input_left() observe the right
+   * "any input left?" answer once iteration stops — for the last field
+   * end_ofs == input length, putting src at input_end (NUL); for a middle
+   * field src lands on the trailing delimiter (non-NUL). */
+  self->src = self->input + f->end_ofs;
   return TRUE;
 }
 
