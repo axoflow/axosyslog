@@ -313,7 +313,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->super.walk_children = _switch_walk;
   self->super.free_fn = _free;
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
-  self->literal_cache = g_hash_table_new_full((GHashFunc) filterx_string_hash, (GEqualFunc) filterx_string_equal, (GDestroyNotify) filterx_object_unref, (GDestroyNotify) filterx_expr_unref);
+  self->literal_cache = g_hash_table_new_full((GHashFunc) filterx_object_hash, (GEqualFunc) filterx_object_equal, (GDestroyNotify) filterx_object_unref, (GDestroyNotify) filterx_expr_unref);
   self->selector = selector;
   self->default_target = -1;
   _build_switch_table(self, body);

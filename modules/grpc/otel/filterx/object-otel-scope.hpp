@@ -51,10 +51,10 @@ public:
   Scope(Scope &&o) = delete;
 
   std::string marshal();
-  bool set_subscript(FilterXObject *key, FilterXObject **value);
-  FilterXObject *get_subscript(FilterXObject *key);
-  bool unset_key(FilterXObject *key);
-  bool is_key_set(FilterXObject *key);
+  bool set_subscript(const gchar *key, gsize key_len, FilterXObject **value);
+  FilterXObject *get_subscript(const gchar *key, gsize key_len);
+  bool unset_key(const gchar *key, gsize key_len);
+  bool is_key_set(const gchar *key, gsize key_len);
   uint64_t len() const;
   bool iter(FilterXObjectIterFunc func, void *user_data);
   const opentelemetry::proto::common::v1::InstrumentationScope &get_value() const;

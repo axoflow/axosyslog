@@ -62,11 +62,11 @@ Scope::marshal(void)
 }
 
 bool
-Scope::set_subscript(FilterXObject *key, FilterXObject **value)
+Scope::set_subscript(const gchar *key, gsize key_len, FilterXObject **value)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(scope, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -85,11 +85,11 @@ Scope::set_subscript(FilterXObject *key, FilterXObject **value)
 }
 
 FilterXObject *
-Scope::get_subscript(FilterXObject *key)
+Scope::get_subscript(const gchar *key, gsize key_len)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(scope, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -102,11 +102,11 @@ Scope::get_subscript(FilterXObject *key)
 }
 
 bool
-Scope::unset_key(FilterXObject *key)
+Scope::unset_key(const gchar *key, gsize key_len)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(scope, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -119,11 +119,11 @@ Scope::unset_key(FilterXObject *key)
 }
 
 bool
-Scope::is_key_set(FilterXObject *key)
+Scope::is_key_set(const gchar *key, gsize key_len)
 {
+  std::string key_str(key, key_len);
   try
     {
-      std::string key_str = extract_string_from_object(key);
       ProtoReflectors reflectors(scope, key_str);
       ProtobufFieldConverter *converter = get_otel_protobuf_field_converter(reflectors.field_descriptor);
 
@@ -173,60 +173,68 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
+_set_subscript(FilterXObject *s, FilterXObject *k, FilterXObject **new_value)
 {
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return FALSE;
     }
-  return self->cpp->set_subscript(key, new_value);
+  return self->cpp->set_subscript(key, key_len, new_value);
 }
 
 static FilterXObject *
-_get_subscript(FilterXObject *s, FilterXObject *key)
+_get_subscript(FilterXObject *s, FilterXObject *k)
 {
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return NULL;
     }
-  return self->cpp->get_subscript(key);
+  return self->cpp->get_subscript(key, key_len);
 }
 
 static gboolean
-_unset_key(FilterXObject *s, FilterXObject *key)
+_unset_key(FilterXObject *s, FilterXObject *k)
 {
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return FALSE;
     }
 
-  return self->cpp->unset_key(key);
+  return self->cpp->unset_key(key, key_len);
 }
 
 static gboolean
-_is_key_set(FilterXObject *s, FilterXObject *key)
+_is_key_set(FilterXObject *s, FilterXObject *k)
 {
   FilterXOtelScope *self = (FilterXOtelScope *) s;
 
+  const gchar *key;
+  gsize key_len;
   const gchar *error;
-  if (!filterx_mapping_normalize_key(key, NULL, NULL, &error))
+  if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, NULL, k);
       return FALSE;
     }
-  return self->cpp->is_key_set(key);
+  return self->cpp->is_key_set(key, key_len);
 }
 
 static gboolean
