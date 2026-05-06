@@ -40,15 +40,21 @@ struct _ArrowFlightDestDriver
 
 DestinationDriver::DestinationDriver(ArrowFlightDestDriver *s) : super(s)
 {
+  log_template_options_defaults(&this->template_options);
 }
 
 DestinationDriver::~DestinationDriver()
 {
+  log_template_unref(this->path_template);
+  log_template_options_destroy(&this->template_options);
 }
 
 bool
 DestinationDriver::init()
 {
+  GlobalConfig *cfg = log_pipe_get_config(&this->super->super.super.super.super);
+  log_template_options_init(&this->template_options, cfg);
+
   return log_threaded_dest_driver_init_method(&this->super->super.super.super.super);
 }
 
@@ -67,7 +73,8 @@ DestinationDriver::format_persist_name()
   if (s->persist_name)
     g_snprintf(persist_name, sizeof(persist_name), "arrow-flight.%s", s->persist_name);
   else
-    g_snprintf(persist_name, sizeof(persist_name), "arrow-flight(%s)", this->url.c_str());
+    g_snprintf(persist_name, sizeof(persist_name), "arrow-flight(%s,%s)",
+               this->url.c_str(), this->path_template ? this->path_template->template_str : "");
 
   return persist_name;
 }
@@ -104,6 +111,20 @@ arrow_flight_dd_set_url(LogDriver *d, const gchar *url)
 {
   ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
   self->cpp->set_url(url);
+}
+
+void
+arrow_flight_dd_set_path(LogDriver *d, LogTemplate *path)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->set_path_template(path);
+}
+
+LogTemplateOptions *
+arrow_flight_dd_get_template_options(LogDriver *d)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  return &self->cpp->get_template_options();
 }
 
 static gboolean

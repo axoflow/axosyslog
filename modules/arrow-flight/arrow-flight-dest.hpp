@@ -26,6 +26,10 @@
 
 #include "arrow-flight-dest.h"
 
+#include "compat/cpp-start.h"
+#include "template/templates.h"
+#include "compat/cpp-end.h"
+
 #include <string>
 
 namespace syslog_ng {
@@ -50,10 +54,28 @@ public:
     return this->url;
   }
 
+  void set_path_template(LogTemplate *t)
+  {
+    log_template_unref(this->path_template);
+    this->path_template = log_template_ref(t);
+  }
+
+  LogTemplate *get_path_template() const
+  {
+    return this->path_template;
+  }
+
+  LogTemplateOptions &get_template_options()
+  {
+    return this->template_options;
+  }
+
 private:
   ArrowFlightDestDriver *super;
 
   std::string url;
+  LogTemplateOptions template_options;
+  LogTemplate *path_template = nullptr;
 };
 
 }
