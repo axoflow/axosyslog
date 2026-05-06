@@ -1,16 +1,19 @@
 if (NOT DEFINED ENABLE_ARROW_FLIGHT OR ENABLE_ARROW_FLIGHT)
   set(ARROW_FLIGHT_DEPS_FOUND FALSE)
-  message(STATUS "Apache Arrow Flight requires C++20, which is not supported by the compiler")
-  find_package(Arrow QUIET CONFIG)
-  if (Arrow_FOUND)
-    find_package(ArrowFlight QUIET CONFIG)
-    if (ArrowFlight_FOUND)
-      set(ARROW_FLIGHT_DEPS_FOUND TRUE)
-    else ()
-      message(STATUS "Apache Arrow Flight library (libarrow-flight-dev) not found")
-    endif ()
+  if (NOT "cxx_std_20" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+    message(STATUS "Apache Arrow Flight requires C++20, which is not supported by the compiler")
   else ()
-    message(STATUS "Apache Arrow library (libarrow-dev >= 23.0.0) not found")
+    find_package(Arrow QUIET CONFIG)
+    if (Arrow_FOUND)
+      find_package(ArrowFlight QUIET CONFIG)
+      if (ArrowFlight_FOUND)
+        set(ARROW_FLIGHT_DEPS_FOUND TRUE)
+      else ()
+        message(STATUS "Apache Arrow Flight library (libarrow-flight-dev) not found")
+      endif ()
+    else ()
+      message(STATUS "Apache Arrow library (libarrow-dev >= 23.0.0) not found")
+    endif ()
   endif ()
 endif ()
 
@@ -46,6 +49,7 @@ add_module(
   INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}
   LIBRARY_TYPE STATIC
 )
+target_compile_features(arrow-flight-cpp PRIVATE cxx_std_20)
 
 add_module(
   TARGET arrow-flight

@@ -549,6 +549,7 @@ AC_PROG_CXX([$CPP_COMPILER])
 if test "x$enable_cpp" = "xyes"; then
         AX_CXX_COMPILE_STDCXX(11,, mandatory)
         AX_CXX_COMPILE_STDCXX(17, noext, optional)
+        AX_CXX_COMPILE_STDCXX(20, noext, optional)
 elif test "x$enable_cpp" = "xauto"; then
         AX_CXX_COMPILE_STDCXX(11,, optional)
         if test "x$HAVE_CXX11" = "x1"; then
@@ -557,6 +558,7 @@ elif test "x$enable_cpp" = "xauto"; then
                 enable_cpp=no
         fi
         AX_CXX_COMPILE_STDCXX(17, noext, optional)
+        AX_CXX_COMPILE_STDCXX(20, noext, optional)
 fi
 
 dnl ***************************************************************************
@@ -1702,6 +1704,13 @@ PKG_CHECK_MODULES(ARROW_FLIGHT, arrow-flight >= $ARROW_MIN_VERSION, with_arrow_f
 
 if test "$enable_arrow_flight" = "yes" && test "$with_arrow_flight" = "no"; then
        AC_MSG_ERROR([Could not find Apache Arrow Flight >= $ARROW_MIN_VERSION, and Arrow Flight support was explicitly enabled.])
+fi
+
+if test "$with_arrow_flight" = "yes" && test "x$HAVE_CXX20" != "x1"; then
+       if test "$enable_arrow_flight" = "yes"; then
+               AC_MSG_ERROR([Apache Arrow >= $ARROW_MIN_VERSION requires C++20, but the compiler does not support it.])
+       fi
+       with_arrow_flight="no"
 fi
 
 dnl ***************************************************************************
