@@ -50,6 +50,7 @@
 
 %token KW_ARROW_FLIGHT
 %token KW_URL
+%token KW_PATH
 
 %type <ptr> arrow_flight_dest
 
@@ -74,9 +75,11 @@ arrow_flight_dest_options
 
 arrow_flight_dest_option
   : KW_URL '(' string ')' { arrow_flight_dd_set_url(last_driver, $3); free($3); }
+  | KW_PATH '(' template_content ')' { arrow_flight_dd_set_path(last_driver, $3); log_template_unref($3); }
   | threaded_dest_driver_general_option
   | threaded_dest_driver_workers_option
   | threaded_dest_driver_batch_option
+  | { last_template_options = arrow_flight_dd_get_template_options(last_driver); } template_option
   ;
 
 /* INCLUDE_RULES */

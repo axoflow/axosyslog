@@ -28,12 +28,16 @@
 
 #include "compat/cpp-start.h"
 #include "driver.h"
+#include "template/templates.h"
 
 typedef struct _ArrowFlightDestDriver ArrowFlightDestDriver;
 
 LogDriver *arrow_flight_dd_new(GlobalConfig *cfg);
 
 void arrow_flight_dd_set_url(LogDriver *d, const gchar *url);
+void arrow_flight_dd_set_path(LogDriver *d, LogTemplate *path);
+
+LogTemplateOptions *arrow_flight_dd_get_template_options(LogDriver *d);
 
 #include "compat/cpp-end.h"
 
