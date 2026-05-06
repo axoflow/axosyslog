@@ -30,10 +30,40 @@
 #include "template/templates.h"
 #include "compat/cpp-end.h"
 
+#include <arrow/type.h>
+
 #include <string>
+#include <memory>
 
 namespace syslog_ng {
 namespace arrow_flight {
+
+struct SchemaField
+{
+  std::string name;
+  std::shared_ptr<arrow::DataType> type;
+  LogTemplate *value;
+
+  SchemaField(std::string name_, std::shared_ptr<arrow::DataType> type_, LogTemplate *value_)
+    : name(name_), type(type_), value(log_template_ref(value_)) {}
+
+  SchemaField(const SchemaField &a)
+    : name(a.name), type(a.type), value(log_template_ref(a.value)) {}
+
+  SchemaField &operator=(const SchemaField &a)
+  {
+    name = a.name;
+    type = a.type;
+    log_template_unref(value);
+    value = log_template_ref(a.value);
+    return *this;
+  }
+
+  ~SchemaField()
+  {
+    log_template_unref(value);
+  }
+};
 
 class DestinationDriver final
 {
