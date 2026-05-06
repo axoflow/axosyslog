@@ -73,31 +73,7 @@ RUN apk add \
     gdb \
     strace \
     perf \
-    axosyslog \
-    axosyslog-add-contextual-data \
-    axosyslog-amqp \
-    axosyslog-cloud-auth \
-    axosyslog-ebpf \
-    axosyslog-examples \
-    axosyslog-geoip2 \
-    axosyslog-graphite \
-    axosyslog-grpc \
-    axosyslog-http \
-    axosyslog-json \
-    axosyslog-kafka \
-    axosyslog-map-value-pairs \
-    axosyslog-mongodb \
-    axosyslog-mqtt \
-    axosyslog-python3 \
-    axosyslog-redis \
-    axosyslog-riemann \
-    axosyslog-scl \
-    axosyslog-snmp \
-    axosyslog-sql \
-    axosyslog-stardate \
-    axosyslog-stomp \
-    axosyslog-tags-parser \
-    axosyslog-xml && \
+    axosyslog axosyslog-scl && \
     rm -rf /tmp/packages
 
 

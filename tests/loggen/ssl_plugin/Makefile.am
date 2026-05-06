@@ -11,7 +11,7 @@ tests_loggen_ssl_plugin_libloggen_ssl_plugin_la_CPPFLAGS	=	\
 	-I$(top_srcdir)/tests/loggen
 
 tests_loggen_ssl_plugin_libloggen_ssl_plugin_la_LDFLAGS	=	\
-	$(MODULE_LDFLAGS)
+	$(LOGGENPLUGIN_LDFLAGS)
 
 tests_loggen_ssl_plugin_libloggen_ssl_plugin_la_LIBADD = \
 	@BASE_LIBS@ @OPENSSL_LIBS@ @GLIB_LIBS@ \

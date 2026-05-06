@@ -218,6 +218,7 @@ jobs:
           # Setup build time environment variables
           CONFIGURE_OPTS="
             --prefix=/install
+            --with-linking-mode=monolithic
             --disable-debug
             --enable-all-modules
             --disable-java
@@ -244,11 +245,13 @@ jobs:
           cat dbld/build/callgrind/pr/callgrind_annotate.txt
 
       - name: Build the binaries (BASE)
+        continue-on-error: true
         run: |
           git checkout ${{ steps.commits.outputs.BASE_HEAD }}
           dbld/rules make-install
 
       - name: callgrind (BASE)
+        if: steps.risky.outcome == 'success'
         run: |
           dbld/rules callgrind CALLGRIND_PROFILE=base
 
