@@ -62,6 +62,7 @@ HIREDIS_MIN_VERSION="0.11.0"
 CRITERION_MIN_VERSION="2.2.1"
 PROTOBUF_MIN_VERSION="3.12.0"
 GRPCPP_MIN_VERSION="1.16.1"
+ARROW_MIN_VERSION="21.0.0"
 
 dnl ***************************************************************************
 dnl Initial setup
@@ -374,6 +375,10 @@ AC_ARG_ENABLE(kafka,
               [  --enable-kafka         Enable rdkafka support]
               ,,enable_kafka="auto")
 
+AC_ARG_ENABLE(arrow-flight,
+              [  --enable-arrow-flight   Enable Apache Arrow Flight support]
+              ,,enable_arrow_flight="auto")
+
 AC_ARG_ENABLE(python,
               [  --disable-python       Disable Python module]
               ,,enable_python="auto")
@@ -443,7 +448,7 @@ if test "x$enable_all_modules" != "xauto"; then
 
    MODULES="spoof_source sun_streams sql pacct mongodb json amqp stomp \
             redis systemd geoip2 riemann ipv6 smtp native python python_modules java java_modules \
-            http afsnmp kafka mqtt grpc jit"
+            http afsnmp kafka mqtt grpc jit arrow_flight"
    for mod in ${MODULES}; do
        modstate=$(eval echo \$enable_${mod})
        if test "x$modstate" = "xauto"; then
@@ -1690,6 +1695,16 @@ if test "x$enable_native" = "xyes" -o "x$enable_native" = "xauto"; then
 fi
 
 dnl ***************************************************************************
+dnl Apache Arrow Flight headers/libraries
+dnl ***************************************************************************
+
+PKG_CHECK_MODULES(ARROW_FLIGHT, arrow-flight >= $ARROW_MIN_VERSION, with_arrow_flight="yes", with_arrow_flight="no")
+
+if test "$enable_arrow_flight" = "yes" && test "$with_arrow_flight" = "no"; then
+       AC_MSG_ERROR([Could not find Apache Arrow Flight >= $ARROW_MIN_VERSION, and Arrow Flight support was explicitly enabled.])
+fi
+
+dnl ***************************************************************************
 dnl riemann-client headers/libraries
 dnl *************************************************************************
 if test "$enable_riemann" != "no"; then
@@ -2018,6 +2033,16 @@ if test "x$enable_kafka" = "xauto"; then
     AC_MSG_RESULT([$enable_kafka])
 fi
 
+if test "x$enable_arrow_flight" = "xauto"; then
+    AC_MSG_CHECKING(whether to enable Apache Arrow Flight support)
+    if test "x$with_arrow_flight" != "xno"; then
+        enable_arrow_flight="yes"
+    else
+        enable_arrow_flight="no"
+    fi
+    AC_MSG_RESULT([$enable_arrow_flight])
+fi
+
 if test "x$enable_stackdump" = "xauto"; then
     AC_MSG_CHECKING(whether to enable stackdump support)
     if test "x$enable_libunwind" != "xno"; then
@@ -2300,6 +2325,7 @@ AC_DEFINE_UNQUOTED(ENABLE_PERF, `enable_value $enable_perf`, [Enable Linux perf 
 AC_DEFINE_UNQUOTED(ENABLE_ENV_WRAPPER, `enable_value $enable_env_wrapper`, [Enable environment wrapper support])
 AC_DEFINE_UNQUOTED(ENABLE_SYSTEMD, `enable_value $enable_systemd`, [Enable systemd support])
 AC_DEFINE_UNQUOTED(ENABLE_KAFKA, `enable_value $enable_kafka`, [Enable kafka support])
+AC_DEFINE_UNQUOTED(ENABLE_ARROW_FLIGHT, `enable_value $enable_arrow_flight`, [Enable Apache Arrow Flight support])
 AC_DEFINE_UNQUOTED(ENABLE_CPP, `enable_value $enable_cpp`, [Enable C++ support])
 AC_DEFINE_UNQUOTED(ENABLE_STACKDUMP, `enable_value $enable_stackdump`, [Enable stackdump using libunwind])
 AC_DEFINE_UNQUOTED(ENABLE_JIT, `enable_value $enable_jit`, [Enable FilterX JIT compiler])
@@ -2332,6 +2358,7 @@ AM_CONDITIONAL(ENABLE_JSON, [test "$enable_json" = "yes"])
 AM_CONDITIONAL(ENABLE_GEOIP2, [test "$enable_geoip2" = "yes"])
 AM_CONDITIONAL(ENABLE_REDIS, [test "$enable_redis" = "yes"])
 AM_CONDITIONAL(ENABLE_KAFKA, [test "$enable_kafka" = "yes"])
+AM_CONDITIONAL(ENABLE_ARROW_FLIGHT, [test "$enable_arrow_flight" = "yes"])
 AM_CONDITIONAL(IVYKIS_INTERNAL, [test "x$with_ivykis" = "xinternal"])
 AM_CONDITIONAL(LIBMONGO_INTERNAL, [test "x$LIBMONGO_SUBDIRS" != "x"])
 AM_CONDITIONAL(LIBRABBITMQ_INTERNAL, [test "x$with_librabbitmq_client" = "xinternal"])
@@ -2505,6 +2532,7 @@ echo "  Cloud Auth (module)         : ${enable_cloud_auth:=no}"
 echo "  GEOIP2 support (module)     : ${enable_geoip2:=no}"
 echo "  Redis support (module)      : ${enable_redis:=no}"
 echo "  Kafka support (module)      : ${enable_kafka:=no}"
+echo "  Apache Arrow Flight (module): ${enable_arrow_flight:=no}"
 echo "  Riemann destination (module): ${enable_riemann:=no}, microseconds: ${riemann_micros:=no}"
 echo "  Python                      : ${enable_python:=no} (pkg-config package: ${with_python:=none}, packages: ${with_python_packages})"
 echo "  Python modules              : ${enable_python_modules:=no}"
