@@ -32,22 +32,13 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-// Arguments and options
-static char *hostkeypath = NULL;
-static char *newhostKeypath = NULL;
-static char *inputMACpath = NULL;
-static char *outputMACpath = NULL;
-static char *inputlogpath = NULL;
-static char *outputlogpath = NULL;
-
-static guint64 bufSize = DEF_BUF_SIZE;
-
 //
 // main logic: 0 usually indicates success, and non-zero values indicate an error
 //
 int main(int argc, char *argv[])
 {
   gint retval = 0; //-- 0: SUCCESS, main logic
+  guint64 bufSize = DEF_BUF_SIZE;
 
   setlocale(LC_ALL, "");
 
@@ -103,94 +94,212 @@ int main(int argc, char *argv[])
   // Initialize internal messaging
   msg_init(TRUE);
 
+  //-- When error then goto cleanup section -----
+  char *line = NULL;
+  FILE *fp_outputFile = NULL;
+  FILE *fp_inputFile = NULL;
   guchar key[KEY_LENGTH];
   guchar mac[CMAC_LENGTH];
   gsize nk = G_N_ELEMENTS(key);
   memset(key, 0, nk);
   gsize nm = G_N_ELEMENTS(mac);
   memset(mac, 0, nm);
-
-  // Assign option arguments
   char *p_path_check = NULL;
+
   int index = 0;
 
-  hostkeypath = options[index++].arg;
-  p_path_check = realpath(hostkeypath, NULL);
-  if (NULL == p_path_check)
-    {
-      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Failed to check key-file!"));
-      (void) slog_usage(context, group, NULL);
-      return 1; //-- ERROR
-    }
-  free(p_path_check);
-  p_path_check = NULL;
+  GString *gstr_path_hostkey = g_string_new(NULL); //-- key-file
+  GString *gstr_path_inputMAC = g_string_new(NULL); //-- mac-file
+  GString *gstr_path_newhostKey = g_string_new(NULL); //-- NEWKEY
+  GString *gstr_path_outputMAC = g_string_new(NULL); //-- NEWMAC
+  GString *gstr_path_inputlog = g_string_new(NULL); //-- INPUTLOG
+  GString *gstr_path_outputlog = g_string_new(NULL); //-- OUTPUTLOG
 
-  inputMACpath = options[index].arg;
-  if (NULL == inputMACpath)
+  //-- key-file (hostkey) ---
+  if (NULL == options[index].arg)
     {
-      //-- Note: might be generated
-      g_print("ERROR: Option --mac-file or -m does not provide a valid path to a MAC file!\n\n");
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason",
                             "Option --mac-file or -m does not provide a valid path to a MAC file!"));
       (void) slog_usage(context, group, NULL);
-      return 1; //-- ERROR
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
+  {
+    g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+    g_free(options[index].arg);
+    options[index++].arg = NULL; //-- inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file is expected to exist
+    if (FALSE == is_ok)
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of key-file failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
+      }
+    if (!g_file_test(p_canon, G_FILE_TEST_IS_REGULAR)) //-- check if file exists
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of key-file failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
+      }
+    g_string_assign(gstr_path_hostkey, p_canon);
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("key-file", gstr_path_hostkey->str));
 
-  // Input and output file arguments
+
+  //-- mac-file (inputMAC) ---
+  if (NULL == options[index].arg)
+    {
+      msg_error(SLOG_ERROR_PREFIX,
+                evt_tag_str("Reason",
+                            "Option --mac-file or -m does not provide a valid path to a MAC file!"));
+      (void) slog_usage(context, group, NULL);
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
+    }
+  {
+    g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+    g_free(options[index].arg);
+    options[index++].arg = NULL; //-- inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file might yet not exist
+    if (FALSE == is_ok)
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of mac-file failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
+      }
+    g_string_assign(gstr_path_inputMAC, p_canon);
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("mac-file", gstr_path_inputMAC->str));
+
+
+  //-- Input and output file arguments -----
+
+  //-- NEWKEY (newhostKey) ---
   index = 1;
-  newhostKeypath = argv[index++];
-  if (newhostKeypath == NULL)
+  if (NULL == argv[index])
     {
       // Safe. Will not be reached due check of argc above
-      g_print("ERROR: Path to new host key is missing!\n\n");
-      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to new host key is missing!"));
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to NEWKEY is missing!"));
       (void) slog_usage(context, group, NULL);
       g_assert_not_reached();
-      return 1; //-- ERROR
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
+  {
+    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file does yet not exist
+    if (FALSE == is_ok)
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of NEWKEY failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
+      }
+    g_string_assign(gstr_path_newhostKey, p_canon);
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("NEWKEY", gstr_path_newhostKey->str));
 
-  outputMACpath = argv[index++];
-  if (outputMACpath == NULL)
+  //-- NEWMAC (outputMAC) ---
+  if (NULL == argv[index])
     {
       // Safe. Will not be reached due check of argc above
-      g_print("ERROR: Path to new MAC file is missing!\n\n");
-      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to new MAC file is missing!"));
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to NEWMAC is missing"));
       (void) slog_usage(context, group, NULL);
       g_assert_not_reached();
-      return 1; //-- ERROR
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
+  {
+    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file does yet not exist
+    if (FALSE == is_ok)
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of NEWMAC failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
+      }
+    g_string_assign(gstr_path_outputMAC, p_canon);
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("NEWMAC", gstr_path_outputMAC->str));
 
-  inputlogpath = argv[index++];
-  if (!g_file_test(inputlogpath, G_FILE_TEST_IS_REGULAR))
+  //-- INPUTLOG ---
+  if (NULL == argv[index])
+    {
+      // Safe. Will not be reached due check of argc above
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to INPUTLOG is missing"));
+      (void) slog_usage(context, group, NULL);
+      g_assert_not_reached();
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
+    }
+  {
+    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file is expected to exist
+    if (FALSE == is_ok)
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of INPUTLOG failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
+      }
+    if (!g_file_test(p_canon, G_FILE_TEST_IS_REGULAR)) //-- check if file exists
     {
       GString *errorMsg = g_string_new(FILE_ERROR);
-      g_string_append(errorMsg, inputlogpath);
+        g_string_append(errorMsg, p_canon);
       (void) slog_usage(context, group, errorMsg);
       g_string_free(errorMsg, TRUE);
-      return 1; //-- ERROR
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
     }
+    g_string_assign(gstr_path_inputlog, p_canon);
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("INPUTLOG", gstr_path_inputlog->str));
 
-  outputlogpath = argv[index++];
-  if (outputlogpath == NULL)
+  //-- OUTPUTLOG ---
+  if (NULL == argv[index])
     {
       // Safe. Will not be reached due check of argc above
-      g_print("ERROR: Path to output log is missing!\n\n");
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to OUTPUTLOG is missing"));
       (void) slog_usage(context, group, NULL);
       g_assert_not_reached();
-      return 1; //-- ERROR
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
+  {
+    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file does yet not exist
+    if (FALSE == is_ok)
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of OUTPUTLOG failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGENCRYPT;
+      }
+    g_string_assign(gstr_path_outputlog, p_canon);
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("OUTPUTLOG", gstr_path_outputlog->str));
 
   // Read key and counter
   guint64 counter;
-  gboolean ret = readKey(key, &counter, hostkeypath);
+  gboolean ret = readKey(key, &counter, gstr_path_hostkey->str);
   if (!ret)
     {
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Unable to read host key!"),
-                evt_tag_str("file", hostkeypath));
-      g_option_context_free(context);
-      return -1; //-- ERROR
+                evt_tag_str("file", gstr_path_hostkey->str));
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGENCRYPT;
     }
 
   // Buffer size arguments if applicable
@@ -204,37 +313,23 @@ int main(int argc, char *argv[])
                     evt_tag_int("Size", bufSize),
                     evt_tag_int("Minimum buffer size", MIN_BUF_SIZE),
                     evt_tag_int("Maximum buffer size", MAX_BUF_SIZE));
-          g_option_context_free(context);
-          return -1; //-- ERROR
-        }
-    }
-
-  //
-  //-- Done argument parsing ---
-  //
-
-  char *line = NULL;
-  FILE *outputFile = NULL;
-  FILE *inputFile = NULL;
-
-  p_path_check = realpath(inputlogpath, NULL);
-  if (NULL == p_path_check)
-    {
-      msg_error(SLOG_ERROR_PREFIX,
-                evt_tag_str("Reason", "Failed to check inputlogpath!"),
-                evt_tag_str("file", inputlogpath));
-      retval = -1; //-- ERROR
+          retval = 1; //-- ERROR
       goto CLEANUP_SLOGENCRYPT;
     }
-  free(p_path_check);
-  p_path_check = NULL;
+    }
+
+
+  //
+  //-- Done argument parsing and validation -----
+  //
+
   // Open input file
-  inputFile = fopen(inputlogpath, "r");
-  if (inputFile == NULL)
+  fp_inputFile = fopen(gstr_path_inputlog->str, "r");
+  if (NULL == fp_inputFile)
     {
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Unable to open input log file!"),
-                evt_tag_str("file", inputlogpath));
+                evt_tag_str("file", gstr_path_inputlog->str));
       retval = -1; //-- ERROR
       goto CLEANUP_SLOGENCRYPT;
     }
@@ -242,43 +337,43 @@ int main(int argc, char *argv[])
   // Open output file
   // CI GitHub CodeQL / File created without restricting permissions:
   // outputFile = fopen(outputlogpath,  "w");
-  int fd = open(outputlogpath, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+  int fd = open(gstr_path_outputlog->str, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
   if (fd != -1)
     {
-      outputFile = fdopen(fd, "w");
+      fp_outputFile = fdopen(fd, "w");
     }
-  if (outputFile == NULL)
+  if (NULL == fp_outputFile)
     {
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Unable to open output log file!"),
-                evt_tag_str("file", outputlogpath));
+                evt_tag_str("file", gstr_path_outputlog->str));
       retval = -1; //-- ERROR
       goto CLEANUP_SLOGENCRYPT;
     }
 
   //-- initial MAC file ---
-  if (!g_file_test(inputMACpath, G_FILE_TEST_IS_REGULAR))
+  if (!g_file_test(gstr_path_inputMAC->str, G_FILE_TEST_IS_REGULAR))
     {
       //-- This is normal the first time, slogencrypt is called.
       msg_info(SLOG_INFO_PREFIX,
                evt_tag_str("Reason", "MAC file was not found and is created now (initial MAC file)."),
-               evt_tag_str("file", inputMACpath));
+               evt_tag_str("file", gstr_path_inputMAC->str));
       create_initial_mac0(key, mac);
-      if (writeAggregatedMAC(inputMACpath, mac) == FALSE)
+      if (writeAggregatedMAC(gstr_path_inputMAC->str, mac) == FALSE)
         {
           //-- ERROR: File was not written!
           msg_error(SLOG_ERROR_PREFIX,
                       evt_tag_str("Reason", "writeAggregatedMAC was not successful!"),
-                      evt_tag_str("file", inputMACpath));
+                    evt_tag_str("file", gstr_path_inputMAC->str));
           retval = -1; //-- ERROR
           goto CLEANUP_SLOGENCRYPT;
         }
       char pathMac0[PATH_MAX]; //-- full path of MAC0 file mac0.dat
-      if (get_path_mac0(inputMACpath, pathMac0, PATH_MAX) == FALSE)
+      if (get_path_mac0(gstr_path_inputMAC->str, pathMac0, PATH_MAX) == FALSE)
         {
           msg_error(SLOG_ERROR_PREFIX,
                     evt_tag_str("Reason", "unable to extract path for MAC0!"),
-                    evt_tag_str("file", inputMACpath));
+                    evt_tag_str("file", gstr_path_inputMAC->str));
           retval = -1; //-- ERROR
           goto CLEANUP_SLOGENCRYPT;
         }
@@ -286,27 +381,27 @@ int main(int argc, char *argv[])
         {
           msg_error(SLOG_ERROR_PREFIX,
                     evt_tag_str("Reason", "writeAggregatedMAC (MAC0) was not successful!"),
-                    evt_tag_str("file", inputMACpath));
+                    evt_tag_str("file", gstr_path_inputMAC->str));
 
           retval = -1; //-- ERROR, file not written
           goto CLEANUP_SLOGENCRYPT;
         }
-      if (!g_file_test(inputMACpath, G_FILE_TEST_IS_REGULAR))
+      if (!g_file_test(gstr_path_inputMAC->str, G_FILE_TEST_IS_REGULAR))
         {
           msg_error(SLOG_ERROR_PREFIX,
                       evt_tag_str("Reason", "Initial MAC file was not written as expected!"),
-                      evt_tag_str("file", inputMACpath));
+                    evt_tag_str("file", gstr_path_inputMAC->str));
           retval = -1; //-- ERROR, File not found!
           goto CLEANUP_SLOGENCRYPT;
         }
     }
 
   // Read MAC (if possible)
-  if (readAggregatedMAC(inputMACpath, mac) == 0)
+  if (readAggregatedMAC(gstr_path_inputMAC->str, mac) == 0)
     {
       msg_error(SLOG_ERROR_PREFIX,
                   evt_tag_str("Reason", "Unable to open input MAC file!"),
-                  evt_tag_str("file", inputMACpath));
+                evt_tag_str("file", gstr_path_inputMAC->str));
 
       retval = -1; //-- ERROR, File not found!
       goto CLEANUP_SLOGENCRYPT;
@@ -322,7 +417,7 @@ int main(int argc, char *argv[])
   // Parse data
   size_t readLen = 0;
   gboolean outcome = TRUE;
-  while(getline(&line, &readLen, inputFile)!=-1)
+  while (getline(&line, &readLen, fp_inputFile) != -1)
     {
       guchar outputmacdata[CMAC_LENGTH];
       GString *result = g_string_new(NULL);
@@ -366,7 +461,7 @@ int main(int argc, char *argv[])
           goto CLEANUP_SLOGENCRYPT;
         }
 
-      fprintf(outputFile, "%s\n", result->str);
+      fprintf(fp_outputFile, "%s\n", result->str);
 
       // Update keys, MAC, etc
       memcpy(mac, outputmacdata, CMAC_LENGTH);
@@ -394,7 +489,7 @@ int main(int argc, char *argv[])
 
 
   // Write whole log MAC
-  if (!writeAggregatedMAC(outputMACpath, mac))
+  if (!writeAggregatedMAC(gstr_path_outputMAC->str, mac))
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Problem with output MAC file!"));
       retval = -1; //-- ERROR
@@ -402,12 +497,12 @@ int main(int argc, char *argv[])
     }
 
   // Write key
-  ret = writeKey(key, counter, newhostKeypath);
+  ret = writeKey(key, counter, gstr_path_newhostKey->str);
   if (!ret)
     {
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Unable to write new host key"),
-                evt_tag_str("file", outputlogpath));
+                evt_tag_str("file", gstr_path_outputlog->str));
       retval = -1; //-- ERROR
       goto CLEANUP_SLOGENCRYPT;
     }
@@ -415,22 +510,36 @@ int main(int argc, char *argv[])
 
 CLEANUP_SLOGENCRYPT:
 
-  if (NULL != inputFile)
+  if (NULL != fp_inputFile)
     {
-      fclose(inputFile);
-      inputFile = NULL;
+      fclose(fp_inputFile);
+      fp_inputFile = NULL;
     }
-  if (NULL != outputFile)
+  if (NULL != fp_outputFile)
     {
-      fclose(outputFile);
-      outputFile = NULL;
+      fclose(fp_outputFile);
+      fp_outputFile = NULL;
     }
       g_option_context_free(context);
+  context = NULL;
       if (NULL != line)
         {
           free(line);
           line = NULL;
         }
+  g_string_free(gstr_path_hostkey, TRUE);
+  gstr_path_hostkey = NULL;
+  g_string_free(gstr_path_inputMAC, TRUE);
+  gstr_path_inputMAC = NULL;
+  g_string_free(gstr_path_newhostKey, TRUE);
+  gstr_path_newhostKey = NULL;
+  g_string_free(gstr_path_outputMAC, TRUE);
+  gstr_path_outputMAC = NULL;
+  g_string_free(gstr_path_inputlog, TRUE);
+  gstr_path_inputlog = NULL;
+  g_string_free(gstr_path_outputlog, TRUE);
+  gstr_path_outputlog = NULL;
+
   if (0 == retval)
     {
       msg_info("slogencrypt: All data successfully imported.");

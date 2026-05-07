@@ -352,4 +352,7 @@ void handleGPtrArrayMemoryError(const char *file, int line, int code, void *obje
 // Limit length of an utf-8 log line, in a way, that no invalid character / symbol is created.
 void truncate_utf8_gstring(GString *gslog, gsize max_octet_len);
 
+//-- helper to check file path argument
+gboolean is_file_path_safe_and_valid(const gchar *input_path);
+
 #endif
