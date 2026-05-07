@@ -806,14 +806,43 @@ void test_slog_performance(void)
   closure(testData);
 }
 
+
+
+void test_slog_helper_path_validation(void)
+{
+  gchar path_no[256] = "/usr/wtf33/bingo.txt";
+  gchar path_yes[256] = "/tmp/bingo_test015708705702374095273094.txt";
+  gboolean is_ok = is_file_path_safe_and_valid(path_no);
+  cr_assert(FALSE == is_ok, "Given path is not valid because the directoy is invalid");
+  is_ok = is_file_path_safe_and_valid(path_yes);
+  cr_assert(TRUE == is_ok, "Given path is valid even the file does not exist");
+  GError *error = NULL;
+  gchar *path_yes2 = NULL;
+  gint fd = g_file_open_tmp("test_path_val_XXXXXX", &path_yes2, &error);
+  if (fd != -1)
+    {
+      //-- e.g.: "/tmp/test_path_val_A1B2C3"
+      is_ok = is_file_path_safe_and_valid(path_yes2);
+      cr_assert(TRUE == is_ok, "Given path is valid and the file does exist");
+      g_free(path_yes2);
+      close(fd);
+    }
+}
+
 Test(secure_logging, test_slog_template_format)
 {
   test_slog_template_format();
 }
 
+
 Test(secure_logging, test_slog_performance)
 {
   test_slog_performance();
+}
+
+Test(secure_logging, test_slog_helper_path_validation)
+{
+  test_slog_helper_path_validation();
 }
 
 Test(secure_logging, test_slog_verification_bulk)

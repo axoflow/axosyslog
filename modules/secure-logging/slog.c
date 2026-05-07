@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2025 Airbus Commercial Aircraft
+ * Copyright (c) 2019-2026 Airbus Commercial Aircraft
  * Copyright (c) 2024 Gergo Ferenc Kovacs
  *
  * This program is free software: you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
 
 #include <glib.h>
 
+#include <limits.h>
+#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2318,6 +2320,44 @@ void truncate_utf8_gstring(GString *gslog, gsize max_octet_len)
   g_string_truncate(gslog, new_len);
   g_string_append_c(gslog, '\n');
 }
+
+
+//----------------------------------------------------------------------
+// is_file_path_safe_and_valid
+//
+// Checks wether a file path argument is safe and valid.
+// It does NOT check if the file exists.
+// Only the existens of extracted directory is verified because the file
+// might be created.
+//
+// in input_path: zero terminated path string
+// return TRUE when valid and usable else FALSE
+
+gboolean is_file_path_safe_and_valid(const gchar *input_path)
+{
+  if (input_path == NULL || *input_path == '\0') return FALSE;
+  g_autofree gchar *safe_path = g_strndup(input_path, PATH_MAX - 1);
+  g_autofree gchar *dir_name = g_path_get_dirname(safe_path);
+  g_autofree gchar *base_name = g_path_get_basename(safe_path);
+  if (!g_file_test(dir_name, G_FILE_TEST_IS_DIR))
+    {
+      g_warning("Parent directory does not exist or is inaccessible: %s", dir_name);
+      return FALSE;
+    }
+  if (g_strcmp0(base_name, ".") == 0 || g_strcmp0(base_name, "..") == 0)
+    {
+      g_warning("Invalid filename: %s", base_name);
+      return FALSE;
+    }
+  if (access(dir_name, W_OK | X_OK) != 0)
+    {
+      g_warning("No write permissions in directory: %s", dir_name);
+      return FALSE;
+    }
+  return TRUE;
+}
+
+
 
 SLogFile *create_file(const gchar *filename, const gchar *mode)
 {
