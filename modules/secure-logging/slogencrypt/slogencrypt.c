@@ -104,7 +104,6 @@ int main(int argc, char *argv[])
   memset(key, 0, nk);
   gsize nm = G_N_ELEMENTS(mac);
   memset(mac, 0, nm);
-  char *p_path_check = NULL;
 
   int index = 0;
 
