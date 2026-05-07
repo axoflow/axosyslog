@@ -294,7 +294,7 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
   else if (has_non_filterx && has_filterx)
     {
       g_string_append_printf(result,
-                             "    else {\n"
+                             "    elif {\n"
                              "        filterx {\n"
                              "            switch (%s) {\n"
                              "%s\n"
@@ -307,9 +307,11 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
   else if (!has_non_filterx && has_filterx)
     {
       g_string_append_printf(result,
-                             "    filterx {\n"
-                             "        switch (%s) {\n"
+                             "    if {\n"
+                             "        filterx {\n"
+                             "            switch (%s) {\n"
                              "%s\n"
+                             "            };\n"
                              "        };\n"
                              "    };\n",
                              self->filterx_app_variable,
