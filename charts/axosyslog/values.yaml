@@ -181,9 +181,10 @@ service:
   # ClientIP: Sticky sessions - client connections go to the same pod
   # Useful for maintaining connection state with syslog clients
   sessionAffinity: "None"
-  # LoadBalancer IP: Request a specific static IP from the cloud provider
-  # Only applicable when service.type=LoadBalancer
-  loadBalancerIP: ""
+  # Configure static or private LB IP via service annotations (provider specific)
+  # Example (Azure static private IP):
+  # service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+  # service.beta.kubernetes.io/azure-load-balancer-ipv4: "10.0.0.50"
   # LoadBalancer source ranges: Restrict access to specific IP ranges
   # Only applicable when service.type=LoadBalancer
   # Example: ["10.0.0.0/8", "172.16.0.0/12"]
