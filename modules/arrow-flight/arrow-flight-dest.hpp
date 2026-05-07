@@ -100,6 +100,27 @@ public:
     return this->template_options;
   }
 
+  void add_string_schema_field(std::string name, LogTemplate *value)
+  {
+  }
+
+  void add_integer_schema_field(std::string name, LogTemplate *value)
+  {
+  }
+
+  void add_double_schema_field(std::string name, LogTemplate *value)
+  {
+  }
+
+  void add_bool_schema_field(std::string name, LogTemplate *value)
+  {
+  }
+
+  void add_timestamp_schema_field(std::string name, LogTemplate *value)
+  {
+  }
+
+
 private:
   ArrowFlightDestDriver *super;
 

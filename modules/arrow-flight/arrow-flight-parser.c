@@ -34,6 +34,15 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "arrow_flight",  KW_ARROW_FLIGHT },
   { "url",           KW_URL },
   { "path",          KW_PATH },
+  { "schema",        KW_SCHEMA },
+  { "STRING",        KW_CAP_STRING },
+  { "INT64",         KW_CAP_INT64 },
+  { "INTEGER",       KW_CAP_INTEGER },
+  { "DOUBLE",        KW_CAP_DOUBLE },
+  { "FLOAT64",       KW_CAP_FLOAT64 },
+  { "BOOLEAN",       KW_CAP_BOOLEAN },
+  { "BOOL",          KW_CAP_BOOL },
+  { "TIMESTAMP",     KW_CAP_TIMESTAMP },
   { NULL }
 };
 

@@ -36,6 +36,11 @@ LogDriver *arrow_flight_dd_new(GlobalConfig *cfg);
 
 void arrow_flight_dd_set_url(LogDriver *d, const gchar *url);
 void arrow_flight_dd_set_path(LogDriver *d, LogTemplate *path);
+void arrow_flight_dd_add_string_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
+void arrow_flight_dd_add_integer_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
+void arrow_flight_dd_add_double_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
+void arrow_flight_dd_add_bool_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
+void arrow_flight_dd_add_timestamp_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
 
 LogTemplateOptions *arrow_flight_dd_get_template_options(LogDriver *d);
 

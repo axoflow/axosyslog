@@ -120,6 +120,41 @@ arrow_flight_dd_set_path(LogDriver *d, LogTemplate *path)
   self->cpp->set_path_template(path);
 }
 
+void
+arrow_flight_dd_add_string_schema_field(LogDriver *d, const gchar *name, LogTemplate *value)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->add_string_schema_field(name, value);
+}
+
+void
+arrow_flight_dd_add_integer_schema_field(LogDriver *d, const gchar *name, LogTemplate *value)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->add_integer_schema_field(name, value);
+}
+
+void
+arrow_flight_dd_add_double_schema_field(LogDriver *d, const gchar *name, LogTemplate *value)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->add_double_schema_field(name, value);
+}
+
+void
+arrow_flight_dd_add_bool_schema_field(LogDriver *d, const gchar *name, LogTemplate *value)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->add_bool_schema_field(name, value);
+}
+
+void
+arrow_flight_dd_add_timestamp_schema_field(LogDriver *d, const gchar *name, LogTemplate *value)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->add_timestamp_schema_field(name, value);
+}
+
 LogTemplateOptions *
 arrow_flight_dd_get_template_options(LogDriver *d)
 {
