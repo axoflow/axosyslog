@@ -56,6 +56,7 @@ public:
 
 private:
   DestinationDriver *get_owner();
+  gint get_batch_size() const;
   const gchar *format_path(LogMessage *msg, GString **buf, ScratchBuffersMarker *marker);
   bool open_stream(const gchar *path);
   void close_stream();
@@ -71,6 +72,7 @@ private:
   std::unique_ptr<arrow::flight::FlightStreamWriter> writer;
   std::unique_ptr<arrow::flight::FlightMetadataReader> metadata_reader;
   std::string current_stream_path;
+  std::string current_batch_path;
 };
 
 }

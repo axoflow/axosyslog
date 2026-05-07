@@ -28,6 +28,7 @@
 #include "scratch-buffers.h"
 #include "messages.h"
 #include "logmsg/type-hinting.h"
+#include "template/templates.h"
 #include "compat/cpp-end.h"
 
 #include <arrow/api.h>
@@ -57,6 +58,12 @@ DestinationDriver *
 DestinationWorker::get_owner()
 {
   return arrow_flight_dd_get_cpp(&this->super->super.owner->super.super);
+}
+
+gint
+DestinationWorker::get_batch_size() const
+{
+  return this->super->super.batch_size;
 }
 
 bool
@@ -107,6 +114,7 @@ void
 DestinationWorker::disconnect()
 {
   this->close_stream();
+  this->current_batch_path.clear();
 
   if (this->client)
     {
@@ -195,6 +203,69 @@ DestinationWorker::append_value(arrow::ArrayBuilder *builder, const std::shared_
 LogThreadedResult
 DestinationWorker::insert(LogMessage *msg)
 {
+  DestinationDriver *owner = this->get_owner();
+  const auto &schema_fields = owner->get_schema_fields();
+
+  ScratchBuffersMarker m;
+  GString *buf = scratch_buffers_alloc_and_mark(&m);
+
+  for (size_t i = 0; i < schema_fields.size(); i++)
+    {
+      const auto &field = schema_fields[i];
+      LogTemplateEvalOptions opts = { &owner->get_template_options(), LTZ_SEND,
+                                      this->super->super.seq_num, NULL, LM_VT_STRING
+                                    };
+      LogMessageValueType vtype;
+      const gchar *val;
+      gssize val_len;
+      bool null_value = false;
+
+      if (log_template_is_trivial(field.value))
+        {
+          val = log_template_get_trivial_value_and_type(field.value, msg, &val_len, &vtype);
+          if (val_len < 0 || vtype == LM_VT_NULL)
+            null_value = true;
+        }
+      else
+        {
+          log_template_format_value_and_type(field.value, msg, &opts, buf, &vtype);
+          val = buf->str;
+          val_len = (gssize) buf->len;
+          null_value = (vtype == LM_VT_NULL);
+        }
+
+      if (null_value || !this->append_value(this->builders[i].get(), field.type, val, val_len))
+        {
+          if (!null_value && !(owner->get_template_options().on_error & ON_ERROR_SILENT))
+            msg_error("arrow-flight: Failed to convert field value, using null",
+                      evt_tag_str("field", field.name.c_str()),
+                      log_pipe_location_tag(&this->super->super.owner->super.super.super));
+          auto null_status = this->builders[i]->AppendNull();
+          if (!null_status.ok())
+            {
+              /* AppendNull() failure would leave columns at different lengths and break RecordBatch::Make.
+               * Force a reconnect so disconnect() clears the builders and we start fresh. */
+              msg_error("arrow-flight: Failed to append null to Arrow builder",
+                        evt_tag_str("field", field.name.c_str()),
+                        evt_tag_str("error", null_status.ToString().c_str()),
+                        log_pipe_location_tag(&this->super->super.owner->super.super.super));
+              scratch_buffers_reclaim_marked(m);
+              return LTR_NOT_CONNECTED;
+            }
+        }
+    }
+
+  if (this->get_batch_size() == 1)
+    {
+      GString *path_buf;
+      ScratchBuffersMarker path_marker;
+      const gchar *path = this->format_path(msg, &path_buf, &path_marker);
+      this->current_batch_path = path;
+      if (path_buf)
+        scratch_buffers_reclaim_marked(path_marker);
+    }
+
+  scratch_buffers_reclaim_marked(m);
   return LTR_QUEUED;
 }
 
