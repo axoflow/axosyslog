@@ -50,6 +50,12 @@ DestinationDriver::~DestinationDriver()
 }
 
 bool
+DestinationDriver::add_schema_field(std::string name, std::string type, LogTemplate *value)
+{
+  return true;
+}
+
+bool
 DestinationDriver::init()
 {
   GlobalConfig *cfg = log_pipe_get_config(&this->super->super.super.super.super);
@@ -118,6 +124,13 @@ arrow_flight_dd_set_path(LogDriver *d, LogTemplate *path)
 {
   ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
   self->cpp->set_path_template(path);
+}
+
+gboolean
+arrow_flight_dd_add_schema_field(LogDriver *d, const gchar *name, const gchar *type, LogTemplate *value)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  return self->cpp->add_schema_field(name, type ? type : "", value);
 }
 
 LogTemplateOptions *

@@ -100,6 +100,8 @@ public:
     return this->template_options;
   }
 
+  bool add_schema_field(std::string name, std::string type, LogTemplate *value);
+
 private:
   ArrowFlightDestDriver *super;
 

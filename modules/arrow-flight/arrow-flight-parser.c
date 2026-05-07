@@ -34,6 +34,7 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "arrow_flight",  KW_ARROW_FLIGHT },
   { "url",           KW_URL },
   { "path",          KW_PATH },
+  { "schema",        KW_SCHEMA },
   { NULL }
 };
 

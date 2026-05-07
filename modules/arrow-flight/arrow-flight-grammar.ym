@@ -51,6 +51,7 @@
 %token KW_ARROW_FLIGHT
 %token KW_URL
 %token KW_PATH
+%token KW_SCHEMA
 
 %type <ptr> arrow_flight_dest
 
@@ -76,10 +77,27 @@ arrow_flight_dest_options
 arrow_flight_dest_option
   : KW_URL '(' string ')' { arrow_flight_dd_set_url(last_driver, $3); free($3); }
   | KW_PATH '(' template_content ')' { arrow_flight_dd_set_path(last_driver, $3); log_template_unref($3); }
+  | KW_SCHEMA '(' arrow_flight_schema_fields ')'
   | threaded_dest_driver_general_option
   | threaded_dest_driver_workers_option
   | threaded_dest_driver_batch_option
   | { last_template_options = arrow_flight_dd_get_template_options(last_driver); } template_option
+  ;
+
+arrow_flight_schema_fields
+  : arrow_flight_schema_field arrow_flight_schema_fields
+  |
+  ;
+
+arrow_flight_schema_field
+  : string optional_string LL_ARROW template_content
+    {
+      CHECK_ERROR(arrow_flight_dd_add_schema_field(last_driver, $1, $2, $4), @2,
+                  "Error adding schema() field, invalid type");
+      free($1);
+      free($2);
+      log_template_unref($4);
+    }
   ;
 
 /* INCLUDE_RULES */
