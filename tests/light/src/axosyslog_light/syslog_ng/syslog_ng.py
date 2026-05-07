@@ -58,6 +58,7 @@ class SyslogNg(object):
             control_socket_path=self.instance_paths.get_control_socket_path(),
         )
         self._external_tool = testcase_parameters.get_external_tool()
+        self._qemu_cpu = testcase_parameters.get_qemu_cpu()
         self._console_log_reader = ConsoleLogReader(self.instance_paths, teardown)
         self._syslog_ng_ctl = syslog_ng_ctl
         self._syslog_ng_executor = syslog_ng_executor
@@ -225,6 +226,11 @@ class SyslogNg(object):
         elif self._external_tool == "strace":
             self._process = self._syslog_ng_executor.run_process_with_strace(
                 strace_output_path=Path(f"syslog_ng_{self.instance_paths.get_instance_name()}_strace_output"),
+                **args,
+            )
+        elif self._external_tool == "qemu":
+            self._process = self._syslog_ng_executor.run_process_with_qemu(
+                qemu_cpu_type=self._qemu_cpu,
                 **args,
             )
         else:

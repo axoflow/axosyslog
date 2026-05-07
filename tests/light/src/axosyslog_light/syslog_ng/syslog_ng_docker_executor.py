@@ -112,6 +112,15 @@ class SyslogNgDockerExecutor(SyslogNgExecutor):
     ) -> Popen:
         raise NotImplementedError()
 
+    def run_process_with_qemu(
+        self,
+        start_params: SyslogNgStartParams,
+        stderr_path: Path,
+        stdout_path: Path,
+        qemu_cpu_type: str,
+    ) -> Popen:
+        raise NotImplementedError()
+
     def get_backtrace_from_core(
         self,
         core_file_path: Path,

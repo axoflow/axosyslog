@@ -21,6 +21,7 @@
  *
  */
 #include "csv-scanner.h"
+#include "csv-scanner-simd.h"
 #include "str-utils.h"
 #include "string-list.h"
 #include "scratch-buffers.h"
@@ -265,9 +266,17 @@ static void
 _parse_characters_with_quotation(CSVScanner *self, gboolean *nonliteral_input)
 {
   gchar ch;
-  const gchar *backslash = strchrnul(self->src, '\\');
-  const gchar *quote = strchrnul(self->src, self->current_quote);
-  const gchar *nexthop = MIN(backslash, quote);
+  CSVSimdFindResult result;
+  gsize remaining = self->input_end - self->src;
+
+  csv_simd_find_either(self->src, remaining, '\\', self->current_quote, &result);
+
+  const gchar *nexthop;
+
+  if (result.offset >= 0)
+    nexthop = self->src + result.offset;
+  else
+    nexthop = self->src + remaining;  /* no match: scan to end of input */
 
   if (nexthop > self->src)
     {
@@ -489,6 +498,40 @@ _parse_value_with_whitespace_and_delimiter(CSVScanner *self)
   gboolean nonliteral_input = FALSE;
 
   self->current_value_start_ofs = self->src - self->input;
+
+  /* SIMD fast path for simple unquoted values with default delimiter */
+  if (csv_is_simd_available() && !self->current_quote && !self->options->string_delimiters && !self->options->delimiters &&
+      self->options->dialect == CSV_SCANNER_ESCAPE_NONE && !(self->options->flags & CSV_SCANNER_STRIP_WHITESPACE))
+    {
+      gsize remaining = self->input_end - self->src;
+      CSVSimdFindResult result;
+      /* Find delimiter, double-quote, or single-quote in a single SIMD pass */
+      csv_simd_find_either3(self->src, remaining, DEFAULT_DELIM_CHAR, '"', '\'', &result);
+
+      if (result.offset > 0)
+        {
+          /* Found delimiter or quote, copy up to it */
+          g_string_append_len(self->current_value, self->src, result.offset);
+          self->src += result.offset;
+          if (*self->src == DEFAULT_DELIM_CHAR)
+            {
+              self->src++;
+              return;
+            }
+          /* Fall through to handle quote */
+          self->current_quote = *self->src;
+          self->src++;
+          goto continuation;
+        }
+      else if (result.offset == 0)
+        {
+          /* Delimiter at start */
+          self->src++;
+          return;
+        }
+    }
+
+continuation:
   while (*self->src)
     {
       if (self->current_quote)
@@ -617,11 +660,149 @@ csv_scanner_append_rest(CSVScanner *self)
   return TRUE;
 }
 
+/************************************************************************
+ * SIMD fast path
+ *
+ * Activates when the CSVScannerOptions are simple enough that the
+ * classifier from csv-scanner-simd.h can represent the record faithfully:
+ *   - default ',' delimiter (no `delimiters`, no `string_delimiters`)
+ *   - default `"`/`'` quoting (no custom `quotes_start`)
+ *   - no `null_value` translation, no escape dialect,
+ *     no GREEDY
+ * Additionally bails if the record contains `'` anywhere, because the
+ * classifier only tracks `"` in its quotes mask.
+ *
+ * On success, one SIMD pass builds an array of (start, end, quoted) field
+ * offsets; subsequent scan_next calls dequeue from that array.  Bails out
+ * to the generic path on cases the classifier's view of quoting can't
+ * express (unterminated quoted field, literal content after closing quote
+ * like "foo"bar). */
+
+
+/* Trim whitespace from all unquoted fields in the fast path using SIMD. */
+static void
+_trim_fast_path_fields_whitespace(CSVScanner *self)
+{
+  for (guint i = 0; i < self->fast_path_fields->len; i++)
+    {
+      CSVFieldOfs *f = &g_array_index(self->fast_path_fields, CSVFieldOfs, i);
+      if (f->quoted)
+        continue;  /* Don't trim quoted fields */
+
+      f->start_ofs = csv_simd_trim_leading_whitespace(self->input, f->start_ofs, f->end_ofs);
+      f->end_ofs = csv_simd_trim_trailing_whitespace(self->input, f->start_ofs, f->end_ofs);
+    }
+}
+
+static gboolean
+_can_use_simd_fast_path(CSVScanner *self)
+{
+  CSVScannerOptions *o = self->options;
+
+  if (!csv_is_simd_available())
+    return FALSE;
+
+  if (o->delimiters != NULL)
+    return FALSE;
+
+  if (o->string_delimiters != NULL)
+    return FALSE;
+
+  if (o->quotes_start != NULL)
+    return FALSE;
+
+  if (o->null_value != NULL)
+    return FALSE;
+
+  if (o->dialect != CSV_SCANNER_ESCAPE_NONE)
+    return FALSE;
+
+  if (o->flags & CSV_SCANNER_GREEDY)
+    return FALSE;
+
+  return TRUE;
+}
+
+static gboolean
+_parse_all_fields_simd(CSVScanner *self)
+{
+  return csv_simd_parse(self->input, self->input_end - self->input, self->fast_path_fields);
+}
+
+static gboolean
+_scan_next_from_fast_path(CSVScanner *self)
+{
+  if (self->fast_path_current_field >= self->fast_path_fields_len)
+    {
+      self->src = self->input_end;
+      self->state = self->expected_columns == 0 ? CSV_STATE_FINISH : CSV_STATE_PARTIAL_INPUT;
+      return FALSE;
+    }
+
+  /* Use cached raw pointer + length (vs. g_array_index() indirection through ->data) */
+  CSVFieldOfs *f = &self->fast_path_fields_data[self->fast_path_current_field++];
+
+  self->current_value_start_pos = self->input + f->start_ofs - (f->quoted ? 1 : 0);
+  self->current_value_start_ofs = f->start_ofs;
+
+  /* Defer copying: store offset; csv_scanner_get_current_value() copies on demand.
+   * No need to truncate current_value here — _switch_to_next_column() already did
+   * that on entry to csv_scanner_scan_next(). */
+  self->deferred_field_start = f->start_ofs;
+  self->deferred_field_len = f->end_ofs - f->start_ofs;
+
+  /* Track src at the position past the consumed field so
+   * csv_scanner_is_scan_complete() and has_input_left() observe the right
+   * "any input left?" answer once iteration stops — for the last field
+   * end_ofs == input length, putting src at input_end (NUL); for a middle
+   * field src lands on the trailing delimiter (non-NUL). */
+  self->src = self->input + f->end_ofs;
+  return TRUE;
+}
+
+/* Activate the SIMD fast path for this scanner if possible.  Idempotent.
+ * After this returns, `self->fast_path_active` reflects whether subsequent
+ * scan_next calls will use the fast path. */
+static void
+_try_activate_fast_path(CSVScanner *self)
+{
+  if (self->fast_path_tried)
+    return;
+
+  self->fast_path_tried = TRUE;
+  self->fast_path_active = _can_use_simd_fast_path(self);
+  self->fast_path_active = self->fast_path_active && _parse_all_fields_simd(self);
+
+  if (self->fast_path_active && (self->options->flags & CSV_SCANNER_STRIP_WHITESPACE))
+    _trim_fast_path_fields_whitespace(self);
+
+  /* Snapshot the GArray's backing storage now that no more appends will
+   * happen for this record — the per-field hot path then avoids the
+   * GArray indirection entirely. */
+  if (self->fast_path_active)
+    {
+      self->fast_path_fields_data = (CSVFieldOfs *) self->fast_path_fields->data;
+      self->fast_path_fields_len = (gint) self->fast_path_fields->len;
+    }
+}
+
+gint
+csv_scanner_peek_field_count(CSVScanner *self)
+{
+  _try_activate_fast_path(self);
+  return self->fast_path_active ? self->fast_path_fields_len : -1;
+}
+
 gboolean
 csv_scanner_scan_next(CSVScanner *self)
 {
   if (!_switch_to_next_column(self))
     return FALSE;
+
+  _try_activate_fast_path(self);
+
+  if (self->fast_path_active)
+    return _scan_next_from_fast_path(self);
 
   self->current_value_start_pos = self->src;
 
@@ -651,21 +832,38 @@ csv_scanner_init(CSVScanner *scanner, CSVScannerOptions *options, const gchar *i
   memset(scanner, 0, sizeof(*scanner));
   scanner->state = CSV_STATE_INITIAL;
   scanner->input = scanner->src = input;
+  scanner->input_end = input + strlen(input);
   scanner->current_value = scratch_buffers_alloc();
   scanner->current_value_start_pos = NULL;
   scanner->current_column = 0;
   scanner->options = options;
+
+  /* Pre-allocate fast_path_fields for at least 16 columns to avoid early reallocations */
+  scanner->fast_path_fields = g_array_sized_new(FALSE, FALSE, sizeof(CSVFieldOfs), 16);
+  csv_detect_cpu_features();
 }
 
 void
 csv_scanner_set_expected_columns(CSVScanner *scanner, gint expected_columns)
 {
   scanner->expected_columns = expected_columns;
+
+  /* Pre-allocate fast_path_fields to avoid reallocations during SIMD parsing */
+  if (expected_columns > 16)
+    {
+      g_array_unref(scanner->fast_path_fields);
+      scanner->fast_path_fields = g_array_sized_new(FALSE, FALSE, sizeof(CSVFieldOfs), expected_columns + 16);
+    }
 }
 
 void
 csv_scanner_deinit(CSVScanner *self)
 {
+  if (self->fast_path_fields)
+    {
+      g_array_unref(self->fast_path_fields);
+      self->fast_path_fields = NULL;
+    }
 }
 
 gchar *

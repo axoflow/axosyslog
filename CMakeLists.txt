@@ -488,6 +488,22 @@ endif()
 
 add_compile_options(${IMPORTANT_WARNINGS} ${ACCEPTABLE_WARNINGS} ${EXTRA_WARNINGS})
 
+option(ENABLE_MANUAL_SIMD "Enable handcrafted vectorization code" ON)
+if (ENABLE_MANUAL_SIMD)
+  include(CheckCSourceCompiles)
+  set(_saved_required_flags "${CMAKE_REQUIRED_FLAGS}")
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} -mavx2")
+  check_c_source_compiles("
+    #include <immintrin.h>
+    int main(void) {
+      __m256i v = _mm256_set1_epi8(0);
+      (void)v;
+      return 0;
+    }
+  " SYSLOG_NG_MANUAL_AVX2)
+  set(CMAKE_REQUIRED_FLAGS "${_saved_required_flags}")
+endif()
+
 # Sanatizer configuration
 set(SANITIZER "OFF" CACHE STRING "Enable clang sanitizer")
 

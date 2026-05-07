@@ -426,6 +426,9 @@ AC_ARG_ENABLE(stackdump,
               [  --disable-stackdump       Disable stackdump support]
               ,,enable_stackdump="auto")
 
+AC_ARG_ENABLE(manual_simd,
+              [  --enable-manual-simd      Enable handcrafted vectorization code (recommended).],, enable_manual_simd="yes")
+
 AC_ARG_ENABLE(all-modules,
               [  --enable-all-modules    Forcibly enable all modules. (default: auto)]
               ,,enable_all_modules="auto")
@@ -671,6 +674,10 @@ AX_CHECK_COMPILE_FLAG(-Wold-style-declaration, CFLAGS_W_OLD_STYLE_DECLARATION="-
 
 AC_SUBST(CFLAGS_W_NO_INITIALIZER_OVERRIDES)
 AC_SUBST(CFLAGS_W_OLD_STYLE_DECLARATION)
+
+if test "x$enable_manual_simd" = "xyes"; then
+  AX_CHECK_COMPILE_FLAG(-mavx2, [AC_DEFINE([MANUAL_AVX2], [1], [Define to 1 if the compiler supports AVX2])])
+fi
 
 dnl User supplied CFLAGS come last
 CFLAGS="${CFLAGS_ADD} ${ac_cv_env_CFLAGS_value}"
@@ -2296,6 +2303,7 @@ AM_CONDITIONAL([HAVE_FMEMOPEN], [test x$ac_cv_func_fmemopen = xyes])
 AM_CONDITIONAL([HAVE_JAVAH], [test -n "$JAVAH_BIN"])
 AM_CONDITIONAL([HAVE_POETRY], [test -n "$POETRY"])
 AM_CONDITIONAL(ENABLE_IPV6, [test $enable_ipv6 = yes])
+AM_CONDITIONAL(ENABLE_MANUAL_SIMD, [test "$enable_manual_simd" = "yes"])
 
 AM_CONDITIONAL(OS_TYPE_MACOS, [test $ostype = "Darwin"])
 
@@ -2418,6 +2426,7 @@ echo "  systemd-journal support     : ${with_systemd_journal:=no}"
 echo "  JSON support                : $with_jsonc"
 echo "  perf support                : ${enable_perf:=no}"
 echo "  stackdump support           : ${enable_stackdump:=no}"
+echo "  manual vectorization code   : ${enable_manual_simd:=no}"
 echo " Build options:"
 echo "  Generate manual pages       : ${enable_manpages:=no}"
 echo "  Install manual pages        : ${enable_manpages_install:=no}"

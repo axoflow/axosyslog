@@ -146,6 +146,25 @@ class SyslogNgLocalExecutor(SyslogNgExecutor):
             stderr_path=stderr_path,
         )
 
+    def run_process_with_qemu(
+        self,
+        start_params: SyslogNgStartParams,
+        stderr_path: Path,
+        stdout_path: Path,
+        qemu_cpu_type: str,
+    ) -> Popen:
+        qemu_command_args = [
+            "qemu-x86_64",
+            "-cpu",
+            qemu_cpu_type,
+        ]
+        full_command_args = qemu_command_args + self.__construct_syslog_ng_command(start_params)
+        return self.__process_executor.start(
+            command=full_command_args,
+            stdout_path=stdout_path,
+            stderr_path=stderr_path,
+        )
+
     def get_backtrace_from_core(
         self,
         core_file_path: Path,

@@ -35,6 +35,7 @@ typedef struct _FilterXListObject
 FILTERX_DECLARE_TYPE(list);
 
 FilterXObject *filterx_list_new(void);
+FilterXObject *filterx_list_sized_new(gsize reserved_size);
 FilterXObject *filterx_list_new_from_syslog_ng_list(const gchar *repr, gssize repr_len);
 FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len);
 
