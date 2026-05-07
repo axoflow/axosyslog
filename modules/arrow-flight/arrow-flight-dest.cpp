@@ -98,6 +98,7 @@ DestinationDriver::init()
   GlobalConfig *cfg = log_pipe_get_config(&this->super->super.super.super.super);
   log_template_options_init(&this->template_options, cfg);
 
+  log_threaded_dest_driver_set_flush_on_worker_key_change(&this->super->super.super.super, TRUE);
   return log_threaded_dest_driver_init_method(&this->super->super.super.super.super);
 }
 

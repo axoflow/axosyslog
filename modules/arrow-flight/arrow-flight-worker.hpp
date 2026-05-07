@@ -57,6 +57,7 @@ public:
 private:
   DestinationDriver *get_owner();
   gint get_batch_size() const;
+  void prepare_batch();
   const gchar *format_path(LogMessage *msg, GString **buf, ScratchBuffersMarker *marker);
   bool open_stream(const gchar *path);
   void close_stream();

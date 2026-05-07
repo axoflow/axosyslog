@@ -66,6 +66,12 @@ DestinationWorker::get_batch_size() const
   return this->super->super.batch_size;
 }
 
+void
+DestinationWorker::prepare_batch()
+{
+  this->current_batch_path.clear();
+}
+
 bool
 DestinationWorker::init()
 {
@@ -340,10 +346,118 @@ DestinationWorker::close_stream()
   this->current_stream_path.clear();
 }
 
+static LogThreadedResult
+_map_arrow_status_to_log_threaded_result(const arrow::Status &status)
+{
+  if (status.ok())
+    return LTR_SUCCESS;
+
+  switch (status.code())
+    {
+    case arrow::StatusCode::IOError:
+    case arrow::StatusCode::Cancelled:
+    case arrow::StatusCode::OutOfMemory:
+    case arrow::StatusCode::UnknownError:
+      goto temporary_error;
+    case arrow::StatusCode::Invalid:
+    case arrow::StatusCode::TypeError:
+    case arrow::StatusCode::KeyError:
+    case arrow::StatusCode::NotImplemented:
+    case arrow::StatusCode::CapacityError:
+    case arrow::StatusCode::IndexError:
+    case arrow::StatusCode::SerializationError:
+    case arrow::StatusCode::AlreadyExists:
+      goto permanent_error;
+    default:
+      goto temporary_error;
+    }
+
+temporary_error:
+  msg_info("Arrow Flight server responded with a temporary error status code, retrying after time-reopen() seconds",
+            evt_tag_int("error_code", int(status.code())),
+            evt_tag_str("error_message", status.message().c_str()),
+            evt_tag_str("error_details", status.detail()->ToString().c_str()));
+  return LTR_NOT_CONNECTED;
+
+permanent_error:
+  msg_error("Arrow Flight server responded with a permanent error status code, dropping batch",
+            evt_tag_int("error_code", int(status.code())),
+            evt_tag_str("error_message", status.message().c_str()),
+            evt_tag_str("error_details", status.detail()->ToString().c_str()));
+  return LTR_DROP;
+}
+
 LogThreadedResult
 DestinationWorker::flush(LogThreadedFlushMode mode)
 {
-  return LTR_SUCCESS;
+  DestinationDriver *owner = this->get_owner();
+  LogThreadedResult result = LTR_ERROR;
+  std::vector<std::shared_ptr<arrow::Array>> arrays;
+  std::shared_ptr<arrow::RecordBatch> batch;
+  std::shared_ptr<arrow::Buffer> ack;
+  arrow::Status status;
+  const gchar *path = this->current_batch_path.c_str();
+
+  if (this->get_batch_size() == 0)
+    return LTR_SUCCESS;
+
+  for (auto &builder : this->builders)
+    {
+      auto finish_result = builder->Finish();
+      if (!finish_result.ok())
+        {
+          msg_error("arrow-flight: Failed to finalize Arrow array",
+                    evt_tag_str("error", finish_result.status().ToString().c_str()),
+                    log_pipe_location_tag(&this->super->super.owner->super.super.super));
+          /* Finish() may leave the builders in an undefined state; force a reconnect
+           * so disconnect() resets them via create_builders(). */
+          result = LTR_NOT_CONNECTED;
+          goto exit;
+        }
+      arrays.push_back(*finish_result);
+    }
+
+  batch = arrow::RecordBatch::Make(owner->get_arrow_schema(), this->get_batch_size(), arrays);
+
+  if (!this->writer || this->current_stream_path != path)
+    {
+      if (!this->open_stream(path))
+        {
+          result = LTR_NOT_CONNECTED;
+          goto exit;
+        }
+    }
+
+  status = this->writer->WriteRecordBatch(*batch);
+  if (!status.ok())
+    {
+      msg_error("arrow-flight: Failed to write record batch",
+                evt_tag_str("error", status.ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      result = _map_arrow_status_to_log_threaded_result(status);
+      /* Stream is likely broken on the server side; drop it so the next flush opens a fresh one. */
+      this->close_stream();
+      goto exit;
+    }
+
+  status = this->metadata_reader->ReadMetadata(&ack);
+  if (!status.ok())
+    {
+      msg_error("arrow-flight: Failed to read ack",
+                evt_tag_str("error", status.ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      result = _map_arrow_status_to_log_threaded_result(status);
+      this->close_stream();
+      goto exit;
+    }
+
+  msg_debug("arrow-flight: Batch delivered",
+            log_pipe_location_tag(&this->super->super.owner->super.super.super));
+  result = LTR_SUCCESS;
+
+exit:
+  this->prepare_batch();
+  return result;
 }
 
 
