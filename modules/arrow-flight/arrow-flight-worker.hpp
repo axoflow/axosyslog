@@ -31,6 +31,11 @@
 #include "logthrdest/logthrdestdrv.h"
 #include "compat/cpp-end.h"
 
+#include <arrow/api.h>
+#include <arrow/flight/api.h>
+
+#include <memory>
+
 namespace syslog_ng {
 namespace arrow_flight {
 
@@ -51,6 +56,8 @@ private:
   DestinationDriver *get_owner();
 
   ArrowFlightDestWorker *super;
+  arrow::flight::Location location;
+  std::unique_ptr<arrow::flight::FlightClient> client;
 };
 
 }

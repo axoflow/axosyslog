@@ -25,7 +25,11 @@
 
 #include "compat/cpp-start.h"
 #include "logthrdest/logthrdestdrv.h"
+#include "messages.h"
 #include "compat/cpp-end.h"
+
+#include <arrow/api.h>
+#include <arrow/flight/api.h>
 
 using syslog_ng::arrow_flight::DestinationDriver;
 using syslog_ng::arrow_flight::DestinationWorker;
@@ -54,6 +58,19 @@ DestinationWorker::get_owner()
 bool
 DestinationWorker::init()
 {
+  DestinationDriver *owner = this->get_owner();
+
+  auto location_result = arrow::flight::Location::Parse(owner->get_url());
+  if (!location_result.ok())
+    {
+      msg_error("arrow-flight: Failed to parse URL",
+                evt_tag_str("url", owner->get_url().c_str()),
+                evt_tag_str("error", location_result.status().ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      return false;
+    }
+  this->location = *location_result;
+
   return log_threaded_dest_worker_init_method(&this->super->super);
 }
 
@@ -66,12 +83,34 @@ DestinationWorker::deinit()
 bool
 DestinationWorker::connect()
 {
+  DestinationDriver *owner = this->get_owner();
+
+  auto client_result = arrow::flight::FlightClient::Connect(this->location);
+  if (!client_result.ok())
+    {
+      msg_error("arrow-flight: Failed to connect to server",
+                evt_tag_str("url", owner->get_url().c_str()),
+                evt_tag_str("error", client_result.status().ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      return false;
+    }
+  this->client = std::move(*client_result);
+
   return true;
 }
 
 void
 DestinationWorker::disconnect()
 {
+  if (this->client)
+    {
+      auto status = this->client->Close();
+      if (!status.ok())
+        msg_warning("arrow-flight: Error closing client connection",
+                    evt_tag_str("error", status.ToString().c_str()),
+                    log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      this->client.reset();
+    }
 }
 
 LogThreadedResult
