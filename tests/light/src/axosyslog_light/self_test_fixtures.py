@@ -35,6 +35,7 @@ def fake_testcase_parameters(request, tmpdir):
     request.config.option.installdir = tmpdir.join("installdir")
     request.config.option.reports = tmpdir.join("reports")
     request.config.option.run_under = ""
+    request.config.option.qemu_cpu = ""
 
     yield TestcaseParameters(request)
 

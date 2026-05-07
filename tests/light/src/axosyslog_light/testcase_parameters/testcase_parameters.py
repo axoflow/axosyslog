@@ -42,6 +42,7 @@ class TestcaseParameters(object):
             },
             "testcase_name": testcase_name,
             "external_tool": pytest_request.config.getoption("run_under"),
+            "qemu_cpu": pytest_request.config.getoption("qemu_cpu"),
         }
 
         try:
@@ -67,3 +68,6 @@ class TestcaseParameters(object):
 
     def get_external_tool(self):
         return self.testcase_parameters["external_tool"]
+
+    def get_qemu_cpu(self):
+        return self.testcase_parameters["qemu_cpu"]

@@ -80,7 +80,8 @@ class InstallDirAction(argparse.Action):
 # Command line options
 def pytest_addoption(parser):
     parser.addoption("--runslow", action="store_true", default=False, help="run slow tests")
-    parser.addoption("--run-under", help="Run syslog-ng under selected tool, example tools: [valgrind, strace, gdb, gdb_for_bt]")
+    parser.addoption("--run-under", help="Run syslog-ng under selected tool, example tools: [valgrind, strace, gdb, gdb_for_bt, qemu]")
+    parser.addoption("--qemu-cpu", help="When wrapped in qemu, specify CPU kind (eg. max=host native features, qemu64=SIMD disabled)", default="max")
 
     parser.addoption(
         "--runner",
