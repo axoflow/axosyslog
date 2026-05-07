@@ -103,6 +103,8 @@ DestinationWorker::connect()
 void
 DestinationWorker::disconnect()
 {
+  this->close_stream();
+
   if (this->client)
     {
       auto status = this->client->Close();
@@ -142,6 +144,53 @@ DestinationWorker::format_path(LogMessage *msg, GString **buf, ScratchBuffersMar
                                 };
   log_template_format(path_template, msg, &opts, *buf);
   return (*buf)->str;
+}
+
+bool
+DestinationWorker::open_stream(const gchar *path)
+{
+  this->close_stream();
+
+  DestinationDriver *owner = this->get_owner();
+
+  auto descriptor = arrow::flight::FlightDescriptor::Path({path});
+  auto put_result = this->client->DoPut(arrow::flight::FlightCallOptions{}, descriptor, owner->get_arrow_schema());
+  if (!put_result.ok())
+    {
+      msg_error("arrow-flight: DoPut failed",
+                evt_tag_str("error", put_result.status().ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+      return false;
+    }
+
+  this->writer = std::move(put_result->writer);
+  this->metadata_reader = std::move(put_result->reader);
+  this->current_stream_path = path;
+
+  return true;
+}
+
+void
+DestinationWorker::close_stream()
+{
+  if (!this->writer)
+    return;
+
+  auto s = this->writer->DoneWriting();
+  if (!s.ok())
+    msg_warning("arrow-flight: Error closing stream",
+                evt_tag_str("error", s.ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+
+  s = this->writer->Close();
+  if (!s.ok())
+    msg_warning("arrow-flight: Error closing stream",
+                evt_tag_str("error", s.ToString().c_str()),
+                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+
+  this->writer.reset();
+  this->metadata_reader.reset();
+  this->current_stream_path.clear();
 }
 
 LogThreadedResult
