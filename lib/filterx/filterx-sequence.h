@@ -104,10 +104,6 @@ filterx_sequence_normalize_index(FilterXObject *index_object,
 static inline void
 filterx_sequence_init_instance(FilterXSequence *self, FilterXType *type)
 {
-#if SYSLOG_NG_ENABLE_DEBUG
-  g_assert(type->is_mutable);
-#endif
-
   filterx_object_init_instance(&self->super, type);
 }
 

@@ -85,6 +85,8 @@ FilterXObject *filterx_typecast_protobuf(FilterXExpr *s, FilterXObject *args[], 
 FilterXObject *filterx_string_new_translated(const gchar *str, gssize str_len, FilterXStringTranslateFunc translate);
 FilterXObject *filterx_string_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_string_new_from_json_literal(const gchar *str, gssize str_len);
+FilterXObject *filterx_string_new_frozen(const gchar *str);
+
 FilterXObject *filterx_bytes_new(const gchar *str, gssize str_len);
 FilterXObject *filterx_bytes_new_take(gchar *str, gssize str_len);
 FilterXObject *filterx_protobuf_new(const gchar *str, gssize str_len);
@@ -181,14 +183,31 @@ filterx_string_strdup_value(FilterXObject *s)
 static inline FilterXObject *
 _filterx_string_resolve_from_cache(const gchar *str, gssize str_len)
 {
-  if (str_len == 0 || str[0] == 0)
+  if (str_len < 0)
     {
-      return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+      /* length unspecified */
+      if (str[0] == 0)
+        {
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+        }
+      else if (str[0] >= '0' && str[0] < '9' && str[1] == 0)
+        {
+          gint index = str[0] - '0';
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
+        }
     }
-  else if (str[0] >= '0' && str[0] < '9' && (str_len == 1 || str[1] == 0))
+  else
     {
-      gint index = str[0] - '0';
-      return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
+      /* explicit length */
+      if (str_len == 0)
+        {
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+        }
+      else if (str_len == 1 && str[0] >= '0' && str[0] < '9')
+        {
+          gint index = str[0] - '0';
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
+        }
     }
   return NULL;
 }
@@ -233,14 +252,6 @@ filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
     }
 
   return _filterx_string_new_slice_from_non_string(object, start, end);
-}
-
-static inline FilterXObject *
-filterx_string_new_frozen(const gchar *str, GlobalConfig *cfg)
-{
-  FilterXObject *self = filterx_string_new(str, -1);
-  filterx_object_freeze(&self, cfg);
-  return self;
 }
 
 static inline FilterXObject *

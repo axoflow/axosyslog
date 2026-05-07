@@ -43,7 +43,8 @@
 #include "apphook.h"
 #include "scratch-buffers.h"
 
-FilterXObject *test_dummy_function(FilterXExpr *s, FilterXObject *args[], gsize args_len)
+FilterXObject *
+test_dummy_function(FilterXExpr *s, FilterXObject *args[], gsize args_len)
 {
   GString *repr = scratch_buffers_alloc();
   GString *out = scratch_buffers_alloc();
@@ -103,7 +104,7 @@ Test(expr_function, test_function_valid_arg)
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_as_cstr(res);
-  cr_assert_str_eq(str, "bad format 1");
+  cr_assert_str_eq(str, "\"bad format 1\"");
   filterx_expr_unref(func);
   filterx_object_unref(res);
 }
@@ -126,7 +127,7 @@ Test(expr_function, test_function_multiple_args)
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
   const gchar *str = filterx_string_get_value_as_cstr(res);
-  cr_assert_str_eq(str, "null443foobar");
+  cr_assert_str_eq(str, "null443\"foobar\"");
   filterx_expr_unref(func);
   filterx_object_unref(res);
 }

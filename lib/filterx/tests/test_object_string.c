@@ -25,6 +25,7 @@
 #include "filterx/object-string.h"
 #include "filterx/object-null.h"
 #include "filterx/expr-function.h"
+#include "filterx/filterx-eval.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
@@ -46,12 +47,15 @@ Test(filterx_string, test_filterx_object_string_maps_to_the_right_json_value)
 
 Test(filterx_string, test_frozen_string_deduplication)
 {
-  FilterXObject *str = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str2 = filterx_string_new_frozen("abcd", configuration);
-  FilterXObject *str3 = filterx_string_new_frozen("abcde", configuration);
+  FilterXEvalContext context;
+  filterx_eval_begin_compile(&context, configuration);
+  FilterXObject *str = filterx_string_new_frozen("abcd");
+  FilterXObject *str2 = filterx_string_new_frozen("abcd");
+  FilterXObject *str3 = filterx_string_new_frozen("abcde");
 
   cr_assert_eq(str, str2);
   cr_assert_neq(str, str3);
+  filterx_eval_end_compile(&context);
 }
 
 Test(filterx_string, test_string_taking_allocated_storage)
@@ -59,6 +63,14 @@ Test(filterx_string, test_string_taking_allocated_storage)
   FilterXObject *str = filterx_string_new_take(g_strdup("abcd"), 4);
 
   assert_object_json_equals(str, "\"abcd\"");
+  filterx_object_unref(str);
+}
+
+Test(filterx_string, test_string_with_a_single_nul_character)
+{
+  FilterXObject *str = filterx_string_new("\x00", 1);
+
+  assert_object_str_equals(str, "\x00");
   filterx_object_unref(str);
 }
 
@@ -193,10 +205,14 @@ Test(filterx_string, test_filterx_string_cache_json_escaping_need)
 
 Test(filterx_string, test_filterx_string_frozen_json_escaping_need)
 {
-  FilterXObject *fobj = filterx_string_new_frozen("foo\"bar", configuration);
+  FilterXEvalContext context;
+
+  filterx_eval_begin_compile(&context, configuration);
+  FilterXObject *fobj = filterx_string_new_frozen("foo\"bar");
   cr_assert(filterx_string_is_json_escaping_needed(fobj));
   assert_object_json_equals(fobj, "\"foo\\\"bar\"");
   cr_assert(filterx_string_is_json_escaping_needed(fobj));
+  filterx_eval_end_compile(&context);
 }
 
 Test(filterx_string, test_filterx_string_typecast_null_args)
@@ -259,7 +275,8 @@ Test(filterx_string, test_filterx_string_typecast_from_bytes)
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
-  cr_assert(memcmp("001f2062797465205c73657175656e6365207f20ff", str, size) == 0);
+  cr_assert(size == 21, "size: %d", (gint) size);
+  cr_assert(memcmp("\x00\x1f byte \\sequence \x7f \xff", str, size) == 0);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
@@ -275,7 +292,8 @@ Test(filterx_string, test_filterx_string_typecast_from_protobuf)
 
   gsize size = 0;
   const gchar *str = filterx_string_get_value_ref(obj, &size);
-  cr_assert(memcmp("ff6e6f7420612076616c69642070726f746f6275662120d9", str, size) == 0);
+  cr_assert(size == 23, "size: %d", (gint) size);
+  cr_assert(memcmp("\xffnot a valid protobuf! \xd9", str, size) == 0);
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);

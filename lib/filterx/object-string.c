@@ -19,15 +19,14 @@
  * COPYING for details.
  *
  */
-#include "object-string.h"
-#include "object-extractor.h"
+#include "filterx/object-string.h"
+#include "filterx/object-extractor.h"
 #include "filterx/filterx-globals.h"
-#include "filterx-ref.h"
-#include "filterx-eval.h"
+#include "filterx/filterx-config.h"
+#include "filterx/filterx-eval.h"
 #include "str-utils.h"
 #include "scratch-buffers.h"
 #include "str-format.h"
-#include "str-utils.h"
 #include "utf8utils.h"
 
 FilterXObject *fx_string_cache[FILTERX_STRING_CACHE_SIZE];
@@ -100,11 +99,18 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_string_repr(FilterXObject *s, GString *repr)
+_string_str(FilterXObject *s, GString *repr)
 {
   FilterXString *self = (FilterXString *) s;
   repr = g_string_append_len(repr, self->str, self->str_len);
   return TRUE;
+}
+
+static gboolean
+_string_repr(FilterXObject *s, GString *repr)
+{
+  FilterXString *self = (FilterXString *) s;
+  return string_format_json(self->str, self->str_len, TRUE, repr);
 }
 
 gboolean
@@ -193,26 +199,24 @@ _string_new(const gchar *str, gssize str_len, FilterXStringTranslateFunc transla
   return self;
 }
 
-static gboolean
-_string_dedup(FilterXObject **pself, GHashTable *dedup_storage)
+static void
+_string_dedup(FilterXObject **pself, FilterXObjectDeduplicator *dedup)
 {
   FilterXString *self = (FilterXString *) *pself;
 
   gchar *dedup_key = g_strdup_printf("string_%.*s", self->str_len, self->str);
-  FilterXObject *dedup_str = g_hash_table_lookup(dedup_storage, dedup_key);
-  if (dedup_str)
+  if (!filterx_object_deduplicator_dedup(dedup, pself, dedup_key))
     {
-      filterx_object_unref(*pself);
-      *pself = filterx_object_ref(dedup_str);
-      g_free(dedup_key);
-      return TRUE;
-    }
+      filterx_object_hash(&self->super);
+      if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
+        filterx_string_mark_safe_without_json_escaping(&self->super);
 
-  filterx_object_hash(&self->super);
-  if (!unsafe_utf8_is_escaping_needed(self->str, self->str_len, AUTF8_UNSAFE_QUOTE))
-    filterx_string_mark_safe_without_json_escaping(&self->super);
-  g_hash_table_insert(dedup_storage, dedup_key, self);
-  return TRUE;
+      filterx_object_deduplicator_add(dedup, dedup_key, *pself);
+    }
+  else
+    {
+      g_free(dedup_key);
+    }
 }
 
 static guint
@@ -420,6 +424,14 @@ _filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gs
   return _filterx_string_new_slice_from_borrowed_str_and_len(object, str, str_len);
 }
 
+FilterXObject *
+filterx_string_new_frozen(const gchar *str)
+{
+  FilterXObject *self = filterx_string_new(str, -1);
+  filterx_eval_freeze_object(&self);
+  return self;
+}
+
 static inline gsize
 _get_base64_encoded_size(gsize len)
 {
@@ -487,10 +499,10 @@ _bytes_repr(FilterXObject *s, GString *repr)
 {
   FilterXString *self = (FilterXString *) s;
 
-  gsize target_len = self->str_len * 2;
-  gsize repr_len = repr->len;
-  g_string_set_size(repr, target_len + repr_len);
-  format_hex_string_with_delimiter(self->str, self->str_len, repr->str + repr_len, target_len + 1, 0);
+  g_string_append(repr, "bytes(\"");
+  append_unsafe_utf8_as_escaped_binary(repr, self->str, self->str_len, AUTF8_UNSAFE_QUOTE);
+  g_string_append(repr, "\")");
+
   return TRUE;
 }
 
@@ -527,6 +539,18 @@ filterx_bytes_new_take(gchar *mem, gssize mem_len)
   FilterXObject *s = filterx_string_new_take(mem, mem_len);
   s->type = &FILTERX_TYPE_NAME(bytes);
   return s;
+}
+
+static gboolean
+_protobuf_repr(FilterXObject *s, GString *repr)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  g_string_append(repr, "protobuf(\"");
+  append_unsafe_utf8_as_escaped_binary(repr, self->str, self->str_len, AUTF8_UNSAFE_QUOTE);
+  g_string_append(repr, "\")");
+
+  return TRUE;
 }
 
 FilterXObject *
@@ -644,6 +668,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .format_json = _string_format_json,
                     .truthy = _truthy,
                     .repr = _string_repr,
+                    .str = _string_str,
                     .add = _string_add,
                     .hash = _string_hash,
                     .equal = _string_equal,
@@ -657,6 +682,7 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                     .len = _len,
                     .format_json = _bytes_format_json,
                     .truthy = _truthy,
+                    .str = _string_str,
                     .repr = _bytes_repr,
                     .add = _bytes_add,
                     .free_fn = _free,
@@ -668,7 +694,8 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
                     .marshal = _protobuf_marshal,
                     .format_json = _bytes_format_json,
                     .truthy = _truthy,
-                    .repr = _bytes_repr,
+                    .str = _string_str,
+                    .repr = _protobuf_repr,
                     .free_fn = _free,
                    );
 

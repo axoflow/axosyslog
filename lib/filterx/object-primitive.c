@@ -45,6 +45,23 @@ _truthy(FilterXObject *s)
   return !gn_is_zero(&self->value);
 }
 
+static guint
+_hash(FilterXObject *s)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+
+  return gn_as_int64(&self->value);
+}
+
+static gboolean
+_equal(FilterXObject *s, FilterXObject *o)
+{
+  FilterXPrimitive *self = (FilterXPrimitive *) s;
+  FilterXPrimitive *other = (FilterXPrimitive *) o;
+
+  return gn_compare(&self->value, &other->value) == 0;
+}
+
 static FilterXPrimitive *
 filterx_primitive_new(FilterXType *type)
 {
@@ -439,6 +456,8 @@ FILTERX_DEFINE_TYPE(primitive, FILTERX_TYPE_NAME(object),
                     .is_abstract = TRUE,
                     .truthy = _truthy,
                     .repr = _repr,
+                    .equal = _equal,
+                    .hash = _hash,
                    );
 
 FILTERX_DEFINE_TYPE(integer, FILTERX_TYPE_NAME(primitive),

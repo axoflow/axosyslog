@@ -25,6 +25,7 @@
 #include "filterx/object-primitive.h"
 #include "filterx/object-dict.h"
 #include "filterx/object-list.h"
+#include "filterx/object-tuple.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-object.h"
 #include "filterx/object-null.h"
@@ -150,7 +151,10 @@ _literal_container_optimize(FilterXExpr *s)
   if (literal)
     return filterx_literal_new(container);
   else
-    self->sparse_container = container;
+    {
+      self->sparse_container = container;
+      filterx_eval_freeze_object(&self->sparse_container);
+    }
 
   return NULL;
 }
@@ -516,5 +520,105 @@ filterx_literal_list_new(GList *elements)
   return &self->super;
 }
 
+/* Literal tuple objects */
+
+static inline gboolean
+_literal_tuple_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject *result, gboolean early_eval)
+{
+  FilterXObject *value = NULL;
+
+  value = _literal_container_eval_expr(elem->value, early_eval);
+  if (!value)
+    {
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
+      return FALSE;
+    }
+
+  value = filterx_object_cow_fork2(value, NULL);
+  filterx_tuple_set_subscript(result, filterx_tuple_get_length(result), &value);
+  filterx_object_unref(value);
+  return TRUE;
+}
+
+/*
+ * This is an inline version with two variants,
+ *
+ * "fastpath" == TRUE means we * are doing this at eval time by which point
+ *                    we already did a filterx_ptuple_seal()
+ *
+ * "fastpath" == FALSE means we are still doing this at compilation time and
+ *               seal is yet to be called.
+ */
+static inline FilterXObject *
+_literal_tuple_eval_adaptive(FilterXExpr *s, gboolean early_eval)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  FilterXObject *result = filterx_tuple_new(len);
+
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem;
+
+      if (early_eval)
+        elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
+      else
+        elem = (FilterXLiteralElement *) filterx_pointer_list_index_fast(&self->elements, i);
+
+      if (!_literal_tuple_eval_elem(self, elem, result, early_eval))
+        goto error;
+    }
+
+  return result;
+error:
+  filterx_object_unref(result);
+  return NULL;
+}
+
+/* evaluate during optimize while the expressions are yet to be initialized */
+static FilterXObject *
+_literal_tuple_eval_early(FilterXLiteralContainer *self)
+{
+  return _literal_tuple_eval_adaptive(&self->super, TRUE);
+}
+
+static FilterXObject *
+_literal_tuple_eval(FilterXExpr *s)
+{
+  return _literal_tuple_eval_adaptive(s, FALSE);
+}
+
+gboolean
+filterx_literal_tuple_foreach(FilterXExpr *s, FilterXLiteralListForeachFunc func, gpointer user_data)
+{
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
+
+      if (!func(i, elem->value, user_data))
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+FilterXExpr *
+filterx_literal_tuple_new(GList *elements)
+{
+  FilterXLiteralContainer *self = g_new0(FilterXLiteralContainer, 1);
+
+  _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_tuple));
+  self->super.eval = _literal_tuple_eval;
+  self->eval_early = _literal_tuple_eval_early;
+  filterx_pointer_list_add_list(&self->elements, elements);
+
+  return &self->super;
+}
+
 FILTERX_EXPR_DEFINE_TYPE(literal_list);
 FILTERX_EXPR_DEFINE_TYPE(literal_dict);
+FILTERX_EXPR_DEFINE_TYPE(literal_tuple);
