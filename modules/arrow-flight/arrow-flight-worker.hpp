@@ -29,6 +29,7 @@
 
 #include "compat/cpp-start.h"
 #include "logthrdest/logthrdestdrv.h"
+#include "scratch-buffers.h"
 #include "compat/cpp-end.h"
 
 #include <arrow/api.h>
@@ -55,11 +56,17 @@ public:
 private:
   DestinationDriver *get_owner();
   std::string format_path(LogMessage *msg);
+  bool open_stream(const gchar *path);
+  void close_stream();
 
   ArrowFlightDestWorker *super;
   arrow::flight::Location location;
   std::unique_ptr<arrow::flight::FlightClient> client;
   GString *path_buf;
+
+  std::unique_ptr<arrow::flight::FlightStreamWriter> writer;
+  std::unique_ptr<arrow::flight::FlightMetadataReader> metadata_reader;
+  std::string current_stream_path;
 };
 
 }
