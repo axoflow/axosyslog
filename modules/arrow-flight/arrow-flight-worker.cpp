@@ -27,9 +27,12 @@
 #include "logthrdest/logthrdestdrv.h"
 #include "scratch-buffers.h"
 #include "messages.h"
+#include "logmsg/type-hinting.h"
 #include "compat/cpp-end.h"
 
 #include <arrow/api.h>
+#include <arrow/array/builder_primitive.h>
+#include <arrow/array/builder_binary.h>
 #include <arrow/flight/api.h>
 
 using syslog_ng::arrow_flight::DestinationDriver;
@@ -137,6 +140,56 @@ DestinationWorker::create_builders()
       this->builders.push_back(std::move(*builder_result));
     }
   return true;
+}
+
+bool
+DestinationWorker::append_value(arrow::ArrayBuilder *builder, const std::shared_ptr<arrow::DataType> &type,
+                                const char *str, gssize len)
+{
+  arrow::Status s;
+
+  switch (type->id())
+    {
+    case arrow::Type::STRING:
+      s = static_cast<arrow::StringBuilder *>(builder)->Append(str, (int32_t) len);
+      break;
+    case arrow::Type::INT64:
+    {
+      gint64 v;
+      if (!type_cast_to_int64(str, len, &v, NULL))
+        return false;
+      s = static_cast<arrow::Int64Builder *>(builder)->Append((int64_t) v);
+      break;
+    }
+    case arrow::Type::DOUBLE:
+    {
+      gdouble v;
+      if (!type_cast_to_double(str, len, &v, NULL))
+        return false;
+      s = static_cast<arrow::DoubleBuilder *>(builder)->Append((double) v);
+      break;
+    }
+    case arrow::Type::BOOL:
+    {
+      gboolean v;
+      if (!type_cast_to_boolean(str, len, &v, NULL))
+        return false;
+      s = static_cast<arrow::BooleanBuilder *>(builder)->Append((bool) v);
+      break;
+    }
+    case arrow::Type::TIMESTAMP:
+    {
+      gint64 v;
+      if (!type_cast_to_int64(str, len, &v, NULL))
+        return false;
+      s = static_cast<arrow::TimestampBuilder *>(builder)->Append((int64_t) v);
+      break;
+    }
+    default:
+      return false;
+    }
+
+  return s.ok();
 }
 
 LogThreadedResult
