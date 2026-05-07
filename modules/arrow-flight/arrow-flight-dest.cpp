@@ -27,9 +27,11 @@
 #include "compat/cpp-start.h"
 #include "logthrdest/logthrdestdrv.h"
 #include "stats/stats-cluster-key-builder.h"
+#include "messages.h"
 #include "compat/cpp-end.h"
 
 using syslog_ng::arrow_flight::DestinationDriver;
+using syslog_ng::arrow_flight::SchemaField;
 
 struct _ArrowFlightDestDriver
 {
@@ -52,6 +54,18 @@ DestinationDriver::~DestinationDriver()
 bool
 DestinationDriver::init()
 {
+  if (this->schema_fields.empty())
+    {
+      msg_error("Error initializing arrow-flight destination, schema() must be set",
+                log_pipe_location_tag(&this->super->super.super.super.super));
+      return false;
+    }
+
+  std::vector<std::shared_ptr<arrow::Field>> fields;
+  for (const auto &f : this->schema_fields)
+    fields.push_back(arrow::field(f.name, f.type));
+  this->arrow_schema = arrow::schema(fields);
+
   GlobalConfig *cfg = log_pipe_get_config(&this->super->super.super.super.super);
   log_template_options_init(&this->template_options, cfg);
 

@@ -31,8 +31,10 @@
 #include "compat/cpp-end.h"
 
 #include <arrow/type.h>
+#include <arrow/api.h>
 
 #include <string>
+#include <vector>
 #include <memory>
 
 namespace syslog_ng {
@@ -102,24 +104,38 @@ public:
 
   void add_string_schema_field(std::string name, LogTemplate *value)
   {
+    this->schema_fields.emplace_back(name, arrow::utf8(), value);
   }
 
   void add_integer_schema_field(std::string name, LogTemplate *value)
   {
+    this->schema_fields.emplace_back(name, arrow::int64(), value);
   }
 
   void add_double_schema_field(std::string name, LogTemplate *value)
   {
+    this->schema_fields.emplace_back(name, arrow::float64(), value);
   }
 
   void add_bool_schema_field(std::string name, LogTemplate *value)
   {
+    this->schema_fields.emplace_back(name, arrow::boolean(), value);
   }
 
   void add_timestamp_schema_field(std::string name, LogTemplate *value)
   {
+    this->schema_fields.emplace_back(name, arrow::timestamp(arrow::TimeUnit::NANO, "UTC"), value);
   }
 
+  const std::vector<SchemaField> &get_schema_fields() const
+  {
+    return this->schema_fields;
+  }
+
+  const std::shared_ptr<arrow::Schema> &get_arrow_schema() const
+  {
+    return this->arrow_schema;
+  }
 
 private:
   ArrowFlightDestDriver *super;
@@ -127,6 +143,8 @@ private:
   std::string url;
   LogTemplateOptions template_options;
   LogTemplate *path_template = nullptr;
+  std::vector<SchemaField> schema_fields;
+  std::shared_ptr<arrow::Schema> arrow_schema;
 };
 
 }
