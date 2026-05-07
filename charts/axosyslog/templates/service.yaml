@@ -3,10 +3,22 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ template "axosyslog.fullname" . }}-syslog
+{{- with .Values.service.annotations }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
 spec:
   selector:
     app: {{ template "axosyslog.fullname" . }}-syslog
-  type: NodePort
+  type: {{ .Values.service.type | default "NodePort" }}
+  sessionAffinity: {{ .Values.service.sessionAffinity | default "None" }}
+{{- if .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+{{- end }}
+{{- if .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+{{ toYaml .Values.service.loadBalancerSourceRanges | indent 4 }}
+{{- end }}
   ports:
 {{ if .Values.service.extraPorts }}
 {{ toYaml ( .Values.service.extraPorts ) | nindent 4 }}
@@ -16,29 +28,39 @@ spec:
 {{- if .syslog.enabled }}
     - name: rfc3164-udp
       protocol: UDP
+{{- if eq $.Values.service.type "NodePort" }}
       nodePort: {{ .syslog.rfc3164UdpPort | default 30514 }}
+{{- end }}
       port: 514
       targetPort: rfc3164-udp
     - name: rfc3164-tcp
       protocol: TCP
+{{- if eq $.Values.service.type "NodePort" }}
       nodePort: {{ .syslog.rfc3164TcpPort | default 30514 }}
+{{- end }}
       port: 514
       targetPort: rfc3164-tcp
     - name: rfc5424-tls
       protocol: TCP
+{{- if eq $.Values.service.type "NodePort" }}
       nodePort: {{ .syslog.rfc5424TlsPort | default 30614 }}
+{{- end }}
       port: 6514
       targetPort: rfc5424-tls
     - name: rfc5424-tcp
       protocol: TCP
+{{- if eq $.Values.service.type "NodePort" }}
       nodePort: {{ .syslog.rfc5424TcpPort | default 30601 }}
+{{- end }}
       port: 601
       targetPort: rfc5424-tcp
 {{- end }}
 {{- if .axosyslogOtlp.enabled }}
     - name: otlp
       protocol: TCP
+{{- if eq $.Values.service.type "NodePort" }}
       nodePort: {{ .axosyslogOtlp.port | default 30317 }}
+{{- end }}
       port: 4317
       targetPort: otlp
 {{- end }}
