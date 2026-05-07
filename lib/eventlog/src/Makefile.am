@@ -1,5 +1,6 @@
 
-lib_LTLIBRARIES += lib/eventlog/src/libevtlog.la
+
+noinst_LTLIBRARIES += lib/eventlog/src/libevtlog.la
 
 EXTRA_DIST +=	\
 	lib/eventlog/AUTHORS	\
@@ -22,11 +23,7 @@ lib_eventlog_src_libevtlog_la_SOURCES = \
 		lib/eventlog/src/evttags.c \
 		lib/eventlog/src/evtsyslog.c
 
-lib_eventlog_src_libevtlog_la_LDFLAGS = -no-undefined -release ${LSNG_RELEASE} \
-					-version-info ${LSNG_CURRENT}:${LSNG_REVISION}:${LSNG_AGE}
-
-lib_eventlog_src_libevtlog_la_CFLAGS = $(AM_CFLAGS)
-
+lib_eventlog_src_libevtlog_la_CFLAGS = $(AM_CFLAGS) $(CORE_CFLAGS)
 lib_eventlog_src_libevtlog_la_LIBADD = @GLIB_LIBS@
 
 
