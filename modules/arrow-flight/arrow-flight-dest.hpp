@@ -103,6 +103,9 @@ public:
   bool add_schema_field(std::string name, std::string type, LogTemplate *value);
 
 private:
+  static bool map_column_type(const std::string &type_str, std::shared_ptr<arrow::DataType> &out);
+
+private:
   ArrowFlightDestDriver *super;
 
   std::string url;

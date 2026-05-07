@@ -50,6 +50,25 @@ DestinationDriver::~DestinationDriver()
 }
 
 bool
+DestinationDriver::map_column_type(const std::string &type_str, std::shared_ptr<arrow::DataType> &out)
+{
+  const char *s = type_str.c_str();
+  if (type_str.empty() || strcasecmp(s, "STRING") == 0)
+    out = arrow::utf8();
+  else if (strcasecmp(s, "INT64") == 0 || strcasecmp(s, "INTEGER") == 0)
+    out = arrow::int64();
+  else if (strcasecmp(s, "DOUBLE") == 0 || strcasecmp(s, "FLOAT64") == 0)
+    out = arrow::float64();
+  else if (strcasecmp(s, "BOOLEAN") == 0 || strcasecmp(s, "BOOL") == 0)
+    out = arrow::boolean();
+  else if (strcasecmp(s, "TIMESTAMP") == 0)
+    out = arrow::timestamp(arrow::TimeUnit::NANO, "UTC");
+  else
+    return false;
+  return true;
+}
+
+bool
 DestinationDriver::add_schema_field(std::string name, std::string type, LogTemplate *value)
 {
   return true;
