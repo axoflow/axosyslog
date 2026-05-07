@@ -31,8 +31,10 @@
 #include "compat/cpp-end.h"
 
 #include <arrow/type.h>
+#include <arrow/api.h>
 
 #include <string>
+#include <vector>
 #include <memory>
 
 namespace syslog_ng {
@@ -102,6 +104,16 @@ public:
 
   bool add_schema_field(std::string name, std::string type, LogTemplate *value);
 
+  const std::vector<SchemaField> &get_schema_fields() const
+  {
+    return this->schema_fields;
+  }
+
+  const std::shared_ptr<arrow::Schema> &get_arrow_schema() const
+  {
+    return this->arrow_schema;
+  }
+
 private:
   static bool map_column_type(const std::string &type_str, std::shared_ptr<arrow::DataType> &out);
 
@@ -111,6 +123,8 @@ private:
   std::string url;
   LogTemplateOptions template_options;
   LogTemplate *path_template = nullptr;
+  std::vector<SchemaField> schema_fields;
+  std::shared_ptr<arrow::Schema> arrow_schema;
 };
 
 }
