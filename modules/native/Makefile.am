@@ -24,6 +24,8 @@ modules_native_libsyslog_ng_native_connector_la_CFLAGS = \
   -I$(top_srcdir)/modules/native        \
   -I$(top_builddir)/modules/native
 
+modules_native_libsyslog_ng_native_connector_la_LDFLAGS = $(MODULE_LDFLAGS)
+
 else
 modules/native modules/native/ mod-native: modules/native/libnative.la
 endif
