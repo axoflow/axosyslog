@@ -35,6 +35,9 @@ typedef struct _AppParserGenerator
   GString *block;
   gboolean first_app_generated;
   gboolean allow_overlaps;
+
+  /* never drops messages (0 matches, FilterX errors, filtering) */
+  gboolean permissive;
 } AppParserGenerator;
 
 static gboolean
@@ -62,6 +65,17 @@ _parse_allow_overlaps(AppParserGenerator *self, CfgArgs *args, const gchar *refe
 }
 
 static gboolean
+_parse_permissive(AppParserGenerator *self, CfgArgs *args, const gchar *reference)
+{
+  const gchar *v = cfg_args_get(args, "permissive");
+  if (v)
+    self->permissive = cfg_process_yesno(v);
+  else
+    self->permissive = FALSE;
+  return TRUE;
+}
+
+static gboolean
 _parse_filterx_app_variable(AppParserGenerator *self, CfgArgs *args, const gchar *reference)
 {
   self->filterx_app_variable = cfg_args_get(args, "filterx-app-variable");
@@ -78,6 +92,9 @@ app_parser_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, const
     return FALSE;
 
   if (!_parse_allow_overlaps(self, args, reference))
+    return FALSE;
+
+  if (!_parse_permissive(self, args, reference))
     return FALSE;
 
   if (!_parse_filterx_app_variable(self, args, reference))
@@ -224,7 +241,7 @@ _generate_framing(AppParserGenerator *self, GlobalConfig *cfg)
                   "\nchannel {\n");
 
   self->first_app_generated = FALSE;
-  if (!self->allow_overlaps)
+  if (!self->allow_overlaps && !self->permissive)
     {
       _generate_applications(self, cfg);
       if (self->first_app_generated)
