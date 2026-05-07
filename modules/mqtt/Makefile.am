@@ -30,6 +30,7 @@ modules_mqtt_libmqtt_la_SOURCES = \
 modules_mqtt_libmqtt_la_LIBADD = $(MODULE_DEPS_LIBS) $(MQTT_PLUGINS)
 EXTRA_modules_mqtt_libmqtt_la_DEPENDENCIES = $(MODULE_DEPS_LIBS) $(MQTT_PLUGINS)
 modules_mqtt_libmqtt_la_LDFLAGS = $(MODULE_LDFLAGS)
+modules_mqtt_libmqtt_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
 
 modules/mqtt modules/mqtt/ mod-mqtt: modules/mqtt/libmqtt.la
 endif

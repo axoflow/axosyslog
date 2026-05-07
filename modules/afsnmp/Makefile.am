@@ -21,6 +21,8 @@ modules_afsnmp_libafsnmp_la_CPPFLAGS	=	\
 	$(AM_CPPFLAGS)					\
 	-I$(top_srcdir)/modules/afsnmp		\
 	-I$(top_builddir)/modules/afsnmp
+modules_afsnmp_libafsnmp_la_CFLAGS	=	\
+	$(AM_CFLAGS) $(MODULE_CFLAGS)
 
 modules_afsnmp_libafsnmp_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS)

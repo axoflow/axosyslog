@@ -15,6 +15,8 @@ modules_afuser_libafuser_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS)
 modules_afuser_libafuser_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
+modules_afuser_libafuser_la_CFLAGS	=	\
+        $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_afuser_libafuser_la_DEPENDENCIES=	\
 	$(MODULE_DEPS_LIBS)
 
