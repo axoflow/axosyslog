@@ -181,14 +181,31 @@ filterx_string_strdup_value(FilterXObject *s)
 static inline FilterXObject *
 _filterx_string_resolve_from_cache(const gchar *str, gssize str_len)
 {
-  if (str_len == 0 || str[0] == 0)
+  if (str_len < 0)
     {
-      return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+      /* length unspecified */
+      if (str[0] == 0)
+        {
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+        }
+      else if (str[0] >= '0' && str[0] < '9' && str[1] == 0)
+        {
+          gint index = str[0] - '0';
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
+        }
     }
-  else if (str[0] >= '0' && str[0] < '9' && (str_len == 1 || str[1] == 0))
+  else
     {
-      gint index = str[0] - '0';
-      return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
+      /* explicit length */
+      if (str_len == 0)
+        {
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_ZERO_LENGTH]);
+        }
+      else if (str_len == 1 && str[0] >= '0' && str[0] < '9')
+        {
+          gint index = str[0] - '0';
+          return filterx_object_ref_preserved(fx_string_cache[FILTERX_STRING_NUMBER0 + index]);
+        }
     }
   return NULL;
 }
