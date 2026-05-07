@@ -32,6 +32,9 @@ typedef struct _AppTransformGenerator
   const gchar *filterx_app_variable;
   GList *included_transforms;
   GList *excluded_transforms;
+
+  /* never drops messages (undefined filterx_app_variable, FilterX errors, filtering) */
+  gboolean permissive;
 } AppTransformGenerator;
 
 static gboolean
@@ -40,6 +43,17 @@ _parse_transforms_arg(AppTransformGenerator *self, CfgArgs *args, const gchar *r
   self->topic = cfg_args_get(args, "topic");
   if (!self->topic)
     self->topic = "default";
+  return TRUE;
+}
+
+static gboolean
+_parse_permissive(AppTransformGenerator *self, CfgArgs *args, const gchar *reference)
+{
+  const gchar *v = cfg_args_get(args, "permissive");
+  if (v)
+    self->permissive = cfg_process_yesno(v);
+  else
+    self->permissive = TRUE;
   return TRUE;
 }
 
@@ -81,6 +95,9 @@ app_transform_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, co
   g_assert(args != NULL);
 
   if (!_parse_transforms_arg(self, args, reference))
+    return FALSE;
+
+  if (!_parse_permissive(self, args, reference))
     return FALSE;
 
   if (!_parse_filterx_app_variable(self, args, reference))
@@ -287,11 +304,11 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
   appmodel_iter_transformations(cfg, _generate_filterx_only_app_transform_cases, user_data);
   gboolean has_filterx = block->len > 0;
 
-  if (has_non_filterx && !has_filterx)
-    {
-      g_string_append(result, ";\n");
-    }
-  else if (has_non_filterx && has_filterx)
+
+  if (!has_non_filterx && !has_filterx)
+    goto exit;
+
+  if (has_non_filterx && has_filterx)
     {
       g_string_append_printf(result,
                              "    elif {\n"
@@ -300,7 +317,7 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
                              "%s\n"
                              "            };\n"
                              "        };\n"
-                             "    };\n",
+                             "    }",
                              self->filterx_app_variable,
                              block->str);
     }
@@ -313,11 +330,22 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
                              "%s\n"
                              "            };\n"
                              "        };\n"
-                             "    };\n",
+                             "    }",
                              self->filterx_app_variable,
                              block->str);
     }
 
+  if (self->permissive)
+    g_string_append(result, ";\n");
+  else
+    {
+      g_string_append(result, "\n"
+                      "    else {\n"
+                      "        filterx { false; };\n"
+                      "    };\n");
+    }
+
+exit:
   g_string_append(result, "};\n");
   g_string_free(block, TRUE);
 }
