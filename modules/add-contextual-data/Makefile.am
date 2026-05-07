@@ -26,6 +26,7 @@ modules_add_contextual_data_libadd_contextual_data_la_SOURCES	=		\
 
 modules_add_contextual_data_libadd_contextual_data_la_CFLAGS	=		\
 	$(AM_CFLAGS)								\
+	$(MODULE_CFLAGS)							\
 	-I$(top_srcdir)/modules/add-contextual-data				\
 	-I$(top_builddir)/modules/add-contextual-data
 

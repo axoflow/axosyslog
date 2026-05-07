@@ -19,6 +19,8 @@ modules_afprog_libafprog_la_CPPFLAGS	= 	\
 	$(AM_CPPFLAGS)				\
 	-I$(top_srcdir)/modules/afprog		\
 	-I$(top_builddir)/modules/afprog
+modules_afprog_libafprog_la_CFLAGS	= 	\
+	$(AM_CFLAGS) $(MODULE_CFLAGS)
 modules_afprog_libafprog_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS)
 modules_afprog_libafprog_la_LDFLAGS	=	\

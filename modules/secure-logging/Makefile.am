@@ -8,6 +8,7 @@ modules_secure_logging_libsecure_logging_core_la_SOURCES =	\
 
 modules_secure_logging_libsecure_logging_core_la_CFLAGS = \
 	$(AM_CFLAGS)                                 \
+	$(MODULE_CFLAGS)			     \
 	-I$(top_srcdir)/modules/secure-logging	     \
 	-I$(top_builddir)/modules/secure-logging
 modules_secure_logging_libsecure_logging_core_la_LIBADD		=	\
@@ -22,6 +23,7 @@ modules_secure_logging_libsecure_logging_la_SOURCES = \
 
 modules_secure_logging_libsecure_logging_la_CFLAGS = \
 	$(AM_CFLAGS)                                 \
+	$(MODULE_CFLAGS)			     \
 	-I$(top_srcdir)/modules/secure-logging	     \
 	-I$(top_builddir)/modules/secure-logging
 modules_secure_logging_libsecure_logging_la_LIBADD = $(MODULE_DEPS_LIBS) $(OPENSSL_LIBS) $(LIBSECURE_LOGGING_CORE)

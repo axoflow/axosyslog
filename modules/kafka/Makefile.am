@@ -3,7 +3,8 @@ module_LTLIBRARIES += modules/kafka/libkafka.la
 
 modules_kafka_libkafka_la_CFLAGS  = \
   $(AM_CFLAGS) \
-  $(LIBRDKAFKA_CFLAGS)
+  $(LIBRDKAFKA_CFLAGS) \
+  $(MODULE_CFLAGS)
 
 modules_kafka_libkafka_la_SOURCES = \
   modules/kafka/kafka-grammar.y \

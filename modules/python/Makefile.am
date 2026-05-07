@@ -7,7 +7,9 @@ modules_python_libmod_python_la_CFLAGS		= \
 	$(PYTHON_CFLAGS)			  \
 	$(SYSLOG_NG_CFLAGS)			  \
 	$(EVENTLOG_CFLAGS)			  \
-	$(IVYKIS_CFLAGS)
+	$(IVYKIS_CFLAGS)			  \
+	$(MODULE_CFLAGS)
+
 modules_python_libmod_python_la_CPPFLAGS		= \
     $(AM_CPPFLAGS) \
 	-I$(top_srcdir)/modules/python		  \

@@ -16,6 +16,8 @@ modules_linux_kmsg_format_liblinux_kmsg_format_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS)
 modules_linux_kmsg_format_liblinux_kmsg_format_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
+modules_linux_kmsg_format_liblinux_kmsg_format_la_CFLAGS	=	\
+        $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_linux_kmsg_format_liblinux_kmsg_format_la_DEPENDENCIES	=	\
 	$(MODULE_DEPS_LIBS)
 

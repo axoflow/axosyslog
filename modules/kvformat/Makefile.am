@@ -27,6 +27,8 @@ modules_kvformat_libkvformat_la_LIBADD = \
 
 modules_kvformat_libkvformat_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
+modules_kvformat_libkvformat_la_CFLAGS	=	\
+        $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_kvformat_libkvformat_la_DEPENDENCIES	=	\
 	$(MODULE_DEPS_LIBS)
 

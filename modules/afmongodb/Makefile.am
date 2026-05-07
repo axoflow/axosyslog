@@ -6,6 +6,7 @@ module_LTLIBRARIES 				+= modules/afmongodb/libafmongodb.la
 modules_afmongodb_libafmongodb_la_CFLAGS 	=	\
     $(AM_CFLAGS) \
 	$(LIBMONGO_CFLAGS) 				\
+	$(MODULE_CFLAGS) 				\
 	-I$(top_srcdir)/modules/afmongodb		\
 	-I$(top_builddir)/modules/afmongodb
 modules_afmongodb_libafmongodb_la_SOURCES	=	\

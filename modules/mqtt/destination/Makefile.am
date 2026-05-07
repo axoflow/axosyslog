@@ -16,6 +16,7 @@ modules_mqtt_destination_libmqtt_destination_la_CPPFLAGS  =     \
 
 modules_mqtt_destination_libmqtt_destination_la_LIBADD  = $(MODULE_DEPS_LIBS) $(LIBPAHO_MQTT_LIBS)
 modules_mqtt_destination_libmqtt_destination_la_LDFLAGS = $(MODULE_LDFLAGS)
+modules_mqtt_destination_libmqtt_destination_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_mqtt_destination_libmqtt_destination_la_DEPENDENCIES= $(MODULE_DEPS_LIBS)
 endif
 
