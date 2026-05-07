@@ -60,6 +60,8 @@ private:
   bool open_stream(const gchar *path);
   void close_stream();
   bool create_builders();
+  bool append_value(arrow::ArrayBuilder *builder, const std::shared_ptr<arrow::DataType> &type,
+                    const char *str, gssize len);
 
   ArrowFlightDestWorker *super;
   arrow::flight::Location location;
