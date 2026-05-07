@@ -97,7 +97,7 @@ DestinationWorker::connect()
     }
   this->client = std::move(*client_result);
 
-  return true;
+  return this->create_builders();
 }
 
 void
@@ -114,6 +114,29 @@ DestinationWorker::disconnect()
                     log_pipe_location_tag(&this->super->super.owner->super.super.super));
       this->client.reset();
     }
+  this->builders.clear();
+}
+
+bool
+DestinationWorker::create_builders()
+{
+  DestinationDriver *owner = this->get_owner();
+  const auto &arrow_schema = owner->get_arrow_schema();
+  this->builders.clear();
+  for (int i = 0; i < arrow_schema->num_fields(); i++)
+    {
+      auto builder_result = arrow::MakeBuilder(arrow_schema->field(i)->type());
+      if (!builder_result.ok())
+        {
+          msg_error("arrow-flight: Failed to create Arrow builder",
+                    evt_tag_str("field", arrow_schema->field(i)->name().c_str()),
+                    evt_tag_str("error", builder_result.status().ToString().c_str()),
+                    log_pipe_location_tag(&this->super->super.owner->super.super.super));
+          return false;
+        }
+      this->builders.push_back(std::move(*builder_result));
+    }
+  return true;
 }
 
 LogThreadedResult

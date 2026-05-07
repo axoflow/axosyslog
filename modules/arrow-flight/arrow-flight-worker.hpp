@@ -36,6 +36,7 @@
 #include <arrow/flight/api.h>
 
 #include <memory>
+#include <vector>
 
 namespace syslog_ng {
 namespace arrow_flight {
@@ -58,10 +59,12 @@ private:
   const gchar *format_path(LogMessage *msg, GString **buf, ScratchBuffersMarker *marker);
   bool open_stream(const gchar *path);
   void close_stream();
+  bool create_builders();
 
   ArrowFlightDestWorker *super;
   arrow::flight::Location location;
   std::unique_ptr<arrow::flight::FlightClient> client;
+  std::vector<std::unique_ptr<arrow::ArrayBuilder>> builders;
 
   std::unique_ptr<arrow::flight::FlightStreamWriter> writer;
   std::unique_ptr<arrow::flight::FlightMetadataReader> metadata_reader;
