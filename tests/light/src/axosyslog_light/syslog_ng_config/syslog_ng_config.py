@@ -29,6 +29,7 @@ from axosyslog_light.syslog_ng_config import stringify
 from axosyslog_light.syslog_ng_config.renderer import ConfigRenderer
 from axosyslog_light.syslog_ng_config.statement_group import StatementGroup
 from axosyslog_light.syslog_ng_config.statements import ArrowedOptions
+from axosyslog_light.syslog_ng_config.statements.destinations.arrow_flight_destination import ArrowFlightDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.clickhouse_destination import ClickhouseDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.example_destination import ExampleDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.file_destination import FileDestination
@@ -259,6 +260,13 @@ class SyslogNgConfig(object):
         unix_stream_source = UnixStreamDestination(self._stats_handler, self._prometheus_stats_handler, **options)
         self.teardown.register(unix_stream_source.stop_listener)
         return unix_stream_source
+
+    def create_arrow_flight_destination(self, **options):
+        arrow_flight_destination = ArrowFlightDestination(self._stats_handler, self._prometheus_stats_handler, **options)
+        # Register after syslog_ng.stop so the listener is shut down only after
+        # syslog-ng disconnects; do_put() otherwise blocks waiting for DoneWriting.
+        self.teardown.register_process_stop_callback(arrow_flight_destination.stop_listener)
+        return arrow_flight_destination
 
     def create_clickhouse_destination(self, **options):
         clickhouse_destination = ClickhouseDestination(self._stats_handler, self._prometheus_stats_handler, **options)
