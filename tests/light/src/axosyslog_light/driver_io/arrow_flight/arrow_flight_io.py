@@ -40,6 +40,7 @@ class _FlightServer(flight.FlightServerBase):
         self._stream_counts = {}
         self._batch_counts = {}
         self._lock = threading.Lock()
+        self._close_stream_after_next_chunk = False
 
     def list_flights(self, context, criteria):
         return iter([])
@@ -55,6 +56,12 @@ class _FlightServer(flight.FlightServerBase):
                 self._tables[key] = pa.concat_tables([existing, new_table]) if existing is not None else new_table
                 self._batch_counts[key] = self._batch_counts.get(key, 0) + 1
             writer.write(b"")
+            if self._close_stream_after_next_chunk:
+                self._close_stream_after_next_chunk = False
+                raise flight.FlightUnavailableError("graceful server shutdown")
+
+    def request_close_stream_after_next_chunk(self):
+        self._close_stream_after_next_chunk = True
 
     def get_table(self, key):
         with self._lock:
@@ -92,6 +99,11 @@ class ArrowFlightIO():
         self.__server = None
         self.__thread = None
         logger.info("Arrow Flight server stopped")
+
+    def close_stream_after_next_request(self) -> None:
+        if self.__server is None:
+            return
+        self.__server.request_close_stream_after_next_chunk()
 
     @retry(wait=wait_fixed(0.1), reraise=True, stop=stop_after_delay(10))
     def __wait_for_server_start(self):
