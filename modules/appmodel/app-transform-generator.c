@@ -37,16 +37,15 @@ typedef struct _AppTransformGenerator
   gboolean permissive;
 } AppTransformGenerator;
 
-static gboolean
+static void
 _parse_transforms_arg(AppTransformGenerator *self, CfgArgs *args, const gchar *reference)
 {
   self->topic = cfg_args_get(args, "topic");
   if (!self->topic)
     self->topic = "default";
-  return TRUE;
 }
 
-static gboolean
+static void
 _parse_permissive(AppTransformGenerator *self, CfgArgs *args, const gchar *reference)
 {
   const gchar *v = cfg_args_get(args, "permissive");
@@ -54,7 +53,6 @@ _parse_permissive(AppTransformGenerator *self, CfgArgs *args, const gchar *refer
     self->permissive = cfg_process_yesno(v);
   else
     self->permissive = TRUE;
-  return TRUE;
 }
 
 static gboolean
@@ -94,11 +92,8 @@ app_transform_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, co
   AppTransformGenerator *self = (AppTransformGenerator *) s;
   g_assert(args != NULL);
 
-  if (!_parse_transforms_arg(self, args, reference))
-    return FALSE;
-
-  if (!_parse_permissive(self, args, reference))
-    return FALSE;
+  _parse_transforms_arg(self, args, reference);
+  _parse_permissive(self, args, reference);
 
   if (!_parse_filterx_app_variable(self, args, reference))
     return FALSE;
