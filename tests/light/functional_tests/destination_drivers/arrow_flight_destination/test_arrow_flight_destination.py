@@ -49,3 +49,26 @@ def test_arrow_flight_destination_single_message(config, syslog_ng, port_allocat
     assert arrow_flight_destination.read_logs(ARROW_FLIGHT_PATH) == [{"message": custom_msg}]
     assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
     assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == 1
+
+
+def test_arrow_flight_destination_multiple_messages(config, syslog_ng, port_allocator):
+    num_messages = 10
+    custom_msg = f"test message {uuid.uuid4()}"
+    generator_source = config.create_example_msg_generator_source(num=num_messages, template=stringify(custom_msg))
+
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": num_messages,
+        "batch-timeout": 10000,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[generator_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
+    assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
+    assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == 1
