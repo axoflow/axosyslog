@@ -35,11 +35,13 @@ struct _ModuleConfig
 {
   /* init/deinit is hooked into configuration init/deinit */
   gboolean (*init)(ModuleConfig *s, GlobalConfig *cfg);
+  void (*post_cfg_init)(ModuleConfig *s, GlobalConfig *cfg);
   void (*deinit)(ModuleConfig *s, GlobalConfig *cfg);
   void (*free_fn)(ModuleConfig *s);
 };
 
 gboolean module_config_init(ModuleConfig *s, GlobalConfig *cfg);
+void module_config_post_cfg_init(ModuleConfig *s, GlobalConfig *cfg);
 void module_config_deinit(ModuleConfig *s, GlobalConfig *cfg);
 void module_config_free_method(ModuleConfig *s);
 void module_config_free(ModuleConfig *s);

@@ -31,6 +31,13 @@ module_config_init(ModuleConfig *s, GlobalConfig *cfg)
 }
 
 void
+module_config_post_cfg_init(ModuleConfig *s, GlobalConfig *cfg)
+{
+  if (s->post_cfg_init)
+    s->post_cfg_init(s, cfg);
+}
+
+void
 module_config_deinit(ModuleConfig *s, GlobalConfig *cfg)
 {
   if (s->deinit)
