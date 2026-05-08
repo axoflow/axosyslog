@@ -39,12 +39,15 @@ filterx_config_free(ModuleConfig *s)
 }
 
 static void
-_finalize_jit(gint type, gpointer user_data)
+filterx_config_post_cfg_init(ModuleConfig *s, GlobalConfig *cfg)
 {
-  FilterXJIT *jit = user_data;
+  FilterXConfig *self = (FilterXConfig *) s;
+
+  if (!self->jit)
+    return;
 
   GError *error = NULL;
-  if (filterx_jit_finalize(jit, &error))
+  if (filterx_jit_finalize(self->jit, &error))
     return;
 
   msg_warning("FilterX JIT module finalization failed, falling back to interpreted evaluation",
@@ -69,8 +72,6 @@ _create_jit(void)
       g_clear_error(&error);
       return NULL;
     }
-
-  register_application_hook(AH_CONFIG_POST_INIT, _finalize_jit, jit, AHM_RUN_ONCE);
 
   return jit;
 #else
@@ -114,6 +115,7 @@ filterx_config_new(GlobalConfig *cfg)
   FilterXConfig *self = g_new0(FilterXConfig, 1);
 
   self->super.init = filterx_config_init;
+  self->super.post_cfg_init = filterx_config_post_cfg_init;
   self->super.deinit = filterx_config_deinit;
   self->super.free_fn = filterx_config_free;
   self->frozen_objects = g_ptr_array_new_with_free_func((GDestroyNotify) _filterx_object_unfreeze_and_free);
