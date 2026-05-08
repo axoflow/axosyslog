@@ -197,3 +197,30 @@ def test_arrow_flight_destination_templated_path_flush_on_key_change(config, sys
     assert dest.get_batch_count(path_b) == 2
     assert dest.get_stream_count(path_a) == 2
     assert dest.get_stream_count(path_b) == 2
+
+
+def test_arrow_flight_destination_reconnect(config, syslog_ng, port_allocator):
+    custom_msg = f"test message {uuid.uuid4()}"
+
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "time-reopen": 1,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.close_stream_after_next_request()
+    syslog_ng.start(config)
+
+    file_source.write_log(custom_msg)
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == 1)
+
+    arrow_flight_destination.stop_listener()
+
+    file_source.write_log(custom_msg)
+
+    arrow_flight_destination.start_listener()
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == 2)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
