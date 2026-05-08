@@ -129,3 +129,36 @@ def test_arrow_flight_destination_multiple_schema_fields(config, syslog_ng, port
     assert rows[0]["ts"] == datetime.datetime(2023, 11, 14, 22, 13, 20, tzinfo=datetime.timezone.utc)
     assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
     assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == 1
+
+
+def test_arrow_flight_destination_templated_path(config, syslog_ng, port_allocator):
+    msg_a = f"message-a {uuid.uuid4()}"
+    msg_b = f"message-b {uuid.uuid4()}"
+
+    generator_a = config.create_example_msg_generator_source(num=1, template=stringify(msg_a))
+    generator_b = config.create_example_msg_generator_source(num=1, template=stringify(msg_b))
+
+    rewrite_a = config.create_rewrite_set("'path-a'", value="DEST_PATH")
+    rewrite_b = config.create_rewrite_set("'path-b'", value="DEST_PATH")
+
+    options = {
+        "path": '"${DEST_PATH}"',
+        "schema": '"message" STRING => $MSG',
+        "batch-lines": 1,
+        "worker-partition-key": '"${DEST_PATH}"',
+    }
+    dest = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[generator_a, rewrite_a, dest])
+    config.create_logpath(statements=[generator_b, rewrite_b, dest])
+
+    dest.start_listener()
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: dest.get_stats().get("written", 0) == 2)
+    assert dest.get_stats()["dropped"] == 0
+    assert dest.read_logs("path-a") == [{"message": msg_a}]
+    assert dest.read_logs("path-b") == [{"message": msg_b}]
+    assert dest.get_stream_count("path-a") == 1
+    assert dest.get_stream_count("path-b") == 1
+    assert dest.get_batch_count("path-a") == 1
+    assert dest.get_batch_count("path-b") == 1
