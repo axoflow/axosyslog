@@ -21,6 +21,7 @@
 # COPYING for details.
 #
 #############################################################################
+import datetime
 import uuid
 
 from axosyslog_light.common.blocking import wait_until_true
@@ -96,3 +97,35 @@ def test_arrow_flight_destination_batching(config, syslog_ng, port_allocator):
     assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
     assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
     assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == num_messages // batch_size
+
+
+def test_arrow_flight_destination_multiple_schema_fields(config, syslog_ng, port_allocator):
+    custom_msg = f"test message {uuid.uuid4()}"
+    generator_source = config.create_example_msg_generator_source(num=1, template=stringify(custom_msg))
+
+    options = {
+        "path": stringify(ARROW_FLIGHT_PATH),
+        "schema": (
+            '"message" STRING => $MSG '
+            '"count" INT64 => "42" '
+            '"flag" BOOL => "true" '
+            '"ts" TIMESTAMP => "1700000000000000000"'
+        ),
+        "batch-lines": 1,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+
+    config.create_logpath(statements=[generator_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == 1)
+    rows = arrow_flight_destination.read_logs(ARROW_FLIGHT_PATH)
+    assert len(rows) == 1
+    assert rows[0]["message"] == custom_msg
+    assert rows[0]["count"] == 42
+    assert rows[0]["flag"] is True
+    assert rows[0]["ts"] == datetime.datetime(2023, 11, 14, 22, 13, 20, tzinfo=datetime.timezone.utc)
+    assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
+    assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == 1
