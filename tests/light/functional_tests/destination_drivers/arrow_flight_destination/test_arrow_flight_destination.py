@@ -162,3 +162,38 @@ def test_arrow_flight_destination_templated_path(config, syslog_ng, port_allocat
     assert dest.get_stream_count("path-b") == 1
     assert dest.get_batch_count("path-a") == 1
     assert dest.get_batch_count("path-b") == 1
+
+
+def test_arrow_flight_destination_templated_path_flush_on_key_change(config, syslog_ng, port_allocator):
+    path_a = "path-a"
+    path_b = "path-b"
+    batch_lines = 4
+    small_burst = 3
+    bursts = [(path_a, small_burst), (path_b, small_burst), (path_a, small_burst), (path_b, batch_lines)]
+    total_messages = sum(n for _, n in bursts)
+
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        "path": '"${MSG}"',
+        "schema": '"key" STRING => $MSG',
+        "batch-lines": batch_lines,
+        "batch-timeout": 10000,
+        "worker-partition-key": '"${MSG}"',
+    }
+    dest = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, dest])
+
+    dest.start_listener()
+    syslog_ng.start(config)
+
+    for path, n in bursts:
+        file_source.write_logs([path] * n)
+
+    assert wait_until_true(lambda: dest.get_stats().get("written", 0) == total_messages)
+    assert dest.get_stats()["dropped"] == 0
+    assert dest.get_row_count(path_a) == small_burst * 2
+    assert dest.get_row_count(path_b) == small_burst + batch_lines
+    assert dest.get_batch_count(path_a) == 2
+    assert dest.get_batch_count(path_b) == 2
+    assert dest.get_stream_count(path_a) == 2
+    assert dest.get_stream_count(path_b) == 2
