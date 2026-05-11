@@ -26,6 +26,7 @@ import uuid
 
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.syslog_ng_config.__init__ import stringify
+from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 ARROW_FLIGHT_PATH = "test-path"
 
@@ -245,3 +246,71 @@ def test_arrow_flight_destination_server_not_running(config, syslog_ng, port_all
     assert arrow_flight_destination.read_logs(ARROW_FLIGHT_PATH) == [{"message": custom_msg}]
     assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
     assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == 1
+
+
+def test_arrow_flight_destination_size_metrics(config, syslog_ng, port_allocator):
+    num_messages = 6
+    batch_lines = 2
+    num_batches = num_messages // batch_lines
+    custom_msg = f"test message {uuid.uuid4()}"
+    config.update_global_options(stats_level=1)
+    generator_source = config.create_example_msg_generator_source(num=num_messages, template=stringify(custom_msg))
+
+    # Per-row byte cost reported by append_value():
+    #   STRING:    len(value) data bytes + 4-byte StringArray offset entry
+    #   INT64:     sizeof(int64_t)
+    #   DOUBLE:    sizeof(double)
+    #   BOOL:      bit-packed, delta = ((length+1+7)//8) - ((length+7)//8) — 1 only on every 8th append within a batch.
+    #   TIMESTAMP: sizeof(int64_t)
+    # Builders reset on every flush, so the BOOL bit-packing restarts per batch.
+    bool_bytes_per_batch = (batch_lines + 7) // 8
+    fixed_row_bytes = (len(custom_msg) + 4) + 8 + 8 + 8  # STRING + INT64 + DOUBLE + TIMESTAMP, excluding BOOL
+    expected_msg_sum = num_messages * fixed_row_bytes + num_batches * bool_bytes_per_batch
+
+    # Per-batch IPC-encapsulated payload size returned by arrow::ipc::GetRecordBatchSize().
+    # Deterministic for a fixed schema and fixed per-row byte widths: IPC flatbuffers metadata header
+    # + end-of-stream marker + per-column data/offset/validity buffers (each 8-byte aligned).
+    # For this 5-column schema with batch_lines=2 and the values below it lands at 528 bytes per batch.
+    expected_batch_sum = 528 * num_batches
+
+    options = {
+        "path": stringify(ARROW_FLIGHT_PATH),
+        "schema": (
+            '"message" STRING => $MSG '
+            '"count" INT64 => "42" '
+            '"ratio" DOUBLE => "3.14" '
+            '"flag" BOOL => "true" '
+            '"ts" TIMESTAMP => "1700000000"'
+        ),
+        "batch-lines": batch_lines,
+        "batch-timeout": 10000,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[generator_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+
+    label_filter = {"driver": "arrow-flight"}
+
+    msg_count = config.get_prometheus_samples([MetricFilter("syslogng_output_event_size_bytes_count", label_filter)])
+    assert len(msg_count) == 1
+    assert msg_count[0].value == num_messages
+
+    msg_sum = config.get_prometheus_samples([MetricFilter("syslogng_output_event_size_bytes_sum", label_filter)])
+    assert len(msg_sum) == 1
+    assert msg_sum[0].value == expected_msg_sum
+
+    batch_count = config.get_prometheus_samples([MetricFilter("syslogng_output_batch_size_bytes_count", label_filter)])
+    assert len(batch_count) == 1
+    assert batch_count[0].value == num_batches
+
+    batch_sum = config.get_prometheus_samples([MetricFilter("syslogng_output_batch_size_bytes_sum", label_filter)])
+    assert len(batch_sum) == 1
+    assert batch_sum[0].value == expected_batch_sum
+
+    written_bytes = config.get_prometheus_samples([MetricFilter("syslogng_output_event_bytes_total", label_filter)])
+    assert len(written_bytes) == 1
+    assert written_bytes[0].value == expected_batch_sum
