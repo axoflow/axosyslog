@@ -26,6 +26,8 @@ modules_timestamp_libtimestamp_la_LIBADD = \
 
 modules_timestamp_libtimestamp_la_LDFLAGS	 = \
 	$(MODULE_LDFLAGS)
+modules_timestamp_libtimestamp_la_CFLAGS	 = \
+	$(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_timestamp_libtimestamp_la_DEPENDENCIES	=  \
 	$(MODULE_DEPS_LIBS)
 

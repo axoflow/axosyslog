@@ -485,7 +485,6 @@ fi
 %{_bindir}/update-patterndb
 %{_bindir}/persist-tool
 %{_libdir}/libsyslog-ng-*.so.*
-%{_libdir}/libevtlog-*.so.*
 %{_libdir}/libsecret-storage.so.*
 %{_libdir}/libloggen_helper-*.so.*
 %{_libdir}/libloggen_plugin-*.so.*
@@ -653,7 +652,6 @@ fi
 
 %files devel
 %{_libdir}/libsyslog-ng.so
-%{_libdir}/libevtlog.so
 %{_libdir}/libsecret-storage.so
 %{_libdir}/libsyslog-ng-native-connector.a
 %{_libdir}/libloggen_helper.so

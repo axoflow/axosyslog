@@ -20,6 +20,7 @@ modules_cloud_auth_libcloud_auth_cpp_la_CXXFLAGS = \
 
 modules_cloud_auth_libcloud_auth_cpp_la_LIBADD = $(MODULE_DEPS_LIBS) $(LIBCURL_LIBS)
 modules_cloud_auth_libcloud_auth_cpp_la_LDFLAGS = $(MODULE_LDFLAGS)
+modules_cloud_auth_libcloud_auth_cpp_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_cloud_auth_libcloud_auth_cpp_la_DEPENDENCIES = $(MODULE_DEPS_LIBS)
 
 

@@ -23,6 +23,7 @@ modules_grpc_pubsub_filterx_libfilterx_la_LIBADD = \
   $(top_builddir)/modules/grpc/protos/libgrpc-protos.la
 
 modules_grpc_pubsub_filterx_libfilterx_la_LDFLAGS = $(MODULE_LDFLAGS)
+modules_grpc_pubsub_filterx_libfilterx_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
 
 EXTRA_modules_grpc_pubsub_filterx_libfilterx_la_DEPENDENCIES = \
   $(MODULE_DEPS_LIBS) \

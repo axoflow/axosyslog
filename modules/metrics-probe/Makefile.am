@@ -16,6 +16,8 @@ modules_metrics_probe_libmetrics_probe_la_LIBADD	=	\
 	$(top_builddir)/modules/metrics-probe/filterx/libmetrics-probe-filterx.la
 modules_metrics_probe_libmetrics_probe_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
+modules_metrics_probe_libmetrics_probe_la_CFLAGS	=	\
+        $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_metrics_probe_libmetrics_probe_la_DEPENDENCIES	=	\
 	$(MODULE_DEPS_LIBS) \
 	$(top_builddir)/modules/metrics-probe/filterx/libmetrics-probe-filterx.la

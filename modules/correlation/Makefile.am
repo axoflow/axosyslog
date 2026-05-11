@@ -45,7 +45,7 @@ modules_correlation_libsyslog_ng_patterndb_la_SOURCES	=	\
 	modules/correlation/id-counter.c
 
 modules_correlation_libsyslog_ng_patterndb_la_CFLAGS	=	\
-	$(AM_CFLAGS) -fPIC
+	$(AM_CFLAGS) $(MODULE_CFLAGS)
 modules_correlation_libsyslog_ng_patterndb_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS)
 EXTRA_modules_correlation_libsyslog_ng_patterndb_la_DEPENDENCIES	=	\

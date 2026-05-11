@@ -3,6 +3,7 @@ module_LTLIBRARIES			+= modules/afamqp/libafamqp.la
 
 modules_afamqp_libafamqp_la_CFLAGS	= 	\
     $(AM_CFLAGS) \
+        $(MODULE_CFLAGS)			\
 	$(LIBRABBITMQ_CFLAGS) 			\
 	-I$(top_srcdir)/modules/afamqp 		\
 	-I$(top_builddir)/modules/afamqp

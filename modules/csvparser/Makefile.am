@@ -21,6 +21,8 @@ modules_csvparser_libcsvparser_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS)
 modules_csvparser_libcsvparser_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
+modules_csvparser_libcsvparser_la_CFLAGS	=	\
+        $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_csvparser_libcsvparser_la_DEPENDENCIES	=	\
 	$(MODULE_DEPS_LIBS)
 
