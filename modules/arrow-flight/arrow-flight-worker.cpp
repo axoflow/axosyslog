@@ -35,6 +35,7 @@
 #include <arrow/array/builder_primitive.h>
 #include <arrow/array/builder_binary.h>
 #include <arrow/flight/api.h>
+#include <arrow/ipc/writer.h>
 
 using syslog_ng::arrow_flight::DestinationDriver;
 using syslog_ng::arrow_flight::DestinationWorker;
@@ -156,54 +157,68 @@ DestinationWorker::create_builders()
   return true;
 }
 
-bool
+gssize
 DestinationWorker::append_value(arrow::ArrayBuilder *builder, const std::shared_ptr<arrow::DataType> &type,
                                 const char *str, gssize len)
 {
   arrow::Status s;
+  gssize serialized_len = 0;
 
   switch (type->id())
     {
     case arrow::Type::STRING:
-      s = static_cast<arrow::StringBuilder *>(builder)->Append(str, (int32_t) len);
+    {
+      /* StringArray stores variable-length values: data buffer growth + a 4-byte offset entry per element. */
+      auto *sbuilder = static_cast<arrow::StringBuilder *>(builder);
+      int64_t prev_bytes = sbuilder->value_data_length();
+      s = sbuilder->Append(str, (int32_t) len);
+      serialized_len = (sbuilder->value_data_length() - prev_bytes) + (gssize) sizeof(int32_t);
       break;
+    }
     case arrow::Type::INT64:
     {
       gint64 v;
       if (!type_cast_to_int64(str, len, &v, NULL))
-        return false;
+        return -1;
       s = static_cast<arrow::Int64Builder *>(builder)->Append((int64_t) v);
+      serialized_len = sizeof(int64_t);
       break;
     }
     case arrow::Type::DOUBLE:
     {
       gdouble v;
       if (!type_cast_to_double(str, len, &v, NULL))
-        return false;
+        return -1;
       s = static_cast<arrow::DoubleBuilder *>(builder)->Append((double) v);
+      serialized_len = sizeof(double);
       break;
     }
     case arrow::Type::BOOL:
     {
       gboolean v;
       if (!type_cast_to_boolean(str, len, &v, NULL))
-        return false;
-      s = static_cast<arrow::BooleanBuilder *>(builder)->Append((bool) v);
+        return -1;
+      /* BooleanArray is bit-packed: data buffer grows by one byte only when crossing an 8-element boundary. */
+      auto *bbuilder = static_cast<arrow::BooleanBuilder *>(builder);
+      int64_t prev_bytes = (bbuilder->length() + 7) / 8;
+      s = bbuilder->Append((bool) v);
+      serialized_len = ((bbuilder->length() + 7) / 8) - prev_bytes;
       break;
     }
     case arrow::Type::TIMESTAMP:
     {
       gint64 v;
       if (!type_cast_to_int64(str, len, &v, NULL))
-        return false;
+        return -1;
       s = static_cast<arrow::TimestampBuilder *>(builder)->Append((int64_t) v);
+      serialized_len = sizeof(int64_t);
       break;
     }
     default:
-      return false;
+      return -1;
     }
 
-  return s.ok();
+  return s.ok() ? serialized_len : -1;
 }
 
 LogThreadedResult
@@ -214,6 +229,8 @@ DestinationWorker::insert(LogMessage *msg)
 
   ScratchBuffersMarker m;
   GString *buf = scratch_buffers_alloc_and_mark(&m);
+
+  size_t row_bytes = 0;
 
   for (size_t i = 0; i < schema_fields.size(); i++)
     {
@@ -240,7 +257,11 @@ DestinationWorker::insert(LogMessage *msg)
           null_value = (vtype == LM_VT_NULL);
         }
 
-      if (null_value || !this->append_value(this->builders[i].get(), field.type, val, val_len))
+      gssize serialized_len = -1;
+      if (!null_value)
+        serialized_len = this->append_value(this->builders[i].get(), field.type, val, val_len);
+
+      if (serialized_len < 0)
         {
           if (!null_value && !(owner->get_template_options().on_error & ON_ERROR_SILENT))
             msg_error("arrow-flight: Failed to convert field value, using null",
@@ -259,6 +280,10 @@ DestinationWorker::insert(LogMessage *msg)
               return LTR_NOT_CONNECTED;
             }
         }
+      else
+        {
+          row_bytes += (size_t) serialized_len;
+        }
     }
 
   if (this->get_batch_size() == 1)
@@ -270,6 +295,8 @@ DestinationWorker::insert(LogMessage *msg)
       if (path_buf)
         scratch_buffers_reclaim_marked(path_marker);
     }
+
+  log_threaded_dest_driver_insert_msg_length_stats(this->super->super.owner, row_bytes);
 
   scratch_buffers_reclaim_marked(m);
   return LTR_QUEUED;
@@ -396,6 +423,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   std::shared_ptr<arrow::RecordBatch> batch;
   std::shared_ptr<arrow::Buffer> ack;
   arrow::Status status;
+  int64_t batch_bytes = 0;
   const gchar *path = this->current_batch_path.c_str();
 
   if (this->get_batch_size() == 0)
@@ -449,6 +477,13 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
       result = _map_arrow_status_to_log_threaded_result(status);
       this->close_stream();
       goto exit;
+    }
+
+  status = arrow::ipc::GetRecordBatchSize(*batch, &batch_bytes);
+  if (status.ok())
+    {
+      log_threaded_dest_worker_written_bytes_add(&this->super->super, batch_bytes);
+      log_threaded_dest_driver_insert_batch_length_stats(this->super->super.owner, batch_bytes);
     }
 
   msg_debug("arrow-flight: Batch delivered",
