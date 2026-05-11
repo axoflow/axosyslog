@@ -186,7 +186,8 @@ version(void)
          "Enable-Spoof-Source: %s\n"
          "Enable-TCP-Wrapper: %s\n"
          "Enable-Linux-Caps: %s\n"
-         "Enable-Systemd: %s\n",
+         "Enable-Systemd: %s\n"
+         "Enable-Filterx-Jit: %s\n",
          ON_OFF_STR(SYSLOG_NG_ENABLE_DEBUG),
          ON_OFF_STR(SYSLOG_NG_ENABLE_GPROF),
          ON_OFF_STR(SYSLOG_NG_ENABLE_MEMTRACE),
@@ -195,7 +196,8 @@ version(void)
          ON_OFF_STR(SYSLOG_NG_ENABLE_SPOOF_SOURCE),
          ON_OFF_STR(SYSLOG_NG_ENABLE_TCP_WRAPPER),
          ON_OFF_STR(SYSLOG_NG_ENABLE_LINUX_CAPS),
-         ON_OFF_STR(SYSLOG_NG_ENABLE_SYSTEMD));
+         ON_OFF_STR(SYSLOG_NG_ENABLE_SYSTEMD),
+         ON_OFF_STR(SYSLOG_NG_ENABLE_JIT));
 
   g_free(installer_version);
 }
