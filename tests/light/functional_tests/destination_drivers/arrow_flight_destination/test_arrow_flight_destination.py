@@ -314,3 +314,32 @@ def test_arrow_flight_destination_size_metrics(config, syslog_ng, port_allocator
     written_bytes = config.get_prometheus_samples([MetricFilter("syslogng_output_event_bytes_total", label_filter)])
     assert len(written_bytes) == 1
     assert written_bytes[0].value == expected_batch_sum
+
+
+def test_arrow_flight_destination_batch_bytes(config, syslog_ng, port_allocator):
+    num_messages = 10
+    custom_msg = f"test message {uuid.uuid4()}"
+    # Per-row byte cost for a single STRING column: len(custom_msg) + 4-byte offset entry.
+    row_bytes = len(custom_msg) + 4
+    # Trigger a flush every 4 rows: batch_bytes set so that the 4th row's accumulated total hits the threshold.
+    rows_per_flush = 4
+    batch_bytes = row_bytes * rows_per_flush
+    expected_batches = num_messages // rows_per_flush + (1 if num_messages % rows_per_flush else 0)
+
+    generator_source = config.create_example_msg_generator_source(num=num_messages, template=stringify(custom_msg))
+    options = {
+        "path": stringify(ARROW_FLIGHT_PATH),
+        "schema": '"message" STRING => $MSG',
+        "batch-bytes": batch_bytes,
+        "batch-timeout": 10000,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[generator_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
+    assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == expected_batches
