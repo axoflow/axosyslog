@@ -129,22 +129,16 @@ int main(int argc, char *argv[])
     g_free(options[index].arg);
     options[index++].arg = NULL; //-- inc
     g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
-    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file is expected to exist
-    if (FALSE == is_ok)
+    g_string_assign(gstr_path_hostkey, p_canon ? p_canon : "");
+    if (gstr_path_hostkey->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_hostkey->str) ||
+        !g_file_test(gstr_path_hostkey->str, G_FILE_TEST_IS_REGULAR))
       {
-        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of key-file failed"));
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Key-file validation failed"));
         (void) slog_usage(context, group, NULL);
-        retval = 1; //-- ERROR
+        retval = 1;
         goto CLEANUP_SLOGENCRYPT;
       }
-    if (!g_file_test(p_canon, G_FILE_TEST_IS_REGULAR)) //-- check if file exists
-      {
-        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of key-file failed"));
-        (void) slog_usage(context, group, NULL);
-        retval = 1; //-- ERROR
-        goto CLEANUP_SLOGENCRYPT;
-      }
-    g_string_assign(gstr_path_hostkey, p_canon);
   }
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("key-file", gstr_path_hostkey->str));
 
@@ -164,15 +158,15 @@ int main(int argc, char *argv[])
     g_free(options[index].arg);
     options[index++].arg = NULL; //-- inc
     g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
-    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file might yet not exist
-    if (FALSE == is_ok)
+    g_string_assign(gstr_path_inputMAC, p_canon ? p_canon : "");
+    if (gstr_path_inputMAC->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_inputMAC->str)) //-- file might not exists yet
       {
         msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of mac-file failed"));
         (void) slog_usage(context, group, NULL);
         retval = 1; //-- ERROR
         goto CLEANUP_SLOGENCRYPT;
       }
-    g_string_assign(gstr_path_inputMAC, p_canon);
   }
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("mac-file", gstr_path_inputMAC->str));
 
@@ -193,15 +187,15 @@ int main(int argc, char *argv[])
   {
     g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
     g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
-    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file does yet not exist
-    if (FALSE == is_ok)
+    g_string_assign(gstr_path_newhostKey, p_canon ? p_canon : "");
+    if (gstr_path_newhostKey->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_newhostKey->str)) //-- file might not exists yet
       {
         msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of NEWKEY failed"));
         (void) slog_usage(context, group, NULL);
         retval = 1; //-- ERROR
         goto CLEANUP_SLOGENCRYPT;
       }
-    g_string_assign(gstr_path_newhostKey, p_canon);
   }
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("NEWKEY", gstr_path_newhostKey->str));
 
@@ -218,15 +212,15 @@ int main(int argc, char *argv[])
   {
     g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
     g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
-    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file does yet not exist
-    if (FALSE == is_ok)
+    g_string_assign(gstr_path_outputMAC, p_canon ? p_canon : "");
+    if (gstr_path_outputMAC->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_outputMAC->str)) //-- file might not exists yet
       {
         msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of NEWMAC failed"));
         (void) slog_usage(context, group, NULL);
         retval = 1; //-- ERROR
         goto CLEANUP_SLOGENCRYPT;
       }
-    g_string_assign(gstr_path_outputMAC, p_canon);
   }
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("NEWMAC", gstr_path_outputMAC->str));
 
@@ -243,24 +237,16 @@ int main(int argc, char *argv[])
   {
     g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
     g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
-    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file is expected to exist
-    if (FALSE == is_ok)
+    g_string_assign(gstr_path_inputlog, p_canon ? p_canon : "");
+    if (gstr_path_inputlog->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_inputlog->str) ||
+        !g_file_test(gstr_path_inputlog->str, G_FILE_TEST_IS_REGULAR))
       {
         msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of INPUTLOG failed"));
         (void) slog_usage(context, group, NULL);
         retval = 1; //-- ERROR
         goto CLEANUP_SLOGENCRYPT;
       }
-    if (!g_file_test(p_canon, G_FILE_TEST_IS_REGULAR)) //-- check if file exists
-    {
-      GString *errorMsg = g_string_new(FILE_ERROR);
-        g_string_append(errorMsg, p_canon);
-      (void) slog_usage(context, group, errorMsg);
-      g_string_free(errorMsg, TRUE);
-        retval = 1; //-- ERROR
-        goto CLEANUP_SLOGENCRYPT;
-    }
-    g_string_assign(gstr_path_inputlog, p_canon);
   }
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("INPUTLOG", gstr_path_inputlog->str));
 
@@ -277,15 +263,15 @@ int main(int argc, char *argv[])
   {
     g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
     g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
-    gboolean is_ok = is_file_path_safe_and_valid(p_canon); //-- file does yet not exist
-    if (FALSE == is_ok)
+    g_string_assign(gstr_path_outputlog, p_canon ? p_canon : "");
+    if (gstr_path_outputlog->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_outputlog->str)) //-- file might not exists yet
       {
         msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of OUTPUTLOG failed"));
         (void) slog_usage(context, group, NULL);
         retval = 1; //-- ERROR
         goto CLEANUP_SLOGENCRYPT;
       }
-    g_string_assign(gstr_path_outputlog, p_canon);
   }
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("OUTPUTLOG", gstr_path_outputlog->str));
 
