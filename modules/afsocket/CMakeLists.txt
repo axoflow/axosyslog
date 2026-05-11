@@ -41,6 +41,8 @@ set(AFSOCKET_SOURCES
     systemd-syslog-source.h
     systemd-syslog-source.c
     afsocket-systemd-override.h
+    logproto-spoof-source-client.h
+    logproto-spoof-source-client.c
 )
 
 find_package(ZLIB REQUIRED)
