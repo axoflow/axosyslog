@@ -99,7 +99,14 @@ DestinationDriver::init()
   log_template_options_init(&this->template_options, cfg);
 
   log_threaded_dest_driver_set_flush_on_worker_key_change(&this->super->super.super.super, TRUE);
-  return log_threaded_dest_driver_init_method(&this->super->super.super.super.super);
+
+  if (!log_threaded_dest_driver_init_method(&this->super->super.super.super.super))
+    return false;
+
+  if (this->batch_bytes > 0 && this->super->super.batch_lines <= 0)
+    this->super->super.batch_lines = G_MAXINT;
+
+  return true;
 }
 
 bool
@@ -162,6 +169,13 @@ arrow_flight_dd_set_path(LogDriver *d, LogTemplate *path)
 {
   ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
   self->cpp->set_path_template(path);
+}
+
+void
+arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->set_batch_bytes((size_t) b);
 }
 
 gboolean

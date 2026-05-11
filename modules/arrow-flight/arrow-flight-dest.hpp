@@ -97,6 +97,16 @@ public:
     return this->path_template;
   }
 
+  void set_batch_bytes(size_t b)
+  {
+    this->batch_bytes = b;
+  }
+
+  size_t get_batch_bytes() const
+  {
+    return this->batch_bytes;
+  }
+
   LogTemplateOptions &get_template_options()
   {
     return this->template_options;
@@ -125,6 +135,7 @@ private:
   LogTemplate *path_template = nullptr;
   std::vector<SchemaField> schema_fields;
   std::shared_ptr<arrow::Schema> arrow_schema;
+  size_t batch_bytes = 0;
 };
 
 }
