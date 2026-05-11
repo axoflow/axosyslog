@@ -54,6 +54,7 @@ public:
 
 private:
   DestinationDriver *get_owner();
+  const gchar *format_path(LogMessage *msg, GString **buf, ScratchBuffersMarker *marker);
 
   ArrowFlightDestWorker *super;
   arrow::flight::Location location;
