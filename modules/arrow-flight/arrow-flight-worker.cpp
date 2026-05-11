@@ -25,6 +25,7 @@
 
 #include "compat/cpp-start.h"
 #include "logthrdest/logthrdestdrv.h"
+#include "scratch-buffers.h"
 #include "messages.h"
 #include "compat/cpp-end.h"
 
@@ -43,10 +44,12 @@ struct _ArrowFlightDestWorker
 
 DestinationWorker::DestinationWorker(ArrowFlightDestWorker *s) : super(s)
 {
+  this->path_buf = g_string_new(NULL);
 }
 
 DestinationWorker::~DestinationWorker()
 {
+  g_string_free(this->path_buf, TRUE);
 }
 
 DestinationDriver *
@@ -117,6 +120,30 @@ LogThreadedResult
 DestinationWorker::insert(LogMessage *msg)
 {
   return LTR_QUEUED;
+}
+
+std::string
+DestinationWorker::format_path(LogMessage *msg)
+{
+  LogTemplate *path_template = this->get_owner()->get_path_template();
+  if (!path_template)
+    return "";
+
+  gssize len;
+  LogMessageValueType vtype;
+  if (log_template_is_trivial(path_template))
+    {
+      const gchar *path = log_template_get_trivial_value_and_type(path_template, msg, &len, &vtype);
+      if (len < 0 || vtype == LM_VT_NULL)
+        return "";
+      return path;
+    }
+
+  LogTemplateEvalOptions opts = {&this->get_owner()->get_template_options(), LTZ_SEND,
+                                 this->super->super.seq_num, NULL, LM_VT_STRING
+                                };
+  log_template_format(path_template, msg, &opts, this->path_buf);
+  return this->path_buf->str;
 }
 
 LogThreadedResult

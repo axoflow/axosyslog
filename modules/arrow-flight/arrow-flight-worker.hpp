@@ -54,10 +54,12 @@ public:
 
 private:
   DestinationDriver *get_owner();
+  std::string format_path(LogMessage *msg);
 
   ArrowFlightDestWorker *super;
   arrow::flight::Location location;
   std::unique_ptr<arrow::flight::FlightClient> client;
+  GString *path_buf;
 };
 
 }
