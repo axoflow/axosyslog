@@ -98,7 +98,7 @@ evt_tag_mem(const char *tag, const void *value, size_t len)
   return p;
 }
 
-char hexdigits[] = "0123456789abcdef";
+static char hexdigits[] = "0123456789abcdef";
 
 EVTTAG *
 evt_tag_memdump(const char *tag, const void *value, size_t len)
