@@ -29,24 +29,11 @@
 #include "afinet-dest-failover.h"
 #include "transport/tls-context.h"
 
-#if SYSLOG_NG_ENABLE_SPOOF_SOURCE
-
-/* this forward declaration avoids having to include libnet, which requires
- * ugly playing with macros, see that for yourself in the implementation
- * file */
-struct libnet_context;
-#endif
-
-
-
 typedef struct _AFInetDestDriver
 {
   AFSocketDestDriver super;
 #if SYSLOG_NG_ENABLE_SPOOF_SOURCE
   gboolean spoof_source;
-  struct libnet_context *lnet_ctx;
-  GMutex lnet_lock;
-  GString *lnet_buffer;
   guint spoof_source_max_msglen;
 #endif
   gchar *primary;
