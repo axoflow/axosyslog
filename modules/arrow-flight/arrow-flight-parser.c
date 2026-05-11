@@ -43,6 +43,7 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "BOOLEAN",       KW_CAP_BOOLEAN },
   { "BOOL",          KW_CAP_BOOL },
   { "TIMESTAMP",     KW_CAP_TIMESTAMP },
+  { "batch_bytes",   KW_BATCH_BYTES },
   { NULL }
 };
 

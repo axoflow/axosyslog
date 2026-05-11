@@ -41,6 +41,7 @@ void arrow_flight_dd_add_integer_schema_field(LogDriver *d, const gchar *name, L
 void arrow_flight_dd_add_double_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
 void arrow_flight_dd_add_bool_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
 void arrow_flight_dd_add_timestamp_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
+void arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b);
 
 LogTemplateOptions *arrow_flight_dd_get_template_options(LogDriver *d);
 

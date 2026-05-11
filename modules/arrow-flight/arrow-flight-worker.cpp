@@ -69,9 +69,17 @@ DestinationWorker::get_batch_size() const
   return this->super->super.batch_size;
 }
 
+bool
+DestinationWorker::should_initiate_flush()
+{
+  size_t batch_bytes = this->get_owner()->get_batch_bytes();
+  return batch_bytes > 0 && this->current_batch_bytes >= batch_bytes;
+}
+
 void
 DestinationWorker::prepare_batch()
 {
+  this->current_batch_bytes = 0;
   this->current_batch_path.clear();
 }
 
@@ -292,9 +300,14 @@ DestinationWorker::insert(LogMessage *msg)
   if (this->get_batch_size() == 1)
     this->current_batch_path = this->format_path(msg);
 
+  this->current_batch_bytes += row_bytes;
   log_threaded_dest_driver_insert_msg_length_stats(this->super->super.owner, row_bytes);
 
   scratch_buffers_reclaim_marked(m);
+
+  if (this->should_initiate_flush())
+    return log_threaded_dest_worker_flush(&this->super->super, LTF_FLUSH_NORMAL);
+
   return LTR_QUEUED;
 }
 

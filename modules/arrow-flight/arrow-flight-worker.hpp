@@ -57,6 +57,7 @@ public:
 private:
   DestinationDriver *get_owner();
   gint get_batch_size() const;
+  bool should_initiate_flush();
   void prepare_batch();
   std::string format_path(LogMessage *msg);
   bool open_stream(const gchar *path);
@@ -75,6 +76,7 @@ private:
   std::unique_ptr<arrow::flight::FlightMetadataReader> metadata_reader;
   std::string current_stream_path;
   std::string current_batch_path;
+  size_t current_batch_bytes = 0;
 };
 
 }

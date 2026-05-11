@@ -60,6 +60,7 @@
 %token KW_CAP_BOOLEAN
 %token KW_CAP_BOOL
 %token KW_CAP_TIMESTAMP
+%token KW_BATCH_BYTES
 
 %type <ptr> arrow_flight_dest
 
@@ -85,6 +86,7 @@ arrow_flight_dest_options
 arrow_flight_dest_option
   : KW_URL '(' string ')' { arrow_flight_dd_set_url(last_driver, $3); free($3); }
   | KW_PATH '(' template_content ')' { arrow_flight_dd_set_path(last_driver, $3); log_template_unref($3); }
+  | KW_BATCH_BYTES '(' positive_integer ')' { arrow_flight_dd_set_batch_bytes(last_driver, $3); }
   | KW_SCHEMA '(' arrow_flight_schema_fields ')'
   | threaded_dest_driver_general_option
   | threaded_dest_driver_workers_option
