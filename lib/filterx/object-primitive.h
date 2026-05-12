@@ -131,9 +131,9 @@ void filterx_primitive_global_deinit(void);
 
 #define FILTERX_INTEGER_STACK_INIT(v) \
   { \
-    FILTERX_OBJECT_STACK_INIT(integer), \
+    .super = FILTERX_OBJECT_STACK_INIT(integer), \
     .value = { \
-      { \
+      .value = { \
         .raw_int64 = v, \
       }, \
       .type = GN_INT64, \
