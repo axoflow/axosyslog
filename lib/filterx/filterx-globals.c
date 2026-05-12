@@ -60,6 +60,7 @@
 #include "filterx/expr-unset.h"
 #include "filterx/expr-move.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/jit/jit.h"
 #include "filterx/func-keys.h"
 #include "filterx/json-repr.h"
 #include "apphook.h"
@@ -292,11 +293,13 @@ filterx_global_init(void)
   filterx_eval_global_init();
   register_application_thread_init_hook(filterx_global_thread_init, NULL);
   register_application_thread_deinit_hook(filterx_global_thread_deinit, NULL);
+  filterx_jit_global_init();
 }
 
 void
 filterx_global_deinit(void)
 {
+  filterx_jit_global_deinit();
   filterx_eval_global_deinit();
   filterx_builtin_functions_deinit();
   filterx_datetime_global_deinit();

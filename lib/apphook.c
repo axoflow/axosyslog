@@ -324,6 +324,12 @@ app_config_pre_init(void)
 }
 
 void
+app_config_post_init(void)
+{
+  run_application_hook(AH_CONFIG_POST_INIT);
+}
+
+void
 app_config_stopped(void)
 {
   run_application_hook(AH_CONFIG_STOPPED);

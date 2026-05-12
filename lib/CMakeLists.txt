@@ -409,6 +409,11 @@ target_link_libraries(
     secret-storage
 )
 
+if(SYSLOG_NG_ENABLE_JIT)
+  target_include_directories(syslog-ng SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
+  target_link_libraries(syslog-ng PUBLIC ${LLVM_LIBS})
+endif()
+
 set_target_properties(syslog-ng
     PROPERTIES VERSION ${SYSLOG_NG_VERSION}
     SOVERSION ${SYSLOG_NG_VERSION})

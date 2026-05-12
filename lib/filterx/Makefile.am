@@ -1,3 +1,5 @@
+include lib/filterx/jit/Makefile.am
+
 filterxincludedir			= ${pkgincludedir}/filterx
 
 filterxinclude_HEADERS = 			\
@@ -89,6 +91,7 @@ filterxinclude_HEADERS = 			\
 
 
 filterx_sources = 				\
+	$(filterxjit_sources) \
 	lib/filterx/expr-arithmetic-operators.c \
 	lib/filterx/expr-assign.c \
 	lib/filterx/expr-boolalg.c \

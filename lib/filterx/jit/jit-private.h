@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2025-2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,31 +19,41 @@
  * COPYING for details.
  *
  */
-#ifndef FILTERX_CONFIG_H_INCLUDED
-#define FILTERX_CONFIG_H_INCLUDED 1
 
-#include "module-config.h"
-#include "filterx/filterx-object.h"
-#include "filterx/jit/jit.h"
-#include "filterx/object-string.h"
+#ifndef FILTERX_JIT_PRIVATE_H
+#define FILTERX_JIT_PRIVATE_H
 
-typedef struct _FilterXConfig
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/ffi.h"
+
+#include <llvm-c/Core.h>
+#include <llvm-c/Types.h>
+#include <llvm-c/LLJIT.h>
+
+struct _FilterXJIT
 {
-  ModuleConfig super;
-  GPtrArray *frozen_objects;
-  GHashTable *frozen_deduplicated_objects;
-  GPtrArray *weak_refs;
+  gchar *mod_name;
 
-  gboolean enable_jit;
-  FilterXJIT *jit;
-} FilterXConfig;
+  LLVMOrcThreadSafeContextRef ts_ctx;
+  LLVMContextRef ctx;
+  LLVMModuleRef mod;
+  LLVMBuilderRef ir;
+  LLVMOrcLLJITRef j;
 
-FilterXConfig *filterx_config_get(GlobalConfig *cfg);
+  FilterXIRValue current_ir_block;
+  FilterXJITFFI ffi;
 
-static inline void
-filterx_config_enable_jit(FilterXConfig *self, gboolean enable)
+  gboolean mod_finalized;
+};
+
+#else
+
+struct _FilterXJIT
 {
-  self->enable_jit = enable;
-}
+  guint8 dummy;
+};
+
+#endif
 
 #endif

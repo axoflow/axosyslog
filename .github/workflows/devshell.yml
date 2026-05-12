@@ -52,6 +52,7 @@ jobs:
             --disable-java
             --disable-java-modules
             --enable-ebpf
+            --enable-jit
             --with-python=3
             --enable-extra-warnings
             `[ $CC = clang ] && echo '--enable-force-gnu99 --with-sanitizer=address' || true`
@@ -174,6 +175,7 @@ jobs:
             --enable-tcp-wrapper
             --enable-linux-caps
             --enable-manpages
+            --enable-jit
             --enable-all-modules
             --disable-java
             --disable-java-modules
@@ -226,6 +228,7 @@ jobs:
             --enable-ebpf
             --with-python=3
             --enable-extra-warnings
+            --enable-jit
           "
           MAKE_ARGS="-j $(nproc)"
           DEFAULT_IMAGE=devshell

@@ -22,6 +22,8 @@
 
 #include "filterx/filterx-pipe.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/filterx-config.h"
+#include "filterx/jit/jit.h"
 #include "stats/stats-registry.h"
 
 typedef struct _LogFilterXPipe
@@ -29,8 +31,34 @@ typedef struct _LogFilterXPipe
   LogPipe super;
   gchar *name;
   FilterXExpr *block;
+  FilterXJITExecFunc jit_exec;
 } LogFilterXPipe;
 
+static inline const gchar *
+_jit_block_name(LogFilterXPipe *self, gchar *block_name_buf, gsize block_name_buf_size)
+{
+  g_snprintf(block_name_buf, block_name_buf_size, "block_%s", self->name);
+  return block_name_buf;
+}
+
+static void
+_compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
+{
+  FilterXJIT *jit = filterx_config_get(cfg)->jit;
+
+  if (!jit)
+    return;
+
+  if (!filterx_expr_can_compile(self->block))
+    return;
+
+  msg_debug("Compiling FilterX block", evt_tag_str("block", self->name), log_pipe_location_tag(&self->super));
+
+  gchar block_name[1024];
+  filterx_jit_ir_add_new_block(jit, _jit_block_name(self, block_name, G_N_ELEMENTS(block_name)));
+  FilterXIRValue result = filterx_expr_compile(self->block, jit);
+  filterx_jit_ir_finish_current_block(jit, result);
+}
 
 static gboolean
 log_filterx_pipe_init(LogPipe *s)
@@ -50,6 +78,37 @@ log_filterx_pipe_init(LogPipe *s)
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
 
+  filterx_eval_begin_compile(&compile_context, cfg);
+  _compile_block(self, cfg);
+  filterx_eval_end_compile(&compile_context);
+
+  return TRUE;
+}
+
+static gboolean
+_setup_jit_exec(LogPipe *s)
+{
+  LogFilterXPipe *self = (LogFilterXPipe *) s;
+  GlobalConfig *cfg = log_pipe_get_config(s);
+
+  FilterXJIT *jit = filterx_config_get(cfg)->jit;
+  if (!jit)
+    return TRUE;
+
+  GError *error = NULL;
+  gchar block_name[1024];
+  FilterXJITAddress addr = filterx_jit_lookup(jit, _jit_block_name(self, block_name, G_N_ELEMENTS(block_name)), &error);
+  if (!addr)
+    {
+      msg_warning("FilterX JIT block symbol lookup failed, falling back to interpreted evaluation",
+                  evt_tag_str("block", self->name),
+                  log_pipe_location_tag(s),
+                  evt_tag_str("error", error ? error->message : "unknown"));
+      g_clear_error(&error);
+      return TRUE;
+    }
+
+  self->jit_exec = (FilterXJITExecFunc) addr;
   return TRUE;
 }
 
@@ -83,7 +142,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
               log_pipe_location_tag(s),
               evt_tag_msg_reference(msg));
 
-    eval_res = filterx_eval_exec(&eval_context, self->block);
+    eval_res = filterx_eval_exec(&eval_context, self->block, self->jit_exec);
 
     msg_trace("<<<<<< filterx rule evaluation result",
               filterx_format_eval_result(eval_res),
@@ -146,6 +205,7 @@ log_filterx_pipe_new(FilterXExpr *block, GlobalConfig *cfg)
   self->super.flags = (self->super.flags | PIF_CONFIG_RELATED);
   self->super.init = log_filterx_pipe_init;
   self->super.deinit = log_filterx_pipe_deinit;
+  self->super.post_config_init = _setup_jit_exec;
   self->super.queue = log_filterx_pipe_queue;
   self->super.free_fn = log_filterx_pipe_free;
   self->super.clone = log_filterx_pipe_clone;
