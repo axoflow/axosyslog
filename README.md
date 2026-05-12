@@ -179,10 +179,11 @@ The following x86-64 distros are supported:
 |-----------------|--------------------------|
 | Fedora 41       | fedora                   |
 | Fedora 42       | fedora                   |
+| Fedora 44       | fedora                   |
 | AlmaLinux 8     | almalinux                |
 | AlmaLinux 9     | almalinux                |
 
-To add the RPM repo (e.g. Fedora 42):
+To add the RPM repo (e.g. Fedora 44):
 
 ```
 yum install -y epel-release

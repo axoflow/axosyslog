@@ -39,6 +39,7 @@ jobs:
           - almalinux-8
           - fedora-41
           - fedora-42
+          - fedora-44
           - debian-bullseye
           - debian-bookworm
           - debian-sid

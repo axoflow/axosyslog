@@ -28,7 +28,8 @@ on:
           "almalinux-8",
           "almalinux-9",
           "fedora-41",
-          "fedora-42"
+          "fedora-42",
+          "fedora-44"
         ]'
 
 
