@@ -169,6 +169,12 @@ openShift:
 
 service:
   create: true
+  type: NodePort  # NodePort, LoadBalancer, ClusterIP, or ExternalName
+  # Annotations for the service (e.g., to use private IP for LoadBalancer)
+  # AWS: service.beta.kubernetes.io/aws-load-balancer-internal: "true"
+  # Azure: service.beta.kubernetes.io/azure-load-balancer-internal: "true"
+  # GCP: cloud.google.com/load-balancer-type: "Internal"
+  annotations: {}
   extraPorts: []
   #  - protocol: TCP
   #    port: 514
