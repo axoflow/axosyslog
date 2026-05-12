@@ -153,6 +153,9 @@ class SyslogNg(object):
     def get_version(self) -> str:
         return self._get_version_info("Installer-Version:")
 
+    def get_jit_availability(self) -> str:
+        return self._get_version_info("Enable-Filterx-Jit:")
+
     def is_process_running(self) -> bool:
         return self._process and self._process.poll() is None
 
