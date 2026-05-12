@@ -546,6 +546,16 @@ dnl C++
 
 AC_PROG_CXX([$CPP_COMPILER])
 
+dnl Strip -Werror from CXXFLAGS for AX_CXX_COMPILE_STDCXX probes. The conftest
+dnl bodies shipped with the macro use constructs that newer C++ standards
+dnl deprecate (e.g. `volatile` function parameters, deprecated in C++20 per
+dnl P1152), which turn into hard errors under -Werror and make the probe
+dnl falsely conclude the compiler does not support the standard. CXXFLAGS is
+dnl restored after the probes so the rest of the build still sees -Werror.
+
+ax_saved_CXXFLAGS="$CXXFLAGS"
+CXXFLAGS=`echo " $CXXFLAGS " | sed -e 's/ -Werror / /g' -e 's/ -Werror=[^ ]* / /g'`
+
 if test "x$enable_cpp" = "xyes"; then
         AX_CXX_COMPILE_STDCXX(11,, mandatory)
         AX_CXX_COMPILE_STDCXX(17, noext, optional)
@@ -560,6 +570,8 @@ elif test "x$enable_cpp" = "xauto"; then
         AX_CXX_COMPILE_STDCXX(17, noext, optional)
         AX_CXX_COMPILE_STDCXX(20, noext, optional)
 fi
+
+CXXFLAGS="$ax_saved_CXXFLAGS"
 
 dnl ***************************************************************************
 dnl Validate yacc
