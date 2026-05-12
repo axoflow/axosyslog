@@ -42,6 +42,7 @@ ubuntu-noble		python3
 ubuntu-plucky		python3
 ubuntu-questing	python3
 ubuntu-lunar		python3
+ubuntu-resolute	python3
 
 fedora			python3
 almalinux-8		python3,noriemann,nokafka,nomqtt,nojava,nogrpc,nobpf
