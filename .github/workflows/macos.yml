@@ -50,7 +50,7 @@ jobs:
           PYTHONUSERBASE="${HOME}/python_packages"
           PKG_CONFIG_PATH="${HOMEBREW_PREFIX}/opt/openssl@3/lib/pkgconfig:${HOMEBREW_PREFIX}/opt/net-snmp/lib/pkgconfig:${HOMEBREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
           CFLAGS="-I${HOMEBREW_PREFIX}/include/"
-          CXXFLAGS="-std=c++17"
+          CXXFLAGS="-std=c++20"
 
           LDFLAGS="-L${HOMEBREW_PREFIX}/lib"
           THREADS="$(sysctl -n hw.physicalcpu)"
