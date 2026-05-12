@@ -19,6 +19,7 @@ RUN /dbld/builddeps update_packages
 RUN /dbld/builddeps install_dbld_dependencies
 RUN /dbld/builddeps install_apt_packages
 RUN /dbld/builddeps install_debian_build_deps
+RUN /dbld/builddeps set_default_llvm_version 15
 
 VOLUME /source
 VOLUME /build
