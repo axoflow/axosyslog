@@ -27,6 +27,7 @@ on:
           "ubuntu-resolute",
           "almalinux-8",
           "almalinux-9",
+          "almalinux-10",
           "fedora-44"
         ]'
 

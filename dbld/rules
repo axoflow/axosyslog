@@ -3,6 +3,7 @@
 BUILDER_IMAGES=		\
 	almalinux-8	\
 	almalinux-9	\
+	almalinux-10	\
 	fedora-44 \
 	debian-bullseye	\
 	debian-bookworm	\
@@ -21,7 +22,7 @@ IMAGES=${BUILDER_IMAGES} devshell
 DEFAULT_IMAGE ?= ubuntu-resolute
 TARBALL_IMAGE ?= tarball
 DEFAULT_DEB_IMAGE=ubuntu-resolute
-DEFAULT_RPM_IMAGE=almalinux-8
+DEFAULT_RPM_IMAGE=almalinux-10
 DOCKER ?= docker
 CONTAINER_REGISTRY ?= ghcr.io/axoflow
 MODE ?= snapshot

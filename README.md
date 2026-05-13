@@ -177,11 +177,8 @@ The following x86-64 distros are supported:
 
 | Distro          | axosyslog.repo component |
 |-----------------|--------------------------|
-| Fedora 41       | fedora                   |
-| Fedora 42       | fedora                   |
 | Fedora 44       | fedora                   |
-| AlmaLinux 8     | almalinux                |
-| AlmaLinux 9     | almalinux                |
+| AlmaLinux 8-10  | almalinux                |
 
 To add the RPM repo (e.g. Fedora 44):
 
@@ -234,7 +231,7 @@ yum install -u yum-plugin-copr
 yum config-manager --set-enabled powertools
 ```
 
-#### AlmaLinux 9
+#### AlmaLinux 9+
 
 ```
 dnf config-manager --set-enabled crb

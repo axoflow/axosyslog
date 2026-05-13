@@ -26,6 +26,7 @@ on:
 
             {"type": "rpm", "name": "almalinux-8"},
             {"type": "rpm", "name": "almalinux-9"},
+            {"type": "rpm", "name": "almalinux-10"},
             {"type": "rpm", "name": "fedora-44"}
           ]
     secrets:
