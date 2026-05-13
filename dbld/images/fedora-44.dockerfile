@@ -1,7 +1,7 @@
-FROM fedora:41
-LABEL maintainer="László Várady <laszlo.varady@axoflow.com>, Balazs Scheidler <bazsi77@gmail.com>"
+FROM fedora:44
+LABEL maintainer="László Várady <laszlo.varady@axoflow.com>"
 ENV OS_DISTRIBUTION=fedora
-ENV OS_DISTRIBUTION_CODE_NAME=41
+ENV OS_DISTRIBUTION_CODE_NAME=44
 
 ARG ARG_IMAGE_PLATFORM
 ARG COMMIT
@@ -18,7 +18,7 @@ RUN /dbld/builddeps add_copr_repo
 RUN /dbld/builddeps install_yum_packages
 RUN /dbld/builddeps install_rpm_build_deps
 
-RUN /dbld/builddeps install_criterion
+RUN /dbld/builddeps install_criterion_latest
 RUN /dbld/builddeps install_gradle
 
 VOLUME /source

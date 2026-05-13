@@ -86,7 +86,9 @@ function install_criterion() {
 function install_criterion_latest() {
     CRITERION_VERSION=2.4.3
     download_target "https://github.com/Snaipe/Criterion/releases/download/v${CRITERION_VERSION}/criterion-${CRITERION_VERSION}-linux-x86_64.tar.xz" /tmp/criterion.tar.xz
-    tar -C /usr --strip-components=1 -xvf /tmp/criterion.tar.xz
+
+    LIBDIR=$([ -f /etc/debian_version ] && echo lib || echo lib64)
+    tar -C /usr --strip-components=1 --transform="s,/lib/,/${LIBDIR}/," -xvf /tmp/criterion.tar.xz
 
     ldconfig
     rm -rf /tmp/criterion.tar.xz

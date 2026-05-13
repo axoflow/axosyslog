@@ -135,6 +135,7 @@ The following x86-64 distros are supported:
 
 | Distro          | sources.list component |
 |-----------------|------------------------|
+| Ubuntu 26.04    | ubuntu-resolute        |
 | Ubuntu 25.10    | ubuntu-questing        |
 | Ubuntu 25.04    | ubuntu-plucky          |
 | Ubuntu 24.04    | ubuntu-noble           |
@@ -146,11 +147,11 @@ The following x86-64 distros are supported:
 | Debian Unstable | debian-sid             |
 | Debian Testing  | debian-testing         |
 
-To add the APT repo (e.g. Ubuntu 24.04):
+To add the APT repo (e.g. Ubuntu 26.04):
 
 ```
 wget -qO - https://pkg.axoflow.io/axoflow-code-signing-pub.asc | gpg --dearmor > /usr/share/keyrings/axoflow-code-signing-pub.gpg
-echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt stable ubuntu-noble" | tee --append /etc/apt/sources.list.d/axoflow.list
+echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt stable ubuntu-resolute" | tee --append /etc/apt/sources.list.d/axoflow.list
 
 apt update
 ```
@@ -158,7 +159,7 @@ apt update
 Nightly builds are also available:
 
 ```
-echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt nightly ubuntu-noble" | tee --append /etc/apt/sources.list.d/axoflow.list
+echo "deb [signed-by=/usr/share/keyrings/axoflow-code-signing-pub.gpg] https://pkg.axoflow.io/apt nightly ubuntu-resolute" | tee --append /etc/apt/sources.list.d/axoflow.list
 ```
 
 To install AxoSyslog:
@@ -178,10 +179,11 @@ The following x86-64 distros are supported:
 |-----------------|--------------------------|
 | Fedora 41       | fedora                   |
 | Fedora 42       | fedora                   |
+| Fedora 44       | fedora                   |
 | AlmaLinux 8     | almalinux                |
 | AlmaLinux 9     | almalinux                |
 
-To add the RPM repo (e.g. Fedora 42):
+To add the RPM repo (e.g. Fedora 44):
 
 ```
 yum install -y epel-release
