@@ -3,6 +3,18 @@ if (NOT DEFINED ENABLE_ARROW_FLIGHT OR ENABLE_ARROW_FLIGHT)
   if (NOT "cxx_std_20" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
     message(STATUS "Apache Arrow Flight requires C++20, which is not supported by the compiler")
   else ()
+    # An earlier transitive find_package() (e.g. via grpc) may import an older
+    # zstdConfig that only defines zstd::libzstd_shared and zstd::libzstd_static.
+    # Arrow's FindzstdAlt re-invokes find_package(zstd), which on newer zstd
+    # additionally expects zstd::libzstd and aborts because some, but not all
+    # targets in the export set are already present. Pre-aliasing the missing
+    # umbrella target makes that probe hit its all-defined early return.
+    if (NOT TARGET zstd::libzstd AND TARGET zstd::libzstd_shared)
+      add_library(zstd::libzstd ALIAS zstd::libzstd_shared)
+    elseif (NOT TARGET zstd::libzstd AND TARGET zstd::libzstd_static)
+      add_library(zstd::libzstd ALIAS zstd::libzstd_static)
+    endif ()
+
     find_package(Arrow QUIET CONFIG)
     if (Arrow_FOUND)
       find_package(ArrowFlight QUIET CONFIG)
