@@ -43,7 +43,7 @@ app_object_generator_is_application_excluded(AppObjectGenerator *self, const gch
   return cfg_is_literal_in_list_of_literals(self->excluded_apps, app_name);
 }
 
-static gboolean
+static void
 _parse_auto_parse_arg(AppObjectGenerator *self, CfgArgs *args, const gchar *reference)
 {
   const gchar *v = cfg_args_get(args, "auto-parse");
@@ -52,7 +52,6 @@ _parse_auto_parse_arg(AppObjectGenerator *self, CfgArgs *args, const gchar *refe
     self->is_parsing_enabled = cfg_process_yesno(v);
   else
     self->is_parsing_enabled = TRUE;
-  return TRUE;
 }
 
 static gboolean
@@ -78,8 +77,8 @@ app_object_generator_parse_arguments_method(AppObjectGenerator *self, CfgArgs *a
 {
   g_assert(args != NULL);
 
-  if (!_parse_auto_parse_arg(self, args, reference))
-    return FALSE;
+  _parse_auto_parse_arg(self, args, reference);
+
   if (!_parse_auto_parse_exclude_arg(self, args, reference))
     return FALSE;
   if (!_parse_auto_parse_include_arg(self, args, reference))

@@ -35,6 +35,9 @@ typedef struct _AppParserGenerator
   GString *block;
   gboolean first_app_generated;
   gboolean allow_overlaps;
+
+  /* never drops messages (0 matches, FilterX errors, filtering) */
+  gboolean permissive;
 } AppParserGenerator;
 
 static gboolean
@@ -50,7 +53,7 @@ _parse_topic_arg(AppParserGenerator *self, CfgArgs *args, const gchar *reference
   return TRUE;
 }
 
-static gboolean
+static void
 _parse_allow_overlaps(AppParserGenerator *self, CfgArgs *args, const gchar *reference)
 {
   const gchar *v = cfg_args_get(args, "allow-overlaps");
@@ -58,14 +61,22 @@ _parse_allow_overlaps(AppParserGenerator *self, CfgArgs *args, const gchar *refe
     self->allow_overlaps = cfg_process_yesno(v);
   else
     self->allow_overlaps = FALSE;
-  return TRUE;
 }
 
-static gboolean
+static void
+_parse_permissive(AppParserGenerator *self, CfgArgs *args, const gchar *reference)
+{
+  const gchar *v = cfg_args_get(args, "permissive");
+  if (v)
+    self->permissive = cfg_process_yesno(v);
+  else
+    self->permissive = FALSE;
+}
+
+static void
 _parse_filterx_app_variable(AppParserGenerator *self, CfgArgs *args, const gchar *reference)
 {
   self->filterx_app_variable = cfg_args_get(args, "filterx-app-variable");
-  return TRUE;
 }
 
 static gboolean
@@ -77,11 +88,9 @@ app_parser_generator_parse_arguments(AppObjectGenerator *s, CfgArgs *args, const
   if (!_parse_topic_arg(self, args, reference))
     return FALSE;
 
-  if (!_parse_allow_overlaps(self, args, reference))
-    return FALSE;
-
-  if (!_parse_filterx_app_variable(self, args, reference))
-    return FALSE;
+  _parse_allow_overlaps(self, args, reference);
+  _parse_permissive(self, args, reference);
+  _parse_filterx_app_variable(self, args, reference);
 
   if (!app_object_generator_parse_arguments_method(&self->super, args, reference))
     return FALSE;
@@ -224,7 +233,7 @@ _generate_framing(AppParserGenerator *self, GlobalConfig *cfg)
                   "\nchannel {\n");
 
   self->first_app_generated = FALSE;
-  if (!self->allow_overlaps)
+  if (!self->allow_overlaps && !self->permissive)
     {
       _generate_applications(self, cfg);
       if (self->first_app_generated)
