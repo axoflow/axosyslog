@@ -147,6 +147,9 @@ function add_copr_repo {
                 9)
                     dnf config-manager --set-enabled crb
                 ;;
+                10)
+                    dnf config-manager --set-enabled crb
+                ;;
             esac
             ;;
         fedora)

@@ -27,6 +27,7 @@ EXTRA_DIST += \
 	dbld/images/fedora.prepare.sh \
 	dbld/images/almalinux-8.dockerfile \
 	dbld/images/almalinux-9.dockerfile \
+	dbld/images/almalinux-10.dockerfile \
 	dbld/images/devshell.dockerfile \
 	dbld/images/fedora-44.dockerfile \
 	dbld/images/debian-bullseye.dockerfile \

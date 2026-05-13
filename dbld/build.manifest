@@ -44,3 +44,4 @@ ubuntu-resolute	python3
 fedora			python3
 almalinux-8		python3,noriemann,nokafka,nomqtt,nojava,nogrpc,nobpf
 almalinux-9		python3,nojava,nosql
+almalinux-10		python3,nojava,nosql
