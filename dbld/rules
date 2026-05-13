@@ -3,10 +3,7 @@
 BUILDER_IMAGES=		\
 	almalinux-8	\
 	almalinux-9	\
-	fedora-41 \
-	fedora-42 \
 	fedora-44 \
-	debian-stretch	\
 	debian-bullseye	\
 	debian-bookworm	\
 	debian-testing	\

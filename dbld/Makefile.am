@@ -28,8 +28,6 @@ EXTRA_DIST += \
 	dbld/images/almalinux-8.dockerfile \
 	dbld/images/almalinux-9.dockerfile \
 	dbld/images/devshell.dockerfile \
-	dbld/images/fedora-41.dockerfile \
-	dbld/images/fedora-42.dockerfile \
 	dbld/images/fedora-44.dockerfile \
 	dbld/images/debian-bullseye.dockerfile \
 	dbld/images/debian-bookworm.dockerfile \
