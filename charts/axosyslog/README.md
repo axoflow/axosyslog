@@ -43,7 +43,6 @@ The following table lists the configurable parameters of the AxoSyslog Collector
 |  serviceAccount.annotations  | Annotations to apply to the service account |  {}  |
 |  service.create | Whether to create the service | true |
 |  service.type | Type of the service to create | NodePort |
-|  service.loadBalancerIP | IP to use if service.type is LoadBalancer | "" |
 |  service.annotations | Annotations to apply to the service | {} |
 |  service.extraPorts | Additional ports to expose on the service | [] |
 |  namespace  | The Kubernetes namespace to deploy to |  ""  |
