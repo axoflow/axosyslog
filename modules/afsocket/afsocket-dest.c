@@ -249,11 +249,25 @@ _update_legacy_connection_persist_name(AFSocketDestDriver *self)
   return persist_state_move_entry(cfg->state, legacy_persist_name, current_persist_name);
 }
 
+LogProtoClient *
+afsocket_dd_construct_proto_method(AFSocketDestDriver *self, gint fd)
+{
+  LogProtoClient *proto = log_proto_client_factory_construct(self->proto_factory, NULL,
+                                                              &self->writer_options.proto_options.super);
+
+  if (!transport_mapper_setup_stack(self->transport_mapper, &proto->transport_stack, fd))
+    {
+      log_proto_client_free(proto);
+      return NULL;
+    }
+
+  return proto;
+}
+
 static gboolean
 afsocket_dd_connected(AFSocketDestDriver *self)
 {
   GlobalConfig *cfg = log_pipe_get_config(&self->super.super.super);
-  LogProtoClient *proto;
   gchar buf1[256], buf2[256];
 
   main_loop_assert_main_thread();
@@ -264,13 +278,9 @@ afsocket_dd_connected(AFSocketDestDriver *self)
              evt_tag_str("server", g_sockaddr_format(self->dest_addr, buf2, sizeof(buf2), GSA_FULL)),
              evt_tag_str("local", g_sockaddr_format(self->bind_addr, buf1, sizeof(buf1), GSA_FULL)));
 
-  proto = log_proto_client_factory_construct(self->proto_factory, NULL, &self->writer_options.proto_options.super);
-
-  if (!transport_mapper_setup_stack(self->transport_mapper, &proto->transport_stack, self->fd))
-    {
-      log_proto_client_free(proto);
-      return FALSE;
-    }
+  LogProtoClient *proto = self->construct_proto(self, self->fd);
+  if (!proto)
+    return FALSE;
 
   log_proto_client_restart_with_state(proto, cfg->state, afsocket_dd_format_connections_name(self));
   log_writer_reopen(self->writer, proto);
@@ -802,6 +812,7 @@ afsocket_dd_init_instance(AFSocketDestDriver *self,
   self->super.super.super.generate_persist_name = afsocket_dd_format_name;
   self->setup_addresses = afsocket_dd_setup_addresses_method;
   self->construct_writer = afsocket_dd_construct_writer_method;
+  self->construct_proto = afsocket_dd_construct_proto_method;
   self->should_restore_connection = afsocket_dd_should_restore_connection_method;
   self->restore_connection = afsocket_dd_restore_connection_method;
   self->save_connection = afsocket_dd_save_connection_method;
