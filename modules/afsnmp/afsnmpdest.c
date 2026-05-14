@@ -353,13 +353,14 @@ parse_oid_tokens(gchar *oid_str, oid *parsed_oids, guint max_oid_number)
   /* parse the oid string into oid values */
   gchar **oid_tokens = g_strsplit(oid_str, ".", max_oid_number);
   guint oid_cnt = 0;
-  while (oid_tokens[oid_cnt])
+  for (guint i = 0; oid_tokens[i]; i++)
     {
       gint val;
-      if (sscanf(oid_tokens[oid_cnt], "%d", &val) != 1 )
+      if (sscanf(oid_tokens[i], "%d", &val) != 1)
         {
           msg_warning("SNMP: invalid OID token",
-                      evt_tag_str("value", oid_tokens[oid_cnt]));
+                      evt_tag_str("value", oid_tokens[i]));
+          continue;
         }
       parsed_oids[oid_cnt] = val;
       oid_cnt += 1;
