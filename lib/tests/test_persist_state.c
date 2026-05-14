@@ -79,7 +79,7 @@ Test(persist_state, test_persist_state_open_success_on_invalid_file)
   int fd;
   unlink(persist_file);
 
-  fd = open(persist_file, O_CREAT | O_RDWR, 0777);
+  fd = open(persist_file, O_CREAT | O_RDWR, 0660);
   ssize_t ret = write(fd, "aaa", 3);
   cr_assert_eq(ret, 3, "Write error on invalid persist file: %s", strerror(errno));
   close(fd);
@@ -97,7 +97,7 @@ Test(persist_state, test_persist_state_open_fails_on_invalid_file_with_dump)
   int fd;
   unlink(persist_file);
 
-  fd = open(persist_file, O_CREAT | O_RDWR, 0777);
+  fd = open(persist_file, O_CREAT | O_RDWR, 0660);
   ssize_t ret = write(fd, "aaa", 3);
   cr_assert_eq(ret, 3, "Write error on invalid persist file: %s", strerror(errno));
   close(fd);
