@@ -124,7 +124,7 @@ _parse_rule(const gchar *from_states, const gchar *regexp, const gchar *to_state
   gchar **from_state_list = g_strsplit(from_states, ",", -1);
 
   /* leave one slot for a terminating element */
-  for (gint i = 0; from_state_list[i] && i < G_N_ELEMENTS(new_rule.from_states) - 1; i++)
+  for (gint i = 0; i < G_N_ELEMENTS(new_rule.from_states) - 1 && from_state_list[i]; i++)
     new_rule.from_states[i] = _map_state(from_state_list[i]);
 
   new_rule.regexp = _extract_regexp(regexp);
