@@ -83,6 +83,10 @@ else
 BPF_CONFIGURE_OPTS = --enable-ebpf
 endif
 
+ifneq ($(filter sng-noarrow-flight,$(DEB_BUILD_PROFILES)),)
+DH_OPTIONS += -Naxosyslog-mod-arrow-flight
+endif
+
 # If DH_QUIET is set, then we want silent mode.
 # If DH_VERBOSE is set, we do not want silent mode.
 # If neither is set, we want the default: verbose mode.
@@ -136,6 +140,7 @@ override_dh_auto_configure:
 		--enable-grpc=auto \
 		$(BPF_CONFIGURE_OPTS) \
 		--enable-cloud-auth=auto \
+		--enable-arrow-flight=auto \
 		\
 		--with-mongoc=system \
 		--with-ivykis=system \

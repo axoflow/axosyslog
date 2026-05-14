@@ -56,7 +56,7 @@ CONFIGURE_OPTS ?= --enable-debug --enable-manpages --with-python=3 --prefix=/ins
 DBLD_RULES=$(MAKE) --no-print-directory -f $(DBLD_DIR)/rules
 SHELL = /bin/bash
 DOCKER_INTERACTIVE=$(shell if tty -s; then echo "-ti"; else echo "-i"; fi)
-DOCKER_SHELL=$(DOCKER) run $(DOCKER_RUN_ARGS) --privileged --rm $(DOCKER_INTERACTIVE) ${CONTAINER_REGISTRY}/axosyslog-dbld-$* /dbld/shell $(if $(SHELL_COMMAND),"$(SHELL_COMMAND)",bash)
+DOCKER_SHELL=$(DOCKER) run $(DOCKER_RUN_ARGS) --privileged --rm $(DOCKER_INTERACTIVE) alltilla/axosyslog-devshell-arrow:latest /dbld/shell $(if $(SHELL_COMMAND),"$(SHELL_COMMAND)",bash)
 CALLGRIND_CONFIG ?=
 CALLGRIND_PROFILE ?=
 CALLGRIND_SAMPLES ?=
@@ -104,12 +104,12 @@ help:
 
 bootstrap: bootstrap-$(DEFAULT_IMAGE)
 bootstrap-%: setup
-	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm  -i  ${CONTAINER_REGISTRY}/axosyslog-dbld-$* /dbld/bootstrap
+	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm  -i  alltilla/axosyslog-devshell-arrow:latest /dbld/bootstrap
 
 make-%: export
 make-%: setup
 	export -p | egrep '(CFLAGS|LDFLAGS|PYTEST)' | grep -v MAKEFLAGS > $(DBLD_DIR)/make.env || true
-	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm -i  ${CONTAINER_REGISTRY}/axosyslog-dbld-$(DEFAULT_IMAGE) /dbld/make $(MAKE_ARGS) $*
+	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm -i  alltilla/axosyslog-devshell-arrow:latest /dbld/make $(MAKE_ARGS) $*
 
 tarball-from-root: setup
 	@if [ -f $(ROOT_DIR)/../$(TARBALL_BASENAME) ] && [ ! -f $(TARBALL) ]; then \
@@ -218,7 +218,7 @@ clean:
 run: run-$(DEFAULT_IMAGE)
 run: RUN_COMMAND=echo Specify RUN_COMMAND to do something sensible here
 run-%: setup
-	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm $(DOCKER_INTERACTIVE) ${CONTAINER_REGISTRY}/axosyslog-dbld-$* bash -c "$(RUN_COMMAND)"
+	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm $(DOCKER_INTERACTIVE) alltilla/axosyslog-devshell-arrow:latest bash -c "$(RUN_COMMAND)"
 
 shell: shell-$(DEFAULT_IMAGE)
 shell-%: setup
@@ -241,10 +241,10 @@ push-image-%:
 pull-images: $(foreach image,$(BUILDER_IMAGES), pull-image-$(image))
 pull-image: pull-image-$(DEFAULT_IMAGE)
 pull-image-%:
-	$(DOCKER) pull ${CONTAINER_REGISTRY}/axosyslog-dbld-$*
+	$(DOCKER) pull alltilla/axosyslog-devshell-arrow:latest
 
 cache-image-%:
-	@IMAGE=${CONTAINER_REGISTRY}/axosyslog-dbld-$*:latest;										\
+	@IMAGE=alltilla/axosyslog-devshell-arrow:latest;										\
 	IMAGE_ID=$$($(DOCKER) images -q $$IMAGE | head -1);								\
 	WATCHED_FILES="dbld packaging/rhel/axosyslog.spec packaging/debian/control";					\
 	if [ "$$IMAGE_ID" = "" ]; then 											\
@@ -282,7 +282,7 @@ login-%: exec-%
 
 callgrind: callgrind-$(DEFAULT_IMAGE)
 callgrind-%: setup
-	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm -i  ${CONTAINER_REGISTRY}/axosyslog-dbld-$(DEFAULT_IMAGE) /dbld/callgrind "$(CALLGRIND_PROFILE)" "$(CALLGRIND_CONFIG)" "$(CALLGRIND_SAMPLES)" "$(DBLD_DIR)"
+	$(DOCKER) run $(DOCKER_RUN_ARGS) --rm -i  alltilla/axosyslog-devshell-arrow:latest /dbld/callgrind "$(CALLGRIND_PROFILE)" "$(CALLGRIND_CONFIG)" "$(CALLGRIND_SAMPLES)" "$(DBLD_DIR)"
 
 root-login: root-login-$(DEFAULT_IMAGE)
 root-login-%: EXEC_COMMAND=/dbld/shell $(if $(SHELL_COMMAND),"$(SHELL_COMMAND)",bash)

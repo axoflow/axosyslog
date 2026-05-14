@@ -1,0 +1,146 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ * Copyright (c) 2026 Attila Szakacs <attila.szakacs@axoflow.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+#ifndef ARROW_FLIGHT_DEST_HPP
+#define ARROW_FLIGHT_DEST_HPP
+
+#include "arrow-flight-dest.h"
+
+#include "compat/cpp-start.h"
+#include "template/templates.h"
+#include "compat/cpp-end.h"
+
+#include <arrow/type.h>
+#include <arrow/api.h>
+
+#include <string>
+#include <vector>
+#include <memory>
+
+namespace syslog_ng {
+namespace arrow_flight {
+
+struct SchemaField
+{
+  std::string name;
+  std::shared_ptr<arrow::DataType> type;
+  LogTemplate *value;
+
+  SchemaField(std::string name_, std::shared_ptr<arrow::DataType> type_, LogTemplate *value_)
+    : name(name_), type(type_), value(log_template_ref(value_)) {}
+
+  SchemaField(const SchemaField &a)
+    : name(a.name), type(a.type), value(log_template_ref(a.value)) {}
+
+  SchemaField &operator=(const SchemaField &a)
+  {
+    name = a.name;
+    type = a.type;
+    log_template_unref(value);
+    value = log_template_ref(a.value);
+    return *this;
+  }
+
+  ~SchemaField()
+  {
+    log_template_unref(value);
+  }
+};
+
+class DestinationDriver final
+{
+public:
+  DestinationDriver(ArrowFlightDestDriver *s);
+  ~DestinationDriver();
+  bool init();
+  bool deinit();
+  const gchar *format_persist_name();
+
+  void set_url(std::string u)
+  {
+    this->url = u;
+  }
+
+  const std::string &get_url() const
+  {
+    return this->url;
+  }
+
+  void set_path_template(LogTemplate *t)
+  {
+    log_template_unref(this->path_template);
+    this->path_template = log_template_ref(t);
+  }
+
+  LogTemplate *get_path_template() const
+  {
+    return this->path_template;
+  }
+
+  void set_batch_bytes(size_t b)
+  {
+    this->batch_bytes = b;
+  }
+
+  size_t get_batch_bytes() const
+  {
+    return this->batch_bytes;
+  }
+
+  LogTemplateOptions &get_template_options()
+  {
+    return this->template_options;
+  }
+
+  bool add_schema_field(std::string name, std::string type, LogTemplate *value);
+
+  const std::vector<SchemaField> &get_schema_fields() const
+  {
+    return this->schema_fields;
+  }
+
+  const std::shared_ptr<arrow::Schema> &get_arrow_schema() const
+  {
+    return this->arrow_schema;
+  }
+
+private:
+  static bool map_column_type(const std::string &type_str, std::shared_ptr<arrow::DataType> &out);
+
+private:
+  ArrowFlightDestDriver *super;
+
+  std::string url;
+  LogTemplateOptions template_options;
+  LogTemplate *path_template = nullptr;
+  std::vector<SchemaField> schema_fields;
+  std::shared_ptr<arrow::Schema> arrow_schema;
+  size_t batch_bytes = 0;
+};
+
+}
+}
+
+syslog_ng::arrow_flight::DestinationDriver *arrow_flight_dd_get_cpp(LogDriver *d);
+
+#endif

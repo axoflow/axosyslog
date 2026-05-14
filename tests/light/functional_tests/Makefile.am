@@ -6,6 +6,7 @@ EXTRA_DIST += \
 	tests/light/functional_tests/config_change/test_manipulating_config_between_reload.py \
 	tests/light/functional_tests/config_change/test_python_custom_options.py \
 	tests/light/functional_tests/conftest.py \
+	tests/light/functional_tests/destination_drivers/arrow_flight_destination/test_arrow_flight_destination.py \
 	tests/light/functional_tests/destination_drivers/example_destination/test_example_destination.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_kept_alive_tls_connection_doing_handshake_after_reload.py \
 	tests/light/functional_tests/destination_drivers/network_destination/test_network_destination_transport.py \
