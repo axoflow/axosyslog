@@ -57,7 +57,8 @@ static int
 evtrec_add_standard_tags(EVTREC *e, void *userptr)
 {
   time_t now;
-  struct tm *tm = NULL;
+  struct tm tm_buf;
+  gboolean tm_filled = FALSE;
   char buf[128];
   EVTCONTEXT *ctx = e->ev_ctx;
 
@@ -69,17 +70,18 @@ evtrec_add_standard_tags(EVTREC *e, void *userptr)
     evt_rec_add_tag(e, evt_tag_str(EVT_TAG_PROG, ctx->ec_prog));
   if (ctx->ec_flags & EF_ADD_ISOSTAMP)
     {
-      tm = localtime(&now);
-      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S%z", tm);
+      localtime_r(&now, &tm_buf);
+      tm_filled = TRUE;
+      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S%z", &tm_buf);
       evt_rec_add_tag(e, evt_tag_str(EVT_TAG_ISOSTAMP, buf));
     }
   if (ctx->ec_flags & EF_ADD_UTCSTAMP)
     evt_rec_add_tag(e, evt_tag_int(EVT_TAG_UTCSTAMP, (int) now));
   if (ctx->ec_flags & EF_ADD_TIMEZONE)
     {
-      if (!tm)
-        tm = localtime(&now);
-      strftime(buf, sizeof(buf), "%z", tm);
+      if (!tm_filled)
+        localtime_r(&now, &tm_buf);
+      strftime(buf, sizeof(buf), "%z", &tm_buf);
       evt_rec_add_tag(e, evt_tag_str(EVT_TAG_TIMEZONE, buf));
     }
   if (ctx->ec_flags & EF_ADD_MSGID)
