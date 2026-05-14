@@ -52,8 +52,12 @@ service_management_systemd_publish_status(const gchar *status)
 {
   gchar *status_buffer;
   time_t now = time(NULL);
+  struct tm tm_buf;
+  char time_buf[26];
 
-  status_buffer = g_strdup_printf("STATUS=%s (%s)", status, ctime(&now));
+  localtime_r(&now, &tm_buf);
+  strftime(time_buf, sizeof(time_buf), "%c", &tm_buf);
+  status_buffer = g_strdup_printf("STATUS=%s (%s)", status, time_buf);
   sd_notify(0, status_buffer);
   g_free(status_buffer);
 }
