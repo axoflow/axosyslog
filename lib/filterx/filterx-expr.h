@@ -24,6 +24,8 @@
 #ifndef FILTERX_EXPR_H_INCLUDED
 #define FILTERX_EXPR_H_INCLUDED
 
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
 #include "filterx-object.h"
 #include "cfg-lexer.h"
 #include "stats/stats-counter.h"
@@ -75,6 +77,7 @@ struct _FilterXExpr
   gboolean (*init)(FilterXExpr *self, GlobalConfig *cfg);
   void (*deinit)(FilterXExpr *self, GlobalConfig *cfg);
   FilterXExpr *(*optimize)(FilterXExpr *self);
+  FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
   void (*free_fn)(FilterXExpr *self);
 
   gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
@@ -131,6 +134,34 @@ filterx_expr_has_effect(FilterXExpr *expr, FilterXEffect effect)
   return !!(expr->effects & effect);
 }
 
+/* TODO: this should be in FilterXObject, _update_repr() prevents that */
+static inline FilterXObject *
+filterx_expr_make_typed_object(FilterXExpr *self, FilterXObject *obj)
+{
+  if (!obj)
+    return NULL;
+
+  FilterXObject *unmarshalled = filterx_object_unmarshal(obj);
+
+  if (!unmarshalled)
+    {
+      filterx_object_unref(obj);
+      return NULL;
+    }
+
+  if (obj == unmarshalled)
+    {
+      filterx_object_unref(unmarshalled);
+      return obj;
+    }
+
+  filterx_object_unref(obj);
+  if (self->_update_repr)
+    self->_update_repr(self, &unmarshalled);
+
+  return unmarshalled;
+}
+
 /*
  * Evaluate the expression and return the result as a typed FilterXObject.
  * This function will call filterx_expr_eval() and then unmarshal the result
@@ -140,29 +171,7 @@ static inline FilterXObject *
 filterx_expr_eval_typed(FilterXExpr *self)
 {
   FilterXObject *result = filterx_expr_eval(self);
-
-  if (!result)
-    return NULL;
-
-  FilterXObject *unmarshalled = filterx_object_unmarshal(result);
-
-  if (!unmarshalled)
-    {
-      filterx_object_unref(result);
-      return NULL;
-    }
-
-  if (result == unmarshalled)
-    {
-      filterx_object_unref(unmarshalled);
-      return result;
-    }
-
-  filterx_object_unref(result);
-  if (self->_update_repr)
-    self->_update_repr(self, &unmarshalled);
-
-  return unmarshalled;
+  return filterx_expr_make_typed_object(self, result);
 }
 
 static inline gboolean
@@ -254,6 +263,48 @@ filterx_expr_walk_children(FilterXExpr *self, FilterXExprWalkFunc f, gpointer us
   g_assert(self->walk_children);
 
   return self->walk_children(self, f, user_data);
+}
+
+/* TODO partialJIT: remove once all expressions implement compile() */
+static inline gboolean
+filterx_expr_can_compile(FilterXExpr *self)
+{
+  return !!self->compile;
+}
+
+static inline FilterXIRValue
+filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
+{
+  g_assert(self && self->compile);
+  return self->compile(self, jit);
+}
+
+static inline FilterXIRValue
+filterx_expr_compile_typed(FilterXExpr *self, FilterXJIT *jit)
+{
+  g_assert(self && self->compile);
+  FilterXIRValue result = self->compile(self, jit);
+
+  return fx_jit_emit_expr_make_typed_object(jit, self, result);
+}
+
+/* TODO partialJIT: remove once all expressions implement compile() */
+static inline FilterXIRValue
+filterx_expr_compile_or_eval(FilterXExpr *self, FilterXJIT *jit)
+{
+  if (filterx_expr_can_compile(self))
+    return filterx_expr_compile(self, jit);
+
+  return fx_jit_emit_expr_eval(jit, self);
+}
+
+static inline FilterXIRValue
+filterx_expr_compile_or_eval_typed(FilterXExpr *self, FilterXJIT *jit)
+{
+  if (filterx_expr_can_compile(self))
+    return filterx_expr_compile_typed(self, jit);
+
+  return fx_jit_emit_expr_eval_typed(jit, self);
 }
 
 typedef struct _FilterXUnaryOp

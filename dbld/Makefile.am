@@ -27,9 +27,9 @@ EXTRA_DIST += \
 	dbld/images/fedora.prepare.sh \
 	dbld/images/almalinux-8.dockerfile \
 	dbld/images/almalinux-9.dockerfile \
+	dbld/images/almalinux-10.dockerfile \
 	dbld/images/devshell.dockerfile \
-	dbld/images/fedora-41.dockerfile \
-	dbld/images/fedora-42.dockerfile \
+	dbld/images/fedora-44.dockerfile \
 	dbld/images/debian-bullseye.dockerfile \
 	dbld/images/debian-bookworm.dockerfile \
 	dbld/images/debian-sid.dockerfile \
@@ -40,6 +40,7 @@ EXTRA_DIST += \
 	dbld/images/ubuntu-noble.dockerfile \
 	dbld/images/ubuntu-plucky.dockerfile \
 	dbld/images/ubuntu-questing.dockerfile \
+	dbld/images/ubuntu-resolute.dockerfile \
 	dbld/images/tarball.dockerfile \
 	dbld/images/hooks/build \
 	dbld/images/README.md \

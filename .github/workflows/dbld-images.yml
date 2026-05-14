@@ -35,10 +35,10 @@ jobs:
     strategy:
       matrix:
         image:
-          - almalinux-9
           - almalinux-8
-          - fedora-41
-          - fedora-42
+          - almalinux-9
+          - almalinux-10
+          - fedora-44
           - debian-bullseye
           - debian-bookworm
           - debian-sid
@@ -49,6 +49,7 @@ jobs:
           - ubuntu-noble
           - ubuntu-plucky
           - ubuntu-questing
+          - ubuntu-resolute
           - devshell
           - tarball
       fail-fast: false

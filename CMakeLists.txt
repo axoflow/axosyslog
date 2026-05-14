@@ -386,6 +386,37 @@ endif ()
 option (ENABLE_LIBUNWIND "Enable stackdump using libunwind" ${LIBUNWIND_FOUND})
 set (SYSLOG_NG_ENABLE_STACKDUMP ${ENABLE_LIBUNWIND})
 
+# ############################################################################
+# FilterX JIT compiler
+# ############################################################################
+find_package(LLVM CONFIG)
+module_switch(ENABLE_JIT "Enable FilterX JIT compiler" LLVM_FOUND)
+if(ENABLE_JIT AND NOT LLVM_FOUND)
+  message(FATAL_ERROR "ENABLE_JIT is set but LLVM was not found.")
+endif()
+set(SYSLOG_NG_ENABLE_JIT ${ENABLE_JIT})
+
+if(ENABLE_JIT)
+  message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+
+  if(TARGET LLVM)
+    set(LLVM_LIBS LLVM)
+  else()
+    llvm_map_components_to_libnames(LLVM_LIBS core orcjit native passes)
+  endif()
+
+  set(CMAKE_REQUIRED_INCLUDES_SAVE "${CMAKE_REQUIRED_INCLUDES}")
+  set(CMAKE_REQUIRED_LIBRARIES_SAVE "${CMAKE_REQUIRED_LIBRARIES}")
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${LLVM_INCLUDE_DIRS})
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LLVM_LIBS})
+  include(CheckSymbolExists)
+  check_symbol_exists(LLVMOrcCreateNewThreadSafeContextFromLLVMContext
+    "llvm-c/Orc.h"
+    SYSLOG_NG_HAVE_DECL_LLVMORCCREATENEWTHREADSAFECONTEXTFROMLLVMCONTEXT)
+  set(CMAKE_REQUIRED_INCLUDES "${CMAKE_REQUIRED_INCLUDES_SAVE}")
+  set(CMAKE_REQUIRED_LIBRARIES "${CMAKE_REQUIRED_LIBRARIES_SAVE}")
+endif()
+
 if (WITH_GETTEXT)
     set(CMAKE_PREFIX_PATH ${WITH_GETTEXT})
     find_package(Gettext REQUIRED QUIET)

@@ -19,7 +19,7 @@ spec:
 {{ toYaml ( .Values.service.extraPorts ) | nindent 4 }}
 {{ end }}
 
-{{- with .Values.syslog.config.sources }}
+{{- with .Values.aggregator.config.sources }}
 {{- if .syslog.enabled }}
     - name: rfc3164-udp
       protocol: UDP
@@ -35,6 +35,7 @@ spec:
       {{- end }}
       port: 514
       targetPort: rfc3164-tcp
+    {{- if .syslog.tls }}
     - name: rfc5424-tls
       protocol: TCP
       {{- if and .syslog.rfc5424TlsPort (or (eq $.Values.service.type "NodePort") (eq $.Values.service.type "LoadBalancer")) }}
@@ -42,6 +43,7 @@ spec:
       {{- end }}
       port: 6514
       targetPort: rfc5424-tls
+    {{- end }}
     - name: rfc5424-tcp
       protocol: TCP
       {{- if and .syslog.rfc5424TcpPort (or (eq $.Values.service.type "NodePort") (eq $.Values.service.type "LoadBalancer")) }}

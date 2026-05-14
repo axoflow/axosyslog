@@ -9,7 +9,7 @@
 #
 #   OS              -- either Linux distribution name (e.g.  ubuntu, fedora
 #                      etc), or a distro + version combination separated by
-#                      a dash (e.g.  ubuntu-bionic, fedora-41, etc). If used
+#                      a dash (e.g.  ubuntu-resolute, fedora-44, etc). If used
 #                      without version number, it denotes a wildcard (e.g.
 #                      applied to any versions of the distro).
 #
@@ -25,9 +25,6 @@
 #   there.
 #
 
-# kafka support needs librdkafka >= 1.0.0, which is only available on ubuntu-bionic
-# on Debian we don't build java and use Python3 _after_ buster
-# libcriterion-dev is available starting with bullseye
 debian-bullseye		python3,nojava,notzdatalegacy,nobpf
 debian-bookworm		python3,nojava,notzdatalegacy
 debian-trixie		python3,nojava
@@ -42,7 +39,9 @@ ubuntu-noble		python3
 ubuntu-plucky		python3
 ubuntu-questing	python3
 ubuntu-lunar		python3
+ubuntu-resolute	python3
 
 fedora			python3
 almalinux-8		python3,noriemann,nokafka,nomqtt,nojava,nogrpc,nobpf
 almalinux-9		python3,nojava,nosql
+almalinux-10		python3,nojava,nosql

@@ -22,6 +22,7 @@ Build-Depends: debhelper (>= 10~),
                libmongoc-dev,
                libbson-dev,
                libjson-c-dev | libjson0-dev,
+               llvm-dev (>= 1:15~) | llvm-19-dev | llvm-18-dev | llvm-15-dev,
                libwrap0-dev,
                libpcre2-dev,
                libcap-dev [linux-any],
@@ -51,7 +52,7 @@ Build-Depends: debhelper (>= 10~),
                libbpf-dev <!sng-nobpf>,
                linux-tools-common <!sng-nobpf sng-ubuntu>,
                linux-tools-generic <!sng-nobpf sng-ubuntu>,
-               bpftool <!sng-nobpf sng-debian> <!sng-nobpf sng-ubuntu-plucky> <!sng-nobpf sng-ubuntu-questing>
+               bpftool <!sng-nobpf sng-debian> <!sng-nobpf sng-ubuntu-plucky> <!sng-nobpf sng-ubuntu-questing> <!sng-nobpf sng-ubuntu-resolute>
 Build-Conflicts: autoconf2.13
 Standards-Version: 4.4.1
 Homepage: https://axoflow.com/docs/axosyslog-core/

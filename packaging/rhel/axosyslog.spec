@@ -75,6 +75,7 @@ BuildRequires: libxslt
 BuildRequires: glib2-devel
 BuildRequires: ivykis-devel
 BuildRequires: json-c-devel
+BuildRequires: llvm-devel
 BuildRequires: libcap-devel
 %if 0%{?rhel} <= 8
 BuildRequires: libdbi-devel
@@ -376,6 +377,7 @@ rsyslog is not on the system.
     --enable-spoof-source \
     --with-linux-caps=auto \
     --enable-json \
+    --enable-jit \
     --enable-ssl \
     --enable-pacct \
     --enable-smtp \

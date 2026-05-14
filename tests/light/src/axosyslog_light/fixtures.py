@@ -105,6 +105,8 @@ def pytest_addoption(parser):
         help="Path for report files folder. Default form: 'reports/<current_date>'",
     )
 
+    parser.addoption("--disable-filterx-jit", action="store_true", help="Disable JIT compilation in filterx expressions.")
+
 
 _test_results = []
 
@@ -146,7 +148,9 @@ def testcase_parameters(request):
 
 @pytest.fixture
 def config(request, syslog_ng, teardown) -> SyslogNgConfig:
-    return syslog_ng.create_config(request.getfixturevalue("config_version"), teardown)
+    cfg = syslog_ng.create_config(request.getfixturevalue("config_version"), teardown)
+    cfg.filterx_jit_enabled = request.getfixturevalue("jit_available") and not request.config.getoption("--disable-filterx-jit")
+    return cfg
 
 
 @pytest.fixture
@@ -229,6 +233,11 @@ def version(syslog_ng):
 @pytest.fixture
 def config_version(syslog_ng):
     return syslog_ng.get_config_version()
+
+
+@pytest.fixture
+def jit_available(syslog_ng):
+    return syslog_ng.get_jit_availability()
 
 
 @pytest.fixture

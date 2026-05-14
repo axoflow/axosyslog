@@ -86,7 +86,9 @@ function install_criterion() {
 function install_criterion_latest() {
     CRITERION_VERSION=2.4.3
     download_target "https://github.com/Snaipe/Criterion/releases/download/v${CRITERION_VERSION}/criterion-${CRITERION_VERSION}-linux-x86_64.tar.xz" /tmp/criterion.tar.xz
-    tar -C /usr --strip-components=1 -xvf /tmp/criterion.tar.xz
+
+    LIBDIR=$([ -f /etc/debian_version ] && echo lib || echo lib64)
+    tar -C /usr --strip-components=1 --transform="s,/lib/,/${LIBDIR}/," -xvf /tmp/criterion.tar.xz
 
     ldconfig
     rm -rf /tmp/criterion.tar.xz
@@ -143,6 +145,9 @@ function add_copr_repo {
                     yum config-manager --set-enabled powertools
                 ;;
                 9)
+                    dnf config-manager --set-enabled crb
+                ;;
+                10)
                     dnf config-manager --set-enabled crb
                 ;;
             esac
@@ -246,6 +251,10 @@ function install_clickhouse_server_for_light {
     echo "deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg arch=${ARCH}] https://packages.clickhouse.com/deb stable main" | tee /etc/apt/sources.list.d/clickhouse.list
     apt-get update
     $APT_INSTALL clickhouse-server clickhouse-client
+}
+
+function set_default_llvm_version {
+    update-alternatives --install /usr/bin/llvm-config llvm-config /usr/bin/llvm-config-$1 100
 }
 
 

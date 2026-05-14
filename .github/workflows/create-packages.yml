@@ -24,10 +24,11 @@ on:
           "ubuntu-noble",
           "ubuntu-plucky",
           "ubuntu-questing",
+          "ubuntu-resolute",
           "almalinux-8",
           "almalinux-9",
-          "fedora-41",
-          "fedora-42"
+          "almalinux-10",
+          "fedora-44"
         ]'
 
 

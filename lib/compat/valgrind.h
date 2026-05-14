@@ -24,14 +24,14 @@
 
 #include <syslog-ng.h>
 
-#if SYSLOG_NG_HAVE_VALGRIND_CALLGRIND_H
+#ifdef SYSLOG_NG_HAVE_VALGRIND_CALLGRIND_H
 #include <valgrind/callgrind.h>
 #endif
 
 static inline void
 valgrind_start_instrumentation(void)
 {
-#if SYSLOG_NG_HAVE_VALGRIND_CALLGRIND_H
+#ifdef SYSLOG_NG_HAVE_VALGRIND_CALLGRIND_H
   CALLGRIND_START_INSTRUMENTATION;
 #endif
 }
@@ -39,7 +39,7 @@ valgrind_start_instrumentation(void)
 static inline void
 valgrind_stop_instrumentation(void)
 {
-#if SYSLOG_NG_HAVE_VALGRIND_CALLGRIND_H
+#ifdef SYSLOG_NG_HAVE_VALGRIND_CALLGRIND_H
   CALLGRIND_STOP_INSTRUMENTATION;
 #endif
 }

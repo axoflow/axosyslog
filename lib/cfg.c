@@ -129,6 +129,13 @@ _invoke_module_init(gchar *key, ModuleConfig *mc, gpointer *args)
 }
 
 static void
+_invoke_module_post_cfg_init(gchar *key, ModuleConfig *mc, gpointer c)
+{
+  GlobalConfig *cfg = (GlobalConfig *) c;
+  module_config_post_cfg_init(mc, cfg);
+}
+
+static void
 _invoke_module_deinit(gchar *key, ModuleConfig *mc, gpointer user_data)
 {
   GlobalConfig *cfg = (GlobalConfig *) user_data;
@@ -233,6 +240,12 @@ cfg_init_modules(GlobalConfig *cfg)
 }
 
 static void
+_run_module_post_cfg_inits(GlobalConfig *cfg)
+{
+  g_hash_table_foreach(cfg->module_config, (GHFunc) _invoke_module_post_cfg_init, cfg);
+}
+
+static void
 cfg_deinit_modules(GlobalConfig *cfg)
 {
   g_hash_table_foreach(cfg->module_config, (GHFunc) _invoke_module_deinit, cfg);
@@ -306,6 +319,9 @@ cfg_init(GlobalConfig *cfg)
   app_config_pre_init();
   if (!cfg_tree_start(&cfg->tree))
     return FALSE;
+
+  _run_module_post_cfg_inits(cfg);
+  app_config_post_init();
 
   /*
    * TLDR: A half-initialized pipeline turned out to be really hard to deinitialize

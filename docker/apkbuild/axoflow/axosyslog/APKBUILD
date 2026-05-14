@@ -24,6 +24,7 @@ makedepends="
 	grpc-dev
 	hiredis-dev
 	json-c-dev
+	llvm21-dev
 	libbpf-dev
 	libdbi-dev
 	libmaxminddb-dev
@@ -69,9 +70,11 @@ build() {
 		--with-ivykis=internal \
 		--with-jsonc=system \
 		--with-python-venv-dir=/var/lib/syslog-ng-venv \
+		--with-llvm-config=/usr/bin/llvm-config-21 \
 		\
 		--enable-all-modules \
 		--enable-ebpf \
+		--enable-jit \
 		--disable-stackdump \
 		--disable-linux-caps \
 		--disable-smtp \
