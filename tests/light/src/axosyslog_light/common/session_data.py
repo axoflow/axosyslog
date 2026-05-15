@@ -58,7 +58,7 @@ class SessionData:
             raise Exception("SessionData.cleanup() must be used without the 'with' statement")
 
         SessionData.SESSION_FILE.unlink()
-        SessionData.SESSION_LOCK_FILE.unlink()
+        SessionData.SESSION_LOCK_FILE.unlink(missing_ok=True)
 
     def __sync_from_file(self) -> None:
         if not SessionData.SESSION_FILE.exists():
