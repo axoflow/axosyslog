@@ -13,7 +13,7 @@ metadata:
 spec:
   selector:
     {{- include "axosyslog.aggregator.selectorLabels" . | nindent 4 }}
-  type: {{ .Values.service.type | default "NodePort" }}
+  type: {{ .Values.service.type }}
   ports:
 {{ if .Values.service.extraPorts }}
 {{ toYaml ( .Values.service.extraPorts ) | nindent 4 }}
