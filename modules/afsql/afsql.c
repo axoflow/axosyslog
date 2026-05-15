@@ -767,6 +767,7 @@ afsql_dd_disconnect(LogThreadedDestDriver *s)
 
   dbi_conn_close(self->dbi_ctx);
   self->dbi_ctx = NULL;
+  self->transaction_active = FALSE;
 }
 
 static GString *
