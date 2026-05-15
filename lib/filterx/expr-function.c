@@ -170,6 +170,76 @@ _simple_function_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_simple_function(FilterXSimpleFunctionProto fn, FilterXExpr *expr,
+                          FilterXObject **args, gsize args_len)
+{
+  FilterXObject *res = NULL;
+  gboolean all_ok = TRUE;
+
+  for (gsize i = 0; i < args_len; i++)
+    {
+      if (!args[i])
+        {
+          all_ok = FALSE;
+          break;
+        }
+    }
+
+  if (all_ok)
+    res = fn(expr, args, args_len);
+
+  for (gsize i = 0; i < args_len; i++)
+    filterx_object_unref(args[i]);
+
+  return res;
+}
+
+static FilterXIRValue
+_simple_function_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXSimpleFunction *self = (FilterXSimpleFunction *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+
+  gsize args_len = self->args->len;
+  LLVMValueRef args_ptr;
+
+  if (args_len > 0)
+    {
+      args_ptr = LLVMBuildArrayAlloca(ir, ffi->ptr_ty, LLVMConstInt(ffi->i64_ty, args_len, FALSE), "simple_args");
+      for (gsize i = 0; i < args_len; i++)
+        {
+          FilterXExpr *arg_expr = g_ptr_array_index(self->args, i);
+          LLVMValueRef arg_val = filterx_expr_compile_or_eval_typed(arg_expr, jit);
+          LLVMValueRef idx = LLVMConstInt(ffi->i64_ty, i, FALSE);
+          LLVMValueRef slot = LLVMBuildGEP2(ir, ffi->ptr_ty, args_ptr, &idx, 1, "");
+          LLVMBuildStore(ir, arg_val, slot);
+        }
+    }
+  else
+    {
+      args_ptr = LLVMConstNull(ffi->ptr_ty);
+    }
+
+  FilterXIRValue call_args[] = {
+    fx_jit_emit_const_ptr(jit, self->function_proto),
+    fx_jit_emit_const_ptr(jit, s),
+    args_ptr,
+    LLVMConstInt(ffi->i64_ty, args_len, FALSE),
+  };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty, ffi->i64_ty };
+  return fx_jit_emit_extern_call(jit, "fx_jit_do_simple_function", ffi->ptr_ty, param_tys, call_args, 4);
+}
+
+#endif
+
 FilterXExpr *
 filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *args,
                             FilterXSimpleFunctionProto function_proto, GError **error)
@@ -180,6 +250,9 @@ filterx_simple_function_new(const gchar *function_name, FilterXFunctionArgs *arg
   self->super.super.eval = _simple_eval;
   self->super.super.walk_children = _simple_function_walk;
   self->super.super.free_fn = _simple_free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _simple_function_compile;
+#endif
   self->function_proto = function_proto;
 
   self->args = g_ptr_array_new_full(filterx_function_args_len(args), (GDestroyNotify) filterx_expr_unref);

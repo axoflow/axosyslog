@@ -32,17 +32,37 @@ typedef struct FilterXAssign
   FilterXBinaryOp super;
 } FilterXAssign;
 
-static inline FilterXObject *
-_assign(FilterXAssign *self, FilterXObject *value)
+static FilterXObject *
+_do_assign(FilterXAssign *self, FilterXObject *value)
 {
-  FilterXObject *cloned = filterx_object_cow_fork2(filterx_object_ref(value), NULL);
+  FilterXObject *cloned = NULL;
+
+  if (!value)
+    {
+      filterx_eval_push_error_static_info("Failed to assign value", &self->super.super,
+                                          "Failed to evaluate right hand side");
+      return NULL;
+    }
+
+  /* cow_fork2 consumes the ref on value */
+  cloned = filterx_object_cow_fork2(value, NULL);
+
   if (!filterx_expr_assign(self->super.lhs, &cloned))
     {
+      filterx_eval_push_error_static_info("Failed to assign value", &self->super.super,
+                                          "assign() method failed");
       filterx_object_unref(cloned);
       return NULL;
     }
 
   return cloned;
+}
+
+static FilterXObject *
+_assign_eval(FilterXExpr *s)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+  return _do_assign(self, filterx_expr_eval(self->super.rhs));
 }
 
 static inline FilterXObject *
@@ -54,50 +74,68 @@ _suppress_error(void)
 }
 
 static FilterXObject *
-_nullv_assign_eval(FilterXExpr *s)
+_do_nullv_assign(FilterXAssign *self, FilterXObject *value)
 {
-  FilterXAssign *self = (FilterXAssign *) s;
+  if (!value)
+    return _suppress_error();
 
-  FilterXObject *value = filterx_expr_eval(self->super.rhs);
+  if (filterx_object_extract_null(value))
+    return value;
 
-  if (!value || filterx_object_extract_null(value))
-    {
-      if (!value)
-        return _suppress_error();
-
-      return value;
-    }
-
-  FilterXObject *result = _assign(self, value);
-  filterx_object_unref(value);
-
-  if (!result)
-    filterx_eval_push_error_static_info("Failed to assign value", s, "assign() method failed");
-
-  return result;
+  return _do_assign(self, value);
 }
 
 static FilterXObject *
-_assign_eval(FilterXExpr *s)
+_nullv_assign_eval(FilterXExpr *s)
 {
   FilterXAssign *self = (FilterXAssign *) s;
-
-  FilterXObject *value = filterx_expr_eval(self->super.rhs);
-
-  if (!value)
-    {
-      filterx_eval_push_error_static_info("Failed to assign value", s, "Failed to evaluate right hand side");
-      return NULL;
-    }
-
-  FilterXObject *result = _assign(self, value);
-  filterx_object_unref(value);
-
-  if (!result)
-    filterx_eval_push_error_static_info("Failed to assign value", s, "assign() method failed");
-
-  return result;
+  return _do_nullv_assign(self, filterx_expr_eval(self->super.rhs));
 }
+
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_assign(FilterXExpr *s, FilterXObject *value)
+{
+  return _do_assign((FilterXAssign *) s, value);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_nullv_assign(FilterXExpr *s, FilterXObject *value)
+{
+  return _do_nullv_assign((FilterXAssign *) s, value);
+}
+
+static FilterXIRValue
+_compile_assignment(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name)
+{
+  FilterXAssign *self = (FilterXAssign *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue value = filterx_expr_compile_or_eval(self->super.rhs, jit);
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), value };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 2);
+}
+
+static FilterXIRValue
+_assign_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_assignment(s, jit, "fx_jit_do_assign");
+}
+
+static FilterXIRValue
+_nullv_assign_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_assignment(s, jit, "fx_jit_do_nullv_assign");
+}
+
+#endif
 
 static void
 filterx_assign_init_instance(FilterXAssign *self, const gchar *type,
@@ -115,6 +153,9 @@ filterx_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 
   filterx_assign_init_instance(self, "assign", lhs, rhs);
   self->super.super.eval = _assign_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _assign_compile;
+#endif
   return &self->super.super;
 }
 
@@ -125,5 +166,8 @@ filterx_nullv_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 
   filterx_assign_init_instance(self, "nullv-assign", lhs, rhs);
   self->super.super.eval = _nullv_assign_eval;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _nullv_assign_compile;
+#endif
   return &self->super.super;
 }

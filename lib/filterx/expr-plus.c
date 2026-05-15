@@ -33,35 +33,40 @@ typedef struct FilterXOperatorPlus
 } FilterXOperatorPlus;
 
 static FilterXObject *
+_do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  FilterXObject *result = NULL;
+
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", expr, "Failed to evaluate left hand side");
+      goto exit;
+    }
+  if (!rhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", expr, "Failed to evaluate right hand side");
+      goto exit;
+    }
+
+  result = filterx_object_add(lhs, rhs);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to add values", expr, "add() method failed");
+
+exit:
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
+
+static FilterXObject *
 _eval_plus(FilterXExpr *s)
 {
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
-
-  FilterXObject *lhs_object = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
-                              : filterx_expr_eval_typed(self->super.lhs);
-  if (!lhs_object)
-    {
-      filterx_eval_push_error_static_info("Failed to add values", s, "Failed to evaluate left hand side");
-      return NULL;
-    }
-
-  FilterXObject *rhs_object = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
-                              : filterx_expr_eval(self->super.rhs);
-  if (!rhs_object)
-    {
-      filterx_eval_push_error_static_info("Failed to add values", s, "Failed to evaluate right hand side");
-      filterx_object_unref(lhs_object);
-      return NULL;
-    }
-
-  FilterXObject *res = filterx_object_add(lhs_object, rhs_object);
-  filterx_object_unref(lhs_object);
-  filterx_object_unref(rhs_object);
-
-  if (!res)
-    filterx_eval_push_error_static_info("Failed to add values", s, "add() method failed");
-
-  return res;
+  FilterXObject *lhs = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
+                       : filterx_expr_eval_typed(self->super.lhs);
+  FilterXObject *rhs = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
+                       : filterx_expr_eval(self->super.rhs);
+  return _do_plus(lhs, rhs, s);
 }
 
 static FilterXExpr *
@@ -90,6 +95,38 @@ _filterx_operator_plus_free(FilterXExpr *s)
   filterx_binary_op_free_method(s);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_plus(lhs, rhs, expr);
+}
+
+static FilterXIRValue
+_compile_plus(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue lhs = self->literal_lhs
+                       ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
+                       : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+  FilterXIRValue rhs = self->literal_rhs
+                       ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
+                       : filterx_expr_compile_or_eval(self->super.rhs, jit);
+
+  FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, "fx_jit_do_plus", ffi->ptr_ty, param_tys, args, 3);
+}
+
+#endif
+
 FilterXExpr *
 filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
@@ -98,6 +135,9 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
   self->super.super.optimize = _optimize;
   self->super.super.eval = _eval_plus;
   self->super.super.free_fn = _filterx_operator_plus_free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_plus;
+#endif
 
   return &self->super.super;
 }

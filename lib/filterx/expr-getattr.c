@@ -33,28 +33,28 @@ typedef struct _FilterXGetAttr
 } FilterXGetAttr;
 
 static FilterXObject *
-_eval_getattr(FilterXExpr *s)
+_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
 {
-  FilterXGetAttr *self = (FilterXGetAttr *) s;
-
-  FilterXObject *variable = filterx_expr_eval_typed(self->operand);
-
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to get-attribute from object", s, "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to get-attribute from object", expr,
+                                          "Failed to evaluate expression");
       return NULL;
     }
 
-  FilterXObject *attr = filterx_object_getattr(variable, self->attr);
-  if (!attr)
-    {
-      filterx_eval_push_error_static_info("Failed to get-attribute from object", s, "Failed to evaluate key");
-      goto exit;
-    }
+  FilterXObject *result = filterx_object_getattr(variable, attr);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to get-attribute from object", expr, "Failed to evaluate key");
 
-exit:
   filterx_object_unref(variable);
-  return attr;
+  return result;
+}
+
+static FilterXObject *
+_eval_getattr(FilterXExpr *s)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  return _do_getattr(filterx_expr_eval_typed(self->operand), self->attr, s);
 }
 
 static gboolean
@@ -152,6 +152,36 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  return _do_getattr(variable, attr, expr);
+}
+
+static FilterXIRValue
+_getattr_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
+  FilterXIRValue args[] = {
+    variable,
+    fx_jit_emit_const_ptr(jit, self->attr),
+    fx_jit_emit_const_ptr(jit, self),
+  };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, "fx_jit_do_getattr", ffi->ptr_ty, param_tys, args, 3);
+}
+
+#endif
+
 /* NOTE: takes the object reference */
 FilterXExpr *
 filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
@@ -165,6 +195,9 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.is_set = _isset;
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _getattr_compile;
+#endif
   self->operand = operand;
 
   g_assert(filterx_object_is_type(attr_name, &FILTERX_TYPE_NAME(string)));
