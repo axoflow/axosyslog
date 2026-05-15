@@ -85,6 +85,10 @@ The chart deploys two complementary components that can run side by side:
 | openShift.enabled | bool | `false` | Enable OpenShift-specific resources |
 | openShift.securityContextConstraints.annotations | object | `{}` | Annotations for the SecurityContextConstraints resource |
 | openShift.securityContextConstraints.create | bool | `true` | Create a SecurityContextConstraints resource for OpenShift |
+| service.create | Whether to create the service | true |
+| service.type | Type of the service to create | NodePort |
+| service.annotations | Annotations to apply to the service | {} |
+| service.extraPorts | Additional ports to expose on the service | [] |
 | podAnnotations | object | `{}` | Annotations applied to all pods |
 | podMonitor.annotations | object | `{}` | Additional annotations for the PodMonitor |
 | podMonitor.enabled | bool | `false` | Deploy a PodMonitor CR for Prometheus Operator (requires metricsExporter.enabled) |
