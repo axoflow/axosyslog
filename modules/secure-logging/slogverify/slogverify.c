@@ -30,16 +30,6 @@
 #include "messages.h"
 #include "slog.h"
 
-// Arguments and options
-static gboolean iterative = FALSE;
-static char *hostKeyPath = NULL;
-static char *prevHostKeyPath = NULL;
-static char *curMacFilePath = NULL;
-static char *prevMacFilePath = NULL;
-static char *inputLogPath = NULL;
-static char *outputLogPath = NULL;
-static int bufSize = DEF_BUF_SIZE;
-
 // Return TRUE on success, FALSE on error
 gboolean normalMode(char *path_hostkey, char *path_MACfile, char *path_inputlog, char *path_outputlog, int bufsize)
 {
@@ -128,7 +118,13 @@ gboolean normalMode(char *path_hostkey, char *path_MACfile, char *path_inputlog,
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "Number of lines in file"), evt_tag_long("number", entries));
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "Restoring and verifying log entries"), evt_tag_int("buffer size",
            bufsize));
-  gboolean result = fileVerify(key, path_inputlog, path_outputlog, MAC, entries, bufsize, MAC0);
+  gboolean result = fileVerify(key,
+                               path_inputlog,
+                               path_outputlog,
+                               MAC,
+                               entries,
+                               bufsize,
+                               MAC0);
   if (!result)
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason",
@@ -214,13 +210,19 @@ gboolean iterativeMode(char *path_prevKey, char *path_prevMAC, char *path_curMAC
         }
     }
   fclose(fp_input);
+  fp_input = NULL;
 
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "Number of lines in file"), evt_tag_long("number", entries));
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "Restoring and verifying log entries"), evt_tag_int("buffer size",
            bufsize));
-  gboolean result = iterativeFileVerify(previousMAC, previousKey, path_inputlog, currentMAC, path_outputlog,
+  gboolean result = iterativeFileVerify(previousMAC,
+                                        previousKey,
+                                        path_inputlog,
+                                        currentMAC,
+                                        path_outputlog,
                                         entries,
-                            bufsize, previousKeyCounter);
+                                        bufsize,
+                                        previousKeyCounter);
 
   if (!result)
     {
@@ -239,6 +241,10 @@ gboolean iterativeMode(char *path_prevKey, char *path_prevMAC, char *path_curMAC
 int main(int argc, char *argv[])
 {
   setlocale(LC_ALL, "");
+
+  gint retval = 0; //-- 0: SUCCESS, main logic
+  gboolean iterative = FALSE;
+  int bufSize = DEF_BUF_SIZE;
 
   SLogOptions options[] =
   {
@@ -300,97 +306,197 @@ int main(int argc, char *argv[])
   // Initialize internal messaging
   msg_init(TRUE);
 
+  GString *gstr_path_hostkey = g_string_new(NULL); //-- key-file
+  GString *gstr_path_curMAC = g_string_new(NULL); //-- mac-file
+  GString *gstr_path_prevhostkey = g_string_new(NULL); //-- prev-key-file
+  GString *gstr_path_prevMAC = g_string_new(NULL); //-- prev-mac-file
+  GString *gstr_path_inputlog = g_string_new(NULL); //-- INPUTLOG
+  GString *gstr_path_outputlog = g_string_new(NULL); //-- OUTPUTLOG
+
   // Assign option arguments
   int index = 1;
-  hostKeyPath = options[index++].arg;
+
+  //-- key-file (hostkey), normal mode ---
   if (!iterative)
     {
-      char *p_path_check = realpath(hostKeyPath, NULL);
-      if (NULL == p_path_check)
+      if (NULL == options[index].arg)
         {
-          msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Failed to check key-file!"));
+          msg_error(SLOG_ERROR_PREFIX,
+                    evt_tag_str("Reason",
+                                "Option --key-file or -k does not provide a valid path to a key file!"));
           (void) slog_usage(context, group, NULL);
-          return 1; //-- ERROR
+          retval = 1; //-- ERROR
+          goto CLEANUP_SLOGVERIFY;
         }
-      free(p_path_check);
-      p_path_check = NULL;
-    } //-- not iterative
-
-  curMacFilePath = options[index++].arg;
-  if (!iterative)
     {
-      char *p_path_check = realpath(curMacFilePath, NULL);
-      if (NULL == p_path_check)
+        g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+        g_free(options[index].arg);
+        options[index++].arg = NULL; //-- inc
+        g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+        g_string_assign(gstr_path_hostkey, p_canon ? p_canon : "");
+        if (gstr_path_hostkey->len == 0 ||
+            !is_file_path_safe_and_valid(gstr_path_hostkey->str) ||
+            !g_file_test(gstr_path_hostkey->str, G_FILE_TEST_IS_REGULAR))
         {
-          msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Failed to check mac-file!"));
+            msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Key-file validation failed"));
           (void) slog_usage(context, group, NULL);
-          return 1; //-- ERROR
+            retval = 1;
+            goto CLEANUP_SLOGVERIFY;
+          }
+      }
+      msg_info(SLOG_INFO_PREFIX, evt_tag_str("key-file", gstr_path_hostkey->str));
+    }
+  else
+    {
+      index++;
         }
-      free(p_path_check);
-      p_path_check = NULL;
-    } //-- not iterative
 
-  prevHostKeyPath = options[index++].arg;
+  //-- mac-file, both iterative and normal mode argument
+  if (NULL == options[index].arg)
+    {
+      msg_error(SLOG_ERROR_PREFIX,
+                evt_tag_str("Reason",
+                            "Option --mac-file or -m does not provide a valid path to a mac file!"));
+      (void) slog_usage(context, group, NULL);
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGVERIFY;
+    }
+  {
+    g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+    g_free(options[index].arg);
+    options[index++].arg = NULL; //-- inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    g_string_assign(gstr_path_curMAC, p_canon ? p_canon : "");
+    if (gstr_path_curMAC->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_curMAC->str) ||
+        !g_file_test(gstr_path_curMAC->str, G_FILE_TEST_IS_REGULAR))
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "mac-file validation failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1;
+        goto CLEANUP_SLOGVERIFY;
+      }
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("mac-file", gstr_path_curMAC->str));
+
+  //-- prev-key-file (prevhostkey), only iterative mode ---
   if (iterative)
     {
-      char *p_path_check = realpath(prevHostKeyPath, NULL);
-      if (NULL == p_path_check)
+      if (NULL == options[index].arg)
         {
-          msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Failed to check prev-key-file!"));
-          (void) slog_usage(context, group, NULL);
-          return 1; //-- ERROR
-        }
-      free(p_path_check);
-      p_path_check = NULL;
-    } //-- iterative
+          msg_error(SLOG_ERROR_PREFIX,
+                    evt_tag_str("Reason",
+                                "Option --prev-key-file or -p does not provide a valid path to a prev key file!"));
 
-  prevMacFilePath = options[index++].arg;
+          (void) slog_usage(context, group, NULL);
+          retval = 1; //-- ERROR
+          goto CLEANUP_SLOGVERIFY;
+        }
+      {
+        g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+        g_free(options[index].arg);
+        options[index++].arg = NULL; //-- inc
+        g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+        g_string_assign(gstr_path_prevhostkey, p_canon ? p_canon : "");
+        if (gstr_path_prevhostkey->len == 0 ||
+            !is_file_path_safe_and_valid(gstr_path_prevhostkey->str) ||
+            !g_file_test(gstr_path_prevhostkey->str, G_FILE_TEST_IS_REGULAR))
+          {
+            msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "prev-key-file validation failed"));
+            (void) slog_usage(context, group, NULL);
+            retval = 1;
+            goto CLEANUP_SLOGVERIFY;
+          }
+      }
+      msg_info(SLOG_INFO_PREFIX, evt_tag_str("prev-key-file", gstr_path_prevhostkey->str));
+    }
+  else
+    {
+      index++;
+    }
+
+  //-- prev-mac-file (prevMAC), only iterative mode ---
   if (iterative )
     {
-      char *p_path_check = realpath(prevMacFilePath, NULL);
-      if (NULL == p_path_check)
+      if (NULL == options[index].arg)
         {
-          msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Failed to check prev-mac-file!"));
+          msg_error(SLOG_ERROR_PREFIX,
+                    evt_tag_str("Reason",
+                                "Option --prev-mac-file or -r does not provide valid path to a prev MAC file!"));
+
           (void) slog_usage(context, group, NULL);
-          return 1; //-- ERROR
+          retval = 1; //-- ERROR
+          goto CLEANUP_SLOGVERIFY;
         }
-      free(p_path_check);
-      p_path_check = NULL;
-    } //-- iterative
+      {
+        g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+        g_free(options[index].arg);
+        options[index++].arg = NULL; //-- inc
+        g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+        g_string_assign(gstr_path_prevMAC, p_canon ? p_canon : "");
+        if (gstr_path_prevMAC->len == 0 ||
+            !is_file_path_safe_and_valid(gstr_path_prevMAC->str) ||
+            !g_file_test(gstr_path_prevMAC->str, G_FILE_TEST_IS_REGULAR))
+          {
+            msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "prev-mac-file validation failed"));
+            (void) slog_usage(context, group, NULL);
+            retval = 1;
+            goto CLEANUP_SLOGVERIFY;
+          }
+      }
+      msg_info(SLOG_INFO_PREFIX, evt_tag_str("prev-mac-file", gstr_path_prevMAC->str));
+    }
+
 
   // Input and output file arguments
   index = 1;
-  inputLogPath = argv[index++];
-  if (!g_file_test(inputLogPath, G_FILE_TEST_IS_REGULAR))
-    {
-      GString *errorMsg = g_string_new(FILE_ERROR);
-      g_string_append(errorMsg, inputLogPath);
-      (void) slog_usage(context, group, errorMsg);
-      return 1; //-- ERROR
-    }
 
-  outputLogPath = argv[index++];
-  gchar *dir_part = g_path_get_dirname(outputLogPath);
-  if (NULL != dir_part)
+  //-- INPUTLOG ---
+  if (NULL == argv[index])
     {
-      char *dir_check = realpath(dir_part, NULL);
-      if (NULL == dir_check)
-        {
-          msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Failed to check OUTPUTLOG file!"));
-          g_free(dir_part);
-          dir_part = NULL;
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to INPUTLOG is missing"));
           (void) slog_usage(context, group, NULL);
-          return 1; //-- ERROR
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGVERIFY;
         }
-      free(dir_check);
-      g_free(dir_part);
-      dir_part = NULL;
-    }
-  if (outputLogPath == NULL)
     {
+    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    g_string_assign(gstr_path_inputlog, p_canon ? p_canon : "");
+    if (gstr_path_inputlog->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_inputlog->str) ||
+        !g_file_test(gstr_path_inputlog->str, G_FILE_TEST_IS_REGULAR))
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of INPUTLOG failed"));
       (void) slog_usage(context, group, NULL);
-      return 1; //-- ERROR
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGVERIFY;
     }
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("INPUTLOG", gstr_path_inputlog->str));
+
+  //-- OUTPUTLOG ---
+  if (NULL == argv[index])
+    {
+      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to OUTPUTLOG is missing"));
+      (void) slog_usage(context, group, NULL);
+      retval = 1; //-- ERROR
+      goto CLEANUP_SLOGVERIFY;
+    }
+  {
+    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    g_string_assign(gstr_path_outputlog, p_canon ? p_canon : "");
+    if (gstr_path_outputlog->len == 0 ||
+        !is_file_path_safe_and_valid(gstr_path_outputlog->str)) //-- file might not exists yet
+      {
+        msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of OUTPUTLOG failed"));
+        (void) slog_usage(context, group, NULL);
+        retval = 1; //-- ERROR
+        goto CLEANUP_SLOGVERIFY;
+      }
+  }
+  msg_info(SLOG_INFO_PREFIX, evt_tag_str("OUTPUTLOG", gstr_path_outputlog->str));
 
   // Buffer size arguments if applicable
   if (argc == 4)
@@ -403,44 +509,68 @@ int main(int argc, char *argv[])
                     evt_tag_int("Size", bufSize),
                     evt_tag_int("Minimum buffer size", MIN_BUF_SIZE),
                     evt_tag_int("Maximum buffer size", MAX_BUF_SIZE));
-          g_option_context_free(context);
-          return 1; //-- ERROR
+          retval = 1; //-- ERROR
+          goto CLEANUP_SLOGVERIFY;
         }
     }
 
-  int ret = 0; //-- main logic, 0 errors
   if (iterative)
     {
-      if (prevHostKeyPath == NULL || prevMacFilePath == NULL || curMacFilePath == NULL)
+      if (gstr_path_prevhostkey->len == 0 || gstr_path_prevMAC->len == 0 || gstr_path_curMAC->len == 0)
         {
           g_print("%s", g_option_context_get_help(context, TRUE, NULL));
-          g_option_context_free(context);
-          return 1; //-- ERROR
+          retval = 1; //-- ERROR
+          goto CLEANUP_SLOGVERIFY;
         }
-
-      gboolean result = iterativeMode(prevHostKeyPath, prevMacFilePath, curMacFilePath, inputLogPath, outputLogPath, bufSize);
+      gboolean result = iterativeMode(gstr_path_prevhostkey->str,
+                                      gstr_path_prevMAC->str,
+                                      gstr_path_curMAC->str,
+                                      gstr_path_inputlog->str,
+                                      gstr_path_outputlog->str,
+                                      bufSize);
       if (!result)
         {
-          ret = 1; //-- ERROR
+          retval = 1; //-- ERROR
         }
     }
   else
     {
-      if (hostKeyPath == NULL || curMacFilePath  == NULL)
+      if (gstr_path_hostkey->len == 0 || gstr_path_curMAC->len == 0)
         {
           g_print("%s", g_option_context_get_help(context, TRUE, NULL));
-          g_option_context_free(context);
-          return 1; //-- ERROR
+          retval = 1; //-- ERROR
+          goto CLEANUP_SLOGVERIFY;
         }
-      gboolean result = normalMode(hostKeyPath, curMacFilePath, inputLogPath, outputLogPath, bufSize);
+      gboolean result = normalMode(gstr_path_hostkey->str,
+                                   gstr_path_curMAC->str,
+                                   gstr_path_inputlog->str,
+                                   gstr_path_outputlog->str,
+                                   bufSize);
       if (!result)
         {
-          ret = 1; //-- ERROR
+          retval = 1; //-- ERROR
         }
     }
+
+
+
+CLEANUP_SLOGVERIFY:
+
+  g_string_free(gstr_path_hostkey, TRUE);
+  gstr_path_hostkey = NULL;
+  g_string_free(gstr_path_curMAC, TRUE);
+  gstr_path_curMAC = NULL;
+  g_string_free(gstr_path_prevhostkey, TRUE);
+  gstr_path_prevhostkey = NULL;
+  g_string_free(gstr_path_prevMAC, TRUE);
+  gstr_path_prevMAC = NULL;
+  g_string_free(gstr_path_inputlog, TRUE);
+  gstr_path_inputlog = NULL;
+  g_string_free(gstr_path_outputlog, TRUE);
+  gstr_path_outputlog = NULL;
 
   // Release messaging resources
   msg_deinit();
   g_option_context_free(context);
-  return ret;
+  return retval;
 }
