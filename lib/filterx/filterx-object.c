@@ -132,6 +132,7 @@ _filterx_object_assert_object_is_not_shared(FilterXObject *self)
   if (filterx_eval_context_is_production(context))
     {
       g_assert(!self->early_allocation);
+      self->early_allocation_checked = TRUE;
     }
 }
 

@@ -300,11 +300,10 @@ static inline void
 filterx_object_check_early_allocation(FilterXObject *self)
 {
 #if SYSLOG_NG_ENABLE_DEBUG
-  if (G_UNLIKELY(!self->early_allocation_checked))
-    {
-      _filterx_object_assert_object_is_not_shared(self);
-      self->early_allocation_checked = TRUE;
-    }
+  if (G_LIKELY(self->early_allocation_checked))
+    return;
+
+  _filterx_object_assert_object_is_not_shared(self);
 #endif
 }
 
