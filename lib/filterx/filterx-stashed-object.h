@@ -38,33 +38,12 @@ FILTERX_DECLARE_TYPE(stash_reference);
  * use instances of this structure to provide the object reference to
  * readers (e.g.  the running configuration).
  *
- * Readers (load-acquire):
- *   1) use g_atomic_pointer_get() to an instance of this and
- *   2) immediately take an (atomic) refcount before doing anything else
- *
- * Writers (store-release)
- *   1) construct a new structure and replace the new instance with the old
- *      using g_atomic_pointer_exchange()
- *   2) the return value is the "old" instance, the first thing is to drop
- *      the (atomic) refcount, which might immediately cause the structure
- *      to be freed.
- *
- * The safety comes from the ordering requirements between the
- *   1) get value
- *   2) take ref
- *   3) exchange value
- *   4) drop ref
- *
- * Due to acquire (reader) <> acquire-release ordering (writer) the order of
- * these steps are ensured.
- *
  * The encapsulated "object" is not locked in any way and may be accessed by
  * multiple threads, so in general it needs to be "frozen", as otherwise its
  * refcounts could become corrupt.
  */
 typedef struct _FilterXStashedObject
 {
-  /* has to be atomic to be exchanged using g_atomic_pointer_exchange() */
   GAtomicCounter ref_cnt;
   FilterXEnvironment env;
   FilterXObject *object;

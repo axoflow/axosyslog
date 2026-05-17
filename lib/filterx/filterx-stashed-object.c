@@ -77,14 +77,18 @@ FILTERX_DEFINE_TYPE(stash_reference, FILTERX_TYPE_NAME(null),
  *   - threads currently using the "old" copy will keep a reference to the
  *     old stashed object (through FilterXStashedReference)
  *
- *   - a "new" FilterXStashedObject is created, and the atomic variable is
- *     updated to the new value (store-release).
+ *   - a "new" FilterXStashedObject is created, and the stash variable is
+ *     updated to the new value.
  *
  *   - a new thread that ends up retrieving the stashed object will use the
- *     "new" copy (load-acquire).
+ *     "new" copy.
  *
  *   - when all of the "old" using threads exit, the old stashed object is
- *     destroyed, eventually also destroying the stashed object as well.
+ *     destroyed, eventually destroying the stashed object as well.
+ *
+ * NOTE: this currently uses a mutex based update protocol, which could
+ * generate contention on the mutex, as all worker threads will acquire the
+ * mutex for the duration of the retrieval.
  */
 static FilterXStashedObject *
 filterx_stashed_object_new(FilterXObject *object, FilterXEnvironment *env)
@@ -98,18 +102,21 @@ filterx_stashed_object_new(FilterXObject *object, FilterXEnvironment *env)
   return self;
 }
 
+static GRWLock stash_rwl;
+
 FilterXObject *
 filterx_stash_retrieve(FilterXStashedObject **stash)
 {
-  if (!stash || !*stash)
+  g_rw_lock_reader_lock(&stash_rwl);
+  FilterXStashedObject *stashed_object = *stash;
+  if (stashed_object)
+    filterx_stashed_object_ref(stashed_object);
+  g_rw_lock_reader_unlock(&stash_rwl);
+
+  if (!stashed_object)
     return NULL;
-  /* load-acquire the atomic stash variable */
 
-  /* g_atomic_pointer_get(): load */
-  FilterXStashedObject *stashed_object = g_atomic_pointer_get(stash);
-
-  /* filterx_stashed_object_ref(): acquire */
-  FilterXObject *stashed_reference = filterx_stash_reference_new(filterx_stashed_object_ref(stashed_object));
+  FilterXObject *stashed_reference = filterx_stash_reference_new(stashed_object);
 
   /* a weak_ref we store here makes sure that the "stashed_reference" is
    * alive as long as this FilterXEvalContext.  Once stashed_reference gets
@@ -124,13 +131,17 @@ filterx_stash_retrieve(FilterXStashedObject **stash)
   return filterx_object_ref(stashed_object->object);
 }
 
+/* NOTE: this consumes the `object` reference */
 gboolean
 filterx_stash_store(FilterXStashedObject **stash, FilterXObject *object, FilterXEnvironment *env)
 {
   FilterXStashedObject *stashed_object = filterx_stashed_object_new(object, env);
 
-  /* store-release the atomic stash variable */
-  FilterXStashedObject *old_stashed_object = g_atomic_pointer_exchange(stash, stashed_object);
+  g_rw_lock_writer_lock(&stash_rwl);
+  FilterXStashedObject *old_stashed_object = *stash;
+  *stash = stashed_object;
+  g_rw_lock_writer_unlock(&stash_rwl);
+
   filterx_stashed_object_unref(old_stashed_object);
   return TRUE;
 }
