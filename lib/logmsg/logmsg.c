@@ -567,18 +567,29 @@ _grow_payload(LogMessage *self, const gchar *operation, gsize extra_space)
 {
   /* error allocating string in payload, reallocate */
   guint32 old_size = nv_table_get_size(self->payload);
+  guint32 avail_size = nv_table_get_available(self->payload);
   if (!nv_table_realloc(&self->payload, extra_space))
     {
       /* can't grow the payload, it has reached the maximum size */
       msg_info("Cannot grow message payload, maximum size has been reached",
                evt_tag_str("operation", operation),
                evt_tag_int("size", old_size),
+               evt_tag_int("avail_size", avail_size),
                evt_tag_int("extra_space", extra_space),
                evt_tag_int("maximum_payload", NV_TABLE_MAX_BYTES),
                evt_tag_printf("msg", "%p", self));
       return FALSE;
     }
   guint32 new_size = nv_table_get_size(self->payload);
+  msg_trace("Message payload reallocated",
+           evt_tag_str("operation", operation),
+           evt_tag_int("old_size", old_size),
+           evt_tag_int("old_avail_size", avail_size),
+           evt_tag_int("new_size", new_size),
+           evt_tag_int("avail_size", nv_table_get_available(self->payload)),
+           evt_tag_int("extra_space", extra_space),
+           evt_tag_int("maximum_payload", NV_TABLE_MAX_BYTES),
+           evt_tag_printf("msg", "%p", self));
   log_msg_update_allocation(self, (new_size - old_size));
   stats_counter_inc(count_payload_reallocs);
   return TRUE;
