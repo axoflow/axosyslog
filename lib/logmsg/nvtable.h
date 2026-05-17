@@ -299,21 +299,25 @@ struct _NVTable
 gboolean nv_table_add_value(NVTable *self, NVHandle handle,
                             const gchar *name, gsize name_len,
                             const gchar *value, gsize value_len,
-                            NVType type, gboolean *new_entry);
-gboolean nv_table_unset_value(NVTable *self, NVHandle handle);
+                            NVType type,
+                            gboolean *new_entry,
+                            guint32 *memory_needed);
+gboolean nv_table_unset_value(NVTable *self, NVHandle handle, guint32 *memory_needed);
 gboolean nv_table_add_value_indirect(NVTable *self, NVHandle handle,
                                      const gchar *name, gsize name_len,
                                      NVReferencedSlice *referenced_slice,
-                                     NVType type, gboolean *new_entry);
+                                     NVType type,
+                                     gboolean *new_entry,
+                                     guint32 *memory_needed);
 
 gboolean nv_table_foreach(NVTable *self, NVRegistry *registry, NVTableForeachFunc func, gpointer user_data);
 gboolean nv_table_foreach_entry(NVTable *self, NVTableForeachEntryFunc func, gpointer user_data);
 
 NVTable *nv_table_new(gint num_static_values, gint index_size_hint, gint init_length);
 NVTable *nv_table_init_borrowed(gpointer space, gsize space_len, gint num_static_entries);
-gboolean nv_table_realloc(NVTable **pself, gsize additional_space);
+gboolean nv_table_realloc(NVTable **pself, guint32 memory_needed);
 NVTable *nv_table_compact(NVTable *self);
-NVTable *nv_table_clone(NVTable *self, gsize additional_space);
+NVTable *nv_table_clone(NVTable *self, guint32 memory_needed);
 NVTable *nv_table_ref(NVTable *self);
 void nv_table_unref(NVTable *self);
 
