@@ -22,6 +22,7 @@
 
 #include "filterx/jit/jit.h"
 #include "filterx/jit/jit-private.h"
+#include "filterx/jit/bc-loader.h"
 #include "filterx/jit/ffi.h"
 
 #if SYSLOG_NG_ENABLE_JIT
@@ -498,6 +499,10 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
 
   filterx_jit_ffi_init(self);
 
+  self->libfilterx = filterx_jit_load_libfilterx_bitcode(self->ctx, error);
+  if (!self->libfilterx)
+    goto error;
+
   return self;
 
 error:
@@ -519,6 +524,8 @@ filterx_jit_free(FilterXJIT *self)
   self->ctx = NULL;
   if (!self->mod_finalized)
     LLVMDisposeModule(self->mod);
+  if (self->libfilterx)
+    LLVMDisposeModule(self->libfilterx);
   LLVMOrcDisposeThreadSafeContext(self->ts_ctx);
 
   if (self->debug_ir_text_memfd >= 0)
