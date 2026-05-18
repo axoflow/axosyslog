@@ -263,6 +263,7 @@ main_location_print (FILE *yyo, YYLTYPE const * const yylocp)
 %token KW_TRIM_LARGE_MESSAGES         10600
 %token KW_BATCH_SIZE                  10601
 %token KW_FILTERX_JIT                 10602
+%token KW_FILTERX_JIT_DEBUG_INFO      10603
 
 %token KW_STATS                       10400
 %token KW_FREQ                        10401
@@ -1147,6 +1148,14 @@ options_item
 	| KW_MIN_IW_SIZE_PER_READER '(' positive_integer ')' { configuration->min_iw_size_per_reader = $3; }
 	| KW_LOG_LEVEL '(' string ')'		{ CHECK_ERROR(cfg_set_log_level(configuration, $3), @3, "Unknown log-level() option"); free($3); }
 	| KW_FILTERX_JIT '(' yesno ')' { FilterXConfig *fx_cfg = filterx_config_get(configuration); filterx_config_enable_jit(fx_cfg, $3); }
+	| KW_FILTERX_JIT_DEBUG_INFO '(' string ')'
+	  {
+	    FilterXJITDebugInfo mode;
+	    CHECK_ERROR(filterx_config_lookup_jit_debug_info($3, &mode), @3, "Unknown filterx-jit-debug-info() mode \"%s\"", $3);
+	    FilterXConfig *fx_cfg = filterx_config_get(configuration);
+	    filterx_config_set_jit_debug_info(fx_cfg, mode);
+	    free($3);
+	  }
 	| { last_template_options = &configuration->template_options; } template_option
 	| { last_host_resolve_options = &configuration->host_resolve_options; } host_resolve_option
 	| { last_stats_options = &configuration->stats_options; last_healthcheck_options = &configuration->healthcheck_options; } stat_option

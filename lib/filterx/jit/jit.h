@@ -35,6 +35,16 @@
  *    - JIT-compiled FilterX blocks are ready to be used (filterx_jit_lookup())
  */
 
+#if SYSLOG_NG_HAVE_MEMFD_CREATE
+#define FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED 1
+#endif
+
+typedef enum
+{
+  FILTERX_JIT_DEBUG_INFO_FILTERX = 0,
+  FILTERX_JIT_DEBUG_INFO_LLVM_IR,
+} FilterXJITDebugInfo;
+
 typedef struct _FilterXJIT FilterXJIT;
 
 #define FILTERX_JIT_MODULE_NAME "filterx::jit"
@@ -66,7 +76,7 @@ typedef struct _FilterXJITExecState
 typedef FilterXObject *(*FilterXJITExecFunc)(FilterXJITExecState *state);
 
 
-FilterXJIT *filterx_jit_new(const gchar *module_name, GError **error);
+FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError **error);
 void filterx_jit_free(FilterXJIT *self);
 
 /* IR */
@@ -79,6 +89,8 @@ FilterXIRSequence filterx_jit_ir_create_sequence(FilterXJIT *self, const gchar *
 void filterx_jit_ir_set_insert_point_to_sequence_tail(FilterXJIT *self, FilterXIRSequence sequence);
 void filterx_jit_ir_add_sequence_to_block(FilterXJIT *self, FilterXIRSequence seq, FilterXIRValue block);
 FilterXIRSequence filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, const gchar *seq_name, FilterXIRValue block);
+
+void filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column);
 
 /* JIT */
 gboolean filterx_jit_finalize(FilterXJIT *self, GError **error);
