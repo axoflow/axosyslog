@@ -187,6 +187,24 @@ lib_filterx_libfilterx_la_SOURCES = \
 	lib/filterx/object-string.c \
 	lib/filterx/object-subnet.c
 
+# Subset of libfilterx compiled to LLVM bitcode for inlining and optimizing JIT.
+filterx_bitcode_sources = \
+	$(filterx_expr_sources) \
+	$(filterxjit_bitcode_sources) \
+	lib/filterx/filterx-expr.c \
+	lib/filterx/filterx-mapping.c \
+	lib/filterx/filterx-object.c \
+	lib/filterx/filterx-ref.c \
+	lib/filterx/filterx-scope.c \
+	lib/filterx/filterx-sequence.c \
+	lib/filterx/filterx-variable.c \
+	lib/filterx/filterx-weakrefs.c \
+	lib/filterx/object-dict.c \
+	lib/filterx/object-list.c \
+	lib/filterx/object-message-value.c \
+	lib/filterx/object-primitive.c \
+	lib/filterx/object-string.c
+
 BUILT_SOURCES += 				\
 	lib/filterx/filterx-grammar.y	\
 	lib/filterx/filterx-grammar.c	\

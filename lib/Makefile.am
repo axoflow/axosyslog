@@ -61,6 +61,11 @@ lib_test_subdirs			= lib_filter lib_filterx lib_logproto lib_parser lib_rewrite 
 
 EXTRA_lib_libsyslog_ng_la_DEPENDENCIES       = lib/eventlog/src/libevtlog.la lib/secret-storage/libsecret-storage.la lib/filterx/libfilterx.la
 
+if ENABLE_JIT
+lib_libsyslog_ng_la_LDFLAGS += -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default
+EXTRA_lib_libsyslog_ng_la_DEPENDENCIES += lib/filterx/jit/libfilterx.bc
+endif
+
 if IVYKIS_INTERNAL
 EXTRA_lib_libsyslog_ng_la_DEPENDENCIES	+= lib/ivykis/src/libivykis.la
 
