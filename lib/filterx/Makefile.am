@@ -93,17 +93,18 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/object-string.h
 
 
-filterx_sources = 				\
-	$(filterxjit_sources) \
+noinst_LTLIBRARIES += lib/filterx/libfilterx.la
+
+filterx_expr_sources = \
 	lib/filterx/expr-arithmetic-operators.c \
 	lib/filterx/expr-assign.c \
 	lib/filterx/expr-boolalg.c \
+	lib/filterx/expr-break.c \
 	lib/filterx/expr-comparison.c \
 	lib/filterx/expr-compound.c \
 	lib/filterx/expr-condition.c \
 	lib/filterx/expr-done.c \
 	lib/filterx/expr-drop.c \
-	lib/filterx/expr-break.c \
 	lib/filterx/expr-function.c \
 	lib/filterx/expr-get-subscript.c \
 	lib/filterx/expr-getattr.c \
@@ -111,76 +112,80 @@ filterx_sources = 				\
 	lib/filterx/expr-literal-container.c \
 	lib/filterx/expr-literal.c \
 	lib/filterx/expr-membership.c \
+	lib/filterx/expr-move.c \
 	lib/filterx/expr-null-coalesce.c \
-	lib/filterx/expr-plus.c \
 	lib/filterx/expr-plus-assign.c \
+	lib/filterx/expr-plus.c \
 	lib/filterx/expr-regexp-common.c \
 	lib/filterx/expr-regexp-search.c \
 	lib/filterx/expr-regexp-subst.c \
 	lib/filterx/expr-regexp.c \
 	lib/filterx/expr-set-subscript.c \
 	lib/filterx/expr-setattr.c \
+	lib/filterx/expr-string-operators.c \
 	lib/filterx/expr-switch.c \
 	lib/filterx/expr-template.c \
 	lib/filterx/expr-unset.c \
-	lib/filterx/expr-move.c \
-	lib/filterx/expr-variable.c \
-	lib/filterx/expr-string-operators.c \
+	lib/filterx/expr-variable.c
+
+lib_filterx_libfilterx_la_SOURCES = \
+	$(filterx_expr_sources) \
+	$(filterxjit_sources) \
 	lib/filterx/filterx-allocator.c \
 	lib/filterx/filterx-config.c \
+	lib/filterx/filterx-dpath.c \
+	lib/filterx/filterx-env.c \
 	lib/filterx/filterx-error.c \
 	lib/filterx/filterx-eval.c \
 	lib/filterx/filterx-expr.c \
-	lib/filterx/filterx-plist.c \
 	lib/filterx/filterx-globals.c \
 	lib/filterx/filterx-grammar.y \
+	lib/filterx/filterx-mapping.c \
 	lib/filterx/filterx-metrics-labels.c \
 	lib/filterx/filterx-metrics.c \
 	lib/filterx/filterx-object.c \
-	lib/filterx/filterx-env.c \
-	lib/filterx/filterx-stashed-object.c \
 	lib/filterx/filterx-parser.c \
 	lib/filterx/filterx-pipe.c \
+	lib/filterx/filterx-plist.c \
 	lib/filterx/filterx-private.c \
 	lib/filterx/filterx-ref.c \
-	lib/filterx/filterx-scope.c \
 	lib/filterx/filterx-scope-var-layout.c \
+	lib/filterx/filterx-scope.c \
+	lib/filterx/filterx-sequence.c \
+	lib/filterx/filterx-stashed-object.c \
 	lib/filterx/filterx-variable.c \
 	lib/filterx/filterx-weakrefs.c \
-	lib/filterx/filterx-dpath.c \
-	lib/filterx/filterx-sequence.c \
-	lib/filterx/filterx-mapping.c \
-	lib/filterx/json-repr.c \
-	lib/filterx/func-flatten.c \
 	lib/filterx/func-cache-json-file.c \
+	lib/filterx/func-dict-to-pairs.c \
+	lib/filterx/func-digest.c \
+	lib/filterx/func-encode.c \
+	lib/filterx/func-failure-info.c \
+	lib/filterx/func-flatten.c \
+	lib/filterx/func-glob.c \
 	lib/filterx/func-istype.c \
 	lib/filterx/func-keys.c	\
 	lib/filterx/func-len.c \
+	lib/filterx/func-repr.c \
 	lib/filterx/func-sdata.c \
 	lib/filterx/func-set-fields.c \
 	lib/filterx/func-set-pri.c \
-	lib/filterx/func-timestamp.c \
 	lib/filterx/func-str-transform.c \
 	lib/filterx/func-str.c \
+	lib/filterx/func-timestamp.c \
 	lib/filterx/func-unset-empties.c \
-	lib/filterx/func-vars.c \
-	lib/filterx/func-repr.c \
-	lib/filterx/func-failure-info.c \
-	lib/filterx/func-dict-to-pairs.c \
 	lib/filterx/func-uuid.c \
-	lib/filterx/func-digest.c \
-	lib/filterx/func-encode.c \
-	lib/filterx/func-glob.c \
+	lib/filterx/func-vars.c \
+	lib/filterx/json-repr.c \
 	lib/filterx/object-datetime.c \
-	lib/filterx/object-subnet.c \
-	lib/filterx/object-ip.c \
 	lib/filterx/object-dict.c \
+	lib/filterx/object-ip.c \
 	lib/filterx/object-list.c \
 	lib/filterx/object-message-value.c \
 	lib/filterx/object-metrics-labels.c \
 	lib/filterx/object-null.c \
 	lib/filterx/object-primitive.c \
-	lib/filterx/object-string.c
+	lib/filterx/object-string.c \
+	lib/filterx/object-subnet.c
 
 BUILT_SOURCES += 				\
 	lib/filterx/filterx-grammar.y	\

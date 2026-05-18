@@ -52,14 +52,14 @@ LSNG_REVISION		= 0
 LSNG_AGE		= 0
 
 lib_LTLIBRARIES				+= lib/libsyslog-ng.la
-lib_libsyslog_ng_la_LIBADD		= @CORE_DEPS_LIBS@ $(libsystemd_LIBS) $(top_builddir)/lib/secret-storage/libsecret-storage.la
 lib_libsyslog_ng_la_CFLAGS		= $(AM_CFLAGS) $(CORE_CFLAGS)
+lib_libsyslog_ng_la_LIBADD		= @CORE_DEPS_LIBS@ $(libsystemd_LIBS) $(top_builddir)/lib/secret-storage/libsecret-storage.la $(top_builddir)/lib/filterx/libfilterx.la
 lib_libsyslog_ng_la_LDFLAGS		= @CORE_LDFLAGS@ -no-undefined -release ${LSNG_RELEASE} \
 					  -version-info ${LSNG_CURRENT}:${LSNG_REVISION}:${LSNG_AGE}
 
 lib_test_subdirs			= lib_filter lib_filterx lib_logproto lib_parser lib_rewrite lib_template lib_stats lib_control
 
-EXTRA_lib_libsyslog_ng_la_DEPENDENCIES       = lib/eventlog/src/libevtlog.la lib/secret-storage/libsecret-storage.la
+EXTRA_lib_libsyslog_ng_la_DEPENDENCIES       = lib/eventlog/src/libevtlog.la lib/secret-storage/libsecret-storage.la lib/filterx/libfilterx.la
 
 if IVYKIS_INTERNAL
 EXTRA_lib_libsyslog_ng_la_DEPENDENCIES	+= lib/ivykis/src/libivykis.la
@@ -295,7 +295,6 @@ lib_libsyslog_ng_la_SOURCES		= \
 	$(transport_sources)		\
 	$(logproto_sources)		\
 	$(filter_sources)		\
-	$(filterx_sources)		\
 	$(parser_sources)		\
 	$(rewrite_sources)		\
 	$(template_sources)		\
