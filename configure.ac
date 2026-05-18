@@ -2259,6 +2259,10 @@ else
   SYSLOGNG_LINK='$(LINK)'
 fi
 
+if test "$enable_jit" = "yes" -a "x$linking_mode" = "xmonolithic"; then
+  SYSLOGNG_LINK="$SYSLOGNG_LINK -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default -Wl,--export-dynamic"
+fi
+
 if test "x$linking_mode" = "xdynamic"; then
 	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LLVM_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS"
 
