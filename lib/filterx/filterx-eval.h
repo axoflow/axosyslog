@@ -29,7 +29,7 @@
 #include "filterx/filterx-allocator.h"
 #include "template/eval.h"
 
-#define FILTERX_CONTEXT_ERROR_STACK_SIZE (8)
+#define FILTERX_CONTEXT_ERROR_STACK_SIZE (32)
 #define FILTERX_EVAL_ERROR_IDX_FMT_SIZE (8)
 
 typedef enum _FilterXEvalResult

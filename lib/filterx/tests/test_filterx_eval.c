@@ -63,7 +63,7 @@ _assert_error_in_logs(gint index)
 {
   if (index == 0)
     {
-      assert_grabbed_log_contains("FILTERX ERROR; err_idx='[1/8]', expr='syslog-ng.conf:0:0|\t"
+      assert_grabbed_log_contains("FILTERX ERROR; err_idx='[1/32]', expr='syslog-ng.conf:0:0|\t"
                                   "dummy-error-0', error='Dummy error'");
       return;
     }
@@ -134,7 +134,7 @@ Test(filterx_eval, test_filterx_eval_error_stack_location_backfill)
     filterx_test_expr_set_location_with_text(expr, "syslog-ng.conf", 0, 0, 0, 10, "dummy-error");
     cr_assert_eq(filterx_eval_exec(&eval_context, expr, NULL), FXE_FAILURE);
 
-    assert_grabbed_log_contains("FILTERX ERROR; err_idx='[1/8]', expr='syslog-ng.conf:0:0|\t"
+    assert_grabbed_log_contains("FILTERX ERROR; err_idx='[1/32]', expr='syslog-ng.conf:0:0|\t"
                                 "dummy-error', error='Dummy error'");
     for (gint i = 1; i < FILTERX_CONTEXT_ERROR_STACK_SIZE; i++)
       {
