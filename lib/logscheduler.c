@@ -307,6 +307,8 @@ _move_batch_to_partition(LogScheduler *self, LogSchedulerThreadState *thread_sta
   if (iv_list_empty(&thread_state->partitions[partition_index].elements))
     return;
 
+  stats_aggregator_add_data_point(thread_state->metrics.batch_size, thread_state->partitions[partition_index].len);
+
   /* form the new batch, hand over the accumulated elements in batch_by_partition */
   LogSchedulerBatch *batch = _batch_new(&thread_state->partitions[partition_index].elements);
   INIT_IV_LIST_HEAD(&thread_state->partitions[partition_index].elements);
@@ -370,6 +372,7 @@ _thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint inde
       INIT_IV_LIST_HEAD(&state->partitions[i].elements);
       state->partitions[i].len = 0;
     }
+  state->metrics.batch_size = self->batch_size;
 }
 
 static void
@@ -446,6 +449,14 @@ _register_aggregated_stats(LogScheduler *self)
   stats_register_aggregator_hist(STATS_LEVEL2, &sc_key, round_to_log2(1), 14,
                                  &self->processing_latency);
   stats_aggregator_unlock();
+
+  StatsClusterLabel labels2[] = { stats_cluster_label("parallelize", self->id) };
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist(STATS_LEVEL4, &sc_key, round_to_log2(1), 14,
+                                 &self->batch_size);
+  stats_aggregator_unlock();
 }
 
 static inline void
@@ -459,6 +470,13 @@ _unregister_aggregated_stats(LogScheduler *self)
 
   stats_aggregator_lock();
   stats_unregister_aggregator(&self->processing_latency);
+  stats_aggregator_unlock();
+
+  StatsClusterLabel labels2[] = { stats_cluster_label("parallelize", self->id) };
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_unregister_aggregator(&self->batch_size);
   stats_aggregator_unlock();
 }
 
