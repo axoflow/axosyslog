@@ -24,6 +24,7 @@
 #include "filterx/jit/jit-private.h"
 #include "filterx/jit/bc-loader.h"
 #include "filterx/jit/ffi.h"
+#include "messages.h"
 
 #if SYSLOG_NG_ENABLE_JIT
 
@@ -89,6 +90,9 @@ _optimize_module(gpointer s, LLVMModuleRef mod)
 {
   LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
   LLVMPassBuilderOptionsSetInlinerThreshold(options, 512);
+
+  FilterXJIT *self = (FilterXJIT *) s;
+  msg_trace("FilterXJIT optimize module", evt_tag_str("module_name", self->mod_name));
 
   // TODO smaller faster set: function(instcombine), etc.
   LLVMErrorRef err = LLVMRunPasses(mod, "default<O2>", NULL, options);
@@ -429,6 +433,8 @@ filterx_jit_finalize(FilterXJIT *self, GError **error)
       return FALSE;
     }
 
+  msg_trace("FilterXJIT finalized", evt_tag_str("module_name", self->mod_name));
+
   self->mod_finalized = TRUE;
   return TRUE;
 }
@@ -440,6 +446,8 @@ filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
     return 0;
 
   gchar *fqn = _create_fully_qualified_block_name(self, block_name);
+  msg_trace("FilterXJIT lookup", evt_tag_str("block", fqn), evt_tag_str("module_name", self->mod_name));
+
   FilterXJITAddress fx_block_addr = 0;
   LLVMErrorRef err = LLVMOrcLLJITLookup(self->j, &fx_block_addr, fqn);
   g_free(fqn);
@@ -561,6 +569,8 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   if (!self->libfilterx)
     goto error;
 
+  msg_trace("FilterXJIT created", evt_tag_str("module_name", self->mod_name));
+
   return self;
 
 error:
@@ -588,6 +598,8 @@ filterx_jit_free(FilterXJIT *self)
 
   if (self->debug_ir_text_memfd >= 0)
     close(self->debug_ir_text_memfd);
+
+  msg_trace("FilterXJIT destroyed", evt_tag_str("module_name", self->mod_name));
 
   g_free(self->mod_name);
   g_free(self);
