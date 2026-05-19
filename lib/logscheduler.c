@@ -304,12 +304,13 @@ _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, 
 static inline void
 _move_batch_to_partition(LogScheduler *self, LogSchedulerThreadState *thread_state, gint partition_index)
 {
-  if (iv_list_empty(&thread_state->batch_by_partition[partition_index]))
+  if (iv_list_empty(&thread_state->partitions[partition_index].elements))
     return;
 
   /* form the new batch, hand over the accumulated elements in batch_by_partition */
-  LogSchedulerBatch *batch = _batch_new(&thread_state->batch_by_partition[partition_index]);
-  INIT_IV_LIST_HEAD(&thread_state->batch_by_partition[partition_index]);
+  LogSchedulerBatch *batch = _batch_new(&thread_state->partitions[partition_index].elements);
+  INIT_IV_LIST_HEAD(&thread_state->partitions[partition_index].elements);
+  thread_state->partitions[partition_index].len = 0;
 
   /* add the new batch to the target partition */
   LogSchedulerPartition *partition = &self->partitions[partition_index];
@@ -347,7 +348,8 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
 
   LogMessageQueueNode *node;
   node = log_msg_alloc_queue_node(msg, path_options);
-  iv_list_add_tail(&node->list, &thread_state->batch_by_partition[partition_index]);
+  thread_state->partitions[partition_index].len++;
+  iv_list_add_tail(&node->list, &thread_state->partitions[partition_index].elements);
   log_msg_unref(msg);
 
   stats_counter_inc(self->partitions[partition_index].metrics.assigned_events_total);
@@ -364,7 +366,10 @@ _thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint inde
   state->last_partition = index % self->options->num_partitions;
 
   for (gint i = 0; i < self->options->num_partitions; i++)
-    INIT_IV_LIST_HEAD(&state->batch_by_partition[i]);
+    {
+      INIT_IV_LIST_HEAD(&state->partitions[i].elements);
+      state->partitions[i].len = 0;
+    }
 }
 
 static void
