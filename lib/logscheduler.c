@@ -330,6 +330,9 @@ _flush_batches(gpointer s)
 
   LogSchedulerThreadState *thread_state = &self->input_thread_states[thread_index];
 
+  stats_aggregator_add_data_point(thread_state->metrics.input_batch_size, thread_state->input_batch_size);
+  thread_state->input_batch_size = 0;
+
   for (gint partition_index = 0; partition_index < self->options->num_partitions; partition_index++)
     _move_batch_to_partition(self, thread_state, partition_index);
 
@@ -351,6 +354,7 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
   LogMessageQueueNode *node;
   node = log_msg_alloc_queue_node(msg, path_options);
   thread_state->partitions[partition_index].len++;
+  thread_state->input_batch_size++;
   iv_list_add_tail(&node->list, &thread_state->partitions[partition_index].elements);
   log_msg_unref(msg);
 
@@ -373,6 +377,7 @@ _thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint inde
       state->partitions[i].len = 0;
     }
   state->metrics.batch_size = self->batch_size;
+  state->metrics.input_batch_size = self->input_batch_size;
 }
 
 static void
@@ -457,6 +462,13 @@ _register_aggregated_stats(LogScheduler *self)
   stats_register_aggregator_hist(STATS_LEVEL4, &sc_key, round_to_log2(1), 14,
                                  &self->batch_size);
   stats_aggregator_unlock();
+
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_input_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist(STATS_LEVEL4, &sc_key, round_to_log2(1), 14,
+                                 &self->input_batch_size);
+  stats_aggregator_unlock();
 }
 
 static inline void
@@ -477,6 +489,12 @@ _unregister_aggregated_stats(LogScheduler *self)
 
   stats_aggregator_lock();
   stats_unregister_aggregator(&self->batch_size);
+  stats_aggregator_unlock();
+
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_input_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_unregister_aggregator(&self->input_batch_size);
   stats_aggregator_unlock();
 }
 

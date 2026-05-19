@@ -69,9 +69,11 @@ typedef struct _LogSchedulerThreadState
 
   gint last_partition;
   gint current_batch_size;
+  gint input_batch_size;
   struct
   {
     StatsAggregator *batch_size;
+    StatsAggregator *input_batch_size;
   } metrics;
 } LogSchedulerThreadState;
 
@@ -93,6 +95,7 @@ typedef struct _LogScheduler
   StatsCounterItem *parallelize_failed_events_total;
   StatsAggregator *processing_latency;
   StatsAggregator *batch_size;
+  StatsAggregator *input_batch_size;
   LogSchedulerThreadState input_thread_states[];
 } LogScheduler;
 
