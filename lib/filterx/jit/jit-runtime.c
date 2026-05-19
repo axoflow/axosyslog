@@ -27,6 +27,16 @@
 
 #if SYSLOG_NG_ENABLE_JIT
 
+/* Attribute template function to determine which attributes JIT blocks need to have to be compatible for inlining. */
+extern FilterXObject *fx_jit_attribute_template_opaque(FilterXEvalContext *ctx);
+
+__attribute__((used))
+FilterXObject *
+fx_jit_attribute_template(FilterXEvalContext *ctx)
+{
+  return fx_jit_attribute_template_opaque(ctx);
+}
+
 /* De-inlined version of FilterX functions */
 /* TODO: remove these once FilterX JIT is stable: non-inline calls should replace the inlined versions */
 

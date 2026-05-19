@@ -165,6 +165,39 @@ _set_unwind_attributes(FilterXJIT *self, FilterXIRValue block)
   LLVMAddAttributeAtIndex(block, LLVMAttributeFunctionIndex, uw);
 }
 
+static inline void
+_copy_attrs_at_index(LLVMValueRef src, LLVMValueRef dest, unsigned idx)
+{
+  unsigned count = LLVMGetAttributeCountAtIndex(src, idx);
+  if (!count)
+    return;
+
+  LLVMAttributeRef *attrs = g_alloca(count * sizeof(LLVMAttributeRef));
+  LLVMGetAttributesAtIndex(src, idx, attrs);
+  for (unsigned i = 0; i < count; i++)
+    LLVMAddAttributeAtIndex(dest, idx, attrs[i]);
+}
+
+static inline void
+_inherit_libfilterx_function_attributes(FilterXJIT *self, FilterXIRValue dest)
+{
+  if (!self->libfilterx)
+    return;
+
+  LLVMValueRef tmpl = LLVMGetNamedFunction(self->libfilterx, "fx_jit_attribute_template");
+  if (!tmpl || LLVMIsDeclaration(tmpl))
+    return;
+
+  _copy_attrs_at_index(tmpl, dest, LLVMAttributeFunctionIndex);
+
+  if (LLVMGetTypeKind(LLVMGetReturnType(LLVMGlobalGetValueType(dest))) != LLVMVoidTypeKind)
+    _copy_attrs_at_index(tmpl, dest, LLVMAttributeReturnIndex);
+
+  unsigned param_count = LLVMCountParams(tmpl);
+  for (unsigned paramidx = 1; paramidx <= param_count; paramidx++)
+    _copy_attrs_at_index(tmpl, dest, paramidx);
+}
+
 void
 filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
 {
@@ -174,6 +207,7 @@ filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
   gchar *fqn = _create_fully_qualified_block_name(self, block_name);
   self->current_ir_block = LLVMAddFunction(self->mod, fqn, _block_function_type(self));
   _set_unwind_attributes(self, self->current_ir_block);
+  _inherit_libfilterx_function_attributes(self, self->current_ir_block);
   g_free(fqn);
 
   FilterXIRSequence entry = filterx_jit_ir_add_new_sequence_to_block(self, "entry", self->current_ir_block);
