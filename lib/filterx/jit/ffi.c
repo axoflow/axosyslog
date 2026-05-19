@@ -222,4 +222,18 @@ fx_jit_emit_extern_call(FilterXJIT *jit, const gchar *name, FilterXIRType return
   return _emit_call(jit, call, args, param_count);
 }
 
+FilterXObject *fx_jit_attribute_template(FilterXEvalContext *ctx);
+
+__attribute__((used, noinline))
+FilterXObject *
+fx_jit_attribute_template_opaque(FilterXEvalContext *ctx)
+{
+  return NULL;
+}
+
+void *fx_jit_used_symbols[] = {
+  fx_jit_attribute_template,
+  fx_jit_attribute_template_opaque,
+};
+
 #endif
