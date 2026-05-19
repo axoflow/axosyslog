@@ -141,9 +141,9 @@ _flow_control_rate_adjust(LogSource *self)
                   else
                     {
                       /* otherwise let's wait for about 8 message to be emptied before going back to the loop, but clamp the maximum time to 0.1msec */
-                      self->window_full_sleep_nsec <<= 3;
-                      if (self->window_full_sleep_nsec > 1e5)
-                        self->window_full_sleep_nsec = 1e5;
+                      self->window_full_sleep_nsec <<= 4;
+                      if (self->window_full_sleep_nsec > 1e6)
+                        self->window_full_sleep_nsec = 1e6;
                     }
                   self->last_ack_count = cur_ack_count;
                   self->last_ack_rate_time = now;
