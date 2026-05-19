@@ -137,6 +137,11 @@ public:
     this->schema_fields.emplace_back(name, arrow::timestamp(arrow::TimeUnit::NANO, "UTC"), value);
   }
 
+  void add_map_string_string_schema_field(std::string name, LogTemplate *value)
+  {
+    this->schema_fields.emplace_back(name, arrow::map(arrow::utf8(), arrow::utf8()), value);
+  }
+
   const std::vector<SchemaField> &get_schema_fields() const
   {
     return this->schema_fields;

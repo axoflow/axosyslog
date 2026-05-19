@@ -104,6 +104,19 @@ def test_arrow_flight_destination_multiple_schema_fields(config, syslog_ng, port
     custom_msg = f"test message {uuid.uuid4()}"
     generator_source = config.create_example_msg_generator_source(num=1, template=stringify(custom_msg))
 
+    labels_json = (
+        '{'
+        '"str":"hello",'
+        '"int":42,'
+        '"float":1.5,'
+        '"bool_true":true,'
+        '"bool_false":false,'
+        '"null":null,'
+        '"array":[1,2,3],'
+        '"object":{"k":"v"}'
+        '}'
+    )
+
     options = {
         "path": stringify(ARROW_FLIGHT_PATH),
         "schema": (
@@ -111,7 +124,8 @@ def test_arrow_flight_destination_multiple_schema_fields(config, syslog_ng, port
             '"count" INT64 => "42" '
             '"score" DOUBLE => "3.14" '
             '"flag" BOOL => "true" '
-            '"ts" TIMESTAMP => "1700000000000000000"'
+            '"ts" TIMESTAMP => "1700000000000000000" '
+            f'"labels" MAP(STRING, STRING) => {stringify(labels_json)}'
         ),
         "batch-lines": 1,
     }
@@ -130,6 +144,16 @@ def test_arrow_flight_destination_multiple_schema_fields(config, syslog_ng, port
     assert rows[0]["score"] == 3.14
     assert rows[0]["flag"] is True
     assert rows[0]["ts"] == datetime.datetime(2023, 11, 14, 22, 13, 20, tzinfo=datetime.timezone.utc)
+    assert dict(rows[0]["labels"]) == {
+        "str": "hello",
+        "int": "42",
+        "float": "1.5",
+        "bool_true": "true",
+        "bool_false": "false",
+        "null": "null",
+        "array": "[1,2,3]",
+        "object": "{\"k\":\"v\"}",
+    }
     assert arrow_flight_destination.get_stream_count(ARROW_FLIGHT_PATH) == 1
     assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == 1
 

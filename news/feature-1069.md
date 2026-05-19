@@ -11,6 +11,7 @@ Column types supported in `schema()`:
   * `DOUBLE` (alias `FLOAT64`)
   * `BOOL` (alias `BOOLEAN`)
   * `TIMESTAMP`
+  * `MAP(STRING, STRING)`
 
 Example configuration:
 

@@ -184,6 +184,13 @@ arrow_flight_dd_add_timestamp_schema_field(LogDriver *d, const gchar *name, LogT
   self->cpp->add_timestamp_schema_field(name, value);
 }
 
+void
+arrow_flight_dd_add_map_string_string_schema_field(LogDriver *d, const gchar *name, LogTemplate *value)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->add_map_string_string_schema_field(name, value);
+}
+
 LogTemplateOptions *
 arrow_flight_dd_get_template_options(LogDriver *d)
 {

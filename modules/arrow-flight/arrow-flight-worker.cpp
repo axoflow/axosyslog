@@ -29,6 +29,7 @@
 #include "messages.h"
 #include "logmsg/type-hinting.h"
 #include "template/templates.h"
+#include <json.h>
 #include "compat/cpp-end.h"
 
 #include <arrow/api.h>
@@ -172,6 +173,71 @@ DestinationWorker::create_builders()
 
 /* This function downcasts the builder. Make sure to pass one that matches the type. */
 gssize
+DestinationWorker::append_map_string_string(arrow::MapBuilder *mbuilder, const char *str, gssize len)
+{
+  auto *key_builder = static_cast<arrow::StringBuilder *>(mbuilder->key_builder());
+  auto *item_builder = static_cast<arrow::StringBuilder *>(mbuilder->item_builder());
+
+  struct json_tokener *tok = json_tokener_new();
+  struct json_object *jso = json_tokener_parse_ex(tok, str, (int) len);
+  enum json_tokener_error jerr = json_tokener_get_error(tok);
+  json_tokener_free(tok);
+
+  if (!jso || jerr != json_tokener_success || !json_object_is_type(jso, json_type_object))
+    {
+      if (jso)
+        json_object_put(jso);
+      return -1;
+    }
+
+  int64_t prev_key_bytes = key_builder->value_data_length();
+  int64_t prev_item_bytes = item_builder->value_data_length();
+  int64_t entries = 0;
+  arrow::Status s = mbuilder->Append();
+
+  if (s.ok())
+    {
+      struct json_object_iter itr;
+      json_object_object_foreachC(jso, itr)
+      {
+        s = key_builder->Append(itr.key, (int32_t) strlen(itr.key));
+        if (!s.ok())
+          break;
+
+        const char *v;
+        size_t v_len;
+        if (json_object_is_type(itr.val, json_type_string))
+          {
+            v = json_object_get_string(itr.val);
+            v_len = (size_t) json_object_get_string_len(itr.val);
+          }
+        else
+          {
+            v = json_object_to_json_string_ext(itr.val, JSON_C_TO_STRING_PLAIN);
+            v_len = v ? strlen(v) : 0;
+          }
+        s = item_builder->Append(v, (int32_t) v_len);
+        if (!s.ok())
+          break;
+        entries++;
+      }
+    }
+  json_object_put(jso);
+
+  if (!s.ok())
+    return -1;
+
+  /*
+   * Approximate byte cost: key + item data growth, one offset per entry in each inner
+   * StringArray, plus one offset for the map slot itself.
+   */
+  return (key_builder->value_data_length() - prev_key_bytes) +
+         (item_builder->value_data_length() - prev_item_bytes) +
+         entries * 2 * (gssize) sizeof(int32_t) +
+         (gssize) sizeof(int32_t);
+}
+
+gssize
 DestinationWorker::append_value(arrow::ArrayBuilder *builder, const std::shared_ptr<arrow::DataType> &type,
                                 const char *str, gssize len)
 {
@@ -228,6 +294,8 @@ DestinationWorker::append_value(arrow::ArrayBuilder *builder, const std::shared_
       serialized_len = sizeof(int64_t);
       break;
     }
+    case arrow::Type::MAP:
+      return this->append_map_string_string(static_cast<arrow::MapBuilder *>(builder), str, len);
     default:
       return -1;
     }

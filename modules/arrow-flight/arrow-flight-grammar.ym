@@ -60,6 +60,7 @@
 %token KW_CAP_BOOLEAN
 %token KW_CAP_BOOL
 %token KW_CAP_TIMESTAMP
+%token KW_CAP_MAP
 %token KW_BATCH_BYTES
 
 %type <ptr> arrow_flight_dest
@@ -124,6 +125,11 @@ arrow_flight_schema_field
     {
       arrow_flight_dd_add_timestamp_schema_field(last_driver, $1, $4);
       free($1); log_template_unref($4);
+    }
+  | string KW_CAP_MAP '(' KW_CAP_STRING KW_CAP_STRING ')' LL_ARROW template_content
+    {
+      arrow_flight_dd_add_map_string_string_schema_field(last_driver, $1, $8);
+      free($1); log_template_unref($8);
     }
   ;
 
