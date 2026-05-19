@@ -31,6 +31,7 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/LLJIT.h>
+#include <llvm-c/Linker.h>
 #include <llvm-c/Orc.h>
 #include <llvm-c/Transforms/PassBuilder.h>
 #include <llvm-c/OrcEE.h>
@@ -87,6 +88,7 @@ static LLVMErrorRef
 _optimize_module(gpointer s, LLVMModuleRef mod)
 {
   LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+  LLVMPassBuilderOptionsSetInlinerThreshold(options, 512);
 
   // TODO smaller faster set: function(instcombine), etc.
   LLVMErrorRef err = LLVMRunPasses(mod, "default<O2>", NULL, options);
@@ -339,6 +341,25 @@ _emit_llvm_ir_debug_info(FilterXJIT *self, GError **error)
 
 #endif
 
+static gboolean
+_link_libfilterx(FilterXJIT *self, GError **error)
+{
+  if (!self->libfilterx)
+    return TRUE;
+
+  LLVMBool link_err = LLVMLinkModules2(self->mod, self->libfilterx);
+  /* libfilterx is consumed */
+  self->libfilterx = NULL;
+
+  if (link_err)
+    {
+      _fxjit_error("Failed to link embedded libfilterx bitcode into the JIT module", error);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 filterx_jit_finalize(FilterXJIT *self, GError **error)
 {
@@ -355,6 +376,9 @@ filterx_jit_finalize(FilterXJIT *self, GError **error)
 
   if (self->debug)
     LLVMDIBuilderFinalize(self->debug);
+
+  if (!_link_libfilterx(self, error))
+    return FALSE;
 
   if (!_verify_module(self, error))
     return FALSE;
