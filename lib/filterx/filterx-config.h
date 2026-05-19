@@ -26,22 +26,23 @@
 #include "filterx/filterx-object.h"
 #include "filterx/jit/jit.h"
 #include "filterx/object-string.h"
+#include "filterx/filterx-env.h"
 
 #include <string.h>
 
 typedef struct _FilterXConfig
 {
   ModuleConfig super;
-  GPtrArray *frozen_objects;
-  GHashTable *frozen_deduplicated_objects;
-  GPtrArray *weak_refs;
-
   gboolean enable_jit;
   FilterXJITDebugInfo jit_debug_info;
   FilterXJIT *jit;
+  /* config related objects, e.g. frozen string literals, etc */
+  FilterXEnvironment global_env;
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);
+void filterx_config_dedup_object(GlobalConfig *cfg, FilterXObject **object);
+void filterx_config_freeze_object(GlobalConfig *cfg, FilterXObject **object);
 
 static inline void
 filterx_config_enable_jit(FilterXConfig *self, gboolean enable)

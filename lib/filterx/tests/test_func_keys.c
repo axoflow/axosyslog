@@ -53,9 +53,9 @@ Test(filterx_func_keys, empty_args)
 Test(filterx_func_keys, invalid_args_number)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new("not a dict",
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new("not a dict",
                                                       -1))));
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new("more args",
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new("more args",
                                                       -1))));
 
   GError *error = NULL;
@@ -70,7 +70,7 @@ Test(filterx_func_keys, invalid_args_number)
 Test(filterx_func_keys, invalid_arg_type)
 {
   GList *args = NULL;
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(filterx_string_new("not a dict",
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(filterx_string_new("not a dict",
                                                       -1))));
 
   GError *error = NULL;
@@ -92,7 +92,7 @@ Test(filterx_func_keys, valid_input)
 {
   GList *args = NULL;
   FilterXObject *dict = filterx_object_from_json("{\"foo\":1,\"bar\":[3,2,1],\"baz\":{\"tik\":\"tak\"}}", -1, NULL);
-  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_non_literal_new(dict)));
+  args = g_list_append(args, filterx_function_arg_new(NULL, filterx_object_expr_new(dict)));
 
   GError *error = NULL;
   FilterXExpr *fn = filterx_function_keys_new(filterx_function_args_new(args, NULL), &error);

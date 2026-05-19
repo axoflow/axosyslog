@@ -27,6 +27,7 @@
 #include "filterx/filterx-error.h"
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-allocator.h"
+#include "filterx/filterx-env.h"
 #include "template/eval.h"
 
 #define FILTERX_CONTEXT_ERROR_STACK_SIZE (32)
@@ -77,6 +78,7 @@ struct _FilterXEvalContext
   guint8 failure_info_collect_falsy:1;
   GArray *failure_info;
   gint weak_refs_offset;
+  FilterXEnvironment *env;
 };
 
 FilterXEvalContext *filterx_eval_get_context(void);
@@ -101,8 +103,12 @@ void filterx_eval_dump_errors(const gchar *message);
 void filterx_eval_begin_context(FilterXEvalContext *context, FilterXEvalContext *previous_context,
                                 FilterXScope *scope_storage, LogMessage *msg);
 void filterx_eval_end_context(FilterXEvalContext *context);
+void filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env);
+void filterx_eval_end_restricted_context(FilterXEvalContext *context);
+
 void filterx_eval_begin_compile(FilterXEvalContext *context, GlobalConfig *cfg);
 void filterx_eval_end_compile(FilterXEvalContext *context);
+void filterx_eval_freeze_object(FilterXObject **object);
 
 FilterXEvalControl filterx_eval_get_control_modifier(FilterXEvalContext *context);
 void filterx_eval_set_control_modifier(FilterXEvalContext *context, FilterXEvalControl modifier);
@@ -154,7 +160,7 @@ static inline void
 filterx_eval_store_weak_ref(FilterXObject *object)
 {
   /* Preserved objects do not need weak refs. */
-  if (object && (filterx_object_is_preserved(object) || filterx_object_is_readonly(object)))
+  if (object && (filterx_object_is_preserved(object)))
     return;
 
   if (object && !object->weak_referenced)
@@ -210,6 +216,14 @@ filterx_eval_context_make_writable(FilterXEvalContext *context)
     }
 }
 
+static inline gboolean
+filterx_eval_context_is_production(FilterXEvalContext *context)
+{
+  if (!context)
+    return FALSE;
+  return context->scope != NULL;
+}
+
 static inline FilterXObject *
 filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
 {
@@ -226,6 +240,7 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
       result = (FilterXObject *) filterx_allocator_malloc(context->allocator, alloc_size, object_size);
       result->allocator_used = TRUE;
     }
+  result->early_allocation = !filterx_eval_context_is_production(context);
 
   return result;
 }
