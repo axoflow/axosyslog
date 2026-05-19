@@ -359,6 +359,10 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
   log_msg_unref(msg);
 
   stats_counter_inc(self->partitions[partition_index].metrics.assigned_events_total);
+  if (self->options->batch_size && thread_state->partitions[partition_index].len >= self->options->batch_size)
+    {
+      _move_batch_to_partition(self, thread_state, partition_index);
+    }
 }
 
 
