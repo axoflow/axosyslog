@@ -587,7 +587,10 @@ plugin_discover_loadable_modules(PluginContext *context)
                 plugin_extract_candidate_plugins(context, module_name, module_info);
               g_free(module_name);
               if (mod)
-                g_module_close(mod);
+                {
+                  g_module_make_resident(mod);
+                  g_module_close(mod);
+                }
               else
                 mod = NULL;
             }
@@ -719,7 +722,10 @@ plugin_list_modules(FILE *out, gboolean verbose)
                 }
               g_free(module_name);
               if (mod)
-                g_module_close(mod);
+                {
+                  g_module_make_resident(mod);
+                  g_module_close(mod);
+                }
             }
         }
       g_dir_close(dir);
