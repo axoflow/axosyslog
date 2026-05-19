@@ -69,7 +69,7 @@ Test(filterx_func_base64, encode_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "Zm9vYmFy");
+  assert_object_str_equals(res, "Zm9vYmFy");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -81,7 +81,7 @@ Test(filterx_func_base64, encode_bytes)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "AAECAw==");
+  assert_object_str_equals(res, "AAECAw==");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -182,7 +182,7 @@ Test(filterx_func_url, encode_plain_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "foobar");
+  assert_object_str_equals(res, "foobar");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -194,7 +194,7 @@ Test(filterx_func_url, encode_special_chars)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "korte%20fa%2Fszilva%3Falma%3D1%26korte%3D2");
+  assert_object_str_equals(res, "korte%20fa%2Fszilva%3Falma%3D1%26korte%3D2");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -216,7 +216,7 @@ Test(filterx_func_url, decode_plain_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "foobar");
+  assert_object_str_equals(res, "foobar");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -228,7 +228,7 @@ Test(filterx_func_url, decode_percent_encoded)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "korte fa/szilva?alma=1&korte=2");
+  assert_object_str_equals(res, "korte fa/szilva?alma=1&korte=2");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -255,7 +255,7 @@ Test(filterx_func_url, encode_decode_roundtrip)
   FilterXObject *decoded = init_and_eval_expr(decode_fn);
   cr_assert_not_null(decoded);
 
-  assert_object_repr_equals(decoded, original);
+  assert_object_str_equals(decoded, original);
 
   filterx_object_unref(decoded);
   filterx_expr_unref(decode_fn);
@@ -312,7 +312,7 @@ Test(filterx_func_hex, encode_string)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "666f6f");
+  assert_object_str_equals(res, "666f6f");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);
@@ -324,7 +324,7 @@ Test(filterx_func_hex, encode_bytes)
   FilterXObject *res = init_and_eval_expr(fn);
 
   cr_assert_not_null(res);
-  assert_object_repr_equals(res, "00010fff");
+  assert_object_str_equals(res, "00010fff");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);

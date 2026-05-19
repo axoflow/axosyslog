@@ -29,7 +29,7 @@
 
 FILTERX_DECLARE_TYPE(datetime);
 
-#define datefmt_isodate "%Y-%m-%dT%H:%M:%S%z"
+#define datefmt_isodate "%Y-%m-%dT%H:%M:%S%f%z"
 
 FilterXObject *filterx_datetime_new(const UnixTime *ut);
 UnixTime filterx_datetime_get_value(FilterXObject *s);

@@ -303,7 +303,7 @@ def test_otel_to_json(config, syslog_ng):
                                             #istype(js.otel_arr, "json_array");
                                             js.otel_arr += [3, 4];
 
-                                            $MSG = string(js);
+                                            $MSG = format_json(js);
                 """,
     )
     syslog_ng.start(config)
@@ -1998,9 +1998,9 @@ def test_add_operator_for_base_types(config, syslog_ng):
     assert "processed" not in file_false.get_stats()
     exp = (
         r"""{"string":"stringbarbaz","""
-        r""""bytes":"cafe","""
-        r""""datetime_integer":"2000-01-01T01:00:00.000000+00:00","""
-        r""""datetime_double":"2000-01-01T01:00:00.000000+00:00","""
+        r""""bytes":"\\xca\\xfe","""
+        r""""datetime_integer":"datetime(946688400.000000)","""
+        r""""datetime_double":"datetime(946688400.000000)","""
         r""""integer_integer":12,"""
         r""""integer_double":3.5,"""
         r""""double_integer":5.5,"""
@@ -2093,8 +2093,8 @@ def test_plus_equal_grammar_rules(config, syslog_ng):
         r"""{"var_int":5,"""
         r""""var_string":"foobar","""
         r""""var_double":1.02,"""
-        r""""var_datetime_integer":"2000-01-01T01:00:00.000000+00:00","""
-        r""""var_datetime_double":"2000-01-01T01:00:00.000000+00:00","""
+        r""""var_datetime_integer":"datetime(946688400.000000)","""
+        r""""var_datetime_double":"datetime(946688400.000000)","""
         r""""attr":"tiktak","""
         r""""subs":"barbaz","""
         r""""sub_gen_var":["control","baz","other","wtf","happened"],"""
@@ -2673,36 +2673,6 @@ def test_pubsub_message(config, syslog_ng):
     exp = (
         r"""{"msg":{"data":"bXkgcHVic3ViIG1lc3NhZ2U=","attributes":{"foo":"bar"}},"""
         """"empty":{"data":"ZW1wdHkgYXR0cmlidXRlIHZhbHVl","attributes":{"empty":""}}}"""
-    )
-    assert file_true.read_log() == exp
-
-
-def test_otel_repr(config, syslog_ng):
-    (file_true, file_false) = create_config(
-        config, r"""
-    kvlist = otel_kvlist({"test":"kvlist", "message": $MESSAGE});
-    array = otel_array(["message", $MESSAGE]);
-    logrecord = otel_logrecord({"body":$MESSAGE, "attributes":{"foo":"bar"}});
-    resource = otel_resource({"attributes":{"resource":$MESSAGE}, "dropped_attributes_count": 444});
-    scope = otel_scope({"name":$MESSAGE, "version":"one", "attributes":{"foo":"bar"}, "dropped_attributes_count": 333});
-    $MESSAGE = json();
-    $MESSAGE.kvlist = string(kvlist);
-    $MESSAGE.array = string(array);
-    $MESSAGE.logrecord = string(logrecord);
-    $MESSAGE.resource = string(resource);
-    $MESSAGE.scope = string(scope);
-    """,
-    )
-    syslog_ng.start(config)
-
-    assert file_true.get_stats()["processed"] == 1
-    assert "processed" not in file_false.get_stats()
-    exp = (
-        r"""{"kvlist":"{\"values\":[{\"key\":\"test\",\"value\":{\"stringValue\":\"kvlist\"}},{\"key\":\"message\",\"value\":{\"stringValue\":\"foobar\"}}]}","""
-        r""""array":"{\"values\":[{\"stringValue\":\"message\"},{\"stringValue\":\"foobar\"}]}","""
-        r""""logrecord":"{\"body\":{\"stringValue\":\"foobar\"},\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}]}","""
-        r""""resource":"{\"attributes\":[{\"key\":\"resource\",\"value\":{\"stringValue\":\"foobar\"}}],\"droppedAttributesCount\":444}","""
-        r""""scope":"{\"name\":\"foobar\",\"version\":\"one\",\"attributes\":[{\"key\":\"foo\",\"value\":{\"stringValue\":\"bar\"}}],\"droppedAttributesCount\":333}"}""" + ""
     )
     assert file_true.read_log() == exp
 

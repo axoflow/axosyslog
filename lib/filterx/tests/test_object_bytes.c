@@ -108,7 +108,7 @@ Test(filterx_bytes, test_filterx_bytes_typecast_from_protobuf)
 Test(filterx_bytes, filterx_bytes_repr)
 {
   FilterXObject *obj = filterx_bytes_new("\0\1\2\3", 4);
-  assert_object_repr_equals(obj, "00010203");
+  assert_object_repr_equals(obj, "bytes(\"\\x00\\x01\\x02\\x03\")");
   filterx_object_unref(obj);
 }
 

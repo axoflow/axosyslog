@@ -480,7 +480,7 @@ Test(filterx_func_parse_csv, test_optional_argument_delimiter_default_unset_when
   FilterXObject *elt = filterx_sequence_get_subscript(obj, 1);
 
   GString *repr = scratch_buffers_alloc();
-  cr_assert(filterx_object_repr(elt, repr));
+  cr_assert(filterx_object_str(elt, repr));
 
   cr_assert_str_eq(repr->str, "bar,baz");
   filterx_object_unref(elt);

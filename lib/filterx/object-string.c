@@ -100,11 +100,18 @@ _free(FilterXObject *s)
 }
 
 static gboolean
-_string_repr(FilterXObject *s, GString *repr)
+_string_str(FilterXObject *s, GString *repr)
 {
   FilterXString *self = (FilterXString *) s;
   repr = g_string_append_len(repr, self->str, self->str_len);
   return TRUE;
+}
+
+static gboolean
+_string_repr(FilterXObject *s, GString *repr)
+{
+  FilterXString *self = (FilterXString *) s;
+  return string_format_json(self->str, self->str_len, TRUE, repr);
 }
 
 gboolean
@@ -487,10 +494,10 @@ _bytes_repr(FilterXObject *s, GString *repr)
 {
   FilterXString *self = (FilterXString *) s;
 
-  gsize target_len = self->str_len * 2;
-  gsize repr_len = repr->len;
-  g_string_set_size(repr, target_len + repr_len);
-  format_hex_string_with_delimiter(self->str, self->str_len, repr->str + repr_len, target_len + 1, 0);
+  g_string_append(repr, "bytes(\"");
+  append_unsafe_utf8_as_escaped_binary(repr, self->str, self->str_len, AUTF8_UNSAFE_QUOTE);
+  g_string_append(repr, "\")");
+
   return TRUE;
 }
 
@@ -527,6 +534,18 @@ filterx_bytes_new_take(gchar *mem, gssize mem_len)
   FilterXObject *s = filterx_string_new_take(mem, mem_len);
   s->type = &FILTERX_TYPE_NAME(bytes);
   return s;
+}
+
+static gboolean
+_protobuf_repr(FilterXObject *s, GString *repr)
+{
+  FilterXString *self = (FilterXString *) s;
+
+  g_string_append(repr, "protobuf(\"");
+  append_unsafe_utf8_as_escaped_binary(repr, self->str, self->str_len, AUTF8_UNSAFE_QUOTE);
+  g_string_append(repr, "\")");
+
+  return TRUE;
 }
 
 FilterXObject *
@@ -644,6 +663,7 @@ FILTERX_DEFINE_TYPE(string, FILTERX_TYPE_NAME(object),
                     .format_json = _string_format_json,
                     .truthy = _truthy,
                     .repr = _string_repr,
+                    .str = _string_str,
                     .add = _string_add,
                     .hash = _string_hash,
                     .equal = _string_equal,
@@ -657,6 +677,7 @@ FILTERX_DEFINE_TYPE(bytes, FILTERX_TYPE_NAME(object),
                     .len = _len,
                     .format_json = _bytes_format_json,
                     .truthy = _truthy,
+                    .str = _string_str,
                     .repr = _bytes_repr,
                     .add = _bytes_add,
                     .free_fn = _free,
@@ -668,7 +689,8 @@ FILTERX_DEFINE_TYPE(protobuf, FILTERX_TYPE_NAME(object),
                     .marshal = _protobuf_marshal,
                     .format_json = _bytes_format_json,
                     .truthy = _truthy,
-                    .repr = _bytes_repr,
+                    .str = _string_str,
+                    .repr = _protobuf_repr,
                     .free_fn = _free,
                    );
 

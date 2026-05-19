@@ -65,7 +65,9 @@ _marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 static gboolean
 _repr(FilterXObject *s, GString *repr)
 {
+  g_string_append(repr, "metrics_labels('");
   _marshal(s, repr, NULL);
+  g_string_append(repr, "')");
   return TRUE;
 }
 

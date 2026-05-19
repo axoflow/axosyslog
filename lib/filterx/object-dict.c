@@ -558,9 +558,41 @@ _filterx_dict_marshal(FilterXObject *s, GString *repr, LogMessageValueType *t)
 }
 
 static gboolean
+_repr_dict_elem(FilterXObject **key, FilterXObject **value, gpointer user_data)
+{
+  gpointer *args = (gpointer *) user_data;
+  GString *repr = (GString *) args[0];
+  gboolean *first = (gboolean *) args[1];
+
+  if (!(*first))
+    g_string_append_c(repr, ',');
+  else
+    *first = FALSE;
+
+  if (!filterx_object_repr_append(*key, repr))
+    return FALSE;
+  g_string_append_c(repr, ':');
+
+  return filterx_object_repr_append(*value, repr);
+}
+
+static gboolean
 _filterx_dict_repr(FilterXObject *s, GString *repr)
 {
-  return filterx_object_to_json(s, repr);
+  FilterXDictObject *self = (FilterXDictObject *) s;
+  gboolean first = TRUE;
+  gpointer args[] = { repr, &first };
+
+  g_string_append_c(repr, '{');
+
+  if (self->table)
+    {
+      if (!_table_foreach(self->table, _repr_dict_elem, args))
+        return FALSE;
+    }
+
+  g_string_append_c(repr, '}');
+  return TRUE;
 }
 
 static FilterXObject *
