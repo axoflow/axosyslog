@@ -92,12 +92,12 @@ _optimize_module(gpointer s, LLVMModuleRef mod)
 {
   LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
   LLVMPassBuilderOptionsSetInlinerThreshold(options, 512);
+  LLVMPassBuilderOptionsSetMergeFunctions(options, TRUE);
 
   FilterXJIT *self = (FilterXJIT *) s;
   msg_trace("FilterXJIT optimize module", evt_tag_str("module_name", self->mod_name));
 
-  // TODO smaller faster set: function(instcombine), etc.
-  LLVMErrorRef err = LLVMRunPasses(mod, "default<O2>", NULL, options);
+  LLVMErrorRef err = LLVMRunPasses(mod, "default<O3>", self->tm, options);
 
   LLVMDisposePassBuilderOptions(options);
   return err;
@@ -665,7 +665,7 @@ filterx_jit_global_init(void)
 
   /* For debugging: -time-passes -pass-remarks=inline -pass-remarks-missed=inline -pass-remarks-analysis=inline */
   const gchar *extra_args = g_getenv("SYSLOG_NG_FILTERX_JIT_LLVM_ARGS");
-  gchar *cmdline = g_strconcat("syslog-ng -inlinecold-threshold=512 -inline-cold-callsite-threshold=512 ",
+  gchar *cmdline = g_strconcat("syslog-ng -inlinecold-threshold=512 -inline-cold-callsite-threshold=512 -inlinehint-threshold=512 -mergefunc-use-aliases ",
                                extra_args, NULL);
 
   GError *error = NULL;
