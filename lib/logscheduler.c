@@ -304,12 +304,15 @@ _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, 
 static inline void
 _move_batch_to_partition(LogScheduler *self, LogSchedulerThreadState *thread_state, gint partition_index)
 {
-  if (iv_list_empty(&thread_state->batch_by_partition[partition_index]))
+  if (iv_list_empty(&thread_state->partitions[partition_index].elements))
     return;
 
+  stats_aggregator_add_data_point(thread_state->metrics.batch_size, thread_state->partitions[partition_index].len);
+
   /* form the new batch, hand over the accumulated elements in batch_by_partition */
-  LogSchedulerBatch *batch = _batch_new(&thread_state->batch_by_partition[partition_index]);
-  INIT_IV_LIST_HEAD(&thread_state->batch_by_partition[partition_index]);
+  LogSchedulerBatch *batch = _batch_new(&thread_state->partitions[partition_index].elements);
+  INIT_IV_LIST_HEAD(&thread_state->partitions[partition_index].elements);
+  thread_state->partitions[partition_index].len = 0;
 
   /* add the new batch to the target partition */
   LogSchedulerPartition *partition = &self->partitions[partition_index];
@@ -326,6 +329,9 @@ _flush_batches(gpointer s)
   g_assert(thread_index >= 0);
 
   LogSchedulerThreadState *thread_state = &self->input_thread_states[thread_index];
+
+  stats_aggregator_add_data_point(thread_state->metrics.input_batch_size, thread_state->input_batch_size);
+  thread_state->input_batch_size = 0;
 
   for (gint partition_index = 0; partition_index < self->options->num_partitions; partition_index++)
     _move_batch_to_partition(self, thread_state, partition_index);
@@ -347,7 +353,9 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
 
   LogMessageQueueNode *node;
   node = log_msg_alloc_queue_node(msg, path_options);
-  iv_list_add_tail(&node->list, &thread_state->batch_by_partition[partition_index]);
+  thread_state->partitions[partition_index].len++;
+  thread_state->input_batch_size++;
+  iv_list_add_tail(&node->list, &thread_state->partitions[partition_index].elements);
   log_msg_unref(msg);
 
   stats_counter_inc(self->partitions[partition_index].metrics.assigned_events_total);
@@ -364,7 +372,12 @@ _thread_state_init(LogScheduler *self, LogSchedulerThreadState *state, gint inde
   state->last_partition = index % self->options->num_partitions;
 
   for (gint i = 0; i < self->options->num_partitions; i++)
-    INIT_IV_LIST_HEAD(&state->batch_by_partition[i]);
+    {
+      INIT_IV_LIST_HEAD(&state->partitions[i].elements);
+      state->partitions[i].len = 0;
+    }
+  state->metrics.batch_size = self->batch_size;
+  state->metrics.input_batch_size = self->input_batch_size;
 }
 
 static void
@@ -441,6 +454,21 @@ _register_aggregated_stats(LogScheduler *self)
   stats_register_aggregator_hist(STATS_LEVEL2, &sc_key, round_to_log2(1), 14,
                                  &self->processing_latency);
   stats_aggregator_unlock();
+
+  StatsClusterLabel labels2[] = { stats_cluster_label("parallelize", self->id) };
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist(STATS_LEVEL4, &sc_key, round_to_log2(1), 14,
+                                 &self->batch_size);
+  stats_aggregator_unlock();
+
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_input_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_register_aggregator_hist(STATS_LEVEL4, &sc_key, round_to_log2(1), 14,
+                                 &self->input_batch_size);
+  stats_aggregator_unlock();
 }
 
 static inline void
@@ -454,6 +482,19 @@ _unregister_aggregated_stats(LogScheduler *self)
 
   stats_aggregator_lock();
   stats_unregister_aggregator(&self->processing_latency);
+  stats_aggregator_unlock();
+
+  StatsClusterLabel labels2[] = { stats_cluster_label("parallelize", self->id) };
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_unregister_aggregator(&self->batch_size);
+  stats_aggregator_unlock();
+
+  stats_cluster_hist_key_set(&sc_key, METRIC(parallelized_input_batch_size), labels2, G_N_ELEMENTS(labels2));
+
+  stats_aggregator_lock();
+  stats_unregister_aggregator(&self->input_batch_size);
   stats_aggregator_unlock();
 }
 

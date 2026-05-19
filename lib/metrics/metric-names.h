@@ -78,6 +78,8 @@
   M(parallelize_failed_events_total) \
   M(parallelized_assigned_events_total) \
   M(parallelized_processed_events_total) \
+  M(parallelized_batch_size) \
+  M(parallelized_input_batch_size) \
   M(parsed_events_total) \
   M(route_egress_total) \
   M(route_ingress_total) \

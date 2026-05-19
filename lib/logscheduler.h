@@ -61,10 +61,20 @@ typedef struct _LogSchedulerPartition
 typedef struct _LogSchedulerThreadState
 {
   WorkerBatchCallback batch_callback;
-  struct iv_list_head batch_by_partition[LOGSCHEDULER_MAX_PARTITIONS];
+  struct
+  {
+    struct iv_list_head elements;
+    guint32 len;
+  } partitions[LOGSCHEDULER_MAX_PARTITIONS];
 
   gint last_partition;
   gint current_batch_size;
+  gint input_batch_size;
+  struct
+  {
+    StatsAggregator *batch_size;
+    StatsAggregator *input_batch_size;
+  } metrics;
 } LogSchedulerThreadState;
 
 typedef struct _LogSchedulerOptions
@@ -84,6 +94,8 @@ typedef struct _LogScheduler
   LogSchedulerPartition partitions[LOGSCHEDULER_MAX_PARTITIONS];
   StatsCounterItem *parallelize_failed_events_total;
   StatsAggregator *processing_latency;
+  StatsAggregator *batch_size;
+  StatsAggregator *input_batch_size;
   LogSchedulerThreadState input_thread_states[];
 } LogScheduler;
 
