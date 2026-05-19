@@ -97,8 +97,7 @@ _optimize_module(gpointer s, LLVMModuleRef mod)
   FilterXJIT *self = (FilterXJIT *) s;
   msg_trace("FilterXJIT optimize module", evt_tag_str("module_name", self->mod_name));
 
-  // TODO smaller faster set: function(instcombine), etc.
-  LLVMErrorRef err = LLVMRunPasses(mod, "default<O2>", NULL, options);
+  LLVMErrorRef err = LLVMRunPasses(mod, "default<O3>", self->tm, options);
 
   LLVMDisposePassBuilderOptions(options);
   return err;
