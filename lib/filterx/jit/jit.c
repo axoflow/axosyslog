@@ -39,6 +39,7 @@
 #include <llvm-c/OrcEE.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/DebugInfo.h>
+#include <llvm-c/Support.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -661,6 +662,13 @@ filterx_jit_global_init(void)
 {
   LLVMInitializeNativeTarget();
   LLVMInitializeNativeAsmPrinter();
+
+  const char *args[] = {
+    "syslog-ng",
+    "-inlinecold-threshold=512",
+    "-inline-cold-callsite-threshold=512",
+  };
+  LLVMParseCommandLineOptions(G_N_ELEMENTS(args), args, NULL);
 }
 
 void
