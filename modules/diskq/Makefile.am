@@ -21,6 +21,9 @@ modules_diskq_libsyslog_ng_disk_buffer_la_SOURCES = \
 modules_diskq_libsyslog_ng_disk_buffer_la_CPPFLAGS = \
   $(AM_CPPFLAGS) \
   -I$(top_srcdir)/modules/diskq
+modules_diskq_libsyslog_ng_disk_buffer_la_CFLAGS = \
+  $(AM_CFLAGS) $(MODULE_CFLAGS)
+
 modules_diskq_libsyslog_ng_disk_buffer_la_LIBADD	=	\
   $(MODULE_DEPS_LIBS)
 EXTRA_modules_diskq_libsyslog_ng_disk_buffer_la_DEPENDENCIES	=	\

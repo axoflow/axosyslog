@@ -45,6 +45,7 @@ modules_grpc_common_libgrpc_common_la_CXXFLAGS = \
 
 modules_grpc_common_libgrpc_common_la_LIBADD = $(MODULE_DEPS_LIBS) $(PROTOBUF_LIBS) $(GRPCPP_LIBS)
 modules_grpc_common_libgrpc_common_la_LDFLAGS = $(MODULE_LDFLAGS)
+modules_grpc_common_libgrpc_common_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_grpc_common_libgrpc_common_la_DEPENDENCIES = $(MODULE_DEPS_LIBS)
 
 endif

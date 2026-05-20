@@ -10,5 +10,5 @@ modules_secure_logging_slogencrypt_slogencrypt_CPPFLAGS=	\
 	-I$(top_builddir)/modules/secure-logging
 modules_secure_logging_slogencrypt_slogencrypt_LDADD	=	\
 	$(top_builddir)/lib/libsyslog-ng.la	\
-	$(top_builddir)/modules/secure-logging/libsyslog-ng-secure-logging.la	\
+	$(LIBSECURE_LOGGING_CORE) \
 	@TOOL_DEPS_LIBS@

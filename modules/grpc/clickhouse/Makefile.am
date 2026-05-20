@@ -23,6 +23,7 @@ modules_grpc_clickhouse_libclickhouse_cpp_la_CXXFLAGS = \
 
 modules_grpc_clickhouse_libclickhouse_cpp_la_LIBADD = $(MODULE_DEPS_LIBS) $(PROTOBUF_LIBS) $(GRPCPP_LIBS)
 modules_grpc_clickhouse_libclickhouse_cpp_la_LDFLAGS = $(MODULE_LDFLAGS)
+modules_grpc_clickhouse_libclickhouse_cpp_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_grpc_clickhouse_libclickhouse_cpp_la_DEPENDENCIES = $(MODULE_DEPS_LIBS)
 
 module_LTLIBRARIES += modules/grpc/clickhouse/libclickhouse.la

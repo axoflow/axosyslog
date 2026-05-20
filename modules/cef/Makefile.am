@@ -20,14 +20,16 @@ modules_cef_libcef_la_SOURCES	=	\
 	modules/cef/filterx-func-format-leef.h	\
 	modules/cef/cef-plugin.c
 
-modules_cef_libcef_la_CFLAGS	=	\
-	$(AM_CFLAGS)					\
+modules_cef_libcef_la_CPPFLAGS	=	\
+	$(AM_CPPFLAGS)					\
 	-I$(top_srcdir)/modules/cef	\
 	-I$(top_builddir)/modules/cef
 modules_cef_libcef_la_LIBADD	=	\
 	$(MODULE_DEPS_LIBS)
 modules_cef_libcef_la_LDFLAGS	=	\
 	$(MODULE_LDFLAGS)
+modules_cef_libcef_la_CFLAGS	=	\
+	$(AM_CFLAGS) $(MODULE_CFLAGS)
 EXTRA_modules_cef_libcef_la_DEPENDENCIES=	\
 	$(MODULE_DEPS_LIBS)
 

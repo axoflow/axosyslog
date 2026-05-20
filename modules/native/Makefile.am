@@ -1,23 +1,30 @@
 if ENABLE_NATIVE
 
+# we are building a static archive in PIC mode, so it can be linked into an .so
+# that is produced by an external build process.
+
 export top_srcdir
 export top_builddir
 
-lib_LIBRARIES = modules/native/libsyslog-ng-native-connector.a
-modules_native_libsyslog_ng_native_connector_a_SOURCES = \
+lib_LTLIBRARIES += modules/native/libsyslog-ng-native-connector.la
+modules_native_libsyslog_ng_native_connector_la_SOURCES = \
   modules/native/native-grammar.y       \
   modules/native/native-parser.c        \
   modules/native/native-parser.h        \
-  modules/native/parser.c				\
+  modules/native/parser.c		\
   modules/native/parser.h
 
 pkgconfig_DATA += autotools/syslog-ng-native-connector.pc
 
-modules_native_libsyslog_ng_native_connector_a_CPPFLAGS = \
-  $(AM_CPPFLAGS)	-fPIC	\
+modules_native_libsyslog_ng_native_connector_la_CFLAGS = \
+  $(AM_CFLAGS) \
   -fvisibility=hidden	\
+  -static \
+  -fPIC \
   -I$(top_srcdir)/modules/native        \
   -I$(top_builddir)/modules/native
+
+modules_native_libsyslog_ng_native_connector_la_LDFLAGS = $(MODULE_LDFLAGS)
 
 else
 modules/native modules/native/ mod-native: modules/native/libnative.la

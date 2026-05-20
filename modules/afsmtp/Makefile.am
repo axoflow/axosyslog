@@ -4,6 +4,7 @@ module_LTLIBRARIES			+= modules/afsmtp/libafsmtp.la
 modules_afsmtp_libafsmtp_la_CFLAGS	=	\
     $(AM_CFLAGS) \
 	$(LIBESMTP_CFLAGS)			\
+	$(MODULE_CFLAGS)			\
 	-I$(top_srcdir)/modules/afsmtp		\
 	-I$(top_builddir)/modules/afsmtp
 modules_afsmtp_libafsmtp_la_SOURCES	=	\

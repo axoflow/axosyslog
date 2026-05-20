@@ -19,6 +19,7 @@ modules_http_adapters_libhttp_adapters_la_CPPFLAGS  = \
 
 modules_http_adapters_libhttp_adapters_la_LIBADD  = $(MODULE_DEPS_LIBS) $(JSON_LIBS)
 modules_http_adapters_libhttp_adapters_la_LDFLAGS = $(MODULE_LDFLAGS)
+modules_http_adapters_libhttp_adapters_la_CFLAGS = $(AM_CFLAGS) $(MODULE_CFLAGS)
 
 EXTRA_modules_http_adapters_libhttp_adapters_la_DEPENDENCIES= $(MODULE_DEPS_LIBS) $(JSON_DEPENDENCY)
 
