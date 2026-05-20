@@ -277,7 +277,12 @@ _partition_clear(LogSchedulerPartition *partition)
 static guint
 _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMessage *msg)
 {
-  if (self->options->batch_size)
+  if (self->options->partition_key)
+    {
+      LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
+      return log_template_hash(self->options->partition_key, msg, &options) % self->options->num_partitions;
+    }
+  else if (self->options->batch_size > 1)
     {
       gint partition_index = thread_state->last_partition;
 
@@ -288,16 +293,12 @@ _get_partition_index(LogScheduler *self, LogSchedulerThreadState *thread_state, 
 
       return partition_index;
     }
-
-  if (self->options->partition_key)
+  else
     {
-      LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
-      return log_template_hash(self->options->partition_key, msg, &options) % self->options->num_partitions;
+      gint partition_index = thread_state->last_partition;
+      thread_state->last_partition = (thread_state->last_partition + 1) % self->options->num_partitions;
+      return partition_index;
     }
-
-  gint partition_index = thread_state->last_partition;
-  thread_state->last_partition = (thread_state->last_partition + 1) % self->options->num_partitions;
-  return partition_index;
 }
 
 /* runs in the source thread */
@@ -642,12 +643,6 @@ log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg)
                   evt_tag_int("specified_workers", options->num_partitions),
                   evt_tag_int("used_workers", LOGSCHEDULER_MAX_PARTITIONS));
       options->num_partitions = LOGSCHEDULER_MAX_PARTITIONS;
-    }
-
-  if (options->partition_key && options->batch_size)
-    {
-      msg_error("parallelize() options worker-partition-key() and batch-size() cannot be used together");
-      return FALSE;
     }
 
   return TRUE;
