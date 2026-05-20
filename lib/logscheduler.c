@@ -623,7 +623,7 @@ void
 log_scheduler_options_defaults(LogSchedulerOptions *options)
 {
   options->num_partitions = -1;
-  options->batch_size = 0;
+  options->batch_size = -1;
   options->partition_key = NULL;
   options->log_fetch_limit = 1000;
 }
@@ -644,6 +644,8 @@ log_scheduler_options_init(LogSchedulerOptions *options, GlobalConfig *cfg)
                   evt_tag_int("used_workers", LOGSCHEDULER_MAX_PARTITIONS));
       options->num_partitions = LOGSCHEDULER_MAX_PARTITIONS;
     }
+  if (options->batch_size == -1)
+    options->batch_size = 100;
 
   return TRUE;
 }
