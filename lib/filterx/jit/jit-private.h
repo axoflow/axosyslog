@@ -32,6 +32,7 @@
 #include <llvm-c/Core.h>
 #include <llvm-c/Types.h>
 #include <llvm-c/LLJIT.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/DebugInfo.h>
 
 struct _FilterXJIT
@@ -44,6 +45,7 @@ struct _FilterXJIT
   LLVMModuleRef libfilterx;
   LLVMBuilderRef ir;
   LLVMOrcLLJITRef j;
+  LLVMTargetMachineRef tm;
 
   FilterXIRValue current_ir_block;
   LLVMMetadataRef current_debug_info_block;

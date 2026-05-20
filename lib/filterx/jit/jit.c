@@ -30,6 +30,7 @@
 
 #include <llvm-c/Core.h>
 #include <llvm-c/Target.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/LLJIT.h>
 #include <llvm-c/Linker.h>
@@ -504,6 +505,49 @@ _create_object_layer_with_gdb_listener(void *ctx, LLVMOrcExecutionSessionRef es,
   return object_layer;
 }
 
+static LLVMTargetMachineRef
+_create_target_machine(FilterXJIT *self, GError **error)
+{
+  const char *triple = LLVMGetTarget(self->libfilterx);
+  char *cpu = LLVMGetHostCPUName();
+  char *features = LLVMGetHostCPUFeatures();
+
+  LLVMTargetRef target = NULL;
+  char *err_msg = NULL;
+  if (LLVMGetTargetFromTriple(triple, &target, &err_msg))
+    {
+      _fxjit_error(err_msg, error);
+      LLVMDisposeMessage(err_msg);
+      LLVMDisposeMessage(cpu);
+      LLVMDisposeMessage(features);
+      return NULL;
+    }
+
+  LLVMTargetMachineRef tm = LLVMCreateTargetMachine(target, triple, cpu, features, LLVMCodeGenLevelAggressive,
+                                                    LLVMRelocDefault, LLVMCodeModelJITDefault);
+
+  LLVMDisposeMessage(cpu);
+  LLVMDisposeMessage(features);
+
+  return tm;
+}
+
+static gboolean
+_setup_target_machine(FilterXJIT *self, LLVMOrcLLJITBuilderRef jit_builder, GError **error)
+{
+  LLVMTargetMachineRef tm = _create_target_machine(self, error);
+  if (!tm)
+    return FALSE;
+
+  LLVMOrcJITTargetMachineBuilderRef tmb = LLVMOrcJITTargetMachineBuilderCreateFromTargetMachine(tm);
+  LLVMOrcLLJITBuilderSetJITTargetMachineBuilder(jit_builder, tmb);
+  /* tm is consumed */
+  tm = NULL;
+
+  self->tm = _create_target_machine(self, error);
+  return TRUE;
+}
+
 static inline void
 _setup_debug_info(FilterXJIT *self, LLVMOrcLLJITBuilderRef jit_builder)
 {
@@ -548,8 +592,17 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   self->mod = LLVMModuleCreateWithNameInContext(self->mod_name, self->ctx);
   self->ir = LLVMCreateBuilderInContext(self->ctx);
 
+  self->libfilterx = filterx_jit_load_libfilterx_bitcode(self->ctx, error);
+  if (!self->libfilterx)
+    goto error;
+
+  LLVMSetTarget(self->mod, LLVMGetTarget(self->libfilterx));
+  LLVMSetDataLayout(self->mod, LLVMGetDataLayoutStr(self->libfilterx));
+
   LLVMOrcLLJITBuilderRef jit_builder = LLVMOrcCreateLLJITBuilder();
   _setup_debug_info(self, jit_builder);
+  if (!_setup_target_machine(self, jit_builder, error))
+    goto error;
 
   LLVMErrorRef err = LLVMOrcCreateLLJIT(&self->j, jit_builder);
   if (err)
@@ -564,10 +617,6 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   _setup_optimizations(self);
 
   filterx_jit_ffi_init(self);
-
-  self->libfilterx = filterx_jit_load_libfilterx_bitcode(self->ctx, error);
-  if (!self->libfilterx)
-    goto error;
 
   msg_trace("FilterXJIT created", evt_tag_str("module_name", self->mod_name));
 
@@ -588,6 +637,8 @@ filterx_jit_free(FilterXJIT *self)
     LLVMDisposeDIBuilder(self->debug);
   if (self->j)
     LLVMOrcDisposeLLJIT(self->j);
+  if (self->tm)
+    LLVMDisposeTargetMachine(self->tm);
   LLVMDisposeBuilder(self->ir);
   self->ctx = NULL;
   if (!self->mod_finalized)
