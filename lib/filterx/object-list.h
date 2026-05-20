@@ -28,9 +28,15 @@
 
 typedef struct _FilterXListObject
 {
-  FilterXSequence super;
-  GPtrArray *array;
+  FILTERX_MUTABLE_OBJECT_HEADER
+  {
+      FilterXSequence super;
+      GPtrArray *array;
+  }
+  FILTERX_MUTABLE_OBJECT_TAILER;
 } FilterXListObject;
+
+G_STATIC_ASSERT(sizeof(FilterXListObject) == sizeof(FilterXMutableObject));
 
 FILTERX_DECLARE_TYPE(list);
 

@@ -105,8 +105,12 @@ extern KVListFieldConverter kvlist_field_converter;
 
 struct FilterXOtelKVList_
 {
-  FilterXMapping super;
-  syslogng::grpc::otel::filterx::KVList *cpp;
+  FILTERX_MUTABLE_OBJECT_HEADER
+  {
+    FilterXMapping super;
+    syslogng::grpc::otel::filterx::KVList *cpp;
+  }
+  FILTERX_MUTABLE_OBJECT_TAILER;
 };
 
 #include "compat/cpp-end.h"

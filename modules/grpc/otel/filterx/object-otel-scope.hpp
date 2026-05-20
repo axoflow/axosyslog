@@ -80,8 +80,12 @@ protected:
 
 struct FilterXOtelScope_
 {
-  FilterXMapping super;
-  syslogng::grpc::otel::filterx::Scope *cpp;
+  FILTERX_MUTABLE_OBJECT_HEADER
+  {
+    FilterXMapping super;
+    syslogng::grpc::otel::filterx::Scope *cpp;
+  }
+  FILTERX_MUTABLE_OBJECT_TAILER;
 };
 
 #include "compat/cpp-end.h"

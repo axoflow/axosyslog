@@ -38,12 +38,18 @@
 
 typedef struct _FilterXObjectMetricsLabels
 {
-  FilterXMapping super;
-  GArray *labels;
-  GPtrArray *objects;
-  gboolean sorted;
-  gboolean deduped;
+  FILTERX_MUTABLE_OBJECT_HEADER
+  {
+      FilterXMapping super;
+      GArray *labels;
+      GPtrArray *objects;
+      gboolean sorted;
+      gboolean deduped;
+  }
+  FILTERX_MUTABLE_OBJECT_TAILER;
 } FilterXObjectMetricsLabels;
+
+G_STATIC_ASSERT(sizeof(FilterXObjectMetricsLabels) == sizeof(FilterXMutableObject));
 
 static gboolean
 _truthy(FilterXObject *s)
