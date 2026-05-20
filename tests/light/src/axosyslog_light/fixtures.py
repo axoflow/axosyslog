@@ -237,7 +237,7 @@ def config_version(syslog_ng):
 
 @pytest.fixture
 def jit_available(syslog_ng):
-    return syslog_ng.get_jit_availability()
+    return syslog_ng.get_jit_availability() == "on"
 
 
 @pytest.fixture
