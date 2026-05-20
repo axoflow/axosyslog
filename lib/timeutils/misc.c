@@ -66,39 +66,33 @@ check_nanosleep(void)
 }
 
 void
-timespec_add_msec(struct timespec *ts, glong msec)
+timespec_add_nsec(struct timespec *ts, gint64 nsec)
 {
-  ts->tv_sec += msec / 1000;
-  msec = msec % 1000;
-  ts->tv_nsec += (glong) (msec * 1000000);
+  ts->tv_sec += nsec / 1000000000L;
+  nsec = nsec % 1000000000L;
+  ts->tv_nsec += nsec;
   if (ts->tv_nsec >= 1000000000)
     {
-      ts->tv_nsec -= (glong) 1000000000;
+      ts->tv_nsec -= 1000000000L;
       ts->tv_sec++;
     }
   else if (ts->tv_nsec < 0)
     {
-      ts->tv_nsec += (glong) 1000000000;
+      ts->tv_nsec += 1000000000L;
       ts->tv_sec--;
     }
 }
 
 void
+timespec_add_msec(struct timespec *ts, gint64 msec)
+{
+  timespec_add_nsec(ts, MSEC_TO_NSEC(msec));
+}
+
+void
 timespec_add_usec(struct timespec *ts, gint64 usec)
 {
-  ts->tv_sec += usec / 1000000;
-  usec = usec % 1000000;
-  ts->tv_nsec += (glong) (usec * 1000);
-  if (ts->tv_nsec >= 1000000000)
-    {
-      ts->tv_nsec -= (glong) 1000000000;
-      ts->tv_sec++;
-    }
-  else if (ts->tv_nsec < 0)
-    {
-      ts->tv_nsec += (glong) 1000000000;
-      ts->tv_sec--;
-    }
+  timespec_add_nsec(ts, USEC_TO_NSEC(usec));
 }
 
 glong
