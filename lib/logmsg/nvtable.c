@@ -181,10 +181,15 @@ nv_table_get_next_size(NVTable *self, gsize additional_space)
     return self->size;
 
   gsize new_size = self->size + (additional_space - avail_size);
-  if (new_size > 4096)
+  if (new_size > 8192)
     {
       /* align to page boundary */
       new_size = (new_size + 0xFFF) & ~0xFFF;
+    }
+  else if (new_size > 4096)
+    {
+      /* align to page boundary */
+      new_size = (new_size + 0x7FF) & ~0x7FF;
     }
   else if (new_size > 1024)
     {
