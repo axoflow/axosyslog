@@ -38,6 +38,13 @@
 #include <netdb.h>
 
 
+static void
+g_sockaddr_base_init(GSockAddrBase *a, gint salen)
+{
+  g_atomic_counter_set(&a->refcnt, 1);
+  a->salen = salen;
+}
+
 /* general GSockAddr functions */
 
 /**
@@ -167,7 +174,7 @@ GSockAddr *
 g_sockaddr_ref(GSockAddr *a)
 {
   if (a)
-    g_atomic_counter_inc(&a->refcnt);
+    g_atomic_counter_inc(&a->super.refcnt);
   return a;
 }
 
@@ -189,7 +196,7 @@ g_sockaddr_unref(GSockAddr *a)
   /* FIXME: maybe add a callback to funcs table */
   if (a)
     {
-      if (g_atomic_counter_dec_and_test(&a->refcnt))
+      if (g_atomic_counter_dec_and_test(&a->super.refcnt))
         {
           g_slice_free1(g_sockaddr_len(a), a);
         }
@@ -205,8 +212,7 @@ g_sockaddr_unref(GSockAddr *a)
   +*/
 typedef struct _GSockAddrInet
 {
-  GAtomicCounter refcnt;
-  int salen;
+  GSockAddrBase super;
   struct sockaddr_in sin;
 } GSockAddrInet;
 
@@ -308,9 +314,8 @@ g_sockaddr_inet_new(const gchar *ip, guint16 port)
   if (inet_aton(ip, &ina))
     {
       self = g_new0(GSockAddrInet, 1);
+      g_sockaddr_base_init(&self->super, sizeof(struct sockaddr_in));
 
-      g_atomic_counter_set(&self->refcnt, 1);
-      self->salen = sizeof(struct sockaddr_in);
       self->sin.sin_family = AF_INET;
       self->sin.sin_port = htons(port);
       self->sin.sin_addr = ina;
@@ -335,9 +340,8 @@ g_sockaddr_inet_new2(struct sockaddr_in *sin)
 {
   GSockAddrInet *self = g_new0(GSockAddrInet, 1);
 
-  g_atomic_counter_set(&self->refcnt, 1);
+  g_sockaddr_base_init(&self->super, sizeof(struct sockaddr_in));
   g_assert(sin->sin_family == AF_INET);
-  self->salen = sizeof(struct sockaddr_in);
   self->sin = *sin;
 
   return (GSockAddr *) self;
@@ -353,8 +357,7 @@ g_sockaddr_inet_new2(struct sockaddr_in *sin)
   +*/
 typedef struct _GSockAddrInet6
 {
-  GAtomicCounter refcnt;
-  int salen;
+  GSockAddrBase super;
   struct sockaddr_in6 sin6;
 } GSockAddrInet6;
 
@@ -462,9 +465,8 @@ g_sockaddr_inet6_new(const gchar *ip, guint16 port)
   if (inet_pton(AF_INET6, ip, &sin6_addr))
     {
       addr = g_new0(GSockAddrInet6, 1);
+      g_sockaddr_base_init(&addr->super, sizeof(struct sockaddr_in6));
 
-      g_atomic_counter_set(&addr->refcnt, 1);
-      addr->salen = sizeof(struct sockaddr_in6);
       addr->sin6.sin6_family = AF_INET6;
       addr->sin6.sin6_addr = sin6_addr;
       addr->sin6.sin6_port = htons(port);
@@ -491,9 +493,9 @@ g_sockaddr_inet6_new2(struct sockaddr_in6 *sin6)
 {
   GSockAddrInet6 *addr = g_new0(GSockAddrInet6, 1);
 
-  g_atomic_counter_set(&addr->refcnt, 1);
+  g_sockaddr_base_init(&addr->super, sizeof(struct sockaddr_in6));
+
   g_assert(sin6->sin6_family == AF_INET6);
-  addr->salen = sizeof(struct sockaddr_in6);
   addr->sin6 = *sin6;
 
   return (GSockAddr *) addr;
@@ -533,8 +535,7 @@ g_sockaddr_inet_or_inet6_check(GSockAddr *a)
   +*/
 typedef struct _GSockAddrUnix
 {
-  GAtomicCounter refcnt;
-  int salen;
+  GSockAddrBase super;
   struct sockaddr_un saun;
 } GSockAddrUnix;
 
@@ -573,19 +574,18 @@ g_sockaddr_unix_new(const gchar *name)
 {
   GSockAddrUnix *addr = g_new0(GSockAddrUnix, 1);
 
-  g_atomic_counter_set(&addr->refcnt, 1);
+  g_sockaddr_base_init(&addr->super, sizeof(struct sockaddr_un));
   addr->saun.sun_family = AF_UNIX;
   if (name)
     {
       strncpy(addr->saun.sun_path, name, sizeof(addr->saun.sun_path) - 1);
       addr->saun.sun_path[sizeof(addr->saun.sun_path) - 1] = 0;
-      addr->salen = SUN_LEN(&(addr->saun));
     }
   else
     {
       addr->saun.sun_path[0] = 0;
-      addr->salen = 2;
     }
+  addr->super.salen = SUN_LEN(&(addr->saun));
   return (GSockAddr *) addr;
 }
 
@@ -607,9 +607,8 @@ g_sockaddr_unix_new2(struct sockaddr_un *saun, int sunlen)
 {
   GSockAddrUnix *addr = g_new0(GSockAddrUnix, 1);
 
-  g_atomic_counter_set(&addr->refcnt, 1);
+  g_sockaddr_base_init(&addr->super, sunlen);
   addr->saun.sun_family = AF_UNIX;
-  addr->salen = sunlen;
   addr->saun = *saun;
   return (GSockAddr *) addr;
 }
@@ -645,7 +644,7 @@ g_sockaddr_unix_bind(int sock, GSockAddr *addr)
   if (unix_addr->saun.sun_path[0] == 0)
     return G_IO_STATUS_NORMAL;
 
-  if (bind(sock, &addr->sa, addr->salen) < 0)
+  if (bind(sock, &addr->sa, addr->super.salen) < 0)
     {
       return G_IO_STATUS_ERROR;
     }
@@ -662,12 +661,12 @@ g_sockaddr_unix_format(GSockAddr *addr, gchar *text, gulong n, gint format)
   if (format == GSA_FULL)
     {
       g_snprintf(text, n, "AF_UNIX(%s)",
-                 unix_addr->salen > sizeof(unix_addr->saun.sun_family) && unix_addr->saun.sun_path[0] ? unix_addr->saun.sun_path
+                 unix_addr->super.salen > sizeof(unix_addr->saun.sun_family) && unix_addr->saun.sun_path[0] ? unix_addr->saun.sun_path
                  : "anonymous");
     }
   else if (format == GSA_ADDRESS_ONLY || format == GSA_ADDRESS_PORT)
     {
-      g_snprintf(text, n, "%s", unix_addr->salen > sizeof(unix_addr->saun.sun_family)
+      g_snprintf(text, n, "%s", unix_addr->super.salen > sizeof(unix_addr->saun.sun_family)
                  && unix_addr->saun.sun_path[0] ? unix_addr->saun.sun_path : "anonymous");
     }
   return text;

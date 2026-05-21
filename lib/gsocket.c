@@ -82,7 +82,7 @@ g_bind(int fd, GSockAddr *addr)
     rc = funcs->bind(fd, addr);
   else
     {
-      if (addr && bind(fd, &addr->sa, addr->salen) < 0)
+      if (addr && bind(fd, &addr->sa, addr->super.salen) < 0)
         {
           return G_IO_STATUS_ERROR;
         }
@@ -144,7 +144,7 @@ g_connect(int fd, GSockAddr *remote)
 
   do
     {
-      rc = connect(fd, &remote->sa, remote->salen);
+      rc = connect(fd, &remote->sa, remote->super.salen);
     }
   while (rc == -1 && errno == EINTR);
   if (rc == -1)

@@ -40,10 +40,15 @@
 #define GSA_ADDRESS_ONLY  1
 #define GSA_ADDRESS_PORT  2
 
-typedef struct _GSockAddr
+typedef struct _GSockAddrBase
 {
   GAtomicCounter refcnt;
   guint32 salen;
+} GSockAddrBase;
+
+typedef struct _GSockAddr
+{
+  GSockAddrBase super;
   struct sockaddr sa;
 } GSockAddr;
 

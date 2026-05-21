@@ -288,7 +288,7 @@ resolve_sockaddr_to_local_hostname(gsize *result_len, GSockAddr *saddr, const Ho
 static const gchar *
 resolve_address_using_getnameinfo(GSockAddr *saddr, gchar *buf, gsize buf_len)
 {
-  if (getnameinfo(&saddr->sa, saddr->salen, buf, buf_len, NULL, 0, NI_NAMEREQD) == 0)
+  if (getnameinfo(&saddr->sa, saddr->super.salen, buf, buf_len, NULL, 0, NI_NAMEREQD) == 0)
     return buf;
   return NULL;
 }
