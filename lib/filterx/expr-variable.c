@@ -206,6 +206,33 @@ _variable_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_eval_variable(FilterXExpr *s)
+{
+  return _eval_variable(s);
+}
+
+static FilterXIRValue
+_variable_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  /* TODO: move variable management into LLVM */
+
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, "fx_jit_eval_variable", ffi->ptr_ty, param_tys, args, 1);
+}
+
+#endif
+
 static FilterXExpr *
 filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
 {
@@ -215,6 +242,9 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.walk_children = _variable_walk;
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _variable_compile;
+#endif
   self->super._update_repr = _update_repr;
   self->super.assign = _assign;
   self->super.is_set = _isset;
