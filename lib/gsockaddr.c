@@ -206,7 +206,6 @@ g_sockaddr_unref(GSockAddr *a)
 typedef struct _GSockAddrInet
 {
   GAtomicCounter refcnt;
-  guint32 flags;
   GSockAddrFuncs *sa_funcs;
   int salen;
   struct sockaddr_in sin;
@@ -312,7 +311,6 @@ g_sockaddr_inet_new(const gchar *ip, guint16 port)
       self = g_new0(GSockAddrInet, 1);
 
       g_atomic_counter_set(&self->refcnt, 1);
-      self->flags = 0;
       self->salen = sizeof(struct sockaddr_in);
       self->sin.sin_family = AF_INET;
       self->sin.sin_port = htons(port);
@@ -340,7 +338,6 @@ g_sockaddr_inet_new2(struct sockaddr_in *sin)
   GSockAddrInet *self = g_new0(GSockAddrInet, 1);
 
   g_atomic_counter_set(&self->refcnt, 1);
-  self->flags = 0;
   self->salen = sizeof(struct sockaddr_in);
   self->sin = *sin;
   self->sa_funcs = &inet_sockaddr_funcs;
@@ -359,7 +356,6 @@ g_sockaddr_inet_new2(struct sockaddr_in *sin)
 typedef struct _GSockAddrInet6
 {
   GAtomicCounter refcnt;
-  guint32 flags;
   GSockAddrFuncs *sa_funcs;
   int salen;
   struct sockaddr_in6 sin6;
@@ -471,7 +467,6 @@ g_sockaddr_inet6_new(const gchar *ip, guint16 port)
       addr = g_new0(GSockAddrInet6, 1);
 
       g_atomic_counter_set(&addr->refcnt, 1);
-      addr->flags = 0;
       addr->salen = sizeof(struct sockaddr_in6);
       addr->sin6.sin6_family = AF_INET6;
       addr->sin6.sin6_addr = sin6_addr;
@@ -501,7 +496,6 @@ g_sockaddr_inet6_new2(struct sockaddr_in6 *sin6)
   GSockAddrInet6 *addr = g_new0(GSockAddrInet6, 1);
 
   g_atomic_counter_set(&addr->refcnt, 1);
-  addr->flags = 0;
   addr->salen = sizeof(struct sockaddr_in6);
   addr->sin6 = *sin6;
   addr->sa_funcs = &inet6_sockaddr_funcs;
@@ -544,7 +538,6 @@ g_sockaddr_inet_or_inet6_check(GSockAddr *a)
 typedef struct _GSockAddrUnix
 {
   GAtomicCounter refcnt;
-  guint32 flags;
   GSockAddrFuncs *sa_funcs;
   int salen;
   struct sockaddr_un saun;
@@ -586,7 +579,6 @@ g_sockaddr_unix_new(const gchar *name)
   GSockAddrUnix *addr = g_new0(GSockAddrUnix, 1);
 
   g_atomic_counter_set(&addr->refcnt, 1);
-  addr->flags = 0;
   addr->sa_funcs = &unix_sockaddr_funcs;
   addr->saun.sun_family = AF_UNIX;
   if (name)
@@ -622,7 +614,6 @@ g_sockaddr_unix_new2(struct sockaddr_un *saun, int sunlen)
   GSockAddrUnix *addr = g_new0(GSockAddrUnix, 1);
 
   g_atomic_counter_set(&addr->refcnt, 1);
-  addr->flags = 0;
   addr->sa_funcs = &unix_sockaddr_funcs;
   addr->salen = sunlen;
   addr->saun = *saun;

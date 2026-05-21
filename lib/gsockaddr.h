@@ -45,7 +45,6 @@ typedef struct _GSockAddrFuncs GSockAddrFuncs;
 typedef struct _GSockAddr
 {
   GAtomicCounter refcnt;
-  guint32 flags;
   GSockAddrFuncs *sa_funcs;
   int salen;
   struct sockaddr sa;
