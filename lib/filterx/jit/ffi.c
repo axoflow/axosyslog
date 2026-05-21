@@ -31,69 +31,6 @@
 
 #include <stdarg.h>
 
-/* De-inlined version of FilterX functions */
-/* TODO: remove these once FilterX JIT is stable: non-inline calls should replace the inlined versions */
-
-__attribute__((used))
-FilterXObject *
-fx_jit_expr_eval(FilterXExpr *self)
-{
-  return filterx_expr_eval(self);
-}
-
-__attribute__((used))
-FilterXObject *
-fx_jit_expr_eval_typed(FilterXExpr *self)
-{
-  return filterx_expr_eval_typed(self);
-}
-
-__attribute__((used))
-FilterXObject *
-fx_jit_expr_make_typed_object(FilterXExpr *self, FilterXObject *obj)
-{
-  return filterx_expr_make_typed_object(self, obj);
-}
-
-__attribute__((used))
-FilterXObject *
-fx_jit_object_ref(FilterXObject *self)
-{
-  return filterx_object_ref(self);
-}
-
-__attribute__((used))
-FilterXObject *
-fx_jit_object_cow_fork2(FilterXObject *self)
-{
-  if (!self)
-    return NULL;
-  return filterx_object_cow_fork2(self, NULL);
-}
-
-__attribute__((used))
-void
-fx_jit_object_unref(FilterXObject *self)
-{
-  filterx_object_unref(self);
-}
-
-__attribute__((used))
-gboolean
-fx_jit_object_truthy(FilterXObject *self)
-{
-  return filterx_object_truthy(self);
-}
-
-__attribute__((used))
-FilterXObject *
-fx_jit_boolean_new(gboolean value)
-{
-  return filterx_boolean_new(value);
-}
-
-/* FFI */
-
 #if SYSLOG_NG_ENABLE_JIT
 
 FilterXJITFFI *
