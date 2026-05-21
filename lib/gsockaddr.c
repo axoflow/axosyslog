@@ -206,8 +206,8 @@ g_sockaddr_unref(GSockAddr *a)
 typedef struct _GSockAddrInet
 {
   GAtomicCounter refcnt;
-  GSockAddrFuncs *sa_funcs;
   int salen;
+  GSockAddrFuncs *sa_funcs;
   struct sockaddr_in sin;
 } GSockAddrInet;
 
@@ -356,8 +356,8 @@ g_sockaddr_inet_new2(struct sockaddr_in *sin)
 typedef struct _GSockAddrInet6
 {
   GAtomicCounter refcnt;
-  GSockAddrFuncs *sa_funcs;
   int salen;
+  GSockAddrFuncs *sa_funcs;
   struct sockaddr_in6 sin6;
 } GSockAddrInet6;
 
@@ -538,8 +538,8 @@ g_sockaddr_inet_or_inet6_check(GSockAddr *a)
 typedef struct _GSockAddrUnix
 {
   GAtomicCounter refcnt;
-  GSockAddrFuncs *sa_funcs;
   int salen;
+  GSockAddrFuncs *sa_funcs;
   struct sockaddr_un saun;
 } GSockAddrUnix;
 
