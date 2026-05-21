@@ -309,7 +309,7 @@ g_sockaddr_inet_new(const gchar *ip, guint16 port)
 
   if (inet_aton(ip, &ina))
     {
-      self = g_slice_new0(GSockAddrInet);
+      self = g_new0(GSockAddrInet, 1);
 
       g_atomic_counter_set(&self->refcnt, 1);
       self->flags = 0;
@@ -337,7 +337,7 @@ g_sockaddr_inet_new(const gchar *ip, guint16 port)
 GSockAddr *
 g_sockaddr_inet_new2(struct sockaddr_in *sin)
 {
-  GSockAddrInet *self = g_slice_new0(GSockAddrInet);
+  GSockAddrInet *self = g_new0(GSockAddrInet, 1);
 
   g_atomic_counter_set(&self->refcnt, 1);
   self->flags = 0;
@@ -468,7 +468,7 @@ g_sockaddr_inet6_new(const gchar *ip, guint16 port)
 
   if (inet_pton(AF_INET6, ip, &sin6_addr))
     {
-      addr = g_slice_new0(GSockAddrInet6);
+      addr = g_new0(GSockAddrInet6, 1);
 
       g_atomic_counter_set(&addr->refcnt, 1);
       addr->flags = 0;
@@ -498,7 +498,7 @@ g_sockaddr_inet6_new(const gchar *ip, guint16 port)
 GSockAddr *
 g_sockaddr_inet6_new2(struct sockaddr_in6 *sin6)
 {
-  GSockAddrInet6 *addr = g_slice_new0(GSockAddrInet6);
+  GSockAddrInet6 *addr = g_new0(GSockAddrInet6, 1);
 
   g_atomic_counter_set(&addr->refcnt, 1);
   addr->flags = 0;
@@ -577,7 +577,7 @@ static GSockAddrFuncs unix_sockaddr_funcs =
 GSockAddr *
 g_sockaddr_unix_new(const gchar *name)
 {
-  GSockAddrUnix *addr = g_slice_new0(GSockAddrUnix);
+  GSockAddrUnix *addr = g_new0(GSockAddrUnix, 1);
 
   g_atomic_counter_set(&addr->refcnt, 1);
   addr->flags = 0;
@@ -613,7 +613,7 @@ g_sockaddr_unix_new(const gchar *name)
 GSockAddr *
 g_sockaddr_unix_new2(struct sockaddr_un *saun, int sunlen)
 {
-  GSockAddrUnix *addr = g_slice_new0(GSockAddrUnix);
+  GSockAddrUnix *addr = g_new0(GSockAddrUnix, 1);
 
   g_atomic_counter_set(&addr->refcnt, 1);
   addr->flags = 0;
