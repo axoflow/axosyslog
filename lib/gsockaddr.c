@@ -563,6 +563,12 @@ static GSockAddrFuncs unix_sockaddr_funcs =
 
 /* anonymous if name == NULL */
 
+gboolean
+g_sockaddr_unix_check(GSockAddr *a)
+{
+  return a->sa.sa_family == AF_UNIX;
+}
+
 /*+
 
   Allocate and initialize a GSockAddrUnix instance.
@@ -690,13 +696,13 @@ g_sockaddr_len(GSockAddr *a)
   if (!a)
     return 0;
 
-  if (a->sa_funcs == &inet_sockaddr_funcs)
+  if (g_sockaddr_inet_check(a))
     len = sizeof(GSockAddrInet);
 #if SYSLOG_NG_ENABLE_IPV6
-  else if (a->sa_funcs == &inet6_sockaddr_funcs)
+  else if (g_sockaddr_inet6_check(a))
     len = sizeof(GSockAddrInet6);
 #endif
-  else if (a->sa_funcs == &unix_sockaddr_funcs)
+  else if (g_sockaddr_unix_check(a))
     len = sizeof(GSockAddrUnix);
   else
     g_assert_not_reached();
