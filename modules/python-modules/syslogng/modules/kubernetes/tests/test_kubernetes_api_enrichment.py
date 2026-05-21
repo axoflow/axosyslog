@@ -208,10 +208,14 @@ def mock_api_response_nginx(mocker):
         ]
     }
 
-    yield mocker.patch('kubernetes.client.rest.RESTClientObject.request', return_value=mocker.Mock(**{
+    # kubernetes>=33 calls response.getheader("content-type") and decodes response.data.
+    mock_response = mocker.Mock(**{
         'status_code': 200,
-        'data': json.dumps(response_json)
-    }))
+        'status': 200,
+        'data': json.dumps(response_json).encode('utf-8'),
+    })
+    mock_response.getheader = mocker.Mock(return_value='application/json')
+    yield mocker.patch('kubernetes.client.rest.RESTClientObject.request', return_value=mock_response)
 
 
 def test_kubernetes_api_enrichment_can_be_instantiated():
