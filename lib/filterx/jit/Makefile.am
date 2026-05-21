@@ -9,4 +9,8 @@ filterxjitinclude_HEADERS = \
 
 filterxjit_sources = \
 	lib/filterx/jit/jit.c \
-	lib/filterx/jit/ffi.c
+	lib/filterx/jit/ffi.c \
+	lib/filterx/jit/jit-runtime.c
+
+filterxjit_bitcode_sources = \
+	lib/filterx/jit/jit-runtime.c
