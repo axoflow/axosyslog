@@ -751,6 +751,16 @@ log_proto_buffered_server_fetch_from_buffer(LogProtoBufferedServer *self, const 
 
   if (aux)
     log_transport_aux_data_copy(aux, &self->buffer_aux);
+
+  if (state->pending_buffer_pos == state->pending_buffer_end)
+    {
+      /* NOTE: if our buffer is empty, let's clear our aux storage, we will
+       * read a new one anyway and this means we are not holding a reference
+       * to the sockaddr members */
+
+      log_transport_aux_data_reinit(&self->buffer_aux);
+    }
+
 exit:
   log_proto_buffered_server_put_state(self);
   return success;
