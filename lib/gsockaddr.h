@@ -40,24 +40,42 @@
 #define GSA_ADDRESS_ONLY  1
 #define GSA_ADDRESS_PORT  2
 
-typedef struct _GSockAddrFuncs GSockAddrFuncs;
-
 typedef struct _GSockAddr
 {
   GAtomicCounter refcnt;
-  int salen;
-  GSockAddrFuncs *sa_funcs;
+  guint32 salen;
   struct sockaddr sa;
 } GSockAddr;
 
-struct _GSockAddrFuncs
+typedef struct _GSockAddrFuncs
 {
   GIOStatus (*bind_prepare)(gint sock, GSockAddr *addr);
   GIOStatus (*bind)(int sock, GSockAddr *addr);
   gchar   *(*format)(GSockAddr *addr, gchar *text, gulong n, gint format);
   guint16  (*get_port)          (GSockAddr *addr);
   void     (*set_port)          (GSockAddr *addr, guint16 port);
-};
+} GSockAddrFuncs;
+
+extern GSockAddrFuncs inet_sockaddr_funcs;
+extern GSockAddrFuncs inet6_sockaddr_funcs;
+extern GSockAddrFuncs unix_sockaddr_funcs;
+
+static inline GSockAddrFuncs *
+__g_sockaddr_funcs(GSockAddr *a)
+{
+  switch (a->sa.sa_family)
+    {
+    case AF_INET:
+      return &inet_sockaddr_funcs;
+    case AF_INET6:
+      return &inet6_sockaddr_funcs;
+    case AF_UNIX:
+      return &unix_sockaddr_funcs;
+    default:
+      g_assert_not_reached();
+    }
+}
+
 
 gchar *g_sockaddr_format(GSockAddr *a, gchar *text, gulong n, gint format);
 guint16 g_sockaddr_get_port(GSockAddr *a);
