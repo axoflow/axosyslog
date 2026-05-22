@@ -663,12 +663,26 @@ filterx_jit_global_init(void)
   LLVMInitializeNativeTarget();
   LLVMInitializeNativeAsmPrinter();
 
-  const char *args[] = {
-    "syslog-ng",
-    "-inlinecold-threshold=512",
-    "-inline-cold-callsite-threshold=512",
-  };
-  LLVMParseCommandLineOptions(G_N_ELEMENTS(args), args, NULL);
+  /* For debugging: -time-passes -pass-remarks=inline -pass-remarks-missed=inline -pass-remarks-analysis=inline */
+  const gchar *extra_args = g_getenv("SYSLOG_NG_FILTERX_JIT_LLVM_ARGS");
+  gchar *cmdline = g_strconcat("syslog-ng -inlinecold-threshold=512 -inline-cold-callsite-threshold=512 ",
+                               extra_args, NULL);
+
+  GError *error = NULL;
+  gchar **argv = NULL;
+  gint argc = 0;
+  if (!g_shell_parse_argv(cmdline, &argc, &argv, &error))
+    {
+      msg_error("Error parsing FilterX JIT LLVM arguments", evt_tag_str("error", error->message));
+      g_clear_error(&error);
+      goto exit;
+    }
+
+  LLVMParseCommandLineOptions(argc, (const gchar **) argv, NULL);
+
+exit:
+  g_strfreev(argv);
+  g_free(cmdline);
 }
 
 void
