@@ -329,11 +329,13 @@ int main(int argc, char *argv[])
           goto CLEANUP_SLOGVERIFY;
         }
     {
-        g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+        char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
         g_free(options[index].arg);
         options[index++].arg = NULL; //-- inc
-        g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+        char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
         g_string_assign(gstr_path_hostkey, p_canon ? p_canon : "");
+        g_free(p_temp);
+        g_free(p_canon);
         if (gstr_path_hostkey->len == 0 ||
             !is_file_path_safe_and_valid(gstr_path_hostkey->str) ||
             !g_file_test(gstr_path_hostkey->str, G_FILE_TEST_IS_REGULAR))
@@ -351,6 +353,7 @@ int main(int argc, char *argv[])
       index++;
         }
 
+
   //-- mac-file, both iterative and normal mode argument
   if (NULL == options[index].arg)
     {
@@ -362,11 +365,13 @@ int main(int argc, char *argv[])
       goto CLEANUP_SLOGVERIFY;
     }
   {
-    g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+    char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
     g_free(options[index].arg);
     options[index++].arg = NULL; //-- inc
-    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
     g_string_assign(gstr_path_curMAC, p_canon ? p_canon : "");
+    g_free(p_temp);
+    g_free(p_canon);
     if (gstr_path_curMAC->len == 0 ||
         !is_file_path_safe_and_valid(gstr_path_curMAC->str) ||
         !g_file_test(gstr_path_curMAC->str, G_FILE_TEST_IS_REGULAR))
@@ -393,11 +398,13 @@ int main(int argc, char *argv[])
           goto CLEANUP_SLOGVERIFY;
         }
       {
-        g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+        char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
         g_free(options[index].arg);
         options[index++].arg = NULL; //-- inc
-        g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+        char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
         g_string_assign(gstr_path_prevhostkey, p_canon ? p_canon : "");
+        g_free(p_temp);
+        g_free(p_canon);
         if (gstr_path_prevhostkey->len == 0 ||
             !is_file_path_safe_and_valid(gstr_path_prevhostkey->str) ||
             !g_file_test(gstr_path_prevhostkey->str, G_FILE_TEST_IS_REGULAR))
@@ -415,6 +422,7 @@ int main(int argc, char *argv[])
       index++;
     }
 
+
   //-- prev-mac-file (prevMAC), only iterative mode ---
   if (iterative )
     {
@@ -429,11 +437,13 @@ int main(int argc, char *argv[])
           goto CLEANUP_SLOGVERIFY;
         }
       {
-        g_autofree char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
+        char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
         g_free(options[index].arg);
         options[index++].arg = NULL; //-- inc
-        g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+        char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
         g_string_assign(gstr_path_prevMAC, p_canon ? p_canon : "");
+        g_free(p_temp);
+        g_free(p_canon);
         if (gstr_path_prevMAC->len == 0 ||
             !is_file_path_safe_and_valid(gstr_path_prevMAC->str) ||
             !g_file_test(gstr_path_prevMAC->str, G_FILE_TEST_IS_REGULAR))
@@ -460,9 +470,11 @@ int main(int argc, char *argv[])
       goto CLEANUP_SLOGVERIFY;
         }
     {
-    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
-    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
     g_string_assign(gstr_path_inputlog, p_canon ? p_canon : "");
+    g_free(p_temp);
+    g_free(p_canon);
     if (gstr_path_inputlog->len == 0 ||
         !is_file_path_safe_and_valid(gstr_path_inputlog->str) ||
         !g_file_test(gstr_path_inputlog->str, G_FILE_TEST_IS_REGULAR))
@@ -484,9 +496,11 @@ int main(int argc, char *argv[])
       goto CLEANUP_SLOGVERIFY;
     }
   {
-    g_autofree char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
-    g_autofree char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
+    char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
+    char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
     g_string_assign(gstr_path_outputlog, p_canon ? p_canon : "");
+    g_free(p_temp);
+    g_free(p_canon);
     if (gstr_path_outputlog->len == 0 ||
         !is_file_path_safe_and_valid(gstr_path_outputlog->str)) //-- file might not exists yet
       {
