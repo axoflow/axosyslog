@@ -48,19 +48,21 @@
 #define LONG_OPT_INDICATOR "--"
 #define SHORT_OPT_INDICATOR "-"
 
-// This initialization works for C99 or newer and it might not
-// be supported by all compilers!
-//
-// Tested successfully with
-// gcc (GCC) 11.5.0 20240719 (Red Hat 11.5.0-11)
-// clang version 20.1.8 (RESF 20.1.8-3.el9)
-// and
-// gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
-// Ubuntu clang version 18.1.3 (1ubuntu1)
-//
-static guchar KEYPATTERN[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] = IPAD };
-static guchar MACPATTERN[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] = OPAD };
-static guchar GAMMA[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] =  EPAD};
+/* static guchar KEYPATTERN[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] = IPAD }; */
+/* static guchar MACPATTERN[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] = OPAD }; */
+/* static guchar GAMMA[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] =  EPAD}; */
+
+SLOG_STATIC_ASSERT(AES_BLOCKSIZE == 16, "Wrong_AES_Block_Size_for_provided_KEY_MAC_GAMMA_initialization");
+
+#define FILL_S16(val) val, val, val, val, val, val, val, val, \
+                      val, val, val, val, val, val, val, val
+
+static guchar KEYPATTERN[AES_BLOCKSIZE] = { FILL_S16(IPAD) };
+static guchar MACPATTERN[AES_BLOCKSIZE] = { FILL_S16(OPAD) };
+static guchar GAMMA_SL[AES_BLOCKSIZE] = { FILL_S16(EPAD) };
+
+
+
 
 // File access modes
 static const char modes[NUM_MODES][LEN_MODES] = { "r", "r+", "w", "w+", "a", "a+" };
@@ -409,6 +411,7 @@ CLEANUP_SLOGDECRYPT:
   return result;
 }
 
+
 /*
  *  Create new forward-secure log entry
  *
@@ -723,7 +726,7 @@ CLEANUP_CMAC:
 gboolean evolveKey(guchar *key)
 {
   guchar buf[KEY_LENGTH];
-  if (PRF(key, GAMMA, sizeof(GAMMA), buf, KEY_LENGTH))
+  if (PRF(key, GAMMA_SL, sizeof(GAMMA_SL), buf, KEY_LENGTH))
 {
   memcpy(key, buf, KEY_LENGTH);
       return TRUE;
@@ -2326,7 +2329,7 @@ void truncate_utf8_gstring(GString *gslog, gsize max_octet_len)
 // is_file_path_safe_and_valid
 //
 // Checks wether a file path argument is safe and valid.
-// It does NOT check if the file exists.
+// It does NOT check if the file exists and it SHALL NOT check.
 // Only the existens of extracted directory is verified because the file
 // might be created.
 //
@@ -2335,29 +2338,45 @@ void truncate_utf8_gstring(GString *gslog, gsize max_octet_len)
 
 gboolean is_file_path_safe_and_valid(const gchar *input_path)
 {
-  if (input_path == NULL || *input_path == '\0') return FALSE;
-  g_autofree gchar *safe_path = g_strndup(input_path, PATH_MAX - 1);
-  g_autofree gchar *dir_name = g_path_get_dirname(safe_path);
-  g_autofree gchar *base_name = g_path_get_basename(safe_path);
+  gboolean retval = FALSE;
+  gchar *safe_path = NULL;
+  gchar *dir_name = NULL;
+  gchar *base_name = NULL;
+
+  if (input_path == NULL || *input_path == '\0')
+    {
+      return FALSE;
+    }
+  safe_path = g_strndup(input_path, PATH_MAX - 1);
+  dir_name = g_path_get_dirname(safe_path);
+  base_name = g_path_get_basename(safe_path);
+
   if (!g_file_test(dir_name, G_FILE_TEST_IS_DIR))
     {
       g_warning("Parent directory does not exist or is inaccessible: %s", dir_name);
-      return FALSE;
+      goto CLEANUP_IFPSAV;
     }
+
   if (g_strcmp0(base_name, ".") == 0 || g_strcmp0(base_name, "..") == 0)
     {
       g_warning("Invalid filename: %s", base_name);
-      return FALSE;
+      goto CLEANUP_IFPSAV;
     }
+
   if (access(dir_name, W_OK | X_OK) != 0)
     {
       g_warning("No write permissions in directory: %s", dir_name);
-      return FALSE;
-    }
-  return TRUE;
+      goto CLEANUP_IFPSAV;
 }
 
+  retval = TRUE;
 
+CLEANUP_IFPSAV:
+  g_free(safe_path);
+  g_free(dir_name);
+  g_free(base_name);
+  return retval;
+}
 
 SLogFile *create_file(const gchar *filename, const gchar *mode)
 {

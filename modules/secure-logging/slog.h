@@ -79,6 +79,38 @@
 // Error message in case of invalid file
 #define FILE_ERROR "Invalid path or non existing regular file: "
 
+/* --- Static Assert Abstraction --- */
+#if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
+/* Modern C11 approach */
+#include <assert.h>
+#define SLOG_STATIC_ASSERT(cond, msg) _Static_assert(cond, msg)
+
+#elif defined(__GNUC__) || defined(__clang__)
+/* GCC/Clang extension for older standards */
+#define SLOG_CONCAT_HELPER(a, b) a##b
+#define SLOG_CONCAT(a, b) SLOG_CONCAT_HELPER(a, b)
+#define SLOG_STATIC_ASSERT(cond, msg) \
+    typedef char SLOG_CONCAT(slog_static_assertion_, __LINE__)[(cond) ? 1 : -1] __attribute__((unused))
+
+#else
+/* Basic C89/C99 fallback */
+#define SLOG_CONCAT_HELPER(a, b) a##b
+#define SLOG_CONCAT(a, b) SLOG_CONCAT_HELPER(a, b)
+#define SLOG_STATIC_ASSERT(cond, msg) \
+    typedef char SLOG_CONCAT(slog_static_assertion_, __LINE__)[(cond) ? 1 : -1]
+
+#endif
+
+/* Example how to use SLOG_STATIC_ASSERT */
+
+/* Test 1: Passing assertion (should compile silently) */
+/* SLOG_STATIC_ASSERT(1, "This should always pass"); */
+
+/* Test 2: Failing assertion (compile-time error) */
+/* SLOG_STATIC_ASSERT(0, "This should fail at compile time!"); */
+
+/* --- End of Macro --- */
+
 // Command line arguments of template and utilities
 typedef struct
 {
