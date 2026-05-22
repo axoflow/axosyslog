@@ -31,15 +31,10 @@ guint32 global_host_id = 0;
 static guint32
 _create_host_id(void)
 {
-  union
-  {
-    unsigned char _raw[sizeof(guint32)];
-    guint32 id;
-  } host_id;
+  guint32 host_id;
 
-  RAND_bytes(host_id._raw, sizeof(host_id._raw));
-
-  return host_id.id;
+  RAND_bytes((unsigned char *) &host_id, sizeof(host_id));
+  return host_id;
 }
 
 static gboolean
