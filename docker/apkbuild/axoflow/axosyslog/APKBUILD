@@ -96,8 +96,9 @@ package() {
 	# solaris, which does provide reentrant versions under a different sig
 	rm -f usr/lib/syslog-ng/libtfgetent.so
 
-	# Remove static file
-	rm -f usr/lib/libsyslog-ng-native-connector.a
+	# Remove static files
+	rm -f usr/lib/*.a
+	rm -f usr/lib/syslog-ng/*.a
 
 	install -d -m 700 "$pkgdir"/var/lib/syslog-ng
 }
