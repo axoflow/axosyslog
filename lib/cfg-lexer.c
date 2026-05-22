@@ -914,7 +914,7 @@ cfg_lexer_find_generator_plugin(CfgLexer *self, GlobalConfig *cfg, gint context,
 static CFG_STYPE
 cfg_lexer_copy_token(const CFG_STYPE *original)
 {
-  CFG_STYPE dest;
+  CFG_STYPE dest = {0};
   int type = original->type;
   dest.type = type;
 
