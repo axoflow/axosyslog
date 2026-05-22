@@ -36,6 +36,11 @@ except ImportError:
         def __init__(self, persist_name):
             self.persist_name = persist_name
 
+        def __eq__(self, other):
+            if not isinstance(other, self.__class__):
+                return NotImplemented
+            return self.persist_name == other.persist_name and dict.__eq__(self, other)
+
 
 class Persist(Persist):
     def __init__(self, persist_name, defaults=None):

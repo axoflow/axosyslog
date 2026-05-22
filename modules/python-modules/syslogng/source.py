@@ -58,17 +58,17 @@ except ImportError:
         NO_DATA = auto()
 
     # Fake InstantAckTracker
-    class InstantAckTracker(dict):
+    class InstantAckTracker:
         def __init__(self, ack_callback):
             self.ack_callback = ack_callback
 
     # Fake ConsecutiveAckTracker
-    class ConsecutiveAckTracker(dict):
+    class ConsecutiveAckTracker:
         def __init__(self, ack_callback):
             self.ack_callback = ack_callback
 
     # Fake BatchedAckTracker
-    class BatchedAckTracker(dict):
+    class BatchedAckTracker:
         def __init__(self, timeout, batch_size, batched_ack_callback):
             self.timeout = timeout
             self.batch_size = batch_size
