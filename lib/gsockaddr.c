@@ -159,50 +159,6 @@ g_sockaddr_get_address(GSockAddr *self, guint8 *buffer, gsize buffer_size, gsize
     }
 }
 
-/*+
-
-  Increment the reference count of a GSockAddr instance.
-
-  Parameters:
-    a         pointer to GSockAddr
-
-  Returns:
-    the same instance
-
-  +*/
-GSockAddr *
-g_sockaddr_ref(GSockAddr *a)
-{
-  if (a)
-    g_atomic_counter_inc(&a->super.refcnt);
-  return a;
-}
-
-/*+
-
-  Decrement the reference count of a GSockAddr instance, and free if
-  the refcnt reaches 0.
-
-  Parameters:
-    a        GSockAddr instance
-
-  Returns:
-    none
-
-  +*/
-void
-g_sockaddr_unref(GSockAddr *a)
-{
-  /* FIXME: maybe add a callback to funcs table */
-  if (a)
-    {
-      if (g_atomic_counter_dec_and_test(&a->super.refcnt))
-        {
-          g_slice_free1(g_sockaddr_len(a), a);
-        }
-    }
-}
-
 /* AF_INET socket address */
 /*+
 

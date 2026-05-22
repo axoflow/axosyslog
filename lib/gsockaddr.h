@@ -89,13 +89,31 @@ guint8 *g_sockaddr_get_address(GSockAddr *self, guint8 *buffer, gsize buffer_siz
 gsize g_sockaddr_len(GSockAddr *a);
 
 GSockAddr *g_sockaddr_new(struct sockaddr *sa, int salen);
-GSockAddr *g_sockaddr_ref(GSockAddr *a);
-void g_sockaddr_unref(GSockAddr *a);
 
 static inline struct sockaddr *
 g_sockaddr_get_sa(GSockAddr *self)
 {
   return &self->sa;
+}
+
+static inline GSockAddr *
+g_sockaddr_ref(GSockAddr *a)
+{
+  if (a)
+    g_atomic_counter_inc(&a->super.refcnt);
+  return a;
+}
+
+static inline void
+g_sockaddr_unref(GSockAddr *a)
+{
+  if (a)
+    {
+      if (g_atomic_counter_dec_and_test(&a->super.refcnt))
+        {
+          g_free(a);
+        }
+    }
 }
 
 gboolean g_sockaddr_inet_check(GSockAddr *a);
