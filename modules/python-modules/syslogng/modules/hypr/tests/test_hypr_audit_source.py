@@ -60,8 +60,10 @@ def test_hypr_audit_source_lifecycle_without_actually_fetching_messages(minimal_
     sut = hypr.HyprAuditSource()
 
     assert sut.init(minimal_config) is True
-    assert sut.open() is True
-    assert sut.close() is None
+    opened = sut.open()
+    assert opened is True
+    closed = sut.close()
+    assert closed is None
     sut.deinit()
 
 
@@ -117,7 +119,8 @@ def test_hypr_audit_source_complete_lifecycle(minimal_config, mocker):
     sut = hypr.HyprAuditSource()
 
     assert sut.init(minimal_config) is True
-    assert sut.open() is True
+    opened = sut.open()
+    assert opened is True
 
     index = 0
     status, msg = sut.fetch()
@@ -149,7 +152,8 @@ def test_hypr_audit_source_complete_lifecycle(minimal_config, mocker):
     assert status == sut.NO_DATA
     assert index == 2
 
-    assert sut.close() is None
+    closed = sut.close()
+    assert closed is None
     sut.deinit()
 
 
@@ -192,7 +196,8 @@ def test_hypr_audit_source_complete_lifecycle_no_parse(minimal_config, mocker):
     sut.flags["parse"] = False
 
     assert sut.init(minimal_config) is True
-    assert sut.open() is True
+    opened = sut.open()
+    assert opened is True
 
     status, msg = sut.fetch()
 
@@ -200,5 +205,6 @@ def test_hypr_audit_source_complete_lifecycle_no_parse(minimal_config, mocker):
     assert msg['MESSAGE'] == b'{"rpAppId": "rp_foo", "eventTimeInUTC": 1666427394, "message": "whatever first", "counter": 1, "single_nested": {"double_nested": {"none": null}}, "float": 123.456, "string_list": ["foo", "bar"], "non_string_list": [1, 2], "bool": true}'
     assert msg['PROGRAM'] == b'Hypr-rpFoo'
 
-    assert sut.close() is None
+    closed = sut.close()
+    assert closed is None
     sut.deinit()
