@@ -67,16 +67,16 @@ struct _LogSource
   LogPipe super;
   LogSourceOptions *options;
   gboolean threaded;
+  gboolean window_initialized;
   gchar *name;
   gchar *stats_id;
-  WindowSizeCounter window_size;
   DynamicWindow dynamic_window;
-  gboolean window_initialized;
   gsize initial_window_size;
   /* full_window_size = static + dynamic */
   gsize full_window_size;
   atomic_gssize window_size_to_be_reclaimed;
   atomic_gssize pending_reclamation;
+  WindowSizeCounter window_size;
 
   struct
   {
