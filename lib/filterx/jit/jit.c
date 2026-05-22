@@ -97,7 +97,8 @@ _optimize_module(gpointer s, LLVMModuleRef mod)
   FilterXJIT *self = (FilterXJIT *) s;
   msg_trace("FilterXJIT optimize module", evt_tag_str("module_name", self->mod_name));
 
-  LLVMErrorRef err = LLVMRunPasses(mod, "default<O3>", self->tm, options);
+  const gchar *pass_override = g_getenv("SYSLOG_NG_FILTERX_JIT_PASSES");
+  LLVMErrorRef err = LLVMRunPasses(mod, pass_override ? : "default<O3>", self->tm, options);
 
   LLVMDisposePassBuilderOptions(options);
   return err;
