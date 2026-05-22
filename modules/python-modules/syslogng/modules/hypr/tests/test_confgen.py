@@ -24,7 +24,7 @@ from syslogng.modules import hypr
 import base64
 
 
-def test_config_generator_all_options(mocker):
+def test_config_generator_default_options(mocker):
     mocker.patch("requests.get", return_value=mocker.Mock(**{
         'status_code': 200,
         'json': mocker.Mock(return_value=[
@@ -51,7 +51,7 @@ def test_config_generator_all_options(mocker):
                 "bearer_token" => "%s"
                 "page_size" => 100
                 "initial_hours" => 4
-                "ignore_persistence" => False
+                "ignore_persistence" => no
                 "log_level" => "INFO"
             )
             flags()
