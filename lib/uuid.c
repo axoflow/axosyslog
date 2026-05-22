@@ -24,36 +24,25 @@
 #include "uuid.h"
 
 #include <openssl/rand.h>
-#include <arpa/inet.h>
 
 void
 uuid_gen_random(gchar *buf, gsize buflen)
 {
-  union
-  {
-    struct
-    {
-      guint32 time_low;
-      guint16 time_mid;
-      guint16 time_hi_and_version;
-      guint8  clk_seq_hi_res;
-      guint8  clk_seq_low;
-      guint8  node[6];
-      guint16 node_low;
-      guint32 node_hi;
-    };
-    guchar __rnd[16];
-  } uuid;
+  /* RFC 4122 version 4 (random) UUID; flat byte buffer avoids union-access
+   * and out-of-bounds warnings from static analyzers, writes over the 16 bytes,
+   * and needs no htons(). */
+  guchar rnd[16];
 
-  RAND_bytes(uuid.__rnd, sizeof(uuid));
+  RAND_bytes(rnd, sizeof(rnd));
 
-  uuid.clk_seq_hi_res = (uuid.clk_seq_hi_res & ~0xC0) | 0x80;
-  uuid.time_hi_and_version = htons((uuid.time_hi_and_version & ~0xF000) | 0x4000);
+  rnd[6] = (rnd[6] & 0x0F) | 0x40; /* version 4: top nibble of byte 6 */
+  rnd[8] = (rnd[8] & 0x3F) | 0x80; /* RFC 4122 variant: top two bits of byte 8 */
 
-  g_snprintf(buf, buflen, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-             uuid.time_low, uuid.time_mid, uuid.time_hi_and_version,
-             uuid.clk_seq_hi_res, uuid.clk_seq_low,
-             uuid.node[0], uuid.node[1], uuid.node[2],
-             uuid.node[3], uuid.node[4], uuid.node[5]);
-
+  g_snprintf(buf, buflen,
+             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+             rnd[0], rnd[1], rnd[2], rnd[3],
+             rnd[4], rnd[5],
+             rnd[6], rnd[7],
+             rnd[8], rnd[9],
+             rnd[10], rnd[11], rnd[12], rnd[13], rnd[14], rnd[15]);
 }
