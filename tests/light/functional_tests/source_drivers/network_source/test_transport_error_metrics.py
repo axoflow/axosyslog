@@ -91,7 +91,7 @@ def test_tls_handshake_error_metric(config, syslog_ng, port_allocator, testcase_
     # Connect with plain TCP (no TLS handshake) to trigger a TLS handshake error
     sock_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock_tcp.connect(("localhost", source.options["port"]))
-    sock_tcp.sendall(b"THIS IS NOT A TLS HANDSHAKE\n")
+    sock_tcp.sendall(b"     NOT TLS\n")
     sock_tcp.close()
 
     assert wait_until_true(lambda: _get_metric_value(config, "tls-handshake") == 1)
