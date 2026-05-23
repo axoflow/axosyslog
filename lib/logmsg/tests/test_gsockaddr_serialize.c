@@ -54,7 +54,7 @@ Test(gsockaddr_serialize, test_inet)
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet GSockAddr");
   cr_assert(g_sockaddr_deserialize(sa, &read_addr), "failed to read back inet GSockAddr");
 
-  cr_assert_arr_eq(g_sockaddr_inet_get_sa(addr), g_sockaddr_inet_get_sa(read_addr), addr->salen);
+  cr_assert_arr_eq(g_sockaddr_inet_get_sa(addr), g_sockaddr_inet_get_sa(read_addr), addr->super.salen);
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);
@@ -73,7 +73,7 @@ Test(gsockaddr_serialize, test_inet6)
   cr_assert(g_sockaddr_serialize(sa, addr), "failed to serialize inet6 GSockAddr");
   cr_assert(g_sockaddr_deserialize(sa, &read_addr), "failed to read back inet6 GSockAddr");
 
-  cr_assert_arr_eq(g_sockaddr_inet6_get_sa(addr), g_sockaddr_inet6_get_sa(read_addr), addr->salen);
+  cr_assert_arr_eq(g_sockaddr_inet6_get_sa(addr), g_sockaddr_inet6_get_sa(read_addr), addr->super.salen);
 
   serialize_archive_free(sa);
   g_string_free(stream, TRUE);

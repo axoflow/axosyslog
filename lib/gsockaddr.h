@@ -40,25 +40,47 @@
 #define GSA_ADDRESS_ONLY  1
 #define GSA_ADDRESS_PORT  2
 
-typedef struct _GSockAddrFuncs GSockAddrFuncs;
+typedef struct _GSockAddrBase
+{
+  GAtomicCounter refcnt;
+  guint32 salen;
+} GSockAddrBase;
 
 typedef struct _GSockAddr
 {
-  GAtomicCounter refcnt;
-  guint32 flags;
-  GSockAddrFuncs *sa_funcs;
-  int salen;
+  GSockAddrBase super;
   struct sockaddr sa;
 } GSockAddr;
 
-struct _GSockAddrFuncs
+typedef struct _GSockAddrFuncs
 {
   GIOStatus (*bind_prepare)(gint sock, GSockAddr *addr);
   GIOStatus (*bind)(int sock, GSockAddr *addr);
   gchar   *(*format)(GSockAddr *addr, gchar *text, gulong n, gint format);
   guint16  (*get_port)          (GSockAddr *addr);
   void     (*set_port)          (GSockAddr *addr, guint16 port);
-};
+} GSockAddrFuncs;
+
+extern GSockAddrFuncs inet_sockaddr_funcs;
+extern GSockAddrFuncs inet6_sockaddr_funcs;
+extern GSockAddrFuncs unix_sockaddr_funcs;
+
+static inline GSockAddrFuncs *
+__g_sockaddr_funcs(GSockAddr *a)
+{
+  switch (a->sa.sa_family)
+    {
+    case AF_INET:
+      return &inet_sockaddr_funcs;
+    case AF_INET6:
+      return &inet6_sockaddr_funcs;
+    case AF_UNIX:
+      return &unix_sockaddr_funcs;
+    default:
+      g_assert_not_reached();
+    }
+}
+
 
 gchar *g_sockaddr_format(GSockAddr *a, gchar *text, gulong n, gint format);
 guint16 g_sockaddr_get_port(GSockAddr *a);
@@ -67,13 +89,31 @@ guint8 *g_sockaddr_get_address(GSockAddr *self, guint8 *buffer, gsize buffer_siz
 gsize g_sockaddr_len(GSockAddr *a);
 
 GSockAddr *g_sockaddr_new(struct sockaddr *sa, int salen);
-GSockAddr *g_sockaddr_ref(GSockAddr *a);
-void g_sockaddr_unref(GSockAddr *a);
 
 static inline struct sockaddr *
 g_sockaddr_get_sa(GSockAddr *self)
 {
   return &self->sa;
+}
+
+static inline GSockAddr *
+g_sockaddr_ref(GSockAddr *a)
+{
+  if (a)
+    g_atomic_counter_inc(&a->super.refcnt);
+  return a;
+}
+
+static inline void
+g_sockaddr_unref(GSockAddr *a)
+{
+  if (a)
+    {
+      if (g_atomic_counter_dec_and_test(&a->super.refcnt))
+        {
+          g_free(a);
+        }
+    }
 }
 
 gboolean g_sockaddr_inet_check(GSockAddr *a);

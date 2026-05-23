@@ -29,7 +29,7 @@ from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
 
 
 SIZE_OF_MESSAGE_IN_DISKQ = 1452
-SIZE_OF_MESSAGE_IN_MEMORY = 2536
+SIZE_OF_MESSAGE_IN_MEMORY = 2504
 SIZE_OF_DISKQ = 1024 * 1024
 SIZE_OF_DISKQ_HEADER = 4096
 BufferParams = namedtuple(

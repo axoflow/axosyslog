@@ -73,15 +73,16 @@ GIOStatus
 g_bind(int fd, GSockAddr *addr)
 {
   GIOStatus rc;
+  GSockAddrFuncs *funcs = __g_sockaddr_funcs(addr);
 
-  if (addr->sa_funcs && addr->sa_funcs->bind_prepare)
-    addr->sa_funcs->bind_prepare(fd, addr);
+  if (funcs->bind_prepare)
+    funcs->bind_prepare(fd, addr);
 
-  if (addr->sa_funcs && addr->sa_funcs->bind)
-    rc = addr->sa_funcs->bind(fd, addr);
+  if (funcs->bind)
+    rc = funcs->bind(fd, addr);
   else
     {
-      if (addr && bind(fd, &addr->sa, addr->salen) < 0)
+      if (addr && bind(fd, &addr->sa, addr->super.salen) < 0)
         {
           return G_IO_STATUS_ERROR;
         }
@@ -143,7 +144,7 @@ g_connect(int fd, GSockAddr *remote)
 
   do
     {
-      rc = connect(fd, &remote->sa, remote->salen);
+      rc = connect(fd, &remote->sa, remote->super.salen);
     }
   while (rc == -1 && errno == EINTR);
   if (rc == -1)
