@@ -149,6 +149,13 @@ jobs:
           name: corefiles-${{ matrix.build-tool }}-${{ matrix.cc }}
           path: ${{ env.COREFILES_DIR }}
 
+      - name: "Artifact: syslog-ng binaries"
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: syslog-ng-${{ matrix.build-tool }}-${{ matrix.cc }}
+          path: ${{ env.SYSLOG_NG_INSTALL_DIR }}
+
   distcheck:
     runs-on: ubuntu-latest
     container:
