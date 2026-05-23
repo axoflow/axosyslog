@@ -299,13 +299,6 @@ fx_jit_process_compound_result(FilterXCompoundExpr *self, gint32 success, Filter
 }
 
 static inline FilterXIRValue
-_emit_eval_get_context(FilterXJIT *jit)
-{
-  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  return fx_jit_emit_extern_call(jit, "filterx_eval_get_context", ffi->ptr_ty, NULL, NULL, 0);
-}
-
-static inline FilterXIRValue
 _emit_process_compound_result(FilterXJIT *jit, FilterXCompoundExpr *self, FilterXIRValue success, FilterXIRValue result)
 {
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
@@ -332,7 +325,7 @@ _compound_compile(FilterXExpr *s, FilterXJIT *jit)
   FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
   FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
 
-  FilterXIRValue eval_ctx = _emit_eval_get_context(jit);
+  FilterXIRValue eval_ctx = filterx_jit_ir_get_eval_context(jit);
   FilterXIRValue result_slot = LLVMBuildAlloca(ir, ffi->ptr_ty, "result");
   FilterXIRValue success_slot = LLVMBuildAlloca(ir, ffi->i32_ty, "success");
 

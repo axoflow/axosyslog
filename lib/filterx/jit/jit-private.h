@@ -49,6 +49,7 @@ struct _FilterXJIT
 
   FilterXIRValue current_ir_block;
   LLVMMetadataRef current_debug_info_block;
+  FilterXIRValue current_eval_context;
 
   FilterXJITFFI ffi;
 
