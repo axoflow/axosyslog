@@ -370,7 +370,6 @@ filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsiz
 FILTERX_SIMPLE_FUNCTION(pubsub_message, filterx_pubsub_message_new_from_args);
 
 FILTERX_DEFINE_TYPE(pubsub_message, FILTERX_TYPE_NAME(object),
-                    .is_mutable = TRUE,
                     .marshal = _marshal,
                     .clone = _filterx_pubsub_message_clone,
                     .truthy = _truthy,

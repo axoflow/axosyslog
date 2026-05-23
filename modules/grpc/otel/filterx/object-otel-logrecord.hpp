@@ -76,8 +76,12 @@ protected:
 
 struct FilterXOtelLogRecord_
 {
-  FilterXMapping super;
-  syslogng::grpc::otel::filterx::LogRecord *cpp;
+  FILTERX_MUTABLE_OBJECT_HEADER
+  {
+    FilterXMapping super;
+    syslogng::grpc::otel::filterx::LogRecord *cpp;
+  }
+  FILTERX_MUTABLE_OBJECT_TAILER;
 };
 
 #include "compat/cpp-end.h"

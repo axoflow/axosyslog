@@ -98,8 +98,12 @@ extern ArrayFieldConverter array_field_converter;
 
 struct FilterXOtelArray_
 {
-  FilterXSequence super;
-  syslogng::grpc::otel::filterx::Array *cpp;
+  FILTERX_MUTABLE_OBJECT_HEADER
+  {
+    FilterXSequence super;
+    syslogng::grpc::otel::filterx::Array *cpp;
+  }
+  FILTERX_MUTABLE_OBJECT_TAILER;
 };
 
 #include "compat/cpp-end.h"

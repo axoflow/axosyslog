@@ -136,7 +136,7 @@
  *      but will clone the xref if it is already wrapped.
  *
  * The number of copies for objects are tracked by the
- * `FilterXObject->fx_ref_cnt` member, which counts the number of
+ * `FilterXMutableObject->fx_ref_cnt` member, which counts the number of
  * active xrefs to an object.
  *
  * When the reference count for an xref drops to zero, it automatically
@@ -276,19 +276,25 @@ _filterx_ref_clone(FilterXObject *s)
   return _filterx_ref_new(filterx_object_ref(self->value));
 }
 
+static GAtomicCounter *
+_get_fx_ref_cnt(FilterXRef *self)
+{
+  return &((FilterXMutableObject *) self->value)->fx_ref_cnt;
+}
+
 static inline void
 _filterx_ref_clone_value_if_shared(FilterXRef *self, FilterXRef *child_of_interest)
 {
-  if (g_atomic_counter_get(&self->value->fx_ref_cnt) <= 1)
+  if (g_atomic_counter_get(_get_fx_ref_cnt(self)) <= 1)
     return;
 
   FilterXObject *cloned = filterx_object_clone_container(self->value, &self->super, &child_of_interest->super, FALSE);
 
-  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
+  g_atomic_counter_dec_and_test(_get_fx_ref_cnt(self));
   filterx_object_unref(self->value);
 
   self->value = cloned;
-  g_atomic_counter_inc(&self->value->fx_ref_cnt);
+  g_atomic_counter_inc(_get_fx_ref_cnt(self));
 }
 
 gboolean
@@ -356,7 +362,7 @@ _filterx_ref_free(FilterXObject *s)
 {
   FilterXRef *self = (FilterXRef *) s;
 
-  g_atomic_counter_dec_and_test(&self->value->fx_ref_cnt);
+  g_atomic_counter_dec_and_test(_get_fx_ref_cnt(self));
   filterx_object_unref(self->value);
 
   filterx_object_free_method(s);
@@ -441,7 +447,7 @@ _filterx_ref_replace_shared_xref_with_a_floating_one(FilterXObject *s, FilterXOb
   FilterXRef *container = (FilterXRef *) c;
 
   if (filterx_weakref_is_set_to(&self->parent_container, &container->super) &&
-      g_atomic_counter_get(&container->value->fx_ref_cnt) <= 1)
+      g_atomic_counter_get(_get_fx_ref_cnt(container)) <= 1)
     return s;
 
   FilterXObject *result = filterx_ref_float(_filterx_ref_new(filterx_object_ref(self->value)));
@@ -569,7 +575,7 @@ filterx_ref_dup(FilterXObject *s)
   filterx_object_init_instance(&dup->super, &FILTERX_TYPE_NAME(ref));
 
   dup->value = filterx_object_clone_container(value, &dup->super, NULL, TRUE);
-  g_atomic_counter_inc(&dup->value->fx_ref_cnt);
+  g_atomic_counter_inc(_get_fx_ref_cnt(dup));
 
   return &dup->super;
 }
@@ -589,7 +595,7 @@ _filterx_ref_new(FilterXObject *value)
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(ref));
 
   self->value = value;
-  g_atomic_counter_inc(&self->value->fx_ref_cnt);
+  g_atomic_counter_inc(_get_fx_ref_cnt(self));
 
   return &self->super;
 }

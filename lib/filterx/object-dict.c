@@ -540,8 +540,12 @@ _table_resize_if_needed(FilterXDictTable *old_table)
 
 typedef struct _FilterXDictObject
 {
-  FilterXMapping super;
-  FilterXDictTable *table;
+  FILTERX_MUTABLE_OBJECT_HEADER
+  {
+    FilterXMapping super;
+    FilterXDictTable *table;
+  }
+  FILTERX_MUTABLE_OBJECT_TAILER;
 } FilterXDictObject;
 
 static gboolean

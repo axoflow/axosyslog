@@ -184,7 +184,6 @@ G_STATIC_ASSERT(__FILTERX_OBJECT_REFCOUNT_MAX == G_MAXINT32);
 struct _FilterXObject
 {
   guint32 ref_cnt;
-  GAtomicCounter fx_ref_cnt;
 
   /* NOTE:
    *
@@ -208,6 +207,34 @@ struct _FilterXObject
   volatile guint32 hash;
   FilterXType *type;
 };
+
+typedef struct _FilterXMutableObject
+{
+  union
+  {
+    FilterXObject super;
+
+    /* align it to cacheline boundary and also this is where derived classes
+     * can fit their instance data.  */
+    gchar __padd[64];
+  };
+  union
+  {
+    GAtomicCounter fx_ref_cnt;
+    gchar __padd2[64];
+  };
+} FilterXMutableObject;
+
+/* these are designed */
+#define FILTERX_MUTABLE_OBJECT_HEADER \
+  union \
+  { \
+    struct \
+
+#define FILTERX_MUTABLE_OBJECT_TAILER \
+    ; \
+    FilterXMutableObject __mutable; \
+  }
 
 static inline void
 filterx_object_init_instance(FilterXObject *self, FilterXType *type)
@@ -648,7 +675,6 @@ filterx_object_set_dirty(FilterXObject *self, gboolean value)
 #define FILTERX_OBJECT_STACK_INIT(_type) \
   { \
     .ref_cnt = FILTERX_OBJECT_REFCOUNT_STACK, \
-    .fx_ref_cnt = { .counter = 0 }, \
     .weak_referenced = FALSE, \
     .is_dirty = FALSE, \
     .hash = 0, \
