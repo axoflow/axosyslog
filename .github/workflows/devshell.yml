@@ -149,6 +149,13 @@ jobs:
           name: corefiles-${{ matrix.build-tool }}-${{ matrix.cc }}
           path: ${{ env.COREFILES_DIR }}
 
+      - name: "Artifact: syslog-ng binaries"
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: syslog-ng-${{ matrix.build-tool }}-${{ matrix.cc }}
+          path: ${{ env.SYSLOG_NG_INSTALL_DIR }}
+
   distcheck:
     runs-on: ubuntu-latest
     container:
@@ -248,13 +255,14 @@ jobs:
           cat dbld/build/callgrind/pr/callgrind_annotate.txt
 
       - name: Build the binaries (BASE)
+        id: build_base
         continue-on-error: true
         run: |
           git checkout ${{ steps.commits.outputs.BASE_HEAD }}
           dbld/rules make-install
 
       - name: callgrind (BASE)
-        if: steps.risky.outcome == 'success'
+        if: steps.build_base.outcome == 'success'
         run: |
           dbld/rules callgrind CALLGRIND_PROFILE=base
 
