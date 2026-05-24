@@ -23,6 +23,7 @@
 #include "filterx/filterx-pipe.h"
 #include "filterx/filterx-eval.h"
 #include "filterx/filterx-config.h"
+#include "filterx/filterx-scope-var-layout.h"
 #include "filterx/jit/jit.h"
 #include "stats/stats-registry.h"
 
@@ -31,6 +32,7 @@ typedef struct _LogFilterXPipe
   LogPipe super;
   gchar *name;
   FilterXExpr *block;
+  FilterXScopeVariableLayout *scope_var_layout;
   FilterXJITExecFunc jit_exec;
 } LogFilterXPipe;
 
@@ -78,6 +80,8 @@ log_filterx_pipe_init(LogPipe *s)
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
 
+  self->scope_var_layout = filterx_scope_variable_layout_new(self->block);
+
   filterx_eval_begin_compile(&compile_context, cfg);
   _compile_block(self, cfg);
   filterx_eval_end_compile(&compile_context);
@@ -117,6 +121,9 @@ log_filterx_pipe_deinit(LogPipe *s)
 {
   LogFilterXPipe *self = (LogFilterXPipe *) s;
   GlobalConfig *cfg = log_pipe_get_config(s);
+
+  filterx_scope_variable_layout_free(self->scope_var_layout);
+  self->scope_var_layout = NULL;
 
   filterx_expr_deinit(self->block, cfg);
   return TRUE;
