@@ -324,7 +324,7 @@ init_libtest_filterx(void)
   FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(list);
 
   filterx_env.msg = create_sample_message();
-  filterx_env.scope = filterx_scope_new(NULL);
+  filterx_env.scope = filterx_scope_new(NULL, NULL);
   filterx_eval_begin_context(&filterx_env.context, NULL, filterx_env.scope, filterx_env.msg);
 }
 

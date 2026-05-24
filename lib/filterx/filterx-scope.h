@@ -24,6 +24,7 @@
 
 #include "filterx-object.h"
 #include "filterx-variable.h"
+#include "filterx/filterx-scope-var-layout.h"
 #include "logmsg/logmsg.h"
 
 /*
@@ -41,40 +42,33 @@
 typedef struct _FilterXScope FilterXScope;
 struct _FilterXScope
 {
-  guint16 write_protected:1, dirty:1, syncable:1, coupled_variables:1;
+  guint16 write_protected:1, dirty:1, syncable:1;
   FilterXGenCounter generation;
   LogMessage *msg;
   FilterXScope *parent_scope;
-  struct
-  {
-    /* number of elems */
-    gint len;
-    /* allocated elems */
-    gint size;
-    union
-    {
-      FilterXVariable *separate;
-      FilterXVariable coupled[0];
-    };
-  } variables;
+
+  guint32 variables_used;
+  guint32 variables_size;
+  FilterXVariable variables[0];
 };
 
 typedef gboolean (*FilterXScopeForeachFunc)(FilterXVariable *variable, gpointer user_data);
 
 void filterx_scope_sync(FilterXScope *self, LogMessage **pmsg, const LogPathOptions *path_options);
 
-FilterXVariable *filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle);
+FilterXVariable *filterx_scope_lookup_variable(FilterXScope *self, FilterXVariableHandle handle, gint scope_var_idx);
 FilterXVariable *filterx_scope_register_variable(FilterXScope *self,
                                                  FilterXVariableType variable_type,
-                                                 FilterXVariableHandle handle);
+                                                 FilterXVariableHandle handle, gint scope_var_idx);
 
 /* variables and their objects must not be modified */
 gboolean filterx_scope_foreach_variable_readonly(FilterXScope *self, FilterXScopeForeachFunc func, gpointer user_data);
 
-gsize filterx_scope_get_alloc_size(void);
-void filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, FilterXScope *parent_scope);
+gsize filterx_scope_get_alloc_size(FilterXScopeVariableLayout *layout);
+void filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, FilterXScope *parent_scope,
+                                 FilterXScopeVariableLayout *layout);
 void filterx_scope_clear(FilterXScope *self);
-FilterXScope *filterx_scope_new(FilterXScope *parent_scope);
+FilterXScope *filterx_scope_new(FilterXScope *parent_scope, FilterXScopeVariableLayout *layout);
 void filterx_scope_free(FilterXScope *self);
 
 static inline void
@@ -148,7 +142,7 @@ filterx_scope_is_write_protected(FilterXScope *self)
 static inline void
 filterx_scope_make_writable(FilterXScope *self)
 {
-  g_assert(self->variables.len == 0);
+  g_assert(self->variables_len == 0);
   self->write_protected = FALSE;
 }
 

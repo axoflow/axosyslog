@@ -173,7 +173,7 @@ _load_from_dict(FilterXObject *key, FilterXObject *value, gpointer user_data)
       handle = filterx_map_varname_to_handle(key_str, variable_type);
     }
 
-  FilterXVariable *variable = filterx_scope_register_variable(scope, variable_type, handle);
+  FilterXVariable *variable = filterx_scope_register_variable(scope, variable_type, handle, -1);
   if (!variable)
     {
       filterx_eval_push_error("Failed to register variable", NULL, key);

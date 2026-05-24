@@ -137,7 +137,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
   FilterXEvalContext *previous_context = path_options->filterx_context;
 
   LogMessagePin pin = log_msg_pin_payload(msg);
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg)
+  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg, self->scope_var_layout)
   {
     FilterXEvalResult eval_res;
     LogPathOptions local_path_options;

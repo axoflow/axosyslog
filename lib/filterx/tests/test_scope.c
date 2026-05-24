@@ -36,21 +36,21 @@
 
 Test(filterx_scope, test_scope_on_heap)
 {
-  FilterXScope *s = filterx_scope_new(NULL);
-  cr_assert_null(filterx_scope_lookup_variable(s, filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING)));
+  FilterXScope *s = filterx_scope_new(NULL, NULL);
+  cr_assert_null(filterx_scope_lookup_variable(s, filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING), -1));
   filterx_scope_free(s);
 }
 
 Test(filterx_scope, test_scope_stacking)
 {
-  FilterXScope *s = filterx_scope_new(NULL);
+  FilterXScope *s = filterx_scope_new(NULL, NULL);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
   filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
 
-  FilterXScope *s2 = filterx_scope_new(s);
+  FilterXScope *s2 = filterx_scope_new(s, NULL);
 
-  cr_assert_not_null(filterx_scope_lookup_variable(s2, var));
+  cr_assert_not_null(filterx_scope_lookup_variable(s2, var, -1));
 
   filterx_scope_free(s2);
   filterx_scope_free(s);
@@ -58,7 +58,7 @@ Test(filterx_scope, test_scope_stacking)
 
 Test(filterx_scope, test_cannot_register_variable_in_write_protected_scope, .signal=SIGABRT)
 {
-  FilterXScope *s = filterx_scope_new(NULL);
+  FilterXScope *s = filterx_scope_new(NULL, NULL);
   filterx_scope_write_protect(s);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
@@ -69,7 +69,7 @@ Test(filterx_scope, test_cannot_register_variable_in_write_protected_scope, .sig
 
 Test(filterx_scope, test_cannot_unset_variable_in_write_protected_scope, .signal=SIGABRT)
 {
-  FilterXScope *s = filterx_scope_new(NULL);
+  FilterXScope *s = filterx_scope_new(NULL, NULL);
 
   FilterXVariableHandle v_handle = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
   FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle);
@@ -83,7 +83,7 @@ Test(filterx_scope, test_cannot_unset_variable_in_write_protected_scope, .signal
 
 Test(filterx_scope, test_cannot_change_variable_in_write_protected_scope, .signal=SIGABRT)
 {
-  FilterXScope *s = filterx_scope_new(NULL);
+  FilterXScope *s = filterx_scope_new(NULL, NULL);
 
   FilterXVariableHandle v_handle = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
   FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle);
@@ -100,7 +100,7 @@ Test(filterx_scope, test_scope_sync)
 {
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
 
-  FilterXScope *s = filterx_scope_new(NULL);
+  FilterXScope *s = filterx_scope_new(NULL, NULL);
   LogMessage *msg = log_msg_new_empty();
 
   filterx_scope_set_message(s, msg);
@@ -119,9 +119,9 @@ Test(filterx_scope, test_scope_sync)
   cr_assert_eq(type, LM_VT_BOOLEAN);
   cr_assert_str_eq(value, "true");
 
-  cr_assert(filterx_scope_lookup_variable(s, var));
+  cr_assert(filterx_scope_lookup_variable(s, var, -1));
   log_msg_set_value_by_name(msg, "var", "newvalue", -1);
-  cr_assert_not(filterx_scope_lookup_variable(s, var));
+  cr_assert_not(filterx_scope_lookup_variable(s, var, -1));
 
   log_msg_unref(msg);
   filterx_scope_free(s);
@@ -136,7 +136,7 @@ _assert_var_false(FilterXVariable *variable, gpointer user_data)
 
 Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
 {
-  FilterXScope *s = filterx_scope_new(NULL);
+  FilterXScope *s = filterx_scope_new(NULL, NULL);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
   FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
@@ -144,7 +144,7 @@ Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
   filterx_scope_set_variable(s, v, &o, TRUE);
   filterx_object_unref(o);
 
-  FilterXScope *s2 = filterx_scope_new(s);
+  FilterXScope *s2 = filterx_scope_new(s, NULL);
 
   v = filterx_scope_register_variable(s2, FX_VAR_DECLARED_FLOATING, var);
   o = filterx_boolean_new(FALSE);
