@@ -37,6 +37,7 @@ typedef struct _FilterXVariableExpr
   NVHandle handle;
   FilterXObject *variable_name;
   guint32 handle_is_macro:1;
+  gint scope_var_idx;
 } FilterXVariableExpr;
 
 static FilterXObject *
@@ -251,6 +252,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.unset = _unset;
 
   self->variable_type = variable_type;
+  self->scope_var_idx = -1;
 
   self->handle = filterx_map_varname_to_handle(name, variable_type);
   if (variable_type == FX_VAR_MESSAGE_TIED)
@@ -277,6 +279,14 @@ FilterXExpr *
 filterx_floating_variable_expr_new(const gchar *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
+}
+
+void
+filterx_variable_expr_set_scope_var_idx(FilterXExpr *s, gint idx)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+
+  self->scope_var_idx = idx;
 }
 
 void

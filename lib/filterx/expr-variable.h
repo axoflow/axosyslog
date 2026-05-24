@@ -31,6 +31,7 @@ FilterXExpr *filterx_msg_variable_expr_new(const gchar *name);
 FilterXExpr *filterx_floating_variable_expr_new(const gchar *name);
 void filterx_variable_expr_declare(FilterXExpr *s);
 
+void filterx_variable_expr_set_scope_var_idx(FilterXExpr *s, gint idx);
 
 FILTERX_EXPR_DECLARE_TYPE(variable);
 
