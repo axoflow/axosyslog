@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -19,29 +19,29 @@
  * COPYING for details.
  *
  */
-#ifndef FILTERX_EXPR_VARIABLE_H_INCLUDED
-#define FILTERX_EXPR_VARIABLE_H_INCLUDED
+
+#ifndef FILTERX_SCOPE_VAR_LAYOUT_H
+#define FILTERX_SCOPE_VAR_LAYOUT_H
 
 #include "filterx/filterx-expr.h"
-#include "filterx/filterx-config.h"
-#include "filterx/object-string.h"
 #include "filterx/filterx-variable.h"
-#include "cfg.h"
 
-FilterXExpr *filterx_msg_variable_expr_new(const gchar *name);
-FilterXExpr *filterx_floating_variable_expr_new(const gchar *name);
-void filterx_variable_expr_declare(FilterXExpr *s);
-
-FilterXVariableHandle filterx_variable_expr_get_handle(FilterXExpr *s);
-gboolean filterx_variable_expr_is_macro(FilterXExpr *s);
-void filterx_variable_expr_set_scope_var_idx(FilterXExpr *s, gint idx);
-
-FILTERX_EXPR_DECLARE_TYPE(variable);
-
-static inline gboolean
-filterx_expr_is_variable(FilterXExpr *expr)
+typedef struct _FilterXScopeVariableLayout
 {
-  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(variable);
+  FilterXVariable *layout;
+  guint32 num_variables;
+} FilterXScopeVariableLayout;
+
+FilterXScopeVariableLayout *filterx_scope_variable_layout_new(FilterXExpr *root);
+void filterx_scope_variable_layout_free(FilterXScopeVariableLayout *self);
+
+static inline void
+filterx_scope_variable_layout_fill(FilterXScopeVariableLayout *self, FilterXVariable *variables)
+{
+  if (!self)
+    return;
+
+  memcpy(variables, self->layout, self->num_variables * sizeof(FilterXVariable));
 }
 
 #endif

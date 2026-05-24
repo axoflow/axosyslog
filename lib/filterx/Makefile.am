@@ -52,6 +52,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-private.h \
 	lib/filterx/filterx-ref.h \
 	lib/filterx/filterx-scope.h \
+	lib/filterx/filterx-scope-var-layout.h \
 	lib/filterx/filterx-variable.h \
 	lib/filterx/filterx-weakrefs.h \
 	lib/filterx/filterx-dpath.h \
@@ -143,6 +144,7 @@ filterx_sources = 				\
 	lib/filterx/filterx-private.c \
 	lib/filterx/filterx-ref.c \
 	lib/filterx/filterx-scope.c \
+	lib/filterx/filterx-scope-var-layout.c \
 	lib/filterx/filterx-variable.c \
 	lib/filterx/filterx-weakrefs.c \
 	lib/filterx/filterx-dpath.c \
