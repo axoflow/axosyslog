@@ -178,9 +178,6 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     FilterXScope *scope = NULL; \
     gboolean local_scope = FALSE; \
     \
-    if (previous_context) \
-      scope = filterx_scope_reuse(previous_context->scope); \
-    \
     if (!scope) \
       { \
         gsize alloc_size = filterx_scope_get_alloc_size(scope_var_layout); \

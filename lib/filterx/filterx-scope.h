@@ -146,14 +146,4 @@ filterx_scope_make_writable(FilterXScope *self)
   self->write_protected = FALSE;
 }
 
-static inline FilterXScope *
-filterx_scope_reuse(FilterXScope *self)
-{
-  if (filterx_scope_is_write_protected(self))
-    return NULL;
-
-  self->generation++;
-  return self;
-}
-
 #endif
