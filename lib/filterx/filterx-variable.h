@@ -77,7 +77,12 @@ G_STATIC_ASSERT(sizeof(FilterXVariable) <= 16);
 void filterx_variable_init_instance(FilterXVariable *v,
                                     FilterXVariableType variable_type,
                                     FilterXVariableHandle handle);
-void filterx_variable_clear(FilterXVariable *v);
+
+static inline void
+filterx_variable_clear(FilterXVariable *v)
+{
+  filterx_object_unref(v->value);
+}
 
 static inline gboolean
 filterx_variable_is_floating(FilterXVariable *v)

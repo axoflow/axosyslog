@@ -35,12 +35,6 @@ filterx_map_varname_to_handle(const gchar *name, FilterXVariableType type)
 }
 
 void
-filterx_variable_clear(FilterXVariable *v)
-{
-  filterx_object_unref(v->value);
-}
-
-void
 filterx_variable_init_instance(FilterXVariable *v,
                                FilterXVariableType variable_type,
                                FilterXVariableHandle handle)
