@@ -38,10 +38,31 @@
 #include "filterx/object-datetime.h"
 #include "filterx/object-message-value.h"
 #include "filterx/filterx-private.h"
+#include "filterx/filterx-scope-var-layout.h"
 
 #include "apphook.h"
 #include "scratch-buffers.h"
 
+static GHashTable *test_vars;
+static FilterXExpr *test_vars_owner;
+static FilterXScopeVariableLayout *test_layout;
+
+static FilterXExpr *
+_define_test_var(const char *name)
+{
+  FilterXExpr *expr = filterx_msg_variable_expr_new(name);
+  cr_assert(expr != NULL);
+  g_hash_table_insert(test_vars, g_strdup(name), expr);
+  return expr;
+}
+
+static FilterXExpr *
+_get_test_var(const char *name)
+{
+  FilterXExpr *expr = g_hash_table_lookup(test_vars, name);
+  cr_assert(expr != NULL);
+  return expr;
+}
 
 FilterXExpr *
 _string_to_filterXExpr(const gchar *str)
@@ -60,10 +81,7 @@ _assert_cmp_string_to_filterx_object(const char *str, FilterXObject *obj)
 FilterXExpr *
 _assert_assign_var(const char *var_name, FilterXExpr *value)
 {
-  FilterXExpr *control_variable = filterx_msg_variable_expr_new(var_name);
-  cr_assert(control_variable != NULL);
-
-  return filterx_assign_new(control_variable, value);
+  return filterx_assign_new(filterx_expr_ref(_get_test_var(var_name)), value);
 }
 
 void
@@ -83,11 +101,7 @@ _assert_set_test_variable(const char *var_name, FilterXExpr *expr)
 FilterXObject *
 _assert_get_test_variable(const char *var_name)
 {
-  FilterXExpr *control_variable = filterx_msg_variable_expr_new(var_name);
-  cr_assert(control_variable != NULL);
-  FilterXObject *result = init_and_eval_expr(control_variable);
-  filterx_expr_unref(control_variable);
-  return result;
+  return init_and_eval_expr(_get_test_var(var_name));
 }
 
 //// Actual tests
@@ -404,6 +418,16 @@ setup(void)
 {
   app_startup();
   init_libtest_filterx();
+
+  test_vars = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+  test_vars_owner = filterx_compound_expr_new_va(FALSE,
+                                                 _define_test_var("$control-value"),
+                                                 _define_test_var("$control-value3"),
+                                                 NULL);
+
+  test_layout = filterx_scope_variable_layout_new(test_vars_owner);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, test_layout));
+
   _assert_set_test_variable("$control-value", _string_to_filterXExpr("default"));
   _assert_set_test_variable("$control-value3", _string_to_filterXExpr("default3"));
 }
@@ -412,6 +436,9 @@ static void
 teardown(void)
 {
   scratch_buffers_explicit_gc();
+  filterx_expr_unref(test_vars_owner);
+  g_hash_table_destroy(test_vars);
+  filterx_scope_variable_layout_free(test_layout);
   deinit_libtest_filterx();
   app_shutdown();
 }

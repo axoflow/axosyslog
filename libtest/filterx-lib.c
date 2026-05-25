@@ -329,6 +329,19 @@ init_libtest_filterx(void)
 }
 
 void
+set_libtest_filterx_scope(FilterXScope *scope)
+{
+  FilterXScope *old_scope = filterx_env.scope;
+
+  filterx_scope_set_message(scope, filterx_env.msg);
+  filterx_env.context.scope = scope;
+  filterx_env.scope = scope;
+
+  if (old_scope)
+    filterx_scope_free(old_scope);
+}
+
+void
 deinit_libtest_filterx(void)
 {
   log_msg_unref(filterx_env.msg);

@@ -127,6 +127,26 @@ filterx_scope_variable_layout_new(FilterXExpr *root)
   return self;
 }
 
+FilterXScopeVariableLayout *
+filterx_scope_variable_layout_new_from_handles(FilterXVariableHandle *handles, gsize size)
+{
+  FilterXScopeVariableLayout *self = g_new0(FilterXScopeVariableLayout, 1);
+
+  self->num_variables = size;
+
+  if (self->num_variables == 0)
+    return self;
+
+  self->layout = g_new0(FilterXVariable, self->num_variables);
+
+  for (gsize i = 0; i < self->num_variables; i++)
+    filterx_variable_init_instance(&self->layout[i], FX_VAR_NONE, handles[i]);
+
+  qsort(self->layout, self->num_variables, sizeof(FilterXVariable), _compare_handles);
+
+  return self;
+}
+
 void
 filterx_scope_variable_layout_free(FilterXScopeVariableLayout *self)
 {

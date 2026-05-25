@@ -1658,7 +1658,7 @@ def test_vars(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == '{"$logmsg_variable":"foo","pipeline_level_variable":"baz","log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]]}'
+    assert file_true.read_log() == '{"log":{"body":"foobar","attributes":{"attribute":42}},"js_array":[1,2,3,[4,5,6]],"$logmsg_variable":"foo","pipeline_level_variable":"baz"}'
 
 
 def test_macro_caching(config, syslog_ng):

@@ -36,57 +36,76 @@
 
 Test(filterx_scope, test_scope_on_heap)
 {
-  FilterXScope *s = filterx_scope_new(NULL, NULL);
-  cr_assert_null(filterx_scope_lookup_variable(s, filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING), -1));
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
+  cr_assert_null(filterx_scope_lookup_variable(s, filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING), 0));
   filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
 }
 
 Test(filterx_scope, test_scope_stacking)
 {
-  FilterXScope *s = filterx_scope_new(NULL, NULL);
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
-  filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
+  filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var, 0);
 
-  FilterXScope *s2 = filterx_scope_new(s, NULL);
+  FilterXScope *s2 = filterx_scope_new(s, l);
 
-  cr_assert_not_null(filterx_scope_lookup_variable(s2, var, -1));
+  cr_assert_not_null(filterx_scope_lookup_variable(s2, var, 0));
 
   filterx_scope_free(s2);
   filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
 }
 
 Test(filterx_scope, test_cannot_register_variable_in_write_protected_scope, .signal=SIGABRT)
 {
-  FilterXScope *s = filterx_scope_new(NULL, NULL);
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
   filterx_scope_write_protect(s);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
-  filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
+  filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var, 0);
 
   filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
 }
 
 Test(filterx_scope, test_cannot_unset_variable_in_write_protected_scope, .signal=SIGABRT)
 {
-  FilterXScope *s = filterx_scope_new(NULL, NULL);
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
 
   FilterXVariableHandle v_handle = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
-  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle, 0);
 
   filterx_scope_write_protect(s);
 
   filterx_scope_unset_variable(s, v);
 
   filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
 }
 
 Test(filterx_scope, test_cannot_change_variable_in_write_protected_scope, .signal=SIGABRT)
 {
-  FilterXScope *s = filterx_scope_new(NULL, NULL);
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
 
   FilterXVariableHandle v_handle = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
-  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, v_handle, 0);
 
   filterx_scope_write_protect(s);
   FilterXObject *value = filterx_boolean_new(TRUE);
@@ -94,19 +113,23 @@ Test(filterx_scope, test_cannot_change_variable_in_write_protected_scope, .signa
   filterx_object_unref(value);
 
   filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
 }
 
 Test(filterx_scope, test_scope_sync)
 {
   LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
 
-  FilterXScope *s = filterx_scope_new(NULL, NULL);
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("$var", FX_VAR_MESSAGE_TIED)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
   LogMessage *msg = log_msg_new_empty();
 
   filterx_scope_set_message(s, msg);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("$var", FX_VAR_MESSAGE_TIED);
-  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_MESSAGE_TIED, var);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_MESSAGE_TIED, var, 0);
   FilterXObject *o = filterx_boolean_new(TRUE);
   filterx_scope_set_variable(s, v, &o, TRUE);
   filterx_object_unref(o);
@@ -119,12 +142,13 @@ Test(filterx_scope, test_scope_sync)
   cr_assert_eq(type, LM_VT_BOOLEAN);
   cr_assert_str_eq(value, "true");
 
-  cr_assert(filterx_scope_lookup_variable(s, var, -1));
-  log_msg_set_value_by_name(msg, "var", "newvalue", -1);
-  cr_assert_not(filterx_scope_lookup_variable(s, var, -1));
+  cr_assert(filterx_scope_lookup_variable(s, var, 0));
+  log_msg_set_value_by_name(msg, "var", "newvalue", 0);
+  cr_assert_not(filterx_scope_lookup_variable(s, var, 0));
 
   log_msg_unref(msg);
   filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
 }
 
 static gboolean
@@ -136,17 +160,20 @@ _assert_var_false(FilterXVariable *variable, gpointer user_data)
 
 Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
 {
-  FilterXScope *s = filterx_scope_new(NULL, NULL);
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
 
   FilterXVariableHandle var = filterx_map_varname_to_handle("var", FX_VAR_DECLARED_FLOATING);
-  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_DECLARED_FLOATING, var, 0);
   FilterXObject *o = filterx_boolean_new(TRUE);
   filterx_scope_set_variable(s, v, &o, TRUE);
   filterx_object_unref(o);
 
-  FilterXScope *s2 = filterx_scope_new(s, NULL);
+  FilterXScope *s2 = filterx_scope_new(s, l);
 
-  v = filterx_scope_register_variable(s2, FX_VAR_DECLARED_FLOATING, var);
+  v = filterx_scope_register_variable(s2, FX_VAR_DECLARED_FLOATING, var, 0);
   o = filterx_boolean_new(FALSE);
   filterx_scope_set_variable(s, v, &o, TRUE);
   filterx_object_unref(o);
@@ -155,6 +182,7 @@ Test(filterx_scope, test_scope_foreach_variable_with_parent_scope)
 
   filterx_scope_free(s2);
   filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
 }
 
 static void

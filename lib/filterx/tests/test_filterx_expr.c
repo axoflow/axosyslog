@@ -249,6 +249,9 @@ Test(filterx_expr, test_filterx_assign)
 
   FilterXExpr *assign = filterx_assign_new(result_var, filterx_literal_new(filterx_string_new("foobar", -1)));
 
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new(assign);
+  set_libtest_filterx_scope(filterx_scope_new(NULL, l));
+
   FilterXObject *res = init_and_eval_expr(assign);
   cr_assert_not_null(res);
   cr_assert(filterx_object_is_type(res, &FILTERX_TYPE_NAME(string)));
@@ -266,6 +269,8 @@ Test(filterx_expr, test_filterx_assign)
   filterx_object_unref(res);
   filterx_expr_unref(assign);
   filterx_object_unref(result_obj);
+
+  filterx_scope_variable_layout_free(l);
 }
 
 Test(filterx_expr, test_filterx_setattr)
