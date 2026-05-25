@@ -529,6 +529,26 @@ _init_labels(FilterXMetricsLabels *self, FilterXExpr *labels)
   return TRUE;
 }
 
+gboolean
+filterx_metrics_labels_walk_children(FilterXMetricsLabels *self, FilterXExpr *parent,
+                                     FilterXExprWalkFunc f, gpointer user_data)
+{
+  if (!filterx_expr_visit(parent, &self->expr, f, user_data))
+    return FALSE;
+
+  if (self->literal_labels)
+    {
+      for (guint i = 0; i < self->literal_labels->len; i++)
+        {
+          FilterXMetricsLabel *label = g_ptr_array_index(self->literal_labels, i);
+          if (!filterx_expr_visit(parent, &label->value.expr, f, user_data))
+            return FALSE;
+        }
+    }
+
+  return TRUE;
+}
+
 FilterXMetricsLabels *
 filterx_metrics_labels_new(FilterXExpr *labels)
 {
