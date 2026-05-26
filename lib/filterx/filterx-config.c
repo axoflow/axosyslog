@@ -91,7 +91,7 @@ filterx_config_init(ModuleConfig *s, GlobalConfig *cfg)
 #endif
 
   if (self->enable_jit == -1)
-    self->enable_jit = TRUE;
+    self->enable_jit = FALSE;
 
   if (self->enable_jit)
     self->jit = _create_jit(self->jit_debug_info);
