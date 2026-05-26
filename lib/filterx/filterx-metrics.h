@@ -38,4 +38,7 @@ gboolean filterx_metrics_init(FilterXMetrics *self, GlobalConfig *cfg);
 void filterx_metrics_deinit(FilterXMetrics *self, GlobalConfig *cfg);
 void filterx_metrics_free(FilterXMetrics *self);
 
+gboolean filterx_metrics_walk_children(FilterXMetrics *self, FilterXExpr *parent,
+                                       FilterXExprWalkFunc f, gpointer user_data);
+
 #endif

@@ -235,13 +235,11 @@ _update_metric_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
   FilterXFunctionUpdateMetric *self = (FilterXFunctionUpdateMetric *) s;
 
-  FilterXExpr **exprs[] = { &self->increment.expr };
+  if (!filterx_expr_visit(s, &self->increment.expr, f, user_data))
+    return FALSE;
 
-  for (gsize i = 0; i < G_N_ELEMENTS(exprs); i++)
-    {
-      if (!filterx_expr_visit(s, exprs[i], f, user_data))
-        return FALSE;
-    }
+  if (!filterx_metrics_walk_children(self->metrics, s, f, user_data))
+    return FALSE;
 
   return TRUE;
 }

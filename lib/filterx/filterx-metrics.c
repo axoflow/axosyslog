@@ -245,6 +245,19 @@ filterx_metrics_free(FilterXMetrics *self)
   g_free(self);
 }
 
+gboolean
+filterx_metrics_walk_children(FilterXMetrics *self, FilterXExpr *parent,
+                              FilterXExprWalkFunc f, gpointer user_data)
+{
+  if (!filterx_expr_visit(parent, &self->key.expr, f, user_data))
+    return FALSE;
+
+  if (!filterx_metrics_labels_walk_children(self->labels, parent, f, user_data))
+    return FALSE;
+
+  return TRUE;
+}
+
 FilterXMetrics *
 filterx_metrics_new(gint level, FilterXExpr *key, FilterXExpr *labels)
 {

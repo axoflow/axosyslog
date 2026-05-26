@@ -39,4 +39,7 @@ gboolean filterx_metrics_labels_format(FilterXMetricsLabels *self, DynMetricsSto
                                        StatsClusterLabel **labels, gsize *len);
 gboolean filterx_metrics_labels_is_const(FilterXMetricsLabels *self);
 
+gboolean filterx_metrics_labels_walk_children(FilterXMetricsLabels *self, FilterXExpr *parent,
+                                              FilterXExprWalkFunc f, gpointer user_data);
+
 #endif
