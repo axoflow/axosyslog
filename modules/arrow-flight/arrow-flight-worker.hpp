@@ -70,7 +70,7 @@ private:
   ArrowFlightDestWorker *super;
   arrow::flight::Location location;
   std::unique_ptr<arrow::flight::FlightClient> client;
-  GString *path_buf;
+  GString *buffer;
   std::vector<std::unique_ptr<arrow::ArrayBuilder>> builders;
 
   std::unique_ptr<arrow::flight::FlightStreamWriter> writer;

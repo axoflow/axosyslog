@@ -25,7 +25,6 @@
 
 #include "compat/cpp-start.h"
 #include "logthrdest/logthrdestdrv.h"
-#include "scratch-buffers.h"
 #include "messages.h"
 #include "logmsg/type-hinting.h"
 #include "template/templates.h"
@@ -50,12 +49,12 @@ struct _ArrowFlightDestWorker
 
 DestinationWorker::DestinationWorker(ArrowFlightDestWorker *s) : super(s)
 {
-  this->path_buf = g_string_new(NULL);
+  this->buffer = g_string_new(NULL);
 }
 
 DestinationWorker::~DestinationWorker()
 {
-  g_string_free(this->path_buf, TRUE);
+  g_string_free(this->buffer, TRUE);
 }
 
 DestinationDriver *
@@ -309,9 +308,6 @@ DestinationWorker::insert(LogMessage *msg)
   DestinationDriver *owner = this->get_owner();
   const auto &schema_fields = owner->get_schema_fields();
 
-  ScratchBuffersMarker m;
-  GString *buf = scratch_buffers_alloc_and_mark(&m);
-
   size_t row_bytes = 0;
 
   for (size_t i = 0; i < schema_fields.size(); i++)
@@ -333,9 +329,9 @@ DestinationWorker::insert(LogMessage *msg)
         }
       else
         {
-          log_template_format_value_and_type(field.value, msg, &opts, buf, &vtype);
-          val = buf->str;
-          val_len = (gssize) buf->len;
+          log_template_format_value_and_type(field.value, msg, &opts, this->buffer, &vtype);
+          val = this->buffer->str;
+          val_len = (gssize) this->buffer->len;
           null_value = (vtype == LM_VT_NULL);
         }
 
@@ -358,7 +354,6 @@ DestinationWorker::insert(LogMessage *msg)
                         evt_tag_str("field", field.name.c_str()),
                         evt_tag_str("error", null_status.ToString().c_str()),
                         log_pipe_location_tag(&this->super->super.owner->super.super.super));
-              scratch_buffers_reclaim_marked(m);
               return LTR_NOT_CONNECTED;
             }
         }
@@ -373,8 +368,6 @@ DestinationWorker::insert(LogMessage *msg)
 
   this->current_batch_bytes += row_bytes;
   log_threaded_dest_driver_insert_msg_length_stats(this->super->super.owner, row_bytes);
-
-  scratch_buffers_reclaim_marked(m);
 
   if (this->should_initiate_flush())
     return log_threaded_dest_worker_flush(&this->super->super, LTF_FLUSH_NORMAL);
@@ -402,8 +395,8 @@ DestinationWorker::format_path(LogMessage *msg)
   LogTemplateEvalOptions opts = {&this->get_owner()->get_template_options(), LTZ_SEND,
                                  this->super->super.seq_num, NULL, LM_VT_STRING
                                 };
-  log_template_format(path_template, msg, &opts, this->path_buf);
-  return this->path_buf->str;
+  log_template_format(path_template, msg, &opts, this->buffer);
+  return this->buffer->str;
 }
 
 bool
