@@ -27,7 +27,7 @@ from pathlib import Path
 from subprocess import Popen
 
 from axosyslog_light.common.blocking import wait_until_false
-from axosyslog_light.common.blocking import wait_until_true
+from axosyslog_light.common.blocking import wait_until_true_custom
 from axosyslog_light.syslog_ng.console_log_reader import ConsoleLogReader
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgExecutor
 from axosyslog_light.syslog_ng.syslog_ng_executor import SyslogNgStartParams
@@ -198,7 +198,7 @@ class SyslogNg(object):
                 self.__validate_crash_returncode(self._process.returncode)
                 self.__error_handling("syslog-ng is not running")
             return s._syslog_ng_ctl.is_control_socket_alive()
-        return wait_until_true(is_alive, self)
+        return wait_until_true_custom(is_alive, (self,), timeout=120)
 
     def __wait_for_start(self) -> None:
         # wait for start and check start result
