@@ -1,0 +1,72 @@
+if (NOT DEFINED ENABLE_ARROW_FLIGHT OR ENABLE_ARROW_FLIGHT)
+  set(ARROW_FLIGHT_DEPS_FOUND FALSE)
+  if (NOT "cxx_std_20" IN_LIST CMAKE_CXX_COMPILE_FEATURES)
+    message(STATUS "Apache Arrow Flight requires C++20, which is not supported by the compiler")
+  else ()
+    # An earlier transitive find_package() (e.g. via grpc) may import an older
+    # zstdConfig that only defines zstd::libzstd_shared and zstd::libzstd_static.
+    # Arrow's FindzstdAlt re-invokes find_package(zstd), which on newer zstd
+    # additionally expects zstd::libzstd and aborts because some, but not all
+    # targets in the export set are already present. Pre-aliasing the missing
+    # umbrella target makes that probe hit its all-defined early return.
+    if (NOT TARGET zstd::libzstd AND TARGET zstd::libzstd_shared)
+      add_library(zstd::libzstd ALIAS zstd::libzstd_shared)
+    elseif (NOT TARGET zstd::libzstd AND TARGET zstd::libzstd_static)
+      add_library(zstd::libzstd ALIAS zstd::libzstd_static)
+    endif ()
+
+    find_package(Arrow QUIET CONFIG)
+    if (Arrow_FOUND)
+      find_package(ArrowFlight QUIET CONFIG)
+      if (ArrowFlight_FOUND)
+        set(ARROW_FLIGHT_DEPS_FOUND TRUE)
+      else ()
+        message(STATUS "Apache Arrow Flight library (libarrow-flight-dev) not found")
+      endif ()
+    else ()
+      message(STATUS "Apache Arrow library (libarrow-dev >= 23.0.0) not found")
+    endif ()
+  endif ()
+endif ()
+
+module_switch(ENABLE_ARROW_FLIGHT "Enable Apache Arrow Flight module" ARROW_FLIGHT_DEPS_FOUND)
+
+if (ENABLE_ARROW_FLIGHT AND NOT ARROW_FLIGHT_DEPS_FOUND)
+  message(FATAL_ERROR "Arrow Flight enabled but required libraries not found (need libarrow >= 23.0.0, libarrow-flight >= 23.0.0, and a C++20-capable compiler)")
+endif ()
+
+if (NOT ENABLE_ARROW_FLIGHT)
+  return()
+endif ()
+
+set(ARROW_FLIGHT_CPP_SOURCES
+  arrow-flight-dest.h
+  arrow-flight-dest.hpp
+  arrow-flight-dest.cpp
+  arrow-flight-worker.h
+  arrow-flight-worker.hpp
+  arrow-flight-worker.cpp
+)
+
+set(ARROW_FLIGHT_SOURCES
+  arrow-flight-parser.h
+  arrow-flight-plugin.c
+  arrow-flight-parser.c
+)
+
+add_module(
+  TARGET arrow-flight-cpp
+  SOURCES ${ARROW_FLIGHT_CPP_SOURCES}
+  DEPENDS ArrowFlight::arrow_flight_shared
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}
+  LIBRARY_TYPE STATIC
+)
+target_compile_features(arrow-flight-cpp PRIVATE cxx_std_20)
+
+add_module(
+  TARGET arrow-flight
+  GRAMMAR arrow-flight-grammar
+  DEPENDS arrow-flight-cpp
+  INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}
+  SOURCES ${ARROW_FLIGHT_SOURCES}
+)

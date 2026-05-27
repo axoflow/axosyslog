@@ -13,6 +13,7 @@ arch="all"
 license="GPL-3.0-or-later"
 options="!check !strip" # unit tests require https://github.com/Snaipe/Criterion with deps
 makedepends="
+	apache-arrow-dev
 	bison
 	bpftool
 	clang

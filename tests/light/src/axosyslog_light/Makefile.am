@@ -13,6 +13,8 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/common/session_data.py \
 	tests/light/src/axosyslog_light/common/tests/__init__.py \
 	tests/light/src/axosyslog_light/common/tests/test_blocking.py \
+	tests/light/src/axosyslog_light/driver_io/arrow_flight/__init__.py \
+	tests/light/src/axosyslog_light/driver_io/arrow_flight/arrow_flight_io.py \
 	tests/light/src/axosyslog_light/driver_io/file/file_io.py \
 	tests/light/src/axosyslog_light/driver_io/file/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/file/tests/__init__.py \
@@ -51,6 +53,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/renderer.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statement_group.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/arrow_flight_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/destination_driver.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/example_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/file_destination.py \

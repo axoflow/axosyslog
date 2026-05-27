@@ -27,5 +27,6 @@ brew "rabbitmq-c"
 brew "riemann-client"
 brew "libpaho-mqtt"
 brew "grpc"
+brew "apache-arrow"
 
 brew "criterion"
