@@ -75,7 +75,8 @@ private:
   std::list<std::unique_ptr<::grpc::ServerCompletionQueue>> cqs;
 };
 
-class SourceWorker : public syslogng::grpc::SourceWorker
+class SourceWorker :
+  public syslogng::grpc::SourceWorker
 {
 public:
   SourceWorker(GrpcSourceWorker *s, std::unique_ptr<::grpc::ServerCompletionQueue> queue);

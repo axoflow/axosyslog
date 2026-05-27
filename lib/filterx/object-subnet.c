@@ -280,25 +280,25 @@ _subnet_is_string_member_of(FilterXSubnet *self, FilterXObject *member)
   switch (self->family)
     {
     case AF_INET:
-      {
-        struct in_addr addr;
-        if (g_inet_aton(str, &addr) == 1)
-          return filterx_boolean_new((addr.s_addr & self->ipv4.netmask.s_addr) == (self->ipv4.address.s_addr));
-        break;
-      }
+    {
+      struct in_addr addr;
+      if (g_inet_aton(str, &addr) == 1)
+        return filterx_boolean_new((addr.s_addr & self->ipv4.netmask.s_addr) == (self->ipv4.address.s_addr));
+      break;
+    }
     case AF_INET6:
-      {
-        struct in6_addr addr;
+    {
+      struct in6_addr addr;
 
-        if (inet_pton(AF_INET6, str, &addr) == 1)
-          {
-            _apply_ipv6_mask(self, &addr);
-            gboolean address_in_range = memcmp(addr.s6_addr, self->ipv6.address.s6_addr, sizeof(addr.s6_addr)) == 0;
+      if (inet_pton(AF_INET6, str, &addr) == 1)
+        {
+          _apply_ipv6_mask(self, &addr);
+          gboolean address_in_range = memcmp(addr.s6_addr, self->ipv6.address.s6_addr, sizeof(addr.s6_addr)) == 0;
 
-            return filterx_boolean_new(address_in_range);
-          }
-        break;
-      }
+          return filterx_boolean_new(address_in_range);
+        }
+      break;
+    }
     default:
       g_assert_not_reached();
     }
@@ -312,23 +312,23 @@ _subnet_is_ip_member_of(FilterXSubnet *self, FilterXObject *member)
   switch (self->family)
     {
     case AF_INET:
-      {
-        const struct in_addr *addr = filterx_ip_get_v4(member);
-        if (addr)
-          return filterx_boolean_new((addr->s_addr & self->ipv4.netmask.s_addr) == self->ipv4.address.s_addr);
-        break;
-      }
+    {
+      const struct in_addr *addr = filterx_ip_get_v4(member);
+      if (addr)
+        return filterx_boolean_new((addr->s_addr & self->ipv4.netmask.s_addr) == self->ipv4.address.s_addr);
+      break;
+    }
     case AF_INET6:
-      {
-        const struct in6_addr *addr = filterx_ip_get_v6(member);
-        if (addr)
-          {
-            struct in6_addr masked = *addr;
-            _apply_ipv6_mask(self, &masked);
-            return filterx_boolean_new(memcmp(masked.s6_addr, self->ipv6.address.s6_addr, sizeof(masked.s6_addr)) == 0);
-          }
-        break;
-      }
+    {
+      const struct in6_addr *addr = filterx_ip_get_v6(member);
+      if (addr)
+        {
+          struct in6_addr masked = *addr;
+          _apply_ipv6_mask(self, &masked);
+          return filterx_boolean_new(memcmp(masked.s6_addr, self->ipv6.address.s6_addr, sizeof(masked.s6_addr)) == 0);
+        }
+      break;
+    }
     default:
       g_assert_not_reached();
     }

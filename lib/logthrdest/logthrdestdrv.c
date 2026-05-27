@@ -1219,7 +1219,7 @@ _calculate_partition_key_bucket(LogThreadedDestDriver *self, LogMessage *msg, Lo
       if (!scan_positive_int(&p, &p_len, p_len, &buckets))
         {
           msg_warning_once("WARNING: value for worker-partition-buckets() is not an integer, partition bucketing is disabled",
-                            evt_tag_str("value", buckets_string));
+                           evt_tag_str("value", buckets_string));
           buckets = 0;
         }
     }
@@ -1304,7 +1304,7 @@ _get_total_rate_and_update_partition_stats(LogThreadedDestDriver *self, Partitio
   gdouble total_rate = 0;
 
   GHashTableIter iter;
-  gpointer k,v;
+  gpointer k, v;
   g_hash_table_iter_init(&iter, self->partition_stats.partitions);
   while (g_hash_table_iter_next(&iter, &k, &v))
     {
@@ -1313,7 +1313,7 @@ _get_total_rate_and_update_partition_stats(LogThreadedDestDriver *self, Partitio
       if (p != current_partition && _remove_if_partition_expired(p, &iter, now))
         continue;
 
-       /* update all the other partitions' rate */
+      /* update all the other partitions' rate */
       if (p != current_partition)
         {
           gdouble dt = _get_time_diff_sec(&p->last_update, now);
@@ -1349,7 +1349,7 @@ _rescale_worker_partitions(LogThreadedDestDriver *self, Partition *current_parti
 
   Partition *part;
   GHashTableIter iter;
-  gpointer k,v;
+  gpointer k, v;
   g_hash_table_iter_init(&iter, self->partition_stats.partitions);
   while (g_hash_table_iter_next(&iter, &k, &v))
     {

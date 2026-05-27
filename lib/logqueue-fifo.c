@@ -366,7 +366,7 @@ log_queue_fifo_push_tail(LogQueue *s, LogMessage *msg, const LogPathOptions *pat
            */
 
           gint64 input_queue_age_msec =
-              unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
+            unix_time_diff_in_msec(&msg->timestamps[LM_TS_RECVD], &self->input_queues[thread_index].first_message_recvd);
 
           flush_input_queue = input_queue_age_msec > 100;
         }
@@ -547,15 +547,15 @@ log_queue_fifo_peek_backlog(LogQueue *s, guint n)
     return NULL;
 
   iv_list_for_each(lh, &self->backlog_queue.items)
-    {
-      LogMessageQueueNode *node;
-      if (pos == n)
-        {
-          node = iv_list_entry(lh, LogMessageQueueNode, list);
-          return log_msg_ref(node->msg);
-        }
-      pos++;
-    }
+  {
+    LogMessageQueueNode *node;
+    if (pos == n)
+      {
+        node = iv_list_entry(lh, LogMessageQueueNode, list);
+        return log_msg_ref(node->msg);
+      }
+    pos++;
+  }
   g_assert_not_reached();
 }
 

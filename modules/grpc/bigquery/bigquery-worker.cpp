@@ -271,7 +271,8 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
       goto error;
     }
 
-  if (this->append_rows_response->has_error() && this->append_rows_response->error().code() != ::grpc::StatusCode::ALREADY_EXISTS)
+  if (this->append_rows_response->has_error()
+      && this->append_rows_response->error().code() != ::grpc::StatusCode::ALREADY_EXISTS)
     {
       msg_error("Error in BigQuery batch",
                 evt_tag_str("error", this->append_rows_response->error().message().c_str()),
@@ -332,7 +333,7 @@ DestinationWorker::construct_write_stream()
 
   create_write_stream_request.set_parent(this->table);
   create_write_stream_request.mutable_write_stream()->set_type(
-    google::cloud::bigquery::storage::v1::WriteStream_Type_COMMITTED);
+                               google::cloud::bigquery::storage::v1::WriteStream_Type_COMMITTED);
 
   stub->CreateWriteStream(&ctx, create_write_stream_request, &wstream);
 

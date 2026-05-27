@@ -165,7 +165,8 @@ _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
 
   FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
-  FilterXIRValue args[] = {
+  FilterXIRValue args[] =
+  {
     variable,
     fx_jit_emit_const_ptr(jit, self->attr),
     fx_jit_emit_const_ptr(jit, self),

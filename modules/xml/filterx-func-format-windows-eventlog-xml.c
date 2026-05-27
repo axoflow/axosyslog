@@ -135,7 +135,8 @@ _insert_event_id_qualifier(const char *key_str, const char *value_str, GString *
 }
 
 static void
-_append_leaf_windows_event(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len, GString *buffer)
+_append_leaf_windows_event(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len,
+                           GString *buffer)
 {
   if (strn_eq_strz(key_str, "EventIDQualifiers", key_str_len))
     _insert_event_id_qualifier(key_str, value_str, buffer);

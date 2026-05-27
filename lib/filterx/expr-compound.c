@@ -318,19 +318,19 @@ static inline FilterXIRValue
 _emit_process_compound_result(FilterXJIT *jit, FilterXCompoundExpr *self, FilterXIRValue success, FilterXIRValue result)
 {
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  return fx_jit_emit_extern_call(jit, "fx_jit_process_compound_result", ffi->ptr_ty,
-                                 (LLVMTypeRef[]){ ffi->ptr_ty, ffi->i32_ty, ffi->ptr_ty },
-                                 (FilterXIRValue[]){ fx_jit_emit_const_ptr(jit, self), success, result }, 3);
+  LLVMTypeRef param_tys[] = { ffi->ptr_ty, ffi->i32_ty, ffi->ptr_ty };
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), success, result };
+  return fx_jit_emit_extern_call(jit, "fx_jit_process_compound_result", ffi->ptr_ty, param_tys, args, 3);
 }
 
 static inline FilterXIRValue
-_emit_process_expr_result(FilterXJIT *jit, FilterXIRValue result, FilterXExpr *child, FilterXIRValue eval_ctx, FilterXIRValue result_slot)
+_emit_process_expr_result(FilterXJIT *jit, FilterXIRValue result, FilterXExpr *child, FilterXIRValue eval_ctx,
+                          FilterXIRValue result_slot)
 {
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  return fx_jit_emit_extern_call(jit, "fx_jit_process_expr_result", ffi->i32_ty,
-                                (LLVMTypeRef[]){ ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty },
-                                (FilterXIRValue[]){ result, fx_jit_emit_const_ptr(jit, child),
-                                                    eval_ctx, result_slot }, 4);
+  LLVMTypeRef param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  FilterXIRValue args[] = { result, fx_jit_emit_const_ptr(jit, child), eval_ctx, result_slot };
+  return fx_jit_emit_extern_call(jit, "fx_jit_process_expr_result", ffi->i32_ty, param_tys, args, 4);
 }
 
 static FilterXIRValue

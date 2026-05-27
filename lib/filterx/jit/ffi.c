@@ -111,7 +111,7 @@ filterx_jit_get_ffi(FilterXJIT *self)
 
 static inline FilterXJITFFICall
 _declare_func(LLVMModuleRef mod, const gchar *name, LLVMTypeRef ret_ty,
-         LLVMTypeRef *param_tys, unsigned nparams)
+              LLVMTypeRef *param_tys, unsigned nparams)
 {
   FilterXJITFFICall c;
   c.ty = LLVMFunctionType(ret_ty, param_tys, nparams, FALSE);
@@ -130,28 +130,28 @@ filterx_jit_ffi_init(FilterXJIT *jit)
   jit->ffi.i64_ty = LLVMInt64TypeInContext(ctx);
   LLVMTypeRef v = jit->ffi.void_ty = LLVMVoidTypeInContext(ctx);
 
-  jit->ffi.expr_eval = _declare_func(mod, "fx_jit_expr_eval", ptr, (LLVMTypeRef[]){ ptr }, 1);
-  jit->ffi.expr_eval_typed = _declare_func(mod, "fx_jit_expr_eval_typed", ptr, (LLVMTypeRef[]){ ptr }, 1);
-  jit->ffi.expr_make_typed_object = _declare_func(mod, "fx_jit_expr_make_typed_object", ptr,
-                                                  (LLVMTypeRef[]){ ptr, ptr }, 2);
+  LLVMTypeRef p1[] = { ptr };
+  LLVMTypeRef p2[] = { ptr, ptr };
+  LLVMTypeRef p3[] = { ptr, ptr, ptr };
+  LLVMTypeRef i1[] = { i32 };
 
-  jit->ffi.object_ref = _declare_func(mod, "fx_jit_object_ref", ptr, (LLVMTypeRef[]){ ptr }, 1);
-  jit->ffi.object_unref = _declare_func(mod, "fx_jit_object_unref", v, (LLVMTypeRef[]){ ptr }, 1);
-  jit->ffi.object_cow_fork2 = _declare_func(mod, "fx_jit_object_cow_fork2", ptr, (LLVMTypeRef[]){ ptr }, 1);
-  jit->ffi.object_truthy = _declare_func(mod, "fx_jit_object_truthy", i32, (LLVMTypeRef[]){ ptr }, 1);
-  jit->ffi.boolean_new = _declare_func(mod, "fx_jit_boolean_new", ptr, (LLVMTypeRef[]){ i32 }, 1);
+  jit->ffi.expr_eval = _declare_func(mod, "fx_jit_expr_eval", ptr, p1, 1);
+  jit->ffi.expr_eval_typed = _declare_func(mod, "fx_jit_expr_eval_typed", ptr, p1, 1);
+  jit->ffi.expr_make_typed_object = _declare_func(mod, "fx_jit_expr_make_typed_object", ptr, p2, 2);
 
-  jit->ffi.eval_context_make_writable = _declare_func(mod, "fx_jit_eval_context_make_writable", v,
-                                                      (LLVMTypeRef[]){ ptr }, 1);
+  jit->ffi.object_ref = _declare_func(mod, "fx_jit_object_ref", ptr, p1, 1);
+  jit->ffi.object_unref = _declare_func(mod, "fx_jit_object_unref", v, p1, 1);
+  jit->ffi.object_cow_fork2 = _declare_func(mod, "fx_jit_object_cow_fork2", ptr, p1, 1);
+  jit->ffi.object_truthy = _declare_func(mod, "fx_jit_object_truthy", i32, p1, 1);
+  jit->ffi.boolean_new = _declare_func(mod, "fx_jit_boolean_new", ptr, i1, 1);
 
-  jit->ffi.eval_push_error = _declare_func(mod, "filterx_eval_push_error", v,
-                                           (LLVMTypeRef[]){ ptr, ptr, ptr }, 3);
-  jit->ffi.eval_push_falsy_error = _declare_func(mod, "filterx_eval_push_falsy_error", v,
-                                                 (LLVMTypeRef[]){ ptr, ptr, ptr }, 3);
-  jit->ffi.eval_push_error_static_info = _declare_func(mod, "filterx_eval_push_error_static_info", v,
-                                                       (LLVMTypeRef[]){ ptr, ptr, ptr }, 3);
+  jit->ffi.eval_context_make_writable = _declare_func(mod, "fx_jit_eval_context_make_writable", v, p1, 1);
 
-  jit->ffi.eval_push_error_info_printf.ty = LLVMFunctionType(v, (LLVMTypeRef[]){ ptr, ptr, ptr }, 3, TRUE);
+  jit->ffi.eval_push_error = _declare_func(mod, "filterx_eval_push_error", v, p3, 3);
+  jit->ffi.eval_push_falsy_error = _declare_func(mod, "filterx_eval_push_falsy_error", v, p3, 3);
+  jit->ffi.eval_push_error_static_info = _declare_func(mod, "filterx_eval_push_error_static_info", v, p3, 3);
+
+  jit->ffi.eval_push_error_info_printf.ty = LLVMFunctionType(v, p3, 3, TRUE);
   jit->ffi.eval_push_error_info_printf.fn = LLVMAddFunction(mod, "filterx_eval_push_error_info_printf",
                                                             jit->ffi.eval_push_error_info_printf.ty);
 }
@@ -218,7 +218,8 @@ FilterXIRValue
 fx_jit_emit_boolean_new(FilterXJIT *jit, gboolean value)
 {
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  return _emit_call(jit, jit->ffi.boolean_new, (FilterXIRValue[]){ LLVMConstInt(ffi->i32_ty, value, FALSE) }, 1);
+  FilterXIRValue args[] = { LLVMConstInt(ffi->i32_ty, value, FALSE) };
+  return _emit_call(jit, jit->ffi.boolean_new, args, 1);
 }
 
 void

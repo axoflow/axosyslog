@@ -120,7 +120,7 @@ _format_json(FilterXObject *value, GString *json)
   return TRUE;
 }
 
- static FilterXObject *
+static FilterXObject *
 _add(FilterXObject *self, FilterXObject *other)
 {
   FilterXObject *cloned = filterx_object_copy(self);

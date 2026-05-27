@@ -30,8 +30,8 @@ typedef struct _FilterXListObject
 {
   FILTERX_MUTABLE_OBJECT_HEADER
   {
-      FilterXSequence super;
-      GPtrArray *array;
+    FilterXSequence super;
+    GPtrArray *array;
   }
   FILTERX_MUTABLE_OBJECT_TAILER;
 } FilterXListObject;

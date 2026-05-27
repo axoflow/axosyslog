@@ -40,11 +40,11 @@ typedef struct _FilterXObjectMetricsLabels
 {
   FILTERX_MUTABLE_OBJECT_HEADER
   {
-      FilterXMapping super;
-      GArray *labels;
-      GPtrArray *objects;
-      gboolean sorted;
-      gboolean deduped;
+    FilterXMapping super;
+    GArray *labels;
+    GPtrArray *objects;
+    gboolean sorted;
+    gboolean deduped;
   }
   FILTERX_MUTABLE_OBJECT_TAILER;
 } FilterXObjectMetricsLabels;

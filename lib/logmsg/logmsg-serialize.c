@@ -545,10 +545,10 @@ log_msg_deserialize(SerializeArchive *sa)
     }
 
   msg->allocated_bytes = sizeof(LogMessage) +
-     msg->alloc_sdata * sizeof(msg->sdata[0]) +
-     g_sockaddr_len(msg->saddr) + g_sockaddr_len(msg->daddr) +
-     (sizeof(msg->tags[0]) * msg->num_tags) +
-     (sizeof(msg->nodes[0]) * msg->num_nodes) +
-     (msg->payload ? nv_table_get_size(msg->payload) : 0);
+                         msg->alloc_sdata * sizeof(msg->sdata[0]) +
+                         g_sockaddr_len(msg->saddr) + g_sockaddr_len(msg->daddr) +
+                         (sizeof(msg->tags[0]) * msg->num_tags) +
+                         (sizeof(msg->nodes[0]) * msg->num_nodes) +
+                         (msg->payload ? nv_table_get_size(msg->payload) : 0);
   return msg;
 }

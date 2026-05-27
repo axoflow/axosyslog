@@ -833,10 +833,10 @@ Test(kv_scanner, malformed_quotes_do_not_create_false_key_value_pairs)
   /* Key should only appear once with correct value, not extracted from malformed quoted value */
   _EXPECT_KV_PAIRS(
     "id=123 key=original data=\"/path/key=\"malformed\"\" next=value",
-    { "id", "123" },
-    { "key", "original" },
-    { "data", "\"/path/key=\"malformed\"\" " },
-    { "next", "value" }
+  { "id", "123" },
+  { "key", "original" },
+  { "data", "\"/path/key=\"malformed\"\" " },
+  { "next", "value" }
   );
 }
 
@@ -978,8 +978,8 @@ _provide_cases_for_performance_test_parse_long_msg(void)
     },
     {
       .input = "IN=em1 OUT= MAC=a2:be:d2:ab:11:af:e2:f2:00:00 SRC=192.168.2.115 DST=192.168.1.23 "
-      "LEN=52 TOS=0x00 PREC=0x00 TTL=127 ID=9434 DF PROTO=TCP SPT=58428 DPT=443 WINDOW=8192 "
-      "RES=0x00 SYN URGP=0",
+               "LEN=52 TOS=0x00 PREC=0x00 TTL=127 ID=9434 DF PROTO=TCP SPT=58428 DPT=443 WINDOW=8192 "
+               "RES=0x00 SYN URGP=0",
       .expected = INIT_KVCONTAINER(
       {"IN", "em1"},
       {"OUT", ""},

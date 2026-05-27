@@ -59,8 +59,8 @@ filterx_stash_reference_free(FilterXObject *s)
 /* we are deriving from null to satisfy asserts in filterx_type_init(), this
  * object is never surfaced to user code */
 FILTERX_DEFINE_TYPE(stash_reference, FILTERX_TYPE_NAME(null),
-  .free_fn = filterx_stash_reference_free,
-);
+                    .free_fn = filterx_stash_reference_free,
+                   );
 
 /*
  * FilterXStashedObject

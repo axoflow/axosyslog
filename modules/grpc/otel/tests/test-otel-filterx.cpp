@@ -89,7 +89,7 @@ _assert_filterx_repeated_kv_attribute(FilterXObject *obj, const std::string &att
   cr_assert(filterx_object_is_type(filterx_otel_kvlist, &FILTERX_TYPE_NAME(otel_kvlist)));
 
   const google::protobuf::RepeatedPtrField<KeyValue> &kvlist = ((FilterXOtelKVList *)
-      filterx_otel_kvlist)->cpp->get_value();
+    filterx_otel_kvlist)->cpp->get_value();
   _assert_repeated_kvs(kvlist, expected_repeated_kv);
 
   filterx_object_unref(filterx_otel_kvlist);

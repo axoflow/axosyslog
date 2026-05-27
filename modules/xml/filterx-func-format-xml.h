@@ -32,7 +32,8 @@ typedef struct FilterXFunctionFormatXML_
   FilterXFunction super;
   FilterXExpr *input;
   gboolean (*append_inner_dict)(FilterXObject *key, FilterXObject *dict, gpointer user_data);
-  void (*append_leaf)(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len, GString *buffer);
+  void (*append_leaf)(const char *key_str, gsize key_str_len, const char *value_str, gsize value_str_len,
+                      GString *buffer);
 } FilterXFunctionFormatXML;
 
 FilterXExpr *filterx_function_format_xml_new(FilterXFunctionArgs *args, GError **error);

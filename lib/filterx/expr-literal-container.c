@@ -217,7 +217,8 @@ _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *typ
 /* Literal dict objects */
 
 static inline gboolean
-_literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject **pkey, FilterXObject **pvalue, gboolean early_eval)
+_literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject **pkey,
+                        FilterXObject **pvalue, gboolean early_eval)
 {
   FilterXObject *key = NULL;
   FilterXObject *value = NULL;
@@ -253,7 +254,8 @@ exit:
 }
 
 static inline gboolean
-_literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref, FilterXObject *dict, FilterXLiteralElement *elem, FilterXObject *key, FilterXObject *value, gboolean early_eval)
+_literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref, FilterXObject *dict,
+                         FilterXLiteralElement *elem, FilterXObject *key, FilterXObject *value, gboolean early_eval)
 {
   gboolean success = FALSE;
   if (elem->nullv)
@@ -297,7 +299,8 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref,
         }
 
       if (!success)
-        filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
+        filterx_eval_push_error_static_info("Failed create literal container", &self->super,
+                                            "Failed to set value in container");
       filterx_object_unref(value);
 
     }
@@ -412,7 +415,8 @@ filterx_literal_dict_new(GList *elements)
 /* Literal list objects */
 
 static inline gboolean
-_literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject *result, gboolean early_eval)
+_literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *elem, FilterXObject *result,
+                        gboolean early_eval)
 {
   FilterXObject *key = NULL;
   FilterXObject *value = NULL;
@@ -430,7 +434,8 @@ _literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
 
   if (!success)
     {
-      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to set value in container");
+      filterx_eval_push_error_static_info("Failed create literal container", &self->super,
+                                          "Failed to set value in container");
       goto exit;
     }
 exit:

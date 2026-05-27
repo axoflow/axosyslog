@@ -288,40 +288,40 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
                       max_tokens, repr_len);
           break;
         case JSMN_ERROR_INVAL:
-          {
-            const gint excerpt_len = 20;
-            gint prologue_start = MAX((gint) parser.pos - excerpt_len, 0);
-            if (prologue_start < 0)
-              prologue_start = 0;
-            gint prologue_len = excerpt_len;
-            if (prologue_start + prologue_len > parser.pos)
-              prologue_len = parser.pos - prologue_start;
+        {
+          const gint excerpt_len = 20;
+          gint prologue_start = MAX((gint) parser.pos - excerpt_len, 0);
+          if (prologue_start < 0)
+            prologue_start = 0;
+          gint prologue_len = excerpt_len;
+          if (prologue_start + prologue_len > parser.pos)
+            prologue_len = parser.pos - prologue_start;
 
-            gint epilogue_len = excerpt_len;
-            if (parser.pos + epilogue_len + 1 > repr_len)
-              epilogue_len = repr_len - parser.pos - 1;
-            g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_INVALID,
-                        "JSON parse error at %d, excerpt: %.*s>%c<%.*s",
-                        parser.pos,
-                        prologue_len, &repr[prologue_start],
-                        repr[parser.pos],
-                        epilogue_len, &repr[parser.pos+1]);
-            break;
-          }
+          gint epilogue_len = excerpt_len;
+          if (parser.pos + epilogue_len + 1 > repr_len)
+            epilogue_len = repr_len - parser.pos - 1;
+          g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_INVALID,
+                      "JSON parse error at %d, excerpt: %.*s>%c<%.*s",
+                      parser.pos,
+                      prologue_len, &repr[prologue_start],
+                      repr[parser.pos],
+                      epilogue_len, &repr[parser.pos+1]);
+          break;
+        }
         case JSMN_ERROR_PART:
-          {
-            const gint excerpt_len = 20;
-            gint prologue_start = (gint) parser.pos - excerpt_len;
-            if (prologue_start < 0)
-              prologue_start = 0;
-            gint prologue_len = excerpt_len;
-            if (prologue_start + prologue_len > parser.pos)
-              prologue_len = parser.pos - prologue_start;
-            g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_INCOMPLETE,
-                        "JSON text incomplete, excerpt: %.*s",
-                        prologue_len, &repr[prologue_start]);
-            break;
-          }
+        {
+          const gint excerpt_len = 20;
+          gint prologue_start = (gint) parser.pos - excerpt_len;
+          if (prologue_start < 0)
+            prologue_start = 0;
+          gint prologue_len = excerpt_len;
+          if (prologue_start + prologue_len > parser.pos)
+            prologue_len = parser.pos - prologue_start;
+          g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_INCOMPLETE,
+                      "JSON text incomplete, excerpt: %.*s",
+                      prologue_len, &repr[prologue_start]);
+          break;
+        }
         default:
           g_assert_not_reached();
         }
@@ -337,7 +337,8 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
     }
   else if (tokens != jsmn_tokens + r)
     {
-      g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_STORE_ERROR, "Expected a single JSON object, multiple top-level objects found");
+      g_set_error(error, FILTERX_JSON_ERROR, FILTERX_JSON_ERROR_STORE_ERROR,
+                  "Expected a single JSON object, multiple top-level objects found");
       filterx_object_unref(res);
       res = NULL;
     }
