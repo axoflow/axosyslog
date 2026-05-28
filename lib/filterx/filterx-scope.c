@@ -25,6 +25,12 @@
 #include "filterx/object-null.h"
 #include "scratch-buffers.h"
 
+typedef enum _FilterXVariablePullMode
+{
+  FX_VAR_PULL_COPY,
+  FX_VAR_PULL_MOVE,
+} FilterXVariablePullMode;
+
 static gboolean
 _search_variable(FilterXScope *self, FilterXVariableHandle handle, FilterXVariable **v_slot, gint *v_index)
 {
@@ -79,14 +85,23 @@ _validate_variable(FilterXScope *self, FilterXVariable *variable)
 }
 
 static FilterXVariable *
-_pull_variable_from_parent_scope(FilterXScope *self, FilterXVariable *parent_variable, FilterXVariable *output)
+_pull_variable_from_parent_scope(FilterXScope *self, FilterXVariablePullMode pull_mode,
+                                 FilterXVariable *parent_variable, FilterXVariable *output)
 {
   *output = *parent_variable;
   self->variables_used++;
   if (output->value)
-    output->value = filterx_object_copy(output->value);
+    {
+      if (pull_mode == FX_VAR_PULL_COPY)
+        output->value = filterx_object_copy(output->value);
+      else if (pull_mode == FX_VAR_PULL_MOVE)
+        {
+          /* move variable without creating refs/copies from a scope that won't be ever used */
+          parent_variable->value = NULL;
+        }
+    }
 
-  msg_trace("Filterx scope, cloning scope variable",
+  msg_trace("Filterx scope, pulling scope variable",
             evt_tag_str("variable", log_msg_get_value_name((filterx_variable_get_nv_handle(output)), NULL)));
   return output;
 }
@@ -96,21 +111,23 @@ _search_and_pull_from_parent_scopes(FilterXScope *self, FilterXVariableHandle ha
 {
   FilterXVariable *v;
   gint v_index;
+  gboolean crossed_fork_point = FALSE;
 
   for (FilterXScope *scope = self->parent_scope; scope; scope = scope->parent_scope)
     {
+      if (filterx_scope_is_fork_point(scope))
+        crossed_fork_point = TRUE;
+
       if (_search_variable(scope, handle, &v, &v_index))
         {
           /* NOTE: we validate against @self */
           if (_validate_variable(self, v))
             {
-              if (self->write_protected)
-                return v;
-              else
-                return _pull_variable_from_parent_scope(self, v, output);
+              FilterXVariablePullMode pull_mode = crossed_fork_point ? FX_VAR_PULL_COPY : FX_VAR_PULL_MOVE;
+              return _pull_variable_from_parent_scope(self, pull_mode, v, output);
             }
           else
-            msg_trace("Filterx scope, not cloning stale scope variable",
+            msg_trace("Filterx scope, not pulling stale scope variable",
                       evt_tag_str("variable", log_msg_get_value_name((filterx_variable_get_nv_handle(v)), NULL)));
 
           return NULL;

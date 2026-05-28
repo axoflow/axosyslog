@@ -42,7 +42,7 @@
 typedef struct _FilterXScope FilterXScope;
 struct _FilterXScope
 {
-  guint16 write_protected:1, dirty:1, syncable:1;
+  guint16 write_protected:1, dirty:1, syncable:1, fork_point:1;
   FilterXGenCounter generation;
   LogMessage *msg;
   FilterXScope *parent_scope;
@@ -143,8 +143,19 @@ filterx_scope_is_write_protected(FilterXScope *self)
 static inline void
 filterx_scope_make_writable(FilterXScope *self)
 {
-  g_assert(self->variables_len == 0);
   self->write_protected = FALSE;
+}
+
+static inline void
+filterx_scope_mark_fork_point(FilterXScope *self)
+{
+  self->fork_point = TRUE;
+}
+
+static inline gboolean
+filterx_scope_is_fork_point(FilterXScope *self)
+{
+  return self->fork_point;
 }
 
 #endif
