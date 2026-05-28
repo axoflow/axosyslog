@@ -181,10 +181,15 @@ nv_table_get_next_size(NVTable *self, gsize additional_space)
     return self->size;
 
   gsize new_size = self->size + (additional_space - avail_size);
-  if (new_size > 4096)
+  if (new_size > 8192)
     {
       /* align to page boundary */
       new_size = (new_size + 0xFFF) & ~0xFFF;
+    }
+  else if (new_size > 4096)
+    {
+      /* align to page boundary */
+      new_size = (new_size + 0x7FF) & ~0x7FF;
     }
   else if (new_size > 1024)
     {
@@ -406,39 +411,37 @@ _make_entry_direct(NVHandle handle, NVEntry *entry, NVIndexEntry *index_entry, g
 {
   NVTable *self = (NVTable *) (((gpointer *) user_data)[0]);
   NVHandle ref_handle = GPOINTER_TO_UINT(((gpointer *) user_data)[1]);
+  guint32 *memory_needed = (((gpointer *) user_data)[2]);
 
   if (entry->indirect && entry->vindirect.handle == ref_handle)
     {
       const gchar *value;
       gssize value_len;
+      guint32 mem = 0;
 
       value = nv_table_resolve_indirect(self, entry, &value_len);
-      if (!nv_table_add_value(self, handle, entry->vindirect.name, entry->name_len, value, value_len, entry->type, NULL))
+      if (!nv_table_add_value(self, handle, entry->vindirect.name, entry->name_len, value, value_len, entry->type, NULL, &mem))
         {
           /* nvtable full, but we can't realloc it ourselves,
            * propagate this back as a failure of
            * nv_table_add_value() */
-
-          return TRUE;
+          *memory_needed += mem;
         }
     }
   return FALSE;
 }
 
 static inline gboolean
-nv_table_break_references_to_entry(NVTable *self, NVHandle handle, NVEntry *entry)
+nv_table_break_references_to_entry(NVTable *self, NVHandle handle, NVEntry *entry, guint32 *memory_needed)
 {
   if (G_UNLIKELY(entry && !entry->indirect && entry->referenced))
     {
-      gpointer data[2] = { self, GUINT_TO_POINTER((glong) handle) };
+      guint32 mem = 0;
+      gpointer data[3] = { self, GUINT_TO_POINTER((glong) handle), &mem };
 
-      if (nv_table_foreach_entry(self, _make_entry_direct, data))
-        {
-          /* we had to stop iteration, which means that we were unable
-           * to allocate enough space for making indirect entries
-           * direct */
-          return FALSE;
-        }
+      nv_table_foreach_entry(self, _make_entry_direct, data);
+      *memory_needed += mem;
+      return mem == 0;
     }
   return TRUE;
 }
@@ -488,19 +491,26 @@ nv_table_add_value(NVTable *self, NVHandle handle,
                    const gchar *name, gsize name_len,
                    const gchar *value, gsize value_len,
                    NVType type,
-                   gboolean *new_entry)
+                   gboolean *new_entry,
+                   guint32 *memory_needed)
 {
   NVEntry *entry;
   guint32 ofs;
   NVIndexEntry *index_entry, *index_slot;
+  guint32 mem = 0;
 
   if (value_len > NV_TABLE_MAX_BYTES)
     value_len = NV_TABLE_MAX_BYTES;
   if (new_entry)
     *new_entry = FALSE;
+
+  mem += NV_TABLE_BOUND(NV_ENTRY_DIRECT_SIZE(name_len, value_len)) + sizeof(NVIndexEntry);
   entry = nv_table_get_entry(self, handle, &index_entry, &index_slot);
-  if (!nv_table_break_references_to_entry(self, handle, entry))
-    return FALSE;
+  if (!nv_table_break_references_to_entry(self, handle, entry, &mem))
+    {
+      *memory_needed += mem;
+      return FALSE;
+    }
 
   if (entry && entry->alloc_len >= NV_ENTRY_DIRECT_SIZE(entry->name_len, value_len))
     {
@@ -513,7 +523,10 @@ nv_table_add_value(NVTable *self, NVHandle handle,
   /* check if there's enough free space: size of the struct plus the
    * size needed for a dynamic table slot */
   if (!_alloc_index_entry(self, handle, &index_entry, index_slot))
-    return FALSE;
+    {
+      *memory_needed += mem;
+      return FALSE;
+    }
 
   if (nv_table_is_handle_static(self, handle))
     name_len = 0;
@@ -521,6 +534,7 @@ nv_table_add_value(NVTable *self, NVHandle handle,
   entry = nv_table_alloc_value(self, NV_ENTRY_DIRECT_SIZE(name_len, value_len));
   if (G_UNLIKELY(!entry))
     {
+      *memory_needed += mem;
       return FALSE;
     }
   entry->type = type;
@@ -541,16 +555,20 @@ nv_table_add_value(NVTable *self, NVHandle handle,
 }
 
 gboolean
-nv_table_unset_value(NVTable *self, NVHandle handle)
+nv_table_unset_value(NVTable *self, NVHandle handle, guint32 *memory_needed)
 {
   NVIndexEntry *index_entry;
   NVEntry *entry = nv_table_get_entry(self, handle, &index_entry, NULL);
+  guint32 mem = 0;
 
   if (!entry)
     return TRUE;
 
-  if (!nv_table_break_references_to_entry(self, handle, entry))
-    return FALSE;
+  if (!nv_table_break_references_to_entry(self, handle, entry, &mem))
+    {
+      *memory_needed += mem;
+      return FALSE;
+    }
 
   entry->unset = TRUE;
 
@@ -600,7 +618,8 @@ nv_table_set_indirect_entry(NVTable *self, NVHandle handle, NVEntry *entry, cons
 
 static gboolean
 nv_table_copy_referenced_value(NVTable *self, NVEntry *ref_entry, NVHandle handle, const gchar *name,
-                               gsize name_len, NVReferencedSlice *ref_slice, NVType type, gboolean *new_entry)
+                               gsize name_len, NVReferencedSlice *ref_slice, NVType type,
+                               gboolean *new_entry, guint32 *memory_needed)
 {
 
   gssize ref_length;
@@ -616,28 +635,29 @@ nv_table_copy_referenced_value(NVTable *self, NVEntry *ref_entry, NVHandle handl
       ref_slice->len = MIN(ref_slice->ofs + ref_slice->len, ref_length) - ref_slice->ofs;
     }
 
-  return nv_table_add_value(self, handle, name, name_len, ref_value + ref_slice->ofs, ref_slice->len, type, new_entry);
+  return nv_table_add_value(self, handle, name, name_len, ref_value + ref_slice->ofs, ref_slice->len, type, new_entry, memory_needed);
 }
 
 gboolean
 nv_table_add_value_indirect(NVTable *self, NVHandle handle, const gchar *name, gsize name_len,
-                            NVReferencedSlice *referenced_slice, NVType type, gboolean *new_entry)
+                            NVReferencedSlice *referenced_slice, NVType type, gboolean *new_entry, guint32 *memory_needed)
 {
   NVEntry *entry, *ref_entry;
   NVIndexEntry *index_entry, *index_slot;
-  guint32 ofs;
+  guint32 ofs, mem = 0;
 
   if (new_entry)
     *new_entry = FALSE;
-  ref_entry = nv_table_get_entry(self, referenced_slice->handle, NULL, NULL);
 
+  ref_entry = nv_table_get_entry(self, referenced_slice->handle, NULL, NULL);
   if ((ref_entry && ref_entry->indirect) || handle == referenced_slice->handle)
     {
       /* NOTE: uh-oh, the to-be-referenced value is already an indirect
        * reference, this is not supported, copy the stuff */
-      return nv_table_copy_referenced_value(self, ref_entry, handle, name, name_len, referenced_slice, type, new_entry);
+      return nv_table_copy_referenced_value(self, ref_entry, handle, name, name_len, referenced_slice, type, new_entry, memory_needed);
     }
 
+  mem += NV_TABLE_BOUND(NV_ENTRY_INDIRECT_SIZE(name_len)) + sizeof(NVIndexEntry);
   entry = nv_table_get_entry(self, handle, &index_entry, &index_slot);
   if ((!entry && !new_entry && referenced_slice->len == 0) || !ref_entry)
     {
@@ -649,8 +669,11 @@ nv_table_add_value_indirect(NVTable *self, NVHandle handle, const gchar *name, g
       return TRUE;
     }
 
-  if (!nv_table_break_references_to_entry(self, handle, entry))
-    return FALSE;
+  if (!nv_table_break_references_to_entry(self, handle, entry, &mem))
+    {
+      *memory_needed += mem;
+      return FALSE;
+    }
 
   if (entry && (entry->alloc_len >= NV_ENTRY_INDIRECT_SIZE(name_len)))
     {
@@ -665,10 +688,14 @@ nv_table_add_value_indirect(NVTable *self, NVHandle handle, const gchar *name, g
     }
 
   if (!_alloc_index_entry(self, handle, &index_entry, index_slot))
-    return FALSE;
+    {
+      *memory_needed += mem;
+      return FALSE;
+    }
   entry = nv_table_alloc_value(self, NV_ENTRY_INDIRECT_SIZE(name_len));
   if (!entry)
     {
+      *memory_needed += mem;
       return FALSE;
     }
 
@@ -780,11 +807,11 @@ nv_table_init_borrowed(gpointer space, gsize space_len, gint num_static_entries)
 
 /* returns TRUE if successfully realloced, FALSE means that we're unable to grow */
 gboolean
-nv_table_realloc(NVTable **pself, gsize additional_space)
+nv_table_realloc(NVTable **pself, guint32 memory_needed)
 {
   NVTable *self = *pself;
   gsize old_size = self->size;
-  gsize new_size = nv_table_get_next_size(self, additional_space + sizeof(NVEntry));
+  gsize new_size = nv_table_get_next_size(self, memory_needed);
 
   if (new_size == old_size)
     return FALSE;
@@ -843,12 +870,12 @@ nv_table_unref(NVTable *self)
  *
  **/
 NVTable *
-nv_table_clone(NVTable *self, gsize additional_space)
+nv_table_clone(NVTable *self, guint32 memory_needed)
 {
   NVTable *new;
   gsize new_size;
 
-  new_size = nv_table_get_next_size(self, additional_space + sizeof(NVEntry));
+  new_size = nv_table_get_next_size(self, NV_TABLE_BOUND(memory_needed) + sizeof(NVEntry) + sizeof(NVIndexEntry));
   new = g_malloc(new_size);
   memcpy(new, self, sizeof(NVTable) + self->num_static_entries * sizeof(self->static_entries[0]) + self->index_size *
          sizeof(NVIndexEntry));
@@ -895,10 +922,11 @@ _compact_foreach_entry(NVHandle handle, NVEntry *entry, NVIndexEntry *index_entr
     {
       value = nv_table_resolve_direct(old, entry, &value_len);
 
+      guint32 memory_needed = 0;
       gboolean value_successfully_added =
         nv_table_add_value(new, handle,
                            name, name_len, value, value_len,
-                           entry->type, NULL);
+                           entry->type, NULL, &memory_needed);
       g_assert(value_successfully_added);
     }
   else
@@ -910,11 +938,12 @@ _compact_foreach_entry(NVHandle handle, NVEntry *entry, NVIndexEntry *index_entr
         .len = entry->vindirect.len
       };
 
+      guint32 memory_needed = 0;
       gboolean value_successfully_added =
         nv_table_add_value_indirect(new, handle,
                                     name, name_len,
                                     &referenced_slice,
-                                    entry->type, NULL);
+                                    entry->type, NULL, &memory_needed);
       g_assert(value_successfully_added);
     }
 

@@ -552,11 +552,11 @@ log_msg_rename_value(LogMessage *self, NVHandle from, NVHandle to)
 }
 
 static inline void
-_unshare_payload_if_needed(LogMessage *self, gsize extra_space)
+_unshare_payload_if_needed(LogMessage *self, guint32 memory_needed)
 {
   if (!log_msg_chk_flag(self, LF_STATE_OWN_PAYLOAD))
     {
-      self->payload = nv_table_clone(self->payload, extra_space);
+      self->payload = nv_table_clone(self->payload, memory_needed);
       log_msg_set_flag(self, LF_STATE_OWN_PAYLOAD);
       log_msg_update_allocation(self, nv_table_get_size(self->payload));
     }
@@ -567,18 +567,29 @@ _grow_payload(LogMessage *self, const gchar *operation, gsize extra_space)
 {
   /* error allocating string in payload, reallocate */
   guint32 old_size = nv_table_get_size(self->payload);
+  guint32 avail_size = nv_table_get_available(self->payload);
   if (!nv_table_realloc(&self->payload, extra_space))
     {
       /* can't grow the payload, it has reached the maximum size */
       msg_info("Cannot grow message payload, maximum size has been reached",
                evt_tag_str("operation", operation),
                evt_tag_int("size", old_size),
+               evt_tag_int("avail_size", avail_size),
                evt_tag_int("extra_space", extra_space),
                evt_tag_int("maximum_payload", NV_TABLE_MAX_BYTES),
                evt_tag_printf("msg", "%p", self));
       return FALSE;
     }
   guint32 new_size = nv_table_get_size(self->payload);
+  msg_trace("Message payload reallocated",
+           evt_tag_str("operation", operation),
+           evt_tag_int("old_size", old_size),
+           evt_tag_int("old_avail_size", avail_size),
+           evt_tag_int("new_size", new_size),
+           evt_tag_int("avail_size", nv_table_get_available(self->payload)),
+           evt_tag_int("extra_space", extra_space),
+           evt_tag_int("maximum_payload", NV_TABLE_MAX_BYTES),
+           evt_tag_printf("msg", "%p", self));
   log_msg_update_allocation(self, (new_size - old_size));
   stats_counter_inc(count_payload_reallocs);
   return TRUE;
@@ -619,9 +630,10 @@ log_msg_set_value_with_type(LogMessage *self, NVHandle handle,
   /* we need a loop here as a single realloc may not be enough. Might help
    * if we pass how much bytes we need though. */
 
-  while (!nv_table_add_value(self->payload, handle, name, name_len, value, value_len, type, &new_entry))
+  guint32 memory_needed = 0;
+  while (!nv_table_add_value(self->payload, handle, name, name_len, value, value_len, type, &new_entry, &memory_needed))
     {
-      if (!_grow_payload(self, "set_value", name_len + value_len + 2))
+      if (!_grow_payload(self, "set_value", memory_needed))
         break;
     }
 
@@ -654,9 +666,10 @@ log_msg_unset_value(LogMessage *self, NVHandle handle)
 
   _unshare_payload_if_needed(self, 0);
 
-  while (!nv_table_unset_value(self->payload, handle))
+  guint32 memory_needed = 0;
+  while (!nv_table_unset_value(self->payload, handle, &memory_needed))
     {
-      if (!_grow_payload(self, "unset_value", 0))
+      if (!_grow_payload(self, "unset_value", memory_needed))
         break;
     }
 
@@ -710,9 +723,10 @@ log_msg_set_value_indirect_with_type(LogMessage *self, NVHandle handle,
     .len = len,
   };
 
-  while (!nv_table_add_value_indirect(self->payload, handle, name, name_len, &referenced_slice, type, &new_entry))
+  guint32 memory_needed = 0;
+  while (!nv_table_add_value_indirect(self->payload, handle, name, name_len, &referenced_slice, type, &new_entry, &memory_needed))
     {
-      if (!_grow_payload(self, "set_value_indirect", name_len + 1))
+      if (!_grow_payload(self, "set_value_indirect", memory_needed))
         break;
     }
 
