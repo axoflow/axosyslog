@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <openssl/crypto.h>
+#include <unistd.h> //-- fsync + close for macOS
 
 #include "messages.h"
 #include "slog.h"
