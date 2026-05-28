@@ -335,9 +335,9 @@ app_transform_generate_config(AppObjectGenerator *s, GlobalConfig *cfg, GString 
   else
     {
       g_string_append(result, "\n"
-                      "    else {\n"
-                      "        filterx { false; };\n"
-                      "    };\n");
+                              "    else {\n"
+                              "        filterx { false; };\n"
+                              "    };\n");
     }
 
 exit:

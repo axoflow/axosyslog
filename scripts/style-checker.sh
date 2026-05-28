@@ -49,8 +49,8 @@ function astyle_c_check
 
 function astyle_c_format
 {
-    astyle --options="$root_dir/.astylerc" --exclude="$exclude_dir" --exclude="modules/cloud-auth/jwt-cpp" "$root_dir/*.h" "$root_dir/*.c" "$root_dir/*.cpp" "$root_dir/*.hpp" | grep "Formatted"
-    exit 0
+    astyle --options="$root_dir/.astylerc" --exclude="$exclude_dir" --exclude="modules/cloud-auth/jwt-cpp" --exclude="lib/filterx/jsmn.h" "$root_dir/*.h" "$root_dir/*.c" "$root_dir/*.cpp" "$root_dir/*.hpp" | grep "Formatted"
+    exit ${PIPESTATUS[0]}
 }
 
 function print_help

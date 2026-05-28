@@ -323,7 +323,8 @@ _format_syslog_5424_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_da
 {
   FilterXFunctionFormatSyslog5424 *self = (FilterXFunctionFormatSyslog5424 *) s;
 
-  FilterXExpr **exprs[] = {
+  FilterXExpr **exprs[] =
+  {
     &self->pri_expr,
     &self->timestamp_expr,
     &self->host_expr,
@@ -348,7 +349,7 @@ _format_syslog_5424_extract_add_octet_count_argument(FilterXFunctionFormatSyslog
 {
   gboolean exists, eval_error;
   gboolean add_octet_count = filterx_function_args_get_named_literal_boolean(args, "add_octet_count", &exists,
-                                                                             &eval_error);
+                             &eval_error);
 
   if (eval_error)
     {

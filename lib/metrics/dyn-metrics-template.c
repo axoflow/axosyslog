@@ -34,7 +34,8 @@ dyn_metrics_template_set_level(DynMetricsTemplate *self, gint level)
 }
 
 void
-dyn_metrics_template_add_label_template(DynMetricsTemplate *self, const gchar *label, gssize label_len, LogTemplate *value_template)
+dyn_metrics_template_add_label_template(DynMetricsTemplate *self, const gchar *label, gssize label_len,
+                                        LogTemplate *value_template)
 {
   self->label_templates = g_list_append(self->label_templates, label_template_new(label, label_len, value_template));
 }

@@ -446,7 +446,8 @@ _register_aggregated_stats(LogScheduler *self)
 {
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("parallelize", self->id),
-                                 stats_cluster_label("measurement_point", "input") };
+                                 stats_cluster_label("measurement_point", "input")
+                               };
   stats_cluster_hist_key_set(&sc_key, METRIC(event_processing_latency_seconds), labels, G_N_ELEMENTS(labels));
   stats_cluster_key_add_unit(&sc_key, SCU_MILLISECONDS);
 
@@ -476,7 +477,8 @@ _unregister_aggregated_stats(LogScheduler *self)
 {
   StatsClusterKey sc_key;
   StatsClusterLabel labels[] = { stats_cluster_label("parallelize", self->id),
-                                 stats_cluster_label("measurement_point", "input") };
+                                 stats_cluster_label("measurement_point", "input")
+                               };
   stats_cluster_hist_key_set(&sc_key, METRIC(event_processing_latency_seconds), labels, G_N_ELEMENTS(labels));
   stats_cluster_key_add_unit(&sc_key, SCU_MILLISECONDS);
 

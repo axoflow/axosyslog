@@ -88,7 +88,8 @@ FilterXIRValue filterx_jit_ir_get_current_block(FilterXJIT *self);
 FilterXIRSequence filterx_jit_ir_create_sequence(FilterXJIT *self, const gchar *seq_name, FilterXIRValue block);
 void filterx_jit_ir_set_insert_point_to_sequence_tail(FilterXJIT *self, FilterXIRSequence sequence);
 void filterx_jit_ir_add_sequence_to_block(FilterXJIT *self, FilterXIRSequence seq, FilterXIRValue block);
-FilterXIRSequence filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, const gchar *seq_name, FilterXIRValue block);
+FilterXIRSequence filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, const gchar *seq_name,
+                                                           FilterXIRValue block);
 
 void filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column);
 

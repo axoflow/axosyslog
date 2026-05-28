@@ -37,7 +37,8 @@ _extract_offending_request(HttpResponseSignalData *data)
 Test(http_adapters, test_splunk_adapter_extract_offending_message)
 {
   HttpAdapter *sa = splunk_adapter_new();
-  HttpResponseSignalData data = {
+  HttpResponseSignalData data =
+  {
     .http_code = 400,
     .batch_size = 4,
     .request_body = g_string_new("foo1\nfoo2\nfoo3\nfoo4\n"),
@@ -61,7 +62,8 @@ Test(http_adapters, test_splunk_adapter_extract_offending_message)
 Test(http_adapters, test_splunk_adapter_request_is_short)
 {
   HttpAdapter *sa = splunk_adapter_new();
-  HttpResponseSignalData data = {
+  HttpResponseSignalData data =
+  {
     .http_code = 400,
     .batch_size = 4,
     /* request_body only has 3 entries */
@@ -83,7 +85,8 @@ Test(http_adapters, test_splunk_adapter_request_is_short)
 Test(http_adapters, test_splunk_adapter_request_is_even_shorter)
 {
   HttpAdapter *sa = splunk_adapter_new();
-  HttpResponseSignalData data = {
+  HttpResponseSignalData data =
+  {
     .http_code = 400,
     .batch_size = 5,
     /* request_body only has 3 entries */

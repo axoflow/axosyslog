@@ -203,7 +203,8 @@ struct _FilterXObject
    *     flags             -- to be used by descendant types
    *
    */
-  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1, flags:5;
+  guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1,
+        flags:5;
   volatile guint32 hash;
   FilterXType *type;
 };

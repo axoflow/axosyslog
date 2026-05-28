@@ -147,7 +147,7 @@ _acquire_queue(LogDestDriver *dd, const gchar *persist_name, gint stats_level,
     queue = cfg_persist_config_fetch(cfg, persist_name);
 
   if (queue && (!log_queue_has_type(queue, log_queue_disk_get_type()) ||
-      !log_queue_disk_has_compatible_options((LogQueueDisk *)queue, &self->options)))
+                !log_queue_disk_has_compatible_options((LogQueueDisk *)queue, &self->options)))
     {
       log_queue_unref(queue);
       queue = NULL;

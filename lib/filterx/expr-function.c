@@ -228,7 +228,8 @@ _simple_function_compile(FilterXExpr *s, FilterXJIT *jit)
       args_ptr = LLVMConstNull(ffi->ptr_ty);
     }
 
-  FilterXIRValue call_args[] = {
+  FilterXIRValue call_args[] =
+  {
     fx_jit_emit_const_ptr(jit, self->function_proto),
     fx_jit_emit_const_ptr(jit, s),
     args_ptr,

@@ -119,10 +119,10 @@ Test(filterx_func_digest, sha512_string)
 
   cr_assert_not_null(res);
   assert_object_str_equals(res,
-                            "f7fbba6e0636f890e56fbbf3283e524c"
-                            "6fa3204ae298382d624741d0dc663832"
-                            "6e282c41be5e4254d8820772c5518a2c"
-                            "5a8c0c7f7eda19594a7eb539453e1ed7");
+                           "f7fbba6e0636f890e56fbbf3283e524c"
+                           "6fa3204ae298382d624741d0dc663832"
+                           "6e282c41be5e4254d8820772c5518a2c"
+                           "5a8c0c7f7eda19594a7eb539453e1ed7");
 
   filterx_object_unref(res);
   filterx_expr_unref(fn);

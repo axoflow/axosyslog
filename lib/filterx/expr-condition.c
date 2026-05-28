@@ -198,9 +198,9 @@ static inline FilterXIRValue
 _emit_condition_is_truthy(FilterXJIT *jit, FilterXConditional *self, FilterXIRValue condition_value)
 {
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
-  return fx_jit_emit_extern_call(jit, "fx_jit_condition_is_truthy", ffi->i32_ty,
-                                 (LLVMTypeRef[]){ ffi->ptr_ty, ffi->ptr_ty },
-                                 (FilterXIRValue[]){ fx_jit_emit_const_ptr(jit, self), condition_value }, 2);
+  LLVMTypeRef param_tys[] = { ffi->ptr_ty, ffi->ptr_ty };
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, self), condition_value };
+  return fx_jit_emit_extern_call(jit, "fx_jit_condition_is_truthy", ffi->i32_ty, param_tys, args, 2);
 }
 
 static FilterXIRValue

@@ -48,7 +48,8 @@ typedef struct _LogSchedulerPartition
   MainLoopIOWorkerJob io_job;
   LogPipe *front_pipe;
   gsize log_fetch_limit;
-  struct {
+  struct
+  {
     StatsClusterKey assigned_events_total_key;
     StatsClusterKey processed_events_total_key;
     StatsCounterItem *assigned_events_total;

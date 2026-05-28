@@ -40,7 +40,7 @@ typedef struct FilterXArithmeticOperator_
 /* consumes operand objects */
 static gboolean
 _extract_operands_into_generic_numbers(FilterXObject *lhs_object, FilterXObject *rhs_object,
-                 GenericNumber *lhs_number, GenericNumber *rhs_number, FilterXExpr *expr)
+                                       GenericNumber *lhs_number, GenericNumber *rhs_number, FilterXExpr *expr)
 {
   gboolean ok = FALSE;
 

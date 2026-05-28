@@ -739,8 +739,10 @@ _fetch_and_process_proxy_header(LogTransportHAProxy *self, LogTransportAuxData *
       gchar buf1[MAX_SOCKADDR_STRING], buf2[MAX_SOCKADDR_STRING];
       msg_debug("PROXY protocol header parsed successfully",
                 evt_tag_int("version", self->proxy_header_version),
-                evt_tag_str("peer-addr", aux->peer_addr ? g_sockaddr_format(aux->peer_addr, buf1, sizeof(buf1), GSA_ADDRESS_PORT) : "n/a"),
-                evt_tag_str("local-addr", aux->local_addr ? g_sockaddr_format(aux->local_addr, buf2, sizeof(buf2), GSA_ADDRESS_PORT) : "n/a"),
+                evt_tag_str("peer-addr", aux->peer_addr ? g_sockaddr_format(aux->peer_addr, buf1, sizeof(buf1),
+                            GSA_ADDRESS_PORT) : "n/a"),
+                evt_tag_str("local-addr", aux->local_addr ? g_sockaddr_format(aux->local_addr, buf2, sizeof(buf2),
+                            GSA_ADDRESS_PORT) : "n/a"),
                 evt_tag_int("health-check", self->info.unknown));
 
       return STATUS_SUCCESS;

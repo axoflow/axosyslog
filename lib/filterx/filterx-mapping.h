@@ -41,7 +41,8 @@ gboolean filterx_mapping_keys(FilterXObject *s, FilterXObject **keys);
 FILTERX_DECLARE_TYPE(mapping);
 
 static inline gboolean
-filterx_mapping_normalize_key_as_string(FilterXObject *key, const gchar **key_string, gsize *key_len, const gchar **error)
+filterx_mapping_normalize_key_as_string(FilterXObject *key, const gchar **key_string, gsize *key_len,
+                                        const gchar **error)
 {
   if (!key)
     {

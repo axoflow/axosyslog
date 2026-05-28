@@ -385,8 +385,8 @@ _cap_supported(const gchar *cap_text, cap_value_t *cap_value)
       if (debug_flag)
         {
           fprintf (stderr, "%s seems to be supported by libcap, but "
-                   "the kernel does not appear to recognize it. Falling back "
-                   "to cap_sys_admin!\n", cap_text);
+                           "the kernel does not appear to recognize it. Falling back "
+                           "to cap_sys_admin!\n", cap_text);
         }
       return FALSE;
       break;

@@ -474,9 +474,9 @@ _map_arrow_status_to_log_threaded_result(const arrow::Status &status)
 
 temporary_error:
   msg_info("Arrow Flight server responded with a temporary error status code, retrying after time-reopen() seconds",
-            evt_tag_int("error_code", int(status.code())),
-            evt_tag_str("error_message", status.message().c_str()),
-            evt_tag_str("error_details", status.detail()->ToString().c_str()));
+           evt_tag_int("error_code", int(status.code())),
+           evt_tag_str("error_message", status.message().c_str()),
+           evt_tag_str("error_details", status.detail()->ToString().c_str()));
   return LTR_NOT_CONNECTED;
 
 permanent_error:

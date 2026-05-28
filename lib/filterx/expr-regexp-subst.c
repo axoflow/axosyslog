@@ -267,8 +267,8 @@ _init_subst_pattern(FilterXFuncRegexpSubst *self, GlobalConfig *cfg)
     }
 
   pcre2_code_8 *compiled_pattern = filterx_regexp_compile_pattern(pattern, pattern_len,
-                                                                  check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT),
-                                                                  _create_compile_opts(self->flags));
+                                   check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_JIT),
+                                   _create_compile_opts(self->flags));
   if (!compiled_pattern)
     {
       filterx_eval_push_error_static_info("Failed to compile regexp pattern", &self->super.super,
