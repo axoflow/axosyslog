@@ -119,6 +119,8 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
         }
 
       g_option_context_free(ctx);
+      munlock(state->key, KEY_LENGTH);
+      munlock(state->aggMAC, CMAC_LENGTH);
       return FALSE;
     }
 
@@ -129,6 +131,8 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
                   SLOG_ERROR_PREFIX
                   ": Template parsing failed. Invalid number of arguments. Usage: $(slog --key-file FILE --mac-file FILE $RAWMSG)\\n");
       g_option_context_free(ctx);
+      munlock(state->key, KEY_LENGTH);
+      munlock(state->aggMAC, CMAC_LENGTH);
       return FALSE;
     }
 
@@ -140,6 +144,8 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
       g_set_error(error, LOG_TEMPLATE_ERROR, LOG_TEMPLATE_ERROR_COMPILE,
                   SLOG_ERROR_PREFIX ": Template parsing failed. Invalid or missing key file");
       g_option_context_free(ctx);
+      munlock(state->key, KEY_LENGTH);
+      munlock(state->aggMAC, CMAC_LENGTH);
       return FALSE;
     }
 
@@ -149,6 +155,8 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
       g_set_error(error, LOG_TEMPLATE_ERROR, LOG_TEMPLATE_ERROR_COMPILE,
                   SLOG_ERROR_PREFIX ": Template parsing failed. Invalid or missing MAC file");
       g_option_context_free(ctx);
+      munlock(state->key, KEY_LENGTH);
+      munlock(state->aggMAC, CMAC_LENGTH);
       return FALSE;
     }
 
@@ -156,6 +164,8 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
     {
       state->badKey = TRUE;
       g_option_context_free(ctx);
+      munlock(state->key, KEY_LENGTH);
+      munlock(state->aggMAC, CMAC_LENGTH);
       return FALSE;
     }
 
@@ -363,11 +373,17 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
       state->badKey = TRUE;
       msg_error(SLOG_ERROR_PREFIX,
                 evt_tag_str("Reason", "Template parsing failed, key file not found or invalid. Reverting to clear text logging!"));
+      munlock(state->key, KEY_LENGTH);
+      munlock(state->aggMAC, CMAC_LENGTH);
       return TRUE;
+
     }
 
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "Key successfully loaded"));
-
+  OPENSSL_cleanse(key, sizeof key);
+  OPENSSL_cleanse(mac, sizeof mac);
+  munlock(state->key, KEY_LENGTH);
+  munlock(state->aggMAC, CMAC_LENGTH);
   return TRUE;
 }
 
@@ -433,8 +449,11 @@ tf_slog_func_free_state(gpointer s)
 {
   TFSlogState *state = (TFSlogState *) s;
 
-  free(state->keypath);
-  free(state->macpath);
+  g_free(state->keypath);
+  state->keypath = NULL;
+
+  g_free(state->macpath);
+  state->macpath = NULL;
 
   tf_simple_func_free_state((gpointer)&state->super);
 }

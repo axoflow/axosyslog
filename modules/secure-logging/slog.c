@@ -2098,10 +2098,14 @@ gboolean validFileNameArg(const gchar *option_name, const gchar *value, gpointer
   if (!isValid)
     {
       *error = g_error_new(G_FILE_ERROR, G_OPTION_ERROR_FAILED, "Invalid path or non existing regular file: %s", value);
+      g_string_free(currentValue, TRUE);
+    }
+  else
+    {
+      g_string_free(currentValue, FALSE); //-- caller has to call g_free
     }
 
   g_string_free(currentOption, TRUE);
-  g_string_free(currentValue, FALSE);
   g_string_free(longOption, TRUE);
   g_string_free(shortOption, TRUE);
 
@@ -2167,10 +2171,14 @@ gboolean validFileNameArgCheckDirOnly(const gchar *option_name, const gchar *val
   if (!isValid)
     {
       *error = g_error_new(G_FILE_ERROR, G_OPTION_ERROR_FAILED, "Invalid path or non existing regular file: %s", value);
+      g_string_free(currentValue, TRUE);
+    }
+  else
+    {
+      g_string_free(currentValue, FALSE); //-- caller has to call g_free
     }
 
   g_string_free(currentOption, TRUE);
-  g_string_free(currentValue, FALSE);
   g_string_free(longOption, TRUE);
   g_string_free(shortOption, TRUE);
 
