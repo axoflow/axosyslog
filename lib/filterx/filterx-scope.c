@@ -163,7 +163,6 @@ FilterXVariable *
 filterx_scope_register_variable(FilterXScope *self, FilterXVariableType variable_type, FilterXVariableHandle handle,
                                 gint scope_var_idx)
 {
-  g_assert(self->write_protected == FALSE);
   g_assert(scope_var_idx >= 0 && scope_var_idx < self->variables_size);
 
   FilterXVariable *v = &self->variables[scope_var_idx];

@@ -82,15 +82,6 @@ _process_expr_result(FilterXExpr *expr, FilterXObject *result)
 static gboolean
 _eval_expr(FilterXExpr *expr, FilterXObject **result)
 {
-  /* NOTE: this is feature envy and should be implemented within
-   * filterx_expr_eval(), however that function does not depend on the
-   * FilterXEvalContext layer and introducing that dependency would make the
-   * whole dependency chain circular.
-   */
-
-  if (filterx_expr_has_effect(expr, FXE_WRITE))
-    filterx_eval_context_make_writable(NULL);
-
   *result = filterx_expr_eval(expr);
 
   if (!(*result))
@@ -374,9 +365,6 @@ _compound_compile(FilterXExpr *s, FilterXJIT *jit)
       if (child->lloc)
         filterx_jit_ir_set_source_location(jit, child->lloc->name ? : "<filterx>",
                                            child->lloc->first_line, child->lloc->first_column);
-
-      if (filterx_expr_has_effect(child, FXE_WRITE))
-        fx_jit_emit_eval_context_make_writable(jit, eval_ctx);
 
       FilterXIRValue result = filterx_expr_compile_or_eval(child, jit);
       FilterXIRValue action = _emit_process_expr_result(jit, result, child, eval_ctx, result_slot);

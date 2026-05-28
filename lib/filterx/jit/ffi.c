@@ -86,13 +86,6 @@ fx_jit_object_truthy(FilterXObject *self)
 }
 
 __attribute__((used))
-void
-fx_jit_eval_context_make_writable(FilterXEvalContext *context)
-{
-  filterx_eval_context_make_writable(context);
-}
-
-__attribute__((used))
 FilterXObject *
 fx_jit_boolean_new(gboolean value)
 {
@@ -144,8 +137,6 @@ filterx_jit_ffi_init(FilterXJIT *jit)
   jit->ffi.object_cow_fork2 = _declare_func(mod, "fx_jit_object_cow_fork2", ptr, p1, 1);
   jit->ffi.object_truthy = _declare_func(mod, "fx_jit_object_truthy", i32, p1, 1);
   jit->ffi.boolean_new = _declare_func(mod, "fx_jit_boolean_new", ptr, i1, 1);
-
-  jit->ffi.eval_context_make_writable = _declare_func(mod, "fx_jit_eval_context_make_writable", v, p1, 1);
 
   jit->ffi.eval_push_error = _declare_func(mod, "filterx_eval_push_error", v, p3, 3);
   jit->ffi.eval_push_falsy_error = _declare_func(mod, "filterx_eval_push_falsy_error", v, p3, 3);
@@ -246,12 +237,6 @@ fx_jit_emit_eval_push_error_static_info(FilterXJIT *jit, const gchar *msg, Filte
     fx_jit_emit_const_ptr(jit, info),
   };
   _emit_call(jit, jit->ffi.eval_push_error_static_info, args, 3);
-}
-
-void
-fx_jit_emit_eval_context_make_writable(FilterXJIT *jit, FilterXIRValue eval_ctx)
-{
-  _emit_call(jit, jit->ffi.eval_context_make_writable, &eval_ctx, 1);
 }
 
 void

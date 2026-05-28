@@ -55,8 +55,6 @@ typedef struct _FilterXJITFFI
   FilterXJITFFICall object_truthy;
   FilterXJITFFICall boolean_new;
 
-  FilterXJITFFICall eval_context_make_writable;
-
   FilterXJITFFICall eval_push_error;
   FilterXJITFFICall eval_push_falsy_error;
   FilterXJITFFICall eval_push_error_static_info;
@@ -78,8 +76,6 @@ FilterXIRValue fx_jit_emit_object_truthy(FilterXJIT *jit, FilterXIRValue obj);
 FilterXIRValue fx_jit_emit_boolean_new(FilterXJIT *jit, gboolean value);
 
 FilterXIRValue fx_jit_emit_const_ptr(FilterXJIT *jit, gconstpointer p);
-
-void fx_jit_emit_eval_context_make_writable(FilterXJIT *jit, FilterXIRValue eval_ctx);
 
 void fx_jit_emit_eval_push_error(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, FilterXIRValue obj);
 void fx_jit_emit_eval_push_falsy_error(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, FilterXIRValue obj);
