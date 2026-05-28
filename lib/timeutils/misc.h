@@ -41,7 +41,8 @@
 
 gboolean check_nanosleep(void);
 
-void timespec_add_msec(struct timespec *ts, glong msec);
+void timespec_add_nsec(struct timespec *ts, gint64 nsec);
+void timespec_add_msec(struct timespec *ts, gint64 msec);
 void timespec_add_usec(struct timespec *ts, gint64 usec);
 glong timespec_diff_msec(const struct timespec *t1, const struct timespec *t2);
 gint64 timespec_diff_usec(const struct timespec *t1, const struct timespec *t2);
