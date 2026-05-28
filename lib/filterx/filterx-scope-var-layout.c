@@ -56,9 +56,9 @@ _collect_variables_in_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpoi
 static int
 _compare_handles(gconstpointer a, gconstpointer b)
 {
-  const FilterXVariable *va = (const FilterXVariable *) a;
-  const FilterXVariable *vb = (const FilterXVariable *) b;
-  return (va->handle < vb->handle) ? -1 : (va->handle > vb->handle) ? 1 : 0;
+  FilterXVariableHandle ha = *(const FilterXVariableHandle *) a;
+  FilterXVariableHandle hb = *(const FilterXVariableHandle *) b;
+  return (ha < hb) ? -1 : (ha > hb) ? 1 : 0;
 }
 
 static void
@@ -69,23 +69,23 @@ _build_layout(FilterXScopeVariableLayout *self, LayoutBuilder *b)
   if (self->num_variables == 0)
     return;
 
-  self->layout = g_new0(FilterXVariable, self->num_variables);
+  self->handles = g_new(FilterXVariableHandle, self->num_variables);
 
   GHashTableIter iter;
   gpointer key;
   guint i = 0;
   g_hash_table_iter_init(&iter, b->handles_seen);
   while (g_hash_table_iter_next(&iter, &key, NULL))
-    filterx_variable_init_instance(&self->layout[i++], FX_VAR_NONE, (FilterXVariableHandle) GPOINTER_TO_UINT(key));
+    self->handles[i++] = (FilterXVariableHandle) GPOINTER_TO_UINT(key);
 
   /* scope variable lookup requires sorted array */
-  qsort(self->layout, self->num_variables, sizeof(FilterXVariable), _compare_handles);
+  qsort(self->handles, self->num_variables, sizeof(FilterXVariableHandle), _compare_handles);
 
   GHashTable *handle_to_idx = g_hash_table_new(g_direct_hash, g_direct_equal);
 
   for (gint idx = 0; idx < self->num_variables; idx++)
     {
-      g_hash_table_insert(handle_to_idx, GUINT_TO_POINTER((guint) self->layout[idx].handle),
+      g_hash_table_insert(handle_to_idx, GUINT_TO_POINTER((guint) self->handles[idx]),
                           GINT_TO_POINTER((gint) idx));
     }
 
@@ -137,12 +137,10 @@ filterx_scope_variable_layout_new_from_handles(FilterXVariableHandle *handles, g
   if (self->num_variables == 0)
     return self;
 
-  self->layout = g_new0(FilterXVariable, self->num_variables);
+  self->handles = g_new(FilterXVariableHandle, self->num_variables);
+  memcpy(self->handles, handles, self->num_variables * sizeof(FilterXVariableHandle));
 
-  for (gsize i = 0; i < self->num_variables; i++)
-    filterx_variable_init_instance(&self->layout[i], FX_VAR_NONE, handles[i]);
-
-  qsort(self->layout, self->num_variables, sizeof(FilterXVariable), _compare_handles);
+  qsort(self->handles, self->num_variables, sizeof(FilterXVariableHandle), _compare_handles);
 
   return self;
 }
@@ -153,6 +151,6 @@ filterx_scope_variable_layout_free(FilterXScopeVariableLayout *self)
   if (!self)
     return;
 
-  g_free(self->layout);
+  g_free(self->handles);
   g_free(self);
 }

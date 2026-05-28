@@ -28,21 +28,12 @@
 
 typedef struct _FilterXScopeVariableLayout
 {
-  FilterXVariable *layout;
+  FilterXVariableHandle *handles;
   guint32 num_variables;
 } FilterXScopeVariableLayout;
 
 FilterXScopeVariableLayout *filterx_scope_variable_layout_new(FilterXExpr *root);
 FilterXScopeVariableLayout *filterx_scope_variable_layout_new_from_handles(FilterXVariableHandle *handles, gsize size);
 void filterx_scope_variable_layout_free(FilterXScopeVariableLayout *self);
-
-static inline void
-filterx_scope_variable_layout_fill(FilterXScopeVariableLayout *self, FilterXVariable *variables)
-{
-  if (!self)
-    return;
-
-  memcpy(variables, self->layout, self->num_variables * sizeof(FilterXVariable));
-}
 
 #endif
