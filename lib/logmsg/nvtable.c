@@ -420,7 +420,8 @@ _make_entry_direct(NVHandle handle, NVEntry *entry, NVIndexEntry *index_entry, g
       guint32 mem = 0;
 
       value = nv_table_resolve_indirect(self, entry, &value_len);
-      if (!nv_table_add_value(self, handle, entry->vindirect.name, entry->name_len, value, value_len, entry->type, NULL, &mem))
+      if (!nv_table_add_value(self, handle, entry->vindirect.name, entry->name_len, value, value_len, entry->type, NULL,
+                              &mem))
         {
           /* nvtable full, but we can't realloc it ourselves,
            * propagate this back as a failure of
@@ -635,7 +636,8 @@ nv_table_copy_referenced_value(NVTable *self, NVEntry *ref_entry, NVHandle handl
       ref_slice->len = MIN(ref_slice->ofs + ref_slice->len, ref_length) - ref_slice->ofs;
     }
 
-  return nv_table_add_value(self, handle, name, name_len, ref_value + ref_slice->ofs, ref_slice->len, type, new_entry, memory_needed);
+  return nv_table_add_value(self, handle, name, name_len, ref_value + ref_slice->ofs, ref_slice->len, type, new_entry,
+                            memory_needed);
 }
 
 gboolean
@@ -654,7 +656,8 @@ nv_table_add_value_indirect(NVTable *self, NVHandle handle, const gchar *name, g
     {
       /* NOTE: uh-oh, the to-be-referenced value is already an indirect
        * reference, this is not supported, copy the stuff */
-      return nv_table_copy_referenced_value(self, ref_entry, handle, name, name_len, referenced_slice, type, new_entry, memory_needed);
+      return nv_table_copy_referenced_value(self, ref_entry, handle, name, name_len, referenced_slice, type, new_entry,
+                                            memory_needed);
     }
 
   mem += NV_TABLE_BOUND(NV_ENTRY_INDIRECT_SIZE(name_len)) + sizeof(NVIndexEntry);

@@ -978,7 +978,8 @@ Test(nvtable, test_nvtable_realloc_leaves_original_intact_if_there_are_multiple_
   tab_ref1 = nv_table_new(STATIC_VALUES, STATIC_VALUES, 1024);
   tab_ref2 = nv_table_ref(tab_ref1);
 
-  success = nv_table_add_value(tab_ref1, STATIC_HANDLE, STATIC_NAME, strlen(STATIC_NAME), "value", 5, 0, NULL, &memory_needed);
+  success = nv_table_add_value(tab_ref1, STATIC_HANDLE, STATIC_NAME, strlen(STATIC_NAME), "value", 5, 0, NULL,
+                               &memory_needed);
   cr_assert(success);
   assert_nvtable(tab_ref1, STATIC_HANDLE, "value", 5);
   assert_nvtable(tab_ref2, STATIC_HANDLE, "value", 5);
