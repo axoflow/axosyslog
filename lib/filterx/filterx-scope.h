@@ -47,6 +47,7 @@ struct _FilterXScope
   LogMessage *msg;
   FilterXScope *parent_scope;
 
+  FilterXScopeVariableLayout *layout;
   guint32 variables_used;
   guint32 variables_size;
   FilterXVariable variables[0];

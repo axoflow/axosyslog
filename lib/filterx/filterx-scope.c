@@ -29,6 +29,7 @@ static gboolean
 _search_variable(FilterXScope *self, FilterXVariableHandle handle, FilterXVariable **v_slot, gint *v_index)
 {
   gint l, h, m;
+  FilterXVariableHandle *handles = self->layout->handles;
   FilterXVariable *variables = self->variables;
   gint num_variables = (gint) self->variables_size;
 
@@ -39,14 +40,13 @@ _search_variable(FilterXScope *self, FilterXVariableHandle handle, FilterXVariab
     {
       m = (l + h) >> 1;
 
-      FilterXVariable *m_elem = &variables[m];
-      FilterXVariableHandle mv = m_elem->handle;
+      FilterXVariableHandle mv = handles[m];
 
       if (mv == handle)
         {
-          *v_slot = m_elem;
+          *v_slot = &variables[m];
           *v_index = m;
-          return !!m_elem->variable_type;
+          return !!variables[m].variable_type;
         }
       else if (mv > handle)
         {
@@ -150,7 +150,7 @@ filterx_scope_register_variable(FilterXScope *self, FilterXVariableType variable
   g_assert(scope_var_idx >= 0 && scope_var_idx < self->variables_size);
 
   FilterXVariable *v = &self->variables[scope_var_idx];
-  v->variable_type = variable_type;
+  filterx_variable_init_instance(v, variable_type, handle);
   self->variables_used++;
 
   /* the scope needs to be synced with the message if it holds a
@@ -320,12 +320,13 @@ void
 filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, FilterXScope *parent_scope,
                             FilterXScopeVariableLayout *layout)
 {
-  g_assert(storage_size >= filterx_scope_get_alloc_size(layout));
+  gsize alloc_size = filterx_scope_get_alloc_size(layout);
+  g_assert(storage_size >= alloc_size);
 
   FilterXScope *self = storage;
-  memset(self, 0, sizeof(FilterXScope));
+  memset(self, 0, alloc_size);
+  self->layout = layout;
   self->variables_size = layout ? layout->num_variables : 0;
-  filterx_scope_variable_layout_fill(layout, self->variables);
 
   if (parent_scope)
     {
