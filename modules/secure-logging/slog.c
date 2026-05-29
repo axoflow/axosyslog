@@ -41,16 +41,11 @@
 #endif
 
 #include "messages.h"
-
 #include "slog.h"
 
 // Argument indicators for command line utilities
 #define LONG_OPT_INDICATOR "--"
 #define SHORT_OPT_INDICATOR "-"
-
-/* static guchar KEYPATTERN[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] = IPAD }; */
-/* static guchar MACPATTERN[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] = OPAD }; */
-/* static guchar GAMMA[AES_BLOCKSIZE] = { [0 ... (AES_BLOCKSIZE - 1) ] =  EPAD}; */
 
 SLOG_STATIC_ASSERT(AES_BLOCKSIZE == 16, "Wrong_AES_Block_Size_for_provided_KEY_MAC_GAMMA_initialization");
 
@@ -60,9 +55,6 @@ SLOG_STATIC_ASSERT(AES_BLOCKSIZE == 16, "Wrong_AES_Block_Size_for_provided_KEY_M
 static guchar KEYPATTERN[AES_BLOCKSIZE] = { FILL_S16(IPAD) };
 static guchar MACPATTERN[AES_BLOCKSIZE] = { FILL_S16(OPAD) };
 static guchar GAMMA_SL[AES_BLOCKSIZE] = { FILL_S16(EPAD) };
-
-
-
 
 // File access modes
 static const char modes[NUM_MODES][LEN_MODES] = { "r", "r+", "w", "w+", "a", "a+" };
