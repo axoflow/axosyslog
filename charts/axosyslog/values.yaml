@@ -242,9 +242,13 @@ openShift:
     annotations: {}
 
 service:
-  # -- Create a Service for the aggregator StatefulSet
+  # -- Whether to create the service
   create: true
-  # -- Additional ports to expose on the aggregator Service
+  # -- Type of the service to create (`NodePort`, `LoadBalancer`, `ClusterIP`, or `ExternalName`)
+  type: NodePort
+  # -- Annotations to apply to the service
+  annotations: {}
+  # -- Additional ports to expose on the service
   extraPorts: []
   #  - protocol: TCP
   #    port: 514

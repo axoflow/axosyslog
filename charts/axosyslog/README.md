@@ -96,8 +96,10 @@ The chart deploys two complementary components that can run side by side:
 | resources | object | `{}` | Default CPU/memory resource requests and limits for all components (overridden per component via collector.resources / aggregator.resources) |
 | secretMounts | list | `[]` | Default secrets to mount as files (overridden per component) |
 | securityContext | object | `{}` | Default container-level security context for all components (overridden per component via collector.securityContext / aggregator.securityContext) |
-| service.create | bool | `true` | Create a Service for the aggregator StatefulSet |
-| service.extraPorts | list | `[]` | Additional ports to expose on the aggregator Service |
+| service.annotations | object | `{}` | Annotations to apply to the service |
+| service.create | bool | `true` | Whether to create the service |
+| service.extraPorts | list | `[]` | Additional ports to expose on the service |
+| service.type | string | `"NodePort"` | Type of the service to create (`NodePort`, `LoadBalancer`, `ClusterIP`, or `ExternalName`) |
 | serviceAccount.annotations | object | `{}` | Annotations for the ServiceAccount |
 | serviceAccount.create | bool | `true` | Create a ServiceAccount for the pods |
 | terminationGracePeriodSeconds | int | `30` | Time in seconds given to pods to terminate gracefully |
