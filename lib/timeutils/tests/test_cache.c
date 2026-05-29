@@ -55,6 +55,84 @@ Test(test_cache, test_cached_localtime_dst)
     }
 }
 
+/* Verify that interleaving timestamps from the full +/-12h gmtoff range
+ * does not thrash the cache: every hour offset should remain
+ * independently cached across repeated alternation. */
+
+#define MULTI_SLOT_HOURS 25  /* -12..+12 inclusive */
+
+Test(test_cache, test_cached_gmtime_multi_slot)
+{
+  time_t base = get_cached_realtime_sec();
+  time_t t[MULTI_SLOT_HOURS];
+  struct tm ref[MULTI_SLOT_HOURS];
+
+  for (gint h = 0; h < MULTI_SLOT_HOURS; h++)
+    {
+      t[h] = base + (h - 12) * 3600;
+      gmtime_r(&t[h], &ref[h]);
+    }
+
+  for (gint i = 0; i < 10; i++)
+    {
+      for (gint h = 0; h < MULTI_SLOT_HOURS; h++)
+        {
+          struct tm tm;
+          cached_gmtime(&t[h], &tm);
+          cr_assert_eq(tm.tm_hour, ref[h].tm_hour);
+          cr_assert_eq(tm.tm_min, ref[h].tm_min);
+        }
+    }
+}
+
+Test(test_cache, test_cached_localtime_multi_slot)
+{
+  time_t base = get_cached_realtime_sec();
+  time_t t[MULTI_SLOT_HOURS];
+  struct tm ref[MULTI_SLOT_HOURS];
+
+  for (gint h = 0; h < MULTI_SLOT_HOURS; h++)
+    {
+      t[h] = base + (h - 12) * 3600;
+      localtime_r(&t[h], &ref[h]);
+    }
+
+  for (gint i = 0; i < 10; i++)
+    {
+      for (gint h = 0; h < MULTI_SLOT_HOURS; h++)
+        {
+          struct tm tm;
+          cached_localtime(&t[h], &tm);
+          cr_assert_eq(tm.tm_hour, ref[h].tm_hour);
+          cr_assert_eq(tm.tm_min, ref[h].tm_min);
+        }
+    }
+}
+
+Test(test_cache, test_cached_mktime_multi_slot)
+{
+  time_t base = get_cached_realtime_sec();
+  struct tm tm[MULTI_SLOT_HOURS];
+  time_t ref[MULTI_SLOT_HOURS];
+
+  for (gint h = 0; h < MULTI_SLOT_HOURS; h++)
+    {
+      time_t when = base + (h - 12) * 3600;
+      localtime_r(&when, &tm[h]);
+      struct tm scratch = tm[h];
+      ref[h] = mktime(&scratch);
+    }
+
+  for (gint i = 0; i < 10; i++)
+    {
+      for (gint h = 0; h < MULTI_SLOT_HOURS; h++)
+        {
+          struct tm scratch = tm[h];
+          cr_assert_eq(cached_mktime(&scratch), ref[h]);
+        }
+    }
+}
+
 void
 setup(void)
 {

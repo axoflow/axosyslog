@@ -35,6 +35,15 @@ typedef struct _TimeCache
   struct tm tm;
 } TimeCache;
 
+/* Number of independent cache slots for the time_t-keyed caches; must be
+ * a power of two. See _time_slot() function for more details.
+ */
+#define TIMEUTILS_CACHE_SLOTS 32
+
+/* The mktime cache is keyed by struct tm, in this case we use tm_hour for
+ * indexing, see _mktime_slot() function for more details.
+ */
+#define TIMEUTILS_MKTIME_CACHE_SLOTS 24
 
 TLS_BLOCK_START
 {
@@ -49,27 +58,27 @@ TLS_BLOCK_START
     {
       GHashTable *zones;
     } tzinfo;
-    struct
+    struct localtime_cache
     {
       time_t top_of_the_quarter;
       struct tm tm;
-    } localtime;
-    struct
+    } localtime[TIMEUTILS_CACHE_SLOTS];
+    struct gmtime_cache
     {
       time_t top_of_the_hour;
       struct tm tm;
-    } gmtime;
-    struct
+    } gmtime[TIMEUTILS_CACHE_SLOTS];
+    struct tzofs_cache
     {
       time_t top_of_the_quarter;
       time_t gmtofs;
-    } tzofs;
-    struct
+    } tzofs[TIMEUTILS_CACHE_SLOTS];
+    struct mktime_cache
     {
       struct tm key;
       struct tm mutated_key;
       time_t value;
-    } mktime;
+    } mktime[TIMEUTILS_MKTIME_CACHE_SLOTS];
   } cache;
   struct
   {
@@ -173,10 +182,14 @@ _copy_timezone_state_to_locals(void)
 static void
 _clean_timeutils_cache(void)
 {
-  cache.localtime.top_of_the_quarter = 0;
-  cache.gmtime.top_of_the_hour = 0;
-  cache.tzofs.top_of_the_quarter = 0;
-  memset(&cache.mktime.key, 0, sizeof(cache.mktime.key));
+  for (gint i = 0; i < TIMEUTILS_CACHE_SLOTS; i++)
+    {
+      cache.localtime[i].top_of_the_quarter = 0;
+      cache.gmtime[i].top_of_the_hour = 0;
+      cache.tzofs[i].top_of_the_quarter = 0;
+    }
+  for (gint i = 0; i < TIMEUTILS_MKTIME_CACHE_SLOTS; i++)
+    memset(&cache.mktime[i].key, 0, sizeof(cache.mktime[i].key));
   if (cache.tzinfo.zones)
     {
       g_hash_table_unref(cache.tzinfo.zones);
@@ -283,50 +296,94 @@ get_cached_realtime_sec(void)
   return (time_t) now.tv_sec;
 }
 
+static inline gint
+_time_slot(time_t when)
+{
+  /* Hour-of-epoch indexing: any two timestamps that are an integer
+   * number of hours apart land in slots differing by the same amount
+   * (mod TIMEUTILS_CACHE_SLOTS), so the entire +/-12h gmtoff range fits
+   * without collisions. */
+  return (gint)(((guint64) when / 3600) & (TIMEUTILS_CACHE_SLOTS - 1));
+}
+
+static inline gint
+_mktime_slot(const struct tm *tm)
+{
+  /* tm_hour is in the range [0, 23], which matches
+   * TIMEUTILS_MKTIME_CACHE_SLOTS */
+  return tm->tm_hour % 24;
+}
+
+static inline struct localtime_cache *
+_localtime_cache_slot(time_t when)
+{
+  return &cache.localtime[_time_slot(when)];
+}
+
+static inline struct gmtime_cache *
+_gmtime_cache_slot(time_t when)
+{
+  return &cache.gmtime[_time_slot(when)];
+}
+
+static inline struct tzofs_cache *
+_tzofs_cache_slot(time_t when)
+{
+  return &cache.tzofs[_time_slot(when)];
+}
+
+static inline struct mktime_cache *
+_mktime_cache_slot(const struct tm *tm)
+{
+  return &cache.mktime[_mktime_slot(tm)];
+}
+
 static time_t
-_calculate_and_adjust_mktime_result_based_on_cache(struct tm *tm)
+_calculate_and_adjust_mktime_result_based_on_cache(struct mktime_cache *mc, struct tm *tm)
 {
   /* our cached value is valid for 1 hour, as we cache the min==sec==0 value
    * for every second */
   int sec = tm->tm_sec;
   int min = tm->tm_min;
-  *tm = cache.mktime.mutated_key;
+  *tm = mc->mutated_key;
   tm->tm_sec = sec;
   tm->tm_min = min;
-  return cache.mktime.value + tm->tm_min * 60 + tm->tm_sec;
+  return mc->value + tm->tm_min * 60 + tm->tm_sec;
 }
 
 time_t
 cached_mktime(struct tm *tm)
 {
   _validate_timeutils_cache();
-  if (G_LIKELY(tm->tm_hour == cache.mktime.key.tm_hour &&
-               tm->tm_mday == cache.mktime.key.tm_mday &&
-               tm->tm_mon == cache.mktime.key.tm_mon &&
-               tm->tm_year == cache.mktime.key.tm_year &&
-               tm->tm_isdst == cache.mktime.key.tm_isdst))
+  struct mktime_cache *mc = _mktime_cache_slot(tm);
+  if (G_LIKELY(tm->tm_hour == mc->key.tm_hour &&
+               tm->tm_mday == mc->key.tm_mday &&
+               tm->tm_mon == mc->key.tm_mon &&
+               tm->tm_year == mc->key.tm_year &&
+               tm->tm_isdst == mc->key.tm_isdst))
     {
-      return _calculate_and_adjust_mktime_result_based_on_cache(tm);
+      return _calculate_and_adjust_mktime_result_based_on_cache(mc, tm);
     }
 
   /* we need to store both the incoming value (key) and the one mutated by
    * mktime(), as mktime() might change the fields in *tm for instance in
    * the daylight saving transition hour */
-  cache.mktime.key = cache.mktime.mutated_key = *tm;
+  mc->key = mc->mutated_key = *tm;
 
   /* let's cache the top of the hour */
-  cache.mktime.mutated_key.tm_sec = 0;
-  cache.mktime.mutated_key.tm_min = 0;
-  cache.mktime.value = mktime(&cache.mktime.mutated_key);
-  return _calculate_and_adjust_mktime_result_based_on_cache(tm);
+  mc->mutated_key.tm_sec = 0;
+  mc->mutated_key.tm_min = 0;
+  mc->value = mktime(&mc->mutated_key);
+  return _calculate_and_adjust_mktime_result_based_on_cache(mc, tm);
 }
 
 void
 cached_localtime(time_t *when, struct tm *tm)
 {
   _validate_timeutils_cache();
+  struct localtime_cache *lc = _localtime_cache_slot(*when);
 
-  if (G_LIKELY(cache.localtime.top_of_the_quarter != 0))
+  if (G_LIKELY(lc->top_of_the_quarter != 0))
     {
       /* NOTE: we cache our results only for 15 minutes (instead of an hour)
        * as some timezones change to daylight saving time at non-zero
@@ -336,11 +393,11 @@ cached_localtime(time_t *when, struct tm *tm)
        * Also, we only cache forward, as time "usually" goes in that direction.
        */
 
-      time_t diff = *when - cache.localtime.top_of_the_quarter;
+      time_t diff = *when - lc->top_of_the_quarter;
       time_t quarter_in_seconds = 15*60;
       if (G_LIKELY(diff >= 0 && diff < quarter_in_seconds))
         {
-          *tm = cache.localtime.tm;
+          *tm = lc->tm;
           tm->tm_min += diff / 60;
           tm->tm_sec += diff % 60;
           return;
@@ -359,18 +416,19 @@ cached_localtime(time_t *when, struct tm *tm)
 #endif
   gint minutes_rounded_down = ((tm->tm_min/15)*15);
 
-  cache.localtime.top_of_the_quarter = *when - 60*(tm->tm_min - minutes_rounded_down) - tm->tm_sec;
-  cache.localtime.tm = *tm;
-  cache.localtime.tm.tm_min = minutes_rounded_down;
-  cache.localtime.tm.tm_sec = 0;
+  lc->top_of_the_quarter = *when - 60*(tm->tm_min - minutes_rounded_down) - tm->tm_sec;
+  lc->tm = *tm;
+  lc->tm.tm_min = minutes_rounded_down;
+  lc->tm.tm_sec = 0;
 }
 
 void
 cached_gmtime(time_t *when, struct tm *tm)
 {
   _validate_timeutils_cache();
+  struct gmtime_cache *gc = _gmtime_cache_slot(*when);
 
-  if (G_LIKELY(cache.gmtime.top_of_the_hour != 0))
+  if (G_LIKELY(gc->top_of_the_hour != 0))
     {
       /* NOTE: we cache our results only for 60 minutes, DST does not have a
        * play here.
@@ -378,11 +436,11 @@ cached_gmtime(time_t *when, struct tm *tm)
        * Also, we only cache forward, as time "usually" goes in that direction.
        */
 
-      time_t diff = *when - cache.gmtime.top_of_the_hour;
+      time_t diff = *when - gc->top_of_the_hour;
       time_t hour_in_seconds = 60*60;
       if (G_LIKELY(diff >= 0 && diff < hour_in_seconds))
         {
-          *tm = cache.gmtime.tm;
+          *tm = gc->tm;
           tm->tm_min += diff / 60;
           tm->tm_sec += diff % 60;
           return;
@@ -399,10 +457,10 @@ cached_gmtime(time_t *when, struct tm *tm)
   g_mutex_unlock(&localtime_lock);
 #endif
   /* cache the top of the hour */
-  cache.gmtime.top_of_the_hour = *when - 60*tm->tm_min - tm->tm_sec;
-  cache.gmtime.tm = *tm;
-  cache.gmtime.tm.tm_min = 0;
-  cache.gmtime.tm.tm_sec = 0;
+  gc->top_of_the_hour = *when - 60*tm->tm_min - tm->tm_sec;
+  gc->tm = *tm;
+  gc->tm.tm_min = 0;
+  gc->tm.tm_sec = 0;
 }
 
 /**
@@ -445,8 +503,9 @@ long
 get_local_timezone_ofs(time_t when)
 {
   _validate_timeutils_cache();
+  struct tzofs_cache *tc = _tzofs_cache_slot(when);
 
-  if (G_LIKELY(cache.tzofs.top_of_the_quarter != 0))
+  if (G_LIKELY(tc->top_of_the_quarter != 0))
     {
       /* NOTE: we cache our results only for 15 minutes (instead of an hour)
        * as some timezones change to daylight saving time at non-zero
@@ -456,11 +515,11 @@ get_local_timezone_ofs(time_t when)
        * Also, we only cache forward, as time "usually" goes in that direction.
        */
 
-      time_t diff = when - cache.tzofs.top_of_the_quarter;
+      time_t diff = when - tc->top_of_the_quarter;
       time_t quarter_in_seconds = 15*60;
       if (G_LIKELY(diff >= 0 && diff < quarter_in_seconds))
         {
-          return cache.tzofs.gmtofs;
+          return tc->gmtofs;
         }
     }
 
@@ -468,8 +527,8 @@ get_local_timezone_ofs(time_t when)
   long gmtofs = _get_local_timezone_ofs(when, &ltm);
   gint minutes_rounded_down = ((ltm.tm_min/15)*15);
 
-  cache.tzofs.top_of_the_quarter = when - 60*(ltm.tm_min - minutes_rounded_down) - ltm.tm_sec;
-  cache.tzofs.gmtofs = gmtofs;
+  tc->top_of_the_quarter = when - 60*(ltm.tm_min - minutes_rounded_down) - ltm.tm_sec;
+  tc->gmtofs = gmtofs;
   return gmtofs;
 }
 
