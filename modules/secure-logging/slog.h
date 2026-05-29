@@ -80,6 +80,15 @@
 #define FILE_ERROR "Invalid path or non existing regular file: "
 
 /* --- Static Assert Abstraction --- */
+
+/* Example how to use SLOG_STATIC_ASSERT */
+
+/* Test 1: Passing assertion (should compile silently) */
+/* SLOG_STATIC_ASSERT(1, "This should always pass"); */
+
+/* Test 2: Failing assertion (compile-time error) */
+/* SLOG_STATIC_ASSERT(0, "This should fail at compile time!"); */
+
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 /* Modern C11 approach */
 #include <assert.h>
@@ -101,15 +110,7 @@
 
 #endif
 
-/* Example how to use SLOG_STATIC_ASSERT */
-
-/* Test 1: Passing assertion (should compile silently) */
-/* SLOG_STATIC_ASSERT(1, "This should always pass"); */
-
-/* Test 2: Failing assertion (compile-time error) */
-/* SLOG_STATIC_ASSERT(0, "This should fail at compile time!"); */
-
-/* --- End of Macro --- */
+/* --- End of Macro Static Assert Abstraction --- */
 
 // Command line arguments of template and utilities
 typedef struct
