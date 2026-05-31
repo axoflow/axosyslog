@@ -38,6 +38,7 @@ _eval_template(FilterXExpr *s)
 {
   FilterXTemplate *self = (FilterXTemplate *) s;
   FilterXEvalContext *context = filterx_eval_get_context();
+  LogTemplateEvalOptions options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
 
   GString *value = scratch_buffers_alloc();
   LogMessageValueType t;
@@ -46,7 +47,7 @@ _eval_template(FilterXExpr *s)
   /* FIXME/2: let's make this handle literal and trivial templates */
 
   log_template_format_value_and_type_with_context(self->template, &context->msg, 1,
-                                                  &context->template_eval_options, value, &t);
+                                                  &options, value, &t);
 
   /* NOTE: we borrow value->str here which is stored in a scratch buffer
    * that should be valid as long as we are traversing the filter
