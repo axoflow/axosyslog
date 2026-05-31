@@ -40,14 +40,12 @@ _eval_get_subscript(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to get-subscript from object", "Failed to evaluate expression");
       return NULL;
     }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
     {
-      filterx_eval_push_error_static_info("Failed to get-subscript from object", "Failed to evaluate key");
       goto exit;
     }
 
@@ -68,14 +66,12 @@ _isset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to check element of object", "Failed to evaluate expression");
       return FALSE;
     }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
     {
-      filterx_eval_push_error_static_info("Failed to check element of object", "Failed to evaluate key");
       filterx_object_unref(variable);
       return FALSE;
     }
@@ -97,14 +93,12 @@ _unset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to unset() from object", "Failed to evaluate expression");
       return FALSE;
     }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
     {
-      filterx_eval_push_error_static_info("Failed to unset() from object", "Failed to evaluate key");
       goto exit;
     }
 
@@ -131,14 +125,12 @@ _move(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to move() from object", "Failed to evaluate expression");
       return FALSE;
     }
 
   FilterXObject *key = filterx_expr_eval_typed(self->key);
   if (!key)
     {
-      filterx_eval_push_error_static_info("Failed to move() from object", "Failed to evaluate key");
       goto exit;
     }
 

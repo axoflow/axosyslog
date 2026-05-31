@@ -87,8 +87,6 @@ _extract_start(FilterXSlicingOperator *self, gint64 *start_idx)
   FilterXObject *start = self->start_literal ? filterx_object_ref(self->start_literal) : filterx_expr_eval(self->start);
   if (!start)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate string slicing operator",
-                                          "Failed to evaluate start index");
       return FALSE;
     }
 
@@ -118,8 +116,6 @@ _extract_end(FilterXSlicingOperator *self, gsize str_len, gint64 *end_idx)
   FilterXObject *end = self->end_literal ? filterx_object_ref(self->end_literal) : filterx_expr_eval(self->end);
   if (!end)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate string slicing operator",
-                                          "Failed to evaluate end index");
       return FALSE;
     }
 
@@ -144,8 +140,6 @@ filterx_string_slicing_eval(FilterXExpr *s)
   FilterXObject *lhs_object = filterx_expr_eval_typed(self->lhs);
   if (!lhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate string slicing operator",
-                                          "Failed to evaluate left hand side");
       return NULL;
     }
 

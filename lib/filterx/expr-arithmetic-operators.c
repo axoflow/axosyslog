@@ -46,8 +46,6 @@ _extract_operands_into_generic_numbers(FilterXObject *lhs_object, FilterXObject 
 
   if (!lhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
-                                          "Failed to evaluate left hand side");
       goto exit;
     }
   if (!filterx_object_extract_generic_number(lhs_object, lhs_number))
@@ -59,8 +57,6 @@ _extract_operands_into_generic_numbers(FilterXObject *lhs_object, FilterXObject 
     }
   if (!rhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
-                                          "Failed to evaluate right hand side");
       goto exit;
     }
   if (!filterx_object_extract_generic_number(rhs_object, rhs_number))
@@ -257,8 +253,6 @@ _do_modulo(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (!lhs)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator",
-                                          "Failed to evaluate left hand side");
       goto exit;
     }
 
@@ -272,8 +266,6 @@ _do_modulo(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (!rhs)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator",
-                                          "Failed to evaluate right hand side");
       goto exit;
     }
 
@@ -336,8 +328,6 @@ _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 
   if (!operand_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
-                                          "Failed to evaluate operand");
       goto exit;
     }
 

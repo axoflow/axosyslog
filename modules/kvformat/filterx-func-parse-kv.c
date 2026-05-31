@@ -139,8 +139,6 @@ _eval(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_kv()",
-                                          "Failed to evaluate expression");
       return NULL;
     }
 

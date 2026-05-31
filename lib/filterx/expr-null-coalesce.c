@@ -48,11 +48,6 @@ _eval_null_coalesce(FilterXExpr *s)
         filterx_eval_dump_errors("FilterX: null coalesce suppressing error");
 
       FilterXObject *rhs_object = filterx_expr_eval(self->super.rhs);
-      if (!rhs_object)
-        {
-          filterx_eval_push_error_static_info("Failed evaluate null-coalescing operator",
-                                              "Failed to evaluate right hand side");
-        }
       filterx_object_unref(lhs_object);
       return rhs_object;
     }

@@ -46,15 +46,11 @@ _do_setattr(FilterXSetAttr *self, FilterXObject *lhs, FilterXObject *cloned)
 {
   if (!cloned)
     {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object",
-                                          "Failed to evaluate right hand side");
       goto error;
     }
 
   if (!lhs)
     {
-      filterx_eval_push_error_static_info("Failed to set-attribute to object",
-                                          "Failed to evaluate expression");
       goto error;
     }
 

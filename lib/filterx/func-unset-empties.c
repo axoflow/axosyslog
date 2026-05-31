@@ -248,7 +248,6 @@ _eval_fx_unset_empties(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval(self->object_expr);
   if (!obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, NULL);
       return NULL;
     }
 
