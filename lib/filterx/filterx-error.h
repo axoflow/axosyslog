@@ -38,17 +38,71 @@ typedef struct _FilterXError
   guint8 falsy:1;
 } FilterXError;
 
-void filterx_error_clear(FilterXError *error);
-void filterx_error_copy(FilterXError *src, FilterXError *dst);
 const gchar *filterx_error_format(FilterXError *error);
 EVTTAG *filterx_error_format_tag(FilterXError *error);
 EVTTAG *filterx_error_format_location_tag(FilterXError *error);
-void filterx_error_set_static_info(FilterXError *error, const gchar *info);
-void filterx_error_set_info_printf(FilterXError *error, const gchar *fmt, ...) G_GNUC_PRINTF(2, 3);
-void filterx_error_set_vinfo(FilterXError *error, const gchar *fmt, va_list args) G_GNUC_PRINTF(2, 0);
-void filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object);
-void filterx_falsy_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr,
-                                    FilterXObject *object);
+
+static inline void
+filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
+{
+  error->message = message;
+  error->expr = expr;
+  error->object = filterx_object_ref(object);
+}
+
+static inline void
+filterx_falsy_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
+{
+  error->message = message;
+  error->expr = expr;
+  error->object = filterx_object_ref(object);
+  error->falsy = TRUE;
+}
+
+static inline void
+filterx_error_set_static_info(FilterXError *error, const gchar *info)
+{
+  error->info = (gchar *) info;
+  error->free_info = FALSE;
+}
+
+static inline void G_GNUC_PRINTF(2, 0)
+filterx_error_set_vinfo(FilterXError *error, const gchar *fmt, va_list args)
+{
+  error->info = g_strdup_vprintf(fmt, args);
+  error->free_info = TRUE;
+}
+
+static inline void G_GNUC_PRINTF(2, 3)
+filterx_error_set_info_printf(FilterXError *error, const gchar *fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+  filterx_error_set_vinfo(error, fmt, args);
+  va_end(args);
+}
+
+static inline void
+filterx_error_copy(FilterXError *src, FilterXError *dst)
+{
+  g_assert(!dst->message);
+
+  dst->message = src->message;
+  dst->expr = src->expr;
+  dst->object = filterx_object_ref(src->object);
+
+  dst->info = g_strdup(src->info);
+  dst->free_info = TRUE;
+}
+
+static inline void
+filterx_error_clear(FilterXError *error)
+{
+  filterx_object_unref(error->object);
+  if (error->free_info)
+    g_free(error->info);
+  memset(error, 0, sizeof(*error));
+}
 
 
 #endif
