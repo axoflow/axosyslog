@@ -102,8 +102,6 @@ _eval(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval_typed(self->kvs);
   if (!obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate format_kv()",
-                                          "Failed to evaluate kvs_dict. " FILTERX_FUNC_FORMAT_KV_USAGE);
       return NULL;
     }
 

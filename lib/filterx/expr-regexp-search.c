@@ -240,8 +240,6 @@ _regexp_search_init(FilterXExpr *s, GlobalConfig *cfg)
   self->pattern = filterx_regexp_compile_pattern_defaults(pattern, pattern_len);
   if (!self->pattern)
     {
-      filterx_eval_push_error_static_info("Failed to compile regexp pattern",
-                                          FILTERX_FUNC_REGEXP_SEARCH_USAGE);
       goto error;
     }
 

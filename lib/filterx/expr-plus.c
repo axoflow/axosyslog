@@ -39,12 +39,10 @@ _do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (!lhs)
     {
-      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate left hand side");
       goto exit;
     }
   if (!rhs)
     {
-      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate right hand side");
       goto exit;
     }
 

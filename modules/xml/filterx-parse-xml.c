@@ -665,8 +665,6 @@ _eval(FilterXExpr *s)
   FilterXObject *xml_obj = filterx_expr_eval(self->xml_expr);
   if (!xml_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_xml()",
-                                          "Failed to evaluate input expression");
       return NULL;
     }
 
