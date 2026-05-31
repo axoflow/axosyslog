@@ -68,7 +68,6 @@ struct _FilterXEvalContext
   FilterXError errors[FILTERX_CONTEXT_ERROR_STACK_SIZE];
   gint error_count;
   FilterXObject *current_frame_meta;
-  LogTemplateEvalOptions template_eval_options;
   GPtrArray *weak_refs;
   FilterXAllocator *allocator;
   FilterXAllocatorPosition allocator_position;

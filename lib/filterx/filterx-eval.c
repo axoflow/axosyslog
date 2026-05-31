@@ -367,7 +367,6 @@ filterx_eval_begin_context(FilterXEvalContext *context,
 
   memset(context, 0, sizeof(*context));
   context->msg = msg;
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
   context->scope = scope;
 
   if (previous_context)
@@ -431,7 +430,6 @@ void
 filterx_eval_begin_restricted_context(FilterXEvalContext *context, FilterXEnvironment *env)
 {
   memset(context, 0, sizeof(*context));
-  context->template_eval_options = DEFAULT_TEMPLATE_EVAL_OPTIONS;
   context->weak_refs = env->weak_refs;
   context->eval_control_modifier = FXC_UNSET;
   context->previous_context = filterx_eval_get_context();
