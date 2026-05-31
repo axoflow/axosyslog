@@ -107,8 +107,6 @@ _parse_columns_argument(FilterXFunctionParseCSV *self, FilterXObject **columns)
   *columns = filterx_expr_eval(self->columns);
   if (!(*columns))
     {
-      filterx_eval_push_error_static_info("Failed to initialize parse_csv()",
-                                          "Failed to evaluate " FILTERX_FUNC_PARSE_CSV_ARG_NAME_COLUMNS " argument");
       return FALSE;
     }
 
@@ -121,8 +119,6 @@ _parse_msg_argument(FilterXFunctionParseCSV *self, FilterXObject **input_obj, co
   FilterXObject *result = filterx_expr_eval(self->msg);
   if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_csv()",
-                                          "Failed to evaluate expression");
       return FALSE;
     }
 

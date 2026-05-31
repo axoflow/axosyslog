@@ -49,7 +49,6 @@ _set_timestamp_eval(FilterXExpr *s)
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_SET_TIMESTAMP_USAGE, NULL);
       return NULL;
     }
 
@@ -307,7 +306,6 @@ _fix_timezone_eval(FilterXExpr *s)
   datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_FIX_TIMEZONE_USAGE, NULL);
       return NULL;
     }
 
@@ -322,7 +320,6 @@ _fix_timezone_eval(FilterXExpr *s)
   timezone_obj = filterx_expr_eval(self->timezone_expr);
   if (!timezone_obj)
     {
-      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_FIX_TIMEZONE_USAGE, NULL);
       goto error;
     }
 
@@ -470,7 +467,6 @@ _guess_timezone_eval(FilterXExpr *s)
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_GUESS_TIMEZONE_USAGE, NULL);
       return NULL;
     }
 
@@ -591,7 +587,6 @@ _set_timezone_eval(FilterXExpr *s)
   datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_SET_TIMEZONE_USAGE, NULL);
       return NULL;
     }
 
@@ -606,7 +601,6 @@ _set_timezone_eval(FilterXExpr *s)
   timezone_obj = filterx_expr_eval(self->timezone_expr);
   if (!timezone_obj)
     {
-      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_SET_TIMEZONE_USAGE, NULL);
       goto error;
     }
 

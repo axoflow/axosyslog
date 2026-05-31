@@ -42,7 +42,6 @@ _eval(FilterXExpr *s)
   FilterXObject *object = filterx_expr_eval(self->object_expr);
   if (!object)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_KEYS_USAGE, NULL);
       return NULL;
     }
 

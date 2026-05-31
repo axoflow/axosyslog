@@ -306,7 +306,6 @@ _strptime_eval(FilterXExpr *s)
   FilterXObject *time_str_obj = filterx_expr_eval(self->time_str_expr);
   if (!time_str_obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_STRPTIME_USAGE, NULL);
       return NULL;
     }
 
@@ -484,7 +483,6 @@ _strftime_eval(FilterXExpr *s)
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_STRFTIME_USAGE, NULL);
       return NULL;
     }
 
@@ -635,7 +633,6 @@ _get_timezone_source_eval(FilterXExpr *s)
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate argument. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE, NULL);
       return NULL;
     }
 

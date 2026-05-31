@@ -35,7 +35,6 @@ _eval_plus_assign(FilterXExpr *s)
   FilterXObject *rhs_object = filterx_expr_eval_typed(self->super.rhs);
   if (!rhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to add values in place", "Failed to evaluate right hand side");
       return NULL;
     }
 

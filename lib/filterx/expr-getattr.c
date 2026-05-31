@@ -37,7 +37,6 @@ _do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
 {
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to get-attribute from object", "Failed to evaluate expression");
       return NULL;
     }
 
@@ -66,7 +65,6 @@ _unset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to unset() from object", "Failed to evaluate expression");
       return FALSE;
     }
 
@@ -89,7 +87,6 @@ _move(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to move() from object", "Failed to evaluate expression");
       return NULL;
     }
 
@@ -110,7 +107,6 @@ _isset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to check element of object", "Failed to evaluate expression");
       return FALSE;
     }
 

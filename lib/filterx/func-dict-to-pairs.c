@@ -94,7 +94,6 @@ _dict_to_pairs_eval(FilterXExpr *s)
   FilterXObject *dict_obj = filterx_ref_unwrap_ro(dict_obj_ref);
   if (!dict_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate dict_to_pairs()", "Failed to evaluate dict argument");
       return NULL;
     }
 

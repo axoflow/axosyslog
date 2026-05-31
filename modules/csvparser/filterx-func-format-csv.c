@@ -147,8 +147,6 @@ _eval(FilterXExpr *s)
   FilterXObject *csv_data = filterx_expr_eval_typed(self->input);
   if (!csv_data)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate format_csv()",
-                                          "Failed to evaluate expression");
       return NULL;
     }
 

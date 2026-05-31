@@ -39,7 +39,6 @@ _do_assign(FilterXAssign *self, FilterXObject *value)
 
   if (!value)
     {
-      filterx_eval_push_error_static_info("Failed to assign value", "Failed to evaluate right hand side");
       return NULL;
     }
 
