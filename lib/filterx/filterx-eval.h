@@ -226,6 +226,37 @@ filterx_eval_malloc_object(gsize object_size, gsize alloc_size)
   return result;
 }
 
+static inline void
+filterx_eval_switch_allocator(FilterXAllocator *new_allocator, gpointer *saved_state)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  /* no context, no allocator: nothing to switch away from */
+  if (!context)
+    {
+      *saved_state = NULL;
+      return;
+    }
+  *saved_state = context->allocator;
+  context->allocator = new_allocator;
+}
+
+static inline void
+filterx_eval_disable_allocator(gpointer *saved_state)
+{
+  filterx_eval_switch_allocator(NULL, saved_state);
+}
+
+static inline void
+filterx_eval_restore_allocator(gpointer *saved_state)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (context)
+    context->allocator = (FilterXAllocator *) *saved_state;
+  *saved_state = NULL;
+}
+
 /* unplug this object from the current context, and guarantee it remains
  * available past the end of the scope, at least until the returned
  * reference is dropped using filterx_object_unref(). */
@@ -236,14 +267,12 @@ filterx_eval_retain_object(FilterXObject **pobject)
   if (!object || filterx_object_is_preserved(object) || !object->allocator_used)
     return;
 
-  FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXAllocator *saved_allocator = context->allocator;
+  gpointer allocator_state;
+  filterx_eval_disable_allocator(&allocator_state);
 
-  /* NOTE: dup the object with a NULL allocator means we will allocate it from the heap */
-  context->allocator = NULL;
   *pobject = filterx_object_dup(object);
   filterx_object_unref(object);
-  context->allocator = saved_allocator;
+  filterx_eval_restore_allocator(&allocator_state);
 }
 
 void filterx_eval_global_init(void);
