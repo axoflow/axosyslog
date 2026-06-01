@@ -632,6 +632,26 @@
  </ruleset>\
 </patterndb>"
 
+#define pdb_test_optionalset_at_end_of_pattern_with_examples "\
+<patterndb version='6' pub_date='2010-02-22'>\
+ <ruleset name='rails' id='8db0c6d8-f6ef-11ef-a968-18cf5efc6bb4'>\
+  <patterns>\
+   <pattern>prog1</pattern>\
+  </patterns>\
+  <rules>\
+   <rule id='8e8384e8-f6ef-11ef-a968-18cf5efc6bb4' provider='test' class='system'>\
+    <patterns>\
+     <pattern>@QSTRING:id:[]@@OPTIONALSET:s: @</pattern>\
+    </patterns>\
+    <examples>\
+     <example><test_message program='prog1'>[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]</test_message></example>\
+     <example><test_message program='prog1'>[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]  </test_message></example>\
+    </examples>\
+   </rule>\
+  </rules>\
+ </ruleset>\
+</patterndb>"
+
 #define pdb_test_set_at_end_of_input "\
 <patterndb version='6' pub_date='2010-02-22'>\
  <ruleset name='set_eoi' id='8db0c6d8-f6ef-11ef-a968-18cf5efc6bb5'>\
