@@ -42,6 +42,8 @@ class _FlightServer(flight.FlightServerBase):
         self._lock = threading.Lock()
         self._close_stream_after_next_chunk = False
         self._error = None
+        self._hang = False
+        self._release = threading.Event()
 
     def list_flights(self, context, criteria):
         return iter([])
@@ -53,6 +55,10 @@ class _FlightServer(flight.FlightServerBase):
         for chunk in reader:
             if self._error is not None:
                 raise self._error
+            if self._hang:
+                # Hold the stream open without acking until released, so the client's timeout() fires.
+                self._release.wait(timeout=30)
+                return
             new_table = pa.Table.from_batches([chunk.data])
             with self._lock:
                 existing = self._tables.get(key)
@@ -71,6 +77,14 @@ class _FlightServer(flight.FlightServerBase):
 
     def clear_error(self):
         self._error = None
+
+    def start_hanging(self):
+        self._release.clear()
+        self._hang = True
+
+    def stop_hanging(self):
+        self._hang = False
+        self._release.set()
 
     def get_table(self, key):
         with self._lock:
@@ -123,6 +137,16 @@ class ArrowFlightIO():
         if self.__server is None:
             return
         self.__server.clear_error()
+
+    def start_hanging(self) -> None:
+        if self.__server is None:
+            return
+        self.__server.start_hanging()
+
+    def stop_hanging(self) -> None:
+        if self.__server is None:
+            return
+        self.__server.stop_hanging()
 
     @retry(wait=wait_fixed(0.1), reraise=True, stop=stop_after_delay(10))
     def __wait_for_server_start(self):

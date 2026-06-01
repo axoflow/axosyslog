@@ -69,6 +69,14 @@ class ArrowFlightDestination(DestinationDriver):
         if self._io is not None:
             self._io.stop_responding_with_error()
 
+    def start_hanging(self) -> None:
+        if self._io is not None:
+            self._io.start_hanging()
+
+    def stop_hanging(self) -> None:
+        if self._io is not None:
+            self._io.stop_hanging()
+
     def read_logs(self, path: str) -> list:
         return self._io.read_logs(path)
 

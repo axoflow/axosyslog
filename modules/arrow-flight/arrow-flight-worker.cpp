@@ -406,8 +406,13 @@ DestinationWorker::open_stream(const gchar *path)
 
   DestinationDriver *owner = this->get_owner();
 
+  arrow::flight::FlightCallOptions call_options;
+  glong timeout = owner->get_timeout();
+  if (timeout > 0)
+    call_options.timeout = arrow::flight::TimeoutDuration{(double) timeout};
+
   auto descriptor = arrow::flight::FlightDescriptor::Path({path});
-  auto put_result = this->client->DoPut(arrow::flight::FlightCallOptions{}, descriptor, owner->get_arrow_schema());
+  auto put_result = this->client->DoPut(call_options, descriptor, owner->get_arrow_schema());
   if (!put_result.ok())
     {
       msg_error("arrow-flight: DoPut failed",

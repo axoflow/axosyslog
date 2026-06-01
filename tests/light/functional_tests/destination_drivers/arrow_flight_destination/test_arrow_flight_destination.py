@@ -419,3 +419,33 @@ def test_arrow_flight_destination_temporary_error(config, syslog_ng, port_alloca
     assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
     assert arrow_flight_destination.get_stats()["dropped"] == 0
     assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
+
+
+def test_arrow_flight_destination_timeout(config, syslog_ng, port_allocator):
+    num_messages = 5
+    custom_msg = f"test message {uuid.uuid4()}"
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "time-reopen": 1,
+        "timeout": 1,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.start_hanging()
+    syslog_ng.start(config)
+
+    file_source.write_logs([custom_msg] * num_messages)
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("temporary error status code"))
+    assert arrow_flight_destination.get_stats().get("written", 0) == 0
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+
+    arrow_flight_destination.stop_hanging()
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages

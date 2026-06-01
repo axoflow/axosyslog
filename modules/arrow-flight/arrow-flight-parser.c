@@ -45,6 +45,7 @@ static CfgLexerKeyword arrow_flight_keywords[] =
   { "TIMESTAMP",     KW_CAP_TIMESTAMP },
   { "MAP",           KW_CAP_MAP },
   { "batch_bytes",   KW_BATCH_BYTES },
+  { "timeout",       KW_TIMEOUT },
   { NULL }
 };
 
