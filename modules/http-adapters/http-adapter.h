@@ -25,6 +25,7 @@
 
 #include "driver.h"
 #include "modules/http/http-signals.h"
+#include <json.h>
 
 typedef struct _HttpAdapter HttpAdapter;
 
@@ -48,5 +49,8 @@ http_adapter_free(HttpAdapter *self)
 
 void http_adapter_init_instance(HttpAdapter *self);
 HttpAdapter *http_adapter_new_by_name(const gchar *name);
+
+json_object *http_adapter_parse_response_json(GString *response);
+void http_adapter_locate_offending_payload(HttpResponseSignalData *data);
 
 #endif
