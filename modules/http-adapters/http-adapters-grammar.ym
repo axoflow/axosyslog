@@ -21,8 +21,7 @@
  */
 
 %code top {
-#include "splunk-adapter.h"
-#include "openobserve-adapter.h"
+#include "http-adapter.h"
 
 }
 
@@ -74,15 +73,8 @@ driver
 http_response_adapter
     : KW_RESPONSE_ADAPTER '(' string ')'
       {
-        if (strcmp($3, "splunk") == 0)
-          $$ = splunk_adapter_new();
-        else if (strcmp($3, "openobserve") == 0)
-          $$ = openobserve_adapter_new();
-        else
-          {
-            CHECK_ERROR(FALSE, @3, "Unknown response adapter \"%s\"", $3);
-            $$ = NULL;
-          }
+        $$ = http_adapter_new_by_name($3);
+        CHECK_ERROR($$ != NULL, @3, "Unknown response adapter \"%s\"", $3);
         free($3);
       }
     ;
