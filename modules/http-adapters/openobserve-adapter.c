@@ -20,51 +20,7 @@
  *
  */
 #include "openobserve-adapter.h"
-#include "compat/string.h"
 #include <json.h>
-
-static json_object *
-_parse_response_json(GString *response)
-{
-  struct json_object *jso;
-  struct json_tokener *tok;
-
-  tok = json_tokener_new();
-  jso = json_tokener_parse_ex(tok, response->str, response->len);
-  if (tok->err != json_tokener_success || !jso)
-    {
-      msg_error("http-response-adapter(): failed to parse JSON response",
-                evt_tag_str("input", response->str),
-                tok->err != json_tokener_success ? evt_tag_str("json_error", json_tokener_error_desc(tok->err)) : NULL);
-      json_tokener_free(tok);
-      return NULL;
-    }
-  json_tokener_free(tok);
-  return jso;
-}
-
-static void
-_locate_offending_payload(HttpResponseSignalData *data)
-{
-  const gchar *line = data->request_body->str;
-
-  for (gint i = 0; i < data->offending_message; i++)
-    {
-      const gchar *nl = strchr(line, '\n');
-      if (!nl)
-        goto notfound;
-      line = nl + 1;
-    }
-  data->offending_request_len = strchrnul(line, '\n') - line;
-  if (data->offending_request_len != 0)
-    {
-      data->offending_request_start = line - data->request_body->str;
-      return;
-    }
-
-notfound:
-  data->offending_request_start = data->offending_request_len = 0;
-}
 
 /* OpenObserve returns HTTP 200 for partial batch failures, with a JSON body of the form:
  *   {"code":200,"status":[{"name":"<stream>","successful":N,"failed":M,"error":"<reason>"},...]}
@@ -78,7 +34,7 @@ _adapt_openobserve_response(HttpAdapter *self, HttpResponseSignalData *data)
   if (data->http_code != 200)
     return;
 
-  struct json_object *jso = _parse_response_json(data->response_body);
+  struct json_object *jso = http_adapter_parse_response_json(data->response_body);
   if (!jso)
     return;
 
@@ -122,7 +78,7 @@ _adapt_openobserve_response(HttpAdapter *self, HttpResponseSignalData *data)
       data->offending_message = (guint) total_successful;
       if (data->offending_message >= data->batch_size)
         data->offending_message = 0;
-      _locate_offending_payload(data);
+      http_adapter_locate_offending_payload(data);
     }
 
 exit:

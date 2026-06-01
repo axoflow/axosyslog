@@ -23,8 +23,52 @@
 #include "http-adapter.h"
 #include "splunk-adapter.h"
 #include "openobserve-adapter.h"
+#include "compat/string.h"
 
 #define HTTP_ADAPTER_PLUGIN "http-adapter"
+
+json_object *
+http_adapter_parse_response_json(GString *response)
+{
+  struct json_object *jso;
+  struct json_tokener *tok;
+
+  tok = json_tokener_new();
+  jso = json_tokener_parse_ex(tok, response->str, response->len);
+  if (tok->err != json_tokener_success || !jso)
+    {
+      msg_error("http-response-adapter(): failed to parse JSON response",
+                evt_tag_str("input", response->str),
+                tok->err != json_tokener_success ? evt_tag_str("json_error", json_tokener_error_desc(tok->err)) : NULL);
+      json_tokener_free(tok);
+      return NULL;
+    }
+  json_tokener_free(tok);
+  return jso;
+}
+
+void
+http_adapter_locate_offending_payload(HttpResponseSignalData *data)
+{
+  const gchar *line = data->request_body->str;
+
+  for (gint i = 0; i < data->offending_message; i++)
+    {
+      const gchar *nl = strchr(line, '\n');
+      if (!nl)
+        goto notfound;
+      line = nl + 1;
+    }
+  data->offending_request_len = strchrnul(line, '\n') - line;
+  if (data->offending_request_len != 0)
+    {
+      data->offending_request_start = line - data->request_body->str;
+      return;
+    }
+
+notfound:
+  data->offending_request_start = data->offending_request_len = 0;
+}
 
 static void
 _on_http_response_received(HttpAdapter *self, HttpResponseSignalData *data)
