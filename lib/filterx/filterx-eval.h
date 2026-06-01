@@ -141,7 +141,7 @@ filterx_eval_prepare_for_fork(FilterXEvalContext *context, LogMessage **pmsg, co
 {
   filterx_eval_sync_message(context, pmsg, path_options);
   if (context)
-    filterx_scope_write_protect(context->scope);
+    filterx_scope_mark_fork_point(context->scope);
 }
 
 /*
@@ -173,25 +173,17 @@ filterx_eval_store_weak_ref(FilterXObject *object)
     }
 }
 
-#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg) \
+#define FILTERX_EVAL_BEGIN_CONTEXT(eval_context, previous_context, msg, scope_var_layout) \
   do { \
     FilterXScope *scope = NULL; \
     gboolean local_scope = FALSE; \
     \
-    if (previous_context) \
-      scope = filterx_scope_reuse(previous_context->scope); \
-    \
     if (!scope) \
       { \
-        gsize alloc_size = filterx_scope_get_alloc_size(); \
+        gsize alloc_size = filterx_scope_get_alloc_size(scope_var_layout); \
         scope = g_alloca(alloc_size); \
-        filterx_scope_init_instance(scope, alloc_size, previous_context ? previous_context->scope : NULL); \
+        filterx_scope_init_instance(scope, alloc_size, previous_context ? previous_context->scope : NULL, scope_var_layout); \
         local_scope = TRUE; \
-        if (previous_context) \
-          { \
-            /* we start being write protected */ \
-            filterx_scope_write_protect(scope); \
-          } \
       } \
     filterx_eval_begin_context(&eval_context, previous_context, scope, msg); \
     do
@@ -204,17 +196,6 @@ filterx_eval_store_weak_ref(FilterXObject *object)
       filterx_scope_clear(scope); \
     filterx_eval_end_context(&eval_context); \
   } while(0)
-
-static inline void
-filterx_eval_context_make_writable(FilterXEvalContext *context)
-{
-  if (!context)
-    context = filterx_eval_get_context();
-  if (filterx_scope_is_write_protected(context->scope))
-    {
-      filterx_scope_make_writable(context->scope);
-    }
-}
 
 static inline gboolean
 filterx_eval_context_is_production(FilterXEvalContext *context)

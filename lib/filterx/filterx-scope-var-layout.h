@@ -1,7 +1,5 @@
 /*
- * Copyright (c) 2024 Axoflow
- * Copyright (c) 2024 László Várady
- * Copyright (c) 2023 Balazs Scheidler <balazs.scheidler@axoflow.com>
+ * Copyright (c) 2026 László Várady
  *
  * This program is free software: you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by
@@ -22,23 +20,20 @@
  *
  */
 
-#include "filterx-variable.h"
+#ifndef FILTERX_SCOPE_VAR_LAYOUT_H
+#define FILTERX_SCOPE_VAR_LAYOUT_H
 
-FilterXVariableHandle
-filterx_map_varname_to_handle(const gchar *name, FilterXVariableType type)
+#include "filterx/filterx-expr.h"
+#include "filterx/filterx-variable.h"
+
+typedef struct _FilterXScopeVariableLayout
 {
-  NVHandle nv_handle = log_msg_get_value_handle(name);
+  FilterXVariableHandle *handles;
+  guint32 num_variables;
+} FilterXScopeVariableLayout;
 
-  if (type == FX_VAR_MESSAGE_TIED)
-    return (FilterXVariableHandle) nv_handle;
-  return (FilterXVariableHandle) nv_handle | FILTERX_HANDLE_FLOATING_BIT;
-}
+FilterXScopeVariableLayout *filterx_scope_variable_layout_new(FilterXExpr *root);
+FilterXScopeVariableLayout *filterx_scope_variable_layout_new_from_handles(FilterXVariableHandle *handles, gsize size);
+void filterx_scope_variable_layout_free(FilterXScopeVariableLayout *self);
 
-void
-filterx_variable_init_instance(FilterXVariable *v,
-                               FilterXVariableType variable_type,
-                               FilterXVariableHandle handle)
-{
-  v->variable_type = variable_type;
-  v->handle = handle;
-}
+#endif

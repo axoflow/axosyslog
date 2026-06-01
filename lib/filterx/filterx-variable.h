@@ -30,6 +30,7 @@
 
 typedef enum
 {
+  FX_VAR_NONE,
   FX_VAR_MESSAGE_TIED,
   FX_VAR_FLOATING,
   FX_VAR_DECLARED_FLOATING,
@@ -37,7 +38,7 @@ typedef enum
 } FilterXVariableType;
 
 /* currently we only have two bits in FilterXVariable to hold variable_type */
-G_STATIC_ASSERT(__FX_VAR_MAX < 4);
+G_STATIC_ASSERT(__FX_VAR_MAX <= (1 << 2));
 
 typedef guint32 FilterXVariableHandle;
 typedef guint16 FilterXGenCounter;
@@ -76,7 +77,12 @@ G_STATIC_ASSERT(sizeof(FilterXVariable) <= 16);
 void filterx_variable_init_instance(FilterXVariable *v,
                                     FilterXVariableType variable_type,
                                     FilterXVariableHandle handle);
-void filterx_variable_clear(FilterXVariable *v);
+
+static inline void
+filterx_variable_clear(FilterXVariable *v)
+{
+  filterx_object_unref(v->value);
+}
 
 static inline gboolean
 filterx_variable_is_floating(FilterXVariable *v)

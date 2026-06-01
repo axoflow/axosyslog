@@ -422,11 +422,11 @@ filterx_eval_begin_context(FilterXEvalContext *context,
     {
       context->weak_refs = previous_context->weak_refs;
       context->allocator = previous_context->allocator;
-      if (previous_context->scope != scope)
+      if (filterx_scope_is_fork_point(previous_context->scope))
         {
-          /* Unless we have our own scope object, we need to reuse the
-           * allocator as well. This means that in that case we won't need
-           * to remember where we need to go back.
+          /* save allocator position when crossing fork points.
+           * scopes are allowed to move variables from previous scopes until
+           * they reach a fork point.
            */
           filterx_allocator_save_position(context->allocator, &context->allocator_position);
         }
@@ -459,12 +459,10 @@ filterx_eval_end_context(FilterXEvalContext *context)
           g_array_free(context->failure_info, TRUE);
         }
     }
-  else if (context->scope != context->previous_context->scope)
+  else if (filterx_scope_is_fork_point(context->previous_context->scope))
     {
-      /* we can only drop our weakrefs/allocator if we are not reusing the
-       * scope object of the previous block. If we do, the scope object will
-       * be destroyed by the previous context, so we need to keep everything
-       * around that still be sitting in previous_context->scope.
+      /* we can only drop our weakrefs/allocator if we are not reusing variables
+       * from previous scopes (this is only allowed until a fork point is reached).
        */
       g_ptr_array_set_size(context->weak_refs, context->weak_refs_offset);
       filterx_allocator_restore_position(context->allocator, &context->allocator_position);

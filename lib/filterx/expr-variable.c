@@ -37,6 +37,7 @@ typedef struct _FilterXVariableExpr
   NVHandle handle;
   FilterXObject *variable_name;
   guint32 handle_is_macro:1;
+  gint scope_var_idx;
 } FilterXVariableExpr;
 
 static FilterXObject *
@@ -64,7 +65,7 @@ _eval_variable(FilterXExpr *s)
   if (self->handle_is_macro)
     return _eval_macro(self, context);
 
-  variable = filterx_scope_lookup_variable(context->scope, self->handle);
+  variable = filterx_scope_lookup_variable(context->scope, self->handle, self->scope_var_idx);
   if (variable)
     {
       FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
@@ -78,8 +79,8 @@ _eval_variable(FilterXExpr *s)
   if (self->variable_type == FX_VAR_MESSAGE_TIED)
     {
       /* auto register message tied variables */
-      filterx_eval_context_make_writable(context);
-      variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle);
+      variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle,
+                                                 self->scope_var_idx);
       if (variable)
         {
           FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
@@ -102,8 +103,7 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXScope *scope = context->scope;
 
-  filterx_eval_context_make_writable(context);
-  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
+  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
   filterx_scope_set_variable(scope, variable, new_repr, variable->assigned);
 }
 
@@ -120,10 +120,10 @@ _assign(FilterXExpr *s, FilterXObject **new_value)
 
   FilterXEvalContext *context = filterx_eval_get_context();
   FilterXScope *scope = context->scope;
-  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
+  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
 
   if (!variable)
-    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle);
+    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle, self->scope_var_idx);
 
   filterx_scope_set_variable(scope, variable, new_value, TRUE);
   return TRUE;
@@ -137,7 +137,7 @@ _isset(FilterXExpr *s)
   FilterXScope *scope = context->scope;
   LogMessage *msg = context->msg;
 
-  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle);
+  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
   if (variable)
     return filterx_variable_is_set(variable);
 
@@ -161,7 +161,7 @@ _unset(FilterXExpr *s)
   FilterXScope *scope = context->scope;
   LogMessage *msg = context->msg;
 
-  FilterXVariable *variable = filterx_scope_lookup_variable(context->scope, self->handle);
+  FilterXVariable *variable = filterx_scope_lookup_variable(context->scope, self->handle, self->scope_var_idx);
   if (variable)
     {
       filterx_scope_unset_variable(scope, variable);
@@ -172,7 +172,8 @@ _unset(FilterXExpr *s)
     {
       if (log_msg_is_value_set(msg, self->handle))
         {
-          FilterXVariable *v = filterx_scope_register_variable(context->scope, self->variable_type, self->handle);
+          FilterXVariable *v = filterx_scope_register_variable(context->scope, self->variable_type, self->handle,
+                                                               self->scope_var_idx);
           /* make sure it is considered changed */
           filterx_scope_unset_variable(context->scope, v);
         }
@@ -251,6 +252,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.unset = _unset;
 
   self->variable_type = variable_type;
+  self->scope_var_idx = -1;
 
   self->handle = filterx_map_varname_to_handle(name, variable_type);
   if (variable_type == FX_VAR_MESSAGE_TIED)
@@ -277,6 +279,30 @@ FilterXExpr *
 filterx_floating_variable_expr_new(const gchar *name)
 {
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
+}
+
+FilterXVariableHandle
+filterx_variable_expr_get_handle(FilterXExpr *s)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+
+  return self->handle;
+}
+
+gboolean
+filterx_variable_expr_is_macro(FilterXExpr *s)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+
+  return !!self->handle_is_macro;
+}
+
+void
+filterx_variable_expr_set_scope_var_idx(FilterXExpr *s, gint idx)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+
+  self->scope_var_idx = idx;
 }
 
 void

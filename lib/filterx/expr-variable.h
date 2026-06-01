@@ -25,12 +25,16 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-config.h"
 #include "filterx/object-string.h"
+#include "filterx/filterx-variable.h"
 #include "cfg.h"
 
 FilterXExpr *filterx_msg_variable_expr_new(const gchar *name);
 FilterXExpr *filterx_floating_variable_expr_new(const gchar *name);
 void filterx_variable_expr_declare(FilterXExpr *s);
 
+FilterXVariableHandle filterx_variable_expr_get_handle(FilterXExpr *s);
+gboolean filterx_variable_expr_is_macro(FilterXExpr *s);
+void filterx_variable_expr_set_scope_var_idx(FilterXExpr *s, gint idx);
 
 FILTERX_EXPR_DECLARE_TYPE(variable);
 

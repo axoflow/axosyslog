@@ -324,8 +324,21 @@ init_libtest_filterx(void)
   FILTERX_TYPE_NAME(test_list) = FILTERX_TYPE_NAME(list);
 
   filterx_env.msg = create_sample_message();
-  filterx_env.scope = filterx_scope_new(NULL);
+  filterx_env.scope = filterx_scope_new(NULL, NULL);
   filterx_eval_begin_context(&filterx_env.context, NULL, filterx_env.scope, filterx_env.msg);
+}
+
+void
+set_libtest_filterx_scope(FilterXScope *scope)
+{
+  FilterXScope *old_scope = filterx_env.scope;
+
+  filterx_scope_set_message(scope, filterx_env.msg);
+  filterx_env.context.scope = scope;
+  filterx_env.scope = scope;
+
+  if (old_scope)
+    filterx_scope_free(old_scope);
 }
 
 void
