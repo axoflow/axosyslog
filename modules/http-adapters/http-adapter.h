@@ -47,5 +47,6 @@ http_adapter_free(HttpAdapter *self)
 }
 
 void http_adapter_init_instance(HttpAdapter *self);
+HttpAdapter *http_adapter_new_by_name(const gchar *name);
 
 #endif

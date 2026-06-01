@@ -21,6 +21,8 @@
  */
 
 #include "http-adapter.h"
+#include "splunk-adapter.h"
+#include "openobserve-adapter.h"
 
 #define HTTP_ADAPTER_PLUGIN "http-adapter"
 
@@ -56,4 +58,14 @@ http_adapter_init_instance(HttpAdapter *self)
   log_driver_plugin_init_instance(&(self->super), HTTP_ADAPTER_PLUGIN);
   self->super.attach = _attach;
   self->super.detach = _detach;
+}
+
+HttpAdapter *
+http_adapter_new_by_name(const gchar *name)
+{
+  if (strcmp(name, "splunk") == 0)
+    return splunk_adapter_new();
+  if (strcmp(name, "openobserve") == 0)
+    return openobserve_adapter_new();
+  return NULL;
 }
