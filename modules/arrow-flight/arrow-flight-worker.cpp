@@ -133,7 +133,7 @@ DestinationWorker::connect()
 void
 DestinationWorker::disconnect()
 {
-  this->close_stream();
+  (void) this->close_stream();
   this->current_batch_path.clear();
 
   if (this->client)
@@ -402,7 +402,7 @@ DestinationWorker::format_path(LogMessage *msg)
 bool
 DestinationWorker::open_stream(const gchar *path)
 {
-  this->close_stream();
+  (void) this->close_stream();
 
   DestinationDriver *owner = this->get_owner();
 
@@ -423,27 +423,23 @@ DestinationWorker::open_stream(const gchar *path)
   return true;
 }
 
-void
+arrow::Status
 DestinationWorker::close_stream()
 {
   if (!this->writer)
-    return;
+    return arrow::Status::OK();
 
-  auto s = this->writer->DoneWriting();
-  if (!s.ok())
-    msg_warning("arrow-flight: Error closing stream",
-                evt_tag_str("error", s.ToString().c_str()),
-                log_pipe_location_tag(&this->super->super.owner->super.super.super));
-
-  s = this->writer->Close();
-  if (!s.ok())
-    msg_warning("arrow-flight: Error closing stream",
-                evt_tag_str("error", s.ToString().c_str()),
-                log_pipe_location_tag(&this->super->super.owner->super.super.super));
+  /* DoneWriting() half-closes the write side; Close() finalizes the call and surfaces the server's
+   * terminal status. Either may carry the reason the server tore the stream down, so return it to
+   * the caller for classification instead of swallowing it here. */
+  arrow::Status done_status = this->writer->DoneWriting();
+  arrow::Status close_status = this->writer->Close();
 
   this->writer.reset();
   this->metadata_reader.reset();
   this->current_stream_path.clear();
+
+  return !close_status.ok() ? close_status : done_status;
 }
 
 static LogThreadedResult
@@ -537,7 +533,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
                 log_pipe_location_tag(&this->super->super.owner->super.super.super));
       result = _map_arrow_status_to_log_threaded_result(status);
       /* Stream is likely broken on the server side; drop it so the next flush opens a fresh one. */
-      this->close_stream();
+      (void) this->close_stream();
       goto exit;
     }
 
@@ -548,7 +544,30 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
                 evt_tag_str("error", status.ToString().c_str()),
                 log_pipe_location_tag(&this->super->super.owner->super.super.super));
       result = _map_arrow_status_to_log_threaded_result(status);
-      this->close_stream();
+      (void) this->close_stream();
+      goto exit;
+    }
+
+  if (!ack)
+    {
+      /*
+       * The only way for the server to raise an error result is to raise it async,
+       * effectively closing the stream and not send an ack at all.
+       * However, the raised error can only be read by the client with its next API call.
+       * Close() will suffice as we want to close the stream anyways.
+       */
+      status = this->close_stream();
+      if (!status.ok())
+        {
+          msg_error("arrow-flight: Server error during flush",
+                    evt_tag_str("error", status.ToString().c_str()),
+                    log_pipe_location_tag(&this->super->super.owner->super.super.super));
+          result = _map_arrow_status_to_log_threaded_result(status);
+        }
+      else
+        {
+          result = LTR_NOT_CONNECTED;
+        }
       goto exit;
     }
 

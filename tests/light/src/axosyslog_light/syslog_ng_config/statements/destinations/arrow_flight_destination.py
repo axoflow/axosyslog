@@ -61,6 +61,14 @@ class ArrowFlightDestination(DestinationDriver):
         if self._io is not None:
             self._io.close_stream_after_next_request()
 
+    def respond_with_error(self, error) -> None:
+        if self._io is not None:
+            self._io.respond_with_error(error)
+
+    def stop_responding_with_error(self) -> None:
+        if self._io is not None:
+            self._io.stop_responding_with_error()
+
     def read_logs(self, path: str) -> list:
         return self._io.read_logs(path)
 
