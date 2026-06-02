@@ -117,7 +117,7 @@ _evaluate_comparison(gint cmp, gint operator)
 static inline gboolean
 _evaluate_as_string(FilterXObject *lhs, FilterXObject *rhs, gint operator)
 {
-  gsize lhs_len, rhs_len;
+  gsize lhs_len = 0, rhs_len = 0;
   const gchar *lhs_repr = _convert_filterx_object_to_string(lhs, &lhs_len);
   const gchar *rhs_repr = _convert_filterx_object_to_string(rhs, &rhs_len);
 

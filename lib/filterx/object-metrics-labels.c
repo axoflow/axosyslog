@@ -148,7 +148,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   scratch_buffers_mark(&marker);
 
   const gchar *value_str;
-  gsize value_len;
+  gsize value_len = 0;
   FilterXObject *value = _obj_to_string(*new_value, &value_str, &value_len);
   if (!value)
     return FALSE;
