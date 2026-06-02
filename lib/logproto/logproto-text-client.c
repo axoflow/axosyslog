@@ -104,9 +104,8 @@ _prohibit_in(LogProtoClient *s)
 
 
 static LogProtoStatus
-log_proto_text_client_flush(LogProtoClient *s)
+_flush_single(LogProtoTextClient *self)
 {
-  LogProtoTextClient *self = (LogProtoTextClient *) s;
   gint rc;
 
   if (!self->partial)
@@ -150,6 +149,13 @@ log_proto_text_client_flush(LogProtoClient *s)
 
   /* NOTE: we return here to give a chance to the framed protocol to send the frame header. */
   return LPS_SUCCESS;
+}
+
+static LogProtoStatus
+log_proto_text_client_flush(LogProtoClient *s)
+{
+  LogProtoTextClient *self = (LogProtoTextClient *) s;
+  return _flush_single(self);
 }
 
 LogProtoStatus
