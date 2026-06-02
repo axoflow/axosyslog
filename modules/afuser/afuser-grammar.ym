@@ -54,6 +54,7 @@ extern LogDriver *last_driver;
 
 %type   <ptr> dest_afuser
 
+%token KW_ESCAPING
 %token KW_USERTTY
 
 %%
@@ -75,6 +76,7 @@ afuser_opts
 
 afuser_opt
 	: KW_TIME_REOPEN '(' positive_integer ')' { afuser_dd_set_time_reopen(last_driver, $3); }
+	| KW_ESCAPING '(' yesno ')' { afuser_dd_set_escaping(last_driver, $3); }
 	;
 
 /* INCLUDE_RULES */

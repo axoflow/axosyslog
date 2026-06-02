@@ -31,6 +31,7 @@ int afuser_parse(CfgLexer *lexer, LogDriver **instance, gpointer arg);
 
 static CfgLexerKeyword afuser_keywords[] =
 {
+  { "escaping",              KW_ESCAPING },
   { "usertty",               KW_USERTTY },
 
   { NULL }
