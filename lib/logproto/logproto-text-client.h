@@ -25,6 +25,8 @@
 
 #include "logproto-client.h"
 
+#include <sys/uio.h>
+
 typedef struct _LogProtoTextClient
 {
   LogProtoClient super;
@@ -32,6 +34,13 @@ typedef struct _LogProtoTextClient
   guchar *partial;
   GDestroyNotify partial_free;
   gsize partial_len, partial_pos;
+
+  struct
+  {
+    struct iovec *iov;
+    gint size;
+    gint count;
+  } batch;
 } LogProtoTextClient;
 
 LogProtoStatus log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len,

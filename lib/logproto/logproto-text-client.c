@@ -24,6 +24,7 @@
 #include "messages.h"
 
 #include <errno.h>
+#include <limits.h>
 
 static LogProtoStatus log_proto_text_client_flush(LogProtoClient *s);
 
@@ -232,8 +233,22 @@ log_proto_text_client_free(LogProtoClient *s)
   if (self->partial_free)
     self->partial_free(self->partial);
   self->partial = NULL;
+  for (gint i = 0; i < self->batch.count; ++i)
+    g_free(self->batch.iov[i].iov_base);
+  g_free(self->batch.iov);
+  self->batch.iov = NULL;
   log_proto_client_free_method(s);
 };
+
+static gint
+_calculate_batch_size(const LogProtoClientOptions *options)
+{
+  gint batch_size = (options && options->flush_lines > 1) ? options->flush_lines : 1;
+#ifdef IOV_MAX
+  batch_size = MIN(batch_size, IOV_MAX);
+#endif
+  return batch_size;
+}
 
 void
 log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport, const LogProtoClientOptions *options)
@@ -245,6 +260,9 @@ log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport, co
   self->super.post = log_proto_text_client_post;
   self->super.free_fn = log_proto_text_client_free;
   self->next_state = -1;
+
+  self->batch.size = _calculate_batch_size(options);
+  self->batch.iov = g_new0(struct iovec, self->batch.size);
 }
 
 LogProtoClient *
