@@ -34,6 +34,23 @@ _adapt_openobserve_response(HttpAdapter *self, HttpResponseSignalData *data)
   if (data->http_code != 200)
     return;
 
+  /* performance optimization:
+   *   - unfortunately the status code does not help us narrow down to cases
+   *     where our post generated a failure
+   *
+   *   - I used heuristics to decide if we need to properly parse the response
+   *
+   *   - the first "},{" filters out cases where we have multiple items in the
+   *     "status" member, in that case we have to parse
+   *
+   *   - if we have a single element in "status", then we check that the
+   *     number of failed entries is zero
+   */
+
+  if (strstr(data->response_body->str, "},{") == NULL &&
+      strstr(data->response_body->str, ",\"failed\":0") != NULL)
+    return;
+
   struct json_object *jso = http_adapter_parse_response_json(data->response_body);
   if (!jso)
     return;
