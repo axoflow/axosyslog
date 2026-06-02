@@ -40,6 +40,7 @@ typedef struct _LogProtoTextClient
     struct iovec *iov;
     gint size;
     gint count;
+    gsize partial_pos;
   } batch;
 } LogProtoTextClient;
 
