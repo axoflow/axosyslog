@@ -28,6 +28,8 @@ EXTRA_DIST				+=	\
 	modules/afuser/afuser-grammar.ym	\
 	modules/afuser/CMakeLists.txt
 
+include modules/afuser/tests/Makefile.am
+
 modules/afuser modules/afuser/ mod-afuser mod-usertty: \
 	modules/afuser/libafuser.la
 .PHONY: modules/afuser/ mod-afuser mod-usertty
