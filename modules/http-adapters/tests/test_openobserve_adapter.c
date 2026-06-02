@@ -50,6 +50,7 @@ Test(openobserve_adapter, test_partial_failure_sets_offending_message)
 
   http_adapter_adapt_response(oa, &data);
 
+  cr_assert_eq(data.http_code, 400);
   cr_assert_eq(data.offending_message, 2);
 
   gchar *offending_request = _extract_offending_request(&data);
@@ -77,6 +78,7 @@ Test(openobserve_adapter, test_all_failed_points_to_first_message)
 
   http_adapter_adapt_response(oa, &data);
 
+  cr_assert_eq(data.http_code, 400);
   cr_assert_eq(data.offending_message, 0);
 
   gchar *offending_request = _extract_offending_request(&data);
@@ -106,6 +108,7 @@ Test(openobserve_adapter, test_all_successful_no_change)
 
   http_adapter_adapt_response(oa, &data);
 
+  cr_assert_eq(data.http_code, 200);
   cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
   cr_assert_eq(data.offending_request_len, 0);
@@ -135,6 +138,7 @@ Test(openobserve_adapter, test_multiple_status_entries_sum_successful)
 
   http_adapter_adapt_response(oa, &data);
 
+  cr_assert_eq(data.http_code, 400);
   /* First failed message is at index 2+1=3 (0-based) */
   cr_assert_eq(data.offending_message, 3);
 
@@ -164,6 +168,34 @@ Test(openobserve_adapter, test_successful_count_exceeds_batch_size_resets_to_zer
 
   http_adapter_adapt_response(oa, &data);
 
+  cr_assert_eq(data.http_code, 400);
+  cr_assert_eq(data.offending_message, 0);
+  cr_assert_eq(data.offending_request_start, 0);
+  cr_assert_eq(data.offending_request_len, 0);
+
+  g_string_free(data.request_body, TRUE);
+  g_string_free(data.response_body, TRUE);
+  http_adapter_free(oa);
+}
+
+Test(openobserve_adapter, test_successful_request_action)
+{
+  HttpAdapter *oa = openobserve_adapter_new();
+  /* successful count is larger than batch_size (shouldn't happen in practice, but be safe) */
+  HttpResponseSignalData data =
+  {
+    .http_code = 200,
+    .batch_size = 3,
+    .request_body = g_string_new("msg1\nmsg2\nmsg3\n"),
+    .response_body = g_string_new(
+      "{\"code\":200,\"status\":[{\"name\":\"default\",\"successful\":1,\"failed\":0}]}"
+    ),
+    0
+  };
+
+  http_adapter_adapt_response(oa, &data);
+
+  cr_assert_eq(data.http_code, 200);
   cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
   cr_assert_eq(data.offending_request_len, 0);
@@ -178,7 +210,7 @@ Test(openobserve_adapter, test_non_200_response_ignored)
   HttpAdapter *oa = openobserve_adapter_new();
   HttpResponseSignalData data =
   {
-    .http_code = 400,
+    .http_code = 401,
     .batch_size = 2,
     .request_body = g_string_new("msg1\nmsg2\n"),
     .response_body = g_string_new(
@@ -191,6 +223,7 @@ Test(openobserve_adapter, test_non_200_response_ignored)
 
   http_adapter_adapt_response(oa, &data);
 
+  cr_assert_eq(data.http_code, 401);
   /* Non-200 responses are not processed by this adapter */
   cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
@@ -217,6 +250,7 @@ Test(openobserve_adapter, test_invalid_json_handled_gracefully)
 
   http_adapter_adapt_response(oa, &data);
 
+  cr_assert_eq(data.http_code, 400);
   cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
   cr_assert_eq(data.offending_request_len, 0);
