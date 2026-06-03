@@ -208,7 +208,7 @@ def mock_api_response_nginx(mocker):
         ]
     }
 
-    # kubernetes>=33 calls response.getheader("content-type") and decodes response.data.
+    # kubernetes>=36 calls response.getheader("content-type") and decodes response.data.
     mock_response = mocker.Mock(**{
         'status_code': 200,
         'status': 200,
