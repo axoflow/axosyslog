@@ -42,4 +42,9 @@ void filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor an
  * vtable indirection. */
 FilterXObject *filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key);
 
+/* Like filterx_dict_get_subscript, but the caller asserts that @key is hashable (i.e. a
+ * string). Skips the normalize_key vtable check; intended for JIT call sites that have
+ * proven the key's static type at compile time. */
+FilterXObject *filterx_dict_get_subscript_unchecked(FilterXObject *s, FilterXObject *key);
+
 #endif
