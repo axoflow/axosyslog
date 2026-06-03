@@ -1,6 +1,42 @@
 apiVersion: v1
 entries:
   axosyslog:
+  - annotations:
+      artifacthub.io/links: |
+        - name: documentation
+          url: https://axoflow.com/docs/axosyslog-core
+        - name: support
+          url: https://axoflow.com/docs/axosyslog-core/support
+        - name: issues
+          url: https://github.com/axoflow/axosyslog/issues
+    apiVersion: v2
+    appVersion: 4.25.0
+    created: "2026-06-03T18:20:46.180117913Z"
+    description: AxoSyslog is the cloud-native syslog-ng for Kubernetes
+    digest: fae2f6f526d3c94898e74985005d36ff4bf594d24f6e1bfe072486c282402d1a
+    home: https://axoflow.com/docs/axosyslog-core/
+    icon: https://raw.githubusercontent.com/axoflow/axosyslog/main/doc/axosyslog-white.svg
+    keywords:
+    - logging
+    - syslog
+    - syslog-ng
+    - observability
+    - axoflow
+    - axosyslog
+    - opentelemetry
+    - otlp
+    kubeVersion: '>=1.22.0-0'
+    maintainers:
+    - email: support@axoflow.com
+      name: Axoflow
+      url: https://axoflow.com/docs/axosyslog-core/support
+    name: axosyslog
+    sources:
+    - https://github.com/axoflow/axosyslog
+    type: application
+    urls:
+    - https://github.com/axoflow/axosyslog/releases/download/axosyslog-charts-0.20.0/axosyslog-0.20.0.tgz
+    version: 0.20.0
   - apiVersion: v2
     appVersion: 4.22.0
     created: "2026-01-19T12:16:59.349696009Z"
@@ -242,4 +278,4 @@ entries:
     urls:
     - https://github.com/axoflow/axosyslog-charts/releases/download/axosyslog-collector-0.1.0/axosyslog-collector-0.1.0.tgz
     version: 0.1.0
-generated: "2026-01-19T12:16:59.3498149Z"
+generated: "2026-06-03T18:20:46.180318196Z"
