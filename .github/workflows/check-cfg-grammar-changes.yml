@@ -13,5 +13,5 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: axoflow/axosyslog-cfg-diff-pr@v3
+      - uses: axoflow/axosyslog-cfg-diff-pr@5aad2fdd7552b7164458732cb961ab45c4bbffa8
         continue-on-error: true

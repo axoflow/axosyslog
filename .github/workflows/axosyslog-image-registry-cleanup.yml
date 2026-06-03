@@ -14,7 +14,7 @@ jobs:
     permissions: write-all
     runs-on: ubuntu-latest
     steps:
-      - uses: MrAnno/delete-untagged-ghcr-action@v6
+      - uses: MrAnno/delete-untagged-ghcr-action@4a33ce3cf2456d2aef98a1b6c60a12dad56cffd9
         with:
           token: ${{ github.token }}
           repository_owner: ${{ github.repository_owner }}
