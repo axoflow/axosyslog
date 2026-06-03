@@ -95,7 +95,8 @@ _adapt_openobserve_response(HttpAdapter *self, HttpResponseSignalData *data)
       data->offending_message = (guint) total_successful;
       if (data->offending_message >= data->batch_size)
         data->offending_message = 0;
-      http_adapter_locate_offending_payload(data);
+      else
+        http_adapter_locate_offending_payload(data);
     }
 
 exit:
