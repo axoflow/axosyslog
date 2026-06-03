@@ -20,3 +20,4 @@ rules:
     ignore:
       - devshell.yml
       - devshell_light_valgrind.yml
+      - test-apt-packages.yml
