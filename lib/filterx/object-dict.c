@@ -852,6 +852,22 @@ filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
 }
 
 FilterXObject *
+filterx_dict_get_subscript_unchecked(FilterXObject *s, FilterXObject *key)
+{
+  /* The caller is responsible for ensuring @key is hashable (i.e. a string), letting us
+   * skip the normalize_key vtable check that the generic path runs. */
+  FilterXDictObject *self = (FilterXDictObject *) filterx_ref_unwrap_ro(s);
+
+  if (!self->table)
+    return NULL;
+
+  FilterXObject *value = NULL;
+  if (!_table_lookup(self->table, key, &value))
+    return NULL;
+  return value;
+}
+
+FilterXObject *
 filterx_dict_new(void)
 {
   return filterx_dict_new_with_table(NULL);
