@@ -23,7 +23,8 @@
 
 name: Version bump
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
@@ -32,9 +33,16 @@ on:
         description: 'VERSION (<MAJOR>.<MINOR>.<PATCH>)'
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   version-bump:
+    name: Version bump
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       GITHUB_TOKEN: ${{ secrets.PAT_FOR_ACTIONS }}
       RELEASE_VERSION: ${{ github.event.inputs.release_version }}
@@ -42,8 +50,9 @@ jobs:
       CURRENT_RUN_URL: https://github.com/${{ github.repository_owner }}/axosyslog/actions/runs/${{ github.run_id }}
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Check existing PR
@@ -80,7 +89,7 @@ jobs:
           ./dbld/rules release VERSION=${RELEASE_VERSION}
 
       - name: Upload tarball
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: axosyslog-${{ env.RELEASE_VERSION }}
           path: dbld/release/${{ env.RELEASE_VERSION }}/axosyslog-${{ env.RELEASE_VERSION }}.tar.gz

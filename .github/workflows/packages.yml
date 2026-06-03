@@ -5,17 +5,22 @@ on:
   pull_request:
   push:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   create-source-tarball:
+    name: Create source tarball
     runs-on: ubuntu-latest
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Prepare docker image
@@ -25,7 +30,7 @@ jobs:
         run: ./dbld/rules pkg-tarball
 
       - name: Store source tarball as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: source-tarball
           path: dbld/build/*.tar.gz
@@ -36,11 +41,12 @@ jobs:
     with:
       source-tarball-artifact-name: source-tarball
       dbld-image-mode: cache
-      distros: '[
-        "almalinux-8",
-        "almalinux-10",
-        "debian-trixie",
-        "debian-testing",
-        "fedora-44",
-        "ubuntu-resolute"
-      ]'
+      distros: >-
+        [
+          "almalinux-8",
+          "almalinux-10",
+          "debian-trixie",
+          "debian-testing",
+          "fedora-44",
+          "ubuntu-resolute"
+        ]

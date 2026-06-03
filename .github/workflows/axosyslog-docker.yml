@@ -1,6 +1,7 @@
 name: AxoSyslog Docker image builder
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   workflow_call:
@@ -27,7 +28,9 @@ env:
 
 jobs:
   prepare:
+    name: Prepare
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       platform-matrix: ${{ steps.platforms.outputs.platform-matrix }}
       image-name: ${{ steps.registry.outputs.image-name }}
@@ -41,16 +44,22 @@ jobs:
           echo "platform-matrix=$PLATFORM_MATRIX" >> $GITHUB_OUTPUT
       - id: registry
         name: registry
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/axosyslog"
+          IMAGE_NAME="ghcr.io/${REPOSITORY_OWNER}/axosyslog"
           IMAGE_NAME="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
           echo "image-name=$IMAGE_NAME" >> $GITHUB_OUTPUT
 
 
   image-build:
+    name: Build image
     if: github.repository_owner == 'axoflow' || github.event_name != 'schedule'
     runs-on: ${{ matrix.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     needs: prepare
+    permissions:
+      contents: read  # checkout source
+      packages: write  # push image digest to GHCR
 
     strategy:
       fail-fast: false
@@ -67,22 +76,24 @@ jobs:
           echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
 
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Download source tarball artifact
         if: inputs.snapshot-tarball-artifact != ''
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           name: ${{ inputs.snapshot-tarball-artifact }}
           path: docker/apkbuild/axoflow/axosyslog
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4.0.0
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4.0.0
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -90,7 +101,7 @@ jobs:
 
       - name: Extract metadata (AxoSyslog version) for Docker
         id: docker-metadata
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6.0.0
         with:
           images: ${{ needs.prepare.outputs.image-name }}
           flavor: |
@@ -98,7 +109,7 @@ jobs:
 
       - name: Build and push production Docker image
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7.1.0
         with:
           context: docker
           file: docker/axosyslog.dockerfile
@@ -117,7 +128,7 @@ jobs:
           touch "/tmp/digests/${DIGEST#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: /tmp/digests/*
@@ -125,22 +136,25 @@ jobs:
           retention-days: 1
 
   merge-and-push:
+    name: Merge and push
     runs-on: ubuntu-latest
     needs: [prepare, image-build]
+    permissions:
+      packages: write  # create multi-arch manifest and push to GHCR
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4.0.0
 
       - name: "Query previous container image version"
         if: inputs.type == 'stable'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9.0.0
         with:
           script: |
             const versionPattern = /^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$/;
@@ -166,10 +180,11 @@ jobs:
         if: inputs.type == 'stable'
         env:
           IMAGE_NAME: ${{ needs.prepare.outputs.image-name }}
+          GITHUB_REF: ${{ github.ref }}
         run: |
           previous_docker_tag_short=$(echo $previous_docker_tag | cut -d"-" -f1)
           previous_docker_tag_rebuild_num=$(echo $previous_docker_tag | cut -d"-" -f2)
-          current_git_tag=$(echo ${{ github.ref }} | cut -d"-" -f2)
+          current_git_tag=$(echo ${GITHUB_REF} | cut -d"-" -f2)
           if [[ $current_git_tag =~ ^[0-9]+.[0-9]+.[0-9]+$ ]]; then
             function version { echo "$@" | awk -F. '{ printf("%d%03d%03d\n", $1,$2,$3); }'; }
             if [ $(version $current_git_tag) -gt $(version $previous_docker_tag_short) ]; then
@@ -196,9 +211,10 @@ jobs:
           TYPE: ${{ inputs.type }}
           SNAPSHOT_TAGS: ${{ inputs.snapshot-tags }}
           IMAGE_NAME: ${{ needs.prepare.outputs.image-name }}
+          GENERATED_TAGS: ${{ steps.docker-metadata-tags.outputs.tags }}
         run: |
           if [[ "$TYPE" = "stable" ]]; then
-            TAGS='${{ steps.docker-metadata-tags.outputs.tags }}'
+            TAGS='${GENERATED_TAGS}'
           elif [[ "$TYPE" = "snapshot" ]]; then
             TAGS="$(echo "$SNAPSHOT_TAGS" | sed "s|[^,]*|$IMAGE_NAME:&|g")"
           else
@@ -210,7 +226,7 @@ jobs:
           echo "DEBUG_TAGS=${TAGS//,/-dbg,}-dbg" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4.1.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}

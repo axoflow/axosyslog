@@ -1,0 +1,37 @@
+name: GitHub Actions workflow static analysis
+
+on:
+  push:
+    paths:
+      - '.github/**'
+  pull_request:
+    paths:
+      - '.github/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zizmor:
+    name: Check GitHub Actions workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v6.2.0
+        with:
+          python-version: "3.x"
+
+      - name: Install zizmor
+        run: pip install zizmor
+
+      - name: Run zizmor
+        run: zizmor .github/workflows/ --pedantic

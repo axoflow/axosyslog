@@ -22,12 +22,16 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.type || 'branch' }}-${{ inputs.custom-image-tag || '' }}
   cancel-in-progress: true
 
 jobs:
   prepare:
+    name: Prepare
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
@@ -36,32 +40,38 @@ jobs:
     steps:
       - name: Determine tag
         id: tag
+        env:
+          INPUT_TYPE: ${{ inputs.type || 'branch' }}
+          REF_NAME: ${{ github.ref_name }}
+          CUSTOM_IMAGE_TAG: ${{ inputs.custom-image-tag }}
         run: |
-          IMAGE_NAME="$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')"
+          IMAGE_NAME="$(echo "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')"
 
-          case "${{ inputs.type || 'branch' }}" in
+          case "$INPUT_TYPE" in
             branch)
-              tag="dev-${{ github.ref_name }}"
+              tag="dev-$REF_NAME"
               ;;
             custom)
-              if docker manifest inspect "$IMAGE_NAME:${{ inputs.custom-image-tag }}" > /dev/null 2>&1; then
-                echo "Custom tag '${{ inputs.custom-image-tag }}' already exists."
+              if docker manifest inspect "${IMAGE_NAME}:${CUSTOM_IMAGE_TAG}" > /dev/null 2>&1; then
+                echo "Custom tag '${CUSTOM_IMAGE_TAG}' already exists."
                 exit 1
               fi
-              tag="${{ inputs.custom-image-tag }}"
+              tag="${CUSTOM_IMAGE_TAG}"
               ;;
           esac
           echo "tag=${tag}" >> $GITHUB_OUTPUT
           echo "tag=${tag}"
   tarball:
+    name: Build tarball
     needs: prepare
     runs-on: ubuntu-latest
     outputs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Prepare docker image
@@ -83,13 +93,15 @@ jobs:
           echo "SNAPSHOT_VERSION=${pkg_version}" >> $GITHUB_OUTPUT
 
       - name: Store source tarball as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: source-tarball
           path: dbld/build/*.tar.*
 
   publish-image:
-    permissions: write-all
+    permissions:
+      contents: read  # checkout source
+      packages: write  # push image to GHCR
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: [prepare, tarball]
     with:

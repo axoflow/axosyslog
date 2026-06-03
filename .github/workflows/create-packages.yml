@@ -13,28 +13,32 @@ on:
       distros:
         required: false
         type: string
-        default: '[
-          "debian-testing",
-          "debian-sid",
-          "debian-bullseye",
-          "debian-bookworm",
-          "debian-trixie",
-          "ubuntu-focal",
-          "ubuntu-jammy",
-          "ubuntu-noble",
-          "ubuntu-plucky",
-          "ubuntu-questing",
-          "ubuntu-resolute",
-          "almalinux-8",
-          "almalinux-9",
-          "almalinux-10",
-          "fedora-44"
-        ]'
+        default: >-
+          [
+            "debian-testing",
+            "debian-sid",
+            "debian-bullseye",
+            "debian-bookworm",
+            "debian-trixie",
+            "ubuntu-focal",
+            "ubuntu-jammy",
+            "ubuntu-noble",
+            "ubuntu-plucky",
+            "ubuntu-questing",
+            "ubuntu-resolute",
+            "almalinux-8",
+            "almalinux-9",
+            "almalinux-10",
+            "fedora-44"
+          ]
 
+
+permissions: {}
 
 jobs:
   create-packages:
     name: ${{ matrix.distro }}
+    permissions: {}
 
     runs-on: ubuntu-latest
 
@@ -44,8 +48,16 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Prepare environment
+        env:
+          DBLD_IMAGE_MODE: ${{ inputs.dbld-image-mode }}
+          DISTRO: ${{ matrix.distro }}
+        run: |
+          echo "DBLD_IMAGE_MODE=${DBLD_IMAGE_MODE}" >> $GITHUB_ENV
+          echo "DISTRO=${DISTRO}" >> $GITHUB_ENV
+
       - name: Download source tarball artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           name: ${{ inputs.source-tarball-artifact-name }}
 
@@ -57,21 +69,21 @@ jobs:
       - name: Prepare docker image
         working-directory: axosyslog
         run: |
-          if [[ "${{ inputs.dbld-image-mode }}" = "build" ]]
+          if [[ "${DBLD_IMAGE_MODE}" = "build" ]]
           then
-            ./dbld/rules image-${{ matrix.distro }}
-          elif [[ "${{ inputs.dbld-image-mode }}" = "cache" ]]
+            ./dbld/rules image-${DISTRO}
+          elif [[ "${DBLD_IMAGE_MODE}" = "cache" ]]
           then
-            ./dbld/rules cache-image-${{ matrix.distro }}
+            ./dbld/rules cache-image-${DISTRO}
           else
-            echo Unexpected input: dbld-image-mode=${{ inputs.dbld-image-mode }}
+            echo Unexpected input: dbld-image-mode=${DBLD_IMAGE_MODE}
             false
           fi
 
       - name: Create package
         working-directory: axosyslog
         run: |
-          ./dbld/rules package-${{ matrix.distro }}
+          ./dbld/rules package-${DISTRO}
 
       - name: Prepare package for artifact
         # We want to keep the directory structure starting with ${{ matrix.distro }},
@@ -80,10 +92,10 @@ jobs:
         # so let's make a temporary directory and move the ${{ matrix.distro }} directory there.
         run: |
           mkdir package
-          cp -r axosyslog/dbld/build/${{ matrix.distro }} package/
+          cp -r axosyslog/dbld/build/${DISTRO} package/
 
       - name: Store package as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: package-${{ matrix.distro }}
           path: package/*

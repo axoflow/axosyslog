@@ -6,12 +6,16 @@ on:
   schedule:
     - cron: '00 21 * * *'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   general:
+    name: General
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
@@ -25,12 +29,16 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
       - name: Setup environment
+        env:
+          CC: ${{ matrix.cc }}
         run: |
           . .github/workflows/gh-tools.sh
 
@@ -42,7 +50,6 @@ jobs:
 
           # Setup build time environment variables
           PYTHONUSERBASE="${HOME}/python_packages"
-          CC="${{ matrix.cc }}"
           CXX=`[ $CC = gcc ] && echo g++ || echo clang++`
           SYSLOG_NG_INSTALL_DIR=${HOME}/install/syslog-ng
           CONFIGURE_FLAGS="
@@ -113,7 +120,7 @@ jobs:
         run: make VERBOSE=1 func-test
 
       - name: "Artifact: test-suite.log"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.make_check.outcome == 'failure'
         with:
           name: test-suite-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -129,7 +136,7 @@ jobs:
           tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports
 
       - name: "Artifact: light-reports"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.prepare-light-reports.outcome == 'success'
         with:
           name: light-reports-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -143,7 +150,7 @@ jobs:
             gdb --ex="thread apply all bt full" --ex="quit" ${SYSLOG_NG_INSTALL_DIR}/sbin/syslog-ng --core {} \;
 
       - name: "Artifact: corefiles"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: corefiles-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -157,6 +164,7 @@ jobs:
           path: ${{ env.SYSLOG_NG_INSTALL_DIR }}
 
   distcheck:
+    name: Distcheck
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
@@ -164,7 +172,9 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -203,12 +213,14 @@ jobs:
           exec_prop_check "make distcheck -j 8 V=1"
 
   callgrind:
+    name: Callgrind
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 2
 
       - name: Find base and head commits
@@ -257,8 +269,10 @@ jobs:
       - name: Build the binaries (BASE)
         id: build_base
         continue-on-error: true
+        env:
+          BASE_HEAD: ${{ steps.commits.outputs.BASE_HEAD }}
         run: |
-          git checkout ${{ steps.commits.outputs.BASE_HEAD }}
+          git checkout ${BASE_HEAD}
           dbld/rules make-install
 
       - name: callgrind (BASE)
@@ -267,19 +281,22 @@ jobs:
           dbld/rules callgrind CALLGRIND_PROFILE=base
 
       - name: "Artifact: callgrind_annotate.txt"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: callgrind_annotate.txt
           path: dbld/build/callgrind/*/callgrind_annotate.txt
 
   style-check:
+    name: Style check
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -313,20 +330,21 @@ jobs:
             (git diff > ../light-style-problems.diff ; git reset --hard HEAD && exit 1)
 
       - name: "Artifact: c-style-problems"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.c-style-check.outcome == 'failure'
         with:
           name: c-style-problems
           path: c-style-problems.diff
 
       - name: "Artifact: light-style-problems"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.light-style-check.outcome == 'failure'
         with:
           name: light-style-problems
           path: light-style-problems.diff
 
   copyright-check:
+    name: Copyright check
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
@@ -335,7 +353,9 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -344,21 +364,23 @@ jobs:
         run: tests/copyright/check.sh . .
 
       - name: "Artifact: copyright-run.log"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: copyright-run.log
           path: copyright-run.log
 
   commits-check:
+    name: Commits check
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Setup Git safedir
@@ -366,7 +388,9 @@ jobs:
 
       - name: Commits check (Pull request)
         if: github.event_name == 'pull_request'
-        run: tests/commits/check.sh origin/${{ github.base_ref }}..HEAD
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: tests/commits/check.sh origin/${BASE_REF}..HEAD
 
       - name: Commits check (Push)
         if: github.event_name == 'push'

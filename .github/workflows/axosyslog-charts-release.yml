@@ -1,6 +1,7 @@
 name: AxoSyslog charts release
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   push:
@@ -10,13 +11,21 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   release:
+    name: Release Helm charts
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # create GitHub release and push to gh-pages branch
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Configure Git
@@ -29,7 +38,7 @@ jobs:
           echo 'release-name-template: "{{ .Name }}-charts-{{ .Version }}"' > chart-releaser-config.yml
 
       - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
+        uses: helm/chart-releaser-action@v1.7.0
         with:
           config: chart-releaser-config.yml
           charts_dir: charts

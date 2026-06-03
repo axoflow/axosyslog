@@ -6,12 +6,16 @@ on:
   schedule:
     - cron: '00 21 * * *'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   general:
+    name: General
     strategy:
       matrix:
         version: [26-intel, 14]
@@ -22,7 +26,9 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set xcode version
         if: matrix.version == 14
@@ -43,6 +49,8 @@ jobs:
           brew bundle --force --file=contrib/Brewfile
 
       - name: Set ENV variables
+        env:
+          MACOS_VERSION: ${{ matrix.version }}
         run: |
           . .github/workflows/gh-tools.sh
 
@@ -89,7 +97,7 @@ jobs:
           # wrong branch between std::log2p1 and std::bit_width for the
           # Apple clang on the runner (apache/arrow#49841). Disable the
           # arrow-flight module here until the upstream fix lands.
-          if [ "${{ matrix.version }}" = "14" ]; then
+          if [ "${MACOS_VERSION}" = "14" ]; then
             CONFIGURE_FLAGS="${CONFIGURE_FLAGS} --disable-arrow-flight"
             CMAKE_CONFIGURE_FLAGS="${CMAKE_CONFIGURE_FLAGS} -DENABLE_ARROW_FLIGHT=OFF"
           fi

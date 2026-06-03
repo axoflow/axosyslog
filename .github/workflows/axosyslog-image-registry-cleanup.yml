@@ -9,12 +9,20 @@ on:
         default: 'axosyslog'
         type: string
 
+concurrency:
+  group: ${{ github.workflow }}-${{ inputs.image_name }}
+  cancel-in-progress: false
+
+permissions: {}
+
 jobs:
   cleanup-untagged-images:
-    permissions: write-all
+    name: Clean up untagged images
+    permissions:
+      packages: write  # delete untagged images from GHCR
     runs-on: ubuntu-latest
     steps:
-      - uses: MrAnno/delete-untagged-ghcr-action@v6
+      - uses: MrAnno/delete-untagged-ghcr-action@4a33ce3cf2456d2aef98a1b6c60a12dad56cffd9
         with:
           token: ${{ github.token }}
           repository_owner: ${{ github.repository_owner }}

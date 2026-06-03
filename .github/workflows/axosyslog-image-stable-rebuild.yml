@@ -1,18 +1,26 @@
 name: AxoSyslog stable image rebuild
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   pre-check:
+    name: Pre-check
     runs-on: ubuntu-latest
     if: github.repository_owner == 'axoflow'
+    env:
+      GITHUB_REF: ${{ github.ref }}
     steps:
       - name: Validate tag
         run: |
-          if [[ ! "${{ github.ref }}" =~ ^refs/tags/axosyslog-[0-9]+ ]]; then
+          if [[ ! "${GITHUB_REF}" =~ ^refs/tags/axosyslog-[0-9]+ ]]; then
             echo "Please start the workflow on a 'axosyslog-[0-9]+*' tag"
             false
           fi
@@ -20,5 +28,8 @@ jobs:
   publish-image:
     uses: ./.github/workflows/axosyslog-docker.yml
     needs: pre-check
+    permissions:
+      contents: read  # checkout source
+      packages: write  # push image to GHCR
     with:
       type: stable

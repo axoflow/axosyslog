@@ -1,0 +1,26 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        actions/checkout: ref-pin
+        actions/upload-artifact: ref-pin
+        actions/download-artifact: ref-pin
+        actions/setup-python: ref-pin
+        actions/setup-go: ref-pin
+        actions/github-script: ref-pin
+        docker/login-action: ref-pin
+        docker/setup-qemu-action: ref-pin
+        docker/setup-buildx-action: ref-pin
+        docker/build-push-action: ref-pin
+        docker/metadata-action: ref-pin
+        helm/chart-releaser-action: ref-pin
+        octokit/request-action: ref-pin
+        aquasecurity/trivy-action: ref-pin
+  unpinned-images:
+    ignore:
+      - devshell.yml
+      - devshell_light_valgrind.yml
+      - test-apt-packages.yml
+  dangerous-triggers:
+    ignore:
+      - comment-cfg-grammar-changes.yml

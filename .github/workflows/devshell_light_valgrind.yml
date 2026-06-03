@@ -4,12 +4,16 @@ on:
   schedule:
     - cron: '00 00 * * *'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   general:
+    name: General
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/axoflow/axosyslog-dbld-devshell:latest
@@ -23,12 +27,16 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
 
       - name: Setup environment
+        env:
+          CC: ${{ matrix.cc }}
         run: |
           . .github/workflows/gh-tools.sh
 
@@ -40,7 +48,6 @@ jobs:
 
           # Setup build time environment variables
           PYTHONUSERBASE="${HOME}/python_packages"
-          CC="${{ matrix.cc }}"
           CXX=`[ $CC = gcc ] && echo g++ || echo clang++`
           SYSLOG_NG_INSTALL_DIR=${HOME}/install/syslog-ng
           CONFIGURE_FLAGS="
@@ -106,7 +113,7 @@ jobs:
           tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports
 
       - name: "Artifact: light-reports"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.prepare-light-reports.outcome == 'success'
         with:
           name: light-reports-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -120,7 +127,7 @@ jobs:
             gdb --ex="thread apply all bt full" --ex="quit" ${SYSLOG_NG_INSTALL_DIR}/sbin/syslog-ng --core {} \;
 
       - name: "Artifact: corefiles"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: corefiles-${{ matrix.build-tool }}-${{ matrix.cc }}

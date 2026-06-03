@@ -8,22 +8,33 @@
 
 name: Comment on version bump PR
 
-permissions: write-all
+permissions:
+  contents: read
 
 on:
   push:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   comment-on-version-bump-pr:
+    name: Comment on version bump PR
     runs-on: ubuntu-latest
+    permissions:
+      contents: read  # checkout source
+      pull-requests: write  # comment on version bump PR about new commits on main
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       COMMIT_URL: https://github.com/${{ github.repository_owner }}/axosyslog/commit/${{ github.sha }}
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Check if version bump PR is open
         run: |

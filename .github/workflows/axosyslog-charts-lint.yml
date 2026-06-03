@@ -10,6 +10,9 @@ on:
       - 'charts/**'
       - '.github/workflows/**'
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -20,16 +23,20 @@ defaults:
 
 jobs:
   helm-lint:
+    name: Lint Helm charts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Linter
         run: |
           docker run -v${PWD}:${PWD} alpine/helm lint ${PWD}
 
   helm-docs:
+    name: Check Helm docs are up-to-date
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,6 +44,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Install helm-docs
         uses: actions/setup-go@v5
