@@ -21,3 +21,6 @@ rules:
       - devshell.yml
       - devshell_light_valgrind.yml
       - test-apt-packages.yml
+  dangerous-triggers:
+    ignore:
+      - comment-cfg-grammar-changes.yml
