@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -113,7 +113,7 @@ jobs:
         run: make VERBOSE=1 func-test
 
       - name: "Artifact: test-suite.log"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.make_check.outcome == 'failure'
         with:
           name: test-suite-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -129,7 +129,7 @@ jobs:
           tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports
 
       - name: "Artifact: light-reports"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.prepare-light-reports.outcome == 'success'
         with:
           name: light-reports-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -143,7 +143,7 @@ jobs:
             gdb --ex="thread apply all bt full" --ex="quit" ${SYSLOG_NG_INSTALL_DIR}/sbin/syslog-ng --core {} \;
 
       - name: "Artifact: corefiles"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: corefiles-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -164,7 +164,7 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -207,7 +207,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 2
 
@@ -267,7 +267,7 @@ jobs:
           dbld/rules callgrind CALLGRIND_PROFILE=base
 
       - name: "Artifact: callgrind_annotate.txt"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: callgrind_annotate.txt
           path: dbld/build/callgrind/*/callgrind_annotate.txt
@@ -279,7 +279,7 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -313,14 +313,14 @@ jobs:
             (git diff > ../light-style-problems.diff ; git reset --hard HEAD && exit 1)
 
       - name: "Artifact: c-style-problems"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.c-style-check.outcome == 'failure'
         with:
           name: c-style-problems
           path: c-style-problems.diff
 
       - name: "Artifact: light-style-problems"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.light-style-check.outcome == 'failure'
         with:
           name: light-style-problems
@@ -335,7 +335,7 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -344,7 +344,7 @@ jobs:
         run: tests/copyright/check.sh . .
 
       - name: "Artifact: copyright-run.log"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: copyright-run.log
@@ -357,7 +357,7 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 

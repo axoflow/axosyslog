@@ -23,7 +23,7 @@ jobs:
       COMMIT_URL: https://github.com/${{ github.repository_owner }}/axosyslog/commit/${{ github.sha }}
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Check if version bump PR is open
         run: |

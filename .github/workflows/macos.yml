@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Set xcode version
         if: matrix.version == 14

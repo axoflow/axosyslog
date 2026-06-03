@@ -42,7 +42,7 @@ jobs:
       CURRENT_RUN_URL: https://github.com/${{ github.repository_owner }}/axosyslog/actions/runs/${{ github.run_id }}
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -80,7 +80,7 @@ jobs:
           ./dbld/rules release VERSION=${RELEASE_VERSION}
 
       - name: Upload tarball
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: axosyslog-${{ env.RELEASE_VERSION }}
           path: dbld/release/${{ env.RELEASE_VERSION }}/axosyslog-${{ env.RELEASE_VERSION }}.tar.gz

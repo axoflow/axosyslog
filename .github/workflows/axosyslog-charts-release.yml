@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -29,7 +29,7 @@ jobs:
           echo 'release-name-template: "{{ .Name }}-charts-{{ .Version }}"' > chart-releaser-config.yml
 
       - name: Run chart-releaser
-        uses: helm/chart-releaser-action@v1.6.0
+        uses: helm/chart-releaser-action@v1.7.0
         with:
           config: chart-releaser-config.yml
           charts_dir: charts

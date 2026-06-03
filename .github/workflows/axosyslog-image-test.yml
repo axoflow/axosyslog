@@ -15,7 +15,7 @@ jobs:
       snapshot-version: ${{ steps.snapshot-version.outputs.SNAPSHOT_VERSION }}
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Prepare docker image
         run: ./dbld/rules cache-image-tarball
@@ -33,7 +33,7 @@ jobs:
           echo "SNAPSHOT_VERSION=${pkg_version}" >> $GITHUB_OUTPUT
 
       - name: Store source tarball as artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: source-tarball
           path: dbld/build/*.tar.gz
@@ -43,16 +43,16 @@ jobs:
     needs: tarball
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Download source tarball artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8.0.1
         with:
           name: source-tarball
           path: docker/apkbuild/axoflow/axosyslog
 
       - name: Build Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7.1.0
         with:
           context: docker
           file: docker/axosyslog.dockerfile

@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout AxoSyslog source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Setup Git safedir
         run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
@@ -106,7 +106,7 @@ jobs:
           tar -cz -f /tmp/light-reports.tar.gz /tmp/light-reports
 
       - name: "Artifact: light-reports"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: always() && steps.prepare-light-reports.outcome == 'success'
         with:
           name: light-reports-${{ matrix.build-tool }}-${{ matrix.cc }}
@@ -120,7 +120,7 @@ jobs:
             gdb --ex="thread apply all bt full" --ex="quit" ${SYSLOG_NG_INSTALL_DIR}/sbin/syslog-ng --core {} \;
 
       - name: "Artifact: corefiles"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         if: failure()
         with:
           name: corefiles-${{ matrix.build-tool }}-${{ matrix.cc }}

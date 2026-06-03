@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Build docker image
         run: |
