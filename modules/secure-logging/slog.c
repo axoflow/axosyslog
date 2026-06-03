@@ -393,7 +393,7 @@ int sLogDecrypt(guchar *ciphertext,
       /* Verify failed */
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Decryption/Tag verification failed"));
       result = -1;
-}
+    }
 
 CLEANUP_SLOGDECRYPT:
   if (ctx)
@@ -521,10 +521,10 @@ gboolean deriveKey(guchar *dst, guint64 index, guint64 currentKey)
   for (guint64 i = currentKey; i<index; i++)
     {
       if (FALSE == evolveKey(dst) )
-{
+        {
           //--  called PRF function provides logging
           result = FALSE; //-- do not return yet
-}
+        }
     }
   return result;
 }
@@ -585,7 +585,7 @@ gboolean cmac(guchar *key, const void *input,
                 evt_tag_str("Reason: ", "EVP_MAC_CTX_new() returned NULL")
                );
       goto CLEANUP_CMAC;
-}
+    }
 
   if (EVP_MAC_init(ctx, key, KEY_LENGTH, params) == 0)
     {
@@ -719,8 +719,8 @@ gboolean evolveKey(guchar *key)
 {
   guchar buf[KEY_LENGTH];
   if (PRF(key, GAMMA_SL, sizeof(GAMMA_SL), buf, KEY_LENGTH))
-{
-  memcpy(key, buf, KEY_LENGTH);
+    {
+      memcpy(key, buf, KEY_LENGTH);
       return TRUE;
     }
   else
@@ -750,7 +750,7 @@ gboolean evolveKey(guchar *key)
  */
 gboolean PRF(guchar *key, guchar *originalInput,
              guint64 originalInputLength, guchar *output,
-         guint64 outputLength)
+             guint64 outputLength)
 {
   // First, extraction
   guchar ktmp[KEY_LENGTH];
@@ -802,9 +802,9 @@ gboolean PRF(guchar *key, guchar *originalInput,
                     evt_tag_long("Line: ", __LINE__));
           g_free(input);
           return FALSE;
-    }
+        }
 
-}
+    }
 
   if (outputLength % CMAC_LENGTH != 0)
     {
@@ -867,7 +867,7 @@ gboolean deriveHostKey(guchar *masterkey, gchar *macAddr, gchar *serial, guchar 
   strncat(concatString, macAddr, sizeof(concatString) - strlen(concatString) - 1);
   strncat(concatString, serial, sizeof(concatString) - strlen(concatString) - 1);
   return PRF(masterkey, (guchar *) concatString, strlen(concatString), hostkey, KEY_LENGTH);
-    }
+}
 
 
 /*
@@ -924,15 +924,15 @@ gboolean writeAggregatedMAC(gchar *filename, guchar *outputBuffer)
 
   if (TRUE == cmacOk)
     {
-  // Write new aggregated MAC to file
-  result = write_to_file(f, outputmacdata, CMAC_LENGTH);
-  if (!result)
-    {
-      msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Error new MAC write_to_file"));
-      (void) close_file(f);
-      g_free(f);
-      return FALSE; //-- ERROR
-    }
+      // Write new aggregated MAC to file
+      result = write_to_file(f, outputmacdata, CMAC_LENGTH);
+      if (!result)
+        {
+          msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Error new MAC write_to_file"));
+          (void) close_file(f);
+          g_free(f);
+          return FALSE; //-- ERROR
+        }
     }
 
   result = close_file(f);
@@ -1011,20 +1011,20 @@ gboolean readAggregatedMAC(gchar *filename, guchar *outputBuffer)
 
   if (TRUE == cmacOk)
     {
-  if (0 != memcmp(testOutput, &macdata[CMAC_LENGTH], CMAC_LENGTH))
-    {
-      msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "MAC computation invalid"));
-      cmacOk = FALSE;
-    }
-  else
-    {
-      msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "MAC successfully loaded"));
-    }
+      if (0 != memcmp(testOutput, &macdata[CMAC_LENGTH], CMAC_LENGTH))
+        {
+          msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "MAC computation invalid"));
+          cmacOk = FALSE;
+        }
+      else
+        {
+          msg_info(SLOG_INFO_PREFIX, evt_tag_str("Reason", "MAC successfully loaded"));
+        }
     }
 
   if (TRUE == cmacOk)
     {
-  memcpy(outputBuffer, macdata, CMAC_LENGTH);
+      memcpy(outputBuffer, macdata, CMAC_LENGTH);
     }
   result = close_file(f);
   if (!result)
@@ -1105,17 +1105,17 @@ gboolean readKey(guchar *destKey, guint64 *destCounter, gchar *keypath)
 
   if (TRUE == cmacOk)
     {
-  if (0!=memcmp(testOutput, &keydata[KEY_LENGTH], CMAC_LENGTH))
-    {
-      msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Host key corrupted. CMAC in key file not matching"));
-      result = FALSE;
-    }
+      if (0!=memcmp(testOutput, &keydata[KEY_LENGTH], CMAC_LENGTH))
+        {
+          msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Host key corrupted. CMAC in key file not matching"));
+          result = FALSE;
+        }
     }
 
   if (TRUE == cmacOk)
     {
-  memcpy(destKey, keydata, KEY_LENGTH);
-  *destCounter = GUINT64_FROM_LE(littleEndianCounter);
+      memcpy(destKey, keydata, KEY_LENGTH);
+      *destCounter = GUINT64_FROM_LE(littleEndianCounter);
     }
 
   result = close_file(f);
@@ -1202,7 +1202,7 @@ CLEANUP_WRITEKEY:
     }
   g_free(f);
   return result && cmacOk;
-    }
+}
 
 // Iterate through log entries contained in a buffer and verify them
 gboolean iterateBuffer(
@@ -1248,7 +1248,7 @@ gboolean iterateBuffer(
                             evt_tag_str("Reason", "Duplicate entry detected"),
                             evt_tag_long("entry", logEntryOnDisk));
                   result = FALSE;
-                    }
+                }
 
               if (logEntryOnDisk < (*nextLogEntry)) //-- Case 1 less
                 {
@@ -1275,19 +1275,19 @@ gboolean iterateBuffer(
 
               else  //-- Case 2 greater
                 {
-              if (logEntryOnDisk-(*nextLogEntry)>1000000)
-                {
+                  if (logEntryOnDisk-(*nextLogEntry)>1000000)
+                    {
                       //-- info for user because this might take some time
                       msg_info(SLOG_INFO_PREFIX,
                                evt_tag_str("Reason", "Deriving key for distant future. This might take some time."),
                                evt_tag_long("next log entry should be", *nextLogEntry),
                                evt_tag_long("key to derive to", logEntryOnDisk),
-                           evt_tag_long("number of log entries", *numberOfLogEntries));
-                }
+                               evt_tag_long("number of log entries", *numberOfLogEntries));
+                    }
 
                   (void) deriveKey(mainKey, logEntryOnDisk, *nextLogEntry);
-              *nextLogEntry = logEntryOnDisk;
-            }
+                  *nextLogEntry = logEntryOnDisk;
+                }
 
             } //-- not equal
 
@@ -1326,14 +1326,14 @@ gboolean iterateBuffer(
                     }
 
                   // Update BigHMAC
-                      gsize outlen = 0;
+                  gsize outlen = 0;
                   guchar MACKey[KEY_LENGTH];
-                      deriveMACSubKey(mainKey, MACKey);
+                  deriveMACSubKey(mainKey, MACKey);
                   //-- now that an inital aggregated MAC exists, do the
                   //   same for first entry as for any other entries!
                   guchar bigBuf[AES_BLOCKSIZE + IV_LENGTH + AES_BLOCKSIZE + pt_length];
-                      memcpy(bigBuf, cmac_tag, AES_BLOCKSIZE);
-                      memcpy(&bigBuf[AES_BLOCKSIZE], binBuf, IV_LENGTH+AES_BLOCKSIZE+pt_length);
+                  memcpy(bigBuf, cmac_tag, AES_BLOCKSIZE);
+                  memcpy(&bigBuf[AES_BLOCKSIZE], binBuf, IV_LENGTH+AES_BLOCKSIZE+pt_length);
                   if (!cmac(MACKey, bigBuf, AES_BLOCKSIZE + IV_LENGTH + AES_BLOCKSIZE + pt_length, cmac_tag, &outlen, cmac_tag_capacity))
                     {
                       msg_error(SLOG_ERROR_PREFIX,
@@ -1392,12 +1392,12 @@ gboolean finalizeVerify(
   guint64 notRecovered = 0;
   for (guint64 i = startingEntry; i < startingEntry + entriesInFile; i++)
     {
-          // Hashtable key
-          char key[CTR_LEN_SIMPLE+1];
-          snprintf(key, CTR_LEN_SIMPLE+1, "%"G_GUINT64_FORMAT, i);
+      // Hashtable key
+      char key[CTR_LEN_SIMPLE+1];
+      snprintf(key, CTR_LEN_SIMPLE+1, "%"G_GUINT64_FORMAT, i);
       if (!g_hash_table_contains(*tab, key))
-            {
-              notRecovered++;
+        {
+          notRecovered++;
           msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Unable to recover"), evt_tag_long("entry", i));
           ret = FALSE;
         }
@@ -1617,10 +1617,10 @@ gboolean iterativeFileVerify(
               result = FALSE;
               // Cannot continue -> Release memory and file resources prematurely
               goto CLEANUP_ITERATIVEFILEVERIFY;
-        }
+            }
         }
       result = iterateBuffer(chunkLength, inputBuffer, &nextLogEntry, mainKey, keyZero, keyNumber, outputBuffer,
-                                &numberOfLogEntries, cmac_tag, cmac_tag_capacity, tab);
+                             &numberOfLogEntries, cmac_tag, cmac_tag_capacity, tab);
 
       // ...and write to file
       for (guint64 i = 0; i < chunkLength; i++)
@@ -1633,7 +1633,7 @@ gboolean iterativeFileVerify(
               goto CLEANUP_ITERATIVEFILEVERIFY;
             }
           if (line->len != 0)
-                {
+            {
               result = putLogEntry(outf, line);
               if (!result)
                 {
@@ -1665,10 +1665,10 @@ gboolean iterativeFileVerify(
               // Cannot continue -> Release memory and file resources prematurely
               goto CLEANUP_ITERATIVEFILEVERIFY;
             }
-            }
+        }
 
       result = iterateBuffer((entriesInFile % chunkLength), inputBuffer, &nextLogEntry, mainKey, keyZero, keyNumber,
-                                outputBuffer, &numberOfLogEntries, cmac_tag, cmac_tag_capacity, tab);
+                             outputBuffer, &numberOfLogEntries, cmac_tag, cmac_tag_capacity, tab);
 
       for (guint64 i = 0; i < (entriesInFile % chunkLength); i++)
         {
@@ -1680,7 +1680,7 @@ gboolean iterativeFileVerify(
               goto CLEANUP_ITERATIVEFILEVERIFY;
             }
           if (line->len != 0)
-                {
+            {
               result = putLogEntry(outf, line);
               if (!result)
                 {
@@ -1938,7 +1938,7 @@ gboolean fileVerify(guchar *mainKey, char *inputFileName,
       g_ptr_array_set_size(outputBuffer, 0);
       g_ptr_array_set_size(inputBuffer, 0);
 
-            }
+    }
 
   if ((entriesInFile % chunkLength) > 0)
     {
@@ -1990,7 +1990,7 @@ gboolean fileVerify(guchar *mainKey, char *inputFileName,
   if (!finalizeVerify(startingEntry, entriesInFile, aggMAC, cmac_tag, &tab))
     {
       result = FALSE;
-        }
+    }
 
 CLEANUP_FILEVERIFY:
 
@@ -2040,8 +2040,8 @@ int slog_usage(GOptionContext *ctx, GOptionGroup *grp, GString *errormsg)
     }
   if (NULL != ctx)
     {
-  g_print("%s", g_option_context_get_help(ctx, TRUE, NULL));
-  g_option_context_free(ctx);
+      g_print("%s", g_option_context_get_help(ctx, TRUE, NULL));
+      g_option_context_free(ctx);
     }
   else
     {
@@ -2151,7 +2151,7 @@ gboolean validFileNameArgCheckDirOnly(const gchar *option_name, const gchar *val
                   dirname = NULL;
                   break;
                 }
-          g_free (dirname);
+              g_free (dirname);
             }
         }
 
@@ -2367,7 +2367,7 @@ gboolean is_file_path_safe_and_valid(const gchar *input_path)
     {
       g_warning("No write permissions in directory: %s", dir_name);
       goto CLEANUP_IFPSAV;
-}
+    }
 
   retval = TRUE;
 

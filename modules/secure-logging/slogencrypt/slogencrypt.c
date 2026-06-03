@@ -320,8 +320,8 @@ int main(int argc, char *argv[])
                     evt_tag_int("Minimum buffer size", MIN_BUF_SIZE),
                     evt_tag_int("Maximum buffer size", MAX_BUF_SIZE));
           retval = 1; //-- ERROR
-      goto CLEANUP_SLOGENCRYPT;
-    }
+          goto CLEANUP_SLOGENCRYPT;
+        }
     }
 
 
@@ -369,7 +369,7 @@ int main(int argc, char *argv[])
         {
           //-- ERROR: File was not written!
           msg_error(SLOG_ERROR_PREFIX,
-                      evt_tag_str("Reason", "writeAggregatedMAC was not successful!"),
+                    evt_tag_str("Reason", "writeAggregatedMAC was not successful!"),
                     evt_tag_str("file", gstr_path_inputMAC->str));
           retval = -1; //-- ERROR
           goto CLEANUP_SLOGENCRYPT;
@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
       if (!g_file_test(gstr_path_inputMAC->str, G_FILE_TEST_IS_REGULAR))
         {
           msg_error(SLOG_ERROR_PREFIX,
-                      evt_tag_str("Reason", "Initial MAC file was not written as expected!"),
+                    evt_tag_str("Reason", "Initial MAC file was not written as expected!"),
                     evt_tag_str("file", gstr_path_inputMAC->str));
           retval = -1; //-- ERROR, File not found!
           goto CLEANUP_SLOGENCRYPT;
@@ -406,7 +406,7 @@ int main(int argc, char *argv[])
   if (readAggregatedMAC(gstr_path_inputMAC->str, mac) == 0)
     {
       msg_error(SLOG_ERROR_PREFIX,
-                  evt_tag_str("Reason", "Unable to open input MAC file!"),
+                evt_tag_str("Reason", "Unable to open input MAC file!"),
                 evt_tag_str("file", gstr_path_inputMAC->str));
 
       retval = -1; //-- ERROR, File not found!
@@ -455,7 +455,7 @@ int main(int argc, char *argv[])
                           mac,
                           result,
                           outputmacdata,
-                outputmacdata_capacity);
+                          outputmacdata_capacity);
       if (!outcome)
         {
           msg_warning(SLOG_WARNING_PREFIX,
@@ -486,8 +486,8 @@ int main(int argc, char *argv[])
       if (!outcome)
         {
           msg_warning(SLOG_WARNING_PREFIX, evt_tag_str("Reason", "Unable to evolve key!"));
-      g_string_free(result, TRUE);
-      g_string_free(inputGString, TRUE);
+          g_string_free(result, TRUE);
+          g_string_free(inputGString, TRUE);
           retval = -1; //-- ERROR, failed to evolve key!
           goto CLEANUP_SLOGENCRYPT;
         }
@@ -497,8 +497,8 @@ int main(int argc, char *argv[])
       if (NULL != line)
         {
           free(line);
-      line = NULL;
-    }
+          line = NULL;
+        }
       counter++;
       readLen = 0;
 
@@ -558,13 +558,13 @@ CLEANUP_SLOGENCRYPT:
   if (NULL != context)
     {
       g_option_context_free(context);
-  context = NULL;
+      context = NULL;
     }
-      if (NULL != line)
-        {
-          free(line);
-          line = NULL;
-        }
+  if (NULL != line)
+    {
+      free(line);
+      line = NULL;
+    }
 
   g_string_free(gstr_path_hostkey, TRUE);
   gstr_path_hostkey = NULL;

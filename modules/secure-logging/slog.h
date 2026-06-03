@@ -352,7 +352,7 @@ gboolean get_path_mac0(const char *pathAggMac, char *pathMac0, size_t sizePathMa
 // Pseudo-random function implementation
 gboolean PRF(guchar *key, guchar *originalInput,
              guint64 inputLength, guchar *output,
-         guint64 outputLength);
+             guint64 outputLength);
 
 // Print usage message and clean up
 int slog_usage(GOptionContext *ctx, GOptionGroup *grp, GString *errormsg);

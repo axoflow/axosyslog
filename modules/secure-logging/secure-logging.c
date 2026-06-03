@@ -237,9 +237,9 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
                     evt_tag_str("Reason", "MAC0 found without MAC"),
                     evt_tag_str("File", pathMac0));
           is_good_start = FALSE;
-    }
-  else
-    {
+        }
+      else
+        {
           //-- Neither MAC nor MAC0 found. Check key usage count.
           guint64 key_counter = 42;
           (void) readKey(state->key, &key_counter, state->keypath);
@@ -249,7 +249,7 @@ tf_slog_prepare(LogTemplateFunction *self, gpointer s, LogTemplate *parent, gint
                         evt_tag_str("Reason", "Number of log entries is greater than 0 but no MAC files provided"),
                         evt_tag_long("Count", key_counter));
               is_good_start = FALSE;
-    }
+            }
         }
       /* Case-1 */
       //-- No MAC file available. Normal case when first run.
