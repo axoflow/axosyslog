@@ -27,6 +27,7 @@ _adapt_splunk_response(HttpAdapter *self, HttpResponseSignalData *data)
 {
   if (data->http_code >= 400)
     {
+      data->result = HTTP_SLOT_CRITICAL_ERROR;
       struct json_object *jso = http_adapter_parse_response_json(data->response_body);
       if (jso)
         {
