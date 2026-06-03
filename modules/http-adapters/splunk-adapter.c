@@ -39,7 +39,8 @@ _adapt_splunk_response(HttpAdapter *self, HttpResponseSignalData *data)
           data->offending_message = json_object_get_int(event_num_jso);
           if (data->offending_message >= data->batch_size)
             data->offending_message = 0;
-          http_adapter_locate_offending_payload(data);
+          else
+            http_adapter_locate_offending_payload(data);
 exit:
           json_object_put(jso);
         }
