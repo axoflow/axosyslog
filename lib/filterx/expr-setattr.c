@@ -160,6 +160,7 @@ _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
+#include "filterx/object-dict.h"
 
 __attribute__((used))
 FilterXObject *
@@ -195,6 +196,60 @@ _setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   filterx_type_env_meet_attr_for_chain(env, self->object, key, value_spec);
 }
 
+/* Dict-specialized setattr: identical to _do_setattr but calls filterx_dict_set_subscript
+ * directly, bypassing the ref-setattr → mapping-setattr → set_subscript vtable chain. */
+__attribute__((used))
+FilterXObject *
+fx_jit_do_setattr_dict(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  if (!cloned)
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object",
+                                          "Failed to evaluate right hand side");
+      goto error;
+    }
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object",
+                                          "Failed to evaluate expression");
+      goto error;
+    }
+
+  if (!filterx_dict_set_subscript(lhs, self->attr, &cloned))
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object",
+                                          "setattr() method failed");
+      goto error;
+    }
+
+  filterx_object_unref(lhs);
+  return cloned;
+
+error:
+  filterx_object_unref(lhs);
+  filterx_object_unref(cloned);
+  return NULL;
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_nullv_setattr_dict(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
+{
+  if (!cloned)
+    {
+      filterx_object_unref(lhs);
+      return _suppress_error();
+    }
+  if (filterx_object_extract_null(cloned))
+    {
+      filterx_object_unref(lhs);
+      return cloned;
+    }
+  return fx_jit_do_setattr_dict(s, lhs, cloned);
+}
+
 static inline FilterXIRValue
 _emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name)
 {
@@ -217,13 +272,21 @@ _emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name)
 static FilterXIRValue
 _setattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_setattr");
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+  const gchar *fn_name = filterx_static_type_kind(self->object->static_type) == FILTERX_STATIC_TYPE_DICT
+                         ? "fx_jit_do_setattr_dict"
+                         : "fx_jit_do_setattr";
+  return _emit_setattr_call(self, jit, fn_name);
 }
 
 static FilterXIRValue
 _nullv_setattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_nullv_setattr");
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+  const gchar *fn_name = filterx_static_type_kind(self->object->static_type) == FILTERX_STATIC_TYPE_DICT
+                         ? "fx_jit_do_nullv_setattr_dict"
+                         : "fx_jit_do_nullv_setattr";
+  return _emit_setattr_call(self, jit, fn_name);
 }
 
 #endif

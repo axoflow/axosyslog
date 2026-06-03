@@ -188,11 +188,60 @@ _getattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
                                                INITIAL_FILTERX_STATIC_TYPE_SPEC);
 }
 
+FilterXExpr *
+filterx_getattr_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_getattr(s))
+    return NULL;
+  return ((FilterXGetAttr *) s)->operand;
+}
+
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+#include "filterx/object-dict.h"
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  return _do_getattr(variable, attr, expr);
+}
+
+/* Dict-specialized fast path. dict.attr is semantically dict[attr] with a known-string key,
+ * so we call filterx_dict_get_subscript_unchecked directly, bypassing both ref's getattr
+ * vtable and mapping's getattr → get_subscript hop. @attr is borrowed (owned by the
+ * FilterXGetAttr struct) and must not be unrefed. */
+__attribute__((used))
+FilterXObject *
+fx_jit_do_getattr_dict(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to get-attribute from object",
+                                          "Failed to evaluate expression");
+      return NULL;
+    }
+
+  FilterXObject *result = filterx_dict_get_subscript_unchecked(variable, attr);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to get-attribute from object",
+                                        "Failed to evaluate key");
+
+  filterx_object_unref(variable);
+  return result;
+}
+
 static FilterXIRValue
 _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  const gchar *fn_name = filterx_static_type_kind(self->operand->static_type) == FILTERX_STATIC_TYPE_DICT
+                         ? "fx_jit_do_getattr_dict"
+                         : "fx_jit_do_getattr";
 
   FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
   FilterXIRValue args[] =
@@ -202,7 +251,7 @@ _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
     fx_jit_emit_const_ptr(jit, self),
   };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, "fx_jit_do_getattr", ffi->ptr_ty, param_tys, args, 3);
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
 }
 
 #endif
