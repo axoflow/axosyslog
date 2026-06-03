@@ -558,10 +558,12 @@ ptz_print_patterndb(GHashTable *clusters, const gchar *delimiters, gboolean name
 {
   char date[12], uuid_string[37];
   time_t currtime;
+  struct tm tm_buf;
 
   /* print the header */
   time(&currtime);
-  strftime(date, 12, "%Y-%m-%d", localtime(&currtime));
+  localtime_r(&currtime, &tm_buf);
+  strftime(date, 12, "%Y-%m-%d", &tm_buf);
   printf("<patterndb version='6' pub_date='%s'>\n", date);
   uuid_gen_random(uuid_string, sizeof(uuid_string));
 

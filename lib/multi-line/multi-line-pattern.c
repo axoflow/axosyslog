@@ -120,9 +120,7 @@ multi_line_pattern_match(MultiLinePattern *re, const guchar *str, gsize len)
     goto exit;
 
   guint32 num_matches = pcre2_get_ovector_count(match_data);
-  PCRE2_SIZE *matches = pcre2_get_ovector_pointer(match_data);
-
-  result = num_matches > 0 && matches[0] != PCRE2_UNSET;
+  result = num_matches > 0;
 
 exit:
   pcre2_match_data_free(match_data);

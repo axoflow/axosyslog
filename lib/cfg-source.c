@@ -40,7 +40,7 @@ _format_source_prefix(gchar *line_prefix, gsize line_prefix_len, gint lineno, gb
 static void
 _print_underline(const gchar *line, gint whitespace_before, gint number_of_carets)
 {
-  for (gint i = 0; line[i] && i < whitespace_before; i++)
+  for (gint i = 0; i < whitespace_before && line[i]; i++)
     {
       fprintf(stderr, "%c", line[i] == '\t' ? '\t' : ' ');
     }

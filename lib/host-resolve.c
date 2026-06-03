@@ -57,7 +57,7 @@ normalize_hostname(gchar *result, gsize result_size, const gchar *hostname)
 {
   gsize i;
 
-  for (i = 0; hostname[i] && i < (result_size - 1); i++)
+  for (i = 0; i < (result_size - 1) && hostname[i]; i++)
     {
       result[i] = ch_tolower(hostname[i]);
     }

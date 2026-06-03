@@ -112,6 +112,7 @@ void
 stats_cluster_key_builder_pop(StatsClusterKeyBuilder *self)
 {
   GList *last_link = g_list_last(self->options_stack);
+  g_assert(last_link != NULL);
   BuilderOptions *options = (BuilderOptions *) last_link->data;
 
   self->options_stack = g_list_delete_link(self->options_stack, last_link);
@@ -128,7 +129,9 @@ stats_cluster_key_builder_free(StatsClusterKeyBuilder *self)
 static BuilderOptions *
 _get_last_options(StatsClusterKeyBuilder *self)
 {
-  return (BuilderOptions *) g_list_last(self->options_stack)->data;
+  GList *last_link = g_list_last(self->options_stack);
+  g_assert(last_link != NULL);
+  return (BuilderOptions *) last_link->data;
 }
 
 void
