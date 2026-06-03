@@ -210,7 +210,7 @@ _format_syslog_5424_eval(FilterXExpr *s)
   LogMessage *logmsg = context->msg;
   FilterXObject *result = NULL;
 
-  gsize message_len;
+  gsize message_len = 0;
   const gchar *message;
   FilterXObject *message_obj = _get_message(self, &message, &message_len);
   if (!message_obj)
@@ -225,19 +225,19 @@ _format_syslog_5424_eval(FilterXExpr *s)
   FilterXObject *timestamp_obj = _get_timestamp(self, logmsg, &timestamp);
 
   const gchar *host;
-  gsize host_len;
+  gsize host_len = 0;
   FilterXObject *host_obj = _get_host(self, &host, &host_len);
 
   const gchar *program;
-  gsize program_len;
+  gsize program_len = 0;
   FilterXObject *program_obj = _get_program(self, &program, &program_len);
 
   const gchar *pid;
-  gsize pid_len;
+  gsize pid_len = 0;
   FilterXObject *pid_obj = _get_pid(self, &pid, &pid_len);
 
   const gchar *msgid;
-  gsize msgid_len;
+  gsize msgid_len = 0;
   FilterXObject *msgid_obj = _get_msgid(self, &msgid, &msgid_len);
 
   /*                    OCT _   <   PRI >   1   _   TS   _   HOST       _   PROGRAM       _   PID       _ */

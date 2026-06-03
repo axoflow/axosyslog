@@ -23,7 +23,7 @@
 static gboolean
 tf_getent_services(gchar *key, gchar *member_name, GString *result)
 {
-  struct servent serv, *res;
+  struct servent serv = {0}, *res;
   gint64 d;
   gboolean is_num;
   char buf[4096];

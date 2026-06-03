@@ -206,7 +206,7 @@ _py_invoke_close(PythonDestDriver *self)
 static LogThreadedResult
 _as_int(PyObject *obj)
 {
-  gint64 result;
+  gint64 result = LTR_ERROR;
   if (!py_long_to_long(obj, &result) && PyErr_Occurred())
     {
       gchar buf[256];
