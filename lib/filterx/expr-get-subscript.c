@@ -21,6 +21,8 @@
  */
 #include "filterx/expr-get-subscript.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-list.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
@@ -182,6 +184,80 @@ filterx_get_subscript_get_operand(FilterXExpr *s)
   return ((FilterXGetSubscript *) s)->operand;
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+typedef FilterXObject *(*FXGetSubscriptHelper)(FilterXObject *object, FilterXObject *key);
+
+static inline __attribute__((always_inline)) FilterXObject *
+_do_get_subscript(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr,
+                  FXGetSubscriptHelper helper)
+{
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to get-subscript from object", expr,
+                                          "Failed to evaluate expression");
+      return NULL;
+    }
+  if (!key)
+    {
+      filterx_eval_push_error_static_info("Failed to get-subscript from object", expr,
+                                          "Failed to evaluate key");
+      filterx_object_unref(variable);
+      return NULL;
+    }
+  FilterXObject *result = helper(variable, key);
+  if (!result)
+    filterx_eval_push_error("Failed to get-subscript from object", expr, key);
+  filterx_object_unref(key);
+  filterx_object_unref(variable);
+  return result;
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_get_subscript_dict(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_get_subscript_list(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return _do_get_subscript(variable, key, expr, filterx_list_get_subscript);
+}
+
+static FilterXIRValue
+_get_subscript_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  const gchar *fn_name;
+  switch (filterx_static_type_kind(self->operand->static_type))
+    {
+    case FILTERX_STATIC_TYPE_DICT:
+      fn_name = "fx_jit_do_get_subscript_dict";
+      break;
+    case FILTERX_STATIC_TYPE_LIST:
+      fn_name = "fx_jit_do_get_subscript_list";
+      break;
+    default:
+      return fx_jit_emit_expr_eval(jit, s);
+    }
+
+  FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
+  FilterXIRValue key = filterx_expr_compile_or_eval_typed(self->key, jit);
+  FilterXIRValue args[] = { variable, key, fx_jit_emit_const_ptr(jit, s) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
+}
+
+#endif
+
 static gboolean
 _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -212,6 +288,9 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.move = _move;
   self->super.free_fn = _free;
   self->super.infer_types = _get_subscript_infer_types;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _get_subscript_compile;
+#endif
   self->operand = operand;
   self->key = key;
   return &self->super;
