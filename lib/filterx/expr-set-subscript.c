@@ -26,6 +26,8 @@
 #include "filterx/object-null.h"
 #include "filterx/object-message-value.h"
 #include "filterx/object-extractor.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-list.h"
 #include "scratch-buffers.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
@@ -173,6 +175,102 @@ _set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
                                    self->new_value ? self->new_value->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC);
 }
 
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+typedef gboolean (*FXSetSubscriptHelper)(FilterXObject *object, FilterXObject *key, FilterXObject **value);
+
+static inline __attribute__((always_inline)) FilterXObject *
+_do_set_subscript(FilterXObject *object, FilterXObject *key, FilterXObject *new_value, FilterXExpr *expr,
+                  FXSetSubscriptHelper helper)
+{
+  FilterXObject *cloned = NULL;
+  if (!new_value)
+    {
+      filterx_eval_push_error_static_info("Failed to set element of object", expr,
+                                          "Failed to evaluate right hand side");
+      goto cleanup;
+    }
+  if (!key)
+    {
+      filterx_eval_push_error_static_info("Failed to set element of object", expr,
+                                          "Failed to evaluate key");
+      goto cleanup;
+    }
+  if (!object)
+    {
+      filterx_eval_push_error_static_info("Failed to set element of object", expr,
+                                          "Failed to evaluate expression");
+      goto cleanup;
+    }
+  cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
+  if (!helper(object, key, &cloned))
+    {
+      filterx_eval_push_error("Object set-subscript failed", expr, key);
+      filterx_eval_push_error_static_info("Failed to set element of object", expr,
+                                          "set-subscript() method failed");
+      filterx_object_unref(cloned);
+      cloned = NULL;
+    }
+cleanup:
+  filterx_object_unref(object);
+  filterx_object_unref(key);
+  filterx_object_unref(new_value);
+  return cloned;
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_set_subscript_dict(FilterXObject *object, FilterXObject *key, FilterXObject *new_value, FilterXExpr *expr)
+{
+  return _do_set_subscript(object, key, new_value, expr, filterx_dict_set_subscript);
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_set_subscript_list(FilterXObject *object, FilterXObject *key, FilterXObject *new_value, FilterXExpr *expr)
+{
+  return _do_set_subscript(object, key, new_value, expr, filterx_list_set_subscript_via_key);
+}
+
+static FilterXIRValue
+_set_subscript_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXSetSubscript *self = (FilterXSetSubscript *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  /* v1: only specialize when we have a key expression. set_subscript with self->key == NULL
+   * (e.g. list-append form) takes the interpreter path. */
+  const gchar *fn_name;
+  switch (filterx_static_type_kind(self->object->static_type))
+    {
+    case FILTERX_STATIC_TYPE_DICT:
+      fn_name = "fx_jit_do_set_subscript_dict";
+      break;
+    case FILTERX_STATIC_TYPE_LIST:
+      fn_name = "fx_jit_do_set_subscript_list";
+      break;
+    default:
+      return fx_jit_emit_expr_eval(jit, s);
+    }
+
+  if (!self->key)
+    return fx_jit_emit_expr_eval(jit, s);
+
+  /* Eval order matches the interpreter: new_value first, then key, then object. */
+  FilterXIRValue new_value = filterx_expr_compile_or_eval(self->new_value, jit);
+  FilterXIRValue key = filterx_expr_compile_or_eval(self->key, jit);
+  FilterXIRValue object = filterx_expr_compile_or_eval_typed(self->object, jit);
+
+  FilterXIRValue args[] = { object, key, new_value, fx_jit_emit_const_ptr(jit, s) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 4);
+}
+
+#endif
+
 static gboolean
 _set_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -199,6 +297,9 @@ filterx_set_subscript_new(FilterXExpr *object, FilterXExpr *key, FilterXExpr *ne
   self->super.walk_children = _set_subscript_walk;
   self->super.free_fn = _free;
   self->super.infer_types = _set_subscript_infer_types;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _set_subscript_compile;
+#endif
   self->object = object;
   self->key = key;
   self->new_value = new_value;

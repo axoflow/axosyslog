@@ -867,6 +867,23 @@ filterx_dict_get_subscript_unchecked(FilterXObject *s, FilterXObject *key)
   return value;
 }
 
+gboolean
+filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
+{
+  /* Mirrors _filterx_ref_set_subscript inline so the cow + parent linkage are visible to
+   * the optimizer at the JIT call site, and the dict's set_subscript fires directly. */
+  if (filterx_object_is_ref(s))
+    {
+      FilterXRef *ref = (FilterXRef *) s;
+      _filterx_ref_cow(ref);
+      gboolean result = _filterx_dict_set_subscript(ref->value, key, new_value);
+      if (result)
+        filterx_ref_set_parent_container(*new_value, s);
+      return result;
+    }
+  return _filterx_dict_set_subscript(s, key, new_value);
+}
+
 FilterXObject *
 filterx_dict_new(void)
 {
