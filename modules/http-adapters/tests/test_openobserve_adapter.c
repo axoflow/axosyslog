@@ -50,7 +50,7 @@ Test(openobserve_adapter, test_partial_failure_sets_offending_message)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 400);
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   cr_assert_eq(data.offending_message, 2);
 
   gchar *offending_request = _extract_offending_request(&data);
@@ -78,7 +78,7 @@ Test(openobserve_adapter, test_all_failed_points_to_first_message)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 400);
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   cr_assert_eq(data.offending_message, 0);
 
   gchar *offending_request = _extract_offending_request(&data);
@@ -138,7 +138,7 @@ Test(openobserve_adapter, test_multiple_status_entries_sum_successful)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 400);
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   /* First failed message is at index 2+1=3 (0-based) */
   cr_assert_eq(data.offending_message, 3);
 
@@ -168,7 +168,7 @@ Test(openobserve_adapter, test_successful_count_exceeds_batch_size_resets_to_zer
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 400);
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
   cr_assert_eq(data.offending_request_len, 0);
@@ -214,7 +214,7 @@ Test(openobserve_adapter, test_non_200_response_ignored)
     .batch_size = 2,
     .request_body = g_string_new("msg1\nmsg2\n"),
     .response_body = g_string_new(
-      "{\"code\":400,\"status\":[{\"name\":\"network\",\"successful\":0,\"failed\":2,\"error\":\"bad request\"}]}"
+      "{\"code\":401,\"status\":[{\"name\":\"network\",\"successful\":0,\"failed\":2,\"error\":\"bad request\"}]}"
     ),
     .offending_message = 0,
     .offending_request_start = 0,
@@ -223,7 +223,7 @@ Test(openobserve_adapter, test_non_200_response_ignored)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 401);
+  cr_assert_eq(data.result, HTTP_SLOT_SUCCESS);
   /* Non-200 responses are not processed by this adapter */
   cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
@@ -250,7 +250,7 @@ Test(openobserve_adapter, test_invalid_json_handled_gracefully)
 
   http_adapter_adapt_response(oa, &data);
 
-  cr_assert_eq(data.http_code, 400);
+  cr_assert_eq(data.result, HTTP_SLOT_CRITICAL_ERROR);
   cr_assert_eq(data.offending_message, 0);
   cr_assert_eq(data.offending_request_start, 0);
   cr_assert_eq(data.offending_request_len, 0);

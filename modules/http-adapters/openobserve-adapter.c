@@ -51,9 +51,11 @@ _adapt_openobserve_response(HttpAdapter *self, HttpResponseSignalData *data)
       strstr(data->response_body->str, ",\"failed\":0") != NULL)
     return;
 
+  data->result = HTTP_SLOT_CRITICAL_ERROR;
+
   struct json_object *jso = http_adapter_parse_response_json(data->response_body);
   if (!jso)
-    return;
+    goto exit;
 
   struct json_object *status_jso = NULL;
   if (!json_object_object_get_ex(jso, "status", &status_jso))
@@ -97,6 +99,10 @@ _adapt_openobserve_response(HttpAdapter *self, HttpResponseSignalData *data)
         data->offending_message = 0;
       else
         http_adapter_locate_offending_payload(data);
+    }
+  else
+    {
+      data->result = HTTP_SLOT_SUCCESS;
     }
 
 exit:
