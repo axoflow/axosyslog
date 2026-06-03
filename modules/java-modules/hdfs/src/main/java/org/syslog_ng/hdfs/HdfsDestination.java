@@ -240,14 +240,14 @@ public class HdfsDestination extends StructuredLogDestination {
         isOpened = false;
         String resolvedFileName = options.getFileNameTemplate().getResolvedString(logMessage);
         lock.lock();
-        HdfsFile hdfsfile = getHdfsFile(resolvedFileName);
-        if (hdfsfile == null) {
-            // Unable to open file
-            closeAll(true);
-            return ERROR;
-        }
-
         try {
+            HdfsFile hdfsfile = getHdfsFile(resolvedFileName);
+            if (hdfsfile == null) {
+                // Unable to open file
+                closeAll(true);
+                return ERROR;
+            }
+
             String formattedMessage = options.getTemplate().getResolvedString(logMessage);
 
             logger.debug("Outgoing message: " + formattedMessage);
@@ -262,9 +262,8 @@ public class HdfsDestination extends StructuredLogDestination {
             closeAll(false);
             return ERROR;
         } finally {
-          lock.unlock();
+            lock.unlock();
         }
-
 
         isOpened = true;
         return SUCCESS;
