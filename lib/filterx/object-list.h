@@ -49,6 +49,11 @@ FilterXObject *filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[],
  * vtable indirection. */
 FilterXObject *filterx_list_get_subscript(FilterXObject *s, FilterXObject *key);
 
+/* Devirtualized fast path for list subscript writes (by FilterXObject key, not by integer
+ * index). Handles the FilterXRef cow + parent linkage inline. Named distinctly from the
+ * by-index inline above. */
+gboolean filterx_list_set_subscript_via_key(FilterXObject *s, FilterXObject *key, FilterXObject **new_value);
+
 
 /* these are low-level, fast interfaces which bypass a lot of validations */
 
