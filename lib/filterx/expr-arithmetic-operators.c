@@ -22,6 +22,7 @@
 #include "expr-arithmetic-operators.h"
 #include "filterx/object-primitive.h"
 #include "filterx/expr-literal.h"
+#include "filterx/expr-string-operators.h"
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 
@@ -579,7 +580,20 @@ _compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name
 static FilterXIRValue
 _compile_plus(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
+  if (filterx_static_type_kind(s->static_type) == FILTERX_STATIC_TYPE_STRING) {
+    FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+
+    FilterXIRValue lhs = self->literal_lhs
+                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
+                        : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+    FilterXIRValue rhs = self->literal_rhs
+                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
+                        : filterx_expr_compile_or_eval(self->super.rhs, jit);
+
+    return filterx_string_concat_compile(jit, lhs, rhs, s);
+  } else {
+    return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
+  }
 }
 
 static FilterXIRValue

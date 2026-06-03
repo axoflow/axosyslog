@@ -27,4 +27,12 @@
 
 FilterXExpr *filterx_string_slicing_new(FilterXExpr *lhs, FilterXExpr *start, FilterXExpr *end);
 
+#if SYSLOG_NG_ENABLE_JIT
+/* Emits a devirtualized string concatenation of two already evaluated operands. @lhs must
+ * hold a FilterXString (the caller has proven this via static-type inference), @rhs any
+ * string-extractable object. Both operand references are consumed by the emitted code. */
+FilterXIRValue filterx_string_concat_compile(FilterXJIT *jit, FilterXIRValue lhs, FilterXIRValue rhs,
+                                             FilterXExpr *expr);
+#endif
+
 #endif

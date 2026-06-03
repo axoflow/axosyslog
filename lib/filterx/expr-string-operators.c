@@ -238,3 +238,47 @@ filterx_string_slicing_new(FilterXExpr *lhs, FilterXExpr *start, FilterXExpr *en
 
   return &self->super;
 }
+
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+/* Devirtualized fast path for `string + string`. lhs is guaranteed to be a FilterXString
+ * (eval_typed of a STRING-static_type operand); rhs may be any string-extractable value. */
+__attribute__((used))
+FilterXObject *
+fx_jit_string_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  FilterXObject *result = NULL;
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate left hand side");
+      goto exit;
+    }
+  if (!rhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", "Failed to evaluate right hand side");
+      goto exit;
+    }
+  result = filterx_string_concat(lhs, rhs);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to add values", "add() method failed");
+
+exit:
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
+
+FilterXIRValue
+filterx_string_concat_compile(FilterXJIT *jit, FilterXIRValue lhs, FilterXIRValue rhs, FilterXExpr *expr)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, expr) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, "fx_jit_string_plus", ffi->ptr_ty, param_tys, args, 3);
+}
+
+#endif
