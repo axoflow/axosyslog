@@ -61,6 +61,7 @@ struct _AFSocketDestDriver
   } metrics;
 
   LogWriter *(*construct_writer)(AFSocketDestDriver *self);
+  LogProtoClient *(*construct_proto)(AFSocketDestDriver *self, gint fd);
   gboolean (*setup_addresses)(AFSocketDestDriver *s);
   const gchar *(*get_dest_name)(const AFSocketDestDriver *s);
 
@@ -100,6 +101,7 @@ afsocket_dd_get_dest_name(const AFSocketDestDriver *s)
 }
 
 LogWriter *afsocket_dd_construct_writer_method(AFSocketDestDriver *self);
+LogProtoClient *afsocket_dd_construct_proto_method(AFSocketDestDriver *self, gint fd);
 gboolean afsocket_dd_setup_addresses_method(AFSocketDestDriver *self);
 void afsocket_dd_set_keep_alive(LogDriver *self, gint enable);
 void afsocket_dd_init_instance(AFSocketDestDriver *self, SocketOptions *socket_options,
