@@ -341,7 +341,7 @@ int main(int argc, char *argv[])
           retval = 1; //-- ERROR
           goto CLEANUP_SLOGVERIFY;
         }
-    {
+      {
         char *p_temp = g_strndup(options[index].arg, PATH_MAX - 1); //-- limit buffer
         g_free(options[index].arg);
         options[index++].arg = NULL; //-- inc
@@ -352,9 +352,9 @@ int main(int argc, char *argv[])
         if (gstr_path_hostkey->len == 0 ||
             !is_file_path_safe_and_valid(gstr_path_hostkey->str) ||
             !g_file_test(gstr_path_hostkey->str, G_FILE_TEST_IS_REGULAR))
-        {
+          {
             msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Key-file validation failed"));
-          (void) slog_usage(context, group, NULL);
+            (void) slog_usage(context, group, NULL);
             context = NULL;
             retval = 1;
             goto CLEANUP_SLOGVERIFY;
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
   else
     {
       index++;
-        }
+    }
 
 
   //-- mac-file, both iterative and normal mode argument
@@ -485,12 +485,12 @@ int main(int argc, char *argv[])
   if (NULL == argv[index])
     {
       msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Path to INPUTLOG is missing"));
-          (void) slog_usage(context, group, NULL);
+      (void) slog_usage(context, group, NULL);
       context = NULL;
       retval = 1; //-- ERROR
       goto CLEANUP_SLOGVERIFY;
-        }
-    {
+    }
+  {
     char *p_temp = g_strndup(argv[index++], PATH_MAX - 1); //-- limit buffer, inc
     char *p_canon = g_canonicalize_filename(p_temp, NULL); //-- normalize
     g_string_assign(gstr_path_inputlog, p_canon ? p_canon : "");
@@ -501,11 +501,11 @@ int main(int argc, char *argv[])
         !g_file_test(gstr_path_inputlog->str, G_FILE_TEST_IS_REGULAR))
       {
         msg_error(SLOG_ERROR_PREFIX, evt_tag_str("Reason", "Check of INPUTLOG failed"));
-      (void) slog_usage(context, group, NULL);
+        (void) slog_usage(context, group, NULL);
         context = NULL;
         retval = 1; //-- ERROR
         goto CLEANUP_SLOGVERIFY;
-    }
+      }
   }
   msg_info(SLOG_INFO_PREFIX, evt_tag_str("INPUTLOG", gstr_path_inputlog->str));
 
@@ -612,7 +612,7 @@ CLEANUP_SLOGVERIFY:
 
   if (NULL != context)
     {
-  g_option_context_free(context);
+      g_option_context_free(context);
       context = NULL;
     }
 
