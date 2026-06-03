@@ -24,6 +24,7 @@
 import datetime
 import uuid
 
+import pyarrow as pa
 from axosyslog_light.common.blocking import wait_until_true
 from axosyslog_light.syslog_ng_config.__init__ import stringify
 from axosyslog_light.syslog_ng_ctl.prometheus_stats_handler import MetricFilter
@@ -172,7 +173,6 @@ def test_arrow_flight_destination_templated_path(config, syslog_ng, port_allocat
         "path": '"${DEST_PATH}"',
         "schema": '"message" STRING => $MSG',
         "batch-lines": 1,
-        "worker-partition-key": '"${DEST_PATH}"',
     }
     dest = config.create_arrow_flight_destination(port=port_allocator(), **options)
     config.create_logpath(statements=[generator_a, rewrite_a, dest])
@@ -205,7 +205,6 @@ def test_arrow_flight_destination_templated_path_flush_on_key_change(config, sys
         "schema": '"key" STRING => $MSG',
         "batch-lines": batch_lines,
         "batch-timeout": 10000,
-        "worker-partition-key": '"${MSG}"',
     }
     dest = config.create_arrow_flight_destination(port=port_allocator(), **options)
     config.create_logpath(statements=[file_source, dest])
@@ -224,6 +223,36 @@ def test_arrow_flight_destination_templated_path_flush_on_key_change(config, sys
     assert dest.get_batch_count(path_b) == 2
     assert dest.get_stream_count(path_a) == 2
     assert dest.get_stream_count(path_b) == 2
+
+
+def test_arrow_flight_destination_custom_worker_partition_key(config, syslog_ng, port_allocator):
+    path = "events"
+    batch_lines = 3
+    messages = ["a", "a", "b", "b", "b"]
+
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        "path": stringify(path),
+        "schema": '"key" STRING => $MSG',
+        "batch-lines": batch_lines,
+        "batch-timeout": 10000,
+        "worker-partition-key": '"${MSG}"',
+    }
+    dest = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, dest])
+
+    dest.start_listener()
+    syslog_ng.start(config)
+
+    file_source.write_logs(messages)
+
+    assert wait_until_true(lambda: dest.get_stats().get("written", 0) == len(messages))
+    assert dest.get_stats()["dropped"] == 0
+    assert dest.get_row_count(path) == len(messages)
+    # ${MSG} changing from "a" to "b" flushes [a, a]; the three "b"s then fill batch-lines.
+    assert dest.get_batch_count(path) == 2
+    # All batches target the same static path, so a single stream carries them.
+    assert dest.get_stream_count(path) == 1
 
 
 def test_arrow_flight_destination_reconnect(config, syslog_ng, port_allocator):
@@ -369,3 +398,82 @@ def test_arrow_flight_destination_batch_bytes(config, syslog_ng, port_allocator)
     assert arrow_flight_destination.get_stats()["dropped"] == 0
     assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
     assert arrow_flight_destination.get_batch_count(ARROW_FLIGHT_PATH) == expected_batches
+
+
+def test_arrow_flight_destination_permanent_error(config, syslog_ng, port_allocator):
+    num_messages = 5
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.respond_with_error(pa.ArrowInvalid("simulated permanent error"))
+    syslog_ng.start(config)
+
+    file_source.write_logs([f"message-{i}" for i in range(num_messages)])
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("permanent error status code"))
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("dropped", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["written"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == 0
+
+
+def test_arrow_flight_destination_temporary_error(config, syslog_ng, port_allocator):
+    num_messages = 5
+    custom_msg = f"test message {uuid.uuid4()}"
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "time-reopen": 1,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.respond_with_error(pa.ArrowIOError("simulated temporary error"))
+    syslog_ng.start(config)
+
+    file_source.write_logs([custom_msg] * num_messages)
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("temporary error status code"))
+
+    arrow_flight_destination.stop_responding_with_error()
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages
+
+
+def test_arrow_flight_destination_timeout(config, syslog_ng, port_allocator):
+    num_messages = 5
+    custom_msg = f"test message {uuid.uuid4()}"
+    file_source = config.create_file_source(file_name="input.log", flags="no-parse")
+    options = {
+        **ARROW_FLIGHT_OPTIONS,
+        "batch-lines": 1,
+        "time-reopen": 1,
+        "timeout": 1,
+    }
+    arrow_flight_destination = config.create_arrow_flight_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[file_source, arrow_flight_destination])
+
+    arrow_flight_destination.start_listener()
+    arrow_flight_destination.start_hanging()
+    syslog_ng.start(config)
+
+    file_source.write_logs([custom_msg] * num_messages)
+
+    assert wait_until_true(lambda: syslog_ng.is_message_in_console_log("temporary error status code"))
+    assert arrow_flight_destination.get_stats().get("written", 0) == 0
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+
+    arrow_flight_destination.stop_hanging()
+
+    assert wait_until_true(lambda: arrow_flight_destination.get_stats().get("written", 0) == num_messages)
+    assert arrow_flight_destination.get_stats()["dropped"] == 0
+    assert arrow_flight_destination.get_row_count(ARROW_FLIGHT_PATH) == num_messages

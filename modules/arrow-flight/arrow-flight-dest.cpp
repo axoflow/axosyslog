@@ -71,6 +71,14 @@ DestinationDriver::init()
 
   log_threaded_dest_driver_set_flush_on_worker_key_change(&this->super->super.super.super, TRUE);
 
+  if (this->path_template &&
+      !log_template_is_literal_string(this->path_template) &&
+      !this->super->super.worker_partition_key)
+    {
+      log_threaded_dest_driver_set_worker_partition_key_ref(&this->super->super.super.super,
+                                                            log_template_ref(this->path_template));
+    }
+
   if (!log_threaded_dest_driver_init_method(&this->super->super.super.super.super))
     return false;
 
@@ -147,6 +155,13 @@ arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b)
 {
   ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
   self->cpp->set_batch_bytes((size_t) b);
+}
+
+void
+arrow_flight_dd_set_timeout(LogDriver *d, glong timeout)
+{
+  ArrowFlightDestDriver *self = (ArrowFlightDestDriver *) d;
+  self->cpp->set_timeout(timeout);
 }
 
 void

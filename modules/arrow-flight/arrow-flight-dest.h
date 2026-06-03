@@ -43,6 +43,7 @@ void arrow_flight_dd_add_bool_schema_field(LogDriver *d, const gchar *name, LogT
 void arrow_flight_dd_add_timestamp_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
 void arrow_flight_dd_add_map_string_string_schema_field(LogDriver *d, const gchar *name, LogTemplate *value);
 void arrow_flight_dd_set_batch_bytes(LogDriver *d, glong b);
+void arrow_flight_dd_set_timeout(LogDriver *d, glong timeout);
 
 LogTemplateOptions *arrow_flight_dd_get_template_options(LogDriver *d);
 
