@@ -57,6 +57,12 @@ gboolean filterx_literal_list_foreach(FilterXExpr *s, FilterXLiteralListForeachF
 
 FilterXExpr *filterx_literal_list_new(GList *elements);
 
+/* Literal Tuple */
+
+FILTERX_EXPR_DECLARE_TYPE(literal_tuple);
+
+FilterXExpr *filterx_literal_tuple_new(GList *elements);
+
 /* inline functions */
 
 static inline gboolean
@@ -72,9 +78,15 @@ filterx_expr_is_literal_list(FilterXExpr *expr)
 }
 
 static inline gboolean
+filterx_expr_is_literal_tuple(FilterXExpr *expr)
+{
+  return expr && expr->type == FILTERX_EXPR_TYPE_NAME(literal_tuple);
+}
+
+static inline gboolean
 filterx_expr_is_literal_container(FilterXExpr *s)
 {
-  return filterx_expr_is_literal_list(s) || filterx_expr_is_literal_dict(s);
+  return filterx_expr_is_literal_list(s) || filterx_expr_is_literal_dict(s) || filterx_expr_is_literal_tuple(s);
 }
 
 #endif
