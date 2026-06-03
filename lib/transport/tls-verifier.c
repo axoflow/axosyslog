@@ -220,14 +220,14 @@ tls_verify_certificate_name(X509 *cert, const gchar *host_name)
                   /* only 4 (IPv4) and 16 (IPv6) byte payloads are valid; skip malformed entries
                    * to avoid feeding inet_ntop a mismatched source size */
                   int addr_family;
-                  if (gen_name->d.iPAddress->length == 4)
+                  if (ASN1_STRING_length(gen_name->d.iPAddress) == 4)
                     addr_family = AF_INET;
-                  else if (gen_name->d.iPAddress->length == 16)
+                  else if (ASN1_STRING_length(gen_name->d.iPAddress) == 16)
                     addr_family = AF_INET6;
                   else
                     continue;
 
-                  if (inet_ntop(addr_family, gen_name->d.iPAddress->data, dotted_ip, sizeof(dotted_ip)))
+                  if (inet_ntop(addr_family, ASN1_STRING_get0_data(gen_name->d.iPAddress), dotted_ip, sizeof(dotted_ip)))
                     {
                       g_strlcpy(pattern_buf, dotted_ip, sizeof(pattern_buf));
                       found = TRUE;
