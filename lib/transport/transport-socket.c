@@ -163,7 +163,7 @@ log_transport_socket_read_method(LogTransport *s, gpointer buf, gsize buflen, Lo
 {
   LogTransportSocket *self = (LogTransportSocket *) s;
   gint rc;
-  struct msghdr msg;
+  struct msghdr msg = {0};
   struct iovec iov[1];
   struct sockaddr_storage ss;
 #if defined(SYSLOG_NG_HAVE_CTRLBUF_IN_MSGHDR)

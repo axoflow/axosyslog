@@ -180,7 +180,6 @@ class HTTPSource(LogSource):
 
     def request_exit(self) -> None:
         asyncio.run_coroutine_threadsafe(self.stopServer(), self.event_loop)
-        pass
 
     def log_access(self, req: tornado.web.RequestHandler) -> None:
         self.logger.debug(f"{req.get_status()} {req._request_summary()}")

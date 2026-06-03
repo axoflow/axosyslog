@@ -174,7 +174,7 @@ tls_wildcard_match(const gchar *host_name, const gchar *pattern)
 gboolean
 tls_verify_certificate_name(X509 *cert, const gchar *host_name)
 {
-  gchar pattern_buf[256];
+  gchar pattern_buf[256] = "";
   gint ext_ndx;
   gboolean found = FALSE, result = FALSE;
 
@@ -204,9 +204,8 @@ tls_verify_certificate_name(X509 *cert, const gchar *host_name)
 
                   if (dnsname_len > sizeof(pattern_buf) - 1)
                     {
-                      found = TRUE;
-                      result = FALSE;
-                      break;
+                      /* skip this oversized SAN entry, but keep checking the rest */
+                      continue;
                     }
 
                   memcpy(pattern_buf, dnsname, dnsname_len);
@@ -218,9 +217,15 @@ tls_verify_certificate_name(X509 *cert, const gchar *host_name)
               else if (gen_name->type == GEN_IPADD)
                 {
                   gchar dotted_ip[64] = {0};
-                  int addr_family = AF_INET;
-                  if (gen_name->d.iPAddress->length == 16)
+                  /* only 4 (IPv4) and 16 (IPv6) byte payloads are valid; skip malformed entries
+                   * to avoid feeding inet_ntop a mismatched source size */
+                  int addr_family;
+                  if (gen_name->d.iPAddress->length == 4)
+                    addr_family = AF_INET;
+                  else if (gen_name->d.iPAddress->length == 16)
                     addr_family = AF_INET6;
+                  else
+                    continue;
 
                   if (inet_ntop(addr_family, gen_name->d.iPAddress->data, dotted_ip, sizeof(dotted_ip)))
                     {
