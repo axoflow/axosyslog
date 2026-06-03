@@ -846,6 +846,12 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 }
 
 FilterXObject *
+filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
+{
+  return _filterx_dict_get_subscript(filterx_ref_unwrap_ro(s), key);
+}
+
+FilterXObject *
 filterx_dict_new(void)
 {
   return filterx_dict_new_with_table(NULL);
