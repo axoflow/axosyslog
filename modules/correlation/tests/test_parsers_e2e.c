@@ -99,8 +99,8 @@ _destroy_pattern_db(PatternDB *patterndb, gchar *filename)
 
 typedef struct _test_parsers_e2e_param
 {
-  const gchar *rule;
-  const gchar *pattern;
+  gchar rule[192];
+  gchar pattern[192];
   gboolean match;
 } TestParsersE2EParam;
 
@@ -123,6 +123,8 @@ ParameterizedTestParameters(parsers_e2e, test_parsers)
     {"@ESTRING:TEST:endmark@", "ab ba", FALSE},
     {"@ESTRING:TEST:&gt;@", "ab ba > ab", TRUE},
     {"@ESTRING:TEST:&gt;@", "ab ba", FALSE},
+    {"@ESTRING:TEST:&amp;@", "ab ba & ab", TRUE},
+    {"@ESTRING:TEST:&amp;@", "ab ba", FALSE},
     {"@FLOAT:TEST@", "1234", TRUE},
     {"@FLOAT:TEST@", "1234.567", TRUE},
     {"@FLOAT:TEST@", "1.2.3.4", TRUE},
@@ -162,12 +164,21 @@ ParameterizedTestParameters(parsers_e2e, test_parsers)
     {"@QSTRING:TEST:&lt;&gt;@", "< aabb >", TRUE},
     {"@QSTRING:TEST:&lt;&gt;@", "aabb>", FALSE},
     {"@QSTRING:TEST:&lt;&gt;@", "<aabb", FALSE},
+    {"@QSTRING:TEST:&quot;@", "\"aa bb\"", TRUE},
+    {"@QSTRING:TEST:&quot;@", "aa bb\"", FALSE},
+    {"@QSTRING:TEST:&apos;@", "'aa bb'", TRUE},
+    {"@QSTRING:TEST:&apos;@", "'aa bb", FALSE},
     {"@STRING:TEST@", "aabb", TRUE},
     {"@STRING:TEST@", "aa bb", TRUE},
     {"@STRING:TEST@", "1234", TRUE},
     {"@STRING:TEST@", "ab1234", TRUE},
     {"@STRING:TEST@", "1234bb", TRUE},
-    {"@STRING:TEST@", "1.2.3.4", TRUE}
+    {"@STRING:TEST@", "1.2.3.4", TRUE},
+    /* Test the example we have in the documentation */
+    {
+      "Accepted @STRING:SSH_AUTH_METHOD:-_@ for @STRING:SSH_USERNAME:._-@ from @IPvANY:SSH_CLIENT_ADDRESS@ port @NUMBER:SSH_PORT_NUMBER@ ssh2",
+      "Accepted password for sampleuser from 10.50.0.247 port 42156 ssh2", TRUE
+    }
   };
 
   return cr_make_param_array(TestParsersE2EParam, parser_params, G_N_ELEMENTS(parser_params));

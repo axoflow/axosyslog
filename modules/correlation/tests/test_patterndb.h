@@ -583,4 +583,89 @@
 </ruleset>\
 </patterndb>"
 
+#define pdb_test_value_with_type "\
+<patterndb version='6' pub_date='2010-02-22'>\
+ <ruleset name='testset' id='1'>\
+  <patterns>\
+    <pattern>prog1</pattern>\
+  </patterns>\
+  <rules>\
+    <rule provider='test' id='11' class='system'>\
+     <patterns>\
+      <pattern>test typed values: @NUMBER:count@ @ESTRING:message: @@ESTRING:level:@</pattern>\
+     </patterns>\
+     <examples>\
+       <example>\
+         <test_message program='prog1'>test typed values: 42 hello world</test_message>\
+         <test_values>\
+            <test_value name='count' type='integer'>42</test_value>\
+            <test_value name='message' type='string'>hello</test_value>\
+            <test_value name='level'>world</test_value>\
+         </test_values>\
+       </example>\
+       <example>\
+         <test_message program='prog1'>test typed values: 123 foo bar</test_message>\
+         <test_values>\
+            <test_value name='count' type='integer'>123</test_value>\
+            <test_value name='message' type='string'>foo</test_value>\
+         </test_values>\
+       </example>\
+     </examples>\
+    </rule>\
+  </rules>\
+ </ruleset>\
+</patterndb>"
+
+#define pdb_test_optionalset_at_end_of_pattern "\
+<patterndb version='6' pub_date='2010-02-22'>\
+ <ruleset name='rails' id='8db0c6d8-f6ef-11ef-a968-18cf5efc6bb4'>\
+  <patterns>\
+   <pattern>prog1</pattern>\
+  </patterns>\
+  <rules>\
+   <rule id='8e8384e8-f6ef-11ef-a968-18cf5efc6bb4' provider='test' class='system'>\
+    <patterns>\
+     <pattern>@QSTRING:id:[]@@OPTIONALSET:s: @</pattern>\
+    </patterns>\
+   </rule>\
+  </rules>\
+ </ruleset>\
+</patterndb>"
+
+#define pdb_test_optionalset_at_end_of_pattern_with_examples "\
+<patterndb version='6' pub_date='2010-02-22'>\
+ <ruleset name='rails' id='8db0c6d8-f6ef-11ef-a968-18cf5efc6bb4'>\
+  <patterns>\
+   <pattern>prog1</pattern>\
+  </patterns>\
+  <rules>\
+   <rule id='8e8384e8-f6ef-11ef-a968-18cf5efc6bb4' provider='test' class='system'>\
+    <patterns>\
+     <pattern>@QSTRING:id:[]@@OPTIONALSET:s: @</pattern>\
+    </patterns>\
+    <examples>\
+     <example><test_message program='prog1'>[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]</test_message></example>\
+     <example><test_message program='prog1'>[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]  </test_message></example>\
+    </examples>\
+   </rule>\
+  </rules>\
+ </ruleset>\
+</patterndb>"
+
+#define pdb_test_set_at_end_of_input "\
+<patterndb version='6' pub_date='2010-02-22'>\
+ <ruleset name='set_eoi' id='8db0c6d8-f6ef-11ef-a968-18cf5efc6bb5'>\
+  <patterns>\
+   <pattern>prog1</pattern>\
+  </patterns>\
+  <rules>\
+   <rule id='8e8384e8-f6ef-11ef-a968-18cf5efc6bb5' provider='test' class='system'>\
+    <patterns>\
+     <pattern>prefix@SET:s: @</pattern>\
+    </patterns>\
+   </rule>\
+  </rules>\
+ </ruleset>\
+</patterndb>"
+
 #endif

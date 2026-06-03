@@ -31,6 +31,9 @@
 #include "filter/filter-expr.h"
 #include "patterndb.h"
 #include "pdb-file.h"
+#include "pdb-load.h"
+#include "pdb-example.h"
+#include "pdb-ruleset.h"
 #include "plugin.h"
 #include "cfg.h"
 #include "timerwheel.h"
@@ -792,6 +795,111 @@ Test(pattern_db, test_program_template)
   log_msg_unref(msg);
   g_free(filename);
   log_template_unref(template);
+}
+
+Test(pattern_db, test_value_with_type_attribute)
+{
+  gchar *filename;
+  PatternDB *patterndb = _create_pattern_db(pdb_test_value_with_type, &filename);
+
+  /* Test that typed test values are loaded and memory is properly managed */
+  assert_msg_matches_and_nvpair_equals(patterndb, "test typed values: 42 hello world",
+                                       "count", "42");
+  assert_msg_matches_and_nvpair_equals(patterndb, "test typed values: 42 hello world",
+                                       "message", "hello");
+  assert_msg_matches_and_nvpair_equals(patterndb, "test typed values: 42 hello world",
+                                       "level", "world");
+
+  _destroy_pattern_db(patterndb, filename);
+  g_free(filename);
+}
+
+Test(pattern_db, test_optionalset_at_end_of_pattern)
+{
+  /* OPTIONALSET as last parser must match zero chars at end-of-input and the
+     subsequent named-value extraction must not overshoot. */
+  gchar *filename;
+  PatternDB *patterndb = _create_pattern_db(pdb_test_optionalset_at_end_of_pattern, &filename);
+
+  /* Trailing space present: OPTIONALSET consumes the literal space. */
+  assert_msg_matches_and_has_tag(patterndb,
+                                 "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966] ",
+                                 ".classifier.system", TRUE);
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966] ",
+                                       "id", "dcef7d1c-6b79-48c6-a1ac-39cdc9bff966");
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966] ",
+                                       "s", " ");
+
+  /* No trailing space: OPTIONALSET must match zero chars at end-of-input. */
+  assert_msg_matches_and_has_tag(patterndb,
+                                 "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]",
+                                 ".classifier.system", TRUE);
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]",
+                                       "id", "dcef7d1c-6b79-48c6-a1ac-39cdc9bff966");
+  assert_msg_matches_and_nvpair_equals(patterndb,
+                                       "[dcef7d1c-6b79-48c6-a1ac-39cdc9bff966]",
+                                       "s", "");
+
+  _destroy_pattern_db(patterndb, filename);
+  g_free(filename);
+}
+
+Test(pattern_db, test_set_at_end_of_input_does_not_match_zero_chars)
+{
+  /* @SET@ must require at least one matching char; at end-of-input it must
+     not silently match the terminating NUL. */
+  gchar *filename;
+  PatternDB *patterndb = _create_pattern_db(pdb_test_set_at_end_of_input, &filename);
+
+  LogMessage *msg = _construct_message("prog1", "prefix");
+  cr_assert_not(_process(patterndb, msg),
+                "SET at end-of-input must not match when there are no chars to consume");
+  log_msg_unref(msg);
+
+  assert_msg_matches_and_nvpair_equals(patterndb, "prefix ", "s", " ");
+
+  _destroy_pattern_db(patterndb, filename);
+  g_free(filename);
+}
+
+Test(pattern_db, test_pdb_rule_set_load_examples_ownership)
+{
+  /* Load a pdb with two <example> entries via pdb_rule_set_load() and walk
+     the returned list, asserting each PDBExample is reachable and carries
+     intact program/message strings owned by the caller. */
+  gchar *filename = NULL;
+  g_file_open_tmp("patterndbXXXXXX.xml", &filename, NULL);
+  g_file_set_contents(filename, pdb_test_optionalset_at_end_of_pattern_with_examples,
+                      strlen(pdb_test_optionalset_at_end_of_pattern_with_examples), NULL);
+
+  PDBRuleSet *ruleset = pdb_rule_set_new(NULL);
+  GList *examples = NULL;
+
+  cr_assert(pdb_rule_set_load(ruleset, configuration, filename, &examples),
+            "pdb_rule_set_load failed");
+  cr_assert_not_null(examples, "caller should receive the examples list");
+
+  gint count = 0;
+  for (GList *l = examples; l; l = l->next)
+    {
+      PDBExample *example = (PDBExample *) l->data;
+      cr_assert_not_null(example, "example node holds a NULL pointer");
+      cr_assert_not_null(example->program, "example->program freed by loader");
+      cr_assert_not_null(example->message, "example->message freed by loader");
+      cr_assert_str_eq(example->program, "prog1",
+                       "example->program corrupted: got '%s'", example->program);
+      count++;
+    }
+  cr_assert_eq(count, 2, "expected 2 examples, got %d", count);
+
+  g_list_foreach(examples, (GFunc) pdb_example_free, NULL);
+  g_list_free(examples);
+  pdb_rule_set_free(ruleset);
+  g_unlink(filename);
+  g_free(filename);
 }
 
 void setup(void)

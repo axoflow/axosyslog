@@ -1231,7 +1231,11 @@ pdb_rule_set_load(PDBRuleSet *self, GlobalConfig *cfg, const gchar *config, GLis
     }
 
   if (state.load_examples)
-    *examples = state.examples;
+    {
+      *examples = state.examples;
+      /* Ownership transferred to caller; prevent cleanup from freeing it. */
+      state.examples = NULL;
+    }
 
   success = TRUE;
 
