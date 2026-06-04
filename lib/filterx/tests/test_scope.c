@@ -99,6 +99,38 @@ Test(filterx_scope, test_scope_sync)
   filterx_scope_variable_layout_free(l);
 }
 
+Test(filterx_scope, test_scope_sync_walks_parent_scopes_until_fork_point)
+{
+  LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
+
+  FilterXVariableHandle handles[] = {filterx_map_varname_to_handle("$var", FX_VAR_MESSAGE_TIED)};
+  FilterXScopeVariableLayout *l = filterx_scope_variable_layout_new_from_handles(handles, G_N_ELEMENTS(handles));
+
+  FilterXScope *s = filterx_scope_new(NULL, l);
+  LogMessage *msg = log_msg_new_empty();
+  filterx_scope_set_message(s, msg);
+
+  FilterXVariableHandle var = filterx_map_varname_to_handle("$var", FX_VAR_MESSAGE_TIED);
+  FilterXVariable *v = filterx_scope_register_variable(s, FX_VAR_MESSAGE_TIED, var, 0);
+  FilterXObject *o = filterx_boolean_new(TRUE);
+  filterx_scope_set_variable(s, v, &o, TRUE);
+  filterx_object_unref(o);
+  filterx_scope_set_dirty(s);
+
+  FilterXScope *s2 = filterx_scope_new(s, l);
+  filterx_scope_sync(s2, &msg, &path_options);
+
+  LogMessageValueType type;
+  const gchar *value = log_msg_get_value_with_type(msg, filterx_variable_get_nv_handle(v), NULL, &type);
+  cr_assert_eq(type, LM_VT_BOOLEAN);
+  cr_assert_str_eq(value, "true");
+
+  log_msg_unref(msg);
+  filterx_scope_free(s2);
+  filterx_scope_free(s);
+  filterx_scope_variable_layout_free(l);
+}
+
 static gboolean
 _assert_var_false(FilterXVariable *variable, gpointer user_data)
 {
