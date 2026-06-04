@@ -448,3 +448,93 @@ def test_changes_in_abandoned_branches_are_ignored(config, syslog_ng):
 
     assert file_final.get_stats()["processed"] == 1
     assert file_final.read_log() == '{"common":"common","iffalse":"false"}'
+
+
+def test_sync_through_linear_filterx_block_chain(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+            $MSG = "acila";
+            """,
+            """
+            a = 3;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "acila"
+
+
+def test_sync_through_linear_filterx_block_chain_moved_variable(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+            $MSG = "acila";
+            """,
+            """
+            a = $MSG;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "acila"
+
+
+def test_sync_through_linear_filterx_block_chain_moved_variable_left_in_parent_scope(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+            $MSG = "kecske";
+            """,
+            """
+            a = $MSG;
+            """,
+            """
+            a = 3;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "kecske"
+
+
+def test_sync_stops_at_fork_point_when_branch_is_abandoned(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config, init_exprs=[
+            """
+            $MSG = "initial";
+            """,
+        ], true_exprs=[
+            """
+            $MSG = "kecske";
+            """,
+            """
+            a = 3;
+            hiba;
+            """,
+        ], false_exprs=[
+            """
+            $MSG = "acila";
+            """,
+            """
+            a = $MSG;
+            """,
+            """
+            b = 3;
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_false.get_stats()["processed"] == 1
+    assert "processed" not in file_true.get_stats()
+    assert file_false.read_log() == "acila"
