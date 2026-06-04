@@ -101,6 +101,9 @@ _pull_variable_from_parent_scope(FilterXScope *self, FilterXVariablePullMode pul
         }
     }
 
+  if (pull_mode == FX_VAR_PULL_MOVE)
+    parent_variable->variable_type = FX_VAR_NONE;
+
   msg_trace("Filterx scope, pulling scope variable",
             evt_tag_str("variable", log_msg_get_value_name((filterx_variable_get_nv_handle(output)), NULL)));
   return output;
