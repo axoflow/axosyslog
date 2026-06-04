@@ -18,3 +18,4 @@ add_module(
   SOURCES ${AFUSER_SOURCES}
 )
 
+add_test_subdirectory(tests)
