@@ -45,6 +45,8 @@ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 # the number of cores is not either), so I've rounded it to 32MB.
 #
 # we could be using L2 as the LL: --LL=1048576,16,64
+cd "$outdir"
+rm -f output.txt
 valgrind --tool=callgrind --dump-instr=yes --collect-jumps=yes \
 	--I1=32768,8,64 --D1=32768,8,64 --LL=33554432,8,64  --cache-sim=yes \
 	--instr-atstart=no \
@@ -62,7 +64,15 @@ while ! grep -q "Accepting connections" "$outdir/summary.txt"; do
 		exit 1
 	fi
 done
+
 cat "$samples" | nc -q0 localhost 2000
+
+expected=$(wc -l < "$samples")
+for i in $(seq 20); do
+	[ "$(wc -l < output.txt 2>/dev/null || echo 0)" -ge "$expected" ] && break
+	sleep 0.5
+done
+
 kill -INT %1
 wait %1
 cat "$outdir/summary.txt"
