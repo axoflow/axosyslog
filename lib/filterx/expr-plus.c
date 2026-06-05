@@ -35,22 +35,10 @@ typedef struct FilterXOperatorPlus
 static FilterXObject *
 _do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
-  FilterXObject *result = NULL;
-
-  if (!lhs)
-    {
-      goto exit;
-    }
-  if (!rhs)
-    {
-      goto exit;
-    }
-
-  result = filterx_object_add(lhs, rhs);
+  FilterXObject *result = filterx_object_add(lhs, rhs);
   if (!result)
     filterx_eval_push_error_static_info("Failed to add values", "add() method failed");
 
-exit:
   filterx_object_unref(lhs);
   filterx_object_unref(rhs);
   return result;
@@ -62,8 +50,15 @@ _eval_plus(FilterXExpr *s)
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
   FilterXObject *lhs = self->literal_lhs ? filterx_object_ref(self->literal_lhs)
                        : filterx_expr_eval_typed(self->super.lhs);
+  if (!lhs)
+    return NULL;
   FilterXObject *rhs = self->literal_rhs ? filterx_object_ref(self->literal_rhs)
                        : filterx_expr_eval(self->super.rhs);
+  if (!rhs)
+    {
+      filterx_object_unref(lhs);
+      return NULL;
+    }
   return _do_plus(lhs, rhs, s);
 }
 
@@ -110,17 +105,52 @@ _compile_plus(FilterXExpr *s, FilterXJIT *jit)
 {
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  FilterXIRValue result_slot = LLVMBuildAlloca(ir, ffi->ptr_ty, "result");
+  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
+
+  FilterXIRSequence eval_rhs = filterx_jit_ir_create_sequence(jit, "plus_eval_rhs", block);
+  FilterXIRSequence rhs_null = filterx_jit_ir_create_sequence(jit, "plus_rhs_null", block);
+  FilterXIRSequence do_op = filterx_jit_ir_create_sequence(jit, "plus_do_op", block);
+  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "plus_finish", block);
 
   FilterXIRValue lhs = self->literal_lhs
                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
                        : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+
+  /* if (!lhs) goto finish; */
+  FilterXIRValue lhs_is_null = LLVMBuildIsNull(ir, lhs, "lhs_is_null");
+  LLVMBuildCondBr(ir, lhs_is_null, finish, eval_rhs);
+
+  /* eval_rhs */
+  filterx_jit_ir_add_sequence_to_block(jit, eval_rhs, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_rhs);
   FilterXIRValue rhs = self->literal_rhs
                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
                        : filterx_expr_compile_or_eval(self->super.rhs, jit);
 
+  /* if (!rhs) { unref(lhs); goto finish; } */
+  FilterXIRValue rhs_is_null = LLVMBuildIsNull(ir, rhs, "rhs_is_null");
+  LLVMBuildCondBr(ir, rhs_is_null, rhs_null, do_op);
+
+  filterx_jit_ir_add_sequence_to_block(jit, rhs_null, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, rhs_null);
+  fx_jit_emit_object_unref(jit, lhs);
+  LLVMBuildBr(ir, finish);
+
+  /* do_op: both operands are non-NULL; the called function consumes them */
+  filterx_jit_ir_add_sequence_to_block(jit, do_op, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, do_op);
   FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, "fx_jit_do_plus", ffi->ptr_ty, param_tys, args, 3);
+  LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, "fx_jit_do_plus", ffi->ptr_ty, param_tys, args, 3), result_slot);
+  LLVMBuildBr(ir, finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
+  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
 }
 
 #endif
