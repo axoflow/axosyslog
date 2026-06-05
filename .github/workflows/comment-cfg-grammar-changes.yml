@@ -24,6 +24,7 @@ jobs:
         # The download-artifact action cannot download artifacts from other workflows.
         # Copied from https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
       - name: Download comment artifact
+        id: download
         uses: actions/github-script@v9.0.0
         with:
           script: |
@@ -35,6 +36,14 @@ jobs:
             let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
               return artifact.name == "comment"
             })[0];
+            if (!matchArtifact) {
+              // The check workflow may not have produced the artifact (e.g. it was
+              // cancelled or failed). Nothing to comment on.
+              core.setOutput('found', 'false');
+              core.notice('No comment artifact found, nothing to do');
+              return;
+            }
+            core.setOutput('found', 'true');
             let download = await github.rest.actions.downloadArtifact({
                owner: context.repo.owner,
                repo: context.repo.repo,
@@ -45,10 +54,12 @@ jobs:
             fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/comment.zip`, Buffer.from(download.data));
 
       - name: Unzip comment artifact
+        if: steps.download.outputs.found == 'true'
         run: unzip comment.zip
 
       - name: Get PR ID
         id: pr-id
+        if: steps.download.outputs.found == 'true'
         env:
           HEAD_REPO_URL: ${{ github.event.workflow_run.head_repository.url }}
           REPO_URL: ${{ github.event.workflow_run.repository.url }}
@@ -70,6 +81,7 @@ jobs:
           echo "pr-id=${PR_ID}" >> $GITHUB_OUTPUT
 
       - name: Update or remove PR comment
+        if: steps.download.outputs.found == 'true'
         env:
             REPO: ${{ github.repository }}
             PR_ID: ${{ steps.pr-id.outputs.pr-id }}
