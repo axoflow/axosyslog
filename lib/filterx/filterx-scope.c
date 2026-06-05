@@ -101,6 +101,9 @@ _pull_variable_from_parent_scope(FilterXScope *self, FilterXVariablePullMode pul
         }
     }
 
+  if (pull_mode == FX_VAR_PULL_MOVE)
+    parent_variable->variable_type = FX_VAR_NONE;
+
   msg_trace("Filterx scope, pulling scope variable",
             evt_tag_str("variable", log_msg_get_value_name((filterx_variable_get_nv_handle(output)), NULL)));
   return output;
@@ -251,78 +254,83 @@ filterx_scope_sync(FilterXScope *self, LogMessage **pmsg, const LogPathOptions *
 
   gint msg_generation = self->msg->generation;
 
-  for (guint32 i = 0; i < self->variables_size; i++)
+  for (FilterXScope *scope = self;
+       scope && filterx_scope_is_dirty(scope) && !filterx_scope_is_fork_point(scope);
+       scope = scope->parent_scope)
     {
-      FilterXVariable *v = &self->variables[i];
-      if (!v->variable_type)
-        continue;
+      for (guint32 i = 0; i < scope->variables_size; i++)
+        {
+          FilterXVariable *v = &scope->variables[i];
+          if (!v->variable_type)
+            continue;
 
-      /* we don't need to sync the value if:
-       *
-       *  1) this is a floating variable; OR
-       *
-       *  2) the value was extracted from the message but was not changed in
-       *     place (for mutable objects), and was not assigned to.
-       *
-       */
-      if (filterx_variable_is_floating(v))
-        {
-          /* we could unset undeclared, floating values here as we are
-           * transitioning to the next filterx block.  But this is also
-           * addressed by the variable generation counter mechanism.  This
-           * means that we will unset those if some expr actually refers to
-           * it.  Also, we skip the entire sync exercise, unless we have
-           * message tied values, so we need to work even if floating
-           * variables are not synced.
+          /* we don't need to sync the value if:
            *
-           * With that said, let's not clear these.
+           *  1) this is a floating variable; OR
+           *
+           *  2) the value was extracted from the message but was not changed in
+           *     place (for mutable objects), and was not assigned to.
+           *
            */
-        }
-      else if (v->value == NULL)
-        {
-          if (log_msg_is_value_set(self->msg, filterx_variable_get_nv_handle(v)))
+          if (filterx_variable_is_floating(v))
             {
+              /* we could unset undeclared, floating values here as we are
+               * transitioning to the next filterx block.  But this is also
+               * addressed by the variable generation counter mechanism.  This
+               * means that we will unset those if some expr actually refers to
+               * it.  Also, we skip the entire sync exercise, unless we have
+               * message tied values, so we need to work even if floating
+               * variables are not synced.
+               *
+               * With that said, let's not clear these.
+               */
+            }
+          else if (v->value == NULL)
+            {
+              if (log_msg_is_value_set(self->msg, filterx_variable_get_nv_handle(v)))
+                {
+                  filterx_scope_set_message(self, log_msg_make_writable(pmsg, path_options));
+                  g_assert(v->generation == msg_generation);
+
+                  msg_trace("Filterx sync: whiteout variable, unsetting in message",
+                            evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
+                  log_msg_unset_value(self->msg, filterx_variable_get_nv_handle(v));
+                }
+
+              filterx_variable_unassign(v);
+              v->generation++;
+            }
+          else if (filterx_variable_is_assigned(v) || filterx_object_is_dirty(v->value))
+            {
+              LogMessageValueType t;
+
+              if (!buffer)
+                buffer = scratch_buffers_alloc();
+
               filterx_scope_set_message(self, log_msg_make_writable(pmsg, path_options));
               g_assert(v->generation == msg_generation);
-
-              msg_trace("Filterx sync: whiteout variable, unsetting in message",
+              msg_trace("Filterx sync: changed variable in scope, overwriting in message",
                         evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
-              log_msg_unset_value(self->msg, filterx_variable_get_nv_handle(v));
+
+              g_string_truncate(buffer, 0);
+              if (!filterx_object_marshal(v->value, buffer, &t))
+                g_assert_not_reached();
+              log_msg_set_value_with_type(self->msg, filterx_variable_get_nv_handle(v), buffer->str, buffer->len, t);
+              filterx_object_set_dirty(v->value, FALSE);
+              filterx_variable_unassign(v);
+              v->generation++;
             }
-
-          filterx_variable_unassign(v);
-          v->generation++;
+          else
+            {
+              msg_trace("Filterx sync: variable in scope and message in sync, not doing anything",
+                        evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
+              v->generation++;
+            }
         }
-      else if (filterx_variable_is_assigned(v) || filterx_object_is_dirty(v->value))
-        {
-          LogMessageValueType t;
-
-          if (!buffer)
-            buffer = scratch_buffers_alloc();
-
-          filterx_scope_set_message(self, log_msg_make_writable(pmsg, path_options));
-          g_assert(v->generation == msg_generation);
-          msg_trace("Filterx sync: changed variable in scope, overwriting in message",
-                    evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
-
-          g_string_truncate(buffer, 0);
-          if (!filterx_object_marshal(v->value, buffer, &t))
-            g_assert_not_reached();
-          log_msg_set_value_with_type(self->msg, filterx_variable_get_nv_handle(v), buffer->str, buffer->len, t);
-          filterx_object_set_dirty(v->value, FALSE);
-          filterx_variable_unassign(v);
-          v->generation++;
-        }
-      else
-        {
-          msg_trace("Filterx sync: variable in scope and message in sync, not doing anything",
-                    evt_tag_str("variable", log_msg_get_value_name(filterx_variable_get_nv_handle(v), NULL)));
-          v->generation++;
-        }
+      scope->dirty = FALSE;
     }
   /* FIXME: hack ! */
   self->msg->generation = msg_generation + 1;
-  self->dirty = FALSE;
 }
 
 gsize
@@ -348,8 +356,7 @@ filterx_scope_init_instance(FilterXScope *storage, gsize storage_size, FilterXSc
     {
       self->parent_scope = parent_scope;
       self->generation = parent_scope->generation + 1;
-      if (parent_scope->variables_used > 0)
-        self->dirty = parent_scope->dirty;
+      self->dirty = parent_scope->dirty;
       self->syncable = parent_scope->syncable;
       self->msg = log_msg_ref(parent_scope->msg);
     }
