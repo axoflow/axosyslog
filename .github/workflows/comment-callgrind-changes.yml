@@ -1,0 +1,126 @@
+name: Comment callgrind changes (PR)
+
+on:
+  workflow_run:
+    workflows: [CI @ devshell]
+    types:
+      - completed
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.repository }}-${{ github.event.workflow_run.head_repository.owner.login }}-${{ github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  update-or-remove-comment-on-pr:
+    name: Update or remove PR comment
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # post/update/delete callgrind diff comment on PR
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+        # The download-artifact action cannot download artifacts from other workflows.
+        # Copied from https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#workflow_run
+      - name: Download comment artifact
+        id: download
+        uses: actions/github-script@v9.0.0
+        with:
+          script: |
+            let allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: context.payload.workflow_run.id,
+            });
+            let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "callgrind-comment"
+            })[0];
+            if (!matchArtifact) {
+              // The callgrind job may not have run (e.g. it was cancelled or failed
+              // before uploading). Nothing to comment on.
+              core.setOutput('found', 'false');
+              core.notice('No callgrind-comment artifact found, nothing to do');
+              return;
+            }
+            core.setOutput('found', 'true');
+            let download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            let fs = require('fs');
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/callgrind-comment.zip`, Buffer.from(download.data));
+
+      - name: Unzip comment artifact
+        if: steps.download.outputs.found == 'true'
+        run: unzip callgrind-comment.zip
+
+      - name: Get PR ID
+        id: pr-id
+        if: steps.download.outputs.found == 'true'
+        env:
+          HEAD_REPO_URL: ${{ github.event.workflow_run.head_repository.url }}
+          REPO_URL: ${{ github.event.workflow_run.repository.url }}
+          REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_REPO_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+        run: |
+          # The pull_requests array always come empty when querying a workflow run's data if it is started from a fork. This might be a GitHub bug.
+          # There is also no json field in the `gh run view` command, which could give us the PR ID, so we can only query it based on the fork and branch.
+          # See https://github.com/orgs/community/discussions/25220
+
+          if [[ "${HEAD_REPO_URL}" == "${REPO_URL}" ]]; then
+            PR_ID=$(gh pr view -R "${REPO}" "${HEAD_BRANCH}" --json "number" --jq ".number")
+          else
+            # PR is from a fork
+            PR_ID=$(gh pr view -R "${REPO}" "${HEAD_REPO_OWNER}:${HEAD_BRANCH}" --json "number" --jq ".number")
+          fi
+
+          echo "pr-id=${PR_ID}" >> $GITHUB_OUTPUT
+
+      - name: Update or remove PR comment
+        if: steps.download.outputs.found == 'true'
+        env:
+            REPO: ${{ github.repository }}
+            PR_ID: ${{ steps.pr-id.outputs.pr-id }}
+        run: |
+          EXISTING_COMMENT_ID=$( \
+            gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              /repos/${REPO}/issues/${PR_ID}/comments \
+              --jq '.[] | select(.user.login=="github-actions[bot]") | select(.user.type=="Bot") | select(.user.id==41898282) | select(.body | startswith("#### Callgrind instruction count changes")) | .id')
+
+          if [[ -s "${GITHUB_WORKSPACE}/callgrind-comment.json" ]]; then
+            if [[ -n "${EXISTING_COMMENT_ID}" ]]; then
+              gh api \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                --method PATCH \
+                /repos/${REPO}/issues/comments/${EXISTING_COMMENT_ID} \
+                --input ${GITHUB_WORKSPACE}/callgrind-comment.json
+              echo -e "\n::notice::Updated comment: ${EXISTING_COMMENT_ID}"
+            else
+              gh api \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                --method POST \
+                /repos/${REPO}/issues/${PR_ID}/comments \
+                --input ${GITHUB_WORKSPACE}/callgrind-comment.json
+              echo -e "\n::notice::Created new comment"
+            fi
+          else
+            if [[ -n "${EXISTING_COMMENT_ID}" ]]; then
+              gh api \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                --method DELETE \
+                /repos/${REPO}/issues/comments/${EXISTING_COMMENT_ID}
+              echo -e "\n::notice::Removed comment: ${EXISTING_COMMENT_ID}"
+            else
+              echo -e "\n::notice::Nothing to do"
+            fi
+          fi

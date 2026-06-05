@@ -286,6 +286,81 @@ jobs:
           name: callgrind_annotate.txt
           path: dbld/build/callgrind/*/callgrind_annotate.txt
 
+      - name: Generate callgrind diff comment
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_HEAD: ${{ steps.commits.outputs.BASE_HEAD }}
+          PR_HEAD: ${{ steps.commits.outputs.PR_HEAD }}
+        run: |
+          COMMENT_FILE="${GITHUB_WORKSPACE}/callgrind-comment.json"
+          : > "${COMMENT_FILE}"
+
+          PR_ANNOTATE="dbld/build/callgrind/pr/callgrind_annotate.txt"
+          BASE_ANNOTATE="dbld/build/callgrind/base/callgrind_annotate.txt"
+
+          if ! git diff --name-only "${BASE_HEAD}" "${PR_HEAD}" | grep -v test | grep -qE '(^|/)filterx'; then
+            echo "::notice::PR does not change filterx code (excluding tests), no callgrind comment"
+            exit 0
+          fi
+
+          if [[ ! -f "${PR_ANNOTATE}" || ! -f "${BASE_ANNOTATE}" ]]; then
+            echo "::notice::Missing callgrind profile (base build may have failed), no callgrind comment"
+            exit 0
+          fi
+
+          extract_ir() {
+            grep -m1 'PROGRAM TOTALS' "$1" | grep -oE '[0-9,]+' | head -1 | tr -d ','
+          }
+
+          # Insert thousands separators, preserving a leading +/- sign.
+          group() {
+            printf '%s' "$1" | sed -E ':a;s/^([+-]?[0-9]+)([0-9]{3})/\1,\2/;ta'
+          }
+
+          BASE_IR=$(extract_ir "${BASE_ANNOTATE}")
+          PR_IR=$(extract_ir "${PR_ANNOTATE}")
+
+          if [[ -z "${BASE_IR}" || -z "${PR_IR}" ]]; then
+            echo "::notice::Could not parse instruction counts, no callgrind comment"
+            exit 0
+          fi
+
+          DIFF=$((PR_IR - BASE_IR))
+          PCT=$(awk "BEGIN { if (${BASE_IR} > 0) printf \"%+.2f\", (${DIFF} / ${BASE_IR}) * 100; else printf \"n/a\" }")
+
+          if [[ "${DIFF}" -gt 0 ]]; then
+            VERDICT='**increase**'
+          elif [[ "${DIFF}" -lt 0 ]]; then
+            VERDICT='**decrease**'
+          else
+            VERDICT='**no change**'
+          fi
+
+          BODY=$(cat <<EOF
+          #### Callgrind instruction count changes
+
+          This Pull Request changes filterx code. The filterx callgrind benchmark reports ${VERDICT} in instruction count.
+
+          | | Instructions (Ir) | Diff (Ir) | Diff (%) |
+          | --- | --- | --- | --- |
+          | base | $(group "${BASE_IR}") | 0 | 0.00% |
+          | PR | $(group "${PR_IR}") | $(group "$(printf '%+d' "${DIFF}")") | ${PCT}% |
+
+          EOF
+          )
+
+          jq -n --arg body "${BODY}" '{body: $body}' > "${COMMENT_FILE}"
+          echo "::notice::Generated callgrind comment (diff: ${DIFF} Ir, ${PCT}%)"
+
+      - name: "Artifact: callgrind comment"
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: callgrind-comment
+          path: callgrind-comment.json
+          include-hidden-files: true
+          if-no-files-found: error
+
   style-check:
     name: Style check
     runs-on: ubuntu-latest
