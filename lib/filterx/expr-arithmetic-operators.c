@@ -508,7 +508,7 @@ _compile_uminus(FilterXExpr *s, FilterXJIT *jit)
 #endif
 
 FilterXExpr *
-filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
@@ -523,7 +523,7 @@ filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
@@ -538,7 +538,7 @@ filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "mod", FXE_READ, lhs, rhs);
@@ -553,7 +553,7 @@ filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "mult", FXE_READ, lhs, rhs);
@@ -583,7 +583,7 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_uminus_new(FilterXExpr *operand)
+filterx_operator_uminus_new(FilterXExpr *operand)
 {
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
   filterx_unary_op_init_instance(self, "uminus", FXE_READ, operand);
