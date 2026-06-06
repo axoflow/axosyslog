@@ -35,12 +35,15 @@ nv_registry_get_handle(NVRegistry *self, const gchar *name)
 {
   gpointer p;
 
+  g_mutex_lock(&nv_registry_lock);
   p = g_hash_table_lookup(self->name_map, name);
+  g_mutex_unlock(&nv_registry_lock);
   if (p)
     return GPOINTER_TO_UINT(p);
   return 0;
 }
 
+/* this can be called from multiple threads */
 NVHandle
 nv_registry_alloc_handle(NVRegistry *self, const gchar *name)
 {
@@ -135,7 +138,9 @@ nv_registry_set_handle_flags(NVRegistry *self, NVHandle handle, guint16 flags)
 void
 nv_registry_foreach(NVRegistry *self, GHFunc callback, gpointer user_data)
 {
+  g_mutex_lock(&nv_registry_lock);
   g_hash_table_foreach(self->name_map, callback, user_data);
+  g_mutex_unlock(&nv_registry_lock);
 }
 
 NVRegistry *
