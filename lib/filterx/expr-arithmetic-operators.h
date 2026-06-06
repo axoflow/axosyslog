@@ -25,10 +25,10 @@
 #include "filterx-expr.h"
 
 FilterXExpr *filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs);
-FilterXExpr *filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs);
-FilterXExpr *filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs);
-FilterXExpr *filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs);
-FilterXExpr *filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs);
-FilterXExpr *filterx_arithmetic_operator_uminus_new(FilterXExpr *operand);
+FilterXExpr *filterx_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs);
+FilterXExpr *filterx_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs);
+FilterXExpr *filterx_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs);
+FilterXExpr *filterx_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs);
+FilterXExpr *filterx_operator_uminus_new(FilterXExpr *operand);
 
 #endif
