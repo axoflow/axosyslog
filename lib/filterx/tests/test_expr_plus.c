@@ -39,7 +39,7 @@
 #include "filterx/filterx-eval.h"
 #include "filterx/func-len.h"
 #include "filterx/expr-function.h"
-#include "filterx/expr-plus.h"
+#include "filterx/expr-arithmetic-operators.h"
 #include "filterx/json-repr.h"
 #include "filterx/filterx-sequence.h"
 #include "filterx/filterx-mapping.h"
