@@ -2048,12 +2048,18 @@ log_msg_registry_init(void)
 
   for (i = 0; macros[i].name; i++)
     {
-      if (nv_registry_get_handle(logmsg_registry, macros[i].name) == 0)
+      macros[i].handle = nv_registry_get_handle(logmsg_registry, macros[i].name);
+      if (macros[i].handle == 0)
         {
-          NVHandle handle;
+          /* not a registered builtin nv-pair: this is a real hard-macro.
+           *
+           * Some of the name-value pairs registered above also have a
+           * wrapper macro, like $HOST or $MSG, in those cases we don't want
+           * the flag setting to be applied, as that would prevent changing
+           * the value */
 
-          handle = nv_registry_alloc_handle(logmsg_registry, macros[i].name);
-          nv_registry_set_handle_flags(logmsg_registry, handle, (macros[i].id << 8) + LM_VF_MACRO);
+          macros[i].handle  = nv_registry_alloc_handle(logmsg_registry, macros[i].name);
+          nv_registry_set_handle_flags(logmsg_registry, macros[i].handle, (macros[i].id << 8) + LM_VF_MACRO);
         }
     }
 
