@@ -309,6 +309,46 @@ Test(log_source, test_suspend)
 
 Test(log_source, test_wakeup)
 {
+  /* Wakeup is batched: source wakes only once at least LOG_SOURCE_WAKEUP_BATCH_SIZE
+   * or init_window_size/4 slots have freed up since the window ran out. */
+  source_options.init_window_size = 20;
+
+  LogSource *source = test_source_init(&source_options);
+  TestPipe *next_pipe = test_pipe_init();
+  log_pipe_append(&source->super, &next_pipe->super);
+
+  _post_messages(source, 20);
+  cr_expect_not(log_source_free_to_send(source));
+
+  test_pipe_ack_messages(next_pipe, 1);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 0);
+  cr_expect(log_source_free_to_send(source));
+
+  test_pipe_ack_messages(next_pipe, 1);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 0);
+  cr_expect(log_source_free_to_send(source));
+
+  /* crossing the wakeup threshold, which is 20/4 == 5 in our case */
+  test_pipe_ack_messages(next_pipe, 4);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_expect(log_source_free_to_send(source));
+
+  test_pipe_ack_messages(next_pipe, 14);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
+  cr_expect(log_source_free_to_send(source));
+
+  _post_messages(source, 20);
+  cr_expect_not(log_source_free_to_send(source));
+
+  test_pipe_ack_messages(next_pipe, 20);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 2);
+
+  test_pipe_destroy(next_pipe);
+  test_source_destroy(source);
+}
+
+Test(log_source, test_wakeup_small_window)
+{
   source_options.init_window_size = 3;
 
   LogSource *source = test_source_init(&source_options);
@@ -318,14 +358,11 @@ Test(log_source, test_wakeup)
   _post_messages(source, 3);
   cr_expect_not(log_source_free_to_send(source));
 
-  test_pipe_ack_messages(next_pipe, 1);
+  test_pipe_ack_messages(next_pipe, 2);
   cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
 
-  _post_messages(source, 1);
-  cr_expect_not(log_source_free_to_send(source));
-
-  test_pipe_ack_messages(next_pipe, 3);
-  cr_assert_eq(((TestSource *) source)->wakeup_count, 2);
+  test_pipe_ack_messages(next_pipe, 1);
+  cr_assert_eq(((TestSource *) source)->wakeup_count, 1);
 
   test_pipe_destroy(next_pipe);
   test_source_destroy(source);
