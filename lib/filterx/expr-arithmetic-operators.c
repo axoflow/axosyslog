@@ -25,9 +25,9 @@
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 
-/* If you want to make these operators support other types,
- * remove these implementations, look at expr-plus.c
- * and follow the way it was implemented. */
+/* If you want to make the arithmetic operators support other types,
+ * follow the pattern of filterx_operator_plus_new() which uses
+ * filterx_object_add() for type-generic addition. */
 
 typedef struct FilterXArithmeticOperator_
 {
@@ -320,6 +320,37 @@ _optimize_modulo(FilterXExpr *s)
 }
 
 static FilterXObject *
+_do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  FilterXObject *result = filterx_object_add(lhs, rhs);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to add values", "add() method failed");
+
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
+
+static FilterXObject *
+_eval_plus(FilterXExpr *s)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  return _eval_op(self, _do_plus);
+}
+
+static FilterXExpr *
+_optimize_plus(FilterXExpr *s)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+
+  _optimize_arithmetic_operators_common(self);
+
+  if (self->literal_lhs && self->literal_rhs)
+    return filterx_literal_new(_eval_plus(&self->super.super));
+  return NULL;
+}
+
+static FilterXObject *
 _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 {
   GenericNumber operand, result;
@@ -398,6 +429,13 @@ fx_jit_arithmetic_mod(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
 __attribute__((used))
 FilterXObject *
+fx_jit_arithmetic_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_plus(lhs, rhs, expr);
+}
+
+__attribute__((used))
+FilterXObject *
 fx_jit_arithmetic_uminus(FilterXObject *operand, FilterXExpr *expr)
 {
   return _do_uminus(operand, expr);
@@ -459,6 +497,12 @@ _compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name
   filterx_jit_ir_add_sequence_to_block(jit, finish, block);
   filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
   return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+}
+
+static FilterXIRValue
+_compile_plus(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
 }
 
 static FilterXIRValue
@@ -554,6 +598,21 @@ filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rh
   self->super.super.free_fn = _free_arithmetic_common;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.super.compile = _compile_multiplication;
+#endif
+
+  return &self->super.super;
+}
+
+FilterXExpr *
+filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
+  filterx_binary_op_init_instance(&self->super, "plus", FXE_READ, lhs, rhs);
+  self->super.super.optimize = _optimize_plus;
+  self->super.super.eval = _eval_plus;
+  self->super.super.free_fn = _free_arithmetic_common;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_plus;
 #endif
 
   return &self->super.super;
