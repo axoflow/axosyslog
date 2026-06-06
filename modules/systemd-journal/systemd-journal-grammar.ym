@@ -59,6 +59,7 @@ JournalReaderOptions *last_journal_reader_options;
 %token KW_NAMESPACE
 %token KW_MATCHES
 %token KW_MATCH_BOOT
+%token KW_READ_OLD_RECORDS_ON_ERROR
 
 %type   <ptr> source_systemd_journal
 %type   <ptr> source_systemd_journal_params
@@ -131,6 +132,7 @@ source_systemd_journal_option
           {
             journal_reader_options_set_match_boot(last_journal_reader_options, $3);
           }
+        | KW_READ_OLD_RECORDS_ON_ERROR '(' yesno ')'	{ journal_reader_options_set_read_old_records_on_error(last_journal_reader_options, $3); }
         | source_option
 	| source_driver_option
         ;

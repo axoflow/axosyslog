@@ -45,6 +45,7 @@ typedef struct _JournalReaderOptions
   gchar *namespace;
   GList *matches;
   gboolean match_boot;
+  gboolean read_old_records_on_error;
 } JournalReaderOptions;
 
 JournalReader *journal_reader_new(GlobalConfig *cfg);
@@ -61,6 +62,7 @@ void journal_reader_options_set_namespace(JournalReaderOptions *self, gchar *nam
 void journal_reader_options_set_log_fetch_limit(JournalReaderOptions *self, gint log_fetch_limit);
 void journal_reader_options_set_matches(JournalReaderOptions *self, GList *matches);
 void journal_reader_options_set_match_boot(JournalReaderOptions *self, gboolean enable);
+void journal_reader_options_set_read_old_records_on_error(JournalReaderOptions *self, gboolean enable);
 void journal_reader_options_defaults(JournalReaderOptions *options);
 void journal_reader_options_destroy(JournalReaderOptions *options);
 
