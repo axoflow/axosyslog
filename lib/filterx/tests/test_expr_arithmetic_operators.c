@@ -42,31 +42,31 @@ _eval_binop(FilterXExpr *(*ctor)(FilterXExpr *, FilterXExpr *), gint64 lhs, gint
 
 Test(filterx_expr_arithmetic, division_by_zero_does_not_raise_sigfpe)
 {
-  FilterXObject *res = _eval_binop(filterx_arithmetic_operator_division_new, 1, 0);
+  FilterXObject *res = _eval_binop(filterx_operator_division_new, 1, 0);
   cr_assert_null(res);
 }
 
 Test(filterx_expr_arithmetic, modulo_by_zero_does_not_raise_sigfpe)
 {
-  FilterXObject *res = _eval_binop(filterx_arithmetic_operator_modulo_new, 1, 0);
+  FilterXObject *res = _eval_binop(filterx_operator_modulo_new, 1, 0);
   cr_assert_null(res);
 }
 
 Test(filterx_expr_arithmetic, int64_min_divided_by_minus_one_does_not_overflow)
 {
-  FilterXObject *res = _eval_binop(filterx_arithmetic_operator_division_new, G_MININT64, -1);
+  FilterXObject *res = _eval_binop(filterx_operator_division_new, G_MININT64, -1);
   cr_assert_null(res);
 }
 
 Test(filterx_expr_arithmetic, int64_min_modulo_minus_one_does_not_overflow)
 {
-  FilterXObject *res = _eval_binop(filterx_arithmetic_operator_modulo_new, G_MININT64, -1);
+  FilterXObject *res = _eval_binop(filterx_operator_modulo_new, G_MININT64, -1);
   cr_assert_null(res);
 }
 
 Test(filterx_expr_arithmetic, normal_division_still_works)
 {
-  FilterXObject *res = _eval_binop(filterx_arithmetic_operator_division_new, 6, 2);
+  FilterXObject *res = _eval_binop(filterx_operator_division_new, 6, 2);
   cr_assert_not_null(res);
   gint64 value;
   cr_assert(filterx_integer_unwrap(res, &value));
