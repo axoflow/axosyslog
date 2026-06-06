@@ -458,7 +458,8 @@ const gchar *log_msg_get_match_with_type(const LogMessage *self, gint index_,
 const gchar *log_msg_get_match_if_set_with_type(const LogMessage *self, gint index_,
                                                 gssize *value_len, LogMessageValueType *type);
 
-
+typedef gboolean (*LogMessageMacrosForeachFunc)(NVHandle handle, const gchar *name, gpointer user_data);
+void log_msg_macros_foreach(LogMessageMacrosForeachFunc func, gpointer user_data);
 
 static inline const gchar *
 log_msg_get_value_if_set_with_type(const LogMessage *self, NVHandle handle,

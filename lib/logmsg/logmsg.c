@@ -2082,6 +2082,22 @@ log_msg_registry_deinit(void)
 }
 
 void
+log_msg_macros_foreach(LogMessageMacrosForeachFunc func, gpointer user_data)
+{
+  for (gint i = 0; macros[i].name; i++)
+    {
+      if (!log_msg_is_handle_macro(macros[i].handle))
+        {
+          /* builtin values with a macro wrapper */
+          continue;
+        }
+
+      if (!func(macros[i].handle, macros[i].name, user_data))
+        break;
+    }
+}
+
+void
 log_msg_registry_foreach(GHFunc func, gpointer user_data)
 {
   nv_registry_foreach(logmsg_registry, func, user_data);
