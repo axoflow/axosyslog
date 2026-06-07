@@ -83,6 +83,7 @@ struct _FilterXEvalContext
 
 FilterXEvalContext *filterx_eval_get_context(void);
 FilterXScope *filterx_eval_get_scope(void);
+void filterx_eval_update_error_location_from_expr(FilterXExpr *expr);
 void filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
 void filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXObject *object);
 void filterx_eval_push_error_static_info(const gchar *message, FilterXExpr *expr, const gchar *info);
