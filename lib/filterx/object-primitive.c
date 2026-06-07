@@ -368,7 +368,7 @@ filterx_typecast_integer(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   if (filterx_object_extract_datetime(object, &ut))
     return filterx_integer_new(ut.ut_sec * USEC_PER_SEC + ut.ut_usec);
 
-  filterx_eval_push_error_info_printf("Failed to typecast", s,
+  filterx_eval_push_error_info_printf("Failed to typecast",
                                       "from_type: %s, to_type: integer",
                                       filterx_object_get_type_name(object));
   return NULL;
@@ -401,7 +401,7 @@ filterx_typecast_double(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   if (filterx_object_extract_datetime(object, &ut))
     return filterx_double_new(ut.ut_sec + (gdouble) ut.ut_usec / USEC_PER_SEC);
 
-  filterx_eval_push_error_info_printf("Failed to typecast", s,
+  filterx_eval_push_error_info_printf("Failed to typecast",
                                       "from_type: %s, to_type: double",
                                       filterx_object_get_type_name(object));
   return NULL;

@@ -82,7 +82,7 @@ _cast_to_string(FilterXObject *obj, gsize *len)
       return buf->str;
     }
 
-  filterx_eval_push_error("Cannot convert object to string", NULL, obj);
+  filterx_eval_push_error("Cannot convert object to string", obj);
   return NULL;
 }
 

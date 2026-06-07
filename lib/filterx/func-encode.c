@@ -121,7 +121,7 @@ filterx_simple_function_urldecode(FilterXExpr *s, FilterXObject *args[], gsize a
   gchar *decoded = g_uri_unescape_string(input, NULL);
   if (!decoded)
     {
-      filterx_eval_push_error_info_printf("Failed to decode URL-encoded string", s,
+      filterx_eval_push_error_info_printf("Failed to decode URL-encoded string",
                                           "invalid URL encoding: %s", input);
       return NULL;
     }
@@ -190,7 +190,7 @@ filterx_simple_function_hex_decode(FilterXExpr *s, FilterXObject *args[], gsize 
       if (!scan_hex_int(&buf, &left, 2, &byte_val))
         {
           g_free(out);
-          filterx_eval_push_error_info_printf("hex_decode() failed", s,
+          filterx_eval_push_error_info_printf("hex_decode() failed",
                                               "invalid hex character at position %" G_GSIZE_FORMAT, i * 2);
           return NULL;
         }

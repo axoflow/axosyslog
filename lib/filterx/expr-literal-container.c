@@ -227,14 +227,14 @@ _literal_dict_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
   key = _literal_container_eval_expr(elem->key, early_eval);
   if (!key)
     {
-      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate key");
+      filterx_eval_push_error_static_info("Failed create literal container", "Failed to evaluate key");
       goto exit;
     }
 
   value = _literal_container_eval_expr(elem->value, early_eval);
   if (!value && !elem->nullv)
     {
-      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
+      filterx_eval_push_error_static_info("Failed create literal container", "Failed to evaluate value");
       goto exit;
     }
 
@@ -299,7 +299,7 @@ _literal_dict_store_elem(FilterXLiteralContainer *self, FilterXObject *dict_ref,
         }
 
       if (!success)
-        filterx_eval_push_error_static_info("Failed create literal container", &self->super,
+        filterx_eval_push_error_static_info("Failed create literal container",
                                             "Failed to set value in container");
       filterx_object_unref(value);
 
@@ -425,7 +425,7 @@ _literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
   value = _literal_container_eval_expr(elem->value, early_eval);
   if (!value)
     {
-      filterx_eval_push_error_static_info("Failed create literal container", &self->super, "Failed to evaluate value");
+      filterx_eval_push_error_static_info("Failed create literal container", "Failed to evaluate value");
       goto exit;
     }
 
@@ -434,7 +434,7 @@ _literal_list_eval_elem(FilterXLiteralContainer *self, FilterXLiteralElement *el
 
   if (!success)
     {
-      filterx_eval_push_error_static_info("Failed create literal container", &self->super,
+      filterx_eval_push_error_static_info("Failed create literal container",
                                           "Failed to set value in container");
       goto exit;
     }

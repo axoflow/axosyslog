@@ -48,7 +48,7 @@ filterx_object_setattr_string(FilterXObject *self, const gchar *attr_name, Filte
 void
 _filterx_object_log_add_object_error(FilterXObject *self)
 {
-  filterx_eval_push_error_info_printf("Failed to evaluate addition", NULL,
+  filterx_eval_push_error_info_printf("Failed to evaluate addition",
                                       "The add method is not supported for the given type: %s",
                                       filterx_object_get_type_name(self));
 }

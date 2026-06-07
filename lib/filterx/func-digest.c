@@ -139,7 +139,7 @@ _filterx_function_digest_eval(FilterXExpr *s)
   if (!filterx_object_extract_string_ref(input_obj, &input, &input_len) &&
       !filterx_object_extract_bytes_ref(input_obj, &input, &input_len))
     {
-      filterx_eval_push_error_info_printf(FILTERX_FUNC_DIGEST_USAGE, s,
+      filterx_eval_push_error_info_printf(FILTERX_FUNC_DIGEST_USAGE,
                                           "Argument must be a string or bytes, got type: %s",
                                           input_obj->type->name);
       filterx_object_unref(input_obj);

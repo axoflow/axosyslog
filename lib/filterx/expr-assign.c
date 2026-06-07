@@ -39,8 +39,7 @@ _do_assign(FilterXAssign *self, FilterXObject *value)
 
   if (!value)
     {
-      filterx_eval_push_error_static_info("Failed to assign value", &self->super.super,
-                                          "Failed to evaluate right hand side");
+      filterx_eval_push_error_static_info("Failed to assign value", "Failed to evaluate right hand side");
       return NULL;
     }
 
@@ -49,8 +48,7 @@ _do_assign(FilterXAssign *self, FilterXObject *value)
 
   if (!filterx_expr_assign(self->super.lhs, &cloned))
     {
-      filterx_eval_push_error_static_info("Failed to assign value", &self->super.super,
-                                          "assign() method failed");
+      filterx_eval_push_error_static_info("Failed to assign value", "assign() method failed");
       filterx_object_unref(cloned);
       return NULL;
     }

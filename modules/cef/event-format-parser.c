@@ -90,7 +90,7 @@ parse_default(EventParserContext *ctx, const gchar *value, gint value_len, Filte
 {
   if ((!value || value_len <= 0) && !csv_scanner_has_input_left(ctx->csv_scanner))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &ctx->parser->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate event format parser",
                                           "Header '%s' is missing",
                                           _get_current_field(ctx)->name);
       return FALSE;
@@ -114,7 +114,7 @@ event_format_parser_parse_version(EventParserContext *ctx, const gchar *value, g
   const gchar *colon_pos = memchr(value, ':', value_len);
   if (!colon_pos || colon_pos == value)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &ctx->parser->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate event format parser",
                                           EVENT_FORMAT_PARSER_ERR_NO_LOG_SIGN_MSG,
                                           log_signature);
       return FALSE;
@@ -123,7 +123,7 @@ event_format_parser_parse_version(EventParserContext *ctx, const gchar *value, g
   gint sign_len = colon_pos - value;
   if (!(strncmp(value, log_signature, sign_len) == 0))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate event format parser", &ctx->parser->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate event format parser",
                                           EVENT_FORMAT_PARSER_ERR_LOG_SIGN_DIFFERS_MSG,
                                           value, log_signature);
       return FALSE;
@@ -324,7 +324,7 @@ _eval(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate event format parser", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate event format parser",
                                           "Failed to evaluate input expression");
       return NULL;
     }
@@ -333,7 +333,7 @@ _eval(FilterXExpr *s)
   const gchar *input;
   if (!filterx_object_extract_string_as_cstr_len(obj, &input, &len))
     {
-      filterx_eval_push_error_static_info("Failed to evaluate event format parser", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate event format parser",
                                           EVENT_FORMAT_PARSER_ERR_NOT_STRING_INPUT_MSG);
       goto exit;
     }

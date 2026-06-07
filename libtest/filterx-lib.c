@@ -160,7 +160,7 @@ _expr_wrapper_eval(FilterXExpr *s)
   FilterXObject *result = filterx_expr_eval(self->block);
   if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate non-literal", s, "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to evaluate non-literal", "Failed to evaluate expression");
       return NULL;
     }
   return result;
@@ -250,7 +250,7 @@ static FilterXObject *
 _eval(FilterXExpr *s)
 {
   FilterXDummyError *self = (FilterXDummyError *)s;
-  filterx_eval_push_error(self->msg, s, NULL);
+  filterx_eval_push_error(self->msg, NULL);
   return NULL;
 }
 

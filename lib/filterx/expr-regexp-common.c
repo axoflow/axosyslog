@@ -37,7 +37,7 @@ filterx_regexp_compile_pattern(const gchar *pattern, gsize pattern_len, gboolean
     {
       PCRE2_UCHAR error_message[128];
       pcre2_get_error_message(rc, error_message, sizeof(error_message));
-      filterx_eval_push_error_info_printf("Failed to compile regexp pattern", NULL,
+      filterx_eval_push_error_info_printf("Failed to compile regexp pattern",
                                           "pattern: %s, error: %s, error_offset: %d",
                                           pattern, (const gchar *) error_message, (gint) error_offset);
       return NULL;
@@ -120,13 +120,13 @@ filterx_regexp_match(FilterXReMatchState *state, pcre2_code_8 *pattern, gint sta
           return FALSE;
         default:
           /* Handle other special cases */
-          filterx_eval_push_error_info_printf("Failed to match regexp", NULL, "error_code: %d", rc);
+          filterx_eval_push_error_info_printf("Failed to match regexp", "error_code: %d", rc);
           goto error;
         }
     }
   else if (rc == 0)
     {
-      filterx_eval_push_error_static_info("Error while storing matching substrings", NULL,
+      filterx_eval_push_error_static_info("Error while storing matching substrings",
                                           "More than 256 capture groups encountered");
       goto error;
     }
@@ -147,13 +147,13 @@ filterx_regexp_match_eval(FilterXExpr *lhs_expr, pcre2_code_8 *pattern, FilterXR
   state->lhs_obj = filterx_expr_eval(lhs_expr);
   if (!state->lhs_obj)
     {
-      filterx_eval_push_error_static_info("Failed match regexp", NULL, "Failed to evaluate left hand side");
+      filterx_eval_push_error_static_info("Failed match regexp", "Failed to evaluate left hand side");
       goto error;
     }
 
   if (!filterx_object_extract_string_ref(state->lhs_obj, &state->lhs_str, &state->lhs_str_len))
     {
-      filterx_eval_push_error_info_printf("Failed to match regexp", NULL,
+      filterx_eval_push_error_info_printf("Failed to match regexp",
                                           "Left hand side must be string type, got: %s",
                                           filterx_object_get_type_name(state->lhs_obj));
       goto error;
