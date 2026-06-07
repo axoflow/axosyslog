@@ -32,6 +32,7 @@
 #include "filterx/object-datetime.h"
 #include "apphook.h"
 #include "cfg.h"
+#include "libtest/filterx-lib.h"
 #include "compat/cpp-end.h"
 
 #include <google/protobuf/util/message_differencer.h>
@@ -1193,12 +1194,14 @@ setup(void)
 {
   app_startup();
   configuration = cfg_new_snippet();
+  init_libtest_filterx();
   otel_filterx_objects_global_init();
 }
 
 void
 teardown(void)
 {
+  deinit_libtest_filterx();
   cfg_free(configuration);
   app_shutdown();
 }

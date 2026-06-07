@@ -20,7 +20,7 @@ add_unit_test(
   DEPENDS otel-cpp)
 
 add_unit_test(
-  CRITERION
+  CRITERION LIBTEST
   TARGET test_otel_filterx
   SOURCES test-otel-filterx.cpp
   INCLUDES ${OTEL_PROTO_BUILDDIR} ${PROJECT_SOURCE_DIR}/modules/grpc/common

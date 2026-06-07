@@ -328,11 +328,13 @@ setup(void)
 {
   app_startup();
   configuration = cfg_new_snippet();
+  init_libtest_filterx();
 }
 
 static void
 teardown(void)
 {
+  deinit_libtest_filterx();
   cfg_free(configuration);
   scratch_buffers_explicit_gc();
   app_shutdown();
