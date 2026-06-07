@@ -192,8 +192,7 @@ filterx_expr_wrapper_new(FilterXExpr *expr)
   self->super.walk_children = _expr_wrapper_walk;
   self->super.free_fn = _expr_wrapper_free;
 
-  self->block = filterx_compound_expr_new(TRUE);
-  filterx_compound_expr_add_ref(self->block, expr);
+  self->block = expr;
 
   return &self->super;
 }
