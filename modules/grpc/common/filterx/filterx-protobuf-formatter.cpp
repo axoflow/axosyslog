@@ -67,7 +67,7 @@ _format_element(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   catch (const std::exception &e)
     {
-      filterx_eval_push_error_info_printf("Failed to format element", NULL,
+      filterx_eval_push_error_info_printf("Failed to format element",
                                           "key type: %s, value type: %s, error: %s",
                                           filterx_object_get_type_name(key),
                                           filterx_object_get_type_name(value),

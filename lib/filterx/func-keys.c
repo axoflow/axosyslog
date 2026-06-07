@@ -42,14 +42,14 @@ _eval(FilterXExpr *s)
   FilterXObject *object = filterx_expr_eval(self->object_expr);
   if (!object)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_KEYS_USAGE, s, NULL);
+      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_KEYS_USAGE, NULL);
       return NULL;
     }
 
   FilterXObject *result = filterx_list_new();
   if (!filterx_mapping_keys(object, &result))
     {
-      filterx_eval_push_error(FILTERX_FUNC_KEYS_ERR_NONDICT FILTERX_FUNC_KEYS_USAGE, s, NULL);
+      filterx_eval_push_error(FILTERX_FUNC_KEYS_ERR_NONDICT FILTERX_FUNC_KEYS_USAGE, NULL);
       filterx_object_unref(result);
       return NULL;
     }

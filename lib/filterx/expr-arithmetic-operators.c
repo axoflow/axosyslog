@@ -46,26 +46,26 @@ _extract_operands_into_generic_numbers(FilterXObject *lhs_object, FilterXObject 
 
   if (!lhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
                                           "Failed to evaluate left hand side");
       goto exit;
     }
   if (!filterx_object_extract_generic_number(lhs_object, lhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator",
                                           "Left hand side must be a double or integer, got: %s",
                                           filterx_object_get_type_name(lhs_object));
       goto exit;
     }
   if (!rhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
                                           "Failed to evaluate right hand side");
       goto exit;
     }
   if (!filterx_object_extract_generic_number(rhs_object, rhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator",
                                           "right hand side must be a double or integer, got: %s",
                                           filterx_object_get_type_name(rhs_object));
       goto exit;
@@ -238,14 +238,14 @@ _do_modulo(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (!lhs)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr,
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator",
                                           "Failed to evaluate left hand side");
       goto exit;
     }
 
   if (!filterx_object_extract_integer(lhs, &lhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator",
                                           "Left hand side must be an integer, got: %s",
                                           filterx_object_get_type_name(lhs));
       goto exit;
@@ -253,14 +253,14 @@ _do_modulo(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (!rhs)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr,
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator",
                                           "Failed to evaluate right hand side");
       goto exit;
     }
 
   if (!filterx_object_extract_integer(rhs, &rhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator",
                                           "Right hand side must be an integer, got: %s",
                                           filterx_object_get_type_name(rhs));
       goto exit;
@@ -300,14 +300,14 @@ _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 
   if (!operand_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator",
                                           "Failed to evaluate operand");
       goto exit;
     }
 
   if (!filterx_object_extract_generic_number(operand_obj, &operand))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator",
                                           "Operand must be a double or integer, got: %s",
                                           filterx_object_get_type_name(operand_obj));
       goto exit;

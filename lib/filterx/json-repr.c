@@ -366,7 +366,7 @@ filterx_parse_json_call(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   FilterXObject *res = filterx_object_from_json(repr, repr_len, &error);
   if (!res)
     {
-      filterx_eval_push_error_info_printf("Error parsing JSON string", s, "%s", error->message);
+      filterx_eval_push_error_info_printf("Error parsing JSON string", "%s", error->message);
       g_clear_error(&error);
       return NULL;
     }

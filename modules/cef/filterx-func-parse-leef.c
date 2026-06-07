@@ -92,7 +92,7 @@ _fallback_to_parse_extensions(EventParserContext *ctx, const gchar *input, gint 
 {
   if (!csv_scanner_append_rest(ctx->csv_scanner))
     {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_leef()", &ctx->parser->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate parse_leef()",
                                           "Unexpected end of input");
       return FALSE;
     }

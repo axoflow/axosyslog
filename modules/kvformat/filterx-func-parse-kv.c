@@ -86,7 +86,7 @@ _set_dict_value(FilterXObject *out,
 
   gboolean ok = filterx_object_set_subscript(out, dict_key, &dict_val);
   if (!ok)
-    filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", NULL, "set-subscript() method failed");
+    filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", "set-subscript() method failed");
 
   FILTERX_STRING_CLEAR_FROM_STACK(dict_val);
   FILTERX_STRING_CLEAR_FROM_STACK(dict_key);
@@ -139,7 +139,7 @@ _eval(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval(self->msg);
   if (!obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_kv()", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate parse_kv()",
                                           "Failed to evaluate expression");
       return NULL;
     }
@@ -150,7 +150,7 @@ _eval(FilterXExpr *s)
   FilterXObject *result = NULL;
   if (!filterx_object_extract_string_as_cstr_len(obj, &input, &len))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_kv()",
                                           "Input must be string, got: %s",
                                           filterx_object_get_type_name(obj));
       goto exit;

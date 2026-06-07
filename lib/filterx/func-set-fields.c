@@ -174,7 +174,7 @@ _eval_fx_set_fields(FilterXExpr *s)
   FilterXObject *dict_unwrapped = filterx_ref_unwrap_ro(dict);
   if (!filterx_object_is_type(dict_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
-      filterx_eval_push_error("First argument must be a dict. " FILTERX_FUNC_SET_FIELDS_USAGE, s, NULL);
+      filterx_eval_push_error("First argument must be a dict. " FILTERX_FUNC_SET_FIELDS_USAGE, NULL);
       goto error;
     }
 

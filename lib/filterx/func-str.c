@@ -102,12 +102,12 @@ _do_casefold(const gchar **str, gsize *str_len)
 }
 
 static gboolean
-_obj_format(FilterXObject *obj, const gchar **str, gsize *str_len, gboolean ignore_case, FilterXExpr *expr_hint)
+_obj_format(FilterXObject *obj, const gchar **str, gsize *str_len, gboolean ignore_case)
 {
   gboolean result = FALSE;
   if (!filterx_object_extract_string_ref(obj, str, str_len))
     {
-      filterx_eval_push_error("Failed to extract string value: repr() failed", expr_hint, obj);
+      filterx_eval_push_error("Failed to extract string value: repr() failed", obj);
       goto exit;
     }
 
@@ -127,7 +127,7 @@ _expr_format(FilterXExpr *expr, const gchar **str, gsize *str_len, gboolean igno
   if (!*backing_obj)
     return FALSE;
 
-  result = _obj_format(*backing_obj, str, str_len, ignore_case, expr);
+  result = _obj_format(*backing_obj, str, str_len, ignore_case);
   return result;
 }
 
@@ -142,7 +142,7 @@ _string_with_cache_fill_cache(FilterXStringWithCache *self, gboolean ignore_case
 
   const gchar *str = NULL;
   gsize str_len = 0;
-  if (!_obj_format(object, &str, &str_len, ignore_case, self->expr))
+  if (!_obj_format(object, &str, &str_len, ignore_case))
     goto error;
 
   self->str_value = g_strndup(str, str_len);
@@ -292,7 +292,7 @@ _eval_against_needle_expr_list(FilterXExprAffix *self, const gchar *haystack, gs
       const gchar *current_needle;
       gsize current_needle_len;
 
-      gboolean res = _obj_format(elem, &current_needle, &current_needle_len, self->ignore_case, NULL);
+      gboolean res = _obj_format(elem, &current_needle, &current_needle_len, self->ignore_case);
       filterx_object_unref(elem);
 
       if (!res)
@@ -310,7 +310,7 @@ _eval_against_needle_expr_single(FilterXExprAffix *self, const gchar *haystack, 
   const gchar *needle;
   gsize needle_len;
 
-  if (_obj_format(needle_obj, &needle, &needle_len, self->ignore_case, NULL))
+  if (_obj_format(needle_obj, &needle, &needle_len, self->ignore_case))
     {
       return filterx_boolean_new(self->process(self, haystack, haystack_len, needle, needle_len));
     }
@@ -329,8 +329,7 @@ _eval_against_needle_expr(FilterXExprAffix *self, const gchar *haystack, gsize h
   if (!result)
     result = _eval_against_needle_expr_list(self, haystack, haystack_len, needle_obj);
   if (!result)
-    filterx_eval_push_error("Failed to process needle: Needle must be a string value or a list of strings",
-                            self->needle.expr, needle_obj);
+    filterx_eval_push_error("Failed to process needle: Needle must be a string value or a list of strings", needle_obj);
 
   filterx_object_unref(needle_obj);
   return result;
@@ -542,7 +541,7 @@ _strcasecmp_eval(FilterXExpr *s)
       if (!filterx_object_extract_string_ref(a_obj, &a_str, &a_str_len))
         {
           filterx_eval_push_error("Failed to eval strcasecmp(): Left hand side object must be a string",
-                                  self->a.expr, a_obj);
+                                  a_obj);
           goto exit;
         }
     }
@@ -564,7 +563,7 @@ _strcasecmp_eval(FilterXExpr *s)
       if (!filterx_object_extract_string_ref(b_obj, &b_str, &b_str_len))
         {
           filterx_eval_push_error("Failed to eval strcasecmp(): Right hand side object must be a string",
-                                  self->b.expr, b_obj);
+                                  b_obj);
           filterx_object_unref(b_obj);
           goto exit;
         }
