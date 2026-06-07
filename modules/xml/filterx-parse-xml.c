@@ -575,7 +575,7 @@ _extract_raw_xml(FilterXFunctionParseXml *self, FilterXObject *xml_obj, gsize *l
   const gchar *raw_xml;
   if (!filterx_object_extract_string_ref(xml_obj, &raw_xml, len))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()",
                                           "Input must be a string, got: %s",
                                           filterx_object_get_type_name(xml_obj));
       return NULL;
@@ -641,7 +641,7 @@ _parse(FilterXFunctionParseXml *self, const gchar *raw_xml, gsize raw_xml_len)
                      g_markup_parse_context_end_parse(context, &error);
   if (!success)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate parse_xml()",
                                           "%s", error ? error->message : "unknown error");
       if (error)
         g_error_free(error);
@@ -665,7 +665,7 @@ _eval(FilterXExpr *s)
   FilterXObject *xml_obj = filterx_expr_eval(self->xml_expr);
   if (!xml_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate parse_xml()", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate parse_xml()",
                                           "Failed to evaluate input expression");
       return NULL;
     }

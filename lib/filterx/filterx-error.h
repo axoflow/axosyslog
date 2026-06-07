@@ -26,7 +26,6 @@
 
 #include "filterx/filterx-scope.h"
 #include "filterx/filterx-expr.h"
-#include "template/eval.h"
 
 typedef struct _FilterXError
 {
@@ -49,14 +48,14 @@ filterx_error_set_expr(FilterXError *error, FilterXExpr *expr)
 }
 
 static inline void
-filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
+filterx_error_set_values(FilterXError *error, const gchar *message, FilterXObject *object)
 {
   error->message = message;
   error->object = filterx_object_ref(object);
 }
 
 static inline void
-filterx_falsy_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
+filterx_falsy_error_set_values(FilterXError *error, const gchar *message, FilterXObject *object)
 {
   error->message = message;
   error->object = filterx_object_ref(object);

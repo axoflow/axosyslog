@@ -36,7 +36,7 @@ filterx_simple_function_repr(FilterXExpr *s, FilterXObject *args[], gsize args_l
   GString *buf = scratch_buffers_alloc();
   if (!filterx_object_repr(object, buf))
     {
-      filterx_eval_push_error_info_printf("Failed to convert object to string", s,
+      filterx_eval_push_error_info_printf("Failed to convert object to string",
                                           "repr() failed on object of type: %s",
                                           filterx_object_get_type_name(object));
       return NULL;

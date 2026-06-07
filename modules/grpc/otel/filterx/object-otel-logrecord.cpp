@@ -198,7 +198,7 @@ _set_subscript(FilterXObject *s, FilterXObject *k, FilterXObject **new_value)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, k);
+      filterx_eval_push_error(error, k);
       return FALSE;
     }
 
@@ -215,7 +215,7 @@ _get_subscript(FilterXObject *s, FilterXObject *k)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, k);
+      filterx_eval_push_error(error, k);
       return NULL;
     }
 
@@ -232,7 +232,7 @@ _unset_key(FilterXObject *s, FilterXObject *k)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, k);
+      filterx_eval_push_error(error, k);
       return FALSE;
     }
 
@@ -249,7 +249,7 @@ _is_key_set(FilterXObject *s, FilterXObject *k)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(k, &key, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, k);
+      filterx_eval_push_error(error, k);
       return FALSE;
     }
 
@@ -353,7 +353,7 @@ filterx_otel_logrecord_new_from_args(FilterXExpr *s, FilterXObject *args[], gsiz
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info_printf("Failed to create OTel LogRecord object", s, "%s", e.what());
+      filterx_eval_push_error_info_printf("Failed to create OTel LogRecord object", "%s", e.what());
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -376,7 +376,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info_printf("Failed to call repr() on OTel LogRecord object", NULL, "%s", e.what());
+      filterx_eval_push_error_info_printf("Failed to call repr() on OTel LogRecord object", "%s", e.what());
       return FALSE;
     }
   return TRUE;

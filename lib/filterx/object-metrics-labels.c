@@ -96,7 +96,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return NULL;
     }
 
@@ -137,7 +137,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 
@@ -186,7 +186,7 @@ _is_key_set(FilterXObject *s, FilterXObject *key)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 
@@ -210,7 +210,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   const gchar *error;
   if (!filterx_mapping_normalize_key_as_string(key, &key_str, &key_len, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 

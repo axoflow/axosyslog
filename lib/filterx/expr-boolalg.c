@@ -55,7 +55,7 @@ _eval_not(FilterXExpr *s)
   FilterXObject *result = filterx_expr_eval(self->operand);
   if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to negate expression", s, "Failed to evaluate expression");
+      filterx_eval_push_error_static_info("Failed to negate expression", "Failed to evaluate expression");
       return NULL;
     }
 
@@ -116,7 +116,7 @@ _eval_and(FilterXExpr *s)
       FilterXObject *result = filterx_expr_eval(self->lhs);
       if (!result)
         {
-          filterx_eval_push_error_static_info("Failed to evaluate logical AND operation", s,
+          filterx_eval_push_error_static_info("Failed to evaluate logical AND operation",
                                               "Failed to evaluate left hand side");
           return NULL;
         }
@@ -131,7 +131,7 @@ _eval_and(FilterXExpr *s)
   FilterXObject *result = filterx_expr_eval(self->rhs);
   if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate logical AND operation", s,
+      filterx_eval_push_error_static_info("Failed to evaluate logical AND operation",
                                           "Failed to evaluate right hand side");
       return NULL;
     }
@@ -196,7 +196,7 @@ _eval_or(FilterXExpr *s)
       FilterXObject *result = filterx_expr_eval(self->lhs);
       if (!result)
         {
-          filterx_eval_push_error_static_info("Failed to evaluate logical OR operation", s,
+          filterx_eval_push_error_static_info("Failed to evaluate logical OR operation",
                                               "Failed to evaluate left hand side");
           return NULL;
         }
@@ -211,7 +211,7 @@ _eval_or(FilterXExpr *s)
   FilterXObject *result = filterx_expr_eval(self->rhs);
   if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate logical OR operation", s,
+      filterx_eval_push_error_static_info("Failed to evaluate logical OR operation",
                                           "Failed to evaluate right hand side");
       return NULL;
     }

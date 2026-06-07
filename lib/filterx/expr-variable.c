@@ -49,7 +49,7 @@ _eval_macro(FilterXVariableExpr *self, FilterXEvalContext *context)
   const gchar *value = log_msg_get_value_if_set_with_type(context->msg, self->handle, &value_len, &t);
   if (!value)
     {
-      filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+      filterx_eval_push_error("Variable is unset", self->variable_name);
       return NULL;
     }
   return filterx_unmarshal_repr(value, value_len, t);
@@ -71,7 +71,7 @@ _eval_variable(FilterXExpr *s)
       FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
       if (!value)
         {
-          filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+          filterx_eval_push_error("Variable is unset", self->variable_name);
         }
       return value;
     }
@@ -86,13 +86,13 @@ _eval_variable(FilterXExpr *s)
           FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
           if (!value)
             {
-              filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+              filterx_eval_push_error("Variable is unset", self->variable_name);
             }
           return value;
         }
     }
 
-  filterx_eval_push_error("No such variable", s, self->variable_name);
+  filterx_eval_push_error("No such variable", self->variable_name);
   return NULL;
 }
 
@@ -114,7 +114,7 @@ _assign(FilterXExpr *s, FilterXObject **new_value)
 
   if (self->handle_is_macro)
     {
-      filterx_eval_push_error("Macro based variable cannot be changed", &self->super, self->variable_name);
+      filterx_eval_push_error("Macro based variable cannot be changed", self->variable_name);
       return FALSE;
     }
 
@@ -153,7 +153,7 @@ _unset(FilterXExpr *s)
 
   if (self->handle_is_macro)
     {
-      filterx_eval_push_error("Macro based variable cannot be changed", &self->super, self->variable_name);
+      filterx_eval_push_error("Macro based variable cannot be changed", self->variable_name);
       return FALSE;
     }
 

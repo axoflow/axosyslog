@@ -87,7 +87,7 @@ _eval_conditional(FilterXExpr *s)
 
   if (!condition_value)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate condition");
+      filterx_eval_push_error_static_info("Failed to evaluate conditional", "Failed to evaluate condition");
       return NULL;
     }
 
@@ -99,7 +99,7 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_object_ref(condition_value);
 
       if (!result)
-        filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate true branch");
+        filterx_eval_push_error_static_info("Failed to evaluate conditional", "Failed to evaluate true branch");
     }
   else
     {
@@ -109,7 +109,7 @@ _eval_conditional(FilterXExpr *s)
         result = filterx_boolean_new(TRUE);
 
       if (!result)
-        filterx_eval_push_error_static_info("Failed to evaluate conditional", s, "Failed to evaluate false branch");
+        filterx_eval_push_error_static_info("Failed to evaluate conditional", "Failed to evaluate false branch");
     }
 
   filterx_object_unref(condition_value);
@@ -227,7 +227,7 @@ _compile_conditional(FilterXExpr *s, FilterXJIT *jit)
   LLVMBuildCondBr(ir, is_null, cond_null, cond_check);
   filterx_jit_ir_add_sequence_to_block(jit, cond_null, block);
   filterx_jit_ir_set_insert_point_to_sequence_tail(jit, cond_null);
-  fx_jit_emit_eval_push_error_static_info(jit, "Failed to evaluate conditional", s, "Failed to evaluate condition");
+  fx_jit_emit_eval_push_error_static_info(jit, "Failed to evaluate conditional", "Failed to evaluate condition");
   LLVMBuildBr(ir, finish);
 
   /* if (_condition_is_truthy(self, condition_value)) */

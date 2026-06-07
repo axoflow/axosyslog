@@ -43,7 +43,7 @@ _eval_in(FilterXExpr *s)
 
   if (!member)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator",
                                           "Failed to evaluate member expression");
       return NULL;
     }
@@ -51,7 +51,7 @@ _eval_in(FilterXExpr *s)
   FilterXObject *container = filterx_expr_eval(self->super.rhs);
   if (!container)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate 'in' operator",
                                           "Failed to evaluate container expression");
       goto exit;
     }

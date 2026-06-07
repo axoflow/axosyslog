@@ -195,14 +195,14 @@ filterx_typecast_ip(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   const gchar *str;
   if (!filterx_object_extract_string_as_cstr(object, &str))
     {
-      filterx_eval_push_error_static_info("Failed to cast to ip()", s, "Argument is not a string");
+      filterx_eval_push_error_static_info("Failed to cast to ip()", "Argument is not a string");
       return NULL;
     }
 
   object = filterx_ip_new_from_string(str);
   if (!object)
     {
-      filterx_eval_push_error_static_info("Failed to cast to ip()", s, "Argument is not a valid IP address");
+      filterx_eval_push_error_static_info("Failed to cast to ip()", "Argument is not a valid IP address");
       return NULL;
     }
   return object;

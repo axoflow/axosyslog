@@ -49,14 +49,14 @@ _set_pri_eval(FilterXExpr *s)
   if (!filterx_object_extract_integer(pri_obj, &pri_val))
     {
       filterx_object_unref(pri_obj);
-      filterx_eval_push_error("Pri must be of integer type. " FILTERX_FUNC_SET_PRI_USAGE, s, NULL);
+      filterx_eval_push_error("Pri must be of integer type. " FILTERX_FUNC_SET_PRI_USAGE, NULL);
       return NULL;
     }
 
   if (pri_val > 191 || pri_val < 0)
     {
       filterx_object_unref(pri_obj);
-      filterx_eval_push_error("Failed to set pri, value must be between 0 and 191 inclusive. " FILTERX_FUNC_SET_PRI_USAGE, s,
+      filterx_eval_push_error("Failed to set pri, value must be between 0 and 191 inclusive. " FILTERX_FUNC_SET_PRI_USAGE,
                               NULL);
       return NULL;
     }
