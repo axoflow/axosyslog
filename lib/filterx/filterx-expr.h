@@ -102,6 +102,8 @@ struct _FilterXExpr
 #define FILTERX_EXPR_DEFINE_TYPE(_type) \
   const gchar *FILTERX_EXPR_TYPE_NAME(_type) = # _type
 
+void _filterx_expr_propagate_to_error(FilterXExpr *self);
+
 /*
  * Evaluate the expression and return the result as a FilterXObject.  The
  * result can either be a
@@ -125,7 +127,13 @@ filterx_expr_eval(FilterXExpr *self)
 
   stats_counter_inc(self->eval_count);
 
-  return self->eval(self);
+  FilterXObject *result = self->eval(self);
+  if (!result)
+    {
+      _filterx_expr_propagate_to_error(self);
+      return NULL;
+    }
+  return result;
 }
 
 static inline gboolean
@@ -276,7 +284,8 @@ static inline FilterXIRValue
 filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
 {
   g_assert(self && self->compile);
-  return self->compile(self, jit);
+  FilterXIRValue result = self->compile(self, jit);
+  return fx_jit_emit_expr_propagate_to_error_if_null(jit, self, result);
 }
 
 static inline FilterXIRValue

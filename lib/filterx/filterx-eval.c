@@ -129,6 +129,22 @@ _clear_local_error(FilterXEvalContext *context, FilterXError *error)
 }
 
 void
+filterx_eval_update_error_location_from_expr(FilterXExpr *expr)
+{
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  FilterXError *error = &context->errors[context->error_count - 1];
+  /* we are propagating expr to the error if:
+   *
+   *   1) the expr associated with the error is unset
+   *   2) the expr associated with the error does not have a location
+   *   3) the expr is a statement
+   */
+  if ((!error->expr || !error->expr->lloc || expr->statement) && expr->lloc)
+    filterx_error_set_expr(error, expr);
+}
+
+void
 filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
@@ -322,6 +338,7 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
   if (!error->message && context->failure_info_collect_falsy)
     {
       filterx_falsy_error_set_values(&failure_info->errors[0], "Falsy expression", block, block_res);
+      filterx_eval_update_error_location_from_expr(block);
       failure_info->error_count = 1;
       return;
     }

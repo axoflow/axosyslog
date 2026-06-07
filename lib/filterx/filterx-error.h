@@ -43,10 +43,15 @@ EVTTAG *filterx_error_format_tag(FilterXError *error);
 EVTTAG *filterx_error_format_location_tag(FilterXError *error);
 
 static inline void
+filterx_error_set_expr(FilterXError *error, FilterXExpr *expr)
+{
+  error->expr = expr;
+}
+
+static inline void
 filterx_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   error->message = message;
-  error->expr = expr;
   error->object = filterx_object_ref(object);
 }
 
@@ -54,7 +59,6 @@ static inline void
 filterx_falsy_error_set_values(FilterXError *error, const gchar *message, FilterXExpr *expr, FilterXObject *object)
 {
   error->message = message;
-  error->expr = expr;
   error->object = filterx_object_ref(object);
   error->falsy = TRUE;
 }

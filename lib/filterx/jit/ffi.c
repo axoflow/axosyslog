@@ -182,6 +182,31 @@ fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIR
 }
 
 FilterXIRValue
+fx_jit_emit_expr_propagate_to_error_if_null(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue result)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  FilterXIRSequence propagate_seq = filterx_jit_ir_create_sequence(jit, "propagate_error", block);
+  FilterXIRSequence continue_seq = filterx_jit_ir_create_sequence(jit, "continue", block);
+
+  FilterXIRValue is_null = LLVMBuildIsNull(ir, result, "is_null");
+  LLVMBuildCondBr(ir, is_null, propagate_seq, continue_seq);
+
+  filterx_jit_ir_add_sequence_to_block(jit, propagate_seq, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, propagate_seq);
+  FilterXIRType param_tys[] = { ffi->ptr_ty };
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, expr) };
+  fx_jit_emit_extern_call(jit, "filterx_eval_update_error_location_from_expr", ffi->void_ty, param_tys, args, 1);
+  LLVMBuildBr(ir, continue_seq);
+
+  filterx_jit_ir_add_sequence_to_block(jit, continue_seq, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, continue_seq);
+  return result;
+}
+
+FilterXIRValue
 fx_jit_emit_object_ref(FilterXJIT *jit, LLVMValueRef obj)
 {
   return _emit_call(jit, jit->ffi.object_ref, &obj, 1);
