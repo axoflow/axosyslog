@@ -161,6 +161,7 @@ setup(void)
   configuration = cfg_new_snippet();
   configuration->log_level = 3;
   cfg_init(configuration);
+  init_libtest_filterx();
   start_grabbing_messages();
 }
 
@@ -168,6 +169,7 @@ static void
 teardown(void)
 {
   stop_grabbing_messages();
+  deinit_libtest_filterx();
   cfg_free(configuration);
   scratch_buffers_explicit_gc();
   app_shutdown();
