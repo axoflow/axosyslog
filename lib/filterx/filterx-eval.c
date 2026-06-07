@@ -60,30 +60,6 @@ filterx_eval_set_context(FilterXEvalContext *context)
   eval_context = context;
 }
 
-static void
-_backfill_error_expr(FilterXEvalContext *context)
-{
-  if (!context)
-    return;
-
-  if (context->error_count < 2)
-    return;
-
-  FilterXError *last_error = &context->errors[context->error_count - 1];
-  FilterXExpr *last_error_expr = last_error->expr;
-  if (!last_error_expr || !last_error_expr->lloc)
-    return;
-
-  for (gint i = context->error_count - 2; i >= 0; i--)
-    {
-      FilterXError *error = &context->errors[i];
-      if (error->expr && error->expr->lloc)
-        break;
-
-      error->expr = last_error_expr;
-    }
-}
-
 static FilterXError *
 _push_new_error(FilterXEvalContext *context)
 {
@@ -135,8 +111,6 @@ filterx_eval_push_error(const gchar *message, FilterXObject *object)
     return;
 
   filterx_error_set_values(error, message, object);
-
-  _backfill_error_expr(context);
 }
 
 void
@@ -148,8 +122,6 @@ filterx_eval_push_falsy_error(const gchar *message, FilterXObject *object)
     return;
 
   filterx_falsy_error_set_values(error, message, object);
-
-  _backfill_error_expr(context);
 }
 
 void
@@ -162,8 +134,6 @@ filterx_eval_push_error_static_info(const gchar *message, const gchar *info)
 
   filterx_error_set_values(error, message, NULL);
   filterx_error_set_static_info(error, info);
-
-  _backfill_error_expr(context);
 }
 
 void
@@ -180,8 +150,6 @@ filterx_eval_push_error_info_printf(const gchar *message, const gchar *fmt, ...)
   va_start(args, fmt);
   filterx_error_set_vinfo(error, fmt, args);
   va_end(args);
-
-  _backfill_error_expr(context);
 }
 
 static void
