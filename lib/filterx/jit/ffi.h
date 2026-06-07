@@ -68,6 +68,7 @@ FilterXJITFFI *filterx_jit_get_ffi(FilterXJIT *self);
 FilterXIRValue fx_jit_emit_expr_eval(FilterXJIT *jit, FilterXExpr *expr);
 FilterXIRValue fx_jit_emit_expr_eval_typed(FilterXJIT *jit, FilterXExpr *expr);
 FilterXIRValue fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue obj);
+FilterXIRValue fx_jit_emit_expr_propagate_to_error_if_null(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue result);
 
 FilterXIRValue fx_jit_emit_object_ref(FilterXJIT *jit, FilterXIRValue obj);
 void fx_jit_emit_object_unref(FilterXJIT *jit, FilterXIRValue obj);

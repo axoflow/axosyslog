@@ -73,6 +73,7 @@ _process_expr_result(FilterXExpr *expr, FilterXObject *result)
   if (!success)
     {
       filterx_eval_push_falsy_error("bailing out due to a falsy expr", expr, result);
+      filterx_eval_update_error_location_from_expr(expr);
       return FALSE;
     }
 
