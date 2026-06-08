@@ -352,6 +352,8 @@ _queue_thread(LogScheduler *self, LogSchedulerThreadState *thread_state, LogMess
 
   guint partition_index = _get_partition_index(self, thread_state, msg);
 
+  g_sockaddr_unshare(&msg->saddr);
+  g_sockaddr_unshare(&msg->daddr);
   LogMessageQueueNode *node;
   node = log_msg_alloc_queue_node(msg, path_options);
   thread_state->partitions[partition_index].len++;

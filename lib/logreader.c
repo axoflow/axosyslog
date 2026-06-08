@@ -471,6 +471,11 @@ _set_addresses(LogReader *self, LogMessage *msg, LogTransportAuxData *aux)
 set:
   log_msg_set_saddr(msg, source_addr);
   log_msg_set_daddr(msg, aux->local_addr ? : self->local_addr);
+
+  g_sockaddr_unref(aux->peer_addr);
+  aux->peer_addr = NULL;
+  g_sockaddr_unref(aux->local_addr);
+  aux->local_addr = NULL;
 }
 
 static gboolean

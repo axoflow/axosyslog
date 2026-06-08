@@ -89,6 +89,7 @@ guint8 *g_sockaddr_get_address(GSockAddr *self, guint8 *buffer, gsize buffer_siz
 gsize g_sockaddr_len(GSockAddr *a);
 
 GSockAddr *g_sockaddr_new(struct sockaddr *sa, int salen);
+void g_sockaddr_unshare(GSockAddr **pa);
 
 static inline struct sockaddr *
 g_sockaddr_get_sa(GSockAddr *self)
