@@ -1,8 +1,8 @@
-name: Comment config grammar changes (PR)
+name: Comment callgrind changes (PR)
 
 on:
   workflow_run:
-    workflows: [Check config grammar changes (PR)]
+    workflows: [CI @ devshell]
     types:
       - completed
 
@@ -15,9 +15,10 @@ permissions: {}
 jobs:
   update-or-remove-comment-on-pr:
     name: Update or remove PR comment
+    if: github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write  # post/update/delete grammar diff comment on PR
+      pull-requests: write  # post/update/delete callgrind diff comment on PR
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -34,13 +35,13 @@ jobs:
                run_id: context.payload.workflow_run.id,
             });
             let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
-              return artifact.name == "comment"
+              return artifact.name == "callgrind-comment"
             })[0];
             if (!matchArtifact) {
-              // The check workflow may not have produced the artifact (e.g. it was
-              // cancelled or failed). Nothing to comment on.
+              // The callgrind job may not have run (e.g. it was cancelled or failed
+              // before uploading). Nothing to comment on.
               core.setOutput('found', 'false');
-              core.notice('No comment artifact found, nothing to do');
+              core.notice('No callgrind-comment artifact found, nothing to do');
               return;
             }
             core.setOutput('found', 'true');
@@ -51,11 +52,11 @@ jobs:
                archive_format: 'zip',
             });
             let fs = require('fs');
-            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/comment.zip`, Buffer.from(download.data));
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/callgrind-comment.zip`, Buffer.from(download.data));
 
       - name: Unzip comment artifact
         if: steps.download.outputs.found == 'true'
-        run: unzip comment.zip
+        run: unzip callgrind-comment.zip
 
       - name: Get PR ID
         id: pr-id
@@ -91,16 +92,16 @@ jobs:
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
               /repos/${REPO}/issues/${PR_ID}/comments \
-              --jq '.[] | select(.user.login=="github-actions[bot]") | select(.user.type=="Bot") | select(.user.id==41898282) | select(.body | startswith("#### This Pull Request introduces config grammar changes")) | .id')
+              --jq '.[] | select(.user.login=="github-actions[bot]") | select(.user.type=="Bot") | select(.user.id==41898282) | select(.body | startswith("#### Callgrind instruction count changes")) | .id')
 
-          if [[ -s "${GITHUB_WORKSPACE}/comment" ]]; then
+          if [[ -s "${GITHUB_WORKSPACE}/callgrind-comment.json" ]]; then
             if [[ -n "${EXISTING_COMMENT_ID}" ]]; then
               gh api \
                 -H "Accept: application/vnd.github+json" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 --method PATCH \
                 /repos/${REPO}/issues/comments/${EXISTING_COMMENT_ID} \
-                --input ${GITHUB_WORKSPACE}/comment
+                --input ${GITHUB_WORKSPACE}/callgrind-comment.json
               echo -e "\n::notice::Updated comment: ${EXISTING_COMMENT_ID}"
             else
               gh api \
@@ -108,7 +109,7 @@ jobs:
                 -H "X-GitHub-Api-Version: 2022-11-28" \
                 --method POST \
                 /repos/${REPO}/issues/${PR_ID}/comments \
-                --input ${GITHUB_WORKSPACE}/comment
+                --input ${GITHUB_WORKSPACE}/callgrind-comment.json
               echo -e "\n::notice::Created new comment"
             fi
           else

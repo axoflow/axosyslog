@@ -24,3 +24,4 @@ rules:
   dangerous-triggers:
     ignore:
       - comment-cfg-grammar-changes.yml
+      - comment-callgrind-changes.yml
