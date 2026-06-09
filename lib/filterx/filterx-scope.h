@@ -114,6 +114,7 @@ filterx_scope_set_variable(FilterXScope *self, FilterXVariable *v, FilterXObject
   else
     {
       G_STATIC_ASSERT(sizeof(v->generation) == sizeof(self->msg->generation));
+      filterx_scope_make_object_direct(value);
       filterx_variable_set_value(v, value, assignment, self->msg->generation);
     }
 }
