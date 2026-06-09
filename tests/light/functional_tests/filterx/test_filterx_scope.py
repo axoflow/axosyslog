@@ -557,3 +557,25 @@ def test_message_tied_assigned_from_parsed_indirect_slice_survives_scope_transit
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "rewritten"
+
+
+def test_declared_variable_holding_indirect_slice_survives_intervening_sync(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config,
+        init_exprs=[
+            """
+                declare captured = "";
+                tmp = parse_csv($MSG, columns=["a", "b"], delimiter=":");
+                captured = tmp.b;
+                $MSG = "ZZZZZZZZZZZZZZZZZZZZZZZZZZZZ";
+            """,
+        ],
+        init_log_exprs=['rewrite { set-tag("force-sync"); };'],
+        true_exprs=['$MSG = captured; captured == "rewrittenlongvalue123";'],
+        msg="prefix:rewrittenlongvalue123",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "rewrittenlongvalue123"
