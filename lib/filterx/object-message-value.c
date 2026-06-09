@@ -397,9 +397,8 @@ _len(FilterXObject *s, guint64 *len)
   return FALSE;
 }
 
-/* NOTE: the caller must ensure that repr lives as long as the constructed object, avoids copying */
 FilterXObject *
-filterx_message_value_new_borrowed(const gchar *repr, gssize repr_len, LogMessageValueType type)
+_message_value_new_from_buf(const gchar *repr, gssize repr_len, LogMessageValueType type)
 {
   FilterXMessageValue *self = filterx_new_object(FilterXMessageValue);
 
@@ -408,6 +407,15 @@ filterx_message_value_new_borrowed(const gchar *repr, gssize repr_len, LogMessag
   self->repr_len = repr_len < 0 ? strlen(repr) : repr_len;
   self->type = type;
   return &self->super;
+}
+
+/* NOTE: the caller must ensure that repr lives as long as the constructed object, avoids copying */
+FilterXObject *
+filterx_message_value_new_indirect(const gchar *repr, gssize repr_len, LogMessageValueType type)
+{
+  FilterXObject *self = _message_value_new_from_buf(repr, repr_len, type);
+  self->is_indirect = TRUE;
+  return self;
 }
 
 /* NOTE: copies repr */
@@ -420,7 +428,7 @@ filterx_message_value_new(const gchar *repr, gssize repr_len, LogMessageValueTyp
   gchar *buf = g_malloc(len + 1);
   memcpy(buf, repr, len);
   buf[len] = 0;
-  FilterXMessageValue *self = (FilterXMessageValue *) filterx_message_value_new_borrowed(buf, len, type);
+  FilterXMessageValue *self = (FilterXMessageValue *) _message_value_new_from_buf(buf, len, type);
   self->buf = buf;
   return &self->super;
 }
@@ -429,7 +437,7 @@ filterx_message_value_new(const gchar *repr, gssize repr_len, LogMessageValueTyp
 FilterXObject *
 filterx_message_value_new_ref(gchar *repr, gssize repr_len, LogMessageValueType type)
 {
-  FilterXMessageValue *self = (FilterXMessageValue *) filterx_message_value_new_borrowed(repr, repr_len, type);
+  FilterXMessageValue *self = (FilterXMessageValue *) _message_value_new_from_buf(repr, repr_len, type);
   self->buf = repr;
   return &self->super;
 }
@@ -475,10 +483,10 @@ filterx_extract_object_from_logmsg(LogMessage *msg, NVHandle handle)
   switch (t)
     {
     case LM_VT_STRING:
-      return filterx_string_new_borrowed(value, value_len);
+      return filterx_string_new_indirect(value, value_len);
     case LM_VT_NULL:
       return filterx_null_new();
     default:
-      return filterx_message_value_new_borrowed(value, value_len, t);
+      return filterx_message_value_new_indirect(value, value_len, t);
     }
 }

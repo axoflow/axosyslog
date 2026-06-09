@@ -37,7 +37,7 @@ typedef struct _FilterXMessageValue
 
 FILTERX_DECLARE_TYPE(message_value);
 
-FilterXObject *filterx_message_value_new_borrowed(const gchar *repr, gssize repr_len, LogMessageValueType type);
+FilterXObject *filterx_message_value_new_indirect(const gchar *repr, gssize repr_len, LogMessageValueType type);
 FilterXObject *filterx_message_value_new_ref(gchar *repr, gssize repr_len, LogMessageValueType type);
 FilterXObject *filterx_message_value_new(const gchar *repr, gssize repr_len, LogMessageValueType type);
 

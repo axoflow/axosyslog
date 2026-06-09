@@ -204,7 +204,7 @@ struct _FilterXObject
    *
    */
   guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1,
-        flags:5;
+        is_indirect:1, flags:5;
   volatile guint32 hash;
   FilterXType *type;
 };
@@ -754,6 +754,13 @@ filterx_object_dup(FilterXObject *self)
     return filterx_ref_dup(self);
 
   return self->type->clone(self);
+}
+
+/* an indirect object's payload points to a buffer that is not owned by the object */
+static inline gboolean
+filterx_object_is_indirect(FilterXObject *self)
+{
+  return self->is_indirect;
 }
 
 static inline FilterXObject *

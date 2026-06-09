@@ -42,7 +42,7 @@ Test(filterx_message, test_filterx_object_message_marshals_to_the_stored_values)
 
   gchar borrowed_value[] = "string";
 
-  fobj = filterx_message_value_new_borrowed(borrowed_value, -1, LM_VT_STRING);
+  fobj = filterx_message_value_new_indirect(borrowed_value, -1, LM_VT_STRING);
   assert_marshaled_object(fobj, "string", LM_VT_STRING);
   borrowed_value[0]++;
   assert_marshaled_object(fobj, "ttring", LM_VT_STRING);
@@ -65,7 +65,7 @@ Test(filterx_message, test_filterx_object_value_maps_to_the_right_json_value)
 
   gchar borrowed_value[] = "string";
 
-  fobj = filterx_message_value_new_borrowed(borrowed_value, -1, LM_VT_STRING);
+  fobj = filterx_message_value_new_indirect(borrowed_value, -1, LM_VT_STRING);
   assert_object_json_equals(fobj, "\"string\"");
   borrowed_value[0]++;
   assert_object_json_equals(fobj, "\"ttring\"");
