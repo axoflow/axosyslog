@@ -91,11 +91,24 @@ filterx_scope_get_variable(FilterXScope *self, FilterXVariable *v)
 }
 
 static inline void
+filterx_scope_make_object_direct(FilterXObject **object)
+{
+  if (!(*object) || !filterx_object_is_indirect(*object))
+    return;
+
+  FilterXObject *direct = filterx_object_dup(*object);
+  filterx_object_unref(*object);
+  *object = direct;
+}
+
+static inline void
 filterx_scope_set_variable(FilterXScope *self, FilterXVariable *v, FilterXObject **value, gboolean assignment)
 {
   if (filterx_variable_is_floating(v))
     {
       G_STATIC_ASSERT(sizeof(v->generation) == sizeof(self->generation));
+      if (filterx_variable_is_declared(v))
+        filterx_scope_make_object_direct(value);
       filterx_variable_set_value(v, value, assignment, self->generation);
     }
   else

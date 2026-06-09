@@ -31,10 +31,6 @@
 /* the string holds a value that does not need escaping when generating a JSON string literal */
 #define FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED  0x02
 
-/* the string is indirect: its payload points into another object's buffer
- * instead of being owned (similar to NVEntry's indirect in lib/logmsg/nvtable.h) */
-#define FILTERX_STRING_FLAG_STR_INDIRECT     0x04
-
 /* cache indices */
 enum
 {
