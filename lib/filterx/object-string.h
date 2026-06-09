@@ -31,8 +31,9 @@
 /* the string holds a value that does not need escaping when generating a JSON string literal */
 #define FILTERX_STRING_FLAG_NO_JSON_ESCAPE_NEEDED  0x02
 
-/* string is borrowing its payload from another string */
-#define FILTERX_STRING_FLAG_STR_BORROWED_SLICE     0x04
+/* the string is indirect: its payload points into another object's buffer
+ * instead of being owned (similar to NVEntry's indirect in lib/logmsg/nvtable.h) */
+#define FILTERX_STRING_FLAG_STR_INDIRECT     0x04
 
 /* cache indices */
 enum
@@ -61,7 +62,7 @@ struct _FilterXString
   guint32 str_len;
   union
   {
-    FilterXObject *slice;
+    FilterXObject *indirect;
     gchar bytes[0];
   } storage;
 };
@@ -225,7 +226,7 @@ filterx_string_new(const gchar *str, gssize str_len)
 }
 
 /* slow paths */
-FilterXObject *_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str,
+FilterXObject *_filterx_string_new_indirect_from_str_and_len(FilterXObject *object, const gchar *str,
     gsize str_len);
 FilterXObject *_filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gsize end);
 
@@ -249,16 +250,16 @@ filterx_string_new_slice(FilterXObject *object, gsize start, gsize end)
         return cached;
       if (slice_len < FILTERX_STRING_SHORT_SLICE_LIMIT)
         return _filterx_string_new(slice_start, slice_len);
-      return _filterx_string_new_slice_from_borrowed_str_and_len(object, slice_start, slice_len);
+      return _filterx_string_new_indirect_from_str_and_len(object, slice_start, slice_len);
     }
 
   return _filterx_string_new_slice_from_non_string(object, start, end);
 }
 
 static inline FilterXObject *
-filterx_string_new_borrowed(const gchar *str, gssize str_len)
+filterx_string_new_indirect(const gchar *str, gssize str_len)
 {
-  return _filterx_string_new_slice_from_borrowed_str_and_len(NULL, str, str_len);
+  return _filterx_string_new_indirect_from_str_and_len(NULL, str, str_len);
 }
 
 void filterx_string_global_init(void);
