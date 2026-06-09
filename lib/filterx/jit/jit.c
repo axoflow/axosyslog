@@ -22,19 +22,24 @@
 
 #include "filterx/jit/jit.h"
 #include "filterx/jit/jit-private.h"
+#include "filterx/jit/bc-loader.h"
 #include "filterx/jit/ffi.h"
+#include "messages.h"
 
 #if SYSLOG_NG_ENABLE_JIT
 
 #include <llvm-c/Core.h>
 #include <llvm-c/Target.h>
+#include <llvm-c/TargetMachine.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/LLJIT.h>
+#include <llvm-c/Linker.h>
 #include <llvm-c/Orc.h>
 #include <llvm-c/Transforms/PassBuilder.h>
 #include <llvm-c/OrcEE.h>
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/DebugInfo.h>
+#include <llvm-c/Support.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -86,9 +91,14 @@ static LLVMErrorRef
 _optimize_module(gpointer s, LLVMModuleRef mod)
 {
   LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
+  LLVMPassBuilderOptionsSetInlinerThreshold(options, 512);
+  LLVMPassBuilderOptionsSetMergeFunctions(options, TRUE);
 
-  // TODO smaller faster set: function(instcombine), etc.
-  LLVMErrorRef err = LLVMRunPasses(mod, "default<O2>", NULL, options);
+  FilterXJIT *self = (FilterXJIT *) s;
+  msg_trace("FilterXJIT optimize module", evt_tag_str("module_name", self->mod_name));
+
+  const gchar *pass_override = g_getenv("SYSLOG_NG_FILTERX_JIT_PASSES");
+  LLVMErrorRef err = LLVMRunPasses(mod, pass_override ? : "default<O3>", self->tm, options);
 
   LLVMDisposePassBuilderOptions(options);
   return err;
@@ -162,6 +172,39 @@ _set_unwind_attributes(FilterXJIT *self, FilterXIRValue block)
   LLVMAddAttributeAtIndex(block, LLVMAttributeFunctionIndex, uw);
 }
 
+static inline void
+_copy_attrs_at_index(LLVMValueRef src, LLVMValueRef dest, unsigned idx)
+{
+  unsigned count = LLVMGetAttributeCountAtIndex(src, idx);
+  if (!count)
+    return;
+
+  LLVMAttributeRef *attrs = g_alloca(count * sizeof(LLVMAttributeRef));
+  LLVMGetAttributesAtIndex(src, idx, attrs);
+  for (unsigned i = 0; i < count; i++)
+    LLVMAddAttributeAtIndex(dest, idx, attrs[i]);
+}
+
+static inline void
+_inherit_libfilterx_function_attributes(FilterXJIT *self, FilterXIRValue dest)
+{
+  if (!self->libfilterx)
+    return;
+
+  LLVMValueRef tmpl = LLVMGetNamedFunction(self->libfilterx, "fx_jit_attribute_template");
+  if (!tmpl || LLVMIsDeclaration(tmpl))
+    return;
+
+  _copy_attrs_at_index(tmpl, dest, LLVMAttributeFunctionIndex);
+
+  if (LLVMGetTypeKind(LLVMGetReturnType(LLVMGlobalGetValueType(dest))) != LLVMVoidTypeKind)
+    _copy_attrs_at_index(tmpl, dest, LLVMAttributeReturnIndex);
+
+  unsigned param_count = LLVMCountParams(tmpl);
+  for (unsigned paramidx = 1; paramidx <= param_count; paramidx++)
+    _copy_attrs_at_index(tmpl, dest, paramidx);
+}
+
 void
 filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
 {
@@ -171,6 +214,7 @@ filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name)
   gchar *fqn = _create_fully_qualified_block_name(self, block_name);
   self->current_ir_block = LLVMAddFunction(self->mod, fqn, _block_function_type(self));
   _set_unwind_attributes(self, self->current_ir_block);
+  _inherit_libfilterx_function_attributes(self, self->current_ir_block);
   g_free(fqn);
 
   FilterXIRSequence entry = filterx_jit_ir_add_new_sequence_to_block(self, "entry", self->current_ir_block);
@@ -338,6 +382,25 @@ _emit_llvm_ir_debug_info(FilterXJIT *self, GError **error)
 
 #endif
 
+static gboolean
+_link_libfilterx(FilterXJIT *self, GError **error)
+{
+  if (!self->libfilterx)
+    return TRUE;
+
+  LLVMBool link_err = LLVMLinkModules2(self->mod, self->libfilterx);
+  /* libfilterx is consumed */
+  self->libfilterx = NULL;
+
+  if (link_err)
+    {
+      _fxjit_error("Failed to link embedded libfilterx bitcode into the JIT module", error);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 filterx_jit_finalize(FilterXJIT *self, GError **error)
 {
@@ -355,6 +418,9 @@ filterx_jit_finalize(FilterXJIT *self, GError **error)
   if (self->debug)
     LLVMDIBuilderFinalize(self->debug);
 
+  if (!_link_libfilterx(self, error))
+    return FALSE;
+
   if (!_verify_module(self, error))
     return FALSE;
 
@@ -370,6 +436,8 @@ filterx_jit_finalize(FilterXJIT *self, GError **error)
       return FALSE;
     }
 
+  msg_trace("FilterXJIT finalized", evt_tag_str("module_name", self->mod_name));
+
   self->mod_finalized = TRUE;
   return TRUE;
 }
@@ -381,6 +449,8 @@ filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
     return 0;
 
   gchar *fqn = _create_fully_qualified_block_name(self, block_name);
+  msg_trace("FilterXJIT lookup", evt_tag_str("block", fqn), evt_tag_str("module_name", self->mod_name));
+
   FilterXJITAddress fx_block_addr = 0;
   LLVMErrorRef err = LLVMOrcLLJITLookup(self->j, &fx_block_addr, fqn);
   g_free(fqn);
@@ -437,13 +507,56 @@ _create_object_layer_with_gdb_listener(void *ctx, LLVMOrcExecutionSessionRef es,
   return object_layer;
 }
 
+static LLVMTargetMachineRef
+_create_target_machine(FilterXJIT *self, GError **error)
+{
+  const char *triple = LLVMGetTarget(self->libfilterx);
+  char *cpu = LLVMGetHostCPUName();
+  char *features = LLVMGetHostCPUFeatures();
+
+  LLVMTargetRef target = NULL;
+  char *err_msg = NULL;
+  if (LLVMGetTargetFromTriple(triple, &target, &err_msg))
+    {
+      _fxjit_error(err_msg, error);
+      LLVMDisposeMessage(err_msg);
+      LLVMDisposeMessage(cpu);
+      LLVMDisposeMessage(features);
+      return NULL;
+    }
+
+  LLVMTargetMachineRef tm = LLVMCreateTargetMachine(target, triple, cpu, features, LLVMCodeGenLevelAggressive,
+                                                    LLVMRelocDefault, LLVMCodeModelJITDefault);
+
+  LLVMDisposeMessage(cpu);
+  LLVMDisposeMessage(features);
+
+  return tm;
+}
+
+static gboolean
+_setup_target_machine(FilterXJIT *self, LLVMOrcLLJITBuilderRef jit_builder, GError **error)
+{
+  LLVMTargetMachineRef tm = _create_target_machine(self, error);
+  if (!tm)
+    return FALSE;
+
+  LLVMOrcJITTargetMachineBuilderRef tmb = LLVMOrcJITTargetMachineBuilderCreateFromTargetMachine(tm);
+  LLVMOrcLLJITBuilderSetJITTargetMachineBuilder(jit_builder, tmb);
+  /* tm is consumed */
+  tm = NULL;
+
+  self->tm = _create_target_machine(self, error);
+  return TRUE;
+}
+
 static inline void
 _setup_debug_info(FilterXJIT *self, LLVMOrcLLJITBuilderRef jit_builder)
 {
   LLVMOrcLLJITBuilderSetObjectLinkingLayerCreator(jit_builder, _create_object_layer_with_gdb_listener, NULL);
 
   LLVMValueRef di_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), LLVMDebugMetadataVersion(), FALSE);
-  LLVMValueRef dwarf_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), 4, FALSE);
+  LLVMValueRef dwarf_version = LLVMConstInt(LLVMInt32TypeInContext(self->ctx), 5, FALSE);
 
   LLVMAddModuleFlag(self->mod, LLVMModuleFlagBehaviorWarning, DEBUG_VERSION_KEY, strlen(DEBUG_VERSION_KEY),
                     LLVMValueAsMetadata(di_version));
@@ -481,8 +594,17 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   self->mod = LLVMModuleCreateWithNameInContext(self->mod_name, self->ctx);
   self->ir = LLVMCreateBuilderInContext(self->ctx);
 
+  self->libfilterx = filterx_jit_load_libfilterx_bitcode(self->ctx, error);
+  if (!self->libfilterx)
+    goto error;
+
+  LLVMSetTarget(self->mod, LLVMGetTarget(self->libfilterx));
+  LLVMSetDataLayout(self->mod, LLVMGetDataLayoutStr(self->libfilterx));
+
   LLVMOrcLLJITBuilderRef jit_builder = LLVMOrcCreateLLJITBuilder();
   _setup_debug_info(self, jit_builder);
+  if (!_setup_target_machine(self, jit_builder, error))
+    goto error;
 
   LLVMErrorRef err = LLVMOrcCreateLLJIT(&self->j, jit_builder);
   if (err)
@@ -497,6 +619,8 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   _setup_optimizations(self);
 
   filterx_jit_ffi_init(self);
+
+  msg_trace("FilterXJIT created", evt_tag_str("module_name", self->mod_name));
 
   return self;
 
@@ -515,14 +639,20 @@ filterx_jit_free(FilterXJIT *self)
     LLVMDisposeDIBuilder(self->debug);
   if (self->j)
     LLVMOrcDisposeLLJIT(self->j);
+  if (self->tm)
+    LLVMDisposeTargetMachine(self->tm);
   LLVMDisposeBuilder(self->ir);
   self->ctx = NULL;
   if (!self->mod_finalized)
     LLVMDisposeModule(self->mod);
+  if (self->libfilterx)
+    LLVMDisposeModule(self->libfilterx);
   LLVMOrcDisposeThreadSafeContext(self->ts_ctx);
 
   if (self->debug_ir_text_memfd >= 0)
     close(self->debug_ir_text_memfd);
+
+  msg_trace("FilterXJIT destroyed", evt_tag_str("module_name", self->mod_name));
 
   g_free(self->mod_name);
   g_free(self);
@@ -533,6 +663,27 @@ filterx_jit_global_init(void)
 {
   LLVMInitializeNativeTarget();
   LLVMInitializeNativeAsmPrinter();
+
+  /* For debugging: -time-passes -pass-remarks=inline -pass-remarks-missed=inline -pass-remarks-analysis=inline */
+  const gchar *extra_args = g_getenv("SYSLOG_NG_FILTERX_JIT_LLVM_ARGS");
+  gchar *cmdline = g_strconcat("syslog-ng -inlinecold-threshold=512 -inline-cold-callsite-threshold=512 -inlinehint-threshold=512 -mergefunc-use-aliases ",
+                               extra_args, NULL);
+
+  GError *error = NULL;
+  gchar **argv = NULL;
+  gint argc = 0;
+  if (!g_shell_parse_argv(cmdline, &argc, &argv, &error))
+    {
+      msg_error("Error parsing FilterX JIT LLVM arguments", evt_tag_str("error", error->message));
+      g_clear_error(&error);
+      goto exit;
+    }
+
+  LLVMParseCommandLineOptions(argc, (const gchar **) argv, NULL);
+
+exit:
+  g_strfreev(argv);
+  g_free(cmdline);
 }
 
 void
