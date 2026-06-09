@@ -538,3 +538,22 @@ def test_sync_stops_at_fork_point_when_branch_is_abandoned(config, syslog_ng):
     assert file_false.get_stats()["processed"] == 1
     assert "processed" not in file_true.get_stats()
     assert file_false.read_log() == "acila"
+
+
+def test_message_tied_assigned_from_parsed_indirect_slice_survives_scope_transition(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config,
+        init_exprs=[
+            """
+                tmp = parse_csv($MSG, columns=["a", "b"], delimiter=":");
+                $MSG = tmp.b;
+            """,
+        ],
+        true_exprs=['$MSG == "rewritten";'],
+        msg="prefix:rewritten",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "rewritten"
