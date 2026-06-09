@@ -579,3 +579,23 @@ def test_declared_variable_holding_indirect_slice_survives_intervening_sync(conf
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
     assert file_true.read_log() == "rewrittenlongvalue123"
+
+
+def test_declared_variable_holding_indirect_message_value_survives_source_overwrite(config, syslog_ng):
+    (file_true, file_false, _) = create_config(
+        config,
+        init_exprs=[
+            """
+                declare captured = 0;
+                captured = ${values.int};
+                ${values.int} = 7;
+            """,
+        ],
+        init_log_exprs=['rewrite { set-tag("force-sync"); };'],
+        true_exprs=['captured == 5;'],
+        msg="anything",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
