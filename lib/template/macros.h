@@ -116,6 +116,7 @@ typedef struct _LogMacroDef
 {
   const char *name;
   int id;
+  NVHandle handle;
 } LogMacroDef;
 
 extern LogMacroDef macros[];

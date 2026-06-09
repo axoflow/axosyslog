@@ -230,24 +230,14 @@ _collect_nvpair_names_from_logmsg(NVHandle handle, const gchar *name, const gcha
 }
 
 static gboolean
-_is_macro_name_visible_to_user(const gchar *name, NVHandle handle)
+_collect_macro_names(NVHandle handle, const gchar *name, gpointer user_data)
 {
-  return log_msg_is_handle_macro(handle);
-}
+  PyObject *list = (PyObject *) user_data;
 
-static void
-_collect_macro_names(gpointer key, gpointer value, gpointer user_data)
-{
-  const gchar *name = (const gchar *)key;
-  NVHandle handle = GPOINTER_TO_UINT(value);
-  PyObject *list = (PyObject *)user_data;
-
-  if (_is_macro_name_visible_to_user(name, handle))
-    {
-      PyObject *py_name = PyBytes_FromString(name);
-      PyList_Append(list, py_name);
-      Py_XDECREF(py_name);
-    }
+  PyObject *py_name = PyBytes_FromString(name);
+  PyList_Append(list, py_name);
+  Py_XDECREF(py_name);
+  return TRUE;
 }
 
 static PyObject *
@@ -256,8 +246,8 @@ _logmessage_get_keys_method(PyLogMessage *self)
   PyObject *keys = PyList_New(0);
   LogMessage *msg = self->msg;
 
-  log_msg_values_foreach(msg, _collect_nvpair_names_from_logmsg, (gpointer) keys);
-  log_msg_registry_foreach(_collect_macro_names, keys);
+  log_msg_values_foreach(msg, _collect_nvpair_names_from_logmsg, keys);
+  log_msg_macros_foreach(_collect_macro_names, keys);
 
   return keys;
 }

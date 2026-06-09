@@ -62,6 +62,35 @@ nvhandle_desc_array_expand(NVHandleDescArray *self)
   self->allocated_len = new_alloc;
 }
 
+/*
+ * This function is called from the NVHandle allocation path, under the
+ * protection of the nv_registry_lock.
+ *
+ * NOTE: the read side of `self->data` is not locked in any way.  The only
+ * reason this works is that allocation must happen before any read side
+ * would start using a specific handle.
+ *
+ * By the time a reader would start reading the `self->data` pointer,
+ * `self->data` is either pointing to a new array (if another handle was
+ * allocated and expansion was needed), or it is still pointing to an old
+ * array (if expansion was not necessary).
+ *
+ * In either case, the reader dereferences a memory area that is kept around
+ * in the `old_buffers` array until syslog-ng is terminated.
+ *
+ * While we could do an atomic update to `self->data` and `self->len`, the
+ * read side actually:
+ *
+ *  1) never checks len, so changes and checks against len are always under
+ *     the protection of the lock
+ *  2) works both the old and the new values of data, so visibility is not a
+ *     concern
+ *  3) pointer writes are never torn (e.g.  we can't see values with
+ *     upper/lower bits mixed from old/new values)
+ *
+ * The only assumption that the code must meet is that any handles used on
+ * the read side must first be allocated.
+ */
 void
 nvhandle_desc_array_append(NVHandleDescArray *self, NVHandleDesc *desc)
 {
