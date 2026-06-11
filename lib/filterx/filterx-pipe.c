@@ -57,7 +57,8 @@ _compile_block(LogFilterXPipe *self, GlobalConfig *cfg)
   msg_debug("Compiling FilterX block", evt_tag_str("block", self->name), log_pipe_location_tag(&self->super));
 
   gchar block_name[1024];
-  filterx_jit_ir_add_new_block(jit, _jit_block_name(self, block_name, G_N_ELEMENTS(block_name)));
+  filterx_jit_ir_add_new_block(jit, _jit_block_name(self, block_name, G_N_ELEMENTS(block_name)),
+                               self->scope_var_layout);
   FilterXIRValue result = filterx_expr_compile(self->block, jit);
   filterx_jit_ir_finish_current_block(jit, result);
 }
