@@ -80,7 +80,9 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, sta
   FilterXExpr *(*optimize)(FilterXExpr *self);
 #if SYSLOG_NG_ENABLE_JIT
   FilterXIRValue (*compile)(FilterXExpr *self, FilterXJIT *jit);
+  FilterXIRValue (*compile_assign)(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value);
 #endif
+
   void (*free_fn)(FilterXExpr *self);
 
   gboolean (*walk_children)(FilterXExpr *self, FilterXExprWalkFunc f, gpointer user_data);
@@ -281,7 +283,7 @@ static inline gboolean
 filterx_expr_can_compile(FilterXExpr *self)
 {
 #if SYSLOG_NG_ENABLE_JIT
-  return !!self->compile;
+  return self && !!self->compile;
 #else
   return FALSE;
 #endif
@@ -295,6 +297,28 @@ filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
   FilterXIRValue result = self->compile(self, jit);
 
   return fx_jit_emit_expr_propagate_to_error_if_null(jit, self, result);
+#else
+  g_assert_not_reached();
+#endif
+}
+
+/* TODO partialJIT: remove once all expressions implement compile_assign() */
+static inline gboolean
+filterx_expr_can_compile_assign(FilterXExpr *self)
+{
+#if SYSLOG_NG_ENABLE_JIT
+  return self && !!self->compile_assign;
+#else
+  return FALSE;
+#endif
+}
+
+static inline FilterXIRValue
+filterx_expr_compile_assign(FilterXExpr *self, FilterXJIT *jit, FilterXIRValue new_value)
+{
+#if SYSLOG_NG_ENABLE_JIT
+  g_assert(self && self->compile_assign);
+  return self->compile_assign(self, jit, new_value);
 #else
   g_assert_not_reached();
 #endif
