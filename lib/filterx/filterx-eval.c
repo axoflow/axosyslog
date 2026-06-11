@@ -60,30 +60,6 @@ filterx_eval_set_context(FilterXEvalContext *context)
   eval_context = context;
 }
 
-static void
-_backfill_error_expr(FilterXEvalContext *context)
-{
-  if (!context)
-    return;
-
-  if (context->error_count < 2)
-    return;
-
-  FilterXError *last_error = &context->errors[context->error_count - 1];
-  FilterXExpr *last_error_expr = last_error->expr;
-  if (!last_error_expr || !last_error_expr->lloc)
-    return;
-
-  for (gint i = context->error_count - 2; i >= 0; i--)
-    {
-      FilterXError *error = &context->errors[i];
-      if (error->expr && error->expr->lloc)
-        break;
-
-      error->expr = last_error_expr;
-    }
-}
-
 static FilterXError *
 _push_new_error(FilterXEvalContext *context)
 {
@@ -100,102 +76,70 @@ _push_new_error(FilterXEvalContext *context)
   return &context->errors[context->error_count - 1];
 }
 
-static FilterXError *
-_init_local_or_context_error(FilterXEvalContext *context, FilterXError *local_error)
+void
+filterx_eval_update_error_location_from_expr(FilterXExpr *expr)
 {
-  if (context)
-    return _push_new_error(context);
+  FilterXEvalContext *context = filterx_eval_get_context();
 
-  memset(local_error, 0, sizeof(*local_error));
-  return local_error;
-}
-
-static void
-_log_to_stderr_if_needed(FilterXEvalContext *context, FilterXError *error)
-{
-  if (!context)
-    msg_error("FILTERX ERROR", filterx_error_format_location_tag(error), filterx_error_format_tag(error));
-}
-
-static void
-_clear_local_error(FilterXEvalContext *context, FilterXError *error)
-{
-  if (!error)
-    return;
-
-  gboolean is_error_local = !context;
-  if (is_error_local)
-    filterx_error_clear(error);
+  FilterXError *error = &context->errors[context->error_count - 1];
+  /* we are propagating expr to the error if:
+   *
+   *   1) the expr associated with the error is unset
+   *   2) the expr associated with the error does not have a location
+   *   3) the expr is a statement
+   */
+  if ((!error->expr || !error->expr->lloc || expr->statement) && expr->lloc)
+    filterx_error_set_expr(error, expr);
 }
 
 void
-filterx_eval_push_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
+filterx_eval_push_error(const gchar *message, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXError local_error;
-  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  FilterXError *error = _push_new_error(context);
   if (!error)
     return;
 
-  filterx_error_set_values(error, message, expr, object);
-
-  _backfill_error_expr(context);
-  _log_to_stderr_if_needed(context, error);
-  _clear_local_error(context, error);
+  filterx_error_set_values(error, message, object);
 }
 
 void
-filterx_eval_push_falsy_error(const gchar *message, FilterXExpr *expr, FilterXObject *object)
+filterx_eval_push_falsy_error(const gchar *message, FilterXObject *object)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXError local_error;
-  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  FilterXError *error = _push_new_error(context);
   if (!error)
     return;
 
-  filterx_falsy_error_set_values(error, message, expr, object);
-
-  _backfill_error_expr(context);
-  _log_to_stderr_if_needed(context, error);
-  _clear_local_error(context, error);
+  filterx_falsy_error_set_values(error, message, object);
 }
 
 void
-filterx_eval_push_error_static_info(const gchar *message, FilterXExpr *expr, const gchar *info)
+filterx_eval_push_error_static_info(const gchar *message, const gchar *info)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXError local_error;
-  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  FilterXError *error = _push_new_error(context);
   if (!error)
     return;
 
-  filterx_error_set_values(error, message, expr, NULL);
+  filterx_error_set_values(error, message, NULL);
   filterx_error_set_static_info(error, info);
-
-  _backfill_error_expr(context);
-  _log_to_stderr_if_needed(context, error);
-  _clear_local_error(context, error);
 }
 
 void
-filterx_eval_push_error_info_printf(const gchar *message, FilterXExpr *expr, const gchar *fmt, ...)
+filterx_eval_push_error_info_printf(const gchar *message, const gchar *fmt, ...)
 {
   FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXError local_error;
-  FilterXError *error = _init_local_or_context_error(context, &local_error);
+  FilterXError *error = _push_new_error(context);
   if (!error)
     return;
 
-  filterx_error_set_values(error, message, expr, NULL);
+  filterx_error_set_values(error, message, NULL);
 
   va_list args;
   va_start(args, fmt);
   filterx_error_set_vinfo(error, fmt, args);
   va_end(args);
-
-  _backfill_error_expr(context);
-  _log_to_stderr_if_needed(context, error);
-  _clear_local_error(context, error);
 }
 
 static void
@@ -321,7 +265,8 @@ _fill_failure_info(FilterXEvalContext *context, FilterXExpr *block, FilterXObjec
 
   if (!error->message && context->failure_info_collect_falsy)
     {
-      filterx_falsy_error_set_values(&failure_info->errors[0], "Falsy expression", block, block_res);
+      filterx_falsy_error_set_values(&failure_info->errors[0], "Falsy expression", block_res);
+      filterx_eval_update_error_location_from_expr(block);
       failure_info->error_count = 1;
       return;
     }

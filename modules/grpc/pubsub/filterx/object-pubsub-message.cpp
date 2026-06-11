@@ -114,7 +114,7 @@ Message::set_attribute(const std::string &key, const std::string &value)
     }
   catch (const std::exception &e)
     {
-      filterx_eval_push_error_info_printf("Unable to set Pub/Sub attribute", NULL, "%s", e.what());
+      filterx_eval_push_error_info_printf("Unable to set Pub/Sub attribute", "%s", e.what());
       return false;
     }
   return true;
@@ -130,7 +130,7 @@ Message::set_data(const std::string &data)
     }
   catch (const std::exception &e)
     {
-      filterx_eval_push_error_info_printf("Unable to set Pub/Sub data", NULL, "%s", e.what());
+      filterx_eval_push_error_info_printf("Unable to set Pub/Sub data", "%s", e.what());
       return false;
     }
   return true;
@@ -253,7 +253,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info_printf("Failet to call repr() on Pub/Sub object", NULL, "%s", e.what());
+      filterx_eval_push_error_info_printf("Failet to call repr() on Pub/Sub object", "%s", e.what());
       return FALSE;
     }
   return TRUE;
@@ -358,7 +358,7 @@ filterx_pubsub_message_new_from_args(FilterXExpr *s, FilterXObject *args[], gsiz
   catch (const std::runtime_error &e)
     {
       scratch_buffers_reclaim_marked(m);
-      filterx_eval_push_error_info_printf("Failed to create Pub/Sub Message object", NULL, "%s", e.what());
+      filterx_eval_push_error_info_printf("Failed to create Pub/Sub Message object", "%s", e.what());
       filterx_object_unref(&self->super);
       return NULL;
     }

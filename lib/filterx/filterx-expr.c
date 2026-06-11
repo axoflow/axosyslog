@@ -22,6 +22,7 @@
  */
 
 #include "filterx/filterx-expr.h"
+#include "filterx/filterx-eval.h"
 #include "cfg-source.h"
 #include "messages.h"
 #include "mainloop.h"
@@ -259,6 +260,12 @@ _optimize_child_exprs(FilterXExpr *parent, FilterXExpr **child, gpointer user_da
 {
   *child = filterx_expr_optimize(*child);
   return TRUE;
+}
+
+void
+_filterx_expr_propagate_to_error(FilterXExpr *self)
+{
+  filterx_eval_update_error_location_from_expr(self);
 }
 
 FilterXExpr *

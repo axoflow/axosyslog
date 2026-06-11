@@ -56,8 +56,7 @@ struct _FilterXExpr
 
   /* not thread-safe */
   guint32 ref_cnt;
-guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, effects:
-  FXE_EFFECT_BITFIELD_SIZE;
+  guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, statement:1, effects:FXE_EFFECT_BITFIELD_SIZE;
 
   /* not to be used except for FilterXMessageRef, replace any cached values
    * with the unmarshaled version */
@@ -103,6 +102,8 @@ guint32 ignore_falsy_result:1, suppress_from_trace:1, inited:1, optimized:1, eff
 #define FILTERX_EXPR_DEFINE_TYPE(_type) \
   const gchar *FILTERX_EXPR_TYPE_NAME(_type) = # _type
 
+void _filterx_expr_propagate_to_error(FilterXExpr *self);
+
 /*
  * Evaluate the expression and return the result as a FilterXObject.  The
  * result can either be a
@@ -126,7 +127,13 @@ filterx_expr_eval(FilterXExpr *self)
 
   stats_counter_inc(self->eval_count);
 
-  return self->eval(self);
+  FilterXObject *result = self->eval(self);
+  if (!result)
+    {
+      _filterx_expr_propagate_to_error(self);
+      return NULL;
+    }
+  return result;
 }
 
 static inline gboolean
@@ -277,7 +284,8 @@ static inline FilterXIRValue
 filterx_expr_compile(FilterXExpr *self, FilterXJIT *jit)
 {
   g_assert(self && self->compile);
-  return self->compile(self, jit);
+  FilterXIRValue result = self->compile(self, jit);
+  return fx_jit_emit_expr_propagate_to_error_if_null(jit, self, result);
 }
 
 static inline FilterXIRValue

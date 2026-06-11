@@ -49,7 +49,7 @@ using google::protobuf::Message;
 void
 log_type_error(ProtoReflectors reflectors, FilterXObject *object)
 {
-  filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+  filterx_eval_push_error_info_printf("Failed to convert field",
                                       "Type for field %s is unsupported: %s",
                                       reflectors.field_descriptor->name().data(),
                                       filterx_object_get_type_name(object));
@@ -255,7 +255,7 @@ public:
     uint64_t val = reflectors.reflection->GetUInt64(*message, reflectors.field_descriptor);
     if (val > INT64_MAX)
       {
-        filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+        filterx_eval_push_error_info_printf("Failed to convert field",
                                             "Value of field %s is exceeding FilterX integer value range: "
                                             "min: %" G_GINT64_FORMAT ", "
                                             "max: %" G_GINT64_FORMAT ", "
@@ -660,7 +660,7 @@ _message_add_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
     }
   catch (const std::exception &e)
     {
-      filterx_eval_push_error_info_printf("Failed to add element to message field", NULL,
+      filterx_eval_push_error_info_printf("Failed to add element to message field",
                                           "key: %s, value type: %s, error: %s",
                                           key_c_str, filterx_object_get_type_name(value), e.what());
       return FALSE;

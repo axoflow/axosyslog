@@ -122,38 +122,6 @@ Test(filterx_eval, test_filterx_eval_error_stack_overflow)
   log_msg_unref(msg);
 }
 
-Test(filterx_eval, test_filterx_eval_error_stack_location_backfill)
-{
-  LogMessage *msg = log_msg_new_empty();
-  FilterXEvalContext eval_context, *prev_eval_context = NULL;
-
-  FILTERX_EVAL_BEGIN_CONTEXT(eval_context, prev_eval_context, msg, NULL)
-  {
-    FilterXExpr *expr = _create_embedded_exprs(FILTERX_CONTEXT_ERROR_STACK_SIZE, FALSE);
-
-    filterx_test_expr_set_location_with_text(expr, "syslog-ng.conf", 0, 0, 0, 10, "dummy-error");
-    cr_assert_eq(filterx_eval_exec(&eval_context, expr, NULL), FXE_FAILURE);
-
-    assert_grabbed_log_contains("FILTERX ERROR; err_idx='[1/32]', expr='syslog-ng.conf:0:0|\t"
-                                "dummy-error', error='Dummy error'");
-    for (gint i = 1; i < FILTERX_CONTEXT_ERROR_STACK_SIZE; i++)
-      {
-        GString *error_log = scratch_buffers_alloc();
-        g_string_printf(error_log,
-                        "FILTERX ERROR; err_idx='[%d/%d]', expr='syslog-ng.conf:0:0|\t"
-                        "dummy-error', error='Failed to evaluate non-literal: Failed to evaluate expression'",
-                        i + 1, FILTERX_CONTEXT_ERROR_STACK_SIZE);
-        assert_grabbed_log_contains(error_log->str);
-      }
-
-    filterx_expr_deinit(expr, configuration);
-    filterx_expr_unref(expr);
-  }
-  FILTERX_EVAL_END_CONTEXT(eval_context);
-
-  log_msg_unref(msg);
-}
-
 static void
 setup(void)
 {
@@ -161,6 +129,7 @@ setup(void)
   configuration = cfg_new_snippet();
   configuration->log_level = 3;
   cfg_init(configuration);
+  init_libtest_filterx();
   start_grabbing_messages();
 }
 
@@ -168,6 +137,7 @@ static void
 teardown(void)
 {
   stop_grabbing_messages();
+  deinit_libtest_filterx();
   cfg_free(configuration);
   scratch_buffers_explicit_gc();
   app_shutdown();

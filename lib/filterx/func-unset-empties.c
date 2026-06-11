@@ -237,7 +237,6 @@ _eval_fx_unset_empties(FilterXExpr *s)
   FilterXObject *obj = filterx_expr_eval(self->object_expr);
   if (!obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, NULL);
       return NULL;
     }
 
@@ -248,7 +247,7 @@ _eval_fx_unset_empties(FilterXExpr *s)
   else if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(sequence)))
     success = _process_list(self, obj_unwrapped);
   else
-    filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
+    filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, obj);
 
   filterx_object_unref(obj);
   return success ? filterx_boolean_new(TRUE) : NULL;
