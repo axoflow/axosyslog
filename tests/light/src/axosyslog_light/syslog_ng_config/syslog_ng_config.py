@@ -33,6 +33,7 @@ from axosyslog_light.syslog_ng_config.statements.destinations.arrow_flight_desti
 from axosyslog_light.syslog_ng_config.statements.destinations.clickhouse_destination import ClickhouseDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.example_destination import ExampleDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.file_destination import FileDestination
+from axosyslog_light.syslog_ng_config.statements.destinations.http_destination import HttpDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.network_destination import NetworkDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.snmp_destination import SnmpDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.unix_dgram_destination import UnixDgramDestination
@@ -275,6 +276,11 @@ class SyslogNgConfig(object):
         # syslog-ng disconnects; do_put() otherwise blocks waiting for DoneWriting.
         self.teardown.register_process_stop_callback(arrow_flight_destination.stop_listener)
         return arrow_flight_destination
+
+    def create_http_destination(self, port: int, **options):
+        http_destination = HttpDestination(self._stats_handler, self._prometheus_stats_handler, port, **options)
+        self.teardown.register(http_destination.stop_listener)
+        return http_destination
 
     def create_clickhouse_destination(self, **options):
         clickhouse_destination = ClickhouseDestination(self._stats_handler, self._prometheus_stats_handler, **options)
