@@ -20,10 +20,14 @@
 # COPYING for details.
 #
 #############################################################################
+import pytest
 
 
 OPENOBSERVE_PARTIAL_FAILURE = '{"code":200,"status":[{"name":"stream","successful":0,"failed":1,"error":"Cant parse timestamp"}]}'
 OPENOBSERVE_SUCCESS = '{"code":200,"status":[{"name":"stream","successful":1,"failed":0}]}'
+
+SPLUNK_PARTIAL_FAILURE = '"{\"text\":\"Event field cannot be blank\",\"code\":13,\"invalid-event-number\":1}"'
+SPLUNK_SUCCESS = '"{\"text\":\"everything ok\",\"code\":0}"'
 
 
 def test_http_destination_accepts_messages(config, syslog_ng, port_allocator):
@@ -47,7 +51,25 @@ def test_http_destination_accepts_messages(config, syslog_ng, port_allocator):
     assert all("test message" in msg for msg in messages)
 
 
-def test_http_destination_openobserve_retries_on_partial_failure(config, syslog_ng, port_allocator):
+@pytest.mark.parametrize(
+    "adapter,failure_response,success_response", [
+        pytest.param(
+            "openobserve",
+            (200, OPENOBSERVE_PARTIAL_FAILURE),
+            (200, OPENOBSERVE_SUCCESS),
+            id="openobserve",
+        ),
+        pytest.param(
+            "splunk",
+            (400, SPLUNK_PARTIAL_FAILURE),
+            (200, SPLUNK_SUCCESS),
+            id="splunk",
+        ),
+    ],
+)
+def test_http_destination_adapter_retries_on_partial_failure(
+    config, syslog_ng, port_allocator, adapter, failure_response, success_response,
+):
     port = port_allocator()
 
     generator_source = config.create_example_msg_generator_source(
@@ -58,11 +80,8 @@ def test_http_destination_openobserve_retries_on_partial_failure(config, syslog_
         port=port,
         body=config.stringify("${MSG}"),
         time_reopen=1,
-        response_adapter=config.stringify("openobserve"),
-        responses=[
-            (200, OPENOBSERVE_PARTIAL_FAILURE),
-            (200, OPENOBSERVE_SUCCESS),
-        ],
+        response_adapter=config.stringify(adapter),
+        responses=[failure_response, success_response],
     )
     config.create_logpath(statements=[generator_source, http_destination])
 
