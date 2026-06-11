@@ -35,7 +35,11 @@ class HttpDestination(DestinationDriver):
         **options,
     ) -> None:
         self.driver_name = "http"
-        self._io = HttpServerIO(port, response_code=options.pop("response_code", 200))
+        self._io = HttpServerIO(
+            port,
+            response_code=options.pop("response_code", 200),
+            responses=options.pop("responses", None),
+        )
         self._io.start_listener()
 
         options.setdefault("url", '"http://127.0.0.1:{}"'.format(port))

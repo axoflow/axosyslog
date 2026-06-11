@@ -30,25 +30,43 @@ from axosyslog_light.common.blocking import DEFAULT_TIMEOUT
 
 
 class HttpServerIO():
-    def __init__(self, port: int, response_code: int = 200) -> None:
+    def __init__(self, port: int, response_code: int = 200, responses=None) -> None:
         self._port = port
-        self._response_code = response_code
+        self._default_response = (response_code, "")
+        self._responses = list(responses) if responses is not None else None
+        self._response_counter = 0
+        self._counter_lock = threading.Lock()
         self._queue = queue.Queue()
         self._server = None
         self._thread = None
 
+    def _next_response(self):
+        if self._responses is None:
+            return self._default_response
+        with self._counter_lock:
+            idx = min(self._response_counter, len(self._responses) - 1)
+            self._response_counter += 1
+            return self._responses[idx]
+
     def start_listener(self):
         q = self._queue
-        response_code = self._response_code
+        next_response = self._next_response
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self):
                 content_length = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(content_length)
                 q.put(body.decode("utf-8"))
-                self.send_response(response_code)
+                status_code, response_body = next_response()
+                response_bytes = response_body.encode("utf-8") if response_body else b""
+                self.send_response(status_code)
+                if response_bytes:
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(response_bytes)))
                 self.send_header("Connection", "close")
                 self.end_headers()
+                if response_bytes:
+                    self.wfile.write(response_bytes)
                 self.close_connection = True
 
             def do_PUT(self):
