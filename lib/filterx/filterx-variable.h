@@ -115,6 +115,12 @@ filterx_variable_get_value(FilterXVariable *v)
   return filterx_object_ref(v->value);
 }
 
+static inline FilterXObject *
+filterx_variable_borrow_value(FilterXVariable *v)
+{
+  return v->value;
+}
+
 static inline void
 filterx_variable_set_value(FilterXVariable *v, FilterXObject **new_value, gboolean assignment,
                            FilterXGenCounter generation)

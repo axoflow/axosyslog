@@ -56,44 +56,46 @@ _eval_macro(FilterXVariableExpr *self, FilterXEvalContext *context)
 }
 
 static FilterXObject *
-_eval_variable(FilterXExpr *s)
+_borrow_variable_value(FilterXVariableExpr *self, FilterXEvalContext *context)
 {
-  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
-  FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXVariable *variable;
+  FilterXVariable *variable = filterx_scope_lookup_variable(context->scope, self->handle, self->scope_var_idx);
 
-  if (self->handle_is_macro)
-    return _eval_macro(self, context);
-
-  variable = filterx_scope_lookup_variable(context->scope, self->handle, self->scope_var_idx);
-  if (variable)
-    {
-      FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
-      if (!value)
-        {
-          filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
-        }
-      return value;
-    }
-
-  if (self->variable_type == FX_VAR_MESSAGE_TIED)
+  if (!variable && self->variable_type == FX_VAR_MESSAGE_TIED)
     {
       /* auto register message tied variables */
       variable = filterx_scope_register_variable(context->scope, self->variable_type, self->handle,
                                                  self->scope_var_idx);
-      if (variable)
-        {
-          FilterXObject *value = filterx_scope_get_variable(context->scope, variable);
-          if (!value)
-            {
-              filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
-            }
-          return value;
-        }
     }
 
-  filterx_eval_push_error("No such variable", s, self->variable_name);
-  return NULL;
+  if (!variable)
+    {
+      filterx_eval_push_error("No such variable", &self->super, self->variable_name);
+      return NULL;
+    }
+
+  FilterXObject *value = filterx_variable_borrow_value(variable);
+  if (!value)
+    filterx_eval_push_error("Variable is unset", &self->super, self->variable_name);
+
+  return value;
+}
+
+static FilterXObject *
+_eval_variable_in_scope(FilterXVariableExpr *self, FilterXEvalContext *context)
+{
+  return filterx_object_ref(_borrow_variable_value(self, context));
+}
+
+static FilterXObject *
+_eval_variable(FilterXExpr *s)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  FilterXEvalContext *context = filterx_eval_get_context();
+
+  if (self->handle_is_macro)
+    return _eval_macro(self, context);
+
+  return _eval_variable_in_scope(self, context);
 }
 
 static void
@@ -107,6 +109,18 @@ _update_repr(FilterXExpr *s, FilterXObject **new_repr)
   filterx_scope_set_variable(scope, variable, new_repr, variable->assigned);
 }
 
+static void
+_assign_variable_in_scope(FilterXVariableExpr *self, FilterXEvalContext *context, FilterXObject **new_value)
+{
+  FilterXScope *scope = context->scope;
+  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
+
+  if (!variable)
+    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle, self->scope_var_idx);
+
+  filterx_scope_set_variable(scope, variable, new_value, TRUE);
+}
+
 static gboolean
 _assign(FilterXExpr *s, FilterXObject **new_value)
 {
@@ -118,14 +132,7 @@ _assign(FilterXExpr *s, FilterXObject **new_value)
       return FALSE;
     }
 
-  FilterXEvalContext *context = filterx_eval_get_context();
-  FilterXScope *scope = context->scope;
-  FilterXVariable *variable = filterx_scope_lookup_variable(scope, self->handle, self->scope_var_idx);
-
-  if (!variable)
-    variable = filterx_scope_register_variable(scope, self->variable_type, self->handle, self->scope_var_idx);
-
-  filterx_scope_set_variable(scope, variable, new_value, TRUE);
+  _assign_variable_in_scope(self, filterx_eval_get_context(), new_value);
   return TRUE;
 }
 
