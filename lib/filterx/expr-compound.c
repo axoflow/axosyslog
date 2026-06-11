@@ -214,6 +214,7 @@ filterx_compound_expr_add_ref(FilterXExpr *s, FilterXExpr *expr)
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
   filterx_expr_list_add_ref(&self->exprs, expr);
+  expr->statement = TRUE;
 }
 
 /* Takes reference of expr_list */
