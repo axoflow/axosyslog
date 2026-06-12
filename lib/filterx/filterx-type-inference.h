@@ -142,9 +142,16 @@ void filterx_type_env_meet_attr_for_chain(FilterXTypeEnv *self,
  * → all-UNKNOWN (which is the absent-key default). */
 void filterx_type_env_meet_into(FilterXTypeEnv *dst, const FilterXTypeEnv *src);
 
+/* Propagate knowledge from @block_env into @persistent (add new entries; meet existing ones). */
+void filterx_type_env_propagate_to_persistent(FilterXTypeEnv *persistent, const FilterXTypeEnv *block_env);
+
 struct _FilterXExpr;
 void filterx_expr_infer_types(struct _FilterXExpr *self, FilterXTypeEnv *env);
 void filterx_expr_infer_types_root(struct _FilterXExpr *root);
+
+/* Like filterx_expr_infer_types_root but seeds the local env from @persistent_env first,
+ * then propagates the resulting knowledge back into @persistent_env after inference. */
+void filterx_expr_infer_types_root_persistent(struct _FilterXExpr *root, FilterXTypeEnv *persistent_env);
 
 /* Update the env after a write `container_expr.<key> = value` (setattr / set_subscript).
  * Walks @container_expr down to its root variable, counting the getattr/get_subscript depth

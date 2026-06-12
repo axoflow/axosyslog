@@ -78,7 +78,7 @@ log_filterx_pipe_init(LogPipe *s)
   self->block = filterx_expr_optimize(self->block);
   filterx_eval_end_compile(&compile_context);
 
-  filterx_expr_infer_types_root(self->block);
+  filterx_expr_infer_types_root_persistent(self->block, filterx_config_get(cfg)->persistent_type_env);
 
   if (!filterx_expr_init(self->block, cfg))
     return FALSE;
