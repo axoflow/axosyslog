@@ -125,6 +125,47 @@ fx_jit_do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
   return _do_plus(lhs, rhs, expr);
 }
 
+/* Devirtualized fast path for `integer + anything`. lhs is guaranteed to be a FilterXInteger
+ * (eval_typed of an INTEGER-static_type operand).  If rhs is also integer, performs direct
+ * integer arithmetic; otherwise falls back to the generic vtable-dispatching path.
+ * The fallback means the function is always correct even when rhs is non-integer. */
+__attribute__((used))
+FilterXObject *
+fx_jit_do_plus_int(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  FilterXObject *result = NULL;
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", expr, "Failed to evaluate left hand side");
+      goto exit;
+    }
+  if (!rhs)
+    {
+      filterx_eval_push_error_static_info("Failed to add values", expr, "Failed to evaluate right hand side");
+      goto exit;
+    }
+
+  gint64 rhs_val;
+  if (G_LIKELY(filterx_integer_unwrap(rhs, &rhs_val)))
+    {
+      gint64 lhs_val;
+      gboolean ok G_GNUC_UNUSED = filterx_integer_unwrap(lhs, &lhs_val);
+      g_assert(ok);
+      filterx_object_unref(lhs);
+      filterx_object_unref(rhs);
+      return filterx_integer_new(lhs_val + rhs_val);
+    }
+
+  result = filterx_object_add(lhs, rhs);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to add values", expr, "add() method failed");
+
+exit:
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
+
 /* Devirtualized fast path for `string + string`. lhs is guaranteed to be a FilterXString
  * (eval_typed of a STRING-static_type operand); rhs may be any string-extractable value. */
 __attribute__((used))
@@ -158,9 +199,14 @@ _compile_plus(FilterXExpr *s, FilterXJIT *jit)
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
 
-  const gchar *fn_name = s->static_type == FILTERX_STATIC_TYPE_STRING
-                         ? "fx_jit_do_plus_string"
-                         : "fx_jit_do_plus";
+  FilterXStaticType result_kind = filterx_static_type_kind(s->static_type);
+  const gchar *fn_name;
+  if (result_kind == FILTERX_STATIC_TYPE_STRING)
+    fn_name = "fx_jit_do_plus_string";
+  else if (result_kind == FILTERX_STATIC_TYPE_INTEGER)
+    fn_name = "fx_jit_do_plus_int";
+  else
+    fn_name = "fx_jit_do_plus";
 
   FilterXIRValue lhs = self->literal_lhs
                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
