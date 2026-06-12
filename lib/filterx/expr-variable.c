@@ -229,6 +229,13 @@ fx_jit_eval_variable(FilterXExpr *s)
   return _eval_variable(s);
 }
 
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_eval_variable_typed(FilterXExpr *s)
+{
+  return filterx_expr_make_typed_object(s, _eval_variable(s));
+}
+
 __attribute__((used))
 FilterXObject *
 fx_jit_borrow_variable_value(FilterXEvalContext *context, FilterXExpr *s)
