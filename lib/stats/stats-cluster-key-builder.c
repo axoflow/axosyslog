@@ -102,6 +102,56 @@ stats_cluster_key_builder_new(void)
   return self;
 }
 
+static GArray *
+_labels_clone(GArray *labels)
+{
+  if (!labels)
+    return NULL;
+
+  GArray *cloned = g_array_sized_new(FALSE, FALSE, sizeof(StatsClusterLabel), labels->len);
+  g_array_set_clear_func(cloned, (GDestroyNotify) _label_free);
+
+  for (guint i = 0; i < labels->len; i++)
+    {
+      StatsClusterLabel *label = &g_array_index(labels, StatsClusterLabel, i);
+      StatsClusterLabel own_label = stats_cluster_label(g_strdup(label->name), g_strdup(label->value));
+      g_array_append_vals(cloned, &own_label, 1);
+    }
+
+  return cloned;
+}
+
+static BuilderOptions *
+_options_clone(const BuilderOptions *self)
+{
+  BuilderOptions *cloned = g_new0(BuilderOptions, 1);
+
+  cloned->name = g_strdup(self->name);
+  cloned->name_prefix = g_strdup(self->name_prefix);
+  cloned->name_suffix = g_strdup(self->name_suffix);
+  cloned->labels = _labels_clone(self->labels);
+  cloned->legacy_labels = _labels_clone(self->legacy_labels);
+  cloned->unit = self->unit;
+
+  cloned->legacy.component = self->legacy.component;
+  cloned->legacy.id = g_strdup(self->legacy.id);
+  cloned->legacy.instance = g_strdup(self->legacy.instance);
+  cloned->legacy.name = g_strdup(self->legacy.name);
+
+  return cloned;
+}
+
+StatsClusterKeyBuilder *
+stats_cluster_key_builder_clone(const StatsClusterKeyBuilder *self)
+{
+  StatsClusterKeyBuilder *cloned = g_new0(StatsClusterKeyBuilder, 1);
+
+  for (GList *l = self->options_stack; l; l = l->next)
+    cloned->options_stack = g_list_append(cloned->options_stack, _options_clone((BuilderOptions *) l->data));
+
+  return cloned;
+}
+
 void
 stats_cluster_key_builder_push(StatsClusterKeyBuilder *self)
 {
