@@ -101,7 +101,28 @@ _switch_case_single_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_da
 static gboolean
 _switch_case_range_match(FilterXSwitchCase *s, FilterXObject *selector)
 {
-  return TRUE;
+  FilterXSwitchCaseRange *self = (FilterXSwitchCaseRange *) s;
+  FilterXObject *lower = filterx_expr_eval_typed(self->lower);
+  if (!lower)
+    return FALSE;
+  FilterXObject *upper = filterx_expr_eval_typed(self->upper);
+  if (!upper)
+    {
+      filterx_object_unref(lower);
+      return FALSE;
+    }
+  gboolean result;
+  if (filterx_compare_objects(lower, upper, FCMPX_NUM_BASED | FCMPX_EQ))
+    result = filterx_compare_objects(selector, lower, FCMPX_NUM_BASED | FCMPX_EQ);
+  else if (filterx_compare_objects(lower, upper, FCMPX_NUM_BASED | FCMPX_LT))
+    result = filterx_compare_objects(lower, selector, FCMPX_NUM_BASED | FCMPX_LT | FCMPX_EQ) &&
+             filterx_compare_objects(selector, upper, FCMPX_NUM_BASED | FCMPX_LT);
+  else
+    result = filterx_compare_objects(upper, selector, FCMPX_NUM_BASED | FCMPX_LT | FCMPX_EQ) &&
+             filterx_compare_objects(selector, lower, FCMPX_NUM_BASED | FCMPX_LT);
+  filterx_object_unref(lower);
+  filterx_object_unref(upper);
+  return result;
 }
 
 static void
