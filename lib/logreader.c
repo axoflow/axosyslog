@@ -507,12 +507,9 @@ log_reader_handle_line(LogReader *self, const guchar *line, gsize length, LogTra
           m->timestamps[LM_TS_RECVD].ut_usec = aux->timestamp.tv_nsec / 1000;
         }
     }
-  log_msg_refcache_start_producer(m);
-
   log_transport_aux_data_foreach(aux, _add_aux_nvpair, m);
 
   log_source_post(&self->super, m);
-  log_msg_refcache_stop();
   return log_source_free_to_send(&self->super);
 }
 

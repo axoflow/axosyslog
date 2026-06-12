@@ -331,8 +331,116 @@ extern const char logmsg_sd_prefix[];
 extern const gint logmsg_sd_prefix_len;
 extern gint logmsg_node_max;
 
-LogMessage *log_msg_ref(LogMessage *m);
-void log_msg_unref(LogMessage *m);
+/*
+ * Reference/ACK counting for LogMessage structures
+ *
+ * Each LogMessage structure is allocated when received by a LogSource
+ * instance, and then freed once all destinations finish with it.  Since a
+ * LogMessage is processed by different threads, reference counting must be
+ * atomic.
+ *
+ * A similar counter is used to track when a given message is considered to
+ * be delivered.  In case flow-control is in use, the number of
+ * to-be-expected ACKs are counted in an atomic variable.
+ *
+ * Since we use the same atomic variable to store two things, updating that
+ * counter becomes somewhat more complicated, therefore a g_atomic_int_add()
+ * doesn't suffice.  We're using a CAS loop (compare-and-exchange) to do our
+ * stuff, but that shouldn't have that much of an overhead.
+ */
+
+#define LOGMSG_REFCACHE_SUSPEND_SHIFT                 31 /* number of bits to shift to get the SUSPEND flag */
+#define LOGMSG_REFCACHE_SUSPEND_MASK          0x80000000 /* bit mask to extract the SUSPEND flag */
+#define LOGMSG_REFCACHE_ABORT_SHIFT                   30 /* number of bits to shift to get the ABORT flag */
+#define LOGMSG_REFCACHE_ABORT_MASK            0x40000000 /* bit mask to extract the ABORT flag */
+#define LOGMSG_REFCACHE_ACK_SHIFT                     15 /* number of bits to shift to get the ACK counter */
+#define LOGMSG_REFCACHE_ACK_MASK              0x3FFF8000 /* bit mask to extract the ACK counter */
+#define LOGMSG_REFCACHE_REF_SHIFT                      0 /* number of bits to shift to get the REF counter */
+#define LOGMSG_REFCACHE_REF_MASK              0x00007FFF /* bit mask to extract the ACK counter */
+
+#define LOGMSG_REFCACHE_REF_TO_VALUE(x)    (((x) << LOGMSG_REFCACHE_REF_SHIFT)   & LOGMSG_REFCACHE_REF_MASK)
+#define LOGMSG_REFCACHE_ACK_TO_VALUE(x)    (((x) << LOGMSG_REFCACHE_ACK_SHIFT)   & LOGMSG_REFCACHE_ACK_MASK)
+#define LOGMSG_REFCACHE_ABORT_TO_VALUE(x)  (((x) << LOGMSG_REFCACHE_ABORT_SHIFT) & LOGMSG_REFCACHE_ABORT_MASK)
+#define LOGMSG_REFCACHE_SUSPEND_TO_VALUE(x)  (((x) << LOGMSG_REFCACHE_SUSPEND_SHIFT) & LOGMSG_REFCACHE_SUSPEND_MASK)
+
+#define LOGMSG_REFCACHE_VALUE_TO_REF(x)    (((x) & LOGMSG_REFCACHE_REF_MASK)   >> LOGMSG_REFCACHE_REF_SHIFT)
+#define LOGMSG_REFCACHE_VALUE_TO_ACK(x)    (((x) & LOGMSG_REFCACHE_ACK_MASK)   >> LOGMSG_REFCACHE_ACK_SHIFT)
+#define LOGMSG_REFCACHE_VALUE_TO_ABORT(x)  (((x) & LOGMSG_REFCACHE_ABORT_MASK) >> LOGMSG_REFCACHE_ABORT_SHIFT)
+#define LOGMSG_REFCACHE_VALUE_TO_SUSPEND(x)  (((x) & LOGMSG_REFCACHE_SUSPEND_MASK) >> LOGMSG_REFCACHE_SUSPEND_SHIFT)
+
+/* Function to update the combined ACK (with the abort flag) and REF counter. */
+static inline gint
+log_msg_update_ack_and_ref_and_abort_and_suspended(LogMessage *self, gint add_ref, gint add_ack, gint add_abort,
+                                                   gint add_suspend)
+{
+  gint old_value, new_value;
+  do
+    {
+      new_value = old_value = self->ack_and_ref_and_abort_and_suspended;
+      new_value = (new_value & ~LOGMSG_REFCACHE_REF_MASK)   + LOGMSG_REFCACHE_REF_TO_VALUE(  (LOGMSG_REFCACHE_VALUE_TO_REF(
+                    old_value)   + add_ref));
+      new_value = (new_value & ~LOGMSG_REFCACHE_ACK_MASK)   + LOGMSG_REFCACHE_ACK_TO_VALUE(  (LOGMSG_REFCACHE_VALUE_TO_ACK(
+                    old_value)   + add_ack));
+      new_value = (new_value & ~LOGMSG_REFCACHE_ABORT_MASK) + LOGMSG_REFCACHE_ABORT_TO_VALUE((LOGMSG_REFCACHE_VALUE_TO_ABORT(
+                    old_value) | add_abort));
+      new_value = (new_value & ~LOGMSG_REFCACHE_SUSPEND_MASK) + LOGMSG_REFCACHE_SUSPEND_TO_VALUE((
+                    LOGMSG_REFCACHE_VALUE_TO_SUSPEND(old_value) | add_suspend));
+    }
+  while (!g_atomic_int_compare_and_exchange(&self->ack_and_ref_and_abort_and_suspended, old_value, new_value));
+
+  return old_value;
+}
+
+/* Function to update the combined ACK (without abort) and REF counter. */
+static inline gint
+log_msg_update_ack_and_ref(LogMessage *self, gint add_ref, gint add_ack)
+{
+  return log_msg_update_ack_and_ref_and_abort_and_suspended(self, add_ref, add_ack, 0, 0);
+}
+
+/**
+ * log_msg_ref:
+ * @self: LogMessage instance
+ *
+ * Increment reference count of @self and return the new reference.
+ **/
+static inline LogMessage *
+log_msg_ref(LogMessage *self)
+{
+  if (!self)
+    return NULL;
+
+  gint old_value;
+
+  old_value = log_msg_update_ack_and_ref(self, 1, 0);
+  g_assert(LOGMSG_REFCACHE_VALUE_TO_REF(old_value) >= 1);
+  return self;
+}
+
+void _log_msg_free(LogMessage *self);
+
+/**
+ * log_msg_unref:
+ * @self: LogMessage instance
+ *
+ * Decrement reference count and free self if the reference count becomes 0.
+ **/
+static inline void
+log_msg_unref(LogMessage *self)
+{
+  if (!self)
+    return;
+
+  gint old_value;
+
+  old_value = log_msg_update_ack_and_ref(self, -1, 0);
+  g_assert(LOGMSG_REFCACHE_VALUE_TO_REF(old_value) >= 1);
+
+  if (LOGMSG_REFCACHE_VALUE_TO_REF(old_value) == 1)
+    {
+      _log_msg_free(self);
+    }
+}
 
 typedef gpointer LogMessagePin;
 
@@ -628,10 +736,6 @@ void log_msg_ack(LogMessage *msg, const LogPathOptions *path_options, AckType ac
 void log_msg_drop(LogMessage *msg, const LogPathOptions *path_options, AckType ack_type);
 const LogPathOptions *log_msg_break_ack(LogMessage *msg, const LogPathOptions *path_options,
                                         LogPathOptions *local_path_options);
-
-void log_msg_refcache_start_producer(LogMessage *self);
-void log_msg_refcache_start_consumer(LogMessage *self, const LogPathOptions *path_options);
-void log_msg_refcache_stop(void);
 
 void log_msg_registry_init(void);
 void log_msg_registry_deinit(void);
