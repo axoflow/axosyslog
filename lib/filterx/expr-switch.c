@@ -33,14 +33,21 @@ typedef struct _FilterXSwitchCase FilterXSwitchCase;
 
 struct _FilterXSwitchCase
 {
-  FilterXUnaryOp super;
+  FilterXExpr super;
+  gboolean (*match)(FilterXSwitchCase *self, FilterXObject *selector);
   gsize target;
 };
+
+typedef struct _FilterXSwitchCaseSingle
+{
+  FilterXSwitchCase super;
+  FilterXExpr *value;   /* NULL for the default case */
+} FilterXSwitchCaseSingle;
 
 static inline gboolean
 filterx_switch_case_is_default(FilterXSwitchCase *self)
 {
-  return self->super.operand == NULL;
+  return self->match == NULL;
 }
 
 static void
@@ -55,17 +62,45 @@ filterx_switch_case_get_target(FilterXSwitchCase *self)
   return self->target;
 }
 
-static inline FilterXObject *
-_eval_switch_case(FilterXSwitchCase *self)
+static gboolean
+_switch_case_single_match(FilterXSwitchCase *s, FilterXObject *selector)
 {
-  return filterx_expr_eval_typed(self->super.operand);
+  FilterXSwitchCaseSingle *self = (FilterXSwitchCaseSingle *) s;
+  FilterXObject *value = filterx_expr_eval_typed(self->value);
+  if (!value)
+    return FALSE;
+  gboolean result = filterx_compare_objects(selector, value, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ);
+  filterx_object_unref(value);
+  return result;
+}
+
+static void
+_switch_case_single_free(FilterXExpr *s)
+{
+  FilterXSwitchCaseSingle *self = (FilterXSwitchCaseSingle *) s;
+  filterx_expr_unref(self->value);
+  filterx_expr_free_method(s);
+}
+
+static gboolean
+_switch_case_single_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSwitchCaseSingle *self = (FilterXSwitchCaseSingle *) s;
+  if (self->value)
+    return filterx_expr_visit(s, &self->value, f, user_data);
+  return TRUE;
 }
 
 FilterXExpr *
 filterx_switch_case_new(FilterXExpr *value)
 {
-  FilterXSwitchCase *self = g_new0(FilterXSwitchCase, 1);
-  filterx_unary_op_init_instance(&self->super, FILTERX_EXPR_TYPE_NAME(switch_case), FXE_READ, value);
+  FilterXSwitchCaseSingle *self = g_new0(FilterXSwitchCaseSingle, 1);
+  filterx_expr_init_instance(&self->super.super, FILTERX_EXPR_TYPE_NAME(switch_case), FXE_READ);
+  self->super.super.free_fn = _switch_case_single_free;
+  self->super.super.walk_children = _switch_case_single_walk;
+  self->super.match = value ? _switch_case_single_match : NULL;
+  self->super.target = -1;
+  self->value = value;
   return &self->super.super;
 }
 
@@ -99,10 +134,15 @@ _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_
 {
   FilterXSwitchCase *switch_case = (FilterXSwitchCase *) switch_case_expr;
 
-  if (!filterx_expr_is_literal(switch_case->super.operand))
+  /* Only single-value (non-default, non-range) cases can be hash-cached */
+  if (switch_case->match != _switch_case_single_match)
     return FALSE;
 
-  FilterXObject *case_value = filterx_literal_get_value(switch_case->super.operand);
+  FilterXSwitchCaseSingle *single = (FilterXSwitchCaseSingle *) switch_case;
+  if (!filterx_expr_is_literal(single->value))
+    return FALSE;
+
+  FilterXObject *case_value = filterx_literal_get_value(single->value);
   if (!case_value)
     return FALSE;
 
@@ -113,10 +153,8 @@ _try_to_cache_literal_switch_case(FilterXSwitch *self, FilterXExpr *switch_case_
     }
 
   /* NOTE: g_hash_table_insert() frees the key if it was a duplicate */
-  if (!g_hash_table_insert(self->literal_cache, filterx_object_ref(case_value),
-                           filterx_expr_ref(&switch_case->super.super)))
+  if (!g_hash_table_insert(self->literal_cache, filterx_object_ref(case_value), filterx_expr_ref(&switch_case->super)))
     {
-
       /* Switch case already exists, this is not allowed. */
       _store_duplicate_cases_error(self, filterx_string_get_value_as_cstr(case_value));
     }
@@ -185,18 +223,8 @@ _find_matching_case(FilterXSwitch *self, FilterXObject *selector)
   for (gsize i = 0; i < self->cases->len; i++)
     {
       FilterXSwitchCase *switch_case = (FilterXSwitchCase *) g_ptr_array_index(self->cases, i);
-
-      FilterXObject *value = _eval_switch_case(switch_case);
-      if (!value)
-        continue;
-
-      if (filterx_compare_objects(selector, value, FCMPX_TYPE_AND_VALUE_BASED | FCMPX_EQ))
-        {
-          filterx_object_unref(value);
-          return switch_case;
-        }
-
-      filterx_object_unref(value);
+      if (switch_case->match(switch_case, selector))
+        return switch_case;
     }
   return NULL;
 }
