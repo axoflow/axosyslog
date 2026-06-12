@@ -255,6 +255,27 @@ fx_jit_do_get_subscript_dict_string_key(FilterXObject *variable, FilterXObject *
   return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript_unchecked, &FILTERX_TYPE_NAME(dict));
 }
 
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_get_subscript_dict_typed(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_get_subscript_dict(variable, key, expr));
+}
+
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_get_subscript_list_typed(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_get_subscript_list(variable, key, expr));
+}
+
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_get_subscript_dict_string_key_typed(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_get_subscript_dict_string_key(variable, key, expr));
+}
+
 static FilterXIRValue
 _get_subscript_compile(FilterXExpr *s, FilterXJIT *jit)
 {

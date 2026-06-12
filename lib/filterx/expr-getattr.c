@@ -234,6 +234,20 @@ fx_jit_do_getattr_dict(FilterXObject *variable, FilterXObject *attr, FilterXExpr
   return result;
 }
 
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_getattr_typed(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_getattr(variable, attr, expr));
+}
+
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_getattr_dict_typed(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_getattr_dict(variable, attr, expr));
+}
+
 static FilterXIRValue
 _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {

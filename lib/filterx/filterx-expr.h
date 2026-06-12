@@ -295,6 +295,11 @@ filterx_expr_compile_typed(FilterXExpr *self, FilterXJIT *jit)
   g_assert(self && self->compile);
   FilterXIRValue result = self->compile(self, jit);
 
+  /* avoid a separate make_typed_object() call at every operand: retarget the
+   * compiled helper call to its make-typed twin where one exists */
+  if (fx_jit_try_make_call_result_typed(jit, result))
+    return result;
+
   return fx_jit_emit_expr_make_typed_object(jit, self, result);
 }
 

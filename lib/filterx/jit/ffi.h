@@ -87,6 +87,12 @@ void fx_jit_emit_eval_push_error_info_printf(FilterXJIT *jit, const gchar *msg, 
 FilterXIRValue fx_jit_emit_extern_call(FilterXJIT *jit, const gchar *name, FilterXIRType return_ty,
                                        FilterXIRType *param_tys, FilterXIRValue *args, unsigned param_count);
 
+/* If @value is a call to a helper that has a make-typed twin (or whose result
+ * is inherently typed), retarget the call in place so a separate
+ * make_typed_object() call does not have to be emitted.  Returns TRUE if the
+ * value is guaranteed to be typed. */
+gboolean fx_jit_try_make_call_result_typed(FilterXJIT *jit, FilterXIRValue value);
+
 /* private */
 void filterx_jit_ffi_init(FilterXJIT *jit);
 
