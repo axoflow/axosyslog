@@ -24,6 +24,7 @@
 #include "expr-compound.h"
 #include "expr-comparison.h"
 #include "expr-literal.h"
+#include "expr-function.h"
 #include "object-string.h"
 #include "object-primitive.h"
 #include "filterx-eval.h"
@@ -101,7 +102,56 @@ _switch_case_single_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_da
 static gboolean
 _switch_case_range_match(FilterXSwitchCase *s, FilterXObject *selector, GError **error)
 {
-  return TRUE;
+
+  if (!(filterx_object_is_type(selector, &FILTERX_TYPE_NAME(integer))
+        || filterx_object_is_type(selector, &FILTERX_TYPE_NAME(double))))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "Failed to evaluate range case operator. Selector value must be a double or integer, got: %s",
+                  filterx_object_get_type_name(selector));
+      return FALSE;
+    }
+
+  FilterXSwitchCaseRange *self = (FilterXSwitchCaseRange *) s;
+  FilterXObject *lower = filterx_expr_eval_typed(self->lower);
+  if (!lower)
+    return FALSE;
+  if (!(filterx_object_is_type(lower, &FILTERX_TYPE_NAME(integer))
+        || filterx_object_is_type(lower, &FILTERX_TYPE_NAME(double))))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "Failed to evaluate range case operator. Lower value must be a double or integer, got: %s",
+                  filterx_object_get_type_name(lower));
+      filterx_object_unref(lower);
+      return FALSE;
+    }
+  FilterXObject *upper = filterx_expr_eval_typed(self->upper);
+  if (!upper)
+    {
+      filterx_object_unref(lower);
+      return FALSE;
+    }
+  if (!(filterx_object_is_type(upper, &FILTERX_TYPE_NAME(integer))
+        || filterx_object_is_type(upper, &FILTERX_TYPE_NAME(double))))
+    {
+      g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                  "Failed to evaluate range case operator. Upper value must be a double or integer, got: %s",
+                  filterx_object_get_type_name(upper));
+      filterx_object_unref(lower);
+      filterx_object_unref(upper);
+      return FALSE;
+    }
+  gboolean result = FALSE;
+  if (filterx_compare_objects(lower, upper, FCMPX_NUM_BASED | FCMPX_LT))
+    result = filterx_compare_objects(lower, selector, FCMPX_NUM_BASED | FCMPX_LT | FCMPX_EQ) &&
+             filterx_compare_objects(selector, upper, FCMPX_NUM_BASED | FCMPX_LT);
+  else
+    g_set_error(error, FILTERX_FUNCTION_ERROR, FILTERX_FUNCTION_ERROR_CTOR_FAIL,
+                "Failed to evaluate range case operator. Upper boundary has to be greater than lower: %s",
+                filterx_object_get_type_name(upper));
+  filterx_object_unref(lower);
+  filterx_object_unref(upper);
+  return result;
 }
 
 static void
