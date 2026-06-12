@@ -377,7 +377,11 @@ _compound_compile(FilterXExpr *s, FilterXJIT *jit)
                                            child->lloc->first_line, child->lloc->first_column);
 
       FilterXIRValue result = filterx_expr_compile_or_eval(child, jit);
-      FilterXIRValue action = _emit_process_expr_result(jit, result, child, eval_ctx, result_slot);
+
+      /* fold the helper call and the postlude into a single "<helper>_stmt" call where possible */
+      FilterXIRValue action = fx_jit_try_emit_stmt_action(jit, result, eval_ctx, result_slot);
+      if (!action)
+        action = _emit_process_expr_result(jit, result, child, eval_ctx, result_slot);
 
       prev_switch = LLVMBuildSwitch(ir, action, mark_failure, 2);
       LLVMAddCase(prev_switch, LLVMConstInt(ffi->i32_ty, FXC_STEP_STOP_TRUE, FALSE), finish);

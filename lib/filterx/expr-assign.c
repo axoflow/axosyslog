@@ -112,6 +112,22 @@ fx_jit_do_nullv_assign(FilterXExpr *s, FilterXObject *value)
   return _do_nullv_assign((FilterXAssign *) s, value);
 }
 
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_assign_stmt(FilterXExpr *s, FilterXObject *value,
+                      FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_assign(s, value), s, context, last_result);
+}
+
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_nullv_assign_stmt(FilterXExpr *s, FilterXObject *value,
+                            FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_nullv_assign(s, value), s, context, last_result);
+}
+
 static FilterXIRValue
 _compile_assignment(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name)
 {

@@ -280,6 +280,42 @@ fx_jit_do_nullv_set_subscript_list(FilterXObject *object, FilterXObject *key,
   return _do_nullv_set_subscript(object, key, new_value, expr, fx_jit_do_set_subscript_list);
 }
 
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_set_subscript_dict_stmt(FilterXObject *object, FilterXObject *key, FilterXObject *new_value,
+                                  FilterXExpr *expr, FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_set_subscript_dict(object, key, new_value, expr), expr, context,
+                                    last_result);
+}
+
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_set_subscript_list_stmt(FilterXObject *object, FilterXObject *key, FilterXObject *new_value,
+                                  FilterXExpr *expr, FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_set_subscript_list(object, key, new_value, expr), expr, context,
+                                    last_result);
+}
+
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_nullv_set_subscript_dict_stmt(FilterXObject *object, FilterXObject *key, FilterXObject *new_value,
+                                        FilterXExpr *expr, FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_nullv_set_subscript_dict(object, key, new_value, expr), expr, context,
+                                    last_result);
+}
+
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_nullv_set_subscript_list_stmt(FilterXObject *object, FilterXObject *key, FilterXObject *new_value,
+                                        FilterXExpr *expr, FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_nullv_set_subscript_list(object, key, new_value, expr), expr, context,
+                                    last_result);
+}
+
 static FilterXIRValue
 _compile_dispatch(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_dict, const gchar *fn_list)
 {

@@ -93,6 +93,19 @@ FilterXIRValue fx_jit_emit_extern_call(FilterXJIT *jit, const gchar *name, Filte
  * value is guaranteed to be typed. */
 gboolean fx_jit_try_make_call_result_typed(FilterXJIT *jit, FilterXIRValue value);
 
+/* Statement postlude shared by compound statements and the "<name>_stmt"
+ * combined helpers, implemented in expr-compound.c. */
+struct _FilterXEvalContext;
+gint32 fx_jit_process_expr_result(FilterXObject *current_result, FilterXExpr *child,
+                                  struct _FilterXEvalContext *context, FilterXObject **last_result);
+
+/* If @result is a call to a statement helper that has a "<name>_stmt" twin
+ * (helper combined with fx_jit_process_expr_result()), replace the call with
+ * one to the twin and return the emitted step-action value.  Returns NULL if
+ * @result is not foldable; the caller must emit the postlude itself. */
+FilterXIRValue fx_jit_try_emit_stmt_action(FilterXJIT *jit, FilterXIRValue result,
+                                           FilterXIRValue eval_ctx, FilterXIRValue result_slot);
+
 /* private */
 void filterx_jit_ffi_init(FilterXJIT *jit);
 

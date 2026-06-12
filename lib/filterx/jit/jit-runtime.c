@@ -47,6 +47,13 @@ fx_jit_expr_eval(FilterXExpr *self)
   return filterx_expr_eval(self);
 }
 
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_expr_eval_stmt(FilterXExpr *self, FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(filterx_expr_eval(self), self, context, last_result);
+}
+
 __attribute__((used))
 FilterXObject *
 fx_jit_expr_eval_typed(FilterXExpr *self)
