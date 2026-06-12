@@ -98,7 +98,7 @@ log_filterx_pipe_init(LogPipe *s)
 #if SYSLOG_NG_ENABLE_JIT
   /* Only the JIT consumes the inferred types, and the per-expression hooks are compiled out
    * without it — running the pass here would walk the whole tree to produce nothing. */
-  filterx_expr_infer_types_root(self->block);
+  filterx_expr_infer_types_root_persistent(self->block, filterx_config_get(cfg)->persistent_type_env);
 #endif
 
   return success;
