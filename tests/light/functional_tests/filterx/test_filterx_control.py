@@ -541,8 +541,102 @@ def test_switch_invalid_case(config, syslog_ng):
         msg="string",
         filterx_expr_1=r"""
             switch (${values.str}) {
+              default:
+                result = "default";
+                break;
               case invalid.expr:
                 result = "no-no";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "default"
+
+
+def test_switch_range_case_match(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.int}) {
+              case 1..10:
+                result = "in-range";
+                break;
+              default:
+                result = "out-of-range";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "in-range"
+
+
+def test_switch_range_case_boundary(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.int}) {
+              case 1..4:
+                result = "below";
+                break;
+              case 5..5:
+                result = "exact";
+                break;
+              default:
+                result = "above";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "exact"
+
+
+def test_switch_range_case_no_match(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.int}) {
+              case 10..20:
+                result = "in-range";
+                break;
+              default:
+                result = "out-of-range";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "out-of-range"
+
+
+def test_switch_range_case_overlapping_first_wins(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.int}) {
+              case 1..6:
+                result = "first";
+                break;
+              case 5..10:
+                result = "second";
                 break;
               default:
                 result = "default";
@@ -555,4 +649,73 @@ def test_switch_invalid_case(config, syslog_ng):
 
     assert file_true.get_stats()["processed"] == 1
     assert "processed" not in file_false.get_stats()
-    assert file_true.read_log() == "default"
+    assert file_true.read_log() == "first"
+
+
+def test_switch_range_case_double(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.double}) {
+              case 30.0..35.0:
+                result = "in-range";
+                break;
+              default:
+                result = "out-of-range";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "in-range"
+
+
+def test_switch_range_case_match_reverse(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.int}) {
+              case 10..1:
+                result = "in-range";
+                break;
+              default:
+                result = "out-of-range";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "in-range"
+
+
+def test_switch_range_case_reverse_lower_match(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config,
+        filterx_expr_1=r"""
+            switch (${values.int}) {
+              case 5..1:
+                result = "first";
+                break;
+              case 10..5:
+                result = "second";
+                break;
+              default:
+                result = "default";
+                break;
+            };
+            $MSG=result;
+        """,
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == "second"
