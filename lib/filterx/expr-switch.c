@@ -44,6 +44,13 @@ typedef struct _FilterXSwitchCaseSingle
   FilterXExpr *value;   /* NULL for the default case */
 } FilterXSwitchCaseSingle;
 
+typedef struct _FilterXSwitchCaseRange
+{
+  FilterXSwitchCase super;
+  FilterXExpr *lower;
+  FilterXExpr *upper;
+} FilterXSwitchCaseRange;
+
 static inline gboolean
 filterx_switch_case_is_default(FilterXSwitchCase *self)
 {
@@ -91,6 +98,30 @@ _switch_case_single_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_da
   return TRUE;
 }
 
+static gboolean
+_switch_case_range_match(FilterXSwitchCase *s, FilterXObject *selector)
+{
+  return TRUE;
+}
+
+static void
+_switch_case_range_free(FilterXExpr *s)
+{
+  FilterXSwitchCaseRange *self = (FilterXSwitchCaseRange *) s;
+  filterx_expr_unref(self->lower);
+  filterx_expr_unref(self->upper);
+  filterx_expr_free_method(s);
+}
+
+static gboolean
+_switch_case_range_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
+{
+  FilterXSwitchCaseRange *self = (FilterXSwitchCaseRange *) s;
+  if (!filterx_expr_visit(s, &self->lower, f, user_data))
+    return FALSE;
+  return filterx_expr_visit(s, &self->upper, f, user_data);
+}
+
 FilterXExpr *
 filterx_switch_case_new(FilterXExpr *value)
 {
@@ -101,6 +132,20 @@ filterx_switch_case_new(FilterXExpr *value)
   self->super.match = value ? _switch_case_single_match : NULL;
   self->super.target = -1;
   self->value = value;
+  return &self->super.super;
+}
+
+FilterXExpr *
+filterx_switch_case_range_new(FilterXExpr *lower, FilterXExpr *upper)
+{
+  FilterXSwitchCaseRange *self = g_new0(FilterXSwitchCaseRange, 1);
+  filterx_expr_init_instance(&self->super.super, FILTERX_EXPR_TYPE_NAME(switch_case), FXE_READ);
+  self->super.super.free_fn = _switch_case_range_free;
+  self->super.super.walk_children = _switch_case_range_walk;
+  self->super.match = _switch_case_range_match;
+  self->super.target = -1;
+  self->lower = lower;
+  self->upper = upper;
   return &self->super.super;
 }
 

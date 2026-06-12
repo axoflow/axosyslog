@@ -31,6 +31,7 @@ FilterXExpr *filterx_switch_new(FilterXExpr *selector, GList *body);
 
 /* a case in the switch statement */
 FilterXExpr *filterx_switch_case_new(FilterXExpr *value);
+FilterXExpr *filterx_switch_case_range_new(FilterXExpr *lower, FilterXExpr *upper);
 
 FILTERX_EXPR_DECLARE_TYPE(switch);
 FILTERX_EXPR_DECLARE_TYPE(switch_case);
