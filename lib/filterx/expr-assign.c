@@ -102,6 +102,21 @@ fx_jit_nullv_assign_suppress_error(void)
   return _suppress_error();
 }
 
+__attribute__((used))
+FilterXObject *
+fx_jit_do_nullv_assign(FilterXExpr *s, FilterXObject *value)
+{
+  return _do_nullv_assign((FilterXAssign *) s, value);
+}
+
+__attribute__((used)) __attribute__((noinline))
+gint32
+fx_jit_do_nullv_assign_stmt(FilterXExpr *s, FilterXObject *value,
+                            FilterXEvalContext *context, FilterXObject **last_result)
+{
+  return fx_jit_process_expr_result(fx_jit_do_nullv_assign(s, value), s, context, last_result);
+}
+
 static FilterXIRValue
 _compile_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
 {
@@ -149,6 +164,9 @@ _assign_compile(FilterXExpr *s, FilterXJIT *jit)
   return _compile_assign_to_lhs(self, jit);
 }
 
+/* nullv-assign has no compile_assign() counterpart yet, so the store itself still goes
+ * through a helper.  The RHS is compiled nevertheless, which is what makes the
+ * devirtualized operand codegen reachable from `??=` too. */
 static FilterXIRValue
 _compile_nullv_assign_to_lhs(FilterXAssign *self, FilterXJIT *jit)
 {
