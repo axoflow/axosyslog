@@ -1,0 +1,110 @@
+/*
+ * Copyright (c) 2026 Axoflow
+ *
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *
+ * As an additional exemption you are allowed to compile & link against the
+ * OpenSSL libraries as published by the OpenSSL project. See the file
+ * COPYING for details.
+ *
+ */
+
+%code top {
+#include "http-source-parser.h"
+
+}
+
+%code {
+
+#include "http-source.h"
+#include "cfg-parser.h"
+#include "syslog-names.h"
+#include "messages.h"
+#include "plugin.h"
+#include "cfg-grammar-internal.h"
+#include "template/templates.h"
+
+#include <string.h>
+
+}
+
+%define api.prefix {http_source_}
+
+/* this parameter is needed in order to instruct bison to use a complete
+ * argument list for yylex/yyerror */
+
+%lex-param {CfgLexer *lexer}
+%parse-param {CfgLexer *lexer}
+%parse-param {LogDriver **instance}
+%parse-param {gpointer arg}
+
+/* INCLUDE_DECLS */
+
+%token KW_HTTP
+%token KW_PATH
+%token KW_LOCALIP
+%token KW_MAX_REQUEST_SIZE
+%token KW_TIMEOUT
+
+%type <ptr> source_http
+
+%%
+
+start
+  : LL_CONTEXT_SOURCE source_http          { YYACCEPT; }
+  ;
+
+source_http
+  : KW_HTTP
+    {
+      last_driver = *instance = http_sd_new(configuration);
+    }
+    '(' _inner_src_context_push source_http_options _inner_src_context_pop ')' { $$ = last_driver; }
+  ;
+
+source_http_options
+  : source_http_option source_http_options
+  |
+  ;
+
+source_http_option
+  : KW_PORT '(' positive_integer ')'
+    {
+      http_sd_set_port(last_driver, $3);
+    }
+  | KW_LOCALIP '(' string ')'
+    {
+      http_sd_set_bind_addr(last_driver, $3);
+      free($3);
+    }
+  | KW_PATH '(' string ')'
+    {
+      http_sd_set_path(last_driver, $3);
+      free($3);
+    }
+  | KW_MAX_REQUEST_SIZE '(' positive_integer ')'
+    {
+      http_sd_set_max_request_size(last_driver, $3);
+    }
+  | KW_TIMEOUT '(' nonnegative_integer ')'
+    {
+      http_sd_set_timeout(last_driver, $3);
+    }
+  | { last_source_options = http_sd_get_source_options(last_driver); } source_option
+  | source_driver_option
+  ;
+
+/* INCLUDE_RULES */
+
+%%
