@@ -31,6 +31,7 @@
 --exclude="lib/ivykis"
 --exclude="lib/compat/strcasestr.c"
 --exclude="dbld"
+--exclude="modules/http-source/llhttp"
 
 # allow opening curly bracket in the same line as namespace e.g.: `namespace foobar {`
 --attach-namespaces

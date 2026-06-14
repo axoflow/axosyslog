@@ -342,6 +342,10 @@ AC_ARG_WITH(libcurl,
              AS_HELP_STRING([--with-libcurl=DIR],
                             [use libcurl library from (prefix) directory DIR]),,)
 
+AC_ARG_ENABLE(http-source,
+              [  --disable-http-source   Disable http source (HTTP server) support (default: auto)]
+              ,,enable_http_source="auto")
+
 AC_ARG_ENABLE(redis,
               [  --disable-redis          Disable REDIS support (default: auto)]
               ,,enable_redis="auto")
@@ -1593,6 +1597,17 @@ else
 fi
 
 dnl ***************************************************************************
+dnl http source / HTTP server
+dnl
+dnl The HTTP server is built on a vendored copy of llhttp (see
+dnl modules/http-source/llhttp) and ivykis, so it has no external dependency
+dnl and is enabled unless explicitly disabled.
+dnl ***************************************************************************
+if test "x$enable_http_source" != "xno"; then
+	enable_http_source="yes"
+fi
+
+dnl ***************************************************************************
 dnl Cloud Auth
 dnl ***************************************************************************
 if ! test "x$enable_cloud_auth" = "xno"; then
@@ -2396,6 +2411,7 @@ AM_CONDITIONAL(ENABLE_CPP, [test "$enable_cpp" = "yes"])
 AM_CONDITIONAL(ENABLE_GRPC, [test "$enable_grpc" = "yes"])
 AM_CONDITIONAL(ENABLE_CLOUD_AUTH, [test "$enable_cloud_auth" = "yes"])
 AM_CONDITIONAL(ENABLE_HTTP, [test "$enable_http" = "yes"])
+AM_CONDITIONAL(ENABLE_HTTP_SOURCE, [test "$enable_http_source" = "yes"])
 AM_CONDITIONAL(ENABLE_AMQP, [test "$enable_amqp" = "yes"])
 AM_CONDITIONAL(ENABLE_STOMP, [test "$enable_stomp" = "yes"])
 AM_CONDITIONAL(ENABLE_JSON, [test "$enable_json" = "yes"])
@@ -2572,6 +2588,7 @@ echo "  MongoDB destination (module): ${enable_mongodb:=no}"
 echo "  JSON support (module)       : ${enable_json:=no}"
 echo "  SMTP support (module)       : ${enable_smtp:=no}"
 echo "  HTTP support (module)       : ${enable_http:=no}"
+echo "  HTTP source (module)        : ${enable_http_source:=no}"
 echo "  AMQP destination (module)   : ${enable_amqp:=no}"
 echo "  STOMP destination (module)  : ${enable_stomp:=no}"
 echo "  MQTT (module)               : ${enable_mqtt:=no}"
