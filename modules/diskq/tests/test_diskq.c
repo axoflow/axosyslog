@@ -53,6 +53,35 @@
 #endif
 #define PATH_QDISK "./"
 
+Test(diskq, disk_queues_skip_shutdown_flush)
+{
+  DiskQueueOptions options = {0};
+  _construct_options(&options, 10000000, 100000, TRUE);
+
+  const gchar *reliable_filename = "test-shutdown-flush-policy.rqf";
+  const gchar *non_reliable_filename = "test-shutdown-flush-policy.qf";
+  unlink(reliable_filename);
+  unlink(non_reliable_filename);
+
+  LogQueue *fifo = log_queue_fifo_new(1000, NULL, STATS_LEVEL0, NULL, NULL);
+  LogQueue *reliable = log_queue_disk_reliable_new(&options, reliable_filename, NULL, STATS_LEVEL0, NULL, NULL);
+
+  options.reliable = FALSE;
+  LogQueue *non_reliable = log_queue_disk_non_reliable_new(&options, non_reliable_filename, NULL, STATS_LEVEL0, NULL,
+                                                           NULL);
+
+  cr_assert(log_queue_flush_on_shutdown(fifo));
+  cr_assert_not(log_queue_flush_on_shutdown(reliable));
+  cr_assert_not(log_queue_flush_on_shutdown(non_reliable));
+
+  log_queue_unref(fifo);
+  log_queue_unref(reliable);
+  log_queue_unref(non_reliable);
+  unlink(reliable_filename);
+  unlink(non_reliable_filename);
+  disk_queue_options_destroy(&options);
+}
+
 Test(diskq, testcase_zero_diskbuf_and_normal_acks)
 {
   LogQueue *q;
