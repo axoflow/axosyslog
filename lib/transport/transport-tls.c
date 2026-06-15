@@ -435,6 +435,9 @@ log_transport_tls_free_method(LogTransport *s)
 {
   LogTransportTLS *self = (LogTransportTLS *) s;
 
+  if (self->kb)
+    stats_cluster_key_builder_free(self->kb);
+
   tls_session_free(self->tls_session);
   log_transport_adapter_free_method(s);
 }
@@ -444,7 +447,9 @@ log_transport_tls_register_stats(LogTransport *s, StatsClusterKeyBuilder *kb)
 {
   LogTransportTLS *self = (LogTransportTLS *) s;
 
-  self->kb = kb;
+  if (self->kb)
+    stats_cluster_key_builder_free(self->kb);
+  self->kb = kb ? stats_cluster_key_builder_clone(kb) : NULL;
 }
 
 void

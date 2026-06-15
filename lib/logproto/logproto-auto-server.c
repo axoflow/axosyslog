@@ -24,6 +24,7 @@
 #include "logproto-framed-server.h"
 #include "logproto.h"
 #include "transport/logtransport.h"
+#include "stats/stats-cluster-key-builder.h"
 #include "messages.h"
 #include "str-utils.h"
 
@@ -125,6 +126,17 @@ log_proto_auto_handshake(LogProtoServer *s, gboolean *handshake_finished, LogPro
   return LPS_SUCCESS;
 }
 
+static void
+log_proto_auto_server_free(LogProtoServer *s)
+{
+  LogProtoAutoServer *self = (LogProtoAutoServer *) s;
+
+  if (self->kb)
+    stats_cluster_key_builder_free(self->kb);
+
+  log_proto_server_free_method(s);
+}
+
 LogProtoServer *
 log_proto_auto_server_new(LogTransport *transport, const LogProtoServerOptions *options,
                           StatsClusterKeyBuilder *kb)
@@ -137,6 +149,7 @@ log_proto_auto_server_new(LogTransport *transport, const LogProtoServerOptions *
   log_proto_server_init(&self->super, transport, options);
   self->super.handshake = log_proto_auto_handshake;
   self->super.poll_prepare = log_proto_auto_server_poll_prepare;
-  self->kb = kb;
+  self->super.free_fn = log_proto_auto_server_free;
+  self->kb = kb ? stats_cluster_key_builder_clone(kb) : NULL;
   return &self->super;
 }
