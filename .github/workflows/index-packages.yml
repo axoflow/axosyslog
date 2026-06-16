@@ -86,7 +86,7 @@ jobs:
             ${DOCKER_CONTAINER_NAME} \
             ./index-packages.py \
               --suite "${PKG_TYPE}" \
-              --config-content "$(echo '${CONFIG_BASE64}' | base64 --decode)" \
+              --config-content "$(echo "${CONFIG_BASE64}" | base64 --decode)" \
               --run-id "${RUN_ID}" \
               --gpg-key-passphrase-from-stdin \
               --log-file "${VERBOSE_LOG_PATH}"
