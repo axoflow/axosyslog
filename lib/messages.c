@@ -110,13 +110,13 @@ msg_limit_internal_message(const gchar *msg)
     {
       if (!context->recurse_warning)
         {
+          context->recurse_warning = TRUE;
           msg_event_send(
             msg_event_create(EVT_PRI_WARNING,
                              "internal() messages are looping back, preventing loop by suppressing all internal messages until the current message is processed",
                              evt_tag_str("trigger-msg", context->recurse_trigger),
                              evt_tag_str("first-suppressed-msg", msg),
                              NULL));
-          context->recurse_warning = TRUE;
         }
       return FALSE;
     }
