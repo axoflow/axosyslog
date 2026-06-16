@@ -538,6 +538,7 @@ cases
 
 case
 	: KW_CASE expr ':' 			{ $$ = filterx_switch_case_new($2); }
+	| KW_CASE expr LL_DOTDOT expr ':'	{ $$ = filterx_switch_case_range_new($2, $4); }
 	| KW_DEFAULT ':'			{ $$ = filterx_switch_case_new(NULL); }
 	| stmt					{ $$ = $1; }
 	;
