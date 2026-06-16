@@ -42,7 +42,7 @@ add_dummy_template_to_configuration(void)
 }
 
 static void
-_log_msg_free(gpointer data, gpointer user_data)
+_free_msg(gpointer data, gpointer user_data)
 {
   log_msg_unref((LogMessage *) data);
 }
@@ -67,7 +67,7 @@ create_log_messages_with_values(const gchar *name, const gchar **values)
 static void
 free_log_message_array(GPtrArray *messages)
 {
-  g_ptr_array_foreach(messages, _log_msg_free, NULL);
+  g_ptr_array_foreach(messages, _free_msg, NULL);
   g_ptr_array_free(messages, TRUE);
 }
 

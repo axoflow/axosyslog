@@ -577,7 +577,7 @@ _get_pid_string(void)
 }
 
 static inline void
-_update_processing_latency(LogSource *self, LogMessage *msg)
+_update_processing_latency(LogSource *self, UnixTime *recvd_stamp)
 {
   if (!self->metrics.processing_latency)
     return;
@@ -585,7 +585,7 @@ _update_processing_latency(LogSource *self, LogMessage *msg)
   UnixTime now;
   unix_time_set_precise_now(&now);
 
-  gint64 processing_latency = unix_time_diff_in_msec(&now, &msg->timestamps[LM_TS_RECVD]);
+  gint64 processing_latency = unix_time_diff_in_msec(&now, recvd_stamp);
   stats_aggregator_add_data_point(self->metrics.processing_latency, processing_latency);
 }
 
@@ -633,8 +633,9 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
   stats_counter_inc(self->metrics.recvd_messages);
   stats_counter_set_time(self->metrics.last_message_seen, msg->timestamps[LM_TS_RECVD].ut_sec);
   stats_byte_counter_add(&self->metrics.recvd_bytes, msg->recvd_rawmsg_size);
+  UnixTime recvd_stamp = msg->timestamps[LM_TS_RECVD];
   log_pipe_forward_msg(s, msg, path_options);
-  _update_processing_latency(self, msg);
+  _update_processing_latency(self, &recvd_stamp);
 
   if (accurate_nanosleep && self->threaded && self->window_full_sleep_nsec > 0 && !log_source_free_to_send(self))
     {

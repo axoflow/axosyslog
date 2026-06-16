@@ -132,9 +132,7 @@ _work(gpointer s, gpointer arg)
 
           log_msg_free_queue_node(node);
 
-          log_msg_refcache_start_consumer(msg, &path_options);
           _reinject_message(partition->front_pipe, msg, &path_options, partition->metrics.processing_latency);
-          log_msg_refcache_stop();
 
           msgs_processed++;
           stats_counter_inc(partition->metrics.processed_events_total);
