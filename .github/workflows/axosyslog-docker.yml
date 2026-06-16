@@ -214,7 +214,7 @@ jobs:
           GENERATED_TAGS: ${{ steps.docker-metadata-tags.outputs.tags }}
         run: |
           if [[ "$TYPE" = "stable" ]]; then
-            TAGS='${GENERATED_TAGS}'
+            TAGS="${GENERATED_TAGS}"
           elif [[ "$TYPE" = "snapshot" ]]; then
             TAGS="$(echo "$SNAPSHOT_TAGS" | sed "s|[^,]*|$IMAGE_NAME:&|g")"
           else
