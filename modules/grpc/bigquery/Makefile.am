@@ -72,3 +72,5 @@ EXTRA_DIST += \
   modules/grpc/bigquery/CMakeLists.txt
 
 .PHONY: modules/grpc/bigquery/ mod-bigquery
+
+include modules/grpc/bigquery/tests/Makefile.am

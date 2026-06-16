@@ -42,6 +42,20 @@ namespace syslogng {
 namespace grpc {
 namespace bigquery {
 
+/*
+ * Whether disconnect() may run the WritesDone()/Finish() half-close handshake
+ * on the AppendRows streaming call. It is only safe while the worker is
+ * connected and the streaming call has not already failed: issuing a terminal
+ * operation on a call that has already completed makes gRPC core abort the
+ * process with GRPC_CALL_ERROR_TOO_MANY_OPERATIONS. Kept as a free function so
+ * the invariant can be unit tested without a live gRPC stream.
+ */
+static inline bool
+bigquery_should_half_close_writer(bool connected, bool batch_writer_failed)
+{
+  return connected && !batch_writer_failed;
+}
+
 class DestinationWorker final : public syslogng::grpc::DestWorker
 {
 private:
@@ -81,6 +95,16 @@ private:
   std::unique_ptr<::grpc::ClientContext> batch_writer_ctx;
   std::unique_ptr<::grpc::ClientReaderWriter<google::cloud::bigquery::storage::v1::AppendRowsRequest,
       google::cloud::bigquery::storage::v1::AppendRowsResponse>> batch_writer;
+
+  /*
+   * Set when a Write()/Read() on batch_writer fails (e.g. the server restarts
+   * the AppendRows stream). Once the streaming call has failed, the half-close
+   * handshake (WritesDone() + Finish()) must not be issued on it: gRPC core
+   * aborts the process with GRPC_CALL_ERROR_TOO_MANY_OPERATIONS if a terminal
+   * operation is queued on a call that has already completed. disconnect()
+   * checks this flag to skip that handshake on a broken writer.
+   */
+  bool batch_writer_failed = false;
 
   /* batch state */
   google::cloud::bigquery::storage::v1::AppendRowsRequest *current_batch;

@@ -72,6 +72,7 @@ DestinationWorker::init()
   this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
   this->prepare_context(*this->batch_writer_ctx.get());
   this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
+  this->batch_writer_failed = false;
 
   this->prepare_batch();
   return true;
@@ -107,17 +108,29 @@ DestinationWorker::disconnect()
   if (!this->connected)
     return;
 
-  if (!this->batch_writer->WritesDone())
-    msg_warning("Error closing BigQuery write stream, writes may have been unsuccessful",
-                log_pipe_location_tag((LogPipe *) this->super->super.owner));
-
-  ::grpc::Status status = this->batch_writer->Finish();
-  if (!status.ok() && status.error_code() != ::grpc::StatusCode::INVALID_ARGUMENT)
+  /*
+   * Only run the WritesDone()/Finish() half-close handshake on a streaming
+   * call that is still healthy. If a previous Write()/Read() failed (typically
+   * because the server restarted the stream), the call has already reached a
+   * terminal state; issuing WritesDone() or Finish() on it makes gRPC core
+   * abort the process with GRPC_CALL_ERROR_TOO_MANY_OPERATIONS. In that case
+   * we tear the writer down without the handshake and rely on
+   * FinalizeWriteStream() below, which is an independent unary RPC.
+   */
+  if (bigquery_should_half_close_writer(this->connected, this->batch_writer_failed))
     {
-      msg_warning("Error closing BigQuery stream", evt_tag_str("error", status.error_message().c_str()),
-                  evt_tag_str("details", status.error_details().c_str()),
-                  evt_tag_int("code", status.error_code()),
-                  log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      if (!this->batch_writer->WritesDone())
+        msg_warning("Error closing BigQuery write stream, writes may have been unsuccessful",
+                    log_pipe_location_tag((LogPipe *) this->super->super.owner));
+
+      ::grpc::Status close_status = this->batch_writer->Finish();
+      if (!close_status.ok() && close_status.error_code() != ::grpc::StatusCode::INVALID_ARGUMENT)
+        {
+          msg_warning("Error closing BigQuery stream", evt_tag_str("error", close_status.error_message().c_str()),
+                      evt_tag_str("details", close_status.error_details().c_str()),
+                      evt_tag_int("code", close_status.error_code()),
+                      log_pipe_location_tag((LogPipe *) this->super->super.owner));
+        }
     }
 
   ::grpc::ClientContext ctx;
@@ -126,7 +139,7 @@ DestinationWorker::disconnect()
   google::cloud::bigquery::storage::v1::FinalizeWriteStreamResponse finalize_response;
   finalize_request.set_name(write_stream.name());
 
-  status = this->stub->FinalizeWriteStream(&ctx, finalize_request, &finalize_response);
+  ::grpc::Status status = this->stub->FinalizeWriteStream(&ctx, finalize_request, &finalize_response);
   if (!status.ok())
     {
       msg_warning("Error finalizing BigQuery write stream", evt_tag_str("error", status.error_message().c_str()),
@@ -253,6 +266,8 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   if (!this->batch_writer->Write(*this->current_batch))
     {
       msg_error("Error writing BigQuery batch", log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      /* the streaming call is broken; do not half-close it in disconnect() */
+      this->batch_writer_failed = true;
       result = LTR_ERROR;
       goto error;
     }
@@ -260,6 +275,8 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   if (!this->batch_writer->Read(this->append_rows_response))
     {
       msg_error("Error reading BigQuery batch response", log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      /* the streaming call is broken; do not half-close it in disconnect() */
+      this->batch_writer_failed = true;
       result = LTR_ERROR;
       goto error;
     }

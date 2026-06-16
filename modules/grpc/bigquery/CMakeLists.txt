@@ -35,3 +35,5 @@ add_module(
 )
 
 set_target_properties(bigquery PROPERTIES INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib;${CMAKE_INSTALL_PREFIX}/lib/syslog-ng")
+
+add_test_subdirectory(tests)
