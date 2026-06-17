@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-setattr.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
@@ -143,6 +144,26 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static void
+_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  /* Refine the written container's element type with the assigned value (lift if the level
+   * was a freshly-built empty container, meet otherwise). This keeps element-type info alive
+   * across incremental builds (d.a = {}; d.a.b = {}; ...) so deeper accesses devirtualize. */
+  FilterXStaticTypeSpec value_spec = self->new_value ? self->new_value->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  filterx_type_env_update_on_write(env, self->object, value_spec);
+
+  const gchar *key = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
+
+  /* Per-key update: variable.k0.k1...key = value.  The single-hop case (variable.key)
+   * is just a zero-prefix chain, so this covers it too.  Allows getattr deeper in a
+   * chain to find the precise type. */
+  filterx_type_env_meet_attr_for_chain(env, self->object, key, value_spec);
+}
+
 static gboolean
 _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -221,6 +242,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   self->super.eval = _setattr_eval;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
+  self->super.infer_types = _setattr_infer_types;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _setattr_compile;
 #endif

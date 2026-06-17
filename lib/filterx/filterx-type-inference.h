@@ -51,10 +51,15 @@ typedef enum
  *
  * The chain is represented as frozen / hash-consed immutable nodes: structurally-equal
  * chains are the SAME pointer, so equality is pointer identity (==) and a copy is just a
- * pointer copy. A spec is NEVER NULL: the absent / "no information" type is the canonical
- * unknown singleton FILTERX_STATIC_TYPE_UNKNOWN_SPEC, which also terminates every element
- * chain. There is no depth limit. Frozen nodes live in a process-global, never-freed pool,
- * so a spec cached on a FilterXExpr stays valid for as long as that expression does. */
+ * pointer copy — exactly the value semantics the inference env and the JIT consumers rely
+ * on. A spec is NEVER NULL: the absent / "no information" type is the canonical unknown
+ * singleton FILTERX_STATIC_TYPE_UNKNOWN_SPEC, which also terminates every element chain.
+ *
+ * Frozen nodes live in a process-global, never-freed pool (the set of distinct chains in
+ * any config is tiny and deduplicated across reloads), so a spec cached on a FilterXExpr
+ * stays valid for as long as that expression does — including at JIT-compile time, after
+ * the inference env has been freed. Inference is not on a hot path, so the freezing cost
+ * is irrelevant. */
 typedef const struct _FilterXStaticTypeNode *FilterXStaticTypeSpec;
 
 struct _FilterXStaticTypeNode
@@ -65,8 +70,8 @@ struct _FilterXStaticTypeNode
 };
 
 /* The canonical "no information" spec: a single pre-seeded node whose kind is UNKNOWN and
- * whose element points at itself, so it terminates every element chain and can be walked to
- * any depth. Specs are never NULL — this object stands in for "absent type". */
+ * whose element/sanitized point at itself, so it terminates every element chain and can be
+ * walked to any depth. Specs are never NULL — this object stands in for "absent type". */
 extern const struct _FilterXStaticTypeNode FILTERX_STATIC_TYPE_UNKNOWN_NODE;
 #define FILTERX_STATIC_TYPE_UNKNOWN_SPEC (&FILTERX_STATIC_TYPE_UNKNOWN_NODE)
 #define INITIAL_FILTERX_STATIC_TYPE_SPEC FILTERX_STATIC_TYPE_UNKNOWN_SPEC
@@ -78,34 +83,37 @@ filterx_static_type_kind(FilterXStaticTypeSpec spec)
 }
 
 /* Strip the FRESH lift-tracking sentinel before a spec is exposed on any expression's
- * static_type. Placeholder: the real stripping is implemented by a later change; since
- * the FRESH sentinel is only produced once the nested inference hooks are wired up, the
- * identity behaviour here matches what callers observe so far. */
+ * static_type: the chain is truncated at the first FRESH level (FRESH implies "no committed
+ * type here or below"). The sanitized form is precomputed at freeze time, so this is a plain
+ * pointer read — no pool access needed, which is why JIT consumers can call it freely. */
 static inline FilterXStaticTypeSpec
 filterx_static_type_sanitize(FilterXStaticTypeSpec spec)
 {
-  return spec;
+  return spec->sanitized;
 }
 
-/* Drop the outermost level: returns the element type spec.
- * Element of DICT/LIST → its element chain; element of a scalar or UNKNOWN → UNKNOWN. */
+/* Drop the outermost level: returns the (sanitized) element type spec.
+ * Element of DICT/LIST → its element chain with FRESH stripped; element of a scalar or
+ * UNKNOWN → UNKNOWN. The element of a FRESH-empty container sanitizes to UNKNOWN. */
 static inline FilterXStaticTypeSpec
 filterx_static_type_element(FilterXStaticTypeSpec spec)
 {
   FilterXStaticType kind = filterx_static_type_kind(spec);
   if (kind != FILTERX_STATIC_TYPE_DICT && kind != FILTERX_STATIC_TYPE_LIST)
     return FILTERX_STATIC_TYPE_UNKNOWN_SPEC;
-  return spec->element;
+  return filterx_static_type_sanitize(spec->element);
 }
 
-/* Build (freeze) a container spec from an outer kind and the element spec. */
+/* Build (freeze) a container spec from an outer kind and the element spec. Returns the
+ * canonical node for {kind, element}; arbitrary nesting depth. */
 FilterXStaticTypeSpec filterx_static_type_make_container(FilterXStaticType kind, FilterXStaticTypeSpec element);
 
-/* Per-level meet (frozen): the longest common prefix where the kinds agree. */
+/* Per-level meet (frozen): the longest common prefix where the kinds agree; once the
+ * levels diverge or hit UNKNOWN, that level and everything below it are dropped. */
 FilterXStaticTypeSpec filterx_static_type_spec_meet(FilterXStaticTypeSpec a, FilterXStaticTypeSpec b);
 
-/* Convenience for the common case where we just need the outer kind: a single-level
- * frozen chain. Returns the UNKNOWN singleton for kind == UNKNOWN. */
+/* Convenience for the common case where we just need the outer kind (no element info):
+ * a single-level frozen chain. Returns the UNKNOWN singleton for kind == UNKNOWN. */
 FilterXStaticTypeSpec filterx_static_type_kind_only(FilterXStaticType kind);
 
 typedef struct _FilterXTypeEnv FilterXTypeEnv;
