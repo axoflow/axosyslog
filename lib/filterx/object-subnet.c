@@ -196,7 +196,7 @@ _parse_ipv4_cidr(FilterXSubnet *self, const gchar *cidr)
           gint prefix = strtol(slash + 1, &endptr, 10);
           if (*endptr != 0)
             return FALSE;
-          if (prefix > 32)
+          if (prefix < 0 || prefix > 32)
             return FALSE;
           if (prefix == 32)
             self->ipv4.netmask.s_addr = htonl(0xFFFFFFFF);
@@ -252,7 +252,7 @@ _parse_ipv6_cidr(FilterXSubnet *self, const gchar *cidr)
       prefix = strtol(slash + 1, &endptr, 10);
       if (*endptr != 0)
         return FALSE;
-      if (prefix > 128)
+      if (prefix < 0 || prefix > 128)
         return FALSE;
 
       strncpy(buf, cidr, slash - cidr);
