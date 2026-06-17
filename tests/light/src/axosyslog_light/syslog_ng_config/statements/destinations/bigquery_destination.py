@@ -72,6 +72,10 @@ class BigQueryDestination(DestinationDriver):
         if self._io is not None:
             self._io.stop_listener()
 
+    def restart_stream_after_next_batch(self) -> None:
+        if self._io is not None:
+            self._io.restart_stream_after_next_batch()
+
     def respond_with_error(self, code, message) -> None:
         if self._io is not None:
             self._io.respond_with_error(code, message)

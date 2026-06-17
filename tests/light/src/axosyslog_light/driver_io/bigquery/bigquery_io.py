@@ -34,10 +34,6 @@ from google.protobuf.message_factory import GetMessageClass
 
 logger = logging.getLogger(__name__)
 
-# The C++ destination talks to the google.cloud.bigquery.storage.v1.BigQueryWrite
-# service. google-cloud-bigquery-storage is proto-plus based and ships no
-# servicer to subclass, so the mock registers generic gRPC handlers and uses the
-# proto-plus message types' own serialize()/deserialize() for the wire codec.
 _SERVICE = "google.cloud.bigquery.storage.v1.BigQueryWrite"
 
 
@@ -77,11 +73,10 @@ class _BigQueryWriteServicer:
         self._create_counts = {}
         self._finalize_counts = {}
         self._stream_seq = 0
+        self._restart_stream_once = False
         self._error = None
         self._decoder = None
         self._decoder_key = None
-
-    # --- gRPC method handlers -------------------------------------------------
 
     def create_write_stream(self, request, context):
         with self._lock:
@@ -105,6 +100,17 @@ class _BigQueryWriteServicer:
                 self._row_counts[table] = self._row_counts.get(table, 0) + len(serialized_rows)
                 self._batch_counts[table] = self._batch_counts.get(table, 0) + 1
             yield storage.AppendRowsResponse(append_result=storage.AppendRowsResponse.AppendResult())
+            with self._lock:
+                abort = self._restart_stream_once
+                self._restart_stream_once = False
+            if abort:
+                # Simulate the server-side AppendRows stream restart described in #957:
+                # the stream is torn down with a retryable status after a batch was acked.
+                context.abort(
+                    grpc.StatusCode.UNAVAILABLE,
+                    "Closing the stream because server is restarted. "
+                    "This is expected and client is advised to reconnect.",
+                )
 
     def _decode_rows(self, request, serialized_rows):
         if not serialized_rows:
@@ -131,7 +137,9 @@ class _BigQueryWriteServicer:
             row_count = self._row_counts.get(table, 0)
         return storage.FinalizeWriteStreamResponse(row_count=row_count)
 
-    # --- control & inspection -------------------------------------------------
+    def request_restart_stream_after_next_batch(self):
+        with self._lock:
+            self._restart_stream_once = True
 
     def set_error(self, code, message):
         with self._lock:
@@ -167,8 +175,6 @@ class _BigQueryWriteServicer:
 
 
 def _make_handlers(servicer):
-    # Count an AppendRows connection as soon as it opens by wrapping the streaming
-    # handler; the first request carries the write_stream that identifies the table.
     def append_rows(request_iterator, context):
         counted = {"done": False}
 
@@ -225,6 +231,10 @@ class BigQueryIO():
         self.__server = None
         self.__servicer = None
         logger.info("BigQuery mock server stopped")
+
+    def restart_stream_after_next_batch(self) -> None:
+        if self.__servicer is not None:
+            self.__servicer.request_restart_stream_after_next_batch()
 
     def respond_with_error(self, code, message) -> None:
         if self.__servicer is not None:
