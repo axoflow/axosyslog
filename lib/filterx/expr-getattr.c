@@ -156,6 +156,14 @@ _getattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
                                                INITIAL_FILTERX_STATIC_TYPE_SPEC);
 }
 
+FilterXExpr *
+filterx_getattr_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_getattr(s))
+    return NULL;
+  return ((FilterXGetAttr *) s)->operand;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"

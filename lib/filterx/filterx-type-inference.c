@@ -204,6 +204,28 @@ filterx_type_env_meet_into(FilterXTypeEnv *dst, const FilterXTypeEnv *src)
   g_ptr_array_free(to_meet_specs, TRUE);
 }
 
+/* Placeholder: per-key attribute chain lookup is implemented by a later change. */
+FilterXStaticTypeSpec
+filterx_type_env_get_attr_for_chain(const FilterXTypeEnv *self, FilterXExpr *chain_expr,
+                                    const gchar *key)
+{
+  return FILTERX_STATIC_TYPE_UNKNOWN_SPEC;
+}
+
+/* Placeholder: per-key attribute chain recording is implemented by a later change. */
+void
+filterx_type_env_meet_attr_for_chain(FilterXTypeEnv *self, FilterXExpr *chain_expr,
+                                     const gchar *key, FilterXStaticTypeSpec spec)
+{
+}
+
+/* Placeholder: lift-on-write container refinement is implemented by a later change. */
+void
+filterx_type_env_update_on_write(FilterXTypeEnv *env, FilterXExpr *container_expr,
+                                 FilterXStaticTypeSpec value_spec)
+{
+}
+
 void
 filterx_expr_infer_types(FilterXExpr *self, FilterXTypeEnv *env)
 {

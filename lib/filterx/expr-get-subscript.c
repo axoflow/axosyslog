@@ -174,6 +174,14 @@ _get_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
                                                INITIAL_FILTERX_STATIC_TYPE_SPEC);
 }
 
+FilterXExpr *
+filterx_get_subscript_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_get_subscript(s))
+    return NULL;
+  return ((FilterXGetSubscript *) s)->operand;
+}
+
 static gboolean
 _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
