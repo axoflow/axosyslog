@@ -71,3 +71,22 @@ def test_bigquery_destination_multiple_messages(config, syslog_ng, port_allocato
     assert bigquery_destination.read_logs() == [{"message": custom_msg}] * num_messages
     assert bigquery_destination.get_batch_count() == 1
     assert bigquery_destination.get_stream_count() == 1
+
+
+def test_bigquery_destination_server_not_running(config, syslog_ng, port_allocator):
+    custom_msg = f"test message {uuid.uuid4()}"
+    generator_source = config.create_example_msg_generator_source(num=1, template=stringify(custom_msg))
+
+    bigquery_destination = config.create_bigquery_destination(port=port_allocator(), **BIGQUERY_OPTIONS)
+    config.create_logpath(statements=[generator_source, bigquery_destination])
+
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: bigquery_destination.get_stats().get("queued", 0) == 1)
+    assert bigquery_destination.get_stats()["written"] == 0
+
+    bigquery_destination.start_listener()
+
+    assert wait_until_true(lambda: bigquery_destination.get_stats().get("written", 0) == 1)
+    assert bigquery_destination.get_row_count() == 1
+    assert bigquery_destination.read_logs() == [{"message": custom_msg}]
