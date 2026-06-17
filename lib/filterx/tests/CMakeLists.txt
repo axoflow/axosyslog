@@ -39,3 +39,4 @@ add_unit_test(LIBTEST CRITERION TARGET test_func_glob DEPENDS json-plugin ${JSON
 add_unit_test(LIBTEST CRITERION TARGET test_object_subnet DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_object_ip DEPENDS json-plugin ${JSONC_LIBRARY})
 add_unit_test(LIBTEST CRITERION TARGET test_expr_arithmetic_operators DEPENDS json-plugin ${JSONC_LIBRARY})
+add_unit_test(LIBTEST CRITERION TARGET test_func_set_pri DEPENDS json-plugin ${JSONC_LIBRARY})

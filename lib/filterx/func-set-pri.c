@@ -41,6 +41,8 @@ _set_pri_eval(FilterXExpr *s)
   FilterXFunctionSetPri *self = (FilterXFunctionSetPri *) s;
 
   FilterXObject *pri_obj = filterx_expr_eval(self->pri_expr);
+  if (!pri_obj)
+    return NULL;
 
   gint64 pri_val;
 
