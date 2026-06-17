@@ -141,6 +141,14 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+FilterXExpr *
+filterx_getattr_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_getattr(s))
+    return NULL;
+  return ((FilterXGetAttr *) s)->operand;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
