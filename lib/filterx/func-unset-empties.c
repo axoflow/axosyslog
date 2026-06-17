@@ -60,8 +60,11 @@ typedef struct FilterXFunctionUnsetEmpties_
   guint64 flags;
 } FilterXFunctionUnsetEmpties;
 
-static gboolean _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj);
-static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj);
+static gboolean _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj, gint depth);
+static gboolean _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj, gint depth);
+
+#define UNSET_EMPTIES_STACK_KEYS (1024)
+#define UNSET_EMPTIES_MAX_DEPTH (128)
 
 typedef int (*str_cmp_fn)(const char *, const char *, size_t len);
 
@@ -132,12 +135,14 @@ _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpoin
   guint64 *num = ((gpointer *)user_data)[2];
   FilterXObject **keys_to_unset = ((gpointer *) user_data)[3];
 
+  gint depth = GPOINTER_TO_INT(((gpointer *) user_data)[4]);
+
   value = filterx_ref_unwrap_rw(value);
-  if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
+  if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE) && depth < UNSET_EMPTIES_MAX_DEPTH)
     {
-      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(mapping)) && !_process_dict(self, value))
+      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(mapping)) && !_process_dict(self, value, depth + 1))
         return FALSE;
-      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(sequence)) && !_process_list(self, value))
+      if (filterx_object_is_type(value, &FILTERX_TYPE_NAME(sequence)) && !_process_list(self, value, depth + 1))
         return FALSE;
     }
 
@@ -151,13 +156,15 @@ _add_key_to_unset_list_if_needed(FilterXObject *key, FilterXObject *value, gpoin
 }
 
 static gboolean
-_process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
+_process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj, gint depth)
 {
   guint64 len, num = 0;
   filterx_object_len(obj, &len);
-  FilterXObject *keys_to_unset[len];
 
-  gpointer user_data[] = { self, GINT_TO_POINTER(len), &num, &keys_to_unset };
+  gboolean heap = len > UNSET_EMPTIES_STACK_KEYS;
+  FilterXObject **keys_to_unset = heap ? g_new(FilterXObject *, len) : g_alloca(sizeof(FilterXObject *) * len);
+
+  gpointer user_data[] = { self, GINT_TO_POINTER(len), &num, keys_to_unset, GINT_TO_POINTER(depth) };
   gboolean success = filterx_object_iter(obj, _add_key_to_unset_list_if_needed, user_data);
 
   for (gint i = 0; i < num; i++)
@@ -176,11 +183,13 @@ _process_dict(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
       filterx_object_unref(key);
     }
 
+  if (heap)
+    g_free(keys_to_unset);
   return success;
 }
 
 static gboolean
-_process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
+_process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj, gint depth)
 {
   guint64 len;
   filterx_object_len(obj, &len);
@@ -192,14 +201,16 @@ _process_list(FilterXFunctionUnsetEmpties *self, FilterXObject *obj)
       FilterXObject *elem = filterx_sequence_get_subscript(obj, i);
       FilterXObject *elem_unwrapped = filterx_ref_unwrap_rw(elem);
 
-      if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE))
+      if (check_flag(self->flags, FILTERX_FUNC_UNSET_EMPTIES_FLAG_RECURSIVE) && depth < UNSET_EMPTIES_MAX_DEPTH)
         {
-          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(mapping)) && !_process_dict(self, elem_unwrapped))
+          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(mapping))
+              && !_process_dict(self, elem_unwrapped, depth + 1))
             {
               filterx_object_unref(elem);
               return FALSE;
             }
-          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(sequence)) && !_process_list(self, elem_unwrapped))
+          if (filterx_object_is_type(elem_unwrapped, &FILTERX_TYPE_NAME(sequence))
+              && !_process_list(self, elem_unwrapped, depth + 1))
             {
               filterx_object_unref(elem);
               return FALSE;
@@ -244,9 +255,9 @@ _eval_fx_unset_empties(FilterXExpr *s)
   gboolean success = FALSE;
   FilterXObject *obj_unwrapped = filterx_ref_unwrap_rw(obj);
   if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(mapping)))
-    success = _process_dict(self, obj_unwrapped);
+    success = _process_dict(self, obj_unwrapped, 0);
   else if (filterx_object_is_type(obj_unwrapped, &FILTERX_TYPE_NAME(sequence)))
-    success = _process_list(self, obj_unwrapped);
+    success = _process_list(self, obj_unwrapped, 0);
   else
     filterx_eval_push_error("Object must be dict or list. " FILTERX_FUNC_UNSET_EMPTIES_USAGE, s, obj);
 
