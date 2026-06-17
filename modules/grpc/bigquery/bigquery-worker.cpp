@@ -340,7 +340,7 @@ DestinationWorker::create_channel()
   return channel_;
 }
 
-void
+bool
 DestinationWorker::construct_write_stream()
 {
   ::grpc::ClientContext ctx;
@@ -352,9 +352,19 @@ DestinationWorker::construct_write_stream()
   create_write_stream_request.mutable_write_stream()->set_type(
                                google::cloud::bigquery::storage::v1::WriteStream_Type_COMMITTED);
 
-  stub->CreateWriteStream(&ctx, create_write_stream_request, &wstream);
+  ::grpc::Status status = stub->CreateWriteStream(&ctx, create_write_stream_request, &wstream);
+  if (!status.ok())
+    {
+      msg_error("Error creating BigQuery write stream", evt_tag_str("error", status.error_message().c_str()),
+                evt_tag_str("details", status.error_details().c_str()),
+                evt_tag_int("code", status.error_code()),
+                log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      this->write_stream.Clear();
+      return false;
+    }
 
   this->write_stream = wstream;
+  return true;
 }
 
 DestinationDriver *
