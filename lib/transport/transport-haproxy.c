@@ -456,7 +456,19 @@ static gboolean
 _parse_proxy_v2_header(LogTransportHAProxy *self)
 {
   self->proto_v2.header = (struct proxy_hdr_v2 *) self->proxy_header_buff;
+
+  if (self->proxy_header_buff_len < sizeof(struct proxy_hdr_v2))
+    return FALSE;
+
   self->proto_v2.header_len = ntohs(self->proto_v2.header->len);
+
+  if (sizeof(struct proxy_hdr_v2) + self->proto_v2.header_len > self->proxy_header_buff_len)
+    {
+      msg_error("PROXY v2 header declares more bytes than were received",
+                evt_tag_int("declared_len", self->proto_v2.header_len),
+                evt_tag_int("received", self->proxy_header_buff_len));
+      return FALSE;
+    }
 
   struct proxy_hdr_v2 *proxy_hdr = self->proto_v2.header;
 
