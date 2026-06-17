@@ -59,12 +59,15 @@ TLS_BLOCK_END;
 
 /* JSON parsing */
 
+#define FILTERX_JSON_MAX_NESTING_DEPTH 1000
+
 static FilterXObject *
-filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_t **tokens, jsmntok_t *sentinel);
+filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_t **tokens, jsmntok_t *sentinel,
+                                gint depth);
 
 static FilterXObject *
 _convert_from_json_object(const gchar *json_text, gsize json_len,
-                          jsmntok_t **tokens, jsmntok_t *sentinel)
+                          jsmntok_t **tokens, jsmntok_t *sentinel, gint depth)
 {
   FilterXObject *res = filterx_dict_new();
 
@@ -76,11 +79,11 @@ _convert_from_json_object(const gchar *json_text, gsize json_len,
   token++;
   for (gint i = 0; i < elements && token < sentinel; i++)
     {
-      FilterXObject *key = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel);
+      FilterXObject *key = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel, depth + 1);
       if (!key)
         goto error;
 
-      FilterXObject *value = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel);
+      FilterXObject *value = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel, depth + 1);
       if (!value)
         {
           filterx_object_unref(key);
@@ -105,7 +108,7 @@ error:
 
 static FilterXObject *
 _convert_from_json_array(const gchar *json_text, gsize json_len,
-                         jsmntok_t **tokens, jsmntok_t *sentinel)
+                         jsmntok_t **tokens, jsmntok_t *sentinel, gint depth)
 {
   FilterXObject *res = filterx_list_new();
   filterx_object_cow_prepare(&res);
@@ -116,7 +119,7 @@ _convert_from_json_array(const gchar *json_text, gsize json_len,
   token++;
   for (gint i = 0; i < elements && token < sentinel; i++)
     {
-      FilterXObject *o = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel);
+      FilterXObject *o = filterx_object_from_jsmn_tokens(json_text, json_len, &token, sentinel, depth + 1);
       if (!o)
         goto error;
 
@@ -208,7 +211,8 @@ _convert_from_json_string(const gchar *json_text, gsize json_len,
 }
 
 static FilterXObject *
-filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_t **tokens, jsmntok_t *sentinel)
+filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_t **tokens, jsmntok_t *sentinel,
+                                gint depth)
 {
   FilterXObject *result = NULL;
 
@@ -217,13 +221,16 @@ filterx_object_from_jsmn_tokens(const gchar *json_text, gsize json_len, jsmntok_
   if (token >= sentinel)
     return NULL;
 
+  if (depth > FILTERX_JSON_MAX_NESTING_DEPTH)
+    return NULL;
+
   switch (token->type)
     {
     case JSMN_OBJECT:
-      result = _convert_from_json_object(json_text, json_len, &token, sentinel);
+      result = _convert_from_json_object(json_text, json_len, &token, sentinel, depth);
       break;
     case JSMN_ARRAY:
-      result = _convert_from_json_array(json_text, json_len, &token, sentinel);
+      result = _convert_from_json_array(json_text, json_len, &token, sentinel, depth);
       break;
     case JSMN_STRING:
       g_assert(token->start <= token->end && token->end < json_len);
@@ -329,7 +336,7 @@ filterx_object_from_json(const gchar *repr, gssize repr_len, GError **error)
     }
 
   jsmntok_t *tokens = jsmn_tokens;
-  FilterXObject *res = filterx_object_from_jsmn_tokens(repr, repr_len, &tokens, tokens + r);
+  FilterXObject *res = filterx_object_from_jsmn_tokens(repr, repr_len, &tokens, tokens + r, 0);
 
   if (!res)
     {
