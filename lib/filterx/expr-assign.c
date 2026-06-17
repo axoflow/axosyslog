@@ -223,7 +223,11 @@ _assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 
   FilterXVariableHandle handle;
   if (filterx_variable_expr_get_handle(self->super.lhs, &handle))
-    filterx_type_spec_set(env, handle, rhs_spec);
+    {
+      /* Whole-variable overwrite: any per-key type recorded under the old value is stale. */
+      filterx_type_env_invalidate_attr_chains(env, handle);
+      filterx_type_spec_set(env, handle, rhs_spec);
+    }
 
   s->static_type = rhs_spec;
 }
@@ -238,13 +242,20 @@ _nullv_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 
   FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
 
-  /* nullv-assign keeps the LHS's prior value if RHS is null. The post-statement type is
-   * therefore meet(prior, rhs), and prior is what the env currently has. */
+  /* nullv-assign is a runtime branch: if RHS is null, LHS keeps its prior value untouched
+   * (any per-key info recorded for it is still valid); otherwise LHS is wholly replaced by
+   * RHS (the old per-key info is now stale). Model both branches on their own env clone,
+   * same as if/else, and meet them back together — this both computes meet(prior, rhs) for
+   * the handle itself and drops any attr_to_spec entries that don't survive in both branches. */
   FilterXVariableHandle handle;
   if (filterx_variable_expr_get_handle(self->super.lhs, &handle))
     {
-      FilterXStaticTypeSpec prior = filterx_type_spec_get(env, handle);
-      filterx_type_spec_set(env, handle, filterx_static_type_spec_meet(prior, rhs_spec));
+      FilterXTypeEnv *assigned_env = filterx_type_env_clone(env);
+      filterx_type_env_invalidate_attr_chains(assigned_env, handle);
+      filterx_type_spec_set(assigned_env, handle, rhs_spec);
+
+      filterx_type_env_meet_into(env, assigned_env);
+      filterx_type_env_free(assigned_env);
     }
 
   s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;

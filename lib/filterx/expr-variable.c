@@ -251,7 +251,9 @@ _variable_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
   if (self->handle_is_macro)
     s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
   else
-    s->static_type = filterx_type_spec_get(env, self->handle);
+    /* The env may carry the FRESH lift-tracking sentinel at inner levels; strip it before
+     * exposing the type on the expression (used by getattr/set codegen). */
+    s->static_type = filterx_static_type_sanitize(filterx_type_spec_get(env, self->handle));
 }
 
 static FilterXIRValue
