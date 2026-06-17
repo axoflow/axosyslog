@@ -97,7 +97,6 @@ DestinationWorker::connect()
   this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
   this->prepare_context(*this->batch_writer_ctx.get());
   this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
-  this->batch_writer_failed = false;
 
   this->prepare_batch();
 
@@ -111,16 +110,7 @@ DestinationWorker::disconnect()
   if (!this->connected)
     return;
 
-  /*
-   * Only run the WritesDone()/Finish() half-close handshake on a streaming
-   * call that is still healthy. If a previous Write()/Read() failed (typically
-   * because the server restarted the stream), the call has already reached a
-   * terminal state; issuing WritesDone() or Finish() on it makes gRPC core
-   * abort the process with GRPC_CALL_ERROR_TOO_MANY_OPERATIONS. In that case
-   * we tear the writer down without the handshake and rely on
-   * FinalizeWriteStream() below, which is an independent unary RPC.
-   */
-  if (bigquery_should_half_close_writer(this->connected, this->batch_writer_failed))
+  if (this->is_stream_open)
     {
       if (!this->batch_writer->WritesDone())
         msg_warning("Error closing BigQuery write stream, writes may have been unsuccessful",
@@ -277,8 +267,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   if (!this->batch_writer->Write(*this->current_batch))
     {
       msg_error("Error writing BigQuery batch", log_pipe_location_tag((LogPipe *) this->super->super.owner));
-      /* the streaming call is broken; do not half-close it in disconnect() */
-      this->batch_writer_failed = true;
+      this->is_stream_open = false;
       result = LTR_ERROR;
       goto error;
     }
@@ -286,8 +275,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   if (!this->batch_writer->Read(this->append_rows_response))
     {
       msg_error("Error reading BigQuery batch response", log_pipe_location_tag((LogPipe *) this->super->super.owner));
-      /* the streaming call is broken; do not half-close it in disconnect() */
-      this->batch_writer_failed = true;
+      this->is_stream_open = false;
       result = LTR_ERROR;
       goto error;
     }
@@ -375,6 +363,7 @@ DestinationWorker::construct_write_stream()
     }
 
   this->write_stream = wstream;
+  this->is_stream_open = true;
   return true;
 }
 
