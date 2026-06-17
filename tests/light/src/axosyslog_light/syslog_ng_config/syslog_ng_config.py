@@ -30,6 +30,7 @@ from axosyslog_light.syslog_ng_config.renderer import ConfigRenderer
 from axosyslog_light.syslog_ng_config.statement_group import StatementGroup
 from axosyslog_light.syslog_ng_config.statements import ArrowedOptions
 from axosyslog_light.syslog_ng_config.statements.destinations.arrow_flight_destination import ArrowFlightDestination
+from axosyslog_light.syslog_ng_config.statements.destinations.bigquery_destination import BigQueryDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.clickhouse_destination import ClickhouseDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.example_destination import ExampleDestination
 from axosyslog_light.syslog_ng_config.statements.destinations.file_destination import FileDestination
@@ -275,6 +276,13 @@ class SyslogNgConfig(object):
         # syslog-ng disconnects; do_put() otherwise blocks waiting for DoneWriting.
         self.teardown.register_process_stop_callback(arrow_flight_destination.stop_listener)
         return arrow_flight_destination
+
+    def create_bigquery_destination(self, **options):
+        bigquery_destination = BigQueryDestination(self._stats_handler, self._prometheus_stats_handler, **options)
+        # Register after syslog_ng.stop so the listener is shut down only after
+        # syslog-ng disconnects; the AppendRows handler otherwise blocks.
+        self.teardown.register_process_stop_callback(bigquery_destination.stop_listener)
+        return bigquery_destination
 
     def create_clickhouse_destination(self, **options):
         clickhouse_destination = ClickhouseDestination(self._stats_handler, self._prometheus_stats_handler, **options)

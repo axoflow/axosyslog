@@ -56,6 +56,7 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/renderer.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statement_group.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/arrow_flight_destination.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/bigquery_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/destination_driver.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/example_destination.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/destinations/file_destination.py \
