@@ -170,7 +170,8 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
 
       if (is_zero_length_match(ovector))
         {
-          g_string_append_len(new_value, state->lhs_str + pos, 1);
+          if (pos < state->lhs_str_len)
+            g_string_append_len(new_value, state->lhs_str + pos, 1);
           pos++;
         }
       else
@@ -182,7 +183,8 @@ _replace_matches(const FilterXFuncRegexpSubst *self, FilterXReMatchState *state)
   while ((pos < state->lhs_str_len) && check_flag(self->flags, FILTERX_FUNC_REGEXP_SUBST_FLAG_GLOBAL));
 
   // add the rest of the string
-  g_string_append_len(new_value, state->lhs_str + pos, state->lhs_str_len - pos);
+  if (pos < state->lhs_str_len)
+    g_string_append_len(new_value, state->lhs_str + pos, state->lhs_str_len - pos);
 
   // handle the very last of zero lenght matches
   if (is_zero_length_match(ovector))

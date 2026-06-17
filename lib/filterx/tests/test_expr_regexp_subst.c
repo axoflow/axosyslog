@@ -389,6 +389,32 @@ Test(filterx_expr_regexp_subst, regexp_subst_group_limited_digits_and_zero_prefi
   filterx_object_unref(result);
 }
 
+Test(filterx_expr_regexp_subst, empty_subject_empty_match_pattern)
+{
+  FilterXFuncRegexpSubstOpts opts = {};
+  FilterXObject *result = _sub("\\s*", "", "", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(result), "");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp_subst, empty_subject_empty_match_pattern_global)
+{
+  FilterXFuncRegexpSubstOpts opts = {.global = TRUE};
+  FilterXObject *result = _sub("\\s*", "", "", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  cr_assert_str_eq(filterx_string_get_value_as_cstr(result), "");
+  filterx_object_unref(result);
+}
+
+Test(filterx_expr_regexp_subst, empty_subject_dotstar_pattern_global)
+{
+  FilterXFuncRegexpSubstOpts opts = {.global = TRUE};
+  FilterXObject *result = _sub(".*", "X", "", opts);
+  cr_assert(filterx_object_is_type(result, &FILTERX_TYPE_NAME(string)));
+  filterx_object_unref(result);
+}
+
 static void
 setup(void)
 {
