@@ -207,6 +207,16 @@ _variable_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+static void
+_variable_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXVariableExpr *self = (FilterXVariableExpr *) s;
+  if (self->handle_is_macro)
+    s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  else
+    s->static_type = filterx_type_env_get(env, self->handle);
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
@@ -243,6 +253,7 @@ filterx_variable_expr_new(const gchar *name, FilterXVariableType variable_type)
   self->super.walk_children = _variable_walk;
   self->super.free_fn = _free;
   self->super.eval = _eval_variable;
+  self->super.infer_types = _variable_infer_types;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _variable_compile;
 #endif
