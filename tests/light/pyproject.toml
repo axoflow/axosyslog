@@ -28,6 +28,7 @@ filelock = "^3.20.3"
 requests = "^2.32.3"
 clickhouse-connect = "^0.8.18"
 pyarrow = ">=14.0.0"
+google-cloud-bigquery-storage = "^2.39.0"
 tenacity = "^9.0.0"
 virtualenv = "^20.36.1"
 

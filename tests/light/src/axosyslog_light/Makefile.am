@@ -15,6 +15,8 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/common/tests/test_blocking.py \
 	tests/light/src/axosyslog_light/driver_io/arrow_flight/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/arrow_flight/arrow_flight_io.py \
+	tests/light/src/axosyslog_light/driver_io/bigquery/__init__.py \
+	tests/light/src/axosyslog_light/driver_io/bigquery/bigquery_io.py \
 	tests/light/src/axosyslog_light/driver_io/file/file_io.py \
 	tests/light/src/axosyslog_light/driver_io/file/__init__.py \
 	tests/light/src/axosyslog_light/driver_io/file/tests/__init__.py \
