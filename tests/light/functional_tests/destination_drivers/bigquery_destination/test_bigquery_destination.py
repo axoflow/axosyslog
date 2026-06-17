@@ -47,3 +47,27 @@ def test_bigquery_destination_single_message(config, syslog_ng, port_allocator):
     assert bigquery_destination.read_logs() == [{"message": custom_msg}]
     assert bigquery_destination.get_stream_count() == 1
     assert bigquery_destination.get_create_count() == 1
+
+
+def test_bigquery_destination_multiple_messages(config, syslog_ng, port_allocator):
+    num_messages = 10
+    custom_msg = f"test message {uuid.uuid4()}"
+    generator_source = config.create_example_msg_generator_source(num=num_messages, template=stringify(custom_msg))
+
+    options = {
+        **BIGQUERY_OPTIONS,
+        "batch-lines": num_messages,
+        "batch-timeout": 10000,
+    }
+    bigquery_destination = config.create_bigquery_destination(port=port_allocator(), **options)
+    config.create_logpath(statements=[generator_source, bigquery_destination])
+
+    bigquery_destination.start_listener()
+    syslog_ng.start(config)
+
+    assert wait_until_true(lambda: bigquery_destination.get_stats().get("written", 0) == num_messages)
+    assert bigquery_destination.get_stats()["dropped"] == 0
+    assert bigquery_destination.get_row_count() == num_messages
+    assert bigquery_destination.read_logs() == [{"message": custom_msg}] * num_messages
+    assert bigquery_destination.get_batch_count() == 1
+    assert bigquery_destination.get_stream_count() == 1
