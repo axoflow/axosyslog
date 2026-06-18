@@ -320,7 +320,7 @@ _find_matching_case(FilterXSwitch *self, FilterXObject *selector, GError **error
       FilterXSwitchCase *switch_case = (FilterXSwitchCase *) g_ptr_array_index(self->cases, i);
       if (switch_case->match(switch_case, selector, error))
         return switch_case;
-      if (error)
+      if (*error)
         return NULL;
     }
   return NULL;
