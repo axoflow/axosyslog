@@ -72,7 +72,7 @@ typedef gpointer FilterXJITCtx;
 
 struct _FilterXEvalContext;
 
-typedef FilterXObject *(*FilterXJITExecFunc)(struct _FilterXEvalContext *ctx);
+typedef FilterXObject *(*FilterXJITExecFunc)(struct _FilterXEvalContext *ctx, gpointer *ptr_table);
 
 
 FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError **error);
