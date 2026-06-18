@@ -176,7 +176,8 @@ static inline LLVMTypeRef
 _block_function_type(FilterXJIT *self)
 {
   LLVMTypeRef ptr_ty = LLVMPointerTypeInContext(self->ctx, 0);
-  LLVMTypeRef params[] = { ptr_ty };
+  /* (FilterXEvalContext *ctx, gpointer *ptr_table) */
+  LLVMTypeRef params[] = { ptr_ty, ptr_ty };
   return LLVMFunctionType(ptr_ty, params, G_N_ELEMENTS(params), FALSE);
 }
 

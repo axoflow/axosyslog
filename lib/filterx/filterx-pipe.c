@@ -34,6 +34,7 @@ typedef struct _LogFilterXPipe
   FilterXExpr *block;
   FilterXScopeVariableLayout *scope_var_layout;
   FilterXJITExecFunc jit_exec;
+  gpointer *jit_ptr_table;
 } LogFilterXPipe;
 
 static inline const gchar *
@@ -150,7 +151,7 @@ log_filterx_pipe_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_o
               log_pipe_location_tag(s),
               evt_tag_msg_reference(msg));
 
-    eval_res = filterx_eval_exec(&eval_context, self->block, self->jit_exec);
+    eval_res = filterx_eval_exec(&eval_context, self->block, self->jit_exec, self->jit_ptr_table);
 
     msg_trace("<<<<<< filterx rule evaluation result",
               filterx_format_eval_result(eval_res),
