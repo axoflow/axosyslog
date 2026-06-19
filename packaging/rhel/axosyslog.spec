@@ -76,6 +76,7 @@ BuildRequires: glib2-devel
 BuildRequires: ivykis-devel
 BuildRequires: json-c-devel
 BuildRequires: llvm-devel
+BuildRequires: clang
 BuildRequires: libcap-devel
 %if 0%{?rhel} <= 8
 BuildRequires: libdbi-devel
@@ -144,7 +145,6 @@ BuildRequires: grpc-devel
 %endif
 
 %if %{with bpf}
-BuildRequires: clang
 BuildRequires: libbpf-devel
 BuildRequires: bpftool
 %endif
