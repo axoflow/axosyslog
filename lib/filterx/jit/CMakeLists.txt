@@ -9,6 +9,12 @@ set(FILTERX_JIT_HEADERS
 set(FILTERX_JIT_SOURCES
     filterx/jit/jit.c
     filterx/jit/bc-loader.c
+    filterx/jit/jit-runtime.c
     filterx/jit/ffi.c
+    PARENT_SCOPE
+    )
+
+set(FILTERX_JIT_BITCODE_SOURCES
+    jit/jit-runtime.c
     PARENT_SCOPE
     )
