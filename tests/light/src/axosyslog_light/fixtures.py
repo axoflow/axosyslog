@@ -287,11 +287,15 @@ def pytest_runtest_setup(item):
     os.chdir(testcase_dir)
 
 
+_base_number_of_open_fds = None
+
+
 def pytest_sessionstart(session):
     if xdist.is_xdist_controller(session):
         return
 
-    base_number_of_open_fds = len(psutil.Process().open_files())
+    global _base_number_of_open_fds
+    _base_number_of_open_fds = len(psutil.Process().open_files())
 
     with get_session_data() as session_data:
         testrunuid = os.environ.get("PYTEST_XDIST_TESTRUNUID", uuid.uuid4().hex)  # generate one if not running in xdist
@@ -317,7 +321,6 @@ def pytest_sessionstart(session):
 
         session_data["session_started"] = True
         session_data["reports_dir"] = reports_dir
-        session_data["base_number_of_open_fds"] = base_number_of_open_fds
 
 
 def _write_testsuite_summary(session):
@@ -360,11 +363,9 @@ def light_extra_files(target_dir):
 
 @pytest.fixture(autouse=True)
 def setup(request):
-    with get_session_data() as session_data:
-        base_number_of_open_fds = session_data["base_number_of_open_fds"]
     number_of_open_fds = len(psutil.Process().open_files())
     if request.config.getoption("--run-under") != "valgrind":
-        assert base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
+        assert _base_number_of_open_fds + 1 == number_of_open_fds, "Previous testcase has unclosed opened fds"
     else:
         blocking.DEFAULT_TIMEOUT = 60
         blocking.POLL_FREQ = 500
