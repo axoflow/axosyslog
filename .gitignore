@@ -47,6 +47,7 @@ debian/*.log
 debian/autoreconf.*
 build/
 tests/light/reports
+tests/light/*.session.pickle
 tags
 TAGS
 GPATH
