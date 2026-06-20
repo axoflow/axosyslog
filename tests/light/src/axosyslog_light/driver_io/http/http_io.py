@@ -27,10 +27,18 @@ import requests
 
 
 class HttpIO():
-    def __init__(self, port: typing.Optional[int] = None, use_tls: bool = False) -> None:
+    def __init__(self, port: typing.Optional[int] = None, use_tls: bool = False, path: str = "/", host: str = "localhost") -> None:
         if port is None:
             port = 443 if use_tls else 80
-        self.__url = f"{'https' if use_tls else 'http'}://localhost:{port}/"
+        if not path.startswith("/"):
+            path = "/" + path
+        self.__base = f"{'https' if use_tls else 'http'}://{host}:{port}"
+        self.__url = f"{self.__base}{path}"
+
+    def __resolve_url(self, path: typing.Optional[str]) -> str:
+        if path is None:
+            return self.__url
+        return f"{self.__base}/{path.lstrip('/')}"
 
     def write_message(self, message: str) -> None:
         response = requests.post(self.__url, data=message)
@@ -41,3 +49,9 @@ class HttpIO():
         response = requests.post(self.__url, json=message)
         if response.status_code != 200:
             raise Exception(f"Failed to send message: {response.status_code} {response.text}")
+
+    def post(self, data: typing.Optional[str] = None, path: typing.Optional[str] = None) -> requests.Response:
+        return requests.post(self.__resolve_url(path), data=data)
+
+    def get(self, path: typing.Optional[str] = None) -> requests.Response:
+        return requests.get(self.__resolve_url(path))
