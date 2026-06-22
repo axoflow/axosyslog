@@ -94,8 +94,14 @@ _emit_call(FilterXJIT *jit, FilterXJITFFICall c, FilterXIRValue *args, unsigned 
 FilterXIRValue
 fx_jit_emit_const_ptr(FilterXJIT *jit, gconstpointer p)
 {
-  LLVMTypeRef ptr_sized_int = LLVMIntTypeInContext(jit->ctx, sizeof(gconstpointer) * 8);
-  return LLVMConstIntToPtr(LLVMConstInt(ptr_sized_int, (guintptr) p, FALSE), jit->ffi.ptr_ty);
+  guint idx = jit->current_block_ptrs->len;
+  gpointer pp = (gpointer) p;
+  g_array_append_val(jit->current_block_ptrs, pp);
+
+  LLVMValueRef index = LLVMConstInt(jit->ffi.i64_ty, idx, FALSE);
+  LLVMValueRef slot = LLVMBuildInBoundsGEP2(jit->ir, jit->ffi.ptr_ty,
+                                            jit->current_ptr_table_param, &index, 1, "fx_ptr_slot");
+  return LLVMBuildLoad2(jit->ir, jit->ffi.ptr_ty, slot, "fx_ptr");
 }
 
 FilterXIRValue

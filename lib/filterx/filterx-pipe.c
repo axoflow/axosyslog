@@ -115,6 +115,7 @@ _setup_jit_exec(LogPipe *s)
     }
 
   self->jit_exec = (FilterXJITExecFunc) addr;
+  self->jit_ptr_table = filterx_jit_get_block_ptr_table(jit, _jit_block_name(self, block_name, G_N_ELEMENTS(block_name)));
   return TRUE;
 }
 
