@@ -50,6 +50,9 @@ struct _FilterXJIT
   FilterXIRValue current_ir_block;
   LLVMMetadataRef current_debug_info_block;
   FilterXIRValue current_eval_context;
+  LLVMValueRef current_ptr_table_param;
+  GArray *current_block_ptrs;
+  gchar *current_block_name;
 
   FilterXIRValue current_block_variables;
   guint32 current_block_variables_size;
@@ -69,6 +72,8 @@ struct _FilterXJIT
     LLVMMemoryBufferRef libfilterx_bc;
     GPtrArray *pending_blocks;
   } compile;
+
+  GHashTable *block_tables;
 };
 
 typedef struct _FilterXJITPendingBlock
