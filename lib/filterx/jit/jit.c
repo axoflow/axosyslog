@@ -114,6 +114,21 @@ _optimize_transform(gpointer s, LLVMOrcThreadSafeModuleRef *thr_mod, LLVMOrcMate
   return LLVMOrcThreadSafeModuleWithModuleDo(*thr_mod, _optimize_module, s);
 }
 
+static gboolean
+_preoptimize_libfilterx(FilterXJIT *self, GError **error)
+{
+  if (!self->libfilterx)
+    return TRUE;
+
+  LLVMErrorRef err = _optimize_module(self, self->libfilterx);
+  if (err)
+    {
+      _llvm_error_to_fxjit_error(err, error);
+      return FALSE;
+    }
+  return TRUE;
+}
+
 FilterXIRBuilder
 filterx_jit_get_ir_builder(FilterXJIT *self)
 {
@@ -871,6 +886,9 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
     goto error;
 
   _setup_optimizations(self);
+
+  if (!_preoptimize_libfilterx(self, error))
+    goto error;
 
   self->compile.libfilterx_bc = LLVMWriteBitcodeToMemoryBuffer(self->libfilterx);
 
