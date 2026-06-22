@@ -361,10 +361,7 @@ filterx_eval_exec(FilterXEvalContext *context, FilterXExpr *expr, FilterXJITExec
 
   FilterXObject *res = NULL;
   if (jit_exec)
-    {
-      FilterXJITExecState jit_exec_state = {0};
-      res = jit_exec(&jit_exec_state);
-    }
+    res = jit_exec(context);
   else
     res = filterx_expr_eval(expr);
 

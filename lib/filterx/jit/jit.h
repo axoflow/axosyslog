@@ -68,12 +68,9 @@ typedef guint64 FilterXJITAddress;
 typedef gpointer FilterXJITCtx;
 #endif
 
-typedef struct _FilterXJITExecState
-{
-  guint8 todo;
-} FilterXJITExecState;
+struct _FilterXEvalContext;
 
-typedef FilterXObject *(*FilterXJITExecFunc)(FilterXJITExecState *state);
+typedef FilterXObject *(*FilterXJITExecFunc)(struct _FilterXEvalContext *ctx);
 
 
 FilterXJIT *filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError **error);
@@ -90,6 +87,8 @@ void filterx_jit_ir_set_insert_point_to_sequence_tail(FilterXJIT *self, FilterXI
 void filterx_jit_ir_add_sequence_to_block(FilterXJIT *self, FilterXIRSequence seq, FilterXIRValue block);
 FilterXIRSequence filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, const gchar *seq_name,
                                                            FilterXIRValue block);
+
+FilterXIRValue filterx_jit_ir_get_eval_context(FilterXJIT *self);
 
 void filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column);
 

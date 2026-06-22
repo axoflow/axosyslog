@@ -183,4 +183,83 @@ set(FILTERX_SOURCES
     PARENT_SCOPE
     )
 
+set(FILTERX_BITCODE_SOURCES
+    ${FILTERX_JIT_BITCODE_SOURCES}
+    expr-arithmetic-operators.c
+    expr-assign.c
+    expr-boolalg.c
+    expr-break.c
+    expr-comparison.c
+    expr-compound.c
+    expr-condition.c
+    expr-done.c
+    expr-drop.c
+    expr-function.c
+    expr-get-subscript.c
+    expr-getattr.c
+    expr-isset.c
+    expr-literal-container.c
+    expr-literal.c
+    expr-membership.c
+    expr-move.c
+    expr-null-coalesce.c
+    expr-plus-assign.c
+    expr-plus.c
+    expr-regexp-common.c
+    expr-regexp-search.c
+    expr-regexp-subst.c
+    expr-regexp.c
+    expr-set-subscript.c
+    expr-setattr.c
+    expr-string-operators.c
+    expr-switch.c
+    expr-template.c
+    expr-unset.c
+    expr-variable.c
+    filterx-expr.c
+    filterx-mapping.c
+    filterx-object.c
+    filterx-ref.c
+    filterx-scope.c
+    filterx-sequence.c
+    filterx-variable.c
+    filterx-weakrefs.c
+    object-dict.c
+    object-list.c
+    object-message-value.c
+    object-primitive.c
+    object-string.c
+    )
+
+if(SYSLOG_NG_ENABLE_JIT)
+  find_program(LLVM_CLANG clang HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
+  find_program(LLVM_LINK llvm-link HINTS ${LLVM_TOOLS_BINARY_DIR} REQUIRED)
+
+  set(FILTERX_BITCODE_UNITS "")
+  foreach(_src IN LISTS FILTERX_BITCODE_SOURCES)
+    set(_bc "${CMAKE_CURRENT_BINARY_DIR}/${_src}.bc")
+    get_filename_component(_bc_dir "${_bc}" DIRECTORY)
+    add_custom_command(
+      OUTPUT "${_bc}"
+      COMMAND ${CMAKE_COMMAND} -E make_directory "${_bc_dir}"
+      COMMAND ${LLVM_CLANG}
+              -D_GNU_SOURCE=1 -D_LARGEFILE64_SOURCE=1
+              "-I$<JOIN:$<TARGET_PROPERTY:syslog-ng,INCLUDE_DIRECTORIES>,;-I>"
+              -emit-llvm -O3 --no-warnings
+              -c "${CMAKE_CURRENT_SOURCE_DIR}/${_src}" -o "${_bc}"
+      DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/${_src}"
+      COMMAND_EXPAND_LISTS
+      VERBATIM)
+    list(APPEND FILTERX_BITCODE_UNITS "${_bc}")
+  endforeach()
+
+  add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/jit/libfilterx.bc"
+    COMMAND ${LLVM_LINK} -o "${CMAKE_CURRENT_BINARY_DIR}/jit/libfilterx.bc" ${FILTERX_BITCODE_UNITS}
+    DEPENDS ${FILTERX_BITCODE_UNITS}
+    VERBATIM)
+  add_custom_target(filterx-bitcode
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/jit/libfilterx.bc")
+endif()
+
 add_test_subdirectory(tests)

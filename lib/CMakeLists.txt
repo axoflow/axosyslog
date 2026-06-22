@@ -412,6 +412,23 @@ target_link_libraries(
 if(SYSLOG_NG_ENABLE_JIT)
   target_include_directories(syslog-ng SYSTEM PUBLIC ${LLVM_INCLUDE_DIRS})
   target_link_libraries(syslog-ng PUBLIC ${LLVM_LIBS})
+
+  add_custom_target(filterx-grammar-header
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/filterx/filterx-grammar.h")
+  add_dependencies(filterx-bitcode filterx-grammar-header)
+  add_dependencies(syslog-ng filterx-bitcode)
+
+  set(FILTERX_BITCODE_OBJECT "${CMAKE_CURRENT_BINARY_DIR}/filterx/jit/libfilterx-bc.o")
+  add_custom_command(
+    OUTPUT "${FILTERX_BITCODE_OBJECT}"
+    COMMAND ${CMAKE_LINKER} --relocatable --format=binary
+            -o "${FILTERX_BITCODE_OBJECT}" lib/filterx/jit/libfilterx.bc
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/filterx/jit/libfilterx.bc"
+    VERBATIM)
+  set_source_files_properties("${FILTERX_BITCODE_OBJECT}"
+    PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+  target_sources(syslog-ng PRIVATE "${FILTERX_BITCODE_OBJECT}")
 endif()
 
 set_target_properties(syslog-ng

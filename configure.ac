@@ -1912,12 +1912,17 @@ if test "x$enable_jit" = "xyes"; then
   fi
 
 elif test "x$enable_jit" = "xauto"; then
-  if test -n "$LLVM_CONFIG" -a -x "$LLVM_CONFIG"; then
-    enable_jit="yes"
-    AC_MSG_RESULT(yes)
-  else
-    enable_jit="no"
+  if test $ostype = "Darwin"; then
     AC_MSG_RESULT(no)
+    enable_jit="no"
+  else
+    if test -n "$LLVM_CONFIG" -a -x "$LLVM_CONFIG"; then
+      enable_jit="yes"
+      AC_MSG_RESULT(yes)
+    else
+      enable_jit="no"
+      AC_MSG_RESULT(no)
+    fi
   fi
 else
   enable_jit="no"
@@ -1936,6 +1941,18 @@ if test "$enable_jit" = "yes"; then
   CPPFLAGS="$CPPFLAGS $LLVM_CFLAGS"
   AC_CHECK_DECLS([LLVMOrcCreateNewThreadSafeContextFromLLVMContext], [], [], [[#include <llvm-c/Orc.h>]])
   CPPFLAGS="$CPPFLAGS_SAVE"
+
+  # clang and libllvm should have the same version, bitcode is not portable across different versions
+  llvm__bindir=`$LLVM_CONFIG --bindir`
+  LLVM_CLANG="$llvm__bindir/clang"
+  LLVM_LINK="$llvm__bindir/llvm-link"
+  AC_MSG_CHECKING([for clang and llvm-link in llvm-config's bindir])
+  if test -x "$LLVM_CLANG" -a -x "$LLVM_LINK"; then
+    AC_MSG_RESULT([$llvm__bindir])
+  else
+    AC_MSG_RESULT([no])
+    AC_MSG_ERROR([FilterX JIT requires clang and llvm-link in $llvm__bindir; install the clang version matching the LLVM toolchain version.])
+  fi
 else
   LLVM_CFLAGS=
   LLVM_CXXFLAGS=
@@ -2247,6 +2264,10 @@ else
   SYSLOGNG_LINK='$(LINK)'
 fi
 
+if test "$enable_jit" = "yes" -a "x$linking_mode" = "xmonolithic"; then
+  SYSLOGNG_LINK="$SYSLOGNG_LINK -Wl,--format=binary,lib/filterx/jit/libfilterx.bc,--format=default -Wl,--export-dynamic"
+fi
+
 if test "x$linking_mode" = "xdynamic"; then
 	SYSLOGNG_DEPS_LIBS="$LIBS $BASE_LIBS $GLIB_LIBS $EVTLOG_LIBS $SECRETSTORAGE_LIBS $RESOLV_LIBS $LIBCAP_LIBS $PCRE2_LIBS $REGEX_LIBS $LLVM_LIBS $DL_LIBS $LIBUNWIND_LIBS $JSON_LIBS $OPENSSL_LIBS"
 
@@ -2471,6 +2492,8 @@ AC_SUBST(LIBBPF_INCLUDE)
 AC_SUBST(LLVM_CFLAGS)
 AC_SUBST(LLVM_CXXFLAGS)
 AC_SUBST(LLVM_LIBS)
+AC_SUBST(LLVM_CLANG)
+AC_SUBST(LLVM_LINK)
 
 AC_SUBST(CURRDATE)
 AC_SUBST(RELEASE_TAG)
