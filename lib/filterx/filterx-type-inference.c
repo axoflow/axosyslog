@@ -359,8 +359,8 @@ _walk_to_root_variable(FilterXExpr *expr, FilterXVariableHandle *handle_out, gin
 }
 
 /* Maximum getattr chain depth tracked in the attr-path map.
- * Covers chains up to variable.k0.k1.k2.k3 (4 attribute hops from the root). */
-#define FILTERX_ATTR_CHAIN_MAX 4
+ * Covers chains up to variable.k0.k1.k2.k3...k15 (16 attribute hops from the root). */
+#define FILTERX_ATTR_CHAIN_MAX 16
 
 /* Walk a purely-getattr chain to its root variable, collecting attribute names
  * top-down into keys_out[0..n_keys_out-1].  Returns FALSE for subscript hops,

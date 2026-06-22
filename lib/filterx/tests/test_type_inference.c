@@ -463,53 +463,49 @@ Test(filterx_type_inference, one_sided_branch_write_collapses_element_to_unknown
   filterx_expr_unref(block);
 }
 
+/* Build a fresh getattr chain d.keys[0].keys[1]...keys[n-1]. */
+static FilterXExpr *
+_build_attr_chain(const gchar **keys, gint n)
+{
+  FilterXExpr *expr = filterx_floating_variable_expr_new("d");
+  for (gint i = 0; i < n; i++)
+    expr = filterx_getattr_new(expr, filterx_string_new(keys[i], -1));
+  return expr;
+}
+
 Test(filterx_type_inference, incremental_build_past_depth_cap_is_safe)
 {
-  /* Build a chain one level past the depth cap. The within-cap levels still resolve to DICT;
-   * the write past the cap is a safe no-op (no crash, no false propagation). */
-  FilterXExpr *assign_meta = filterx_assign_new(
-                               filterx_floating_variable_expr_new("meta"),
-                               filterx_literal_dict_new(NULL));
-  FilterXExpr *set_a = filterx_setattr_new(
-                         filterx_floating_variable_expr_new("meta"),
-                         filterx_string_new("a", -1),
-                         filterx_literal_dict_new(NULL));
-  FilterXExpr *set_ab = filterx_setattr_new(
-                          filterx_getattr_new(filterx_floating_variable_expr_new("meta"),
-                                              filterx_string_new("a", -1)),
-                          filterx_string_new("b", -1),
-                          filterx_literal_dict_new(NULL));
-  FilterXExpr *set_abc = filterx_setattr_new(
-                           filterx_getattr_new(
-                             filterx_getattr_new(filterx_floating_variable_expr_new("meta"),
-                                                 filterx_string_new("a", -1)),
-                             filterx_string_new("b", -1)),
-                           filterx_string_new("c", -1),
-                           filterx_literal_dict_new(NULL));
-  /* This write lands past the depth cap: it must be a safe no-op. */
-  FilterXExpr *set_abcd = filterx_setattr_new(
-                            filterx_getattr_new(
-                              filterx_getattr_new(
-                                filterx_getattr_new(filterx_floating_variable_expr_new("meta"),
-                                                    filterx_string_new("a", -1)),
-                                filterx_string_new("b", -1)),
-                              filterx_string_new("c", -1)),
-                            filterx_string_new("d", -1),
-                            filterx_literal_dict_new(NULL));
+  /* Build a getattr chain far deeper than FILTERX_ATTR_CHAIN_MAX (16). Levels within the cap
+   * resolve to DICT; writes that land past the cap are safe no-ops (no crash, no false
+   * propagation). DEPTH is chosen comfortably past the cap so the test stays meaningful
+   * regardless of the exact cap value. */
+  enum { DEPTH = 20 };
+  gchar key_storage[DEPTH][8];
+  const gchar *keys[DEPTH];
+  for (gint i = 0; i < DEPTH; i++)
+    {
+      g_snprintf(key_storage[i], sizeof(key_storage[i]), "k%d", i);
+      keys[i] = key_storage[i];
+    }
 
-  FilterXExpr *read_abc = filterx_getattr_new(
-                            filterx_getattr_new(
-                              filterx_getattr_new(filterx_floating_variable_expr_new("meta"),
-                                                  filterx_string_new("a", -1)),
-                              filterx_string_new("b", -1)),
-                            filterx_string_new("c", -1));
+  FilterXExpr *block = filterx_compound_expr_new(TRUE);
+  filterx_compound_expr_add_ref(block, filterx_assign_new(
+                                  filterx_floating_variable_expr_new("d"),
+                                  filterx_literal_dict_new(NULL)));
+  /* d.k0 = {}; d.k0.k1 = {}; ... — the deepest writes land past the cap as no-ops. */
+  for (gint level = 0; level < DEPTH; level++)
+    filterx_compound_expr_add_ref(block, filterx_setattr_new(
+                                    _build_attr_chain(keys, level),
+                                    filterx_string_new(keys[level], -1),
+                                    filterx_literal_dict_new(NULL)));
 
-  FilterXExpr *block = filterx_compound_expr_new_va(TRUE, assign_meta, set_a, set_ab, set_abc,
-                                                    set_abcd, read_abc, NULL);
+  /* d.k0.k1.k2.k3 is well within the cap, so it still resolves. */
+  FilterXExpr *read = _build_attr_chain(keys, 4);
+  filterx_compound_expr_add_ref(block, read);
+
   block = _run(block);
 
-  /* meta.a.b.c is the level-3 element (within the depth-4 cap), so it still resolves. */
-  cr_assert_eq(filterx_static_type_kind(read_abc->static_type), FILTERX_STATIC_TYPE_DICT);
+  cr_assert_eq(filterx_static_type_kind(read->static_type), FILTERX_STATIC_TYPE_DICT);
   filterx_expr_unref(block);
 }
 
