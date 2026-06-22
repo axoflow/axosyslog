@@ -281,12 +281,16 @@ filterx_floating_variable_expr_new(const gchar *name)
   return filterx_variable_expr_new(name, FX_VAR_FLOATING);
 }
 
-FilterXVariableHandle
-filterx_variable_expr_get_handle(FilterXExpr *s)
+gboolean
+filterx_variable_expr_get_handle(FilterXExpr *s, FilterXVariableHandle *handle_out)
 {
+  if (!filterx_expr_is_variable(s))
+    return FALSE;
   FilterXVariableExpr *self = (FilterXVariableExpr *) s;
-
-  return self->handle;
+  if (self->handle_is_macro)
+    return FALSE;
+  *handle_out = self->handle;
+  return TRUE;
 }
 
 gboolean
