@@ -59,6 +59,8 @@ struct _FilterXJIT
   FilterXJITDebugInfo debug_info_mode;
   LLVMDIBuilderRef debug;
   gint debug_ir_text_memfd;
+  GString *debug_ir_text;
+  guint debug_ir_line;
 
   gboolean mod_finalized;
 
