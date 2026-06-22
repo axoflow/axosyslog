@@ -56,7 +56,7 @@ def set_config_for_dynamic_window(config, port_allocator, dynamic_window_size, l
     return config, network_source, network_destination
 
 
-def send_messages_with_loggen(loggen, network_source, active_connections, message_counter):
+def send_messages_with_loggen(loggen, network_source, active_connections, message_counter, client_port=0):
     loggen.start(
         LoggenStartParams(
             target=network_source.options["ip"],
@@ -65,6 +65,7 @@ def send_messages_with_loggen(loggen, network_source, active_connections, messag
             inet=True,
             active_connections=active_connections,
             number=message_counter,
+            client_port=client_port,
         ),
     )
     assert wait_until_true(lambda: loggen.get_sent_message_count() == message_counter * active_connections)
@@ -250,7 +251,7 @@ def test_static_window_increased_send(config, syslog_ng, port_allocator, loggen,
     window_size = 1000 / 10  # per connection
     for msg_counter in range(10, 100 + 10, 10):
         # sent msgs in order: 10, 20, 30 ... 100
-        send_messages_with_loggen(loggen, network_source, 1, msg_counter)
+        send_messages_with_loggen(loggen, network_source, 1, msg_counter, client_port=port_allocator())
 
         sum_msg_counter += msg_counter
         sum_input_window_capacity.append(window_size)
@@ -277,7 +278,7 @@ def test_dynamic_window_increased_send(config, syslog_ng, port_allocator, loggen
     dynamic_window_for_all_connections = dynamic_window_size * 10
     for msg_counter in range(100, 1000 + 100, 100):
         # sent msgs in order: 100, 200, 300 ... 1000
-        send_messages_with_loggen(loggen, network_source, 1, msg_counter)
+        send_messages_with_loggen(loggen, network_source, 1, msg_counter, client_port=port_allocator())
 
         sum_msg_counter += msg_counter
         if sum_msg_counter > dynamic_window_for_all_connections:
