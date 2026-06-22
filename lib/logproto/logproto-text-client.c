@@ -174,19 +174,8 @@ log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len
 }
 
 
-/*
- * log_proto_text_client_post:
- * @msg: formatted log message to send (this might be consumed by this function)
- * @msg_len: length of @msg
- * @consumed: pointer to a gboolean that gets set if the message was consumed by this function
- * @error: error information, if any
- *
- * This function posts a message to the log transport, performing buffering
- * of partially sent data if needed. The return value indicates whether we
- * successfully sent this message, or if it should be resent by the caller.
- **/
 static LogProtoStatus
-log_proto_text_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+_post_single(LogProtoClient *s, guchar *msg, gsize msg_len, gboolean *consumed)
 {
   LogProtoTextClient *self = (LogProtoTextClient *) s;
 
@@ -217,6 +206,23 @@ log_proto_text_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, g
 
   *consumed = TRUE;
   return log_proto_text_client_submit_write(s, msg, msg_len, (GDestroyNotify) g_free, -1);
+}
+
+/*
+ * log_proto_text_client_post:
+ * @msg: formatted log message to send (this might be consumed by this function)
+ * @msg_len: length of @msg
+ * @consumed: pointer to a gboolean that gets set if the message was consumed by this function
+ * @error: error information, if any
+ *
+ * This function posts a message to the log transport, performing buffering
+ * of partially sent data if needed. The return value indicates whether we
+ * successfully sent this message, or if it should be resent by the caller.
+ **/
+static LogProtoStatus
+log_proto_text_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+{
+  return _post_single(s, msg, msg_len, consumed);
 }
 
 void
