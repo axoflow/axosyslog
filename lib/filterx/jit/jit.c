@@ -41,6 +41,7 @@
 #include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/DebugInfo.h>
 #include <llvm-c/Support.h>
+#include <llvm-c/BitWriter.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -272,11 +273,19 @@ _init_variables(FilterXJIT *self, FilterXScopeVariableLayout *layout)
     }
 }
 
+static void _capture_block_for_parallel_compile(FilterXJIT *self);
+
 void
 filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name, FilterXScopeVariableLayout *layout)
 {
   g_assert(!self->mod_finalized);
   g_assert(!self->current_ir_block);
+
+  g_assert(!self->mod);
+  self->mod = LLVMModuleCreateWithNameInContext(self->mod_name, self->ctx);
+  LLVMSetTarget(self->mod, LLVMGetTarget(self->libfilterx));
+  LLVMSetDataLayout(self->mod, LLVMGetDataLayoutStr(self->libfilterx));
+  filterx_jit_ffi_init(self);
 
   gchar *fqn = _create_fully_qualified_block_name(self, block_name);
   self->current_ir_block = LLVMAddFunction(self->mod, fqn, _block_function_type(self));
@@ -347,6 +356,8 @@ filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result)
   self->current_eval_context = NULL;
   self->current_debug_info_block = NULL;
   LLVMSetCurrentDebugLocation2(self->ir, NULL);
+
+  _capture_block_for_parallel_compile(self);
 }
 
 FilterXIRValue
@@ -491,6 +502,19 @@ _emit_llvm_ir_debug_info(FilterXJIT *self, GError **error)
 }
 
 #endif
+
+static void
+_capture_block_for_parallel_compile(FilterXJIT *self)
+{
+  gchar mod_name[256];
+  g_snprintf(mod_name, sizeof(mod_name), "%s#%u", self->mod_name, self->compile.pending_blocks->len);
+
+  FilterXJITPendingBlock *pb = _pending_block_new(self->mod, mod_name);
+  g_ptr_array_add(self->compile.pending_blocks, pb);
+
+  LLVMDisposeModule(self->mod);
+  self->mod = NULL;
+}
 
 static gboolean
 _link_libfilterx(FilterXJIT *self, GError **error)
@@ -702,15 +726,11 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   self->ctx = LLVMOrcThreadSafeContextGetContext(self->ts_ctx);
 #endif
 
-  self->mod = LLVMModuleCreateWithNameInContext(self->mod_name, self->ctx);
   self->ir = LLVMCreateBuilderInContext(self->ctx);
 
   self->libfilterx = filterx_jit_load_libfilterx_bitcode(self->ctx, error);
   if (!self->libfilterx)
     goto error;
-
-  LLVMSetTarget(self->mod, LLVMGetTarget(self->libfilterx));
-  LLVMSetDataLayout(self->mod, LLVMGetDataLayoutStr(self->libfilterx));
 
   LLVMOrcLLJITBuilderRef jit_builder = LLVMOrcCreateLLJITBuilder();
   _setup_debug_info(self, jit_builder);
@@ -729,7 +749,7 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
 
   _setup_optimizations(self);
 
-  filterx_jit_ffi_init(self);
+  /* the FFI is declared per block module in filterx_jit_ir_add_new_block */
 
   msg_trace("FilterXJIT created", evt_tag_str("module_name", self->mod_name));
 
@@ -763,7 +783,7 @@ filterx_jit_free(FilterXJIT *self)
     LLVMDisposeTargetMachine(self->tm);
   LLVMDisposeBuilder(self->ir);
   self->ctx = NULL;
-  if (!self->mod_finalized)
+  if (self->mod && !self->mod_finalized)
     LLVMDisposeModule(self->mod);
   if (self->libfilterx)
     LLVMDisposeModule(self->libfilterx);
