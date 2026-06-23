@@ -282,7 +282,7 @@ _init_variables(FilterXJIT *self, FilterXScopeVariableLayout *layout)
     }
 }
 
-static void _capture_block_for_parallel_compile(FilterXJIT *self);
+static void _capture_block_for_dedup(FilterXJIT *self);
 static LLVMTargetMachineRef _create_target_machine(FilterXJIT *self, GError **error);
 
 static void
@@ -395,7 +395,7 @@ filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result)
   self->current_debug_info_block = NULL;
   LLVMSetCurrentDebugLocation2(self->ir, NULL);
 
-  _capture_block_for_parallel_compile(self);
+  _capture_block_for_dedup(self);
 }
 
 FilterXIRValue
@@ -538,7 +538,7 @@ _emit_block_llvm_ir_debug_info(FilterXJIT *self, GError **error)
 #endif
 
 static void
-_capture_block_for_parallel_compile(FilterXJIT *self)
+_capture_block_for_dedup(FilterXJIT *self)
 {
   guint nptrs = self->current_block_ptrs->len;
   gpointer *table = g_new(gpointer, nptrs ? nptrs : 1);
@@ -546,27 +546,59 @@ _capture_block_for_parallel_compile(FilterXJIT *self)
     memcpy(table, self->current_block_ptrs->data, nptrs * sizeof(gpointer));
   g_hash_table_insert(self->block_tables, g_strdup(self->current_block_name), table);
 
-#if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
-  if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
+  gchar *fqn = _create_fully_qualified_block_name(self, self->current_block_name);
+  LLVMValueRef fn = LLVMGetNamedFunction(self->mod, fqn);
+
+  /* code-only identity: strip debug info and neutralize the name on a clone, then hash that */
+  LLVMModuleRef canon_mod = LLVMCloneModule(self->mod);
+  LLVMStripModuleDebugInfo(canon_mod);
+  LLVMSetValueName2(LLVMGetNamedFunction(canon_mod, fqn), "FXB", 3);
+  LLVMMemoryBufferRef canon = LLVMWriteBitcodeToMemoryBuffer(canon_mod);
+  gchar *full = g_compute_checksum_for_data(G_CHECKSUM_SHA256,
+                                            (const guchar *) LLVMGetBufferStart(canon),
+                                            LLVMGetBufferSize(canon));
+  LLVMDisposeMemoryBuffer(canon);
+  LLVMDisposeModule(canon_mod);
+  g_free(fqn);
+  full[32] = '\0'; /* 128-bit content hash is plenty (in-memory, one config generation) */
+
+  gchar *symbol = g_strdup_printf("__fx_block_%s", full);
+  g_hash_table_insert(self->dedup.block_symbol, g_strdup(self->current_block_name), g_strdup(symbol));
+  self->dedup.total++;
+
+  gboolean unique = !g_hash_table_contains(self->dedup.seen_hashes, full);
+  if (unique)
     {
-      GError *derr = NULL;
-      if (!_emit_block_llvm_ir_debug_info(self, &derr))
+      g_hash_table_add(self->dedup.seen_hashes, g_strdup(full));
+      self->dedup.unique++;
+
+      /* representative: name it with its content symbol, attach the IR-dump debug info if requested */
+      LLVMSetValueName2(fn, symbol, strlen(symbol));
+#if FILTERX_JIT_DEBUG_INFO_LLVM_IR_SUPPORTED
+      if (self->debug_info_mode == FILTERX_JIT_DEBUG_INFO_LLVM_IR)
         {
-          msg_error("FilterX JIT: failed to emit LLVM IR debug info",
-                    evt_tag_str("error", derr ? derr->message : "unknown"));
-          g_clear_error(&derr);
+          GError *derr = NULL;
+          if (!_emit_block_llvm_ir_debug_info(self, &derr))
+            {
+              msg_error("FilterX JIT: failed to emit LLVM IR debug info",
+                        evt_tag_str("error", derr ? derr->message : "unknown"));
+              g_clear_error(&derr);
+            }
         }
-    }
 #endif
+    }
 
   if (self->debug)
     LLVMDIBuilderFinalize(self->debug);
 
-  gchar mod_name[256];
-  g_snprintf(mod_name, sizeof(mod_name), "%s#%u", self->mod_name, self->compile.pending_blocks->len);
+  if (unique)
+    {
+      FilterXJITPendingBlock *pb = _pending_block_new(self->mod, symbol);
+      g_ptr_array_add(self->compile.pending_blocks, pb);
+    }
 
-  FilterXJITPendingBlock *pb = _pending_block_new(self->mod, mod_name);
-  g_ptr_array_add(self->compile.pending_blocks, pb);
+  g_free(full);
+  g_free(symbol);
 
   if (self->debug)
     {
@@ -747,6 +779,11 @@ filterx_jit_finalize(FilterXJIT *self, GError **error)
   if (self->mod_finalized)
     return TRUE;
 
+  msg_debug("FilterX JIT block deduplication",
+            evt_tag_int("blocks", self->dedup.total),
+            evt_tag_int("unique_compiled", self->dedup.unique),
+            evt_tag_int("deduped_away", self->dedup.total - self->dedup.unique));
+
   if (!_finalize_parallel(self, error))
     return FALSE;
 
@@ -768,13 +805,17 @@ filterx_jit_lookup(FilterXJIT *self, const gchar *block_name, GError **error)
   if (!self->mod_finalized)
     return 0;
 
-  gchar *fqn = _create_fully_qualified_block_name(self, block_name);
-  msg_trace("FilterXJIT lookup", evt_tag_str("block", fqn), evt_tag_str("module_name", self->mod_name));
+  const gchar *symbol = g_hash_table_lookup(self->dedup.block_symbol, block_name);
+  if (!symbol)
+    {
+      g_set_error(error, 0, 0, "no compiled symbol recorded for block '%s'", block_name);
+      return 0;
+    }
+
+  msg_trace("FilterXJIT lookup", evt_tag_str("block", symbol), evt_tag_str("module_name", self->mod_name));
 
   FilterXJITAddress fx_block_addr = 0;
-  LLVMErrorRef err = LLVMOrcLLJITLookup(self->j, &fx_block_addr, fqn);
-  g_free(fqn);
-
+  LLVMErrorRef err = LLVMOrcLLJITLookup(self->j, &fx_block_addr, symbol);
   if (err)
     {
       _llvm_error_to_fxjit_error(err, error);
@@ -894,6 +935,8 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   self->compile.pending_blocks = g_ptr_array_new_with_free_func((GDestroyNotify) _pending_block_free);
   self->current_block_ptrs = g_array_new(FALSE, FALSE, sizeof(gpointer));
   self->block_tables = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  self->dedup.block_symbol = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  self->dedup.seen_hashes = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
 
 #if SYSLOG_NG_HAVE_DECL_LLVMORCCREATENEWTHREADSAFECONTEXTFROMLLVMCONTEXT
   self->ctx = LLVMContextCreate();
@@ -985,6 +1028,10 @@ filterx_jit_free(FilterXJIT *self)
   g_free(self->current_block_name);
   if (self->block_tables)
     g_hash_table_destroy(self->block_tables);
+  if (self->dedup.block_symbol)
+    g_hash_table_destroy(self->dedup.block_symbol);
+  if (self->dedup.seen_hashes)
+    g_hash_table_destroy(self->dedup.seen_hashes);
 
   g_free(self->mod_name);
   g_free(self);

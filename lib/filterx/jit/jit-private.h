@@ -74,6 +74,14 @@ struct _FilterXJIT
   } compile;
 
   GHashTable *block_tables;
+
+  struct
+  {
+    GHashTable *block_symbol;
+    GHashTable *seen_hashes;
+    guint total;
+    guint unique;
+  } dedup;
 };
 
 typedef struct _FilterXJITPendingBlock
