@@ -341,7 +341,7 @@ def test_fill_dynamic_window_for_all_source_connections(config, syslog_ng, port_
     # phase 2: send additional messages and check that the new connections are rejected
     assert not syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
     send_messages_with_loggen(loggen, network_source, 1, 1)
-    assert syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
+    assert syslog_ng.wait_for_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
 
     network_destination.start_listener()
     wait_for_sum_prometheus_metric_values(
