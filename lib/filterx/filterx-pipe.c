@@ -209,6 +209,7 @@ log_filterx_pipe_new(FilterXExpr *block, GlobalConfig *cfg)
   LogFilterXPipe *self = g_new0(LogFilterXPipe, 1);
 
   log_pipe_init_instance(&self->super, cfg);
+  self->super.plugin_name = g_strdup("filterx");
   self->super.flags = (self->super.flags | PIF_CONFIG_RELATED);
   self->super.init = log_filterx_pipe_init;
   self->super.deinit = log_filterx_pipe_deinit;
