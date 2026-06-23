@@ -277,6 +277,7 @@ app_shutdown(void)
   multi_line_global_deinit();
   main_loop_thread_resource_deinit();
   secret_storage_deinit();
+  scratch_buffers_explicit_gc();
   scratch_buffers_allocator_deinit();
   scratch_buffers_global_deinit();
   value_pairs_global_deinit();
