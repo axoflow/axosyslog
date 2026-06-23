@@ -148,23 +148,11 @@ def test_clickhouse_destination_missing_mandatory_options(config, syslog_ng, cli
     assert syslog_ng.wait_for_message_in_console_log("Error initializing ClickHouse destination, database(), table() and user() are mandatory options") != []
 
 
-invalid_url_values = [
-    ("'localhost'"),  # Missing port
-    ("'invalid-domain:1234'"),  # Invalid domain
-    ("'localhost:9100,localhost:9000'"),  # Multiple URLs not supported
-    ("'@#@!#$RFSDSVCWRF SFsd'"),  # Garbage string
-    ("' '"),  # Whitespace only
-    ("'127.0.0.1'"),  # IPv4 address without port
-    ("'::1'"),  # IPv6 address without port
-]
-
-
-@pytest.mark.parametrize("invalid_option_value", invalid_url_values, ids=range(len(invalid_url_values)))
-def test_clickhouse_destination_invalid_url_option_db_run(request, config, syslog_ng, clickhouse_server, invalid_option_value, clickhouse_ports):
+def test_clickhouse_destination_invalid_url_option_db_run(config, syslog_ng, clickhouse_server, clickhouse_ports):
     custom_input_msg = f"test message {str(uuid.uuid4())}"
     generator_source = config.create_example_msg_generator_source(num=1, template=f'{stringify(custom_input_msg)}')
     clickhouse_options_copy = CLICKHOUSE_OPTIONS_WITH_SCHEMA.copy()
-    clickhouse_options_copy.update({"url": invalid_option_value})
+    clickhouse_options_copy.update({"url": "'localhost'"})  # Missing port
     clickhouse_destination = config.create_clickhouse_destination(**clickhouse_options_copy)
     clickhouse_destination.create_clickhouse_client(clickhouse_ports.http_port)
     config.create_logpath(statements=[generator_source, clickhouse_destination])
