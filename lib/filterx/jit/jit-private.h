@@ -61,7 +61,19 @@ struct _FilterXJIT
   gint debug_ir_text_memfd;
 
   gboolean mod_finalized;
+
+  struct
+  {
+    LLVMMemoryBufferRef libfilterx_bc;
+    GPtrArray *pending_blocks;
+  } compile;
 };
+
+typedef struct _FilterXJITPendingBlock
+{
+  LLVMMemoryBufferRef bc;
+  gchar *name;
+} FilterXJITPendingBlock;
 
 #else
 
