@@ -45,6 +45,12 @@
 
 gboolean accurate_nanosleep = FALSE;
 
+/* Batch source wakeups: only re-arm the source once this many slots have
+ * been freed up in the flow-control window since it ran out.  Amortizes
+ * wakeup overhead under high message rates.  Clamped to the source's
+ * initial_window_size at use, so small windows still get woken. */
+#define LOG_SOURCE_WAKEUP_BATCH_SIZE 100
+
 void
 log_source_wakeup(LogSource *self)
 {
@@ -77,6 +83,7 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
     window_size_increment = log_source_gather_dynamic_window_reclamation(self, window_size_increment);
 
   gsize old_window_size = _window_size_add(self, window_size_increment, &suspended);
+  gsize new_window_size = old_window_size + window_size_increment;
 
   msg_diagnostics("Window size adjustment",
                   evt_tag_int("old_window_size", old_window_size),
@@ -87,7 +94,22 @@ _flow_control_window_size_adjust(LogSource *self, guint32 window_size_increment,
   gboolean need_to_resume_counter = !last_ack_type_is_suspended && suspended;
   if (need_to_resume_counter)
     window_size_counter_resume(&self->window_size);
-  if ((window_size_increment != 0 && old_window_size == 0) || need_to_resume_counter)
+
+  /* Wake the source on one of two transitions:
+   *  - the explicit destination-side suspend bit is being lifted (back-pressure
+   *    released — old_window_size > 0 distinguishes this from the natural drain
+   *    case where _is_suspended() was true only because the counter hit zero);
+   *
+   *  - enough slots have accumulated past the batching threshold since the
+   *    window last ran out.  Threshold is clamped to a quarter of
+   *    initial_window_size so sources with small windows still wake.
+   */
+
+  gboolean threshold_crossed = window_size_increment != 0 &&
+                               old_window_size <= self->wakeup_threshold &&
+                               new_window_size > self->wakeup_threshold;
+  gboolean explicit_suspend_lifted = need_to_resume_counter && old_window_size > 0;
+  if (threshold_crossed || explicit_suspend_lifted)
     log_source_wakeup(self);
 }
 
@@ -657,11 +679,12 @@ log_source_queue(LogPipe *s, LogMessage *msg, const LogPathOptions *path_options
 static void
 _initialize_window(LogSource *self, gint init_window_size)
 {
-  self->window_initialized = TRUE;
   window_size_counter_set(&self->window_size, init_window_size);
-
   self->initial_window_size = init_window_size;
   self->full_window_size = init_window_size;
+  self->wakeup_threshold = MIN((gsize) LOG_SOURCE_WAKEUP_BATCH_SIZE, init_window_size / 4);
+
+  self->window_initialized = TRUE;
 }
 
 static gboolean
