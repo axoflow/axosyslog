@@ -65,6 +65,24 @@ _llvm_error_to_fxjit_error(LLVMErrorRef err, GError **error)
   LLVMDisposeErrorMessage(message);
 }
 
+static FilterXJITPendingBlock *
+_pending_block_new(LLVMModuleRef mod, const gchar *name)
+{
+  FilterXJITPendingBlock *self = g_new0(FilterXJITPendingBlock, 1);
+  self->bc = LLVMWriteBitcodeToMemoryBuffer(mod);
+  self->name = g_strdup(name);
+  return self;
+}
+
+static void
+_pending_block_free(FilterXJITPendingBlock *self)
+{
+  if (self->bc)
+    LLVMDisposeMemoryBuffer(self->bc);
+  g_free(self->name);
+  g_free(self);
+}
+
 static inline void
 _assert_verify_block(FilterXJIT *self, FilterXIRValue block)
 {
@@ -674,6 +692,7 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   self->mod_name = g_strdup(module_name);
   self->debug_info_mode = debug_info;
   self->debug_ir_text_memfd = -1;
+  self->compile.pending_blocks = g_ptr_array_new_with_free_func((GDestroyNotify) _pending_block_free);
 
 #if SYSLOG_NG_HAVE_DECL_LLVMORCCREATENEWTHREADSAFECONTEXTFROMLLVMCONTEXT
   self->ctx = LLVMContextCreate();
@@ -721,6 +740,15 @@ error:
   return NULL;
 }
 
+static void
+_filterx_jit_compile_free(FilterXJIT *self)
+{
+  if (self->compile.libfilterx_bc)
+    LLVMDisposeMemoryBuffer(self->compile.libfilterx_bc);
+  if (self->compile.pending_blocks)
+    g_ptr_array_free(self->compile.pending_blocks, TRUE);
+}
+
 void
 filterx_jit_free(FilterXJIT *self)
 {
@@ -743,6 +771,8 @@ filterx_jit_free(FilterXJIT *self)
 
   if (self->debug_ir_text_memfd >= 0)
     close(self->debug_ir_text_memfd);
+
+  _filterx_jit_compile_free(self);
 
   msg_trace("FilterXJIT destroyed", evt_tag_str("module_name", self->mod_name));
 
