@@ -197,7 +197,12 @@ _setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 }
 
 /* Dict-specialized setattr: identical to _do_setattr but calls filterx_dict_set_subscript
- * directly, bypassing the ref-setattr → mapping-setattr → set_subscript vtable chain. */
+ * directly, bypassing the ref-setattr → mapping-setattr → set_subscript vtable chain.
+ *
+ * The static type DICT is only a hint: coercing containers (e.g. otel_logrecord.body) accept
+ * an assigned dict literal but store a non-dict object (otel_kvlist), so @lhs may not have a
+ * FilterXDictObject layout at runtime. Since filterx_dict_set_subscript downcasts to it,
+ * verify the runtime type first and fall back to the generic vtable setattr otherwise. */
 __attribute__((used))
 FilterXObject *
 fx_jit_do_setattr_dict(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
@@ -216,6 +221,9 @@ fx_jit_do_setattr_dict(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned
                                           "Failed to evaluate expression");
       goto error;
     }
+
+  if (!filterx_object_is_type_or_ref(lhs, &FILTERX_TYPE_NAME(dict)))
+    return _do_setattr(self, lhs, cloned);
 
   if (!filterx_dict_set_subscript(lhs, self->attr, &cloned))
     {
