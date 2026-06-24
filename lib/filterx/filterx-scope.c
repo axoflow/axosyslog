@@ -228,6 +228,36 @@ exit:
   return result;
 }
 
+static void
+_filterx_scope_make_object_direct(FilterXObject **object)
+{
+  if (!(*object) || !filterx_object_is_nvtable_backed(*object))
+    return;
+
+  FilterXObject *direct = filterx_object_dup(*object);
+  filterx_object_unref(*object);
+  *object = direct;
+}
+
+static void
+_filterx_scope_make_nvtable_backed_variables_direct(FilterXScope *self)
+{
+  for (FilterXScope *scope = self;
+       scope && filterx_scope_is_dirty(scope) && !filterx_scope_is_fork_point(scope);
+       scope = scope->parent_scope)
+    {
+      for (guint32 i = 0; i < scope->variables_size; i++)
+        {
+          FilterXVariable *v = &scope->variables[i];
+          if (!v->variable_type)
+            continue;
+
+          if (filterx_variable_is_message_tied(v) || filterx_variable_is_declared(v))
+            _filterx_scope_make_object_direct(&v->value);
+        }
+    }
+}
+
 /*
  * 1) sync objects to message
  * 2) drop undeclared objects
@@ -249,6 +279,13 @@ filterx_scope_sync(FilterXScope *self, LogMessage **pmsg, const LogPathOptions *
       self->dirty = FALSE;
       return;
     }
+
+  /*
+   * This has to run before the sync below writes anything back to the message:
+   * a write may overwrite the NVTable entry that a later, not-yet-duplicated
+   * variable still points into.
+   */
+  _filterx_scope_make_nvtable_backed_variables_direct(self);
 
   GString *buffer = NULL;
 
