@@ -47,6 +47,10 @@ _do_get_subscript(FilterXObject *variable, FilterXObject *key,
   FilterXObject *result = typed_get_subscript(variable, key);
   if (!result)
     filterx_eval_push_error("Failed to get-subscript from object", key);
+  else if (filterx_object_is_ref(variable))
+    /* the helpers unwrap @variable read-only, so float the shared child to keep
+     * copy-on-write */
+    result = filterx_ref_replace_shared_xref_with_a_shadow(result, variable);
   filterx_object_unref(key);
   filterx_object_unref(variable);
   return result;

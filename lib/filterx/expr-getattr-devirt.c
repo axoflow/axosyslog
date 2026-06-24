@@ -37,8 +37,11 @@ fx_jit_do_getattr(FilterXExpr *s, FilterXObject *variable)
 }
 
 /* dict.attr is dict[attr] with a known-string key, so this calls filterx_dict_get_subscript
- * directly, without ref's getattr vtable and mapping's getattr → get_subscript hop.
- * self->attr is borrowed from the FilterXGetAttr struct and must not be unrefed. */
+ * directly, without the mapping's getattr → get_subscript hop. self->attr is borrowed from
+ * the FilterXGetAttr struct and must not be unrefed.
+ *
+ * filterx_dict_get_subscript unwraps @variable read-only, so a ref also needs an explicit
+ * float of the shared child to keep copy-on-write. */
 __attribute__((used))
 FilterXObject *
 fx_jit_typed_getattr_dict(FilterXExpr *s, FilterXObject *variable)
@@ -56,6 +59,8 @@ fx_jit_typed_getattr_dict(FilterXExpr *s, FilterXObject *variable)
   if (!result)
     filterx_eval_push_error_static_info("Failed to get-attribute from object",
                                         "Failed to evaluate key");
+  else if (filterx_object_is_ref(variable))
+    result = filterx_ref_replace_shared_xref_with_a_shadow(result, variable);
 
   filterx_object_unref(variable);
   return result;
