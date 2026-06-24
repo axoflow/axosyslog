@@ -43,6 +43,9 @@ typedef struct _MainLoopOptions
 static inline gboolean
 main_loop_is_dry_run(const MainLoopOptions *options)
 {
+  if (!options)
+    return FALSE;
+
   return options->syntax_only || options->preprocess_into || options->config_id || options->check_startup;
 }
 
@@ -78,6 +81,7 @@ gboolean main_loop_was_last_reload_successful(MainLoop *self);
 void main_loop_run(MainLoop *self);
 
 MainLoop *main_loop_get_instance(void);
+MainLoopOptions *main_loop_get_options(void);
 GlobalConfig *main_loop_get_current_config(MainLoop *self);
 GlobalConfig *main_loop_get_pending_new_config(MainLoop *self);
 void main_loop_init(MainLoop *self, MainLoopOptions *options);
