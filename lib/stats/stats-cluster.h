@@ -164,9 +164,9 @@ struct _StatsCluster
   StatsClusterKey key;
   StatsCounterGroup counter_group;
   guint32 live_mask;
-  guint16 use_count;
-  guint16 dynamic:1;
+  guint32 use_count;
   gchar *query_key;
+  guint8 dynamic:1;
 };
 
 typedef void (*StatsForeachCounterFunc)(StatsCluster *sc, gint type, StatsCounterItem *counter, gpointer user_data);
