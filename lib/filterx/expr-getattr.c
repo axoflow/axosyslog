@@ -199,10 +199,16 @@ fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *exp
  * getattr → get_subscript hop. @attr is borrowed (owned by the FilterXGetAttr struct) and
  * must not be unrefed.
  *
+ * The static type DICT is only a hint: coercing containers (e.g. otel_logrecord.body, which
+ * stores an assigned dict as an otel_kvlist) yield a non-dict object at runtime. Since the
+ * unchecked path downcasts to FilterXDictObject, verify the runtime layout first and fall
+ * back to the generic vtable getattr otherwise.
+ *
  * The unchecked lookup unwraps @variable read-only, so when @variable is a ref we must
  * still float the shared child against it (exactly as the ref's getattr vtable does) to
  * preserve copy-on-write; otherwise a subsequent setattr on the returned child would mutate
- * a dict still shared with the source variable. */
+ * a dict still shared with the source variable. (_do_getattr's generic path floats internally
+ * via the ref vtable, so the fallback needs no explicit float.) */
 __attribute__((used))
 FilterXObject *
 fx_jit_do_getattr_dict(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
@@ -213,6 +219,9 @@ fx_jit_do_getattr_dict(FilterXObject *variable, FilterXObject *attr, FilterXExpr
                                           "Failed to evaluate expression");
       return NULL;
     }
+
+  if (!filterx_object_is_type_or_ref(variable, &FILTERX_TYPE_NAME(dict)))
+    return _do_getattr(variable, attr, expr);
 
   FilterXObject *result = filterx_dict_get_subscript_unchecked(variable, attr);
   if (!result)

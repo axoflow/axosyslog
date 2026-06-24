@@ -191,9 +191,17 @@ filterx_get_subscript_get_operand(FilterXExpr *s)
 
 typedef FilterXObject *(*FXGetSubscriptHelper)(FilterXObject *object, FilterXObject *key);
 
+/* The dict/list helpers downcast @variable to a concrete FilterX{Dict,List}Object, but the
+ * static type that selected this fast path is only a hint: coercing containers (e.g. otel
+ * masquerading as dict/list) yield a different runtime layout. @expected_type guards the
+ * downcast; on a mismatch we fall back to the generic vtable get_subscript.
+ *
+ * The helpers unwrap @variable read-only, so on the fast path we float the shared child
+ * against it (as the ref's get_subscript vtable does) to preserve copy-on-write on later
+ * writes. The generic fallback already floats internally via the ref vtable. */
 static inline __attribute__((always_inline)) FilterXObject *
 _do_get_subscript(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr,
-                  FXGetSubscriptHelper helper)
+                  FXGetSubscriptHelper helper, FilterXType *expected_type)
 {
   if (!variable)
     {
@@ -208,13 +216,19 @@ _do_get_subscript(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr
       filterx_object_unref(variable);
       return NULL;
     }
-  FilterXObject *result = helper(variable, key);
+
+  FilterXObject *result;
+  if (filterx_object_is_type_or_ref(variable, expected_type))
+    {
+      result = helper(variable, key);
+      if (result && filterx_object_is_ref(variable))
+        result = filterx_ref_float_shared_child(result, variable);
+    }
+  else
+    result = filterx_object_get_subscript(variable, key);
+
   if (!result)
     filterx_eval_push_error("Failed to get-subscript from object", expr, key);
-  else if (filterx_object_is_ref(variable))
-    /* The dict/list helpers unwrap @variable read-only, so float the shared child against
-     * it (as the ref's get_subscript vtable does) to preserve copy-on-write on later writes. */
-    result = filterx_ref_float_shared_child(result, variable);
   filterx_object_unref(key);
   filterx_object_unref(variable);
   return result;
@@ -224,21 +238,21 @@ __attribute__((used))
 FilterXObject *
 fx_jit_do_get_subscript_dict(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
 {
-  return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript);
+  return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript, &FILTERX_TYPE_NAME(dict));
 }
 
 __attribute__((used))
 FilterXObject *
 fx_jit_do_get_subscript_list(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
 {
-  return _do_get_subscript(variable, key, expr, filterx_list_get_subscript);
+  return _do_get_subscript(variable, key, expr, filterx_list_get_subscript, &FILTERX_TYPE_NAME(list));
 }
 
 __attribute__((used))
 FilterXObject *
 fx_jit_do_get_subscript_dict_string_key(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
 {
-  return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript_unchecked);
+  return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript_unchecked, &FILTERX_TYPE_NAME(dict));
 }
 
 static FilterXIRValue

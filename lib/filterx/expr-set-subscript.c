@@ -182,9 +182,13 @@ _set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 
 typedef gboolean (*FXSetSubscriptHelper)(FilterXObject *object, FilterXObject *key, FilterXObject **value);
 
+/* @helper downcasts @object to a concrete FilterX{Dict,List}Object; the static type that
+ * selected this fast path is only a hint, so coercing containers (e.g. otel masquerading as
+ * dict/list) may present a different runtime layout. @expected_type guards the downcast and
+ * on a mismatch we fall back to the generic vtable set_subscript (same signature). */
 static inline __attribute__((always_inline)) FilterXObject *
 _do_set_subscript(FilterXObject *object, FilterXObject *key, FilterXObject *new_value, FilterXExpr *expr,
-                  FXSetSubscriptHelper helper)
+                  FXSetSubscriptHelper helper, FilterXType *expected_type)
 {
   FilterXObject *cloned = NULL;
   if (!new_value)
@@ -205,6 +209,8 @@ _do_set_subscript(FilterXObject *object, FilterXObject *key, FilterXObject *new_
                                           "Failed to evaluate expression");
       goto cleanup;
     }
+  if (!filterx_object_is_type_or_ref(object, expected_type))
+    helper = filterx_object_set_subscript;
   cloned = filterx_object_cow_fork2(filterx_object_ref(new_value), NULL);
   if (!helper(object, key, &cloned))
     {
@@ -225,14 +231,14 @@ __attribute__((used))
 FilterXObject *
 fx_jit_do_set_subscript_dict(FilterXObject *object, FilterXObject *key, FilterXObject *new_value, FilterXExpr *expr)
 {
-  return _do_set_subscript(object, key, new_value, expr, filterx_dict_set_subscript);
+  return _do_set_subscript(object, key, new_value, expr, filterx_dict_set_subscript, &FILTERX_TYPE_NAME(dict));
 }
 
 __attribute__((used))
 FilterXObject *
 fx_jit_do_set_subscript_list(FilterXObject *object, FilterXObject *key, FilterXObject *new_value, FilterXExpr *expr)
 {
-  return _do_set_subscript(object, key, new_value, expr, filterx_list_set_subscript_via_key);
+  return _do_set_subscript(object, key, new_value, expr, filterx_list_set_subscript_via_key, &FILTERX_TYPE_NAME(list));
 }
 
 typedef FilterXObject *(*FXSetSubscriptWrapper)(FilterXObject *object, FilterXObject *key,
