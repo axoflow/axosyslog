@@ -144,7 +144,7 @@ def test_static_window_config_options(config, syslog_ng, port_allocator, loggen,
 
     syslog_ng.start(config)
 
-    send_messages_with_loggen(loggen, network_source, 1, 1)
+    send_messages_with_loggen(loggen, network_source, 1, 1, port_allocator())
     wait_for_sum_prometheus_metric_values(config, expected_static_window_size)
 
     syslog_ng.stop()
@@ -183,7 +183,7 @@ def test_update_static_window_option_value(config, syslog_ng, port_allocator, lo
     # phase 2: update log_iw_size value and check the new value is applied
     network_source.options["log_iw_size"] = 6000
     syslog_ng.reload(config)
-    send_messages_with_loggen(loggen, network_source, 1, 1)
+    send_messages_with_loggen(loggen, network_source, 1, 1, port_allocator())
     # we have sent 1 * 1 msg,
     # static window size for new connection is 6000/10=600, available window for new connection 600-1=599
     wait_for_sum_prometheus_metric_values(config, {"syslogng_input_window_available": (10 * 1) + 599, "syslogng_input_window_capacity": (10 * 500) + 600})
@@ -208,7 +208,7 @@ def test_update_dynamic_window_option_value(config, syslog_ng, port_allocator, l
     # phase 2: update log_iw_size value and check the new value is applied
     network_source.options["dynamic_window_size"] = 6000
     syslog_ng.reload(config)
-    send_messages_with_loggen(loggen, network_source, 1, 1)
+    send_messages_with_loggen(loggen, network_source, 1, 1, port_allocator())
     # we have sent 1 * 1 msg
     # dynamic window capacity for new connection is 1, as loggen has exited
     # available window size is 0, as the dynamic window is fully occupied
@@ -312,7 +312,7 @@ def test_fill_static_window_for_all_source_connections(config, syslog_ng, port_a
 
     # phase 2: send additional messages and check that the new connections are rejected
     assert not syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
-    send_messages_with_loggen(loggen, network_source, 1, 1)
+    send_messages_with_loggen(loggen, network_source, 1, 1, port_allocator())
     assert syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
 
     network_destination.start_listener()
@@ -340,7 +340,7 @@ def test_fill_dynamic_window_for_all_source_connections(config, syslog_ng, port_
 
     # phase 2: send additional messages and check that the new connections are rejected
     assert not syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
-    send_messages_with_loggen(loggen, network_source, 1, 1)
+    send_messages_with_loggen(loggen, network_source, 1, 1, port_allocator())
     assert syslog_ng.wait_for_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
 
     network_destination.start_listener()
