@@ -351,6 +351,7 @@ main(int argc, char *argv[])
     {
       main_loop_deinit(main_loop);
       app_shutdown();
+      console_global_deinit();
       reloc_deinit();
       g_process_startup_failed(rc, TRUE);
       return rc;
