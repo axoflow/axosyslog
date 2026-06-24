@@ -68,12 +68,6 @@ DestinationWorker::init()
   if (!syslogng::grpc::DestWorker::init())
     return false;
   this->stub = google::cloud::bigquery::storage::v1::BigQueryWrite().NewStub(this->channel);
-  this->construct_write_stream();
-  this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
-  this->prepare_context(*this->batch_writer_ctx.get());
-  this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
-
-  this->prepare_batch();
   return true;
 }
 
@@ -97,6 +91,15 @@ DestinationWorker::connect()
       return false;
     }
 
+  if (!this->construct_write_stream())
+    return false;
+
+  this->batch_writer_ctx = std::make_unique<::grpc::ClientContext>();
+  this->prepare_context(*this->batch_writer_ctx.get());
+  this->batch_writer = this->stub->AppendRows(this->batch_writer_ctx.get());
+
+  this->prepare_batch();
+
   this->connected = true;
   return true;
 }
@@ -107,31 +110,42 @@ DestinationWorker::disconnect()
   if (!this->connected)
     return;
 
-  if (!this->batch_writer->WritesDone())
-    msg_warning("Error closing BigQuery write stream, writes may have been unsuccessful",
-                log_pipe_location_tag((LogPipe *) this->super->super.owner));
-
-  ::grpc::Status status = this->batch_writer->Finish();
-  if (!status.ok() && status.error_code() != ::grpc::StatusCode::INVALID_ARGUMENT)
+  if (this->is_stream_open)
     {
-      msg_warning("Error closing BigQuery stream", evt_tag_str("error", status.error_message().c_str()),
-                  evt_tag_str("details", status.error_details().c_str()),
-                  evt_tag_int("code", status.error_code()),
-                  log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      if (!this->batch_writer->WritesDone())
+        msg_warning("Error closing BigQuery write stream, writes may have been unsuccessful",
+                    log_pipe_location_tag((LogPipe *) this->super->super.owner));
+
+      ::grpc::Status close_status = this->batch_writer->Finish();
+      if (!close_status.ok() && close_status.error_code() != ::grpc::StatusCode::INVALID_ARGUMENT)
+        {
+          msg_warning("Error closing BigQuery stream", evt_tag_str("error", close_status.error_message().c_str()),
+                      evt_tag_str("details", close_status.error_details().c_str()),
+                      evt_tag_int("code", close_status.error_code()),
+                      log_pipe_location_tag((LogPipe *) this->super->super.owner));
+        }
     }
 
-  ::grpc::ClientContext ctx;
-  this->prepare_context(ctx);
-  google::cloud::bigquery::storage::v1::FinalizeWriteStreamRequest finalize_request;
-  google::cloud::bigquery::storage::v1::FinalizeWriteStreamResponse finalize_response;
-  finalize_request.set_name(write_stream.name());
+  this->batch_writer.reset();
+  this->batch_writer_ctx.reset();
 
-  status = this->stub->FinalizeWriteStream(&ctx, finalize_request, &finalize_response);
-  if (!status.ok())
+  if (!this->write_stream.name().empty())
     {
-      msg_warning("Error finalizing BigQuery write stream", evt_tag_str("error", status.error_message().c_str()),
-                  evt_tag_str("details", status.error_details().c_str()),
-                  log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      ::grpc::ClientContext ctx;
+      this->prepare_context(ctx);
+      google::cloud::bigquery::storage::v1::FinalizeWriteStreamRequest finalize_request;
+      google::cloud::bigquery::storage::v1::FinalizeWriteStreamResponse finalize_response;
+      finalize_request.set_name(write_stream.name());
+
+      ::grpc::Status status = this->stub->FinalizeWriteStream(&ctx, finalize_request, &finalize_response);
+      if (!status.ok())
+        {
+          msg_warning("Error finalizing BigQuery write stream", evt_tag_str("error", status.error_message().c_str()),
+                      evt_tag_str("details", status.error_details().c_str()),
+                      log_pipe_location_tag((LogPipe *) this->super->super.owner));
+        }
+
+      this->write_stream.Clear();
     }
 
   this->connected = false;
@@ -253,6 +267,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   if (!this->batch_writer->Write(*this->current_batch))
     {
       msg_error("Error writing BigQuery batch", log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      this->is_stream_open = false;
       result = LTR_ERROR;
       goto error;
     }
@@ -260,6 +275,7 @@ DestinationWorker::flush(LogThreadedFlushMode mode)
   if (!this->batch_writer->Read(this->append_rows_response))
     {
       msg_error("Error reading BigQuery batch response", log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      this->is_stream_open = false;
       result = LTR_ERROR;
       goto error;
     }
@@ -323,7 +339,7 @@ DestinationWorker::create_channel()
   return channel_;
 }
 
-void
+bool
 DestinationWorker::construct_write_stream()
 {
   ::grpc::ClientContext ctx;
@@ -335,9 +351,20 @@ DestinationWorker::construct_write_stream()
   create_write_stream_request.mutable_write_stream()->set_type(
                                google::cloud::bigquery::storage::v1::WriteStream_Type_COMMITTED);
 
-  stub->CreateWriteStream(&ctx, create_write_stream_request, &wstream);
+  ::grpc::Status status = stub->CreateWriteStream(&ctx, create_write_stream_request, &wstream);
+  if (!status.ok())
+    {
+      msg_error("Error creating BigQuery write stream", evt_tag_str("error", status.error_message().c_str()),
+                evt_tag_str("details", status.error_details().c_str()),
+                evt_tag_int("code", status.error_code()),
+                log_pipe_location_tag((LogPipe *) this->super->super.owner));
+      this->write_stream.Clear();
+      return false;
+    }
 
   this->write_stream = wstream;
+  this->is_stream_open = true;
+  return true;
 }
 
 DestinationDriver *
