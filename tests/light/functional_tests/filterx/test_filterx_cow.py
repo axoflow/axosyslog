@@ -165,6 +165,33 @@ def test_dict_child_writes_cause_clone(config, syslog_ng):
     assert file_true.read_log() == ("""barvalue--bar-changed""")
 
 
+def test_dict_child_writes_via_subscript_cause_clone(config, syslog_ng):
+    # the subscript form of test_dict_child_writes_cause_clone: the JIT devirtualizes
+    # d2['child'] into a raw dict lookup that has to float the shared child itself
+    (file_true, file_false, _) = create_config(
+        config, [
+            """
+                d = {
+                    'foo':'foovalue',
+                    'bar':'barvalue',
+                    'child': {
+                        'child_foo':'foovalue',
+                        'child_bar':'barvalue',
+                    },
+                };
+                d2 = d;
+                d2['child']['child_bar'] = 'bar-changed';
+                $MSG = d['child']['child_bar'] + '--' + d2['child']['child_bar'];
+            """,
+        ],
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+    assert file_true.read_log() == ("""barvalue--bar-changed""")
+
+
 def test_dict_child_of_child_writes_cause_clone(config, syslog_ng):
     (file_true, file_false, _) = create_config(
         config, [

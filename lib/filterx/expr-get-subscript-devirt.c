@@ -32,10 +32,17 @@
 
 typedef FilterXObject *(*FilterXJITTypedGetSubscript)(FilterXObject *object, FilterXObject *key);
 
-/* _get_subscript_compile() guards @variable against NULL, only @key can still fail here. */
+/* The static type that selected this fast path is only a hint. A coercing container (e.g.
+ * otel masquerading as dict/list) has a different runtime layout, which the downcast in
+ * @typed_get_subscript cannot take, so @expected_type guards it.
+ *
+ * _get_subscript_compile() guards @variable against NULL, only @key can still fail here.
+ *
+ * The helpers unwrap @variable read-only, so the fast path also floats the shared child to
+ * keep copy-on-write. The generic fallback floats via the ref vtable. */
 static inline __attribute__((always_inline)) FilterXObject *
 _do_get_subscript(FilterXObject *variable, FilterXObject *key,
-                  FilterXJITTypedGetSubscript typed_get_subscript)
+                  FilterXJITTypedGetSubscript typed_get_subscript, FilterXType *expected_type)
 {
   if (!key)
     {
@@ -44,13 +51,19 @@ _do_get_subscript(FilterXObject *variable, FilterXObject *key,
       filterx_object_unref(variable);
       return NULL;
     }
-  FilterXObject *result = typed_get_subscript(variable, key);
+
+  FilterXObject *result;
+  if (filterx_object_is_type_or_ref(variable, expected_type))
+    {
+      result = typed_get_subscript(variable, key);
+      if (result && filterx_object_is_ref(variable))
+        result = filterx_ref_replace_shared_xref_with_a_shadow(result, variable);
+    }
+  else
+    result = filterx_object_get_subscript(variable, key);
+
   if (!result)
     filterx_eval_push_error("Failed to get-subscript from object", key);
-  else if (filterx_object_is_ref(variable))
-    /* the helpers unwrap @variable read-only, so float the shared child to keep
-     * copy-on-write */
-    result = filterx_ref_replace_shared_xref_with_a_shadow(result, variable);
   filterx_object_unref(key);
   filterx_object_unref(variable);
   return result;
@@ -60,14 +73,14 @@ __attribute__((used))
 FilterXObject *
 fx_jit_typed_get_subscript_dict(FilterXObject *variable, FilterXObject *key)
 {
-  return _do_get_subscript(variable, key, filterx_dict_get_subscript);
+  return _do_get_subscript(variable, key, filterx_dict_get_subscript, &FILTERX_TYPE_NAME(dict));
 }
 
 __attribute__((used))
 FilterXObject *
 fx_jit_typed_get_subscript_list(FilterXObject *variable, FilterXObject *key)
 {
-  return _do_get_subscript(variable, key, filterx_list_get_subscript);
+  return _do_get_subscript(variable, key, filterx_list_get_subscript, &FILTERX_TYPE_NAME(list));
 }
 
 FilterXIRValue

@@ -32,14 +32,19 @@
 
 typedef gboolean (*FilterXJITTypedSetSubscript)(FilterXObject *object, FilterXObject *key, FilterXObject **value);
 
-/* _compile_dispatch() guards @cloned and @key against NULL, only @object can still fail
+/* The static type that selected this fast path is only a hint. A coercing container (e.g.
+ * otel masquerading as dict/list) has a different runtime layout, which the downcast in
+ * @typed_set_subscript cannot take, so @expected_type guards it. The generic vtable
+ * set_subscript has the same signature and serves as the fallback.
+ *
+ * _compile_dispatch() guards @cloned and @key against NULL, only @object can still fail
  * here.
  *
  * @cloned is the already forked right hand side, see the NOTE in _compile_dispatch().
  * We own it, together with @object and @key, and we return it on success. */
 static inline __attribute__((always_inline)) FilterXObject *
 _do_set_subscript(FilterXObject *object, FilterXObject *key, FilterXObject *cloned,
-                  FilterXJITTypedSetSubscript helper)
+                  FilterXJITTypedSetSubscript typed_set_subscript, FilterXType *expected_type)
 {
   if (!object)
     {
@@ -47,7 +52,9 @@ _do_set_subscript(FilterXObject *object, FilterXObject *key, FilterXObject *clon
                                           "Failed to evaluate expression");
       goto error;
     }
-  if (!helper(object, key, &cloned))
+  if (!filterx_object_is_type_or_ref(object, expected_type))
+    typed_set_subscript = filterx_object_set_subscript;
+  if (!typed_set_subscript(object, key, &cloned))
     {
       filterx_eval_push_error("Object set-subscript failed", key);
       filterx_eval_push_error_static_info("Failed to set element of object",
@@ -70,14 +77,14 @@ __attribute__((used))
 FilterXObject *
 fx_jit_typed_set_subscript_dict(FilterXObject *object, FilterXObject *key, FilterXObject *cloned)
 {
-  return _do_set_subscript(object, key, cloned, filterx_dict_set_subscript);
+  return _do_set_subscript(object, key, cloned, filterx_dict_set_subscript, &FILTERX_TYPE_NAME(dict));
 }
 
 __attribute__((used))
 FilterXObject *
 fx_jit_typed_set_subscript_list(FilterXObject *object, FilterXObject *key, FilterXObject *cloned)
 {
-  return _do_set_subscript(object, key, cloned, filterx_list_set_subscript_by_key);
+  return _do_set_subscript(object, key, cloned, filterx_list_set_subscript_by_key, &FILTERX_TYPE_NAME(list));
 }
 
 static FilterXIRValue

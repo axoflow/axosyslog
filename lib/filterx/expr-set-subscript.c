@@ -163,6 +163,7 @@ _set_subscript_get_path(FilterXExpr *s, FilterXAccessPath *path_out)
 }
 
 #if SYSLOG_NG_ENABLE_JIT
+
 static void
 _set_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
 {
