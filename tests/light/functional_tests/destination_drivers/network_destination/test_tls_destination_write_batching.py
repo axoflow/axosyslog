@@ -36,9 +36,10 @@ def _build_tls_destination(config, port_allocator, testcase_parameters, **extra_
     return tls_destination
 
 
-def _messages(count):
-    # zero-padded index so order is checkable; payload long enough to span several TLS records
-    return [f"tls-batch-seq-{i:06d}-{'x' * 200}" for i in range(count)]
+def _messages(count, payload=200):
+    # zero-padded index so order is checkable; payload pads the line so a batch
+    # can be pushed past a TLS record when needed
+    return [f"tls-batch-seq-{i:06d}-{'x' * payload}" for i in range(count)]
 
 
 def _assert_received_in_order(received, sent):
@@ -111,6 +112,30 @@ def test_tls_destination_no_batch_old_version_is_correct(config, syslog_ng, port
     syslog_ng.start(config)
 
     sent = _messages(200)
+    network_source.write_logs(sent)
+
+    received = tls_destination.read_logs(len(sent))
+    _assert_received_in_order(received, sent)
+
+
+def test_tls_destination_batch_larger_than_tls_record(config, syslog_ng, port_allocator, testcase_parameters):
+    """@version 4.26: a batch whose coalesced size exceeds one 16 KB TLS record makes the
+    writev() coalescing cap stop mid-batch; the logproto cursor must resume from the unsent
+    tail and still deliver every message intact and in order.
+
+    flush-lines(64) x ~1 KB messages is ~64 KB per batch -- several records past the cap --
+    so each batch goes out as multiple SSL_write() calls.
+    """
+    config.set_version("4.26")
+
+    network_source = config.create_network_source(port=port_allocator())
+    tls_destination = _build_tls_destination(config, port_allocator, testcase_parameters, flush_lines=64)
+    config.create_logpath(statements=[network_source, tls_destination])
+
+    tls_destination.start_listener()
+    syslog_ng.start(config)
+
+    sent = _messages(640, payload=1024)  # 10 full batches, each well over one TLS record
     network_source.write_logs(sent)
 
     received = tls_destination.read_logs(len(sent))
