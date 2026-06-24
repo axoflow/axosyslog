@@ -40,6 +40,12 @@ typedef struct _MainLoopOptions
   gboolean disable_module_discovery;
 } MainLoopOptions;
 
+static inline gboolean
+main_loop_is_dry_run(const MainLoopOptions *options)
+{
+  return options->syntax_only || options->preprocess_into || options->config_id || options->check_startup;
+}
+
 extern ThreadId main_thread_handle;
 extern GCond thread_halt_cond;
 extern GMutex workers_running_lock;

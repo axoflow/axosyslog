@@ -748,6 +748,9 @@ main_loop_deinit(MainLoop *self)
 void
 main_loop_run(MainLoop *self)
 {
+  if (main_loop_is_dry_run(self->options))
+    return;
+
   msg_notice("syslog-ng starting up",
              evt_tag_str("version", SYSLOG_NG_VERSION));
 
