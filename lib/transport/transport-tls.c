@@ -42,6 +42,11 @@ typedef struct _LogTransportTLS
 
   GByteArray *writev_buf;
 
+  /* a blocked SSL_write() must be repeated with the identical buffer; writev()
+   * remembers the pending one here (NULL when nothing is pending) and replays it */
+  gconstpointer write_blocked_buf;
+  gsize write_blocked_len;
+
   StatsClusterKeyBuilder *kb;
 } LogTransportTLS;
 
@@ -397,7 +402,14 @@ log_transport_tls_writev_method(LogTransport *s, struct iovec *iov, gint iov_cou
   gconstpointer buf;
   gsize len;
 
-  if (iov_count == 1)
+  if (self->write_blocked_buf)
+    {
+      /* OpenSSL requires a blocked SSL_write() to be repeated with the identical
+       * buffer; replay the pending one, ignoring the iov the caller passes now */
+      buf = self->write_blocked_buf;
+      len = self->write_blocked_len;
+    }
+  else if (iov_count == 1)
     {
       /* a single chunk needs no coalescing; SSL_write() straight from the iov
        * so the payload is not copied into writev_buf */
@@ -417,7 +429,19 @@ log_transport_tls_writev_method(LogTransport *s, struct iovec *iov, gint iov_cou
       len = self->writev_buf->len;
     }
 
-  return log_transport_tls_write_method(s, (gpointer) buf, len);
+  gssize rc = log_transport_tls_write_method(s, (gpointer) buf, len);
+
+  if (rc < 0 && errno == EAGAIN)
+    {
+      self->write_blocked_buf = buf;
+      self->write_blocked_len = len;
+    }
+  else
+    {
+      self->write_blocked_buf = NULL;
+      self->write_blocked_len = 0;
+    }
+  return rc;
 }
 
 TLSSession *
