@@ -395,6 +395,12 @@ tls_error:
   return -1;
 }
 
+/*
+ * SSL_write() splits anything larger than one TLS record's worth of plaintext
+ * into multiple records anyway, so there's no point coalescing past that.
+ */
+#define TLS_WRITEV_COALESCE_MAX SSL3_RT_MAX_PLAIN_LENGTH
+
 static gssize
 log_transport_tls_writev_method(LogTransport *s, struct iovec *iov, gint iov_count)
 {
@@ -423,7 +429,11 @@ log_transport_tls_writev_method(LogTransport *s, struct iovec *iov, gint iov_cou
 
       g_byte_array_set_size(self->writev_buf, 0);
       for (gint i = 0; i < iov_count; i++)
-        g_byte_array_append(self->writev_buf, iov[i].iov_base, iov[i].iov_len);
+        {
+          if (i > 0 && self->writev_buf->len + iov[i].iov_len > TLS_WRITEV_COALESCE_MAX)
+            break;
+          g_byte_array_append(self->writev_buf, iov[i].iov_base, iov[i].iov_len);
+        }
 
       buf = self->writev_buf->data;
       len = self->writev_buf->len;
