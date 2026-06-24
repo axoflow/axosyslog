@@ -600,6 +600,12 @@ _filterx_ref_new(FilterXObject *value)
   return &self->super;
 }
 
+FilterXObject *
+filterx_ref_float_shared_child(FilterXObject *s, FilterXObject *c)
+{
+  return _filterx_ref_replace_shared_xref_with_a_floating_one(s, c);
+}
+
 FILTERX_DEFINE_TYPE(ref, FILTERX_TYPE_NAME(object),
                     .is_mutable = TRUE,
                     .marshal = _filterx_ref_marshal,
