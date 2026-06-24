@@ -839,6 +839,9 @@ log_transport_haproxy_new(LogTransportIndex base, LogTransportIndex switch_to, g
     {
       /* for UDP, only v2 is supported */
       self->super.super.read = _haproxy_dgram_read;
+      /* a datagram socket has no writev(); don't let the adapter advertise the
+       * forwarded one, so the batching layer keeps coalescing off for it */
+      self->super.super.writev = NULL;
       self->header_fetch_state = LPPTS_PROXY_V2_READ_PACKET;
     }
   else if (sock_type == SOCK_STREAM)
