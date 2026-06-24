@@ -211,6 +211,10 @@ _do_get_subscript(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr
   FilterXObject *result = helper(variable, key);
   if (!result)
     filterx_eval_push_error("Failed to get-subscript from object", expr, key);
+  else if (filterx_object_is_ref(variable))
+    /* The dict/list helpers unwrap @variable read-only, so float the shared child against
+     * it (as the ref's get_subscript vtable does) to preserve copy-on-write on later writes. */
+    result = filterx_ref_float_shared_child(result, variable);
   filterx_object_unref(key);
   filterx_object_unref(variable);
   return result;

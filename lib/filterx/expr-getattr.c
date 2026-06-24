@@ -195,9 +195,14 @@ fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *exp
 }
 
 /* Dict-specialized fast path. dict.attr is semantically dict[attr] with a known-string key,
- * so we call filterx_dict_get_subscript_unchecked directly, bypassing both ref's getattr
- * vtable and mapping's getattr → get_subscript hop. @attr is borrowed (owned by the
- * FilterXGetAttr struct) and must not be unrefed. */
+ * so we call filterx_dict_get_subscript_unchecked directly, bypassing the mapping's
+ * getattr → get_subscript hop. @attr is borrowed (owned by the FilterXGetAttr struct) and
+ * must not be unrefed.
+ *
+ * The unchecked lookup unwraps @variable read-only, so when @variable is a ref we must
+ * still float the shared child against it (exactly as the ref's getattr vtable does) to
+ * preserve copy-on-write; otherwise a subsequent setattr on the returned child would mutate
+ * a dict still shared with the source variable. */
 __attribute__((used))
 FilterXObject *
 fx_jit_do_getattr_dict(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
@@ -213,6 +218,8 @@ fx_jit_do_getattr_dict(FilterXObject *variable, FilterXObject *attr, FilterXExpr
   if (!result)
     filterx_eval_push_error_static_info("Failed to get-attribute from object", expr,
                                         "Failed to evaluate key");
+  else if (filterx_object_is_ref(variable))
+    result = filterx_ref_float_shared_child(result, variable);
 
   filterx_object_unref(variable);
   return result;
