@@ -393,6 +393,77 @@ Test(filterx_func_unset_empties, ignorecase)
 
 }
 
+#define LARGE_DICT_KEYS 1300000
+
+Test(filterx_func_unset_empties, large_dict_does_not_overflow_stack)
+{
+  FilterXObject *dict = filterx_dict_new();
+  FilterXObject *empty = filterx_string_new("", 0);
+  for (guint64 i = 0; i < LARGE_DICT_KEYS; i++)
+    {
+      gchar keybuf[32];
+      g_snprintf(keybuf, sizeof(keybuf), "k%" G_GUINT64_FORMAT, i);
+      FilterXObject *key = filterx_string_new(keybuf, -1);
+      cr_assert(filterx_object_set_subscript(dict, key, &empty));
+      filterx_object_unref(key);
+    }
+  filterx_object_unref(empty);
+
+  GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_object_expr_new(dict)));
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
+  cr_assert(!err);
+
+  FilterXObject *obj = init_and_eval_expr(func);
+  cr_assert(obj);
+  gboolean success;
+  cr_assert(filterx_boolean_unwrap(obj, &success));
+  cr_assert(success);
+
+  filterx_object_unref(obj);
+  filterx_expr_unref(func);
+}
+
+#define NESTING_DEPTH 1000
+
+Test(filterx_func_unset_empties, deeply_nested_does_not_overflow_stack)
+{
+  /* innermost dict holds an empty value, then wrap it NESTING_DEPTH times */
+  FilterXObject *node = filterx_dict_new();
+  FilterXObject *empty = filterx_string_new("", 0);
+  FilterXObject *leaf_key = filterx_string_new("x", -1);
+  cr_assert(filterx_object_set_subscript(node, leaf_key, &empty));
+  filterx_object_unref(leaf_key);
+  filterx_object_unref(empty);
+
+  for (gint i = 0; i < NESTING_DEPTH; i++)
+    {
+      FilterXObject *outer = filterx_dict_new();
+      FilterXObject *nested_key = filterx_string_new("nested", -1);
+      cr_assert(filterx_object_set_subscript(outer, nested_key, &node));
+      filterx_object_unref(nested_key);
+      filterx_object_unref(node);
+      node = outer;
+    }
+
+  GList *args = g_list_append(NULL, filterx_function_arg_new(NULL, filterx_object_expr_new(node)));
+  GError *err = NULL;
+  GError *args_err = NULL;
+  FilterXExpr *func = filterx_function_unset_empties_new(filterx_function_args_new(args, &args_err), &err);
+  cr_assert(!err);
+
+  /* recursive defaults to true; the depth cap must keep this from overflowing */
+  FilterXObject *obj = init_and_eval_expr(func);
+  cr_assert(obj);
+  gboolean success;
+  cr_assert(filterx_boolean_unwrap(obj, &success));
+  cr_assert(success);
+
+  filterx_object_unref(obj);
+  filterx_expr_unref(func);
+}
+
 static void
 setup(void)
 {

@@ -323,6 +323,19 @@ Test(filterx_dict, filterx_dict_object_copying_double)
   filterx_object_unref(obj);
 }
 
+Test(filterx_dict, move_key_on_empty_dict_returns_null)
+{
+  FilterXObject *dict = filterx_dict_new();
+  cr_assert_not_null(dict);
+
+  FilterXObject *key = filterx_string_new("foo", -1);
+  FilterXObject *moved = filterx_object_move_key(dict, key);
+  cr_assert_null(moved);
+
+  filterx_object_unref(key);
+  filterx_object_unref(dict);
+}
+
 static void
 setup(void)
 {

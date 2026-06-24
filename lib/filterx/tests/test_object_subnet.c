@@ -93,6 +93,27 @@ Test(filterx_object_subnet, rejects_ipv6_prefix_too_large)
   cr_assert_null(obj);
 }
 
+Test(filterx_object_subnet, rejects_ipv6_negative_prefix)
+{
+  FilterXObject *obj = filterx_subnet_new_from_cidr("::/-100");
+  cr_assert_null(obj);
+}
+
+Test(filterx_object_subnet, rejects_ipv4_negative_prefix)
+{
+  FilterXObject *obj = filterx_subnet_new_from_cidr("192.168.0.0/-1");
+  cr_assert_null(obj);
+}
+
+Test(filterx_object_subnet, rejects_ipv6_negative_prefix_via_typecast)
+{
+  FilterXObject *arg = filterx_string_new("::/-100", -1);
+  FilterXObject *args[] = { arg };
+  FilterXObject *obj = filterx_typecast_subnet(NULL, args, G_N_ELEMENTS(args));
+  cr_assert_null(obj);
+  filterx_object_unref(arg);
+}
+
 Test(filterx_object_subnet, ipv4_host_bits_are_masked)
 {
   /* 192.168.0.5/24 should store 192.168.0.0/255.255.255.0 */

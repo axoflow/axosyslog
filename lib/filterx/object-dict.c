@@ -707,6 +707,9 @@ _filterx_dict_move_key(FilterXObject *s, FilterXObject *key)
       return FALSE;
     }
 
+  if (!self->table)
+    return NULL;
+
   return filterx_ref_float(_table_move(self->table, key));
 }
 
