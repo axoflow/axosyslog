@@ -399,6 +399,7 @@ _filterx_string_new_indirect_from_str_and_len(FilterXObject *object, const gchar
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
   self->super.flags |= FILTERX_STRING_FLAG_STR_INDIRECT;
+  self->super.is_nvtable_backed = object && filterx_object_is_nvtable_backed(object);
   self->str = str;
   self->str_len = str_len;
   self->storage.indirect = filterx_object_ref(object);

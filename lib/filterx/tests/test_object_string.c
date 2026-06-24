@@ -107,6 +107,30 @@ Test(filterx_string, test_string_taking_an_cached_string_slice_results_in_a_cach
   filterx_object_unref(str);
 }
 
+Test(filterx_string, test_string_slice_propagates_nvtable_backed_marking)
+{
+  /* simulate a value pulled from the message NVTable (the marking is normally
+   * done by filterx_extract_object_from_logmsg(), not by the constructor) */
+  FilterXObject *nvtable_backed = filterx_string_new_indirect("0123456789abcdef", 16);
+  nvtable_backed->is_nvtable_backed = TRUE;
+
+  /* a slice of an NVTable-backed string is itself NVTable-backed */
+  FilterXObject *slice = filterx_string_new_slice(nvtable_backed, 1, 15);
+  cr_assert(filterx_object_is_nvtable_backed(slice));
+
+  /* a slice of a self-owned string is not NVTable-backed, even though it
+   * borrows the payload */
+  FilterXObject *owned = filterx_string_new_take(g_strdup("0123456789abcdef"), 16);
+  FilterXObject *owned_slice = filterx_string_new_slice(owned, 1, 15);
+  cr_assert(!filterx_object_is_nvtable_backed(owned_slice));
+  cr_assert((owned_slice->flags & FILTERX_STRING_FLAG_STR_INDIRECT) != 0);
+
+  filterx_object_unref(slice);
+  filterx_object_unref(nvtable_backed);
+  filterx_object_unref(owned_slice);
+  filterx_object_unref(owned);
+}
+
 static void
 _translate_to_incremented(gchar *target, const gchar *source, gsize *len)
 {

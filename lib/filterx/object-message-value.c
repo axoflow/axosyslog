@@ -472,13 +472,20 @@ filterx_extract_object_from_logmsg(LogMessage *msg, NVHandle handle)
   const gchar *value = log_msg_get_value_if_set_with_type(msg, handle, &value_len, &t);
   if (!value)
     return NULL;
+
+  FilterXObject *self;
   switch (t)
     {
     case LM_VT_STRING:
-      return filterx_string_new_indirect(value, value_len);
+      self = filterx_string_new_indirect(value, value_len);
+      break;
     case LM_VT_NULL:
       return filterx_null_new();
     default:
-      return filterx_message_value_new_indirect(value, value_len, t);
+      self = filterx_message_value_new_indirect(value, value_len, t);
+      break;
     }
+
+  self->is_nvtable_backed = TRUE;
+  return self;
 }
