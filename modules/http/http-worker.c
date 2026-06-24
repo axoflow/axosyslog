@@ -798,11 +798,18 @@ _flush_on_target(HTTPDestinationWorker *self, const gchar *url)
 
   EMIT(owner->super.super.super.signal_slot_connector, signal_http_response, &self->response_signal);
 
-  if (self->response_signal.result == HTTP_SLOT_RESOLVED)
+  switch (self->response_signal.result)
     {
-      msg_debug("http: HTTP error resolved issue, retry",
+    case HTTP_SLOT_RESOLVED:
+      msg_debug("http: HTTP slot resolved issue the error, retry",
                 evt_tag_long("http_code", http_code));
       return LTR_RETRY;
+    case HTTP_SLOT_CRITICAL_ERROR:
+      msg_debug("http: HTTP slot indicated critical error, reporting broken connection",
+                evt_tag_long("http_code", http_code));
+      return LTR_NOT_CONNECTED;
+    default:
+      break;
     }
 
   return _map_http_status_code(self, url, http_code);

@@ -20,37 +20,11 @@
  *
  */
 
-#ifndef HTTP_ADAPTER_H_INCLUDED
-#define HTTP_ADAPTER_H_INCLUDED 1
+#ifndef OPENOBSERVE_ADAPTER_H_INCLUDED
+#define OPENOBSERVE_ADAPTER_H_INCLUDED 1
 
-#include "driver.h"
-#include "modules/http/http-signals.h"
-#include <json.h>
+#include "http-adapter.h"
 
-typedef struct _HttpAdapter HttpAdapter;
-
-struct _HttpAdapter
-{
-  LogDriverPlugin super;
-  void (*adapt_response)(HttpAdapter *self, HttpResponseSignalData *data);
-};
-
-static inline void
-http_adapter_adapt_response(HttpAdapter *self, HttpResponseSignalData *data)
-{
-  self->adapt_response(self, data);
-}
-
-static inline void
-http_adapter_free(HttpAdapter *self)
-{
-  log_driver_plugin_free(&self->super);
-}
-
-void http_adapter_init_instance(HttpAdapter *self);
-HttpAdapter *http_adapter_new_by_name(const gchar *name);
-
-json_object *http_adapter_parse_response_json(GString *response);
-void http_adapter_locate_offending_payload(HttpResponseSignalData *data);
+HttpAdapter *openobserve_adapter_new(void);
 
 #endif

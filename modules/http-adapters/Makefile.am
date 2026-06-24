@@ -6,6 +6,8 @@ modules_http_adapters_libhttp_adapters_la_SOURCES = \
   modules/http-adapters/http-adapter.h \
   modules/http-adapters/splunk-adapter.c \
   modules/http-adapters/splunk-adapter.h \
+  modules/http-adapters/openobserve-adapter.c \
+  modules/http-adapters/openobserve-adapter.h \
   modules/http-adapters/http-adapters-grammar.y \
   modules/http-adapters/http-adapters-plugin.c \
   modules/http-adapters/http-adapters-parser.h \
