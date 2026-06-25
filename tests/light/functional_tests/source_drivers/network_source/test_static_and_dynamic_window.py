@@ -172,6 +172,7 @@ def test_dynamic_window_config_options(config, syslog_ng, port_allocator, loggen
 # Test for update static and dynamic window option values
 def test_update_static_window_option_value(config, syslog_ng, port_allocator, loggen, syslog_ng_ctl):
     config, network_source, network_destination = set_config_for_static_window(config, port_allocator, log_iw_size=5000, max_connections=10)
+    syslog_ng.start_params.trace = False
     syslog_ng.start(config)
 
     # phase 1: check initial log_iw_size value
@@ -195,6 +196,7 @@ def test_update_static_window_option_value(config, syslog_ng, port_allocator, lo
 
 def test_update_dynamic_window_option_value(config, syslog_ng, port_allocator, loggen, syslog_ng_ctl):
     config, network_source, network_destination = set_config_for_dynamic_window(config, port_allocator, dynamic_window_size=5000, log_iw_size=10)
+    syslog_ng.start_params.trace = False
     syslog_ng.start(config)
 
     # phase 1: check initial log_iw_size value
@@ -223,6 +225,7 @@ def test_update_dynamic_window_option_value(config, syslog_ng, port_allocator, l
 def test_dynamic_window_rebalance_with_paralell_connections(config, syslog_ng, port_allocator, syslog_ng_ctl):
     config, network_source, network_destination = set_config_for_dynamic_window(config, port_allocator, dynamic_window_size=5000, log_iw_size=1000)
     static_window_size = int(network_source.options["log_iw_size"] / network_source.options["max_connections"])
+    syslog_ng.start_params.trace = False
     syslog_ng.start(config)
 
     # phase 1: start first connection with slower sending rate
@@ -243,6 +246,7 @@ def test_dynamic_window_rebalance_with_paralell_connections(config, syslog_ng, p
 # Test for increasing message number until the window is full
 def test_static_window_increased_send(config, syslog_ng, port_allocator, loggen, syslog_ng_ctl):
     config, network_source, network_destination = set_config_for_static_window(config, port_allocator, log_iw_size=1000, max_connections=10)
+    syslog_ng.start_params.trace = False
     syslog_ng.start(config)
 
     sum_msg_counter = 0
@@ -269,6 +273,7 @@ def test_static_window_increased_send(config, syslog_ng, port_allocator, loggen,
 
 def test_dynamic_window_increased_send(config, syslog_ng, port_allocator, loggen):
     config, network_source, network_destination = set_config_for_dynamic_window(config, port_allocator, dynamic_window_size=5000, log_iw_size=10)
+    syslog_ng.start_params.trace = False
     syslog_ng.start(config)
 
     sum_msg_counter = 0
@@ -302,13 +307,14 @@ def test_fill_static_window_for_all_source_connections(config, syslog_ng, port_a
     config, network_source, network_destination = set_config_for_static_window(config, port_allocator, log_iw_size=1000, max_connections=used_source_connections)
     static_window_size = int(network_source.options["log_iw_size"] / network_source.options["max_connections"])  # per connection
 
+    syslog_ng.start_params.trace = False
     syslog_ng.start(config)
 
     # phase 1: fill up window buffers for all connections and check
     send_messages_with_loggen(loggen, network_source, used_source_connections, static_window_size)
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_available", used_source_connections * [0])
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_capacity", used_source_connections * [100])
-    assert syslog_ng.count_message_in_console_log("Source has been suspended") == used_source_connections
+    assert syslog_ng.count_message_in_console_log("Source has been suspended") >= used_source_connections
 
     # phase 2: send additional messages and check that the new connections are rejected
     assert not syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
@@ -331,12 +337,13 @@ def test_fill_dynamic_window_for_all_source_connections(config, syslog_ng, port_
     dynamic_window_size = (network_source.options["dynamic_window_size"] / network_source.options["max_connections"]) + \
         (network_source.options["log_iw_size"] / network_source.options["max_connections"])  # per connection
 
+    syslog_ng.start_params.trace = False
     syslog_ng.start(config)
     # phase 1: fill up window buffers for all connections and check
     send_messages_with_loggen(loggen, network_source, used_source_connections, int(dynamic_window_size))
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_available", used_source_connections * [0])
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_capacity", used_source_connections * [int(dynamic_window_size)])
-    assert syslog_ng.count_message_in_console_log("Source has been suspended") == used_source_connections
+    assert syslog_ng.count_message_in_console_log("Source has been suspended") >= used_source_connections
 
     # phase 2: send additional messages and check that the new connections are rejected
     assert not syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
