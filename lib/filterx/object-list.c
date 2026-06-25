@@ -407,6 +407,27 @@ filterx_list_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
   return NULL;
 }
 
+FilterXObject *
+filterx_list_get_subscript(FilterXObject *s, FilterXObject *key)
+{
+  return _filterx_list_get_subscript(filterx_ref_unwrap_ro(s), key);
+}
+
+gboolean
+filterx_list_set_subscript_via_key(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
+{
+  if (filterx_object_is_ref(s))
+    {
+      FilterXRef *ref = (FilterXRef *) s;
+      _filterx_ref_cow(ref);
+      gboolean result = _filterx_list_set_subscript(ref->value, key, new_value);
+      if (result)
+        filterx_ref_set_parent_container(*new_value, s);
+      return result;
+    }
+  return _filterx_list_set_subscript(s, key, new_value);
+}
+
 FILTERX_DEFINE_TYPE(list, FILTERX_TYPE_NAME(sequence),
                     .is_mutable = TRUE,
                     .truthy = _filterx_list_truthy,

@@ -172,4 +172,12 @@ filterx_ref_ground(FilterXObject *s)
 FilterXObject *filterx_ref_dup(FilterXObject *s);
 FilterXObject *_filterx_ref_new(FilterXObject *value);
 
+/* Given a child @s just read out of @c's underlying container, replace a shared child
+ * xref with a floating one parented to @c so that a later mutation triggers copy-on-write
+ * up the chain. This is the COW-critical step of the ref's getattr/get_subscript vtable;
+ * the JIT-devirtualized dict/list read fast paths must call it after a raw (ref-bypassing)
+ * lookup to preserve copy-on-write. @c must be a FilterXRef; @s may be any object (non-ref
+ * children are returned unchanged). */
+FilterXObject *filterx_ref_float_shared_child(FilterXObject *s, FilterXObject *c);
+
 #endif

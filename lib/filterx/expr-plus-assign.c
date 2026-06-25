@@ -20,6 +20,7 @@
  *
  */
 #include "expr-plus-assign.h"
+#include "expr-variable.h"
 #include "filterx-eval.h"
 
 typedef struct FilterXOperatorPlusAssign
@@ -50,12 +51,39 @@ _eval_plus_assign(FilterXExpr *s)
   return res;
 }
 
+static void
+_plus_assign_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXOperatorPlusAssign *self = (FilterXOperatorPlusAssign *) s;
+
+  filterx_expr_infer_types(self->super.rhs, env);
+  filterx_expr_infer_types(self->super.lhs, env);
+
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+
+  /* For string+=string / list+=list / dict+=dict the result type matches; for any mismatch
+   * (or unknown side) we collapse to UNKNOWN. The LHS env entry takes the same meet. */
+  FilterXVariableHandle handle;
+  if (filterx_variable_expr_get_handle(self->super.lhs, &handle))
+    {
+      FilterXStaticTypeSpec prior = filterx_type_env_get(env, handle);
+      FilterXStaticTypeSpec result = filterx_static_type_spec_meet(prior, rhs_spec);
+      filterx_type_env_set(env, handle, result);
+      s->static_type = result;
+    }
+  else
+    {
+      s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+    }
+}
+
 FilterXExpr *
 filterx_operator_plus_assign_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXOperatorPlusAssign *self = g_new0(FilterXOperatorPlusAssign, 1);
   filterx_binary_op_init_instance(&self->super, "plus-assign", FXE_WRITE, lhs, rhs);
   self->super.super.eval = _eval_plus_assign;
+  self->super.super.infer_types = _plus_assign_infer_types;
   self->super.super.ignore_falsy_result = TRUE;
 
   return &self->super.super;

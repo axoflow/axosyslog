@@ -846,6 +846,45 @@ filterx_dict_set_subscript_by_anchor(FilterXObject *s, FilterXDictAnchor anchor,
 }
 
 FilterXObject *
+filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
+{
+  return _filterx_dict_get_subscript(filterx_ref_unwrap_ro(s), key);
+}
+
+FilterXObject *
+filterx_dict_get_subscript_unchecked(FilterXObject *s, FilterXObject *key)
+{
+  /* The caller is responsible for ensuring @key is hashable (i.e. a string), letting us
+   * skip the normalize_key vtable check that the generic path runs. */
+  FilterXDictObject *self = (FilterXDictObject *) filterx_ref_unwrap_ro(s);
+
+  if (!self->table)
+    return NULL;
+
+  FilterXObject *value = NULL;
+  if (!_table_lookup(self->table, key, &value))
+    return NULL;
+  return value;
+}
+
+gboolean
+filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
+{
+  /* Mirrors _filterx_ref_set_subscript inline so the cow + parent linkage are visible to
+   * the optimizer at the JIT call site, and the dict's set_subscript fires directly. */
+  if (filterx_object_is_ref(s))
+    {
+      FilterXRef *ref = (FilterXRef *) s;
+      _filterx_ref_cow(ref);
+      gboolean result = _filterx_dict_set_subscript(ref->value, key, new_value);
+      if (result)
+        filterx_ref_set_parent_container(*new_value, s);
+      return result;
+    }
+  return _filterx_dict_set_subscript(s, key, new_value);
+}
+
+FilterXObject *
 filterx_dict_new(void)
 {
   return filterx_dict_new_with_table(NULL);

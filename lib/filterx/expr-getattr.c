@@ -22,6 +22,8 @@
 #include "filterx/expr-getattr.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/expr-variable.h"
+#include "filterx/filterx-type-inference.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
@@ -146,10 +148,44 @@ _getattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+static void
+_getattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXGetAttr *self = (FilterXGetAttr *) s;
+
+  const gchar *key = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
+
+  /* Per-key lookup: variable.k0.k1...key.  Covers single-hop accesses (variable.key) as a
+   * zero-prefix chain as well as deeper chains where each level was seeded by a setattr in
+   * an earlier block. */
+  if (self->operand)
+    {
+      FilterXStaticTypeSpec keyed = filterx_type_env_get_attr_for_chain(env, self->operand, key);
+      if (filterx_static_type_kind(keyed) != FILTERX_STATIC_TYPE_UNKNOWN)
+        {
+          s->static_type = keyed;
+          return;
+        }
+    }
+
+  s->static_type = filterx_static_type_element(self->operand ? self->operand->static_type :
+                                               INITIAL_FILTERX_STATIC_TYPE_SPEC);
+}
+
+FilterXExpr *
+filterx_getattr_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_getattr(s))
+    return NULL;
+  return ((FilterXGetAttr *) s)->operand;
+}
+
 #if SYSLOG_NG_ENABLE_JIT
 
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
+#include "filterx/object-dict.h"
 
 __attribute__((used))
 FilterXObject *
@@ -158,11 +194,69 @@ fx_jit_do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *exp
   return _do_getattr(variable, attr, expr);
 }
 
+/* Dict-specialized fast path. dict.attr is semantically dict[attr] with a known-string key,
+ * so we call filterx_dict_get_subscript_unchecked directly, bypassing the mapping's
+ * getattr → get_subscript hop. @attr is borrowed (owned by the FilterXGetAttr struct) and
+ * must not be unrefed.
+ *
+ * The static type DICT is only a hint: coercing containers (e.g. otel_logrecord.body, which
+ * stores an assigned dict as an otel_kvlist) yield a non-dict object at runtime. Since the
+ * unchecked path downcasts to FilterXDictObject, verify the runtime layout first and fall
+ * back to the generic vtable getattr otherwise.
+ *
+ * The unchecked lookup unwraps @variable read-only, so when @variable is a ref we must
+ * still float the shared child against it (exactly as the ref's getattr vtable does) to
+ * preserve copy-on-write; otherwise a subsequent setattr on the returned child would mutate
+ * a dict still shared with the source variable. (_do_getattr's generic path floats internally
+ * via the ref vtable, so the fallback needs no explicit float.) */
+__attribute__((used))
+FilterXObject *
+fx_jit_do_getattr_dict(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to get-attribute from object", expr,
+                                          "Failed to evaluate expression");
+      return NULL;
+    }
+
+  if (!filterx_object_is_type_or_ref(variable, &FILTERX_TYPE_NAME(dict)))
+    return _do_getattr(variable, attr, expr);
+
+  FilterXObject *result = filterx_dict_get_subscript_unchecked(variable, attr);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to get-attribute from object", expr,
+                                        "Failed to evaluate key");
+  else if (filterx_object_is_ref(variable))
+    result = filterx_ref_float_shared_child(result, variable);
+
+  filterx_object_unref(variable);
+  return result;
+}
+
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_getattr_typed(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_getattr(variable, attr, expr));
+}
+
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_getattr_dict_typed(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_getattr_dict(variable, attr, expr));
+}
+
 static FilterXIRValue
 _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
   FilterXGetAttr *self = (FilterXGetAttr *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  const gchar *fn_name = filterx_static_type_kind(self->operand->static_type) == FILTERX_STATIC_TYPE_DICT
+                         ? "fx_jit_do_getattr_dict"
+                         : "fx_jit_do_getattr";
 
   FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
   FilterXIRValue args[] =
@@ -172,7 +266,7 @@ _getattr_compile(FilterXExpr *s, FilterXJIT *jit)
     fx_jit_emit_const_ptr(jit, self),
   };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, "fx_jit_do_getattr", ffi->ptr_ty, param_tys, args, 3);
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
 }
 
 #endif
@@ -190,6 +284,7 @@ filterx_getattr_new(FilterXExpr *operand, FilterXObject *attr_name)
   self->super.is_set = _isset;
   self->super.walk_children = _getattr_walk;
   self->super.free_fn = _free;
+  self->super.infer_types = _getattr_infer_types;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _getattr_compile;
 #endif

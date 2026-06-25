@@ -202,6 +202,44 @@ _literal_container_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_dat
   return TRUE;
 }
 
+static FilterXStaticTypeSpec
+_meet_element_specs(FilterXLiteralContainer *self)
+{
+  /* A `seen` flag marks "no element observed" so empty containers stay UNKNOWN rather than
+   * degrading the meet, and a single element keeps its own spec. */
+  FilterXStaticTypeSpec acc = FILTERX_STATIC_TYPE_UNKNOWN_SPEC;
+  gboolean seen = FALSE;
+  gsize len = filterx_pointer_list_get_length(&self->elements);
+  for (gsize i = 0; i < len; i++)
+    {
+      FilterXLiteralElement *elem = (FilterXLiteralElement *) filterx_pointer_list_index(&self->elements, i);
+      FilterXStaticTypeSpec value_spec = elem->value ? elem->value->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+      acc = seen ? filterx_static_type_spec_meet(acc, value_spec) : value_spec;
+      seen = TRUE;
+      if (acc == FILTERX_STATIC_TYPE_UNKNOWN_SPEC)
+        break;
+    }
+  return acc;
+}
+
+static void
+_literal_dict_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+  s->static_type = filterx_static_type_make_container(FILTERX_STATIC_TYPE_DICT,
+                                                      _meet_element_specs(self));
+}
+
+static void
+_literal_list_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXLiteralContainer *self = (FilterXLiteralContainer *) s;
+  s->static_type = filterx_static_type_make_container(FILTERX_STATIC_TYPE_LIST,
+                                                      _meet_element_specs(self));
+}
+
 static void
 _literal_container_init_instance(FilterXLiteralContainer *self, const gchar *type)
 {
@@ -406,6 +444,7 @@ filterx_literal_dict_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_dict));
   self->super.eval = _literal_dict_eval;
+  self->super.infer_types = _literal_dict_infer_types;
   self->eval_early = _literal_dict_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 
@@ -518,6 +557,7 @@ filterx_literal_list_new(GList *elements)
 
   _literal_container_init_instance(self, FILTERX_EXPR_TYPE_NAME(literal_list));
   self->super.eval = _literal_list_eval;
+  self->super.infer_types = _literal_list_infer_types;
   self->eval_early = _literal_list_eval_early;
   filterx_pointer_list_add_list(&self->elements, elements);
 

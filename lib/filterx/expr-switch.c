@@ -436,6 +436,33 @@ _switch_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
   return TRUE;
 }
 
+static void
+_switch_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXSwitch *self = (FilterXSwitch *) s;
+
+  filterx_expr_infer_types(self->selector, env);
+
+  /* Case-value expressions are read-only in practice but visit them so any nested
+   * variable reads pick up the env. */
+  for (gsize i = 0; i < self->cases->len; i++)
+    {
+      FilterXExpr *case_expr = (FilterXExpr *) g_ptr_array_index(self->cases, i);
+      filterx_expr_infer_types(case_expr, env);
+    }
+
+  /* The body may or may not execute (no matching case + no default). Walk it on a clone
+   * and meet back, so any writes the body performs are only kept if they would also hold
+   * under the no-match path. Cross-case fall-through pessimizes the within-body view too,
+   * which is fine for v1. */
+  FilterXTypeEnv *before = filterx_type_env_clone(env);
+  filterx_expr_infer_types(self->body, env);
+  filterx_type_env_meet_into(env, before);
+  filterx_type_env_free(before);
+
+  s->static_type = INITIAL_FILTERX_STATIC_TYPE_SPEC;
+}
+
 FilterXExpr *
 filterx_switch_new(FilterXExpr *selector, GList *body)
 {
@@ -447,6 +474,7 @@ filterx_switch_new(FilterXExpr *selector, GList *body)
   self->super.eval = _eval_switch;
   self->super.walk_children = _switch_walk;
   self->super.free_fn = _free;
+  self->super.infer_types = _switch_infer_types;
   self->cases = g_ptr_array_new_with_free_func((GDestroyNotify) filterx_expr_unref);
   self->literal_cache = g_hash_table_new_full((GHashFunc) filterx_object_hash, (GEqualFunc) filterx_object_equal,
                                               (GDestroyNotify) filterx_object_unref, (GDestroyNotify) filterx_expr_unref);

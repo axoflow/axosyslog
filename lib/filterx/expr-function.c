@@ -201,6 +201,14 @@ fx_jit_do_simple_function(FilterXSimpleFunctionProto fn, FilterXExpr *expr,
   return res;
 }
 
+__attribute__((used)) __attribute__((noinline))
+FilterXObject *
+fx_jit_do_simple_function_typed(FilterXSimpleFunctionProto fn, FilterXExpr *expr,
+                                FilterXObject **args, gsize args_len)
+{
+  return filterx_expr_make_typed_object(expr, fx_jit_do_simple_function(fn, expr, args, args_len));
+}
+
 static FilterXIRValue
 _simple_function_compile(FilterXExpr *s, FilterXJIT *jit)
 {

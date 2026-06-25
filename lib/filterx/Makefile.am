@@ -47,6 +47,7 @@ filterxinclude_HEADERS = 			\
 	lib/filterx/filterx-object.h \
 	lib/filterx/filterx-env.h \
 	lib/filterx/filterx-stashed-object.h \
+	lib/filterx/filterx-type-inference.h \
 	lib/filterx/filterx-parser.h \
 	lib/filterx/filterx-pipe.h \
 	lib/filterx/filterx-private.h \
@@ -153,6 +154,7 @@ lib_filterx_libfilterx_la_SOURCES = \
 	lib/filterx/filterx-scope.c \
 	lib/filterx/filterx-sequence.c \
 	lib/filterx/filterx-stashed-object.c \
+	lib/filterx/filterx-type-inference.c \
 	lib/filterx/filterx-variable.c \
 	lib/filterx/filterx-weakrefs.c \
 	lib/filterx/func-cache-json-file.c \

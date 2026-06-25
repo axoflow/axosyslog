@@ -202,6 +202,148 @@ fx_jit_emit_eval_push_error_info_printf(FilterXJIT *jit, const gchar *msg, Filte
   g_array_free(call_args, TRUE);
 }
 
+/* Helpers whose result is always a freshly created (and therefore typed)
+ * object: make_typed_object() on their result is a guaranteed no-op. */
+static const gchar *const _always_typed_helpers[] =
+{
+  "fx_jit_do_plus",
+  "fx_jit_do_plus_int",
+  "fx_jit_do_plus_string",
+  "fx_jit_arithmetic_sub",
+  "fx_jit_arithmetic_mul",
+  "fx_jit_arithmetic_div",
+  "fx_jit_arithmetic_mod",
+  "fx_jit_arithmetic_uminus",
+  "fx_jit_boolean_new",
+  "fx_jit_expr_eval_typed",
+};
+
+/* Helpers that may return marshalled objects but have a "<name>_typed" twin
+ * that applies make_typed_object() before returning. */
+static const gchar *const _typed_twin_helpers[] =
+{
+  "fx_jit_eval_variable",
+  "fx_jit_do_getattr",
+  "fx_jit_do_getattr_dict",
+  "fx_jit_do_get_subscript_dict",
+  "fx_jit_do_get_subscript_dict_string_key",
+  "fx_jit_do_get_subscript_list",
+  "fx_jit_do_simple_function",
+  "fx_jit_expr_eval",
+};
+
+static gboolean
+_name_in_list(const gchar *name, const gchar *const *list, gsize len)
+{
+  for (gsize i = 0; i < len; i++)
+    {
+      if (strcmp(name, list[i]) == 0)
+        return TRUE;
+    }
+  return FALSE;
+}
+
+gboolean
+fx_jit_try_make_call_result_typed(FilterXJIT *jit, FilterXIRValue value)
+{
+  if (!value || !LLVMIsACallInst(value))
+    return FALSE;
+
+  LLVMValueRef callee = LLVMGetCalledValue(value);
+  if (!callee)
+    return FALSE;
+
+  gsize name_len = 0;
+  const gchar *name = LLVMGetValueName2(callee, &name_len);
+  if (!name || !name_len)
+    return FALSE;
+
+  if (_name_in_list(name, _always_typed_helpers, G_N_ELEMENTS(_always_typed_helpers)))
+    return TRUE;
+
+  if (!_name_in_list(name, _typed_twin_helpers, G_N_ELEMENTS(_typed_twin_helpers)))
+    return FALSE;
+
+  gchar *twin_name = g_strconcat(name, "_typed", NULL);
+  LLVMValueRef twin = LLVMGetNamedFunction(jit->mod, twin_name);
+  if (!twin)
+    twin = LLVMAddFunction(jit->mod, twin_name, LLVMGlobalGetValueType(callee));
+  g_free(twin_name);
+
+  /* the callee is the last operand of a call instruction */
+  LLVMSetOperand(value, LLVMGetNumOperands(value) - 1, twin);
+  return TRUE;
+}
+
+/* Statement helpers that have a "<name>_stmt" twin combining the helper with
+ * fx_jit_process_expr_result().  All of them receive the statement expr among
+ * their arguments, so the twin can supply it to the postlude itself. */
+static const gchar *const _stmt_twin_helpers[] =
+{
+  "fx_jit_do_setattr",
+  "fx_jit_do_setattr_dict",
+  "fx_jit_do_nullv_setattr",
+  "fx_jit_do_nullv_setattr_dict",
+  "fx_jit_do_assign",
+  "fx_jit_do_nullv_assign",
+  "fx_jit_do_set_subscript_dict",
+  "fx_jit_do_set_subscript_list",
+  "fx_jit_do_nullv_set_subscript_dict",
+  "fx_jit_do_nullv_set_subscript_list",
+  "fx_jit_expr_eval",
+};
+
+FilterXIRValue
+fx_jit_try_emit_stmt_action(FilterXJIT *jit, FilterXIRValue result,
+                            FilterXIRValue eval_ctx, FilterXIRValue result_slot)
+{
+  if (!result || !LLVMIsACallInst(result))
+    return NULL;
+
+  /* the call is replaced, its result must not have other users */
+  if (LLVMGetFirstUse(result))
+    return NULL;
+
+  LLVMValueRef callee = LLVMGetCalledValue(result);
+  if (!callee)
+    return NULL;
+
+  gsize name_len = 0;
+  const gchar *name = LLVMGetValueName2(callee, &name_len);
+  if (!name || !name_len)
+    return NULL;
+
+  if (!_name_in_list(name, _stmt_twin_helpers, G_N_ELEMENTS(_stmt_twin_helpers)))
+    return NULL;
+
+  LLVMTypeRef fn_ty = LLVMGlobalGetValueType(callee);
+  unsigned nparams = LLVMCountParamTypes(fn_ty);
+  if (nparams != LLVMGetNumArgOperands(result))
+    return NULL;
+
+  LLVMTypeRef *param_tys = g_alloca((nparams + 2) * sizeof(LLVMTypeRef));
+  LLVMGetParamTypes(fn_ty, param_tys);
+  param_tys[nparams] = jit->ffi.ptr_ty;
+  param_tys[nparams + 1] = jit->ffi.ptr_ty;
+
+  FilterXIRValue *args = g_alloca((nparams + 2) * sizeof(FilterXIRValue));
+  for (unsigned i = 0; i < nparams; i++)
+    args[i] = LLVMGetOperand(result, i);
+  args[nparams] = eval_ctx;
+  args[nparams + 1] = result_slot;
+
+  gchar *twin_name = g_strconcat(name, "_stmt", NULL);
+  LLVMTypeRef twin_ty = LLVMFunctionType(jit->ffi.i32_ty, param_tys, nparams + 2, FALSE);
+  LLVMValueRef twin = LLVMGetNamedFunction(jit->mod, twin_name);
+  if (!twin)
+    twin = LLVMAddFunction(jit->mod, twin_name, twin_ty);
+  g_free(twin_name);
+
+  FilterXIRValue action = LLVMBuildCall2(jit->ir, twin_ty, twin, args, nparams + 2, "");
+  LLVMInstructionEraseFromParent(result);
+  return action;
+}
+
 FilterXIRValue
 fx_jit_emit_extern_call(FilterXJIT *jit, const gchar *name, FilterXIRType return_ty,
                         FilterXIRType *param_tys, FilterXIRValue *args, unsigned param_count)
