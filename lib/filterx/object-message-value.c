@@ -399,7 +399,7 @@ _len(FilterXObject *s, guint64 *len)
 
 /* NOTE: the caller must ensure that repr lives as long as the constructed object, avoids copying */
 FilterXObject *
-filterx_message_value_new_borrowed(const gchar *repr, gssize repr_len, LogMessageValueType type)
+filterx_message_value_new_indirect(const gchar *repr, gssize repr_len, LogMessageValueType type)
 {
   FilterXMessageValue *self = filterx_new_object(FilterXMessageValue);
 
@@ -420,7 +420,7 @@ filterx_message_value_new(const gchar *repr, gssize repr_len, LogMessageValueTyp
   gchar *buf = g_malloc(len + 1);
   memcpy(buf, repr, len);
   buf[len] = 0;
-  FilterXMessageValue *self = (FilterXMessageValue *) filterx_message_value_new_borrowed(buf, len, type);
+  FilterXMessageValue *self = (FilterXMessageValue *) filterx_message_value_new_indirect(buf, len, type);
   self->buf = buf;
   return &self->super;
 }
@@ -429,7 +429,7 @@ filterx_message_value_new(const gchar *repr, gssize repr_len, LogMessageValueTyp
 FilterXObject *
 filterx_message_value_new_ref(gchar *repr, gssize repr_len, LogMessageValueType type)
 {
-  FilterXMessageValue *self = (FilterXMessageValue *) filterx_message_value_new_borrowed(repr, repr_len, type);
+  FilterXMessageValue *self = (FilterXMessageValue *) filterx_message_value_new_indirect(repr, repr_len, type);
   self->buf = repr;
   return &self->super;
 }
@@ -472,13 +472,20 @@ filterx_extract_object_from_logmsg(LogMessage *msg, NVHandle handle)
   const gchar *value = log_msg_get_value_if_set_with_type(msg, handle, &value_len, &t);
   if (!value)
     return NULL;
+
+  FilterXObject *self;
   switch (t)
     {
     case LM_VT_STRING:
-      return filterx_string_new_borrowed(value, value_len);
+      self = filterx_string_new_indirect(value, value_len);
+      break;
     case LM_VT_NULL:
       return filterx_null_new();
     default:
-      return filterx_message_value_new_borrowed(value, value_len, t);
+      self = filterx_message_value_new_indirect(value, value_len, t);
+      break;
     }
+
+  self->is_nvtable_backed = TRUE;
+  return self;
 }

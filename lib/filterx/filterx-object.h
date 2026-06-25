@@ -204,7 +204,7 @@ struct _FilterXObject
    *
    */
   guint weak_referenced:1, is_dirty:1, allocator_used:1, floating_ref:1, early_allocation:1, early_allocation_checked:1,
-        flags:5;
+        is_nvtable_backed:1, flags:5;
   volatile guint32 hash;
   FilterXType *type;
 };
@@ -754,6 +754,12 @@ filterx_object_dup(FilterXObject *self)
     return filterx_ref_dup(self);
 
   return self->type->clone(self);
+}
+
+static inline gboolean
+filterx_object_is_nvtable_backed(FilterXObject *self)
+{
+  return self->is_nvtable_backed;
 }
 
 static inline FilterXObject *

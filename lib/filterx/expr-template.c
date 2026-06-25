@@ -53,7 +53,7 @@ _eval_template(FilterXExpr *s)
    * expressions, thus the FilterXObject is shorter lived than the scratch
    * buffer.  */
 
-  return filterx_message_value_new_borrowed(value->str, value->len, t);
+  return filterx_message_value_new_indirect(value->str, value->len, t);
 }
 
 static void

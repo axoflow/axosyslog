@@ -93,8 +93,8 @@ _free(FilterXObject *s)
   FilterXString *self = (FilterXString *) s;
   if (self->super.flags & FILTERX_STRING_FLAG_STR_ALLOCATED)
     g_free((gchar *) self->str);
-  else if (self->super.flags & FILTERX_STRING_FLAG_STR_BORROWED_SLICE)
-    filterx_object_unref(self->storage.slice);
+  else if (self->super.flags & FILTERX_STRING_FLAG_STR_INDIRECT)
+    filterx_object_unref(self->storage.indirect);
   filterx_object_free_method(s);
 }
 
@@ -393,15 +393,16 @@ filterx_string_new_from_json_literal(const gchar *str, gssize str_len)
 }
 
 FilterXObject *
-_filterx_string_new_slice_from_borrowed_str_and_len(FilterXObject *object, const gchar *str, gsize str_len)
+_filterx_string_new_indirect_from_str_and_len(FilterXObject *object, const gchar *str, gsize str_len)
 {
   FilterXString *self = filterx_new_object(FilterXString);
   filterx_object_init_instance(&self->super, &FILTERX_TYPE_NAME(string));
 
-  self->super.flags |= FILTERX_STRING_FLAG_STR_BORROWED_SLICE;
+  self->super.flags |= FILTERX_STRING_FLAG_STR_INDIRECT;
+  self->super.is_nvtable_backed = object && filterx_object_is_nvtable_backed(object);
   self->str = str;
   self->str_len = str_len;
-  self->storage.slice = filterx_object_ref(object);
+  self->storage.indirect = filterx_object_ref(object);
   return &self->super;
 }
 
@@ -421,7 +422,7 @@ _filterx_string_new_slice_from_non_string(FilterXObject *object, gsize start, gs
   if (cached)
     return cached;
 
-  return _filterx_string_new_slice_from_borrowed_str_and_len(object, str, str_len);
+  return _filterx_string_new_indirect_from_str_and_len(object, str, str_len);
 }
 
 FilterXObject *
