@@ -179,8 +179,8 @@ log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len
  * of partially sent data if needed. The return value indicates whether we
  * successfully sent this message, or if it should be resent by the caller.
  **/
-static LogProtoStatus
-log_proto_text_client_post(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
+LogProtoStatus
+log_proto_text_client_post_method(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len, gboolean *consumed)
 {
   LogProtoTextClient *self = (LogProtoTextClient *) s;
 
@@ -230,7 +230,7 @@ log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport, co
   self->super.poll_prepare = log_proto_text_client_poll_prepare;
   self->super.flush = log_proto_text_client_flush;
   self->super.process_in = log_proto_text_client_process_input;
-  self->super.post = log_proto_text_client_post;
+  self->super.post = log_proto_text_client_post_method;
   self->super.free_fn = log_proto_text_client_free;
   self->next_state = -1;
 }

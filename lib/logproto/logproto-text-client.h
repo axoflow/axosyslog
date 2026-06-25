@@ -36,6 +36,8 @@ typedef struct _LogProtoTextClient
 
 LogProtoStatus log_proto_text_client_submit_write(LogProtoClient *s, guchar *msg, gsize msg_len,
                                                   GDestroyNotify msg_free, gint next_state);
+LogProtoStatus log_proto_text_client_post_method(LogProtoClient *s, LogMessage *logmsg, guchar *msg, gsize msg_len,
+                                                 gboolean *consumed);
 void log_proto_text_client_init(LogProtoTextClient *self, LogTransport *transport,
                                 const LogProtoClientOptions *options);
 LogProtoClient *log_proto_text_client_new(LogTransport *transport, const LogProtoClientOptions *options);
