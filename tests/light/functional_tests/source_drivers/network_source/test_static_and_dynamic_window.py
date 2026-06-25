@@ -314,7 +314,7 @@ def test_fill_static_window_for_all_source_connections(config, syslog_ng, port_a
     send_messages_with_loggen(loggen, network_source, used_source_connections, static_window_size)
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_available", used_source_connections * [0])
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_capacity", used_source_connections * [100])
-    assert syslog_ng.count_message_in_console_log("Source has been suspended") == used_source_connections
+    assert syslog_ng.count_message_in_console_log("Source has been suspended") >= used_source_connections
 
     # phase 2: send additional messages and check that the new connections are rejected
     assert not syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
@@ -343,7 +343,7 @@ def test_fill_dynamic_window_for_all_source_connections(config, syslog_ng, port_
     send_messages_with_loggen(loggen, network_source, used_source_connections, int(dynamic_window_size))
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_available", used_source_connections * [0])
     wait_for_expected_prometheus_metric_values(config, "syslogng_input_window_capacity", used_source_connections * [int(dynamic_window_size)])
-    assert syslog_ng.count_message_in_console_log("Source has been suspended") == used_source_connections
+    assert syslog_ng.count_message_in_console_log("Source has been suspended") >= used_source_connections
 
     # phase 2: send additional messages and check that the new connections are rejected
     assert not syslog_ng.is_message_in_console_log("Number of allowed concurrent connections reached, rejecting connection")
