@@ -20,6 +20,7 @@ modules/grpc/protos/grafana-loki
 modules/grpc/protos/googleapis-proto
 modules/grpc/protos/clickhouse-proto
 modules/cloud-auth/jwt-cpp
+modules/http-source/llhttp
 scripts/plugin-skeleton-creator/plugin_template.*
 (lib|modules)/.*\.conf$
 dist\.conf$
@@ -179,6 +180,8 @@ modules/http/compression\.[ch]
 modules/http-adapters/.*\.[ch]
 modules/http-adapters/http-adapters-grammar.ym
 modules/http-adapters/tests/.*\.[ch]
+modules/http-source/.*\.[ch]
+modules/http-source/http-source-grammar\.ym
 tests/loggen
 persist-tool
 modules/python-modules/syslogng/__init__\.py
