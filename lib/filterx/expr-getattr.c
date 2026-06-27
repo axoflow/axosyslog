@@ -37,14 +37,12 @@ _do_getattr(FilterXObject *variable, FilterXObject *attr, FilterXExpr *expr)
 {
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to get-attribute from object", expr,
-                                          "Failed to evaluate expression");
       return NULL;
     }
 
   FilterXObject *result = filterx_object_getattr(variable, attr);
   if (!result)
-    filterx_eval_push_error_static_info("Failed to get-attribute from object", expr, "Failed to evaluate key");
+    filterx_eval_push_error_static_info("Failed to get-attribute from object", "Failed to evaluate key");
 
   filterx_object_unref(variable);
   return result;
@@ -67,14 +65,13 @@ _unset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Failed to evaluate expression");
       return FALSE;
     }
 
   result = filterx_object_unset_key(variable, self->attr);
   if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to unset() from object", s, "Object does not support unset()");
+      filterx_eval_push_error_static_info("Failed to unset() from object", "Object does not support unset()");
     }
 
   filterx_object_unref(variable);
@@ -90,14 +87,13 @@ _move(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to move() from object", s, "Failed to evaluate expression");
       return NULL;
     }
 
   result = filterx_object_move_key(variable, self->attr);
   if (!result)
     {
-      filterx_eval_push_error_static_info("Failed to move() from object", s, "Object does not support move()");
+      filterx_eval_push_error_static_info("Failed to move() from object", "Object does not support move()");
     }
 
   filterx_object_unref(variable);
@@ -111,7 +107,6 @@ _isset(FilterXExpr *s)
   FilterXObject *variable = filterx_expr_eval_typed(self->operand);
   if (!variable)
     {
-      filterx_eval_push_error_static_info("Failed to check element of object", s, "Failed to evaluate expression");
       return FALSE;
     }
 

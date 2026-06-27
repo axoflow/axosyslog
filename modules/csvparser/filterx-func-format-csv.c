@@ -61,7 +61,7 @@ _append_to_buffer(FilterXObject *key, FilterXObject *value, gpointer user_data)
   gsize len_before_value = buffer->len;
   if (!filterx_object_str_append(value, buffer))
     {
-      filterx_eval_push_error_static_info("Failed to evaluate format_csv()", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to evaluate format_csv()",
                                           "str_append() method failed");
       return FALSE;
     }
@@ -90,7 +90,7 @@ _handle_list_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
   guint64 size;
   if (!filterx_object_len(csv_data, &size))
     {
-      filterx_eval_push_error_static_info("Failed to evaluate format_csv()", &self->super.super, "len() method failed");
+      filterx_eval_push_error_static_info("Failed to evaluate format_csv()", "len() method failed");
       return FALSE;
     }
 
@@ -117,7 +117,7 @@ _handle_dict_input(FilterXFunctionFormatCSV *self, FilterXObject *csv_data, GStr
       if (!cols || !filterx_object_is_type(cols_unwrapped, &FILTERX_TYPE_NAME(sequence)) || !filterx_object_len(cols, &size))
         {
           filterx_object_unref(cols);
-          filterx_eval_push_error_info_printf("Failed to evaluate format_csv()", &self->super.super,
+          filterx_eval_push_error_info_printf("Failed to evaluate format_csv()",
                                               "Columns must be a list, got: %s. " FILTERX_FUNC_FORMAT_CSV_USAGE,
                                               filterx_object_get_type_name(cols));
           return FALSE;
@@ -147,8 +147,6 @@ _eval(FilterXExpr *s)
   FilterXObject *csv_data = filterx_expr_eval_typed(self->input);
   if (!csv_data)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate format_csv()", &self->super.super,
-                                          "Failed to evaluate expression");
       return NULL;
     }
 
@@ -162,7 +160,7 @@ _eval(FilterXExpr *s)
     success = _handle_dict_input(self, csv_data_unwrapped, formatted);
   else
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate format_csv()", &self->super.super,
+      filterx_eval_push_error_info_printf("Failed to evaluate format_csv()",
                                           "Object must be a dict or list, got: %s. " FILTERX_FUNC_FORMAT_CSV_USAGE,
                                           filterx_object_get_type_name(csv_data));
     }

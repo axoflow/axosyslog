@@ -163,14 +163,14 @@ filterx_typecast_datetime_isodate(FilterXExpr *s, FilterXObject *args[], gsize a
 
   if (len == 0)
     {
-      filterx_eval_push_error_static_info("Failed to cast string to datetime", s, "Argument is an empty string");
+      filterx_eval_push_error_static_info("Failed to cast string to datetime", "Argument is an empty string");
       return NULL;
     }
 
   gchar *end = wall_clock_time_strptime(&wct, datefmt_isodate, str);
   if (end && *end != 0)
     {
-      filterx_eval_push_error_info_printf("Failed to cast string to datetime", s,
+      filterx_eval_push_error_info_printf("Failed to cast string to datetime",
                                           "Unable to parse ISO 8601 format. str: '%s', end: '%s'",
                                           str, end);
       return NULL;
@@ -206,7 +206,7 @@ filterx_simple_function_format_isodate(FilterXExpr *s, FilterXObject *args[], gs
   UnixTime ut;
   if (!filterx_object_extract_datetime(datetime_obj, &ut))
     {
-      filterx_eval_push_error_info_printf("Failed to extract datetime", s,
+      filterx_eval_push_error_info_printf("Failed to extract datetime",
                                           "format_isodate() requires a datetime object, got: %s",
                                           filterx_object_get_type_name(datetime_obj));
       return NULL;
@@ -306,7 +306,6 @@ _strptime_eval(FilterXExpr *s)
   FilterXObject *time_str_obj = filterx_expr_eval(self->time_str_expr);
   if (!time_str_obj)
     {
-      filterx_eval_push_error("Failed to evaluate first argument. " FILTERX_FUNC_STRPTIME_USAGE, s, NULL);
       return NULL;
     }
 
@@ -316,7 +315,7 @@ _strptime_eval(FilterXExpr *s)
   if (!extract_success)
     {
       filterx_object_unref(time_str_obj);
-      filterx_eval_push_error("First argument must be string typed. " FILTERX_FUNC_STRPTIME_USAGE, s, NULL);
+      filterx_eval_push_error("First argument must be string typed. " FILTERX_FUNC_STRPTIME_USAGE, NULL);
       return NULL;
     }
 
@@ -484,7 +483,6 @@ _strftime_eval(FilterXExpr *s)
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate second argument. " FILTERX_FUNC_STRFTIME_USAGE, s, NULL);
       return NULL;
     }
 
@@ -494,7 +492,7 @@ _strftime_eval(FilterXExpr *s)
   if (!filterx_object_extract_datetime(datetime_obj, &datetime))
     {
       filterx_object_unref(datetime_obj);
-      filterx_eval_push_error("Second argument must be of datetime type. " FILTERX_FUNC_STRFTIME_USAGE, s, NULL);
+      filterx_eval_push_error("Second argument must be of datetime type. " FILTERX_FUNC_STRFTIME_USAGE, NULL);
       return NULL;
     }
 
@@ -635,7 +633,6 @@ _get_timezone_source_eval(FilterXExpr *s)
   FilterXObject *datetime_obj = filterx_expr_eval(self->datetime_expr);
   if (!datetime_obj)
     {
-      filterx_eval_push_error("Failed to evaluate argument. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE, s, NULL);
       return NULL;
     }
 
@@ -644,7 +641,7 @@ _get_timezone_source_eval(FilterXExpr *s)
   if (!filterx_object_extract_datetime(datetime_obj, &datetime))
     {
       filterx_object_unref(datetime_obj);
-      filterx_eval_push_error("Argument must be of datetime type. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE, s, NULL);
+      filterx_eval_push_error("Argument must be of datetime type. " FILTERX_FUNC_GET_TIMEZONE_SOURCE_USAGE, NULL);
       return NULL;
     }
 

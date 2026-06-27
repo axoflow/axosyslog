@@ -62,7 +62,6 @@ filterx_jit_ffi_init(FilterXJIT *jit)
 
   LLVMTypeRef p1[] = { ptr };
   LLVMTypeRef p2[] = { ptr, ptr };
-  LLVMTypeRef p3[] = { ptr, ptr, ptr };
   LLVMTypeRef i1[] = { i32 };
 
   jit->ffi.expr_eval = _declare_func(mod, "fx_jit_expr_eval", ptr, p1, 1);
@@ -75,11 +74,11 @@ filterx_jit_ffi_init(FilterXJIT *jit)
   jit->ffi.object_truthy = _declare_func(mod, "fx_jit_object_truthy", i32, p1, 1);
   jit->ffi.boolean_new = _declare_func(mod, "fx_jit_boolean_new", ptr, i1, 1);
 
-  jit->ffi.eval_push_error = _declare_func(mod, "filterx_eval_push_error", v, p3, 3);
-  jit->ffi.eval_push_falsy_error = _declare_func(mod, "filterx_eval_push_falsy_error", v, p3, 3);
-  jit->ffi.eval_push_error_static_info = _declare_func(mod, "filterx_eval_push_error_static_info", v, p3, 3);
+  jit->ffi.eval_push_error = _declare_func(mod, "filterx_eval_push_error", v, p2, 2);
+  jit->ffi.eval_push_falsy_error = _declare_func(mod, "filterx_eval_push_falsy_error", v, p2, 2);
+  jit->ffi.eval_push_error_static_info = _declare_func(mod, "filterx_eval_push_error_static_info", v, p2, 2);
 
-  jit->ffi.eval_push_error_info_printf.ty = LLVMFunctionType(v, p3, 3, TRUE);
+  jit->ffi.eval_push_error_info_printf.ty = LLVMFunctionType(v, p2, 2, TRUE);
   jit->ffi.eval_push_error_info_printf.fn = LLVMAddFunction(mod, "filterx_eval_push_error_info_printf",
                                                             jit->ffi.eval_push_error_info_printf.ty);
 }
@@ -119,6 +118,31 @@ fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIR
 }
 
 FilterXIRValue
+fx_jit_emit_expr_propagate_to_error_if_null(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue result)
+{
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  FilterXIRSequence propagate_seq = filterx_jit_ir_create_sequence(jit, "propagate_error", block);
+  FilterXIRSequence continue_seq = filterx_jit_ir_create_sequence(jit, "continue", block);
+
+  FilterXIRValue is_null = LLVMBuildIsNull(ir, result, "is_null");
+  LLVMBuildCondBr(ir, is_null, propagate_seq, continue_seq);
+
+  filterx_jit_ir_add_sequence_to_block(jit, propagate_seq, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, propagate_seq);
+  FilterXIRType param_tys[] = { ffi->ptr_ty };
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, expr) };
+  fx_jit_emit_extern_call(jit, "filterx_eval_update_error_location_from_expr", ffi->void_ty, param_tys, args, 1);
+  LLVMBuildBr(ir, continue_seq);
+
+  filterx_jit_ir_add_sequence_to_block(jit, continue_seq, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, continue_seq);
+  return result;
+}
+
+FilterXIRValue
 fx_jit_emit_object_ref(FilterXJIT *jit, LLVMValueRef obj)
 {
   return _emit_call(jit, jit->ffi.object_ref, &obj, 1);
@@ -151,42 +175,36 @@ fx_jit_emit_boolean_new(FilterXJIT *jit, gboolean value)
 }
 
 void
-fx_jit_emit_eval_push_falsy_error(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, FilterXIRValue obj)
+fx_jit_emit_eval_push_falsy_error(FilterXJIT *jit, const gchar *msg, FilterXIRValue obj)
 {
-  LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, msg), fx_jit_emit_const_ptr(jit, expr), obj };
-  _emit_call(jit, jit->ffi.eval_push_falsy_error, args, 3);
+  LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, msg), obj };
+  _emit_call(jit, jit->ffi.eval_push_falsy_error, args, 2);
 }
 
 void
-fx_jit_emit_eval_push_error(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, FilterXIRValue obj)
+fx_jit_emit_eval_push_error(FilterXJIT *jit, const gchar *msg, FilterXIRValue obj)
 {
-  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, msg), fx_jit_emit_const_ptr(jit, expr), obj };
-  _emit_call(jit, jit->ffi.eval_push_error, args, 3);
+  FilterXIRValue args[] = { fx_jit_emit_const_ptr(jit, msg), obj };
+  _emit_call(jit, jit->ffi.eval_push_error, args, 2);
 }
 
 void
-fx_jit_emit_eval_push_error_static_info(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, const gchar *info)
+fx_jit_emit_eval_push_error_static_info(FilterXJIT *jit, const gchar *msg, const gchar *info)
 {
   FilterXIRValue args[] =
   {
     fx_jit_emit_const_ptr(jit, msg),
-    fx_jit_emit_const_ptr(jit, expr),
     fx_jit_emit_const_ptr(jit, info),
   };
-  _emit_call(jit, jit->ffi.eval_push_error_static_info, args, 3);
+  _emit_call(jit, jit->ffi.eval_push_error_static_info, args, 2);
 }
 
 void
-fx_jit_emit_eval_push_error_info_printf(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr,
-                                        const gchar *fmt, ...)
+fx_jit_emit_eval_push_error_info_printf(FilterXJIT *jit, const gchar *msg, const gchar *fmt, ...)
 {
   GArray *call_args = g_array_new(FALSE, FALSE, sizeof(FilterXIRValue));
 
-
   FilterXIRValue arg = fx_jit_emit_const_ptr(jit, msg);
-  g_array_append_val(call_args, arg);
-
-  arg = fx_jit_emit_const_ptr(jit, expr);
   g_array_append_val(call_args, arg);
 
   arg = fx_jit_emit_const_ptr(jit, fmt);

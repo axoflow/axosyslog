@@ -274,7 +274,7 @@ _subnet_is_string_member_of(FilterXSubnet *self, FilterXObject *member)
   const gchar *str;
   if (!filterx_object_extract_string_as_cstr(member, &str))
     {
-      filterx_eval_push_error("Failed to check subnet() membership, argument is not a string or ip()", NULL, member);
+      filterx_eval_push_error("Failed to check subnet() membership, argument is not a string or ip()", member);
       return NULL;
     }
   switch (self->family)
@@ -302,7 +302,7 @@ _subnet_is_string_member_of(FilterXSubnet *self, FilterXObject *member)
     default:
       g_assert_not_reached();
     }
-  filterx_eval_push_error("Failed to check subnet() membership, error parsing IP address", NULL, member);
+  filterx_eval_push_error("Failed to check subnet() membership, error parsing IP address", member);
   return NULL;
 }
 
@@ -387,14 +387,14 @@ filterx_typecast_subnet(FilterXExpr *s, FilterXObject *args[], gsize args_len)
   const gchar *str;
   if (!filterx_object_extract_string_as_cstr(object, &str))
     {
-      filterx_eval_push_error_static_info("Failed to cast string to subnet()", s, "Argument is not a string");
+      filterx_eval_push_error_static_info("Failed to cast string to subnet()", "Argument is not a string");
       return NULL;
     }
 
   object = filterx_subnet_new_from_cidr(str);
   if (!object)
     {
-      filterx_eval_push_error_static_info("Failed to cast string to subnet()", s, "Argument is not well formed CIDR");
+      filterx_eval_push_error_static_info("Failed to cast string to subnet()", "Argument is not well formed CIDR");
       return NULL;
     }
   return object;

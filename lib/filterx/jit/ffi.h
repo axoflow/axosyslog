@@ -68,6 +68,7 @@ FilterXJITFFI *filterx_jit_get_ffi(FilterXJIT *self);
 FilterXIRValue fx_jit_emit_expr_eval(FilterXJIT *jit, FilterXExpr *expr);
 FilterXIRValue fx_jit_emit_expr_eval_typed(FilterXJIT *jit, FilterXExpr *expr);
 FilterXIRValue fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue obj);
+FilterXIRValue fx_jit_emit_expr_propagate_to_error_if_null(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue result);
 
 FilterXIRValue fx_jit_emit_object_ref(FilterXJIT *jit, FilterXIRValue obj);
 void fx_jit_emit_object_unref(FilterXJIT *jit, FilterXIRValue obj);
@@ -77,11 +78,11 @@ FilterXIRValue fx_jit_emit_boolean_new(FilterXJIT *jit, gboolean value);
 
 FilterXIRValue fx_jit_emit_const_ptr(FilterXJIT *jit, gconstpointer p);
 
-void fx_jit_emit_eval_push_error(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, FilterXIRValue obj);
-void fx_jit_emit_eval_push_falsy_error(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, FilterXIRValue obj);
-void fx_jit_emit_eval_push_error_static_info(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr, const gchar *info);
-void fx_jit_emit_eval_push_error_info_printf(FilterXJIT *jit, const gchar *msg, FilterXExpr *expr,
-                                             const gchar *fmt, ...)  G_GNUC_PRINTF(4, 5);
+void fx_jit_emit_eval_push_error(FilterXJIT *jit, const gchar *msg, FilterXIRValue obj);
+void fx_jit_emit_eval_push_falsy_error(FilterXJIT *jit, const gchar *msg, FilterXIRValue obj);
+void fx_jit_emit_eval_push_error_static_info(FilterXJIT *jit, const gchar *msg, const gchar *info);
+void fx_jit_emit_eval_push_error_info_printf(FilterXJIT *jit, const gchar *msg, const gchar *fmt, ...)
+G_GNUC_PRINTF(3, 4);
 
 
 FilterXIRValue fx_jit_emit_extern_call(FilterXJIT *jit, const gchar *name, FilterXIRType return_ty,

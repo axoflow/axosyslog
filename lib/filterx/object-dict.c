@@ -607,7 +607,7 @@ _filterx_dict_get_subscript(FilterXObject *s, FilterXObject *key)
   const gchar *error = NULL;
   if (!filterx_mapping_normalize_key(key, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return NULL;
     }
 
@@ -628,7 +628,7 @@ _filterx_dict_set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject 
   const gchar *error = NULL;
   if (!filterx_mapping_normalize_key(key, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 
@@ -649,7 +649,7 @@ _filterx_dict_is_key_set(FilterXObject *s, FilterXObject *key)
   const gchar *error = NULL;
   if (!filterx_mapping_normalize_key(key, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 
@@ -667,7 +667,7 @@ _filterx_dict_is_member_of(FilterXObject *s, FilterXObject *member)
   const gchar *error = NULL;
   if (!filterx_mapping_normalize_key(member, &error))
     {
-      filterx_eval_push_error(error, NULL, member);
+      filterx_eval_push_error(error, member);
       return FALSE;
     }
 
@@ -685,7 +685,7 @@ _filterx_dict_unset_key(FilterXObject *s, FilterXObject *key)
   const gchar *error = NULL;
   if (!filterx_mapping_normalize_key(key, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 
@@ -703,7 +703,7 @@ _filterx_dict_move_key(FilterXObject *s, FilterXObject *key)
   const gchar *error = NULL;
   if (!filterx_mapping_normalize_key(key, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 
@@ -881,7 +881,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
 
   if (args_len != 1)
     {
-      filterx_eval_push_error("Too many arguments", s, NULL);
+      filterx_eval_push_error("Too many arguments", NULL);
       return NULL;
     }
 
@@ -911,7 +911,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       FilterXObject *self = filterx_object_from_json(repr, repr_len, &error);
       if (!self)
         {
-          filterx_eval_push_error_info_printf("Failed to create dict", s,
+          filterx_eval_push_error_info_printf("Failed to create dict",
                                               "Argument must be a valid JSON string: %s",
                                               error->message);
           g_clear_error(&error);
@@ -925,7 +925,7 @@ filterx_dict_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize args_len
       return self;
     }
 
-  filterx_eval_push_error_info_printf("Failed to create dict", s,
+  filterx_eval_push_error_info_printf("Failed to create dict",
                                       "Argument must be a dict or a string, got: %s",
                                       filterx_object_get_type_name(arg));
   return NULL;

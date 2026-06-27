@@ -29,14 +29,13 @@
 static gboolean
 _append_inner_data_dict_element(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
-  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   GString *buffer = ((gpointer *) user_data)[1];
   const gchar *key_str;
   gsize key_str_len;
 
   if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
     {
-      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_info_printf(XML_ERROR_STR,
                                           "Dict key must be a string, got %s",
                                           filterx_object_get_type_name(key));
       return FALSE;
@@ -47,7 +46,7 @@ _append_inner_data_dict_element(FilterXObject *key, FilterXObject *value, gpoint
 
   if (!filterx_object_extract_string_ref(value, &value_str, &value_str_len))
     {
-      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_info_printf(XML_ERROR_STR,
                                           "Dict value must be a string, got %s",
                                           filterx_object_get_type_name(value));
       return FALSE;
@@ -74,7 +73,7 @@ _append_data_element(FilterXObject *key, FilterXObject *value, gpointer user_dat
 
   if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
     {
-      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_info_printf(XML_ERROR_STR,
                                           "Dict key must be a string, got %s",
                                           filterx_object_get_type_name(key));
       return FALSE;
@@ -85,7 +84,7 @@ _append_data_element(FilterXObject *key, FilterXObject *value, gpointer user_dat
 
   if (!filterx_object_extract_string_ref(value, &value_str, &value_str_len))
     {
-      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_info_printf(XML_ERROR_STR,
                                           "Dict value must be a string, got %s",
                                           filterx_object_get_type_name(value));
       return FALSE;
@@ -154,8 +153,7 @@ _append_inner_dict(FilterXObject *key, FilterXObject *dict, gpointer user_data)
 
   if (!filterx_object_extract_string_ref(key, &key_str, &key_str_len))
     {
-      FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
-      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_info_printf(XML_ERROR_STR,
                                           "Dict key must be a string, got %s",
                                           filterx_object_get_type_name(key));
       return FALSE;

@@ -27,7 +27,7 @@
 #include "apphook.h"
 #include "scratch-buffers.h"
 
-#include <libtest/filterx-lib.h>
+#include "libtest/filterx-lib.h"
 
 Test(filterx_bytes, test_filterx_bytes_typecast_null_args)
 {
@@ -116,11 +116,13 @@ static void
 setup(void)
 {
   app_startup();
+  init_libtest_filterx();
 }
 
 static void
 teardown(void)
 {
+  deinit_libtest_filterx();
   scratch_buffers_explicit_gc();
   app_shutdown();
 }

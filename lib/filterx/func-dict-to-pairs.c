@@ -50,28 +50,28 @@ _add_pair_to_list(FilterXObject *key, FilterXObject *value, gpointer user_data)
   FilterXObject *pair = filterx_dict_sized_new(2);
   if (!pair)
     {
-      filterx_eval_push_error_static_info("Failed to add pair to list", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to add pair to list",
                                           "Failed to create dict for pair");
       goto exit;
     }
 
   if (!filterx_object_setattr(pair, self->key_name_object, &key))
     {
-      filterx_eval_push_error_static_info("Failed to add pair to list", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to add pair to list",
                                           "Failed to add key to pair");
       goto exit;
     }
 
   if (!filterx_object_setattr(pair, self->value_name_object, &value))
     {
-      filterx_eval_push_error_static_info("Failed to add pair to list", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to add pair to list",
                                           "Failed to add value to pair");
       goto exit;
     }
 
   if (!filterx_sequence_append(list, &pair))
     {
-      filterx_eval_push_error_static_info("Failed to add pair to list", &self->super.super,
+      filterx_eval_push_error_static_info("Failed to add pair to list",
                                           "Failed to append pair to list");
       goto exit;
     }
@@ -94,13 +94,12 @@ _dict_to_pairs_eval(FilterXExpr *s)
   FilterXObject *dict_obj = filterx_ref_unwrap_ro(dict_obj_ref);
   if (!dict_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate dict_to_pairs()", s, "Failed to evaluate dict argument");
       return NULL;
     }
 
   if (!filterx_object_is_type(dict_obj, &FILTERX_TYPE_NAME(dict)))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate dict_to_pairs()", s,
+      filterx_eval_push_error_info_printf("Failed to evaluate dict_to_pairs()",
                                           "dict argument must be a dict, got: %s",
                                           filterx_object_get_type_name(dict_obj_ref));
       goto exit;
@@ -111,7 +110,7 @@ _dict_to_pairs_eval(FilterXExpr *s)
   gpointer user_data[] = { self, result };
   if (!filterx_object_iter(dict_obj, _add_pair_to_list, user_data))
     {
-      filterx_eval_push_error_static_info("Failed to evaluate dict_to_pairs()", s, "Error during iteration over dict");
+      filterx_eval_push_error_static_info("Failed to evaluate dict_to_pairs()", "Error during iteration over dict");
       filterx_object_unref(result);
       result = NULL;
       goto exit;

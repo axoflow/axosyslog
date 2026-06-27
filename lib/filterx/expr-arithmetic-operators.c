@@ -25,9 +25,9 @@
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 
-/* If you want to make these operators support other types,
- * remove these implementations, look at expr-plus.c
- * and follow the way it was implemented. */
+/* If you want to make the arithmetic operators support other types,
+ * follow the pattern of filterx_operator_plus_new() which uses
+ * filterx_object_add() for type-generic addition. */
 
 typedef struct FilterXArithmeticOperator_
 {
@@ -44,28 +44,16 @@ _extract_operands_into_generic_numbers(FilterXObject *lhs_object, FilterXObject 
 {
   gboolean ok = FALSE;
 
-  if (!lhs_object)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
-                                          "Failed to evaluate left hand side");
-      goto exit;
-    }
   if (!filterx_object_extract_generic_number(lhs_object, lhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator",
                                           "Left hand side must be a double or integer, got: %s",
                                           filterx_object_get_type_name(lhs_object));
       goto exit;
     }
-  if (!rhs_object)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
-                                          "Failed to evaluate right hand side");
-      goto exit;
-    }
   if (!filterx_object_extract_generic_number(rhs_object, rhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator",
                                           "right hand side must be a double or integer, got: %s",
                                           filterx_object_get_type_name(rhs_object));
       goto exit;
@@ -111,6 +99,23 @@ _free_arithmetic_common(FilterXExpr *s)
 }
 
 static FilterXObject *
+_eval_op(FilterXArithmeticOperator *self,
+         FilterXObject *(*op)(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr))
+{
+  FilterXObject *lhs, *rhs;
+  lhs = _eval_lhs(self);
+  if (!lhs)
+    return NULL;
+  rhs = _eval_rhs(self);
+  if (!rhs)
+    {
+      filterx_object_unref(lhs);
+      return NULL;
+    }
+  return (*op)(lhs, rhs, &self->super.super);
+}
+
+static FilterXObject *
 _do_substraction(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
   GenericNumber lhs_number, rhs_number, result;
@@ -135,7 +140,7 @@ static FilterXObject *
 _eval_substraction(FilterXExpr *s)
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
-  return _do_substraction(_eval_lhs(self), _eval_rhs(self), s);
+  return _eval_op(self, _do_substraction);
 }
 
 static FilterXExpr *
@@ -175,7 +180,7 @@ static FilterXObject *
 _eval_multiplication(FilterXExpr *s)
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
-  return _do_multiplication(_eval_lhs(self), _eval_rhs(self), s);
+  return _eval_op(self, _do_multiplication);
 }
 
 static FilterXExpr *
@@ -208,12 +213,12 @@ _do_division(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
       if (rhs_int == 0)
         {
-          filterx_eval_push_error_static_info("Failed to evaluate division operator", expr, "Division by zero");
+          filterx_eval_push_error_static_info("Failed to evaluate division operator", "Division by zero");
           return NULL;
         }
       if (lhs_int == G_MININT64 && rhs_int == -1)
         {
-          filterx_eval_push_error_static_info("Failed to evaluate division operator", expr,
+          filterx_eval_push_error_static_info("Failed to evaluate division operator",
                                               "Division overflow, INT64_MIN divided by -1");
           return NULL;
         }
@@ -230,7 +235,7 @@ static FilterXObject *
 _eval_division(FilterXExpr *s)
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
-  return _do_division(_eval_lhs(self), _eval_rhs(self), s);
+  return _eval_op(self, _do_division);
 }
 
 static FilterXExpr *
@@ -255,31 +260,17 @@ _do_modulo(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
   gint64 lhs_number, rhs_number;
   FilterXObject *result = NULL;
 
-  if (!lhs)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr,
-                                          "Failed to evaluate left hand side");
-      goto exit;
-    }
-
   if (!filterx_object_extract_integer(lhs, &lhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator",
                                           "Left hand side must be an integer, got: %s",
                                           filterx_object_get_type_name(lhs));
       goto exit;
     }
 
-  if (!rhs)
-    {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr,
-                                          "Failed to evaluate right hand side");
-      goto exit;
-    }
-
   if (!filterx_object_extract_integer(rhs, &rhs_number))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate modulo operator",
                                           "Right hand side must be an integer, got: %s",
                                           filterx_object_get_type_name(rhs));
       goto exit;
@@ -287,12 +278,12 @@ _do_modulo(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
   if (rhs_number == 0)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr, "Modulo by zero");
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", "Modulo by zero");
       goto exit;
     }
   if (lhs_number == G_MININT64 && rhs_number == -1)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate modulo operator", expr,
+      filterx_eval_push_error_static_info("Failed to evaluate modulo operator",
                                           "Modulo overflow, INT64_MIN modulo -1");
       goto exit;
     }
@@ -309,7 +300,7 @@ static FilterXObject *
 _eval_modulo(FilterXExpr *s)
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
-  return _do_modulo(_eval_lhs(self), _eval_rhs(self), s);
+  return _eval_op(self, _do_modulo);
 }
 
 static FilterXExpr *
@@ -329,6 +320,37 @@ _optimize_modulo(FilterXExpr *s)
 }
 
 static FilterXObject *
+_do_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  FilterXObject *result = filterx_object_add(lhs, rhs);
+  if (!result)
+    filterx_eval_push_error_static_info("Failed to add values", "add() method failed");
+
+  filterx_object_unref(lhs);
+  filterx_object_unref(rhs);
+  return result;
+}
+
+static FilterXObject *
+_eval_plus(FilterXExpr *s)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+  return _eval_op(self, _do_plus);
+}
+
+static FilterXExpr *
+_optimize_plus(FilterXExpr *s)
+{
+  FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
+
+  _optimize_arithmetic_operators_common(self);
+
+  if (self->literal_lhs && self->literal_rhs)
+    return filterx_literal_new(_eval_plus(&self->super.super));
+  return NULL;
+}
+
+static FilterXObject *
 _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 {
   GenericNumber operand, result;
@@ -336,14 +358,12 @@ _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
 
   if (!operand_obj)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
-                                          "Failed to evaluate operand");
       goto exit;
     }
 
   if (!filterx_object_extract_generic_number(operand_obj, &operand))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator", expr,
+      filterx_eval_push_error_info_printf("Failed to evaluate arithmetic operator",
                                           "Operand must be a double or integer, got: %s",
                                           filterx_object_get_type_name(operand_obj));
       goto exit;
@@ -409,6 +429,13 @@ fx_jit_arithmetic_mod(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 
 __attribute__((used))
 FilterXObject *
+fx_jit_arithmetic_plus(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
+{
+  return _do_plus(lhs, rhs, expr);
+}
+
+__attribute__((used))
+FilterXObject *
 fx_jit_arithmetic_uminus(FilterXObject *operand, FilterXExpr *expr)
 {
   return _do_uminus(operand, expr);
@@ -419,17 +446,63 @@ _compile_binary_arithmetic(FilterXExpr *s, FilterXJIT *jit, const gchar *fn_name
 {
   FilterXArithmeticOperator *self = (FilterXArithmeticOperator *) s;
   FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+  FilterXIRBuilder ir = filterx_jit_get_ir_builder(jit);
+  FilterXIRValue block = filterx_jit_ir_get_current_block(jit);
+
+  FilterXIRValue result_slot = LLVMBuildAlloca(ir, ffi->ptr_ty, "result");
+  LLVMBuildStore(ir, LLVMConstNull(ffi->ptr_ty), result_slot);
+
+  FilterXIRSequence lhs_null = filterx_jit_ir_create_sequence(jit, "arith_lhs_null", block);
+  FilterXIRSequence eval_rhs = filterx_jit_ir_create_sequence(jit, "arith_eval_rhs", block);
+  FilterXIRSequence rhs_null = filterx_jit_ir_create_sequence(jit, "arith_rhs_null", block);
+  FilterXIRSequence do_op = filterx_jit_ir_create_sequence(jit, "arith_do_op", block);
+  FilterXIRSequence finish = filterx_jit_ir_create_sequence(jit, "arith_finish", block);
 
   FilterXIRValue lhs = self->literal_lhs
                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_lhs))
                        : filterx_expr_compile_or_eval_typed(self->super.lhs, jit);
+
+  /* if (!lhs) goto finish; */
+  FilterXIRValue lhs_is_null = LLVMBuildIsNull(ir, lhs, "lhs_is_null");
+  LLVMBuildCondBr(ir, lhs_is_null, lhs_null, eval_rhs);
+
+  filterx_jit_ir_add_sequence_to_block(jit, lhs_null, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, lhs_null);
+  LLVMBuildBr(ir, finish);
+
+  /* eval_rhs */
+  filterx_jit_ir_add_sequence_to_block(jit, eval_rhs, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, eval_rhs);
   FilterXIRValue rhs = self->literal_rhs
                        ? fx_jit_emit_object_ref(jit, fx_jit_emit_const_ptr(jit, self->literal_rhs))
                        : filterx_expr_compile_or_eval(self->super.rhs, jit);
 
+  /* if (!rhs) { unref(lhs); goto finish; } */
+  FilterXIRValue rhs_is_null = LLVMBuildIsNull(ir, rhs, "rhs_is_null");
+  LLVMBuildCondBr(ir, rhs_is_null, rhs_null, do_op);
+
+  filterx_jit_ir_add_sequence_to_block(jit, rhs_null, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, rhs_null);
+  fx_jit_emit_object_unref(jit, lhs);
+  LLVMBuildBr(ir, finish);
+
+  /* do_op: both operands are non-NULL; the called function consumes them */
+  filterx_jit_ir_add_sequence_to_block(jit, do_op, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, do_op);
   FilterXIRValue args[] = { lhs, rhs, fx_jit_emit_const_ptr(jit, self) };
   FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
-  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
+  LLVMBuildStore(ir, fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3), result_slot);
+  LLVMBuildBr(ir, finish);
+
+  filterx_jit_ir_add_sequence_to_block(jit, finish, block);
+  filterx_jit_ir_set_insert_point_to_sequence_tail(jit, finish);
+  return LLVMBuildLoad2(ir, ffi->ptr_ty, result_slot, "result");
+}
+
+static FilterXIRValue
+_compile_plus(FilterXExpr *s, FilterXJIT *jit)
+{
+  return _compile_binary_arithmetic(s, jit, "fx_jit_arithmetic_plus");
 }
 
 static FilterXIRValue
@@ -471,7 +544,7 @@ _compile_uminus(FilterXExpr *s, FilterXJIT *jit)
 #endif
 
 FilterXExpr *
-filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
@@ -486,7 +559,7 @@ filterx_arithmetic_operator_substraction_new(FilterXExpr *lhs, FilterXExpr *rhs)
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "subs", FXE_READ, lhs, rhs);
@@ -501,7 +574,7 @@ filterx_arithmetic_operator_division_new(FilterXExpr *lhs, FilterXExpr *rhs)
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "mod", FXE_READ, lhs, rhs);
@@ -516,7 +589,7 @@ filterx_arithmetic_operator_modulo_new(FilterXExpr *lhs, FilterXExpr *rhs)
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs)
+filterx_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rhs)
 {
   FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
   filterx_binary_op_init_instance(&self->super, "mult", FXE_READ, lhs, rhs);
@@ -531,7 +604,22 @@ filterx_arithmetic_operator_multiplication_new(FilterXExpr *lhs, FilterXExpr *rh
 }
 
 FilterXExpr *
-filterx_arithmetic_operator_uminus_new(FilterXExpr *operand)
+filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
+{
+  FilterXArithmeticOperator *self = g_new0(FilterXArithmeticOperator, 1);
+  filterx_binary_op_init_instance(&self->super, "plus", FXE_READ, lhs, rhs);
+  self->super.super.optimize = _optimize_plus;
+  self->super.super.eval = _eval_plus;
+  self->super.super.free_fn = _free_arithmetic_common;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.super.compile = _compile_plus;
+#endif
+
+  return &self->super.super;
+}
+
+FilterXExpr *
+filterx_operator_uminus_new(FilterXExpr *operand)
 {
   FilterXUnaryOp *self = g_new0(FilterXUnaryOp, 1);
   filterx_unary_op_init_instance(self, "uminus", FXE_READ, operand);

@@ -67,7 +67,7 @@ _str_slice(FilterXSlicingOperator *self, const gchar *str, gsize str_len, gint64
 
   if (start > end)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator", &self->super,
+      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator",
                                           "Start index must not be greater than end index");
       return NULL;
     }
@@ -87,14 +87,12 @@ _extract_start(FilterXSlicingOperator *self, gint64 *start_idx)
   FilterXObject *start = self->start_literal ? filterx_object_ref(self->start_literal) : filterx_expr_eval(self->start);
   if (!start)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate string slicing operator", &self->super,
-                                          "Failed to evaluate start index");
       return FALSE;
     }
 
   if (!filterx_object_extract_integer(start, start_idx))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator", &self->super,
+      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator",
                                           "Start index must be an integer, got: %s",
                                           filterx_object_get_type_name(start));
 
@@ -118,14 +116,12 @@ _extract_end(FilterXSlicingOperator *self, gsize str_len, gint64 *end_idx)
   FilterXObject *end = self->end_literal ? filterx_object_ref(self->end_literal) : filterx_expr_eval(self->end);
   if (!end)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate string slicing operator", &self->super,
-                                          "Failed to evaluate end index");
       return FALSE;
     }
 
   if (!filterx_object_extract_integer(end, end_idx))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator", &self->super,
+      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator",
                                           "End index must be an integer, got: %s",
                                           filterx_object_get_type_name(end));
       filterx_object_unref(end);
@@ -144,8 +140,6 @@ filterx_string_slicing_eval(FilterXExpr *s)
   FilterXObject *lhs_object = filterx_expr_eval_typed(self->lhs);
   if (!lhs_object)
     {
-      filterx_eval_push_error_static_info("Failed to evaluate string slicing operator", &self->super,
-                                          "Failed to evaluate left hand side");
       return NULL;
     }
 
@@ -153,7 +147,7 @@ filterx_string_slicing_eval(FilterXExpr *s)
   const gchar *str = filterx_string_get_value_ref(lhs_object, &str_len);
   if (!str)
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator", &self->super,
+      filterx_eval_push_error_info_printf("Failed to evaluate string slicing operator",
                                           "Left hand side must be a string, got: %s",
                                           filterx_object_get_type_name(lhs_object));
       filterx_object_unref(lhs_object);

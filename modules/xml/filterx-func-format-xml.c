@@ -172,7 +172,7 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
   GString *val_buf = scratch_buffers_alloc();
   if (!filterx_object_str(value, val_buf))
     {
-      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_info_printf(XML_ERROR_STR,
                                           "Couldn't convert value to string, type: %s",
                                           filterx_object_get_type_name(value));
       return FALSE;
@@ -200,13 +200,12 @@ _append_entry(FilterXObject *key, FilterXObject *value, gpointer user_data)
 static gboolean
 _is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
 {
-  FilterXFunctionFormatXML *self = ((gpointer *) user_data)[0];
   const gchar *tag_str;
   gsize tag_str_len;
 
   if (!filterx_object_extract_string_ref(tag, &tag_str, &tag_str_len))
     {
-      filterx_eval_push_error_info_printf(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_info_printf(XML_ERROR_STR,
                                           "Dict key must be a string, got %s",
                                           filterx_object_get_type_name(tag));
       return FALSE;
@@ -214,7 +213,7 @@ _is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
 
   if(tag_str_len == 0)
     {
-      filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_static_info(XML_ERROR_STR,
                                           "XML tag name can't be empty");
       return FALSE;
     }
@@ -223,7 +222,7 @@ _is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
   // so we consider them valid
   if (!(ch_isalpha(tag_str[0]) || tag_str[0] == '_' || tag_str[0] == '@' || strn_eq_strz(tag_str, "#text", tag_str_len)))
     {
-      filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
+      filterx_eval_push_error_static_info(XML_ERROR_STR,
                                           "Dict key must begin with a letter or '_' character");
       return FALSE;
     }
@@ -232,7 +231,7 @@ _is_valid_xml_tag_name(FilterXObject *tag, gpointer user_data)
     {
       if (!(isalnum(tag_str[i])) || tag_str[i] == '.' || tag_str[i] == '_' || tag_str[i] == '-')
         {
-          filterx_eval_push_error_static_info(XML_ERROR_STR, &self->super.super,
+          filterx_eval_push_error_static_info(XML_ERROR_STR,
                                               "Dict key can't contain special characters, except '.', '_', and '-'");
           return FALSE;
         }
@@ -285,7 +284,7 @@ _eval(FilterXExpr *s)
   FilterXObject *input_dict_unwrapped = filterx_ref_unwrap_ro(input_dict);
   if (!filterx_object_is_type(input_dict_unwrapped, &FILTERX_TYPE_NAME(mapping)))
     {
-      filterx_eval_push_error_info_printf("Failed to evaluate format xml", self->input,
+      filterx_eval_push_error_info_printf("Failed to evaluate format xml",
                                           "Input must be a dict, got: %s",
                                           filterx_object_get_type_name(input_dict));
       scratch_buffers_reclaim_marked(marker);

@@ -72,7 +72,8 @@ _process_expr_result(FilterXExpr *expr, FilterXObject *result)
 
   if (!success)
     {
-      filterx_eval_push_falsy_error("bailing out due to a falsy expr", expr, result);
+      filterx_eval_push_falsy_error("bailing out due to a falsy expr", result);
+      filterx_eval_update_error_location_from_expr(expr);
       return FALSE;
     }
 
@@ -214,6 +215,7 @@ filterx_compound_expr_add_ref(FilterXExpr *s, FilterXExpr *expr)
   FilterXCompoundExpr *self = (FilterXCompoundExpr *) s;
 
   filterx_expr_list_add_ref(&self->exprs, expr);
+  expr->statement = TRUE;
 }
 
 /* Takes reference of expr_list */

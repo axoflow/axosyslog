@@ -172,7 +172,7 @@ _set_subscript(FilterXObject *s, FilterXObject *key, FilterXObject **new_value)
   const gchar *error;
   if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, TRUE, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
   if (normalized_index < self->cpp->len())
@@ -190,7 +190,7 @@ _get_subscript(FilterXObject *s, FilterXObject *key)
   const gchar *error;
   if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return NULL;
     }
 
@@ -206,7 +206,7 @@ _unset_key(FilterXObject *s, FilterXObject *key)
   const gchar *error;
   if (!filterx_sequence_normalize_index(key, self->cpp->len(), &normalized_index, FALSE, &error))
     {
-      filterx_eval_push_error(error, NULL, key);
+      filterx_eval_push_error(error, key);
       return FALSE;
     }
 
@@ -329,7 +329,7 @@ filterx_otel_array_new_from_args(FilterXExpr *s, FilterXObject *args[], gsize ar
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info_printf("Failed to create OTel Array object", s, "%s", e.what());
+      filterx_eval_push_error_info_printf("Failed to create OTel Array object", "%s", e.what());
       filterx_object_unref(&self->super.super);
       return NULL;
     }
@@ -429,7 +429,7 @@ ArrayFieldConverter::set(google::protobuf::Message *message, ProtoReflectors ref
           return success;
         }
 
-      filterx_eval_push_error_info_printf("Failed to convert field", NULL,
+      filterx_eval_push_error_info_printf("Failed to convert field",
                                           "Type for field %s must be list or otel_array, got: %s",
                                           reflectors.field_type_name(),
                                           filterx_object_get_type_name(object));
@@ -480,7 +480,7 @@ _repr(FilterXObject *s, GString *repr)
     }
   catch (const std::runtime_error &e)
     {
-      filterx_eval_push_error_info_printf("Failed to call repr() on OTel Array object", NULL, "%s", e.what());
+      filterx_eval_push_error_info_printf("Failed to call repr() on OTel Array object", "%s", e.what());
       return FALSE;
     }
 
