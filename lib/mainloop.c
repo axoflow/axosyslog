@@ -786,12 +786,6 @@ main_loop_thread_resource_deinit(void)
   g_cond_clear(&thread_halt_cond);
 }
 
-gboolean
-main_loop_is_control_server_running(MainLoop *self)
-{
-  return self->control_server != NULL;
-}
-
 GQuark
 main_loop_error_quark(void)
 {
