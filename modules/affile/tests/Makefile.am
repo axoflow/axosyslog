@@ -31,6 +31,18 @@ modules_affile_tests_test_file_opener_LDADD	= $(TEST_LDADD) \
 modules_affile_tests_test_wildcard_file_reader_CFLAGS = $(TEST_CFLAGS) -I$(top_srcdir)/modules/affile
 modules_affile_tests_test_wildcard_file_reader_LDADD	= $(TEST_LDADD) \
 	-dlpreopen $(top_builddir)/modules/affile/libaffile.la
+
+if ENABLE_BUILTIN_MODULES
+modules_affile_tests_test_wildcard_file_reader_LDFLAGS	= \
+	-Wl,--wrap=file_reader_init_method \
+	-Wl,--wrap=file_reader_deinit_method \
+	-Wl,--wrap=file_reader_deinit_method \
+	-Wl,--wrap=file_reader_queue_method \
+	-Wl,--wrap=file_reader_notify_method \
+	-Wl,--wrap=iv_task_registered \
+	-Wl,--wrap=iv_task_register \
+	-Wl,--wrap=file_reader_init_instance
+endif
 modules_affile_tests_test_wildcard_file_reader_SOURCES = modules/affile/tests/test_wildcard_file_reader.c
 
 modules_affile_tests_test_file_list_CFLAGS = $(TEST_CFLAGS) -I$(top_srcdir)/modules/affile

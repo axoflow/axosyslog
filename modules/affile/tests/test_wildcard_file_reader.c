@@ -23,6 +23,7 @@
  */
 
 #include <criterion/criterion.h>
+#include "libtest/mock-function.h"
 
 #include "apphook.h"
 #include "wildcard-file-reader.h"
@@ -61,39 +62,46 @@ LogPathOptions path_options = LOG_PATH_OPTIONS_INIT;
 
 /* MOCKS */
 
-gboolean file_reader_init_method(LogPipe *s)
+gboolean
+MOCK_FUNCTION(file_reader_init_method)(LogPipe *s)
 {
   return TRUE;
 }
 
-gboolean file_reader_deinit_method(LogPipe *s)
+gboolean
+MOCK_FUNCTION(file_reader_deinit_method)(LogPipe *s)
 {
   return TRUE;
 }
 
-void file_reader_queue_method(LogPipe *s, LogMessage *msg, const LogPathOptions *po)
+void
+MOCK_FUNCTION(file_reader_queue_method)(LogPipe *s, LogMessage *msg, const LogPathOptions *po)
 {
   return;
 }
 
-void file_reader_notify_method(LogPipe *s, gint notify_code, gpointer user_data)
+void
+MOCK_FUNCTION(file_reader_notify_method)(LogPipe *s, gint notify_code, gpointer user_data)
 {
   return;
 }
 
-int iv_task_registered(const struct iv_task *_t)
+int
+MOCK_FUNCTION(iv_task_registered)(const struct iv_task *_t)
 {
   return 0;
 }
 
-void iv_task_register(struct iv_task *_t)
+void
+MOCK_FUNCTION(iv_task_register)(struct iv_task *_t)
 {
   _t->handler(_t->cookie);
 }
 
-void file_reader_init_instance(FileReader *self, const gchar *filename,
-                               FileReaderOptions *options, FileOpener *opener,
-                               LogSrcDriver *owner, GlobalConfig *cfg)
+void
+MOCK_FUNCTION(file_reader_init_instance)(FileReader *self, const gchar *filename,
+                                         FileReaderOptions *options, FileOpener *opener,
+                                         LogSrcDriver *owner, GlobalConfig *cfg)
 {
   log_pipe_init_instance(&self->super, cfg);
   self->reader = log_reader_new(cfg);
