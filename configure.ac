@@ -938,6 +938,7 @@ AC_CHECK_LIB(rt, nanosleep, BASE_LIBS="$BASE_LIBS -lrt")
 AC_CHECK_FUNC(gethostbyname, [], AC_CHECK_LIB(nsl, gethostbyname, BASE_LIBS="$BASE_LIBS -lnsl"))
 AC_CHECK_LIB(regex, regexec, REGEX_LIBS="-lregex")
 AC_CHECK_LIB(resolv, res_init, RESOLV_LIBS="-lresolv")
+AC_CHECK_LIB(z, inflate, ZLIB_LIBS="-lz")
 
 AC_CHECK_FUNCS(strdup		\
 	strtol			\
@@ -1162,19 +1163,6 @@ dnl check OpenSSL static linking
 PKG_CHECK_MODULES(OPENSSL,
                   openssl >= $OPENSSL_MIN_VERSION,,
                   AC_MSG_ERROR(Cannot find OpenSSL libraries with version >= $OPENSSL_MIN_VERSION it is a hard dependency from syslog-ng 3.7 onwards))
-
-if test -n "$OPENSSL_LIBS" -a "$linking_mode" != "dynamic"; then
-        dnl required for openssl, but only when linking statically
-        AC_CHECK_LIB(z, inflate, ZLIB_LIBS="-lz")
-
-	dnl Remove -ldl as it cannot be linked statically on some platforms, it'll be present in DL_LIBS
-	OPENSSL_LIBS=`echo $OPENSSL_LIBS | tr ' ' '\n' | egrep -v "^-ldld?$" | tr '\n' ' '`
-
-	old_LIBS=$LIBS
-	LIBS="$LD_START_STATIC $OPENSSL_LIBS $ZLIB_LIBS $LD_END_STATIC $DL_LIBS"
-	AC_CHECK_FUNC(SSL_library_init, blb_cv_static_openssl=yes, blb_cv_static_openssl=no)
-	LIBS=$old_LIBS
-fi
 
 CPPFLAGS_SAVE="$CPPFLAGS"
 CPPFLAGS="$CPPFLAGS $OPENSSL_CFLAGS"
