@@ -8,6 +8,7 @@ set(LIBTEST_HEADERS
     mock-transport.h
     mock-cfg-parser.h
     mock-logpipe.h
+    mock-function.h
     msg_parse_lib.h
     persist_lib.h
     proto_lib.h
