@@ -19,6 +19,7 @@ modules_grpc_filterx_tests_test_protobuf_message_LDADD = \
   $(top_builddir)/modules/grpc/common/libgrpc-common.la \
   $(top_builddir)/modules/grpc/filterx/libgrpc-filterx.la
 
+nodist_EXTRA_modules_grpc_filterx_tests_test_protobuf_message_SOURCES = force-cpp-linker-with-default-stdlib2.cpp
 
 endif
 
