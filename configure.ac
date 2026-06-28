@@ -45,8 +45,7 @@ OPENSSL_MIN_VERSION="0.9.8"
 LIBDBI_MIN_VERSION="0.9.0"
 LIBRABBITMQ_MIN_VERSION="0.5.3"
 LIBRDKAFKA_MIN_VERSION="1.1.0"
-IVYKIS_MIN_VERSION="0.36.1"
-IVYKIS_UPDATED_VERSION="0.39"
+IVYKIS_MIN_VERSION="0.39"
 JSON_C_MIN_VERSION="0.13"
 PCRE2_MIN_VERSION="10.0"
 LMC_MIN_VERSION="1.0.0"
@@ -1326,7 +1325,6 @@ if test "x$with_ivykis" = "xinternal"; then
 else
 	with_ivykis="system"
 	PKG_CHECK_MODULES(IVYKIS, ivykis >= $IVYKIS_MIN_VERSION,,)
-	PKG_CHECK_MODULES(IVYKIS_VERSION_CHECK, ivykis >= $IVYKIS_UPDATED_VERSION, [IVYKIS_VERSION_UPDATED="yes"], [IVYKIS_VERSION_UPDATED="no"])
 
 	# in case we're using a system installed ivykis, we can link against
 	# it even without libtool and without extra linker arguments (as
@@ -2390,7 +2388,6 @@ AC_DEFINE_UNQUOTED(ENABLE_STACKDUMP, `enable_value $enable_stackdump`, [Enable s
 AC_DEFINE_UNQUOTED(ENABLE_JIT, `enable_value $enable_jit`, [Enable FilterX JIT compiler])
 AC_DEFINE_UNQUOTED(SYSTEMD_JOURNAL_MODE, `journald_mode`, [Systemd-journal support mode])
 AC_DEFINE_UNQUOTED(HAVE_INOTIFY, `enable_value $ac_cv_func_inotify_init`, [Have inotify])
-AC_DEFINE_UNQUOTED(USE_CONST_IVYKIS_MOCK, `enable_value $IVYKIS_VERSION_UPDATED`, [ivykis version is greater than $IVYKIS_UPDATED_VERSION])
 AC_DEFINE_UNQUOTED(ENABLE_BUILTIN_MODULES, `test $linking_mode = monolithic && echo 1 || echo 0`, [Builting modules are linked into the executable])
 
 AM_CONDITIONAL(ENABLE_ENV_WRAPPER, [test "$enable_env_wrapper" = "yes"])
