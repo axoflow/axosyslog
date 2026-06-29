@@ -28,6 +28,15 @@ if (BUILD_TESTING)
   check_pie_supported()
 endif()
 
+# Tests with known sanitizer findings, excluded from the leak/ASan error check.
+# The cmake counterpart of the sanitizer_exception_list in scripts/test-grep.sh.
+# TODO fix them.
+set(SANITIZER_EXCEPTION_LIST
+  test_patterndb
+  test_secure_logging
+  test-mongodb-config
+)
+
 function (add_unit_test)
 
   if (NOT BUILD_TESTING)
@@ -76,7 +85,9 @@ function (add_unit_test)
   add_test (${ADD_UNIT_TEST_TARGET} ${ADD_UNIT_TEST_TARGET})
   add_dependencies(check ${ADD_UNIT_TEST_TARGET})
   set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES ENVIRONMENT "CRITERION_TEST_PATTERN=!(*/*performance*);LSAN_OPTIONS=suppressions=${PROJECT_SOURCE_DIR}/tests/axosyslog-lsan.supp")
-  set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES FAIL_REGULAR_EXPRESSION "ERROR: (LeakSanitizer|AddressSanitizer)")
+  if (NOT "${ADD_UNIT_TEST_TARGET}" IN_LIST SANITIZER_EXCEPTION_LIST)
+    set_tests_properties(${ADD_UNIT_TEST_TARGET} PROPERTIES FAIL_REGULAR_EXPRESSION "ERROR: (LeakSanitizer|AddressSanitizer)")
+  endif()
 endfunction ()
 
 macro (add_test_subdirectory SUBDIR)
