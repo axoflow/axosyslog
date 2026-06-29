@@ -20,6 +20,7 @@
  *
  */
 #include "filterx/expr-setattr.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-eval.h"
@@ -143,6 +144,26 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static void
+_setattr_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  /* Refine the written container's element type with the assigned value (lift if the level
+   * was a freshly-built empty container, meet otherwise). This keeps element-type info alive
+   * across incremental builds (d.a = {}; d.a.b = {}; ...) so deeper accesses devirtualize. */
+  FilterXStaticTypeSpec value_spec = self->new_value ? self->new_value->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  filterx_type_env_update_on_write(env, self->object, value_spec);
+
+  const gchar *key = filterx_string_get_value_ref_and_assert_nul(self->attr, NULL);
+
+  /* Per-key update: variable.k0.k1...key = value.  The single-hop case (variable.key)
+   * is just a zero-prefix chain, so this covers it too.  Allows getattr deeper in a
+   * chain to find the precise type. */
+  filterx_type_env_meet_attr_for_chain(env, self->object, key, value_spec);
+}
+
 static gboolean
 _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -163,6 +184,7 @@ _setattr_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 
 #include "filterx/jit/jit.h"
 #include "filterx/jit/ffi.h"
+#include "filterx/object-dict.h"
 
 __attribute__((used))
 FilterXObject *
@@ -176,6 +198,68 @@ FilterXObject *
 fx_jit_do_nullv_setattr(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
 {
   return _do_nullv_setattr((FilterXSetAttr *) s, lhs, cloned);
+}
+
+/* Dict-specialized setattr: identical to _do_setattr but calls filterx_dict_set_subscript
+ * directly, bypassing the ref-setattr → mapping-setattr → set_subscript vtable chain.
+ *
+ * The static type DICT is only a hint: coercing containers (e.g. otel_logrecord.body) accept
+ * an assigned dict literal but store a non-dict object (otel_kvlist), so @lhs may not have a
+ * FilterXDictObject layout at runtime. Since filterx_dict_set_subscript downcasts to it,
+ * verify the runtime type first and fall back to the generic vtable setattr otherwise. */
+__attribute__((used))
+FilterXObject *
+fx_jit_do_setattr_dict(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
+{
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+
+  if (!cloned)
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
+                                          "Failed to evaluate right hand side");
+      goto error;
+    }
+  if (!lhs)
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
+                                          "Failed to evaluate expression");
+      goto error;
+    }
+
+  if (!filterx_object_is_type_or_ref(lhs, &FILTERX_TYPE_NAME(dict)))
+    return _do_setattr(self, lhs, cloned);
+
+  if (!filterx_dict_set_subscript(lhs, self->attr, &cloned))
+    {
+      filterx_eval_push_error_static_info("Failed to set-attribute to object", &self->super,
+                                          "setattr() method failed");
+      goto error;
+    }
+
+  filterx_object_unref(lhs);
+  return cloned;
+
+error:
+  filterx_object_unref(lhs);
+  filterx_object_unref(cloned);
+  return NULL;
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_nullv_setattr_dict(FilterXExpr *s, FilterXObject *lhs, FilterXObject *cloned)
+{
+  if (!cloned)
+    {
+      filterx_object_unref(lhs);
+      return _suppress_error();
+    }
+  if (filterx_object_extract_null(cloned))
+    {
+      filterx_object_unref(lhs);
+      return cloned;
+    }
+  return fx_jit_do_setattr_dict(s, lhs, cloned);
 }
 
 static inline FilterXIRValue
@@ -200,13 +284,21 @@ _emit_setattr_call(FilterXSetAttr *self, FilterXJIT *jit, const gchar *fn_name)
 static FilterXIRValue
 _setattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_setattr");
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+  const gchar *fn_name = filterx_static_type_kind(self->object->static_type) == FILTERX_STATIC_TYPE_DICT
+                         ? "fx_jit_do_setattr_dict"
+                         : "fx_jit_do_setattr";
+  return _emit_setattr_call(self, jit, fn_name);
 }
 
 static FilterXIRValue
 _nullv_setattr_compile(FilterXExpr *s, FilterXJIT *jit)
 {
-  return _emit_setattr_call((FilterXSetAttr *) s, jit, "fx_jit_do_nullv_setattr");
+  FilterXSetAttr *self = (FilterXSetAttr *) s;
+  const gchar *fn_name = filterx_static_type_kind(self->object->static_type) == FILTERX_STATIC_TYPE_DICT
+                         ? "fx_jit_do_nullv_setattr_dict"
+                         : "fx_jit_do_nullv_setattr";
+  return _emit_setattr_call(self, jit, fn_name);
 }
 
 #endif
@@ -221,6 +313,7 @@ filterx_setattr_new(FilterXExpr *object, FilterXObject *attr_name, FilterXExpr *
   self->super.eval = _setattr_eval;
   self->super.walk_children = _setattr_walk;
   self->super.free_fn = _free;
+  self->super.infer_types = _setattr_infer_types;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _setattr_compile;
 #endif

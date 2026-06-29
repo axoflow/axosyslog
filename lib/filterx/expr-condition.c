@@ -267,6 +267,30 @@ _compile_conditional(FilterXExpr *s, FilterXJIT *jit)
 
 #endif
 
+static void
+_conditional_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  FilterXConditional *self = (FilterXConditional *) s;
+
+  /* The condition runs unconditionally before the branches. */
+  filterx_expr_infer_types(self->condition, env);
+
+  /* Walk each branch on its own clone of the env, then meet the resulting envs into the
+   * outer env. A missing branch is equivalent to a no-op, which still contributes the
+   * pre-branch env to the meet. */
+  FilterXTypeEnv *false_env = filterx_type_env_clone(env);
+
+  filterx_expr_infer_types(self->true_branch, env);
+  filterx_expr_infer_types(self->false_branch, false_env);
+
+  filterx_type_env_meet_into(env, false_env);
+  filterx_type_env_free(false_env);
+
+  FilterXStaticTypeSpec t_t = self->true_branch ? self->true_branch->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  FilterXStaticTypeSpec f_t = self->false_branch ? self->false_branch->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  s->static_type = filterx_static_type_spec_meet(t_t, f_t);
+}
+
 FilterXExpr *
 filterx_conditional_new(FilterXExpr *condition)
 {
@@ -276,6 +300,7 @@ filterx_conditional_new(FilterXExpr *condition)
   self->super.optimize = _optimize;
   self->super.walk_children = _conditional_walk;
   self->super.free_fn = _free;
+  self->super.infer_types = _conditional_infer_types;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.compile = _compile_conditional;
 #endif

@@ -21,6 +21,8 @@
  */
 #include "filterx/expr-get-subscript.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/object-dict.h"
+#include "filterx/object-list.h"
 #include "stats/stats-registry.h"
 #include "stats/stats-cluster-single.h"
 
@@ -164,6 +166,127 @@ _free(FilterXExpr *s)
   filterx_expr_free_method(s);
 }
 
+static void
+_get_subscript_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+  /* Result is one nesting level shallower than the operand. */
+  s->static_type = filterx_static_type_element(self->operand ? self->operand->static_type :
+                                               INITIAL_FILTERX_STATIC_TYPE_SPEC);
+}
+
+FilterXExpr *
+filterx_get_subscript_get_operand(FilterXExpr *s)
+{
+  if (!filterx_expr_is_get_subscript(s))
+    return NULL;
+  return ((FilterXGetSubscript *) s)->operand;
+}
+
+#if SYSLOG_NG_ENABLE_JIT
+
+#include "filterx/jit/jit.h"
+#include "filterx/jit/ffi.h"
+
+typedef FilterXObject *(*FXGetSubscriptHelper)(FilterXObject *object, FilterXObject *key);
+
+/* The dict/list helpers downcast @variable to a concrete FilterX{Dict,List}Object, but the
+ * static type that selected this fast path is only a hint: coercing containers (e.g. otel
+ * masquerading as dict/list) yield a different runtime layout. @expected_type guards the
+ * downcast; on a mismatch we fall back to the generic vtable get_subscript.
+ *
+ * The helpers unwrap @variable read-only, so on the fast path we float the shared child
+ * against it (as the ref's get_subscript vtable does) to preserve copy-on-write on later
+ * writes. The generic fallback already floats internally via the ref vtable. */
+static inline __attribute__((always_inline)) FilterXObject *
+_do_get_subscript(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr,
+                  FXGetSubscriptHelper helper, FilterXType *expected_type)
+{
+  if (!variable)
+    {
+      filterx_eval_push_error_static_info("Failed to get-subscript from object", expr,
+                                          "Failed to evaluate expression");
+      return NULL;
+    }
+  if (!key)
+    {
+      filterx_eval_push_error_static_info("Failed to get-subscript from object", expr,
+                                          "Failed to evaluate key");
+      filterx_object_unref(variable);
+      return NULL;
+    }
+
+  FilterXObject *result;
+  if (filterx_object_is_type_or_ref(variable, expected_type))
+    {
+      result = helper(variable, key);
+      if (result && filterx_object_is_ref(variable))
+        result = filterx_ref_float_shared_child(result, variable);
+    }
+  else
+    result = filterx_object_get_subscript(variable, key);
+
+  if (!result)
+    filterx_eval_push_error("Failed to get-subscript from object", expr, key);
+  filterx_object_unref(key);
+  filterx_object_unref(variable);
+  return result;
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_get_subscript_dict(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript, &FILTERX_TYPE_NAME(dict));
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_get_subscript_list(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return _do_get_subscript(variable, key, expr, filterx_list_get_subscript, &FILTERX_TYPE_NAME(list));
+}
+
+__attribute__((used))
+FilterXObject *
+fx_jit_do_get_subscript_dict_string_key(FilterXObject *variable, FilterXObject *key, FilterXExpr *expr)
+{
+  return _do_get_subscript(variable, key, expr, filterx_dict_get_subscript_unchecked, &FILTERX_TYPE_NAME(dict));
+}
+
+static FilterXIRValue
+_get_subscript_compile(FilterXExpr *s, FilterXJIT *jit)
+{
+  FilterXGetSubscript *self = (FilterXGetSubscript *) s;
+  FilterXJITFFI *ffi = filterx_jit_get_ffi(jit);
+
+  const gchar *fn_name;
+  switch (filterx_static_type_kind(self->operand->static_type))
+    {
+    case FILTERX_STATIC_TYPE_DICT:
+      /* Dict keys must be hashable strings at runtime. When inference proves the key is a
+       * string, skip the runtime hashable check by dispatching to the unchecked variant. */
+      fn_name = filterx_static_type_kind(self->key->static_type) == FILTERX_STATIC_TYPE_STRING
+                ? "fx_jit_do_get_subscript_dict_string_key"
+                : "fx_jit_do_get_subscript_dict";
+      break;
+    case FILTERX_STATIC_TYPE_LIST:
+      fn_name = "fx_jit_do_get_subscript_list";
+      break;
+    default:
+      return fx_jit_emit_expr_eval(jit, s);
+    }
+
+  FilterXIRValue variable = filterx_expr_compile_or_eval_typed(self->operand, jit);
+  FilterXIRValue key = filterx_expr_compile_or_eval_typed(self->key, jit);
+  FilterXIRValue args[] = { variable, key, fx_jit_emit_const_ptr(jit, s) };
+  FilterXIRType param_tys[] = { ffi->ptr_ty, ffi->ptr_ty, ffi->ptr_ty };
+  return fx_jit_emit_extern_call(jit, fn_name, ffi->ptr_ty, param_tys, args, 3);
+}
+
+#endif
+
 static gboolean
 _get_subscript_walk(FilterXExpr *s, FilterXExprWalkFunc f, gpointer user_data)
 {
@@ -193,6 +316,10 @@ filterx_get_subscript_new(FilterXExpr *operand, FilterXExpr *key)
   self->super.walk_children = _get_subscript_walk;
   self->super.move = _move;
   self->super.free_fn = _free;
+  self->super.infer_types = _get_subscript_infer_types;
+#if SYSLOG_NG_ENABLE_JIT
+  self->super.compile = _get_subscript_compile;
+#endif
   self->operand = operand;
   self->key = key;
   return &self->super;
