@@ -21,6 +21,7 @@
  */
 #include "expr-plus.h"
 #include "object-string.h"
+#include "object-primitive.h"
 #include "filterx-eval.h"
 #include "filterx/expr-literal.h"
 #include "scratch-buffers.h"
@@ -86,6 +87,23 @@ _optimize(FilterXExpr *s)
 }
 
 static void
+_plus_infer_types(FilterXExpr *s, FilterXTypeEnv *env)
+{
+  filterx_expr_infer_types_default(s, env);
+  FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
+  FilterXStaticTypeSpec lhs_spec = self->super.lhs ? self->super.lhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+  FilterXStaticTypeSpec rhs_spec = self->super.rhs ? self->super.rhs->static_type : INITIAL_FILTERX_STATIC_TYPE_SPEC;
+
+  /* When LHS is statically INTEGER, the result is INTEGER regardless of RHS: the JIT fast
+   * path (fx_jit_do_plus_int) handles non-integer RHS via fallback. This lets type info
+   * propagate through chains like `int_field + unknown_field + 34` without collapsing. */
+  if (filterx_static_type_kind(lhs_spec) == FILTERX_STATIC_TYPE_INTEGER)
+    s->static_type = filterx_static_type_kind_only(FILTERX_STATIC_TYPE_INTEGER);
+  else
+    s->static_type = filterx_static_type_spec_meet(lhs_spec, rhs_spec);
+}
+
+static void
 _filterx_operator_plus_free(FilterXExpr *s)
 {
   FilterXOperatorPlus *self = (FilterXOperatorPlus *) s;
@@ -134,6 +152,7 @@ filterx_operator_plus_new(FilterXExpr *lhs, FilterXExpr *rhs)
   filterx_binary_op_init_instance(&self->super, "plus", FXE_READ, lhs, rhs);
   self->super.super.optimize = _optimize;
   self->super.super.eval = _eval_plus;
+  self->super.super.infer_types = _plus_infer_types;
   self->super.super.free_fn = _filterx_operator_plus_free;
 #if SYSLOG_NG_ENABLE_JIT
   self->super.super.compile = _compile_plus;

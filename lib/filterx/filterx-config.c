@@ -33,6 +33,7 @@ filterx_config_free(ModuleConfig *s)
   FilterXConfig *self = (FilterXConfig *) s;
 
   filterx_env_clear(&self->global_env);
+  filterx_type_env_free(self->persistent_type_env);
   module_config_free_method(s);
 }
 
@@ -117,6 +118,7 @@ filterx_config_new(GlobalConfig *cfg)
   self->super.deinit = filterx_config_deinit;
   self->super.free_fn = filterx_config_free;
   filterx_env_init(&self->global_env);
+  self->persistent_type_env = filterx_type_env_new();
   self->enable_jit = -1;
   return self;
 }

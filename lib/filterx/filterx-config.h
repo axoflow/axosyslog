@@ -27,6 +27,7 @@
 #include "filterx/jit/jit.h"
 #include "filterx/object-string.h"
 #include "filterx/filterx-env.h"
+#include "filterx/filterx-type-inference.h"
 
 #include <string.h>
 
@@ -38,6 +39,9 @@ typedef struct _FilterXConfig
   FilterXJIT *jit;
   /* config related objects, e.g. frozen string literals, etc */
   FilterXEnvironment global_env;
+  /* Accumulated type environment across all filterx blocks in this config; used to propagate
+   * type knowledge (e.g. log.field → INTEGER) from earlier blocks to later ones. */
+  FilterXTypeEnv *persistent_type_env;
 } FilterXConfig;
 
 FilterXConfig *filterx_config_get(GlobalConfig *cfg);
