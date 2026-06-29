@@ -69,6 +69,7 @@ jobs:
             -DCMAKE_C_FLAGS=-Werror
             -DCMAKE_INSTALL_PREFIX=${HOME}/install/syslog-ng
             -DPYTHON_VERSION=3
+            `[ $CC = clang ] && echo '-DSANITIZER=address' || true`
           "
           PYTEST_XDIST_AUTO_NUM_WORKERS=16
           gh_export COREFILES_DIR PYTHONUSERBASE CC CXX SYSLOG_NG_INSTALL_DIR CONFIGURE_FLAGS CMAKE_FLAGS PYTEST_XDIST_AUTO_NUM_WORKERS
