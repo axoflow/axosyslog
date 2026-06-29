@@ -136,6 +136,7 @@ struct _MainLoop
    * would be gone.
    */
   gboolean _is_terminating;
+  gboolean cfg_inited;
   gboolean last_config_reload_successful;
   time_t last_config_reload_time;
 
@@ -183,6 +184,12 @@ MainLoop *
 main_loop_get_instance(void)
 {
   return &main_loop;
+}
+
+MainLoopOptions *
+main_loop_get_options(void)
+{
+  return main_loop_get_instance()->options;
 }
 
 /* called when syslog-ng first starts up */
@@ -443,6 +450,7 @@ main_loop_exit_finish(gpointer user_data)
    * threads are running.  This will unregister ivykis tasks and timers
    * that could fire while the configuration is being destructed */
   cfg_deinit(self->current_configuration);
+  self->cfg_inited = FALSE;
   iv_quit();
 }
 
@@ -452,6 +460,16 @@ main_loop_exit_timer_elapsed(gpointer user_data)
   MainLoop *self = (MainLoop *) user_data;
 
   main_loop_worker_sync_call(main_loop_exit_finish, self);
+}
+
+static void
+main_loop_deinit_cfg(MainLoop *self)
+{
+  app_pre_shutdown();
+  cfg_deinit(self->current_configuration);
+  self->cfg_inited = FALSE;
+
+  self->_is_terminating = TRUE;
 }
 
 static void
@@ -701,6 +719,10 @@ main_loop_read_and_init_config(MainLoop *self)
     {
       return 2;
     }
+  self->cfg_inited = TRUE;
+
+  if (options->check_startup)
+    return 0;
 
   self->control_server = control_init(resolved_configurable_paths.ctlfilename);
 
@@ -724,6 +746,9 @@ main_loop_free_config(MainLoop *self)
 void
 main_loop_deinit(MainLoop *self)
 {
+  if (main_loop_is_dry_run(self->options) && self->cfg_inited)
+    main_loop_deinit_cfg(self);
+
   main_loop_free_config(self);
 
   if (self->cfg_monitor)
@@ -732,7 +757,8 @@ main_loop_deinit(MainLoop *self)
       file_monitor_free(self->cfg_monitor);
     }
 
-  control_deinit(self->control_server);
+  if (self->control_server)
+    control_deinit(self->control_server);
 
   iv_event_unregister(&self->exit_requested);
   main_loop_call_deinit();
@@ -748,6 +774,9 @@ main_loop_deinit(MainLoop *self)
 void
 main_loop_run(MainLoop *self)
 {
+  if (main_loop_is_dry_run(self->options))
+    return;
+
   msg_notice("syslog-ng starting up",
              evt_tag_str("version", SYSLOG_NG_VERSION));
 
@@ -781,12 +810,6 @@ void
 main_loop_thread_resource_deinit(void)
 {
   g_cond_clear(&thread_halt_cond);
-}
-
-gboolean
-main_loop_is_control_server_running(MainLoop *self)
-{
-  return self->control_server != NULL;
 }
 
 GQuark

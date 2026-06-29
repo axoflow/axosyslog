@@ -264,6 +264,13 @@ cfg_shutdown(GlobalConfig *cfg)
   main_loop_exit(main_loop);
 }
 
+static gboolean
+cfg_is_dry_run(GlobalConfig *cfg)
+{
+  MainLoopOptions *main_loop_options = main_loop_get_options();
+  return main_loop_is_dry_run(main_loop_options);
+}
+
 gboolean
 cfg_is_shutting_down(GlobalConfig *cfg)
 {
@@ -322,6 +329,9 @@ cfg_init(GlobalConfig *cfg)
 
   _run_module_post_cfg_inits(cfg);
   app_config_post_init();
+
+  if (cfg_is_dry_run(cfg))
+    return TRUE;
 
   /*
    * TLDR: A half-initialized pipeline turned out to be really hard to deinitialize

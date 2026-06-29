@@ -328,10 +328,7 @@ main(int argc, char *argv[])
               "The -d/--debug option no longer implies -e/--stderr, if you want to redirect internal() source to stderr please also include -e/--stderr option\n");
     }
 
-  gboolean exit_before_main_loop_run = main_loop_options.syntax_only
-                                       || main_loop_options.preprocess_into
-                                       || main_loop_options.config_id
-                                       || main_loop_options.check_startup;
+  gboolean exit_before_main_loop_run = main_loop_is_dry_run(&main_loop_options);
 
   if (exit_before_main_loop_run)
     interactive_mode();
@@ -354,6 +351,7 @@ main(int argc, char *argv[])
     {
       main_loop_deinit(main_loop);
       app_shutdown();
+      console_global_deinit();
       reloc_deinit();
       g_process_startup_failed(rc, TRUE);
       return rc;

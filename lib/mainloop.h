@@ -40,6 +40,15 @@ typedef struct _MainLoopOptions
   gboolean disable_module_discovery;
 } MainLoopOptions;
 
+static inline gboolean
+main_loop_is_dry_run(const MainLoopOptions *options)
+{
+  if (!options)
+    return FALSE;
+
+  return options->syntax_only || options->preprocess_into || options->config_id || options->check_startup;
+}
+
 extern ThreadId main_thread_handle;
 extern GCond thread_halt_cond;
 extern GMutex workers_running_lock;
@@ -72,6 +81,7 @@ gboolean main_loop_was_last_reload_successful(MainLoop *self);
 void main_loop_run(MainLoop *self);
 
 MainLoop *main_loop_get_instance(void);
+MainLoopOptions *main_loop_get_options(void);
 GlobalConfig *main_loop_get_current_config(MainLoop *self);
 GlobalConfig *main_loop_get_pending_new_config(MainLoop *self);
 void main_loop_init(MainLoop *self, MainLoopOptions *options);
@@ -83,8 +93,6 @@ gboolean main_loop_initialize_state(GlobalConfig *cfg, const gchar *persist_file
 
 void main_loop_thread_resource_init(void);
 void main_loop_thread_resource_deinit(void);
-
-gboolean main_loop_is_control_server_running(MainLoop *self);
 
 #define MAIN_LOOP_ERROR main_loop_error_quark()
 

@@ -40,11 +40,11 @@
 ControlServer *control_server;
 ControlConnection *control_connection;
 MainLoop *main_loop;
+MainLoopOptions main_loop_options;
 
 void
 setup(void)
 {
-  MainLoopOptions main_loop_options = {0};
   app_startup();
 
   main_loop = main_loop_get_instance();
