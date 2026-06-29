@@ -81,6 +81,7 @@ log_proto_client_options_defaults(LogProtoClientOptions *options)
 {
   options->drop_input = FALSE;
   options->idle_timeout = 0;
+  options->flush_lines = 0;
 }
 
 void

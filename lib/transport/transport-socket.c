@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/uio.h>
 
 static gint
 _determine_address_family(gint fd)
@@ -276,11 +277,26 @@ log_transport_stream_socket_shutdown(LogTransport *s)
     shutdown(s->fd, SHUT_RDWR);
 }
 
+static gssize
+log_transport_stream_socket_writev_method(LogTransport *s, struct iovec *iov, gint iov_count)
+{
+  LogTransportSocket *self = (LogTransportSocket *) s;
+  gssize rc;
+
+  do
+    {
+      rc = writev(self->super.fd, iov, iov_count);
+    }
+  while (rc == -1 && errno == EINTR);
+  return rc;
+}
+
 void
 log_transport_stream_socket_init_instance(LogTransportSocket *self, gint fd)
 {
   log_transport_socket_init_instance(self, "stream-socket", fd);
   self->super.shutdown = log_transport_stream_socket_shutdown;
+  self->super.writev = log_transport_stream_socket_writev_method;
 }
 
 LogTransport *
