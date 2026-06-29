@@ -83,6 +83,12 @@ else
 BPF_CONFIGURE_OPTS = --enable-ebpf
 endif
 
+ifneq ($(filter sng-nojit,$(DEB_BUILD_PROFILES)),)
+JIT_CONFIGURE_OPTS = --disable-jit
+else
+JIT_CONFIGURE_OPTS = --enable-jit
+endif
+
 ifneq ($(filter sng-noarrow-flight,$(DEB_BUILD_PROFILES)),)
 DH_OPTIONS += -Naxosyslog-mod-arrow-flight
 endif
@@ -124,7 +130,7 @@ override_dh_auto_configure:
 		--enable-tcp-wrapper \
 		--enable-sql \
 		--enable-json \
-		--enable-jit \
+		$(JIT_CONFIGURE_OPTS) \
 		--enable-manpages \
 		$(PACCT_CONFIGURE_OPTS) \
 		--enable-python \
