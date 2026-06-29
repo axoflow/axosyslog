@@ -34,6 +34,7 @@ if (EXISTS ${PROJECT_SOURCE_DIR}/lib/ivykis/src/include/iv.h.in)
         BUILD_COMMAND     make
         INSTALL_COMMAND   make install
         CONFIGURE_COMMAND autoreconf -i ${PROJECT_SOURCE_DIR}/lib/ivykis && ${PROJECT_SOURCE_DIR}/lib/ivykis/configure --prefix=${CMAKE_CURRENT_BINARY_DIR}/ivykis-install/
+        BUILD_BYPRODUCTS  ${CMAKE_CURRENT_BINARY_DIR}/ivykis-install/lib/libivykis${CMAKE_SHARED_LIBRARY_SUFFIX}
     )
 
     set(${LIB_NAME}_INTERNAL TRUE)
