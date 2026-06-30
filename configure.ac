@@ -63,6 +63,7 @@ CRITERION_MIN_VERSION="2.2.1"
 PROTOBUF_MIN_VERSION="3.12.0"
 GRPCPP_MIN_VERSION="1.16.1"
 ARROW_MIN_VERSION="21.0.0"
+LLVM_MIN_VERSION_MAJOR="15"
 
 dnl ***************************************************************************
 dnl Initial setup
@@ -1901,28 +1902,40 @@ else
   LLVM_CONFIG="$with_llvm_config"
 fi
 
+llvm_present="no"
+llvm_version_supported="no"
+if test -n "$LLVM_CONFIG" -a -x "$LLVM_CONFIG"; then
+  llvm_present="yes"
+  llvm_version=`$LLVM_CONFIG --version`
+  llvm_version_major=`echo "$llvm_version" | cut -d. -f1`
+  if test "$llvm_version_major" -ge "$LLVM_MIN_VERSION_MAJOR" 2>/dev/null; then
+    llvm_version_supported="yes"
+  fi
+fi
+
 AC_MSG_CHECKING(whether to enable the FilterX JIT compiler)
 if test "x$enable_jit" = "xyes"; then
-  if test -n "$LLVM_CONFIG" -a -x "$LLVM_CONFIG"; then
-    enable_jit="yes"
-    AC_MSG_RESULT(yes)
-  else
+  if test "$llvm_present" = "no"; then
     AC_MSG_RESULT(no)
     AC_MSG_ERROR([FilterX JIT compiler is explicitly enabled, but no llvm-config is found.])
+  elif test "$llvm_version_supported" = "no"; then
+    AC_MSG_RESULT(no)
+    AC_MSG_ERROR([FilterX JIT compiler requires LLVM >= $LLVM_MIN_VERSION_MAJOR, but llvm-config reports version $llvm_version.])
+  else
+    enable_jit="yes"
+    AC_MSG_RESULT(yes)
   fi
 
 elif test "x$enable_jit" = "xauto"; then
   if test $ostype = "Darwin"; then
     AC_MSG_RESULT(no)
     enable_jit="no"
+  elif test "$llvm_version_supported" = "yes"; then
+    enable_jit="yes"
+    AC_MSG_RESULT(yes)
   else
-    if test -n "$LLVM_CONFIG" -a -x "$LLVM_CONFIG"; then
-      enable_jit="yes"
-      AC_MSG_RESULT(yes)
-    else
-      enable_jit="no"
-      AC_MSG_RESULT(no)
-    fi
+    enable_jit="no"
+    AC_MSG_RESULT(no)
   fi
 else
   enable_jit="no"
