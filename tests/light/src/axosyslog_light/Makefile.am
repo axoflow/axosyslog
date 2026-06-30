@@ -78,11 +78,13 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/rewrite/rewrite.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/example_msg_generator_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/file_source.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/http_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/__init__.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/internal_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/network_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/opentelemetry_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/source_driver.py \
+	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/splunk_hec_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/syslog_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/unix_dgram_source.py \
 	tests/light/src/axosyslog_light/syslog_ng_config/statements/sources/webhook_source.py \

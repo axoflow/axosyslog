@@ -628,6 +628,7 @@ fi
 %files http
 %{_libdir}/syslog-ng/libhttp.so
 %{_libdir}/syslog-ng/libhttp-adapters.so
+%{_libdir}/syslog-ng/libhttp-source.so
 %{_libdir}/syslog-ng/libazure-auth-header.so
 
 %files slog

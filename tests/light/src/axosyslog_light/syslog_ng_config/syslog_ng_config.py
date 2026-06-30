@@ -54,10 +54,12 @@ from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetPri
 from axosyslog_light.syslog_ng_config.statements.rewrite.rewrite import SetTag
 from axosyslog_light.syslog_ng_config.statements.sources.example_msg_generator_source import ExampleMsgGeneratorSource
 from axosyslog_light.syslog_ng_config.statements.sources.file_source import FileSource
+from axosyslog_light.syslog_ng_config.statements.sources.http_source import HttpSource
 from axosyslog_light.syslog_ng_config.statements.sources.inner_source import InnerSource
 from axosyslog_light.syslog_ng_config.statements.sources.internal_source import InternalSource
 from axosyslog_light.syslog_ng_config.statements.sources.network_source import NetworkSource
 from axosyslog_light.syslog_ng_config.statements.sources.opentelemetry_source import OpenTelemetrySource
+from axosyslog_light.syslog_ng_config.statements.sources.splunk_hec_source import SplunkHecSource
 from axosyslog_light.syslog_ng_config.statements.sources.syslog_source import SyslogSource
 from axosyslog_light.syslog_ng_config.statements.sources.unix_dgram_source import UnixDgramSource
 from axosyslog_light.syslog_ng_config.statements.sources.webhook_source import WebhookJsonSource
@@ -173,11 +175,17 @@ class SyslogNgConfig(object):
     def create_opentelemetry_source(self, **options):
         return OpenTelemetrySource(self._stats_handler, self._prometheus_stats_handler, **options)
 
+    def create_http_source(self, **options):
+        return HttpSource(self._stats_handler, self._prometheus_stats_handler, **options)
+
     def create_webhook_source(self, **options):
         return WebhookSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_webhook_json_source(self, **options):
         return WebhookJsonSource(self._stats_handler, self._prometheus_stats_handler, **options)
+
+    def create_splunk_hec_source(self, **options):
+        return SplunkHecSource(self._stats_handler, self._prometheus_stats_handler, **options)
 
     def create_rewrite_set(self, template, **options):
         return Set(template, **options)

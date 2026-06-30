@@ -27,6 +27,7 @@ include modules/graphite/Makefile.am
 include modules/hook-commands/Makefile.am
 include modules/http/Makefile.am
 include modules/http-adapters/Makefile.am
+include modules/http-source/Makefile.am
 include modules/java/Makefile.am
 include modules/java-modules/Makefile.am
 include modules/json/Makefile.am
