@@ -37,6 +37,9 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/executors/tests/test_process_executor.py \
 	tests/light/src/axosyslog_light/fixtures.py \
 	tests/light/src/axosyslog_light/helpers/__init__.py \
+	tests/light/src/axosyslog_light/helpers/clickhouse/clickhouse_server_docker_executor.py \
+	tests/light/src/axosyslog_light/helpers/clickhouse/clickhouse_server_executor.py \
+	tests/light/src/axosyslog_light/helpers/clickhouse/clickhouse_server_local_executor.py \
 	tests/light/src/axosyslog_light/helpers/loggen/__init__.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen_docker_executor.py \
 	tests/light/src/axosyslog_light/helpers/loggen/loggen_executor.py \

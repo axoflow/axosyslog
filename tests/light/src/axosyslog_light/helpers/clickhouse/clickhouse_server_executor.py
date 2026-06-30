@@ -22,13 +22,11 @@
 #
 #############################################################################
 import logging
+from abc import ABC
+from abc import abstractmethod
 
 import clickhouse_connect
-import psutil
-from axosyslog_light.common.blocking import wait_until_true
-from axosyslog_light.common.blocking import wait_until_true_custom
 from axosyslog_light.common.file import copy_shared_file
-from axosyslog_light.executors.process_executor import ProcessExecutor
 from axosyslog_light.syslog_ng_config.__init__ import destringify
 from axosyslog_light.syslog_ng_config.__init__ import stringify
 from tenacity import retry
@@ -36,6 +34,8 @@ from tenacity import stop_after_delay
 from tenacity import wait_fixed
 
 logger = logging.getLogger(__name__)
+
+CONFIG_FILE = "clickhouse_server_config.xml"
 
 CLICKHOUSE_OPTIONS = {
     "database": "default",
@@ -50,41 +50,30 @@ CLICKHOUSE_OPTIONS_WITH_SCHEMA = {
 }
 
 
-class ClickhouseServerExecutor():
+class ClickhouseServerExecutor(ABC):
     def __init__(self, testcase_parameters) -> None:
         self.process = None
         self.clickhouse_server_ports = []
         self.hostname = "localhost"
-        copy_shared_file(testcase_parameters, "clickhouse_server_config.xml")
+        copy_shared_file(testcase_parameters, CONFIG_FILE)
         copy_shared_file(testcase_parameters, "clickhouse_users.xml")
 
     def start(self, clickhouse_ports) -> None:
-        command = [
-            "clickhouse-server", "start",
-            "--config-file", "clickhouse_server_config.xml",
-        ]
-
         self.clickhouse_server_ports.append(clickhouse_ports.http_port)
         self.clickhouse_server_ports.append(clickhouse_ports.grpc_port)
+        self._apply_ports_to_config(clickhouse_ports)
 
-        with open("clickhouse_server_config.xml", "r", encoding="utf-8") as file:
-            config = file.read()
-        config = config.replace("ALLOCATED_HTTP_PORT", str(clickhouse_ports.http_port))
-        config = config.replace("ALLOCATED_INTERSERVER_GRPC_PORT", str(clickhouse_ports.grpc_port))
-        with open("clickhouse_server_config.xml", "w", encoding="utf-8") as file:
-            file.write(config)
-
-        self.process = ProcessExecutor().start(command, "clickhouse_server.stdout", "clickhouse_server.stderr")
-        if wait_until_true_custom(lambda: psutil.Process(self.process.pid).children(), timeout=0.5):
-            logger.info("Clickhouse server started with child process.")
-            self.process = psutil.Process(self.process.pid).children()[0]
+        self.process = self._start_server()
         self.wait_for_server_start(port=clickhouse_ports.http_port)
         logger.info("Clickhouse server started with PID: %s", self.process.pid)
 
-    def stop(self) -> None:
-        self.process.terminate()
-        self.wait_for_server_stop()
-        logger.info("Clickhouse server with PID %s terminated.", self.process.pid)
+    def _apply_ports_to_config(self, clickhouse_ports) -> None:
+        with open(CONFIG_FILE, "r", encoding="utf-8") as file:
+            config = file.read()
+        config = config.replace("ALLOCATED_HTTP_PORT", str(clickhouse_ports.http_port))
+        config = config.replace("ALLOCATED_INTERSERVER_GRPC_PORT", str(clickhouse_ports.grpc_port))
+        with open(CONFIG_FILE, "w", encoding="utf-8") as file:
+            file.write(config)
 
     @retry(wait=wait_fixed(0.1), reraise=True, stop=stop_after_delay(10))
     def wait_for_server_start(self, port) -> None:
@@ -99,5 +88,10 @@ class ClickhouseServerExecutor():
         except Exception as e:
             raise RuntimeError("Clickhouse server is not ready yet.") from e
 
-    def wait_for_server_stop(self) -> None:
-        wait_until_true(lambda: not self.process.is_running())
+    @abstractmethod
+    def _start_server(self):
+        ...
+
+    @abstractmethod
+    def stop(self) -> None:
+        ...
