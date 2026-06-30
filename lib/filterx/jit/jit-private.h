@@ -51,6 +51,9 @@ struct _FilterXJIT
   LLVMMetadataRef current_debug_info_block;
   FilterXIRValue current_eval_context;
 
+  FilterXIRValue current_block_variables;
+  guint32 current_block_variables_size;
+
   FilterXJITFFI ffi;
 
   FilterXJITDebugInfo debug_info_mode;

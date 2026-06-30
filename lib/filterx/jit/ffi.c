@@ -27,6 +27,7 @@
 #include "filterx/filterx-expr.h"
 #include "filterx/filterx-object.h"
 #include "filterx/filterx-eval.h"
+#include "filterx/expr-variable.h"
 #include "filterx/object-primitive.h"
 
 #include <stdarg.h>
@@ -101,21 +102,30 @@ FilterXIRValue
 fx_jit_emit_expr_eval(FilterXJIT *jit, FilterXExpr *expr)
 {
   LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr) };
-  return _emit_call(jit, jit->ffi.expr_eval, args, 1);
+  FilterXIRValue result = _emit_call(jit, jit->ffi.expr_eval, args, 1);
+  filterx_jit_ir_clear_variables(jit);
+  return result;
 }
 
 FilterXIRValue
 fx_jit_emit_expr_eval_typed(FilterXJIT *jit, FilterXExpr *expr)
 {
   LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr) };
-  return _emit_call(jit, jit->ffi.expr_eval_typed, args, 1);
+  FilterXIRValue result = _emit_call(jit, jit->ffi.expr_eval_typed, args, 1);
+  filterx_jit_ir_clear_variables(jit);
+  return result;
 }
 
 FilterXIRValue
 fx_jit_emit_expr_make_typed_object(FilterXJIT *jit, FilterXExpr *expr, FilterXIRValue obj)
 {
   LLVMValueRef args[] = { fx_jit_emit_const_ptr(jit, expr), obj };
-  return _emit_call(jit, jit->ffi.expr_make_typed_object, args, 2);
+  FilterXIRValue result = _emit_call(jit, jit->ffi.expr_make_typed_object, args, 2);
+
+  if (expr->_update_repr && filterx_expr_is_variable(expr))
+    filterx_variable_expr_compile_repr_update(expr, jit, result);
+
+  return result;
 }
 
 FilterXIRValue

@@ -26,6 +26,8 @@
 #include "syslog-ng.h"
 #include "filterx/filterx-object.h"
 
+typedef struct _FilterXScopeVariableLayout FilterXScopeVariableLayout;
+
 /*
  * FilterX JIT:
  * 1. Create a single FilterXJIT instance per configuration (optimizations will be done globally)
@@ -78,7 +80,7 @@ void filterx_jit_free(FilterXJIT *self);
 
 /* IR */
 FilterXIRBuilder filterx_jit_get_ir_builder(FilterXJIT *self);
-void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name);
+void filterx_jit_ir_add_new_block(FilterXJIT *self, const gchar *block_name, FilterXScopeVariableLayout *layout);
 void filterx_jit_ir_finish_current_block(FilterXJIT *self, FilterXIRValue result);
 FilterXIRValue filterx_jit_ir_get_current_block(FilterXJIT *self);
 
@@ -89,6 +91,10 @@ FilterXIRSequence filterx_jit_ir_add_new_sequence_to_block(FilterXJIT *self, con
                                                            FilterXIRValue block);
 
 FilterXIRValue filterx_jit_ir_get_eval_context(FilterXJIT *self);
+
+FilterXIRValue filterx_jit_ir_get_variable(FilterXJIT *self, gint scope_var_idx);
+FilterXIRValue filterx_jit_ir_is_variable_uninitialized(FilterXJIT *self, FilterXIRValue variable);
+void filterx_jit_ir_clear_variables(FilterXJIT *self);
 
 void filterx_jit_ir_set_source_location(FilterXJIT *self, const gchar *file, gint line, gint column);
 

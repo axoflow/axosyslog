@@ -26,7 +26,7 @@ filterx_bitcode_compile = \
 	$(DEFS) $(DEFAULT_INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) \
 	$(filter-out -fsanitize=%,$(AM_CFLAGS) $(CFLAGS)) \
-	-emit-llvm -O3 --no-warnings
+	-emit-llvm -O3 --no-warnings -mno-outline-atomics
 
 $(filterx_bitcode_units): %.bc: %.c
 	$(AM_V_GEN)$(filterx_bitcode_compile) -c $< -o $@
