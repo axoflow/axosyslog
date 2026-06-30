@@ -48,6 +48,9 @@ EXTRA_DIST += \
 	tests/light/src/axosyslog_light/helpers/secure_logging/conftest.py \
 	tests/light/src/axosyslog_light/helpers/secure_logging/__init__.py \
 	tests/light/src/axosyslog_light/helpers/snmptrapd/conftest.py \
+	tests/light/src/axosyslog_light/helpers/snmptrapd/snmptrapd_docker_executor.py \
+	tests/light/src/axosyslog_light/helpers/snmptrapd/snmptrapd_executor.py \
+	tests/light/src/axosyslog_light/helpers/snmptrapd/snmptrapd_local_executor.py \
 	tests/light/src/axosyslog_light/helpers/snmptrapd/__init__.py \
 	tests/light/src/axosyslog_light/__init__.py \
 	tests/light/src/axosyslog_light/message_builder/bsd_format.py \
