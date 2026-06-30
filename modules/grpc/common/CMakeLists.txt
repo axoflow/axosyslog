@@ -31,4 +31,5 @@ add_module(
   SOURCES ${GRPC_COMMON_CPP_SOURCES}
   INCLUDES ${PROJECT_SOURCE_DIR}/modules/grpc/common
   LIBRARY_TYPE STATIC
+  COMPILE_OPTIONS -fvisibility=hidden
 )
