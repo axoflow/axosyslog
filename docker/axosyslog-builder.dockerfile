@@ -21,7 +21,8 @@
 #
 #############################################################################
 
-ARG ALPINE_VERSION=3.23
+# must be in sync with axosyslog
+ARG ALPINE_VERSION=3.24
 
 # improve perf output (due to -fno-omit-frame-pointer compilation)
 ARG REBUILD_DEPS="main/musl main/jemalloc main/json-c main/glib community/grpc main/python3"
