@@ -9,10 +9,12 @@ add_custom_target(light-self-check
    COMMAND ${LIGHT_POETRY_CMD} install
    COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/src/axosyslog_light)
 
+set(LIGHT_LSAN_OPTIONS LSAN_OPTIONS=suppressions=${PROJECT_SOURCE_DIR}/tests/axosyslog-lsan.supp)
+
 add_custom_target(light-check
    COMMAND ${LIGHT_POETRY_CMD} install
-   COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/functional_tests -m "not timing" -n auto --installdir=${CMAKE_INSTALL_PREFIX} $$EXTRA_ARGS
-   COMMAND ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/functional_tests -m "timing" -n0 --installdir=${CMAKE_INSTALL_PREFIX} $$EXTRA_ARGS)
+   COMMAND ${CMAKE_COMMAND} -E env ${LIGHT_LSAN_OPTIONS} ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/functional_tests -m "not timing" -n auto --installdir=${CMAKE_INSTALL_PREFIX} $$EXTRA_ARGS
+   COMMAND ${CMAKE_COMMAND} -E env ${LIGHT_LSAN_OPTIONS} ${LIGHT_PYTEST_CMD} ${LIGHT_SOURCE_DIR}/functional_tests -m "timing" -n0 --installdir=${CMAKE_INSTALL_PREFIX} $$EXTRA_ARGS)
 
 add_custom_target(light-linters
    COMMAND ${LIGHT_POETRY_CMD} install
