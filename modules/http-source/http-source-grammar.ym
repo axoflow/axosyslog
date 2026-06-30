@@ -34,6 +34,7 @@
 #include "plugin.h"
 #include "cfg-grammar-internal.h"
 #include "template/templates.h"
+#include "transport/tls-context.h"
 
 #include <string.h>
 
@@ -56,6 +57,9 @@
 %token KW_LOCALIP
 %token KW_MAX_REQUEST_SIZE
 %token KW_TIMEOUT
+
+/* the tls() option keywords and the tls_options rule come from the core
+ * grammar (lib/cfg-grammar.y) */
 
 %type <ptr> source_http
 
@@ -100,6 +104,16 @@ source_http_option
   | KW_TIMEOUT '(' nonnegative_integer ')'
     {
       http_sd_set_timeout(last_driver, $3);
+    }
+  | KW_TLS
+    {
+      gchar buf[256];
+
+      last_tls_context = tls_context_new(TM_SERVER, cfg_lexer_format_location(lexer, &@1, buf, sizeof(buf)));
+    }
+    '(' tls_options ')'
+    {
+      http_sd_set_tls_context(last_driver, last_tls_context);
     }
   | { last_source_options = http_sd_get_source_options(last_driver); } source_option
   | source_driver_option

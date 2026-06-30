@@ -55,6 +55,7 @@ struct HTTPSourceDriver
   gchar *path;
   gsize max_request_size;
   gint timeout;
+  TLSContext *tls_context;
 
   LogSourceOptions source_options;
   HTTPServerListener *listener;
@@ -189,6 +190,12 @@ _init(LogPipe *s)
       return FALSE;
     }
 
+  if (self->tls_context && tls_context_setup_context(self->tls_context) != TLS_CONTEXT_SETUP_OK)
+    {
+      msg_error("http(): failed to set up the TLS context", log_pipe_location_tag(s));
+      return FALSE;
+    }
+
   if (!log_src_driver_init_method(s))
     return FALSE;
 
@@ -205,7 +212,8 @@ _init(LogPipe *s)
   if (!log_pipe_init(&self->source->super.super))
     return FALSE;
 
-  self->listener = http_server_listener_acquire(cfg, self->bind_addr, self->port, self->timeout);
+  self->listener = http_server_listener_acquire(cfg, self->bind_addr, self->port, self->timeout,
+                                                self->tls_context);
   if (!self->listener)
     return FALSE;
 
@@ -257,6 +265,8 @@ _free(LogPipe *s)
 
   g_free(self->bind_addr);
   g_free(self->path);
+  if (self->tls_context)
+    tls_context_unref(self->tls_context);
   log_source_options_destroy(&self->source_options);
 
   log_src_driver_free(s);
@@ -304,6 +314,15 @@ http_sd_set_timeout(LogDriver *s, gint timeout)
 {
   HTTPSourceDriver *self = (HTTPSourceDriver *) s;
   self->timeout = timeout;
+}
+
+void
+http_sd_set_tls_context(LogDriver *s, TLSContext *tls_context)
+{
+  HTTPSourceDriver *self = (HTTPSourceDriver *) s;
+  if (self->tls_context)
+    tls_context_unref(self->tls_context);
+  self->tls_context = tls_context;
 }
 
 LogDriver *

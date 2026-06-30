@@ -28,6 +28,10 @@
 #include "gsockaddr.h"
 #include "gsocket.h"
 #include "timeutils/misc.h"
+#include "transport/transport-stack.h"
+#include "transport/transport-socket.h"
+#include "transport/transport-tls.h"
+#include "transport/transport-factory-tls.h"
 
 #include "llhttp.h"
 
@@ -58,6 +62,7 @@ struct HTTPServerListener
   gint port;
   gint user_count;
   gint connection_timeout;      /* seconds an idle/partial connection may live, 0 disables */
+  TLSContext *tls_context;      /* non-NULL: terminate TLS on every connection */
 
   GMutex lock;
   GHashTable *paths;            /* path (owned gchar *) -> PathRegistration * */
@@ -78,6 +83,8 @@ struct HTTPServerConnection
 {
   HTTPServerListener *listener;
   gint fd;
+  LogTransportStack stack;      /* socket transport, optionally with TLS on top */
+  gboolean transport_active;    /* stack holds the fd and must be deinited */
   struct iv_fd iv_fd;
   struct iv_timer timer;
   struct iv_task free_task;
@@ -106,8 +113,10 @@ struct HTTPServerConnection
 
 static llhttp_settings_t http_settings;
 
-static void _conn_read_handler(void *cookie);
-static void _conn_write_handler(void *cookie);
+static void _conn_io_handler(void *cookie);
+static void _conn_read(HTTPServerConnection *conn);
+static void _conn_flush(HTTPServerConnection *conn);
+static void _conn_update_watch(HTTPServerConnection *conn);
 static void _conn_close(HTTPServerConnection *conn);
 static HTTPServerRequestResult _conn_dispatch(HTTPServerConnection *conn);
 
@@ -217,14 +226,50 @@ _conn_queue_response(HTTPServerConnection *conn, guint status)
     conn->should_close = TRUE;
 }
 
-/* try to flush the pending response; register handler_out on a short write */
+/*
+ * Arm the event-loop watch for the connection's current I/O need.
+ *
+ * Normally the direction follows the logical state: wait for the fd to become
+ * writable while a response is pending, readable otherwise.  The active
+ * transport, however, can demand the opposite fd direction mid-stream (a TLS
+ * read blocked on the handshake's write, or a write blocked on a
+ * renegotiation read); when it does, that requirement wins.
+ */
+static void
+_conn_update_watch(HTTPServerConnection *conn)
+{
+  if (conn->closing || conn->suspended)
+    return;
+
+  gboolean want_write = (conn->write_offset < conn->write_buf->len);
+
+  switch (log_transport_stack_get_io_requirement(&conn->stack))
+    {
+    case LTIO_READ_WANTS_WRITE:
+    case LTIO_WRITE_WANTS_WRITE:
+      want_write = TRUE;
+      break;
+    case LTIO_READ_WANTS_READ:
+    case LTIO_WRITE_WANTS_READ:
+      want_write = FALSE;
+      break;
+    case LTIO_NOTHING:
+    default:
+      break;
+    }
+
+  iv_fd_set_handler_in(&conn->iv_fd, want_write ? NULL : _conn_io_handler);
+  iv_fd_set_handler_out(&conn->iv_fd, want_write ? _conn_io_handler : NULL);
+}
+
+/* try to flush the pending response through the transport stack */
 static void
 _conn_flush(HTTPServerConnection *conn)
 {
   while (conn->write_offset < conn->write_buf->len)
     {
-      ssize_t n = write(conn->fd, conn->write_buf->str + conn->write_offset,
-                        conn->write_buf->len - conn->write_offset);
+      gssize n = log_transport_stack_write(&conn->stack, conn->write_buf->str + conn->write_offset,
+                                           conn->write_buf->len - conn->write_offset);
       if (n > 0)
         {
           conn->write_offset += n;
@@ -234,7 +279,8 @@ _conn_flush(HTTPServerConnection *conn)
         continue;
       if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
         {
-          iv_fd_set_handler_out(&conn->iv_fd, _conn_write_handler);
+          /* short write: the transport tells us which direction to wait for */
+          _conn_update_watch(conn);
           return;
         }
       _conn_close(conn);
@@ -243,22 +289,16 @@ _conn_flush(HTTPServerConnection *conn)
 
   g_string_truncate(conn->write_buf, 0);
   conn->write_offset = 0;
-  iv_fd_set_handler_out(&conn->iv_fd, NULL);
 
   if (conn->should_close)
-    _conn_close(conn);
-  else
     {
-      /* keep-alive: wait for the next request, bounded by the inactivity timer */
-      iv_fd_set_handler_in(&conn->iv_fd, _conn_read_handler);
-      _conn_touch_timer(conn);
+      _conn_close(conn);
+      return;
     }
-}
 
-static void
-_conn_write_handler(void *cookie)
-{
-  _conn_flush((HTTPServerConnection *) cookie);
+  /* keep-alive: wait for the next request, bounded by the inactivity timer */
+  _conn_touch_timer(conn);
+  _conn_update_watch(conn);
 }
 
 /* --- llhttp callbacks (run on the listener thread) --------------------- */
@@ -372,16 +412,18 @@ _conn_dispatch(HTTPServerConnection *conn)
 
 /* --- connection lifecycle ---------------------------------------------- */
 
-/* release the connection's event-loop watches and close its fd */
+/* release the connection's event-loop watches and tear down its transport
+ * stack (which owns and closes the fd) */
 static void
 _conn_shutdown_socket(HTTPServerConnection *conn)
 {
   _conn_disarm_timer(conn);
   if (iv_fd_registered(&conn->iv_fd))
     iv_fd_unregister(&conn->iv_fd);
-  if (conn->fd >= 0)
+  if (conn->transport_active)
     {
-      close(conn->fd);
+      conn->transport_active = FALSE;
+      log_transport_stack_deinit(&conn->stack);
       conn->fd = -1;
     }
 }
@@ -428,12 +470,11 @@ _conn_close(HTTPServerConnection *conn)
 }
 
 static void
-_conn_read_handler(void *cookie)
+_conn_read(HTTPServerConnection *conn)
 {
-  HTTPServerConnection *conn = (HTTPServerConnection *) cookie;
   gchar buf[HTTP_READ_BUFFER_SIZE];
 
-  ssize_t n = read(conn->fd, buf, sizeof(buf));
+  gssize n = log_transport_stack_read(&conn->stack, buf, sizeof(buf), NULL);
   if (n == 0)
     {
       _conn_close(conn);
@@ -442,7 +483,12 @@ _conn_read_handler(void *cookie)
   if (n < 0)
     {
       if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
-        return;
+        {
+          /* nothing to read yet (or the TLS layer is mid-handshake): the
+           * transport tells us which direction to wait for */
+          _conn_update_watch(conn);
+          return;
+        }
       _conn_close(conn);
       return;
     }
@@ -461,8 +507,30 @@ _conn_read_handler(void *cookie)
       conn->should_close = TRUE;
     }
 
-  if (conn->write_buf->len > conn->write_offset)
+  if (conn->write_offset < conn->write_buf->len)
+    {
+      _conn_flush(conn);
+      return;
+    }
+
+  _conn_update_watch(conn);
+}
+
+/*
+ * Single I/O dispatcher used for both fd directions.  A TLS read may need the
+ * fd to become writable and vice versa, so the watched direction does not map
+ * one-to-one to read/write; we pick the operation from the logical state and
+ * let the transport handle the rest.
+ */
+static void
+_conn_io_handler(void *cookie)
+{
+  HTTPServerConnection *conn = (HTTPServerConnection *) cookie;
+
+  if (conn->write_offset < conn->write_buf->len)
     _conn_flush(conn);
+  else
+    _conn_read(conn);
 }
 
 static void
@@ -475,7 +543,32 @@ static void
 _conn_start(HTTPServerConnection *conn)
 {
   iv_fd_register(&conn->iv_fd);
+  /* start out waiting for the client; reading drives the TLS handshake too */
+  _conn_update_watch(conn);
   _conn_touch_timer(conn);
+}
+
+/* build the transport stack for the connection: a stream socket transport,
+ * with a TLS transport switched in on top when the listener terminates TLS.
+ * Returns FALSE (leaving the fd closed by the stack) if TLS setup fails. */
+static gboolean
+_conn_setup_transport(HTTPServerConnection *conn, gint fd)
+{
+  log_transport_stack_init(&conn->stack, log_transport_stream_socket_new(fd));
+  conn->transport_active = TRUE;
+
+  if (conn->listener->tls_context)
+    {
+      log_transport_stack_add_factory(&conn->stack,
+                                      transport_factory_tls_new(conn->listener->tls_context, NULL));
+      if (!log_transport_stack_switch(&conn->stack, LOG_TRANSPORT_TLS))
+        {
+          msg_error("http(): failed to set up TLS session for the connection",
+                    evt_tag_int("port", conn->listener->port));
+          return FALSE;
+        }
+    }
+  return TRUE;
 }
 
 /* takes ownership of the peer GSockAddr reference */
@@ -504,8 +597,14 @@ _conn_new(HTTPServerListener *listener, gint fd, GSockAddr *peer)
   IV_FD_INIT(&conn->iv_fd);
   conn->iv_fd.fd = fd;
   conn->iv_fd.cookie = conn;
-  conn->iv_fd.handler_in = _conn_read_handler;
+  conn->iv_fd.handler_in = _conn_io_handler;
   conn->iv_fd.handler_err = _conn_error_handler;
+
+  if (!_conn_setup_transport(conn, fd))
+    {
+      _conn_destroy(conn);
+      return NULL;
+    }
 
   return conn;
 }
@@ -520,9 +619,10 @@ http_server_listener_suspend_connection(HTTPServerConnection *conn)
       conn->suspended = TRUE;
       conn->listener->suspended = g_list_prepend(conn->listener->suspended, conn);
     }
-  /* stop reading this connection until the window reopens; the stall is on our
-   * side now, so don't hold the client to the inactivity deadline */
+  /* stop watching this connection until the window reopens; the stall is on
+   * our side now, so don't hold the client to the inactivity deadline */
   iv_fd_set_handler_in(&conn->iv_fd, NULL);
+  iv_fd_set_handler_out(&conn->iv_fd, NULL);
   _conn_disarm_timer(conn);
 }
 
@@ -538,9 +638,9 @@ _conn_retry(HTTPServerConnection *conn)
       return;
     }
 
-  /* the message finished: leave the paused parser ready for the next request */
+  /* the message finished: leave the paused parser ready for the next request.
+   * _conn_flush sends the queued response and re-arms the read watch. */
   llhttp_resume(&conn->parser);
-  iv_fd_set_handler_in(&conn->iv_fd, _conn_read_handler);
   _conn_flush(conn);
 }
 
@@ -588,6 +688,8 @@ _listener_accept(void *cookie)
       fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
       HTTPServerConnection *conn = _conn_new(self, fd, peer);
+      if (!conn)
+        continue;       /* TLS setup failed; the fd is already closed */
       self->connections = g_list_prepend(self->connections, conn);
       _conn_start(conn);
     }
@@ -842,7 +944,8 @@ _init_watches(HTTPServerListener *self)
 }
 
 static HTTPServerListener *
-_listener_new(const gchar *key, const gchar *bind_addr, gint port, gint connection_timeout)
+_listener_new(const gchar *key, const gchar *bind_addr, gint port, gint connection_timeout,
+              TLSContext *tls_context)
 {
   HTTPServerListener *self = g_new0(HTTPServerListener, 1);
 
@@ -853,6 +956,7 @@ _listener_new(const gchar *key, const gchar *bind_addr, gint port, gint connecti
   self->bind_addr = g_strdup(bind_addr ? bind_addr : "");
   self->port = port;
   self->connection_timeout = connection_timeout;
+  self->tls_context = tls_context ? tls_context_ref(tls_context) : NULL;
   g_mutex_init(&self->lock);
   g_atomic_counter_set(&self->events_ready, 0);
   self->paths = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
@@ -870,6 +974,8 @@ _listener_free(HTTPServerListener *self)
   g_assert(self->listen_fd.fd == -1);
   g_hash_table_unref(self->paths);
   g_mutex_clear(&self->lock);
+  if (self->tls_context)
+    tls_context_unref(self->tls_context);
   g_free(self->key);
   g_free(self->bind_addr);
   g_free(self);
@@ -894,7 +1000,8 @@ _get_registry(GlobalConfig *cfg)
 }
 
 HTTPServerListener *
-http_server_listener_acquire(GlobalConfig *cfg, const gchar *bind_addr, gint port, gint connection_timeout)
+http_server_listener_acquire(GlobalConfig *cfg, const gchar *bind_addr, gint port, gint connection_timeout,
+                             TLSContext *tls_context)
 {
   gchar key[128];
   GHashTable *registry = _get_registry(cfg);
@@ -908,11 +1015,14 @@ http_server_listener_acquire(GlobalConfig *cfg, const gchar *bind_addr, gint por
         msg_warning("http(): sources sharing a port disagree on timeout(), keeping the first value",
                     evt_tag_int("port", port),
                     evt_tag_int("timeout", listener->connection_timeout));
+      if ((listener->tls_context != NULL) != (tls_context != NULL) || listener->tls_context != tls_context)
+        msg_warning("http(): sources sharing a port disagree on tls(), keeping the first source's setting",
+                    evt_tag_int("port", port));
       listener->user_count++;
       return listener;
     }
 
-  listener = _listener_new(key, bind_addr, port, connection_timeout);
+  listener = _listener_new(key, bind_addr, port, connection_timeout, tls_context);
   if (_listener_start(listener))
     g_hash_table_insert(registry, listener->key, listener);
   else

@@ -25,6 +25,7 @@
 
 #include "syslog-ng.h"
 #include "gsockaddr.h"
+#include "transport/tls-context.h"
 
 typedef struct HTTPServerListener HTTPServerListener;
 
@@ -72,8 +73,16 @@ typedef void (*HTTPServerRequestCompletion)(gpointer user_data, HTTPServerConnec
  * called from a request handler (on the listener thread).  wakeup() is
  * thread-safe and may be called from any thread.
  */
+/*
+ * Acquire (creating if needed) the shared listener for bind_addr:port.  When
+ * tls_context is non-NULL the listener terminates TLS on every accepted
+ * connection using it; the listener takes its own reference.  TLS is a
+ * property of the socket, so it is fixed by whoever first creates the
+ * listener: sources that later share the same port inherit that setting and a
+ * conflicting tls() is ignored with a warning.
+ */
 HTTPServerListener *http_server_listener_acquire(GlobalConfig *cfg, const gchar *bind_addr, gint port,
-                                                 gint connection_timeout);
+                                                 gint connection_timeout, TLSContext *tls_context);
 void http_server_listener_release(GlobalConfig *cfg, HTTPServerListener *self);
 
 /* start the listener thread (idempotent); call from post_config_init */

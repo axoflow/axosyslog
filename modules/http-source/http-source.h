@@ -25,6 +25,7 @@
 
 #include "driver.h"
 #include "logsource.h"
+#include "transport/tls-context.h"
 
 typedef struct HTTPSourceDriver HTTPSourceDriver;
 
@@ -35,6 +36,7 @@ void http_sd_set_bind_addr(LogDriver *s, const gchar *addr);
 void http_sd_set_path(LogDriver *s, const gchar *path);
 void http_sd_set_max_request_size(LogDriver *s, gsize size);
 void http_sd_set_timeout(LogDriver *s, gint timeout);
+void http_sd_set_tls_context(LogDriver *s, TLSContext *tls_context);
 
 /* exposed for the grammar's source_option rules (sets last_source_options) */
 LogSourceOptions *http_sd_get_source_options(LogDriver *s);
