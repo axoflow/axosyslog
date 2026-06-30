@@ -3,6 +3,7 @@ export abs_top_srcdir
 EXTRA_DIST += \
 	tests/light/CMakeLists.txt \
 	tests/light/Makefile.am \
+	tests/light/docker \
 	tests/light/pytest.ini \
 	tests/light/shared_files \
 	tests/light/tox.ini
@@ -19,6 +20,9 @@ PYTEST_VERBOSE ?= false
 PYTEST_OPTS ?=
 PYTEST_WORKERS ?= -n auto
 
+LIGHT_CLICKHOUSE_IMAGE ?= clickhouse/clickhouse-server:latest
+LIGHT_SNMPTRAPD_IMAGE ?= axosyslog-light-snmptrapd:latest
+
 LIGHT_SRC_DIR=$(abs_top_srcdir)/tests/light
 LIGHT_POETRY_CMD=$(POETRY) -C $(LIGHT_SRC_DIR)
 LIGHT_PYTHON_CMD=$(LIGHT_POETRY_CMD) run python
@@ -26,6 +30,11 @@ LIGHT_PYTEST_CMD=$(LIGHT_PYTHON_CMD) -m pytest --showlocals --verbosity=3
 
 light-venv:
 	@$(LIGHT_POETRY_CMD) install
+
+light-third-party-deps:
+	docker build -t $(LIGHT_SNMPTRAPD_IMAGE) -f $(LIGHT_SRC_DIR)/docker/snmptrapd.dockerfile $(LIGHT_SRC_DIR)/docker
+	docker pull $(LIGHT_CLICKHOUSE_IMAGE)
+	$(prefix)/bin/syslog-ng-update-virtualenv -y
 
 light-self-check pytest-self-check: light-venv
 	@$(LIGHT_PYTEST_CMD) $(LIGHT_SRC_DIR)/src/axosyslog_light
@@ -48,11 +57,11 @@ light-linters pytest-linters: light-venv
 
 else
 
-light-venv light-self-check pytest-self-check light-check pytest-check light-linters pytest-linters:
+light-venv light-third-party-deps light-self-check pytest-self-check light-check pytest-check light-linters pytest-linters:
 	@echo "Poetry is missing, cannot execute E2E tests."
 	@exit 1
 
 endif
 
 
-.PHONY: light-venv light-self-check light-check light-linters pytest-self-check pytest-check pytest-linters
+.PHONY: light-venv light-third-party-deps light-self-check light-check light-linters pytest-self-check pytest-check pytest-linters
