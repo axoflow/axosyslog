@@ -125,7 +125,7 @@ jobs:
           TARBALL_NAME: ${{ needs.create-release-tarball.outputs.TARBALL_NAME }}
         run: |
           gh release create \
-            "${RELEASE_TAG} \
+            "${RELEASE_TAG}" \
             "${TARBALL_NAME}" \
             --draft \
             --title "${RELEASE_NAME}" \
