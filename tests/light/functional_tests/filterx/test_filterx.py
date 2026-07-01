@@ -941,6 +941,18 @@ def test_isset(config, syslog_ng):
     assert "processed" not in file_false.get_stats()
 
 
+def test_plus_of_incompatible_literals_does_not_crash(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+    "foo" + null;
+""",
+    )
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+
+
 def test_unset_value_not_in_scope_yet(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """

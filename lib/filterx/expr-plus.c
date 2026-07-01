@@ -81,7 +81,11 @@ _optimize(FilterXExpr *s)
     self->literal_rhs = filterx_literal_get_value(self->super.rhs);
 
   if (self->literal_lhs && self->literal_rhs)
-    return filterx_literal_new(_eval_plus(&self->super.super));
+    {
+      FilterXObject *result = _eval_plus(&self->super.super);
+      if (result)
+        return filterx_literal_new(result);
+    }
   return NULL;
 }
 
