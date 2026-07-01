@@ -34,6 +34,8 @@
 #include "filterx/expr-get-subscript.h"
 #include "filterx/filterx-private.h"
 
+#include <math.h>
+
 Test(filterx_datetime, test_filterx_object_datetime_marshals_to_the_stored_values)
 {
   UnixTime ut = { .ut_sec = 1701350398, .ut_usec = 123000, .ut_gmtoff = 3600 };
@@ -131,6 +133,19 @@ Test(filterx_datetime, test_filterx_datetime_typecast_from_double)
 
   filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
   filterx_object_unref(obj);
+}
+
+Test(filterx_datetime, test_filterx_datetime_typecast_from_out_of_range_double)
+{
+  gdouble bad_values[] = { 1e300, -1e300, (gdouble) INFINITY, (gdouble) -INFINITY, (gdouble) NAN };
+
+  for (gsize i = 0; i < G_N_ELEMENTS(bad_values); i++)
+    {
+      FilterXObject *args[] = { filterx_double_new(bad_values[i]) };
+      FilterXObject *obj = filterx_typecast_datetime(NULL, args, G_N_ELEMENTS(args));
+      cr_assert_null(obj, "expected out-of-range double %g to be rejected", bad_values[i]);
+      filterx_simple_function_free_args(args, G_N_ELEMENTS(args));
+    }
 }
 
 Test(filterx_datetime, test_filterx_datetime_typecast_from_string)
