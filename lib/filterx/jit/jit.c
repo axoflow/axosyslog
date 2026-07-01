@@ -955,7 +955,10 @@ filterx_jit_new(const gchar *module_name, FilterXJITDebugInfo debug_info, GError
   LLVMOrcLLJITBuilderRef jit_builder = LLVMOrcCreateLLJITBuilder();
   _setup_debug_info(self, jit_builder);
   if (!_setup_target_machine(self, jit_builder, error))
-    goto error;
+    {
+      LLVMOrcDisposeLLJITBuilder(jit_builder);
+      goto error;
+    }
 
   LLVMErrorRef err = LLVMOrcCreateLLJIT(&self->j, jit_builder);
   if (err)
