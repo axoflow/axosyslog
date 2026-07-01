@@ -366,7 +366,11 @@ _optimize_plus(FilterXExpr *s)
   _optimize_arithmetic_operators_common(self);
 
   if (self->literal_lhs && self->literal_rhs)
-    return filterx_literal_new(_eval_plus(&self->super.super));
+    {
+      FilterXObject *result = _eval_plus(&self->super.super);
+      if (result)
+        return filterx_literal_new(result);
+    }
   return NULL;
 }
 
