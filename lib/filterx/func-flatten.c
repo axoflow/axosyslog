@@ -58,6 +58,8 @@ _kv_destroy(FilterXFunctionFlattenKV *self)
   filterx_object_unref(self->value);
 }
 
+#define FILTERX_FUNC_FLATTEN_MAX_DEPTH (128)
+
 static gboolean
 _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpointer user_data)
 {
@@ -67,10 +69,17 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
   GString *key_buffer = ((gpointer *) user_data)[3];
   gboolean is_top_level = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[4]);
   gboolean safe_without_json_escaping = (gboolean) GPOINTER_TO_INT(((gpointer *) user_data)[5]);
+  gint depth = GPOINTER_TO_INT(((gpointer *) user_data)[6]);
 
   FilterXObject *dict = filterx_ref_unwrap_ro(value);
   if (filterx_object_is_type(dict, &FILTERX_TYPE_NAME(mapping)))
     {
+      if (depth >= FILTERX_FUNC_FLATTEN_MAX_DEPTH)
+        {
+          filterx_eval_push_error("Failed to flatten object: maximum nesting depth exceeded", self->dict_expr, NULL);
+          return FALSE;
+        }
+
       if (is_top_level)
         g_ptr_array_add(top_level_dict_keys, key);
 
@@ -96,7 +105,8 @@ _collect_modifications_from_elem(FilterXObject *key, FilterXObject *value, gpoin
         NULL,
         key_buffer,
         GINT_TO_POINTER(FALSE),
-        GINT_TO_POINTER(safe_without_json_escaping)
+        GINT_TO_POINTER(safe_without_json_escaping),
+        GINT_TO_POINTER(depth + 1)
       };
       gboolean result = filterx_object_iter(dict, _collect_modifications_from_elem, inner_user_data);
 
@@ -138,7 +148,7 @@ _collect_dict_modifications(FilterXFunctionFlatten *self, FilterXObject *dict,
                             GArray *flattened_kvs, GPtrArray *top_level_dict_keys)
 {
   GString *key_buffer = scratch_buffers_alloc();
-  gpointer user_data[] = { self, flattened_kvs, top_level_dict_keys, key_buffer, GINT_TO_POINTER(TRUE), GINT_TO_POINTER(TRUE) };
+  gpointer user_data[] = { self, flattened_kvs, top_level_dict_keys, key_buffer, GINT_TO_POINTER(TRUE), GINT_TO_POINTER(TRUE), GINT_TO_POINTER(0) };
   return filterx_object_iter(dict, _collect_modifications_from_elem, user_data);
 }
 
