@@ -23,6 +23,7 @@
 
 #include <criterion/criterion.h>
 #include <criterion/parameterized.h>
+#include "libtest/mock-function.h"
 
 #include "logsource.h"
 #include "logmsg/logmsg.h"
@@ -143,7 +144,8 @@ test_pipe_destroy(TestPipe *pipe)
 
 
 const gchar *
-resolve_sockaddr_to_hostname(gsize *result_len, GSockAddr *saddr, const HostResolveOptions *host_resolve_options)
+MOCK_FUNCTION(resolve_sockaddr_to_hostname)(gsize *result_len, GSockAddr *saddr,
+                                            const HostResolveOptions *host_resolve_options)
 {
   static const gchar *test_hostname = "resolved-test-host";
   *result_len = strlen(test_hostname);

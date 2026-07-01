@@ -25,6 +25,7 @@
 #include <criterion/parameterized.h>
 #include "libtest/cr_template.h"
 #include "libtest/grab-logging.h"
+#include "libtest/mock-function.h"
 
 #include "apphook.h"
 #include "plugin.h"
@@ -72,7 +73,8 @@ free_log_message_array(GPtrArray *messages)
 }
 
 const gchar *
-resolve_sockaddr_to_hostname(gsize *result_len, GSockAddr *saddr, const HostResolveOptions *host_resolve_options)
+MOCK_FUNCTION(resolve_sockaddr_to_hostname)(gsize *result_len, GSockAddr *saddr,
+                                            const HostResolveOptions *host_resolve_options)
 {
   static const gchar *test_hostname = "resolved-TEST-host";
   static const gchar *test_hostname_normalized = "resolved-test-host";

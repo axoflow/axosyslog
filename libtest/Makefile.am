@@ -21,6 +21,7 @@ libtest_libsyslog_ng_test_a_SOURCES =   \
 	libtest/mock-logpipe.h		\
 	libtest/mock-transport.c	\
 	libtest/mock-transport.h	\
+	libtest/mock-function.h		\
 	libtest/fake-time.c		\
 	libtest/fake-time.h		\
 	libtest/msg_parse_lib.c		\

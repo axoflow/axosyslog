@@ -16,7 +16,12 @@ check_PROGRAMS += ${modules_diskq_tests_TESTS}
 EXTRA_DIST += modules/diskq/tests/CMakeLists.txt
 
 modules_diskq_tests_test_diskq_CFLAGS = $(DISKQ_TEST_C_FLAGS)
+if ENABLE_BUILTIN_MODULES
+modules_diskq_tests_test_diskq_LDFLAGS = $(DISKQ_TEST_LD_FLAGS) \
+	-Wl,--wrap=qdisk_get_next_filename
+else
 modules_diskq_tests_test_diskq_LDFLAGS = $(DISKQ_TEST_LD_FLAGS)
+endif
 modules_diskq_tests_test_diskq_LDADD = $(DISKQ_TEST_LD_ADD)
 modules_diskq_tests_test_diskq_SOURCES = \
 	modules/diskq/tests/test_diskq.c \
