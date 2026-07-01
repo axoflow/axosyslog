@@ -159,6 +159,20 @@ g_sockaddr_get_address(GSockAddr *self, guint8 *buffer, gsize buffer_size, gsize
     }
 }
 
+void
+g_sockaddr_unshare(GSockAddr **pa)
+{
+  GSockAddr *a = *pa;
+
+  if (g_atomic_counter_get(&a->super.refcnt) == 1)
+    return;
+  gsize len = g_sockaddr_len(a);
+  GSockAddr *new = g_malloc(len);
+  memcpy(new, a, len);
+  g_atomic_counter_set(&new->super.refcnt, 1);
+  *pa = new;
+}
+
 /* AF_INET socket address */
 /*+
 
