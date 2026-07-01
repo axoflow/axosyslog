@@ -25,6 +25,8 @@
 #include "filterx/object-extractor.h"
 #include "filterx/filterx-eval.h"
 
+#include <math.h>
+
 /* If you want to make these operators support other types,
  * remove these implementations, look at expr-plus.c
  * and follow the way it was implemented. */
@@ -111,6 +113,18 @@ _free_arithmetic_common(FilterXExpr *s)
 }
 
 static FilterXObject *
+_double_result(gdouble value, FilterXExpr *expr)
+{
+  if (!isfinite(value))
+    {
+      filterx_eval_push_error_static_info("Failed to evaluate arithmetic operator", expr,
+                                          "Result is not a finite number");
+      return NULL;
+    }
+  return filterx_double_new(value);
+}
+
+static FilterXObject *
 _do_substraction(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
 {
   GenericNumber lhs_number, rhs_number, result;
@@ -133,8 +147,7 @@ _do_substraction(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
       return filterx_integer_new(gn_as_int64(&result));
     }
 
-  gn_set_double(&result, gn_as_double(&lhs_number) - gn_as_double(&rhs_number), -1);
-  return filterx_double_new(gn_as_double(&result));
+  return _double_result(gn_as_double(&lhs_number) - gn_as_double(&rhs_number), expr);
 }
 
 static FilterXObject *
@@ -183,8 +196,7 @@ _do_multiplication(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
       return filterx_integer_new(gn_as_int64(&result));
     }
 
-  gn_set_double(&result, gn_as_double(&lhs_number) * gn_as_double(&rhs_number), -1);
-  return filterx_double_new(gn_as_double(&result));
+  return _double_result(gn_as_double(&lhs_number) * gn_as_double(&rhs_number), expr);
 }
 
 static FilterXObject *
@@ -242,8 +254,7 @@ _do_division(FilterXObject *lhs, FilterXObject *rhs, FilterXExpr *expr)
       return filterx_integer_new(gn_as_int64(&result));
     }
 
-  gn_set_double(&result, gn_as_double(&lhs_number) / gn_as_double(&rhs_number), -1);
-  return filterx_double_new(gn_as_double(&result));
+  return _double_result(gn_as_double(&lhs_number) / gn_as_double(&rhs_number), expr);
 }
 
 static FilterXObject *
@@ -385,8 +396,7 @@ _do_uminus(FilterXObject *operand_obj, FilterXExpr *expr)
       goto exit;
     }
 
-  gn_set_double(&result, -gn_as_double(&operand), -1);
-  out = filterx_double_new(gn_as_double(&result));
+  out = _double_result(-gn_as_double(&operand), expr);
 
 exit:
   filterx_object_unref(operand_obj);
