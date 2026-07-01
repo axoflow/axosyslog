@@ -74,6 +74,58 @@ Test(filterx_expr_arithmetic, normal_division_still_works)
   filterx_object_unref(res);
 }
 
+Test(filterx_expr_arithmetic, int64_subtraction_overflow_is_rejected)
+{
+  FilterXObject *res = _eval_binop(filterx_operator_substraction_new, G_MAXINT64, -1);
+  cr_assert_null(res);
+}
+
+Test(filterx_expr_arithmetic, int64_multiplication_overflow_is_rejected)
+{
+  FilterXObject *res = _eval_binop(filterx_operator_multiplication_new, G_MAXINT64, 2);
+  cr_assert_null(res);
+}
+
+Test(filterx_expr_arithmetic, normal_subtraction_still_works)
+{
+  FilterXObject *res = _eval_binop(filterx_operator_substraction_new, 10, 3);
+  cr_assert_not_null(res);
+  gint64 value;
+  cr_assert(filterx_integer_unwrap(res, &value));
+  cr_assert_eq(value, 7);
+  filterx_object_unref(res);
+}
+
+Test(filterx_expr_arithmetic, normal_multiplication_still_works)
+{
+  FilterXObject *res = _eval_binop(filterx_operator_multiplication_new, 6, 7);
+  cr_assert_not_null(res);
+  gint64 value;
+  cr_assert(filterx_integer_unwrap(res, &value));
+  cr_assert_eq(value, 42);
+  filterx_object_unref(res);
+}
+
+Test(filterx_expr_arithmetic, uminus_of_int64_min_is_rejected)
+{
+  FilterXExpr *op = filterx_operator_uminus_new(filterx_object_expr_new(filterx_integer_new(G_MININT64)));
+  FilterXObject *res = init_and_eval_expr(op);
+  filterx_expr_unref(op);
+  cr_assert_null(res);
+}
+
+Test(filterx_expr_arithmetic, normal_uminus_still_works)
+{
+  FilterXExpr *op = filterx_operator_uminus_new(filterx_object_expr_new(filterx_integer_new(5)));
+  FilterXObject *res = init_and_eval_expr(op);
+  filterx_expr_unref(op);
+  cr_assert_not_null(res);
+  gint64 value;
+  cr_assert(filterx_integer_unwrap(res, &value));
+  cr_assert_eq(value, -5);
+  filterx_object_unref(res);
+}
+
 static void
 setup(void)
 {
