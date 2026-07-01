@@ -55,17 +55,30 @@ filterx_primitive_new(FilterXType *type)
 }
 
 static FilterXObject *
+_double_add_result(gdouble value)
+{
+  if (!isfinite(value))
+    return NULL;
+  return filterx_double_new(value);
+}
+
+static FilterXObject *
 _integer_add(FilterXObject *s, FilterXObject *object)
 {
   FilterXPrimitive *self = (FilterXPrimitive *) s;
 
   gint64 i;
   if (filterx_object_extract_integer(object, &i))
-    return filterx_integer_new(gn_as_int64(&self->value) + i);
+    {
+      gint64 res;
+      if (__builtin_add_overflow(gn_as_int64(&self->value), i, &res))
+        return NULL;
+      return filterx_integer_new(res);
+    }
 
   gdouble d;
   if (filterx_object_extract_double(object, &d))
-    return filterx_double_new(gn_as_int64(&self->value) + d);
+    return _double_add_result(gn_as_int64(&self->value) + d);
 
   return NULL;
 }
@@ -114,11 +127,11 @@ _double_add(FilterXObject *s, FilterXObject *object)
 
   gint64 i;
   if (filterx_object_extract_integer(object, &i))
-    return filterx_double_new(gn_as_double(&self->value) + i);
+    return _double_add_result(gn_as_double(&self->value) + i);
 
   gdouble d;
   if (filterx_object_extract_double(object, &d))
-    return filterx_double_new(gn_as_double(&self->value) + d);
+    return _double_add_result(gn_as_double(&self->value) + d);
 
   return NULL;
 }

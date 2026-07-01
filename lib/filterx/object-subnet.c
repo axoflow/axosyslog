@@ -198,10 +198,7 @@ _parse_ipv4_cidr(FilterXSubnet *self, const gchar *cidr)
             return FALSE;
           if (prefix < 0 || prefix > 32)
             return FALSE;
-          if (prefix == 32)
-            self->ipv4.netmask.s_addr = htonl(0xFFFFFFFF);
-          else
-            self->ipv4.netmask.s_addr = htonl(((1 << prefix) - 1) << (32 - prefix));
+          self->ipv4.netmask.s_addr = htonl(prefix == 0 ? 0 : (0xFFFFFFFFu << (32 - prefix)));
         }
     }
   self->family = AF_INET;

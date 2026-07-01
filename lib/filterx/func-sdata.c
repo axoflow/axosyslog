@@ -213,10 +213,7 @@ _insert_while_same_sd_id(LogMessage *msg, guint8 index, guint8 num_sdata, guint8
 
       if (!_extract_sd_components(next_name, next_name_len, &next_sd_id_start, &next_sd_id_len, &param_name_start,
                                   &param_name_len))
-        {
-          filterx_object_unref(inner_dict);
-          return FALSE;
-        }
+        return FALSE;
 
       if (_should_create_new_dict(current_sd_id_start, current_sd_id_len, next_sd_id_start, next_sd_id_len))
         break;

@@ -91,7 +91,7 @@ filterx_sequence_normalize_index(FilterXObject *index_object,
       return FALSE;
     }
 
-  if (len + index < 0)
+  if ((gint64) len + index < 0)
     {
       *error = "Index out of range";
       return FALSE;
