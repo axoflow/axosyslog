@@ -31,6 +31,7 @@ DOCKER_RUN_ARGS=-e USER_NAME_ON_HOST=$(shell whoami)	\
         --network=host \
 	--ulimit nofile=1024:1024 \
 	-v $(ROOT_DIR):/source \
+	$(GIT_WORKTREE_MOUNT) \
         -v $(DBLD_DIR):/dbld \
 	-v $(DBLD_DIR)/build:/build \
 	-v $(DBLD_DIR)/install:/install \
@@ -46,6 +47,7 @@ DOCKER_RUN_ARGS=-e USER_NAME_ON_HOST=$(shell whoami)	\
 DOCKER_BUILD_ARGS=
 ROOT_DIR=$(shell pwd)
 DBLD_DIR=$(ROOT_DIR)/dbld
+GIT_WORKTREE_MOUNT=$(shell if [ -f "$(ROOT_DIR)/.git" ]; then d=$$(git -C "$(ROOT_DIR)" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); [ -n "$$d" ] && echo "-v $$d:$$d"; fi)
 BUILD_DIR=$(DBLD_DIR)/build
 RELEASE_DIR=$(DBLD_DIR)/release
 TARBALL_BASENAME=axosyslog-$(VERSION).tar.gz
