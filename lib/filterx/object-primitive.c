@@ -61,7 +61,12 @@ _integer_add(FilterXObject *s, FilterXObject *object)
 
   gint64 i;
   if (filterx_object_extract_integer(object, &i))
-    return filterx_integer_new(gn_as_int64(&self->value) + i);
+    {
+      gint64 res;
+      if (__builtin_add_overflow(gn_as_int64(&self->value), i, &res))
+        return NULL;
+      return filterx_integer_new(res);
+    }
 
   gdouble d;
   if (filterx_object_extract_double(object, &d))

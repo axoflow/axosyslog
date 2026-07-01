@@ -210,6 +210,19 @@ Test(expr_plus, test_integer_add_wrong_type)
   filterx_expr_unref(expr);
 }
 
+Test(expr_plus, test_integer_add_overflow)
+{
+  FilterXExpr *lhs = filterx_literal_new(filterx_integer_new(G_MAXINT64));
+  FilterXExpr *rhs = filterx_literal_new(filterx_integer_new(1));
+
+  FilterXExpr *expr = filterx_operator_plus_new(lhs, rhs);
+  cr_assert_not_null(expr);
+
+  FilterXObject *obj = init_and_eval_expr(expr);
+  cr_assert_null(obj);
+  filterx_expr_unref(expr);
+}
+
 Test(expr_plus, test_double_add_double)
 {
   FilterXExpr *lhs = filterx_literal_new(filterx_double_new(.6));
