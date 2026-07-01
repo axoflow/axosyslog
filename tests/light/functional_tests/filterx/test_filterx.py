@@ -953,6 +953,32 @@ def test_isset_macro(config, syslog_ng):
     assert "processed" not in file_false.get_stats()
 
 
+def test_list_negative_index(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+    x = [1, 2, 3];
+    $MSG = string(x[-1]);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert file_true.read_log() == "3"
+
+
+def test_list_negative_index_out_of_range(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+    x = [1, 2, 3];
+    x[-100];
+""",
+    )
+    syslog_ng.start(config)
+
+    assert "processed" not in file_true.get_stats()
+    assert file_false.get_stats()["processed"] == 1
+
+
 def test_plus_of_incompatible_literals_does_not_crash(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
