@@ -941,6 +941,18 @@ def test_isset(config, syslog_ng):
     assert "processed" not in file_false.get_stats()
 
 
+def test_isset_macro(config, syslog_ng):
+    (file_true, file_false) = create_config(
+        config, """
+    isset($SEVERITY);
+""",
+    )
+    syslog_ng.start(config)
+
+    assert file_true.get_stats()["processed"] == 1
+    assert "processed" not in file_false.get_stats()
+
+
 def test_plus_of_incompatible_literals_does_not_crash(config, syslog_ng):
     (file_true, file_false) = create_config(
         config, """
